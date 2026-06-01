@@ -12,6 +12,19 @@ import pandas as pd
 from app.db.models import Candle
 
 
+def ensure_utc_datetime(value: datetime) -> datetime:
+    """Приводит naive/aware datetime к aware UTC.
+
+    SQLite и некоторые DB-драйверы могут вернуть timezone-naive datetime,
+    даже если модель объявлена как DateTime(timezone=True). Внутри проекта
+    считаем такие значения UTC, чтобы не ломать сравнения и backtest.
+    """
+
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 class IndicatorCalculationError(ValueError):
     """Ошибка расчёта индикаторов при нехватке или некорректности данных."""
 
@@ -113,7 +126,7 @@ class IndicatorService:
         """Оставляет только закрытые свечи по их времени закрытия."""
 
         now = datetime.now(UTC)
-        return [item for item in candles if item.close_time <= now]
+        return [item for item in candles if ensure_utc_datetime(item.close_time) <= now]
 
     @staticmethod
     def _to_decimal(value: object) -> Decimal:

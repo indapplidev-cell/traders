@@ -48,6 +48,12 @@ def test_invalid_default_interval_fails(monkeypatch) -> None:
         build_settings(monkeypatch, DEFAULT_INTERVAL="7m")
 
 
+@pytest.mark.parametrize("value", ["", "   "])
+def test_empty_default_symbol_fails(monkeypatch, value: str) -> None:
+    with pytest.raises(ValidationError):
+        build_settings(monkeypatch, DEFAULT_SYMBOL=value)
+
+
 def test_invalid_async_database_url_fails(monkeypatch) -> None:
     with pytest.raises(ValidationError):
         build_settings(monkeypatch, ASYNC_DATABASE_URL="postgresql+psycopg://traders:traders@localhost:5432/traders")

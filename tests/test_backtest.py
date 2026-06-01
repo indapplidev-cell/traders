@@ -206,3 +206,21 @@ def test_backtest_can_load_history_from_db_by_days(sqlite_session) -> None:
 
     assert len(result) == len(candles)
     assert result[0].open_time <= result[-1].open_time
+
+
+def test_backtest_runs_after_db_roundtrip_with_naive_sqlite_datetimes(sqlite_session) -> None:
+    """Проверяет, что backtest не падает после roundtrip свечей через SQLite."""
+
+    candles = build_backtest_candles()
+    sqlite_session.add_all(candles)
+    sqlite_session.commit()
+
+    loaded_candles = BacktestEngine().load_candles_from_db(
+        session=sqlite_session,
+        symbol="BTCUSDT",
+        interval="15m",
+        days=30,
+    )
+    result = BacktestEngine().run(symbol="BTCUSDT", interval="15m", candles=loaded_candles)
+
+    assert result.candles_used == len(loaded_candles)

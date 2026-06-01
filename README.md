@@ -62,15 +62,15 @@ pip install -e ".[dev]"
 
 Если репозиторий приватный, вместо HTTPS нужен deploy key. Скрипты для серверного контура лежат в:
 
-- [scripts/server_bootstrap.sh](D:/disk_E/game_projects/traders/scripts/server_bootstrap.sh)
-- [scripts/server_update.sh](D:/disk_E/game_projects/traders/scripts/server_update.sh)
-- [scripts/server_check.sh](D:/disk_E/game_projects/traders/scripts/server_check.sh)
+- [scripts/server_bootstrap.sh](scripts/server_bootstrap.sh)
+- [scripts/server_update.sh](scripts/server_update.sh)
+- [scripts/server_check.sh](scripts/server_check.sh)
 
 ## PostgreSQL on VPS
 
 Production compose-файл:
 
-- [docker-compose.server.yml](D:/disk_E/game_projects/traders/docker-compose.server.yml)
+- [docker-compose.server.yml](docker-compose.server.yml)
 
 PostgreSQL запускается только локально на VPS:
 
@@ -91,7 +91,7 @@ docker exec traders_postgres pg_isready -U traders -d traders
 
 В проект добавлен отдельный async-слой:
 
-- [app/db/async_session.py](D:/disk_E/game_projects/traders/app/db/async_session.py)
+- [app/db/async_session.py](app/db/async_session.py)
 
 Поддерживаются два варианта:
 
@@ -178,7 +178,7 @@ python -m app.cli.commands load-history --symbol BTCUSDT --interval 15m --days 3
 python -m app.cli.commands backtest --symbol BTCUSDT --interval 15m --days 30
 ```
 
-Полный фактический статус текущего прохода фиксируется в [reports/server_deploy_report.md](D:/disk_E/game_projects/traders/reports/server_deploy_report.md).
+Полный фактический статус текущего прохода фиксируется в [reports/server_deploy_report.md](reports/server_deploy_report.md).
 
 ## Security notes
 
