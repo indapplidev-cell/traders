@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import select
 
+from app.analytics.strategy_performance import StrategyPerformanceService
 from app.db.models import RunnerSession, RuntimeTick
 from app.db.session import session_scope
 from app.runtime.strategy_runtime import StrategyRuntime
 from app.strategy.strategy_registry import get_strategy
+
+logger = logging.getLogger(__name__)
 
 
 RUNNER_STATUS_CREATED = "CREATED"
@@ -91,6 +95,7 @@ class PaperRunner:
                         error=exc,
                     )
                     self._mark_failed(session_id, completed_ticks=completed_ticks, error=exc)
+                    self._persist_session_metrics(session_id, normalized_symbol)
                     return self._get_result(session_id)
 
                 finished_at = datetime.now(UTC)
@@ -109,9 +114,11 @@ class PaperRunner:
 
         except Exception as exc:
             self._mark_failed(session_id, completed_ticks=completed_ticks, error=exc)
+            self._persist_session_metrics(session_id, normalized_symbol)
             return self._get_result(session_id)
 
         self._mark_stopped(session_id, completed_ticks=completed_ticks)
+        self._persist_session_metrics(session_id, normalized_symbol)
         return self._get_result(session_id)
 
     def list_sessions(self, *, limit: int) -> list[RunnerSession]:
@@ -192,6 +199,13 @@ class PaperRunner:
             runner_session.stopped_at = datetime.now(UTC)
             runner_session.last_error = str(error)
             runner_session.updated_at = datetime.now(UTC)
+
+    @staticmethod
+    def _persist_session_metrics(session_id: int, symbol: str) -> None:
+        try:
+            StrategyPerformanceService().persist_session_metrics(session_id, symbol)
+        except Exception as exc:
+            logger.exception("Failed to persist session metrics for session %s: %s", session_id, exc)
 
     @staticmethod
     def _record_tick_success(
