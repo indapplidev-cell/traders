@@ -57,6 +57,10 @@ Connectivity checks:
 - raw TCP socket connect to `185.216.87.26:22`
   - TCP connection established
   - no SSH banner received within 10 seconds
+- `ssh -vvv -o ConnectTimeout=30 root@185.216.87.26 "hostname"`
+  - failed
+  - result: `Connection timed out during banner exchange`
+  - note: TCP connection was established, local SSH client sent its version string, but server SSH banner was not received before timeout
 - `ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=20 root@185.216.87.26 "hostname"`
   - failed
   - result: `Connection timed out during banner exchange`
@@ -67,6 +71,7 @@ Connectivity checks:
 Result:
 
 - no interactive or non-interactive SSH session was established
+- deploy was not continued after repeated SSH banner timeout
 - no command from the requested VPS deploy checklist was executed on the VPS
 - no remote filesystem changes were made
 
