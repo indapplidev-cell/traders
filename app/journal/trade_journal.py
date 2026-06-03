@@ -1,6 +1,9 @@
 """Сохранение решений стратегии в БД."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -10,7 +13,7 @@ from app.strategy.trade_decision import TradeDecision
 
 @dataclass(slots=True)
 class TradeJournalPayload:
-    """Полный набор данных для записи результата одного paper-step."""
+    """Полный набор данных для записи результата одного шага."""
 
     strategy_decision: TradeDecision
     final_decision: TradeDecision
@@ -18,6 +21,9 @@ class TradeJournalPayload:
     risk_reason: str
     execution_action: str
     execution_message: str
+    strategy_name: str = "legacy"
+    strategy_version: str = "legacy"
+    confidence: Decimal = Decimal("1.0")
 
 
 class TradeJournal:
@@ -32,6 +38,9 @@ class TradeJournal:
         record = TradeDecisionRecord(
             symbol=payload.strategy_decision.symbol,
             interval=payload.strategy_decision.interval,
+            strategy_name=payload.strategy_name,
+            strategy_version=payload.strategy_version,
+            confidence=Decimal(str(payload.confidence)),
             strategy_decision=payload.strategy_decision.decision.value,
             strategy_reason=payload.strategy_decision.reason,
             final_decision=payload.final_decision.decision.value,

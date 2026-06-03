@@ -25,6 +25,8 @@ from app.history.historical_loader import HistoricalLoadResult, HistoricalLoader
 from app.market.analysis_service import MarketAnalysisService
 from app.market.candle_service import CandleService
 from app.market.indicator_service import IndicatorCalculationError
+from app.runtime.strategy_runtime import RuntimeTickResult, StrategyRuntime
+from app.strategy.strategy_registry import list_strategies as list_registered_strategies
 
 
 def _supports_unicode_stream(stream: Any) -> bool:
@@ -56,6 +58,16 @@ def _make_console() -> Console:
 console = _make_console()
 app = typer.Typer(help="CLI for the traders server runtime.")
 analysis_service = MarketAnalysisService()
+_strategy_runtime: StrategyRuntime | None = None
+
+
+def get_strategy_runtime() -> StrategyRuntime:
+    """Лениво создаёт runtime, чтобы import CLI не требовал runtime env."""
+
+    global _strategy_runtime
+    if _strategy_runtime is None:
+        _strategy_runtime = StrategyRuntime()
+    return _strategy_runtime
 
 
 def _safe_output_text(value: object, stream: Any | None = None) -> str:
@@ -160,6 +172,30 @@ def _render_history_result(result: HistoricalLoadResult) -> None:
     console.print(table)
 
 
+def _render_runtime_result(result: RuntimeTickResult, title: str) -> None:
+    """Render one runtime tick result."""
+
+    table = Table(title=title)
+    table.add_column("field")
+    table.add_column("value")
+    table.add_row("strategy", result.strategy_decision.strategy_name)
+    table.add_row("version", result.strategy_decision.strategy_version)
+    table.add_row("symbol", result.strategy_decision.symbol)
+    table.add_row("interval", result.strategy_decision.interval)
+    table.add_row("strategy action", result.strategy_decision.action)
+    table.add_row("final action", result.final_action)
+    table.add_row("confidence", f"{result.strategy_decision.confidence:.2f}")
+    table.add_row("risk approved", str(result.risk_approved))
+    table.add_row("risk reason", result.risk_reason)
+    table.add_row("execution action", result.execution_action)
+    table.add_row("execution message", result.execution_message)
+    table.add_row("candles used", str(result.candles_used))
+    table.add_row("market regime", str(result.market_regime))
+    if result.decision_id is not None:
+        table.add_row("journal id", str(result.decision_id))
+    console.print(table)
+
+
 @app.command("health")
 def health() -> None:
     """Verify that the app imports and the sync database is reachable."""
@@ -188,6 +224,72 @@ def async_health() -> None:
     except Exception as exc:
         _print_error(f"async database unavailable - {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@app.command("strategy-list")
+def strategy_list() -> None:
+    """Show registered strategies."""
+
+    table = Table(title="Available strategies")
+    table.add_column("strategy")
+    for name in list_registered_strategies():
+        table.add_row(name)
+    console.print(table)
+
+
+@app.command("strategy-run")
+def strategy_run(
+    strategy: str = typer.Option(None, help="Strategy name."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+) -> None:
+    """Run exactly one bounded strategy tick."""
+
+    settings = get_settings()
+    strategy_name = strategy or settings.strategy_default_name
+    symbol = symbol or settings.default_symbol
+    interval = interval or settings.default_interval
+
+    try:
+        result = get_strategy_runtime().run_tick(strategy_name, symbol, interval)
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    _render_runtime_result(result, f"Strategy run {strategy_name} {symbol} {interval}")
+
+
+@app.command("strategy-loop")
+def strategy_loop(
+    strategy: str = typer.Option(None, help="Strategy name."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+    ticks: int = typer.Option(None, help="How many bounded ticks to execute."),
+    sleep_seconds: float = typer.Option(None, help="Pause between ticks."),
+) -> None:
+    """Run a bounded strategy loop and stop after N ticks."""
+
+    settings = get_settings()
+    strategy_name = strategy or settings.strategy_default_name
+    symbol = symbol or settings.default_symbol
+    interval = interval or settings.default_interval
+    loop_ticks = ticks if ticks is not None else settings.strategy_max_ticks
+    loop_sleep = sleep_seconds if sleep_seconds is not None else float(settings.strategy_loop_sleep_seconds)
+
+    try:
+        results = get_strategy_runtime().run_loop(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            interval=interval,
+            ticks=loop_ticks,
+            sleep_seconds=loop_sleep,
+        )
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    for index, result in enumerate(results, start=1):
+        _render_runtime_result(result, f"Strategy loop tick {index}/{loop_ticks}")
 
 
 @app.command("fetch-candles")

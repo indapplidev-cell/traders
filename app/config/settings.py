@@ -1,4 +1,4 @@
-"""Централизованная конфигурация приложения."""
+"""Centralized application settings."""
 
 from __future__ import annotations
 
@@ -29,11 +29,7 @@ ALLOWED_BINANCE_INTERVALS = {
 
 
 class Settings(BaseSettings):
-    """Настройки приложения.
-
-    Все значения вынесены в переменные окружения, чтобы не хранить
-    инфраструктурные параметры и риск-настройки прямо в коде.
-    """
+    """Application settings loaded from environment variables."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -51,59 +47,88 @@ class Settings(BaseSettings):
     default_interval: str = Field(default="15m", alias="DEFAULT_INTERVAL")
     default_candle_limit: int = Field(default=300, alias="DEFAULT_CANDLE_LIMIT")
 
+    strategy_default_name: str = Field(default="simple_trend", alias="STRATEGY_DEFAULT_NAME")
+    strategy_min_confidence: Decimal = Field(default=Decimal("0.55"), alias="STRATEGY_MIN_CONFIDENCE")
+    strategy_loop_sleep_seconds: Decimal = Field(default=Decimal("60"), alias="STRATEGY_LOOP_SLEEP_SECONDS")
+    strategy_max_ticks: int = Field(default=10, alias="STRATEGY_MAX_TICKS")
+    strategy_default_candle_limit: int = Field(default=300, alias="STRATEGY_DEFAULT_CANDLE_LIMIT")
+
     paper_initial_balance_usdt: Decimal = Field(
         default=Decimal("1000"),
         alias="PAPER_INITIAL_BALANCE_USDT",
     )
-    # Новое имя отражает фактическую семантику: пока это не настоящий риск
-    # на сделку, а просто доля баланса, выделяемая под размер paper-позиции.
     paper_position_size_fraction: Decimal = Field(
         default=Decimal("0.01"),
         validation_alias=AliasChoices("PAPER_POSITION_SIZE_FRACTION", "PAPER_RISK_PER_TRADE"),
         alias="PAPER_POSITION_SIZE_FRACTION",
     )
-    paper_max_open_positions: int = Field(
-        default=1,
-        alias="PAPER_MAX_OPEN_POSITIONS",
-    )
+    paper_max_open_positions: int = Field(default=1, alias="PAPER_MAX_OPEN_POSITIONS")
 
     @field_validator("paper_position_size_fraction")
     @classmethod
     def validate_paper_position_size_fraction(cls, value: Decimal) -> Decimal:
-        """Гарантирует корректную долю баланса для paper-позиции."""
-
         if value <= 0 or value > 1:
-            raise ValueError("PAPER_POSITION_SIZE_FRACTION должен быть в диапазоне 0 < value <= 1.")
+            raise ValueError("PAPER_POSITION_SIZE_FRACTION must be in range 0 < value <= 1.")
         return value
 
     @field_validator("default_candle_limit")
     @classmethod
     def validate_default_candle_limit(cls, value: int) -> int:
-        """Не даёт задать слишком маленький лимит свечей для индикаторов."""
-
         if value < 250:
-            raise ValueError("DEFAULT_CANDLE_LIMIT должен быть не меньше 250.")
+            raise ValueError("DEFAULT_CANDLE_LIMIT must not be less than 250.")
+        return value
+
+    @field_validator("strategy_default_name")
+    @classmethod
+    def validate_strategy_default_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("STRATEGY_DEFAULT_NAME must not be empty.")
+        return normalized
+
+    @field_validator("strategy_min_confidence")
+    @classmethod
+    def validate_strategy_min_confidence(cls, value: Decimal) -> Decimal:
+        if value < 0 or value > 1:
+            raise ValueError("STRATEGY_MIN_CONFIDENCE must be in range 0 <= value <= 1.")
+        return value
+
+    @field_validator("strategy_loop_sleep_seconds")
+    @classmethod
+    def validate_strategy_loop_sleep_seconds(cls, value: Decimal) -> Decimal:
+        if value < 0:
+            raise ValueError("STRATEGY_LOOP_SLEEP_SECONDS must be >= 0.")
+        return value
+
+    @field_validator("strategy_max_ticks")
+    @classmethod
+    def validate_strategy_max_ticks(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("STRATEGY_MAX_TICKS must be > 0.")
+        return value
+
+    @field_validator("strategy_default_candle_limit")
+    @classmethod
+    def validate_strategy_default_candle_limit(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("STRATEGY_DEFAULT_CANDLE_LIMIT must be > 0.")
         return value
 
     @field_validator("default_symbol")
     @classmethod
     def validate_default_symbol(cls, value: str) -> str:
-        """Запрещает пустой символ по умолчанию."""
-
         normalized = value.strip().upper()
         if not normalized:
-            raise ValueError("DEFAULT_SYMBOL не должен быть пустым.")
+            raise ValueError("DEFAULT_SYMBOL must not be empty.")
         return normalized
 
     @field_validator("default_interval")
     @classmethod
     def validate_default_interval(cls, value: str) -> str:
-        """Проверяет, что interval входит в список поддерживаемых Binance значений."""
-
         normalized = value.strip()
         if normalized not in ALLOWED_BINANCE_INTERVALS:
             raise ValueError(
-                "DEFAULT_INTERVAL должен быть одним из допустимых Binance interval: "
+                "DEFAULT_INTERVAL must be one of the supported Binance intervals: "
                 + ", ".join(sorted(ALLOWED_BINANCE_INTERVALS))
                 + "."
             )
@@ -112,23 +137,17 @@ class Settings(BaseSettings):
     @field_validator("async_database_url")
     @classmethod
     def validate_async_database_url(cls, value: str | None) -> str | None:
-        """Проверяет, что явный async URL использует драйвер asyncpg."""
-
         if value is None:
             return value
 
         normalized = value.strip()
         if not normalized.startswith("postgresql+asyncpg://"):
-            raise ValueError("ASYNC_DATABASE_URL должен начинаться с postgresql+asyncpg://")
+            raise ValueError("ASYNC_DATABASE_URL must start with postgresql+asyncpg://")
         return normalized
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Кеширует настройки на время жизни процесса.
-
-    Для CLI-команд этого достаточно: каждая команда живёт недолго,
-    а постоянное повторное чтение `.env` здесь не даёт пользы.
-    """
+    """Cache settings for the lifetime of the process."""
 
     return Settings()

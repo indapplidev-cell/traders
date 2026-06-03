@@ -1,5 +1,7 @@
 """Сервис одного шага paper trading без CLI-зависимостей."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ from app.execution.position_manager import PositionManager
 from app.journal.trade_journal import TradeJournal, TradeJournalPayload
 from app.market.indicator_service import IndicatorSnapshot
 from app.risk.risk_manager import RiskManager
+from app.strategy.base_strategy import StrategyDecision
 from app.strategy.trade_decision import DecisionType, MarketRegime, TradeDecision
 
 
@@ -24,6 +27,7 @@ class PaperStepResult:
     execution_action: str
     execution_message: str
     has_execution_error: bool = False
+    journal_id: int | None = None
 
 
 class PaperStepService:
@@ -38,12 +42,17 @@ class PaperStepService:
         *,
         indicator_snapshot: IndicatorSnapshot | None = None,
         latest_candle: Candle | None = None,
+        runtime_decision: StrategyDecision | None = None,
     ) -> PaperStepResult:
         """Обрабатывает решение стратегии и сохраняет полную историю шага."""
 
         execution_engine = PaperExecutionEngine(self.session)
         portfolio_state = PositionManager(self.session).get_portfolio_state()
-        risk_result = RiskManager().validate_decision(strategy_decision, portfolio_state)
+        risk_manager = RiskManager()
+        if runtime_decision is not None:
+            risk_result = risk_manager.validate_strategy_decision(runtime_decision, portfolio_state)
+        else:
+            risk_result = risk_manager.validate_decision(strategy_decision, portfolio_state)
 
         final_decision = strategy_decision
         execution_action = "SKIPPED"
@@ -64,13 +73,27 @@ class PaperStepService:
                 created_at=latest_candle.close_time,
             )
             risk_result.approved = True
+            risk_result.final_action = "SELL"
             risk_result.reason = "Защитное закрытие позиции не требует отдельной риск-проверки."
             execution_action = protective_result.action
             execution_message = protective_result.message
         elif risk_result.approved:
+            execution_decision = strategy_decision
+            if risk_result.final_action != strategy_decision.decision.value:
+                execution_decision = TradeDecision.build(
+                    symbol=strategy_decision.symbol,
+                    interval=strategy_decision.interval,
+                    decision=DecisionType(risk_result.final_action),
+                    reason=f"RiskManager переопределил действие: {risk_result.reason}",
+                    regime=strategy_decision.regime,
+                    price=strategy_decision.price,
+                    created_at=strategy_decision.created_at,
+                )
+                final_decision = execution_decision
+
             try:
                 execution_result = execution_engine.execute(
-                    strategy_decision,
+                    execution_decision,
                     indicator_snapshot=indicator_snapshot,
                 )
                 execution_action = execution_result.action
@@ -87,15 +110,17 @@ class PaperStepService:
                 )
                 execution_action = "ERROR"
                 execution_message = str(exc)
-                payload = TradeJournalPayload(
-                    strategy_decision=strategy_decision,
-                    final_decision=final_decision,
-                    risk_approved=risk_result.approved,
-                    risk_reason=risk_result.reason,
-                    execution_action=execution_action,
-                    execution_message=execution_message,
+                record = TradeJournal(self.session).record(
+                    self._build_payload(
+                        strategy_decision=strategy_decision,
+                        final_decision=final_decision,
+                        risk_approved=risk_result.approved,
+                        risk_reason=risk_result.reason,
+                        execution_action=execution_action,
+                        execution_message=execution_message,
+                        runtime_decision=runtime_decision,
+                    )
                 )
-                TradeJournal(self.session).record(payload)
                 return PaperStepResult(
                     strategy_decision=strategy_decision,
                     final_decision=final_decision,
@@ -104,12 +129,13 @@ class PaperStepService:
                     execution_action=execution_action,
                     execution_message=execution_message,
                     has_execution_error=True,
+                    journal_id=record.id,
                 )
         else:
             final_decision = TradeDecision.build(
                 symbol=strategy_decision.symbol,
                 interval=strategy_decision.interval,
-                decision=DecisionType.HOLD,
+                decision=DecisionType(risk_result.final_action),
                 reason=f"Решение отклонено RiskManager: {risk_result.reason}",
                 regime=strategy_decision.regime,
                 price=strategy_decision.price,
@@ -117,15 +143,17 @@ class PaperStepService:
             )
             execution_message = risk_result.reason
 
-        payload = TradeJournalPayload(
-            strategy_decision=strategy_decision,
-            final_decision=final_decision,
-            risk_approved=risk_result.approved,
-            risk_reason=risk_result.reason,
-            execution_action=execution_action,
-            execution_message=execution_message,
+        record = TradeJournal(self.session).record(
+            self._build_payload(
+                strategy_decision=strategy_decision,
+                final_decision=final_decision,
+                risk_approved=risk_result.approved,
+                risk_reason=risk_result.reason,
+                execution_action=execution_action,
+                execution_message=execution_message,
+                runtime_decision=runtime_decision,
+            )
         )
-        TradeJournal(self.session).record(payload)
 
         return PaperStepResult(
             strategy_decision=strategy_decision,
@@ -135,4 +163,38 @@ class PaperStepService:
             execution_action=execution_action,
             execution_message=execution_message,
             has_execution_error=False,
+            journal_id=record.id,
+        )
+
+    @staticmethod
+    def _build_payload(
+        *,
+        strategy_decision: TradeDecision,
+        final_decision: TradeDecision,
+        risk_approved: bool,
+        risk_reason: str,
+        execution_action: str,
+        execution_message: str,
+        runtime_decision: StrategyDecision | None,
+    ) -> TradeJournalPayload:
+        if runtime_decision is None:
+            return TradeJournalPayload(
+                strategy_decision=strategy_decision,
+                final_decision=final_decision,
+                risk_approved=risk_approved,
+                risk_reason=risk_reason,
+                execution_action=execution_action,
+                execution_message=execution_message,
+            )
+
+        return TradeJournalPayload(
+            strategy_decision=strategy_decision,
+            final_decision=final_decision,
+            risk_approved=risk_approved,
+            risk_reason=risk_reason,
+            execution_action=execution_action,
+            execution_message=execution_message,
+            strategy_name=runtime_decision.strategy_name,
+            strategy_version=runtime_decision.strategy_version,
+            confidence=runtime_decision.confidence,
         )
