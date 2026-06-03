@@ -3,7 +3,7 @@
 from datetime import datetime, UTC
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Index, Numeric, String, UniqueConstraint, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -128,6 +128,75 @@ class TradeDecisionRecord(Base):
     risk_reason: Mapped[str] = mapped_column(String(512))
     execution_action: Mapped[str] = mapped_column(String(16))
     execution_message: Mapped[str] = mapped_column(String(1024))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+
+
+class RunnerSession(Base):
+    """Запуск bounded paper runner для серии runtime tick-ов."""
+
+    __tablename__ = "runner_sessions"
+    __table_args__ = (
+        Index("ix_runner_sessions_strategy_name", "strategy_name"),
+        Index("ix_runner_sessions_symbol", "symbol"),
+        Index("ix_runner_sessions_status", "status"),
+        Index("ix_runner_sessions_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    strategy_name: Mapped[str] = mapped_column(String(64))
+    strategy_version: Mapped[str] = mapped_column(String(32))
+    symbol: Mapped[str] = mapped_column(String(32))
+    interval: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ticks_requested: Mapped[int] = mapped_column()
+    ticks_completed: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    last_error: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+
+
+class RuntimeTick(Base):
+    """Аудит одного runtime tick внутри runner session."""
+
+    __tablename__ = "runtime_ticks"
+    __table_args__ = (
+        UniqueConstraint("runner_session_id", "tick_number", name="uq_runtime_ticks_session_tick"),
+        Index("ix_runtime_ticks_runner_session_id", "runner_session_id"),
+        Index("ix_runtime_ticks_symbol", "symbol"),
+        Index("ix_runtime_ticks_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    runner_session_id: Mapped[int] = mapped_column(ForeignKey("runner_sessions.id", ondelete="CASCADE"))
+    tick_number: Mapped[int] = mapped_column()
+    symbol: Mapped[str] = mapped_column(String(32))
+    interval: Mapped[str] = mapped_column(String(16))
+    strategy_action: Mapped[str] = mapped_column(String(16))
+    final_action: Mapped[str] = mapped_column(String(16))
+    risk_approved: Mapped[bool] = mapped_column(Boolean())
+    risk_reason: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    execution_action: Mapped[str] = mapped_column(String(16))
+    journal_id: Mapped[int | None] = mapped_column(nullable=True)
+    market_regime: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    candles_used: Mapped[int | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

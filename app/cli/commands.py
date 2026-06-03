@@ -18,6 +18,7 @@ from app.backtest.backtest_result import BacktestResult
 from app.config.settings import get_settings
 from app.db.async_session import async_session_scope
 from app.db.session import session_scope
+from app.runtime.paper_runner import PaperRunner, RunnerStartResult
 from app.execution.paper_runner_service import PaperRunnerService, RunnerIterationResult
 from app.execution.paper_step_service import PaperStepService
 from app.execution.position_manager import PositionManager
@@ -59,6 +60,7 @@ console = _make_console()
 app = typer.Typer(help="CLI for the traders server runtime.")
 analysis_service = MarketAnalysisService()
 _strategy_runtime: StrategyRuntime | None = None
+_paper_runner: PaperRunner | None = None
 
 
 def get_strategy_runtime() -> StrategyRuntime:
@@ -68,6 +70,15 @@ def get_strategy_runtime() -> StrategyRuntime:
     if _strategy_runtime is None:
         _strategy_runtime = StrategyRuntime()
     return _strategy_runtime
+
+
+def get_paper_runner() -> PaperRunner:
+    """Лениво создаёт bounded PaperRunner поверх StrategyRuntime."""
+
+    global _paper_runner
+    if _paper_runner is None:
+        _paper_runner = PaperRunner(runtime=get_strategy_runtime())
+    return _paper_runner
 
 
 def _safe_output_text(value: object, stream: Any | None = None) -> str:
@@ -196,6 +207,86 @@ def _render_runtime_result(result: RuntimeTickResult, title: str) -> None:
     console.print(table)
 
 
+def _render_runner_start_result(result: RunnerStartResult) -> None:
+    """Render bounded runner start result."""
+
+    table = Table(title="Runner session result")
+    table.add_column("field")
+    table.add_column("value")
+    table.add_row("session id", str(result.session_id))
+    table.add_row("status", result.status)
+    table.add_row("strategy", result.strategy_name)
+    table.add_row("version", result.strategy_version)
+    table.add_row("symbol", result.symbol)
+    table.add_row("interval", result.interval)
+    table.add_row("ticks requested", str(result.ticks_requested))
+    table.add_row("ticks completed", str(result.ticks_completed))
+    table.add_row("last error", result.last_error or "-")
+    console.print(table)
+
+
+def _render_runner_history(items: list[object]) -> None:
+    """Render recent runner sessions."""
+
+    table = Table(title="Runner history")
+    table.add_column("id")
+    table.add_column("status")
+    table.add_column("strategy_name")
+    table.add_column("strategy_version")
+    table.add_column("symbol")
+    table.add_column("interval")
+    table.add_column("ticks_requested")
+    table.add_column("ticks_completed")
+    table.add_column("started_at")
+    table.add_column("stopped_at")
+    table.add_column("last_error")
+    for item in items:
+        table.add_row(
+            str(item.id),
+            item.status,
+            item.strategy_name,
+            item.strategy_version,
+            item.symbol,
+            item.interval,
+            str(item.ticks_requested),
+            str(item.ticks_completed),
+            item.started_at.isoformat() if item.started_at else "-",
+            item.stopped_at.isoformat() if item.stopped_at else "-",
+            item.last_error or "-",
+        )
+    console.print(table)
+
+
+def _render_runner_ticks(items: list[object], session_id: int) -> None:
+    """Render runtime tick audit rows for one session."""
+
+    table = Table(title=f"Runner ticks session {session_id}")
+    table.add_column("tick_number")
+    table.add_column("strategy_action")
+    table.add_column("final_action")
+    table.add_column("risk_approved")
+    table.add_column("risk_reason")
+    table.add_column("execution_action")
+    table.add_column("journal_id")
+    table.add_column("market_regime")
+    table.add_column("candles_used")
+    table.add_column("error")
+    for item in items:
+        table.add_row(
+            str(item.tick_number),
+            item.strategy_action,
+            item.final_action,
+            str(item.risk_approved),
+            item.risk_reason or "-",
+            item.execution_action,
+            str(item.journal_id) if item.journal_id is not None else "-",
+            item.market_regime or "-",
+            str(item.candles_used) if item.candles_used is not None else "-",
+            item.error or "-",
+        )
+    console.print(table)
+
+
 @app.command("health")
 def health() -> None:
     """Verify that the app imports and the sync database is reachable."""
@@ -290,6 +381,64 @@ def strategy_loop(
 
     for index, result in enumerate(results, start=1):
         _render_runtime_result(result, f"Strategy loop tick {index}/{loop_ticks}")
+
+
+@app.command("runner-start")
+def runner_start(
+    strategy: str = typer.Option(None, help="Strategy name."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+    ticks: int = typer.Option(None, help="How many bounded ticks to execute."),
+    sleep_seconds: float = typer.Option(None, help="Pause between ticks."),
+) -> None:
+    """Run a bounded paper runner session and persist tick audit."""
+
+    settings = get_settings()
+    strategy_name = strategy or settings.strategy_default_name
+    symbol = symbol or settings.default_symbol
+    interval = interval or settings.default_interval
+    loop_ticks = ticks if ticks is not None else settings.strategy_max_ticks
+    loop_sleep = sleep_seconds if sleep_seconds is not None else float(settings.strategy_loop_sleep_seconds)
+
+    try:
+        result = get_paper_runner().start(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            interval=interval,
+            ticks=loop_ticks,
+            sleep_seconds=loop_sleep,
+        )
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    _render_runner_start_result(result)
+
+
+@app.command("runner-history")
+def runner_history(limit: int = typer.Option(10, help="How many recent runner sessions to show.")) -> None:
+    """Show recent bounded runner sessions."""
+
+    try:
+        items = get_paper_runner().list_sessions(limit=limit)
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    _render_runner_history(items)
+
+
+@app.command("runner-ticks")
+def runner_ticks(session_id: int = typer.Option(..., help="Runner session id.")) -> None:
+    """Show runtime tick audit rows for one bounded runner session."""
+
+    try:
+        items = get_paper_runner().list_ticks(session_id=session_id)
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    _render_runner_ticks(items, session_id)
 
 
 @app.command("fetch-candles")
