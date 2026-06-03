@@ -17,7 +17,7 @@ dependencies = [
     "sqlalchemy",
     "alembic",
     "psycopg[binary]",
-    "asyncpg",
+    "asyncpg>=0.29.0",
     "pandas",
     "numpy",
     "python-dotenv",

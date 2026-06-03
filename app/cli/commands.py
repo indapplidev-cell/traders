@@ -1,9 +1,11 @@
-"""CLI-команды для управления проектом."""
+"""CLI commands for the traders server runtime."""
 
 from __future__ import annotations
 
 import asyncio
+import sys
 from decimal import Decimal
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -25,20 +27,83 @@ from app.market.candle_service import CandleService
 from app.market.indicator_service import IndicatorCalculationError
 
 
-app = typer.Typer(help="CLI для серверного ядра traders.")
-console = Console()
+def _supports_unicode_stream(stream: Any) -> bool:
+    """Return True when the target stream can encode the Unicode UI glyphs we use."""
+
+    encoding = getattr(stream, "encoding", None)
+    if not encoding:
+        return True
+
+    try:
+        probe = chr(0x2502) + chr(0x2807)
+        probe.encode(encoding)
+    except (LookupError, UnicodeEncodeError):
+        return False
+    return True
+
+
+def _make_console() -> Console:
+    """Create a console with ASCII-safe fallback for Windows cp1251 terminals."""
+
+    unicode_output = _supports_unicode_stream(sys.stdout)
+    return Console(
+        safe_box=not unicode_output,
+        emoji=unicode_output,
+        highlight=False,
+    )
+
+
+console = _make_console()
+app = typer.Typer(help="CLI for the traders server runtime.")
 analysis_service = MarketAnalysisService()
 
 
+def _safe_output_text(value: object, stream: Any | None = None) -> str:
+    """Convert text to ASCII escapes when the terminal encoding is too narrow."""
+
+    text_value = str(value)
+    output_stream = stream or console.file
+    if _supports_unicode_stream(output_stream):
+        return text_value
+    return text_value.encode("ascii", errors="backslashreplace").decode("ascii")
+
+
+def _build_progress() -> Progress:
+    """Create a progress renderer without Unicode-only widgets on narrow terminals."""
+
+    if _supports_unicode_stream(console.file):
+        return Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed} chunks"),
+            TimeElapsedColumn(),
+            console=console,
+        )
+
+    return Progress(
+        TextColumn("{task.description}"),
+        TextColumn("{task.completed} chunks"),
+        TimeElapsedColumn(),
+        console=console,
+    )
+
+
+def _print_error(exc: object, prefix: str = "ERROR") -> None:
+    """Print a plain-text-safe error message."""
+
+    console.print(f"{prefix}: {_safe_output_text(exc)}")
+
+
 def _format_decimal(value: Decimal) -> str:
-    """Форматирует Decimal для компактного терминального вывода."""
+    """Format Decimal values for compact terminal output."""
 
     normalized = value.quantize(Decimal("0.00000001")).normalize()
     return format(normalized, "f")
 
 
-def _render_paper_step_result(symbol: str, interval: str, result) -> None:
-    """Печатает результат paper-step или runner в едином виде."""
+def _render_paper_step_result(symbol: str, interval: str, result: object) -> None:
+    """Render a paper-step or runner iteration result."""
 
     table = Table(title=f"Paper step {symbol} {interval}")
     table.add_column("field")
@@ -57,7 +122,7 @@ def _render_paper_step_result(symbol: str, interval: str, result) -> None:
 
 
 def _render_backtest_result(result: BacktestResult) -> None:
-    """Печатает сводку backtest через rich-таблицу."""
+    """Render a backtest summary."""
 
     table = Table(title=f"Backtest {result.symbol} {result.interval}")
     table.add_column("metric")
@@ -80,7 +145,7 @@ def _render_backtest_result(result: BacktestResult) -> None:
 
 
 def _render_history_result(result: HistoricalLoadResult) -> None:
-    """Печатает сводку по завершённой исторической загрузке."""
+    """Render a historical-load summary."""
 
     table = Table(title=f"History load {result.symbol} {result.interval}")
     table.add_column("metric")
@@ -97,7 +162,7 @@ def _render_history_result(result: HistoricalLoadResult) -> None:
 
 @app.command("health")
 def health() -> None:
-    """Проверяет, что приложение импортируется и sync-БД доступна."""
+    """Verify that the app imports and the sync database is reachable."""
 
     console.print("OK: app loaded")
     try:
@@ -105,13 +170,13 @@ def health() -> None:
             session.execute(text("SELECT 1"))
         console.print("OK: database connected")
     except Exception as exc:
-        console.print(f"ERROR: database unavailable - {exc}")
+        _print_error(f"database unavailable - {exc}")
         raise typer.Exit(code=1) from exc
 
 
 @app.command("async-health")
 def async_health() -> None:
-    """Проверяет, что async engine создаётся и async-БД отвечает."""
+    """Verify that the async engine is created and the async database responds."""
 
     async def _check() -> None:
         async with async_session_scope() as session:
@@ -121,17 +186,17 @@ def async_health() -> None:
         asyncio.run(_check())
         console.print("OK: async database connected")
     except Exception as exc:
-        console.print(f"ERROR: async database unavailable - {exc}")
+        _print_error(f"async database unavailable - {exc}")
         raise typer.Exit(code=1) from exc
 
 
 @app.command("fetch-candles")
 def fetch_candles(
-    symbol: str = typer.Option(None, help="Торговый символ, например BTCUSDT."),
-    interval: str = typer.Option(None, help="Таймфрейм Binance, например 15m."),
-    limit: int = typer.Option(None, help="Количество свечей для загрузки."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+    limit: int = typer.Option(None, help="Number of candles to fetch."),
 ) -> None:
-    """Загружает свечи с Binance и сохраняет их в БД."""
+    """Fetch candles from Binance and store them in the database."""
 
     settings = get_settings()
     symbol = symbol or settings.default_symbol
@@ -146,25 +211,18 @@ def fetch_candles(
 
 @app.command("load-history")
 def load_history(
-    symbol: str = typer.Option(None, help="Торговый символ, например BTCUSDT."),
-    interval: str = typer.Option(None, help="Таймфрейм Binance, например 15m."),
-    days: int = typer.Option(365, help="За сколько последних дней загрузить историю."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+    days: int = typer.Option(365, help="How many recent days of history to load."),
 ) -> None:
-    """Загружает историю свечей Binance чанками и сохраняет её в БД."""
+    """Load historical Binance candles in chunks and store them in the database."""
 
     settings = get_settings()
     symbol = symbol or settings.default_symbol
     interval = interval or settings.default_interval
     loader = HistoricalLoader()
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("{task.description}"),
-        BarColumn(),
-        TextColumn("{task.completed} chunks"),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
+    with _build_progress() as progress:
         task_id = progress.add_task(f"Loading history {symbol} {interval}", total=None)
 
         def on_progress(_chunks_loaded: int, _candles_saved: int, _cursor_ms: int) -> None:
@@ -180,7 +238,7 @@ def load_history(
                 )
             )
         except Exception as exc:
-            console.print(f"ERROR: {exc}")
+            _print_error(exc)
             raise typer.Exit(code=1) from exc
 
     _render_history_result(result)
@@ -188,11 +246,11 @@ def load_history(
 
 @app.command("show-candles")
 def show_candles(
-    symbol: str = typer.Option(None, help="Торговый символ, например BTCUSDT."),
-    interval: str = typer.Option(None, help="Таймфрейм Binance, например 15m."),
-    limit: int = typer.Option(10, help="Сколько последних свечей показать."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+    limit: int = typer.Option(10, help="How many recent candles to display."),
 ) -> None:
-    """Показывает последние свечи в таблице."""
+    """Show recent candles from the database."""
 
     settings = get_settings()
     symbol = symbol or settings.default_symbol
@@ -201,9 +259,9 @@ def show_candles(
     with session_scope() as session:
         candles = analysis_service.load_candles(session=session, symbol=symbol, interval=interval, limit=limit)
     if not candles:
-        raise typer.BadParameter("В базе нет свечей для показа. Сначала выполните fetch-candles.")
+        raise typer.BadParameter("No candles found in the database. Run fetch-candles first.")
 
-    table = Table(title=f"Свечи {symbol} {interval}")
+    table = Table(title=f"Candles {symbol} {interval}")
     table.add_column("open_time")
     table.add_column("open")
     table.add_column("high")
@@ -224,10 +282,10 @@ def show_candles(
 
 @app.command("analyze")
 def analyze(
-    symbol: str = typer.Option(None, help="Торговый символ, например BTCUSDT."),
-    interval: str = typer.Option(None, help="Таймфрейм Binance, например 15m."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
 ) -> None:
-    """Считает индикаторы и показывает решение стратегии."""
+    """Calculate indicators and print the strategy decision."""
 
     settings = get_settings()
     symbol = symbol or settings.default_symbol
@@ -243,13 +301,13 @@ def analyze(
             )
         snapshot = analysis.indicator_snapshot
     except IndicatorCalculationError as exc:
-        console.print(f"ERROR: {exc}")
+        _print_error(exc)
         raise typer.Exit(code=1) from exc
     except Exception as exc:
-        console.print(f"ERROR: {exc}")
+        _print_error(exc)
         raise typer.Exit(code=1) from exc
 
-    table = Table(title=f"Анализ {symbol} {interval}")
+    table = Table(title=f"Analysis {symbol} {interval}")
     table.add_column("metric")
     table.add_column("value")
     table.add_row("symbol", symbol)
@@ -269,10 +327,10 @@ def analyze(
 
 @app.command("paper-step")
 def paper_step(
-    symbol: str = typer.Option(None, help="Торговый символ, например BTCUSDT."),
-    interval: str = typer.Option(None, help="Таймфрейм Binance, например 15m."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
 ) -> None:
-    """Выполняет один полный цикл paper trading."""
+    """Run one full paper-trading step."""
 
     settings = get_settings()
     symbol = symbol or settings.default_symbol
@@ -290,10 +348,10 @@ def paper_step(
                 limit=settings.default_candle_limit,
             )
     except IndicatorCalculationError as exc:
-        console.print(f"ERROR: {exc}")
+        _print_error(exc)
         raise typer.Exit(code=1) from exc
     except Exception as exc:
-        console.print(f"ERROR: {exc}")
+        _print_error(exc)
         raise typer.Exit(code=1) from exc
 
     with session_scope() as session:
@@ -310,7 +368,7 @@ def paper_step(
 
 @app.command("portfolio")
 def portfolio() -> None:
-    """Показывает состояние paper-портфеля."""
+    """Show the current paper portfolio."""
 
     with session_scope() as session:
         manager = PositionManager(session)
@@ -341,12 +399,12 @@ def portfolio() -> None:
 
 @app.command("backtest")
 def backtest(
-    symbol: str = typer.Option(None, help="Торговый символ, например BTCUSDT."),
-    interval: str = typer.Option(None, help="Таймфрейм Binance, например 15m."),
-    limit: int = typer.Option(1000, help="Количество последних свечей для короткого backtest."),
-    days: int | None = typer.Option(None, help="Если указан, backtest читает историю из БД за последние N дней."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+    limit: int = typer.Option(1000, help="How many recent candles to use for a short backtest."),
+    days: int | None = typer.Option(None, help="If set, load candles from the database for the last N days."),
 ) -> None:
-    """Запускает исторический backtest по свечам без реальных ордеров."""
+    """Run a historical backtest without real orders."""
 
     settings = get_settings()
     symbol = symbol or settings.default_symbol
@@ -368,10 +426,10 @@ def backtest(
                 candles = analysis_service.load_candles(session=session, symbol=symbol, interval=interval, limit=limit)
         result = engine.run(symbol=symbol, interval=interval, candles=candles)
     except IndicatorCalculationError as exc:
-        console.print(f"ERROR: {exc}")
+        _print_error(exc)
         raise typer.Exit(code=1) from exc
     except Exception as exc:
-        console.print(f"ERROR: {exc}")
+        _print_error(exc)
         raise typer.Exit(code=1) from exc
 
     _render_backtest_result(result)
@@ -379,10 +437,10 @@ def backtest(
 
 @app.command("paper-runner")
 def paper_runner(
-    symbol: str = typer.Option(None, help="Торговый символ, например BTCUSDT."),
-    interval: str = typer.Option(None, help="Таймфрейм Binance, например 15m."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
 ) -> None:
-    """Запускает безопасный paper-only runner до Ctrl+C."""
+    """Start the safe paper-only runner until Ctrl+C."""
 
     settings = get_settings()
     symbol = symbol or settings.default_symbol
@@ -391,15 +449,15 @@ def paper_runner(
     service = PaperRunnerService()
 
     def on_iteration(iteration: RunnerIterationResult) -> None:
-        console.print(iteration.message)
+        console.print(_safe_output_text(iteration.message))
         if iteration.result is not None:
             _render_paper_step_result(symbol, interval, iteration.result)
 
-    console.print(f"Paper runner started for {symbol} {interval}. Для остановки нажмите Ctrl+C.")
+    console.print(f"Paper runner started for {symbol} {interval}. Press Ctrl+C to stop.")
     try:
         asyncio.run(service.run_forever(symbol=symbol, interval=interval, on_iteration=on_iteration))
     except KeyboardInterrupt:
-        console.print("Paper runner остановлен пользователем.")
+        console.print("Paper runner stopped by user.")
 
 
 if __name__ == "__main__":

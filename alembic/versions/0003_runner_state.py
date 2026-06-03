@@ -6,18 +6,16 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0003_add_runner_state_and_open_position_index"
+revision: str = "0003_runner_state"
 down_revision: str | None = "0002_expand_trade_decisions"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Добавляет partial index и состояние paper-runner."""
+    """Adds the runner state table and the partial open-position index."""
 
-    # DB-level защита нужна для реальной защиты от гонок записи.
-    # Проверка в Python полезна, но только уникальный индекс БД гарантирует,
-    # что по одному symbol нельзя одновременно держать две OPEN-позиции.
+    # DB-level protection is required to avoid write races on OPEN positions.
     op.create_index(
         "uq_paper_positions_one_open_per_symbol",
         "paper_positions",
@@ -42,7 +40,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Удаляет таблицу состояния runner и partial index."""
+    """Removes the runner state table and the partial open-position index."""
 
     op.drop_index("ix_paper_runner_state_interval", table_name="paper_runner_state")
     op.drop_index("ix_paper_runner_state_symbol", table_name="paper_runner_state")

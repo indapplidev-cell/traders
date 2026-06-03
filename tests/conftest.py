@@ -37,6 +37,7 @@ def configured_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> str:
     monkeypatch.setenv("PAPER_INITIAL_BALANCE_USDT", "1000")
     monkeypatch.setenv("PAPER_POSITION_SIZE_FRACTION", "0.01")
     monkeypatch.setenv("PAPER_MAX_OPEN_POSITIONS", "1")
+    monkeypatch.chdir(tmp_path)
     _clear_caches()
     yield database_url
     _clear_caches()

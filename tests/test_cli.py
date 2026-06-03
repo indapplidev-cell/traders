@@ -7,14 +7,14 @@ from typer.testing import CliRunner
 
 
 def _clear_cli_modules() -> None:
-    """Сбрасывает импортированные CLI-модули между тестами."""
+    """Clear imported CLI modules between tests."""
 
     for module_name in ("app.cli.commands", "app.db.session", "app.db.async_session", "app.main"):
         sys.modules.pop(module_name, None)
 
 
 def _clear_env(monkeypatch, tmp_path) -> None:
-    """Убирает runtime-переменные, чтобы help не зависел от .env и БД."""
+    """Remove runtime variables so CLI help stays independent from .env and DB."""
 
     for key in (
         "APP_ENV",
@@ -36,30 +36,24 @@ def _clear_env(monkeypatch, tmp_path) -> None:
 
 
 def test_cli_help_does_not_require_env(monkeypatch, tmp_path) -> None:
-    """Проверяет, что help не тянет настройки и БД на этапе импорта."""
-
     _clear_env(monkeypatch, tmp_path)
     commands = importlib.import_module("app.cli.commands")
     result = CliRunner().invoke(commands.app, ["--help"])
 
     assert result.exit_code == 0
-    assert "CLI для серверного ядра traders" in result.output
+    assert "CLI for the traders server runtime" in result.output
 
 
 def test_load_history_help_works_without_runtime(monkeypatch, tmp_path) -> None:
-    """Проверяет, что help команды load-history не требует БД и Binance."""
-
     _clear_env(monkeypatch, tmp_path)
     commands = importlib.import_module("app.cli.commands")
     result = CliRunner().invoke(commands.app, ["load-history", "--help"])
 
     assert result.exit_code == 0
-    assert "загружает историю свечей" in result.output.lower()
+    assert "load historical binance candles" in result.output.lower()
 
 
 def test_async_health_help_works_without_runtime(monkeypatch, tmp_path) -> None:
-    """Проверяет, что help команды async-health не требует БД на импорте CLI."""
-
     _clear_env(monkeypatch, tmp_path)
     commands = importlib.import_module("app.cli.commands")
     result = CliRunner().invoke(commands.app, ["async-health", "--help"])
@@ -69,22 +63,29 @@ def test_async_health_help_works_without_runtime(monkeypatch, tmp_path) -> None:
 
 
 def test_backtest_help_works_without_runtime(monkeypatch, tmp_path) -> None:
-    """Проверяет, что help новой backtest-команды не требует БД и Binance."""
-
     _clear_env(monkeypatch, tmp_path)
     commands = importlib.import_module("app.cli.commands")
     result = CliRunner().invoke(commands.app, ["backtest", "--help"])
 
     assert result.exit_code == 0
-    assert "исторический backtest" in result.output.lower()
+    assert "historical backtest" in result.output.lower()
 
 
 def test_paper_runner_help_works_without_runtime(monkeypatch, tmp_path) -> None:
-    """Проверяет, что help runner-команды не требует доступа к БД."""
-
     _clear_env(monkeypatch, tmp_path)
     commands = importlib.import_module("app.cli.commands")
     result = CliRunner().invoke(commands.app, ["paper-runner", "--help"])
 
     assert result.exit_code == 0
     assert "paper-only runner" in result.output.lower()
+
+
+def test_cli_error_text_falls_back_to_ascii_for_cp1251(monkeypatch, tmp_path) -> None:
+    _clear_env(monkeypatch, tmp_path)
+    commands = importlib.import_module("app.cli.commands")
+
+    class _FakeStream:
+        encoding = "cp1251"
+
+    assert commands._supports_unicode_stream(_FakeStream()) is False
+    assert commands._safe_output_text("bad \u2807 output", _FakeStream()) == "bad \\u2807 output"
