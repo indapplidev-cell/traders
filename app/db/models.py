@@ -204,6 +204,63 @@ class RuntimeTick(Base):
     )
 
 
+class RunnerSessionMetric(Base):
+    """Snapshot session-level metrics for runner sessions."""
+
+    __tablename__ = "runner_session_metrics"
+    __table_args__ = (
+        Index("ix_runner_session_metrics_runner_session_id", "runner_session_id"),
+        Index("ix_runner_session_metrics_created_at", "created_at"),
+        Index("ix_runner_session_metrics_data_quality", "data_quality"),
+        UniqueConstraint("runner_session_id", name="uq_runner_session_metrics_runner_session_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    runner_session_id: Mapped[int] = mapped_column(
+        ForeignKey("runner_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ticks_requested: Mapped[int] = mapped_column()
+    ticks_completed: Mapped[int] = mapped_column()
+    audit_ticks_count: Mapped[int] = mapped_column()
+    error_ticks_count: Mapped[int] = mapped_column()
+    success_rate: Mapped[float] = mapped_column()
+    strategy_buy_count: Mapped[int] = mapped_column()
+    strategy_sell_count: Mapped[int] = mapped_column()
+    strategy_hold_count: Mapped[int] = mapped_column()
+    final_buy_count: Mapped[int] = mapped_column()
+    final_sell_count: Mapped[int] = mapped_column()
+    final_hold_count: Mapped[int] = mapped_column()
+    risk_approved_count: Mapped[int] = mapped_column()
+    risk_rejected_count: Mapped[int] = mapped_column()
+    risk_rejection_rate: Mapped[float] = mapped_column()
+    execution_executed_count: Mapped[int] = mapped_column()
+    execution_skipped_count: Mapped[int] = mapped_column()
+    average_confidence: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    min_confidence: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    max_confidence: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    candles_used_min: Mapped[int | None] = mapped_column(nullable=True)
+    candles_used_max: Mapped[int | None] = mapped_column(nullable=True)
+    candles_used_average: Mapped[float | None] = mapped_column(nullable=True)
+    realized_pnl: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    unrealized_pnl: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    total_pnl: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    return_pct: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    data_quality: Mapped[str] = mapped_column(String(32))
+    unavailable_reason: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+
+
 class PaperRunnerState(Base):
     """Состояние paper-runner для защиты от повторной обработки одной свечи."""
 
