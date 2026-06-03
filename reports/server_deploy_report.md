@@ -1,217 +1,124 @@
 # Server Deploy Report
 
-## Статус
-Частично готово
-
-## GitHub
-- Repo: `indapplidev-cell/traders`
-- Branch: `main`
-- Remote: `https://github.com/indapplidev-cell/traders.git`
-- Push result: успешно, `main -> origin/main`
-- Codex GitHub connection: требует ручного подтверждения пользователя через UI
-
-## Server
-- IP: `185.216.87.26`
-- OS: `Ubuntu 22.04`
-- Project path: `/opt/traders`
-- SSH status: сервер отвечает, но вход не завершён в этой сессии из-за требования ручной аутентификации
-
-## PostgreSQL
-- Deployment method: подготовлен `docker-compose.server.yml`
-- Container: `traders_postgres`
-- Port binding: `127.0.0.1:5432:5432`
-- Health: не проверен на VPS
-- Database: `traders`
-- User: `traders`
-- External port exposed: no, настроено только локальное bind-подключение
-
-## Async DB
-- ASYNC_DATABASE_URL configured: не подтверждено на сервере; поддержка добавлена в код и `.env.example`
-- async-health result: runtime-проверка не выполнена без живого PostgreSQL
-
-## Alembic
-Команда:
-
-```bash
-alembic upgrade head
-```
-
-Результат:
-
-Не проверено на VPS, потому что PostgreSQL на сервере не был поднят в этой сессии.
-
-## Runtime checks
-
-### pytest
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m pytest
-```
-
-Результат:
-
-`46 passed in 9.40s`
-
-### ruff
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m ruff check .
-```
-
-Результат:
-
-`All checks passed!`
-
-### health
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands health
-```
-
-Результат:
-
-Не запускалось против живого PostgreSQL.
-
-### async-health
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands async-health
-```
-
-Результат:
-
-Не запускалось против живого PostgreSQL.
-
-Дополнительно проверено:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands async-health --help
-```
-
-Результат:
-
-Help отработал успешно.
-
-### fetch-candles
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands fetch-candles --symbol BTCUSDT --interval 15m --limit 300
-```
-
-Результат:
-
-Не проверено без доступной PostgreSQL runtime-среды.
-
-### analyze
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands analyze --symbol BTCUSDT --interval 15m
-```
-
-Результат:
-
-Не проверено без доступной PostgreSQL runtime-среды.
-
-### paper-step
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands paper-step --symbol BTCUSDT --interval 15m
-```
-
-Результат:
-
-Не проверено без доступной PostgreSQL runtime-среды.
-
-### portfolio
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands portfolio
-```
-
-Результат:
-
-Не проверено без доступной PostgreSQL runtime-среды.
-
-### load-history
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands load-history --symbol BTCUSDT --interval 15m --days 30
-```
-
-Результат:
-
-Не проверено без доступной PostgreSQL runtime-среды.
-
-### backtest limit
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands backtest --symbol BTCUSDT --interval 15m --limit 1000
-```
-
-Результат:
-
-Не проверено без доступной PostgreSQL runtime-среды.
-
-### backtest days
-Команда:
-
-```powershell
-.\.venv\Scripts\python -m app.cli.commands backtest --symbol BTCUSDT --interval 15m --days 30
-```
-
-Результат:
-
-Не проверено без доступной PostgreSQL runtime-среды.
-
-## Что не удалось проверить
-
-- Подключение Codex/GitHub через UI environment-экран
-- SSH-вход на VPS без ручного ввода пароля или заранее настроенного ключа
-- Обновление пакетов на VPS
-- Установка Docker на VPS
-- Подъём PostgreSQL на VPS
-- Создание серверного `.env`
-- `alembic upgrade head` на VPS
-- Полный runtime-контур CLI на VPS
-
-Фактически проверено по SSH:
-
-```bash
-ssh -o BatchMode=yes -o ConnectTimeout=10 root@185.216.87.26 "pwd"
-```
-
-Результат:
-
-`Permission denied (publickey,password).`
-
-## Безопасность
-Подтверждаю:
-
-- `.env` не закоммичен
-- root password не сохранён в файлах
-- ключи Binance не добавлены
-- live trading не добавлен
-- real orders не добавлены
-- futures не добавлены
-- margin не добавлен
-- leverage не добавлен
-- Telegram не добавлен
-- GUI не добавлен
-- PostgreSQL в production compose настроен без внешнего открытия порта
-
-## Риски и замечания
-
-- Локальный каталог изначально не был git-репозиторием; репозиторий и ветка `main` инициализированы в этой сессии.
-- История git сейчас начинается с локального root commit `08cc04a`.
-- Серверные скрипты созданы, но не исполнялись на VPS.
-- Для завершения серверной части нужен ручной SSH-вход пользователя и фактическое выполнение команд на Ubuntu 22.04.
+## Scope
+
+- Stage 3 was not started.
+- `/opt/cosmic_api`, `/opt/cosmic_db`, and `/opt/gamecom` were not touched.
+- `scripts/server_bootstrap.sh` was updated locally for idempotent behavior and was not executed on the VPS in this session.
+
+## Local Repository Facts
+
+- commit hash: `73bef45195dc5c8bb25ebdd5acb02391924ccf0e`
+- current local changes:
+  - `scripts/server_bootstrap.sh` modified
+  - `reports/server_deploy_report.md` rewritten
+- local cleanup result:
+  - `__pycache__` directories remaining: `0`
+  - `*.pyc` files remaining: `0`
+
+## Bootstrap Script Facts
+
+`scripts/server_bootstrap.sh` now:
+
+- is idempotent for repeated runs
+- installs:
+  - `git`
+  - `curl`
+  - `wget`
+  - `ca-certificates`
+  - `gnupg`
+  - `lsb-release`
+  - `ufw`
+  - `python3`
+  - `python3-venv`
+  - `python3-pip`
+  - `openssl`
+- installs Docker only when `docker` command is missing
+- enables and starts Docker only when Docker is already present
+- installs `docker compose` plugin only when `docker compose` is unavailable
+- uses Docker CE repository and does not install `docker.io` over an existing Docker CE installation
+
+Local validation:
+
+- `bash -n scripts/server_bootstrap.sh`: success
+
+## VPS Connectivity Facts
+
+Attempted target:
+
+- host: `185.216.87.26`
+- user: `root`
+
+Connectivity checks:
+
+- `Test-NetConnection 185.216.87.26 -Port 22`
+  - `TcpTestSucceeded: True`
+  - `PingSucceeded: False`
+- raw TCP socket connect to `185.216.87.26:22`
+  - TCP connection established
+  - no SSH banner received within 10 seconds
+- `ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=20 root@185.216.87.26 "hostname"`
+  - failed
+  - result: `Connection timed out during banner exchange`
+- `ssh -i ~/.ssh/cosmic_vps_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=20 root@185.216.87.26 "hostname"`
+  - failed
+  - result: `Connection timed out during banner exchange`
+
+Result:
+
+- no interactive or non-interactive SSH session was established
+- no command from the requested VPS deploy checklist was executed on the VPS
+- no remote filesystem changes were made
+
+## Requested Server Facts
+
+- `/opt` state: not checked on VPS
+- Docker version: not checked on VPS
+- `docker compose` version: not checked on VPS
+- PostgreSQL container status: not checked on VPS
+- `pg_isready` result: not checked on VPS
+- `ss -lntp | grep 5432` result: not checked on VPS
+- PostgreSQL listening only on `127.0.0.1:5432`: not verified on VPS
+- `alembic upgrade head` result: not checked on VPS
+- `alembic current` result: not checked on VPS
+- `pytest` result on VPS: not checked on VPS
+- `ruff` result on VPS: not checked on VPS
+- `health` result on VPS: not checked on VPS
+- `async-health` result on VPS: not checked on VPS
+- `load-history` result on VPS: not checked on VPS
+- `backtest` result on VPS: not checked on VPS
+
+## Repository Runtime Facts Only
+
+These are repository configuration facts, not VPS runtime confirmation:
+
+- [`docker-compose.server.yml`](../docker-compose.server.yml) binds PostgreSQL as `127.0.0.1:5432:5432`
+
+## What Could Not Be Verified
+
+- `hostname` on VPS
+- `ls -la /opt` on VPS
+- `docker --version` on VPS
+- `docker compose version` on VPS
+- `systemctl is-active docker` on VPS
+- `ufw status` on VPS
+- clone or reset state of `/opt/traders`
+- server `.env` creation
+- `docker compose -f docker-compose.server.yml --env-file .env up -d`
+- `docker ps`
+- `docker logs traders_postgres --tail=50`
+- `docker exec traders_postgres pg_isready -U traders -d traders`
+- `ss -lntp | grep 5432`
+- `python3 -m venv .venv`
+- `pip install -e ".[dev]"`
+- `alembic upgrade head`
+- `alembic current`
+- all requested CLI runtime checks
+
+## Untouched Paths Confirmation
+
+Because no SSH session was established, the following VPS paths were not touched:
+
+- `/opt/cosmic_api`
+- `/opt/cosmic_db`
+- `/opt/gamecom`
