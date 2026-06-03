@@ -8,8 +8,8 @@
 - `stage3-runtime-layer`
 
 ## 3. Commit hash
-- Stage 3 commit hash: `98cd5f31d3be041944d68fb65149ea4c0b8cfc03`
-- Branch HEAD before Stage 3 commit: `daa37767be5d531aeb7d4e502d327b3e890e5ca4`
+- Stage 3 commit hash: `ac39be7df770765cd5839a12fd0db56d026b7174`
+- Branch HEAD before Stage 3 work: `daa37767be5d531aeb7d4e502d327b3e890e5ca4`
 
 ## 4. Created files
 - `alembic/versions/0004_strategy_audit.py`
@@ -82,7 +82,7 @@
   - `trade_decisions` contains columns `strategy_name`, `strategy_version`, `confidence`
 
 ## 13. Tests
-- `.venv\Scripts\python -m pytest`: `67 passed in 5.87s`
+- `.venv\Scripts\python -m pytest`: `67 passed in 18.77s`
 - `.venv\Scripts\python -m ruff check .`: `All checks passed!`
 - Added Stage 3 tests for:
   - strategy registry
@@ -104,12 +104,13 @@
   - execution action: `SKIPPED`
   - candles used: `300`
   - market regime: `BEAR`
-  - journal id: `2`
+  - journal id: `7`
 - `.venv\Scripts\python -m app.cli.commands strategy-loop --strategy simple_trend --symbol BTCUSDT --interval 15m --ticks 3 --sleep-seconds 0`:
   - loop stopped after exactly `3` ticks
   - all 3 ticks returned `SELL -> HOLD`
   - all 3 ticks returned `risk approved = False`
-  - journal ids: `3`, `4`, `5`
+  - all 3 ticks returned risk reason `Нельзя выполнить SELL: открытая позиция отсутствует.`
+  - journal ids: `6`, `8`, `9`
 - `.venv\Scripts\python -m app.cli.commands portfolio`:
   - `USDT balance = 1000.0000000000`
   - `open positions = 0`
