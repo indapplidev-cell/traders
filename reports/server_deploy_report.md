@@ -2,7 +2,12 @@
 
 ## Scope
 
-- Stage 3 was not started.
+- Stage 3 was not started on the VPS.
+- VPS deploy remains pending.
+- SSH banner timeout / server unavailable prevented remote validation.
+- Server runtime validation was not executed.
+- Stage 3 was completed locally on branch `stage3-runtime-layer`.
+- Server deployment is still not closed.
 - `/opt/cosmic_api`, `/opt/cosmic_db`, and `/opt/gamecom` were not touched.
 - `scripts/server_bootstrap.sh` was updated locally for idempotent behavior and was not executed on the VPS in this session.
 

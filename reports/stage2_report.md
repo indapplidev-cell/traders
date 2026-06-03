@@ -37,7 +37,7 @@
 
 Для Stage 2 в проекте уже используется миграция:
 
-- `alembic/versions/0003_add_runner_state_and_open_position_index.py`
+- `alembic/versions/0003_runner_state.py`
 
 ## Добавленные тесты
 
@@ -56,7 +56,7 @@
 
 Результат:
 
-- `pytest`: `41 passed in 5.13s`
+- `pytest`: `51 passed`
 - `ruff check .`: `All checks passed!`
 
 ### CLI help
@@ -93,16 +93,14 @@ docker compose up -d
 unable to get image 'postgres:16': error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/images/postgres:16/json": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
 ```
 
+## Stage 2.5 Follow-up
+
+- `alembic current`: `0003_runner_state`
+- local PostgreSQL runtime: `OK`
+
 ## Что не подтверждено в этой среде
 
-Из-за недоступного Docker daemon я не подтверждаю как выполненные:
-
-- `alembic upgrade head` против реального PostgreSQL;
-- `python -m app.cli.commands health` против живой БД;
-- `python -m app.cli.commands load-history ...` против PostgreSQL + Binance;
-- `python -m app.cli.commands backtest --days ...` против реальной БД;
-- `python -m app.cli.commands paper-step ...` против реальной БД;
-- `python -m app.cli.commands portfolio` против реальной БД.
+В рамках Stage 2.5 уже были подтверждены локальные PostgreSQL-проверки. Неподтверждёнными оставались только серверные проверки на VPS.
 
 ## Команды для ручной проверки после запуска Docker
 

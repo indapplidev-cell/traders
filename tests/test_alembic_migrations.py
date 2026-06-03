@@ -8,12 +8,21 @@ def _extract_revision(path: Path) -> str | None:
     module = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
     for node in module.body:
-        if not isinstance(node, ast.AnnAssign):
+        if isinstance(node, ast.AnnAssign):
+            if not isinstance(node.target, ast.Name) or node.target.id != "revision":
+                continue
+            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                return node.value.value
             continue
-        if not isinstance(node.target, ast.Name) or node.target.id != "revision":
-            continue
-        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-            return node.value.value
+
+        if isinstance(node, ast.Assign):
+            if len(node.targets) != 1:
+                continue
+            target = node.targets[0]
+            if not isinstance(target, ast.Name) or target.id != "revision":
+                continue
+            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                return node.value.value
 
     return None
 

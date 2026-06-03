@@ -8,7 +8,7 @@
 - `stage3-runtime-layer`
 
 ## 3. Commit hash
-- Stage 3 commit hash was not assigned at report creation time.
+- Stage 3 commit hash: `98cd5f31d3be041944d68fb65149ea4c0b8cfc03`
 - Branch HEAD before Stage 3 commit: `daa37767be5d531aeb7d4e502d327b3e890e5ca4`
 
 ## 4. Created files
