@@ -20,6 +20,25 @@ Update the local terminal demo script to show Stage 6 backtest analytics and ses
 - backtest-history
 - session-compare
 
+## Corrected stage order
+
+1. health
+2. async-health
+3. strategy-list
+4. load-history
+5. analyze
+6. backtest
+7. backtest-run
+8. backtest-performance
+9. backtest-history
+10. runner-start
+11. runner-history
+12. runner-ticks
+13. performance-session
+14. performance-history
+15. session-compare
+16. portfolio-analytics
+
 ## Demo command
 
 ```powershell
