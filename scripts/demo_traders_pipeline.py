@@ -25,8 +25,20 @@ class StepResult:
         return self.returncode == 0
 
 
+
 def mask_env_status(name: str) -> str:
-    return "\u0437\u0430\u0434\u0430\u043d" if os.environ.get(name) else "\u043d\u0435 \u0437\u0430\u0434\u0430\u043d"
+    env_path = PROJECT_ROOT / ".env"
+
+    if os.environ.get(name):
+        return "задан"
+
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped.startswith(f"{name}="):
+                return "задан в .env"
+
+    return "не задан"
 
 
 def print_header() -> None:
@@ -216,14 +228,14 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    os.environ.setdefault(
-        "DATABASE_URL",
-        "postgresql+psycopg://traders:traders@127.0.0.1:5432/traders",
-    )
-    os.environ.setdefault(
-        "ASYNC_DATABASE_URL",
-        "postgresql+asyncpg://traders:traders@127.0.0.1:5432/traders",
-    )
+    # os.environ.setdefault(
+    #     "DATABASE_URL",
+    #     "postgresql+psycopg://traders:traders@127.0.0.1:5432/traders",
+    # )
+    # os.environ.setdefault(
+    #     "ASYNC_DATABASE_URL",
+    #     "postgresql+asyncpg://traders:traders@127.0.0.1:5432/traders",
+    # )
 
     print_header()
 
