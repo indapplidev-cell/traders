@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: traders
       POSTGRES_USER: traders
-      POSTGRES_PASSWORD: traders
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password}
     ports:
       - "5432:5432"
     volumes:
