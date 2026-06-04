@@ -35,6 +35,8 @@ def print_header() -> None:
     print("Режим: paper-only")
     print("Реальные ордера: запрещены")
     print("Binance private API: не используется")
+    print("Backtest analytics: включён")
+    print("Session compare: включён")
     print("=" * 80)
     print(f"DATABASE_URL: {mask_env_status('DATABASE_URL')}")
     print(f"ASYNC_DATABASE_URL: {mask_env_status('ASYNC_DATABASE_URL')}")
@@ -70,16 +72,20 @@ def print_footer(results: list[StepResult], skipped: list[str]) -> int:
 
     print("Статус: УСПЕХ")
     print()
-    print("Проект выполнил демонстрационный paper-only pipeline:")
+    print("Проект показал полный paper-only pipeline, включая сохранённый backtest и сравнение runner vs backtest.")
     print("- проверил подключение")
     print("- проверил реестр стратегий")
     print("- загрузил публичные свечи")
     print("- проанализировал рынок")
     print("- выполнил backtest")
+    print("- сохранил backtest session")
+    print("- показал backtest performance")
+    print("- показал backtest history")
     print("- запустил paper runner")
     print("- показал runner history")
     print("- показал runtime ticks")
     print("- показал performance analytics")
+    print("- сравнил runner session и backtest session")
     print("- показал portfolio analytics")
     print()
     print("Реальных ордеров не было.")
@@ -161,6 +167,22 @@ def extract_session_id(output: str) -> int | None:
     return None
 
 
+def extract_backtest_session_id(output: str) -> int | None:
+    patterns = (
+        r"backtest\s+session\s+id\s*[:=]\s*(\d+)",
+        r"session\s+id\b[^\d\r\n]*(\d+)",
+        r"session\s+id\s*[:=]\s*(\d+)",
+        r"\bid\s*[:=]\s*(\d+)",
+    )
+
+    for pattern in patterns:
+        match = re.search(pattern, output, flags=re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+
+    return None
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Русская терминальная демонстрация paper-only pipeline проекта traders."
@@ -171,6 +193,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ticks", type=int, default=3)
     parser.add_argument("--sleep-seconds", type=float, default=0)
     parser.add_argument("--strategy", default="simple_trend")
+    parser.add_argument("--initial-cash", default="1000")
     parser.add_argument("--skip-load-history", action="store_true")
     return parser.parse_args()
 
@@ -191,6 +214,8 @@ def main() -> int:
 
     results: list[StepResult] = []
     skipped: list[str] = []
+    backtest_session_id: int | None = None
+    runner_session_id: int | None = None
 
     steps: list[tuple[str, list[str], bool]] = [
         ("Проверка приложения", ["health"], True),
@@ -238,6 +263,24 @@ def main() -> int:
                 True,
             ),
             (
+                "Backtest session run",
+                [
+                    "backtest-run",
+                    "--strategy",
+                    args.strategy,
+                    "--symbol",
+                    args.symbol,
+                    "--interval",
+                    args.interval,
+                    "--candles",
+                    "300",
+                    "--initial-cash",
+                    str(args.initial_cash),
+                ],
+                True,
+            ),
+            ("Backtest history", ["backtest-history", "--limit", "5"], True),
+            (
                 "Paper runner",
                 [
                     "runner-start",
@@ -258,14 +301,14 @@ def main() -> int:
         ]
     )
 
-    total_base_steps = len(steps) + 4
-
-    runner_session_id: int | None = None
+    total_steps = len(steps) + 6
 
     for index, (title, command_args, required) in enumerate(steps, start=1):
-        result = run_cli_step(index, total_base_steps, title, command_args, required)
+        result = run_cli_step(index, total_steps, title, command_args, required)
         results.append(result)
 
+        if title == "Backtest session run" and result.ok:
+            backtest_session_id = extract_backtest_session_id(result.stdout)
         if title == "Paper runner" and result.ok:
             runner_session_id = extract_session_id(result.stdout)
 
@@ -274,6 +317,24 @@ def main() -> int:
 
     next_step = len(results) + 1
 
+    if backtest_session_id is None:
+        print()
+        print("Не удалось автоматически определить backtest session id.")
+        print("Этап backtest-performance будет пропущен.")
+        skipped.append("Backtest performance")
+    else:
+        result = run_cli_step(
+            next_step,
+            total_steps,
+            "Backtest performance",
+            ["backtest-performance", "--session-id", str(backtest_session_id)],
+            True,
+        )
+        results.append(result)
+        if not result.ok:
+            return print_footer(results, skipped)
+        next_step += 1
+
     if runner_session_id is None:
         print()
         print("Не удалось автоматически определить runner session id.")
@@ -281,12 +342,9 @@ def main() -> int:
         skipped.append("Runtime ticks")
         skipped.append("Performance session")
     else:
-        print()
-        print(f"Определен runner session id: {runner_session_id}")
-
         result = run_cli_step(
             next_step,
-            total_base_steps,
+            total_steps,
             "Runtime ticks",
             ["runner-ticks", "--session-id", str(runner_session_id)],
             True,
@@ -294,12 +352,11 @@ def main() -> int:
         results.append(result)
         if not result.ok:
             return print_footer(results, skipped)
-
         next_step += 1
 
         result = run_cli_step(
             next_step,
-            total_base_steps,
+            total_steps,
             "Performance session",
             ["performance-session", "--session-id", str(runner_session_id)],
             True,
@@ -307,12 +364,11 @@ def main() -> int:
         results.append(result)
         if not result.ok:
             return print_footer(results, skipped)
-
         next_step += 1
 
     result = run_cli_step(
         next_step,
-        total_base_steps,
+        total_steps,
         "Performance history",
         ["performance-history", "--limit", "5"],
         True,
@@ -320,12 +376,38 @@ def main() -> int:
     results.append(result)
     if not result.ok:
         return print_footer(results, skipped)
-
     next_step += 1
+
+    if backtest_session_id is None or runner_session_id is None:
+        print()
+        print("Не удалось выполнить сравнение session-compare: нет runner или backtest session id.")
+        skipped.append("Session compare")
+    else:
+        result = run_cli_step(
+            next_step,
+            total_steps,
+            "Session compare",
+            [
+                "session-compare",
+                "--left-type",
+                "runner",
+                "--left-id",
+                str(runner_session_id),
+                "--right-type",
+                "backtest",
+                "--right-id",
+                str(backtest_session_id),
+            ],
+            True,
+        )
+        results.append(result)
+        if not result.ok:
+            return print_footer(results, skipped)
+        next_step += 1
 
     result = run_cli_step(
         next_step,
-        total_base_steps,
+        total_steps,
         "Portfolio analytics",
         ["portfolio-analytics", "--symbol", args.symbol],
         True,

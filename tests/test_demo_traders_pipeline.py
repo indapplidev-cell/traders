@@ -1,4 +1,8 @@
-from scripts.demo_traders_pipeline import StepResult, extract_session_id
+from scripts.demo_traders_pipeline import (
+    StepResult,
+    extract_backtest_session_id,
+    extract_session_id,
+)
 
 
 def test_extract_session_id_from_equals_format() -> None:
@@ -23,6 +27,26 @@ def test_extract_session_id_from_table_format() -> None:
 
 def test_extract_session_id_returns_none_when_missing() -> None:
     assert extract_session_id("no id here") is None
+
+
+def test_extract_backtest_session_id_from_backtest_format() -> None:
+    assert extract_backtest_session_id("backtest session id = 42") == 42
+
+
+def test_extract_backtest_session_id_from_colon_format() -> None:
+    assert extract_backtest_session_id("backtest session id: 42") == 42
+
+
+def test_extract_backtest_session_id_from_generic_session_format() -> None:
+    assert extract_backtest_session_id("session id = 42") == 42
+
+
+def test_extract_backtest_session_id_from_table_format() -> None:
+    assert extract_backtest_session_id("session id   | 42") == 42
+
+
+def test_extract_backtest_session_id_returns_none_when_missing() -> None:
+    assert extract_backtest_session_id("no id here") is None
 
 
 def test_step_result_ok_true() -> None:
