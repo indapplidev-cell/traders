@@ -7,11 +7,12 @@ Add a single local terminal demo script that shows the current paper-only tradin
 ## Created files
 
 - scripts/demo_traders_pipeline.py
+- tests/test_demo_traders_pipeline.py
 - reports/stage5_5_terminal_demo_report.md
 
 ## Changed files
 
-None expected.
+None.
 
 ## Demo command
 
@@ -34,6 +35,10 @@ None expected.
 - performance-history
 - portfolio-analytics
 
+## Output language
+
+Russian.
+
 ## Safety
 
 - live trading was not added
@@ -49,6 +54,28 @@ Final local validation completed:
 - pytest: passed
 - ruff: All checks passed
 - demo_traders_pipeline.py: success
-- archive validation: passed
+- demo output language: Russian
 
-The demo output is in Russian.
+## Final local validation completed:
+
+- demo_traders_pipeline.py: success
+- demo output language: Russian
+- health: OK
+- async-health: OK
+- strategy-list: OK
+- load-history: OK
+- analyze: OK
+- backtest: OK
+- runner-start: OK
+- runner-history: OK
+- runner-ticks: OK
+- performance-session: OK
+- performance-history: OK
+- portfolio-analytics: OK
+
+## Demo result:
+
+- status: SUCCESS
+- paper-only mode confirmed
+- real orders were not used
+- live trading was not used
