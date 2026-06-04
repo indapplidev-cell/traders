@@ -14,10 +14,13 @@ from rich.table import Table
 from sqlalchemy import text
 
 from app.backtest.backtest_engine import BacktestEngine
+from app.backtest.backtest_runner import BacktestRunResult, BacktestRunner
 from app.backtest.backtest_result import BacktestResult
+from app.analytics.backtest_performance import BacktestPerformanceReport, BacktestPerformanceService
 from app.config.settings import get_settings
 from app.db.async_session import async_session_scope
 from app.db.session import session_scope
+from app.analytics.session_comparison import SessionComparisonResult, SessionComparisonService
 from app.runtime.paper_runner import PaperRunner, RunnerStartResult
 from app.execution.paper_runner_service import PaperRunnerService, RunnerIterationResult
 from app.analytics.paper_portfolio_analytics import PaperPortfolioAnalyticsService, PortfolioAnalyticsReport
@@ -294,6 +297,24 @@ def _render_runner_ticks(items: list[object], session_id: int) -> None:
     console.print(table)
 
 
+def _render_backtest_run_result(result: BacktestRunResult) -> None:
+    table = Table(title="Backtest run result")
+    table.add_column("field")
+    table.add_column("value")
+    table.add_row("session id", str(result.session_id))
+    table.add_row("status", result.status)
+    table.add_row("strategy", result.strategy_name)
+    table.add_row("symbol", result.symbol)
+    table.add_row("interval", result.interval)
+    table.add_row("candles used", _format_optional(result.candles_used))
+    table.add_row("total pnl", _format_optional_decimal(result.total_pnl))
+    table.add_row("return pct", _format_optional_decimal(result.return_pct))
+    table.add_row("data quality", result.data_quality)
+    if result.last_error:
+        table.add_row("last error", result.last_error)
+    console.print(table)
+
+
 def _format_optional_decimal(value: Decimal | None) -> str:
     if value is None:
         return "N/A"
@@ -491,6 +512,94 @@ def _render_performance_compare(items: list[SessionComparison]) -> None:
             item.status,
             item.data_quality or "N/A",
         )
+    console.print(table)
+
+
+def _render_backtest_performance(report: BacktestPerformanceReport) -> None:
+    summary = Table(title=f"Backtest performance {report.session_id}")
+    summary.add_column("metric")
+    summary.add_column("value")
+    summary.add_row("session id", str(report.session_id))
+    summary.add_row("status", report.status)
+    summary.add_row("strategy", report.strategy_name)
+    summary.add_row("symbol", report.symbol)
+    summary.add_row("interval", report.interval)
+    summary.add_row("candles used", _format_optional(report.candles_used))
+    summary.add_row("started at", report.started_at.isoformat() if report.started_at else "-")
+    summary.add_row("finished at", report.finished_at.isoformat() if report.finished_at else "-")
+    console.print(summary)
+
+    actions = Table(title="Action counts")
+    actions.add_column("metric")
+    actions.add_column("value")
+    actions.add_row("BUY", str(report.action_counts.buy))
+    actions.add_row("SELL", str(report.action_counts.sell))
+    actions.add_row("HOLD", str(report.action_counts.hold))
+    console.print(actions)
+
+    trades = Table(title="Trade metrics")
+    trades.add_column("metric")
+    trades.add_column("value")
+    trades.add_row("total trades", str(report.trade_metrics.total_trades))
+    trades.add_row("winning trades", str(report.trade_metrics.winning_trades))
+    trades.add_row("losing trades", str(report.trade_metrics.losing_trades))
+    trades.add_row("win rate", _format_optional_decimal(report.trade_metrics.win_rate))
+    console.print(trades)
+
+    equity = Table(title="Equity metrics")
+    equity.add_column("metric")
+    equity.add_column("value")
+    equity.add_row("total pnl", _format_optional_decimal(report.equity_metrics.total_pnl))
+    equity.add_row("return pct", _format_optional_decimal(report.equity_metrics.return_pct))
+    equity.add_row("max drawdown", _format_optional_decimal(report.equity_metrics.max_drawdown))
+    equity.add_row("data quality", report.equity_metrics.data_quality)
+    equity.add_row("unavailable reason", report.equity_metrics.unavailable_reason or "-")
+    console.print(equity)
+
+
+def _render_backtest_history(items: list[object]) -> None:
+    table = Table(title="Backtest history")
+    table.add_column("session id")
+    table.add_column("status")
+    table.add_column("strategy")
+    table.add_column("symbol")
+    table.add_column("interval")
+    table.add_column("candles used")
+    table.add_column("total trades")
+    table.add_column("win rate")
+    table.add_column("total pnl")
+    table.add_column("return pct")
+    table.add_column("data quality")
+    for item in items:
+        table.add_row(
+            str(item.session_id),
+            item.status,
+            item.strategy_name,
+            item.symbol,
+            item.interval,
+            _format_optional(item.candles_used),
+            _format_optional(item.total_trades),
+            _format_optional_decimal(item.win_rate),
+            _format_optional_decimal(item.total_pnl),
+            _format_optional_decimal(item.return_pct),
+            item.data_quality,
+        )
+    console.print(table)
+
+
+def _render_session_comparison(result: SessionComparisonResult) -> None:
+    table = Table(title="Session comparison")
+    table.add_column("metric")
+    table.add_column("value")
+    table.add_row("comparable", str(result.comparable))
+    table.add_row("same strategy", str(result.same_strategy))
+    table.add_row("same symbol", str(result.same_symbol))
+    table.add_row("same interval", str(result.same_interval))
+    table.add_row("pnl delta", _format_optional_decimal(result.pnl_delta))
+    table.add_row("return pct delta", _format_optional_decimal(result.return_pct_delta))
+    table.add_row("confidence delta", _format_optional_decimal(result.confidence_delta))
+    table.add_row("risk rejection delta", _format_optional_decimal(result.risk_rejection_delta))
+    table.add_row("warnings", ", ".join(result.warnings) if result.warnings else "-")
     console.print(table)
 
 
@@ -716,6 +825,89 @@ def performance_compare(
         raise typer.Exit(code=1) from exc
 
     _render_performance_compare(items)
+
+
+@app.command("backtest-run")
+def backtest_run(
+    strategy: str = typer.Option(None, help="Strategy name."),
+    symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option(None, help="Binance interval, for example 15m."),
+    candles: int | None = typer.Option(None, help="How many recent candles to use from the database."),
+    initial_cash: str | None = typer.Option(None, help="Override initial paper balance for this backtest."),
+) -> None:
+    """Run a persisted backtest session using stored candles only."""
+
+    settings = get_settings()
+    strategy_name = strategy or settings.strategy_default_name
+    normalized_symbol = symbol or settings.default_symbol
+    normalized_interval = interval or settings.default_interval
+    parsed_initial_cash = Decimal(initial_cash) if initial_cash is not None else None
+
+    try:
+        result = BacktestRunner().run(
+            strategy_name=strategy_name,
+            symbol=normalized_symbol,
+            interval=normalized_interval,
+            candles=candles,
+            initial_cash=parsed_initial_cash,
+        )
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    _render_backtest_run_result(result)
+    if result.status == "FAILED":
+        raise typer.Exit(code=1)
+
+
+@app.command("backtest-performance")
+def backtest_performance(session_id: int = typer.Option(..., help="Backtest session id.")) -> None:
+    """Show detailed performance report for one backtest session."""
+
+    try:
+        with session_scope() as session:
+            report = BacktestPerformanceService(session).get_backtest_performance(session_id)
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    _render_backtest_performance(report)
+
+
+@app.command("backtest-history")
+def backtest_history(limit: int = typer.Option(10, help="How many recent backtest sessions to show.")) -> None:
+    """Show recent backtest session summaries."""
+
+    try:
+        with session_scope() as session:
+            items = BacktestPerformanceService(session).list_backtest_performance(limit=limit)
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    if not items:
+        console.print("No backtest sessions found.")
+        return
+    _render_backtest_history(items)
+
+
+@app.command("session-compare")
+def session_compare(
+    left_type: str = typer.Option(..., help="Session type: runner or backtest."),
+    left_id: int = typer.Option(..., help="Left session id."),
+    right_type: str = typer.Option(..., help="Session type: runner or backtest."),
+    right_id: int = typer.Option(..., help="Right session id."),
+) -> None:
+    """Compare two persisted sessions across runner and backtest modes."""
+
+    try:
+        with session_scope() as session:
+            result = SessionComparisonService(session).compare(left_type, left_id, right_type, right_id)
+    except Exception as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
+
+    _render_session_comparison(result)
 
 
 @app.command("portfolio-analytics")
