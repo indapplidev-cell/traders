@@ -26,26 +26,19 @@ class StepResult:
 
 
 def mask_env_status(name: str) -> str:
-    return "Р·Р°РґР°РЅ" if os.environ.get(name) else "РЅРµ Р·Р°РґР°РЅ"
+    return "задан" if os.environ.get(name) else "не задан"
 
 
 def print_header() -> None:
     print("=" * 80)
-    print("Р”Р•РњРћРќРЎРўР РђР¦РРЇ РџР РћР•РљРўРђ TRADERS")
-    print("Р РµР¶РёРј: paper-only")
-    print("Р РµР°Р»СЊРЅС‹Рµ РѕСЂРґРµСЂР°: Р·Р°РїСЂРµС‰РµРЅС‹")
-    print("Binance private API: РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ")
+    print("ДЕМОНСТРАЦИЯ ПРОЕКТА TRADERS")
+    print("Режим: paper-only")
+    print("Реальные ордера: запрещены")
+    print("Binance private API: не используется")
     print("=" * 80)
     print(f"DATABASE_URL: {mask_env_status('DATABASE_URL')}")
     print(f"ASYNC_DATABASE_URL: {mask_env_status('ASYNC_DATABASE_URL')}")
     print("=" * 80)
-
-
-def safe_terminal_text(value: str) -> str:
-    encoding = getattr(sys.stdout, "encoding", None)
-    if not encoding:
-        return value
-    return value.encode(encoding, errors="backslashreplace").decode(encoding)
 
 
 def print_footer(results: list[StepResult], skipped: list[str]) -> int:
@@ -53,64 +46,50 @@ def print_footer(results: list[StepResult], skipped: list[str]) -> int:
 
     print()
     print("=" * 80)
-    print("РРўРћР“ Р”Р•РњРћРќРЎРўР РђР¦РР")
+    print("ИТОГ ДЕМОНСТРАЦИИ")
     print("=" * 80)
 
     for result in results:
-        status = "OK" if result.ok else "РћРЁРР‘РљРђ"
+        status = "OK" if result.ok else "ОШИБКА"
         print(f"- {result.title}: {status}")
 
     for title in skipped:
-        print(f"- {title}: РџР РћРџРЈР©Р•РќРћ")
+        print(f"- {title}: ПРОПУЩЕНО")
 
     print("-" * 80)
 
     if failed:
-        print("РЎС‚Р°С‚СѓСЃ: РћРЁРР‘РљРђ")
-        print("РџСЂРѕРµРєС‚ РЅРµ РїСЂРѕС€С‘Р» РґРµРјРѕРЅСЃС‚СЂР°С†РёРѕРЅРЅС‹Р№ Р·Р°РїСѓСЃРє.")
-        print("РџРµСЂРІС‹Р№ РїСЂРѕР±Р»РµРјРЅС‹Р№ СЌС‚Р°Рї:")
+        print("Статус: ОШИБКА")
+        print("Проект не прошел демонстрационный запуск.")
+        print("Первый проблемный этап:")
         first = failed[0]
-        print(f"{first.title}")
-        print(f"РљРѕРґ РІРѕР·РІСЂР°С‚Р°: {first.returncode}")
+        print(first.title)
+        print(f"Код возврата: {first.returncode}")
         print("=" * 80)
         return 1
 
-    print("РЎС‚Р°С‚СѓСЃ: РЈРЎРџР•РҐ")
+    print("Статус: УСПЕХ")
     print()
-    print("РџСЂРѕРµРєС‚ РІС‹РїРѕР»РЅРёР» РґРµРјРѕРЅСЃС‚СЂР°С†РёРѕРЅРЅС‹Р№ paper-only pipeline:")
-    print("- РїСЂРѕРІРµСЂРёР» РїРѕРґРєР»СЋС‡РµРЅРёРµ")
-    print("- РїСЂРѕРІРµСЂРёР» СЂРµРµСЃС‚СЂ СЃС‚СЂР°С‚РµРіРёР№")
-    print("- Р·Р°РіСЂСѓР·РёР» РїСѓР±Р»РёС‡РЅС‹Рµ СЃРІРµС‡Рё")
-    print("- РїСЂРѕР°РЅР°Р»РёР·РёСЂРѕРІР°Р» СЂС‹РЅРѕРє")
-    print("- РІС‹РїРѕР»РЅРёР» backtest")
-    print("- Р·Р°РїСѓСЃС‚РёР» paper runner")
-    print("- РїРѕРєР°Р·Р°Р» runner history")
-    print("- РїРѕРєР°Р·Р°Р» runtime ticks")
-    print("- РїРѕРєР°Р·Р°Р» performance analytics")
-    print("- РїРѕРєР°Р·Р°Р» portfolio analytics")
+    print("Проект выполнил демонстрационный paper-only pipeline:")
+    print("- проверил подключение")
+    print("- проверил реестр стратегий")
+    print("- загрузил публичные свечи")
+    print("- проанализировал рынок")
+    print("- выполнил backtest")
+    print("- запустил paper runner")
+    print("- показал runner history")
+    print("- показал runtime ticks")
+    print("- показал performance analytics")
+    print("- показал portfolio analytics")
     print()
-    print("Р РµР°Р»СЊРЅС‹С… РѕСЂРґРµСЂРѕРІ РЅРµ Р±С‹Р»Рѕ.")
-    print("Live trading РЅРµ РёСЃРїРѕР»СЊР·РѕРІР°Р»СЃСЏ.")
+    print("Реальных ордеров не было.")
+    print("Live trading не использовался.")
     print("=" * 80)
     return 0
 
 
 def build_cli_command(args: list[str]) -> list[str]:
     return [sys.executable, "-m", "app.cli.commands", *args]
-
-
-def configure_utf8_output() -> None:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-
-
-def build_subprocess_env() -> dict[str, str]:
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    env["PYTHONUTF8"] = "1"
-    return env
 
 
 def run_cli_step(
@@ -125,17 +104,14 @@ def run_cli_step(
 
     print()
     print(f"[{step_number}/{total_steps}] {title}")
-    print(f"РљРѕРјР°РЅРґР°: {printable_command}")
+    print(f"Команда: {printable_command}")
 
     completed = subprocess.run(
         command,
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
-        encoding="utf-8",
-        errors="replace",
         check=False,
-        env=build_subprocess_env(),
     )
 
     stdout = completed.stdout.strip()
@@ -143,16 +119,16 @@ def run_cli_step(
 
     if stdout:
         print("-" * 80)
-        print(safe_terminal_text(stdout))
+        print(stdout)
 
     if stderr:
         print("-" * 80)
         print("STDERR:")
-        print(safe_terminal_text(stderr))
+        print(stderr)
 
-    status = "OK" if completed.returncode == 0 else "РћРЁРР‘РљРђ"
+    status = "OK" if completed.returncode == 0 else "ОШИБКА"
     print("-" * 80)
-    print(f"РЎС‚Р°С‚СѓСЃ: {status}")
+    print(f"Статус: {status}")
 
     result = StepResult(
         title=title,
@@ -164,7 +140,7 @@ def run_cli_step(
 
     if required and not result.ok:
         print()
-        print("РљСЂРёС‚РёС‡РµСЃРєРёР№ СЌС‚Р°Рї Р·Р°РІРµСЂС€РёР»СЃСЏ РѕС€РёР±РєРѕР№. Р”РµРјРѕРЅСЃС‚СЂР°С†РёСЏ РѕСЃС‚Р°РЅРѕРІР»РµРЅР°.")
+        print("Критический этап завершился ошибкой. Демонстрация остановлена.")
 
     return result
 
@@ -187,7 +163,7 @@ def extract_session_id(output: str) -> int | None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Р СѓСЃСЃРєР°СЏ С‚РµСЂРјРёРЅР°Р»СЊРЅР°СЏ РґРµРјРѕРЅСЃС‚СЂР°С†РёСЏ paper-only pipeline РїСЂРѕРµРєС‚Р° traders."
+        description="Русская терминальная демонстрация paper-only pipeline проекта traders."
     )
     parser.add_argument("--symbol", default="BTCUSDT")
     parser.add_argument("--interval", default="15m")
@@ -200,7 +176,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    configure_utf8_output()
     args = parse_args()
 
     os.environ.setdefault(
@@ -218,17 +193,17 @@ def main() -> int:
     skipped: list[str] = []
 
     steps: list[tuple[str, list[str], bool]] = [
-        ("РџСЂРѕРІРµСЂРєР° РїСЂРёР»РѕР¶РµРЅРёСЏ", ["health"], True),
-        ("РџСЂРѕРІРµСЂРєР° Р°СЃРёРЅС…СЂРѕРЅРЅРѕРіРѕ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє Р‘Р”", ["async-health"], True),
-        ("РџСЂРѕРІРµСЂРєР° СЂРµРµСЃС‚СЂР° СЃС‚СЂР°С‚РµРіРёР№", ["strategy-list"], True),
+        ("Проверка приложения", ["health"], True),
+        ("Проверка асинхронного подключения к БД", ["async-health"], True),
+        ("Проверка реестра стратегий", ["strategy-list"], True),
     ]
 
     if args.skip_load_history:
-        skipped.append("Р—Р°РіСЂСѓР·РєР° РїСѓР±Р»РёС‡РЅС‹С… СЃРІРµС‡РµР№")
+        skipped.append("Загрузка публичных свечей")
     else:
         steps.append(
             (
-                "Р—Р°РіСЂСѓР·РєР° РїСѓР±Р»РёС‡РЅС‹С… СЃРІРµС‡РµР№",
+                "Загрузка публичных свечей",
                 [
                     "load-history",
                     "--symbol",
@@ -245,12 +220,12 @@ def main() -> int:
     steps.extend(
         [
             (
-                "РђРЅР°Р»РёР· СЂС‹РЅРєР°",
+                "Анализ рынка",
                 ["analyze", "--symbol", args.symbol, "--interval", args.interval],
                 True,
             ),
             (
-                "Backtest РїРѕ РёСЃС‚РѕСЂРёС‡РµСЃРєРёРј СЃРІРµС‡Р°Рј",
+                "Backtest по историческим свечам",
                 [
                     "backtest",
                     "--symbol",
@@ -279,7 +254,7 @@ def main() -> int:
                 ],
                 True,
             ),
-            ("РСЃС‚РѕСЂРёСЏ runner-СЃРµСЃСЃРёР№", ["runner-history", "--limit", "5"], True),
+            ("История runner-сессий", ["runner-history", "--limit", "5"], True),
         ]
     )
 
@@ -301,13 +276,13 @@ def main() -> int:
 
     if runner_session_id is None:
         print()
-        print("РќРµ СѓРґР°Р»РѕСЃСЊ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РѕРїСЂРµРґРµР»РёС‚СЊ runner session id.")
-        print("Р­С‚Р°РїС‹ runner-ticks Рё performance-session Р±СѓРґСѓС‚ РїСЂРѕРїСѓС‰РµРЅС‹.")
+        print("Не удалось автоматически определить runner session id.")
+        print("Этапы runner-ticks и performance-session будут пропущены.")
         skipped.append("Runtime ticks")
         skipped.append("Performance session")
     else:
         print()
-        print(f"РћРїСЂРµРґРµР»С‘РЅ runner session id: {runner_session_id}")
+        print(f"Определен runner session id: {runner_session_id}")
 
         result = run_cli_step(
             next_step,
