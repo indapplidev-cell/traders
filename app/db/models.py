@@ -284,3 +284,92 @@ class PaperRunnerState(Base):
         onupdate=lambda: datetime.now(UTC),
         server_default=func.now(),
     )
+
+
+class BacktestSession(Base):
+    """Backtest session record for local strategy backtesting."""
+
+    __tablename__ = "backtest_sessions"
+    __table_args__ = (
+        Index("ix_backtest_sessions_strategy_name", "strategy_name"),
+        Index("ix_backtest_sessions_symbol", "symbol"),
+        Index("ix_backtest_sessions_status", "status"),
+        Index("ix_backtest_sessions_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    strategy_name: Mapped[str] = mapped_column(String(64))
+    strategy_version: Mapped[str] = mapped_column(String(32))
+    symbol: Mapped[str] = mapped_column(String(32))
+    interval: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    candles_requested: Mapped[int | None] = mapped_column(nullable=True)
+    candles_used: Mapped[int | None] = mapped_column(nullable=True)
+    initial_cash: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    final_equity: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+
+
+class BacktestSessionMetric(Base):
+    """Snapshot of metrics for a backtest session."""
+
+    __tablename__ = "backtest_session_metrics"
+    __table_args__ = (
+        UniqueConstraint("backtest_session_id", name="uq_backtest_session_metrics_backtest_session_id"),
+        Index("ix_backtest_session_metrics_backtest_session_id", "backtest_session_id"),
+        Index("ix_backtest_session_metrics_created_at", "created_at"),
+        Index("ix_backtest_session_metrics_data_quality", "data_quality"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    backtest_session_id: Mapped[int] = mapped_column(
+        ForeignKey("backtest_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    candles_used: Mapped[int | None] = mapped_column(nullable=True)
+    strategy_buy_count: Mapped[int | None] = mapped_column(nullable=True)
+    strategy_sell_count: Mapped[int | None] = mapped_column(nullable=True)
+    strategy_hold_count: Mapped[int | None] = mapped_column(nullable=True)
+    executed_buy_count: Mapped[int | None] = mapped_column(nullable=True)
+    executed_sell_count: Mapped[int | None] = mapped_column(nullable=True)
+    skipped_count: Mapped[int | None] = mapped_column(nullable=True)
+    total_trades: Mapped[int | None] = mapped_column(nullable=True)
+    winning_trades: Mapped[int | None] = mapped_column(nullable=True)
+    losing_trades: Mapped[int | None] = mapped_column(nullable=True)
+    win_rate: Mapped[Decimal | None] = mapped_column(Numeric(6, 4), nullable=True)
+    initial_cash: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    final_equity: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    realized_pnl: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    unrealized_pnl: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    total_pnl: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    return_pct: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    max_drawdown: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    average_confidence: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    min_confidence: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    max_confidence: Mapped[Decimal | None] = mapped_column(Numeric(24, 10), nullable=True)
+    data_quality: Mapped[str] = mapped_column(String(32))
+    unavailable_reason: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=func.now(),
+    )
