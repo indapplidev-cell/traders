@@ -9,6 +9,10 @@ import pytest
 from app.db.models import Candle
 from app.market.indicator_service import IndicatorSnapshot
 from app.strategy.base_strategy import StrategyDecision
+from app.strategy.breakout_volume import BreakoutVolumeStrategy
+from app.strategy.ema_cross import EmaCrossStrategy
+from app.strategy.rsi_reversion import RsiReversionStrategy
+from app.strategy.safe_hold import SafeHoldStrategy
 from app.strategy.simple_trend_strategy import SimpleTrendStrategy
 from app.strategy.strategy_context import StrategyContext
 from app.strategy.strategy_registry import StrategyRegistry, get_strategy, list_strategies
@@ -65,6 +69,28 @@ def test_registry_returns_known_default_strategy() -> None:
     assert isinstance(get_strategy("simple_trend"), SimpleTrendStrategy)
 
 
+def test_new_strategies_are_registered() -> None:
+    strategies = list_strategies()
+
+    assert "safe_hold" in strategies
+    assert "ema_cross" in strategies
+    assert "rsi_reversion" in strategies
+    assert "breakout_volume" in strategies
+
+
+@pytest.mark.parametrize(
+    ("name", "strategy_type"),
+    [
+        ("safe_hold", SafeHoldStrategy),
+        ("ema_cross", EmaCrossStrategy),
+        ("rsi_reversion", RsiReversionStrategy),
+        ("breakout_volume", BreakoutVolumeStrategy),
+    ],
+)
+def test_get_strategy_returns_new_strategies(name: str, strategy_type: type[object]) -> None:
+    assert isinstance(get_strategy(name), strategy_type)
+
+
 def test_registry_rejects_unknown_strategy() -> None:
     registry = StrategyRegistry()
     registry.register_strategy(SimpleTrendStrategy())
@@ -83,6 +109,37 @@ def test_simple_trend_returns_strategy_decision() -> None:
     assert decision.interval == "15m"
     assert decision.action in {"BUY", "SELL", "HOLD"}
     assert 0.0 <= decision.confidence <= 1.0
+
+
+def test_safe_hold_always_returns_hold() -> None:
+    decision = SafeHoldStrategy().decide(build_context())
+
+    assert decision.action == "HOLD"
+    assert decision.confidence == 1.0
+    assert "always" not in decision.reason.lower()
+    assert "всегда" in decision.reason.lower()
+
+
+@pytest.mark.parametrize(
+    ("strategy", "indicators"),
+    [
+        (SafeHoldStrategy(), {}),
+        (EmaCrossStrategy(), {"ema_20": Decimal("100")}),
+        (RsiReversionStrategy(), {}),
+        (BreakoutVolumeStrategy(), {"last_close": Decimal("100")}),
+    ],
+)
+def test_new_strategies_do_not_raise_on_missing_indicators(
+    strategy: object,
+    indicators: dict[str, object],
+) -> None:
+    context = build_context()
+    context.indicators = indicators
+
+    decision = strategy.decide(context)  # type: ignore[attr-defined]
+
+    assert isinstance(decision, StrategyDecision)
+    assert decision.action == "HOLD"
 
 
 @pytest.mark.parametrize("confidence", [-0.01, 1.01])

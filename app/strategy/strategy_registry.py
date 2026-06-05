@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from app.strategy.base_strategy import BaseStrategy
+from app.strategy.breakout_volume import BreakoutVolumeStrategy
+from app.strategy.ema_cross import EmaCrossStrategy
+from app.strategy.rsi_reversion import RsiReversionStrategy
+from app.strategy.safe_hold import SafeHoldStrategy
 from app.strategy.simple_trend_strategy import SimpleTrendStrategy
 
 
@@ -28,6 +32,10 @@ class StrategyRegistry:
 
 default_registry = StrategyRegistry()
 default_registry.register_strategy(SimpleTrendStrategy())
+default_registry.register_strategy(SafeHoldStrategy())
+default_registry.register_strategy(EmaCrossStrategy())
+default_registry.register_strategy(RsiReversionStrategy())
+default_registry.register_strategy(BreakoutVolumeStrategy())
 
 
 def list_strategies() -> list[str]:
