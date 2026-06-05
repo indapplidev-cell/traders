@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import os
@@ -53,9 +53,9 @@ REQUIRED_DOCKER_COMPOSE_KEYS = (
 )
 
 KEY_STAGE_TITLES = (
-    "Контекст проекта",
+    "РљРѕРЅС‚РµРєСЃС‚ РїСЂРѕРµРєС‚Р°",
     "Safety guard",
-    "Проверка конфигурации",
+    "РџСЂРѕРІРµСЂРєР° РєРѕРЅС„РёРіСѓСЂР°С†РёРё",
     "Docker compose config",
     "Docker compose up postgres",
     "Docker inspect postgres",
@@ -65,6 +65,7 @@ KEY_STAGE_TITLES = (
     "Alembic upgrade head",
     "Alembic current",
     "Demo pipeline",
+    "paper runner control check",
 )
 
 
@@ -91,7 +92,7 @@ class CommandSpec:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Локальная production-like проверка проекта traders в paper-only режиме."
+        description="Р›РѕРєР°Р»СЊРЅР°СЏ production-like РїСЂРѕРІРµСЂРєР° РїСЂРѕРµРєС‚Р° traders РІ paper-only СЂРµР¶РёРјРµ."
     )
     parser.add_argument("--symbol", default="BTCUSDT")
     parser.add_argument("--interval", default="15m")
@@ -103,7 +104,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--fresh-db",
         action="store_true",
-        help="Удаляет локальный Docker volume PostgreSQL и поднимает БД с нуля.",
+        help="РЈРґР°Р»СЏРµС‚ Р»РѕРєР°Р»СЊРЅС‹Р№ Docker volume PostgreSQL Рё РїРѕРґРЅРёРјР°РµС‚ Р‘Р” СЃ РЅСѓР»СЏ.",
     )
     return parser.parse_args()
 
@@ -136,6 +137,22 @@ def build_demo_command(args: argparse.Namespace) -> list[str]:
             str(args.sleep_seconds),
             "--strategy",
             args.strategy,
+            "--initial-cash",
+            str(args.initial_cash),
+        ]
+    )
+
+
+def build_paper_runner_control_command(args: argparse.Namespace) -> list[str]:
+    return build_python_command(
+        [
+            str(PROJECT_ROOT / "scripts" / "paper_runner_control_check.py"),
+            "--symbol",
+            args.symbol,
+            "--interval",
+            args.interval,
+            "--ticks",
+            str(args.ticks),
             "--initial-cash",
             str(args.initial_cash),
         ]
@@ -229,10 +246,15 @@ def build_runtime_command_specs(args: argparse.Namespace) -> list[CommandSpec]:
             title="Demo pipeline",
             command=build_demo_command(args),
             expected_text=(
-                "Статус: УСПЕХ",
-                "Live trading не использовался",
-                "Реальных ордеров не было",
+                "Backtest performance: OK",
+                "Session compare: OK",
+                "Live trading",
             ),
+        ),
+        CommandSpec(
+            title="paper runner control check",
+            command=build_paper_runner_control_command(args),
+            expected_text=("[OK] paper-runner disabled", "runner session id:"),
         ),
     ]
 
@@ -298,30 +320,30 @@ def mask_sensitive_text(text: str) -> str:
 
 def mask_env_status(name: str, dotenv_values: dict[str, str]) -> str:
     if os.environ.get(name):
-        return "задан в окружении"
+        return "Р·Р°РґР°РЅ РІ РѕРєСЂСѓР¶РµРЅРёРё"
 
     if dotenv_values.get(name):
-        return "задан в .env"
+        return "Р·Р°РґР°РЅ РІ .env"
 
-    return "не задан"
+    return "РЅРµ Р·Р°РґР°РЅ"
 
 
 def print_header(args: argparse.Namespace) -> None:
     dotenv_values = read_dotenv_values(PROJECT_ROOT / ".env")
 
     print("=" * 80)
-    print("STAGE 7 — LOCAL PRODUCTION-LIKE RUNTIME")
+    print("STAGE 7 вЂ” LOCAL PRODUCTION-LIKE RUNTIME")
     print("=" * 80)
-    print("Режим: paper-only")
-    print("Реальные ордера: запрещены")
-    print("Binance private API: не используется")
-    print("Server deploy: не выполняется")
-    print("Daemon: не запускается")
+    print("Р РµР¶РёРј: paper-only")
+    print("Р РµР°Р»СЊРЅС‹Рµ РѕСЂРґРµСЂР°: Р·Р°РїСЂРµС‰РµРЅС‹")
+    print("Binance private API: РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ")
+    print("Server deploy: РЅРµ РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ")
+    print("Daemon: РЅРµ Р·Р°РїСѓСЃРєР°РµС‚СЃСЏ")
     print("-" * 80)
     print(f"PROJECT_ROOT: {PROJECT_ROOT}")
     print(f"Python executable: {sys.executable}")
     print(f"Platform: {platform.platform()}")
-    print(f"Fresh DB: {'ДА' if args.fresh_db else 'НЕТ'}")
+    print(f"Fresh DB: {'Р”Рђ' if args.fresh_db else 'РќР•Рў'}")
     print("-" * 80)
     print(f"DATABASE_URL: {mask_env_status('DATABASE_URL', dotenv_values)}")
     print(f"ASYNC_DATABASE_URL: {mask_env_status('ASYNC_DATABASE_URL', dotenv_values)}")
@@ -336,7 +358,7 @@ def print_step_header(step_number: int, total_steps: int, title: str) -> None:
 
 def print_step_result(result: StepResult) -> None:
     if result.command:
-        print(f"Команда: {' '.join(result.command)}")
+        print(f"РљРѕРјР°РЅРґР°: {' '.join(result.command)}")
 
     if result.stdout:
         print("-" * 80)
@@ -347,9 +369,9 @@ def print_step_result(result: StepResult) -> None:
         print("STDERR:")
         print(mask_sensitive_text(result.stderr.strip()))
 
-    status = "OK" if result.ok else "ОШИБКА"
+    status = "OK" if result.ok else "ERROR"
     print("-" * 80)
-    print(f"Статус: {status}")
+    print(f"Status: {status}")
 
 
 def internal_step(
@@ -403,7 +425,7 @@ def run_command_step(
         returncode = completed.returncode
     except FileNotFoundError as exc:
         stdout = ""
-        stderr = f"Команда не найдена: {exc}"
+        stderr = f"РљРѕРјР°РЅРґР° РЅРµ РЅР°Р№РґРµРЅР°: {exc}"
         returncode = 127
 
     combined_output = f"{stdout}\n{stderr}"
@@ -415,7 +437,7 @@ def run_command_step(
     if returncode == 0 and missing_expected:
         returncode = 1
         expected_message = (
-            "Ожидаемый текст не найден: " + ", ".join(repr(x) for x in missing_expected)
+            "РћР¶РёРґР°РµРјС‹Р№ С‚РµРєСЃС‚ РЅРµ РЅР°Р№РґРµРЅ: " + ", ".join(repr(x) for x in missing_expected)
         )
         stderr = f"{stderr}\n{expected_message}".strip()
 
@@ -438,14 +460,14 @@ def detect_forbidden_env() -> list[str]:
 def check_project_context() -> str:
     lines = [
         f"PROJECT_ROOT: {PROJECT_ROOT}",
-        f"Каталог проекта: {PROJECT_ROOT.name}",
+        f"РљР°С‚Р°Р»РѕРі РїСЂРѕРµРєС‚Р°: {PROJECT_ROOT.name}",
         f"Python executable: {sys.executable}",
         f"Platform: {platform.platform()}",
     ]
 
     if PROJECT_ROOT.name.lower() != "traders":
         raise RuntimeError(
-            f"Скрипт должен быть запущен из проекта traders, текущий каталог: {PROJECT_ROOT.name}"
+            f"РЎРєСЂРёРїС‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ Р·Р°РїСѓС‰РµРЅ РёР· РїСЂРѕРµРєС‚Р° traders, С‚РµРєСѓС‰РёР№ РєР°С‚Р°Р»РѕРі: {PROJECT_ROOT.name}"
         )
 
     missing_paths = [
@@ -453,9 +475,9 @@ def check_project_context() -> str:
     ]
 
     if missing_paths:
-        raise RuntimeError("Не найдены обязательные элементы проекта: " + ", ".join(missing_paths))
+        raise RuntimeError("РќРµ РЅР°Р№РґРµРЅС‹ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ СЌР»РµРјРµРЅС‚С‹ РїСЂРѕРµРєС‚Р°: " + ", ".join(missing_paths))
 
-    lines.append("Обязательные элементы проекта: OK")
+    lines.append("РћР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ СЌР»РµРјРµРЅС‚С‹ РїСЂРѕРµРєС‚Р°: OK")
     return "\n".join(lines)
 
 
@@ -463,19 +485,19 @@ def check_safety_guard() -> str:
     forbidden = detect_forbidden_env()
 
     lines = [
-        "Режим: paper-only",
-        "Реальные ордера: запрещены",
-        "Binance private API: не используется",
-        "Server deploy: не выполняется",
-        "Daemon: не запускается",
+        "Р РµР¶РёРј: paper-only",
+        "Р РµР°Р»СЊРЅС‹Рµ РѕСЂРґРµСЂР°: Р·Р°РїСЂРµС‰РµРЅС‹",
+        "Binance private API: РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ",
+        "Server deploy: РЅРµ РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ",
+        "Daemon: РЅРµ Р·Р°РїСѓСЃРєР°РµС‚СЃСЏ",
     ]
 
     if forbidden:
         for name in forbidden:
-            lines.append(f"{name}: найдена запрещённая переменная")
+            lines.append(f"{name}: РЅР°Р№РґРµРЅР° Р·Р°РїСЂРµС‰С‘РЅРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ")
         raise RuntimeError("\n".join(lines))
 
-    lines.append("Запрещённые Binance private env переменные: не найдены")
+    lines.append("Р—Р°РїСЂРµС‰С‘РЅРЅС‹Рµ Binance private env РїРµСЂРµРјРµРЅРЅС‹Рµ: РЅРµ РЅР°Р№РґРµРЅС‹")
     return "\n".join(lines)
 
 
@@ -490,7 +512,7 @@ def check_config_consistency() -> str:
     alembic_ini_path = PROJECT_ROOT / "alembic.ini"
 
     if not dotenv_path.exists():
-        raise RuntimeError("Файл .env не найден.")
+        raise RuntimeError("Р¤Р°Р№Р» .env РЅРµ РЅР°Р№РґРµРЅ.")
 
     dotenv_values = read_dotenv_values(dotenv_path)
     dotenv_example_text = read_text(dotenv_example_path)
@@ -506,32 +528,32 @@ def check_config_consistency() -> str:
     )
 
     if missing_dotenv_keys:
-        raise RuntimeError(".env не содержит ключи: " + ", ".join(missing_dotenv_keys))
+        raise RuntimeError(".env РЅРµ СЃРѕРґРµСЂР¶РёС‚ РєР»СЋС‡Рё: " + ", ".join(missing_dotenv_keys))
 
     if missing_example_keys:
         raise RuntimeError(
-            ".env.example не содержит ключи: " + ", ".join(missing_example_keys)
+            ".env.example РЅРµ СЃРѕРґРµСЂР¶РёС‚ РєР»СЋС‡Рё: " + ", ".join(missing_example_keys)
         )
 
     if missing_compose_keys:
         raise RuntimeError(
-            "docker-compose.yml не содержит ключи: " + ", ".join(missing_compose_keys)
+            "docker-compose.yml РЅРµ СЃРѕРґРµСЂР¶РёС‚ РєР»СЋС‡Рё: " + ", ".join(missing_compose_keys)
         )
 
     if "sqlalchemy.url" not in alembic_ini_text:
-        raise RuntimeError("alembic.ini не содержит fallback sqlalchemy.url.")
+        raise RuntimeError("alembic.ini РЅРµ СЃРѕРґРµСЂР¶РёС‚ fallback sqlalchemy.url.")
 
     if "traders:traders@" in alembic_ini_text:
-        raise RuntimeError("alembic.ini содержит устаревший fallback traders:traders@.")
+        raise RuntimeError("alembic.ini СЃРѕРґРµСЂР¶РёС‚ СѓСЃС‚Р°СЂРµРІС€РёР№ fallback traders:traders@.")
 
     database_url = dotenv_values["DATABASE_URL"]
     async_database_url = dotenv_values["ASYNC_DATABASE_URL"]
 
     if not database_url.startswith("postgresql+psycopg://"):
-        raise RuntimeError("DATABASE_URL должен начинаться с postgresql+psycopg://")
+        raise RuntimeError("DATABASE_URL РґРѕР»Р¶РµРЅ РЅР°С‡РёРЅР°С‚СЊСЃСЏ СЃ postgresql+psycopg://")
 
     if not async_database_url.startswith("postgresql+asyncpg://"):
-        raise RuntimeError("ASYNC_DATABASE_URL должен начинаться с postgresql+asyncpg://")
+        raise RuntimeError("ASYNC_DATABASE_URL РґРѕР»Р¶РµРЅ РЅР°С‡РёРЅР°С‚СЊСЃСЏ СЃ postgresql+asyncpg://")
 
     return "\n".join(
         [
@@ -541,7 +563,7 @@ def check_config_consistency() -> str:
             "alembic.ini: OK",
             f"DATABASE_URL: {mask_url(database_url)}",
             f"ASYNC_DATABASE_URL: {mask_url(async_database_url)}",
-            "POSTGRES_PASSWORD: задан",
+            "POSTGRES_PASSWORD: Р·Р°РґР°РЅ",
         ]
     )
 
@@ -572,7 +594,7 @@ def wait_for_postgres_container() -> StepResult:
 
         if completed.returncode == 0 and "running" in last_stdout:
             return StepResult(
-                title="Ожидание PostgreSQL container",
+                title="РћР¶РёРґР°РЅРёРµ PostgreSQL container",
                 command=command,
                 returncode=0,
                 stdout=last_stdout,
@@ -582,11 +604,11 @@ def wait_for_postgres_container() -> StepResult:
         time.sleep(1)
 
     return StepResult(
-        title="Ожидание PostgreSQL container",
+        title="РћР¶РёРґР°РЅРёРµ PostgreSQL container",
         command=command,
         returncode=1,
         stdout=last_stdout,
-        stderr=last_stderr or "Контейнер traders_postgres не перешёл в состояние running.",
+        stderr=last_stderr or "РљРѕРЅС‚РµР№РЅРµСЂ traders_postgres РЅРµ РїРµСЂРµС€С‘Р» РІ СЃРѕСЃС‚РѕСЏРЅРёРµ running.",
     )
 
 
@@ -595,25 +617,25 @@ def print_footer(results: list[StepResult]) -> int:
 
     print()
     print("=" * 80)
-    print("ИТОГ LOCAL PRODUCTION-LIKE RUNTIME")
+    print("RESULT LOCAL PRODUCTION-LIKE RUNTIME")
     print("=" * 80)
 
     for result in results:
-        status = "OK" if result.ok else "ОШИБКА"
+        status = "OK" if result.ok else "ERROR"
         print(f"- {result.title}: {status}")
 
     print("-" * 80)
 
     if failed:
         first = failed[0]
-        print("СТАТУС: ОШИБКА")
-        print("Первый проблемный этап:")
+        print("STATUS: ERROR")
+        print("First failed step:")
         print(first.title)
 
         if first.command:
-            print(f"Команда: {' '.join(first.command)}")
+            print(f"Command: {' '.join(first.command)}")
 
-        print(f"Код возврата: {first.returncode}")
+        print(f"Exit code: {first.returncode}")
 
         if first.stdout:
             print("STDOUT:")
@@ -626,16 +648,16 @@ def print_footer(results: list[StepResult]) -> int:
         print("=" * 80)
         return 1
 
-    print("СТАТУС: УСПЕХ")
-    print("Local production-like runtime проверен.")
-    print("PostgreSQL работает.")
-    print("Alembic на head.")
+    print("STATUS: SUCCESS")
+    print("Local production-like runtime РїСЂРѕРІРµСЂРµРЅ.")
+    print("PostgreSQL СЂР°Р±РѕС‚Р°РµС‚.")
+    print("Alembic РЅР° head.")
     print("Health OK.")
     print("Async health OK.")
     print("Demo pipeline OK.")
-    print("Live trading не использовался.")
-    print("Server deploy не выполнялся.")
-    print("Daemon не запускался.")
+    print("Live trading РЅРµ РёСЃРїРѕР»СЊР·РѕРІР°Р»СЃСЏ.")
+    print("Server deploy РЅРµ РІС‹РїРѕР»РЅСЏР»СЃСЏ.")
+    print("Daemon РЅРµ Р·Р°РїСѓСЃРєР°Р»СЃСЏ.")
     print("=" * 80)
     return 0
 
@@ -647,9 +669,9 @@ def main() -> int:
     results: list[StepResult] = []
 
     internal_checks: list[tuple[str, Callable[[], str]]] = [
-        ("Контекст проекта", check_project_context),
+        ("РљРѕРЅС‚РµРєСЃС‚ РїСЂРѕРµРєС‚Р°", check_project_context),
         ("Safety guard", check_safety_guard),
-        ("Проверка конфигурации", check_config_consistency),
+        ("РџСЂРѕРІРµСЂРєР° РєРѕРЅС„РёРіСѓСЂР°С†РёРё", check_config_consistency),
     ]
 
     total_steps = len(internal_checks) + len(build_runtime_command_specs(args)) + 1
@@ -711,3 +733,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

@@ -1,12 +1,16 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from scripts import local_runtime_check as runtime_check
+
+
+SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "local_runtime_check.py"
 
 
 def make_args(**overrides: object) -> SimpleNamespace:
@@ -147,6 +151,7 @@ def test_build_runtime_command_specs_order_without_fresh_db() -> None:
         "Alembic upgrade head",
         "Alembic current",
         "Demo pipeline",
+        "paper runner control check",
     ]
 
 
@@ -167,6 +172,7 @@ def test_build_runtime_command_specs_order_with_fresh_db() -> None:
         "Alembic upgrade head",
         "Alembic current",
         "Demo pipeline",
+        "paper runner control check",
     ]
 
 
@@ -224,7 +230,7 @@ def test_run_command_step_marks_missing_expected_text_as_error(
     completed = subprocess.CompletedProcess(
         args=["demo"],
         returncode=0,
-        stdout="Статус: ОШИБКА",
+        stdout="РЎС‚Р°С‚СѓСЃ: РћРЁРР‘РљРђ",
         stderr="",
     )
 
@@ -239,7 +245,7 @@ def test_run_command_step_marks_missing_expected_text_as_error(
         runtime_check.CommandSpec(
             title="Demo pipeline",
             command=["demo"],
-            expected_text=("Статус: УСПЕХ",),
+            expected_text=("РЎС‚Р°С‚СѓСЃ: РЈРЎРџР•РҐ",),
         ),
     )
 
@@ -247,8 +253,8 @@ def test_run_command_step_marks_missing_expected_text_as_error(
 
     assert result.ok is False
     assert result.returncode == 1
-    assert "Ожидаемый текст не найден" in result.stderr
-    assert "Статус: ОШИБКА" in captured.out
+    assert "РћР¶РёРґР°РµРјС‹Р№ С‚РµРєСЃС‚ РЅРµ РЅР°Р№РґРµРЅ" in result.stderr
+    assert "РЎС‚Р°С‚СѓСЃ: РћРЁРР‘РљРђ" in captured.out
 
 
 def test_run_command_step_does_not_leak_sensitive_env_value(
@@ -292,7 +298,7 @@ def test_check_safety_guard_fails_when_forbidden_env_exists(monkeypatch: pytest.
     with pytest.raises(RuntimeError) as exc_info:
         runtime_check.check_safety_guard()
 
-    assert "BINANCE_PRIVATE_SECRET: найдена запрещённая переменная" in str(exc_info.value)
+    assert "BINANCE_PRIVATE_SECRET: РЅР°Р№РґРµРЅР° Р·Р°РїСЂРµС‰С‘РЅРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ" in str(exc_info.value)
     assert "secret" not in str(exc_info.value)
 
 
@@ -302,5 +308,13 @@ def test_check_safety_guard_passes_without_forbidden_env(monkeypatch: pytest.Mon
 
     result = runtime_check.check_safety_guard()
 
-    assert "Запрещённые Binance private env переменные: не найдены" in result
+    assert "Р—Р°РїСЂРµС‰С‘РЅРЅС‹Рµ Binance private env РїРµСЂРµРјРµРЅРЅС‹Рµ: РЅРµ РЅР°Р№РґРµРЅС‹" in result
     assert "Live trading" not in result
+
+
+def test_local_runtime_check_references_paper_runner_control_check() -> None:
+    source = SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "paper_runner_control_check.py" in source
+    assert "paper runner control check" in source
+

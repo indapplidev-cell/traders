@@ -22,7 +22,6 @@ from app.db.async_session import async_session_scope
 from app.db.session import session_scope
 from app.analytics.session_comparison import SessionComparisonResult, SessionComparisonService
 from app.runtime.paper_runner import PaperRunner, RunnerStartResult
-from app.execution.paper_runner_service import PaperRunnerService, RunnerIterationResult
 from app.analytics.paper_portfolio_analytics import PaperPortfolioAnalyticsService, PortfolioAnalyticsReport
 from app.analytics.strategy_performance import (
     SessionComparison,
@@ -726,24 +725,31 @@ def runner_start(
     strategy: str = typer.Option(None, help="Strategy name."),
     symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
     interval: str = typer.Option(None, help="Binance interval, for example 15m."),
-    ticks: int = typer.Option(None, help="How many bounded ticks to execute."),
+    ticks: int = typer.Option(
+        ...,
+        "--ticks",
+        help="Required finite ticks limit for safe paper-only runner.",
+    ),
     sleep_seconds: float = typer.Option(None, help="Pause between ticks."),
 ) -> None:
     """Run a bounded paper runner session and persist tick audit."""
 
+    if ticks <= 0:
+        _print_error("ticks must be > 0")
+        raise typer.Exit(code=1)
+
     settings = get_settings()
     strategy_name = strategy or settings.strategy_default_name
-    symbol = symbol or settings.default_symbol
-    interval = interval or settings.default_interval
-    loop_ticks = ticks if ticks is not None else settings.strategy_max_ticks
+    normalized_symbol = symbol or settings.default_symbol
+    normalized_interval = interval or settings.default_interval
     loop_sleep = sleep_seconds if sleep_seconds is not None else float(settings.strategy_loop_sleep_seconds)
 
     try:
         result = get_paper_runner().start(
             strategy_name=strategy_name,
-            symbol=symbol,
-            interval=interval,
-            ticks=loop_ticks,
+            symbol=normalized_symbol,
+            interval=normalized_interval,
+            ticks=ticks,
             sleep_seconds=loop_sleep,
         )
     except Exception as exc:
@@ -1178,24 +1184,14 @@ def paper_runner(
     symbol: str = typer.Option(None, help="Trading symbol, for example BTCUSDT."),
     interval: str = typer.Option(None, help="Binance interval, for example 15m."),
 ) -> None:
-    """Start the safe paper-only runner until Ctrl+C."""
+    """Disabled paper-only runner; use runner-start with explicit --ticks."""
 
-    settings = get_settings()
-    symbol = symbol or settings.default_symbol
-    interval = interval or settings.default_interval
-
-    service = PaperRunnerService()
-
-    def on_iteration(iteration: RunnerIterationResult) -> None:
-        console.print(_safe_output_text(iteration.message))
-        if iteration.result is not None:
-            _render_paper_step_result(symbol, interval, iteration.result)
-
-    console.print(f"Paper runner started for {symbol} {interval}. Press Ctrl+C to stop.")
-    try:
-        asyncio.run(service.run_forever(symbol=symbol, interval=interval, on_iteration=on_iteration))
-    except KeyboardInterrupt:
-        console.print("Paper runner stopped by user.")
+    del symbol, interval
+    _print_error(
+        "paper-runner is disabled for Stage 8. "
+        "Use runner-start with explicit --ticks for bounded paper-only execution."
+    )
+    raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
