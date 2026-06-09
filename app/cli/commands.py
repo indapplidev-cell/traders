@@ -1832,11 +1832,67 @@ def build_gate_policy_adapter_preview_payload() -> dict[str, object]:
     }
 
 
+def export_gate_policy_adapter_preview_report(
+    output_path: str | Path = Path("reports/gate_policy_adapter_preview_report.json"),
+) -> dict[str, object]:
+    """Сохранить demo GatePolicy adapter preview report в JSON-файл."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_adapter_preview_payload()
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    report = payload["report"]
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "raw_payload_count": payload["raw_payload_count"],
+        "input_count": payload["input_count"],
+        "result_count": payload["result_count"],
+        "total": report["total"],
+        "allowed_total": report["allowed_total"],
+        "blocked_total": report["blocked_total"],
+    }
+
+
 @cli.command("gate-policy-adapter-preview")
 def gate_policy_adapter_preview() -> None:
     """Показать demo GatePolicy adapter diagnostics в JSON."""
 
     payload = build_gate_policy_adapter_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-adapter-export")
+def gate_policy_adapter_export(
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_adapter_preview_report.json"),
+        "--output-path",
+        help="Путь для сохранения GatePolicy adapter preview отчёта.",
+    ),
+) -> None:
+    """Сохранить demo GatePolicy adapter preview report в JSON-файл."""
+
+    payload = export_gate_policy_adapter_preview_report(output_path)
 
     typer.echo(
         json.dumps(
