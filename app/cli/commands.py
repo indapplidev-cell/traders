@@ -1877,6 +1877,40 @@ def build_gate_policy_prediction_contract_preview_payload() -> dict[str, object]
     return reporter.contract_to_dict()
 
 
+def export_gate_policy_prediction_contract_report(
+    output_path: str | Path = Path("reports/gate_policy_prediction_contract_report.json"),
+) -> dict[str, object]:
+    """Сохранить GatePolicy prediction payload contract в JSON-файл."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_prediction_contract_preview_payload()
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "contract_name": payload["contract_name"],
+        "version": payload["version"],
+        "required_count": payload["required_count"],
+        "optional_count": payload["optional_count"],
+        "all_field_count": payload["all_field_count"],
+        "alias_field_count": payload["alias_field_count"],
+        "direction_alias_count": payload["direction_alias_count"],
+        "known_regime_count": payload["known_regime_count"],
+    }
+
+
 @cli.command("gate-policy-prediction-contract-preview")
 def gate_policy_prediction_contract_preview() -> None:
     """Показать GatePolicy prediction payload contract в JSON."""
@@ -1892,6 +1926,27 @@ def gate_policy_prediction_contract_preview() -> None:
         )
     )
 
+
+@cli.command("gate-policy-prediction-contract-export")
+def gate_policy_prediction_contract_export(
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_prediction_contract_report.json"),
+        "--output-path",
+        help="Путь для сохранения GatePolicy prediction payload contract.",
+    ),
+) -> None:
+    """Сохранить GatePolicy prediction payload contract в JSON-файл."""
+
+    payload = export_gate_policy_prediction_contract_report(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 @cli.command("gate-policy-adapter-preview")
 def gate_policy_adapter_preview() -> None:
