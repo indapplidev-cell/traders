@@ -40,6 +40,9 @@ from app.gates.gate_policy_adapter_diagnostics import (
     GatePolicyAdapterDiagnosticsService,
 )
 from app.gates.gate_policy_adapter_reporter import GatePolicyAdapterReporter
+from app.gates.gate_policy_prediction_contract_reporter import (
+    GatePolicyPredictionContractReporter,
+)
 
 cli = typer.Typer(help="traders-ml service CLI.")
 
@@ -1864,6 +1867,30 @@ def export_gate_policy_adapter_preview_report(
         "allowed_total": report["allowed_total"],
         "blocked_total": report["blocked_total"],
     }
+
+
+def build_gate_policy_prediction_contract_preview_payload() -> dict[str, object]:
+    """Собрать JSON payload для предпросмотра GatePolicy prediction contract."""
+
+    reporter = GatePolicyPredictionContractReporter()
+
+    return reporter.contract_to_dict()
+
+
+@cli.command("gate-policy-prediction-contract-preview")
+def gate_policy_prediction_contract_preview() -> None:
+    """Показать GatePolicy prediction payload contract в JSON."""
+
+    payload = build_gate_policy_prediction_contract_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 @cli.command("gate-policy-adapter-preview")
