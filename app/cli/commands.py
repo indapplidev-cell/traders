@@ -32,6 +32,9 @@ from app.prediction.predictor import Predictor
 from app.replay.historical_replay_engine import HistoricalReplayEngine
 from app.replay.replay_service import ReplayService
 from app.training.training_service import TrainingService
+from app.gates.gate_policy_diagnostics import GatePolicyDiagnosticsService
+from app.gates.gate_policy_models import GatePolicyInput
+from app.gates.gate_policy_reporter import GatePolicyReporter
 
 cli = typer.Typer(help="traders-ml service CLI.")
 
@@ -1681,6 +1684,76 @@ def _parse_threshold_grid(value: str) -> list[float]:
     if not thresholds:
         raise typer.BadParameter("threshold-grid must not be empty")
     return thresholds
+
+
+def build_gate_policy_smoke_payload() -> dict[str, object]:
+    """Собрать демонстрационный GatePolicy-отчёт для CLI smoke-проверки."""
+
+    signals = (
+        GatePolicyInput(
+            regime="trend_up",
+            direction="LONG",
+            confidence=0.80,
+            tp_before_sl_probability=0.70,
+            risk_score=0.30,
+            sample_count=80,
+        ),
+        GatePolicyInput(
+            regime="trend_down",
+            direction="SHORT",
+            confidence=0.78,
+            tp_before_sl_probability=0.68,
+            risk_score=0.28,
+            sample_count=75,
+        ),
+        GatePolicyInput(
+            regime="range",
+            direction="LONG",
+            confidence=0.85,
+            tp_before_sl_probability=0.75,
+            risk_score=0.25,
+            sample_count=90,
+        ),
+        GatePolicyInput(
+            regime="trend_up",
+            direction="LONG",
+            confidence=0.40,
+            tp_before_sl_probability=0.70,
+            risk_score=0.20,
+            sample_count=70,
+        ),
+        GatePolicyInput(
+            regime="trend_up",
+            direction="FLAT",
+            confidence=0.90,
+            tp_before_sl_probability=0.80,
+            risk_score=0.10,
+            sample_count=100,
+        ),
+    )
+
+    diagnostics = GatePolicyDiagnosticsService()
+    reporter = GatePolicyReporter()
+
+    report = diagnostics.build_report(signals)
+
+    return reporter.report_to_dict(report)
+
+
+@cli.command("gate-policy-smoke")
+def gate_policy_smoke() -> None:
+    """Показать демонстрационный GatePolicy-отчёт в JSON."""
+
+    payload = build_gate_policy_smoke_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 if __name__ == "__main__":
