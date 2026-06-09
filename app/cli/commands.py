@@ -36,6 +36,10 @@ from app.training.training_service import TrainingService
 from app.gates.gate_policy_diagnostics import GatePolicyDiagnosticsService
 from app.gates.gate_policy_models import GatePolicyInput
 from app.gates.gate_policy_reporter import GatePolicyReporter
+from app.gates.gate_policy_adapter_diagnostics import (
+    GatePolicyAdapterDiagnosticsService,
+)
+from app.gates.gate_policy_adapter_reporter import GatePolicyAdapterReporter
 
 cli = typer.Typer(help="traders-ml service CLI.")
 
@@ -1776,6 +1780,72 @@ def export_gate_policy_smoke_report(
     report = diagnostics.build_report(signals)
 
     return reporter.report_to_dict(report)
+
+
+def build_gate_policy_adapter_preview_payload() -> dict[str, object]:
+    """Собрать demo JSON payload для предпросмотра GatePolicy adapter."""
+
+    raw_payloads = (
+        {
+            "regime": "trend_up",
+            "direction": "LONG",
+            "confidence": 0.80,
+            "tp_before_sl_probability": 0.70,
+            "risk_score": 0.30,
+            "sample_count": 80,
+        },
+        {
+            "market_regime": "trend_down",
+            "predicted_direction": "DOWN",
+            "model_confidence": "0.78",
+            "tp_before_sl_prob": "0.68",
+            "model_risk_score": "0.28",
+            "samples": "75",
+        },
+        {
+            "regime": "range",
+            "direction": "LONG",
+            "confidence": 0.85,
+            "tp_before_sl_probability": 0.75,
+            "risk_score": 0.25,
+            "sample_count": 90,
+        },
+        {
+            "regime": "trend_up",
+            "direction": "LONG",
+            "confidence": 0.40,
+            "tp_before_sl_probability": 0.70,
+            "risk_score": 0.20,
+            "sample_count": 70,
+        },
+    )
+
+    diagnostics = GatePolicyAdapterDiagnosticsService()
+    reporter = GatePolicyAdapterReporter()
+
+    result = diagnostics.evaluate_payloads(raw_payloads)
+    payload = reporter.adapter_result_to_dict(result)
+
+    return {
+        "raw_payload_count": len(raw_payloads),
+        **payload,
+    }
+
+
+@cli.command("gate-policy-adapter-preview")
+def gate_policy_adapter_preview() -> None:
+    """Показать demo GatePolicy adapter diagnostics в JSON."""
+
+    payload = build_gate_policy_adapter_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 @cli.command("gate-policy-smoke")
