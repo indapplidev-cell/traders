@@ -1,0 +1,162 @@
+{
+  "model_version": "ml_candle_mlp_v1_2026_06_09_040604",
+  "total_rows": 1520,
+  "predicted_direction_counts": {
+    "UP": 143,
+    "DOWN": 944,
+    "FLAT": 433
+  },
+  "predicted_direction_ratios": {
+    "UP": 0.09407894736842105,
+    "DOWN": 0.6210526315789474,
+    "FLAT": 0.2848684210526316
+  },
+  "actual_direction_counts": {
+    "UP": 696,
+    "DOWN": 668,
+    "FLAT": 156
+  },
+  "actual_direction_ratios": {
+    "UP": 0.45789473684210524,
+    "DOWN": 0.4394736842105263,
+    "FLAT": 0.10263157894736842
+  },
+  "avg_prob_up": 0.3249649699581297,
+  "avg_prob_down": 0.3450367355621175,
+  "avg_prob_flat": 0.3299982939895831,
+  "max_prob_q00": 0.3336056172847748,
+  "max_prob_q10": 0.34036490619182586,
+  "max_prob_q25": 0.3440046086907387,
+  "max_prob_q50": 0.3484172075986862,
+  "max_prob_q75": 0.35360944271087646,
+  "max_prob_q90": 0.35867233872413634,
+  "max_prob_q95": 0.36196995675563814,
+  "max_prob_q99": 0.36918114513158795,
+  "max_prob_q100": 0.37556192278862,
+  "margin_q00": 1.627206802368164e-05,
+  "margin_q10": 0.001574179530143738,
+  "margin_q25": 0.004280894994735718,
+  "margin_q50": 0.009055152535438538,
+  "margin_q75": 0.016114428639411926,
+  "margin_q90": 0.023468598723411567,
+  "margin_q95": 0.028243866562843317,
+  "margin_q99": 0.03924897879362106,
+  "margin_q100": 0.04997709393501282,
+  "entropy_q00": 1.0894295022433296,
+  "entropy_q10": 1.0956103125323493,
+  "entropy_q25": 1.0967064025303943,
+  "entropy_q50": 1.0975849475656596,
+  "entropy_q75": 1.0981252059463282,
+  "entropy_q90": 1.0984172108796288,
+  "entropy_q95": 1.0985086479098112,
+  "entropy_q99": 1.0985910411595623,
+  "entropy_q100": 1.0986121007113816,
+  "directional_edge_q00": 1.627206802368164e-05,
+  "directional_edge_q10": 0.0031531482934951784,
+  "directional_edge_q25": 0.00846371054649353,
+  "directional_edge_q50": 0.017695367336273193,
+  "directional_edge_q75": 0.030431881546974182,
+  "directional_edge_q90": 0.04569298326969148,
+  "directional_edge_q95": 0.05394453108310699,
+  "directional_edge_q99": 0.07026430040597914,
+  "directional_edge_q100": 0.08531659841537476,
+  "up_down_edge_q00": -0.08531659841537476,
+  "up_down_edge_q10": -0.04569298326969147,
+  "up_down_edge_q25": -0.030431881546974182,
+  "up_down_edge_q50": -0.017404913902282715,
+  "up_down_edge_q75": -0.007133282721042633,
+  "up_down_edge_q90": 0.00046421885490418604,
+  "up_down_edge_q95": 0.004648903012275689,
+  "up_down_edge_q99": 0.015205924808979029,
+  "up_down_edge_q100": 0.027729272842407227,
+  "flat_dominance": -0.015038441572534422,
+  "top_class_by_threshold": [
+    {
+      "threshold": 0.34,
+      "rows_above_threshold": 1385,
+      "predicted_direction_counts": {
+        "UP": 113,
+        "DOWN": 876,
+        "FLAT": 396
+      }
+    },
+    {
+      "threshold": 0.36,
+      "rows_above_threshold": 117,
+      "predicted_direction_counts": {
+        "UP": 0,
+        "DOWN": 71,
+        "FLAT": 46
+      }
+    },
+    {
+      "threshold": 0.38,
+      "rows_above_threshold": 0,
+      "predicted_direction_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      }
+    },
+    {
+      "threshold": 0.4,
+      "rows_above_threshold": 0,
+      "predicted_direction_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      }
+    },
+    {
+      "threshold": 0.42,
+      "rows_above_threshold": 0,
+      "predicted_direction_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      }
+    },
+    {
+      "threshold": 0.45,
+      "rows_above_threshold": 0,
+      "predicted_direction_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      }
+    },
+    {
+      "threshold": 0.5,
+      "rows_above_threshold": 0,
+      "predicted_direction_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      }
+    }
+  ],
+  "rows_above_thresholds": {
+    "0.34": 1385,
+    "0.36": 117,
+    "0.38": 0,
+    "0.40": 0,
+    "0.42": 0,
+    "0.45": 0,
+    "0.50": 0
+  },
+  "collapse_v2": {
+    "collapse_detected": true,
+    "warnings": [
+      "no_signal_confidence_collapse",
+      "low_margin_collapse"
+    ],
+    "dominant_class": "DOWN",
+    "dominant_class_ratio": 0.6210526315789474,
+    "dominant_class_collapse": false,
+    "no_signal_confidence_collapse": true,
+    "low_margin_collapse": true,
+    "flat_dominance_warning": false,
+    "directional_bias_warning": false,
+    "rows_above_0_45": 0
+  }
+}

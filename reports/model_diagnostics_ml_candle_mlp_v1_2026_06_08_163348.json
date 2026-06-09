@@ -1,0 +1,138 @@
+{
+  "model_version": "ml_candle_mlp_v1_2026_06_08_163348",
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "horizon_candles": 8,
+  "feature_version": "fv1",
+  "label_version": "lv1",
+  "train_end": "2025-03-01",
+  "validation_end": "2025-03-16",
+  "actual_counts_train": {
+    "UP": 2015,
+    "DOWN": 2067,
+    "FLAT": 1383
+  },
+  "actual_counts_validation": {
+    "UP": 575,
+    "DOWN": 516,
+    "FLAT": 349
+  },
+  "actual_counts_test": {
+    "UP": 599,
+    "DOWN": 578,
+    "FLAT": 351
+  },
+  "predicted_counts_train": {
+    "UP": 21,
+    "DOWN": 0,
+    "FLAT": 5444
+  },
+  "predicted_counts_validation": {
+    "UP": 21,
+    "DOWN": 0,
+    "FLAT": 1419
+  },
+  "predicted_counts_test": {
+    "UP": 0,
+    "DOWN": 0,
+    "FLAT": 1528
+  },
+  "average_probabilities_train": {
+    "UP": 0.3167119309428844,
+    "DOWN": 0.3074456097876818,
+    "FLAT": 0.37584245912764774
+  },
+  "average_probabilities_validation": {
+    "UP": 0.32490284480154513,
+    "DOWN": 0.2892665861070984,
+    "FLAT": 0.3858305694328414
+  },
+  "average_probabilities_test": {
+    "UP": 0.3169565852243863,
+    "DOWN": 0.29601764435153355,
+    "FLAT": 0.3870257699949891
+  },
+  "confidence_distribution": {
+    "train": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 5440,
+      "0.4-0.6": 25,
+      "0.6-0.8": 0,
+      "0.8-1.0": 0
+    },
+    "validation": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 1351,
+      "0.4-0.6": 89,
+      "0.6-0.8": 0,
+      "0.8-1.0": 0
+    },
+    "test": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 1473,
+      "0.4-0.6": 55,
+      "0.6-0.8": 0,
+      "0.8-1.0": 0
+    }
+  },
+  "confusion_matrix_train": [
+    [
+      8,
+      0,
+      2007
+    ],
+    [
+      2,
+      0,
+      2065
+    ],
+    [
+      11,
+      0,
+      1372
+    ]
+  ],
+  "confusion_matrix_validation": [
+    [
+      12,
+      0,
+      563
+    ],
+    [
+      6,
+      0,
+      510
+    ],
+    [
+      3,
+      0,
+      346
+    ]
+  ],
+  "confusion_matrix_test": [
+    [
+      0,
+      0,
+      599
+    ],
+    [
+      0,
+      0,
+      578
+    ],
+    [
+      0,
+      0,
+      351
+    ]
+  ],
+  "accuracy_train": 0.252516010978957,
+  "accuracy_validation": 0.24861111111111112,
+  "accuracy_test": 0.22971204188481675,
+  "brier_score_train": 0.6803726672050857,
+  "brier_score_validation": 0.6839194518079222,
+  "brier_score_test": 0.6876406641968033,
+  "collapse_detected": true,
+  "collapse_reason": "FLAT dominates test predictions: ratio=1.0000",
+  "is_active": true
+}

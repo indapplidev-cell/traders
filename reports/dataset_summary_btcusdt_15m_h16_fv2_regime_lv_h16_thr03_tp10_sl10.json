@@ -1,0 +1,23 @@
+{
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "horizon_candles": 16,
+  "feature_version": "fv2_regime",
+  "label_version": "lv_h16_thr03_tp10_sl10",
+  "feature_rows": 8640,
+  "label_rows": 8611,
+  "dataset_rows": 8415,
+  "dropped_incomplete_features": 209,
+  "dropped_missing_labels": 16,
+  "train_end": null,
+  "validation_end": null,
+  "train_rows": 5890,
+  "validation_rows": 1262,
+  "test_rows": 1263,
+  "train_first_open_time": "2025-01-03T04:15:00+00:00",
+  "train_last_open_time": "2025-03-05T12:30:00+00:00",
+  "validation_first_open_time": "2025-03-05T12:45:00+00:00",
+  "validation_last_open_time": "2025-03-18T16:00:00+00:00",
+  "test_first_open_time": "2025-03-18T16:15:00+00:00",
+  "test_last_open_time": "2025-03-31T19:45:00+00:00"
+}

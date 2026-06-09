@@ -1,0 +1,27 @@
+{
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "require_both_directions": true,
+  "robust_recommended_model_version": null,
+  "recommended_gate_type": null,
+  "recommended_gate_threshold": null,
+  "label_version": null,
+  "walk_forward_total_r": null,
+  "walk_forward_profit_factor": null,
+  "walk_forward_signal_count": null,
+  "profitable_fold_ratio": null,
+  "global_total_r": null,
+  "global_profit_factor": null,
+  "global_expectancy_r": null,
+  "global_win_rate": null,
+  "global_max_drawdown_r": null,
+  "reject_reasons": [
+    "dominant_class_ratio_gte_0_90",
+    "folds_with_selected_gate_lt_2",
+    "global_expectancy_r_not_positive",
+    "global_profit_factor_not_above_1",
+    "global_total_r_not_positive",
+    "no_short_signals",
+    "profitable_fold_ratio_lt_0_60"
+  ]
+}

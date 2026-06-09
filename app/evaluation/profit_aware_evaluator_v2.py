@@ -1,0 +1,291 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from app.config.settings import PROJECT_ROOT
+from app.evaluation.signal_gate_evaluator import SignalGateEvaluator
+
+
+class ProfitAwareEvaluatorV2:
+    def __init__(
+        self,
+        reports_dir: Path | None = None,
+        signal_gate_evaluator: SignalGateEvaluator | None = None,
+    ) -> None:
+        self._reports_dir = reports_dir or (PROJECT_ROOT / "reports")
+        self._reports_dir.mkdir(parents=True, exist_ok=True)
+        self._signal_gate_evaluator = signal_gate_evaluator or SignalGateEvaluator(reports_dir=self._reports_dir)
+
+    def evaluate(
+        self,
+        model_version: str,
+        predictions: list[dict[str, Any]],
+        take_profit_atr: float,
+        stop_loss_atr: float,
+        fee_r: float = 0.0,
+        slippage_r: float = 0.0,
+        same_candle_policy: str = "conservative",
+    ) -> dict[str, Any]:
+        evaluation = self.evaluate_predictions(
+            predictions=predictions,
+            take_profit_atr=take_profit_atr,
+            stop_loss_atr=stop_loss_atr,
+            fee_r=fee_r,
+            slippage_r=slippage_r,
+            same_candle_policy=same_candle_policy,
+        )
+        gate_results = evaluation["gate_results"]
+
+        report = {
+            "model_version": model_version,
+            "take_profit_atr": take_profit_atr,
+            "stop_loss_atr": stop_loss_atr,
+            "fee_r": fee_r,
+            "slippage_r": slippage_r,
+            "same_candle_policy": same_candle_policy,
+            "gate_results": gate_results,
+        }
+        output_path = self._reports_dir / f"profit_eval_v2_{model_version}.json"
+        output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        report["report_path"] = str(output_path)
+        return report
+
+    def evaluate_predictions(
+        self,
+        predictions: list[dict[str, Any]],
+        take_profit_atr: float,
+        stop_loss_atr: float,
+        fee_r: float = 0.0,
+        slippage_r: float = 0.0,
+        same_candle_policy: str = "conservative",
+    ) -> dict[str, Any]:
+        gate_results: list[dict[str, Any]] = []
+        for gate_type, thresholds in self._signal_gate_evaluator.GATE_THRESHOLDS.items():
+            for threshold in thresholds:
+                single = self.evaluate_single_gate(
+                    predictions=predictions,
+                    gate_type=gate_type,
+                    threshold=threshold,
+                    take_profit_atr=take_profit_atr,
+                    stop_loss_atr=stop_loss_atr,
+                    fee_r=fee_r,
+                    slippage_r=slippage_r,
+                    same_candle_policy=same_candle_policy,
+                )
+                gate_results.append(single["summary"])
+        return {"gate_results": gate_results}
+
+    def evaluate_single_gate(
+        self,
+        predictions: list[dict[str, Any]],
+        gate_type: str,
+        threshold: float,
+        take_profit_atr: float,
+        stop_loss_atr: float,
+        fee_r: float = 0.0,
+        slippage_r: float = 0.0,
+        same_candle_policy: str = "conservative",
+    ) -> dict[str, Any]:
+        selection = self._signal_gate_evaluator.select_signals(predictions, gate_type, threshold)
+        signal_rows = selection["signal_rows"]
+        if not signal_rows:
+            return {"summary": self._empty_gate_report(selection, same_candle_policy), "signal_rows": [], "outcomes": []}
+
+        outcomes = [
+            self._simulate_trade(
+                row=row,
+                take_profit_atr=take_profit_atr,
+                stop_loss_atr=stop_loss_atr,
+                fee_r=fee_r,
+                slippage_r=slippage_r,
+                same_candle_policy=same_candle_policy,
+            )
+            for row in signal_rows
+        ]
+        return {
+            "summary": self._build_gate_report(selection, signal_rows, outcomes, same_candle_policy),
+            "signal_rows": signal_rows,
+            "outcomes": outcomes,
+        }
+
+    def _simulate_trade(
+        self,
+        row: dict[str, Any],
+        take_profit_atr: float,
+        stop_loss_atr: float,
+        fee_r: float,
+        slippage_r: float,
+        same_candle_policy: str,
+    ) -> dict[str, Any]:
+        current_close = float(row["current_close"])
+        atr_value = float(row["atr_14"])
+        future_candles = row["future_candles"]
+        if row["signal_direction"] == "LONG":
+            take_profit = current_close + (take_profit_atr * atr_value)
+            stop_loss = current_close - (stop_loss_atr * atr_value)
+            for candle in future_candles:
+                tp_hit = float(candle["high"]) >= take_profit
+                sl_hit = float(candle["low"]) <= stop_loss
+                if tp_hit and sl_hit:
+                    return self._resolve_ambiguous(take_profit_atr, stop_loss_atr, fee_r, slippage_r, same_candle_policy)
+                if tp_hit:
+                    return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
+                if sl_hit:
+                    return self._with_costs("SL", -1.0, fee_r, slippage_r)
+            raw_r = max(-1.0, min(take_profit_atr / stop_loss_atr, float(row["future_move_atr"]) / stop_loss_atr))
+            return self._with_costs("NEITHER", raw_r, fee_r, slippage_r)
+
+        take_profit = current_close - (take_profit_atr * atr_value)
+        stop_loss = current_close + (stop_loss_atr * atr_value)
+        for candle in future_candles:
+            tp_hit = float(candle["low"]) <= take_profit
+            sl_hit = float(candle["high"]) >= stop_loss
+            if tp_hit and sl_hit:
+                return self._resolve_ambiguous(take_profit_atr, stop_loss_atr, fee_r, slippage_r, same_candle_policy)
+            if tp_hit:
+                return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
+            if sl_hit:
+                return self._with_costs("SL", -1.0, fee_r, slippage_r)
+        raw_r = max(-1.0, min(take_profit_atr / stop_loss_atr, (-float(row["future_move_atr"])) / stop_loss_atr))
+        return self._with_costs("NEITHER", raw_r, fee_r, slippage_r)
+
+    @staticmethod
+    def _with_costs(result: str, raw_r: float, fee_r: float, slippage_r: float) -> dict[str, Any]:
+        return {"result": result, "raw_r": raw_r, "net_r": raw_r - fee_r - slippage_r}
+
+    @staticmethod
+    def _build_gate_report(
+        selection: dict[str, Any],
+        signal_rows: list[dict[str, Any]],
+        outcomes: list[dict[str, Any]],
+        same_candle_policy: str,
+    ) -> dict[str, Any]:
+        signal_count = len(signal_rows)
+        included = [(row, item) for row, item in zip(signal_rows, outcomes) if item["result"] != "AMBIGUOUS"]
+        resolved_rows = [row for row, _ in included]
+        resolved_outcomes = [item for _, item in included]
+        net_values = [float(item["net_r"]) for item in resolved_outcomes]
+        long_outcomes = [item for row, item in included if row["signal_direction"] == "LONG"]
+        short_outcomes = [item for row, item in included if row["signal_direction"] == "SHORT"]
+        win_count = sum(int(item["result"] == "TP") for item in resolved_outcomes)
+        loss_count = sum(int(item["result"] == "SL") for item in resolved_outcomes)
+        neither_count = sum(int(item["result"] == "NEITHER") for item in resolved_outcomes)
+        ambiguous_count = sum(int(item["result"] == "AMBIGUOUS") for item in outcomes)
+        gross_profit_r = sum(value for value in net_values if value > 0)
+        gross_loss_r = abs(sum(value for value in net_values if value < 0))
+        profit_factor = gross_profit_r / gross_loss_r if gross_loss_r > 0 else (float("inf") if gross_profit_r > 0 else 0.0)
+        total_r = sum(net_values)
+        resolved_count = len(resolved_outcomes)
+        avg_r = (total_r / resolved_count) if resolved_count else None
+        long_rows = [row for row in resolved_rows if row["signal_direction"] == "LONG"]
+        short_rows = [row for row in resolved_rows if row["signal_direction"] == "SHORT"]
+        return {
+            "gate_type": selection["gate_type"],
+            "threshold": selection["threshold"],
+            "total_rows": selection["total_rows"],
+            "signal_count": signal_count,
+            "resolved_signal_count": resolved_count,
+            "skipped_flat_count": selection["skipped_flat_count"],
+            "coverage": (signal_count / selection["total_rows"]) if selection["total_rows"] else 0.0,
+            "win_count": win_count,
+            "loss_count": loss_count,
+            "neither_count": neither_count,
+            "ambiguous_count": ambiguous_count,
+            "gross_profit_r": gross_profit_r,
+            "gross_loss_r": gross_loss_r,
+            "profit_factor": profit_factor if resolved_count else None,
+            "total_r": total_r,
+            "avg_r": avg_r,
+            "expectancy_r": avg_r,
+            "win_rate": (win_count / resolved_count) if resolved_count else None,
+            "loss_rate": (loss_count / resolved_count) if resolved_count else None,
+            "max_win_r": max(net_values) if net_values else None,
+            "max_loss_r": min(net_values) if net_values else None,
+            "long_count": len(long_rows),
+            "short_count": len(short_rows),
+            "long_total_r": sum(item["net_r"] for item in long_outcomes),
+            "short_total_r": sum(item["net_r"] for item in short_outcomes),
+            "long_win_rate": ProfitAwareEvaluatorV2._win_rate(long_outcomes),
+            "short_win_rate": ProfitAwareEvaluatorV2._win_rate(short_outcomes),
+            "avg_confidence_on_signals": (sum(float(row["confidence"]) for row in resolved_rows) / resolved_count) if resolved_count else None,
+            "avg_margin_on_signals": (sum(float(row["margin"]) for row in resolved_rows) / resolved_count) if resolved_count else None,
+            "avg_directional_edge_on_signals": (
+                sum(float(row["directional_edge"]) for row in resolved_rows) / resolved_count
+            ) if resolved_count else None,
+            "max_drawdown_r": ProfitAwareEvaluatorV2._max_drawdown(net_values),
+            "same_candle_policy": same_candle_policy,
+            "reject_reason": None if resolved_count else "no_resolved_signals",
+        }
+
+    @staticmethod
+    def _empty_gate_report(selection: dict[str, Any], same_candle_policy: str) -> dict[str, Any]:
+        return {
+            "gate_type": selection["gate_type"],
+            "threshold": selection["threshold"],
+            "total_rows": selection["total_rows"],
+            "signal_count": 0,
+            "resolved_signal_count": 0,
+            "skipped_flat_count": selection["skipped_flat_count"],
+            "coverage": 0.0,
+            "win_count": 0,
+            "loss_count": 0,
+            "neither_count": 0,
+            "ambiguous_count": 0,
+            "gross_profit_r": 0.0,
+            "gross_loss_r": 0.0,
+            "profit_factor": None,
+            "total_r": 0.0,
+            "avg_r": None,
+            "expectancy_r": None,
+            "win_rate": None,
+            "loss_rate": None,
+            "max_win_r": None,
+            "max_loss_r": None,
+            "long_count": 0,
+            "short_count": 0,
+            "long_total_r": 0.0,
+            "short_total_r": 0.0,
+            "long_win_rate": None,
+            "short_win_rate": None,
+            "avg_confidence_on_signals": None,
+            "avg_margin_on_signals": None,
+            "avg_directional_edge_on_signals": None,
+            "max_drawdown_r": 0.0,
+            "same_candle_policy": same_candle_policy,
+            "reject_reason": "no_signals",
+        }
+
+    @staticmethod
+    def _resolve_ambiguous(
+        take_profit_atr: float,
+        stop_loss_atr: float,
+        fee_r: float,
+        slippage_r: float,
+        same_candle_policy: str,
+    ) -> dict[str, Any]:
+        if same_candle_policy == "conservative":
+            return ProfitAwareEvaluatorV2._with_costs("SL", -1.0, fee_r, slippage_r)
+        if same_candle_policy == "optimistic":
+            return ProfitAwareEvaluatorV2._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
+        if same_candle_policy == "skip":
+            return {"result": "AMBIGUOUS", "raw_r": None, "net_r": 0.0}
+        raise ValueError(f"Unsupported same_candle_policy: {same_candle_policy}")
+
+    @staticmethod
+    def _win_rate(outcomes: list[dict[str, Any]]) -> float | None:
+        if not outcomes:
+            return None
+        return sum(int(item["result"] == "TP") for item in outcomes) / len(outcomes)
+
+    @staticmethod
+    def _max_drawdown(values: list[float]) -> float:
+        equity = 0.0
+        peak = 0.0
+        max_drawdown = 0.0
+        for value in values:
+            equity += value
+            peak = max(peak, equity)
+            max_drawdown = min(max_drawdown, equity - peak)
+        return abs(max_drawdown)

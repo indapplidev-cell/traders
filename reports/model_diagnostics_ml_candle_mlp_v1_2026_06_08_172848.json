@@ -1,0 +1,138 @@
+{
+  "model_version": "ml_candle_mlp_v1_2026_06_08_172848",
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "horizon_candles": 8,
+  "feature_version": "fv1",
+  "label_version": "lv1",
+  "train_end": "2025-03-01",
+  "validation_end": "2025-03-16",
+  "actual_counts_train": {
+    "UP": 2015,
+    "DOWN": 2067,
+    "FLAT": 1383
+  },
+  "actual_counts_validation": {
+    "UP": 575,
+    "DOWN": 516,
+    "FLAT": 349
+  },
+  "actual_counts_test": {
+    "UP": 599,
+    "DOWN": 578,
+    "FLAT": 351
+  },
+  "predicted_counts_train": {
+    "UP": 1595,
+    "DOWN": 1355,
+    "FLAT": 2515
+  },
+  "predicted_counts_validation": {
+    "UP": 913,
+    "DOWN": 0,
+    "FLAT": 527
+  },
+  "predicted_counts_test": {
+    "UP": 1350,
+    "DOWN": 3,
+    "FLAT": 175
+  },
+  "average_probabilities_train": {
+    "UP": 0.3296982495531726,
+    "DOWN": 0.3304640013448492,
+    "FLAT": 0.33983774899563873
+  },
+  "average_probabilities_validation": {
+    "UP": 0.3524246729703413,
+    "DOWN": 0.30639635160979295,
+    "FLAT": 0.341178975523346
+  },
+  "average_probabilities_test": {
+    "UP": 0.36121006309986115,
+    "DOWN": 0.3183521315338412,
+    "FLAT": 0.3204378045471239
+  },
+  "confidence_distribution": {
+    "train": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 5381,
+      "0.4-0.6": 84,
+      "0.6-0.8": 0,
+      "0.8-1.0": 0
+    },
+    "validation": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 1373,
+      "0.4-0.6": 67,
+      "0.6-0.8": 0,
+      "0.8-1.0": 0
+    },
+    "test": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 1510,
+      "0.4-0.6": 18,
+      "0.6-0.8": 0,
+      "0.8-1.0": 0
+    }
+  },
+  "confusion_matrix_train": [
+    [
+      664,
+      454,
+      897
+    ],
+    [
+      561,
+      590,
+      916
+    ],
+    [
+      370,
+      311,
+      702
+    ]
+  ],
+  "confusion_matrix_validation": [
+    [
+      366,
+      0,
+      209
+    ],
+    [
+      310,
+      0,
+      206
+    ],
+    [
+      237,
+      0,
+      112
+    ]
+  ],
+  "confusion_matrix_test": [
+    [
+      544,
+      0,
+      55
+    ],
+    [
+      508,
+      3,
+      67
+    ],
+    [
+      298,
+      0,
+      53
+    ]
+  ],
+  "accuracy_train": 0.35791399817017383,
+  "accuracy_validation": 0.33194444444444443,
+  "accuracy_test": 0.39267015706806285,
+  "brier_score_train": 0.6647178244258313,
+  "brier_score_validation": 0.6684893823935198,
+  "brier_score_test": 0.6608990773124575,
+  "collapse_detected": false,
+  "collapse_reason": null,
+  "is_active": false
+}

@@ -1,0 +1,39 @@
+{
+  "best_baseline_overall": "ema_9_21_direction",
+  "best_baseline_total_r": 129.6027191899973,
+  "best_baseline_profit_factor": 1.0723524923111214,
+  "regimes_where_ema_works": [
+    "regime_trend_up",
+    "regime_trend_down",
+    "regime_range",
+    "regime_high_volatility",
+    "regime_low_volatility",
+    "regime_volatility_expanding",
+    "regime_volatility_contracting",
+    "ema_stack_bullish",
+    "ema_stack_bearish",
+    "close_below_ema_200"
+  ],
+  "regimes_where_ema_fails": [
+    "close_above_ema_200"
+  ],
+  "meta_dataset_valid": true,
+  "meta_training_skipped": false,
+  "meta_model_version": "ema_meta_mlp_v1_2026_06_09_050110",
+  "meta_model_beats_take_all_ema": false,
+  "recommended_model_version": null,
+  "recommended_meta_threshold": null,
+  "recommended_next_action": "improve_meta_features",
+  "reject_reasons": [
+    "meta_model_not_above_take_all_ema",
+    "profitable_fold_ratio_lt_0_60"
+  ],
+  "regime_segment_report": null,
+  "baseline_by_regime_report": null,
+  "ema_meta_labels_report": null,
+  "meta_label_diagnostics_report": null,
+  "meta_dataset_report": null,
+  "meta_baselines_report": null,
+  "meta_evaluation_report": null,
+  "meta_walk_forward_report": null
+}

@@ -1,0 +1,577 @@
+{
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "feature_version": "fv2_regime",
+  "label_version": "meta_ema_9_21_tp15_sl10",
+  "fold_count": 4,
+  "baselines": {
+    "take_all_ema_signals": {
+      "baseline_name": "take_all_ema_signals",
+      "folds": [
+        {
+          "fold_index": 1,
+          "test_start": "2025-02-27T04:15:00+00:00",
+          "test_end": "2025-03-09T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 847,
+            "long_count": 430,
+            "short_count": 417,
+            "total_r": 22.58999999999908,
+            "global_profit_factor": 1.0448507951635224,
+            "expectancy_r": 0.026670602125146492,
+            "win_rate": 0.42266824085005905,
+            "max_drawdown_r": 67.91000000000022,
+            "avg_r_per_trade": 0.026670602125146492
+          }
+        },
+        {
+          "fold_index": 2,
+          "test_start": "2025-03-09T04:15:00+00:00",
+          "test_end": "2025-03-19T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 872,
+            "long_count": 441,
+            "short_count": 431,
+            "total_r": 9.339999999999407,
+            "global_profit_factor": 1.0178152478684874,
+            "expectancy_r": 0.010711009174311246,
+            "win_rate": 0.41628440366972475,
+            "max_drawdown_r": 122.9700000000002,
+            "avg_r_per_trade": 0.010711009174311246
+          }
+        },
+        {
+          "fold_index": 3,
+          "test_start": "2025-03-19T04:15:00+00:00",
+          "test_end": "2025-03-29T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 864,
+            "long_count": 507,
+            "short_count": 357,
+            "total_r": 45.079999999999245,
+            "global_profit_factor": 1.0893203883495386,
+            "expectancy_r": 0.05217592592592505,
+            "win_rate": 0.43287037037037035,
+            "max_drawdown_r": 111.31000000000013,
+            "avg_r_per_trade": 0.05217592592592505
+          }
+        },
+        {
+          "fold_index": 4,
+          "test_start": "2025-03-29T04:15:00+00:00",
+          "test_end": "2025-04-08T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 244,
+            "long_count": 96,
+            "short_count": 148,
+            "total_r": 31.17999999999975,
+            "global_profit_factor": 1.2310827836656026,
+            "expectancy_r": 0.12778688524590062,
+            "win_rate": 0.46311475409836067,
+            "max_drawdown_r": 33.42000000000007,
+            "avg_r_per_trade": 0.12778688524590062
+          }
+        }
+      ],
+      "summary": {
+        "signal_count": 2827,
+        "long_count": 1474,
+        "short_count": 1353,
+        "total_r": 108.18999999999748,
+        "global_profit_factor": Infinity,
+        "expectancy_r": 0.03827025114962769,
+        "win_rate": 0.42730810045985146,
+        "max_drawdown_r": 122.9700000000002,
+        "profitable_fold_ratio": 1.0,
+        "avg_r_per_trade": 0.03827025114962769
+      }
+    },
+    "take_only_long_ema": {
+      "baseline_name": "take_only_long_ema",
+      "folds": [
+        {
+          "fold_index": 1,
+          "test_start": "2025-02-27T04:15:00+00:00",
+          "test_end": "2025-03-09T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 430,
+            "long_count": 430,
+            "short_count": 0,
+            "total_r": 44.59999999999957,
+            "global_profit_factor": 1.184259450526751,
+            "expectancy_r": 0.10372093023255713,
+            "win_rate": 0.45348837209302323,
+            "max_drawdown_r": 46.950000000000074,
+            "avg_r_per_trade": 0.10372093023255713
+          }
+        },
+        {
+          "fold_index": 2,
+          "test_start": "2025-03-09T04:15:00+00:00",
+          "test_end": "2025-03-19T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 441,
+            "long_count": 441,
+            "short_count": 0,
+            "total_r": -1.7300000000002134,
+            "global_profit_factor": 0.9935399551904408,
+            "expectancy_r": -0.0039229024943315495,
+            "win_rate": 0.41043083900226757,
+            "max_drawdown_r": 106.58000000000011,
+            "avg_r_per_trade": -0.0039229024943315495
+          }
+        },
+        {
+          "fold_index": 3,
+          "test_start": "2025-03-19T04:15:00+00:00",
+          "test_end": "2025-03-29T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 507,
+            "long_count": 507,
+            "short_count": 0,
+            "total_r": 60.289999999999495,
+            "global_profit_factor": 1.2136276663595844,
+            "expectancy_r": 0.11891518737672484,
+            "win_rate": 0.45956607495069035,
+            "max_drawdown_r": 65.2100000000001,
+            "avg_r_per_trade": 0.11891518737672484
+          }
+        },
+        {
+          "fold_index": 4,
+          "test_start": "2025-03-29T04:15:00+00:00",
+          "test_end": "2025-04-08T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 96,
+            "long_count": 96,
+            "short_count": 0,
+            "total_r": -18.880000000000003,
+            "global_profit_factor": 0.713592233009708,
+            "expectancy_r": -0.19666666666666668,
+            "win_rate": 0.3333333333333333,
+            "max_drawdown_r": 24.900000000000002,
+            "avg_r_per_trade": -0.19666666666666668
+          }
+        }
+      ],
+      "summary": {
+        "signal_count": 1474,
+        "long_count": 1474,
+        "short_count": 0,
+        "total_r": 84.27999999999886,
+        "global_profit_factor": 5.0892770499756415,
+        "expectancy_r": 0.05717774762550805,
+        "win_rate": 0.43487109905020355,
+        "max_drawdown_r": 106.58000000000011,
+        "profitable_fold_ratio": 0.5,
+        "avg_r_per_trade": 0.05717774762550805
+      }
+    },
+    "take_only_short_ema": {
+      "baseline_name": "take_only_short_ema",
+      "folds": [
+        {
+          "fold_index": 1,
+          "test_start": "2025-02-27T04:15:00+00:00",
+          "test_end": "2025-03-09T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 417,
+            "long_count": 0,
+            "short_count": 417,
+            "total_r": -22.010000000000115,
+            "global_profit_factor": 0.9158703463037984,
+            "expectancy_r": -0.052781774580336005,
+            "win_rate": 0.3908872901678657,
+            "max_drawdown_r": 70.06000000000006,
+            "avg_r_per_trade": -0.052781774580336005
+          }
+        },
+        {
+          "fold_index": 2,
+          "test_start": "2025-03-09T04:15:00+00:00",
+          "test_end": "2025-03-19T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 431,
+            "long_count": 0,
+            "short_count": 431,
+            "total_r": 11.069999999999832,
+            "global_profit_factor": 1.0431629430342721,
+            "expectancy_r": 0.02568445475638012,
+            "win_rate": 0.4222737819025522,
+            "max_drawdown_r": 55.02000000000009,
+            "avg_r_per_trade": 0.02568445475638012
+          }
+        },
+        {
+          "fold_index": 3,
+          "test_start": "2025-03-19T04:15:00+00:00",
+          "test_end": "2025-03-29T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 357,
+            "long_count": 0,
+            "short_count": 357,
+            "total_r": -15.210000000000315,
+            "global_profit_factor": 0.9316343042071182,
+            "expectancy_r": -0.04260504201680761,
+            "win_rate": 0.3949579831932773,
+            "max_drawdown_r": 56.90000000000024,
+            "avg_r_per_trade": -0.04260504201680761
+          }
+        },
+        {
+          "fold_index": 4,
+          "test_start": "2025-03-29T04:15:00+00:00",
+          "test_end": "2025-04-08T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 148,
+            "long_count": 0,
+            "short_count": 148,
+            "total_r": 50.05999999999986,
+            "global_profit_factor": 1.725402115635413,
+            "expectancy_r": 0.3382432432432423,
+            "win_rate": 0.5472972972972973,
+            "max_drawdown_r": 15.01000000000002,
+            "avg_r_per_trade": 0.3382432432432423
+          }
+        }
+      ],
+      "summary": {
+        "signal_count": 1353,
+        "long_count": 0,
+        "short_count": 1353,
+        "total_r": 23.90999999999926,
+        "global_profit_factor": 1.6423965609886884,
+        "expectancy_r": 0.017671840354766637,
+        "win_rate": 0.4190687361419069,
+        "max_drawdown_r": 70.06000000000006,
+        "profitable_fold_ratio": 0.5,
+        "avg_r_per_trade": 0.017671840354766637
+      }
+    },
+    "take_ema_only_trend_up": {
+      "baseline_name": "take_ema_only_trend_up",
+      "folds": [
+        {
+          "fold_index": 1,
+          "test_start": "2025-02-27T04:15:00+00:00",
+          "test_end": "2025-03-09T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 375,
+            "long_count": 325,
+            "short_count": 50,
+            "total_r": 26.249999999999886,
+            "global_profit_factor": 1.121359223300969,
+            "expectancy_r": 0.0699999999999997,
+            "win_rate": 0.44,
+            "max_drawdown_r": 47.14000000000003,
+            "avg_r_per_trade": 0.0699999999999997
+          }
+        },
+        {
+          "fold_index": 2,
+          "test_start": "2025-03-09T04:15:00+00:00",
+          "test_end": "2025-03-19T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 336,
+            "long_count": 322,
+            "short_count": 14,
+            "total_r": -16.0800000000002,
+            "global_profit_factor": 0.9234723015419746,
+            "expectancy_r": -0.04785714285714345,
+            "win_rate": 0.39285714285714285,
+            "max_drawdown_r": 100.2400000000001,
+            "avg_r_per_trade": -0.04785714285714345
+          }
+        },
+        {
+          "fold_index": 3,
+          "test_start": "2025-03-19T04:15:00+00:00",
+          "test_end": "2025-03-29T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 411,
+            "long_count": 393,
+            "short_count": 18,
+            "total_r": 59.169999999999604,
+            "global_profit_factor": 1.263516522668567,
+            "expectancy_r": 0.1439659367396584,
+            "win_rate": 0.46958637469586373,
+            "max_drawdown_r": 64.60000000000005,
+            "avg_r_per_trade": 0.1439659367396584
+          }
+        },
+        {
+          "fold_index": 4,
+          "test_start": "2025-03-29T04:15:00+00:00",
+          "test_end": "2025-04-08T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 64,
+            "long_count": 62,
+            "short_count": 2,
+            "total_r": -18.42,
+            "global_profit_factor": 0.6025889967637535,
+            "expectancy_r": -0.2878125,
+            "win_rate": 0.296875,
+            "max_drawdown_r": 21.360000000000003,
+            "avg_r_per_trade": -0.2878125
+          }
+        }
+      ],
+      "summary": {
+        "signal_count": 1186,
+        "long_count": 1102,
+        "short_count": 84,
+        "total_r": 50.91999999999929,
+        "global_profit_factor": 2.4759420289854783,
+        "expectancy_r": 0.04293423271500783,
+        "win_rate": 0.4291736930860034,
+        "max_drawdown_r": 100.2400000000001,
+        "profitable_fold_ratio": 0.5,
+        "avg_r_per_trade": 0.04293423271500783
+      }
+    },
+    "take_ema_only_trend_down": {
+      "baseline_name": "take_ema_only_trend_down",
+      "folds": [
+        {
+          "fold_index": 1,
+          "test_start": "2025-02-27T04:15:00+00:00",
+          "test_end": "2025-03-09T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 326,
+            "long_count": 34,
+            "short_count": 292,
+            "total_r": 4.219999999999716,
+            "global_profit_factor": 1.0215636177823182,
+            "expectancy_r": 0.01294478527607275,
+            "win_rate": 0.4171779141104294,
+            "max_drawdown_r": 49.070000000000135,
+            "avg_r_per_trade": 0.01294478527607275
+          }
+        },
+        {
+          "fold_index": 2,
+          "test_start": "2025-03-09T04:15:00+00:00",
+          "test_end": "2025-03-19T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 361,
+            "long_count": 25,
+            "short_count": 336,
+            "total_r": 8.169999999999884,
+            "global_profit_factor": 1.037952338923211,
+            "expectancy_r": 0.0226315789473681,
+            "win_rate": 0.42105263157894735,
+            "max_drawdown_r": 57.33000000000006,
+            "avg_r_per_trade": 0.0226315789473681
+          }
+        },
+        {
+          "fold_index": 3,
+          "test_start": "2025-03-19T04:15:00+00:00",
+          "test_end": "2025-03-29T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 302,
+            "long_count": 22,
+            "short_count": 280,
+            "total_r": -6.060000000000095,
+            "global_profit_factor": 0.9673139158576036,
+            "expectancy_r": -0.020066225165563226,
+            "win_rate": 0.40397350993377484,
+            "max_drawdown_r": 38.78000000000006,
+            "avg_r_per_trade": -0.020066225165563226
+          }
+        },
+        {
+          "fold_index": 4,
+          "test_start": "2025-03-29T04:15:00+00:00",
+          "test_end": "2025-04-08T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 152,
+            "long_count": 18,
+            "short_count": 134,
+            "total_r": 35.939999999999856,
+            "global_profit_factor": 1.4652427184466,
+            "expectancy_r": 0.23644736842105168,
+            "win_rate": 0.506578947368421,
+            "max_drawdown_r": 23.690000000000026,
+            "avg_r_per_trade": 0.23644736842105168
+          }
+        }
+      ],
+      "summary": {
+        "signal_count": 1141,
+        "long_count": 99,
+        "short_count": 1042,
+        "total_r": 42.269999999999364,
+        "global_profit_factor": 7.975247524752262,
+        "expectancy_r": 0.03704645048203275,
+        "win_rate": 0.4268185801928133,
+        "max_drawdown_r": 57.33000000000006,
+        "profitable_fold_ratio": 0.75,
+        "avg_r_per_trade": 0.03704645048203275
+      }
+    },
+    "take_ema_only_high_volatility": {
+      "baseline_name": "take_ema_only_high_volatility",
+      "folds": [
+        {
+          "fold_index": 1,
+          "test_start": "2025-02-27T04:15:00+00:00",
+          "test_end": "2025-03-09T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 318,
+            "long_count": 115,
+            "short_count": 203,
+            "total_r": -5.0400000000001,
+            "global_profit_factor": 0.974110032362458,
+            "expectancy_r": -0.0158490566037739,
+            "win_rate": 0.4056603773584906,
+            "max_drawdown_r": 55.880000000000095,
+            "avg_r_per_trade": -0.0158490566037739
+          }
+        },
+        {
+          "fold_index": 2,
+          "test_start": "2025-03-09T04:15:00+00:00",
+          "test_end": "2025-03-19T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 352,
+            "long_count": 105,
+            "short_count": 247,
+            "total_r": -52.56000000000013,
+            "global_profit_factor": 0.7761880429228398,
+            "expectancy_r": -0.14931818181818218,
+            "win_rate": 0.3522727272727273,
+            "max_drawdown_r": 75.47000000000014,
+            "avg_r_per_trade": -0.14931818181818218
+          }
+        },
+        {
+          "fold_index": 3,
+          "test_start": "2025-03-19T04:15:00+00:00",
+          "test_end": "2025-03-29T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 392,
+            "long_count": 254,
+            "short_count": 138,
+            "total_r": 71.23999999999974,
+            "global_profit_factor": 1.3424012304143034,
+            "expectancy_r": 0.18173469387755037,
+            "win_rate": 0.4846938775510204,
+            "max_drawdown_r": 44.30000000000001,
+            "avg_r_per_trade": 0.18173469387755037
+          }
+        },
+        {
+          "fold_index": 4,
+          "test_start": "2025-03-29T04:15:00+00:00",
+          "test_end": "2025-04-08T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 123,
+            "long_count": 37,
+            "short_count": 86,
+            "total_r": -6.689999999999993,
+            "global_profit_factor": 0.913398058252426,
+            "expectancy_r": -0.05439024390243897,
+            "win_rate": 0.3902439024390244,
+            "max_drawdown_r": 21.789999999999996,
+            "avg_r_per_trade": -0.05439024390243897
+          }
+        }
+      ],
+      "summary": {
+        "signal_count": 1185,
+        "long_count": 511,
+        "short_count": 674,
+        "total_r": 6.949999999999517,
+        "global_profit_factor": 1.1081039041841576,
+        "expectancy_r": 0.005864978902953179,
+        "win_rate": 0.41434599156118146,
+        "max_drawdown_r": 75.47000000000014,
+        "profitable_fold_ratio": 0.25,
+        "avg_r_per_trade": 0.005864978902953179
+      }
+    },
+    "take_ema_only_low_volatility": {
+      "baseline_name": "take_ema_only_low_volatility",
+      "folds": [
+        {
+          "fold_index": 1,
+          "test_start": "2025-02-27T04:15:00+00:00",
+          "test_end": "2025-03-09T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 529,
+            "long_count": 315,
+            "short_count": 214,
+            "total_r": 27.629999999999427,
+            "global_profit_factor": 1.0894174757281636,
+            "expectancy_r": 0.05223062381852444,
+            "win_rate": 0.43289224952741023,
+            "max_drawdown_r": 65.93000000000009,
+            "avg_r_per_trade": 0.05223062381852444
+          }
+        },
+        {
+          "fold_index": 2,
+          "test_start": "2025-03-09T04:15:00+00:00",
+          "test_end": "2025-03-19T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 520,
+            "long_count": 336,
+            "short_count": 184,
+            "total_r": 61.89999999999955,
+            "global_profit_factor": 1.2138686383581603,
+            "expectancy_r": 0.11903846153846068,
+            "win_rate": 0.4596153846153846,
+            "max_drawdown_r": 90.84000000000016,
+            "avg_r_per_trade": 0.11903846153846068
+          }
+        },
+        {
+          "fold_index": 3,
+          "test_start": "2025-03-19T04:15:00+00:00",
+          "test_end": "2025-03-29T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 472,
+            "long_count": 253,
+            "short_count": 219,
+            "total_r": -26.16000000000014,
+            "global_profit_factor": 0.9118122977346306,
+            "expectancy_r": -0.055423728813559614,
+            "win_rate": 0.3898305084745763,
+            "max_drawdown_r": 79.37000000000008,
+            "avg_r_per_trade": -0.055423728813559614
+          }
+        },
+        {
+          "fold_index": 4,
+          "test_start": "2025-03-29T04:15:00+00:00",
+          "test_end": "2025-04-08T04:15:00+00:00",
+          "test_result": {
+            "signal_count": 121,
+            "long_count": 59,
+            "short_count": 62,
+            "total_r": 37.86999999999989,
+            "global_profit_factor": 1.65655339805825,
+            "expectancy_r": 0.31297520661156936,
+            "win_rate": 0.5371900826446281,
+            "max_drawdown_r": 16.480000000000018,
+            "avg_r_per_trade": 0.31297520661156936
+          }
+        }
+      ],
+      "summary": {
+        "signal_count": 1642,
+        "long_count": 963,
+        "short_count": 679,
+        "total_r": 101.23999999999873,
+        "global_profit_factor": 4.8700305810396864,
+        "expectancy_r": 0.06165651644336098,
+        "win_rate": 0.4366626065773447,
+        "max_drawdown_r": 90.84000000000016,
+        "profitable_fold_ratio": 0.75,
+        "avg_r_per_trade": 0.06165651644336098
+      }
+    }
+  },
+  "best_baseline_overall": "take_all_ema_signals"
+}

@@ -1,0 +1,212 @@
+{
+  "model_version": "ml_candle_mlp_v1_2026_06_08_191245",
+  "label_version": "lv_h16_thr03_tp15_sl10",
+  "splits": {
+    "train": {
+      "split_name": "train",
+      "rows": 8425,
+      "actual_counts": {
+        "UP": 3729,
+        "DOWN": 3740,
+        "FLAT": 956
+      },
+      "actual_ratios": {
+        "UP": 0.4426112759643917,
+        "DOWN": 0.44391691394658755,
+        "FLAT": 0.11347181008902077
+      },
+      "predicted_counts": {
+        "UP": 4084,
+        "DOWN": 2800,
+        "FLAT": 1541
+      },
+      "predicted_ratios": {
+        "UP": 0.48474777448071216,
+        "DOWN": 0.3323442136498516,
+        "FLAT": 0.1829080118694362
+      },
+      "predicted_signal_counts": {
+        "LONG": 4084,
+        "SHORT": 2800,
+        "FLAT": 1541
+      },
+      "avg_prob_up": 0.3417939065719571,
+      "avg_prob_down": 0.32843419190860995,
+      "avg_prob_flat": 0.329771901553038,
+      "avg_abs_up_down_diff": 0.05276800521934068,
+      "avg_margin": 0.033515460477030946,
+      "margin_q50": 0.025784432888031006,
+      "margin_q90": 0.07452422380447388,
+      "confusion_matrix": [
+        [
+          1932,
+          1102,
+          695
+        ],
+        [
+          1732,
+          1356,
+          652
+        ],
+        [
+          420,
+          342,
+          194
+        ]
+      ],
+      "precision_by_class": {
+        "UP": 0.4730656219392752,
+        "DOWN": 0.48428571428571426,
+        "FLAT": 0.12589227774172615
+      },
+      "recall_by_class": {
+        "UP": 0.5181013676588898,
+        "DOWN": 0.3625668449197861,
+        "FLAT": 0.20292887029288703
+      },
+      "warnings": [
+        "low_probability_separation"
+      ]
+    },
+    "validation": {
+      "split_name": "validation",
+      "rows": 0,
+      "actual_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      },
+      "actual_ratios": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "predicted_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      },
+      "predicted_ratios": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "predicted_signal_counts": {
+        "LONG": 0,
+        "SHORT": 0,
+        "FLAT": 0
+      },
+      "avg_prob_up": 0.0,
+      "avg_prob_down": 0.0,
+      "avg_prob_flat": 0.0,
+      "avg_abs_up_down_diff": 0.0,
+      "avg_margin": 0.0,
+      "margin_q50": 0.0,
+      "margin_q90": 0.0,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "precision_by_class": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "recall_by_class": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "warnings": [
+        "predicts_no_down",
+        "low_probability_separation"
+      ]
+    },
+    "test": {
+      "split_name": "test",
+      "rows": 0,
+      "actual_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      },
+      "actual_ratios": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "predicted_counts": {
+        "UP": 0,
+        "DOWN": 0,
+        "FLAT": 0
+      },
+      "predicted_ratios": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "predicted_signal_counts": {
+        "LONG": 0,
+        "SHORT": 0,
+        "FLAT": 0
+      },
+      "avg_prob_up": 0.0,
+      "avg_prob_down": 0.0,
+      "avg_prob_flat": 0.0,
+      "avg_abs_up_down_diff": 0.0,
+      "avg_margin": 0.0,
+      "margin_q50": 0.0,
+      "margin_q90": 0.0,
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ]
+      ],
+      "precision_by_class": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "recall_by_class": {
+        "UP": 0.0,
+        "DOWN": 0.0,
+        "FLAT": 0.0
+      },
+      "warnings": [
+        "predicts_no_down",
+        "low_probability_separation"
+      ]
+    }
+  },
+  "warnings": [
+    "likely_label_bias",
+    "low_probability_separation",
+    "predicts_no_down"
+  ],
+  "all_models_long_only_candidate": false
+}

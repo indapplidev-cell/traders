@@ -1,0 +1,275 @@
+{
+  "segments": {
+    "regime_trend_up": {
+      "row_count": 3500,
+      "row_ratio": 0.41592394533571003,
+      "actual_counts": {
+        "UP": 1422,
+        "DOWN": 1634,
+        "FLAT": 444
+      },
+      "actual_ratios": {
+        "UP": 0.4062857142857143,
+        "DOWN": 0.46685714285714286,
+        "FLAT": 0.12685714285714286
+      },
+      "long_opportunity_total_r": 8.408136819997873,
+      "short_opportunity_total_r": -167.29479017000307,
+      "better_side": "LONG",
+      "ema_9_21_baseline_total_r": -11.785537410002393,
+      "ema_9_21_baseline_profit_factor": 0.9942347367270428,
+      "ema_9_21_signal_count": 3500,
+      "warnings": [
+        "no_short_opportunity",
+        "ema_baseline_unprofitable"
+      ]
+    },
+    "regime_trend_down": {
+      "row_count": 3422,
+      "row_ratio": 0.40665478312537134,
+      "actual_counts": {
+        "UP": 1598,
+        "DOWN": 1470,
+        "FLAT": 354
+      },
+      "actual_ratios": {
+        "UP": 0.46697837521917007,
+        "DOWN": 0.429573348918761,
+        "FLAT": 0.10344827586206896
+      },
+      "long_opportunity_total_r": -190.95720788000324,
+      "short_opportunity_total_r": 36.597661229998174,
+      "better_side": "SHORT",
+      "ema_9_21_baseline_total_r": 67.06522652999752,
+      "ema_9_21_baseline_profit_factor": 1.033843695250796,
+      "ema_9_21_signal_count": 3422,
+      "warnings": [
+        "no_long_opportunity"
+      ]
+    },
+    "regime_range": {
+      "row_count": 506,
+      "row_ratio": 0.06013071895424837,
+      "actual_counts": {
+        "UP": 227,
+        "DOWN": 222,
+        "FLAT": 57
+      },
+      "actual_ratios": {
+        "UP": 0.44861660079051385,
+        "DOWN": 0.43873517786561267,
+        "FLAT": 0.11264822134387352
+      },
+      "long_opportunity_total_r": 32.35121636999968,
+      "short_opportunity_total_r": -43.976756450000465,
+      "better_side": "LONG",
+      "ema_9_21_baseline_total_r": -3.3930448300003215,
+      "ema_9_21_baseline_profit_factor": 0.9885723943118802,
+      "ema_9_21_signal_count": 506,
+      "warnings": [
+        "no_short_opportunity",
+        "ema_baseline_unprofitable"
+      ]
+    },
+    "regime_high_volatility": {
+      "row_count": 3569,
+      "row_ratio": 0.4241235888294712,
+      "actual_counts": {
+        "UP": 1622,
+        "DOWN": 1544,
+        "FLAT": 403
+      },
+      "actual_ratios": {
+        "UP": 0.4544690389464836,
+        "DOWN": 0.43261417764079574,
+        "FLAT": 0.11291678341272066
+      },
+      "long_opportunity_total_r": -129.1230663900026,
+      "short_opportunity_total_r": -91.60192344000356,
+      "better_side": "SHORT",
+      "ema_9_21_baseline_total_r": -41.84331957000299,
+      "ema_9_21_baseline_profit_factor": 0.9801320973073104,
+      "ema_9_21_signal_count": 3569,
+      "warnings": [
+        "no_short_opportunity",
+        "no_long_opportunity",
+        "ema_baseline_unprofitable"
+      ]
+    },
+    "regime_low_volatility": {
+      "row_count": 4846,
+      "row_ratio": 0.5758764111705288,
+      "actual_counts": {
+        "UP": 2107,
+        "DOWN": 2186,
+        "FLAT": 553
+      },
+      "actual_ratios": {
+        "UP": 0.4347915806851011,
+        "DOWN": 0.45109368551382584,
+        "FLAT": 0.11411473380107305
+      },
+      "long_opportunity_total_r": 7.313698179996534,
+      "short_opportunity_total_r": -142.6488525200044,
+      "better_side": "LONG",
+      "ema_9_21_baseline_total_r": 178.58973764999516,
+      "ema_9_21_baseline_profit_factor": 1.0644511112873074,
+      "ema_9_21_signal_count": 4846,
+      "warnings": [
+        "no_short_opportunity"
+      ]
+    },
+    "regime_volatility_expanding": {
+      "row_count": 3659,
+      "row_ratio": 0.4348187759952466,
+      "actual_counts": {
+        "UP": 1563,
+        "DOWN": 1689,
+        "FLAT": 407
+      },
+      "actual_ratios": {
+        "UP": 0.4271658923203061,
+        "DOWN": 0.4616015304728068,
+        "FLAT": 0.11123257720688713
+      },
+      "long_opportunity_total_r": -244.91481243000325,
+      "short_opportunity_total_r": 7.1759738899970005,
+      "better_side": "SHORT",
+      "ema_9_21_baseline_total_r": -7.934892020003327,
+      "ema_9_21_baseline_profit_factor": 0.9963184410911429,
+      "ema_9_21_signal_count": 3659,
+      "warnings": [
+        "no_long_opportunity",
+        "ema_baseline_unprofitable"
+      ]
+    },
+    "regime_volatility_contracting": {
+      "row_count": 4756,
+      "row_ratio": 0.5651812240047535,
+      "actual_counts": {
+        "UP": 2166,
+        "DOWN": 2041,
+        "FLAT": 549
+      },
+      "actual_ratios": {
+        "UP": 0.4554247266610597,
+        "DOWN": 0.4291421362489487,
+        "FLAT": 0.11543313708999159
+      },
+      "long_opportunity_total_r": 123.10544421999592,
+      "short_opportunity_total_r": -241.4267498499907,
+      "better_side": "LONG",
+      "ema_9_21_baseline_total_r": 144.68131009999522,
+      "ema_9_21_baseline_profit_factor": 1.0531583929593369,
+      "ema_9_21_signal_count": 4756,
+      "warnings": [
+        "no_short_opportunity"
+      ]
+    },
+    "ema_stack_bullish": {
+      "row_count": 2244,
+      "row_ratio": 0.26666666666666666,
+      "actual_counts": {
+        "UP": 888,
+        "DOWN": 1082,
+        "FLAT": 274
+      },
+      "actual_ratios": {
+        "UP": 0.39572192513368987,
+        "DOWN": 0.482174688057041,
+        "FLAT": 0.12210338680926916
+      },
+      "long_opportunity_total_r": -116.38057306000206,
+      "short_opportunity_total_r": 13.218078439998491,
+      "better_side": "SHORT",
+      "ema_9_21_baseline_total_r": -116.38057306000206,
+      "ema_9_21_baseline_profit_factor": 0.9144008910955597,
+      "ema_9_21_signal_count": 2244,
+      "warnings": [
+        "no_long_opportunity",
+        "ema_baseline_unprofitable"
+      ]
+    },
+    "ema_stack_bearish": {
+      "row_count": 2393,
+      "row_ratio": 0.2843731431966726,
+      "actual_counts": {
+        "UP": 1109,
+        "DOWN": 1040,
+        "FLAT": 244
+      },
+      "actual_ratios": {
+        "UP": 0.4634350188048475,
+        "DOWN": 0.43460091934809864,
+        "FLAT": 0.10196406184705391
+      },
+      "long_opportunity_total_r": -224.91362159000244,
+      "short_opportunity_total_r": 76.44558643999821,
+      "better_side": "SHORT",
+      "ema_9_21_baseline_total_r": 76.44558643999821,
+      "ema_9_21_baseline_profit_factor": 1.0555806913777133,
+      "ema_9_21_signal_count": 2393,
+      "warnings": [
+        "no_long_opportunity"
+      ]
+    },
+    "close_above_ema_200": {
+      "row_count": 4186,
+      "row_ratio": 0.4974450386215092,
+      "actual_counts": {
+        "UP": 1753,
+        "DOWN": 1935,
+        "FLAT": 498
+      },
+      "actual_ratios": {
+        "UP": 0.4187768752986144,
+        "DOWN": 0.46225513616817965,
+        "FLAT": 0.11896798853320592
+      },
+      "long_opportunity_total_r": -27.500626430002868,
+      "short_opportunity_total_r": -212.7541584599985,
+      "better_side": "LONG",
+      "ema_9_21_baseline_total_r": -151.50698714000356,
+      "ema_9_21_baseline_profit_factor": 0.939725900364688,
+      "ema_9_21_signal_count": 4186,
+      "warnings": [
+        "no_short_opportunity",
+        "no_long_opportunity",
+        "ema_baseline_unprofitable"
+      ]
+    },
+    "close_below_ema_200": {
+      "row_count": 4229,
+      "row_ratio": 0.5025549613784908,
+      "actual_counts": {
+        "UP": 1976,
+        "DOWN": 1795,
+        "FLAT": 458
+      },
+      "actual_ratios": {
+        "UP": 0.46724994088436983,
+        "DOWN": 0.42445022463939464,
+        "FLAT": 0.10829983447623552
+      },
+      "long_opportunity_total_r": -94.30874178000337,
+      "short_opportunity_total_r": -21.496617500003154,
+      "better_side": "SHORT",
+      "ema_9_21_baseline_total_r": 288.2534052200029,
+      "ema_9_21_baseline_profit_factor": 1.1219667788539498,
+      "ema_9_21_signal_count": 4229,
+      "warnings": [
+        "no_short_opportunity",
+        "no_long_opportunity"
+      ]
+    }
+  },
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "feature_version": "fv2_regime",
+  "label_version": "lv_h16_thr03_tp15_sl10",
+  "take_profit_atr": 1.5,
+  "stop_loss_atr": 1.0,
+  "fee_r": 0.02,
+  "slippage_r": 0.01,
+  "same_candle_policy": "conservative"
+}

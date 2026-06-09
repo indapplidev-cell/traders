@@ -1,0 +1,390 @@
+{
+  "model_version": "ema_meta_mlp_v1_2026_06_09_050110",
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "feature_version": "fv2_regime",
+  "label_version": "meta_ema_9_21_tp15_sl10",
+  "threshold_grid": [
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7
+  ],
+  "folds": [
+    {
+      "fold_index": 1,
+      "train_start": "2025-01-03T04:15:00+00:00",
+      "train_end": "2025-02-17T04:15:00+00:00",
+      "validation_start": "2025-02-17T04:15:00+00:00",
+      "validation_end": "2025-02-27T04:15:00+00:00",
+      "test_start": "2025-02-27T04:15:00+00:00",
+      "test_end": "2025-03-09T04:15:00+00:00",
+      "train_rows": 3842,
+      "validation_rows": 852,
+      "test_rows": 847,
+      "selected_gate": {
+        "gate_type": "prob_win",
+        "threshold": 0.55
+      },
+      "validation_gate_results": [
+        {
+          "signal_count": 55,
+          "long_count": 49,
+          "short_count": 6,
+          "total_r": -6.6499999999999995,
+          "global_profit_factor": 0.8155339805825236,
+          "expectancy_r": -0.1209090909090909,
+          "win_rate": 0.36363636363636365,
+          "max_drawdown_r": 21.340000000000003,
+          "avg_r_per_trade": -0.1209090909090909,
+          "threshold": 0.5
+        },
+        {
+          "signal_count": 8,
+          "long_count": 8,
+          "short_count": 0,
+          "total_r": -3.24,
+          "global_profit_factor": 0.4757281553398058,
+          "expectancy_r": -0.405,
+          "win_rate": 0.25,
+          "max_drawdown_r": 6.18,
+          "avg_r_per_trade": -0.405,
+          "threshold": 0.55
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.6
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.65
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.7
+        }
+      ],
+      "test_result": {
+        "signal_count": 44,
+        "long_count": 44,
+        "short_count": 0,
+        "total_r": 27.17999999999997,
+        "global_profit_factor": 2.7592233009708735,
+        "expectancy_r": 0.6177272727272721,
+        "win_rate": 0.6590909090909091,
+        "max_drawdown_r": 10.300000000000011,
+        "avg_r_per_trade": 0.6177272727272721,
+        "threshold": 0.55
+      }
+    },
+    {
+      "fold_index": 2,
+      "train_start": "2025-01-03T04:15:00+00:00",
+      "train_end": "2025-02-27T04:15:00+00:00",
+      "validation_start": "2025-02-27T04:15:00+00:00",
+      "validation_end": "2025-03-09T04:15:00+00:00",
+      "test_start": "2025-03-09T04:15:00+00:00",
+      "test_end": "2025-03-19T04:15:00+00:00",
+      "train_rows": 4694,
+      "validation_rows": 847,
+      "test_rows": 872,
+      "selected_gate": {
+        "gate_type": "prob_win",
+        "threshold": 0.5
+      },
+      "validation_gate_results": [
+        {
+          "signal_count": 143,
+          "long_count": 125,
+          "short_count": 18,
+          "total_r": 57.70999999999988,
+          "global_profit_factor": 1.9185102657965913,
+          "expectancy_r": 0.40356643356643274,
+          "win_rate": 0.5734265734265734,
+          "max_drawdown_r": 27.52000000000004,
+          "avg_r_per_trade": 0.40356643356643274,
+          "threshold": 0.5
+        },
+        {
+          "signal_count": 44,
+          "long_count": 44,
+          "short_count": 0,
+          "total_r": 27.17999999999997,
+          "global_profit_factor": 2.7592233009708735,
+          "expectancy_r": 0.6177272727272721,
+          "win_rate": 0.6590909090909091,
+          "max_drawdown_r": 10.300000000000011,
+          "avg_r_per_trade": 0.6177272727272721,
+          "threshold": 0.55
+        },
+        {
+          "signal_count": 1,
+          "long_count": 1,
+          "short_count": 0,
+          "total_r": -1.03,
+          "global_profit_factor": 0.0,
+          "expectancy_r": -1.03,
+          "win_rate": 0.0,
+          "max_drawdown_r": 1.03,
+          "avg_r_per_trade": -1.03,
+          "threshold": 0.6
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.65
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.7
+        }
+      ],
+      "test_result": {
+        "signal_count": 136,
+        "long_count": 131,
+        "short_count": 5,
+        "total_r": 44.91999999999992,
+        "global_profit_factor": 1.7034137175070443,
+        "expectancy_r": 0.33029411764705824,
+        "win_rate": 0.5441176470588235,
+        "max_drawdown_r": 19.279999999999994,
+        "avg_r_per_trade": 0.33029411764705824,
+        "threshold": 0.5
+      }
+    },
+    {
+      "fold_index": 3,
+      "train_start": "2025-01-03T04:15:00+00:00",
+      "train_end": "2025-03-09T04:15:00+00:00",
+      "validation_start": "2025-03-09T04:15:00+00:00",
+      "validation_end": "2025-03-19T04:15:00+00:00",
+      "test_start": "2025-03-19T04:15:00+00:00",
+      "test_end": "2025-03-29T04:15:00+00:00",
+      "train_rows": 5541,
+      "validation_rows": 872,
+      "test_rows": 864,
+      "selected_gate": {
+        "gate_type": "prob_win",
+        "threshold": 0.5
+      },
+      "validation_gate_results": [
+        {
+          "signal_count": 136,
+          "long_count": 131,
+          "short_count": 5,
+          "total_r": 44.91999999999992,
+          "global_profit_factor": 1.7034137175070443,
+          "expectancy_r": 0.33029411764705824,
+          "win_rate": 0.5441176470588235,
+          "max_drawdown_r": 19.279999999999994,
+          "avg_r_per_trade": 0.33029411764705824,
+          "threshold": 0.5
+        },
+        {
+          "signal_count": 21,
+          "long_count": 21,
+          "short_count": 0,
+          "total_r": 23.369999999999997,
+          "global_profit_factor": 8.563106796116504,
+          "expectancy_r": 1.1128571428571428,
+          "win_rate": 0.8571428571428571,
+          "max_drawdown_r": 3.09,
+          "avg_r_per_trade": 1.1128571428571428,
+          "threshold": 0.55
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.6
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.65
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.7
+        }
+      ],
+      "test_result": {
+        "signal_count": 43,
+        "long_count": 43,
+        "short_count": 0,
+        "total_r": -11.790000000000004,
+        "global_profit_factor": 0.6184466019417473,
+        "expectancy_r": -0.27418604651162803,
+        "win_rate": 0.3023255813953488,
+        "max_drawdown_r": 11.790000000000004,
+        "avg_r_per_trade": -0.27418604651162803,
+        "threshold": 0.5
+      }
+    },
+    {
+      "fold_index": 4,
+      "train_start": "2025-01-03T04:15:00+00:00",
+      "train_end": "2025-03-19T04:15:00+00:00",
+      "validation_start": "2025-03-19T04:15:00+00:00",
+      "validation_end": "2025-03-29T04:15:00+00:00",
+      "test_start": "2025-03-29T04:15:00+00:00",
+      "test_end": "2025-04-08T04:15:00+00:00",
+      "train_rows": 6413,
+      "validation_rows": 864,
+      "test_rows": 244,
+      "selected_gate": {
+        "gate_type": "prob_win",
+        "threshold": 0.5
+      },
+      "validation_gate_results": [
+        {
+          "signal_count": 43,
+          "long_count": 43,
+          "short_count": 0,
+          "total_r": -11.790000000000004,
+          "global_profit_factor": 0.6184466019417473,
+          "expectancy_r": -0.27418604651162803,
+          "win_rate": 0.3023255813953488,
+          "max_drawdown_r": 11.790000000000004,
+          "avg_r_per_trade": -0.27418604651162803,
+          "threshold": 0.5
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.55
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.6
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.65
+        },
+        {
+          "signal_count": 0,
+          "long_count": 0,
+          "short_count": 0,
+          "total_r": 0,
+          "global_profit_factor": null,
+          "expectancy_r": null,
+          "win_rate": null,
+          "max_drawdown_r": 0.0,
+          "avg_r_per_trade": null,
+          "threshold": 0.7
+        }
+      ],
+      "test_result": {
+        "signal_count": 22,
+        "long_count": 22,
+        "short_count": 0,
+        "total_r": -0.16000000000000392,
+        "global_profit_factor": 0.9880507841672894,
+        "expectancy_r": -0.0072727272727274505,
+        "win_rate": 0.4090909090909091,
+        "max_drawdown_r": 7.950000000000003,
+        "avg_r_per_trade": -0.0072727272727274505,
+        "threshold": 0.5
+      }
+    }
+  ],
+  "summary": {
+    "fold_count": 4,
+    "folds_with_selected_gate": 4,
+    "signal_count": 245,
+    "total_test_signal_count": 245,
+    "total_r": 60.149999999999885,
+    "global_total_r": 60.149999999999885,
+    "global_profit_factor": 6.0334728033472675,
+    "expectancy_r": 0.24551020408163218,
+    "global_expectancy_r": 0.24551020408163218,
+    "profitable_fold_ratio": 0.5,
+    "long_total_count": 240,
+    "short_total_count": 5
+  }
+}

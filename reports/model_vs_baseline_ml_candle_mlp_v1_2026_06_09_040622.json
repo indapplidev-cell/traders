@@ -1,0 +1,25 @@
+{
+  "model_version": "ml_candle_mlp_v1_2026_06_09_040622",
+  "feature_version": "fv2_regime",
+  "label_version": "lv_h16_thr03_tp10_sl10",
+  "model_global_total_r": -19.904769280000192,
+  "model_global_profit_factor": 0.9286089339121714,
+  "model_global_expectancy_r": -0.043460194934498236,
+  "model_signal_count": 458,
+  "model_long_count": 36,
+  "model_short_count": 422,
+  "dominant_class_ratio": 0.4822916666666667,
+  "baseline_name": "ema_9_21_direction",
+  "baseline_global_total_r": 129.6027191899973,
+  "baseline_global_profit_factor": 1.0723524923111214,
+  "baseline_expectancy_r": 0.041340580283890684,
+  "model_beats_baseline_by_total_r": false,
+  "model_beats_baseline_by_profit_factor": false,
+  "model_has_both_directions": true,
+  "recommendation_allowed": false,
+  "reject_reasons": [
+    "model_total_r_not_above_baseline",
+    "model_profit_factor_not_above_baseline",
+    "model_expectancy_not_positive"
+  ]
+}

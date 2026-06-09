@@ -1,0 +1,23 @@
+{
+  "meta_training_skipped": false,
+  "model_version": "ema_meta_mlp_v1_2026_06_09_050110",
+  "artifact_path": "D:\\disk_E\\game_projects\\traders\\traders-ml\\artifacts\\models\\ema_meta_mlp_v1_2026_06_09_050110",
+  "test_metrics": {
+    "accuracy": 0.5376439094543457,
+    "precision": 0.3561643835616438,
+    "recall": 0.05189620758483034,
+    "brier_score": 0.25537633895874023,
+    "rows": 1129
+  },
+  "dataset_summary": {
+    "dataset_rows": 7521,
+    "positive_class_ratio": 0.41896024464831805,
+    "negative_class_ratio": 0.581039755351682,
+    "long_rows": 3776,
+    "short_rows": 3745,
+    "excluded_no_trade": 522,
+    "excluded_ambiguous": 0,
+    "excluded_no_exit": 381,
+    "meta_dataset_valid": true
+  }
+}

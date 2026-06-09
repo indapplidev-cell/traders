@@ -1,0 +1,18 @@
+{
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "feature_version": "fv2_regime",
+  "label_version": "meta_ema_9_21_tp15_sl10",
+  "dataset_rows": 7521,
+  "positive_class_ratio": 0.41896024464831805,
+  "negative_class_ratio": 0.581039755351682,
+  "long_rows": 3776,
+  "short_rows": 3745,
+  "excluded_no_trade": 522,
+  "excluded_ambiguous": 0,
+  "excluded_no_exit": 381,
+  "meta_dataset_valid": true,
+  "train_rows": 5264,
+  "validation_rows": 1128,
+  "test_rows": 1129
+}

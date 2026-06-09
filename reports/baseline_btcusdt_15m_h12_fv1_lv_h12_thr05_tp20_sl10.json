@@ -1,0 +1,308 @@
+{
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "horizon_candles": 12,
+  "feature_version": "fv1",
+  "label_version": "lv_h12_thr05_tp20_sl10",
+  "train_end": "2025-03-01",
+  "validation_end": "2025-03-16",
+  "dataset_summary": {
+    "symbol": "BTCUSDT",
+    "interval": "15m",
+    "horizon_candles": 12,
+    "feature_version": "fv1",
+    "label_version": "lv_h12_thr05_tp20_sl10",
+    "feature_rows": 8640,
+    "label_rows": 8615,
+    "dataset_rows": 8429,
+    "dropped_incomplete_features": 199,
+    "dropped_missing_labels": 12
+  },
+  "train_rows": 5465,
+  "validation_rows": 1440,
+  "test_rows": 1524,
+  "baselines": {
+    "always_flat": {
+      "validation": {
+        "accuracy": 0.19652777777777777,
+        "precision_up": 0.0,
+        "precision_down": 0.0,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            603
+          ],
+          [
+            0,
+            0,
+            554
+          ],
+          [
+            0,
+            0,
+            283
+          ]
+        ],
+        "brier_score": 1.6069444444444445,
+        "predicted_counts": {
+          "UP": 0,
+          "DOWN": 0,
+          "FLAT": 1440
+        },
+        "actual_counts": {
+          "UP": 603,
+          "DOWN": 554,
+          "FLAT": 283
+        },
+        "rows": 1440
+      },
+      "test": {
+        "accuracy": 0.1942257217847769,
+        "precision_up": 0.0,
+        "precision_down": 0.0,
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            628
+          ],
+          [
+            0,
+            0,
+            600
+          ],
+          [
+            0,
+            0,
+            296
+          ]
+        ],
+        "brier_score": 1.6115485564304461,
+        "predicted_counts": {
+          "UP": 0,
+          "DOWN": 0,
+          "FLAT": 1524
+        },
+        "actual_counts": {
+          "UP": 628,
+          "DOWN": 600,
+          "FLAT": 296
+        },
+        "rows": 1524
+      }
+    },
+    "majority_class": {
+      "majority_class": "DOWN",
+      "validation": {
+        "accuracy": 0.38472222222222224,
+        "precision_up": 0.0,
+        "precision_down": 0.38472222222222224,
+        "confusion_matrix": [
+          [
+            0,
+            603,
+            0
+          ],
+          [
+            0,
+            554,
+            0
+          ],
+          [
+            0,
+            283,
+            0
+          ]
+        ],
+        "brier_score": 1.2305555555555556,
+        "predicted_counts": {
+          "UP": 0,
+          "DOWN": 1440,
+          "FLAT": 0
+        },
+        "actual_counts": {
+          "UP": 603,
+          "DOWN": 554,
+          "FLAT": 283
+        },
+        "rows": 1440
+      },
+      "test": {
+        "accuracy": 0.3937007874015748,
+        "precision_up": 0.0,
+        "precision_down": 0.3937007874015748,
+        "confusion_matrix": [
+          [
+            0,
+            628,
+            0
+          ],
+          [
+            0,
+            600,
+            0
+          ],
+          [
+            0,
+            296,
+            0
+          ]
+        ],
+        "brier_score": 1.2125984251968505,
+        "predicted_counts": {
+          "UP": 0,
+          "DOWN": 1524,
+          "FLAT": 0
+        },
+        "actual_counts": {
+          "UP": 628,
+          "DOWN": 600,
+          "FLAT": 296
+        },
+        "rows": 1524
+      }
+    },
+    "last_return_direction": {
+      "threshold": 0.0005,
+      "validation": {
+        "accuracy": 0.36180555555555555,
+        "precision_up": 0.4170692431561997,
+        "precision_down": 0.3652892561983471,
+        "confusion_matrix": [
+          [
+            259,
+            255,
+            89
+          ],
+          [
+            249,
+            221,
+            84
+          ],
+          [
+            113,
+            129,
+            41
+          ]
+        ],
+        "brier_score": 1.2763888888888888,
+        "predicted_counts": {
+          "UP": 621,
+          "DOWN": 605,
+          "FLAT": 214
+        },
+        "actual_counts": {
+          "UP": 603,
+          "DOWN": 554,
+          "FLAT": 283
+        },
+        "rows": 1440
+      },
+      "test": {
+        "accuracy": 0.33858267716535434,
+        "precision_up": 0.3847487001733102,
+        "precision_down": 0.3859060402684564,
+        "confusion_matrix": [
+          [
+            222,
+            256,
+            150
+          ],
+          [
+            233,
+            230,
+            137
+          ],
+          [
+            122,
+            110,
+            64
+          ]
+        ],
+        "brier_score": 1.3228346456692914,
+        "predicted_counts": {
+          "UP": 577,
+          "DOWN": 596,
+          "FLAT": 351
+        },
+        "actual_counts": {
+          "UP": 628,
+          "DOWN": 600,
+          "FLAT": 296
+        },
+        "rows": 1524
+      }
+    },
+    "simple_ema_trend": {
+      "validation": {
+        "accuracy": 0.3611111111111111,
+        "precision_up": 0.4046875,
+        "precision_down": 0.3784722222222222,
+        "confusion_matrix": [
+          [
+            259,
+            249,
+            95
+          ],
+          [
+            250,
+            218,
+            86
+          ],
+          [
+            131,
+            109,
+            43
+          ]
+        ],
+        "brier_score": 1.2777777777777777,
+        "predicted_counts": {
+          "UP": 640,
+          "DOWN": 576,
+          "FLAT": 224
+        },
+        "actual_counts": {
+          "UP": 603,
+          "DOWN": 554,
+          "FLAT": 283
+        },
+        "rows": 1440
+      },
+      "test": {
+        "accuracy": 0.38320209973753283,
+        "precision_up": 0.43759398496240604,
+        "precision_down": 0.4029605263157895,
+        "confusion_matrix": [
+          [
+            291,
+            242,
+            95
+          ],
+          [
+            247,
+            245,
+            108
+          ],
+          [
+            127,
+            121,
+            48
+          ]
+        ],
+        "brier_score": 1.2335958005249343,
+        "predicted_counts": {
+          "UP": 665,
+          "DOWN": 608,
+          "FLAT": 251
+        },
+        "actual_counts": {
+          "UP": 628,
+          "DOWN": 600,
+          "FLAT": 296
+        },
+        "rows": 1524
+      }
+    }
+  }
+}

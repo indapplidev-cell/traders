@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: traders_ml
+      POSTGRES_USER: traders_ml
+      POSTGRES_PASSWORD: traders_ml
+    ports:
+      - "5433:5432"
+    volumes:
+      - traders_ml_postgres_data:/var/lib/postgresql/data
+
+  traders-ml:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql+psycopg://traders_ml:traders_ml@postgres:5432/traders_ml
+      SERVICE_NAME: traders-ml
+      SERVICE_VERSION: 0.1.0
+    ports:
+      - "8000:8000"
+
+volumes:
+  traders_ml_postgres_data:
