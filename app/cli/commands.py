@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
 
 import typer
 from sqlalchemy import text
@@ -1740,11 +1741,70 @@ def build_gate_policy_smoke_payload() -> dict[str, object]:
     return reporter.report_to_dict(report)
 
 
+def export_gate_policy_smoke_report(
+    output_path: str | Path = Path("reports/gate_policy_smoke_report.json"),
+) -> dict[str, object]:
+    """Сохранить демонстрационный GatePolicy-отчёт в JSON-файл."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_smoke_payload()
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "total": payload["total"],
+        "allowed_total": payload["allowed_total"],
+        "blocked_total": payload["blocked_total"],
+    }
+
+
+    diagnostics = GatePolicyDiagnosticsService()
+    reporter = GatePolicyReporter()
+
+    report = diagnostics.build_report(signals)
+
+    return reporter.report_to_dict(report)
+
+
 @cli.command("gate-policy-smoke")
 def gate_policy_smoke() -> None:
     """Показать демонстрационный GatePolicy-отчёт в JSON."""
 
     payload = build_gate_policy_smoke_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-export")
+def gate_policy_export(
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_smoke_report.json"),
+        "--output-path",
+        help="Путь для сохранения GatePolicy smoke-отчёта.",
+    ),
+) -> None:
+    """Сохранить демонстрационный GatePolicy-отчёт в JSON-файл."""
+
+    payload = export_gate_policy_smoke_report(output_path)
 
     typer.echo(
         json.dumps(
