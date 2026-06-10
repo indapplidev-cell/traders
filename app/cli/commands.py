@@ -1982,6 +1982,41 @@ def build_gate_policy_prediction_runtime_shape_summary_payload(
     return reporter.summary_to_dict(report)
 
 
+def export_gate_policy_prediction_runtime_shape_summary_report(
+    root_path: str | Path = Path("."),
+    output_path: str | Path = Path("reports/gate_policy_prediction_runtime_shape_summary.json"),
+) -> dict[str, object]:
+    """Сохранить compact GatePolicy prediction runtime shape summary в JSON-файл."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_prediction_runtime_shape_summary_payload(root_path)
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "root_path": payload["root_path"],
+        "total_targets": payload["total_targets"],
+        "existing_targets": payload["existing_targets"],
+        "missing_targets": payload["missing_targets"],
+        "files_with_runtime_shape_signals": payload["files_with_runtime_shape_signals"],
+        "unique_class_count": len(payload["unique_class_names"]),
+        "unique_function_count": len(payload["unique_function_names"]),
+        "unique_keyword_count": len(payload["unique_keywords"]),
+    }
+
+
 @cli.command("gate-policy-prediction-runtime-shape-summary")
 def gate_policy_prediction_runtime_shape_summary(
     root_path: Path = typer.Option(
@@ -1993,6 +2028,36 @@ def gate_policy_prediction_runtime_shape_summary(
     """Показать compact summary GatePolicy prediction runtime shape discovery в JSON."""
 
     payload = build_gate_policy_prediction_runtime_shape_summary_payload(root_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-prediction-runtime-shape-export")
+def gate_policy_prediction_runtime_shape_export(
+    root_path: Path = typer.Option(
+        Path("."),
+        "--root-path",
+        help="Корневой путь проекта для prediction runtime shape discovery.",
+    ),
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_prediction_runtime_shape_summary.json"),
+        "--output-path",
+        help="Путь для сохранения compact GatePolicy prediction runtime shape summary.",
+    ),
+) -> None:
+    """Сохранить compact GatePolicy prediction runtime shape summary в JSON-файл."""
+
+    payload = export_gate_policy_prediction_runtime_shape_summary_report(
+        root_path=root_path,
+        output_path=output_path,
+    )
 
     typer.echo(
         json.dumps(
