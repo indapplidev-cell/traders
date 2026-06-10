@@ -43,6 +43,13 @@ from app.gates.gate_policy_adapter_reporter import GatePolicyAdapterReporter
 from app.gates.gate_policy_prediction_contract_reporter import (
     GatePolicyPredictionContractReporter,
 )
+from app.gates.gate_policy_prediction_discovery import (
+    GatePolicyPredictionDiscoveryService,
+)
+from app.gates.gate_policy_prediction_discovery_reporter import (
+    GatePolicyPredictionDiscoveryReporter,
+)
+
 
 cli = typer.Typer(help="traders-ml service CLI.")
 
@@ -1909,6 +1916,41 @@ def export_gate_policy_prediction_contract_report(
         "direction_alias_count": payload["direction_alias_count"],
         "known_regime_count": payload["known_regime_count"],
     }
+
+
+def build_gate_policy_prediction_discovery_summary_payload(
+    root_path: str | Path = Path("."),
+) -> dict[str, object]:
+    """Собрать compact summary для GatePolicy prediction discovery."""
+
+    discovery = GatePolicyPredictionDiscoveryService()
+    reporter = GatePolicyPredictionDiscoveryReporter()
+
+    report = discovery.discover(root_path)
+
+    return reporter.summary_to_dict(report)
+
+
+@cli.command("gate-policy-prediction-discovery-summary")
+def gate_policy_prediction_discovery_summary(
+    root_path: Path = typer.Option(
+        Path("."),
+        "--root-path",
+        help="Корневой путь проекта для prediction discovery.",
+    ),
+) -> None:
+    """Показать compact summary GatePolicy prediction discovery в JSON."""
+
+    payload = build_gate_policy_prediction_discovery_summary_payload(root_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 @cli.command("gate-policy-prediction-contract-preview")
