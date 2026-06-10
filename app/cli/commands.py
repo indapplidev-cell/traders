@@ -49,6 +49,12 @@ from app.gates.gate_policy_prediction_discovery import (
 from app.gates.gate_policy_prediction_discovery_reporter import (
     GatePolicyPredictionDiscoveryReporter,
 )
+from app.gates.gate_policy_prediction_runtime_shape import (
+    GatePolicyPredictionRuntimeShapeDiscoveryService,
+)
+from app.gates.gate_policy_prediction_runtime_shape_reporter import (
+    GatePolicyPredictionRuntimeShapeReporter,
+)
 
 
 cli = typer.Typer(help="traders-ml service CLI.")
@@ -1961,6 +1967,41 @@ def export_gate_policy_prediction_discovery_summary_report(
         "unique_name_keyword_count": len(payload["unique_name_keywords"]),
         "unique_content_keyword_count": len(payload["unique_content_keywords"]),
     }
+
+
+def build_gate_policy_prediction_runtime_shape_summary_payload(
+    root_path: str | Path = Path("."),
+) -> dict[str, object]:
+    """Собрать compact summary для GatePolicy prediction runtime shape discovery."""
+
+    discovery = GatePolicyPredictionRuntimeShapeDiscoveryService()
+    reporter = GatePolicyPredictionRuntimeShapeReporter()
+
+    report = discovery.discover(root_path)
+
+    return reporter.summary_to_dict(report)
+
+
+@cli.command("gate-policy-prediction-runtime-shape-summary")
+def gate_policy_prediction_runtime_shape_summary(
+    root_path: Path = typer.Option(
+        Path("."),
+        "--root-path",
+        help="Корневой путь проекта для prediction runtime shape discovery.",
+    ),
+) -> None:
+    """Показать compact summary GatePolicy prediction runtime shape discovery в JSON."""
+
+    payload = build_gate_policy_prediction_runtime_shape_summary_payload(root_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 @cli.command("gate-policy-prediction-discovery-summary")
