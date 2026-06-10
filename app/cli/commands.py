@@ -55,6 +55,9 @@ from app.gates.gate_policy_prediction_runtime_shape import (
 from app.gates.gate_policy_prediction_runtime_shape_reporter import (
     GatePolicyPredictionRuntimeShapeReporter,
 )
+from app.gates.gate_policy_prediction_mapping_plan_reporter import (
+    GatePolicyPredictionMappingPlanReporter,
+)
 
 
 cli = typer.Typer(help="traders-ml service CLI.")
@@ -2015,6 +2018,30 @@ def export_gate_policy_prediction_runtime_shape_summary_report(
         "unique_function_count": len(payload["unique_function_names"]),
         "unique_keyword_count": len(payload["unique_keywords"]),
     }
+
+
+def build_gate_policy_prediction_mapping_plan_preview_payload() -> dict[str, object]:
+    """Собрать compact preview для GatePolicy prediction mapping plan."""
+
+    reporter = GatePolicyPredictionMappingPlanReporter()
+
+    return reporter.summary_to_dict()
+
+
+@cli.command("gate-policy-prediction-mapping-plan-preview")
+def gate_policy_prediction_mapping_plan_preview() -> None:
+    """Показать compact preview GatePolicy prediction mapping plan в JSON."""
+
+    payload = build_gate_policy_prediction_mapping_plan_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 @cli.command("gate-policy-prediction-runtime-shape-summary")
