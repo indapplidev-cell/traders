@@ -197,3 +197,4 @@ def test_mapping_plan_reporter_supports_compact_summary_json() -> None:
 
     assert payload["name"] == "gate_policy_prediction_payload_mapping"
     assert payload["direction_outputs"] == ["LONG", "SHORT", "FLAT", "NONE"]
+
