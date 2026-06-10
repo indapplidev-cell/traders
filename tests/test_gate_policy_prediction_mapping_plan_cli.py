@@ -119,3 +119,48 @@ def test_gate_policy_prediction_mapping_plan_preview_cli_outputs_json() -> None:
     assert "all_target_fields" not in payload
 
     assert payload["integration_status"]["runtime_adapter_implemented"] is False
+
+
+def test_gate_policy_prediction_mapping_plan_preview_has_consistent_optional_fields() -> None:
+    payload = build_gate_policy_prediction_mapping_plan_preview_payload()
+
+    assert payload["optional_target_count"] == len(payload["optional_target_fields"])
+
+    assert payload["optional_target_fields"] == [
+        "risk_score",
+        "expected_move_atr",
+        "model_version",
+        "symbol",
+        "interval",
+    ]
+
+    assert "expected_move_atr" in payload["optional_target_fields"]
+    assert "model_version" in payload["optional_target_fields"]
+
+
+def test_gate_policy_prediction_mapping_plan_preview_cli_has_consistent_optional_fields() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        cli,
+        [
+            "gate-policy-prediction-mapping-plan-preview",
+        ],
+    )
+
+    assert result.exit_code == 0
+
+    payload = json.loads(result.stdout)
+
+    assert payload["optional_target_count"] == len(payload["optional_target_fields"])
+
+    assert payload["optional_target_fields"] == [
+        "risk_score",
+        "expected_move_atr",
+        "model_version",
+        "symbol",
+        "interval",
+    ]
+
+    assert "expected_move_atr" in payload["optional_target_fields"]
+    assert "model_version" in payload["optional_target_fields"]

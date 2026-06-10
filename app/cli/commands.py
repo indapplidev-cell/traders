@@ -2024,8 +2024,17 @@ def build_gate_policy_prediction_mapping_plan_preview_payload() -> dict[str, obj
     """Собрать compact preview для GatePolicy prediction mapping plan."""
 
     reporter = GatePolicyPredictionMappingPlanReporter()
+    payload = reporter.summary_to_dict()
 
-    return reporter.summary_to_dict()
+    optional_target_fields = payload["optional_target_fields"]
+
+    if payload["optional_target_count"] != len(optional_target_fields):
+        raise ValueError(
+            "Invalid GatePolicy prediction mapping preview: "
+            "optional_target_count does not match optional_target_fields length."
+        )
+
+    return payload
 
 
 @cli.command("gate-policy-prediction-mapping-plan-preview")

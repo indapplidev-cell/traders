@@ -53,18 +53,22 @@ class GatePolicyPredictionMappingPlanReporter:
 
         payload = self.plan_to_dict(plan)
 
+        required_target_fields = list(payload["required_target_fields"])
+        optional_target_fields = list(payload["optional_target_fields"])
+        all_source_fields = list(payload["all_source_fields"])
+
         return {
             "name": payload["name"],
             "version": payload["version"],
-            "required_target_count": payload["required_target_count"],
-            "optional_target_count": payload["optional_target_count"],
-            "all_target_count": payload["all_target_count"],
-            "all_source_count": payload["all_source_count"],
+            "required_target_count": len(required_target_fields),
+            "optional_target_count": len(optional_target_fields),
+            "all_target_count": len(required_target_fields) + len(optional_target_fields),
+            "all_source_count": len(all_source_fields),
             "mapping_rule_count": payload["mapping_rule_count"],
             "direction_rule_count": payload["direction_rule_count"],
-            "required_target_fields": payload["required_target_fields"],
-            "optional_target_fields": payload["optional_target_fields"],
-            "all_source_fields": payload["all_source_fields"],
+            "required_target_fields": required_target_fields,
+            "optional_target_fields": optional_target_fields,
+            "all_source_fields": all_source_fields,
             "direction_outputs": [
                 rule["output_direction"]
                 for rule in payload["direction_rules"]
