@@ -1931,6 +1931,38 @@ def build_gate_policy_prediction_discovery_summary_payload(
     return reporter.summary_to_dict(report)
 
 
+def export_gate_policy_prediction_discovery_summary_report(
+    root_path: str | Path = Path("."),
+    output_path: str | Path = Path("reports/gate_policy_prediction_discovery_summary.json"),
+) -> dict[str, object]:
+    """Сохранить compact GatePolicy prediction discovery summary в JSON-файл."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_prediction_discovery_summary_payload(root_path)
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "root_path": payload["root_path"],
+        "total_files": payload["total_files"],
+        "files_with_content_matches": payload["files_with_content_matches"],
+        "unique_name_keyword_count": len(payload["unique_name_keywords"]),
+        "unique_content_keyword_count": len(payload["unique_content_keywords"]),
+    }
+
+
 @cli.command("gate-policy-prediction-discovery-summary")
 def gate_policy_prediction_discovery_summary(
     root_path: Path = typer.Option(
@@ -1942,6 +1974,36 @@ def gate_policy_prediction_discovery_summary(
     """Показать compact summary GatePolicy prediction discovery в JSON."""
 
     payload = build_gate_policy_prediction_discovery_summary_payload(root_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-prediction-discovery-export")
+def gate_policy_prediction_discovery_export(
+    root_path: Path = typer.Option(
+        Path("."),
+        "--root-path",
+        help="Корневой путь проекта для prediction discovery.",
+    ),
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_prediction_discovery_summary.json"),
+        "--output-path",
+        help="Путь для сохранения compact GatePolicy prediction discovery summary.",
+    ),
+) -> None:
+    """Сохранить compact GatePolicy prediction discovery summary в JSON-файл."""
+
+    payload = export_gate_policy_prediction_discovery_summary_report(
+        root_path=root_path,
+        output_path=output_path,
+    )
 
     typer.echo(
         json.dumps(
