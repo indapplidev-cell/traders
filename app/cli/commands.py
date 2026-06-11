@@ -23,6 +23,8 @@ from app.db.session import get_session
 from app.diagnostics.diagnostics_service import DiagnosticsService
 from app.experiments.experiment_reporter import ExperimentReporter
 from app.experiments.label_grid_search import LabelGridSearchService
+from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
+from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
 from app.features.feature_pipeline import FeaturePipeline
 from app.labels.label_config import LabelConfig
 from app.registry.artifact_storage import ArtifactStorage
@@ -2246,11 +2248,184 @@ def export_gate_policy_runtime_binding_summary_report(
     }
 
 
+def build_gate_policy_replay_evaluate_preview_payload() -> dict[str, object]:
+    """Build a compact preview for GatePolicy replay evaluation."""
+
+    payloads = [
+        {
+            "timestamp": "2026-06-11T12:00:00Z",
+            "symbol": "BTCUSDT",
+            "interval": "15m",
+            "model_version": "sample_model_v1",
+            "prob_up": 0.61,
+            "prob_down": 0.21,
+            "prob_flat": 0.18,
+            "confidence": 0.72,
+            "tp_before_sl_probability": 0.64,
+            "risk_score": 0.31,
+            "expected_move_atr": 1.45,
+            "regime": "trend_up",
+        },
+        {
+            "timestamp": "2026-06-11T12:15:00Z",
+            "symbol": "BTCUSDT",
+            "interval": "15m",
+            "model_version": "sample_model_v1",
+            "prob_up": 0.15,
+            "prob_down": 0.67,
+            "prob_flat": 0.18,
+            "confidence": 0.67,
+            "tp_before_sl_probability": 0.63,
+            "risk_score": 0.25,
+            "expected_move_atr": 1.20,
+            "regime": "trend_down",
+        },
+        {
+            "timestamp": "2026-06-11T12:30:00Z",
+            "symbol": "BTCUSDT",
+            "interval": "15m",
+            "model_version": "sample_model_v1",
+            "prob_up": 0.20,
+            "prob_down": 0.18,
+            "prob_flat": 0.62,
+            "confidence": 0.62,
+            "tp_before_sl_probability": 0.59,
+            "risk_score": 0.20,
+            "expected_move_atr": 0.60,
+            "regime": "trend_up",
+        },
+        {
+            "timestamp": "2026-06-11T12:45:00Z",
+            "symbol": "BTCUSDT",
+            "interval": "15m",
+            "model_version": "sample_model_v1",
+            "prob_up": 0.40,
+            "prob_down": 0.40,
+            "prob_flat": 0.20,
+            "confidence": 0.40,
+            "tp_before_sl_probability": 0.50,
+            "risk_score": 0.40,
+            "expected_move_atr": 0.80,
+            "regime": "trend_up",
+        },
+        {
+            "timestamp": "2026-06-11T13:00:00Z",
+            "symbol": "BTCUSDT",
+            "interval": "15m",
+            "model_version": "sample_model_v1",
+            "prob_up": 0.55,
+            "prob_flat": 0.45,
+            "confidence": 0.55,
+            "tp_before_sl_probability": 0.58,
+            "regime": "trend_up",
+        },
+    ]
+
+    evaluator = GatePolicyReplayEvaluator()
+    reporter = GatePolicyReplayReporter()
+
+    summary = evaluator.evaluate(payloads)
+
+    return reporter.compact_summary_to_dict(summary)
+
+
+def export_gate_policy_replay_evaluation_summary_report(
+    output_path: str | Path = Path("reports/gate_policy_replay_evaluation_summary.json"),
+) -> dict[str, object]:
+    """Export GatePolicy replay evaluation compact summary."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_replay_evaluate_preview_payload()
+    export_payload = {
+        **payload,
+        "runtime_binding_used": payload["integration_status"]["runtime_binding_used"],
+        "gate_policy_used": payload["integration_status"]["gate_policy_used"],
+        "prediction_service_required": payload["integration_status"][
+            "prediction_service_required"
+        ],
+        "database_connected": payload["integration_status"]["database_connected"],
+        "database_writes": payload["integration_status"]["database_writes"],
+        "traders_core_connected": payload["integration_status"][
+            "traders_core_connected"
+        ],
+        "live_trading_connected": payload["integration_status"][
+            "live_trading_connected"
+        ],
+        "orders_enabled": payload["integration_status"]["orders_enabled"],
+    }
+
+    path.write_text(
+        json.dumps(
+            export_payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "evaluator_name": payload["evaluator_name"],
+        "evaluator_version": payload["evaluator_version"],
+        "total_records": payload["total_records"],
+        "valid_records": payload["valid_records"],
+        "invalid_records": payload["invalid_records"],
+        "gate_policy_allowed_count": payload["gate_policy_allowed_count"],
+        "gate_policy_blocked_count": payload["gate_policy_blocked_count"],
+        "orders_enabled": export_payload["orders_enabled"],
+        "live_trading_connected": export_payload["live_trading_connected"],
+        "traders_core_connected": export_payload["traders_core_connected"],
+        "database_writes": export_payload["database_writes"],
+    }
+
+
 @cli.command("gate-policy-runtime-binding-preview")
 def gate_policy_runtime_binding_preview() -> None:
     """Show PredictionService to GatePolicy runtime binding preview JSON."""
 
     payload = build_gate_policy_runtime_binding_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-replay-evaluate-preview")
+def gate_policy_replay_evaluate_preview() -> None:
+    """Show GatePolicy replay evaluation compact preview JSON."""
+
+    payload = build_gate_policy_replay_evaluate_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-replay-evaluate-export")
+def gate_policy_replay_evaluate_export(
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_replay_evaluation_summary.json"),
+        "--output-path",
+        help="Path for GatePolicy replay evaluation compact summary export.",
+    ),
+) -> None:
+    """Export GatePolicy replay evaluation compact summary JSON."""
+
+    payload = export_gate_policy_replay_evaluation_summary_report(output_path)
 
     typer.echo(
         json.dumps(
