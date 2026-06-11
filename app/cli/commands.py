@@ -69,6 +69,7 @@ from app.gates.gate_policy_prediction_runtime_binding_reporter import (
 from app.gates.gate_policy_prediction_runtime_adapter_contract_reporter import (
     GatePolicyPredictionRuntimeAdapterContractReporter,
 )
+from app.audit.final_readiness_reporter import FinalReadinessReporter
 
 
 cli = typer.Typer(help="traders-ml service CLI.")
@@ -2383,6 +2384,49 @@ def export_gate_policy_replay_evaluation_summary_report(
     }
 
 
+def build_final_readiness_audit_preview_payload() -> dict[str, object]:
+    """Build a compact preview for the final standalone readiness audit."""
+
+    reporter = FinalReadinessReporter()
+    return reporter.build_compact_summary()
+
+
+def export_final_readiness_audit_report(
+    output_path: str | Path = Path("reports/final_standalone_readiness_audit.json"),
+) -> dict[str, object]:
+    """Export the full standalone readiness audit report."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    reporter = FinalReadinessReporter()
+    full_report = reporter.build_full_report()
+    compact_summary = reporter.build_compact_summary()
+
+    path.write_text(
+        reporter.full_report_to_json(),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "audit_name": full_report["audit_name"],
+        "audit_version": full_report["audit_version"],
+        "readiness_status": full_report["status"],
+        "ready_component_count": compact_summary["ready_component_count"],
+        "needs_attention_component_count": compact_summary[
+            "needs_attention_component_count"
+        ],
+        "standalone_ml_service_ready": compact_summary[
+            "standalone_ml_service_ready"
+        ],
+        "traders_core_connected": compact_summary["traders_core_connected"],
+        "live_trading_connected": compact_summary["live_trading_connected"],
+        "orders_enabled": compact_summary["orders_enabled"],
+    }
+
+
 @cli.command("gate-policy-runtime-binding-preview")
 def gate_policy_runtime_binding_preview() -> None:
     """Show PredictionService to GatePolicy runtime binding preview JSON."""
@@ -2426,6 +2470,44 @@ def gate_policy_replay_evaluate_export(
     """Export GatePolicy replay evaluation compact summary JSON."""
 
     payload = export_gate_policy_replay_evaluation_summary_report(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("final-readiness-audit-preview")
+def final_readiness_audit_preview() -> None:
+    """Show the final standalone readiness audit compact summary JSON."""
+
+    payload = build_final_readiness_audit_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("final-readiness-audit-export")
+def final_readiness_audit_export(
+    output_path: Path = typer.Option(
+        Path("reports/final_standalone_readiness_audit.json"),
+        "--output-path",
+        help="Path for final standalone readiness audit export.",
+    ),
+) -> None:
+    """Export the full final standalone readiness audit JSON."""
+
+    payload = export_final_readiness_audit_report(output_path)
 
     typer.echo(
         json.dumps(
