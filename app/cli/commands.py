@@ -2133,6 +2133,67 @@ def build_gate_policy_runtime_adapter_contract_preview_payload() -> dict[str, ob
     return payload
 
 
+def export_gate_policy_runtime_adapter_contract_summary_report(
+    output_path: str | Path = Path("reports/gate_policy_runtime_adapter_contract_summary.json"),
+) -> dict[str, object]:
+    """Сохранить compact GatePolicy runtime adapter contract summary в JSON-файл."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_runtime_adapter_contract_preview_payload()
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "contract_name": payload["contract_name"],
+        "contract_version": payload["contract_version"],
+        "required_numeric_count": payload["required_numeric_count"],
+        "required_context_count": payload["required_context_count"],
+        "optional_numeric_count": payload["optional_numeric_count"],
+        "traceability_count": payload["traceability_count"],
+        "future_gate_policy_target_count": payload[
+            "future_gate_policy_target_count"
+        ],
+        "runtime_adapter_implemented": payload["runtime_adapter_implemented"],
+    }
+
+
+
+@cli.command("gate-policy-runtime-adapter-contract-export")
+def gate_policy_runtime_adapter_contract_export(
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_runtime_adapter_contract_summary.json"),
+        "--output-path",
+        help="Путь для сохранения compact GatePolicy runtime adapter contract summary.",
+    ),
+) -> None:
+    """Сохранить compact GatePolicy runtime adapter contract summary в JSON-файл."""
+
+    payload = export_gate_policy_runtime_adapter_contract_summary_report(
+        output_path=output_path,
+    )
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
 @cli.command("gate-policy-runtime-adapter-contract-preview")
 def gate_policy_runtime_adapter_contract_preview() -> None:
     """Показать compact preview GatePolicy runtime adapter contract в JSON."""
