@@ -37,6 +37,11 @@ from app.prediction.predictor import Predictor
 from app.replay.historical_replay_engine import HistoricalReplayEngine
 from app.replay.replay_service import ReplayService
 from app.training.training_service import TrainingService
+from app.training.training_pipeline_reporter import TrainingPipelineReporter
+from app.training.training_pipeline_runner import (
+    LongHistoryTrainingPipelineRunner,
+    TrainingPipelineConfig,
+)
 from app.gates.gate_policy_diagnostics import GatePolicyDiagnosticsService
 from app.gates.gate_policy_models import GatePolicyInput
 from app.gates.gate_policy_reporter import GatePolicyReporter
@@ -2542,6 +2547,39 @@ def export_model_quality_validation_report(
     }
 
 
+def run_train_quality_pipeline(
+    *,
+    symbol: str,
+    interval: str,
+    start_date: str,
+    end_date: str | None = None,
+    run_id: str | None = None,
+    dry_run: bool = False,
+    sample_mode: bool = False,
+    run_gate_policy_replay: bool = True,
+    export_report: bool = True,
+    output_dir: Path = Path("reports/training_pipeline_runs"),
+) -> dict[str, object]:
+    """Run the long-history training quality pipeline."""
+
+    config = TrainingPipelineConfig(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        run_id=run_id,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        run_gate_policy_replay=run_gate_policy_replay,
+        export_report=export_report,
+        output_dir=output_dir,
+    )
+    runner = LongHistoryTrainingPipelineRunner()
+    reporter = TrainingPipelineReporter()
+    result = runner.run(config)
+    return reporter.compact_summary_to_dict(result)
+
+
 @cli.command("gate-policy-runtime-binding-preview")
 def gate_policy_runtime_binding_preview() -> None:
     """Show PredictionService to GatePolicy runtime binding preview JSON."""
@@ -2661,6 +2699,54 @@ def model_quality_validation_export(
     """Export deterministic model quality validation JSON."""
 
     payload = export_model_quality_validation_report(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("train-quality-pipeline")
+def train_quality_pipeline_command(
+    symbol: str = typer.Option(..., "--symbol"),
+    interval: str = typer.Option(..., "--interval"),
+    start_date: str = typer.Option(..., "--start-date"),
+    end_date: str | None = typer.Option(None, "--end-date"),
+    run_id: str | None = typer.Option(None, "--run-id"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    sample_mode: bool = typer.Option(False, "--sample-mode"),
+    run_gate_policy_replay: bool = typer.Option(
+        True,
+        "--run-gate-policy-replay/--no-run-gate-policy-replay",
+    ),
+    export_report: bool = typer.Option(
+        True,
+        "--export-report/--no-export-report",
+    ),
+    output_dir: Path = typer.Option(
+        Path("reports/training_pipeline_runs"),
+        "--output-dir",
+        help="Base output directory for training pipeline runtime artifacts.",
+    ),
+) -> None:
+    """Run the long-history training pipeline with logs and reports."""
+
+    payload = run_train_quality_pipeline(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        run_id=run_id,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        run_gate_policy_replay=run_gate_policy_replay,
+        export_report=export_report,
+        output_dir=output_dir,
+    )
 
     typer.echo(
         json.dumps(
