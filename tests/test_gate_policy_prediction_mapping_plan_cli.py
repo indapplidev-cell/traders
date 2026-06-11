@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 
 from typer.testing import CliRunner
 
@@ -164,3 +166,32 @@ def test_gate_policy_prediction_mapping_plan_preview_cli_has_consistent_optional
 
     assert "expected_move_atr" in payload["optional_target_fields"]
     assert "model_version" in payload["optional_target_fields"]
+
+
+def test_gate_policy_prediction_mapping_plan_preview_real_module_command_outputs_consistent_optional_fields() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "app.cli.commands",
+            "gate-policy-prediction-mapping-plan-preview",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    payload = json.loads(result.stdout)
+
+    assert payload["optional_target_count"] == 5
+    assert payload["optional_target_count"] == len(payload["optional_target_fields"])
+
+    assert payload["optional_target_fields"] == [
+        "risk_score",
+        "expected_move_atr",
+        "model_version",
+        "symbol",
+        "interval",
+    ]
+
+    assert payload["integration_status"]["runtime_adapter_implemented"] is False

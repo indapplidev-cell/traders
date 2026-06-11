@@ -2034,6 +2034,21 @@ def build_gate_policy_prediction_mapping_plan_preview_payload() -> dict[str, obj
             "optional_target_count does not match optional_target_fields length."
         )
 
+    expected_optional_target_fields = [
+        "risk_score",
+        "expected_move_atr",
+        "model_version",
+        "symbol",
+        "interval",
+    ]
+
+    if optional_target_fields != expected_optional_target_fields:
+        raise ValueError(
+            "Invalid GatePolicy prediction mapping preview: "
+            f"optional_target_fields must be {expected_optional_target_fields}, "
+            f"got {optional_target_fields}."
+        )
+
     return payload
 
 
