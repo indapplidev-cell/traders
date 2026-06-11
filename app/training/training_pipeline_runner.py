@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -10,6 +10,15 @@ from sqlalchemy import text
 
 from app import __version__
 from app.config.settings import get_settings
+from app.data.binance_client import BinanceClient
+from app.data.candle_gap_checker import CandleGapChecker
+from app.data.historical_loader import HistoricalLoader
+from app.dataset.dataset_builder import DatasetBuilder
+from app.db.repositories.candle_repository import CandleRepository
+from app.db.repositories.feature_repository import FeatureRepository
+from app.db.repositories.label_repository import LabelRepository
+from app.db.repositories.model_registry_repository import ModelRegistryRepository
+from app.db.repositories.training_run_repository import TrainingRunRepository
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
 from app.evaluation.model_quality_reporter import ModelQualityReporter
@@ -17,7 +26,14 @@ from app.evaluation.model_quality_validator import (
     INSUFFICIENT_REAL_HISTORY,
     validate_model_quality,
 )
+from app.diagnostics.diagnostics_service import DiagnosticsService
 from app.db.session import get_session
+from app.features.feature_pipeline import FeaturePipeline
+from app.labels.label_builder import LabelBuilder
+from app.labels.label_config import LabelConfig
+from app.registry.artifact_storage import ArtifactStorage
+from app.registry.model_registry import ModelRegistry
+from app.training.training_service import TrainingService
 from app.training.training_pipeline_logger import TrainingPipelineLogger
 from app.training.training_pipeline_reporter import TrainingPipelineReporter
 
@@ -144,6 +160,22 @@ class TrainingPipelineResult:
 
 
 class LongHistoryTrainingPipelineRunner:
+    DEFAULT_FEATURE_VERSION = "fv1"
+    DEFAULT_LABEL_VERSION = "lv1"
+    DEFAULT_MODEL_NAME = "candle_mlp"
+    DEFAULT_DIRECTION_ATR_THRESHOLD = 0.5
+    DEFAULT_TAKE_PROFIT_ATR = 1.5
+    DEFAULT_STOP_LOSS_ATR = 1.0
+    DEFAULT_FEE_R = 0.02
+    DEFAULT_SLIPPAGE_R = 0.01
+    DEFAULT_SAME_CANDLE_POLICY = "conservative"
+    DEFAULT_WALK_FORWARD_MODE = "expanding"
+    DEFAULT_WALK_FORWARD_TRAIN_DAYS = 45
+    DEFAULT_WALK_FORWARD_VALIDATION_DAYS = 10
+    DEFAULT_WALK_FORWARD_TEST_DAYS = 10
+    DEFAULT_WALK_FORWARD_STEP_DAYS = 10
+    DEFAULT_WALK_FORWARD_MIN_TRAIN_ROWS = 1000
+
     STAGES = (
         "health_check",
         "db_check",
@@ -520,9 +552,20 @@ class LongHistoryTrainingPipelineRunner:
         return {
             "health_check": self._health_check_real,
             "db_check": self._db_check_real,
+            "load_candles": self._load_candles_real,
+            "check_candle_gaps": self._check_candle_gaps_real,
+            "build_features": self._build_features_real,
+            "build_labels": self._build_labels_real,
+            "build_dataset": self._build_dataset_real,
+            "train_model": self._train_model_real,
+            "probability_diagnostics": self._probability_diagnostics_real,
+            "baseline_compare": self._baseline_compare_real,
+            "calibration_diagnostics": self._calibration_diagnostics_real,
+            "profit_aware_evaluation": self._profit_aware_evaluation_real,
+            "walk_forward_evaluation": self._walk_forward_evaluation_real,
             "gate_policy_replay_evaluation": self._gate_policy_replay_sample,
-            "model_quality_validation": self._quality_validation_real_fallback,
-        }.get(stage, self._real_stage_not_available(stage))
+            "model_quality_validation": self._quality_validation_real,
+        }.get(stage, self._real_stage_not_available(stage, reason="missing_real_stage_handler"))
 
     def _dry_run_stage_handler(
         self,
@@ -652,6 +695,370 @@ class LongHistoryTrainingPipelineRunner:
             "status": COMPLETED,
             "message": "Database check completed",
             "data": {"db_check": "ok"},
+        }
+
+    def _load_candles_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        start_at, end_at = self._build_utc_date_range(
+            self._parse_date(config.start_date),
+            self._parse_date(config.resolved_end_date()),
+        )
+        with get_session() as session:
+            repository = CandleRepository(session)
+            loader = HistoricalLoader(client=BinanceClient(), repository=repository)
+            result = loader.load_range(
+                symbol=config.symbol,
+                interval=config.interval,
+                start_at=start_at,
+                end_at=end_at,
+            )
+        return {
+            "status": COMPLETED,
+            "message": "Historical candles loaded",
+            "data": dict(result),
+        }
+
+    def _check_candle_gaps_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        start_at, end_at = self._build_utc_date_range(
+            self._parse_date(config.start_date),
+            self._parse_date(config.resolved_end_date()),
+        )
+        checker = CandleGapChecker()
+        with get_session() as session:
+            repository = CandleRepository(session)
+            candles = repository.get_range(
+                symbol=config.symbol,
+                interval=config.interval,
+                start_at=start_at,
+                end_at=end_at,
+            )
+        result = checker.check(
+            candles=candles,
+            interval=config.interval,
+            start_at=start_at,
+            end_at=end_at,
+            symbol=config.symbol,
+        )
+        return {
+            "status": COMPLETED,
+            "message": "Candle gap check completed",
+            "data": dict(result),
+        }
+
+    def _build_features_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        feature_version = self.DEFAULT_FEATURE_VERSION
+        with get_session() as session:
+            candle_repository = CandleRepository(session)
+            feature_repository = FeatureRepository(session)
+            pipeline = FeaturePipeline(
+                candle_repository=candle_repository,
+                feature_repository=feature_repository,
+            )
+            result = pipeline.build_and_store(
+                symbol=config.symbol,
+                interval=config.interval,
+                feature_version=feature_version,
+            )
+        return {
+            "status": COMPLETED,
+            "message": "Features built",
+            "data": dict(result),
+        }
+
+    def _build_labels_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        label_version = self.DEFAULT_LABEL_VERSION
+        horizon_candles = self._resolve_horizon_from_label_version(label_version)
+        label_config = LabelConfig(
+            label_version=label_version,
+            horizon_candles=horizon_candles,
+            direction_atr_threshold=self.DEFAULT_DIRECTION_ATR_THRESHOLD,
+            take_profit_atr=self.DEFAULT_TAKE_PROFIT_ATR,
+            stop_loss_atr=self.DEFAULT_STOP_LOSS_ATR,
+            flat_class_enabled=True,
+        )
+        with get_session() as session:
+            candle_repository = CandleRepository(session)
+            label_repository = LabelRepository(session)
+            candles = candle_repository.get_all(symbol=config.symbol, interval=config.interval)
+            builder = LabelBuilder()
+            records = builder.build(
+                candles=candles,
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=horizon_candles,
+                label_version=label_version,
+                config=label_config,
+            )
+            inserted_or_updated = label_repository.upsert_many(
+                [record.to_dict() for record in records]
+            )
+            label_counts = builder.summarize(records)
+        return {
+            "status": COMPLETED,
+            "message": "Labels built",
+            "data": {
+                "symbol": config.symbol,
+                "interval": config.interval,
+                "horizon_candles": horizon_candles,
+                "label_version": label_version,
+                "candles_used": len(candles),
+                "built": len(records),
+                "inserted_or_updated": inserted_or_updated,
+                "direction_counts": label_counts,
+                "direction_atr_threshold": self.DEFAULT_DIRECTION_ATR_THRESHOLD,
+                "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
+                "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
+                "flat_class_enabled": True,
+                "first_open_time": records[0].candle_open_time.isoformat() if records else None,
+                "last_open_time": records[-1].candle_open_time.isoformat() if records else None,
+            },
+        }
+
+    def _build_dataset_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        feature_version = self.DEFAULT_FEATURE_VERSION
+        label_version = self.DEFAULT_LABEL_VERSION
+        horizon_candles = self._resolve_horizon_from_label_version(label_version)
+        with get_session() as session:
+            feature_repository = FeatureRepository(session)
+            label_repository = LabelRepository(session)
+            builder = DatasetBuilder(
+                feature_repository=feature_repository,
+                label_repository=label_repository,
+            )
+            result = builder.build(
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=horizon_candles,
+                feature_version=feature_version,
+                label_version=label_version,
+            )
+        return {
+            "status": COMPLETED,
+            "message": "Dataset built",
+            "data": dict(result),
+        }
+
+    def _train_model_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        feature_version = self.DEFAULT_FEATURE_VERSION
+        label_version = self.DEFAULT_LABEL_VERSION
+        horizon_candles = self._resolve_horizon_from_label_version(label_version)
+        dataset_summary = dict(stage_payloads.get("build_dataset", {}))
+        with get_session() as session:
+            feature_repository = FeatureRepository(session)
+            label_repository = LabelRepository(session)
+            dataset_builder = DatasetBuilder(
+                feature_repository=feature_repository,
+                label_repository=label_repository,
+            )
+            artifact_storage = ArtifactStorage()
+            model_registry_repository = ModelRegistryRepository(session)
+            training_run_repository = TrainingRunRepository(session)
+            model_registry = ModelRegistry(
+                repository=model_registry_repository,
+                artifact_storage=artifact_storage,
+            )
+            service = TrainingService(
+                dataset_builder=dataset_builder,
+                model_registry=model_registry,
+                training_run_repository=training_run_repository,
+                artifact_storage=artifact_storage,
+            )
+            result = service.train(
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=horizon_candles,
+                feature_version=feature_version,
+                label_version=label_version,
+                model_name=self.DEFAULT_MODEL_NAME,
+            )
+        test_metrics = dict(result.get("test_metrics", {}))
+        return {
+            "status": COMPLETED,
+            "message": "Model training completed",
+            "data": {
+                **dict(result),
+                "training_run_id": result.get("run_id"),
+                "model_accuracy": test_metrics.get("accuracy"),
+                "dataset_summary": dataset_summary,
+                "dataset_rows": int(dataset_summary.get("dataset_rows", 0)),
+                "train_rows": int(dataset_summary.get("train_rows", 0)),
+                "validation_rows": int(dataset_summary.get("validation_rows", 0)),
+                "val_rows": int(dataset_summary.get("validation_rows", 0)),
+                "test_rows": int(dataset_summary.get("test_rows", 0)),
+                "feature_version": feature_version,
+                "label_version": label_version,
+                "horizon_candles": horizon_candles,
+                "sample_mode": False,
+                "real_training_executed": True,
+            },
+        }
+
+    def _probability_diagnostics_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        model_version = self._require_model_version(stage_payloads, "probability_diagnostics")
+        result = self._with_diagnostics_service(
+            lambda service: service.probability_report(
+                model_version=model_version,
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
+                feature_version=self.DEFAULT_FEATURE_VERSION,
+                label_version=self.DEFAULT_LABEL_VERSION,
+            )
+        )
+        collapse_v2 = result.get("collapse_v2", {})
+        payload = dict(result)
+        payload["collapse_detected"] = bool(collapse_v2.get("collapse_detected", False))
+        return {
+            "status": COMPLETED,
+            "message": "Probability diagnostics generated",
+            "data": payload,
+        }
+
+    def _baseline_compare_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        result = self._with_diagnostics_service(
+            lambda service: service.compare_models(
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
+                feature_version=self.DEFAULT_FEATURE_VERSION,
+                label_version=self.DEFAULT_LABEL_VERSION,
+            )
+        )
+        payload = dict(result)
+        payload["baseline_accuracy"] = self._extract_baseline_accuracy(result)
+        return {
+            "status": COMPLETED,
+            "message": "Baseline comparison generated",
+            "data": payload,
+        }
+
+    def _calibration_diagnostics_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        model_version = self._require_model_version(stage_payloads, "calibration_diagnostics")
+        result = self._with_diagnostics_service(
+            lambda service: service.calibration_report(
+                model_version=model_version,
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
+                feature_version=self.DEFAULT_FEATURE_VERSION,
+                label_version=self.DEFAULT_LABEL_VERSION,
+            )
+        )
+        return {
+            "status": COMPLETED,
+            "message": "Calibration diagnostics generated",
+            "data": dict(result),
+        }
+
+    def _profit_aware_evaluation_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        model_version = self._require_model_version(stage_payloads, "profit_aware_evaluation")
+        result = self._with_diagnostics_service(
+            lambda service: service.profit_report_v2(
+                model_version=model_version,
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
+                feature_version=self.DEFAULT_FEATURE_VERSION,
+                label_version=self.DEFAULT_LABEL_VERSION,
+                take_profit_atr=self.DEFAULT_TAKE_PROFIT_ATR,
+                stop_loss_atr=self.DEFAULT_STOP_LOSS_ATR,
+                fee_r=self.DEFAULT_FEE_R,
+                slippage_r=self.DEFAULT_SLIPPAGE_R,
+                same_candle_policy=self.DEFAULT_SAME_CANDLE_POLICY,
+            )
+        )
+        payload = dict(result)
+        self._merge_summary_fields(
+            payload,
+            summary_keys=("total_r", "profit_factor", "signal_count", "same_candle_policy"),
+        )
+        return {
+            "status": COMPLETED,
+            "message": "Profit-aware evaluation generated",
+            "data": payload,
+        }
+
+    def _walk_forward_evaluation_real(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, Any],
+    ) -> dict[str, Any]:
+        model_version = self._require_model_version(stage_payloads, "walk_forward_evaluation")
+        result = self._with_diagnostics_service(
+            lambda service: service.walk_forward_eval(
+                model_version=model_version,
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
+                feature_version=self.DEFAULT_FEATURE_VERSION,
+                label_version=self.DEFAULT_LABEL_VERSION,
+                mode=self.DEFAULT_WALK_FORWARD_MODE,
+                train_days=self.DEFAULT_WALK_FORWARD_TRAIN_DAYS,
+                validation_days=self.DEFAULT_WALK_FORWARD_VALIDATION_DAYS,
+                test_days=self.DEFAULT_WALK_FORWARD_TEST_DAYS,
+                step_days=self.DEFAULT_WALK_FORWARD_STEP_DAYS,
+                min_train_rows=self.DEFAULT_WALK_FORWARD_MIN_TRAIN_ROWS,
+                take_profit_atr=self.DEFAULT_TAKE_PROFIT_ATR,
+                stop_loss_atr=self.DEFAULT_STOP_LOSS_ATR,
+                fee_r=self.DEFAULT_FEE_R,
+                slippage_r=self.DEFAULT_SLIPPAGE_R,
+                same_candle_policy=self.DEFAULT_SAME_CANDLE_POLICY,
+            )
+        )
+        payload = dict(result)
+        self._merge_summary_fields(
+            payload,
+            summary_keys=(
+                "fold_count",
+                "profitable_fold_ratio",
+                "global_total_r",
+                "global_profit_factor",
+                "total_test_signal_count",
+            ),
+        )
+        return {
+            "status": COMPLETED,
+            "message": "Walk-forward evaluation generated",
+            "data": payload,
         }
 
     def _gate_policy_replay_sample(
@@ -791,7 +1198,7 @@ class LongHistoryTrainingPipelineRunner:
             "data": payload,
         }
 
-    def _quality_validation_real_fallback(
+    def _quality_validation_real(
         self,
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
@@ -808,7 +1215,7 @@ class LongHistoryTrainingPipelineRunner:
         payload = ModelQualityReporter().build_full_quality_report(result)
         return {
             "status": COMPLETED,
-            "message": "Model quality validation completed with available diagnostics",
+            "message": "Model quality validation completed",
             "data": payload,
         }
 
@@ -840,6 +1247,8 @@ class LongHistoryTrainingPipelineRunner:
     def _real_stage_not_available(
         self,
         stage: str,
+        *,
+        reason: str,
     ) -> Callable[[TrainingPipelineConfig, dict[str, Any]], dict[str, Any]]:
         def handler(
             config: TrainingPipelineConfig,
@@ -847,9 +1256,9 @@ class LongHistoryTrainingPipelineRunner:
         ) -> dict[str, Any]:
             return {
                 "status": SKIPPED_NOT_AVAILABLE,
-                "message": f"{stage} requires an explicit long-history execution path outside ML26 unit scope",
+                "message": f"{stage} is not available in the current real-mode wiring",
                 "data": {
-                    "reason": "direct_real_execution_not_wired",
+                    "reason": reason,
                     "symbol": config.symbol,
                     "interval": config.interval,
                     "start_date": config.start_date,
@@ -927,3 +1336,79 @@ class LongHistoryTrainingPipelineRunner:
             "service": settings.service_name,
             "version": __version__,
         }
+
+    @staticmethod
+    def _parse_date(value: str) -> date:
+        try:
+            return date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(f"date must be in YYYY-MM-DD format: {value}") from exc
+
+    @staticmethod
+    def _build_utc_date_range(start_date: date, end_date: date) -> tuple[datetime, datetime]:
+        if end_date < start_date:
+            raise ValueError("end-date must be greater than or equal to start-date")
+        start_at = datetime.combine(start_date, datetime_time.min, tzinfo=timezone.utc)
+        end_at = datetime.combine(end_date, datetime_time.min, tzinfo=timezone.utc) + timedelta(days=1)
+        return start_at, end_at
+
+    @staticmethod
+    def _resolve_horizon_from_label_version(label_version: str) -> int:
+        if "_h" not in label_version:
+            if label_version == "lv1":
+                return 8
+            raise ValueError(f"cannot resolve horizon from label-version: {label_version}")
+        marker = label_version.split("_h", 1)[1]
+        value = marker.split("_", 1)[0]
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f"cannot resolve horizon from label-version: {label_version}") from exc
+
+    def _with_diagnostics_service(self, callback: Callable[[DiagnosticsService], dict[str, Any]]) -> dict[str, Any]:
+        with get_session() as session:
+            feature_repository = FeatureRepository(session)
+            label_repository = LabelRepository(session)
+            candle_repository = CandleRepository(session)
+            model_registry_repository = ModelRegistryRepository(session)
+            dataset_builder = DatasetBuilder(
+                feature_repository=feature_repository,
+                label_repository=label_repository,
+            )
+            service = DiagnosticsService(
+                dataset_builder=dataset_builder,
+                feature_repository=feature_repository,
+                label_repository=label_repository,
+                candle_repository=candle_repository,
+                model_registry_repository=model_registry_repository,
+                artifact_storage=ArtifactStorage(),
+            )
+            return callback(service)
+
+    @staticmethod
+    def _require_model_version(
+        stage_payloads: dict[str, Any],
+        stage_name: str,
+    ) -> str:
+        model_version = str(stage_payloads.get("train_model", {}).get("model_version") or "")
+        if not model_version:
+            raise ValueError(f"{stage_name} requires a completed train_model stage with model_version")
+        return model_version
+
+    @staticmethod
+    def _merge_summary_fields(payload: dict[str, Any], *, summary_keys: tuple[str, ...]) -> None:
+        summary = payload.get("summary")
+        if not isinstance(summary, dict):
+            return
+        for key in summary_keys:
+            if key in summary and key not in payload:
+                payload[key] = summary[key]
+
+    @staticmethod
+    def _extract_baseline_accuracy(payload: dict[str, Any]) -> float | None:
+        best_baseline = payload.get("best_baseline", {})
+        if isinstance(best_baseline, dict):
+            test_metrics = best_baseline.get("test_metrics", {})
+            if isinstance(test_metrics, dict) and test_metrics.get("accuracy") is not None:
+                return float(test_metrics["accuracy"])
+        return None

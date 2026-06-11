@@ -4,6 +4,8 @@ from app.training.training_pipeline_reporter import TrainingPipelineReporter
 from app.training.training_pipeline_runner import (
     LongHistoryTrainingPipelineRunner,
     TrainingPipelineConfig,
+    TrainingPipelineResult,
+    TrainingPipelineStageResult,
 )
 
 
@@ -57,3 +59,59 @@ def test_training_pipeline_reporter_writes_json_and_markdown(tmp_path) -> None:
     assert "no live trading" in text
     assert "no orders" in text
     assert "no traders-core integration" in text
+
+
+def test_training_pipeline_reporter_compact_summary_reports_zero_skips_for_real_result() -> None:
+    reporter = TrainingPipelineReporter()
+    result = TrainingPipelineResult(
+        run_id="real_summary_case",
+        status="COMPLETED",
+        symbol="BTCUSDT",
+        interval="15m",
+        start_date="2025-01-01",
+        end_date="2025-01-10",
+        dry_run=False,
+        sample_mode=False,
+        run_gate_policy_replay=True,
+        export_report=True,
+        started_at="2026-06-11T10:00:00+00:00",
+        ended_at="2026-06-11T10:01:00+00:00",
+        duration_seconds=60.0,
+        stage_results=(
+            TrainingPipelineStageResult(
+                stage="train_model",
+                status="COMPLETED",
+                message="ok",
+                duration_seconds=1.0,
+                started_at="2026-06-11T10:00:00+00:00",
+                ended_at="2026-06-11T10:00:01+00:00",
+                data={"model_version": "ml_test_v1"},
+            ),
+        ),
+        quality_summary={"quality_status": "NEEDS_MORE_DATA"},
+        model_summary={"model_version": "ml_test_v1"},
+        baseline_summary={"baseline_accuracy": 0.45},
+        gate_policy_replay_summary={"gate_policy_replay_status": "SAMPLE_ONLY"},
+        output_dir="reports/training_pipeline_runs/real_summary_case",
+        log_path="reports/training_pipeline_runs/real_summary_case/training_pipeline.log",
+        events_path="reports/training_pipeline_runs/real_summary_case/training_pipeline_events.jsonl",
+        json_report_path="reports/training_pipeline_runs/real_summary_case/training_pipeline_report.json",
+        markdown_report_path="reports/training_pipeline_runs/real_summary_case/training_pipeline_report.md",
+        safety={
+            "approved_for_traders_core_integration": False,
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "traders_core_connected": False,
+            "live_trading_connected": False,
+            "orders_enabled": False,
+        },
+        command_snapshot={"symbol": "BTCUSDT"},
+        next_recommendations=("Keep live trading, orders, and traders-core integration disabled.",),
+    )
+
+    payload = reporter.compact_summary_to_dict(result)
+
+    assert payload["status"] == "COMPLETED"
+    assert payload["completed_stage_count"] == 1
+    assert payload["failed_stage_count"] == 0
+    assert payload["skipped_stage_count"] == 0

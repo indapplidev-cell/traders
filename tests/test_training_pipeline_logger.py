@@ -61,3 +61,12 @@ def test_training_pipeline_logger_human_log_is_readable(tmp_path) -> None:
     assert "[ERROR] [train_model]" in text
     assert "event=stage_started" in text
     assert "event=stage_failed" in text
+
+    payloads = [
+        json.loads(line)
+        for line in logger.paths.events_path.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert payloads[-1]["event"] == "stage_failed"
+    assert payloads[-1]["status"] == "FAILED"
+    assert payloads[-1]["data"]["error"] == "boom"
