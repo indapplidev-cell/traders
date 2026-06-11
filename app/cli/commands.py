@@ -25,6 +25,8 @@ from app.experiments.experiment_reporter import ExperimentReporter
 from app.experiments.label_grid_search import LabelGridSearchService
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
+from app.evaluation.model_quality_reporter import ModelQualityReporter
+from app.evaluation.model_quality_validator import validate_model_quality
 from app.features.feature_pipeline import FeaturePipeline
 from app.labels.label_config import LabelConfig
 from app.registry.artifact_storage import ArtifactStorage
@@ -2427,6 +2429,119 @@ def export_final_readiness_audit_report(
     }
 
 
+def build_model_quality_validation_result_sample():
+    """Build a deterministic sample-only model quality validation result."""
+
+    training_summary = {
+        "model_version": "ml_candle_mlp_sample_v1",
+        "run_id": "sample_training_run_ml25",
+        "dataset_summary": {
+            "dataset_rows": 8433,
+            "train_rows": 5903,
+            "validation_rows": 1265,
+            "test_rows": 1265,
+        },
+        "test_metrics": {
+            "accuracy": 0.3927,
+        },
+        "collapse_detected": False,
+        "sample_mode": True,
+        "real_training_executed": False,
+    }
+    baseline_summary = {
+        "baselines": {
+            "majority_class": {
+                "test": {
+                    "accuracy": 0.3783,
+                }
+            }
+        }
+    }
+    probability_diagnostics = {
+        "total_rows": 1265,
+        "predicted_direction_ratios": {
+            "UP": 0.39,
+            "DOWN": 0.34,
+            "FLAT": 0.27,
+        },
+    }
+    calibration_summary = {
+        "calibration_status": "ACCEPTABLE_SAMPLE",
+        "expected_calibration_error": 0.061,
+        "brier_score": 0.612,
+    }
+    profit_aware_summary = {
+        "profit_aware_status": "NEEDS_MORE_DATA",
+    }
+    walk_forward_summary = {
+        "walk_forward_status": "NEEDS_MORE_DATA",
+        "summary": {
+            "fold_count": 1,
+            "total_test_signal_count": 5,
+        },
+    }
+    gate_policy_replay_summary = {
+        "gate_policy_replay_status": "SAMPLE_ONLY",
+        "total_records": 5,
+        "valid_records": 4,
+        "invalid_records": 1,
+        "gate_policy_allowed_count": 2,
+        "gate_policy_blocked_count": 3,
+    }
+    return validate_model_quality(
+        training_summary=training_summary,
+        baseline_summary=baseline_summary,
+        probability_diagnostics=probability_diagnostics,
+        calibration_summary=calibration_summary,
+        profit_aware_summary=profit_aware_summary,
+        walk_forward_summary=walk_forward_summary,
+        gate_policy_replay_summary=gate_policy_replay_summary,
+    )
+
+
+def build_model_quality_validation_preview_payload() -> dict[str, object]:
+    """Build a deterministic compact model quality validation preview."""
+
+    reporter = ModelQualityReporter()
+    result = build_model_quality_validation_result_sample()
+    return reporter.build_compact_quality_summary(result)
+
+
+def export_model_quality_validation_report(
+    output_path: str | Path = Path("reports/model_quality_validation_report.json"),
+) -> dict[str, object]:
+    """Export the deterministic full model quality validation report."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    reporter = ModelQualityReporter()
+    result = build_model_quality_validation_result_sample()
+    full_report = reporter.build_full_quality_report(result)
+    compact_summary = reporter.build_compact_quality_summary(result)
+
+    path.write_text(
+        reporter.full_report_to_json(result),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "validator_name": full_report["validator_name"],
+        "validator_version": full_report["validator_version"],
+        "quality_status": full_report["quality_status"],
+        "approved_for_traders_core_integration": full_report[
+            "approved_for_traders_core_integration"
+        ],
+        "approved_for_live_trading": full_report["approved_for_live_trading"],
+        "approved_for_auto_activation": full_report[
+            "approved_for_auto_activation"
+        ],
+        "sample_mode": compact_summary["sample_mode"],
+    }
+
+
 @cli.command("gate-policy-runtime-binding-preview")
 def gate_policy_runtime_binding_preview() -> None:
     """Show PredictionService to GatePolicy runtime binding preview JSON."""
@@ -2508,6 +2623,44 @@ def final_readiness_audit_export(
     """Export the full final standalone readiness audit JSON."""
 
     payload = export_final_readiness_audit_report(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("model-quality-validation-preview")
+def model_quality_validation_preview() -> None:
+    """Show deterministic model quality validation preview JSON."""
+
+    payload = build_model_quality_validation_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("model-quality-validation-export")
+def model_quality_validation_export(
+    output_path: Path = typer.Option(
+        Path("reports/model_quality_validation_report.json"),
+        "--output-path",
+        help="Path for model quality validation export.",
+    ),
+) -> None:
+    """Export deterministic model quality validation JSON."""
+
+    payload = export_model_quality_validation_report(output_path)
 
     typer.echo(
         json.dumps(
