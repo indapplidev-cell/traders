@@ -58,6 +58,12 @@ from app.gates.gate_policy_prediction_runtime_shape_reporter import (
 from app.gates.gate_policy_prediction_mapping_plan_reporter import (
     GatePolicyPredictionMappingPlanReporter,
 )
+from app.gates.gate_policy_prediction_runtime_binding import (
+    bind_prediction_payload_to_gate_policy,
+)
+from app.gates.gate_policy_prediction_runtime_binding_reporter import (
+    GatePolicyPredictionRuntimeBindingReporter,
+)
 from app.gates.gate_policy_prediction_runtime_adapter_contract_reporter import (
     GatePolicyPredictionRuntimeAdapterContractReporter,
 )
@@ -2167,6 +2173,115 @@ def export_gate_policy_runtime_adapter_contract_summary_report(
         ],
         "runtime_adapter_implemented": payload["runtime_adapter_implemented"],
     }
+
+
+def build_gate_policy_runtime_binding_preview_payload() -> dict[str, object]:
+    """Build a safe sample runtime binding preview payload."""
+
+    sample_payload = {
+        "prob_up": 0.61,
+        "prob_down": 0.21,
+        "prob_flat": 0.18,
+        "confidence": 0.72,
+        "tp_before_sl_probability": 0.64,
+        "risk_score": 0.31,
+        "expected_move_atr": 1.45,
+        "regime": "trend_up",
+        "model_version": "sample_model_v1",
+        "symbol": "BTCUSDT",
+        "interval": "15m",
+    }
+
+    reporter = GatePolicyPredictionRuntimeBindingReporter()
+    result = bind_prediction_payload_to_gate_policy(sample_payload)
+
+    return reporter.result_to_dict(result)
+
+
+def export_gate_policy_runtime_binding_summary_report(
+    output_path: str | Path = Path("reports/gate_policy_runtime_binding_summary.json"),
+) -> dict[str, object]:
+    """Export runtime binding summary/report JSON."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    reporter = GatePolicyPredictionRuntimeBindingReporter()
+    sample_result = build_gate_policy_runtime_binding_preview_payload()
+    summary = reporter.summary_to_dict()
+    payload = {
+        "binding_name": summary["binding_name"],
+        "binding_version": summary["binding_version"],
+        "summary": summary,
+        "sample_result": sample_result,
+        "sample_direction": sample_result["direction"],
+        "sample_is_valid": sample_result["is_valid"],
+        "database_connected": summary["database_connected"],
+        "traders_core_connected": summary["traders_core_connected"],
+        "live_trading_connected": summary["live_trading_connected"],
+        "orders_enabled": summary["orders_enabled"],
+    }
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "binding_name": payload["binding_name"],
+        "binding_version": payload["binding_version"],
+        "sample_direction": payload["sample_direction"],
+        "sample_is_valid": payload["sample_is_valid"],
+        "database_connected": payload["database_connected"],
+        "traders_core_connected": payload["traders_core_connected"],
+        "live_trading_connected": payload["live_trading_connected"],
+        "orders_enabled": payload["orders_enabled"],
+    }
+
+
+@cli.command("gate-policy-runtime-binding-preview")
+def gate_policy_runtime_binding_preview() -> None:
+    """Show PredictionService to GatePolicy runtime binding preview JSON."""
+
+    payload = build_gate_policy_runtime_binding_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-runtime-binding-export")
+def gate_policy_runtime_binding_export(
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_runtime_binding_summary.json"),
+        "--output-path",
+        help="Path for compact PredictionService to GatePolicy runtime binding export.",
+    ),
+) -> None:
+    """Export PredictionService to GatePolicy runtime binding JSON summary."""
+
+    payload = export_gate_policy_runtime_binding_summary_report(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 
