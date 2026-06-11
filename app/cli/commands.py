@@ -2052,11 +2052,70 @@ def build_gate_policy_prediction_mapping_plan_preview_payload() -> dict[str, obj
     return payload
 
 
+def export_gate_policy_prediction_mapping_plan_summary_report(
+    output_path: str | Path = Path("reports/gate_policy_prediction_mapping_plan_summary.json"),
+) -> dict[str, object]:
+    """Сохранить compact GatePolicy prediction mapping plan summary в JSON-файл."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload = build_gate_policy_prediction_mapping_plan_preview_payload()
+
+    path.write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "name": payload["name"],
+        "version": payload["version"],
+        "required_target_count": payload["required_target_count"],
+        "optional_target_count": payload["optional_target_count"],
+        "all_target_count": payload["all_target_count"],
+        "all_source_count": payload["all_source_count"],
+        "mapping_rule_count": payload["mapping_rule_count"],
+        "direction_rule_count": payload["direction_rule_count"],
+        "runtime_adapter_implemented": payload["integration_status"]["runtime_adapter_implemented"],
+    }
+
+
 @cli.command("gate-policy-prediction-mapping-plan-preview")
 def gate_policy_prediction_mapping_plan_preview() -> None:
     """Показать compact preview GatePolicy prediction mapping plan в JSON."""
 
     payload = build_gate_policy_prediction_mapping_plan_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gate-policy-prediction-mapping-plan-export")
+def gate_policy_prediction_mapping_plan_export(
+    output_path: Path = typer.Option(
+        Path("reports/gate_policy_prediction_mapping_plan_summary.json"),
+        "--output-path",
+        help="Путь для сохранения compact GatePolicy prediction mapping plan summary.",
+    ),
+) -> None:
+    """Сохранить compact GatePolicy prediction mapping plan summary в JSON-файл."""
+
+    payload = export_gate_policy_prediction_mapping_plan_summary_report(
+        output_path=output_path,
+    )
 
     typer.echo(
         json.dumps(
