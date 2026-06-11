@@ -36,6 +36,35 @@ class PredictionRequest(BaseModel):
     context: PredictionContextInput | None = None
 
 
+class GatePolicyApiIssue(BaseModel):
+    field: str
+    code: str
+    message: str
+    severity: str
+
+
+class GatePolicyApiIntegrationStatus(BaseModel):
+    prediction_service_bound: bool
+    runtime_adapter_used: bool
+    gate_policy_service_used: bool
+    database_connected: bool
+    traders_core_connected: bool
+    live_trading_connected: bool
+    orders_enabled: bool
+
+
+class GatePolicyApiBlock(BaseModel):
+    enabled: bool
+    source: str
+    is_valid: bool
+    direction: str
+    gate_policy_payload: dict[str, Any] | None = None
+    gate_policy_decision: dict[str, Any] | None = None
+    issues: list[GatePolicyApiIssue]
+    issue_count: int
+    integration_status: GatePolicyApiIntegrationStatus
+
+
 class PredictionResponse(BaseModel):
     ml_available: bool
     reason: str | None = None
@@ -51,6 +80,7 @@ class PredictionResponse(BaseModel):
     risk_score: float | None = None
     confidence: float | None = None
     model_version: str | None = None
+    gate_policy: GatePolicyApiBlock
 
 
 class ModelSummaryResponse(BaseModel):

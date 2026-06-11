@@ -31,7 +31,104 @@ def test_predict_endpoint_returns_fallback_contract(monkeypatch) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json() == {"ml_available": False, "reason": "not_enough_candles", "symbol": None, "interval": None, "horizon_candles": None, "direction": None, "prob_up": None, "prob_down": None, "prob_flat": None, "tp_before_sl_probability": None, "expected_move_atr": None, "risk_score": None, "confidence": None, "model_version": None}
+    assert response.json() == {
+        "ml_available": False,
+        "reason": "not_enough_candles",
+        "symbol": None,
+        "interval": None,
+        "horizon_candles": None,
+        "direction": None,
+        "prob_up": None,
+        "prob_down": None,
+        "prob_flat": None,
+        "tp_before_sl_probability": None,
+        "expected_move_atr": None,
+        "risk_score": None,
+        "confidence": None,
+        "model_version": None,
+        "gate_policy": {
+            "enabled": True,
+            "source": "ml21_runtime_binding",
+            "is_valid": False,
+            "direction": "NONE",
+            "gate_policy_payload": None,
+            "gate_policy_decision": {
+                "allowed": False,
+                "decision": "BLOCK",
+                "direction": "NONE",
+                "reasons": ["direction_is_not_tradeable"],
+                "regime": "TREND_UP",
+                "thresholds": {
+                    "baseline_profit_factor_margin": 0.05,
+                    "baseline_total_r_margin": 0.0,
+                    "blocked_regimes": [
+                        "range",
+                        "high_volatility",
+                        "low_volatility",
+                        "low_liquidity",
+                        "unknown",
+                    ],
+                    "max_risk_score": 0.65,
+                    "min_confidence": 0.6,
+                    "min_sample_count": 30,
+                    "min_tp_before_sl_probability": 0.55,
+                    "trusted_regimes": [
+                        "trend_up",
+                        "trend_down",
+                        "breakout_setup",
+                    ],
+                },
+            },
+            "issues": [
+                {
+                    "field": "prob_up",
+                    "code": "missing_required_numeric_field",
+                    "message": "Required numeric field is missing: prob_up",
+                    "severity": "error",
+                },
+                {
+                    "field": "prob_down",
+                    "code": "missing_required_numeric_field",
+                    "message": "Required numeric field is missing: prob_down",
+                    "severity": "error",
+                },
+                {
+                    "field": "prob_flat",
+                    "code": "missing_required_numeric_field",
+                    "message": "Required numeric field is missing: prob_flat",
+                    "severity": "error",
+                },
+                {
+                    "field": "confidence",
+                    "code": "missing_required_numeric_field",
+                    "message": "Required numeric field is missing: confidence",
+                    "severity": "error",
+                },
+                {
+                    "field": "tp_before_sl_probability",
+                    "code": "missing_required_numeric_field",
+                    "message": "Required numeric field is missing: tp_before_sl_probability",
+                    "severity": "error",
+                },
+                {
+                    "field": "gate_policy_payload",
+                    "code": "gate_policy_payload_unavailable",
+                    "message": "GatePolicy payload was not created because runtime adapter validation failed.",
+                    "severity": "error",
+                },
+            ],
+            "issue_count": 6,
+            "integration_status": {
+                "prediction_service_bound": True,
+                "runtime_adapter_used": True,
+                "gate_policy_service_used": True,
+                "database_connected": False,
+                "traders_core_connected": False,
+                "live_trading_connected": False,
+                "orders_enabled": False,
+            },
+        },
+    }
 
 
 def test_models_and_replay_endpoints(monkeypatch) -> None:
