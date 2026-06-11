@@ -58,6 +58,9 @@ from app.gates.gate_policy_prediction_runtime_shape_reporter import (
 from app.gates.gate_policy_prediction_mapping_plan_reporter import (
     GatePolicyPredictionMappingPlanReporter,
 )
+from app.gates.gate_policy_prediction_runtime_adapter_contract_reporter import (
+    GatePolicyPredictionRuntimeAdapterContractReporter,
+)
 
 
 cli = typer.Typer(help="traders-ml service CLI.")
@@ -2085,6 +2088,65 @@ def export_gate_policy_prediction_mapping_plan_summary_report(
         "direction_rule_count": payload["direction_rule_count"],
         "runtime_adapter_implemented": payload["integration_status"]["runtime_adapter_implemented"],
     }
+
+
+def build_gate_policy_runtime_adapter_contract_preview_payload() -> dict[str, object]:
+    """Собрать compact preview для GatePolicy prediction runtime adapter contract."""
+
+    reporter = GatePolicyPredictionRuntimeAdapterContractReporter()
+    payload = reporter.summary_to_dict()
+
+    if payload["runtime_adapter_implemented"] is not False:
+        raise ValueError(
+            "Invalid runtime adapter contract preview: "
+            "runtime_adapter_implemented must remain false at Stage ML20.3."
+        )
+
+    expected_required_numeric_fields = [
+        "prob_up",
+        "prob_down",
+        "prob_flat",
+        "confidence",
+        "tp_before_sl_probability",
+    ]
+
+    if payload["required_numeric_fields"] != expected_required_numeric_fields:
+        raise ValueError(
+            "Invalid runtime adapter contract preview: "
+            f"required_numeric_fields must be {expected_required_numeric_fields}, "
+            f"got {payload['required_numeric_fields']}."
+        )
+
+    expected_traceability_fields = [
+        "model_version",
+        "symbol",
+        "interval",
+    ]
+
+    if payload["traceability_fields"] != expected_traceability_fields:
+        raise ValueError(
+            "Invalid runtime adapter contract preview: "
+            f"traceability_fields must be {expected_traceability_fields}, "
+            f"got {payload['traceability_fields']}."
+        )
+
+    return payload
+
+
+@cli.command("gate-policy-runtime-adapter-contract-preview")
+def gate_policy_runtime_adapter_contract_preview() -> None:
+    """Показать compact preview GatePolicy runtime adapter contract в JSON."""
+
+    payload = build_gate_policy_runtime_adapter_contract_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 @cli.command("gate-policy-prediction-mapping-plan-preview")
