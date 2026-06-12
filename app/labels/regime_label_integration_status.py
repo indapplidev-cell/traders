@@ -32,6 +32,9 @@ class RegimeLabelIntegrationStatus:
         return {
             "status_name": self.STATUS_NAME,
             "status_version": self.STATUS_VERSION,
+            "regime_label_builder_status": (
+                "built" if regime_specific_training_applied else "blocked"
+            ),
             "regime_specific_labeling_available": regime_specific_labeling_available,
             "regime_specific_training_applied": regime_specific_training_applied,
             "regime_features_attached": regime_features_attached,

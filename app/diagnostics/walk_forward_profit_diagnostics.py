@@ -16,8 +16,10 @@ class WalkForwardProfitDiagnostics:
         walk_forward_summary: dict[str, Any],
         profit_aware_summary: dict[str, Any],
     ) -> dict[str, Any]:
-        folds = [dict(item) for item in walk_forward_summary.get("folds", [])]
-        walk_summary = dict(walk_forward_summary.get("summary", {}))
+        walk_forward_summary = self._normalize_mapping(walk_forward_summary)
+        profit_aware_summary = self._normalize_mapping(profit_aware_summary)
+        folds = [dict(item) for item in self._normalize_sequence(walk_forward_summary.get("folds"))]
+        walk_summary = self._normalize_mapping(walk_forward_summary.get("summary"))
         fold_count = int(walk_summary.get("fold_count", len(folds)) or 0)
         profitable_fold_count = int(walk_summary.get("folds_profitable_on_test", 0) or 0)
         folds_with_gate = int(walk_summary.get("folds_with_selected_gate", fold_count) or 0)
@@ -87,9 +89,13 @@ class WalkForwardProfitDiagnostics:
         *,
         profit_aware_summary: dict[str, Any],
     ) -> dict[str, Any]:
-        gate_results = [dict(item) for item in profit_aware_summary.get("gate_results", [])]
+        profit_aware_summary = self._normalize_mapping(profit_aware_summary)
+        gate_results = [
+            dict(item)
+            for item in self._normalize_sequence(profit_aware_summary.get("gate_results"))
+        ]
         best_gate = self._best_profit_gate(gate_results)
-        summary = dict(profit_aware_summary.get("summary", {}))
+        summary = self._normalize_mapping(profit_aware_summary.get("summary"))
         profit_factor = self._safe_float(summary.get("profit_factor"))
         total_r = self._safe_float(summary.get("total_r"))
         threshold_used = summary.get("threshold")
@@ -186,6 +192,18 @@ class WalkForwardProfitDiagnostics:
             "profit_factor": self._safe_float(gate.get("profit_factor")),
             "total_r": self._safe_float(gate.get("total_r")),
         }
+
+    @staticmethod
+    def _normalize_mapping(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, dict):
+            return dict(payload)
+        return {}
+
+    @staticmethod
+    def _normalize_sequence(payload: Any) -> list[Any]:
+        if isinstance(payload, (list, tuple)):
+            return list(payload)
+        return []
 
     @staticmethod
     def _safe_float(value: Any) -> float | None:

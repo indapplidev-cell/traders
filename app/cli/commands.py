@@ -3293,6 +3293,8 @@ def analyze_feature_regime_results(
         "experiment_status": summary.get("experiment_status"),
         "config_count": summary.get("config_count"),
         "candidate_count": summary.get("candidate_count"),
+        "evaluated_candidate_count": summary.get("evaluated_candidate_count"),
+        "failed_candidate_count": summary.get("failed_candidate_count"),
         "accepted_candidate_count": summary.get("accepted_candidate_count"),
         "rejected_candidate_count": summary.get("rejected_candidate_count"),
         "best_candidate_config_id": summary.get("best_candidate_config_id"),

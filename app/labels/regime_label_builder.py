@@ -15,6 +15,7 @@ from app.labels.tp_sl_label_builder import TpSlLabelBuilder
 @dataclass(slots=True)
 class RegimeLabelBuilderResult:
     records: list[LabelRecord]
+    regime_label_builder_status: str
     regime_label_builder_available: bool
     regime_label_builder_used_in_training: bool
     regime_specific_labeling_available: bool
@@ -27,6 +28,7 @@ class RegimeLabelBuilderResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "regime_label_builder_status": self.regime_label_builder_status,
             "regime_label_builder_available": self.regime_label_builder_available,
             "regime_label_builder_used_in_training": self.regime_label_builder_used_in_training,
             "regime_specific_labeling_available": self.regime_specific_labeling_available,
@@ -91,6 +93,7 @@ class RegimeLabelBuilder:
         if missing_requirements:
             return RegimeLabelBuilderResult(
                 records=[],
+                regime_label_builder_status="blocked",
                 regime_label_builder_available=bool(configs),
                 regime_label_builder_used_in_training=False,
                 regime_specific_labeling_available=bool(configs),
@@ -201,6 +204,7 @@ class RegimeLabelBuilder:
         used_in_training = bool(records)
         return RegimeLabelBuilderResult(
             records=records,
+            regime_label_builder_status="built" if used_in_training else "blocked",
             regime_label_builder_available=bool(configs),
             regime_label_builder_used_in_training=used_in_training,
             regime_specific_labeling_available=bool(configs),

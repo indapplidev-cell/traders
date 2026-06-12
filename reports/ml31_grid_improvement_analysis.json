@@ -1,0 +1,30 @@
+{
+  "accepted_candidate_improved": false,
+  "analyzer_name": "ml31_grid_improvement_analyzer",
+  "analyzer_version": "ml31",
+  "approved_for_auto_activation": false,
+  "approved_for_live_trading": false,
+  "baseline_edge_improved": false,
+  "collapse_improved": false,
+  "current_accepted_candidate_count": 0,
+  "current_best_candidate_config_id": "cfg_best",
+  "current_best_candidate_score": -6.3,
+  "current_config_count": 3,
+  "current_experiment_id": "exp_ml31",
+  "current_rejected_candidate_count": 3,
+  "gap_quality_improved": false,
+  "orders_enabled": false,
+  "overall_improvement_status": "INSUFFICIENT_COMPARISON_DATA",
+  "previous_best_candidate_score": null,
+  "previous_experiment_id": null,
+  "profit_aware_improved": false,
+  "recommendations": [
+    "Previous baseline summary is unavailable; treat ML31 comparison as degraded.",
+    "No accepted candidate appeared; keep traders-core disconnected.",
+    "Most frequent failing gate in ML31 remains collapse_gate.",
+    "Keep live trading, orders, and auto activation disabled."
+  ],
+  "score_delta": null,
+  "traders_core_connected": false,
+  "walk_forward_improved": false
+}

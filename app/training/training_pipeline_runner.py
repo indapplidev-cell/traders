@@ -851,19 +851,34 @@ class LongHistoryTrainingPipelineRunner:
                 base_config=label_config,
             )
             builder = LabelBuilder()
-            records = regime_builder_result.records or builder.build(
-                candles=candles,
-                symbol=config.symbol,
-                interval=config.interval,
-                horizon_candles=horizon_candles,
-                label_version=label_version,
-                config=label_config,
-            )
+            records = list(regime_builder_result.records)
+            regime_label_builder_status = regime_builder_result.to_dict()
+            if not records:
+                return {
+                    "status": FAILED,
+                    "message": "Runtime regime labels were not built",
+                    "data": {
+                        "symbol": config.symbol,
+                        "interval": config.interval,
+                        "horizon_candles": horizon_candles,
+                        "label_version": label_version,
+                        "candles_used": len(candles),
+                        "built": 0,
+                        "inserted_or_updated": 0,
+                        "direction_counts": {},
+                        "direction_atr_threshold": self.DEFAULT_DIRECTION_ATR_THRESHOLD,
+                        "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
+                        "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
+                        "flat_class_enabled": True,
+                        "regime_label_builder_status": regime_label_builder_status,
+                        "first_open_time": None,
+                        "last_open_time": None,
+                    },
+                }
             inserted_or_updated = label_repository.upsert_many(
                 [record.to_dict() for record in records]
             )
             label_counts = builder.summarize(records)
-        regime_label_builder_status = regime_builder_result.to_dict()
         return {
             "status": COMPLETED,
             "message": "Labels built",

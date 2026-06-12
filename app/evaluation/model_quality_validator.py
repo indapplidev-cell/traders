@@ -46,6 +46,7 @@ class ModelQualityValidationResult:
     reasons: tuple[str, ...]
     warnings: tuple[str, ...]
     integration_status: dict[str, Any]
+    probability_diagnostics: dict[str, Any] = field(default_factory=dict)
     gap_quality: dict[str, Any] = field(default_factory=dict)
     anti_collapse: dict[str, Any] = field(default_factory=dict)
     candidate_selection: dict[str, Any] = field(default_factory=dict)
@@ -84,6 +85,7 @@ class ModelQualityValidationResult:
             "reasons": list(self.reasons),
             "warnings": list(self.warnings),
             "integration_status": dict(self.integration_status),
+            "probability_diagnostics": dict(self.probability_diagnostics),
             "gap_quality": dict(self.gap_quality),
             "anti_collapse": dict(self.anti_collapse),
             "candidate_selection": dict(self.candidate_selection),
@@ -112,13 +114,13 @@ class ModelQualityValidator:
 
     def validate(
         self,
-        training_summary: dict[str, Any],
-        baseline_summary: dict[str, Any],
-        probability_diagnostics: dict[str, Any],
-        calibration_summary: dict[str, Any],
-        profit_aware_summary: dict[str, Any],
-        walk_forward_summary: dict[str, Any],
-        gate_policy_replay_summary: dict[str, Any],
+        training_summary: dict[str, Any] | None,
+        baseline_summary: dict[str, Any] | None,
+        probability_diagnostics: dict[str, Any] | None,
+        calibration_summary: dict[str, Any] | None,
+        profit_aware_summary: dict[str, Any] | None,
+        walk_forward_summary: dict[str, Any] | None,
+        gate_policy_replay_summary: dict[str, Any] | None,
         gap_quality_summary: dict[str, Any] | None = None,
         anti_collapse_summary: dict[str, Any] | None = None,
         candidate_selection_summary: dict[str, Any] | None = None,
@@ -130,6 +132,30 @@ class ModelQualityValidator:
         walk_forward_profit_diagnostics_summary: dict[str, Any] | None = None,
         profit_aware_diagnostics_summary: dict[str, Any] | None = None,
     ) -> ModelQualityValidationResult:
+        probability_diagnostics_was_none = probability_diagnostics is None
+        calibration_summary_was_none = calibration_summary is None
+        profit_aware_summary_was_none = profit_aware_summary is None
+        walk_forward_summary_was_none = walk_forward_summary is None
+        gate_policy_replay_summary_was_none = gate_policy_replay_summary is None
+        training_summary = self._normalize_mapping(training_summary)
+        baseline_summary = self._normalize_mapping(baseline_summary)
+        probability_diagnostics = self._normalize_mapping(probability_diagnostics)
+        calibration_summary = self._normalize_mapping(calibration_summary)
+        profit_aware_summary = self._normalize_mapping(profit_aware_summary)
+        walk_forward_summary = self._normalize_mapping(walk_forward_summary)
+        gate_policy_replay_summary = self._normalize_mapping(gate_policy_replay_summary)
+        profit_aware_summary["gate_results"] = self._normalize_sequence(
+            profit_aware_summary.get("gate_results")
+        )
+        profit_aware_summary["summary"] = self._normalize_mapping(
+            profit_aware_summary.get("summary")
+        )
+        walk_forward_summary["folds"] = self._normalize_sequence(
+            walk_forward_summary.get("folds")
+        )
+        walk_forward_summary["summary"] = self._normalize_mapping(
+            walk_forward_summary.get("summary")
+        )
         model_version = self._extract_str(training_summary, "model_version")
         training_run_id = self._extract_str(training_summary, "training_run_id", "run_id")
         dataset_rows = self._extract_int(
@@ -166,14 +192,14 @@ class ModelQualityValidator:
             if model_accuracy is not None and baseline_accuracy is not None
             else None
         )
-        label_config_summary = dict(label_config_summary or {})
-        feature_config_summary = dict(feature_config_summary or {})
+        label_config_summary = self._normalize_mapping(label_config_summary)
+        feature_config_summary = self._normalize_mapping(feature_config_summary)
         gap_quality = self._normalize_gap_quality(gap_quality_summary or {})
         anti_collapse = self._normalize_anti_collapse(
             anti_collapse_summary=anti_collapse_summary or {},
             probability_diagnostics=probability_diagnostics,
         )
-        collapse_diagnostics_v2 = dict(collapse_diagnostics_v2_summary or {}) or CollapseDiagnosticsV2().analyze(
+        collapse_diagnostics_v2 = self._normalize_mapping(collapse_diagnostics_v2_summary) or CollapseDiagnosticsV2().analyze(
             probability_report=probability_diagnostics,
             symbol=symbol,
             feature_version=str(feature_config_summary.get("feature_version")),
@@ -208,7 +234,7 @@ class ModelQualityValidator:
         )
         walk_forward_profit_helper = WalkForwardProfitDiagnostics()
         walk_forward_profit_diagnostics = (
-            dict(walk_forward_profit_diagnostics_summary or {})
+            self._normalize_mapping(walk_forward_profit_diagnostics_summary)
             or walk_forward_profit_helper.analyze(
                 symbol=symbol,
                 feature_version=str(feature_config_summary.get("feature_version")),
@@ -218,14 +244,14 @@ class ModelQualityValidator:
             )
         )
         profit_aware_diagnostics = (
-            dict(profit_aware_diagnostics_summary or {})
+            self._normalize_mapping(profit_aware_diagnostics_summary)
             or walk_forward_profit_helper.build_profit_aware_diagnostics(
                 profit_aware_summary=profit_aware_summary
             )
         )
-        regime_label_builder_status = (
-            dict(regime_label_builder_status_summary or {})
-            or dict(label_config_summary.get("regime_label_builder_status", {}))
+        regime_label_builder_status = self._normalize_regime_label_builder_status(
+            regime_label_builder_status_summary=regime_label_builder_status_summary,
+            label_config_summary=label_config_summary,
         )
 
         integration_status = {
@@ -244,6 +270,17 @@ class ModelQualityValidator:
         reasons: list[str] = []
         warnings: list[str] = []
 
+        if probability_diagnostics_was_none:
+            warnings.append("probability_diagnostics_not_provided")
+        if calibration_summary_was_none:
+            warnings.append("calibration_summary_not_provided")
+        if profit_aware_summary_was_none:
+            warnings.append("profit_aware_summary_not_provided")
+        if walk_forward_summary_was_none:
+            warnings.append("walk_forward_summary_not_provided")
+        if gate_policy_replay_summary_was_none:
+            warnings.append("gate_policy_replay_summary_not_provided")
+
         if sample_mode:
             warnings.append("sample_mode_true")
         if not real_training_executed:
@@ -257,6 +294,10 @@ class ModelQualityValidator:
             reasons.append("test_rows_missing")
         if model_accuracy is None:
             reasons.append("model_accuracy_missing")
+        if "regime_runtime_labels_not_built" in self._normalize_sequence(
+            regime_label_builder_status.get("missing_requirements")
+        ):
+            reasons.append("regime_runtime_labels_not_built")
 
         if reasons:
             quality_status = INSUFFICIENT_REAL_HISTORY
@@ -296,6 +337,7 @@ class ModelQualityValidator:
                     "profit_aware_negative",
                     "walk_forward_unstable",
                     "gate_policy_replay_degrades_safety",
+                    "regime_runtime_labels_not_built",
                 }
                 for reason in reasons
             ):
@@ -349,7 +391,9 @@ class ModelQualityValidator:
             walk_forward_summary=walk_forward_summary,
             gate_policy_replay_summary=gate_policy_replay_summary,
         )
-        candidate_selection = dict(candidate_selection_summary or {}) or ModelCandidateSelector().select(
+        candidate_selection = self._normalize_candidate_selection(
+            self._normalize_mapping(candidate_selection_summary)
+            or ModelCandidateSelector().select(
             model_version=model_version,
             quality_status=quality_status,
             gap_quality=gap_quality,
@@ -361,6 +405,7 @@ class ModelQualityValidator:
             model_accuracy=model_accuracy,
             baseline_accuracy=baseline_accuracy,
             accuracy_edge=accuracy_edge,
+            )
         )
         approved_for_traders_core_integration = quality_status == QUALITY_APPROVED
 
@@ -390,6 +435,7 @@ class ModelQualityValidator:
             reasons=tuple(dict.fromkeys(reasons)),
             warnings=tuple(dict.fromkeys(warnings)),
             integration_status=integration_status,
+            probability_diagnostics=probability_diagnostics,
             gap_quality=gap_quality,
             anti_collapse=anti_collapse,
             candidate_selection=candidate_selection,
@@ -516,7 +562,7 @@ class ModelQualityValidator:
         if total_r is None and profit_factor is None:
             gate_results = [
                 row
-                for row in profit_aware_summary.get("gate_results", [])
+                for row in self._normalize_sequence(profit_aware_summary.get("gate_results"))
                 if int(row.get("resolved_signal_count", 0) or 0) > 0
             ]
             if gate_results:
@@ -665,8 +711,9 @@ class ModelQualityValidator:
         return float(value)
 
     def _normalize_gap_quality(self, gap_quality_summary: dict[str, Any]) -> dict[str, Any]:
-        if gap_quality_summary:
-            return dict(gap_quality_summary)
+        normalized_gap_quality = self._normalize_mapping(gap_quality_summary)
+        if normalized_gap_quality:
+            return normalized_gap_quality
         return {
             "diagnostic_name": GapQualityDiagnostics.DIAGNOSTIC_NAME,
             "diagnostic_version": GapQualityDiagnostics.DIAGNOSTIC_VERSION,
@@ -690,8 +737,9 @@ class ModelQualityValidator:
         anti_collapse_summary: dict[str, Any],
         probability_diagnostics: dict[str, Any],
     ) -> dict[str, Any]:
-        if anti_collapse_summary:
-            return dict(anti_collapse_summary)
+        normalized_anti_collapse = self._normalize_mapping(anti_collapse_summary)
+        if normalized_anti_collapse:
+            return normalized_anti_collapse
         if probability_diagnostics and (
             probability_diagnostics.get("actual_direction_counts")
             or probability_diagnostics.get("predicted_direction_counts")
@@ -701,10 +749,89 @@ class ModelQualityValidator:
 
     @staticmethod
     def _collapse_reasons(anti_collapse: dict[str, Any]) -> list[str]:
-        reasons = list(anti_collapse.get("reasons", []))
+        reasons = [
+            str(item)
+            for item in ModelQualityValidator._normalize_sequence(
+                anti_collapse.get("reasons")
+            )
+        ]
         if not reasons:
             reasons.append("collapse_detected")
         return reasons
+
+    def _normalize_regime_label_builder_status(
+        self,
+        *,
+        regime_label_builder_status_summary: dict[str, Any] | None,
+        label_config_summary: dict[str, Any],
+    ) -> dict[str, Any]:
+        payload = self._normalize_mapping(regime_label_builder_status_summary) or self._normalize_mapping(
+            label_config_summary.get("regime_label_builder_status")
+        )
+        if payload:
+            payload.setdefault(
+                "regime_label_builder_status",
+                "built"
+                if payload.get("regime_label_builder_used_in_training")
+                else "blocked",
+            )
+            payload["missing_requirements"] = [
+                str(item)
+                for item in self._normalize_sequence(payload.get("missing_requirements"))
+            ]
+            payload["warnings"] = [
+                str(item) for item in self._normalize_sequence(payload.get("warnings"))
+            ]
+            return payload
+        return {
+            "regime_label_builder_status": "blocked",
+            "regime_label_builder_available": False,
+            "regime_label_builder_used_in_training": False,
+            "regime_specific_labeling_available": False,
+            "regime_specific_training_applied": False,
+            "regime_label_config_used": {},
+            "label_distribution_by_regime": {},
+            "missing_requirements": ["regime_label_builder_status_not_provided"],
+            "warnings": [],
+            "reason": "regime_label_builder_status_not_provided",
+        }
+
+    def _normalize_candidate_selection(
+        self,
+        candidate_selection: dict[str, Any],
+    ) -> dict[str, Any]:
+        normalized = dict(candidate_selection)
+        normalized["gates"] = self._normalize_mapping(normalized.get("gates"))
+        normalized["failed_gate_explanations"] = self._normalize_mapping(
+            normalized.get("failed_gate_explanations")
+        )
+        normalized["thresholds"] = self._normalize_mapping(normalized.get("thresholds"))
+        normalized["failed_gates"] = [
+            str(item) for item in self._normalize_sequence(normalized.get("failed_gates"))
+        ]
+        normalized["passed_gates"] = [
+            str(item) for item in self._normalize_sequence(normalized.get("passed_gates"))
+        ]
+        normalized["warnings"] = [
+            str(item) for item in self._normalize_sequence(normalized.get("warnings"))
+        ]
+        normalized["recommendations"] = [
+            str(item)
+            for item in self._normalize_sequence(normalized.get("recommendations"))
+        ]
+        return normalized
+
+    @staticmethod
+    def _normalize_mapping(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, dict):
+            return dict(payload)
+        return {}
+
+    @staticmethod
+    def _normalize_sequence(payload: Any) -> list[Any]:
+        if isinstance(payload, (list, tuple)):
+            return list(payload)
+        return []
 
     @staticmethod
     def _empty_anti_collapse() -> dict[str, Any]:

@@ -82,6 +82,7 @@ class FeatureRegimeCandidateResult:
     status: str
     quality_status: str | None
     candidate_status: str | None
+    raw_candidate_status: str | None
     score: float | None
     failed_gates: tuple[str, ...] = ()
     passed_gates: tuple[str, ...] = ()
@@ -90,10 +91,18 @@ class FeatureRegimeCandidateResult:
     regime_specific_training_applied: bool = False
     feature_weak_signal_detected: bool = False
     feature_leakage_risk_detected: bool = False
+    probability_diagnostics: dict[str, Any] = field(default_factory=dict)
+    probability_diagnostics_missing_reason: str | None = None
+    real_feature_diagnostics: dict[str, Any] = field(default_factory=dict)
+    real_feature_diagnostics_missing_reason: str | None = None
     collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    collapse_diagnostics_v2_missing_reason: str | None = None
     regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
+    regime_label_builder_status_missing_reason: str | None = None
     walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
+    walk_forward_profit_diagnostics_missing_reason: str | None = None
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
+    profit_aware_diagnostics_missing_reason: str | None = None
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
     orders_enabled: bool = False
@@ -107,6 +116,7 @@ class FeatureRegimeCandidateResult:
             "status": self.status,
             "quality_status": self.quality_status,
             "candidate_status": self.candidate_status,
+            "raw_candidate_status": self.raw_candidate_status,
             "score": self.score,
             "failed_gates": list(self.failed_gates),
             "passed_gates": list(self.passed_gates),
@@ -115,10 +125,18 @@ class FeatureRegimeCandidateResult:
             "regime_specific_training_applied": self.regime_specific_training_applied,
             "feature_weak_signal_detected": self.feature_weak_signal_detected,
             "feature_leakage_risk_detected": self.feature_leakage_risk_detected,
+            "probability_diagnostics": dict(self.probability_diagnostics),
+            "probability_diagnostics_missing_reason": self.probability_diagnostics_missing_reason,
+            "real_feature_diagnostics": dict(self.real_feature_diagnostics),
+            "real_feature_diagnostics_missing_reason": self.real_feature_diagnostics_missing_reason,
             "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
+            "collapse_diagnostics_v2_missing_reason": self.collapse_diagnostics_v2_missing_reason,
             "regime_label_builder_status": dict(self.regime_label_builder_status),
+            "regime_label_builder_status_missing_reason": self.regime_label_builder_status_missing_reason,
             "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
+            "walk_forward_profit_diagnostics_missing_reason": self.walk_forward_profit_diagnostics_missing_reason,
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
+            "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
             "approved_for_live_trading": self.approved_for_live_trading,
             "approved_for_auto_activation": self.approved_for_auto_activation,
             "orders_enabled": self.orders_enabled,
@@ -137,6 +155,8 @@ class FeatureRegimeExperimentResult:
     experiment_status: str
     config_count: int
     candidate_count: int
+    evaluated_candidate_count: int
+    failed_candidate_count: int
     accepted_candidate_count: int
     rejected_candidate_count: int
     best_candidate_id: str | None
@@ -192,6 +212,8 @@ class FeatureRegimeExperimentResult:
             "experiment_status": self.experiment_status,
             "config_count": self.config_count,
             "candidate_count": self.candidate_count,
+            "evaluated_candidate_count": self.evaluated_candidate_count,
+            "failed_candidate_count": self.failed_candidate_count,
             "accepted_candidate_count": self.accepted_candidate_count,
             "rejected_candidate_count": self.rejected_candidate_count,
             "best_candidate_id": self.best_candidate_id,
@@ -417,6 +439,8 @@ class FeatureRegimeExperimentRunner:
                 selected_base_configs,
                 feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
                 feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
+                real_feature_diagnostics=dict(diagnostics["real_feature_diagnostics"]),
+                real_feature_diagnostics_missing_reason=diagnostics.get("real_feature_diagnostics_missing_reason"),
                 logger=logger,
             )
             experiment_status = "DRY_RUN_COMPLETED"
@@ -425,6 +449,8 @@ class FeatureRegimeExperimentRunner:
                 selected_base_configs,
                 feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
                 feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
+                real_feature_diagnostics=dict(diagnostics["real_feature_diagnostics"]),
+                real_feature_diagnostics_missing_reason=diagnostics.get("real_feature_diagnostics_missing_reason"),
                 logger=logger,
             )
             experiment_status = "SAMPLE_COMPLETED"
@@ -435,6 +461,8 @@ class FeatureRegimeExperimentRunner:
                 selected_base_configs=selected_base_configs,
                 feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
                 feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
+                real_feature_diagnostics=dict(diagnostics["real_feature_diagnostics"]),
+                real_feature_diagnostics_missing_reason=diagnostics.get("real_feature_diagnostics_missing_reason"),
                 logger=logger,
                 experiment_dir=logger.paths.experiment_dir,
             )
@@ -445,13 +473,14 @@ class FeatureRegimeExperimentRunner:
         )
         ranking = self._ranking(candidate_results)
         accepted_count = sum(
-            int(item.candidate_status == "CANDIDATE_ACCEPTED_FOR_RESEARCH")
+            int(item.candidate_status == "ACCEPTED")
             for item in candidate_results
         )
         rejected_count = sum(
-            int(item.candidate_status == "CANDIDATE_REJECTED")
+            int(item.candidate_status == "REJECTED")
             for item in candidate_results
         )
+        failed_count = sum(int(item.candidate_status == "FAILED") for item in candidate_results)
         best_candidate = next((item for item in candidate_results if item.score is not None), None)
         failed_gates_summary = self._failed_gates_summary(candidate_results)
         recommendations = self._recommendations(
@@ -472,6 +501,11 @@ class FeatureRegimeExperimentRunner:
             experiment_status=experiment_status,
             config_count=len(selected_base_configs),
             candidate_count=len(candidate_results),
+            evaluated_candidate_count=sum(
+                int(item.candidate_status in {"ACCEPTED", "REJECTED", "FAILED"})
+                for item in candidate_results
+            ),
+            failed_candidate_count=failed_count,
             accepted_candidate_count=accepted_count,
             rejected_candidate_count=rejected_count,
             best_candidate_id=None if best_candidate is None else best_candidate.candidate_id,
@@ -539,6 +573,7 @@ class FeatureRegimeExperimentRunner:
                 "experiment_status": experiment_status,
                 "candidate_count": len(candidate_results),
                 "accepted_candidate_count": accepted_count,
+                "failed_candidate_count": failed_count,
                 "best_candidate_config_id": result.best_candidate_config_id,
                 "selected_regime_config_count": len(selected_regime_configs),
                 "regime_training_applied": regime_training_applied,
@@ -627,6 +662,7 @@ class FeatureRegimeExperimentRunner:
             "regime_feature_summary": regime_feature_diagnostics,
             "feature_leakage_summary": feature_leakage,
             "regime_experiment_plan_summary": regime_experiment_plan,
+            "real_feature_diagnostics": real_feature_diagnostics,
             "regime_label_builder_status": dict(
                 real_feature_diagnostics.get("regime_label_builder_status", {})
             ),
@@ -639,6 +675,11 @@ class FeatureRegimeExperimentRunner:
             "gap_severity_for_training": str(gap_quality.get("gap_severity_for_training") or "OK"),
             "gap_training_safe": bool(gap_quality.get("dataset_safe_for_training", False)),
             "warnings": list(real_feature_diagnostics.get("warnings", [])),
+            "real_feature_diagnostics_missing_reason": (
+                None
+                if bool(real_feature_diagnostics.get("row_count", 0))
+                else str(real_feature_diagnostics.get("reason") or "real_feature_diagnostics_not_computed")
+            ),
         }
 
     def _select_base_configs(self, config: FeatureRegimeExperimentConfig) -> list[dict[str, Any]]:
@@ -851,6 +892,8 @@ class FeatureRegimeExperimentRunner:
         *,
         feature_weak_signal_detected: bool,
         feature_leakage_risk_detected: bool,
+        real_feature_diagnostics: dict[str, Any],
+        real_feature_diagnostics_missing_reason: str | None,
         logger: _ExperimentLogger,
     ) -> list[FeatureRegimeCandidateResult]:
         candidates: list[FeatureRegimeCandidateResult] = []
@@ -869,17 +912,21 @@ class FeatureRegimeExperimentRunner:
                 label_config=dict(config_payload),
                 status="DRY_RUN",
                 quality_status=None,
-                candidate_status=None,
+                candidate_status="PLANNED",
+                raw_candidate_status="PLANNED",
                 score=None,
                 warnings=("dry_run_no_training",),
                 recommendations=("Dry-run only; no training was executed.",),
                 regime_specific_training_applied=False,
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                real_feature_diagnostics=real_feature_diagnostics,
+                real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
                 regime_label_builder_status=self._runtime_regime_label_builder_status(
                     label_config_payload=dict(config_payload),
                     used_in_training=False,
                 ),
+                regime_label_builder_status_missing_reason=None,
             )
             candidates.append(result)
             logger.event(
@@ -897,6 +944,8 @@ class FeatureRegimeExperimentRunner:
         *,
         feature_weak_signal_detected: bool,
         feature_leakage_risk_detected: bool,
+        real_feature_diagnostics: dict[str, Any],
+        real_feature_diagnostics_missing_reason: str | None,
         logger: _ExperimentLogger,
     ) -> list[FeatureRegimeCandidateResult]:
         candidates: list[FeatureRegimeCandidateResult] = []
@@ -917,7 +966,8 @@ class FeatureRegimeExperimentRunner:
                 label_config=dict(config_payload),
                 status="COMPLETED",
                 quality_status="QUALITY_REJECTED",
-                candidate_status="CANDIDATE_REJECTED",
+                candidate_status="REJECTED",
+                raw_candidate_status="CANDIDATE_REJECTED",
                 score=score,
                 failed_gates=failed_gates,
                 passed_gates=("baseline_edge_gate",),
@@ -926,12 +976,15 @@ class FeatureRegimeExperimentRunner:
                 regime_specific_training_applied=False,
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                real_feature_diagnostics=real_feature_diagnostics,
+                real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
                 regime_label_builder_status=self._sample_regime_label_builder_status(),
+                regime_label_builder_status_missing_reason=None,
             )
             candidates.append(result)
             logger.event(
                 event="candidate_rejected",
-                status="CANDIDATE_REJECTED",
+                status="REJECTED",
                 candidate_id=candidate_id,
                 data={"config_id": config_payload["config_id"], "score": score},
                 message="Sample candidate rejected",
@@ -946,6 +999,8 @@ class FeatureRegimeExperimentRunner:
         selected_base_configs: list[dict[str, Any]],
         feature_weak_signal_detected: bool,
         feature_leakage_risk_detected: bool,
+        real_feature_diagnostics: dict[str, Any],
+        real_feature_diagnostics_missing_reason: str | None,
         logger: _ExperimentLogger,
         experiment_dir: Path,
     ) -> tuple[list[FeatureRegimeCandidateResult], str, list[str]]:
@@ -994,6 +1049,7 @@ class FeatureRegimeExperimentRunner:
                 status=item.status,
                 quality_status=item.quality_status,
                 candidate_status=item.candidate_status,
+                raw_candidate_status=getattr(item, "raw_candidate_status", item.candidate_status),
                 score=ranking_row.get("score"),
                 failed_gates=tuple(item.failed_gates),
                 passed_gates=tuple(item.passed_gates),
@@ -1007,14 +1063,48 @@ class FeatureRegimeExperimentRunner:
                 ),
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                probability_diagnostics=dict(getattr(item, "probability_diagnostics", {})),
+                probability_diagnostics_missing_reason=getattr(
+                    item,
+                    "probability_diagnostics_missing_reason",
+                    None,
+                ),
+                real_feature_diagnostics=real_feature_diagnostics,
+                real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
                 collapse_diagnostics_v2=dict(item.collapse_diagnostics_v2),
+                collapse_diagnostics_v2_missing_reason=getattr(
+                    item,
+                    "collapse_diagnostics_v2_missing_reason",
+                    None,
+                ),
                 regime_label_builder_status=dict(item.regime_label_builder_status),
+                regime_label_builder_status_missing_reason=getattr(
+                    item,
+                    "regime_label_builder_status_missing_reason",
+                    None,
+                ),
                 walk_forward_profit_diagnostics=dict(item.walk_forward_profit_diagnostics),
+                walk_forward_profit_diagnostics_missing_reason=getattr(
+                    item,
+                    "walk_forward_profit_diagnostics_missing_reason",
+                    None,
+                ),
                 profit_aware_diagnostics=dict(item.profit_aware_diagnostics),
+                profit_aware_diagnostics_missing_reason=getattr(
+                    item,
+                    "profit_aware_diagnostics_missing_reason",
+                    None,
+                ),
             )
             candidate_results.append(candidate)
             logger.event(
-                event=("candidate_accepted_for_research" if item.candidate_status == "CANDIDATE_ACCEPTED_FOR_RESEARCH" else "candidate_rejected" if item.candidate_status == "CANDIDATE_REJECTED" else "candidate_completed"),
+                event=(
+                    "candidate_accepted_for_research"
+                    if item.candidate_status == "ACCEPTED"
+                    else "candidate_failed"
+                    if item.candidate_status == "FAILED"
+                    else "candidate_rejected"
+                ),
                 status=item.status,
                 candidate_id=item.config_id,
                 data={
