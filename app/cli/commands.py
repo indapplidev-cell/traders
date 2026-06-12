@@ -38,6 +38,14 @@ from app.experiments.label_grid_experiment_reporter import (
 from app.experiments.label_grid_search import LabelGridSearchService
 from app.experiments.label_grid_result_analyzer import LabelGridResultAnalyzer
 from app.experiments.label_grid_result_reporter import LabelGridResultReporter
+from app.experiments.feature_regime_experiment_runner import (
+    FeatureRegimeExperimentConfig,
+    FeatureRegimeExperimentRunner,
+)
+from app.experiments.feature_regime_result_analyzer import FeatureRegimeResultAnalyzer
+from app.experiments.feature_regime_experiment_reporter import (
+    FeatureRegimeExperimentReporter,
+)
 from app.experiments.ml31_grid_improvement_analyzer import ML31GridImprovementAnalyzer
 from app.experiments.ml31_grid_improvement_reporter import ML31GridImprovementReporter
 from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
@@ -2773,6 +2781,12 @@ def build_feature_leakage_guard_preview_payload() -> dict[str, object]:
     return payload
 
 
+def build_feature_regime_experiment_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML33 feature/regime experiment preview."""
+
+    return FeatureRegimeExperimentRunner().build_preview()
+
+
 def run_label_grid_experiment(
     *,
     symbol: str,
@@ -2907,6 +2921,95 @@ def analyze_ml31_grid_improvement(
         json_path=str(json_path) if export_report else None,
         markdown_path=str(markdown_path) if export_report else None,
     )
+
+
+def run_feature_regime_experiment(
+    *,
+    symbol: str,
+    interval: str,
+    start_date: str,
+    end_date: str | None = None,
+    experiment_id: str | None = None,
+    base_label_config_ids: list[str] | None = None,
+    regime_config_ids: list[str] | None = None,
+    max_configs: int | None = None,
+    dry_run: bool = False,
+    sample_mode: bool = False,
+    run_training: bool = True,
+    run_regime_diagnostics: bool = True,
+    run_feature_diagnostics: bool = True,
+    run_leakage_guard: bool = True,
+    run_candidate_selection: bool = True,
+    output_dir: Path = Path("reports/feature_regime_experiments"),
+) -> dict[str, object]:
+    """Run the ML33 feature/regime-aware experiment flow."""
+
+    config = FeatureRegimeExperimentConfig(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        experiment_id=experiment_id,
+        base_label_config_ids=tuple(base_label_config_ids or ()),
+        regime_config_ids=tuple(regime_config_ids or ()),
+        max_configs=max_configs,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        run_training=run_training,
+        run_regime_diagnostics=run_regime_diagnostics,
+        run_feature_diagnostics=run_feature_diagnostics,
+        run_leakage_guard=run_leakage_guard,
+        run_candidate_selection=run_candidate_selection,
+        output_dir=output_dir,
+    )
+    result = FeatureRegimeExperimentRunner().run(config)
+    return FeatureRegimeExperimentReporter().compact_summary_to_dict(result)
+
+
+def analyze_feature_regime_results(
+    *,
+    experiment_dir: str | Path | None = None,
+    latest: bool = False,
+) -> dict[str, object]:
+    """Analyze an ML33 feature/regime experiment result."""
+
+    if experiment_dir is None and not latest:
+        raise ValueError("Provide --latest or --experiment-dir.")
+
+    analyzer = FeatureRegimeResultAnalyzer()
+    resolved_dir = (
+        Path(experiment_dir)
+        if experiment_dir is not None
+        else analyzer.latest_experiment_dir()
+    )
+    summary = analyzer.load_summary(resolved_dir)
+    analysis = analyzer.analyze(current_result=summary)
+    payload = {
+        "status": "ok",
+        "experiment_id": summary.get("experiment_id"),
+        "experiment_status": summary.get("experiment_status"),
+        "config_count": summary.get("config_count"),
+        "candidate_count": summary.get("candidate_count"),
+        "accepted_candidate_count": summary.get("accepted_candidate_count"),
+        "rejected_candidate_count": summary.get("rejected_candidate_count"),
+        "best_candidate_config_id": summary.get("best_candidate_config_id"),
+        "best_candidate_score": summary.get("best_candidate_score"),
+        "feature_weak_signal_detected": dict(summary.get("feature_quality_summary", {})).get("weak_signal_detected"),
+        "regime_data_available": dict(summary.get("regime_feature_summary", {})).get("regime_data_available"),
+        "regime_training_applied": summary.get("regime_training_applied"),
+        "feature_leakage_risk_detected": dict(summary.get("feature_leakage_summary", {})).get("leakage_risk_detected"),
+        "output_dir": summary.get("output_dir"),
+        "summary_json_path": summary.get("summary_json_path"),
+        "summary_markdown_path": summary.get("summary_markdown_path"),
+        "overall_status": analysis.get("overall_status"),
+        "score_delta": analysis.get("score_delta"),
+        "recommendations": analysis.get("recommendations"),
+        "approved_for_live_trading": False,
+        "approved_for_auto_activation": False,
+        "orders_enabled": False,
+        "traders_core_connected": False,
+    }
+    return payload
 
 
 def build_model_candidate_selection_preview_payload() -> dict[str, object]:
@@ -3563,6 +3666,22 @@ def feature_leakage_guard_preview() -> None:
     )
 
 
+@cli.command("feature-regime-experiment-preview")
+def feature_regime_experiment_preview() -> None:
+    """Show deterministic ML33 feature/regime experiment preview JSON."""
+
+    payload = build_feature_regime_experiment_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
 @cli.command("label-grid-experiment-run")
 def label_grid_experiment_run_command(
     symbol: str = typer.Option(..., "--symbol"),
@@ -3660,6 +3779,93 @@ def ml31_grid_improvement_analyze_command(
         previous_experiment_dir=previous_experiment_dir,
         latest=latest,
         export_report=export_report,
+    )
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("feature-regime-experiment-run")
+def feature_regime_experiment_run_command(
+    symbol: str = typer.Option(..., "--symbol"),
+    interval: str = typer.Option(..., "--interval"),
+    start_date: str = typer.Option(..., "--start-date"),
+    end_date: str | None = typer.Option(None, "--end-date"),
+    experiment_id: str | None = typer.Option(None, "--experiment-id"),
+    base_label_config_ids: list[str] | None = typer.Option(None, "--base-label-config-id"),
+    regime_config_ids: list[str] | None = typer.Option(None, "--regime-config-id"),
+    max_configs: int | None = typer.Option(None, "--max-configs"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    sample_mode: bool = typer.Option(False, "--sample-mode"),
+    run_training: bool = typer.Option(True, "--run-training/--no-run-training"),
+    run_regime_diagnostics: bool = typer.Option(
+        True,
+        "--run-regime-diagnostics/--no-run-regime-diagnostics",
+    ),
+    run_feature_diagnostics: bool = typer.Option(
+        True,
+        "--run-feature-diagnostics/--no-run-feature-diagnostics",
+    ),
+    run_leakage_guard: bool = typer.Option(
+        True,
+        "--run-leakage-guard/--no-run-leakage-guard",
+    ),
+    run_candidate_selection: bool = typer.Option(
+        True,
+        "--run-candidate-selection/--no-run-candidate-selection",
+    ),
+    output_dir: Path = typer.Option(
+        Path("reports/feature_regime_experiments"),
+        "--output-dir",
+    ),
+) -> None:
+    """Run the ML33 feature/regime-aware experiment cycle."""
+
+    payload = run_feature_regime_experiment(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        experiment_id=experiment_id,
+        base_label_config_ids=base_label_config_ids,
+        regime_config_ids=regime_config_ids,
+        max_configs=max_configs,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        run_training=run_training,
+        run_regime_diagnostics=run_regime_diagnostics,
+        run_feature_diagnostics=run_feature_diagnostics,
+        run_leakage_guard=run_leakage_guard,
+        run_candidate_selection=run_candidate_selection,
+        output_dir=output_dir,
+    )
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("feature-regime-results-analyze")
+def feature_regime_results_analyze_command(
+    experiment_dir: Path | None = typer.Option(None, "--experiment-dir"),
+    latest: bool = typer.Option(False, "--latest"),
+) -> None:
+    """Analyze the latest or explicit ML33 feature/regime experiment result."""
+
+    payload = analyze_feature_regime_results(
+        experiment_dir=experiment_dir,
+        latest=latest,
     )
 
     typer.echo(
