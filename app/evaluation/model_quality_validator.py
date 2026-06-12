@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.diagnostics.collapse_diagnostics_v2 import CollapseDiagnosticsV2
+from app.diagnostics.walk_forward_profit_diagnostics import WalkForwardProfitDiagnostics
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.evaluation.anti_collapse_validator import AntiCollapseValidator
 from app.evaluation.model_candidate_selector import ModelCandidateSelector
@@ -50,6 +52,10 @@ class ModelQualityValidationResult:
     quality_gates_summary: dict[str, Any] = field(default_factory=dict)
     label_config: dict[str, Any] = field(default_factory=dict)
     feature_config: dict[str, Any] = field(default_factory=dict)
+    collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
+    walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
+    profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +90,10 @@ class ModelQualityValidationResult:
             "quality_gates_summary": dict(self.quality_gates_summary),
             "label_config": dict(self.label_config),
             "feature_config": dict(self.feature_config),
+            "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
+            "regime_label_builder_status": dict(self.regime_label_builder_status),
+            "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
+            "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
         }
 
 
@@ -114,6 +124,11 @@ class ModelQualityValidator:
         candidate_selection_summary: dict[str, Any] | None = None,
         label_config_summary: dict[str, Any] | None = None,
         feature_config_summary: dict[str, Any] | None = None,
+        symbol: str | None = None,
+        collapse_diagnostics_v2_summary: dict[str, Any] | None = None,
+        regime_label_builder_status_summary: dict[str, Any] | None = None,
+        walk_forward_profit_diagnostics_summary: dict[str, Any] | None = None,
+        profit_aware_diagnostics_summary: dict[str, Any] | None = None,
     ) -> ModelQualityValidationResult:
         model_version = self._extract_str(training_summary, "model_version")
         training_run_id = self._extract_str(training_summary, "training_run_id", "run_id")
@@ -151,10 +166,20 @@ class ModelQualityValidator:
             if model_accuracy is not None and baseline_accuracy is not None
             else None
         )
+        label_config_summary = dict(label_config_summary or {})
+        feature_config_summary = dict(feature_config_summary or {})
         gap_quality = self._normalize_gap_quality(gap_quality_summary or {})
         anti_collapse = self._normalize_anti_collapse(
             anti_collapse_summary=anti_collapse_summary or {},
             probability_diagnostics=probability_diagnostics,
+        )
+        collapse_diagnostics_v2 = dict(collapse_diagnostics_v2_summary or {}) or CollapseDiagnosticsV2().analyze(
+            probability_report=probability_diagnostics,
+            symbol=symbol,
+            feature_version=str(feature_config_summary.get("feature_version")),
+            label_version=str(label_config_summary.get("label_version")),
+            accuracy_edge=accuracy_edge,
+            walk_forward_summary=walk_forward_summary,
         )
         collapse_detected = bool(
             self._extract_value(
@@ -166,6 +191,7 @@ class ModelQualityValidator:
                 "collapse_detected",
             )
             or anti_collapse.get("collapse_detected", False)
+            or collapse_diagnostics_v2.get("collapse_detected", False)
         )
         sample_mode = bool(training_summary.get("sample_mode", False))
         real_training_executed = bool(
@@ -179,6 +205,27 @@ class ModelQualityValidator:
         walk_forward_status = self._resolve_walk_forward_status(walk_forward_summary)
         gate_policy_replay_status = self._resolve_gate_policy_replay_status(
             gate_policy_replay_summary
+        )
+        walk_forward_profit_helper = WalkForwardProfitDiagnostics()
+        walk_forward_profit_diagnostics = (
+            dict(walk_forward_profit_diagnostics_summary or {})
+            or walk_forward_profit_helper.analyze(
+                symbol=symbol,
+                feature_version=str(feature_config_summary.get("feature_version")),
+                model_version=model_version,
+                walk_forward_summary=walk_forward_summary,
+                profit_aware_summary=profit_aware_summary,
+            )
+        )
+        profit_aware_diagnostics = (
+            dict(profit_aware_diagnostics_summary or {})
+            or walk_forward_profit_helper.build_profit_aware_diagnostics(
+                profit_aware_summary=profit_aware_summary
+            )
+        )
+        regime_label_builder_status = (
+            dict(regime_label_builder_status_summary or {})
+            or dict(label_config_summary.get("regime_label_builder_status", {}))
         )
 
         integration_status = {
@@ -347,8 +394,12 @@ class ModelQualityValidator:
             anti_collapse=anti_collapse,
             candidate_selection=candidate_selection,
             quality_gates_summary=quality_gates_summary,
-            label_config=dict(label_config_summary or {}),
-            feature_config=dict(feature_config_summary or {}),
+            label_config=label_config_summary,
+            feature_config=feature_config_summary,
+            collapse_diagnostics_v2=collapse_diagnostics_v2,
+            regime_label_builder_status=regime_label_builder_status,
+            walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,
+            profit_aware_diagnostics=profit_aware_diagnostics,
         )
 
     def _quality_approved(
@@ -724,6 +775,11 @@ def validate_model_quality(
     candidate_selection_summary: dict[str, Any] | None = None,
     label_config_summary: dict[str, Any] | None = None,
     feature_config_summary: dict[str, Any] | None = None,
+    symbol: str | None = None,
+    collapse_diagnostics_v2_summary: dict[str, Any] | None = None,
+    regime_label_builder_status_summary: dict[str, Any] | None = None,
+    walk_forward_profit_diagnostics_summary: dict[str, Any] | None = None,
+    profit_aware_diagnostics_summary: dict[str, Any] | None = None,
 ) -> ModelQualityValidationResult:
     """Validate model quality from precomputed training and diagnostics payloads."""
 
@@ -740,4 +796,9 @@ def validate_model_quality(
         candidate_selection_summary=candidate_selection_summary,
         label_config_summary=label_config_summary,
         feature_config_summary=feature_config_summary,
+        symbol=symbol,
+        collapse_diagnostics_v2_summary=collapse_diagnostics_v2_summary,
+        regime_label_builder_status_summary=regime_label_builder_status_summary,
+        walk_forward_profit_diagnostics_summary=walk_forward_profit_diagnostics_summary,
+        profit_aware_diagnostics_summary=profit_aware_diagnostics_summary,
     )

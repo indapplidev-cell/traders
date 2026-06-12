@@ -264,14 +264,30 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
             "collapse_detected": bool(best_candidate.get("collapse_detected", False)),
             "collapse_type": best_candidate.get("collapse_type"),
+            "collapse_diagnostics_v2": dict(
+                summary.get("collapse_diagnostics_v2", {})
+                or best_candidate.get("collapse_diagnostics_v2", {})
+            ),
             "profit_factor": cls._float_or_none(best_candidate.get("profit_factor")),
             "profit_total_r": cls._float_or_none(best_candidate.get("profit_total_r")),
             "walk_forward_profit_factor": cls._float_or_none(best_candidate.get("walk_forward_profit_factor")),
             "walk_forward_total_r": cls._float_or_none(best_candidate.get("walk_forward_global_total_r")),
+            "walk_forward_profit_diagnostics": dict(
+                summary.get("walk_forward_profit_diagnostics", {})
+                or best_candidate.get("walk_forward_profit_diagnostics", {})
+            ),
+            "profit_aware_diagnostics": dict(
+                summary.get("profit_aware_diagnostics", {})
+                or best_candidate.get("profit_aware_diagnostics", {})
+            ),
             "failed_gates": [str(item) for item in best_candidate.get("failed_gates", [])],
             "passed_gates": [str(item) for item in best_candidate.get("passed_gates", [])],
             "regime_features_attached": bool(summary.get("regime_features_attached", False)),
             "regime_specific_training_applied": bool(summary.get("regime_specific_training_applied", False)),
+            "regime_label_builder_status": dict(
+                summary.get("regime_label_builder_status", {})
+                or best_candidate.get("regime_label_builder_status", {})
+            ),
             "warnings": list(dict.fromkeys(summary_warnings + candidate_warnings)),
         }
 

@@ -26,12 +26,15 @@ from app.evaluation.model_quality_validator import (
     INSUFFICIENT_REAL_HISTORY,
     validate_model_quality,
 )
+from app.diagnostics.collapse_diagnostics_v2 import CollapseDiagnosticsV2
 from app.diagnostics.diagnostics_service import DiagnosticsService
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.diagnostics.walk_forward_profit_diagnostics import WalkForwardProfitDiagnostics
 from app.db.session import get_session
 from app.features.feature_pipeline import FeaturePipeline
 from app.labels.label_builder import LabelBuilder
 from app.labels.label_config import LabelConfig
+from app.labels.regime_label_builder import RegimeLabelBuilder
 from app.registry.artifact_storage import ArtifactStorage
 from app.registry.model_registry import ModelRegistry
 from app.training.training_service import TrainingService
@@ -832,10 +835,23 @@ class LongHistoryTrainingPipelineRunner:
         )
         with get_session() as session:
             candle_repository = CandleRepository(session)
+            feature_repository = FeatureRepository(session)
             label_repository = LabelRepository(session)
             candles = candle_repository.get_all(symbol=config.symbol, interval=config.interval)
+            feature_rows = feature_repository.get_all(
+                symbol=config.symbol,
+                interval=config.interval,
+                feature_version=config.feature_version,
+            )
+            regime_builder_result = RegimeLabelBuilder().build(
+                candles=candles,
+                symbol=config.symbol,
+                interval=config.interval,
+                feature_rows=feature_rows,
+                base_config=label_config,
+            )
             builder = LabelBuilder()
-            records = builder.build(
+            records = regime_builder_result.records or builder.build(
                 candles=candles,
                 symbol=config.symbol,
                 interval=config.interval,
@@ -847,6 +863,7 @@ class LongHistoryTrainingPipelineRunner:
                 [record.to_dict() for record in records]
             )
             label_counts = builder.summarize(records)
+        regime_label_builder_status = regime_builder_result.to_dict()
         return {
             "status": COMPLETED,
             "message": "Labels built",
@@ -863,6 +880,7 @@ class LongHistoryTrainingPipelineRunner:
                 "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
                 "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
                 "flat_class_enabled": True,
+                "regime_label_builder_status": regime_label_builder_status,
                 "first_open_time": records[0].candle_open_time.isoformat() if records else None,
                 "last_open_time": records[-1].candle_open_time.isoformat() if records else None,
             },
@@ -1220,6 +1238,26 @@ class LongHistoryTrainingPipelineRunner:
         profit_aware_summary = dict(stage_payloads.get("profit_aware_evaluation", {}))
         walk_forward_summary = dict(stage_payloads.get("walk_forward_evaluation", {}))
         gate_policy_replay_summary = dict(stage_payloads.get("gate_policy_replay_evaluation", {}))
+        label_config_summary = self._label_config_summary(stage_payloads)
+        feature_config_summary = self._feature_config_summary(config.feature_version)
+        collapse_diagnostics_v2 = CollapseDiagnosticsV2().analyze(
+            probability_report=probability_diagnostics,
+            symbol=config.symbol,
+            feature_version=str(feature_config_summary.get("feature_version")),
+            label_version=str(label_config_summary.get("label_version")),
+            accuracy_edge=self._extract_baseline_accuracy_delta(
+                training_summary=training_summary,
+                baseline_summary=baseline_summary,
+            ),
+            walk_forward_summary=walk_forward_summary,
+        )
+        walk_forward_profit_diagnostics = WalkForwardProfitDiagnostics().analyze(
+            symbol=config.symbol,
+            feature_version=str(feature_config_summary.get("feature_version")),
+            model_version=str(training_summary.get("model_version")),
+            walk_forward_summary=walk_forward_summary,
+            profit_aware_summary=profit_aware_summary,
+        )
 
         result = validate_model_quality(
             training_summary=training_summary,
@@ -1230,8 +1268,17 @@ class LongHistoryTrainingPipelineRunner:
             walk_forward_summary=walk_forward_summary,
             gate_policy_replay_summary=gate_policy_replay_summary,
             gap_quality_summary=self._build_gap_quality_summary(config, stage_payloads),
-            label_config_summary=self._label_config_summary(),
-            feature_config_summary=self._feature_config_summary(config.feature_version),
+            label_config_summary=label_config_summary,
+            feature_config_summary=feature_config_summary,
+            symbol=config.symbol,
+            collapse_diagnostics_v2_summary=collapse_diagnostics_v2,
+            regime_label_builder_status_summary=dict(
+                label_config_summary.get("regime_label_builder_status", {})
+            ),
+            walk_forward_profit_diagnostics_summary=walk_forward_profit_diagnostics,
+            profit_aware_diagnostics_summary=WalkForwardProfitDiagnostics().build_profit_aware_diagnostics(
+                profit_aware_summary=profit_aware_summary
+            ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
         return {
@@ -1245,17 +1292,52 @@ class LongHistoryTrainingPipelineRunner:
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
+        training_summary = dict(stage_payloads.get("train_model", {}))
+        baseline_summary = dict(stage_payloads.get("baseline_compare", {}))
+        probability_diagnostics = dict(stage_payloads.get("probability_diagnostics", {}))
+        profit_aware_summary = dict(stage_payloads.get("profit_aware_evaluation", {}))
+        walk_forward_summary = dict(stage_payloads.get("walk_forward_evaluation", {}))
+        label_config_summary = self._label_config_summary(stage_payloads)
+        feature_config_summary = self._feature_config_summary(config.feature_version)
+        collapse_diagnostics_v2 = CollapseDiagnosticsV2().analyze(
+            probability_report=probability_diagnostics,
+            symbol=config.symbol,
+            feature_version=str(feature_config_summary.get("feature_version")),
+            label_version=str(label_config_summary.get("label_version")),
+            accuracy_edge=self._extract_baseline_accuracy_delta(
+                training_summary=training_summary,
+                baseline_summary=baseline_summary,
+            ),
+            walk_forward_summary=walk_forward_summary,
+        )
+        walk_forward_profit_helper = WalkForwardProfitDiagnostics()
+        walk_forward_profit_diagnostics = walk_forward_profit_helper.analyze(
+            symbol=config.symbol,
+            feature_version=str(feature_config_summary.get("feature_version")),
+            model_version=str(training_summary.get("model_version")),
+            walk_forward_summary=walk_forward_summary,
+            profit_aware_summary=profit_aware_summary,
+        )
         result = validate_model_quality(
-            training_summary=dict(stage_payloads.get("train_model", {})),
-            baseline_summary=dict(stage_payloads.get("baseline_compare", {})),
-            probability_diagnostics=dict(stage_payloads.get("probability_diagnostics", {})),
+            training_summary=training_summary,
+            baseline_summary=baseline_summary,
+            probability_diagnostics=probability_diagnostics,
             calibration_summary=dict(stage_payloads.get("calibration_diagnostics", {})),
-            profit_aware_summary=dict(stage_payloads.get("profit_aware_evaluation", {})),
-            walk_forward_summary=dict(stage_payloads.get("walk_forward_evaluation", {})),
+            profit_aware_summary=profit_aware_summary,
+            walk_forward_summary=walk_forward_summary,
             gate_policy_replay_summary=dict(stage_payloads.get("gate_policy_replay_evaluation", {})),
             gap_quality_summary=self._build_gap_quality_summary(config, stage_payloads),
-            label_config_summary=self._label_config_summary(),
-            feature_config_summary=self._feature_config_summary(config.feature_version),
+            label_config_summary=label_config_summary,
+            feature_config_summary=feature_config_summary,
+            symbol=config.symbol,
+            collapse_diagnostics_v2_summary=collapse_diagnostics_v2,
+            regime_label_builder_status_summary=dict(
+                label_config_summary.get("regime_label_builder_status", {})
+            ),
+            walk_forward_profit_diagnostics_summary=walk_forward_profit_diagnostics,
+            profit_aware_diagnostics_summary=walk_forward_profit_helper.build_profit_aware_diagnostics(
+                profit_aware_summary=profit_aware_summary
+            ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
         return {
@@ -1340,7 +1422,11 @@ class LongHistoryTrainingPipelineRunner:
             trailing_incomplete_range_detected=gap_stage.get("trailing_incomplete_range_detected"),
         )
 
-    def _label_config_summary(self) -> dict[str, Any]:
+    def _label_config_summary(
+        self,
+        stage_payloads: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        build_labels_payload = dict((stage_payloads or {}).get("build_labels", {}))
         return {
             "label_version": self.DEFAULT_LABEL_VERSION,
             "horizon_candles": self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
@@ -1348,6 +1434,10 @@ class LongHistoryTrainingPipelineRunner:
             "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
             "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
             "flat_class_enabled": True,
+            "direction_counts": dict(build_labels_payload.get("direction_counts", {})),
+            "regime_label_builder_status": dict(
+                build_labels_payload.get("regime_label_builder_status", {})
+            ),
         }
 
     def _feature_config_summary(self, feature_version: str | None = None) -> dict[str, Any]:
@@ -1355,6 +1445,62 @@ class LongHistoryTrainingPipelineRunner:
             "feature_version": feature_version or self.DEFAULT_FEATURE_VERSION,
             "model_name": self.DEFAULT_MODEL_NAME,
         }
+
+    @staticmethod
+    def _extract_baseline_accuracy_delta(
+        *,
+        training_summary: dict[str, Any],
+        baseline_summary: dict[str, Any],
+    ) -> float | None:
+        model_accuracy = LongHistoryTrainingPipelineRunner._extract_metric(
+            training_summary,
+            ("model_accuracy", "accuracy_test"),
+            nested_key="test_metrics",
+            nested_metric="accuracy",
+        )
+        baseline_accuracy = LongHistoryTrainingPipelineRunner._extract_metric(
+            baseline_summary,
+            ("baseline_accuracy",),
+            nested_key="best_baseline",
+            nested_metric="test_metrics.accuracy",
+        )
+        if baseline_accuracy is None:
+            baselines = baseline_summary.get("baselines")
+            if isinstance(baselines, dict):
+                scores = []
+                for payload in baselines.values():
+                    if not isinstance(payload, dict):
+                        continue
+                    test_payload = dict(payload.get("test", {}))
+                    accuracy = test_payload.get("accuracy")
+                    if accuracy is not None:
+                        scores.append(float(accuracy))
+                if scores:
+                    baseline_accuracy = max(scores)
+        if model_accuracy is None or baseline_accuracy is None:
+            return None
+        return model_accuracy - baseline_accuracy
+
+    @staticmethod
+    def _extract_metric(
+        payload: dict[str, Any],
+        direct_keys: tuple[str, ...],
+        *,
+        nested_key: str,
+        nested_metric: str,
+    ) -> float | None:
+        for key in direct_keys:
+            value = payload.get(key)
+            if value is not None:
+                return float(value)
+        current: Any = payload.get(nested_key, {})
+        for part in nested_metric.split("."):
+            if not isinstance(current, dict):
+                return None
+            current = current.get(part)
+            if current is None:
+                return None
+        return float(current)
 
     def _resolve_final_status(
         self,

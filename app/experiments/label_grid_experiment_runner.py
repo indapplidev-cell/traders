@@ -93,6 +93,10 @@ class LabelGridExperimentCandidateResult:
     passed_gates: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     recommendations: tuple[str, ...] = ()
+    collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
+    walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
+    profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     approved_for_traders_core_integration: bool = False
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
@@ -137,6 +141,10 @@ class LabelGridExperimentCandidateResult:
             "passed_gates": list(self.passed_gates),
             "warnings": list(self.warnings),
             "recommendations": list(self.recommendations),
+            "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
+            "regime_label_builder_status": dict(self.regime_label_builder_status),
+            "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
+            "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "approved_for_traders_core_integration": self.approved_for_traders_core_integration,
             "approved_for_live_trading": self.approved_for_live_trading,
             "approved_for_auto_activation": self.approved_for_auto_activation,
@@ -702,6 +710,7 @@ class LabelGridExperimentRunner:
                 "feature_version": config.feature_version,
                 "model_name": self.DEFAULT_MODEL_NAME,
             },
+            symbol=config.symbol,
         )
         quality_payload = quality.to_dict()
         return self._build_candidate_result(
@@ -790,8 +799,6 @@ class LabelGridExperimentRunner:
         anti_collapse = dict(quality_payload.get("anti_collapse", {}))
         candidate_selection = dict(quality_payload.get("candidate_selection", {}))
         quality_gates = dict(quality_payload.get("quality_gates_summary", {}))
-        profit_summary = dict(quality_payload.get("profit_aware_summary", {}))
-        walk_summary = dict(quality_payload.get("walk_forward_summary", {}))
 
         profit_total_r, profit_factor = self._profit_metrics(quality_payload)
         walk_fold_count, walk_total_r, walk_profit_factor = self._walk_metrics(quality_payload)
@@ -855,6 +862,12 @@ class LabelGridExperimentRunner:
             ),
             warnings=warnings,
             recommendations=recommendations,
+            collapse_diagnostics_v2=dict(quality_payload.get("collapse_diagnostics_v2", {})),
+            regime_label_builder_status=dict(quality_payload.get("regime_label_builder_status", {})),
+            walk_forward_profit_diagnostics=dict(
+                quality_payload.get("walk_forward_profit_diagnostics", {})
+            ),
+            profit_aware_diagnostics=dict(quality_payload.get("profit_aware_diagnostics", {})),
             approved_for_traders_core_integration=bool(
                 quality_payload.get("approved_for_traders_core_integration", False)
             ),

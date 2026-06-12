@@ -10,7 +10,7 @@ from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 
 class RealFeatureDiagnosticsService:
     DIAGNOSTIC_NAME = "real_feature_diagnostics_service"
-    DIAGNOSTIC_VERSION = "ml34"
+    DIAGNOSTIC_VERSION = "ml36"
 
     def __init__(
         self,

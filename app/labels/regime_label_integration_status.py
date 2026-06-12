@@ -5,7 +5,7 @@ from typing import Any
 
 class RegimeLabelIntegrationStatus:
     STATUS_NAME = "regime_label_integration_status"
-    STATUS_VERSION = "ml34"
+    STATUS_VERSION = "ml36"
 
     def build_status(
         self,

@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import typer
 from sqlalchemy import text
@@ -17,8 +18,10 @@ from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
 from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
+from app.diagnostics.collapse_diagnostics_v2 import CollapseDiagnosticsV2
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
+from app.diagnostics.walk_forward_profit_diagnostics import WalkForwardProfitDiagnostics
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 from app.db.repositories.candle_repository import CandleRepository
@@ -74,6 +77,7 @@ from app.registry.model_loader import ModelLoader
 from app.registry.model_registry import ModelRegistry
 from app.labels.label_builder import LabelBuilder
 from app.labels.label_quality_grid import LabelQualityGridPlanner
+from app.labels.regime_label_builder import RegimeLabelBuilder
 from app.labels.regime_label_config import RegimeLabelConfigPlanner
 from app.labels.regime_label_integration_status import RegimeLabelIntegrationStatus
 from app.prediction.predictor import Predictor
@@ -2936,7 +2940,7 @@ def build_feature_regime_integration_preview_payload() -> dict[str, object]:
         regime_specific_labeling_available=RegimeLabelConfigPlanner().build_configs()["config_count"] > 0,
         regime_features_attached=attached,
         regime_feature_count=len([name for name in feature_names if name.startswith("regime_")]),
-        training_pipeline_supports_regime_labels=False,
+        training_pipeline_supports_regime_labels=True,
     )
     payload = {
         "feature_version_available": feature_version_available,
@@ -2952,6 +2956,133 @@ def build_feature_regime_integration_preview_payload() -> dict[str, object]:
         "orders_enabled": False,
         "traders_core_connected": False,
     }
+    return payload
+
+
+def build_collapse_diagnostics_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML36 collapse diagnostics preview."""
+
+    payload = CollapseDiagnosticsV2().analyze(
+        probability_report={
+            "actual_direction_counts": {"UP": 360, "DOWN": 300, "FLAT": 340},
+            "predicted_direction_counts": {"UP": 900, "DOWN": 80, "FLAT": 20},
+            "avg_prob_up": 0.36,
+            "avg_prob_down": 0.33,
+            "avg_prob_flat": 0.31,
+            "max_prob_q50": 0.38,
+            "max_prob_q90": 0.39,
+            "rows_above_thresholds": {"0.45": 0},
+            "margin_q50": 0.02,
+            "margin_q90": 0.04,
+        },
+        symbol="BTCUSDT",
+        feature_version="fv2",
+        label_version="lv2_h08_thr04_tp10_sl10",
+        accuracy_edge=0.018072,
+        walk_forward_summary={"walk_forward_status": "UNSTABLE"},
+    )
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return payload
+
+
+def build_regime_label_builder_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML36 regime-label-builder preview."""
+
+    candles = [
+        SimpleNamespace(
+            open_time=datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc) + timedelta(minutes=15 * index),
+            open=100.0 + (index * 2.0),
+            high=101.8 + (index * 2.0),
+            low=99.2 + (index * 2.0),
+            close=101.2 + (index * 2.0),
+        )
+        for index in range(40)
+    ]
+    feature_rows = []
+    for index, candle in enumerate(candles):
+        feature_rows.append(
+            SimpleNamespace(
+                candle_open_time=candle.open_time,
+                features_json={
+                    "regime_trend_up": 1.0 if index % 3 == 0 else 0.0,
+                    "regime_trend_down": 1.0 if index % 3 == 1 else 0.0,
+                    "regime_range": 1.0 if index % 3 == 2 else 0.0,
+                    "regime_high_volatility": 1.0 if index % 4 == 0 else 0.0,
+                    "regime_low_volatility": 1.0 if index % 4 != 0 else 0.0,
+                    "regime_unknown": 0.0,
+                },
+            )
+        )
+    result = RegimeLabelBuilder().build(
+        candles=candles,
+        symbol="BTCUSDT",
+        interval="15m",
+        feature_rows=feature_rows,
+        base_config=LabelConfig(
+            label_version="lv2_h12_thr05_tp15_sl10",
+            horizon_candles=12,
+            direction_atr_threshold=0.5,
+            take_profit_atr=1.5,
+            stop_loss_atr=1.0,
+            flat_class_enabled=True,
+        ),
+    ).to_dict()
+    result.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return result
+
+
+def build_walk_forward_profit_diagnostics_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML36 walk-forward/profit diagnostics preview."""
+
+    payload = WalkForwardProfitDiagnostics().analyze(
+        symbol="BTCUSDT",
+        feature_version="fv2",
+        model_version="ml36_preview_model",
+        walk_forward_summary={
+            "walk_forward_status": "UNSTABLE",
+            "summary": {
+                "fold_count": 4,
+                "folds_with_selected_gate": 4,
+                "folds_profitable_on_test": 1,
+                "global_total_r": -2.4,
+                "global_profit_factor": 0.96,
+            },
+            "folds": [
+                {"fold_index": 0, "selected_gate": {"gate_type": "confidence", "threshold": 0.55}, "test_result": {"signal_count": 12, "resolved_signal_count": 12, "profit_factor": 1.08, "total_r": 0.9}},
+                {"fold_index": 1, "selected_gate": {"gate_type": "confidence", "threshold": 0.55}, "test_result": {"signal_count": 3, "resolved_signal_count": 3, "profit_factor": 0.91, "total_r": -0.8}},
+                {"fold_index": 2, "selected_gate": {"gate_type": "confidence", "threshold": 0.60}, "test_result": {"signal_count": 4, "resolved_signal_count": 4, "profit_factor": 0.88, "total_r": -1.1}},
+                {"fold_index": 3, "selected_gate": {"gate_type": "margin", "threshold": 0.12}, "test_result": {"signal_count": 2, "resolved_signal_count": 2, "profit_factor": 0.72, "total_r": -1.4}},
+            ],
+        },
+        profit_aware_summary={
+            "gate_results": [
+                {"gate_type": "confidence", "threshold": 0.55, "resolved_signal_count": 20, "profit_factor": 0.99, "total_r": -0.5},
+                {"gate_type": "margin", "threshold": 0.12, "resolved_signal_count": 16, "profit_factor": 1.04, "total_r": 0.3},
+            ]
+        },
+    )
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
     return payload
 
 
@@ -3926,6 +4057,54 @@ def real_feature_diagnostics_preview() -> None:
     """Show ML34 real-feature-diagnostics preview JSON."""
 
     payload = build_real_feature_diagnostics_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("collapse-diagnostics-preview")
+def collapse_diagnostics_preview() -> None:
+    """Show ML36 collapse diagnostics preview JSON."""
+
+    payload = build_collapse_diagnostics_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("regime-label-builder-preview")
+def regime_label_builder_preview() -> None:
+    """Show ML36 regime label builder preview JSON."""
+
+    payload = build_regime_label_builder_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("walk-forward-profit-diagnostics-preview")
+def walk_forward_profit_diagnostics_preview() -> None:
+    """Show ML36 walk-forward/profit diagnostics preview JSON."""
+
+    payload = build_walk_forward_profit_diagnostics_preview_payload()
 
     typer.echo(
         json.dumps(

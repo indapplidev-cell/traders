@@ -6,7 +6,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.dataset.dataset_models import DatasetRow
 from app.dataset.dataset_builder import DatasetBuilder
+from app.db.repositories.candle_repository import CandleRepository
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 from app.db.session import get_session
@@ -16,6 +18,9 @@ from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostic
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
+from app.labels.label_builder import LabelBuilder
+from app.labels.label_config import LabelConfig
+from app.labels.regime_label_builder import RegimeLabelBuilder
 from app.experiments.feature_regime_experiment_reporter import FeatureRegimeExperimentReporter
 from app.experiments.label_grid_experiment_runner import (
     LabelGridExperimentConfig,
@@ -29,7 +34,7 @@ from app.labels.regime_label_config import RegimeLabelConfigPlanner
 
 
 FEATURE_REGIME_EXPERIMENT_RUNNER_NAME = "feature_regime_experiment_runner"
-FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION = "ml34"
+FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION = "ml36"
 DEFAULT_ML31_BASELINE_REFERENCE = {
     "experiment_id": "real_grid_ml31_3_BTCUSDT_15m_20250101_20260612_130501",
     "best_candidate_config_id": "lv2_h12_thr05_tp15_sl10",
@@ -85,6 +90,10 @@ class FeatureRegimeCandidateResult:
     regime_specific_training_applied: bool = False
     feature_weak_signal_detected: bool = False
     feature_leakage_risk_detected: bool = False
+    collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
+    walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
+    profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
     orders_enabled: bool = False
@@ -106,6 +115,10 @@ class FeatureRegimeCandidateResult:
             "regime_specific_training_applied": self.regime_specific_training_applied,
             "feature_weak_signal_detected": self.feature_weak_signal_detected,
             "feature_leakage_risk_detected": self.feature_leakage_risk_detected,
+            "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
+            "regime_label_builder_status": dict(self.regime_label_builder_status),
+            "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
+            "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "approved_for_live_trading": self.approved_for_live_trading,
             "approved_for_auto_activation": self.approved_for_auto_activation,
             "orders_enabled": self.orders_enabled,
@@ -158,6 +171,10 @@ class FeatureRegimeExperimentResult:
     summary_json_path: str
     summary_markdown_path: str
     baseline_reference: dict[str, Any]
+    collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
+    walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
+    profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     approved_for_traders_core_integration: bool = False
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
@@ -209,6 +226,10 @@ class FeatureRegimeExperimentResult:
             "summary_json_path": self.summary_json_path,
             "summary_markdown_path": self.summary_markdown_path,
             "baseline_reference": dict(self.baseline_reference),
+            "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
+            "regime_label_builder_status": dict(self.regime_label_builder_status),
+            "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
+            "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "approved_for_traders_core_integration": self.approved_for_traders_core_integration,
             "approved_for_live_trading": self.approved_for_live_trading,
             "approved_for_auto_activation": self.approved_for_auto_activation,
@@ -326,7 +347,7 @@ class FeatureRegimeExperimentRunner:
         regime_feature_count = len([name for name in feature_names if name.startswith("regime_")])
         return {
             "runner_name": FEATURE_REGIME_EXPERIMENT_RUNNER_NAME,
-            "runner_version": "ml34",
+            "runner_version": FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION,
             "feature_version_default": "fv2",
             "feature_versions_available": ["fv1", "fv2", "fv2_regime"],
             "available_base_label_configs": self._base_grid_planner.build_grid()["configs"],
@@ -345,7 +366,7 @@ class FeatureRegimeExperimentRunner:
                 "regime_features_attached": True,
                 "regime_feature_count": regime_feature_count,
                 "regime_specific_labeling_available": True,
-                "regime_specific_training_applied": False,
+                "regime_specific_training_applied": True,
             },
             "safety_flags": {
                 "approved_for_live_trading": False,
@@ -419,6 +440,9 @@ class FeatureRegimeExperimentRunner:
             )
             warnings.extend(runtime_warnings)
 
+        regime_training_applied = any(
+            item.regime_specific_training_applied for item in candidate_results
+        )
         ranking = self._ranking(candidate_results)
         accepted_count = sum(
             int(item.candidate_status == "CANDIDATE_ACCEPTED_FOR_RESEARCH")
@@ -471,7 +495,7 @@ class FeatureRegimeExperimentRunner:
             regime_feature_count=int(diagnostics["regime_feature_count"]),
             regime_feature_source=str(diagnostics["regime_feature_source"]),
             regime_specific_labeling_available=bool(regime_status["regime_specific_labeling_available"]),
-            regime_specific_training_applied=bool(regime_status["regime_specific_training_applied"]),
+            regime_specific_training_applied=regime_training_applied,
             missing_requirements=tuple(regime_status["missing_requirements"]),
             effective_gap_count_for_training=int(diagnostics["effective_gap_count_for_training"]),
             gap_severity_for_training=str(diagnostics["gap_severity_for_training"]),
@@ -482,6 +506,19 @@ class FeatureRegimeExperimentRunner:
             summary_json_path=str(logger.paths.summary_json_path),
             summary_markdown_path=str(logger.paths.summary_markdown_path),
             baseline_reference=dict(DEFAULT_ML31_BASELINE_REFERENCE),
+            collapse_diagnostics_v2=dict(
+                {} if best_candidate is None else best_candidate.collapse_diagnostics_v2
+            ),
+            regime_label_builder_status=dict(
+                diagnostics.get("regime_label_builder_status", {})
+                or ({} if best_candidate is None else best_candidate.regime_label_builder_status)
+            ),
+            walk_forward_profit_diagnostics=dict(
+                {} if best_candidate is None else best_candidate.walk_forward_profit_diagnostics
+            ),
+            profit_aware_diagnostics=dict(
+                {} if best_candidate is None else best_candidate.profit_aware_diagnostics
+            ),
         )
 
         for candidate in candidate_results:
@@ -525,12 +562,12 @@ class FeatureRegimeExperimentRunner:
     ) -> dict[str, Any]:
         logger.event(event="diagnostics_started", status="RUNNING", message="Diagnostics collection started")
         diagnostics_dir = logger.paths.diagnostics_dir
-        selected_label_version = self._selected_label_version(config, selected_base_configs)
-        selected_horizon = self._selected_horizon(config, selected_base_configs)
+        selected_label_config = (
+            dict(selected_base_configs[0]) if selected_base_configs else self._fallback_label_config_payload()
+        )
         real_feature_diagnostics = self._build_real_feature_diagnostics(
             config=config,
-            label_version=selected_label_version,
-            horizon_candles=selected_horizon,
+            label_config_payload=selected_label_config,
         )
         feature_quality = (
             dict(real_feature_diagnostics.get("feature_quality", {}))
@@ -590,6 +627,9 @@ class FeatureRegimeExperimentRunner:
             "regime_feature_summary": regime_feature_diagnostics,
             "feature_leakage_summary": feature_leakage,
             "regime_experiment_plan_summary": regime_experiment_plan,
+            "regime_label_builder_status": dict(
+                real_feature_diagnostics.get("regime_label_builder_status", {})
+            ),
             "real_feature_diagnostics_used": bool(real_feature_diagnostics.get("real_feature_diagnostics_used", False)),
             "real_feature_diagnostics_row_count": int(real_feature_diagnostics.get("row_count", 0) or 0),
             "regime_features_attached": regime_features_attached,
@@ -628,33 +668,16 @@ class FeatureRegimeExperimentRunner:
             available = available[: max(int(config.max_configs), 0)]
         return available
 
-    def _selected_label_version(
-        self,
-        config: FeatureRegimeExperimentConfig,
-        selected_base_configs: list[dict[str, Any]],
-    ) -> str:
-        if selected_base_configs:
-            return str(selected_base_configs[0]["label_version"])
-        return "lv2_h12_thr05_tp15_sl10"
-
-    def _selected_horizon(
-        self,
-        config: FeatureRegimeExperimentConfig,
-        selected_base_configs: list[dict[str, Any]],
-    ) -> int:
-        if selected_base_configs:
-            return int(selected_base_configs[0]["horizon"])
-        return 12
-
     def _build_real_feature_diagnostics(
         self,
         *,
         config: FeatureRegimeExperimentConfig,
-        label_version: str,
-        horizon_candles: int,
+        label_config_payload: dict[str, Any],
     ) -> dict[str, Any]:
+        label_version = str(label_config_payload["label_version"])
+        horizon_candles = int(label_config_payload["horizon"])
         if config.dry_run or config.sample_mode:
-            return self._real_feature_diagnostics_service.analyze(
+            payload = self._real_feature_diagnostics_service.analyze(
                 symbol=config.symbol,
                 interval=config.interval,
                 feature_version=config.feature_version,
@@ -663,6 +686,8 @@ class FeatureRegimeExperimentRunner:
                 source="sample_rows",
                 sample_mode=True,
             )
+            payload["regime_label_builder_status"] = self._sample_regime_label_builder_status()
+            return payload
 
         with get_session() as session:
             dataset_builder = DatasetBuilder(
@@ -678,27 +703,47 @@ class FeatureRegimeExperimentRunner:
                     label_version=label_version,
                 )
             except Exception as exc:
-                return self._real_feature_diagnostics_service.analyze(
-                    symbol=config.symbol,
-                    interval=config.interval,
-                    feature_version=config.feature_version,
-                    label_version=label_version,
-                    rows=[],
-                    source="dataset_builder",
-                    sample_mode=False,
-                    reason=f"dataset_rows_unavailable:{exc}",
-                )
+                rows = []
+                warnings = [f"dataset_rows_unavailable:{exc}"]
+            else:
+                warnings = ["dataset_rows_unavailable"] if not rows else []
 
-        return self._real_feature_diagnostics_service.analyze(
+        if rows:
+            payload = self._real_feature_diagnostics_service.analyze(
+                symbol=config.symbol,
+                interval=config.interval,
+                feature_version=config.feature_version,
+                label_version=label_version,
+                rows=rows,
+                source="dataset_builder",
+                sample_mode=False,
+            )
+            payload["regime_label_builder_status"] = self._runtime_regime_label_builder_status(
+                label_config_payload=label_config_payload,
+                used_in_training=False,
+            )
+            return payload
+
+        runtime_rows, runtime_warnings, runtime_source, regime_status = self._build_runtime_diagnostic_rows(
+            config=config,
+            label_config_payload=label_config_payload,
+        )
+        resolved_warnings = list(runtime_warnings)
+        if not runtime_rows:
+            resolved_warnings = warnings + runtime_warnings
+        payload = self._real_feature_diagnostics_service.analyze(
             symbol=config.symbol,
             interval=config.interval,
             feature_version=config.feature_version,
             label_version=label_version,
-            rows=rows,
-            source="dataset_builder",
+            rows=runtime_rows,
+            source=runtime_source,
             sample_mode=False,
-            reason="dataset_rows_unavailable" if not rows else None,
+            warnings=resolved_warnings,
+            reason="dataset_rows_unavailable" if not runtime_rows else None,
         )
+        payload["regime_label_builder_status"] = regime_status
+        return payload
 
     def _build_gap_quality_summary(self, config: FeatureRegimeExperimentConfig) -> dict[str, Any]:
         if config.dry_run or config.sample_mode:
@@ -797,7 +842,7 @@ class FeatureRegimeExperimentRunner:
             regime_specific_labeling_available=regime_config_count > 0,
             regime_features_attached=regime_features_attached,
             regime_feature_count=regime_feature_count,
-            training_pipeline_supports_regime_labels=False,
+            training_pipeline_supports_regime_labels=True,
         )
 
     def _dry_run_candidates(
@@ -831,6 +876,10 @@ class FeatureRegimeExperimentRunner:
                 regime_specific_training_applied=False,
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                regime_label_builder_status=self._runtime_regime_label_builder_status(
+                    label_config_payload=dict(config_payload),
+                    used_in_training=False,
+                ),
             )
             candidates.append(result)
             logger.event(
@@ -877,6 +926,7 @@ class FeatureRegimeExperimentRunner:
                 regime_specific_training_applied=False,
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                regime_label_builder_status=self._sample_regime_label_builder_status(),
             )
             candidates.append(result)
             logger.event(
@@ -949,9 +999,18 @@ class FeatureRegimeExperimentRunner:
                 passed_gates=tuple(item.passed_gates),
                 warnings=tuple(item.warnings),
                 recommendations=tuple(item.recommendations),
-                regime_specific_training_applied=False,
+                regime_specific_training_applied=bool(
+                    dict(item.regime_label_builder_status).get(
+                        "regime_specific_training_applied",
+                        False,
+                    )
+                ),
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                collapse_diagnostics_v2=dict(item.collapse_diagnostics_v2),
+                regime_label_builder_status=dict(item.regime_label_builder_status),
+                walk_forward_profit_diagnostics=dict(item.walk_forward_profit_diagnostics),
+                profit_aware_diagnostics=dict(item.profit_aware_diagnostics),
             )
             candidate_results.append(candidate)
             logger.event(
@@ -965,7 +1024,12 @@ class FeatureRegimeExperimentRunner:
                 },
                 message="Real candidate completed",
             )
-        runtime_warnings = ["regime_specific_training_not_applied"]
+        runtime_warnings: list[str] = []
+        if not any(
+            dict(item.regime_label_builder_status).get("regime_label_builder_used_in_training", False)
+            for item in inner_result.candidate_results
+        ):
+            runtime_warnings.append("regime_specific_training_not_applied")
         if inner_result.feature_version_used != config.feature_version:
             runtime_warnings.append("feature_version_requested_but_not_applied")
         return candidate_results, str(inner_result.experiment_status), runtime_warnings
@@ -1108,3 +1172,154 @@ class FeatureRegimeExperimentRunner:
                 },
             },
         ]
+
+    @staticmethod
+    def _fallback_label_config_payload() -> dict[str, Any]:
+        return {
+            "config_id": "lv2_h12_thr05_tp15_sl10",
+            "label_version": "lv2_h12_thr05_tp15_sl10",
+            "horizon": 12,
+            "threshold": 0.5,
+            "take_profit_atr": 1.5,
+            "stop_loss_atr": 1.0,
+        }
+
+    def _build_runtime_diagnostic_rows(
+        self,
+        *,
+        config: FeatureRegimeExperimentConfig,
+        label_config_payload: dict[str, Any],
+    ) -> tuple[list[DatasetRow], list[str], str, dict[str, Any]]:
+        warnings: list[str] = []
+        with get_session() as session:
+            candles = CandleRepository(session).get_all(symbol=config.symbol, interval=config.interval)
+            feature_rows = FeatureRepository(session).get_all(
+                symbol=config.symbol,
+                interval=config.interval,
+                feature_version=config.feature_version,
+            )
+
+        if not candles:
+            return [], ["market_data_missing_for_symbol"], "runtime_context", self._runtime_regime_label_builder_status(
+                label_config_payload=label_config_payload,
+                used_in_training=False,
+                missing_requirements=["market_data_missing_for_symbol"],
+                reason="candles_missing",
+            )
+        if not feature_rows:
+            return [], ["features_not_persisted_for_symbol"], "runtime_context", self._runtime_regime_label_builder_status(
+                label_config_payload=label_config_payload,
+                used_in_training=False,
+                missing_requirements=["features_not_persisted_for_symbol"],
+                reason="feature_rows_missing",
+            )
+
+        base_config = LabelConfig(
+            label_version=str(label_config_payload["label_version"]),
+            horizon_candles=int(label_config_payload["horizon"]),
+            direction_atr_threshold=float(label_config_payload["threshold"]),
+            take_profit_atr=float(label_config_payload["take_profit_atr"]),
+            stop_loss_atr=float(label_config_payload["stop_loss_atr"]),
+            flat_class_enabled=True,
+        )
+        regime_result = RegimeLabelBuilder().build(
+            candles=candles,
+            symbol=config.symbol,
+            interval=config.interval,
+            feature_rows=feature_rows,
+            base_config=base_config,
+        )
+        warnings.extend(regime_result.warnings)
+        label_records = regime_result.records
+        source = "runtime_regime_label_builder"
+        if not label_records:
+            source = "runtime_label_builder"
+            warnings.extend(regime_result.missing_requirements)
+            label_records = LabelBuilder().build(
+                candles=candles,
+                symbol=config.symbol,
+                interval=config.interval,
+                horizon_candles=base_config.horizon_candles,
+                label_version=base_config.label_version,
+                config=base_config,
+            )
+        labels_by_open_time = {record.candle_open_time: record for record in label_records}
+        rows: list[DatasetRow] = []
+        for feature_row in feature_rows:
+            features_json = dict(feature_row.features_json)
+            if any(value is None for value in features_json.values()):
+                continue
+            label_row = labels_by_open_time.get(feature_row.candle_open_time)
+            if label_row is None:
+                continue
+            rows.append(
+                DatasetRow(
+                    symbol=feature_row.symbol,
+                    interval=feature_row.interval,
+                    candle_open_time=feature_row.candle_open_time,
+                    feature_version=feature_row.feature_version,
+                    label_version=label_row.label_version,
+                    horizon_candles=label_row.horizon_candles,
+                    features_json=features_json,
+                    direction_label=label_row.direction_label,
+                    tp_before_sl=label_row.tp_before_sl,
+                    future_return=float(label_row.future_return),
+                    future_move_atr=float(label_row.future_move_atr),
+                    max_favorable_move_atr=float(label_row.max_favorable_move_atr),
+                    max_adverse_move_atr=float(label_row.max_adverse_move_atr),
+                )
+            )
+        if not rows:
+            warnings.append("runtime_dataset_not_built_for_symbol")
+        return rows, list(dict.fromkeys(warnings)), source, regime_result.to_dict()
+
+    @staticmethod
+    def _runtime_regime_label_builder_status(
+        *,
+        label_config_payload: dict[str, Any],
+        used_in_training: bool,
+        missing_requirements: list[str] | None = None,
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "regime_label_builder_available": True,
+            "regime_label_builder_used_in_training": used_in_training,
+            "regime_specific_labeling_available": True,
+            "regime_specific_training_applied": used_in_training,
+            "regime_label_config_used": {
+                "trend_up": f"{label_config_payload['label_version']}_trend_up",
+                "trend_down": f"{label_config_payload['label_version']}_trend_down",
+                "range": f"{label_config_payload['label_version']}_range",
+                "high_volatility": f"{label_config_payload['label_version']}_high_volatility",
+                "low_volatility": f"{label_config_payload['label_version']}_low_volatility",
+                "unknown": f"{label_config_payload['label_version']}_unknown",
+            },
+            "label_distribution_by_regime": {},
+            "missing_requirements": list(missing_requirements or ([] if used_in_training else ["regime_runtime_labels_not_built"])),
+            "warnings": [],
+            "reason": reason,
+        }
+
+    @staticmethod
+    def _sample_regime_label_builder_status() -> dict[str, Any]:
+        return {
+            "regime_label_builder_available": True,
+            "regime_label_builder_used_in_training": False,
+            "regime_specific_labeling_available": True,
+            "regime_specific_training_applied": False,
+            "regime_label_config_used": {
+                "trend_up": "lv2_h12_thr05_tp15_sl10_trend_up",
+                "trend_down": "lv2_h12_thr05_tp15_sl10_trend_down",
+                "range": "lv2_h12_thr05_tp15_sl10_range",
+                "high_volatility": "lv2_h12_thr05_tp15_sl10_high_volatility",
+                "low_volatility": "lv2_h12_thr05_tp15_sl10_low_volatility",
+                "unknown": "lv2_h12_thr05_tp15_sl10_unknown",
+            },
+            "label_distribution_by_regime": {
+                "trend_up": {"UP": 2, "DOWN": 0, "FLAT": 0},
+                "trend_down": {"UP": 0, "DOWN": 1, "FLAT": 0},
+            },
+            "missing_requirements": ["sample_mode_no_real_training"],
+            "warnings": ["sample_mode_result"],
+            "reason": "sample_mode",
+        }

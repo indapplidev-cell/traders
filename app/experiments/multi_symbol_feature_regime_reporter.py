@@ -173,6 +173,7 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Collapse Summary",
                 "",
                 f"- collapse_summary: `{payload.get('collapse_summary')}`",
+                f"- collapse_diagnostics_v2_by_symbol: `{ {item.get('symbol'): item.get('collapse_diagnostics_v2') for item in payload.get('symbol_results', [])} }`",
                 "",
                 "## Recommendations",
                 "",
