@@ -31,6 +31,8 @@ from app.experiments.label_grid_experiment_reporter import (
     LabelGridExperimentReporter,
 )
 from app.experiments.label_grid_search import LabelGridSearchService
+from app.experiments.label_grid_result_analyzer import LabelGridResultAnalyzer
+from app.experiments.label_grid_result_reporter import LabelGridResultReporter
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
 from app.evaluation.anti_collapse_validator import AntiCollapseValidator
@@ -2551,6 +2553,55 @@ def run_label_grid_experiment(
     return LabelGridExperimentReporter().compact_summary_to_dict(result)
 
 
+def analyze_label_grid_results(
+    *,
+    experiment_dir: str | Path | None = None,
+    latest: bool = False,
+    export_report: bool = True,
+) -> dict[str, object]:
+    """Analyze label-grid experiment outputs and export ML29 analysis artifacts."""
+
+    if experiment_dir is None and not latest:
+        raise ValueError("Provide --latest or --experiment-dir.")
+
+    analyzer = LabelGridResultAnalyzer()
+    reporter = LabelGridResultReporter()
+    resolved_dir = (
+        Path(experiment_dir)
+        if experiment_dir is not None
+        else analyzer.latest_experiment_dir()
+    )
+    summary = analyzer.load_summary(resolved_dir)
+    analysis = analyzer.analyze(summary)
+    plan = {
+        "planner_name": analysis["planner_name"],
+        "planner_version": analysis["planner_version"],
+        "experiment_id": analysis["experiment_id"],
+        "recommendations": analysis["recommendations"],
+        "next_experiment_plan": analysis["next_experiment_plan"],
+    }
+
+    analysis_json_path = resolved_dir / "label_grid_result_analysis.json"
+    analysis_markdown_path = resolved_dir / "label_grid_result_analysis.md"
+    plan_json_path = resolved_dir / "next_label_experiment_plan.json"
+    plan_markdown_path = resolved_dir / "next_label_experiment_plan.md"
+
+    if export_report:
+        reporter.write_analysis_json(analysis, analysis_json_path)
+        reporter.write_analysis_markdown(analysis, analysis_markdown_path)
+        reporter.write_plan_json(plan, plan_json_path)
+        reporter.write_plan_markdown(plan, plan_markdown_path)
+
+    payload = reporter.compact_summary_to_dict(
+        analysis,
+        analysis_json_path=str(analysis_json_path) if export_report else None,
+        analysis_markdown_path=str(analysis_markdown_path) if export_report else None,
+    )
+    payload["plan_json_path"] = str(plan_json_path) if export_report else None
+    payload["plan_markdown_path"] = str(plan_markdown_path) if export_report else None
+    return payload
+
+
 def build_model_candidate_selection_preview_payload() -> dict[str, object]:
     """Build a deterministic candidate-selection preview from the latest bad run profile."""
 
@@ -3102,6 +3153,33 @@ def label_grid_experiment_run_command(
         run_walk_forward=run_walk_forward,
         run_gate_policy_replay=run_gate_policy_replay,
         output_dir=output_dir,
+    )
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("label-grid-results-analyze")
+def label_grid_results_analyze_command(
+    experiment_dir: Path | None = typer.Option(None, "--experiment-dir"),
+    latest: bool = typer.Option(False, "--latest"),
+    export_report: bool = typer.Option(
+        True,
+        "--export-report/--no-export-report",
+    ),
+) -> None:
+    """Analyze ML28 label-grid results and export ML29 analysis artifacts."""
+
+    payload = analyze_label_grid_results(
+        experiment_dir=experiment_dir,
+        latest=latest,
+        export_report=export_report,
     )
 
     typer.echo(
