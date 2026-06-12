@@ -21,9 +21,13 @@ def test_next_label_experiment_planner_recommends_for_collapse_profit_walk_and_g
     )
 
     recommendations = " ".join(payload["recommendations"])
+    milestones = " ".join(payload["next_experiment_plan"]["milestones"])
+
+    assert payload["planner_version"] == "ml30"
     assert "anti-collapse" in recommendations
     assert "TP/SL" in recommendations
     assert "walk-forward" in recommendations
     assert "gap handling" in recommendations
+    assert "ML30" in milestones
+    assert "ML31" in milestones
     assert payload["next_experiment_plan"]["focus_areas"]
-

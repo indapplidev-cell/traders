@@ -12,7 +12,9 @@ from app.data.binance_client import BinanceClient
 from app.data.candle_gap_checker import CandleGapChecker
 from app.data.historical_loader import HistoricalLoader
 from app.dataset.dataset_builder import DatasetBuilder
+from app.dataset.gap_aware_dataset_filter import GapAwareDatasetFilter
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 from app.db.repositories.candle_repository import CandleRepository
@@ -36,6 +38,9 @@ from app.experiments.label_grid_result_reporter import LabelGridResultReporter
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
 from app.evaluation.anti_collapse_validator import AntiCollapseValidator
+from app.evaluation.candidate_acceptance_thresholds import (
+    default_candidate_acceptance_thresholds,
+)
 from app.evaluation.model_candidate_selector import ModelCandidateSelector
 from app.evaluation.model_quality_reporter import ModelQualityReporter
 from app.evaluation.model_quality_validator import validate_model_quality
@@ -50,6 +55,7 @@ from app.prediction.predictor import Predictor
 from app.replay.historical_replay_engine import HistoricalReplayEngine
 from app.replay.replay_service import ReplayService
 from app.training.training_service import TrainingService
+from app.training.anti_collapse_training_plan import AntiCollapseTrainingPlan
 from app.training.training_pipeline_reporter import TrainingPipelineReporter
 from app.training.training_pipeline_runner import (
     LongHistoryTrainingPipelineRunner,
@@ -2486,7 +2492,7 @@ def export_model_anti_collapse_preview(
 
 
 def build_label_quality_grid_preview_payload() -> dict[str, object]:
-    """Build a reusable ML27 label-quality grid preview."""
+    """Build a reusable ML30 label-quality grid preview."""
 
     return LabelQualityGridPlanner().build_grid()
 
@@ -2514,6 +2520,83 @@ def build_label_grid_experiment_preview_payload() -> dict[str, object]:
     """Build a reusable ML28 label-grid experiment preview."""
 
     return LabelGridExperimentRunner().build_preview()
+
+
+def build_gap_aware_filter_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML30 gap-aware dataset filter preview."""
+
+    rows = [
+        {"candle_open_time": f"2025-03-01T0{hour}:00:00+00:00", "row_id": hour}
+        for hour in range(6)
+    ]
+    filtered_rows, summary = GapAwareDatasetFilter().apply(
+        rows=rows,
+        symbol="BTCUSDT",
+        interval="15m",
+        gap_count=1,
+        missing_open_times=["2025-03-01T02:30:00+00:00"],
+        lookback_bars=1,
+        lookahead_bars=1,
+    )
+    return {
+        **summary,
+        "excluded_row_ids": [
+            row["row_id"] for row in rows if row not in filtered_rows
+        ],
+        "remaining_row_ids": [row["row_id"] for row in filtered_rows],
+    }
+
+
+def build_feature_quality_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML30 feature quality diagnostic preview."""
+
+    rows = [
+        {
+            "direction_label": "UP",
+            "features_json": {"trend_strength": 1.20, "volatility": 0.55, "flat_bias": 0.10},
+        },
+        {
+            "direction_label": "UP",
+            "features_json": {"trend_strength": 1.05, "volatility": 0.58, "flat_bias": 0.10},
+        },
+        {
+            "direction_label": "DOWN",
+            "features_json": {"trend_strength": -0.85, "volatility": 0.61, "flat_bias": 0.10},
+        },
+        {
+            "direction_label": "DOWN",
+            "features_json": {"trend_strength": -1.10, "volatility": None, "flat_bias": 0.10},
+        },
+        {
+            "direction_label": "FLAT",
+            "features_json": {"trend_strength": 0.05, "volatility": 0.20, "flat_bias": 0.10},
+        },
+    ]
+    return FeatureQualityDiagnostics().analyze(rows)
+
+
+def build_anti_collapse_training_plan_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML30 anti-collapse training plan preview."""
+
+    return AntiCollapseTrainingPlan().build_plan()
+
+
+def build_candidate_thresholds_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML30 candidate threshold preview."""
+
+    thresholds = default_candidate_acceptance_thresholds()
+    return {
+        "threshold_name": "candidate_acceptance_thresholds",
+        "threshold_version": "ml30",
+        "thresholds": thresholds.to_dict(),
+        "gap_examples": {
+            "MODERATE_allowed": thresholds.gap_severity_allowed("MODERATE"),
+            "HIGH_allowed": thresholds.gap_severity_allowed("HIGH"),
+        },
+        "candidate_status_preview": build_model_candidate_selection_preview_payload()[
+            "candidate_status"
+        ],
+    }
 
 
 def run_label_grid_experiment(
@@ -3060,7 +3143,7 @@ def model_candidate_select_export(
 
 @cli.command("label-quality-grid-preview")
 def label_quality_grid_preview() -> None:
-    """Show deterministic ML27 label-quality grid preview JSON."""
+    """Show deterministic ML30 label-quality grid preview JSON."""
 
     payload = build_label_quality_grid_preview_payload()
 
@@ -3082,7 +3165,7 @@ def label_quality_grid_export(
         help="Path for label-quality grid preview export.",
     ),
 ) -> None:
-    """Export deterministic ML27 label-quality grid preview JSON."""
+    """Export deterministic ML30 label-quality grid preview JSON."""
 
     payload = export_label_quality_grid_preview(output_path)
 
@@ -3101,6 +3184,70 @@ def label_grid_experiment_preview() -> None:
     """Show deterministic ML28 label-grid experiment preview JSON."""
 
     payload = build_label_grid_experiment_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("gap-aware-filter-preview")
+def gap_aware_filter_preview() -> None:
+    """Show deterministic ML30 gap-aware dataset filter preview JSON."""
+
+    payload = build_gap_aware_filter_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("feature-quality-preview")
+def feature_quality_preview() -> None:
+    """Show deterministic ML30 feature quality diagnostic preview JSON."""
+
+    payload = build_feature_quality_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("anti-collapse-training-plan-preview")
+def anti_collapse_training_plan_preview() -> None:
+    """Show deterministic ML30 anti-collapse training plan preview JSON."""
+
+    payload = build_anti_collapse_training_plan_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("candidate-thresholds-preview")
+def candidate_thresholds_preview() -> None:
+    """Show deterministic ML30 candidate acceptance threshold preview JSON."""
+
+    payload = build_candidate_thresholds_preview_payload()
 
     typer.echo(
         json.dumps(

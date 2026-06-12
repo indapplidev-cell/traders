@@ -4,6 +4,7 @@ from datetime import date
 from typing import Any
 
 from app.dataset.dataset_exporter import DatasetExporter
+from app.dataset.gap_aware_dataset_filter import GapAwareDatasetFilter
 from app.dataset.dataset_models import DatasetRow
 from app.dataset.dataset_splitter import DatasetSplitter
 from app.db.repositories.feature_repository import FeatureRepository
@@ -17,11 +18,13 @@ class DatasetBuilder:
         label_repository: LabelRepository,
         dataset_splitter: DatasetSplitter | None = None,
         dataset_exporter: DatasetExporter | None = None,
+        gap_aware_filter: GapAwareDatasetFilter | None = None,
     ) -> None:
         self._feature_repository = feature_repository
         self._label_repository = label_repository
         self._dataset_splitter = dataset_splitter or DatasetSplitter()
         self._dataset_exporter = dataset_exporter or DatasetExporter()
+        self._gap_aware_filter = gap_aware_filter or GapAwareDatasetFilter()
 
     def build(
         self,
@@ -32,6 +35,11 @@ class DatasetBuilder:
         label_version: str,
         train_end: date | None = None,
         validation_end: date | None = None,
+        apply_gap_filter: bool = False,
+        gap_count: int = 0,
+        missing_open_times: list[str] | None = None,
+        gap_lookback_bars: int = 3,
+        gap_lookahead_bars: int = 3,
     ) -> dict[str, Any]:
         dataset_rows, summary = self.build_rows(
             symbol=symbol,
@@ -39,6 +47,11 @@ class DatasetBuilder:
             horizon_candles=horizon_candles,
             feature_version=feature_version,
             label_version=label_version,
+            apply_gap_filter=apply_gap_filter,
+            gap_count=gap_count,
+            missing_open_times=missing_open_times,
+            gap_lookback_bars=gap_lookback_bars,
+            gap_lookahead_bars=gap_lookahead_bars,
         )
         splits = self.split_rows(dataset_rows, train_end=train_end, validation_end=validation_end)
         summary.update(
@@ -74,6 +87,11 @@ class DatasetBuilder:
         horizon_candles: int,
         feature_version: str,
         label_version: str,
+        apply_gap_filter: bool = False,
+        gap_count: int = 0,
+        missing_open_times: list[str] | None = None,
+        gap_lookback_bars: int = 3,
+        gap_lookahead_bars: int = 3,
     ) -> tuple[list[DatasetRow], dict[str, Any]]:
         feature_rows = self._feature_repository.get_all(
             symbol=symbol,
@@ -132,6 +150,18 @@ class DatasetBuilder:
             "dropped_incomplete_features": dropped_incomplete_features,
             "dropped_missing_labels": dropped_missing_labels,
         }
+        if apply_gap_filter or gap_count > 0 or missing_open_times:
+            dataset_rows, gap_filter_summary = self._gap_aware_filter.apply(
+                rows=dataset_rows,
+                symbol=symbol,
+                interval=interval,
+                gap_count=gap_count,
+                missing_open_times=missing_open_times,
+                lookback_bars=gap_lookback_bars,
+                lookahead_bars=gap_lookahead_bars,
+            )
+            summary["dataset_rows"] = len(dataset_rows)
+            summary["gap_filter_summary"] = gap_filter_summary
         return dataset_rows, summary
 
     def split_rows(

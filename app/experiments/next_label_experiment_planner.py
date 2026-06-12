@@ -4,7 +4,7 @@ from typing import Any
 
 
 NEXT_LABEL_EXPERIMENT_PLANNER_NAME = "next_label_experiment_planner"
-NEXT_LABEL_EXPERIMENT_PLANNER_VERSION = "ml29"
+NEXT_LABEL_EXPERIMENT_PLANNER_VERSION = "ml30"
 
 
 class NextLabelExperimentPlanner:
@@ -23,6 +23,7 @@ class NextLabelExperimentPlanner:
                     "Try stricter flat thresholds to reduce dominant-direction predictions.",
                     "Review class weights or sampling so UP does not dominate predictions.",
                     "Add stronger penalties for skewed predicted distributions.",
+                    "ML30: enable anti-collapse controls before the next expanded grid.",
                 ]
             )
         if gate_failure_counts.get("profit_aware_gate", 0) > 0:
@@ -32,6 +33,7 @@ class NextLabelExperimentPlanner:
                     "Revisit TP/SL label settings because profit-aware behavior remains negative.",
                     "Raise signal quality gates such as min margin or max_prob thresholds.",
                     "Recheck fee and slippage assumptions against the current evaluation setup.",
+                    "ML30: tighten candidate acceptance thresholds for profit-aware validation.",
                 ]
             )
         if gate_failure_counts.get("walk_forward_gate", 0) > 0:
@@ -41,6 +43,7 @@ class NextLabelExperimentPlanner:
                     "Increase walk-forward robustness requirements before trusting a candidate.",
                     "Check regime sensitivity and exclude unstable configs from the next run.",
                     "Inspect whether the current fold structure hides instability across time.",
+                    "ML31: rerun only configs that survive regime and walk-forward stress.",
                 ]
             )
         if gate_failure_counts.get("gap_quality_gate", 0) > 0:
@@ -49,6 +52,7 @@ class NextLabelExperimentPlanner:
                 [
                     "Improve gap handling before training on candidate windows.",
                     "Exclude or down-weight windows around detected candle gaps.",
+                    "ML30: apply gap-aware dataset filtering or collect detailed gap locations.",
                 ]
             )
         if gate_failure_counts.get("baseline_edge_gate", 0) > 0:
@@ -57,6 +61,7 @@ class NextLabelExperimentPlanner:
                 [
                     "Improve feature signal quality because candidates are not beating the baseline edge threshold.",
                     "Compare the best rejected candidate against alternative feature versions before expanding the grid.",
+                    "ML30: run feature quality diagnostics and remove weak features first.",
                 ]
             )
 
@@ -70,6 +75,10 @@ class NextLabelExperimentPlanner:
             "top_failed_gate": analysis.get("top_failed_gate"),
             "focus_areas": list(dict.fromkeys(focus_areas)) or ["labels", "features"],
             "suggested_actions": recommendations[:-1],
+            "milestones": [
+                "ML30 - implement gap-aware, feature-quality, anti-collapse, and threshold controls.",
+                "ML31 - run expanded grid with the new controls enabled.",
+            ],
             "safety": {
                 "approved_for_live_trading": False,
                 "approved_for_auto_activation": False,

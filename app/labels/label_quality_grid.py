@@ -32,7 +32,7 @@ class LabelQualityGridConfig:
 
 class LabelQualityGridPlanner:
     PLANNER_NAME = "label_quality_grid_planner"
-    PLANNER_VERSION = "ml27"
+    PLANNER_VERSION = "ml30"
 
     def build_grid(self) -> dict[str, Any]:
         configs = [
@@ -90,6 +90,61 @@ class LabelQualityGridPlanner:
                 flat_threshold=0.7,
                 description="Longer trend-oriented horizon for stability-focused experiments.",
                 risk_note="Highest risk of low sample count and slower feedback loop.",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h12_thr06_tp10_sl10",
+                label_version="lv3_h12_thr06_tp10_sl10",
+                horizon=12,
+                threshold=0.6,
+                take_profit_atr=1.0,
+                stop_loss_atr=1.0,
+                flat_threshold=0.6,
+                description="Balanced horizon with stricter flat zone to reduce forced UP predictions.",
+                risk_note="Can lower signal count if features remain weak.",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h16_thr06_tp15_sl15",
+                label_version="lv3_h16_thr06_tp15_sl15",
+                horizon=16,
+                threshold=0.6,
+                take_profit_atr=1.5,
+                stop_loss_atr=1.5,
+                flat_threshold=0.6,
+                description="Symmetric TP/SL with longer horizon to reduce directional skew.",
+                risk_note="May trade less often because symmetric exits are stricter.",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h20_thr07_tp15_sl15",
+                label_version="lv3_h20_thr07_tp15_sl15",
+                horizon=20,
+                threshold=0.7,
+                take_profit_atr=1.5,
+                stop_loss_atr=1.5,
+                flat_threshold=0.7,
+                description="Broader no-trade zone with moderate reward/risk symmetry.",
+                risk_note="Higher flat threshold can underfit if trend opportunities are sparse.",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h24_thr08_tp20_sl20",
+                label_version="lv3_h24_thr08_tp20_sl20",
+                horizon=24,
+                threshold=0.8,
+                take_profit_atr=2.0,
+                stop_loss_atr=2.0,
+                flat_threshold=0.8,
+                description="Strong separation and symmetric exits for collapse-resistant trend labels.",
+                risk_note="Most selective config; risk of low sample count is high.",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h32_thr08_tp20_sl15",
+                label_version="lv3_h32_thr08_tp20_sl15",
+                horizon=32,
+                threshold=0.8,
+                take_profit_atr=2.0,
+                stop_loss_atr=1.5,
+                flat_threshold=0.8,
+                description="Long horizon with stronger flat zone and milder asymmetry than earlier configs.",
+                risk_note="Long holding horizon can hurt responsiveness in choppy regimes.",
             ),
         ]
         return {
