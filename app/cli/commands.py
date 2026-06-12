@@ -23,6 +23,13 @@ from app.db.repositories.training_run_repository import TrainingRunRepository
 from app.db.session import get_session
 from app.diagnostics.diagnostics_service import DiagnosticsService
 from app.experiments.experiment_reporter import ExperimentReporter
+from app.experiments.label_grid_experiment_runner import (
+    LabelGridExperimentConfig,
+    LabelGridExperimentRunner,
+)
+from app.experiments.label_grid_experiment_reporter import (
+    LabelGridExperimentReporter,
+)
 from app.experiments.label_grid_search import LabelGridSearchService
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
@@ -2501,6 +2508,49 @@ def export_label_quality_grid_preview(
     }
 
 
+def build_label_grid_experiment_preview_payload() -> dict[str, object]:
+    """Build a reusable ML28 label-grid experiment preview."""
+
+    return LabelGridExperimentRunner().build_preview()
+
+
+def run_label_grid_experiment(
+    *,
+    symbol: str,
+    interval: str,
+    start_date: str,
+    end_date: str | None = None,
+    experiment_id: str | None = None,
+    label_config_ids: list[str] | None = None,
+    max_configs: int | None = None,
+    dry_run: bool = False,
+    sample_mode: bool = False,
+    run_training: bool = True,
+    run_walk_forward: bool = True,
+    run_gate_policy_replay: bool = True,
+    output_dir: Path = Path("reports/label_grid_experiments"),
+) -> dict[str, object]:
+    """Run the ML28 label-grid experiment session."""
+
+    config = LabelGridExperimentConfig(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        experiment_id=experiment_id,
+        label_config_ids=tuple(label_config_ids or ()),
+        max_configs=max_configs,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        run_training=run_training,
+        run_walk_forward=run_walk_forward,
+        run_gate_policy_replay=run_gate_policy_replay,
+        output_dir=output_dir,
+    )
+    result = LabelGridExperimentRunner().run(config)
+    return LabelGridExperimentReporter().compact_summary_to_dict(result)
+
+
 def build_model_candidate_selection_preview_payload() -> dict[str, object]:
     """Build a deterministic candidate-selection preview from the latest bad run profile."""
 
@@ -2984,6 +3034,75 @@ def label_quality_grid_export(
     """Export deterministic ML27 label-quality grid preview JSON."""
 
     payload = export_label_quality_grid_preview(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("label-grid-experiment-preview")
+def label_grid_experiment_preview() -> None:
+    """Show deterministic ML28 label-grid experiment preview JSON."""
+
+    payload = build_label_grid_experiment_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("label-grid-experiment-run")
+def label_grid_experiment_run_command(
+    symbol: str = typer.Option(..., "--symbol"),
+    interval: str = typer.Option(..., "--interval"),
+    start_date: str = typer.Option(..., "--start-date"),
+    end_date: str | None = typer.Option(None, "--end-date"),
+    experiment_id: str | None = typer.Option(None, "--experiment-id"),
+    label_config_ids: list[str] | None = typer.Option(None, "--label-config-id"),
+    max_configs: int | None = typer.Option(None, "--max-configs"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    sample_mode: bool = typer.Option(False, "--sample-mode"),
+    run_training: bool = typer.Option(True, "--run-training/--no-run-training"),
+    run_walk_forward: bool = typer.Option(
+        True,
+        "--run-walk-forward/--no-run-walk-forward",
+    ),
+    run_gate_policy_replay: bool = typer.Option(
+        True,
+        "--run-gate-policy-replay/--no-run-gate-policy-replay",
+    ),
+    output_dir: Path = typer.Option(
+        Path("reports/label_grid_experiments"),
+        "--output-dir",
+    ),
+) -> None:
+    """Run ML28 label-grid experiments over the configured label grid."""
+
+    payload = run_label_grid_experiment(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        experiment_id=experiment_id,
+        label_config_ids=label_config_ids,
+        max_configs=max_configs,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        run_training=run_training,
+        run_walk_forward=run_walk_forward,
+        run_gate_policy_replay=run_gate_policy_replay,
+        output_dir=output_dir,
+    )
 
     typer.echo(
         json.dumps(

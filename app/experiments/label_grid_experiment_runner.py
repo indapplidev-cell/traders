@@ -1,0 +1,993 @@
+from __future__ import annotations
+
+import json
+import time
+from dataclasses import dataclass, field
+from datetime import date, datetime, timezone
+from pathlib import Path
+from typing import Any, Callable
+
+from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.evaluation.anti_collapse_validator import AntiCollapseValidator
+from app.evaluation.model_quality_validator import validate_model_quality
+from app.experiments.label_grid_candidate_ranker import LabelGridCandidateRanker
+from app.experiments.label_grid_experiment_reporter import LabelGridExperimentReporter
+from app.labels.label_quality_grid import LabelQualityGridConfig, LabelQualityGridPlanner
+from app.training.training_pipeline_runner import (
+    LongHistoryTrainingPipelineRunner,
+    TrainingPipelineConfig,
+)
+
+
+LABEL_GRID_EXPERIMENT_RUNNER_NAME = "label_grid_experiment_runner"
+LABEL_GRID_EXPERIMENT_RUNNER_VERSION = "ml28"
+
+
+@dataclass(frozen=True, slots=True)
+class LabelGridExperimentConfig:
+    symbol: str
+    interval: str
+    start_date: str
+    end_date: str | None = None
+    experiment_id: str | None = None
+    label_config_ids: tuple[str, ...] = ()
+    max_configs: int | None = None
+    dry_run: bool = False
+    sample_mode: bool = False
+    run_training: bool = True
+    run_walk_forward: bool = True
+    run_gate_policy_replay: bool = True
+    output_dir: Path = Path("reports/label_grid_experiments")
+
+    def resolved_end_date(self) -> str:
+        if self.end_date is not None:
+            return self.end_date
+        return date.today().isoformat()
+
+    def resolved_experiment_id(self) -> str:
+        if self.experiment_id is not None:
+            return self.experiment_id
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+        start = self.start_date.replace("-", "")
+        end = self.resolved_end_date().replace("-", "")
+        return f"label_grid_{self.symbol}_{self.interval}_{start}_{end}_{timestamp}"
+
+
+@dataclass(frozen=True, slots=True)
+class LabelGridExperimentCandidateResult:
+    config_id: str
+    label_config: dict[str, Any]
+    status: str
+    quality_status: str | None
+    candidate_status: str | None
+    model_version: str | None
+    training_run_id: str | None
+    dataset_rows: int
+    train_rows: int
+    val_rows: int
+    test_rows: int
+    class_distribution: dict[str, Any] = field(default_factory=dict)
+    actual_distribution: dict[str, Any] = field(default_factory=dict)
+    predicted_distribution: dict[str, Any] = field(default_factory=dict)
+    model_accuracy: float | None = None
+    baseline_accuracy: float | None = None
+    accuracy_edge: float | None = None
+    collapse_detected: bool = False
+    collapse_type: str | None = None
+    gap_severity: str | None = None
+    gap_count: int = 0
+    profit_total_r: float | None = None
+    profit_factor: float | None = None
+    walk_forward_fold_count: int = 0
+    walk_forward_global_total_r: float | None = None
+    walk_forward_profit_factor: float | None = None
+    gate_policy_allowed_count: int = 0
+    gate_policy_blocked_count: int = 0
+    failed_gates: tuple[str, ...] = ()
+    passed_gates: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+    recommendations: tuple[str, ...] = ()
+    approved_for_traders_core_integration: bool = False
+    approved_for_live_trading: bool = False
+    approved_for_auto_activation: bool = False
+    orders_enabled: bool = False
+    traders_core_connected: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "config_id": self.config_id,
+            "label_config": dict(self.label_config),
+            "status": self.status,
+            "quality_status": self.quality_status,
+            "candidate_status": self.candidate_status,
+            "model_version": self.model_version,
+            "training_run_id": self.training_run_id,
+            "dataset_rows": self.dataset_rows,
+            "train_rows": self.train_rows,
+            "val_rows": self.val_rows,
+            "test_rows": self.test_rows,
+            "class_distribution": dict(self.class_distribution),
+            "actual_distribution": dict(self.actual_distribution),
+            "predicted_distribution": dict(self.predicted_distribution),
+            "model_accuracy": self.model_accuracy,
+            "baseline_accuracy": self.baseline_accuracy,
+            "accuracy_edge": self.accuracy_edge,
+            "collapse_detected": self.collapse_detected,
+            "collapse_type": self.collapse_type,
+            "gap_severity": self.gap_severity,
+            "gap_count": self.gap_count,
+            "profit_total_r": self.profit_total_r,
+            "profit_factor": self.profit_factor,
+            "walk_forward_fold_count": self.walk_forward_fold_count,
+            "walk_forward_global_total_r": self.walk_forward_global_total_r,
+            "walk_forward_profit_factor": self.walk_forward_profit_factor,
+            "gate_policy_allowed_count": self.gate_policy_allowed_count,
+            "gate_policy_blocked_count": self.gate_policy_blocked_count,
+            "failed_gates": list(self.failed_gates),
+            "passed_gates": list(self.passed_gates),
+            "warnings": list(self.warnings),
+            "recommendations": list(self.recommendations),
+            "approved_for_traders_core_integration": self.approved_for_traders_core_integration,
+            "approved_for_live_trading": self.approved_for_live_trading,
+            "approved_for_auto_activation": self.approved_for_auto_activation,
+            "orders_enabled": self.orders_enabled,
+            "traders_core_connected": self.traders_core_connected,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class LabelGridExperimentRunResult:
+    status: str
+    experiment_status: str
+    experiment_id: str
+    symbol: str
+    interval: str
+    start_date: str
+    end_date: str
+    dry_run: bool
+    sample_mode: bool
+    config_count: int
+    completed_candidate_count: int
+    failed_candidate_count: int
+    accepted_candidate_count: int
+    rejected_candidate_count: int
+    best_candidate_config_id: str | None
+    best_candidate_status: str | None
+    best_candidate_score: float | None
+    output_dir: str
+    log_path: str
+    events_path: str
+    summary_json_path: str
+    summary_markdown_path: str
+    candidate_results_dir: str
+    candidate_results: tuple[LabelGridExperimentCandidateResult, ...]
+    candidate_ranking: tuple[dict[str, Any], ...]
+    failed_gates_summary: dict[str, int]
+    collapse_summary: dict[str, int]
+    profit_summary: dict[str, Any]
+    walk_forward_summary: dict[str, Any]
+    gap_quality_summary: dict[str, Any]
+    recommendations: tuple[str, ...]
+    approved_for_live_trading: bool = False
+    approved_for_auto_activation: bool = False
+    orders_enabled: bool = False
+    traders_core_connected: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "experiment_status": self.experiment_status,
+            "experiment_id": self.experiment_id,
+            "symbol": self.symbol,
+            "interval": self.interval,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "dry_run": self.dry_run,
+            "sample_mode": self.sample_mode,
+            "config_count": self.config_count,
+            "completed_candidate_count": self.completed_candidate_count,
+            "failed_candidate_count": self.failed_candidate_count,
+            "accepted_candidate_count": self.accepted_candidate_count,
+            "rejected_candidate_count": self.rejected_candidate_count,
+            "best_candidate_config_id": self.best_candidate_config_id,
+            "best_candidate_status": self.best_candidate_status,
+            "best_candidate_score": self.best_candidate_score,
+            "output_dir": self.output_dir,
+            "log_path": self.log_path,
+            "events_path": self.events_path,
+            "summary_json_path": self.summary_json_path,
+            "summary_markdown_path": self.summary_markdown_path,
+            "candidate_results_dir": self.candidate_results_dir,
+            "candidate_results": [item.to_dict() for item in self.candidate_results],
+            "candidate_ranking": [dict(item) for item in self.candidate_ranking],
+            "failed_gates_summary": dict(self.failed_gates_summary),
+            "collapse_summary": dict(self.collapse_summary),
+            "profit_summary": dict(self.profit_summary),
+            "walk_forward_summary": dict(self.walk_forward_summary),
+            "gap_quality_summary": dict(self.gap_quality_summary),
+            "recommendations": list(self.recommendations),
+            "approved_for_live_trading": self.approved_for_live_trading,
+            "approved_for_auto_activation": self.approved_for_auto_activation,
+            "orders_enabled": self.orders_enabled,
+            "traders_core_connected": self.traders_core_connected,
+        }
+
+
+@dataclass(frozen=True)
+class _ExperimentLogPaths:
+    experiment_dir: Path
+    log_path: Path
+    events_path: Path
+    summary_json_path: Path
+    summary_markdown_path: Path
+    candidate_results_dir: Path
+
+
+class _ExperimentLogger:
+    def __init__(self, *, experiment_id: str, output_dir: Path | str) -> None:
+        root = Path(output_dir)
+        experiment_dir = root / experiment_id
+        experiment_dir.mkdir(parents=True, exist_ok=True)
+        candidate_results_dir = experiment_dir / "candidate_results"
+        candidate_results_dir.mkdir(parents=True, exist_ok=True)
+        self._experiment_id = experiment_id
+        self._paths = _ExperimentLogPaths(
+            experiment_dir=experiment_dir,
+            log_path=experiment_dir / "label_grid_experiment.log",
+            events_path=experiment_dir / "label_grid_experiment_events.jsonl",
+            summary_json_path=experiment_dir / "label_grid_experiment_summary.json",
+            summary_markdown_path=experiment_dir / "label_grid_experiment_summary.md",
+            candidate_results_dir=candidate_results_dir,
+        )
+
+    @property
+    def paths(self) -> _ExperimentLogPaths:
+        return self._paths
+
+    def event(
+        self,
+        *,
+        config_id: str | None,
+        event: str,
+        status: str,
+        data: dict[str, Any] | None = None,
+        level: str = "INFO",
+        message: str | None = None,
+    ) -> None:
+        timestamp = datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
+        event_payload = {
+            "timestamp": timestamp,
+            "experiment_id": self._experiment_id,
+            "config_id": config_id,
+            "event": event,
+            "status": status,
+            "data": data or {},
+        }
+        with self._paths.events_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(event_payload, ensure_ascii=False, sort_keys=True))
+            handle.write("\n")
+
+        human_timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        config_part = f" config_id={config_id}" if config_id else ""
+        message_part = f" message={message}" if message else ""
+        detail_part = ""
+        if data:
+            detail_part = " " + " ".join(f"{key}={value}" for key, value in data.items())
+        with self._paths.log_path.open("a", encoding="utf-8") as handle:
+            handle.write(
+                f"[{human_timestamp}] [{level}] experiment_id={self._experiment_id}{config_part} "
+                f"status={status} event={event}{message_part}{detail_part}\n"
+            )
+
+
+class LabelGridExperimentRunner:
+    DEFAULT_FEATURE_VERSION = LongHistoryTrainingPipelineRunner.DEFAULT_FEATURE_VERSION
+    DEFAULT_MODEL_NAME = LongHistoryTrainingPipelineRunner.DEFAULT_MODEL_NAME
+
+    def __init__(
+        self,
+        *,
+        grid_planner: LabelQualityGridPlanner | None = None,
+        reporter: LabelGridExperimentReporter | None = None,
+        ranker: LabelGridCandidateRanker | None = None,
+        candidate_executor: Callable[
+            [LabelGridExperimentConfig, LabelQualityGridConfig, Path],
+            LabelGridExperimentCandidateResult,
+        ]
+        | None = None,
+    ) -> None:
+        self._grid_planner = grid_planner or LabelQualityGridPlanner()
+        self._reporter = reporter or LabelGridExperimentReporter()
+        self._ranker = ranker or LabelGridCandidateRanker()
+        self._candidate_executor = candidate_executor
+
+    def build_preview(self) -> dict[str, Any]:
+        payload = self._grid_planner.build_grid()
+        return {
+            "runner_name": LABEL_GRID_EXPERIMENT_RUNNER_NAME,
+            "runner_version": LABEL_GRID_EXPERIMENT_RUNNER_VERSION,
+            "status": "ok",
+            "available_label_configs": payload["configs"],
+            "estimated_experiment_plan": {
+                "config_count": payload["config_count"],
+                "stages": [
+                    "build_labels",
+                    "build_dataset",
+                    "train_model",
+                    "probability_diagnostics",
+                    "baseline_compare",
+                    "profit_aware_evaluation",
+                    "walk_forward_evaluation",
+                    "gate_policy_replay_evaluation",
+                    "model_quality_validation",
+                    "candidate_selection",
+                ],
+            },
+            "safety_flags": {
+                "approved_for_live_trading": False,
+                "approved_for_auto_activation": False,
+                "orders_enabled": False,
+                "traders_core_connected": False,
+            },
+        }
+
+    def run(self, config: LabelGridExperimentConfig) -> LabelGridExperimentRunResult:
+        experiment_id = config.resolved_experiment_id()
+        end_date = config.resolved_end_date()
+        logger = _ExperimentLogger(experiment_id=experiment_id, output_dir=config.output_dir)
+        selected_configs = self._select_configs(config)
+
+        logger.event(
+            config_id=None,
+            event="experiment_started",
+            status="RUNNING",
+            data={
+                "symbol": config.symbol,
+                "interval": config.interval,
+                "start_date": config.start_date,
+                "end_date": end_date,
+                "config_count": len(selected_configs),
+                "dry_run": config.dry_run,
+                "sample_mode": config.sample_mode,
+            },
+            message="Label grid experiment started",
+        )
+
+        candidate_results: list[LabelGridExperimentCandidateResult] = []
+        failed = False
+
+        for index, label_config in enumerate(selected_configs):
+            logger.event(
+                config_id=label_config.config_id,
+                event="candidate_started",
+                status="RUNNING",
+                data={"position": index + 1, "config_id": label_config.config_id},
+                message="Candidate execution started",
+            )
+            try:
+                result = self._execute_candidate(
+                    config,
+                    label_config,
+                    logger.paths.experiment_dir,
+                    experiment_id,
+                )
+            except Exception as exc:
+                failed = True
+                result = LabelGridExperimentCandidateResult(
+                    config_id=label_config.config_id,
+                    label_config=label_config.to_dict(),
+                    status="FAILED",
+                    quality_status=None,
+                    candidate_status="FAILED",
+                    model_version=None,
+                    training_run_id=None,
+                    dataset_rows=0,
+                    train_rows=0,
+                    val_rows=0,
+                    test_rows=0,
+                    warnings=(str(exc),),
+                    recommendations=("Inspect candidate failure before retrying the experiment.",),
+                )
+                logger.event(
+                    config_id=label_config.config_id,
+                    event="candidate_failed",
+                    status="FAILED",
+                    data={"error": str(exc)},
+                    level="ERROR",
+                    message="Candidate execution failed",
+                )
+            else:
+                logger.event(
+                    config_id=label_config.config_id,
+                    event="candidate_completed",
+                    status=result.status,
+                    data=self._event_metrics(result),
+                    message="Candidate execution completed",
+                )
+                terminal_event = (
+                    "candidate_accepted_for_research"
+                    if result.candidate_status == "CANDIDATE_ACCEPTED_FOR_RESEARCH"
+                    else "candidate_rejected"
+                )
+                logger.event(
+                    config_id=label_config.config_id,
+                    event=terminal_event,
+                    status=result.candidate_status or result.status,
+                    data=self._event_metrics(result),
+                    message="Candidate terminal decision recorded",
+                )
+
+            candidate_results.append(result)
+            candidate_json_path = logger.paths.candidate_results_dir / f"{label_config.config_id}.json"
+            candidate_md_path = logger.paths.candidate_results_dir / f"{label_config.config_id}.md"
+            self._reporter.write_candidate_json(result, candidate_json_path)
+            self._reporter.write_candidate_markdown(result, candidate_md_path)
+
+        ranking_payload = self._ranker.rank(
+            [item for item in candidate_results if item.status == "COMPLETED"]
+        )
+        experiment_status = self._resolve_experiment_status(
+            config=config,
+            ranking_payload=ranking_payload,
+            candidate_results=candidate_results,
+            failed=failed,
+        )
+        best_candidate = ranking_payload.get("best_candidate") or {}
+        failed_gates_summary = self._failed_gates_summary(candidate_results)
+        collapse_summary = self._collapse_summary(candidate_results)
+        profit_summary = self._profit_summary(candidate_results)
+        walk_forward_summary = self._walk_summary(candidate_results)
+        gap_quality_summary = self._gap_summary(candidate_results)
+        recommendations = self._recommendations(
+            config=config,
+            experiment_status=experiment_status,
+            candidate_results=candidate_results,
+        )
+
+        result = LabelGridExperimentRunResult(
+            status="failed" if experiment_status == "FAILED" else "ok",
+            experiment_status=experiment_status,
+            experiment_id=experiment_id,
+            symbol=config.symbol,
+            interval=config.interval,
+            start_date=config.start_date,
+            end_date=end_date,
+            dry_run=config.dry_run,
+            sample_mode=config.sample_mode,
+            config_count=len(selected_configs),
+            completed_candidate_count=sum(int(item.status == "COMPLETED") for item in candidate_results),
+            failed_candidate_count=sum(int(item.status == "FAILED") for item in candidate_results),
+            accepted_candidate_count=sum(
+                int(item.candidate_status == "CANDIDATE_ACCEPTED_FOR_RESEARCH")
+                for item in candidate_results
+            ),
+            rejected_candidate_count=sum(
+                int(item.candidate_status == "CANDIDATE_REJECTED")
+                for item in candidate_results
+            ),
+            best_candidate_config_id=best_candidate.get("config_id"),
+            best_candidate_status=best_candidate.get("candidate_status"),
+            best_candidate_score=best_candidate.get("score"),
+            output_dir=str(logger.paths.experiment_dir),
+            log_path=str(logger.paths.log_path),
+            events_path=str(logger.paths.events_path),
+            summary_json_path=str(logger.paths.summary_json_path),
+            summary_markdown_path=str(logger.paths.summary_markdown_path),
+            candidate_results_dir=str(logger.paths.candidate_results_dir),
+            candidate_results=tuple(candidate_results),
+            candidate_ranking=tuple(ranking_payload.get("ranking", [])),
+            failed_gates_summary=failed_gates_summary,
+            collapse_summary=collapse_summary,
+            profit_summary=profit_summary,
+            walk_forward_summary=walk_forward_summary,
+            gap_quality_summary=gap_quality_summary,
+            recommendations=tuple(recommendations),
+            approved_for_live_trading=False,
+            approved_for_auto_activation=False,
+            orders_enabled=False,
+            traders_core_connected=False,
+        )
+
+        self._reporter.write_json_summary(result)
+        self._reporter.write_markdown_summary(result)
+
+        logger.event(
+            config_id=None,
+            event="experiment_completed" if experiment_status != "FAILED" else "experiment_failed",
+            status=experiment_status,
+            data={
+                "accepted_candidate_count": result.accepted_candidate_count,
+                "rejected_candidate_count": result.rejected_candidate_count,
+                "failed_candidate_count": result.failed_candidate_count,
+                "best_candidate_config_id": result.best_candidate_config_id,
+            },
+            level="ERROR" if experiment_status == "FAILED" else "INFO",
+            message="Label grid experiment finished",
+        )
+        return result
+
+    def _select_configs(self, config: LabelGridExperimentConfig) -> list[LabelQualityGridConfig]:
+        payload = self._grid_planner.build_grid()
+        configs = [LabelQualityGridConfig(**item) for item in payload["configs"]]
+        if config.label_config_ids:
+            requested = set(config.label_config_ids)
+            configs = [item for item in configs if item.config_id in requested]
+            missing = sorted(requested - {item.config_id for item in configs})
+            if missing:
+                raise ValueError(f"unknown label_config_ids: {', '.join(missing)}")
+        if config.max_configs is not None:
+            configs = configs[: max(int(config.max_configs), 0)]
+        return configs
+
+    def _execute_candidate(
+        self,
+        config: LabelGridExperimentConfig,
+        label_config: LabelQualityGridConfig,
+        experiment_dir: Path,
+        experiment_id: str,
+    ) -> LabelGridExperimentCandidateResult:
+        if self._candidate_executor is not None:
+            return self._candidate_executor(config, label_config, experiment_dir)
+        if config.dry_run:
+            return LabelGridExperimentCandidateResult(
+                config_id=label_config.config_id,
+                label_config=label_config.to_dict(),
+                status="PLANNED",
+                quality_status=None,
+                candidate_status="PLANNED",
+                model_version=None,
+                training_run_id=None,
+                dataset_rows=0,
+                train_rows=0,
+                val_rows=0,
+                test_rows=0,
+                warnings=("dry_run_true",),
+                recommendations=("Run sample-mode or real execution to score this candidate.",),
+            )
+        if config.sample_mode:
+            return self._sample_candidate_result(config, label_config)
+        if not config.run_training:
+            return LabelGridExperimentCandidateResult(
+                config_id=label_config.config_id,
+                label_config=label_config.to_dict(),
+                status="PLANNED",
+                quality_status=None,
+                candidate_status="PLANNED",
+                model_version=None,
+                training_run_id=None,
+                dataset_rows=0,
+                train_rows=0,
+                val_rows=0,
+                test_rows=0,
+                warnings=("run_training_false",),
+                recommendations=("Enable run_training to produce a scored research candidate.",),
+            )
+        return self._real_candidate_result(config, label_config, experiment_dir, experiment_id)
+
+    def _sample_candidate_result(
+        self,
+        config: LabelGridExperimentConfig,
+        label_config: LabelQualityGridConfig,
+    ) -> LabelGridExperimentCandidateResult:
+        index = sum(ord(char) for char in label_config.config_id) % 3
+        model_accuracy = [0.381, 0.404, 0.372][index]
+        baseline_accuracy = [0.377, 0.389, 0.376][index]
+        gap_count = [0, 2, 1][index]
+        profit_total_r = [-12.5, 24.0, 3.0][index]
+        profit_factor = [0.94, 1.14, 1.01][index]
+        walk_total_r = [-4.0, 9.5, -1.0][index]
+        walk_profit_factor = [0.97, 1.06, 0.99][index]
+        gate_policy_status = "SAMPLE_ONLY" if config.run_gate_policy_replay else "DISABLED"
+        probability_diagnostics = [
+            {
+                "actual_direction_counts": {"UP": 390, "DOWN": 340, "FLAT": 270},
+                "predicted_direction_counts": {"UP": 910, "DOWN": 50, "FLAT": 40},
+                "avg_prob_up": 0.74,
+                "avg_prob_down": 0.13,
+                "avg_prob_flat": 0.13,
+                "max_prob_q90": 0.88,
+                "max_prob_q50": 0.74,
+                "rows_above_thresholds": {"0.45": 910},
+                "margin_q90": 0.49,
+                "margin_q50": 0.32,
+            },
+            {
+                "actual_direction_counts": {"UP": 360, "DOWN": 330, "FLAT": 310},
+                "predicted_direction_counts": {"UP": 355, "DOWN": 325, "FLAT": 320},
+                "avg_prob_up": 0.37,
+                "avg_prob_down": 0.34,
+                "avg_prob_flat": 0.29,
+                "max_prob_q90": 0.55,
+                "max_prob_q50": 0.39,
+                "rows_above_thresholds": {"0.45": 190},
+                "margin_q90": 0.18,
+                "margin_q50": 0.06,
+            },
+            {
+                "actual_direction_counts": {"UP": 365, "DOWN": 335, "FLAT": 300},
+                "predicted_direction_counts": {"UP": 460, "DOWN": 280, "FLAT": 260},
+                "avg_prob_up": 0.44,
+                "avg_prob_down": 0.29,
+                "avg_prob_flat": 0.27,
+                "max_prob_q90": 0.61,
+                "max_prob_q50": 0.41,
+                "rows_above_thresholds": {"0.45": 240},
+                "margin_q90": 0.16,
+                "margin_q50": 0.04,
+            },
+        ][index]
+        anti_collapse = AntiCollapseValidator().validate_probability_report(probability_diagnostics)
+        quality = validate_model_quality(
+            training_summary={
+                "model_version": f"ml28_sample_{label_config.config_id}",
+                "run_id": f"sample_training_{label_config.config_id}",
+                "dataset_summary": {
+                    "dataset_rows": 1000,
+                    "train_rows": 700,
+                    "validation_rows": 150,
+                    "test_rows": 150,
+                },
+                "test_metrics": {"accuracy": model_accuracy},
+                "sample_mode": False,
+                "real_training_executed": True,
+            },
+            baseline_summary={
+                "baseline_accuracy": baseline_accuracy,
+            },
+            probability_diagnostics=probability_diagnostics,
+            calibration_summary={
+                "calibration_status": "ACCEPTABLE",
+                "expected_calibration_error": 0.06,
+                "brier_score": 0.61,
+            },
+            profit_aware_summary={
+                "profit_aware_status": "POSITIVE" if profit_total_r > 0.0 else "NEGATIVE",
+                "summary": {
+                    "total_r": profit_total_r,
+                    "profit_factor": profit_factor,
+                },
+            },
+            walk_forward_summary={
+                "walk_forward_status": (
+                    "STABLE" if config.run_walk_forward and walk_total_r > 0.0 else "UNSTABLE"
+                ),
+                "summary": {
+                    "fold_count": 6,
+                    "profitable_fold_ratio": 0.67 if walk_total_r > 0.0 else 0.33,
+                    "global_total_r": walk_total_r,
+                    "global_profit_factor": walk_profit_factor,
+                    "total_test_signal_count": 240,
+                },
+            },
+            gate_policy_replay_summary={
+                "gate_policy_replay_status": gate_policy_status,
+                "total_records": 5 if gate_policy_status == "SAMPLE_ONLY" else 0,
+                "valid_records": 4 if gate_policy_status == "SAMPLE_ONLY" else 0,
+                "invalid_records": 1 if gate_policy_status == "SAMPLE_ONLY" else 0,
+                "gate_policy_allowed_count": 2 if gate_policy_status == "SAMPLE_ONLY" else 0,
+                "gate_policy_blocked_count": 3 if gate_policy_status == "SAMPLE_ONLY" else 0,
+            },
+            gap_quality_summary=GapQualityDiagnostics().analyze(
+                symbol=config.symbol,
+                interval=config.interval,
+                start_date=config.start_date,
+                end_date=config.resolved_end_date(),
+                gap_count=gap_count,
+            ),
+            anti_collapse_summary=anti_collapse,
+            label_config_summary={
+                "label_version": label_config.label_version,
+                "horizon_candles": label_config.horizon,
+                "direction_atr_threshold": label_config.threshold,
+                "take_profit_atr": label_config.take_profit_atr,
+                "stop_loss_atr": label_config.stop_loss_atr,
+                "flat_class_enabled": True,
+            },
+            feature_config_summary={
+                "feature_version": self.DEFAULT_FEATURE_VERSION,
+                "model_name": self.DEFAULT_MODEL_NAME,
+            },
+        )
+        quality_payload = quality.to_dict()
+        return self._build_candidate_result(
+            label_config=label_config,
+            quality_payload=quality_payload,
+            class_distribution={
+                "UP": probability_diagnostics["actual_direction_counts"]["UP"],
+                "DOWN": probability_diagnostics["actual_direction_counts"]["DOWN"],
+                "FLAT": probability_diagnostics["actual_direction_counts"]["FLAT"],
+            },
+            gate_policy_summary={
+                "gate_policy_allowed_count": 2 if gate_policy_status == "SAMPLE_ONLY" else 0,
+                "gate_policy_blocked_count": 3 if gate_policy_status == "SAMPLE_ONLY" else 0,
+            },
+            extra_warnings=("sample_mode_candidate",),
+        )
+
+    def _real_candidate_result(
+        self,
+        config: LabelGridExperimentConfig,
+        label_config: LabelQualityGridConfig,
+        experiment_dir: Path,
+        experiment_id: str,
+    ) -> LabelGridExperimentCandidateResult:
+        candidate_runtime_dir = experiment_dir / "pipeline_runs"
+        candidate_runtime_dir.mkdir(parents=True, exist_ok=True)
+        pipeline_runner = LongHistoryTrainingPipelineRunner()
+        pipeline_runner.DEFAULT_FEATURE_VERSION = self.DEFAULT_FEATURE_VERSION
+        pipeline_runner.DEFAULT_MODEL_NAME = self.DEFAULT_MODEL_NAME
+        pipeline_runner.DEFAULT_LABEL_VERSION = label_config.label_version
+        pipeline_runner.DEFAULT_DIRECTION_ATR_THRESHOLD = label_config.threshold
+        pipeline_runner.DEFAULT_TAKE_PROFIT_ATR = label_config.take_profit_atr
+        pipeline_runner.DEFAULT_STOP_LOSS_ATR = label_config.stop_loss_atr
+        if not config.run_walk_forward:
+            pipeline_runner._stage_handlers["walk_forward_evaluation"] = (
+                lambda pipeline_config, stage_payloads: {
+                    "status": "COMPLETED",
+                    "message": "Walk-forward evaluation disabled by experiment configuration",
+                    "data": {
+                        "walk_forward_status": "NEEDS_MORE_DATA",
+                        "summary": {"fold_count": 0, "total_test_signal_count": 0},
+                    },
+                }
+            )
+
+        pipeline_result = pipeline_runner.run(
+            TrainingPipelineConfig(
+                symbol=config.symbol,
+                interval=config.interval,
+                start_date=config.start_date,
+                end_date=config.resolved_end_date(),
+                run_id=f"{experiment_id}_{label_config.config_id}",
+                dry_run=False,
+                sample_mode=False,
+                run_gate_policy_replay=config.run_gate_policy_replay,
+                export_report=True,
+                output_dir=candidate_runtime_dir,
+            )
+        )
+        return self._build_candidate_result(
+            label_config=label_config,
+            quality_payload=dict(pipeline_result.quality_summary),
+            class_distribution=dict(
+                pipeline_result.label_config_summary.get("direction_counts", {})
+            )
+            or dict(pipeline_result.gap_quality_summary.get("direction_counts", {})),
+            gate_policy_summary=dict(pipeline_result.gate_policy_replay_summary),
+            extra_warnings=(
+                "gate_policy_replay_real_mode_is_sample_backed"
+                if config.run_gate_policy_replay
+                else "gate_policy_replay_disabled"
+            ,),
+        )
+
+    def _build_candidate_result(
+        self,
+        *,
+        label_config: LabelQualityGridConfig,
+        quality_payload: dict[str, Any],
+        class_distribution: dict[str, Any],
+        gate_policy_summary: dict[str, Any],
+        extra_warnings: tuple[str, ...] = (),
+    ) -> LabelGridExperimentCandidateResult:
+        gap_quality = dict(quality_payload.get("gap_quality", {}))
+        anti_collapse = dict(quality_payload.get("anti_collapse", {}))
+        candidate_selection = dict(quality_payload.get("candidate_selection", {}))
+        quality_gates = dict(quality_payload.get("quality_gates_summary", {}))
+        profit_summary = dict(quality_payload.get("profit_aware_summary", {}))
+        walk_summary = dict(quality_payload.get("walk_forward_summary", {}))
+
+        profit_total_r, profit_factor = self._profit_metrics(quality_payload)
+        walk_fold_count, walk_total_r, walk_profit_factor = self._walk_metrics(quality_payload)
+
+        warnings = tuple(
+            dict.fromkeys(
+                list(quality_payload.get("warnings", []))
+                + list(candidate_selection.get("warnings", []))
+                + list(extra_warnings)
+            )
+        )
+        recommendations = tuple(
+            dict.fromkeys(
+                list(quality_payload.get("reasons", []))
+                + list(candidate_selection.get("recommendations", []))
+            )
+        )
+        return LabelGridExperimentCandidateResult(
+            config_id=label_config.config_id,
+            label_config=label_config.to_dict(),
+            status="COMPLETED",
+            quality_status=quality_payload.get("quality_status"),
+            candidate_status=candidate_selection.get("candidate_status"),
+            model_version=quality_payload.get("model_version"),
+            training_run_id=quality_payload.get("training_run_id"),
+            dataset_rows=int(quality_payload.get("dataset_rows", 0) or 0),
+            train_rows=int(quality_payload.get("train_rows", 0) or 0),
+            val_rows=int(quality_payload.get("val_rows", 0) or 0),
+            test_rows=int(quality_payload.get("test_rows", 0) or 0),
+            class_distribution=dict(class_distribution),
+            actual_distribution=dict(anti_collapse.get("actual_distribution", {})),
+            predicted_distribution=dict(anti_collapse.get("predicted_distribution", {})),
+            model_accuracy=self._optional_float(quality_payload.get("model_accuracy")),
+            baseline_accuracy=self._optional_float(quality_payload.get("baseline_accuracy")),
+            accuracy_edge=self._optional_float(quality_payload.get("accuracy_edge")),
+            collapse_detected=bool(quality_payload.get("collapse_detected", False)),
+            collapse_type=anti_collapse.get("collapse_type"),
+            gap_severity=gap_quality.get("gap_severity"),
+            gap_count=int(gap_quality.get("gap_count", 0) or 0),
+            profit_total_r=profit_total_r,
+            profit_factor=profit_factor,
+            walk_forward_fold_count=walk_fold_count,
+            walk_forward_global_total_r=walk_total_r,
+            walk_forward_profit_factor=walk_profit_factor,
+            gate_policy_allowed_count=int(
+                gate_policy_summary.get("gate_policy_allowed_count", 0) or 0
+            ),
+            gate_policy_blocked_count=int(
+                gate_policy_summary.get("gate_policy_blocked_count", 0) or 0
+            ),
+            failed_gates=tuple(
+                candidate_selection.get("failed_gates", quality_gates.get("failed_gates", []))
+            ),
+            passed_gates=tuple(
+                candidate_selection.get("passed_gates", quality_gates.get("passed_gates", []))
+            ),
+            warnings=warnings,
+            recommendations=recommendations,
+            approved_for_traders_core_integration=bool(
+                quality_payload.get("approved_for_traders_core_integration", False)
+            ),
+            approved_for_live_trading=False,
+            approved_for_auto_activation=False,
+            orders_enabled=False,
+            traders_core_connected=False,
+        )
+
+    def _resolve_experiment_status(
+        self,
+        *,
+        config: LabelGridExperimentConfig,
+        ranking_payload: dict[str, Any],
+        candidate_results: list[LabelGridExperimentCandidateResult],
+        failed: bool,
+    ) -> str:
+        if config.dry_run:
+            return "DRY_RUN_COMPLETED"
+        if config.sample_mode:
+            return "SAMPLE_COMPLETED"
+        if failed and not any(item.status == "COMPLETED" for item in candidate_results):
+            return "FAILED"
+        if failed:
+            return "COMPLETED_WITH_ERRORS"
+        return str(
+            ranking_payload.get("experiment_status")
+            or "COMPLETED_NO_ACCEPTED_CANDIDATE"
+        )
+
+    @staticmethod
+    def _failed_gates_summary(
+        candidate_results: list[LabelGridExperimentCandidateResult],
+    ) -> dict[str, int]:
+        summary: dict[str, int] = {}
+        for result in candidate_results:
+            for item in result.failed_gates:
+                summary[item] = summary.get(item, 0) + 1
+        return summary
+
+    @staticmethod
+    def _collapse_summary(
+        candidate_results: list[LabelGridExperimentCandidateResult],
+    ) -> dict[str, int]:
+        summary = {"collapsed": 0, "non_collapsed": 0}
+        for result in candidate_results:
+            key = "collapsed" if result.collapse_detected else "non_collapsed"
+            summary[key] += 1
+        return summary
+
+    @staticmethod
+    def _profit_summary(
+        candidate_results: list[LabelGridExperimentCandidateResult],
+    ) -> dict[str, Any]:
+        completed = [item for item in candidate_results if item.status == "COMPLETED"]
+        return {
+            "positive_profit_factor_count": sum(
+                int((item.profit_factor or 0.0) > 1.0) for item in completed
+            ),
+            "positive_total_r_count": sum(
+                int((item.profit_total_r or 0.0) > 0.0) for item in completed
+            ),
+        }
+
+    @staticmethod
+    def _walk_summary(
+        candidate_results: list[LabelGridExperimentCandidateResult],
+    ) -> dict[str, Any]:
+        completed = [item for item in candidate_results if item.status == "COMPLETED"]
+        return {
+            "positive_walk_forward_profit_factor_count": sum(
+                int((item.walk_forward_profit_factor or 0.0) > 1.0)
+                for item in completed
+            ),
+            "positive_walk_forward_total_r_count": sum(
+                int((item.walk_forward_global_total_r or 0.0) > 0.0)
+                for item in completed
+            ),
+        }
+
+    @staticmethod
+    def _gap_summary(
+        candidate_results: list[LabelGridExperimentCandidateResult],
+    ) -> dict[str, Any]:
+        summary: dict[str, int] = {}
+        for result in candidate_results:
+            key = result.gap_severity or "UNKNOWN"
+            summary[key] = summary.get(key, 0) + 1
+        return summary
+
+    @staticmethod
+    def _recommendations(
+        *,
+        config: LabelGridExperimentConfig,
+        experiment_status: str,
+        candidate_results: list[LabelGridExperimentCandidateResult],
+    ) -> list[str]:
+        recommendations = []
+        if config.dry_run:
+            recommendations.append("Run sample-mode or real mode to score the planned label grid.")
+        if config.sample_mode:
+            recommendations.append("Run a real limited grid to validate the best sample candidate on actual training.")
+        if experiment_status == "COMPLETED_NO_ACCEPTED_CANDIDATE":
+            recommendations.append(
+                "No candidate cleared the research gates; refine labels/features before ML29."
+            )
+        if experiment_status == "COMPLETED_WITH_ACCEPTED_CANDIDATE":
+            recommendations.append(
+                "Carry the best research-only candidate into ML29 for deeper label/feature refinement."
+            )
+        if any(result.collapse_detected for result in candidate_results):
+            recommendations.append("Investigate collapse-heavy configs before expanding the grid.")
+        recommendations.append("Keep traders-core disconnected and keep live trading disabled.")
+        return recommendations
+
+    @staticmethod
+    def _event_metrics(result: LabelGridExperimentCandidateResult) -> dict[str, Any]:
+        return {
+            "quality_status": result.quality_status,
+            "candidate_status": result.candidate_status,
+            "collapse_detected": result.collapse_detected,
+            "accuracy_edge": result.accuracy_edge,
+            "profit_factor": result.profit_factor,
+            "walk_forward_profit_factor": result.walk_forward_profit_factor,
+        }
+
+    @staticmethod
+    def _profit_metrics(quality_payload: dict[str, Any]) -> tuple[float | None, float | None]:
+        candidate_selection = dict(quality_payload.get("candidate_selection", {}))
+        gates = dict(candidate_selection.get("gates", {}))
+        profit_gate = dict(gates.get("profit_aware_gate", {}))
+        total_r = profit_gate.get("best_total_r")
+        profit_factor = profit_gate.get("best_profit_factor")
+        return (
+            None if total_r is None else float(total_r),
+            None if profit_factor is None else float(profit_factor),
+        )
+
+    @staticmethod
+    def _walk_metrics(quality_payload: dict[str, Any]) -> tuple[int, float | None, float | None]:
+        candidate_selection = dict(quality_payload.get("candidate_selection", {}))
+        gates = dict(candidate_selection.get("gates", {}))
+        walk_gate = dict(gates.get("walk_forward_gate", {}))
+        fold_count = int(walk_gate.get("fold_count", 0) or 0)
+        total_r = walk_gate.get("global_total_r")
+        profit_factor = walk_gate.get("global_profit_factor")
+        return (
+            fold_count,
+            None if total_r is None else float(total_r),
+            None if profit_factor is None else float(profit_factor),
+        )
+
+    @staticmethod
+    def _optional_float(value: Any) -> float | None:
+        if value is None:
+            return None
+        return float(value)
