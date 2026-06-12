@@ -62,7 +62,12 @@ class LabelGridCandidateRanker:
         walk_forward_profit_factor = self._safe_float(
             candidate.get("walk_forward_profit_factor")
         )
-        gap_penalty = self._gap_penalty(str(candidate.get("gap_severity") or "UNKNOWN"))
+        gap_severity = str(
+            candidate.get("gap_severity_for_training")
+            or candidate.get("gap_severity")
+            or "UNKNOWN"
+        )
+        gap_penalty = self._gap_penalty(gap_severity)
         gate_fail_penalty = 0.35 * len(candidate.get("failed_gates", []))
 
         score = (
@@ -100,7 +105,11 @@ class LabelGridCandidateRanker:
             key_risks.append(
                 "failed_gates=" + ",".join(str(item) for item in candidate["failed_gates"])
             )
-        gap_severity = str(candidate.get("gap_severity") or "UNKNOWN")
+        gap_severity = str(
+            candidate.get("gap_severity_for_training")
+            or candidate.get("gap_severity")
+            or "UNKNOWN"
+        )
         if gap_severity not in {"OK", "LOW"}:
             key_risks.append(f"gap_severity={gap_severity}")
         if not key_strengths:

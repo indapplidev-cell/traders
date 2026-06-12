@@ -79,11 +79,16 @@ class FeatureBuilder:
                 "return_1": self._lookback_return(closes, index, 1),
                 "return_3": self._lookback_return(closes, index, 3),
                 "return_5": self._lookback_return(closes, index, 5),
+                "return_6": self._lookback_return(closes, index, 6),
                 "return_10": self._lookback_return(closes, index, 10),
                 "log_return_1": log_returns[index],
                 "atr_14": atr_14[index],
                 "atr_28": atr_28[index],
                 "range_percent": self._safe_divide(candle_range, closes[index]),
+                "range_pct": self._safe_divide(candle_range, closes[index]),
+                "body_pct": self._safe_divide(body_size, closes[index]),
+                "upper_wick_pct": self._safe_divide(upper_wick, closes[index]),
+                "lower_wick_pct": self._safe_divide(lower_wick, closes[index]),
                 "rolling_volatility_20": rolling_volatility_20[index],
                 "rolling_volatility_50": rolling_volatility_50[index],
                 "ema_9": ema_9[index],
@@ -103,10 +108,14 @@ class FeatureBuilder:
                 "volume_sma_20": volume_sma_20[index],
                 "volume_ratio_20": self._safe_divide(volumes[index], volume_sma_20[index]),
                 "volume_spike": self._volume_spike(volumes[index], volume_sma_20[index]),
+                "volume_change_pct": self._volume_change(volumes, index),
+                "atr_normalized_move": self._atr_normalized_move(opens[index], closes[index], atr_14[index]),
                 "taker_buy_ratio": self._safe_divide(taker_buy_volumes[index], volumes[index]),
+                "trend_slope_short": close_slope_3[index],
+                "trend_slope_medium": close_slope_10[index],
             }
 
-            if feature_version == "fv2_regime":
+            if feature_version in {"fv2", "fv2_regime"}:
                 feature_values.update(
                     self._build_regime_features(
                         index=index,
@@ -230,6 +239,13 @@ class FeatureBuilder:
             "regime_range": regime_range,
             "regime_high_volatility": high_volatility,
             "regime_low_volatility": low_volatility,
+            "regime_unknown": self._regime_unknown(
+                trend_up=trend_up,
+                trend_down=trend_down,
+                regime_range=regime_range,
+                high_volatility=high_volatility,
+                low_volatility=low_volatility,
+            ),
             "regime_volatility_expanding": volatility_expanding,
             "regime_volatility_contracting": volatility_contracting,
             "rsi_14_above_50": self._binary_compare(rsi_14[index], 50.0, ">="),
@@ -290,6 +306,21 @@ class FeatureBuilder:
         if volume_sma is None or volume_sma == 0:
             return None
         return 1.0 if volume / volume_sma >= 2.0 else 0.0
+
+    @staticmethod
+    def _volume_change(volumes: list[float], index: int) -> float | None:
+        if index <= 0:
+            return None
+        previous_volume = volumes[index - 1]
+        if previous_volume == 0:
+            return None
+        return (volumes[index] / previous_volume) - 1
+
+    @staticmethod
+    def _atr_normalized_move(open_value: float, close_value: float, atr_value: float | None) -> float | None:
+        if atr_value is None or atr_value == 0:
+            return None
+        return (close_value - open_value) / atr_value
 
     def _normalized_slope_series(
         self,
@@ -359,6 +390,22 @@ class FeatureBuilder:
         if close_minus_ema_50_atr is None or ema_21_minus_ema_50 is None:
             return None
         return 1.0 if abs(close_minus_ema_50_atr) < 0.5 and abs(ema_21_minus_ema_50) < 0.3 else 0.0
+
+    @staticmethod
+    def _regime_unknown(
+        *,
+        trend_up: float | None,
+        trend_down: float | None,
+        regime_range: float | None,
+        high_volatility: float | None,
+        low_volatility: float | None,
+    ) -> float | None:
+        regime_values = [trend_up, trend_down, regime_range, high_volatility, low_volatility]
+        if any(value is None for value in regime_values):
+            if all(value is None for value in regime_values):
+                return None
+        normalized = [0.0 if value is None else float(value) for value in regime_values]
+        return 1.0 if max(normalized, default=0.0) <= 0.0 else 0.0
 
     @staticmethod
     def _ema_stack(

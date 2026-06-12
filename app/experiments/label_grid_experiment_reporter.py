@@ -47,6 +47,7 @@ class LabelGridExperimentReporter:
             "best_candidate_config_id": payload.get("best_candidate_config_id"),
             "best_candidate_status": payload.get("best_candidate_status"),
             "best_candidate_score": payload.get("best_candidate_score"),
+            "feature_version_used": payload.get("feature_version_used"),
             "output_dir": payload.get("output_dir"),
             "log_path": payload.get("log_path"),
             "events_path": payload.get("events_path"),

@@ -60,6 +60,7 @@ class TrainingPipelineConfig:
     start_date: str
     end_date: str | None = None
     run_id: str | None = None
+    feature_version: str = "fv1"
     dry_run: bool = False
     sample_mode: bool = False
     run_gate_policy_replay: bool = True
@@ -230,6 +231,7 @@ class LongHistoryTrainingPipelineRunner:
                 "interval": config.interval,
                 "start_date": config.start_date,
                 "end_date": resolved_end_date,
+                "feature_version": config.feature_version,
                 "dry_run": config.dry_run,
                 "sample_mode": config.sample_mode,
                 "run_gate_policy_replay": config.run_gate_policy_replay,
@@ -350,6 +352,7 @@ class LongHistoryTrainingPipelineRunner:
                 "start_date": config.start_date,
                 "end_date": resolved_end_date,
                 "run_id": resolved_run_id,
+                "feature_version": config.feature_version,
                 "dry_run": config.dry_run,
                 "sample_mode": config.sample_mode,
                 "run_gate_policy_replay": config.run_gate_policy_replay,
@@ -793,7 +796,7 @@ class LongHistoryTrainingPipelineRunner:
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
-        feature_version = self.DEFAULT_FEATURE_VERSION
+        feature_version = config.feature_version
         with get_session() as session:
             candle_repository = CandleRepository(session)
             feature_repository = FeatureRepository(session)
@@ -870,7 +873,7 @@ class LongHistoryTrainingPipelineRunner:
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
-        feature_version = self.DEFAULT_FEATURE_VERSION
+        feature_version = config.feature_version
         label_version = self.DEFAULT_LABEL_VERSION
         horizon_candles = self._resolve_horizon_from_label_version(label_version)
         with get_session() as session:
@@ -898,7 +901,7 @@ class LongHistoryTrainingPipelineRunner:
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
-        feature_version = self.DEFAULT_FEATURE_VERSION
+        feature_version = config.feature_version
         label_version = self.DEFAULT_LABEL_VERSION
         horizon_candles = self._resolve_horizon_from_label_version(label_version)
         dataset_summary = dict(stage_payloads.get("build_dataset", {}))
@@ -964,7 +967,7 @@ class LongHistoryTrainingPipelineRunner:
                 symbol=config.symbol,
                 interval=config.interval,
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
-                feature_version=self.DEFAULT_FEATURE_VERSION,
+                feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
             )
         )
@@ -987,7 +990,7 @@ class LongHistoryTrainingPipelineRunner:
                 symbol=config.symbol,
                 interval=config.interval,
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
-                feature_version=self.DEFAULT_FEATURE_VERSION,
+                feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
             )
         )
@@ -1011,7 +1014,7 @@ class LongHistoryTrainingPipelineRunner:
                 symbol=config.symbol,
                 interval=config.interval,
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
-                feature_version=self.DEFAULT_FEATURE_VERSION,
+                feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
             )
         )
@@ -1033,7 +1036,7 @@ class LongHistoryTrainingPipelineRunner:
                 symbol=config.symbol,
                 interval=config.interval,
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
-                feature_version=self.DEFAULT_FEATURE_VERSION,
+                feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
                 take_profit_atr=self.DEFAULT_TAKE_PROFIT_ATR,
                 stop_loss_atr=self.DEFAULT_STOP_LOSS_ATR,
@@ -1065,7 +1068,7 @@ class LongHistoryTrainingPipelineRunner:
                 symbol=config.symbol,
                 interval=config.interval,
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
-                feature_version=self.DEFAULT_FEATURE_VERSION,
+                feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
                 mode=self.DEFAULT_WALK_FORWARD_MODE,
                 train_days=self.DEFAULT_WALK_FORWARD_TRAIN_DAYS,
@@ -1228,7 +1231,7 @@ class LongHistoryTrainingPipelineRunner:
             gate_policy_replay_summary=gate_policy_replay_summary,
             gap_quality_summary=self._build_gap_quality_summary(config, stage_payloads),
             label_config_summary=self._label_config_summary(),
-            feature_config_summary=self._feature_config_summary(),
+            feature_config_summary=self._feature_config_summary(config.feature_version),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
         return {
@@ -1252,7 +1255,7 @@ class LongHistoryTrainingPipelineRunner:
             gate_policy_replay_summary=dict(stage_payloads.get("gate_policy_replay_evaluation", {})),
             gap_quality_summary=self._build_gap_quality_summary(config, stage_payloads),
             label_config_summary=self._label_config_summary(),
-            feature_config_summary=self._feature_config_summary(),
+            feature_config_summary=self._feature_config_summary(config.feature_version),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
         return {
@@ -1329,6 +1332,12 @@ class LongHistoryTrainingPipelineRunner:
             end_date=config.resolved_end_date(),
             gap_count=int(gap_stage.get("gap_count", 0)),
             missing_open_times=list(gap_stage.get("missing_open_times", [])),
+            last_open_time=gap_stage.get("last_open_time"),
+            real_gap_count=gap_stage.get("real_gap_count"),
+            real_missing_open_times=list(gap_stage.get("real_missing_open_times", [])),
+            trailing_incomplete_count=gap_stage.get("trailing_incomplete_count"),
+            trailing_incomplete_open_times=list(gap_stage.get("trailing_incomplete_open_times", [])),
+            trailing_incomplete_range_detected=gap_stage.get("trailing_incomplete_range_detected"),
         )
 
     def _label_config_summary(self) -> dict[str, Any]:
@@ -1341,9 +1350,9 @@ class LongHistoryTrainingPipelineRunner:
             "flat_class_enabled": True,
         }
 
-    def _feature_config_summary(self) -> dict[str, Any]:
+    def _feature_config_summary(self, feature_version: str | None = None) -> dict[str, Any]:
         return {
-            "feature_version": self.DEFAULT_FEATURE_VERSION,
+            "feature_version": feature_version or self.DEFAULT_FEATURE_VERSION,
             "model_name": self.DEFAULT_MODEL_NAME,
         }
 

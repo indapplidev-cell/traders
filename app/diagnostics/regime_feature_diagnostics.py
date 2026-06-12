@@ -19,6 +19,7 @@ class RegimeFeatureDiagnostics:
         "regime_range": "range",
         "regime_high_volatility": "high_volatility",
         "regime_low_volatility": "low_volatility",
+        "regime_unknown": "unknown",
     }
 
     def __init__(

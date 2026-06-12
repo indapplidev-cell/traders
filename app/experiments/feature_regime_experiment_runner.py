@@ -6,9 +6,15 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.dataset.dataset_builder import DatasetBuilder
+from app.db.repositories.feature_repository import FeatureRepository
+from app.db.repositories.label_repository import LabelRepository
+from app.db.session import get_session
 from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
 from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
+from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 from app.experiments.feature_regime_experiment_reporter import FeatureRegimeExperimentReporter
 from app.experiments.label_grid_experiment_runner import (
@@ -16,12 +22,14 @@ from app.experiments.label_grid_experiment_runner import (
     LabelGridExperimentRunner,
 )
 from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
+from app.features.feature_models import feature_names_for_version
 from app.labels.label_quality_grid import LabelQualityGridPlanner
+from app.labels.regime_label_integration_status import RegimeLabelIntegrationStatus
 from app.labels.regime_label_config import RegimeLabelConfigPlanner
 
 
 FEATURE_REGIME_EXPERIMENT_RUNNER_NAME = "feature_regime_experiment_runner"
-FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION = "ml33"
+FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION = "ml34"
 DEFAULT_ML31_BASELINE_REFERENCE = {
     "experiment_id": "real_grid_ml31_3_BTCUSDT_15m_20250101_20260612_130501",
     "best_candidate_config_id": "lv2_h12_thr05_tp15_sl10",
@@ -36,6 +44,7 @@ class FeatureRegimeExperimentConfig:
     start_date: str
     end_date: str | None = None
     experiment_id: str | None = None
+    feature_version: str = "fv2"
     base_label_config_ids: tuple[str, ...] = ()
     regime_config_ids: tuple[str, ...] = ()
     max_configs: int | None = None
@@ -131,6 +140,18 @@ class FeatureRegimeExperimentResult:
     warnings: tuple[str, ...]
     recommendations: tuple[str, ...]
     regime_training_applied: bool
+    real_feature_diagnostics_used: bool
+    real_feature_diagnostics_row_count: int
+    feature_version_used: str
+    regime_features_attached: bool
+    regime_feature_count: int
+    regime_feature_source: str
+    regime_specific_labeling_available: bool
+    regime_specific_training_applied: bool
+    missing_requirements: tuple[str, ...]
+    effective_gap_count_for_training: int
+    gap_severity_for_training: str
+    gap_training_safe: bool
     output_dir: str
     log_path: str
     events_path: str
@@ -170,6 +191,18 @@ class FeatureRegimeExperimentResult:
             "warnings": list(self.warnings),
             "recommendations": list(self.recommendations),
             "regime_training_applied": self.regime_training_applied,
+            "real_feature_diagnostics_used": self.real_feature_diagnostics_used,
+            "real_feature_diagnostics_row_count": self.real_feature_diagnostics_row_count,
+            "feature_version_used": self.feature_version_used,
+            "regime_features_attached": self.regime_features_attached,
+            "regime_feature_count": self.regime_feature_count,
+            "regime_feature_source": self.regime_feature_source,
+            "regime_specific_labeling_available": self.regime_specific_labeling_available,
+            "regime_specific_training_applied": self.regime_specific_training_applied,
+            "missing_requirements": list(self.missing_requirements),
+            "effective_gap_count_for_training": self.effective_gap_count_for_training,
+            "gap_severity_for_training": self.gap_severity_for_training,
+            "gap_training_safe": self.gap_training_safe,
             "output_dir": self.output_dir,
             "log_path": self.log_path,
             "events_path": self.events_path,
@@ -263,9 +296,11 @@ class FeatureRegimeExperimentRunner:
         feature_group_quality_scorer: FeatureGroupQualityScorer | None = None,
         regime_feature_diagnostics: RegimeFeatureDiagnostics | None = None,
         feature_leakage_guard: FeatureLeakageGuard | None = None,
+        real_feature_diagnostics_service: RealFeatureDiagnosticsService | None = None,
         regime_experiment_planner: RegimeExperimentPlanner | None = None,
         base_grid_planner: LabelQualityGridPlanner | None = None,
         regime_label_planner: RegimeLabelConfigPlanner | None = None,
+        regime_label_integration_status: RegimeLabelIntegrationStatus | None = None,
         label_grid_runner: LabelGridExperimentRunner | None = None,
         reporter: FeatureRegimeExperimentReporter | None = None,
     ) -> None:
@@ -273,16 +308,27 @@ class FeatureRegimeExperimentRunner:
         self._feature_group_quality_scorer = feature_group_quality_scorer or FeatureGroupQualityScorer()
         self._regime_feature_diagnostics = regime_feature_diagnostics or RegimeFeatureDiagnostics()
         self._feature_leakage_guard = feature_leakage_guard or FeatureLeakageGuard()
+        self._real_feature_diagnostics_service = real_feature_diagnostics_service or RealFeatureDiagnosticsService(
+            feature_quality_diagnostics=self._feature_quality_diagnostics,
+            feature_group_quality_scorer=self._feature_group_quality_scorer,
+            feature_leakage_guard=self._feature_leakage_guard,
+            regime_feature_diagnostics=self._regime_feature_diagnostics,
+        )
         self._regime_experiment_planner = regime_experiment_planner or RegimeExperimentPlanner()
         self._base_grid_planner = base_grid_planner or LabelQualityGridPlanner()
         self._regime_label_planner = regime_label_planner or RegimeLabelConfigPlanner()
+        self._regime_label_integration_status = regime_label_integration_status or RegimeLabelIntegrationStatus()
         self._label_grid_runner = label_grid_runner or LabelGridExperimentRunner()
         self._reporter = reporter or FeatureRegimeExperimentReporter()
 
     def build_preview(self) -> dict[str, Any]:
+        feature_names = feature_names_for_version("fv2")
+        regime_feature_count = len([name for name in feature_names if name.startswith("regime_")])
         return {
             "runner_name": FEATURE_REGIME_EXPERIMENT_RUNNER_NAME,
-            "runner_version": FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION,
+            "runner_version": "ml34",
+            "feature_version_default": "fv2",
+            "feature_versions_available": ["fv1", "fv2", "fv2_regime"],
             "available_base_label_configs": self._base_grid_planner.build_grid()["configs"],
             "available_regime_configs": self._regime_label_planner.build_configs()["configs"],
             "feature_diagnostics_plan": {
@@ -294,6 +340,13 @@ class FeatureRegimeExperimentRunner:
                 "regime_feature_diagnostics": True,
                 "regime_experiment_plan": True,
             },
+            "feature_regime_integration": {
+                "feature_version_used": "fv2",
+                "regime_features_attached": True,
+                "regime_feature_count": regime_feature_count,
+                "regime_specific_labeling_available": True,
+                "regime_specific_training_applied": False,
+            },
             "safety_flags": {
                 "approved_for_live_trading": False,
                 "approved_for_auto_activation": False,
@@ -303,6 +356,7 @@ class FeatureRegimeExperimentRunner:
         }
 
     def run(self, config: FeatureRegimeExperimentConfig) -> FeatureRegimeExperimentResult:
+        feature_names_for_version(config.feature_version)
         experiment_id = config.resolved_experiment_id()
         end_date = config.resolved_end_date()
         logger = _ExperimentLogger(experiment_id=experiment_id, output_dir=config.output_dir)
@@ -314,6 +368,7 @@ class FeatureRegimeExperimentRunner:
                 "interval": config.interval,
                 "start_date": config.start_date,
                 "end_date": end_date,
+                "feature_version": config.feature_version,
                 "dry_run": config.dry_run,
                 "sample_mode": config.sample_mode,
                 "max_configs": config.max_configs,
@@ -321,26 +376,34 @@ class FeatureRegimeExperimentRunner:
             message="Feature/regime experiment started",
         )
 
-        sample_rows = self._build_sample_rows()
-        diagnostics = self._collect_diagnostics(config=config, rows=sample_rows, logger=logger)
         selected_base_configs = self._select_base_configs(config)
         selected_regime_configs = self._select_regime_configs(config, selected_base_configs)
-        regime_training_applied = False
-        warnings = ["regime_specific_training_not_integrated_with_label_builder"]
+        diagnostics = self._collect_diagnostics(
+            config=config,
+            selected_base_configs=selected_base_configs,
+            logger=logger,
+        )
+        regime_status = self._build_regime_status(
+            regime_config_count=len(selected_regime_configs),
+            regime_features_attached=bool(diagnostics["regime_features_attached"]),
+            regime_feature_count=int(diagnostics["regime_feature_count"]),
+        )
+        regime_training_applied = bool(regime_status["regime_specific_training_applied"])
+        warnings = list(diagnostics["warnings"]) + list(regime_status["missing_requirements"])
 
         if config.dry_run:
             candidate_results = self._dry_run_candidates(
                 selected_base_configs,
-                feature_weak_signal_detected=bool(diagnostics["feature_quality"]["weak_signal_detected"]),
-                feature_leakage_risk_detected=bool(diagnostics["feature_leakage"]["leakage_risk_detected"]),
+                feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
+                feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
                 logger=logger,
             )
             experiment_status = "DRY_RUN_COMPLETED"
         elif config.sample_mode:
             candidate_results = self._sample_candidates(
                 selected_base_configs,
-                feature_weak_signal_detected=bool(diagnostics["feature_quality"]["weak_signal_detected"]),
-                feature_leakage_risk_detected=bool(diagnostics["feature_leakage"]["leakage_risk_detected"]),
+                feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
+                feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
                 logger=logger,
             )
             experiment_status = "SAMPLE_COMPLETED"
@@ -349,8 +412,8 @@ class FeatureRegimeExperimentRunner:
                 config=config,
                 experiment_id=experiment_id,
                 selected_base_configs=selected_base_configs,
-                feature_weak_signal_detected=bool(diagnostics["feature_quality"]["weak_signal_detected"]),
-                feature_leakage_risk_detected=bool(diagnostics["feature_leakage"]["leakage_risk_detected"]),
+                feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
+                feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
                 logger=logger,
                 experiment_dir=logger.paths.experiment_dir,
             )
@@ -368,10 +431,10 @@ class FeatureRegimeExperimentRunner:
         best_candidate = next((item for item in candidate_results if item.score is not None), None)
         failed_gates_summary = self._failed_gates_summary(candidate_results)
         recommendations = self._recommendations(
-            feature_quality=diagnostics["feature_quality"],
-            regime_feature_diagnostics=diagnostics["regime_feature_diagnostics"],
-            leakage_guard=diagnostics["feature_leakage"],
-            regime_plan=diagnostics["regime_experiment_plan"],
+            feature_quality=diagnostics["feature_quality_summary"],
+            regime_feature_diagnostics=diagnostics["regime_feature_summary"],
+            leakage_guard=diagnostics["feature_leakage_summary"],
+            regime_plan=diagnostics["regime_experiment_plan_summary"],
             regime_training_applied=regime_training_applied,
         )
 
@@ -390,17 +453,29 @@ class FeatureRegimeExperimentRunner:
             best_candidate_id=None if best_candidate is None else best_candidate.candidate_id,
             best_candidate_config_id=None if best_candidate is None else best_candidate.config_id,
             best_candidate_score=None if best_candidate is None else best_candidate.score,
-            feature_quality_summary=diagnostics["feature_quality"],
-            feature_group_quality_summary=diagnostics["feature_group_quality"],
-            regime_feature_summary=diagnostics["regime_feature_diagnostics"],
-            feature_leakage_summary=diagnostics["feature_leakage"],
-            regime_experiment_plan_summary=diagnostics["regime_experiment_plan"],
+            feature_quality_summary=diagnostics["feature_quality_summary"],
+            feature_group_quality_summary=diagnostics["feature_group_quality_summary"],
+            regime_feature_summary=diagnostics["regime_feature_summary"],
+            feature_leakage_summary=diagnostics["feature_leakage_summary"],
+            regime_experiment_plan_summary=diagnostics["regime_experiment_plan_summary"],
             candidate_results=tuple(candidate_results),
             ranking=tuple(ranking),
             failed_gates_summary=failed_gates_summary,
             warnings=tuple(dict.fromkeys(warnings)),
             recommendations=tuple(recommendations),
             regime_training_applied=regime_training_applied,
+            real_feature_diagnostics_used=bool(diagnostics["real_feature_diagnostics_used"]),
+            real_feature_diagnostics_row_count=int(diagnostics["real_feature_diagnostics_row_count"]),
+            feature_version_used=config.feature_version,
+            regime_features_attached=bool(diagnostics["regime_features_attached"]),
+            regime_feature_count=int(diagnostics["regime_feature_count"]),
+            regime_feature_source=str(diagnostics["regime_feature_source"]),
+            regime_specific_labeling_available=bool(regime_status["regime_specific_labeling_available"]),
+            regime_specific_training_applied=bool(regime_status["regime_specific_training_applied"]),
+            missing_requirements=tuple(regime_status["missing_requirements"]),
+            effective_gap_count_for_training=int(diagnostics["effective_gap_count_for_training"]),
+            gap_severity_for_training=str(diagnostics["gap_severity_for_training"]),
+            gap_training_safe=bool(diagnostics["gap_training_safe"]),
             output_dir=str(logger.paths.experiment_dir),
             log_path=str(logger.paths.log_path),
             events_path=str(logger.paths.events_path),
@@ -430,6 +505,12 @@ class FeatureRegimeExperimentRunner:
                 "best_candidate_config_id": result.best_candidate_config_id,
                 "selected_regime_config_count": len(selected_regime_configs),
                 "regime_training_applied": regime_training_applied,
+                "feature_version_used": config.feature_version,
+                "real_feature_diagnostics_used": diagnostics["real_feature_diagnostics_used"],
+                "real_feature_diagnostics_row_count": diagnostics["real_feature_diagnostics_row_count"],
+                "regime_features_attached": diagnostics["regime_features_attached"],
+                "effective_gap_count_for_training": diagnostics["effective_gap_count_for_training"],
+                "gap_severity_for_training": diagnostics["gap_severity_for_training"],
             },
             message="Feature/regime experiment completed",
         )
@@ -439,28 +520,35 @@ class FeatureRegimeExperimentRunner:
         self,
         *,
         config: FeatureRegimeExperimentConfig,
-        rows: list[dict[str, Any]],
+        selected_base_configs: list[dict[str, Any]],
         logger: _ExperimentLogger,
-    ) -> dict[str, dict[str, Any]]:
+    ) -> dict[str, Any]:
         logger.event(event="diagnostics_started", status="RUNNING", message="Diagnostics collection started")
         diagnostics_dir = logger.paths.diagnostics_dir
+        selected_label_version = self._selected_label_version(config, selected_base_configs)
+        selected_horizon = self._selected_horizon(config, selected_base_configs)
+        real_feature_diagnostics = self._build_real_feature_diagnostics(
+            config=config,
+            label_version=selected_label_version,
+            horizon_candles=selected_horizon,
+        )
         feature_quality = (
-            self._feature_quality_diagnostics.analyze(rows)
+            dict(real_feature_diagnostics.get("feature_quality", {}))
             if config.run_feature_diagnostics
             else {"diagnostic_name": "feature_quality_diagnostics", "diagnostic_skipped": True, "weak_signal_detected": False}
         )
         feature_group_quality = (
-            self._feature_group_quality_scorer.analyze(rows)
+            dict(real_feature_diagnostics.get("feature_group_quality", {}))
             if config.run_feature_diagnostics
             else {"group_name": "feature_group_quality", "diagnostic_skipped": True}
         )
         regime_feature_diagnostics = (
-            self._regime_feature_diagnostics.analyze(rows)
+            dict(real_feature_diagnostics.get("regime_feature_diagnostics", {}))
             if config.run_regime_diagnostics
             else {"diagnostic_name": "regime_feature_diagnostics", "diagnostic_skipped": True, "regime_data_available": False}
         )
         feature_leakage = (
-            self._feature_leakage_guard.check_rows(rows)
+            dict(real_feature_diagnostics.get("leakage_guard", {}))
             if config.run_leakage_guard
             else {"guard_name": "feature_leakage_guard", "diagnostic_skipped": True, "leakage_risk_detected": False}
         )
@@ -469,13 +557,19 @@ class FeatureRegimeExperimentRunner:
             interval=config.interval,
             start_date=config.start_date,
             regime_data_available=bool(regime_feature_diagnostics.get("regime_data_available", False)),
-            base_label_config_id=(config.base_label_config_ids[0] if config.base_label_config_ids else "lv2_h12_thr05_tp15_sl10"),
+            base_label_config_id=(selected_base_configs[0]["config_id"] if selected_base_configs else "lv2_h12_thr05_tp15_sl10"),
         )
+        gap_quality = self._build_gap_quality_summary(config)
+        feature_names = feature_names_for_version(config.feature_version)
+        regime_feature_names = [name for name in feature_names if name.startswith("regime_")]
+        regime_features_attached = bool(regime_feature_names) and bool(regime_feature_diagnostics.get("regime_data_available", False))
         self._reporter.write_diagnostics_json(feature_quality, diagnostics_dir / "feature_quality.json")
         self._reporter.write_diagnostics_json(feature_group_quality, diagnostics_dir / "feature_group_quality.json")
         self._reporter.write_diagnostics_json(regime_feature_diagnostics, diagnostics_dir / "regime_feature_diagnostics.json")
         self._reporter.write_diagnostics_json(feature_leakage, diagnostics_dir / "feature_leakage_guard.json")
         self._reporter.write_diagnostics_json(regime_experiment_plan, diagnostics_dir / "regime_experiment_plan.json")
+        self._reporter.write_diagnostics_json(real_feature_diagnostics, diagnostics_dir / "real_feature_diagnostics.json")
+        self._reporter.write_diagnostics_json(gap_quality, diagnostics_dir / "gap_quality.json")
         logger.event(
             event="diagnostics_completed",
             status="COMPLETED",
@@ -484,15 +578,27 @@ class FeatureRegimeExperimentRunner:
                 "regime_data_available": regime_feature_diagnostics.get("regime_data_available"),
                 "feature_leakage_risk_detected": feature_leakage.get("leakage_risk_detected"),
                 "ready_for_real_regime_training": regime_experiment_plan.get("ready_for_real_regime_training"),
+                "real_feature_diagnostics_used": real_feature_diagnostics.get("real_feature_diagnostics_used"),
+                "real_feature_diagnostics_row_count": real_feature_diagnostics.get("row_count"),
+                "regime_features_attached": regime_features_attached,
             },
             message="Diagnostics collection completed",
         )
         return {
-            "feature_quality": feature_quality,
-            "feature_group_quality": feature_group_quality,
-            "regime_feature_diagnostics": regime_feature_diagnostics,
-            "feature_leakage": feature_leakage,
-            "regime_experiment_plan": regime_experiment_plan,
+            "feature_quality_summary": feature_quality,
+            "feature_group_quality_summary": feature_group_quality,
+            "regime_feature_summary": regime_feature_diagnostics,
+            "feature_leakage_summary": feature_leakage,
+            "regime_experiment_plan_summary": regime_experiment_plan,
+            "real_feature_diagnostics_used": bool(real_feature_diagnostics.get("real_feature_diagnostics_used", False)),
+            "real_feature_diagnostics_row_count": int(real_feature_diagnostics.get("row_count", 0) or 0),
+            "regime_features_attached": regime_features_attached,
+            "regime_feature_count": len(regime_feature_names),
+            "regime_feature_source": str(real_feature_diagnostics.get("source", "unknown")),
+            "effective_gap_count_for_training": int(gap_quality.get("effective_gap_count_for_training", 0) or 0),
+            "gap_severity_for_training": str(gap_quality.get("gap_severity_for_training") or "OK"),
+            "gap_training_safe": bool(gap_quality.get("dataset_safe_for_training", False)),
+            "warnings": list(real_feature_diagnostics.get("warnings", [])),
         }
 
     def _select_base_configs(self, config: FeatureRegimeExperimentConfig) -> list[dict[str, Any]]:
@@ -521,6 +627,178 @@ class FeatureRegimeExperimentRunner:
         if config.max_configs is not None:
             available = available[: max(int(config.max_configs), 0)]
         return available
+
+    def _selected_label_version(
+        self,
+        config: FeatureRegimeExperimentConfig,
+        selected_base_configs: list[dict[str, Any]],
+    ) -> str:
+        if selected_base_configs:
+            return str(selected_base_configs[0]["label_version"])
+        return "lv2_h12_thr05_tp15_sl10"
+
+    def _selected_horizon(
+        self,
+        config: FeatureRegimeExperimentConfig,
+        selected_base_configs: list[dict[str, Any]],
+    ) -> int:
+        if selected_base_configs:
+            return int(selected_base_configs[0]["horizon"])
+        return 12
+
+    def _build_real_feature_diagnostics(
+        self,
+        *,
+        config: FeatureRegimeExperimentConfig,
+        label_version: str,
+        horizon_candles: int,
+    ) -> dict[str, Any]:
+        if config.dry_run or config.sample_mode:
+            return self._real_feature_diagnostics_service.analyze(
+                symbol=config.symbol,
+                interval=config.interval,
+                feature_version=config.feature_version,
+                label_version=label_version,
+                rows=self._build_sample_rows(),
+                source="sample_rows",
+                sample_mode=True,
+            )
+
+        with get_session() as session:
+            dataset_builder = DatasetBuilder(
+                feature_repository=FeatureRepository(session),
+                label_repository=LabelRepository(session),
+            )
+            try:
+                rows, _summary = dataset_builder.build_rows(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                    horizon_candles=horizon_candles,
+                    feature_version=config.feature_version,
+                    label_version=label_version,
+                )
+            except Exception as exc:
+                return self._real_feature_diagnostics_service.analyze(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                    feature_version=config.feature_version,
+                    label_version=label_version,
+                    rows=[],
+                    source="dataset_builder",
+                    sample_mode=False,
+                    reason=f"dataset_rows_unavailable:{exc}",
+                )
+
+        return self._real_feature_diagnostics_service.analyze(
+            symbol=config.symbol,
+            interval=config.interval,
+            feature_version=config.feature_version,
+            label_version=label_version,
+            rows=rows,
+            source="dataset_builder",
+            sample_mode=False,
+            reason="dataset_rows_unavailable" if not rows else None,
+        )
+
+    def _build_gap_quality_summary(self, config: FeatureRegimeExperimentConfig) -> dict[str, Any]:
+        if config.dry_run or config.sample_mode:
+            return self._gap_quality_fallback(
+                config,
+                reason="gap_quality_skipped_for_non_real_run",
+            )
+
+        from app.data.candle_gap_checker import CandleGapChecker
+        from app.db.repositories.candle_repository import CandleRepository
+        from app.training.training_pipeline_runner import LongHistoryTrainingPipelineRunner
+
+        start_at, end_at = LongHistoryTrainingPipelineRunner._build_utc_date_range(
+            LongHistoryTrainingPipelineRunner._parse_date(config.start_date),
+            LongHistoryTrainingPipelineRunner._parse_date(config.resolved_end_date()),
+        )
+
+        try:
+            with get_session() as session:
+                candles = CandleRepository(session).get_range(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                    start_at=start_at,
+                    end_at=end_at,
+                )
+        except Exception as exc:
+            return self._gap_quality_fallback(
+                config,
+                reason=f"gap_quality_data_unavailable:{type(exc).__name__}",
+            )
+
+        gap_stage = CandleGapChecker().check(
+            candles=candles,
+            interval=config.interval,
+            start_at=start_at,
+            end_at=end_at,
+            symbol=config.symbol,
+        )
+        return GapQualityDiagnostics().analyze(
+            symbol=config.symbol,
+            interval=config.interval,
+            start_date=config.start_date,
+            end_date=config.resolved_end_date(),
+            gap_count=int(gap_stage.get("gap_count", 0)),
+            missing_open_times=list(gap_stage.get("missing_open_times", [])),
+            last_open_time=gap_stage.get("last_open_time"),
+            real_gap_count=gap_stage.get("real_gap_count"),
+            real_missing_open_times=list(gap_stage.get("real_missing_open_times", [])),
+            trailing_incomplete_count=gap_stage.get("trailing_incomplete_count"),
+            trailing_incomplete_open_times=list(gap_stage.get("trailing_incomplete_open_times", [])),
+            trailing_incomplete_range_detected=gap_stage.get("trailing_incomplete_range_detected"),
+        )
+
+    def _gap_quality_fallback(
+        self,
+        config: FeatureRegimeExperimentConfig,
+        *,
+        reason: str,
+    ) -> dict[str, Any]:
+        payload = GapQualityDiagnostics().analyze(
+            symbol=config.symbol,
+            interval=config.interval,
+            start_date=config.start_date,
+            end_date=config.resolved_end_date(),
+            gap_count=0,
+            missing_open_times=[],
+            last_open_time=None,
+            real_gap_count=0,
+            real_missing_open_times=[],
+            trailing_incomplete_count=0,
+            trailing_incomplete_open_times=[],
+            trailing_incomplete_range_detected=False,
+        )
+        warnings = list(payload.get("warnings", []))
+        warnings.append(reason)
+        recommendations = list(payload.get("recommendations", []))
+        recommendations.insert(
+            0,
+            "Gap quality summary is in degraded fallback mode; use a real dataset-backed run for authoritative gap classification.",
+        )
+        payload["degraded_mode"] = True
+        payload["detail_gap_data_available"] = False
+        payload["dataset_safe_for_training"] = False
+        payload["warnings"] = list(dict.fromkeys(warnings))
+        payload["recommendations"] = list(dict.fromkeys(recommendations))
+        return payload
+
+    def _build_regime_status(
+        self,
+        *,
+        regime_config_count: int,
+        regime_features_attached: bool,
+        regime_feature_count: int,
+    ) -> dict[str, Any]:
+        return self._regime_label_integration_status.build_status(
+            regime_specific_labeling_available=regime_config_count > 0,
+            regime_features_attached=regime_features_attached,
+            regime_feature_count=regime_feature_count,
+            training_pipeline_supports_regime_labels=False,
+        )
 
     def _dry_run_candidates(
         self,
@@ -641,6 +919,7 @@ class FeatureRegimeExperimentRunner:
                 start_date=config.start_date,
                 end_date=config.end_date,
                 experiment_id=f"{experiment_id}_label_grid",
+                feature_version=config.feature_version,
                 label_config_ids=tuple(str(item["config_id"]) for item in selected_base_configs),
                 max_configs=len(selected_base_configs),
                 dry_run=False,
@@ -686,7 +965,10 @@ class FeatureRegimeExperimentRunner:
                 },
                 message="Real candidate completed",
             )
-        return candidate_results, str(inner_result.experiment_status), ["regime_specific_training_not_applied"]
+        runtime_warnings = ["regime_specific_training_not_applied"]
+        if inner_result.feature_version_used != config.feature_version:
+            runtime_warnings.append("feature_version_requested_but_not_applied")
+        return candidate_results, str(inner_result.experiment_status), runtime_warnings
 
     @staticmethod
     def _ranking(candidate_results: list[FeatureRegimeCandidateResult]) -> list[dict[str, Any]]:
@@ -747,6 +1029,7 @@ class FeatureRegimeExperimentRunner:
                     "regime_range": 0.0,
                     "regime_high_volatility": 0.0,
                     "regime_low_volatility": 1.0,
+                    "regime_unknown": 0.0,
                 },
             },
             {
@@ -761,6 +1044,7 @@ class FeatureRegimeExperimentRunner:
                     "regime_range": 0.0,
                     "regime_high_volatility": 0.0,
                     "regime_low_volatility": 1.0,
+                    "regime_unknown": 0.0,
                 },
             },
             {
@@ -775,6 +1059,7 @@ class FeatureRegimeExperimentRunner:
                     "regime_range": 0.0,
                     "regime_high_volatility": 1.0,
                     "regime_low_volatility": 0.0,
+                    "regime_unknown": 0.0,
                 },
             },
             {
@@ -789,6 +1074,7 @@ class FeatureRegimeExperimentRunner:
                     "regime_range": 1.0,
                     "regime_high_volatility": 0.0,
                     "regime_low_volatility": 1.0,
+                    "regime_unknown": 0.0,
                 },
             },
             {
@@ -803,6 +1089,7 @@ class FeatureRegimeExperimentRunner:
                     "regime_range": 0.0,
                     "regime_high_volatility": 1.0,
                     "regime_low_volatility": 0.0,
+                    "regime_unknown": 0.0,
                 },
             },
             {
@@ -817,6 +1104,7 @@ class FeatureRegimeExperimentRunner:
                     "regime_range": 0.0,
                     "regime_high_volatility": 0.0,
                     "regime_low_volatility": 0.0,
+                    "regime_unknown": 1.0,
                 },
             },
         ]

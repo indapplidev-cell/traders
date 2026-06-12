@@ -17,6 +17,7 @@ from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
 from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
+from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
@@ -59,6 +60,8 @@ from app.evaluation.model_candidate_selector import ModelCandidateSelector
 from app.evaluation.model_quality_reporter import ModelQualityReporter
 from app.evaluation.model_quality_validator import validate_model_quality
 from app.features.feature_pipeline import FeaturePipeline
+from app.features.feature_engineering_plan import FeatureEngineeringPlan
+from app.features.feature_models import feature_names_for_version
 from app.labels.label_config import LabelConfig
 from app.registry.artifact_storage import ArtifactStorage
 from app.registry.model_loader import ModelLoader
@@ -66,6 +69,7 @@ from app.registry.model_registry import ModelRegistry
 from app.labels.label_builder import LabelBuilder
 from app.labels.label_quality_grid import LabelQualityGridPlanner
 from app.labels.regime_label_config import RegimeLabelConfigPlanner
+from app.labels.regime_label_integration_status import RegimeLabelIntegrationStatus
 from app.prediction.predictor import Predictor
 from app.replay.historical_replay_engine import HistoricalReplayEngine
 from app.replay.replay_service import ReplayService
@@ -2787,6 +2791,164 @@ def build_feature_regime_experiment_preview_payload() -> dict[str, object]:
     return FeatureRegimeExperimentRunner().build_preview()
 
 
+def build_gap_quality_preview_payload() -> dict[str, object]:
+    """Build an ML34 gap-quality preview using real data when available."""
+
+    symbol = "BTCUSDT"
+    interval = "15m"
+    start_date = "2025-01-01"
+    end_date = date.today().isoformat()
+    start_at, end_at = LongHistoryTrainingPipelineRunner._build_utc_date_range(
+        LongHistoryTrainingPipelineRunner._parse_date(start_date),
+        LongHistoryTrainingPipelineRunner._parse_date(end_date),
+    )
+    with get_session() as session:
+        candles = CandleRepository(session).get_range(
+            symbol=symbol,
+            interval=interval,
+            start_at=start_at,
+            end_at=end_at,
+        )
+    if candles:
+        gap_stage = CandleGapChecker().check(
+            candles=candles,
+            interval=interval,
+            start_at=start_at,
+            end_at=end_at,
+            symbol=symbol,
+        )
+        payload = GapQualityDiagnostics().analyze(
+            symbol=symbol,
+            interval=interval,
+            start_date=start_date,
+            end_date=end_date,
+            gap_count=int(gap_stage.get("gap_count", 0)),
+            missing_open_times=list(gap_stage.get("missing_open_times", [])),
+            last_open_time=gap_stage.get("last_open_time"),
+            real_gap_count=gap_stage.get("real_gap_count"),
+            real_missing_open_times=list(gap_stage.get("real_missing_open_times", [])),
+            trailing_incomplete_count=gap_stage.get("trailing_incomplete_count"),
+            trailing_incomplete_open_times=list(gap_stage.get("trailing_incomplete_open_times", [])),
+            trailing_incomplete_range_detected=gap_stage.get("trailing_incomplete_range_detected"),
+        )
+    else:
+        payload = GapQualityDiagnostics().analyze(
+            symbol=symbol,
+            interval=interval,
+            start_date=start_date,
+            end_date=end_date,
+            gap_count=0,
+        )
+        payload["degraded_mode"] = True
+        payload["warnings"] = list(dict.fromkeys(list(payload.get("warnings", [])) + ["no_candles_loaded"]))
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return payload
+
+
+def build_real_feature_diagnostics_preview_payload() -> dict[str, object]:
+    """Build an ML34 real-feature-diagnostics preview."""
+
+    symbol = "BTCUSDT"
+    interval = "15m"
+    feature_version = "fv2"
+    label_version = "lv2_h08_thr04_tp10_sl10"
+    horizon_candles = 8
+    with get_session() as session:
+        dataset_builder = DatasetBuilder(
+            feature_repository=FeatureRepository(session),
+            label_repository=LabelRepository(session),
+        )
+        service = RealFeatureDiagnosticsService()
+        try:
+            rows, _summary = dataset_builder.build_rows(
+                symbol=symbol,
+                interval=interval,
+                horizon_candles=horizon_candles,
+                feature_version=feature_version,
+                label_version=label_version,
+            )
+        except Exception as exc:
+            payload = service.analyze(
+                symbol=symbol,
+                interval=interval,
+                feature_version=feature_version,
+                label_version=label_version,
+                rows=[],
+                source="dataset_builder",
+                reason=f"dataset_rows_unavailable:{exc}",
+            )
+        else:
+            payload = service.analyze(
+                symbol=symbol,
+                interval=interval,
+                feature_version=feature_version,
+                label_version=label_version,
+                rows=rows,
+                source="dataset_builder",
+                reason="dataset_rows_unavailable" if not rows else None,
+            )
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return payload
+
+
+def build_feature_regime_integration_preview_payload() -> dict[str, object]:
+    """Build an ML34 feature/regime integration preview."""
+
+    feature_version = "fv2"
+    required_regime_features = {
+        "regime_trend_up",
+        "regime_trend_down",
+        "regime_range",
+        "regime_high_volatility",
+        "regime_low_volatility",
+        "regime_unknown",
+    }
+    try:
+        feature_names = feature_names_for_version(feature_version)
+    except ValueError:
+        feature_names = []
+        feature_version_available = False
+    else:
+        feature_version_available = True
+
+    attached = required_regime_features.issubset(set(feature_names))
+    status = RegimeLabelIntegrationStatus().build_status(
+        regime_specific_labeling_available=RegimeLabelConfigPlanner().build_configs()["config_count"] > 0,
+        regime_features_attached=attached,
+        regime_feature_count=len([name for name in feature_names if name.startswith("regime_")]),
+        training_pipeline_supports_regime_labels=False,
+    )
+    payload = {
+        "feature_version_available": feature_version_available,
+        "feature_version_used": feature_version,
+        "regime_features_attached": attached,
+        "regime_feature_count": len([name for name in feature_names if name.startswith("regime_")]),
+        "regime_specific_labeling_available": status["regime_specific_labeling_available"],
+        "regime_specific_training_applied": status["regime_specific_training_applied"],
+        "missing_requirements": status["missing_requirements"],
+        "next_steps": status["next_steps"],
+        "approved_for_live_trading": False,
+        "approved_for_auto_activation": False,
+        "orders_enabled": False,
+        "traders_core_connected": False,
+    }
+    return payload
+
+
 def run_label_grid_experiment(
     *,
     symbol: str,
@@ -2794,6 +2956,7 @@ def run_label_grid_experiment(
     start_date: str,
     end_date: str | None = None,
     experiment_id: str | None = None,
+    feature_version: str = "fv1",
     label_config_ids: list[str] | None = None,
     max_configs: int | None = None,
     dry_run: bool = False,
@@ -2811,6 +2974,7 @@ def run_label_grid_experiment(
         start_date=start_date,
         end_date=end_date,
         experiment_id=experiment_id,
+        feature_version=feature_version,
         label_config_ids=tuple(label_config_ids or ()),
         max_configs=max_configs,
         dry_run=dry_run,
@@ -2930,6 +3094,7 @@ def run_feature_regime_experiment(
     start_date: str,
     end_date: str | None = None,
     experiment_id: str | None = None,
+    feature_version: str = "fv2",
     base_label_config_ids: list[str] | None = None,
     regime_config_ids: list[str] | None = None,
     max_configs: int | None = None,
@@ -2950,6 +3115,7 @@ def run_feature_regime_experiment(
         start_date=start_date,
         end_date=end_date,
         experiment_id=experiment_id,
+        feature_version=feature_version,
         base_label_config_ids=tuple(base_label_config_ids or ()),
         regime_config_ids=tuple(regime_config_ids or ()),
         max_configs=max_configs,
@@ -2994,9 +3160,18 @@ def analyze_feature_regime_results(
         "rejected_candidate_count": summary.get("rejected_candidate_count"),
         "best_candidate_config_id": summary.get("best_candidate_config_id"),
         "best_candidate_score": summary.get("best_candidate_score"),
+        "feature_version_used": summary.get("feature_version_used"),
+        "real_feature_diagnostics_used": summary.get("real_feature_diagnostics_used"),
+        "real_feature_diagnostics_row_count": summary.get("real_feature_diagnostics_row_count"),
         "feature_weak_signal_detected": dict(summary.get("feature_quality_summary", {})).get("weak_signal_detected"),
         "regime_data_available": dict(summary.get("regime_feature_summary", {})).get("regime_data_available"),
+        "regime_features_attached": summary.get("regime_features_attached"),
+        "regime_feature_count": summary.get("regime_feature_count"),
+        "regime_specific_labeling_available": summary.get("regime_specific_labeling_available"),
         "regime_training_applied": summary.get("regime_training_applied"),
+        "regime_specific_training_applied": summary.get("regime_specific_training_applied"),
+        "effective_gap_count_for_training": summary.get("effective_gap_count_for_training"),
+        "gap_severity_for_training": summary.get("gap_severity_for_training"),
         "feature_leakage_risk_detected": dict(summary.get("feature_leakage_summary", {})).get("leakage_risk_detected"),
         "output_dir": summary.get("output_dir"),
         "summary_json_path": summary.get("summary_json_path"),
@@ -3236,6 +3411,7 @@ def run_train_quality_pipeline(
     start_date: str,
     end_date: str | None = None,
     run_id: str | None = None,
+    feature_version: str = "fv1",
     dry_run: bool = False,
     sample_mode: bool = False,
     run_gate_policy_replay: bool = True,
@@ -3250,6 +3426,7 @@ def run_train_quality_pipeline(
         start_date=start_date,
         end_date=end_date,
         run_id=run_id,
+        feature_version=feature_version,
         dry_run=dry_run,
         sample_mode=sample_mode,
         run_gate_policy_replay=run_gate_policy_replay,
@@ -3682,6 +3859,78 @@ def feature_regime_experiment_preview() -> None:
     )
 
 
+@cli.command("gap-quality-preview")
+def gap_quality_preview() -> None:
+    """Show ML34 gap-quality preview JSON."""
+
+    payload = build_gap_quality_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("real-feature-diagnostics-preview")
+def real_feature_diagnostics_preview() -> None:
+    """Show ML34 real-feature-diagnostics preview JSON."""
+
+    payload = build_real_feature_diagnostics_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("feature-regime-integration-preview")
+def feature_regime_integration_preview() -> None:
+    """Show ML34 feature/regime integration preview JSON."""
+
+    payload = build_feature_regime_integration_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("feature-engineering-plan-preview")
+def feature_engineering_plan_preview() -> None:
+    """Show ML34 feature-engineering plan preview JSON."""
+
+    payload = FeatureEngineeringPlan().build_plan()
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
 @cli.command("label-grid-experiment-run")
 def label_grid_experiment_run_command(
     symbol: str = typer.Option(..., "--symbol"),
@@ -3689,6 +3938,7 @@ def label_grid_experiment_run_command(
     start_date: str = typer.Option(..., "--start-date"),
     end_date: str | None = typer.Option(None, "--end-date"),
     experiment_id: str | None = typer.Option(None, "--experiment-id"),
+    feature_version: str = typer.Option("fv1", "--feature-version"),
     label_config_ids: list[str] | None = typer.Option(None, "--label-config-id"),
     max_configs: int | None = typer.Option(None, "--max-configs"),
     dry_run: bool = typer.Option(False, "--dry-run"),
@@ -3715,6 +3965,7 @@ def label_grid_experiment_run_command(
         start_date=start_date,
         end_date=end_date,
         experiment_id=experiment_id,
+        feature_version=feature_version,
         label_config_ids=label_config_ids,
         max_configs=max_configs,
         dry_run=dry_run,
@@ -3798,6 +4049,7 @@ def feature_regime_experiment_run_command(
     start_date: str = typer.Option(..., "--start-date"),
     end_date: str | None = typer.Option(None, "--end-date"),
     experiment_id: str | None = typer.Option(None, "--experiment-id"),
+    feature_version: str = typer.Option("fv2", "--feature-version"),
     base_label_config_ids: list[str] | None = typer.Option(None, "--base-label-config-id"),
     regime_config_ids: list[str] | None = typer.Option(None, "--regime-config-id"),
     max_configs: int | None = typer.Option(None, "--max-configs"),
@@ -3833,6 +4085,7 @@ def feature_regime_experiment_run_command(
         start_date=start_date,
         end_date=end_date,
         experiment_id=experiment_id,
+        feature_version=feature_version,
         base_label_config_ids=base_label_config_ids,
         regime_config_ids=regime_config_ids,
         max_configs=max_configs,
@@ -3885,6 +4138,7 @@ def train_quality_pipeline_command(
     start_date: str = typer.Option(..., "--start-date"),
     end_date: str | None = typer.Option(None, "--end-date"),
     run_id: str | None = typer.Option(None, "--run-id"),
+    feature_version: str = typer.Option("fv1", "--feature-version"),
     dry_run: bool = typer.Option(False, "--dry-run"),
     sample_mode: bool = typer.Option(False, "--sample-mode"),
     run_gate_policy_replay: bool = typer.Option(
@@ -3909,6 +4163,7 @@ def train_quality_pipeline_command(
         start_date=start_date,
         end_date=end_date,
         run_id=run_id,
+        feature_version=feature_version,
         dry_run=dry_run,
         sample_mode=sample_mode,
         run_gate_policy_replay=run_gate_policy_replay,

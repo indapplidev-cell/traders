@@ -31,7 +31,18 @@ class ModelCandidateSelector:
         profit_metrics = self._profit_metrics(profit_aware_summary)
         walk_metrics = self._walk_metrics(walk_forward_summary)
         gate_policy_status = str(gate_policy_replay_summary.get("gate_policy_replay_status") or "")
-        gap_severity = str(gap_quality.get("gap_severity") or "OK")
+        gap_severity = str(
+            gap_quality.get("gap_severity_for_training")
+            or gap_quality.get("gap_severity")
+            or "OK"
+        )
+        effective_gap_count = int(
+            gap_quality.get("effective_gap_count_for_training")
+            or gap_quality.get("real_gap_count")
+            or gap_quality.get("gap_count")
+            or 0
+        )
+        raw_gap_severity = str(gap_quality.get("gap_severity") or gap_severity)
         predicted_distribution = dict(anti_collapse.get("predicted_distribution", {}))
         actual_distribution = dict(anti_collapse.get("actual_distribution", {}))
         max_predicted_class_share = max(
@@ -121,10 +132,12 @@ class ModelCandidateSelector:
             "gap_quality_gate": {
                 "passed": gap_passed,
                 "gap_severity": gap_severity,
+                "raw_gap_severity": raw_gap_severity,
+                "effective_gap_count_for_training": effective_gap_count,
                 "dataset_safe_for_training": gap_quality.get("dataset_safe_for_training"),
                 "max_allowed_gap_severity": thresholds.max_allowed_gap_severity,
                 "explanation": (
-                    "gap_quality_gate failed because gap_severity exceeds max_allowed_gap_severity"
+                    "gap_quality_gate failed because training-safe gap_severity exceeds max_allowed_gap_severity"
                     if not gap_passed
                     else "gap_quality_gate passed"
                 ),
@@ -247,7 +260,12 @@ class ModelCandidateSelector:
             recommendations.append("Require a stronger edge over the best baseline before selecting a candidate.")
         if "profit_aware_gate" in failed_gates or "walk_forward_gate" in failed_gates:
             recommendations.append("Rework label/feature configuration until profit-aware and walk-forward gates turn positive.")
-        if gap_quality.get("gap_severity") in {"HIGH", "CRITICAL"}:
+        effective_gap_severity = str(
+            gap_quality.get("gap_severity_for_training")
+            or gap_quality.get("gap_severity")
+            or "OK"
+        )
+        if effective_gap_severity in {"HIGH", "CRITICAL"}:
             recommendations.append("Reduce gaps in the candle history before trusting new experiments.")
         if anti_collapse.get("directional_bias_detected"):
             recommendations.append("Investigate directional imbalance because predictions are skewed to one side.")

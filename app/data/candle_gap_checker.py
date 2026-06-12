@@ -15,10 +15,19 @@ class CandleGapChecker:
         normalized_end = self._normalize_datetime(end_at)
         open_times = [self._normalize_datetime(self._extract_open_time(candle)) for candle in candles]
         unique_open_times = sorted(set(open_times))
+        last_open_time = unique_open_times[-1] if unique_open_times else None
 
         duplicates = sorted({open_time for open_time in open_times if open_times.count(open_time) > 1})
         misaligned = sorted({open_time for open_time in unique_open_times if not self.is_open_time_aligned(open_time, interval)})
         missing = self._find_missing_open_times(unique_open_times, interval, normalized_start, normalized_end)
+        trailing_missing = self._split_trailing_incomplete_missing(
+            unique_open_times=unique_open_times,
+            missing=missing,
+            interval=interval,
+            end_at=normalized_end,
+        )
+        trailing_missing_set = set(trailing_missing)
+        real_missing = [open_time for open_time in missing if open_time not in trailing_missing_set]
 
         return {
             "symbol": symbol,
@@ -27,10 +36,16 @@ class CandleGapChecker:
             "end_at": normalized_end.isoformat(),
             "checked": len(candles),
             "unique_open_times": len(unique_open_times),
+            "last_open_time": None if last_open_time is None else last_open_time.isoformat(),
             "duplicate_count": len(duplicates),
             "duplicates": [value.isoformat() for value in duplicates],
             "gap_count": len(missing),
             "missing_open_times": [value.isoformat() for value in missing],
+            "real_gap_count": len(real_missing),
+            "real_missing_open_times": [value.isoformat() for value in real_missing],
+            "trailing_incomplete_count": len(trailing_missing),
+            "trailing_incomplete_open_times": [value.isoformat() for value in trailing_missing],
+            "trailing_incomplete_range_detected": bool(trailing_missing),
             "misaligned_count": len(misaligned),
             "misaligned_open_times": [value.isoformat() for value in misaligned],
             "is_valid": len(duplicates) == 0 and len(missing) == 0 and len(misaligned) == 0,
@@ -121,6 +136,35 @@ class CandleGapChecker:
             cursor = self.advance_open_time(cursor, interval)
 
         return missing
+
+    def _split_trailing_incomplete_missing(
+        self,
+        *,
+        unique_open_times: list[datetime],
+        missing: list[datetime],
+        interval: str,
+        end_at: datetime,
+    ) -> list[datetime]:
+        if not unique_open_times or not missing:
+            return []
+
+        last_open_time = unique_open_times[-1]
+        expected_last_open_time = end_at - self.interval_to_timedelta(interval)
+        if last_open_time.date() != expected_last_open_time.date():
+            return []
+        cursor = self.advance_open_time(last_open_time, interval)
+        trailing_candidate: list[datetime] = []
+        while cursor < end_at:
+            trailing_candidate.append(cursor)
+            cursor = self.advance_open_time(cursor, interval)
+        if not trailing_candidate:
+            return []
+
+        missing_set = set(missing)
+        if all(open_time in missing_set for open_time in trailing_candidate):
+            return trailing_candidate
+        return []
+
 
     @staticmethod
     def _extract_open_time(candle: Any) -> datetime:

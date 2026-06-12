@@ -12,6 +12,7 @@ from app.evaluation.anti_collapse_validator import AntiCollapseValidator
 from app.evaluation.model_quality_validator import validate_model_quality
 from app.experiments.label_grid_candidate_ranker import LabelGridCandidateRanker
 from app.experiments.label_grid_experiment_reporter import LabelGridExperimentReporter
+from app.features.feature_models import feature_names_for_version
 from app.labels.label_quality_grid import LabelQualityGridConfig, LabelQualityGridPlanner
 from app.training.training_pipeline_runner import (
     LongHistoryTrainingPipelineRunner,
@@ -30,6 +31,7 @@ class LabelGridExperimentConfig:
     start_date: str
     end_date: str | None = None
     experiment_id: str | None = None
+    feature_version: str = "fv1"
     label_config_ids: tuple[str, ...] = ()
     max_configs: int | None = None
     dry_run: bool = False
@@ -74,8 +76,12 @@ class LabelGridExperimentCandidateResult:
     accuracy_edge: float | None = None
     collapse_detected: bool = False
     collapse_type: str | None = None
+    feature_version_used: str | None = None
     gap_severity: str | None = None
     gap_count: int = 0
+    gap_severity_for_training: str | None = None
+    effective_gap_count_for_training: int = 0
+    gap_training_safe: bool | None = None
     profit_total_r: float | None = None
     profit_factor: float | None = None
     walk_forward_fold_count: int = 0
@@ -114,8 +120,12 @@ class LabelGridExperimentCandidateResult:
             "accuracy_edge": self.accuracy_edge,
             "collapse_detected": self.collapse_detected,
             "collapse_type": self.collapse_type,
+            "feature_version_used": self.feature_version_used,
             "gap_severity": self.gap_severity,
             "gap_count": self.gap_count,
+            "gap_severity_for_training": self.gap_severity_for_training,
+            "effective_gap_count_for_training": self.effective_gap_count_for_training,
+            "gap_training_safe": self.gap_training_safe,
             "profit_total_r": self.profit_total_r,
             "profit_factor": self.profit_factor,
             "walk_forward_fold_count": self.walk_forward_fold_count,
@@ -154,6 +164,7 @@ class LabelGridExperimentRunResult:
     best_candidate_config_id: str | None
     best_candidate_status: str | None
     best_candidate_score: float | None
+    feature_version_used: str | None
     output_dir: str
     log_path: str
     events_path: str
@@ -192,6 +203,7 @@ class LabelGridExperimentRunResult:
             "best_candidate_config_id": self.best_candidate_config_id,
             "best_candidate_status": self.best_candidate_status,
             "best_candidate_score": self.best_candidate_score,
+            "feature_version_used": self.feature_version_used,
             "output_dir": self.output_dir,
             "log_path": self.log_path,
             "events_path": self.events_path,
@@ -307,6 +319,7 @@ class LabelGridExperimentRunner:
             "runner_name": LABEL_GRID_EXPERIMENT_RUNNER_NAME,
             "runner_version": LABEL_GRID_EXPERIMENT_RUNNER_VERSION,
             "status": "ok",
+            "feature_version_default": self.DEFAULT_FEATURE_VERSION,
             "available_label_configs": payload["configs"],
             "estimated_experiment_plan": {
                 "config_count": payload["config_count"],
@@ -332,6 +345,7 @@ class LabelGridExperimentRunner:
         }
 
     def run(self, config: LabelGridExperimentConfig) -> LabelGridExperimentRunResult:
+        feature_names_for_version(config.feature_version)
         experiment_id = config.resolved_experiment_id()
         end_date = config.resolved_end_date()
         logger = _ExperimentLogger(experiment_id=experiment_id, output_dir=config.output_dir)
@@ -468,6 +482,7 @@ class LabelGridExperimentRunner:
             best_candidate_config_id=best_candidate.get("config_id"),
             best_candidate_status=best_candidate.get("candidate_status"),
             best_candidate_score=best_candidate.get("score"),
+            feature_version_used=config.feature_version,
             output_dir=str(logger.paths.experiment_dir),
             log_path=str(logger.paths.log_path),
             events_path=str(logger.paths.events_path),
@@ -684,7 +699,7 @@ class LabelGridExperimentRunner:
                 "flat_class_enabled": True,
             },
             feature_config_summary={
-                "feature_version": self.DEFAULT_FEATURE_VERSION,
+                "feature_version": config.feature_version,
                 "model_name": self.DEFAULT_MODEL_NAME,
             },
         )
@@ -739,6 +754,7 @@ class LabelGridExperimentRunner:
                 start_date=config.start_date,
                 end_date=config.resolved_end_date(),
                 run_id=f"{experiment_id}_{label_config.config_id}",
+                feature_version=config.feature_version,
                 dry_run=False,
                 sample_mode=False,
                 run_gate_policy_replay=config.run_gate_policy_replay,
@@ -813,8 +829,13 @@ class LabelGridExperimentRunner:
             accuracy_edge=self._optional_float(quality_payload.get("accuracy_edge")),
             collapse_detected=bool(quality_payload.get("collapse_detected", False)),
             collapse_type=anti_collapse.get("collapse_type"),
+            feature_version_used=dict(quality_payload.get("feature_config", {})).get("feature_version")
+            or quality_payload.get("feature_version"),
             gap_severity=gap_quality.get("gap_severity"),
             gap_count=int(gap_quality.get("gap_count", 0) or 0),
+            gap_severity_for_training=gap_quality.get("gap_severity_for_training"),
+            effective_gap_count_for_training=int(gap_quality.get("effective_gap_count_for_training", 0) or 0),
+            gap_training_safe=gap_quality.get("dataset_safe_for_training"),
             profit_total_r=profit_total_r,
             profit_factor=profit_factor,
             walk_forward_fold_count=walk_fold_count,
@@ -920,7 +941,7 @@ class LabelGridExperimentRunner:
     ) -> dict[str, Any]:
         summary: dict[str, int] = {}
         for result in candidate_results:
-            key = result.gap_severity or "UNKNOWN"
+            key = result.gap_severity_for_training or result.gap_severity or "UNKNOWN"
             summary[key] = summary.get(key, 0) + 1
         return summary
 

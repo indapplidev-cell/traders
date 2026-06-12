@@ -41,7 +41,19 @@ FEATURE_NAMES = [
     "taker_buy_ratio",
 ]
 
-FV2_REGIME_FEATURE_NAMES = FEATURE_NAMES + [
+FV2_ADDITIVE_FEATURE_NAMES = [
+    "return_6",
+    "range_pct",
+    "body_pct",
+    "upper_wick_pct",
+    "lower_wick_pct",
+    "volume_change_pct",
+    "atr_normalized_move",
+    "trend_slope_short",
+    "trend_slope_medium",
+]
+
+FV2_REGIME_FEATURE_NAMES = FEATURE_NAMES + FV2_ADDITIVE_FEATURE_NAMES + [
     "ema_9_minus_ema_21",
     "ema_9_minus_ema_50",
     "ema_21_minus_ema_50",
@@ -72,6 +84,7 @@ FV2_REGIME_FEATURE_NAMES = FEATURE_NAMES + [
     "regime_range",
     "regime_high_volatility",
     "regime_low_volatility",
+    "regime_unknown",
     "regime_volatility_expanding",
     "regime_volatility_contracting",
     "rsi_14_above_50",
@@ -87,8 +100,11 @@ FV2_REGIME_FEATURE_NAMES = FEATURE_NAMES + [
     "bearish_pullback_to_ema_50",
 ]
 
+FV2_FEATURE_NAMES = FV2_REGIME_FEATURE_NAMES
+
 FEATURE_NAMES_BY_VERSION = {
     "fv1": FEATURE_NAMES,
+    "fv2": FV2_FEATURE_NAMES,
     "fv2_regime": FV2_REGIME_FEATURE_NAMES,
 }
 
