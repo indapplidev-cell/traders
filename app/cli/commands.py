@@ -12,6 +12,7 @@ from app.data.binance_client import BinanceClient
 from app.data.candle_gap_checker import CandleGapChecker
 from app.data.historical_loader import HistoricalLoader
 from app.dataset.dataset_builder import DatasetBuilder
+from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 from app.db.repositories.candle_repository import CandleRepository
@@ -25,6 +26,8 @@ from app.experiments.experiment_reporter import ExperimentReporter
 from app.experiments.label_grid_search import LabelGridSearchService
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
+from app.evaluation.anti_collapse_validator import AntiCollapseValidator
+from app.evaluation.model_candidate_selector import ModelCandidateSelector
 from app.evaluation.model_quality_reporter import ModelQualityReporter
 from app.evaluation.model_quality_validator import validate_model_quality
 from app.features.feature_pipeline import FeaturePipeline
@@ -33,6 +36,7 @@ from app.registry.artifact_storage import ArtifactStorage
 from app.registry.model_loader import ModelLoader
 from app.registry.model_registry import ModelRegistry
 from app.labels.label_builder import LabelBuilder
+from app.labels.label_quality_grid import LabelQualityGridPlanner
 from app.prediction.predictor import Predictor
 from app.replay.historical_replay_engine import HistoricalReplayEngine
 from app.replay.replay_service import ReplayService
@@ -2434,6 +2438,157 @@ def export_final_readiness_audit_report(
     }
 
 
+def build_model_anti_collapse_preview_payload() -> dict[str, object]:
+    """Build a deterministic anti-collapse preview from the latest bad run profile."""
+
+    probability_report = {
+        "actual_direction_counts": {"UP": 3661, "DOWN": 3787, "FLAT": 2449},
+        "predicted_direction_counts": {"UP": 8516, "DOWN": 421, "FLAT": 960},
+        "avg_prob_up": 0.35053143812825466,
+        "avg_prob_down": 0.3242517144370226,
+        "avg_prob_flat": 0.3252168477448813,
+        "max_prob_q90": 0.3655545234680176,
+        "max_prob_q50": 0.34978190064430237,
+        "margin_q90": 0.04313697814941406,
+        "margin_q50": 0.020096540451049805,
+        "rows_above_thresholds": {"0.45": 0},
+    }
+    return AntiCollapseValidator().validate_probability_report(probability_report)
+
+
+def export_model_anti_collapse_preview(
+    output_path: str | Path = Path("reports/model_anti_collapse_preview.json"),
+) -> dict[str, object]:
+    """Export deterministic anti-collapse preview JSON."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = build_model_anti_collapse_preview_payload()
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "collapse_detected": payload["collapse_detected"],
+        "collapse_type": payload["collapse_type"],
+    }
+
+
+def build_label_quality_grid_preview_payload() -> dict[str, object]:
+    """Build a reusable ML27 label-quality grid preview."""
+
+    return LabelQualityGridPlanner().build_grid()
+
+
+def export_label_quality_grid_preview(
+    output_path: str | Path = Path("reports/label_quality_grid_preview.json"),
+) -> dict[str, object]:
+    """Export label-quality grid preview JSON."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = build_label_quality_grid_preview_payload()
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "config_count": payload["config_count"],
+    }
+
+
+def build_model_candidate_selection_preview_payload() -> dict[str, object]:
+    """Build a deterministic candidate-selection preview from the latest bad run profile."""
+
+    gap_quality = GapQualityDiagnostics().analyze(
+        symbol="BTCUSDT",
+        interval="15m",
+        start_date="2025-01-01",
+        end_date="2026-06-12",
+        gap_count=79,
+    )
+    anti_collapse = build_model_anti_collapse_preview_payload()
+    profit_aware_summary = {
+        "gate_results": [
+            {
+                "gate_type": "max_prob",
+                "threshold": 0.34,
+                "resolved_signal_count": 615,
+                "total_r": -385.25,
+                "profit_factor": 0.916,
+            },
+            {
+                "gate_type": "max_prob",
+                "threshold": 0.36,
+                "resolved_signal_count": 164,
+                "total_r": -95.13,
+                "profit_factor": 0.918,
+            },
+            {
+                "gate_type": "margin",
+                "threshold": 0.02,
+                "resolved_signal_count": 431,
+                "total_r": -172.75,
+                "profit_factor": 0.936,
+            },
+        ],
+    }
+    walk_forward_summary = {
+        "summary": {
+            "fold_count": 48,
+            "folds_with_selected_gate": 26,
+            "folds_profitable_on_test": 16,
+            "global_total_r": -28.89,
+            "global_profit_factor": 0.9888,
+            "global_expectancy_r": -0.00607,
+            "total_test_signal_count": 4756,
+        }
+    }
+    gate_policy_replay_summary = {
+        "gate_policy_replay_status": "SAMPLE_ONLY",
+        "total_records": 5,
+        "valid_records": 4,
+        "invalid_records": 1,
+    }
+    return ModelCandidateSelector().select(
+        model_version="ml_candle_mlp_v1_2026_06_12_040449",
+        quality_status="QUALITY_REJECTED",
+        gap_quality=gap_quality,
+        anti_collapse=anti_collapse,
+        calibration_status="ACCEPTABLE",
+        profit_aware_summary=profit_aware_summary,
+        walk_forward_summary=walk_forward_summary,
+        gate_policy_replay_summary=gate_policy_replay_summary,
+        model_accuracy=0.3724360917449732,
+        baseline_accuracy=0.3699100737597252,
+        accuracy_edge=0.0025260179852480413,
+    )
+
+
+def export_model_candidate_selection_preview(
+    output_path: str | Path = Path("reports/model_candidate_selection_preview.json"),
+) -> dict[str, object]:
+    """Export deterministic candidate-selection preview JSON."""
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = build_model_candidate_selection_preview_payload()
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return {
+        "status": "ok",
+        "output_path": str(path),
+        "candidate_status": payload["candidate_status"],
+        "candidate_decision": payload["candidate_decision"],
+    }
+
+
 def build_model_quality_validation_result_sample():
     """Build a deterministic sample-only model quality validation result."""
 
@@ -2501,6 +2656,22 @@ def build_model_quality_validation_result_sample():
         profit_aware_summary=profit_aware_summary,
         walk_forward_summary=walk_forward_summary,
         gate_policy_replay_summary=gate_policy_replay_summary,
+        gap_quality_summary=GapQualityDiagnostics().analyze(
+            symbol="BTCUSDT",
+            interval="15m",
+            start_date="2025-01-01",
+            end_date="2026-06-11",
+            gap_count=0,
+        ),
+        label_config_summary={
+            "label_version": "lv1",
+            "horizon_candles": 8,
+            "direction_atr_threshold": 0.5,
+            "take_profit_atr": 1.5,
+            "stop_loss_atr": 1.0,
+            "flat_class_enabled": True,
+        },
+        feature_config_summary={"feature_version": "fv1", "model_name": "candle_mlp"},
     )
 
 
@@ -2699,6 +2870,120 @@ def model_quality_validation_export(
     """Export deterministic model quality validation JSON."""
 
     payload = export_model_quality_validation_report(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("model-anti-collapse-preview")
+def model_anti_collapse_preview() -> None:
+    """Show deterministic anti-collapse preview JSON."""
+
+    payload = build_model_anti_collapse_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("model-anti-collapse-export")
+def model_anti_collapse_export(
+    output_path: Path = typer.Option(
+        Path("reports/model_anti_collapse_preview.json"),
+        "--output-path",
+        help="Path for anti-collapse preview export.",
+    ),
+) -> None:
+    """Export deterministic anti-collapse preview JSON."""
+
+    payload = export_model_anti_collapse_preview(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("model-candidate-select-preview")
+def model_candidate_select_preview() -> None:
+    """Show deterministic candidate-selection preview JSON."""
+
+    payload = build_model_candidate_selection_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("model-candidate-select-export")
+def model_candidate_select_export(
+    output_path: Path = typer.Option(
+        Path("reports/model_candidate_selection_preview.json"),
+        "--output-path",
+        help="Path for candidate-selection preview export.",
+    ),
+) -> None:
+    """Export deterministic candidate-selection preview JSON."""
+
+    payload = export_model_candidate_selection_preview(output_path)
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("label-quality-grid-preview")
+def label_quality_grid_preview() -> None:
+    """Show deterministic ML27 label-quality grid preview JSON."""
+
+    payload = build_label_quality_grid_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("label-quality-grid-export")
+def label_quality_grid_export(
+    output_path: Path = typer.Option(
+        Path("reports/label_quality_grid_preview.json"),
+        "--output-path",
+        help="Path for label-quality grid preview export.",
+    ),
+) -> None:
+    """Export deterministic ML27 label-quality grid preview JSON."""
+
+    payload = export_label_quality_grid_preview(output_path)
 
     typer.echo(
         json.dumps(

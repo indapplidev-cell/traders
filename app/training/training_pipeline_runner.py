@@ -27,6 +27,7 @@ from app.evaluation.model_quality_validator import (
     validate_model_quality,
 )
 from app.diagnostics.diagnostics_service import DiagnosticsService
+from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.db.session import get_session
 from app.features.feature_pipeline import FeaturePipeline
 from app.labels.label_builder import LabelBuilder
@@ -119,6 +120,11 @@ class TrainingPipelineResult:
     model_summary: dict[str, Any]
     baseline_summary: dict[str, Any]
     gate_policy_replay_summary: dict[str, Any]
+    gap_quality_summary: dict[str, Any]
+    anti_collapse_summary: dict[str, Any]
+    candidate_selection_summary: dict[str, Any]
+    label_config_summary: dict[str, Any]
+    quality_gates_summary: dict[str, Any]
     output_dir: str
     log_path: str
     events_path: str
@@ -148,6 +154,11 @@ class TrainingPipelineResult:
             "model_summary": dict(self.model_summary),
             "baseline_summary": dict(self.baseline_summary),
             "gate_policy_replay_summary": dict(self.gate_policy_replay_summary),
+            "gap_quality_summary": dict(self.gap_quality_summary),
+            "anti_collapse_summary": dict(self.anti_collapse_summary),
+            "candidate_selection_summary": dict(self.candidate_selection_summary),
+            "label_config_summary": dict(self.label_config_summary),
+            "quality_gates_summary": dict(self.quality_gates_summary),
             "output_dir": self.output_dir,
             "log_path": self.log_path,
             "events_path": self.events_path,
@@ -258,6 +269,11 @@ class LongHistoryTrainingPipelineRunner:
         model_summary = dict(stage_payloads.get("train_model", {}))
         baseline_summary = dict(stage_payloads.get("baseline_compare", {}))
         gate_policy_replay_summary = dict(stage_payloads.get("gate_policy_replay_evaluation", {}))
+        gap_quality_summary = dict(quality_summary.get("gap_quality", {}))
+        anti_collapse_summary = dict(quality_summary.get("anti_collapse", {}))
+        candidate_selection_summary = dict(quality_summary.get("candidate_selection", {}))
+        label_config_summary = dict(quality_summary.get("label_config", {}))
+        quality_gates_summary = dict(quality_summary.get("quality_gates_summary", {}))
 
         export_stage_result = self._run_export_stage(
             config=config,
@@ -271,6 +287,11 @@ class LongHistoryTrainingPipelineRunner:
             model_summary=model_summary,
             baseline_summary=baseline_summary,
             gate_policy_replay_summary=gate_policy_replay_summary,
+            gap_quality_summary=gap_quality_summary,
+            anti_collapse_summary=anti_collapse_summary,
+            candidate_selection_summary=candidate_selection_summary,
+            label_config_summary=label_config_summary,
+            quality_gates_summary=quality_gates_summary,
         )
         stage_results.append(export_stage_result)
         if export_stage_result.status == FAILED:
@@ -303,6 +324,11 @@ class LongHistoryTrainingPipelineRunner:
             model_summary=model_summary,
             baseline_summary=baseline_summary,
             gate_policy_replay_summary=gate_policy_replay_summary,
+            gap_quality_summary=gap_quality_summary,
+            anti_collapse_summary=anti_collapse_summary,
+            candidate_selection_summary=candidate_selection_summary,
+            label_config_summary=label_config_summary,
+            quality_gates_summary=quality_gates_summary,
             output_dir=str(logger.paths.run_dir),
             log_path=str(logger.paths.log_path),
             events_path=str(logger.paths.events_path),
@@ -435,6 +461,11 @@ class LongHistoryTrainingPipelineRunner:
         model_summary: dict[str, Any],
         baseline_summary: dict[str, Any],
         gate_policy_replay_summary: dict[str, Any],
+        gap_quality_summary: dict[str, Any],
+        anti_collapse_summary: dict[str, Any],
+        candidate_selection_summary: dict[str, Any],
+        label_config_summary: dict[str, Any],
+        quality_gates_summary: dict[str, Any],
     ) -> TrainingPipelineStageResult:
         started_stage = self._timestamp()
         started_perf = time.perf_counter()
@@ -481,6 +512,11 @@ class LongHistoryTrainingPipelineRunner:
             model_summary=model_summary,
             baseline_summary=baseline_summary,
             gate_policy_replay_summary=gate_policy_replay_summary,
+            gap_quality_summary=gap_quality_summary,
+            anti_collapse_summary=anti_collapse_summary,
+            candidate_selection_summary=candidate_selection_summary,
+            label_config_summary=label_config_summary,
+            quality_gates_summary=quality_gates_summary,
             output_dir=str(logger.paths.run_dir),
             log_path=str(logger.paths.log_path),
             events_path=str(logger.paths.events_path),
@@ -1190,6 +1226,9 @@ class LongHistoryTrainingPipelineRunner:
             profit_aware_summary=profit_aware_summary,
             walk_forward_summary=walk_forward_summary,
             gate_policy_replay_summary=gate_policy_replay_summary,
+            gap_quality_summary=self._build_gap_quality_summary(config, stage_payloads),
+            label_config_summary=self._label_config_summary(),
+            feature_config_summary=self._feature_config_summary(),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
         return {
@@ -1211,6 +1250,9 @@ class LongHistoryTrainingPipelineRunner:
             profit_aware_summary=dict(stage_payloads.get("profit_aware_evaluation", {})),
             walk_forward_summary=dict(stage_payloads.get("walk_forward_evaluation", {})),
             gate_policy_replay_summary=dict(stage_payloads.get("gate_policy_replay_evaluation", {})),
+            gap_quality_summary=self._build_gap_quality_summary(config, stage_payloads),
+            label_config_summary=self._label_config_summary(),
+            feature_config_summary=self._feature_config_summary(),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
         return {
@@ -1273,6 +1315,37 @@ class LongHistoryTrainingPipelineRunner:
         stage_payloads: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
         return dict(stage_payloads.get("model_quality_validation", {}))
+
+    def _build_gap_quality_summary(
+        self,
+        config: TrainingPipelineConfig,
+        stage_payloads: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        gap_stage = dict(stage_payloads.get("check_candle_gaps", {}))
+        return GapQualityDiagnostics().analyze(
+            symbol=config.symbol,
+            interval=config.interval,
+            start_date=config.start_date,
+            end_date=config.resolved_end_date(),
+            gap_count=int(gap_stage.get("gap_count", 0)),
+            missing_open_times=list(gap_stage.get("missing_open_times", [])),
+        )
+
+    def _label_config_summary(self) -> dict[str, Any]:
+        return {
+            "label_version": self.DEFAULT_LABEL_VERSION,
+            "horizon_candles": self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
+            "direction_atr_threshold": self.DEFAULT_DIRECTION_ATR_THRESHOLD,
+            "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
+            "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
+            "flat_class_enabled": True,
+        }
+
+    def _feature_config_summary(self) -> dict[str, Any]:
+        return {
+            "feature_version": self.DEFAULT_FEATURE_VERSION,
+            "model_name": self.DEFAULT_MODEL_NAME,
+        }
 
     def _resolve_final_status(
         self,

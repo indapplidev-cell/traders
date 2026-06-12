@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.evaluation.anti_collapse_validator import AntiCollapseValidator
+from app.evaluation.model_candidate_selector import ModelCandidateSelector
 
 
 MODEL_QUALITY_VALIDATOR_NAME = "model_training_quality_validator"
-MODEL_QUALITY_VALIDATOR_VERSION = "ml25"
+MODEL_QUALITY_VALIDATOR_VERSION = "ml27"
 
 QUALITY_APPROVED = "QUALITY_APPROVED"
 QUALITY_REJECTED = "QUALITY_REJECTED"
@@ -40,6 +44,12 @@ class ModelQualityValidationResult:
     reasons: tuple[str, ...]
     warnings: tuple[str, ...]
     integration_status: dict[str, Any]
+    gap_quality: dict[str, Any] = field(default_factory=dict)
+    anti_collapse: dict[str, Any] = field(default_factory=dict)
+    candidate_selection: dict[str, Any] = field(default_factory=dict)
+    quality_gates_summary: dict[str, Any] = field(default_factory=dict)
+    label_config: dict[str, Any] = field(default_factory=dict)
+    feature_config: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -68,12 +78,19 @@ class ModelQualityValidationResult:
             "reasons": list(self.reasons),
             "warnings": list(self.warnings),
             "integration_status": dict(self.integration_status),
+            "gap_quality": dict(self.gap_quality),
+            "anti_collapse": dict(self.anti_collapse),
+            "candidate_selection": dict(self.candidate_selection),
+            "quality_gates_summary": dict(self.quality_gates_summary),
+            "label_config": dict(self.label_config),
+            "feature_config": dict(self.feature_config),
         }
 
 
 class ModelQualityValidator:
     """Validate whether a trained model looks analytically useful."""
 
+    MIN_BASELINE_EDGE = ModelCandidateSelector.MIN_BASELINE_EDGE
     ACCEPTABLE_CALIBRATION_STATUSES = {"ACCEPTABLE", "ACCEPTABLE_SAMPLE"}
     POSITIVE_PROFIT_STATUSES = {"POSITIVE", "ACCEPTABLE", "ACCEPTABLE_SAMPLE"}
     STABLE_WALK_FORWARD_STATUSES = {"STABLE", "ACCEPTABLE", "ACCEPTABLE_SAMPLE"}
@@ -92,6 +109,11 @@ class ModelQualityValidator:
         profit_aware_summary: dict[str, Any],
         walk_forward_summary: dict[str, Any],
         gate_policy_replay_summary: dict[str, Any],
+        gap_quality_summary: dict[str, Any] | None = None,
+        anti_collapse_summary: dict[str, Any] | None = None,
+        candidate_selection_summary: dict[str, Any] | None = None,
+        label_config_summary: dict[str, Any] | None = None,
+        feature_config_summary: dict[str, Any] | None = None,
     ) -> ModelQualityValidationResult:
         model_version = self._extract_str(training_summary, "model_version")
         training_run_id = self._extract_str(training_summary, "training_run_id", "run_id")
@@ -129,6 +151,11 @@ class ModelQualityValidator:
             if model_accuracy is not None and baseline_accuracy is not None
             else None
         )
+        gap_quality = self._normalize_gap_quality(gap_quality_summary or {})
+        anti_collapse = self._normalize_anti_collapse(
+            anti_collapse_summary=anti_collapse_summary or {},
+            probability_diagnostics=probability_diagnostics,
+        )
         collapse_detected = bool(
             self._extract_value(
                 training_summary,
@@ -138,6 +165,7 @@ class ModelQualityValidator:
                 probability_diagnostics,
                 "collapse_detected",
             )
+            or anti_collapse.get("collapse_detected", False)
         )
         sample_mode = bool(training_summary.get("sample_mode", False))
         real_training_executed = bool(
@@ -191,12 +219,16 @@ class ModelQualityValidator:
 
             if baseline_accuracy is None:
                 reasons.append("baseline_accuracy_missing")
-            if baseline_accuracy is not None and model_accuracy is not None and model_accuracy <= baseline_accuracy:
+            if accuracy_edge is not None and accuracy_edge < self.MIN_BASELINE_EDGE:
+                reasons.append("baseline_edge_too_small")
+            elif baseline_accuracy is not None and model_accuracy is not None and model_accuracy <= baseline_accuracy:
                 reasons.append("model_does_not_beat_baseline")
+            if gap_quality.get("gap_severity") in {"HIGH", "CRITICAL"}:
+                reasons.append("gap_quality_not_clean")
             if collapse_detected:
-                reasons.append("collapse_detected")
+                reasons.extend(self._collapse_reasons(anti_collapse))
             if profit_aware_status in self.REJECTING_PROFIT_STATUSES:
-                reasons.append("profit_aware_not_acceptable")
+                reasons.append("profit_aware_negative")
             if walk_forward_status in self.REJECTING_WALK_FORWARD_STATUSES:
                 reasons.append("walk_forward_unstable")
             if gate_policy_replay_status in self.REJECTING_GATE_POLICY_REPLAY_STATUSES:
@@ -206,8 +238,15 @@ class ModelQualityValidator:
                 reason
                 in {
                     "model_does_not_beat_baseline",
+                    "baseline_edge_too_small",
+                    "gap_quality_not_clean",
                     "collapse_detected",
-                    "profit_aware_not_acceptable",
+                    "single_class_prediction_collapse",
+                    "directional_bias_up",
+                    "directional_bias_down",
+                    "low_confidence_uniform_probs",
+                    "low_margin_detected",
+                    "profit_aware_negative",
                     "walk_forward_unstable",
                     "gate_policy_replay_degrades_safety",
                 }
@@ -255,6 +294,27 @@ class ModelQualityValidator:
                 quality_status = NEEDS_MORE_DATA
                 reasons.append("quality_signals_inconclusive")
 
+        quality_gates_summary = self._build_quality_gates_summary(
+            gap_quality=gap_quality,
+            anti_collapse=anti_collapse,
+            accuracy_edge=accuracy_edge,
+            profit_aware_summary=profit_aware_summary,
+            walk_forward_summary=walk_forward_summary,
+            gate_policy_replay_summary=gate_policy_replay_summary,
+        )
+        candidate_selection = dict(candidate_selection_summary or {}) or ModelCandidateSelector().select(
+            model_version=model_version,
+            quality_status=quality_status,
+            gap_quality=gap_quality,
+            anti_collapse=anti_collapse,
+            calibration_status=calibration_status,
+            profit_aware_summary=profit_aware_summary,
+            walk_forward_summary=walk_forward_summary,
+            gate_policy_replay_summary=gate_policy_replay_summary,
+            model_accuracy=model_accuracy,
+            baseline_accuracy=baseline_accuracy,
+            accuracy_edge=accuracy_edge,
+        )
         approved_for_traders_core_integration = quality_status == QUALITY_APPROVED
 
         return ModelQualityValidationResult(
@@ -283,6 +343,12 @@ class ModelQualityValidator:
             reasons=tuple(dict.fromkeys(reasons)),
             warnings=tuple(dict.fromkeys(warnings)),
             integration_status=integration_status,
+            gap_quality=gap_quality,
+            anti_collapse=anti_collapse,
+            candidate_selection=candidate_selection,
+            quality_gates_summary=quality_gates_summary,
+            label_config=dict(label_config_summary or {}),
+            feature_config=dict(feature_config_summary or {}),
         )
 
     def _quality_approved(
@@ -301,7 +367,7 @@ class ModelQualityValidator:
             real_training_executed
             and model_accuracy is not None
             and baseline_accuracy is not None
-            and model_accuracy > baseline_accuracy
+            and (model_accuracy - baseline_accuracy) >= self.MIN_BASELINE_EDGE
             and not collapse_detected
             and calibration_status in self.ACCEPTABLE_CALIBRATION_STATUSES
             and profit_aware_status in self.POSITIVE_PROFIT_STATUSES
@@ -397,7 +463,11 @@ class ModelQualityValidator:
             "summary.profit_factor",
         )
         if total_r is None and profit_factor is None:
-            gate_results = profit_aware_summary.get("gate_results", [])
+            gate_results = [
+                row
+                for row in profit_aware_summary.get("gate_results", [])
+                if int(row.get("resolved_signal_count", 0) or 0) > 0
+            ]
             if gate_results:
                 best_row = max(
                     gate_results,
@@ -543,6 +613,98 @@ class ModelQualityValidator:
             return 0.0
         return float(value)
 
+    def _normalize_gap_quality(self, gap_quality_summary: dict[str, Any]) -> dict[str, Any]:
+        if gap_quality_summary:
+            return dict(gap_quality_summary)
+        return {
+            "diagnostic_name": GapQualityDiagnostics.DIAGNOSTIC_NAME,
+            "diagnostic_version": GapQualityDiagnostics.DIAGNOSTIC_VERSION,
+            "gap_count": 0,
+            "largest_gap_minutes": 0,
+            "total_missing_candles_estimate": 0,
+            "gap_severity": "OK",
+            "dataset_safe_for_training": True,
+            "warnings": ["gap_quality_not_provided"],
+            "recommendations": ["Provide gap diagnostics from the real pipeline for stricter candidate gating."],
+        }
+
+    def _normalize_anti_collapse(
+        self,
+        *,
+        anti_collapse_summary: dict[str, Any],
+        probability_diagnostics: dict[str, Any],
+    ) -> dict[str, Any]:
+        if anti_collapse_summary:
+            return dict(anti_collapse_summary)
+        if probability_diagnostics and (
+            probability_diagnostics.get("actual_direction_counts")
+            or probability_diagnostics.get("predicted_direction_counts")
+        ):
+            return AntiCollapseValidator().validate_probability_report(probability_diagnostics)
+        return self._empty_anti_collapse()
+
+    @staticmethod
+    def _collapse_reasons(anti_collapse: dict[str, Any]) -> list[str]:
+        reasons = list(anti_collapse.get("reasons", []))
+        if not reasons:
+            reasons.append("collapse_detected")
+        return reasons
+
+    @staticmethod
+    def _empty_anti_collapse() -> dict[str, Any]:
+        return {
+            "validator_name": AntiCollapseValidator.VALIDATOR_NAME,
+            "validator_version": AntiCollapseValidator.VALIDATOR_VERSION,
+            "collapse_detected": False,
+            "collapse_type": "NONE",
+            "predicted_distribution": {"UP": 0.0, "DOWN": 0.0, "FLAT": 0.0},
+            "actual_distribution": {"UP": 0.0, "DOWN": 0.0, "FLAT": 0.0},
+            "max_predicted_class_share": 0.0,
+            "min_predicted_class_share": 0.0,
+            "up_down_prediction_ratio": 0.0,
+            "confidence_collapse_detected": False,
+            "low_margin_detected": False,
+            "directional_bias_detected": False,
+            "warnings": ["anti_collapse_not_provided"],
+            "reasons": [],
+            "recommendations": ["Provide probability diagnostics with class counts for stricter anti-collapse validation."],
+        }
+
+    def _build_quality_gates_summary(
+        self,
+        *,
+        gap_quality: dict[str, Any],
+        anti_collapse: dict[str, Any],
+        accuracy_edge: float | None,
+        profit_aware_summary: dict[str, Any],
+        walk_forward_summary: dict[str, Any],
+        gate_policy_replay_summary: dict[str, Any],
+    ) -> dict[str, Any]:
+        selector_payload = ModelCandidateSelector().select(
+            model_version=None,
+            quality_status="RESEARCH_ONLY",
+            gap_quality=gap_quality,
+            anti_collapse=anti_collapse,
+            calibration_status="UNKNOWN",
+            profit_aware_summary=profit_aware_summary,
+            walk_forward_summary=walk_forward_summary,
+            gate_policy_replay_summary=gate_policy_replay_summary,
+            model_accuracy=None if accuracy_edge is None else 0.0,
+            baseline_accuracy=None if accuracy_edge is None else -accuracy_edge,
+            accuracy_edge=accuracy_edge,
+        )
+        return {
+            "baseline_edge_minimum": self.MIN_BASELINE_EDGE,
+            "baseline_edge_passed": "baseline_edge_gate" in selector_payload["passed_gates"],
+            "collapse_gate_passed": "collapse_gate" in selector_payload["passed_gates"],
+            "profit_aware_gate_passed": "profit_aware_gate" in selector_payload["passed_gates"],
+            "walk_forward_gate_passed": "walk_forward_gate" in selector_payload["passed_gates"],
+            "gap_quality_gate_passed": "gap_quality_gate" in selector_payload["passed_gates"],
+            "gate_policy_replay_gate_passed": "gate_policy_replay_gate" in selector_payload["passed_gates"],
+            "failed_gates": list(selector_payload["failed_gates"]),
+            "passed_gates": list(selector_payload["passed_gates"]),
+        }
+
 
 def validate_model_quality(
     training_summary: dict[str, Any],
@@ -552,6 +714,11 @@ def validate_model_quality(
     profit_aware_summary: dict[str, Any],
     walk_forward_summary: dict[str, Any],
     gate_policy_replay_summary: dict[str, Any],
+    gap_quality_summary: dict[str, Any] | None = None,
+    anti_collapse_summary: dict[str, Any] | None = None,
+    candidate_selection_summary: dict[str, Any] | None = None,
+    label_config_summary: dict[str, Any] | None = None,
+    feature_config_summary: dict[str, Any] | None = None,
 ) -> ModelQualityValidationResult:
     """Validate model quality from precomputed training and diagnostics payloads."""
 
@@ -563,4 +730,9 @@ def validate_model_quality(
         profit_aware_summary=profit_aware_summary,
         walk_forward_summary=walk_forward_summary,
         gate_policy_replay_summary=gate_policy_replay_summary,
+        gap_quality_summary=gap_quality_summary,
+        anti_collapse_summary=anti_collapse_summary,
+        candidate_selection_summary=candidate_selection_summary,
+        label_config_summary=label_config_summary,
+        feature_config_summary=feature_config_summary,
     )
