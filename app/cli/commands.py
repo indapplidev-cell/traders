@@ -47,6 +47,12 @@ from app.experiments.feature_regime_result_analyzer import FeatureRegimeResultAn
 from app.experiments.feature_regime_experiment_reporter import (
     FeatureRegimeExperimentReporter,
 )
+from app.experiments.multi_symbol_feature_regime_analyzer import (
+    MultiSymbolFeatureRegimeAnalyzer,
+)
+from app.experiments.multi_symbol_feature_regime_reporter import (
+    MultiSymbolFeatureRegimeReporter,
+)
 from app.experiments.ml31_grid_improvement_analyzer import ML31GridImprovementAnalyzer
 from app.experiments.ml31_grid_improvement_reporter import ML31GridImprovementReporter
 from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
@@ -3187,6 +3193,46 @@ def analyze_feature_regime_results(
     return payload
 
 
+def analyze_multi_symbol_feature_regime(
+    *,
+    experiments_root: str | Path = Path("reports/feature_regime_experiments"),
+    symbols: list[str] | tuple[str, ...] = ("BTCUSDT", "ETHUSDT", "SOLUSDT"),
+    latest_per_symbol: bool = False,
+    export_report: bool = True,
+) -> dict[str, object]:
+    """Analyze multiple feature/regime experiment summaries together."""
+
+    analyzer = MultiSymbolFeatureRegimeAnalyzer()
+    reporter = MultiSymbolFeatureRegimeReporter()
+    resolved_symbols = [item.strip() for item in symbols if item.strip()]
+    if not resolved_symbols:
+        raise ValueError("Provide at least one symbol.")
+
+    if latest_per_symbol:
+        summary_paths = analyzer.latest_summary_paths_by_symbol(
+            root_dir=experiments_root,
+            symbols=resolved_symbols,
+        )
+    else:
+        summary_paths = analyzer.summary_paths_from_root(
+            root_dir=experiments_root,
+            symbols=resolved_symbols,
+        )
+
+    analysis = analyzer.analyze(summary_paths)
+    json_path = Path("reports/multi_symbol_feature_regime_analysis.json")
+    markdown_path = Path("reports/multi_symbol_feature_regime_analysis.md")
+    if export_report:
+        reporter.write_analysis_json(analysis, json_path)
+        reporter.write_analysis_markdown(analysis, markdown_path)
+
+    return reporter.compact_summary_to_dict(
+        analysis,
+        json_path=str(json_path) if export_report else None,
+        markdown_path=str(markdown_path) if export_report else None,
+    )
+
+
 def build_model_candidate_selection_preview_payload() -> dict[str, object]:
     """Build a deterministic candidate-selection preview from the latest bad run profile."""
 
@@ -4119,6 +4165,44 @@ def feature_regime_results_analyze_command(
     payload = analyze_feature_regime_results(
         experiment_dir=experiment_dir,
         latest=latest,
+    )
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("multi-symbol-feature-regime-analyze")
+def multi_symbol_feature_regime_analyze_command(
+    experiments_root: Path = typer.Option(
+        Path("reports/feature_regime_experiments"),
+        "--experiments-root",
+    ),
+    symbols: str = typer.Option(
+        "BTCUSDT,ETHUSDT,SOLUSDT",
+        "--symbols",
+    ),
+    latest_per_symbol: bool = typer.Option(
+        False,
+        "--latest-per-symbol",
+    ),
+    export_report: bool = typer.Option(
+        True,
+        "--export-report/--no-export-report",
+    ),
+) -> None:
+    """Analyze multiple feature/regime experiment summaries together."""
+
+    payload = analyze_multi_symbol_feature_regime(
+        experiments_root=experiments_root,
+        symbols=tuple(item.strip() for item in symbols.split(",") if item.strip()),
+        latest_per_symbol=latest_per_symbol,
+        export_report=export_report,
     )
 
     typer.echo(
