@@ -35,6 +35,8 @@ from app.experiments.label_grid_experiment_reporter import (
 from app.experiments.label_grid_search import LabelGridSearchService
 from app.experiments.label_grid_result_analyzer import LabelGridResultAnalyzer
 from app.experiments.label_grid_result_reporter import LabelGridResultReporter
+from app.experiments.ml31_grid_improvement_analyzer import ML31GridImprovementAnalyzer
+from app.experiments.ml31_grid_improvement_reporter import ML31GridImprovementReporter
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
 from app.evaluation.anti_collapse_validator import AntiCollapseValidator
@@ -2685,6 +2687,56 @@ def analyze_label_grid_results(
     return payload
 
 
+def analyze_ml31_grid_improvement(
+    *,
+    current_experiment_dir: str | Path | None = None,
+    previous_experiment_dir: str | Path | None = None,
+    latest: bool = False,
+    export_report: bool = True,
+) -> dict[str, object]:
+    """Compare the current ML31 experiment with an optional previous baseline."""
+
+    if current_experiment_dir is None and not latest:
+        raise ValueError("Provide --latest or --current-experiment-dir.")
+
+    analyzer = ML31GridImprovementAnalyzer()
+    reporter = ML31GridImprovementReporter()
+    resolved_current_dir = (
+        Path(current_experiment_dir)
+        if current_experiment_dir is not None
+        else analyzer.latest_experiment_dir()
+    )
+    current_summary = analyzer.load_summary(resolved_current_dir)
+    current_analysis = analyzer.load_analysis(resolved_current_dir)
+    previous_payload = None
+    if previous_experiment_dir is not None:
+        resolved_previous_dir = Path(previous_experiment_dir)
+        previous_analysis_path = resolved_previous_dir / "label_grid_result_analysis.json"
+        previous_payload = (
+            analyzer.load_analysis(resolved_previous_dir)
+            if previous_analysis_path.exists()
+            else analyzer.load_summary(resolved_previous_dir)
+        )
+
+    analysis = analyzer.analyze(
+        current_experiment_summary=current_summary,
+        current_analysis=current_analysis,
+        previous_baseline_summary=previous_payload,
+    )
+
+    json_path = Path("reports/ml31_grid_improvement_analysis.json")
+    markdown_path = Path("reports/ml31_grid_improvement_analysis.md")
+    if export_report:
+        reporter.write_analysis_json(analysis, json_path)
+        reporter.write_analysis_markdown(analysis, markdown_path)
+
+    return reporter.compact_summary_to_dict(
+        analysis,
+        json_path=str(json_path) if export_report else None,
+        markdown_path=str(markdown_path) if export_report else None,
+    )
+
+
 def build_model_candidate_selection_preview_payload() -> dict[str, object]:
     """Build a deterministic candidate-selection preview from the latest bad run profile."""
 
@@ -3325,6 +3377,35 @@ def label_grid_results_analyze_command(
 
     payload = analyze_label_grid_results(
         experiment_dir=experiment_dir,
+        latest=latest,
+        export_report=export_report,
+    )
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("ml31-grid-improvement-analyze")
+def ml31_grid_improvement_analyze_command(
+    current_experiment_dir: Path | None = typer.Option(None, "--current-experiment-dir"),
+    previous_experiment_dir: Path | None = typer.Option(None, "--previous-experiment-dir"),
+    latest: bool = typer.Option(False, "--latest"),
+    export_report: bool = typer.Option(
+        True,
+        "--export-report/--no-export-report",
+    ),
+) -> None:
+    """Analyze ML31 grid improvement against an optional previous baseline."""
+
+    payload = analyze_ml31_grid_improvement(
+        current_experiment_dir=current_experiment_dir,
+        previous_experiment_dir=previous_experiment_dir,
         latest=latest,
         export_report=export_report,
     )
