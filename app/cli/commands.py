@@ -14,7 +14,10 @@ from app.data.historical_loader import HistoricalLoader
 from app.dataset.dataset_builder import DatasetBuilder
 from app.dataset.gap_aware_dataset_filter import GapAwareDatasetFilter
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
+from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
+from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 from app.db.repositories.candle_repository import CandleRepository
@@ -37,6 +40,7 @@ from app.experiments.label_grid_result_analyzer import LabelGridResultAnalyzer
 from app.experiments.label_grid_result_reporter import LabelGridResultReporter
 from app.experiments.ml31_grid_improvement_analyzer import ML31GridImprovementAnalyzer
 from app.experiments.ml31_grid_improvement_reporter import ML31GridImprovementReporter
+from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
 from app.evaluation.gate_policy_replay_evaluator import GatePolicyReplayEvaluator
 from app.evaluation.gate_policy_replay_reporter import GatePolicyReplayReporter
 from app.evaluation.anti_collapse_validator import AntiCollapseValidator
@@ -53,6 +57,7 @@ from app.registry.model_loader import ModelLoader
 from app.registry.model_registry import ModelRegistry
 from app.labels.label_builder import LabelBuilder
 from app.labels.label_quality_grid import LabelQualityGridPlanner
+from app.labels.regime_label_config import RegimeLabelConfigPlanner
 from app.prediction.predictor import Predictor
 from app.replay.historical_replay_engine import HistoricalReplayEngine
 from app.replay.replay_service import ReplayService
@@ -2601,6 +2606,173 @@ def build_candidate_thresholds_preview_payload() -> dict[str, object]:
     }
 
 
+def _build_ml32_regime_sample_rows() -> list[dict[str, object]]:
+    return [
+        {
+            "direction_label": "UP",
+            "features_json": {
+                "trend_strength": 1.20,
+                "ema_21_to_ema_50": 0.14,
+                "volume_ratio_20": 1.30,
+                "rsi_14": 61.0,
+                "regime_trend_up": 1.0,
+                "regime_trend_down": 0.0,
+                "regime_range": 0.0,
+                "regime_high_volatility": 0.0,
+                "regime_low_volatility": 1.0,
+            },
+        },
+        {
+            "direction_label": "UP",
+            "features_json": {
+                "trend_strength": 1.05,
+                "ema_21_to_ema_50": 0.11,
+                "volume_ratio_20": 1.10,
+                "rsi_14": 58.0,
+                "regime_trend_up": 1.0,
+                "regime_trend_down": 0.0,
+                "regime_range": 0.0,
+                "regime_high_volatility": 0.0,
+                "regime_low_volatility": 1.0,
+            },
+        },
+        {
+            "direction_label": "DOWN",
+            "features_json": {
+                "trend_strength": -0.95,
+                "ema_21_to_ema_50": -0.12,
+                "volume_ratio_20": 1.35,
+                "rsi_14": 38.0,
+                "regime_trend_up": 0.0,
+                "regime_trend_down": 1.0,
+                "regime_range": 0.0,
+                "regime_high_volatility": 1.0,
+                "regime_low_volatility": 0.0,
+            },
+        },
+        {
+            "direction_label": "FLAT",
+            "features_json": {
+                "trend_strength": 0.05,
+                "ema_21_to_ema_50": 0.01,
+                "volume_ratio_20": None,
+                "rsi_14": 49.0,
+                "regime_trend_up": 0.0,
+                "regime_trend_down": 0.0,
+                "regime_range": 1.0,
+                "regime_high_volatility": 0.0,
+                "regime_low_volatility": 1.0,
+            },
+        },
+        {
+            "direction_label": "DOWN",
+            "features_json": {
+                "trend_strength": -0.70,
+                "ema_21_to_ema_50": -0.08,
+                "volume_ratio_20": 1.05,
+                "rsi_14": 42.0,
+                "regime_trend_up": 0.0,
+                "regime_trend_down": 1.0,
+                "regime_range": 0.0,
+                "regime_high_volatility": 1.0,
+                "regime_low_volatility": 0.0,
+            },
+        },
+        {
+            "direction_label": "FLAT",
+            "features_json": {
+                "trend_strength": 0.02,
+                "ema_21_to_ema_50": 0.0,
+                "volume_ratio_20": 0.95,
+                "rsi_14": 50.0,
+                "regime_trend_up": 0.0,
+                "regime_trend_down": 0.0,
+                "regime_range": 0.0,
+                "regime_high_volatility": 0.0,
+                "regime_low_volatility": 0.0,
+            },
+        },
+    ]
+
+
+def build_regime_feature_diagnostics_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML32 regime-aware feature diagnostic preview."""
+
+    payload = RegimeFeatureDiagnostics().analyze(_build_ml32_regime_sample_rows())
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return payload
+
+
+def build_feature_group_quality_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML32 feature-group quality preview."""
+
+    payload = FeatureGroupQualityScorer().analyze(_build_ml32_regime_sample_rows())
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return payload
+
+
+def build_regime_label_config_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML32 regime-label config preview."""
+
+    payload = RegimeLabelConfigPlanner().build_configs()
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return payload
+
+
+def build_regime_experiment_plan_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML32 regime-experiment plan preview."""
+
+    return RegimeExperimentPlanner().build_plan(
+        symbol="BTCUSDT",
+        interval="15m",
+        start_date="2025-01-01",
+        regime_data_available=True,
+    )
+
+
+def build_feature_leakage_guard_preview_payload() -> dict[str, object]:
+    """Build a deterministic ML32 feature-leakage guard preview."""
+
+    payload = FeatureLeakageGuard().check(
+        [
+            "trend_strength",
+            "volume_ratio_20",
+            "return_future_1",
+            "target_score",
+        ]
+    )
+    payload.update(
+        {
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+    )
+    return payload
+
+
 def run_label_grid_experiment(
     *,
     symbol: str,
@@ -3300,6 +3472,86 @@ def candidate_thresholds_preview() -> None:
     """Show deterministic ML30 candidate acceptance threshold preview JSON."""
 
     payload = build_candidate_thresholds_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("regime-feature-diagnostics-preview")
+def regime_feature_diagnostics_preview() -> None:
+    """Show deterministic ML32 regime-aware feature diagnostic preview JSON."""
+
+    payload = build_regime_feature_diagnostics_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("feature-group-quality-preview")
+def feature_group_quality_preview() -> None:
+    """Show deterministic ML32 feature-group quality preview JSON."""
+
+    payload = build_feature_group_quality_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("regime-label-config-preview")
+def regime_label_config_preview() -> None:
+    """Show deterministic ML32 regime-label config preview JSON."""
+
+    payload = build_regime_label_config_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("regime-experiment-plan-preview")
+def regime_experiment_plan_preview() -> None:
+    """Show deterministic ML32 regime-experiment plan preview JSON."""
+
+    payload = build_regime_experiment_plan_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("feature-leakage-guard-preview")
+def feature_leakage_guard_preview() -> None:
+    """Show deterministic ML32 feature-leakage guard preview JSON."""
+
+    payload = build_feature_leakage_guard_preview_payload()
 
     typer.echo(
         json.dumps(

@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
+
 
 FEATURE_QUALITY_DIAGNOSTIC_NAME = "feature_quality_diagnostics"
 FEATURE_QUALITY_DIAGNOSTIC_VERSION = "ml30"
@@ -10,6 +12,13 @@ FEATURE_QUALITY_DIAGNOSTIC_VERSION = "ml30"
 
 class FeatureQualityDiagnostics:
     """Measure whether a feature matrix has enough signal to resist collapse."""
+
+    def __init__(
+        self,
+        *,
+        feature_group_scorer: FeatureGroupQualityScorer | None = None,
+    ) -> None:
+        self._feature_group_scorer = feature_group_scorer or FeatureGroupQualityScorer()
 
     def analyze(
         self,
@@ -73,7 +82,27 @@ class FeatureQualityDiagnostics:
             weak_feature_warnings.append("low_variance_features_detected")
         if feature_signal_score < 0.10:
             weak_feature_warnings.append("feature_signal_score_too_low")
+        feature_group_summary = self._feature_group_scorer.analyze(
+            rows,
+            label_key=label_key,
+            features_key=features_key,
+        )
+        weak_signal_detected = bool(
+            "feature_signal_score_too_low" in weak_feature_warnings
+            or feature_group_summary["weak_groups"]
+        )
+        top_weak_features = self._top_weak_features(
+            scored_features=scored_features,
+            high_missing_features=high_missing_features,
+            constant_features=constant_features,
+            low_variance_features=low_variance_features,
+        )
 
+        recommendations = self._recommendations(
+            weak_feature_warnings=weak_feature_warnings,
+            top_candidate_features=scored_features[:3],
+        )
+        recommendations.extend(feature_group_summary["recommendations"])
         return {
             "diagnostic_name": FEATURE_QUALITY_DIAGNOSTIC_NAME,
             "diagnostic_version": FEATURE_QUALITY_DIAGNOSTIC_VERSION,
@@ -84,13 +113,13 @@ class FeatureQualityDiagnostics:
             "constant_feature_count": len(constant_features),
             "high_missing_feature_count": len(high_missing_features),
             "low_variance_feature_count": len(low_variance_features),
+            "weak_signal_detected": weak_signal_detected,
             "feature_signal_score": round(feature_signal_score, 6),
+            "feature_group_summary": feature_group_summary,
+            "top_weak_features": top_weak_features,
             "top_candidate_features": scored_features[:10],
             "weak_feature_warnings": weak_feature_warnings,
-            "recommendations": self._recommendations(
-                weak_feature_warnings=weak_feature_warnings,
-                top_candidate_features=scored_features[:3],
-            ),
+            "recommendations": list(dict.fromkeys(recommendations)),
         }
 
     @staticmethod
@@ -167,6 +196,38 @@ class FeatureQualityDiagnostics:
             + low_variance_feature_count * 0.01
         )
         return max(base_score - penalty, 0.0)
+
+    @staticmethod
+    def _top_weak_features(
+        *,
+        scored_features: list[dict[str, Any]],
+        high_missing_features: list[str],
+        constant_features: list[str],
+        low_variance_features: list[str],
+    ) -> list[dict[str, Any]]:
+        weak_names = set(high_missing_features) | set(constant_features) | set(low_variance_features)
+        ranked = sorted(
+            scored_features,
+            key=lambda item: (
+                item["feature_name"] not in weak_names,
+                float(item["separation_score"] or 0.0),
+                -item["missing_count"],
+            ),
+        )
+        payload: list[dict[str, Any]] = []
+        for item in ranked[:10]:
+            reasons: list[str] = []
+            feature_name = str(item["feature_name"])
+            if feature_name in high_missing_features:
+                reasons.append("high_missing")
+            if feature_name in constant_features:
+                reasons.append("constant")
+            if feature_name in low_variance_features:
+                reasons.append("low_variance")
+            if float(item["separation_score"] or 0.0) <= 0.05:
+                reasons.append("low_separation")
+            payload.append({**item, "weak_reasons": reasons})
+        return payload
 
     @staticmethod
     def _recommendations(
