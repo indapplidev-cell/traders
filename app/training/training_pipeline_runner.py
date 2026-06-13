@@ -221,6 +221,26 @@ class LongHistoryTrainingPipelineRunner:
         self._reporter = reporter or TrainingPipelineReporter()
         self._stage_handlers = stage_handlers or {}
 
+    @staticmethod
+    def _as_dict(value: Any) -> dict[str, Any]:
+        return dict(value) if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _as_list(value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return list(value)
+        if isinstance(value, (tuple, set)):
+            return list(value)
+        return [value]
+
+    @staticmethod
+    def _as_bool(value: Any, *, default: bool = False) -> bool:
+        if value is None:
+            return default
+        return bool(value)
+
     def run(self, config: TrainingPipelineConfig) -> TrainingPipelineResult:
         resolved_run_id = config.resolved_run_id()
         resolved_end_date = config.resolved_end_date()
@@ -271,14 +291,14 @@ class LongHistoryTrainingPipelineRunner:
             stage_results=stage_results,
         )
         quality_summary = self._build_quality_summary(stage_payloads)
-        model_summary = dict(stage_payloads.get("train_model", {}))
-        baseline_summary = dict(stage_payloads.get("baseline_compare", {}))
-        gate_policy_replay_summary = dict(stage_payloads.get("gate_policy_replay_evaluation", {}))
-        gap_quality_summary = dict(quality_summary.get("gap_quality", {}))
-        anti_collapse_summary = dict(quality_summary.get("anti_collapse", {}))
-        candidate_selection_summary = dict(quality_summary.get("candidate_selection", {}))
-        label_config_summary = dict(quality_summary.get("label_config", {}))
-        quality_gates_summary = dict(quality_summary.get("quality_gates_summary", {}))
+        model_summary = self._as_dict(stage_payloads.get("train_model"))
+        baseline_summary = self._as_dict(stage_payloads.get("baseline_compare"))
+        gate_policy_replay_summary = self._as_dict(stage_payloads.get("gate_policy_replay_evaluation"))
+        gap_quality_summary = self._as_dict(quality_summary.get("gap_quality"))
+        anti_collapse_summary = self._as_dict(quality_summary.get("anti_collapse"))
+        candidate_selection_summary = self._as_dict(quality_summary.get("candidate_selection"))
+        label_config_summary = self._as_dict(quality_summary.get("label_config"))
+        quality_gates_summary = self._as_dict(quality_summary.get("quality_gates_summary"))
 
         export_stage_result = self._run_export_stage(
             config=config,
@@ -1248,11 +1268,11 @@ class LongHistoryTrainingPipelineRunner:
                 "majority_class": {"test": {"accuracy": 0.3783}},
             }
         }
-        probability_diagnostics = dict(stage_payloads.get("probability_diagnostics", {}))
-        calibration_summary = dict(stage_payloads.get("calibration_diagnostics", {}))
-        profit_aware_summary = dict(stage_payloads.get("profit_aware_evaluation", {}))
-        walk_forward_summary = dict(stage_payloads.get("walk_forward_evaluation", {}))
-        gate_policy_replay_summary = dict(stage_payloads.get("gate_policy_replay_evaluation", {}))
+        probability_diagnostics = self._as_dict(stage_payloads.get("probability_diagnostics"))
+        calibration_summary = self._as_dict(stage_payloads.get("calibration_diagnostics"))
+        profit_aware_summary = self._as_dict(stage_payloads.get("profit_aware_evaluation"))
+        walk_forward_summary = self._as_dict(stage_payloads.get("walk_forward_evaluation"))
+        gate_policy_replay_summary = self._as_dict(stage_payloads.get("gate_policy_replay_evaluation"))
         label_config_summary = self._label_config_summary(stage_payloads)
         feature_config_summary = self._feature_config_summary(config.feature_version)
         collapse_diagnostics_v2 = CollapseDiagnosticsV2().analyze(
@@ -1307,11 +1327,18 @@ class LongHistoryTrainingPipelineRunner:
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
-        training_summary = dict(stage_payloads.get("train_model", {}))
-        baseline_summary = dict(stage_payloads.get("baseline_compare", {}))
-        probability_diagnostics = dict(stage_payloads.get("probability_diagnostics", {}))
-        profit_aware_summary = dict(stage_payloads.get("profit_aware_evaluation", {}))
-        walk_forward_summary = dict(stage_payloads.get("walk_forward_evaluation", {}))
+        raw_training_summary = stage_payloads.get("train_model")
+        raw_baseline_summary = stage_payloads.get("baseline_compare")
+        raw_probability_diagnostics = stage_payloads.get("probability_diagnostics")
+        raw_calibration_summary = stage_payloads.get("calibration_diagnostics")
+        raw_profit_aware_summary = stage_payloads.get("profit_aware_evaluation")
+        raw_walk_forward_summary = stage_payloads.get("walk_forward_evaluation")
+        raw_gate_policy_replay_summary = stage_payloads.get("gate_policy_replay_evaluation")
+        training_summary = self._as_dict(raw_training_summary)
+        baseline_summary = self._as_dict(raw_baseline_summary)
+        probability_diagnostics = self._as_dict(raw_probability_diagnostics)
+        profit_aware_summary = self._as_dict(raw_profit_aware_summary)
+        walk_forward_summary = self._as_dict(raw_walk_forward_summary)
         label_config_summary = self._label_config_summary(stage_payloads)
         feature_config_summary = self._feature_config_summary(config.feature_version)
         collapse_diagnostics_v2 = CollapseDiagnosticsV2().analyze(
@@ -1334,19 +1361,19 @@ class LongHistoryTrainingPipelineRunner:
             profit_aware_summary=profit_aware_summary,
         )
         result = validate_model_quality(
-            training_summary=training_summary,
-            baseline_summary=baseline_summary,
-            probability_diagnostics=probability_diagnostics,
-            calibration_summary=dict(stage_payloads.get("calibration_diagnostics", {})),
-            profit_aware_summary=profit_aware_summary,
-            walk_forward_summary=walk_forward_summary,
-            gate_policy_replay_summary=dict(stage_payloads.get("gate_policy_replay_evaluation", {})),
+            training_summary=raw_training_summary,
+            baseline_summary=raw_baseline_summary,
+            probability_diagnostics=raw_probability_diagnostics,
+            calibration_summary=raw_calibration_summary,
+            profit_aware_summary=raw_profit_aware_summary,
+            walk_forward_summary=raw_walk_forward_summary,
+            gate_policy_replay_summary=raw_gate_policy_replay_summary,
             gap_quality_summary=self._build_gap_quality_summary(config, stage_payloads),
             label_config_summary=label_config_summary,
             feature_config_summary=feature_config_summary,
             symbol=config.symbol,
             collapse_diagnostics_v2_summary=collapse_diagnostics_v2,
-            regime_label_builder_status_summary=dict(
+            regime_label_builder_status_summary=self._as_dict(
                 label_config_summary.get("regime_label_builder_status", {})
             ),
             walk_forward_profit_diagnostics_summary=walk_forward_profit_diagnostics,
@@ -1414,34 +1441,38 @@ class LongHistoryTrainingPipelineRunner:
         self,
         stage_payloads: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
-        return dict(stage_payloads.get("model_quality_validation", {}))
+        return self._as_dict(stage_payloads.get("model_quality_validation"))
 
     def _build_gap_quality_summary(
         self,
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
-        gap_stage = dict(stage_payloads.get("check_candle_gaps", {}))
+        gap_stage = self._as_dict(stage_payloads.get("check_candle_gaps"))
         return GapQualityDiagnostics().analyze(
             symbol=config.symbol,
             interval=config.interval,
             start_date=config.start_date,
             end_date=config.resolved_end_date(),
             gap_count=int(gap_stage.get("gap_count", 0)),
-            missing_open_times=list(gap_stage.get("missing_open_times", [])),
+            missing_open_times=[str(item) for item in self._as_list(gap_stage.get("missing_open_times"))],
             last_open_time=gap_stage.get("last_open_time"),
             real_gap_count=gap_stage.get("real_gap_count"),
-            real_missing_open_times=list(gap_stage.get("real_missing_open_times", [])),
+            real_missing_open_times=[str(item) for item in self._as_list(gap_stage.get("real_missing_open_times"))],
             trailing_incomplete_count=gap_stage.get("trailing_incomplete_count"),
-            trailing_incomplete_open_times=list(gap_stage.get("trailing_incomplete_open_times", [])),
-            trailing_incomplete_range_detected=gap_stage.get("trailing_incomplete_range_detected"),
+            trailing_incomplete_open_times=[
+                str(item) for item in self._as_list(gap_stage.get("trailing_incomplete_open_times"))
+            ],
+            trailing_incomplete_range_detected=self._as_bool(
+                gap_stage.get("trailing_incomplete_range_detected"),
+            ),
         )
 
     def _label_config_summary(
         self,
         stage_payloads: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        build_labels_payload = dict((stage_payloads or {}).get("build_labels", {}))
+        build_labels_payload = self._as_dict((stage_payloads or {}).get("build_labels"))
         return {
             "label_version": self.DEFAULT_LABEL_VERSION,
             "horizon_candles": self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
@@ -1449,8 +1480,8 @@ class LongHistoryTrainingPipelineRunner:
             "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
             "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
             "flat_class_enabled": True,
-            "direction_counts": dict(build_labels_payload.get("direction_counts", {})),
-            "regime_label_builder_status": dict(
+            "direction_counts": self._as_dict(build_labels_payload.get("direction_counts")),
+            "regime_label_builder_status": self._as_dict(
                 build_labels_payload.get("regime_label_builder_status", {})
             ),
         }

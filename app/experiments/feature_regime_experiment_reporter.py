@@ -8,6 +8,20 @@ from typing import Any
 class FeatureRegimeExperimentReporter:
     """Serialize and export feature/regime experiment results."""
 
+    @staticmethod
+    def _as_list(value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return list(value)
+        if isinstance(value, (tuple, set)):
+            return list(value)
+        return [value]
+
+    @staticmethod
+    def _as_dict(value: Any) -> dict[str, Any]:
+        return dict(value) if isinstance(value, dict) else {}
+
     def result_to_dict(self, result: object) -> dict[str, Any]:
         if isinstance(result, dict):
             return dict(result)
@@ -41,22 +55,34 @@ class FeatureRegimeExperimentReporter:
             "feature_version_used": payload.get("feature_version_used"),
             "real_feature_diagnostics_used": payload.get("real_feature_diagnostics_used"),
             "real_feature_diagnostics_row_count": payload.get("real_feature_diagnostics_row_count"),
-            "feature_weak_signal_detected": dict(payload.get("feature_quality_summary", {})).get("weak_signal_detected"),
-            "regime_data_available": dict(payload.get("regime_feature_summary", {})).get("regime_data_available"),
+            "feature_weak_signal_detected": self._as_dict(payload.get("feature_quality_summary")).get("weak_signal_detected"),
+            "regime_data_available": self._as_dict(payload.get("regime_feature_summary")).get("regime_data_available"),
             "regime_features_attached": payload.get("regime_features_attached"),
             "regime_feature_count": payload.get("regime_feature_count"),
             "regime_specific_labeling_available": payload.get("regime_specific_labeling_available"),
             "regime_training_applied": payload.get("regime_training_applied"),
             "regime_specific_training_applied": payload.get("regime_specific_training_applied"),
+            "regime_label_builder_used_in_training_any": payload.get("regime_label_builder_used_in_training_any"),
+            "regime_label_builder_used_in_training_all": payload.get("regime_label_builder_used_in_training_all"),
+            "regime_specific_training_applied_any": payload.get("regime_specific_training_applied_any"),
+            "regime_specific_training_applied_all": payload.get("regime_specific_training_applied_all"),
+            "probability_diagnostics": payload.get("probability_diagnostics"),
+            "probability_diagnostics_missing_reason": payload.get("probability_diagnostics_missing_reason"),
+            "real_feature_diagnostics": payload.get("real_feature_diagnostics"),
+            "real_feature_diagnostics_missing_reason": payload.get("real_feature_diagnostics_missing_reason"),
             "regime_label_builder_status": payload.get("regime_label_builder_status"),
             "effective_gap_count_for_training": payload.get("effective_gap_count_for_training"),
             "gap_severity_for_training": payload.get("gap_severity_for_training"),
             "gap_training_safe": payload.get("gap_training_safe"),
             "collapse_diagnostics_v2": payload.get("collapse_diagnostics_v2"),
+            "collapse_diagnostics_v2_missing_reason": payload.get("collapse_diagnostics_v2_missing_reason"),
             "walk_forward_profit_diagnostics": payload.get("walk_forward_profit_diagnostics"),
+            "walk_forward_profit_diagnostics_missing_reason": payload.get("walk_forward_profit_diagnostics_missing_reason"),
             "profit_aware_diagnostics": payload.get("profit_aware_diagnostics"),
+            "profit_aware_diagnostics_missing_reason": payload.get("profit_aware_diagnostics_missing_reason"),
+            "regime_label_builder_status_missing_reason": payload.get("regime_label_builder_status_missing_reason"),
             "missing_requirements": payload.get("missing_requirements"),
-            "feature_leakage_risk_detected": dict(payload.get("feature_leakage_summary", {})).get("leakage_risk_detected"),
+            "feature_leakage_risk_detected": self._as_dict(payload.get("feature_leakage_summary")).get("leakage_risk_detected"),
             "output_dir": payload.get("output_dir"),
             "summary_json_path": payload.get("summary_json_path"),
             "summary_markdown_path": payload.get("summary_markdown_path"),
@@ -133,6 +159,10 @@ class FeatureRegimeExperimentReporter:
             f"- feature_version_used: `{payload.get('feature_version_used')}`",
             f"- regime_training_applied: `{payload.get('regime_training_applied')}`",
             f"- regime_specific_training_applied: `{payload.get('regime_specific_training_applied')}`",
+            f"- regime_label_builder_used_in_training_any: `{payload.get('regime_label_builder_used_in_training_any')}`",
+            f"- regime_label_builder_used_in_training_all: `{payload.get('regime_label_builder_used_in_training_all')}`",
+            f"- regime_specific_training_applied_any: `{payload.get('regime_specific_training_applied_any')}`",
+            f"- regime_specific_training_applied_all: `{payload.get('regime_specific_training_applied_all')}`",
             f"- real_feature_diagnostics_used: `{payload.get('real_feature_diagnostics_used')}`",
             f"- real_feature_diagnostics_row_count: `{payload.get('real_feature_diagnostics_row_count')}`",
             f"- regime_label_builder_status: `{payload.get('regime_label_builder_status')}`",
@@ -149,7 +179,7 @@ class FeatureRegimeExperimentReporter:
             f"- regime diagnostics summary: `{payload.get('regime_feature_summary')}`",
             f"- regime_features_attached: `{payload.get('regime_features_attached')}`",
             f"- regime_feature_count: `{payload.get('regime_feature_count')}`",
-            f"- regime plan readiness: `{dict(payload.get('regime_experiment_plan_summary', {})).get('ready_for_real_regime_training')}`",
+            f"- regime plan readiness: `{self._as_dict(payload.get('regime_experiment_plan_summary')).get('ready_for_real_regime_training')}`",
             f"- missing_requirements: `{payload.get('missing_requirements')}`",
             "",
             "## Feature Leakage Summary",
@@ -161,7 +191,7 @@ class FeatureRegimeExperimentReporter:
             "| Rank | Candidate | Config | Score | Candidate Status | Failed Gates |",
             "| --- | --- | --- | --- | --- | --- |",
         ]
-        for row in payload.get("ranking", []):
+        for row in self._as_list(payload.get("ranking")):
             lines.append(
                 "| `{rank}` | `{candidate_id}` | `{config_id}` | `{score}` | `{candidate_status}` | `{failed_gates}` |".format(
                     rank=row.get("rank"),
@@ -169,10 +199,10 @@ class FeatureRegimeExperimentReporter:
                     config_id=row.get("config_id"),
                     score=row.get("score"),
                     candidate_status=row.get("candidate_status"),
-                    failed_gates=",".join(row.get("failed_gates", [])),
+                    failed_gates=",".join(self._as_list(row.get("failed_gates"))),
                 )
             )
-        if not payload.get("ranking"):
+        if not self._as_list(payload.get("ranking")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` |")
         lines.extend(
             [
@@ -191,7 +221,7 @@ class FeatureRegimeExperimentReporter:
                 "",
             ]
         )
-        for item in payload.get("recommendations", []):
+        for item in self._as_list(payload.get("recommendations")):
             lines.append(f"- {item}")
         lines.extend(
             [

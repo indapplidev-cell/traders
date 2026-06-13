@@ -191,10 +191,22 @@ class FeatureRegimeExperimentResult:
     summary_json_path: str
     summary_markdown_path: str
     baseline_reference: dict[str, Any]
+    probability_diagnostics: dict[str, Any] = field(default_factory=dict)
+    probability_diagnostics_missing_reason: str | None = None
+    real_feature_diagnostics: dict[str, Any] = field(default_factory=dict)
+    real_feature_diagnostics_missing_reason: str | None = None
     collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    collapse_diagnostics_v2_missing_reason: str | None = None
     regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
+    regime_label_builder_status_missing_reason: str | None = None
     walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
+    walk_forward_profit_diagnostics_missing_reason: str | None = None
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
+    profit_aware_diagnostics_missing_reason: str | None = None
+    regime_label_builder_used_in_training_any: bool = False
+    regime_label_builder_used_in_training_all: bool = False
+    regime_specific_training_applied_any: bool = False
+    regime_specific_training_applied_all: bool = False
     approved_for_traders_core_integration: bool = False
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
@@ -248,10 +260,22 @@ class FeatureRegimeExperimentResult:
             "summary_json_path": self.summary_json_path,
             "summary_markdown_path": self.summary_markdown_path,
             "baseline_reference": dict(self.baseline_reference),
+            "probability_diagnostics": dict(self.probability_diagnostics),
+            "probability_diagnostics_missing_reason": self.probability_diagnostics_missing_reason,
+            "real_feature_diagnostics": dict(self.real_feature_diagnostics),
+            "real_feature_diagnostics_missing_reason": self.real_feature_diagnostics_missing_reason,
             "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
+            "collapse_diagnostics_v2_missing_reason": self.collapse_diagnostics_v2_missing_reason,
             "regime_label_builder_status": dict(self.regime_label_builder_status),
+            "regime_label_builder_status_missing_reason": self.regime_label_builder_status_missing_reason,
             "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
+            "walk_forward_profit_diagnostics_missing_reason": self.walk_forward_profit_diagnostics_missing_reason,
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
+            "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
+            "regime_label_builder_used_in_training_any": self.regime_label_builder_used_in_training_any,
+            "regime_label_builder_used_in_training_all": self.regime_label_builder_used_in_training_all,
+            "regime_specific_training_applied_any": self.regime_specific_training_applied_any,
+            "regime_specific_training_applied_all": self.regime_specific_training_applied_all,
             "approved_for_traders_core_integration": self.approved_for_traders_core_integration,
             "approved_for_live_trading": self.approved_for_live_trading,
             "approved_for_auto_activation": self.approved_for_auto_activation,
@@ -364,6 +388,107 @@ class FeatureRegimeExperimentRunner:
         self._label_grid_runner = label_grid_runner or LabelGridExperimentRunner()
         self._reporter = reporter or FeatureRegimeExperimentReporter()
 
+    @staticmethod
+    def _as_dict(value: Any) -> dict[str, Any]:
+        return dict(value) if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _as_list(value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return list(value)
+        if isinstance(value, (tuple, set)):
+            return list(value)
+        return [value]
+
+    @classmethod
+    def _string_list(cls, value: Any) -> list[str]:
+        return [str(item) for item in cls._as_list(value) if item is not None]
+
+    @staticmethod
+    def _regime_status_is_built(status: dict[str, Any]) -> bool:
+        return bool(
+            status.get("regime_label_builder_status") == "built"
+            or status.get("regime_label_builder_used_in_training", False)
+            or status.get("regime_specific_training_applied", False)
+        )
+
+    @classmethod
+    def _aggregate_regime_label_builder_status(
+        cls,
+        *,
+        diagnostics_status: dict[str, Any],
+        candidate_results: list[FeatureRegimeCandidateResult],
+        fallback_missing_requirements: list[str],
+    ) -> dict[str, Any]:
+        candidate_statuses = [
+            cls._as_dict(item.regime_label_builder_status)
+            for item in candidate_results
+            if cls._as_dict(item.regime_label_builder_status)
+        ]
+        primary_status = next(
+            (status for status in candidate_statuses if cls._regime_status_is_built(status)),
+            candidate_statuses[0] if candidate_statuses else cls._as_dict(diagnostics_status),
+        )
+        primary_status = cls._as_dict(primary_status)
+        if not primary_status and diagnostics_status:
+            primary_status = cls._as_dict(diagnostics_status)
+
+        used_flags = [
+            bool(status.get("regime_label_builder_used_in_training", False))
+            for status in candidate_statuses
+        ]
+        applied_flags = [
+            bool(status.get("regime_specific_training_applied", False))
+            for status in candidate_statuses
+        ]
+        built_any = any(used_flags) or any(applied_flags) or any(
+            cls._regime_status_is_built(status) for status in candidate_statuses
+        )
+        built_all = bool(candidate_statuses) and all(
+            bool(status.get("regime_label_builder_used_in_training", False))
+            or bool(status.get("regime_specific_training_applied", False))
+            for status in candidate_statuses
+        )
+        used_any = any(used_flags)
+        used_all = bool(candidate_statuses) and all(used_flags)
+        applied_any = any(applied_flags)
+        applied_all = bool(candidate_statuses) and all(applied_flags)
+
+        if not candidate_statuses:
+            used_any = bool(primary_status.get("regime_label_builder_used_in_training", False))
+            used_all = used_any
+            applied_any = bool(primary_status.get("regime_specific_training_applied", False))
+            applied_all = applied_any
+            built_any = cls._regime_status_is_built(primary_status)
+            built_all = built_any
+
+        missing_requirements = list(
+            dict.fromkeys(
+                cls._string_list(primary_status.get("missing_requirements"))
+                + cls._string_list(fallback_missing_requirements)
+            )
+        )
+        if built_any or used_any or applied_any:
+            missing_requirements = [
+                item for item in missing_requirements if item != "regime_runtime_labels_not_built"
+            ]
+        elif (candidate_statuses or primary_status) and "regime_runtime_labels_not_built" not in missing_requirements:
+            missing_requirements.append("regime_runtime_labels_not_built")
+
+        primary_status["regime_label_builder_status"] = "built" if built_any else str(
+            primary_status.get("regime_label_builder_status") or "blocked"
+        )
+        primary_status["regime_label_builder_used_in_training"] = used_any
+        primary_status["regime_specific_training_applied"] = applied_any
+        primary_status["regime_label_builder_used_in_training_any"] = used_any
+        primary_status["regime_label_builder_used_in_training_all"] = used_all
+        primary_status["regime_specific_training_applied_any"] = applied_any
+        primary_status["regime_specific_training_applied_all"] = applied_all
+        primary_status["missing_requirements"] = missing_requirements
+        return primary_status
+
     def build_preview(self) -> dict[str, Any]:
         feature_names = feature_names_for_version("fv2")
         regime_feature_count = len([name for name in feature_names if name.startswith("regime_")])
@@ -432,14 +557,16 @@ class FeatureRegimeExperimentRunner:
             regime_feature_count=int(diagnostics["regime_feature_count"]),
         )
         regime_training_applied = bool(regime_status["regime_specific_training_applied"])
-        warnings = list(diagnostics["warnings"]) + list(regime_status["missing_requirements"])
+        warnings = self._string_list(diagnostics.get("warnings")) + self._string_list(
+            regime_status.get("missing_requirements")
+        )
 
         if config.dry_run:
             candidate_results = self._dry_run_candidates(
                 selected_base_configs,
                 feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
                 feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
-                real_feature_diagnostics=dict(diagnostics["real_feature_diagnostics"]),
+                real_feature_diagnostics=self._as_dict(diagnostics.get("real_feature_diagnostics")),
                 real_feature_diagnostics_missing_reason=diagnostics.get("real_feature_diagnostics_missing_reason"),
                 logger=logger,
             )
@@ -449,7 +576,7 @@ class FeatureRegimeExperimentRunner:
                 selected_base_configs,
                 feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
                 feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
-                real_feature_diagnostics=dict(diagnostics["real_feature_diagnostics"]),
+                real_feature_diagnostics=self._as_dict(diagnostics.get("real_feature_diagnostics")),
                 real_feature_diagnostics_missing_reason=diagnostics.get("real_feature_diagnostics_missing_reason"),
                 logger=logger,
             )
@@ -461,7 +588,7 @@ class FeatureRegimeExperimentRunner:
                 selected_base_configs=selected_base_configs,
                 feature_weak_signal_detected=bool(diagnostics["feature_quality_summary"]["weak_signal_detected"]),
                 feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
-                real_feature_diagnostics=dict(diagnostics["real_feature_diagnostics"]),
+                real_feature_diagnostics=self._as_dict(diagnostics.get("real_feature_diagnostics")),
                 real_feature_diagnostics_missing_reason=diagnostics.get("real_feature_diagnostics_missing_reason"),
                 logger=logger,
                 experiment_dir=logger.paths.experiment_dir,
@@ -471,6 +598,18 @@ class FeatureRegimeExperimentRunner:
         regime_training_applied = any(
             item.regime_specific_training_applied for item in candidate_results
         )
+        aggregate_regime_status = self._aggregate_regime_label_builder_status(
+            diagnostics_status=self._as_dict(diagnostics.get("regime_label_builder_status")),
+            candidate_results=candidate_results,
+            fallback_missing_requirements=self._string_list(regime_status.get("missing_requirements")),
+        )
+        if (
+            aggregate_regime_status.get("regime_label_builder_used_in_training_any", False)
+            or aggregate_regime_status.get("regime_specific_training_applied_any", False)
+        ):
+            warnings = [
+                item for item in warnings if item != "regime_runtime_labels_not_built"
+            ]
         ranking = self._ranking(candidate_results)
         accepted_count = sum(
             int(item.candidate_status == "ACCEPTED")
@@ -530,7 +669,9 @@ class FeatureRegimeExperimentRunner:
             regime_feature_source=str(diagnostics["regime_feature_source"]),
             regime_specific_labeling_available=bool(regime_status["regime_specific_labeling_available"]),
             regime_specific_training_applied=regime_training_applied,
-            missing_requirements=tuple(regime_status["missing_requirements"]),
+            missing_requirements=tuple(
+                self._string_list(aggregate_regime_status.get("missing_requirements"))
+            ),
             effective_gap_count_for_training=int(diagnostics["effective_gap_count_for_training"]),
             gap_severity_for_training=str(diagnostics["gap_severity_for_training"]),
             gap_training_safe=bool(diagnostics["gap_training_safe"]),
@@ -540,18 +681,72 @@ class FeatureRegimeExperimentRunner:
             summary_json_path=str(logger.paths.summary_json_path),
             summary_markdown_path=str(logger.paths.summary_markdown_path),
             baseline_reference=dict(DEFAULT_ML31_BASELINE_REFERENCE),
+            probability_diagnostics=dict(
+                {} if best_candidate is None else best_candidate.probability_diagnostics
+            ),
+            probability_diagnostics_missing_reason=(
+                None
+                if best_candidate is not None and best_candidate.probability_diagnostics
+                else "not_available_from_final_candidate"
+                if best_candidate is None
+                else best_candidate.probability_diagnostics_missing_reason
+                or "not_available_from_final_candidate"
+            ),
+            real_feature_diagnostics=self._as_dict(diagnostics.get("real_feature_diagnostics")),
+            real_feature_diagnostics_missing_reason=(
+                None
+                if self._as_dict(diagnostics.get("real_feature_diagnostics"))
+                else diagnostics.get("real_feature_diagnostics_missing_reason")
+                or "real_feature_diagnostics_not_available"
+            ),
             collapse_diagnostics_v2=dict(
                 {} if best_candidate is None else best_candidate.collapse_diagnostics_v2
             ),
-            regime_label_builder_status=dict(
-                diagnostics.get("regime_label_builder_status", {})
-                or ({} if best_candidate is None else best_candidate.regime_label_builder_status)
+            collapse_diagnostics_v2_missing_reason=(
+                None
+                if best_candidate is not None and best_candidate.collapse_diagnostics_v2
+                else "not_available_from_final_candidate"
+                if best_candidate is None
+                else best_candidate.collapse_diagnostics_v2_missing_reason
+                or "not_available_from_final_candidate"
+            ),
+            regime_label_builder_status=dict(aggregate_regime_status),
+            regime_label_builder_status_missing_reason=(
+                None if aggregate_regime_status else "not_available_from_runtime_payload"
             ),
             walk_forward_profit_diagnostics=dict(
                 {} if best_candidate is None else best_candidate.walk_forward_profit_diagnostics
             ),
+            walk_forward_profit_diagnostics_missing_reason=(
+                None
+                if best_candidate is not None and best_candidate.walk_forward_profit_diagnostics
+                else "not_available_from_final_candidate"
+                if best_candidate is None
+                else best_candidate.walk_forward_profit_diagnostics_missing_reason
+                or "not_available_from_final_candidate"
+            ),
             profit_aware_diagnostics=dict(
                 {} if best_candidate is None else best_candidate.profit_aware_diagnostics
+            ),
+            profit_aware_diagnostics_missing_reason=(
+                None
+                if best_candidate is not None and best_candidate.profit_aware_diagnostics
+                else "not_available_from_final_candidate"
+                if best_candidate is None
+                else best_candidate.profit_aware_diagnostics_missing_reason
+                or "not_available_from_final_candidate"
+            ),
+            regime_label_builder_used_in_training_any=bool(
+                aggregate_regime_status.get("regime_label_builder_used_in_training_any", False)
+            ),
+            regime_label_builder_used_in_training_all=bool(
+                aggregate_regime_status.get("regime_label_builder_used_in_training_all", False)
+            ),
+            regime_specific_training_applied_any=bool(
+                aggregate_regime_status.get("regime_specific_training_applied_any", False)
+            ),
+            regime_specific_training_applied_all=bool(
+                aggregate_regime_status.get("regime_specific_training_applied_all", False)
             ),
         )
 
@@ -663,7 +858,7 @@ class FeatureRegimeExperimentRunner:
             "feature_leakage_summary": feature_leakage,
             "regime_experiment_plan_summary": regime_experiment_plan,
             "real_feature_diagnostics": real_feature_diagnostics,
-            "regime_label_builder_status": dict(
+            "regime_label_builder_status": self._as_dict(
                 real_feature_diagnostics.get("regime_label_builder_status", {})
             ),
             "real_feature_diagnostics_used": bool(real_feature_diagnostics.get("real_feature_diagnostics_used", False)),
@@ -674,7 +869,7 @@ class FeatureRegimeExperimentRunner:
             "effective_gap_count_for_training": int(gap_quality.get("effective_gap_count_for_training", 0) or 0),
             "gap_severity_for_training": str(gap_quality.get("gap_severity_for_training") or "OK"),
             "gap_training_safe": bool(gap_quality.get("dataset_safe_for_training", False)),
-            "warnings": list(real_feature_diagnostics.get("warnings", [])),
+            "warnings": self._string_list(real_feature_diagnostics.get("warnings")),
             "real_feature_diagnostics_missing_reason": (
                 None
                 if bool(real_feature_diagnostics.get("row_count", 0))
@@ -816,25 +1011,27 @@ class FeatureRegimeExperimentRunner:
                 reason=f"gap_quality_data_unavailable:{type(exc).__name__}",
             )
 
-        gap_stage = CandleGapChecker().check(
+        gap_stage = self._as_dict(CandleGapChecker().check(
             candles=candles,
             interval=config.interval,
             start_at=start_at,
             end_at=end_at,
             symbol=config.symbol,
-        )
+        ))
         return GapQualityDiagnostics().analyze(
             symbol=config.symbol,
             interval=config.interval,
             start_date=config.start_date,
             end_date=config.resolved_end_date(),
             gap_count=int(gap_stage.get("gap_count", 0)),
-            missing_open_times=list(gap_stage.get("missing_open_times", [])),
+            missing_open_times=self._string_list(gap_stage.get("missing_open_times")),
             last_open_time=gap_stage.get("last_open_time"),
             real_gap_count=gap_stage.get("real_gap_count"),
-            real_missing_open_times=list(gap_stage.get("real_missing_open_times", [])),
+            real_missing_open_times=self._string_list(gap_stage.get("real_missing_open_times")),
             trailing_incomplete_count=gap_stage.get("trailing_incomplete_count"),
-            trailing_incomplete_open_times=list(gap_stage.get("trailing_incomplete_open_times", [])),
+            trailing_incomplete_open_times=self._string_list(
+                gap_stage.get("trailing_incomplete_open_times")
+            ),
             trailing_incomplete_range_detected=gap_stage.get("trailing_incomplete_range_detected"),
         )
 
@@ -858,9 +1055,9 @@ class FeatureRegimeExperimentRunner:
             trailing_incomplete_open_times=[],
             trailing_incomplete_range_detected=False,
         )
-        warnings = list(payload.get("warnings", []))
+        warnings = self._string_list(payload.get("warnings"))
         warnings.append(reason)
-        recommendations = list(payload.get("recommendations", []))
+        recommendations = self._string_list(payload.get("recommendations"))
         recommendations.insert(
             0,
             "Gap quality summary is in degraded fallback mode; use a real dataset-backed run for authoritative gap classification.",
@@ -1056,14 +1253,14 @@ class FeatureRegimeExperimentRunner:
                 warnings=tuple(item.warnings),
                 recommendations=tuple(item.recommendations),
                 regime_specific_training_applied=bool(
-                    dict(item.regime_label_builder_status).get(
+                    self._as_dict(item.regime_label_builder_status).get(
                         "regime_specific_training_applied",
                         False,
                     )
                 ),
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
-                probability_diagnostics=dict(getattr(item, "probability_diagnostics", {})),
+                probability_diagnostics=self._as_dict(getattr(item, "probability_diagnostics", {})),
                 probability_diagnostics_missing_reason=getattr(
                     item,
                     "probability_diagnostics_missing_reason",
@@ -1071,25 +1268,25 @@ class FeatureRegimeExperimentRunner:
                 ),
                 real_feature_diagnostics=real_feature_diagnostics,
                 real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
-                collapse_diagnostics_v2=dict(item.collapse_diagnostics_v2),
+                collapse_diagnostics_v2=self._as_dict(item.collapse_diagnostics_v2),
                 collapse_diagnostics_v2_missing_reason=getattr(
                     item,
                     "collapse_diagnostics_v2_missing_reason",
                     None,
                 ),
-                regime_label_builder_status=dict(item.regime_label_builder_status),
+                regime_label_builder_status=self._as_dict(item.regime_label_builder_status),
                 regime_label_builder_status_missing_reason=getattr(
                     item,
                     "regime_label_builder_status_missing_reason",
                     None,
                 ),
-                walk_forward_profit_diagnostics=dict(item.walk_forward_profit_diagnostics),
+                walk_forward_profit_diagnostics=self._as_dict(item.walk_forward_profit_diagnostics),
                 walk_forward_profit_diagnostics_missing_reason=getattr(
                     item,
                     "walk_forward_profit_diagnostics_missing_reason",
                     None,
                 ),
-                profit_aware_diagnostics=dict(item.profit_aware_diagnostics),
+                profit_aware_diagnostics=self._as_dict(item.profit_aware_diagnostics),
                 profit_aware_diagnostics_missing_reason=getattr(
                     item,
                     "profit_aware_diagnostics_missing_reason",
@@ -1150,8 +1347,9 @@ class FeatureRegimeExperimentRunner:
                 summary[gate] = summary.get(gate, 0) + 1
         return summary
 
-    @staticmethod
+    @classmethod
     def _recommendations(
+        cls,
         *,
         feature_quality: dict[str, Any],
         regime_feature_diagnostics: dict[str, Any],
@@ -1159,10 +1357,10 @@ class FeatureRegimeExperimentRunner:
         regime_plan: dict[str, Any],
         regime_training_applied: bool,
     ) -> list[str]:
-        recommendations = list(feature_quality.get("recommendations", []))
-        recommendations.extend(regime_feature_diagnostics.get("recommendations", []))
-        recommendations.extend(leakage_guard.get("recommendations", []))
-        recommendations.extend(regime_plan.get("recommendations", []))
+        recommendations = cls._string_list(feature_quality.get("recommendations"))
+        recommendations.extend(cls._string_list(regime_feature_diagnostics.get("recommendations")))
+        recommendations.extend(cls._string_list(leakage_guard.get("recommendations")))
+        recommendations.extend(cls._string_list(regime_plan.get("recommendations")))
         if not regime_training_applied:
             recommendations.append("Regime-specific labels are still attached as a plan, not as active label-builder integration.")
         recommendations.append("Keep traders-core, live trading, orders, and auto activation disabled.")
@@ -1372,6 +1570,7 @@ class FeatureRegimeExperimentRunner:
         reason: str | None = None,
     ) -> dict[str, Any]:
         return {
+            "regime_label_builder_status": "built" if used_in_training else "blocked",
             "regime_label_builder_available": True,
             "regime_label_builder_used_in_training": used_in_training,
             "regime_specific_labeling_available": True,
@@ -1393,6 +1592,7 @@ class FeatureRegimeExperimentRunner:
     @staticmethod
     def _sample_regime_label_builder_status() -> dict[str, Any]:
         return {
+            "regime_label_builder_status": "blocked",
             "regime_label_builder_available": True,
             "regime_label_builder_used_in_training": False,
             "regime_specific_labeling_available": True,

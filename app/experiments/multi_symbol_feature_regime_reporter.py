@@ -8,6 +8,20 @@ from typing import Any
 class MultiSymbolFeatureRegimeReporter:
     """Serialize multi-symbol feature/regime analysis results."""
 
+    @staticmethod
+    def _as_list(value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return list(value)
+        if isinstance(value, (tuple, set)):
+            return list(value)
+        return [value]
+
+    @staticmethod
+    def _as_dict(value: Any) -> dict[str, Any]:
+        return dict(value) if isinstance(value, dict) else {}
+
     def result_to_dict(self, result: object) -> dict[str, Any]:
         if isinstance(result, dict):
             return dict(result)
@@ -113,7 +127,7 @@ class MultiSymbolFeatureRegimeReporter:
             "| Symbol | Score | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Regime Features | Failed Gates |",
             "| --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
-        for item in payload.get("symbol_results", []):
+        for item in self._as_list(payload.get("symbol_results")):
             lines.append(
                 "| `{symbol}` | `{score}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{regime_features}` | `{failed_gates}` |".format(
                     symbol=item.get("symbol"),
@@ -123,10 +137,10 @@ class MultiSymbolFeatureRegimeReporter:
                     walk_forward_pf=item.get("walk_forward_profit_factor"),
                     real_diag=item.get("real_feature_diagnostics_used"),
                     regime_features=item.get("regime_features_attached"),
-                    failed_gates=",".join(item.get("failed_gates", [])),
+                    failed_gates=",".join(self._as_list(item.get("failed_gates"))),
                 )
             )
-        if not payload.get("symbol_results"):
+        if not self._as_list(payload.get("symbol_results")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
 
         lines.extend(
@@ -141,7 +155,7 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
             ]
         )
-        for item in payload.get("symbol_results", []):
+        for item in self._as_list(payload.get("symbol_results")):
             lines.append(f"- {item.get('symbol')}: `{item.get('failed_gates')}`")
 
         lines.extend(
@@ -150,13 +164,13 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Feature Version Check",
                 "",
                 f"- all_feature_version_fv2: `{payload.get('all_feature_version_fv2')}`",
-                f"- feature_versions_by_symbol: `{dict(payload.get('feature_version_summary', {})).get('feature_versions_by_symbol')}`",
+                f"- feature_versions_by_symbol: `{self._as_dict(payload.get('feature_version_summary')).get('feature_versions_by_symbol')}`",
                 "",
                 "## Gap Training Safety Check",
                 "",
                 f"- all_gap_training_safe: `{payload.get('all_gap_training_safe')}`",
-                f"- gap_severity_by_symbol: `{dict(payload.get('gap_training_safety_summary', {})).get('gap_severity_by_symbol')}`",
-                f"- effective_gap_count_by_symbol: `{dict(payload.get('gap_training_safety_summary', {})).get('effective_gap_count_by_symbol')}`",
+                f"- gap_severity_by_symbol: `{self._as_dict(payload.get('gap_training_safety_summary')).get('gap_severity_by_symbol')}`",
+                f"- effective_gap_count_by_symbol: `{self._as_dict(payload.get('gap_training_safety_summary')).get('effective_gap_count_by_symbol')}`",
                 "",
                 "## Real Feature Diagnostics Check",
                 "",
@@ -166,8 +180,8 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Regime Integration Status",
                 "",
                 f"- symbols_missing_regime_features: `{payload.get('symbols_missing_regime_features')}`",
-                f"- regime_training_applied_by_symbol: `{dict(payload.get('regime_integration_summary', {})).get('regime_training_applied_by_symbol')}`",
-                f"- regime_specific_training_applied_any: `{dict(payload.get('regime_integration_summary', {})).get('regime_specific_training_applied_any')}`",
+                f"- regime_training_applied_by_symbol: `{self._as_dict(payload.get('regime_integration_summary')).get('regime_training_applied_by_symbol')}`",
+                f"- regime_specific_training_applied_any: `{self._as_dict(payload.get('regime_integration_summary')).get('regime_specific_training_applied_any')}`",
                 "",
                 "## Walk-Forward/Profit-Aware Summary",
                 "",
@@ -177,13 +191,13 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Collapse Summary",
                 "",
                 f"- collapse_summary: `{payload.get('collapse_summary')}`",
-                f"- collapse_diagnostics_v2_by_symbol: `{ {item.get('symbol'): item.get('collapse_diagnostics_v2') for item in payload.get('symbol_results', [])} }`",
+                f"- collapse_diagnostics_v2_by_symbol: `{ {item.get('symbol'): item.get('collapse_diagnostics_v2') for item in self._as_list(payload.get('symbol_results'))} }`",
                 "",
                 "## Recommendations",
                 "",
             ]
         )
-        for recommendation in payload.get("recommendations", []):
+        for recommendation in self._as_list(payload.get("recommendations")):
             lines.append(f"- {recommendation}")
 
         lines.extend(

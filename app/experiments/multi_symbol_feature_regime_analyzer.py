@@ -12,6 +12,20 @@ MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml35"
 class MultiSymbolFeatureRegimeAnalyzer:
     """Aggregate multiple feature/regime experiment summaries into one report."""
 
+    @staticmethod
+    def _as_dict(value: Any) -> dict[str, Any]:
+        return dict(value) if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _as_list(value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return list(value)
+        if isinstance(value, (tuple, set)):
+            return list(value)
+        return [value]
+
     def analyze(
         self,
         summary_sources: Iterable[str | Path],
@@ -229,7 +243,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
 
     @staticmethod
     def _best_candidate(summary: dict[str, Any]) -> dict[str, Any]:
-        candidate_results = [dict(item) for item in summary.get("candidate_results", [])]
+        candidate_results = [
+            MultiSymbolFeatureRegimeAnalyzer._as_dict(item)
+            for item in MultiSymbolFeatureRegimeAnalyzer._as_list(summary.get("candidate_results"))
+            if isinstance(item, dict)
+        ]
         best_config_id = summary.get("best_candidate_config_id")
         if best_config_id is not None:
             for candidate in candidate_results:
@@ -243,8 +261,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
     @classmethod
     def _symbol_result(cls, summary: dict[str, Any]) -> dict[str, Any]:
         best_candidate = cls._best_candidate(summary)
-        summary_warnings = [str(item) for item in summary.get("warnings", [])]
-        candidate_warnings = [str(item) for item in best_candidate.get("warnings", [])]
+        summary_warnings = [str(item) for item in cls._as_list(summary.get("warnings"))]
+        candidate_warnings = [str(item) for item in cls._as_list(best_candidate.get("warnings"))]
+        summary_regime_status = cls._as_dict(summary.get("regime_label_builder_status"))
         return {
             "symbol": str(summary.get("symbol")),
             "experiment_id": summary.get("experiment_id"),
@@ -268,29 +287,40 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
             "collapse_detected": bool(best_candidate.get("collapse_detected", False)),
             "collapse_type": best_candidate.get("collapse_type"),
-            "collapse_diagnostics_v2": dict(
-                summary.get("collapse_diagnostics_v2", {})
-                or best_candidate.get("collapse_diagnostics_v2", {})
+            "collapse_diagnostics_v2": cls._as_dict(
+                summary.get("collapse_diagnostics_v2")
+                or best_candidate.get("collapse_diagnostics_v2")
             ),
             "profit_factor": cls._float_or_none(best_candidate.get("profit_factor")),
             "profit_total_r": cls._float_or_none(best_candidate.get("profit_total_r")),
             "walk_forward_profit_factor": cls._float_or_none(best_candidate.get("walk_forward_profit_factor")),
             "walk_forward_total_r": cls._float_or_none(best_candidate.get("walk_forward_global_total_r")),
-            "walk_forward_profit_diagnostics": dict(
-                summary.get("walk_forward_profit_diagnostics", {})
-                or best_candidate.get("walk_forward_profit_diagnostics", {})
+            "walk_forward_profit_diagnostics": cls._as_dict(
+                summary.get("walk_forward_profit_diagnostics")
+                or best_candidate.get("walk_forward_profit_diagnostics")
             ),
-            "profit_aware_diagnostics": dict(
-                summary.get("profit_aware_diagnostics", {})
-                or best_candidate.get("profit_aware_diagnostics", {})
+            "profit_aware_diagnostics": cls._as_dict(
+                summary.get("profit_aware_diagnostics")
+                or best_candidate.get("profit_aware_diagnostics")
             ),
-            "failed_gates": [str(item) for item in best_candidate.get("failed_gates", [])],
-            "passed_gates": [str(item) for item in best_candidate.get("passed_gates", [])],
+            "failed_gates": [str(item) for item in cls._as_list(best_candidate.get("failed_gates"))],
+            "passed_gates": [str(item) for item in cls._as_list(best_candidate.get("passed_gates"))],
             "regime_features_attached": bool(summary.get("regime_features_attached", False)),
-            "regime_specific_training_applied": bool(summary.get("regime_specific_training_applied", False)),
-            "regime_label_builder_status": dict(
-                summary.get("regime_label_builder_status", {})
-                or best_candidate.get("regime_label_builder_status", {})
+            "regime_label_builder_used_in_training": bool(
+                summary.get(
+                    "regime_label_builder_used_in_training_any",
+                    summary_regime_status.get("regime_label_builder_used_in_training", False),
+                )
+            ),
+            "regime_specific_training_applied": bool(
+                summary.get(
+                    "regime_specific_training_applied_any",
+                    summary.get("regime_specific_training_applied", False),
+                )
+            ),
+            "regime_label_builder_status": cls._as_dict(
+                summary.get("regime_label_builder_status")
+                or best_candidate.get("regime_label_builder_status")
             ),
             "warnings": list(dict.fromkeys(summary_warnings + candidate_warnings)),
         }
