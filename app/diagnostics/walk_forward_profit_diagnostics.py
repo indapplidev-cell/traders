@@ -27,27 +27,37 @@ class WalkForwardProfitDiagnostics:
         best_fold = self._fold_snapshot(
             max(
                 (fold for fold in folds if fold.get("test_result") is not None),
-                key=lambda fold: float(dict(fold.get("test_result", {})).get("total_r", 0.0)),
+                key=lambda fold: float(
+                    self._normalize_mapping(fold.get("test_result")).get("total_r", 0.0)
+                ),
                 default=None,
             )
         )
         worst_fold = self._fold_snapshot(
             min(
                 (fold for fold in folds if fold.get("test_result") is not None),
-                key=lambda fold: float(dict(fold.get("test_result", {})).get("total_r", 0.0)),
+                key=lambda fold: float(
+                    self._normalize_mapping(fold.get("test_result")).get("total_r", 0.0)
+                ),
                 default=None,
             )
         )
         low_signal_folds = [
             self._fold_snapshot(fold)
             for fold in folds
-            if int(dict(fold.get("test_result", {})).get("signal_count", 0) or 0) < 5
+            if int(
+                self._normalize_mapping(fold.get("test_result")).get("signal_count", 0)
+                or 0
+            )
+            < 5
         ]
         regime_related_failures = sorted(
             {
                 str(warning)
                 for fold in folds
-                for warning in dict(fold.get("direction_bias", {})).get("warnings", [])
+                for warning in self._normalize_sequence(
+                    self._normalize_mapping(fold.get("direction_bias")).get("warnings")
+                )
                 if "regime" in str(warning)
             }
         )
@@ -165,7 +175,8 @@ class WalkForwardProfitDiagnostics:
     def _fold_snapshot(self, fold: dict[str, Any] | None) -> dict[str, Any] | None:
         if fold is None:
             return None
-        test_result = dict(fold.get("test_result", {}))
+        test_result = self._normalize_mapping(fold.get("test_result"))
+        selected_gate = self._normalize_mapping(fold.get("selected_gate"))
         return {
             "fold_index": fold.get("fold_index"),
             "train_start": fold.get("train_start"),
@@ -174,8 +185,8 @@ class WalkForwardProfitDiagnostics:
             "validation_end": fold.get("validation_end"),
             "test_start": fold.get("test_start"),
             "test_end": fold.get("test_end"),
-            "gate_type": dict(fold.get("selected_gate", {})).get("gate_type"),
-            "threshold": self._safe_float(dict(fold.get("selected_gate", {})).get("threshold")),
+            "gate_type": selected_gate.get("gate_type"),
+            "threshold": self._safe_float(selected_gate.get("threshold")),
             "signal_count": int(test_result.get("signal_count", 0) or 0),
             "resolved_signal_count": int(test_result.get("resolved_signal_count", 0) or 0),
             "profit_factor": self._safe_float(test_result.get("profit_factor")),

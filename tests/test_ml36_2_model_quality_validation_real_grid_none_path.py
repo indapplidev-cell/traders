@@ -38,7 +38,21 @@ def test_ml36_2_model_quality_validation_real_grid_none_path() -> None:
             "probability_diagnostics": None,
             "calibration_diagnostics": None,
             "profit_aware_evaluation": None,
-            "walk_forward_evaluation": None,
+            "walk_forward_evaluation": {
+                "folds": [
+                    {
+                        "fold_index": 0,
+                        "test_result": None,
+                        "selected_gate": None,
+                        "direction_bias": None,
+                    }
+                ],
+                "summary": {
+                    "fold_count": 1,
+                    "global_profit_factor": None,
+                    "global_total_r": None,
+                },
+            },
             "gate_policy_replay_evaluation": None,
             "check_candle_gaps": {
                 "gap_count": 0,
