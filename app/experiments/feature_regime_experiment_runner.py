@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,6 +16,8 @@ from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
 from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.diagnostics.class_bias_diagnostics import ClassBiasDiagnostics
+from app.diagnostics.collapse_tuning_summary import CollapseTuningSummaryBuilder
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 from app.labels.label_builder import LabelBuilder
@@ -26,6 +28,7 @@ from app.experiments.label_grid_experiment_runner import (
     LabelGridExperimentConfig,
     LabelGridExperimentRunner,
 )
+from app.experiments.ml38_2_config_ranker import ML382ConfigRanker
 from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
 from app.features.feature_builder import FeatureBuilder
 from app.features.feature_models import feature_names_for_version
@@ -61,6 +64,7 @@ class FeatureRegimeExperimentConfig:
     run_feature_diagnostics: bool = True
     run_leakage_guard: bool = True
     run_candidate_selection: bool = True
+    ranking_strategy: str = "default"
     output_dir: Path = Path("reports/feature_regime_experiments")
 
     def resolved_end_date(self) -> str:
@@ -133,6 +137,14 @@ class FeatureRegimeCandidateResult:
     actual_class_distribution: dict[str, Any] = field(default_factory=dict)
     collapse_detected: bool = False
     collapse_type: str | None = None
+    flat_bias_diagnostics: dict[str, Any] = field(default_factory=dict)
+    flat_bias_diagnostics_missing_reason: str | None = None
+    flat_bias_detected: bool = False
+    down_blindness_detected: bool = False
+    symbol_bias_severity: str | None = None
+    collapse_tuning_summary: dict[str, Any] = field(default_factory=dict)
+    collapse_tuning_summary_missing_reason: str | None = None
+    score_components: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -192,6 +204,14 @@ class FeatureRegimeCandidateResult:
             "actual_class_distribution": dict(self.actual_class_distribution),
             "collapse_detected": self.collapse_detected,
             "collapse_type": self.collapse_type,
+            "flat_bias_diagnostics": dict(self.flat_bias_diagnostics),
+            "flat_bias_diagnostics_missing_reason": self.flat_bias_diagnostics_missing_reason,
+            "flat_bias_detected": self.flat_bias_detected,
+            "down_blindness_detected": self.down_blindness_detected,
+            "symbol_bias_severity": self.symbol_bias_severity,
+            "collapse_tuning_summary": dict(self.collapse_tuning_summary),
+            "collapse_tuning_summary_missing_reason": self.collapse_tuning_summary_missing_reason,
+            "score_components": dict(self.score_components),
         }
 
 
@@ -269,6 +289,12 @@ class FeatureRegimeExperimentResult:
     regime_features_missing_reason: str | None = None
     candidate_status: str | None = None
     model_quality_validation_status: str | None = None
+    model_accepted: bool = False
+    reasons_why_best_still_rejected: tuple[str, ...] = ()
+    configs_ranked: tuple[dict[str, Any], ...] = ()
+    flat_bias_summary: dict[str, Any] = field(default_factory=dict)
+    down_blindness_summary: dict[str, Any] = field(default_factory=dict)
+    baseline_edge_summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -344,6 +370,12 @@ class FeatureRegimeExperimentResult:
             "regime_features_missing_reason": self.regime_features_missing_reason,
             "candidate_status": self.candidate_status,
             "model_quality_validation_status": self.model_quality_validation_status,
+            "model_accepted": self.model_accepted,
+            "reasons_why_best_still_rejected": list(self.reasons_why_best_still_rejected),
+            "configs_ranked": [dict(item) for item in self.configs_ranked],
+            "flat_bias_summary": dict(self.flat_bias_summary),
+            "down_blindness_summary": dict(self.down_blindness_summary),
+            "baseline_edge_summary": dict(self.baseline_edge_summary),
         }
 
 
@@ -450,6 +482,9 @@ class FeatureRegimeExperimentRunner:
         self._regime_label_integration_status = regime_label_integration_status or RegimeLabelIntegrationStatus()
         self._label_grid_runner = label_grid_runner or LabelGridExperimentRunner()
         self._reporter = reporter or FeatureRegimeExperimentReporter()
+        self._class_bias_diagnostics = ClassBiasDiagnostics()
+        self._collapse_tuning_summary_builder = CollapseTuningSummaryBuilder()
+        self._ml38_2_ranker = ML382ConfigRanker()
 
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
@@ -741,7 +776,15 @@ class FeatureRegimeExperimentRunner:
             warnings = [
                 item for item in warnings if item != "regime_runtime_labels_not_built"
             ]
-        ranking = self._ranking(candidate_results)
+        candidate_results, ranking_payload = self._post_process_candidates_for_ranking(
+            config=config,
+            candidate_results=candidate_results,
+        )
+        ranking = (
+            list(ranking_payload.get("ranking", []))
+            if ranking_payload is not None
+            else self._ranking(candidate_results)
+        )
         accepted_count = sum(
             int(item.candidate_status == "ACCEPTED")
             for item in candidate_results
@@ -751,7 +794,10 @@ class FeatureRegimeExperimentRunner:
             for item in candidate_results
         )
         failed_count = sum(int(item.candidate_status == "FAILED") for item in candidate_results)
-        best_candidate = next((item for item in candidate_results if item.score is not None), None)
+        best_candidate = self._best_candidate_from_ranking(
+            candidate_results=candidate_results,
+            ranking=ranking,
+        )
         failed_gates_summary = self._failed_gates_summary(candidate_results)
         recommendations = self._recommendations(
             feature_quality=diagnostics["feature_quality_summary"],
@@ -760,6 +806,9 @@ class FeatureRegimeExperimentRunner:
             regime_plan=diagnostics["regime_experiment_plan_summary"],
             regime_training_applied=regime_training_applied,
         )
+        flat_bias_summary = self._flat_bias_summary(candidate_results)
+        down_blindness_summary = self._down_blindness_summary(candidate_results)
+        baseline_edge_summary = self._baseline_edge_summary(candidate_results)
 
         result = FeatureRegimeExperimentResult(
             experiment_id=experiment_id,
@@ -888,6 +937,14 @@ class FeatureRegimeExperimentRunner:
             model_quality_validation_status=(
                 None if best_candidate is None else best_candidate.model_quality_validation_status
             ),
+            model_accepted=accepted_count > 0,
+            reasons_why_best_still_rejected=tuple(
+                [] if ranking_payload is None else ranking_payload.get("reasons_why_best_still_rejected", [])
+            ),
+            configs_ranked=tuple(ranking),
+            flat_bias_summary=flat_bias_summary,
+            down_blindness_summary=down_blindness_summary,
+            baseline_edge_summary=baseline_edge_summary,
         )
 
         for candidate in candidate_results:
@@ -1571,6 +1628,125 @@ class FeatureRegimeExperimentRunner:
         if inner_result.feature_version_used != config.feature_version:
             runtime_warnings.append("feature_version_requested_but_not_applied")
         return candidate_results, str(inner_result.experiment_status), runtime_warnings
+
+    def _post_process_candidates_for_ranking(
+        self,
+        *,
+        config: FeatureRegimeExperimentConfig,
+        candidate_results: list[FeatureRegimeCandidateResult],
+    ) -> tuple[list[FeatureRegimeCandidateResult], dict[str, Any] | None]:
+        enriched: list[FeatureRegimeCandidateResult] = []
+        for candidate in candidate_results:
+            class_bias = self._class_bias_payload(symbol=config.symbol, candidate=candidate)
+            collapse_summary = self._collapse_tuning_summary_builder.build(
+                collapse_diagnostics=self._as_dict(candidate.collapse_diagnostics_v2),
+                class_bias_diagnostics=class_bias,
+            ) if candidate.collapse_diagnostics_v2 or class_bias else {}
+            enriched.append(
+                replace(
+                    candidate,
+                    flat_bias_diagnostics=class_bias,
+                    flat_bias_diagnostics_missing_reason=(
+                        None if class_bias else "predicted_or_actual_distribution_not_available"
+                    ),
+                    flat_bias_detected=bool(class_bias.get("flat_bias_detected", False)),
+                    down_blindness_detected=bool(class_bias.get("down_blindness_detected", False)),
+                    symbol_bias_severity=class_bias.get("symbol_bias_severity") if class_bias else None,
+                    collapse_tuning_summary=collapse_summary,
+                    collapse_tuning_summary_missing_reason=(
+                        None if collapse_summary else "collapse_or_bias_diagnostics_not_available"
+                    ),
+                )
+            )
+
+        if config.ranking_strategy != "ml38_2":
+            return enriched, None
+
+        ranking_payload = self._ml38_2_ranker.rank(enriched)
+        ranking_by_config = {
+            str(item["config_id"]): dict(item)
+            for item in ranking_payload.get("ranking", [])
+        }
+        rescored: list[FeatureRegimeCandidateResult] = []
+        for candidate in enriched:
+            ranking_row = ranking_by_config.get(candidate.config_id, {})
+            rescored.append(
+                replace(
+                    candidate,
+                    score=ranking_row.get("score"),
+                    score_components=dict(ranking_row.get("score_components", {})),
+                )
+            )
+        return rescored, ranking_payload
+
+    def _class_bias_payload(
+        self,
+        *,
+        symbol: str,
+        candidate: FeatureRegimeCandidateResult,
+    ) -> dict[str, Any]:
+        predicted = self._as_dict(candidate.predicted_class_distribution)
+        actual = self._as_dict(candidate.actual_class_distribution)
+        if not predicted or not actual:
+            return {}
+        return self._class_bias_diagnostics.analyze(
+            predicted_distribution=predicted,
+            actual_distribution=actual,
+            symbol=symbol,
+            config_id=candidate.config_id,
+        )
+
+    @staticmethod
+    def _best_candidate_from_ranking(
+        *,
+        candidate_results: list[FeatureRegimeCandidateResult],
+        ranking: list[dict[str, Any]],
+    ) -> FeatureRegimeCandidateResult | None:
+        if not candidate_results:
+            return None
+        if ranking:
+            best_config_id = ranking[0].get("config_id")
+            for candidate in candidate_results:
+                if candidate.config_id == best_config_id:
+                    return candidate
+        scored = [item for item in candidate_results if item.score is not None]
+        if scored:
+            return max(scored, key=lambda item: float(item.score or 0.0))
+        return candidate_results[0]
+
+    @staticmethod
+    def _flat_bias_summary(candidate_results: list[FeatureRegimeCandidateResult]) -> dict[str, Any]:
+        return {
+            "flat_bias_detected_count": sum(int(item.flat_bias_detected) for item in candidate_results),
+            "severity_by_config": {
+                item.config_id: item.symbol_bias_severity
+                for item in candidate_results
+            },
+        }
+
+    @staticmethod
+    def _down_blindness_summary(candidate_results: list[FeatureRegimeCandidateResult]) -> dict[str, Any]:
+        return {
+            "down_blindness_detected_count": sum(
+                int(item.down_blindness_detected) for item in candidate_results
+            ),
+            "detected_by_config": {
+                item.config_id: item.down_blindness_detected
+                for item in candidate_results
+            },
+        }
+
+    @staticmethod
+    def _baseline_edge_summary(candidate_results: list[FeatureRegimeCandidateResult]) -> dict[str, Any]:
+        return {
+            "positive_accuracy_edge_count": sum(
+                int((item.accuracy_edge or 0.0) > 0.0) for item in candidate_results
+            ),
+            "accuracy_edge_by_config": {
+                item.config_id: item.accuracy_edge
+                for item in candidate_results
+            },
+        }
 
     @staticmethod
     def _ranking(candidate_results: list[FeatureRegimeCandidateResult]) -> list[dict[str, Any]]:

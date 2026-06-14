@@ -58,6 +58,9 @@ class MultiSymbolFeatureRegimeReporter:
             "best_symbol": payload.get("best_symbol"),
             "best_candidate_config_id": payload.get("best_candidate_config_id"),
             "best_candidate_score": payload.get("best_candidate_score"),
+            "best_config_by_symbol": payload.get("best_config_by_symbol"),
+            "best_global_config": payload.get("best_global_config"),
+            "configs_ranked": payload.get("configs_ranked"),
             "all_feature_version_fv2": payload.get("all_feature_version_fv2"),
             "all_gap_training_safe": payload.get("all_gap_training_safe"),
             "all_real_feature_diagnostics_used": payload.get("all_real_feature_diagnostics_used"),
@@ -67,6 +70,9 @@ class MultiSymbolFeatureRegimeReporter:
             "symbols_missing_regime_features": payload.get("symbols_missing_regime_features"),
             "symbols_missing_candle_ta_context_features": payload.get("symbols_missing_candle_ta_context_features"),
             "symbol_results": payload.get("symbol_results"),
+            "flat_bias_summary": payload.get("flat_bias_summary"),
+            "down_blindness_summary": payload.get("down_blindness_summary"),
+            "baseline_edge_summary": payload.get("baseline_edge_summary"),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -123,17 +129,21 @@ class MultiSymbolFeatureRegimeReporter:
             f"- best candidate config: `{payload.get('best_candidate_config_id')}`",
             f"- best candidate score: `{payload.get('best_candidate_score')}`",
             f"- top failed gate: `{payload.get('top_failed_gate')}`",
-            "",
-            "## Symbol Comparison Table",
-            "",
-            "| Symbol | Score | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Diag Rows | Regime Features | Regime Count | Candle/TA Context | Candle/TA Count | Failed Gates |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+                "",
+                "## Symbol Comparison Table",
+                "",
+            "| Symbol | Best Config | Score | Collapse Type | Flat Bias | Down Blindness | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Diag Rows | Regime Features | Regime Count | Candle/TA Context | Candle/TA Count | Failed Gates |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
         for item in self._as_list(payload.get("symbol_results")):
             lines.append(
-                "| `{symbol}` | `{score}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{diag_rows}` | `{regime_features}` | `{regime_count}` | `{candle_ta}` | `{candle_ta_count}` | `{failed_gates}` |".format(
+                "| `{symbol}` | `{config}` | `{score}` | `{collapse_type}` | `{flat_bias}` | `{down_blindness}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{diag_rows}` | `{regime_features}` | `{regime_count}` | `{candle_ta}` | `{candle_ta_count}` | `{failed_gates}` |".format(
                     symbol=item.get("symbol"),
+                    config=item.get("best_candidate_config_id"),
                     score=item.get("best_candidate_score"),
+                    collapse_type=self._as_dict(item.get("collapse_tuning_summary")).get("collapse_type") or item.get("collapse_type"),
+                    flat_bias=item.get("flat_bias_detected"),
+                    down_blindness=item.get("down_blindness_detected"),
                     edge=item.get("baseline_edge"),
                     profit_factor=item.get("profit_factor"),
                     walk_forward_pf=item.get("walk_forward_profit_factor"),
@@ -147,7 +157,7 @@ class MultiSymbolFeatureRegimeReporter:
                 )
             )
         if not self._as_list(payload.get("symbol_results")):
-            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
 
         lines.extend(
             [
@@ -155,6 +165,7 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Best Symbol",
                 "",
                 f"- best symbol: `{payload.get('best_symbol')}`",
+                f"- best global config: `{payload.get('best_global_config')}`",
                 f"- best score: `{payload.get('best_candidate_score')}`",
                 "",
                 "## Gate Failures By Symbol",
@@ -203,6 +214,9 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 f"- collapse_summary: `{payload.get('collapse_summary')}`",
                 f"- collapse_diagnostics_v2_by_symbol: `{ {item.get('symbol'): item.get('collapse_diagnostics_v2') for item in self._as_list(payload.get('symbol_results'))} }`",
+                f"- flat_bias_summary: `{payload.get('flat_bias_summary')}`",
+                f"- down_blindness_summary: `{payload.get('down_blindness_summary')}`",
+                f"- baseline_edge_summary: `{payload.get('baseline_edge_summary')}`",
                 "",
                 "## Recommendations",
                 "",

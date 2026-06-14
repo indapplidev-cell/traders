@@ -72,6 +72,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         collapse_failed_count = gate_failure_counts.get("collapse_gate", 0)
         walk_forward_failed_count = gate_failure_counts.get("walk_forward_gate", 0)
         profit_aware_failed_count = gate_failure_counts.get("profit_aware_gate", 0)
+        configs_ranked = self._configs_ranked(symbol_results)
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -88,6 +89,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_symbol": None if best_result is None else best_result["symbol"],
             "best_candidate_config_id": None if best_result is None else best_result["best_candidate_config_id"],
             "best_candidate_score": None if best_result is None else best_result["best_candidate_score"],
+            "best_config_by_symbol": {
+                item["symbol"]: item["best_candidate_config_id"] for item in symbol_results
+            },
+            "best_global_config": None if best_result is None else best_result["best_candidate_config_id"],
+            "configs_ranked": configs_ranked,
             "symbol_results": symbol_results,
             "gate_failure_counts": gate_failure_counts,
             "feature_version_summary": {
@@ -166,8 +172,32 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     item["symbol"]: item["collapse_detected"] for item in symbol_results
                 },
                 "collapse_type_by_symbol": {
-                    item["symbol"]: item["collapse_type"] for item in symbol_results
+                    item["symbol"]: (
+                        item["collapse_tuning_summary"].get("collapse_type") or item["collapse_type"]
+                    )
+                    for item in symbol_results
                 },
+            },
+            "flat_bias_summary": {
+                "flat_bias_detected_by_symbol": {
+                    item["symbol"]: item["flat_bias_detected"] for item in symbol_results
+                },
+                "symbol_bias_severity_by_symbol": {
+                    item["symbol"]: item["symbol_bias_severity"] for item in symbol_results
+                },
+            },
+            "down_blindness_summary": {
+                "down_blindness_detected_by_symbol": {
+                    item["symbol"]: item["down_blindness_detected"] for item in symbol_results
+                },
+            },
+            "baseline_edge_summary": {
+                "baseline_edge_by_symbol": {
+                    item["symbol"]: item["baseline_edge"] for item in symbol_results
+                },
+                "positive_baseline_edge_symbols": [
+                    item["symbol"] for item in symbol_results if (item["baseline_edge"] or 0.0) > 0.0
+                ],
             },
             "all_feature_version_fv2": all_feature_version_fv2,
             "all_gap_training_safe": all_gap_training_safe,
@@ -331,6 +361,12 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 "model_quality_validation_status",
                 summary.get("model_quality_validation_status"),
             ),
+            "flat_bias_diagnostics": cls._as_dict(best_candidate.get("flat_bias_diagnostics")),
+            "flat_bias_detected": bool(best_candidate.get("flat_bias_detected", False)),
+            "down_blindness_detected": bool(best_candidate.get("down_blindness_detected", False)),
+            "symbol_bias_severity": best_candidate.get("symbol_bias_severity"),
+            "collapse_tuning_summary": cls._as_dict(best_candidate.get("collapse_tuning_summary")),
+            "score_components": cls._as_dict(best_candidate.get("score_components")),
             "walk_forward_profit_diagnostics": cls._as_dict(
                 summary.get("walk_forward_profit_diagnostics")
                 or best_candidate.get("walk_forward_profit_diagnostics")
@@ -365,7 +401,32 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
             "predicted_class_distribution": cls._as_dict(best_candidate.get("predicted_class_distribution")),
             "actual_class_distribution": cls._as_dict(best_candidate.get("actual_class_distribution")),
+            "reasons_why_best_still_rejected": [
+                str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
+            ],
+            "configs_ranked": [
+                dict(item) for item in cls._as_list(summary.get("configs_ranked") or summary.get("ranking"))
+            ],
         }
+
+    @staticmethod
+    def _configs_ranked(symbol_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for symbol_result in symbol_results:
+            for row in symbol_result.get("configs_ranked", []):
+                payload = dict(row)
+                payload["symbol"] = symbol_result["symbol"]
+                rows.append(payload)
+        rows.sort(
+            key=lambda item: (
+                -float(item.get("score") or 0.0),
+                str(item.get("symbol") or ""),
+                str(item.get("config_id") or ""),
+            )
+        )
+        for index, row in enumerate(rows, start=1):
+            row["global_rank"] = index
+        return rows
 
     @staticmethod
     def _gate_failure_counts(symbol_results: list[dict[str, Any]]) -> dict[str, int]:

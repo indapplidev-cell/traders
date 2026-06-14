@@ -57,6 +57,11 @@ from app.experiments.multi_symbol_feature_regime_analyzer import (
 from app.experiments.multi_symbol_feature_regime_reporter import (
     MultiSymbolFeatureRegimeReporter,
 )
+from app.experiments.ml38_2_fv3_tuning_matrix import (
+    ML382FV3TuningMatrix,
+    ML38_2_FEATURE_VERSION,
+    ML38_2_REQUIRED_SYMBOLS,
+)
 from app.experiments.ml31_grid_improvement_analyzer import ML31GridImprovementAnalyzer
 from app.experiments.ml31_grid_improvement_reporter import ML31GridImprovementReporter
 from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
@@ -3367,6 +3372,7 @@ def run_feature_regime_experiment(
     run_feature_diagnostics: bool = True,
     run_leakage_guard: bool = True,
     run_candidate_selection: bool = True,
+    ranking_strategy: str = "default",
     output_dir: Path = Path("reports/feature_regime_experiments"),
 ) -> dict[str, object]:
     """Run the ML33 feature/regime-aware experiment flow."""
@@ -3388,6 +3394,7 @@ def run_feature_regime_experiment(
         run_feature_diagnostics=run_feature_diagnostics,
         run_leakage_guard=run_leakage_guard,
         run_candidate_selection=run_candidate_selection,
+        ranking_strategy=ranking_strategy,
         output_dir=output_dir,
     )
     result = FeatureRegimeExperimentRunner().run(config)
@@ -3441,6 +3448,11 @@ def analyze_feature_regime_results(
         "regime_specific_training_applied": summary.get("regime_specific_training_applied"),
         "candidate_status": summary.get("candidate_status"),
         "model_quality_validation_status": summary.get("model_quality_validation_status"),
+        "model_accepted": summary.get("model_accepted"),
+        "reasons_why_best_still_rejected": summary.get("reasons_why_best_still_rejected"),
+        "flat_bias_summary": summary.get("flat_bias_summary"),
+        "down_blindness_summary": summary.get("down_blindness_summary"),
+        "baseline_edge_summary": summary.get("baseline_edge_summary"),
         "effective_gap_count_for_training": summary.get("effective_gap_count_for_training"),
         "gap_severity_for_training": summary.get("gap_severity_for_training"),
         "feature_leakage_risk_detected": dict(summary.get("feature_leakage_summary", {})).get("leakage_risk_detected"),
@@ -3495,6 +3507,53 @@ def analyze_multi_symbol_feature_regime(
         analysis,
         json_path=str(json_path) if export_report else None,
         markdown_path=str(markdown_path) if export_report else None,
+    )
+
+
+def build_ml38_2_fv3_tuning_preview_payload() -> dict[str, object]:
+    payload = ML382FV3TuningMatrix().build()
+    return {
+        "status": "ok",
+        "stage": "ML38.2",
+        "feature_version": payload["feature_version"],
+        "config_count": payload["config_count"],
+        "configs": payload["configs"],
+        "required_symbols": list(ML38_2_REQUIRED_SYMBOLS),
+        "missing_configs": payload["missing_configs"],
+        "safety": dict(payload["safety"]),
+    }
+
+
+def run_ml38_2_fv3_tuning(
+    *,
+    symbol: str,
+    interval: str,
+    start_date: str,
+    end_date: str | None = None,
+    experiment_id: str | None = None,
+    max_configs: int | None = None,
+    dry_run: bool = False,
+    sample_mode: bool = False,
+    output_dir: Path = Path("reports/feature_regime_experiments"),
+) -> dict[str, object]:
+    matrix = ML382FV3TuningMatrix().build()
+    if matrix["missing_configs"]:
+        raise ValueError(
+            f"ML38.2 tuning matrix is incomplete: {matrix['missing_configs']}"
+        )
+    return run_feature_regime_experiment(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        experiment_id=experiment_id,
+        feature_version=ML38_2_FEATURE_VERSION,
+        base_label_config_ids=list(matrix["config_ids"]),
+        max_configs=max_configs,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        ranking_strategy="ml38_2",
+        output_dir=output_dir,
     )
 
 
@@ -4455,6 +4514,10 @@ def feature_regime_experiment_run_command(
         True,
         "--run-candidate-selection/--no-run-candidate-selection",
     ),
+    ranking_strategy: str = typer.Option(
+        "default",
+        "--ranking-strategy",
+    ),
     output_dir: Path = typer.Option(
         Path("reports/feature_regime_experiments"),
         "--output-dir",
@@ -4479,9 +4542,63 @@ def feature_regime_experiment_run_command(
         run_feature_diagnostics=run_feature_diagnostics,
         run_leakage_guard=run_leakage_guard,
         run_candidate_selection=run_candidate_selection,
+        ranking_strategy=ranking_strategy,
         output_dir=output_dir,
     )
 
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("ml38-2-fv3-tuning-preview")
+def ml38_2_fv3_tuning_preview_command() -> None:
+    """Show the ML38.2 FV3 tuning matrix preview JSON."""
+
+    payload = build_ml38_2_fv3_tuning_preview_payload()
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("ml38-2-fv3-tuning-run")
+def ml38_2_fv3_tuning_run_command(
+    symbol: str = typer.Option(..., "--symbol"),
+    interval: str = typer.Option(..., "--interval"),
+    start_date: str = typer.Option(..., "--start-date"),
+    end_date: str | None = typer.Option(None, "--end-date"),
+    experiment_id: str | None = typer.Option(None, "--experiment-id"),
+    max_configs: int | None = typer.Option(None, "--max-configs"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    sample_mode: bool = typer.Option(False, "--sample-mode"),
+    output_dir: Path = typer.Option(
+        Path("reports/feature_regime_experiments"),
+        "--output-dir",
+    ),
+) -> None:
+    """Run the ML38.2 FV3 tuning matrix for one symbol."""
+
+    payload = run_ml38_2_fv3_tuning(
+        symbol=symbol,
+        interval=interval,
+        start_date=start_date,
+        end_date=end_date,
+        experiment_id=experiment_id,
+        max_configs=max_configs,
+        dry_run=dry_run,
+        sample_mode=sample_mode,
+        output_dir=output_dir,
+    )
     typer.echo(
         json.dumps(
             payload,
