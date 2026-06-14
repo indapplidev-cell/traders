@@ -27,6 +27,7 @@ from app.experiments.label_grid_experiment_runner import (
     LabelGridExperimentRunner,
 )
 from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
+from app.features.feature_builder import FeatureBuilder
 from app.features.feature_models import feature_names_for_version
 from app.labels.label_quality_grid import LabelQualityGridPlanner
 from app.labels.regime_label_integration_status import RegimeLabelIntegrationStatus
@@ -84,6 +85,8 @@ class FeatureRegimeCandidateResult:
     candidate_status: str | None
     raw_candidate_status: str | None
     score: float | None
+    symbol: str | None = None
+    interval: str | None = None
     failed_gates: tuple[str, ...] = ()
     passed_gates: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
@@ -107,6 +110,17 @@ class FeatureRegimeCandidateResult:
     approved_for_auto_activation: bool = False
     orders_enabled: bool = False
     traders_core_connected: bool = False
+    gap_severity_for_training: str | None = None
+    gap_training_safe: bool = False
+    regime_label_builder_used_in_training: bool = False
+    real_feature_diagnostics_used: bool = False
+    real_feature_diagnostics_row_count: int = 0
+    regime_features_attached: bool = False
+    regime_feature_count: int = 0
+    regime_features_missing_reason: str | None = None
+    candle_ta_context_features_attached: bool = False
+    candle_ta_context_feature_count: int = 0
+    candle_ta_context_missing_reason: str | None = None
     model_quality_validation_status: str | None = None
     model_accuracy: float | None = None
     baseline_accuracy: float | None = None
@@ -122,6 +136,8 @@ class FeatureRegimeCandidateResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "symbol": self.symbol,
+            "interval": self.interval,
             "candidate_id": self.candidate_id,
             "config_id": self.config_id,
             "label_config": dict(self.label_config),
@@ -153,6 +169,17 @@ class FeatureRegimeCandidateResult:
             "approved_for_auto_activation": self.approved_for_auto_activation,
             "orders_enabled": self.orders_enabled,
             "traders_core_connected": self.traders_core_connected,
+            "gap_severity_for_training": self.gap_severity_for_training,
+            "gap_training_safe": self.gap_training_safe,
+            "regime_label_builder_used_in_training": self.regime_label_builder_used_in_training,
+            "real_feature_diagnostics_used": self.real_feature_diagnostics_used,
+            "real_feature_diagnostics_row_count": self.real_feature_diagnostics_row_count,
+            "regime_features_attached": self.regime_features_attached,
+            "regime_feature_count": self.regime_feature_count,
+            "regime_features_missing_reason": self.regime_features_missing_reason,
+            "candle_ta_context_features_attached": self.candle_ta_context_features_attached,
+            "candle_ta_context_feature_count": self.candle_ta_context_feature_count,
+            "candle_ta_context_missing_reason": self.candle_ta_context_missing_reason,
             "model_quality_validation_status": self.model_quality_validation_status,
             "model_accuracy": self.model_accuracy,
             "baseline_accuracy": self.baseline_accuracy,
@@ -237,6 +264,9 @@ class FeatureRegimeExperimentResult:
     orders_enabled: bool = False
     traders_core_connected: bool = False
     candle_ta_context_features_attached: bool = False
+    candle_ta_context_feature_count: int = 0
+    candle_ta_context_missing_reason: str | None = None
+    regime_features_missing_reason: str | None = None
     candidate_status: str | None = None
     model_quality_validation_status: str | None = None
 
@@ -309,6 +339,9 @@ class FeatureRegimeExperimentResult:
             "orders_enabled": self.orders_enabled,
             "traders_core_connected": self.traders_core_connected,
             "candle_ta_context_features_attached": self.candle_ta_context_features_attached,
+            "candle_ta_context_feature_count": self.candle_ta_context_feature_count,
+            "candle_ta_context_missing_reason": self.candle_ta_context_missing_reason,
+            "regime_features_missing_reason": self.regime_features_missing_reason,
             "candidate_status": self.candidate_status,
             "model_quality_validation_status": self.model_quality_validation_status,
         }
@@ -435,6 +468,71 @@ class FeatureRegimeExperimentRunner:
     @classmethod
     def _string_list(cls, value: Any) -> list[str]:
         return [str(item) for item in cls._as_list(value) if item is not None]
+
+    @staticmethod
+    def _feature_names_from_rows(rows: list[Any]) -> set[str]:
+        names: set[str] = set()
+        for row in rows:
+            features_json = (
+                dict(row.get("features_json", {}))
+                if isinstance(row, dict)
+                else dict(getattr(row, "features_json", {}))
+            )
+            names.update(str(name) for name in features_json.keys())
+        return names
+
+    @classmethod
+    def _rows_attach_requested_feature_version(
+        cls,
+        *,
+        rows: list[Any],
+        feature_version: str,
+    ) -> bool:
+        if not rows:
+            return False
+        if feature_version != RealFeatureDiagnosticsService.FV3_FEATURE_VERSION:
+            return True
+        return RealFeatureDiagnosticsService.FV3_REQUIRED_FEATURES.issubset(
+            cls._feature_names_from_rows(rows)
+        )
+
+    @staticmethod
+    def _candle_ta_context_missing_reason(
+        *,
+        feature_version: str,
+        attached: bool,
+        diagnostics: dict[str, Any],
+        real_feature_diagnostics_missing_reason: str | None,
+    ) -> str | None:
+        if attached:
+            return None
+        if feature_version != RealFeatureDiagnosticsService.FV3_FEATURE_VERSION:
+            return "feature_version_not_fv3_candle_ta_context"
+        return str(
+            diagnostics.get("candle_ta_context_missing_reason")
+            or real_feature_diagnostics_missing_reason
+            or "fv3_candle_ta_context_features_not_attached"
+        )
+
+    @staticmethod
+    def _regime_features_missing_reason(
+        *,
+        attached: bool,
+        diagnostics: dict[str, Any],
+        real_feature_diagnostics_missing_reason: str | None,
+    ) -> str | None:
+        if attached:
+            return None
+        regime_feature_summary = dict(diagnostics.get("regime_feature_summary", {}))
+        warnings = regime_feature_summary.get("warnings")
+        warning_text = None
+        if isinstance(warnings, list) and warnings:
+            warning_text = ",".join(str(item) for item in warnings)
+        return str(
+            real_feature_diagnostics_missing_reason
+            or warning_text
+            or "regime_features_not_attached"
+        )
 
     @staticmethod
     def _regime_status_is_built(status: dict[str, Any]) -> bool:
@@ -621,6 +719,8 @@ class FeatureRegimeExperimentRunner:
                 feature_leakage_risk_detected=bool(diagnostics["feature_leakage_summary"]["leakage_risk_detected"]),
                 real_feature_diagnostics=self._as_dict(diagnostics.get("real_feature_diagnostics")),
                 real_feature_diagnostics_missing_reason=diagnostics.get("real_feature_diagnostics_missing_reason"),
+                gap_severity_for_training=str(diagnostics["gap_severity_for_training"]),
+                gap_training_safe=bool(diagnostics["gap_training_safe"]),
                 logger=logger,
                 experiment_dir=logger.paths.experiment_dir,
             )
@@ -726,7 +826,8 @@ class FeatureRegimeExperimentRunner:
             real_feature_diagnostics=self._as_dict(diagnostics.get("real_feature_diagnostics")),
             real_feature_diagnostics_missing_reason=(
                 None
-                if self._as_dict(diagnostics.get("real_feature_diagnostics"))
+                if bool(diagnostics.get("real_feature_diagnostics_used", False))
+                and self._as_dict(diagnostics.get("real_feature_diagnostics"))
                 else diagnostics.get("real_feature_diagnostics_missing_reason")
                 or "real_feature_diagnostics_not_available"
             ),
@@ -780,6 +881,9 @@ class FeatureRegimeExperimentRunner:
                 aggregate_regime_status.get("regime_specific_training_applied_all", False)
             ),
             candle_ta_context_features_attached=bool(diagnostics.get("candle_ta_context_features_attached", False)),
+            candle_ta_context_feature_count=int(diagnostics.get("candle_ta_context_feature_count", 0) or 0),
+            candle_ta_context_missing_reason=diagnostics.get("candle_ta_context_missing_reason"),
+            regime_features_missing_reason=diagnostics.get("regime_features_missing_reason"),
             candidate_status=None if best_candidate is None else best_candidate.candidate_status,
             model_quality_validation_status=(
                 None if best_candidate is None else best_candidate.model_quality_validation_status
@@ -866,7 +970,30 @@ class FeatureRegimeExperimentRunner:
         gap_quality = self._build_gap_quality_summary(config)
         feature_names = feature_names_for_version(config.feature_version)
         regime_feature_names = [name for name in feature_names if name.startswith("regime_")]
-        regime_features_attached = bool(regime_feature_names) and bool(regime_feature_diagnostics.get("regime_data_available", False))
+        regime_feature_count = int(
+            real_feature_diagnostics.get("regime_feature_count", len(regime_feature_names)) or 0
+        )
+        regime_features_attached = bool(regime_feature_count) and bool(
+            regime_feature_diagnostics.get("regime_data_available", False)
+        )
+        real_feature_diagnostics_missing_reason = (
+            None
+            if bool(real_feature_diagnostics.get("row_count", 0))
+            else str(real_feature_diagnostics.get("reason") or "real_feature_diagnostics_not_computed")
+        )
+        candle_ta_context_missing_reason = self._candle_ta_context_missing_reason(
+            feature_version=config.feature_version,
+            attached=bool(real_feature_diagnostics.get("candle_ta_context_features_attached", False)),
+            diagnostics=real_feature_diagnostics,
+            real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
+        )
+        regime_features_missing_reason = self._regime_features_missing_reason(
+            attached=regime_features_attached,
+            diagnostics={
+                "regime_feature_summary": regime_feature_diagnostics,
+            },
+            real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
+        )
         self._reporter.write_diagnostics_json(feature_quality, diagnostics_dir / "feature_quality.json")
         self._reporter.write_diagnostics_json(feature_group_quality, diagnostics_dir / "feature_group_quality.json")
         self._reporter.write_diagnostics_json(regime_feature_diagnostics, diagnostics_dir / "regime_feature_diagnostics.json")
@@ -905,17 +1032,18 @@ class FeatureRegimeExperimentRunner:
             "candle_ta_context_features_attached": bool(
                 real_feature_diagnostics.get("candle_ta_context_features_attached", False)
             ),
-            "regime_feature_count": len(regime_feature_names),
+            "candle_ta_context_feature_count": int(
+                real_feature_diagnostics.get("candle_ta_context_feature_count", 0) or 0
+            ),
+            "candle_ta_context_missing_reason": candle_ta_context_missing_reason,
+            "regime_feature_count": regime_feature_count,
+            "regime_features_missing_reason": regime_features_missing_reason,
             "regime_feature_source": str(real_feature_diagnostics.get("source", "unknown")),
             "effective_gap_count_for_training": int(gap_quality.get("effective_gap_count_for_training", 0) or 0),
             "gap_severity_for_training": str(gap_quality.get("gap_severity_for_training") or "OK"),
             "gap_training_safe": bool(gap_quality.get("dataset_safe_for_training", False)),
             "warnings": self._string_list(real_feature_diagnostics.get("warnings")),
-            "real_feature_diagnostics_missing_reason": (
-                None
-                if bool(real_feature_diagnostics.get("row_count", 0))
-                else str(real_feature_diagnostics.get("reason") or "real_feature_diagnostics_not_computed")
-            ),
+            "real_feature_diagnostics_missing_reason": real_feature_diagnostics_missing_reason,
         }
 
     def _select_base_configs(self, config: FeatureRegimeExperimentConfig) -> list[dict[str, Any]]:
@@ -985,7 +1113,10 @@ class FeatureRegimeExperimentRunner:
             else:
                 warnings = ["dataset_rows_unavailable"] if not rows else []
 
-        if rows:
+        if rows and self._rows_attach_requested_feature_version(
+            rows=rows,
+            feature_version=config.feature_version,
+        ):
             payload = self._real_feature_diagnostics_service.analyze(
                 symbol=config.symbol,
                 interval=config.interval,
@@ -1000,14 +1131,18 @@ class FeatureRegimeExperimentRunner:
                 used_in_training=False,
             )
             return payload
+        if rows:
+            warnings = warnings + ["dataset_rows_missing_requested_feature_attachment"]
 
         runtime_rows, runtime_warnings, runtime_source, regime_status = self._build_runtime_diagnostic_rows(
             config=config,
             label_config_payload=label_config_payload,
         )
         resolved_warnings = list(runtime_warnings)
-        if not runtime_rows:
-            resolved_warnings = warnings + runtime_warnings
+        for warning in warnings:
+            if warning == "dataset_rows_unavailable" and runtime_rows:
+                continue
+            resolved_warnings.append(warning)
         payload = self._real_feature_diagnostics_service.analyze(
             symbol=config.symbol,
             interval=config.interval,
@@ -1156,8 +1291,17 @@ class FeatureRegimeExperimentRunner:
                 warnings=("dry_run_no_training",),
                 recommendations=("Dry-run only; no training was executed.",),
                 regime_specific_training_applied=False,
+                regime_label_builder_used_in_training=False,
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                real_feature_diagnostics_used=bool(real_feature_diagnostics.get("real_feature_diagnostics_used", False)),
+                real_feature_diagnostics_row_count=int(real_feature_diagnostics.get("row_count", 0) or 0),
+                regime_features_attached=False,
+                regime_feature_count=0,
+                regime_features_missing_reason="dry_run_no_runtime_regime_attachment",
+                candle_ta_context_features_attached=bool(real_feature_diagnostics.get("candle_ta_context_features_attached", False)),
+                candle_ta_context_feature_count=int(real_feature_diagnostics.get("candle_ta_context_feature_count", 0) or 0),
+                candle_ta_context_missing_reason=real_feature_diagnostics.get("candle_ta_context_missing_reason"),
                 real_feature_diagnostics=real_feature_diagnostics,
                 real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
                 regime_label_builder_status=self._runtime_regime_label_builder_status(
@@ -1212,8 +1356,17 @@ class FeatureRegimeExperimentRunner:
                 warnings=("sample_mode_result",),
                 recommendations=("Sample-only candidate; use for research workflow validation only.",),
                 regime_specific_training_applied=False,
+                regime_label_builder_used_in_training=False,
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                real_feature_diagnostics_used=bool(real_feature_diagnostics.get("real_feature_diagnostics_used", False)),
+                real_feature_diagnostics_row_count=int(real_feature_diagnostics.get("row_count", 0) or 0),
+                regime_features_attached=False,
+                regime_feature_count=0,
+                regime_features_missing_reason="sample_mode_no_runtime_regime_attachment",
+                candle_ta_context_features_attached=bool(real_feature_diagnostics.get("candle_ta_context_features_attached", False)),
+                candle_ta_context_feature_count=int(real_feature_diagnostics.get("candle_ta_context_feature_count", 0) or 0),
+                candle_ta_context_missing_reason=real_feature_diagnostics.get("candle_ta_context_missing_reason"),
                 real_feature_diagnostics=real_feature_diagnostics,
                 real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
                 regime_label_builder_status=self._sample_regime_label_builder_status(),
@@ -1239,6 +1392,8 @@ class FeatureRegimeExperimentRunner:
         feature_leakage_risk_detected: bool,
         real_feature_diagnostics: dict[str, Any],
         real_feature_diagnostics_missing_reason: str | None,
+        gap_severity_for_training: str,
+        gap_training_safe: bool,
         logger: _ExperimentLogger,
         experiment_dir: Path,
     ) -> tuple[list[FeatureRegimeCandidateResult], str, list[str]]:
@@ -1278,9 +1433,36 @@ class FeatureRegimeExperimentRunner:
             for item in inner_result.candidate_ranking
         }
         candidate_results: list[FeatureRegimeCandidateResult] = []
+        real_feature_diagnostics_used = bool(real_feature_diagnostics.get("real_feature_diagnostics_used", False))
+        real_feature_diagnostics_row_count = int(real_feature_diagnostics.get("row_count", 0) or 0)
+        candle_ta_context_features_attached = bool(
+            real_feature_diagnostics.get("candle_ta_context_features_attached", False)
+        )
+        candle_ta_context_feature_count = int(
+            real_feature_diagnostics.get("candle_ta_context_feature_count", 0) or 0
+        )
+        regime_feature_count = int(real_feature_diagnostics.get("regime_feature_count", 0) or 0)
+        regime_features_attached = bool(regime_feature_count > 0)
+        if isinstance(real_feature_diagnostics.get("regime_feature_diagnostics"), dict):
+            regime_features_attached = bool(
+                real_feature_diagnostics.get("regime_feature_diagnostics", {}).get("regime_data_available", False)
+            ) and regime_features_attached
+        regime_features_missing_reason = self._regime_features_missing_reason(
+            attached=regime_features_attached,
+            diagnostics={"regime_feature_summary": real_feature_diagnostics.get("regime_feature_diagnostics", {})},
+            real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
+        )
+        candle_ta_context_missing_reason = self._candle_ta_context_missing_reason(
+            feature_version=config.feature_version,
+            attached=candle_ta_context_features_attached,
+            diagnostics=real_feature_diagnostics,
+            real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
+        )
         for item in inner_result.candidate_results:
             ranking_row = ranking_map.get(item.config_id, {})
             candidate = FeatureRegimeCandidateResult(
+                symbol=config.symbol,
+                interval=config.interval,
                 candidate_id=item.config_id,
                 config_id=item.config_id,
                 label_config=dict(item.label_config),
@@ -1299,14 +1481,30 @@ class FeatureRegimeExperimentRunner:
                         False,
                     )
                 ),
+                regime_label_builder_used_in_training=bool(
+                    self._as_dict(item.regime_label_builder_status).get(
+                        "regime_label_builder_used_in_training",
+                        False,
+                    )
+                ),
                 feature_weak_signal_detected=feature_weak_signal_detected,
                 feature_leakage_risk_detected=feature_leakage_risk_detected,
+                gap_severity_for_training=gap_severity_for_training,
+                gap_training_safe=gap_training_safe,
                 probability_diagnostics=self._as_dict(getattr(item, "probability_diagnostics", {})),
                 probability_diagnostics_missing_reason=getattr(
                     item,
                     "probability_diagnostics_missing_reason",
                     None,
                 ),
+                real_feature_diagnostics_used=real_feature_diagnostics_used,
+                real_feature_diagnostics_row_count=real_feature_diagnostics_row_count,
+                regime_features_attached=regime_features_attached,
+                regime_feature_count=regime_feature_count,
+                regime_features_missing_reason=regime_features_missing_reason,
+                candle_ta_context_features_attached=candle_ta_context_features_attached,
+                candle_ta_context_feature_count=candle_ta_context_feature_count,
+                candle_ta_context_missing_reason=candle_ta_context_missing_reason,
                 real_feature_diagnostics=real_feature_diagnostics,
                 real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
                 collapse_diagnostics_v2=self._as_dict(item.collapse_diagnostics_v2),
@@ -1547,11 +1745,31 @@ class FeatureRegimeExperimentRunner:
                 missing_requirements=["market_data_missing_for_symbol"],
                 reason="candles_missing",
             )
-        if not feature_rows:
-            return [], ["features_not_persisted_for_symbol"], "runtime_context", self._runtime_regime_label_builder_status(
+        feature_rows_source = "persisted_feature_rows"
+        if not self._rows_attach_requested_feature_version(
+            rows=feature_rows,
+            feature_version=config.feature_version,
+        ):
+            feature_rows = FeatureBuilder().build(
+                candles=candles,
+                symbol=config.symbol,
+                interval=config.interval,
+                feature_version=config.feature_version,
+            )
+            feature_rows_source = "runtime_feature_builder"
+        if not self._rows_attach_requested_feature_version(
+            rows=feature_rows,
+            feature_version=config.feature_version,
+        ):
+            missing_reason = (
+                "fv3_candle_ta_context_feature_rows_missing"
+                if config.feature_version == RealFeatureDiagnosticsService.FV3_FEATURE_VERSION
+                else "feature_rows_missing_for_requested_feature_version"
+            )
+            return [], [missing_reason], "runtime_context", self._runtime_regime_label_builder_status(
                 label_config_payload=label_config_payload,
                 used_in_training=False,
-                missing_requirements=["features_not_persisted_for_symbol"],
+                missing_requirements=[missing_reason],
                 reason="feature_rows_missing",
             )
 
@@ -1572,9 +1790,9 @@ class FeatureRegimeExperimentRunner:
         )
         warnings.extend(regime_result.warnings)
         label_records = regime_result.records
-        source = "runtime_regime_label_builder"
+        source = f"{feature_rows_source}_regime_label_builder"
         if not label_records:
-            source = "runtime_label_builder"
+            source = f"{feature_rows_source}_label_builder"
             warnings.extend(regime_result.missing_requirements)
             label_records = LabelBuilder().build(
                 candles=candles,

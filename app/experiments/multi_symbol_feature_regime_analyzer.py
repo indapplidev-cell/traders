@@ -111,6 +111,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 "row_count_by_symbol": {
                     item["symbol"]: item["real_feature_diagnostics_row_count"] for item in symbol_results
                 },
+                "missing_reason_by_symbol": {
+                    item["symbol"]: item["real_feature_diagnostics_missing_reason"] for item in symbol_results
+                },
                 "symbols_missing_real_diagnostics": symbols_missing_real_diagnostics,
             },
             "regime_integration_summary": {
@@ -119,9 +122,21 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 "regime_features_attached_by_symbol": {
                     item["symbol"]: item["regime_features_attached"] for item in symbol_results
                 },
+                "regime_feature_count_by_symbol": {
+                    item["symbol"]: item["regime_feature_count"] for item in symbol_results
+                },
+                "regime_features_missing_reason_by_symbol": {
+                    item["symbol"]: item["regime_features_missing_reason"] for item in symbol_results
+                },
                 "symbols_missing_regime_features": symbols_missing_regime_features,
                 "candle_ta_context_features_attached_by_symbol": {
                     item["symbol"]: item["candle_ta_context_features_attached"] for item in symbol_results
+                },
+                "candle_ta_context_feature_count_by_symbol": {
+                    item["symbol"]: item["candle_ta_context_feature_count"] for item in symbol_results
+                },
+                "candle_ta_context_missing_reason_by_symbol": {
+                    item["symbol"]: item["candle_ta_context_missing_reason"] for item in symbol_results
                 },
                 "symbols_missing_candle_ta_context_features": symbols_missing_candle_ta_context,
             },
@@ -291,8 +306,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "candidate_status": best_candidate.get("candidate_status"),
             "feature_version_used": summary.get("feature_version_used"),
             "candle_ta_context_features_attached": bool(summary.get("candle_ta_context_features_attached", False)),
+            "candle_ta_context_feature_count": int(summary.get("candle_ta_context_feature_count", 0) or 0),
+            "candle_ta_context_missing_reason": summary.get("candle_ta_context_missing_reason"),
             "real_feature_diagnostics_used": bool(summary.get("real_feature_diagnostics_used", False)),
             "real_feature_diagnostics_row_count": int(summary.get("real_feature_diagnostics_row_count", 0) or 0),
+            "real_feature_diagnostics_missing_reason": summary.get("real_feature_diagnostics_missing_reason"),
             "effective_gap_count_for_training": int(summary.get("effective_gap_count_for_training", 0) or 0),
             "gap_severity_for_training": str(summary.get("gap_severity_for_training") or "UNKNOWN"),
             "gap_training_safe": bool(summary.get("gap_training_safe", False)),
@@ -324,6 +342,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "failed_gates": [str(item) for item in cls._as_list(best_candidate.get("failed_gates"))],
             "passed_gates": [str(item) for item in cls._as_list(best_candidate.get("passed_gates"))],
             "regime_features_attached": bool(summary.get("regime_features_attached", False)),
+            "regime_feature_count": int(summary.get("regime_feature_count", 0) or 0),
+            "regime_features_missing_reason": summary.get("regime_features_missing_reason"),
             "regime_label_builder_used_in_training": bool(
                 summary.get(
                     "regime_label_builder_used_in_training_any",

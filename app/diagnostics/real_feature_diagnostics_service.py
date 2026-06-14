@@ -6,11 +6,18 @@ from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
 from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
+from app.features.feature_models import (
+    CANDLE_MORPHOLOGY_FEATURE_NAMES,
+    CANDLE_PATTERN_FEATURE_NAMES,
+    FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
+    TECHNICAL_CONTEXT_FEATURE_NAMES,
+)
 
 
 class RealFeatureDiagnosticsService:
     DIAGNOSTIC_NAME = "real_feature_diagnostics_service"
     DIAGNOSTIC_VERSION = "ml36"
+    FV3_FEATURE_VERSION = "fv3_candle_ta_context"
     FV3_REQUIRED_FEATURES = {
         "doji_score",
         "hammer_score",
@@ -62,6 +69,9 @@ class RealFeatureDiagnosticsService:
             ]
             if sample_mode:
                 recommendations.insert(0, "Sample-mode diagnostics are useful only for wiring checks.")
+            candle_ta_context_missing_reason = None
+            if feature_version == self.FV3_FEATURE_VERSION:
+                candle_ta_context_missing_reason = reason or "fv3_candle_ta_context_rows_unavailable"
             return {
                 "diagnostic_name": self.DIAGNOSTIC_NAME,
                 "diagnostic_version": self.DIAGNOSTIC_VERSION,
@@ -93,7 +103,13 @@ class RealFeatureDiagnosticsService:
                 "sample_mode": sample_mode,
                 "degraded_mode": True,
                 "real_feature_diagnostics_used": False,
+                "candle_morphology_feature_count": 0,
+                "candle_pattern_feature_count": 0,
+                "technical_context_feature_count": 0,
+                "candle_ta_context_feature_count": 0,
+                "regime_feature_count": 0,
                 "candle_ta_context_features_attached": False,
+                "candle_ta_context_missing_reason": candle_ta_context_missing_reason,
                 "warnings": list(dict.fromkeys(warnings_list or ["dataset_rows_unavailable"])),
                 "recommendations": recommendations,
             }
@@ -109,7 +125,12 @@ class RealFeatureDiagnosticsService:
             + list(leakage_guard.get("recommendations", []))
             + list(regime_feature_diagnostics.get("recommendations", []))
         )
-        feature_count = len(self._feature_names(normalized_rows))
+        feature_names = set(self._feature_names(normalized_rows))
+        feature_count = len(feature_names)
+        candle_ta_context_features_attached = self._has_fv3_feature_set(normalized_rows)
+        candle_ta_context_missing_reason = None
+        if feature_version == self.FV3_FEATURE_VERSION and not candle_ta_context_features_attached:
+            candle_ta_context_missing_reason = "fv3_required_features_missing_from_rows"
         return {
             "diagnostic_name": self.DIAGNOSTIC_NAME,
             "diagnostic_version": self.DIAGNOSTIC_VERSION,
@@ -128,7 +149,25 @@ class RealFeatureDiagnosticsService:
             "sample_mode": sample_mode,
             "degraded_mode": False,
             "real_feature_diagnostics_used": not sample_mode,
-            "candle_ta_context_features_attached": self._has_fv3_feature_set(normalized_rows),
+            "candle_morphology_feature_count": self._count_present_features(
+                feature_names,
+                CANDLE_MORPHOLOGY_FEATURE_NAMES,
+            ),
+            "candle_pattern_feature_count": self._count_present_features(
+                feature_names,
+                CANDLE_PATTERN_FEATURE_NAMES,
+            ),
+            "technical_context_feature_count": self._count_present_features(
+                feature_names,
+                TECHNICAL_CONTEXT_FEATURE_NAMES,
+            ),
+            "candle_ta_context_feature_count": self._count_present_features(
+                feature_names,
+                FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
+            ),
+            "regime_feature_count": sum(int(name.startswith("regime_")) for name in feature_names),
+            "candle_ta_context_features_attached": candle_ta_context_features_attached,
+            "candle_ta_context_missing_reason": candle_ta_context_missing_reason,
             "warnings": list(dict.fromkeys(warnings_list)),
             "recommendations": list(dict.fromkeys(recommendations)),
         }
@@ -157,6 +196,10 @@ class RealFeatureDiagnosticsService:
         for row in rows:
             names.update(str(name) for name in dict(row.get("features_json", {})).keys())
         return sorted(names)
+
+    @staticmethod
+    def _count_present_features(feature_names: set[str], expected_names: list[str]) -> int:
+        return sum(int(name in feature_names) for name in expected_names)
 
     @classmethod
     def _has_fv3_feature_set(cls, rows: list[dict[str, Any]]) -> bool:

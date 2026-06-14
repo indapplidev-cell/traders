@@ -66,6 +66,7 @@ class MultiSymbolFeatureRegimeReporter:
             "symbols_missing_real_diagnostics": payload.get("symbols_missing_real_diagnostics"),
             "symbols_missing_regime_features": payload.get("symbols_missing_regime_features"),
             "symbols_missing_candle_ta_context_features": payload.get("symbols_missing_candle_ta_context_features"),
+            "symbol_results": payload.get("symbol_results"),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -125,25 +126,28 @@ class MultiSymbolFeatureRegimeReporter:
             "",
             "## Symbol Comparison Table",
             "",
-            "| Symbol | Score | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Regime Features | Candle/TA Context | Failed Gates |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| Symbol | Score | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Diag Rows | Regime Features | Regime Count | Candle/TA Context | Candle/TA Count | Failed Gates |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
         for item in self._as_list(payload.get("symbol_results")):
             lines.append(
-                "| `{symbol}` | `{score}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{regime_features}` | `{candle_ta}` | `{failed_gates}` |".format(
+                "| `{symbol}` | `{score}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{diag_rows}` | `{regime_features}` | `{regime_count}` | `{candle_ta}` | `{candle_ta_count}` | `{failed_gates}` |".format(
                     symbol=item.get("symbol"),
                     score=item.get("best_candidate_score"),
                     edge=item.get("baseline_edge"),
                     profit_factor=item.get("profit_factor"),
                     walk_forward_pf=item.get("walk_forward_profit_factor"),
                     real_diag=item.get("real_feature_diagnostics_used"),
+                    diag_rows=item.get("real_feature_diagnostics_row_count"),
                     regime_features=item.get("regime_features_attached"),
+                    regime_count=item.get("regime_feature_count"),
                     candle_ta=item.get("candle_ta_context_features_attached"),
+                    candle_ta_count=item.get("candle_ta_context_feature_count"),
                     failed_gates=",".join(self._as_list(item.get("failed_gates"))),
                 )
             )
         if not self._as_list(payload.get("symbol_results")):
-            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
 
         lines.extend(
             [
@@ -179,11 +183,14 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 f"- all_real_feature_diagnostics_used: `{payload.get('all_real_feature_diagnostics_used')}`",
                 f"- symbols_missing_real_diagnostics: `{payload.get('symbols_missing_real_diagnostics')}`",
+                f"- real_feature_diagnostics_missing_reason_by_symbol: `{self._as_dict(payload.get('real_feature_diagnostics_summary')).get('missing_reason_by_symbol')}`",
                 "",
                 "## Regime Integration Status",
                 "",
                 f"- symbols_missing_regime_features: `{payload.get('symbols_missing_regime_features')}`",
                 f"- symbols_missing_candle_ta_context_features: `{payload.get('symbols_missing_candle_ta_context_features')}`",
+                f"- regime_features_missing_reason_by_symbol: `{self._as_dict(payload.get('regime_integration_summary')).get('regime_features_missing_reason_by_symbol')}`",
+                f"- candle_ta_context_missing_reason_by_symbol: `{self._as_dict(payload.get('regime_integration_summary')).get('candle_ta_context_missing_reason_by_symbol')}`",
                 f"- regime_training_applied_by_symbol: `{self._as_dict(payload.get('regime_integration_summary')).get('regime_training_applied_by_symbol')}`",
                 f"- regime_specific_training_applied_any: `{self._as_dict(payload.get('regime_integration_summary')).get('regime_specific_training_applied_any')}`",
                 "",

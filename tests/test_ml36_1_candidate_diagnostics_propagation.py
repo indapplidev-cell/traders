@@ -119,6 +119,8 @@ def test_ml36_1_candidate_diagnostics_are_propagated_without_silent_empty_dicts(
             "source": "runtime_regime_label_builder",
         },
         real_feature_diagnostics_missing_reason=None,
+        gap_severity_for_training="OK",
+        gap_training_safe=True,
         logger=logger,
         experiment_dir=tmp_path / "ml36_1_diag",
     )
@@ -130,4 +132,3 @@ def test_ml36_1_candidate_diagnostics_are_propagated_without_silent_empty_dicts(
     assert candidate.collapse_diagnostics_v2
     assert candidate.walk_forward_profit_diagnostics
     assert candidate.profit_aware_diagnostics
-
