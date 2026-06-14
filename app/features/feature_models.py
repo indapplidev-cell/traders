@@ -4,6 +4,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+
+def _unique_names(*groups: list[str]) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for name in group:
+            if name in seen:
+                continue
+            seen.add(name)
+            ordered.append(name)
+    return ordered
+
+
 FEATURE_NAMES = [
     "body_size",
     "upper_wick",
@@ -102,10 +115,119 @@ FV2_REGIME_FEATURE_NAMES = FEATURE_NAMES + FV2_ADDITIVE_FEATURE_NAMES + [
 
 FV2_FEATURE_NAMES = FV2_REGIME_FEATURE_NAMES
 
+CANDLE_MORPHOLOGY_FEATURE_NAMES = [
+    "candle_range",
+    "body_abs",
+    "body_pct",
+    "body_to_range_ratio",
+    "upper_shadow_abs",
+    "lower_shadow_abs",
+    "upper_shadow_pct",
+    "lower_shadow_pct",
+    "upper_to_lower_shadow_ratio",
+    "shadow_imbalance",
+    "close_position_in_range",
+    "open_position_in_range",
+    "candle_direction",
+    "is_bullish_candle",
+    "is_bearish_candle",
+    "is_neutral_candle",
+    "range_to_atr_ratio",
+    "body_to_atr_ratio",
+]
+
+CANDLE_PATTERN_FEATURE_NAMES = [
+    "doji_score",
+    "long_legged_doji_score",
+    "gravestone_doji_score",
+    "dragonfly_doji_score",
+    "hammer_score",
+    "inverted_hammer_score",
+    "shooting_star_score",
+    "hanging_man_score",
+    "bullish_engulfing_score",
+    "bearish_engulfing_score",
+    "harami_score",
+    "morning_star_score",
+    "evening_star_score",
+    "three_white_soldiers_score",
+    "three_black_crows_score",
+    "window_gap_up",
+    "window_gap_down",
+    "gap_size_atr",
+    "pattern_strength_score",
+    "pattern_direction_hint",
+    "pattern_requires_confirmation",
+    "pattern_context_valid",
+]
+
+TECHNICAL_CONTEXT_FEATURE_NAMES = [
+    "trend_slope_short",
+    "trend_slope_medium",
+    "trend_slope_long",
+    "trend_strength_short",
+    "trend_strength_medium",
+    "trend_strength_long",
+    "trend_age",
+    "higher_highs_score",
+    "higher_lows_score",
+    "lower_highs_score",
+    "lower_lows_score",
+    "impulse_strength",
+    "correction_depth",
+    "correction_duration",
+    "range_position",
+    "volatility_regime_score",
+    "recent_high_distance",
+    "recent_low_distance",
+    "distance_to_support",
+    "distance_to_resistance",
+    "support_touch_count",
+    "resistance_touch_count",
+    "support_resistance_width_atr",
+    "near_support",
+    "near_resistance",
+    "breakout_candidate",
+    "breakdown_candidate",
+    "false_breakout_candidate",
+    "false_breakdown_candidate",
+    "sma_fast_distance",
+    "sma_slow_distance",
+    "ema_fast_distance",
+    "ema_slow_distance",
+    "sma_fast_slow_spread",
+    "ema_fast_slow_spread",
+    "bollinger_position",
+    "bollinger_bandwidth",
+    "bollinger_squeeze_score",
+    "rsi_value",
+    "rsi_zone",
+    "macd_line",
+    "macd_signal",
+    "macd_histogram",
+    "macd_histogram_slope",
+    "stochastic_k",
+    "stochastic_d",
+    "stochastic_cross_hint",
+    "roc",
+    "momentum",
+    "volume_zscore",
+    "volume_spike",
+    "volume_confirmation",
+]
+
+FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES = _unique_names(
+    FV2_REGIME_FEATURE_NAMES,
+    CANDLE_MORPHOLOGY_FEATURE_NAMES,
+    CANDLE_PATTERN_FEATURE_NAMES,
+    TECHNICAL_CONTEXT_FEATURE_NAMES,
+)
+
 FEATURE_NAMES_BY_VERSION = {
     "fv1": FEATURE_NAMES,
     "fv2": FV2_FEATURE_NAMES,
     "fv2_regime": FV2_REGIME_FEATURE_NAMES,
+    "fv3_candle_ta_context": FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
 }
 
 

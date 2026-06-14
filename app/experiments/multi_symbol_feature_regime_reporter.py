@@ -65,6 +65,7 @@ class MultiSymbolFeatureRegimeReporter:
             "top_failed_gate": payload.get("top_failed_gate"),
             "symbols_missing_real_diagnostics": payload.get("symbols_missing_real_diagnostics"),
             "symbols_missing_regime_features": payload.get("symbols_missing_regime_features"),
+            "symbols_missing_candle_ta_context_features": payload.get("symbols_missing_candle_ta_context_features"),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -124,12 +125,12 @@ class MultiSymbolFeatureRegimeReporter:
             "",
             "## Symbol Comparison Table",
             "",
-            "| Symbol | Score | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Regime Features | Failed Gates |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| Symbol | Score | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Regime Features | Candle/TA Context | Failed Gates |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
         for item in self._as_list(payload.get("symbol_results")):
             lines.append(
-                "| `{symbol}` | `{score}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{regime_features}` | `{failed_gates}` |".format(
+                "| `{symbol}` | `{score}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{regime_features}` | `{candle_ta}` | `{failed_gates}` |".format(
                     symbol=item.get("symbol"),
                     score=item.get("best_candidate_score"),
                     edge=item.get("baseline_edge"),
@@ -137,11 +138,12 @@ class MultiSymbolFeatureRegimeReporter:
                     walk_forward_pf=item.get("walk_forward_profit_factor"),
                     real_diag=item.get("real_feature_diagnostics_used"),
                     regime_features=item.get("regime_features_attached"),
+                    candle_ta=item.get("candle_ta_context_features_attached"),
                     failed_gates=",".join(self._as_list(item.get("failed_gates"))),
                 )
             )
         if not self._as_list(payload.get("symbol_results")):
-            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
 
         lines.extend(
             [
@@ -164,6 +166,7 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Feature Version Check",
                 "",
                 f"- all_feature_version_fv2: `{payload.get('all_feature_version_fv2')}`",
+                f"- all_feature_version_fv3_candle_ta_context: `{self._as_dict(payload.get('feature_version_summary')).get('all_feature_version_fv3_candle_ta_context')}`",
                 f"- feature_versions_by_symbol: `{self._as_dict(payload.get('feature_version_summary')).get('feature_versions_by_symbol')}`",
                 "",
                 "## Gap Training Safety Check",
@@ -180,6 +183,7 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Regime Integration Status",
                 "",
                 f"- symbols_missing_regime_features: `{payload.get('symbols_missing_regime_features')}`",
+                f"- symbols_missing_candle_ta_context_features: `{payload.get('symbols_missing_candle_ta_context_features')}`",
                 f"- regime_training_applied_by_symbol: `{self._as_dict(payload.get('regime_integration_summary')).get('regime_training_applied_by_symbol')}`",
                 f"- regime_specific_training_applied_any: `{self._as_dict(payload.get('regime_integration_summary')).get('regime_specific_training_applied_any')}`",
                 "",

@@ -109,6 +109,7 @@ class LabelGridExperimentCandidateResult:
     approved_for_auto_activation: bool = False
     orders_enabled: bool = False
     traders_core_connected: bool = False
+    model_quality_validation_status: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -164,6 +165,7 @@ class LabelGridExperimentCandidateResult:
             "approved_for_auto_activation": self.approved_for_auto_activation,
             "orders_enabled": self.orders_enabled,
             "traders_core_connected": self.traders_core_connected,
+            "model_quality_validation_status": self.model_quality_validation_status,
         }
 
 
@@ -982,6 +984,7 @@ class LabelGridExperimentRunner:
             approved_for_auto_activation=False,
             orders_enabled=False,
             traders_core_connected=False,
+            model_quality_validation_status="COMPLETED",
         )
 
     def _resolve_experiment_status(
@@ -1151,6 +1154,7 @@ class LabelGridExperimentRunner:
             approved_for_auto_activation=False,
             orders_enabled=False,
             traders_core_connected=False,
+            model_quality_validation_status="COMPLETED" if known_quality_rejection else "FAILED",
         )
 
     @staticmethod

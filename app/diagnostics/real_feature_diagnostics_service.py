@@ -11,6 +11,15 @@ from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 class RealFeatureDiagnosticsService:
     DIAGNOSTIC_NAME = "real_feature_diagnostics_service"
     DIAGNOSTIC_VERSION = "ml36"
+    FV3_REQUIRED_FEATURES = {
+        "doji_score",
+        "hammer_score",
+        "trend_slope_long",
+        "distance_to_support",
+        "bollinger_position",
+        "stochastic_k",
+        "volume_zscore",
+    }
 
     def __init__(
         self,
@@ -71,6 +80,7 @@ class RealFeatureDiagnosticsService:
                     "feature_signal_score": 0.0,
                 },
                 "feature_group_quality": {"group_name": "feature_group_quality", "row_count": 0, "group_count": 0, "weak_groups": []},
+                "feature_family_diagnostics": {"group_name": "feature_group_quality", "row_count": 0, "group_count": 0, "weak_groups": []},
                 "leakage_guard": {"guard_name": "feature_leakage_guard", "checked_features": 0, "leakage_risk_detected": False},
                 "regime_feature_diagnostics": {
                     "diagnostic_name": "regime_feature_diagnostics",
@@ -83,6 +93,7 @@ class RealFeatureDiagnosticsService:
                 "sample_mode": sample_mode,
                 "degraded_mode": True,
                 "real_feature_diagnostics_used": False,
+                "candle_ta_context_features_attached": False,
                 "warnings": list(dict.fromkeys(warnings_list or ["dataset_rows_unavailable"])),
                 "recommendations": recommendations,
             }
@@ -111,11 +122,13 @@ class RealFeatureDiagnosticsService:
             "feature_count": feature_count,
             "feature_quality": feature_quality,
             "feature_group_quality": feature_group_quality,
+            "feature_family_diagnostics": feature_group_quality,
             "leakage_guard": leakage_guard,
             "regime_feature_diagnostics": regime_feature_diagnostics,
             "sample_mode": sample_mode,
             "degraded_mode": False,
             "real_feature_diagnostics_used": not sample_mode,
+            "candle_ta_context_features_attached": self._has_fv3_feature_set(normalized_rows),
             "warnings": list(dict.fromkeys(warnings_list)),
             "recommendations": list(dict.fromkeys(recommendations)),
         }
@@ -144,3 +157,8 @@ class RealFeatureDiagnosticsService:
         for row in rows:
             names.update(str(name) for name in dict(row.get("features_json", {})).keys())
         return sorted(names)
+
+    @classmethod
+    def _has_fv3_feature_set(cls, rows: list[dict[str, Any]]) -> bool:
+        feature_names = set(cls._feature_names(rows))
+        return cls.FV3_REQUIRED_FEATURES.issubset(feature_names)

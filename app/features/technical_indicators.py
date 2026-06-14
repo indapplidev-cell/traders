@@ -164,3 +164,112 @@ class TechnicalIndicators:
             return 100.0
         rs = average_gain / average_loss
         return 100 - (100 / (1 + rs))
+
+    @staticmethod
+    def rolling_min(values: list[float], period: int) -> list[float | None]:
+        result: list[float | None] = [None] * len(values)
+        if period <= 0 or len(values) < period:
+            return result
+        for index in range(period - 1, len(values)):
+            result[index] = min(values[index - period + 1 : index + 1])
+        return result
+
+    @staticmethod
+    def rolling_max(values: list[float], period: int) -> list[float | None]:
+        result: list[float | None] = [None] * len(values)
+        if period <= 0 or len(values) < period:
+            return result
+        for index in range(period - 1, len(values)):
+            result[index] = max(values[index - period + 1 : index + 1])
+        return result
+
+    @staticmethod
+    def rolling_zscore(values: list[float], period: int) -> list[float | None]:
+        result: list[float | None] = [None] * len(values)
+        if period <= 1 or len(values) < period:
+            return result
+        for index in range(period - 1, len(values)):
+            window = values[index - period + 1 : index + 1]
+            mean = sum(window) / period
+            variance = sum((value - mean) ** 2 for value in window) / period
+            stddev = math.sqrt(variance)
+            if stddev == 0:
+                result[index] = 0.0
+                continue
+            result[index] = (values[index] - mean) / stddev
+        return result
+
+    @staticmethod
+    def bollinger_bands(
+        values: list[float],
+        period: int = 20,
+        stddev_multiplier: float = 2.0,
+    ) -> tuple[list[float | None], list[float | None], list[float | None]]:
+        middle = TechnicalIndicators.sma(values, period)
+        stddev = TechnicalIndicators.rolling_stddev(values, period)
+        upper: list[float | None] = [None] * len(values)
+        lower: list[float | None] = [None] * len(values)
+        for index in range(len(values)):
+            if middle[index] is None or stddev[index] is None:
+                continue
+            upper[index] = middle[index] + (stddev_multiplier * stddev[index])
+            lower[index] = middle[index] - (stddev_multiplier * stddev[index])
+        return middle, upper, lower
+
+    @staticmethod
+    def stochastic(
+        highs: list[float],
+        lows: list[float],
+        closes: list[float],
+        period: int = 14,
+        smooth_d: int = 3,
+    ) -> tuple[list[float | None], list[float | None]]:
+        highest_high = TechnicalIndicators.rolling_max(highs, period)
+        lowest_low = TechnicalIndicators.rolling_min(lows, period)
+        percent_k: list[float | None] = [None] * len(closes)
+        for index in range(len(closes)):
+            high_value = highest_high[index]
+            low_value = lowest_low[index]
+            if high_value is None or low_value is None:
+                continue
+            denominator = high_value - low_value
+            if denominator == 0:
+                percent_k[index] = 50.0
+                continue
+            percent_k[index] = ((closes[index] - low_value) / denominator) * 100.0
+        percent_d = TechnicalIndicators._sma_nullable(percent_k, smooth_d)
+        return percent_k, percent_d
+
+    @staticmethod
+    def rate_of_change(values: list[float], period: int) -> list[float | None]:
+        result: list[float | None] = [None] * len(values)
+        if period <= 0:
+            return result
+        for index in range(period, len(values)):
+            previous = values[index - period]
+            if previous == 0:
+                continue
+            result[index] = ((values[index] / previous) - 1.0) * 100.0
+        return result
+
+    @staticmethod
+    def momentum(values: list[float], period: int) -> list[float | None]:
+        result: list[float | None] = [None] * len(values)
+        if period <= 0:
+            return result
+        for index in range(period, len(values)):
+            result[index] = values[index] - values[index - period]
+        return result
+
+    @staticmethod
+    def _sma_nullable(values: list[float | None], period: int) -> list[float | None]:
+        result: list[float | None] = [None] * len(values)
+        if period <= 0:
+            return result
+        for index in range(period - 1, len(values)):
+            window = values[index - period + 1 : index + 1]
+            if any(value is None for value in window):
+                continue
+            numeric_window = [float(value) for value in window if value is not None]
+            result[index] = sum(numeric_window) / period
+        return result

@@ -1,5 +1,21 @@
 """Feature engineering package for traders-ml."""
 
-from app.features.feature_models import FEATURE_NAMES, FV2_REGIME_FEATURE_NAMES, feature_names_for_version
+from app.features.feature_models import (
+    CANDLE_MORPHOLOGY_FEATURE_NAMES,
+    CANDLE_PATTERN_FEATURE_NAMES,
+    FEATURE_NAMES,
+    FV2_REGIME_FEATURE_NAMES,
+    FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
+    TECHNICAL_CONTEXT_FEATURE_NAMES,
+    feature_names_for_version,
+)
 
-__all__ = ["FEATURE_NAMES", "FV2_REGIME_FEATURE_NAMES", "feature_names_for_version"]
+__all__ = [
+    "FEATURE_NAMES",
+    "FV2_REGIME_FEATURE_NAMES",
+    "FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES",
+    "CANDLE_MORPHOLOGY_FEATURE_NAMES",
+    "CANDLE_PATTERN_FEATURE_NAMES",
+    "TECHNICAL_CONTEXT_FEATURE_NAMES",
+    "feature_names_for_version",
+]

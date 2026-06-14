@@ -107,6 +107,18 @@ class FeatureRegimeCandidateResult:
     approved_for_auto_activation: bool = False
     orders_enabled: bool = False
     traders_core_connected: bool = False
+    model_quality_validation_status: str | None = None
+    model_accuracy: float | None = None
+    baseline_accuracy: float | None = None
+    accuracy_edge: float | None = None
+    profit_total_r: float | None = None
+    profit_factor: float | None = None
+    walk_forward_total_r: float | None = None
+    walk_forward_profit_factor: float | None = None
+    predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
+    actual_class_distribution: dict[str, Any] = field(default_factory=dict)
+    collapse_detected: bool = False
+    collapse_type: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -141,6 +153,18 @@ class FeatureRegimeCandidateResult:
             "approved_for_auto_activation": self.approved_for_auto_activation,
             "orders_enabled": self.orders_enabled,
             "traders_core_connected": self.traders_core_connected,
+            "model_quality_validation_status": self.model_quality_validation_status,
+            "model_accuracy": self.model_accuracy,
+            "baseline_accuracy": self.baseline_accuracy,
+            "accuracy_edge": self.accuracy_edge,
+            "profit_total_r": self.profit_total_r,
+            "profit_factor": self.profit_factor,
+            "walk_forward_total_r": self.walk_forward_total_r,
+            "walk_forward_profit_factor": self.walk_forward_profit_factor,
+            "predicted_class_distribution": dict(self.predicted_class_distribution),
+            "actual_class_distribution": dict(self.actual_class_distribution),
+            "collapse_detected": self.collapse_detected,
+            "collapse_type": self.collapse_type,
         }
 
 
@@ -212,6 +236,9 @@ class FeatureRegimeExperimentResult:
     approved_for_auto_activation: bool = False
     orders_enabled: bool = False
     traders_core_connected: bool = False
+    candle_ta_context_features_attached: bool = False
+    candidate_status: str | None = None
+    model_quality_validation_status: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -281,6 +308,9 @@ class FeatureRegimeExperimentResult:
             "approved_for_auto_activation": self.approved_for_auto_activation,
             "orders_enabled": self.orders_enabled,
             "traders_core_connected": self.traders_core_connected,
+            "candle_ta_context_features_attached": self.candle_ta_context_features_attached,
+            "candidate_status": self.candidate_status,
+            "model_quality_validation_status": self.model_quality_validation_status,
         }
 
 
@@ -490,13 +520,13 @@ class FeatureRegimeExperimentRunner:
         return primary_status
 
     def build_preview(self) -> dict[str, Any]:
-        feature_names = feature_names_for_version("fv2")
+        feature_names = feature_names_for_version("fv3_candle_ta_context")
         regime_feature_count = len([name for name in feature_names if name.startswith("regime_")])
         return {
             "runner_name": FEATURE_REGIME_EXPERIMENT_RUNNER_NAME,
             "runner_version": FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION,
-            "feature_version_default": "fv2",
-            "feature_versions_available": ["fv1", "fv2", "fv2_regime"],
+            "feature_version_default": "fv3_candle_ta_context",
+            "feature_versions_available": ["fv1", "fv2", "fv2_regime", "fv3_candle_ta_context"],
             "available_base_label_configs": self._base_grid_planner.build_grid()["configs"],
             "available_regime_configs": self._regime_label_planner.build_configs()["configs"],
             "feature_diagnostics_plan": {
@@ -509,9 +539,10 @@ class FeatureRegimeExperimentRunner:
                 "regime_experiment_plan": True,
             },
             "feature_regime_integration": {
-                "feature_version_used": "fv2",
+                "feature_version_used": "fv3_candle_ta_context",
                 "regime_features_attached": True,
                 "regime_feature_count": regime_feature_count,
+                "candle_ta_context_features_attached": True,
                 "regime_specific_labeling_available": True,
                 "regime_specific_training_applied": True,
             },
@@ -748,6 +779,11 @@ class FeatureRegimeExperimentRunner:
             regime_specific_training_applied_all=bool(
                 aggregate_regime_status.get("regime_specific_training_applied_all", False)
             ),
+            candle_ta_context_features_attached=bool(diagnostics.get("candle_ta_context_features_attached", False)),
+            candidate_status=None if best_candidate is None else best_candidate.candidate_status,
+            model_quality_validation_status=(
+                None if best_candidate is None else best_candidate.model_quality_validation_status
+            ),
         )
 
         for candidate in candidate_results:
@@ -776,6 +812,7 @@ class FeatureRegimeExperimentRunner:
                 "real_feature_diagnostics_used": diagnostics["real_feature_diagnostics_used"],
                 "real_feature_diagnostics_row_count": diagnostics["real_feature_diagnostics_row_count"],
                 "regime_features_attached": diagnostics["regime_features_attached"],
+                "candle_ta_context_features_attached": diagnostics.get("candle_ta_context_features_attached", False),
                 "effective_gap_count_for_training": diagnostics["effective_gap_count_for_training"],
                 "gap_severity_for_training": diagnostics["gap_severity_for_training"],
             },
@@ -848,6 +885,7 @@ class FeatureRegimeExperimentRunner:
                 "real_feature_diagnostics_used": real_feature_diagnostics.get("real_feature_diagnostics_used"),
                 "real_feature_diagnostics_row_count": real_feature_diagnostics.get("row_count"),
                 "regime_features_attached": regime_features_attached,
+                "candle_ta_context_features_attached": real_feature_diagnostics.get("candle_ta_context_features_attached"),
             },
             message="Diagnostics collection completed",
         )
@@ -864,6 +902,9 @@ class FeatureRegimeExperimentRunner:
             "real_feature_diagnostics_used": bool(real_feature_diagnostics.get("real_feature_diagnostics_used", False)),
             "real_feature_diagnostics_row_count": int(real_feature_diagnostics.get("row_count", 0) or 0),
             "regime_features_attached": regime_features_attached,
+            "candle_ta_context_features_attached": bool(
+                real_feature_diagnostics.get("candle_ta_context_features_attached", False)
+            ),
             "regime_feature_count": len(regime_feature_names),
             "regime_feature_source": str(real_feature_diagnostics.get("source", "unknown")),
             "effective_gap_count_for_training": int(gap_quality.get("effective_gap_count_for_training", 0) or 0),
@@ -1292,6 +1333,18 @@ class FeatureRegimeExperimentRunner:
                     "profit_aware_diagnostics_missing_reason",
                     None,
                 ),
+                model_quality_validation_status=getattr(item, "model_quality_validation_status", "COMPLETED"),
+                model_accuracy=getattr(item, "model_accuracy", None),
+                baseline_accuracy=getattr(item, "baseline_accuracy", None),
+                accuracy_edge=getattr(item, "accuracy_edge", None),
+                profit_total_r=getattr(item, "profit_total_r", None),
+                profit_factor=getattr(item, "profit_factor", None),
+                walk_forward_total_r=getattr(item, "walk_forward_global_total_r", None),
+                walk_forward_profit_factor=getattr(item, "walk_forward_profit_factor", None),
+                predicted_class_distribution=self._as_dict(getattr(item, "predicted_distribution", {})),
+                actual_class_distribution=self._as_dict(getattr(item, "actual_distribution", {})),
+                collapse_detected=bool(getattr(item, "collapse_detected", False)),
+                collapse_type=getattr(item, "collapse_type", None),
             )
             candidate_results.append(candidate)
             logger.event(

@@ -44,7 +44,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
         symbols_missing_regime_features = [
             item["symbol"] for item in symbol_results if not item["regime_features_attached"]
         ]
+        symbols_missing_candle_ta_context = [
+            item["symbol"] for item in symbol_results if not item["candle_ta_context_features_attached"]
+        ]
         all_feature_version_fv2 = all(item["feature_version_used"] == "fv2" for item in symbol_results)
+        all_feature_version_fv3_candle_ta_context = all(
+            item["feature_version_used"] == "fv3_candle_ta_context" for item in symbol_results
+        )
         all_gap_training_safe = all(
             item["gap_training_safe"]
             and item["effective_gap_count_for_training"] == 0
@@ -89,6 +95,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 "feature_versions_by_symbol": {
                     item["symbol"]: item["feature_version_used"] for item in symbol_results
                 },
+                "all_feature_version_fv3_candle_ta_context": all_feature_version_fv3_candle_ta_context,
             },
             "gap_training_safety_summary": {
                 "all_gap_training_safe": all_gap_training_safe,
@@ -113,6 +120,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     item["symbol"]: item["regime_features_attached"] for item in symbol_results
                 },
                 "symbols_missing_regime_features": symbols_missing_regime_features,
+                "candle_ta_context_features_attached_by_symbol": {
+                    item["symbol"]: item["candle_ta_context_features_attached"] for item in symbol_results
+                },
+                "symbols_missing_candle_ta_context_features": symbols_missing_candle_ta_context,
             },
             "walk_forward_summary": {
                 "walk_forward_failed_count": walk_forward_failed_count,
@@ -156,6 +167,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "profit_aware_failed_count": profit_aware_failed_count,
             "symbols_missing_real_diagnostics": symbols_missing_real_diagnostics,
             "symbols_missing_regime_features": symbols_missing_regime_features,
+            "symbols_missing_candle_ta_context_features": symbols_missing_candle_ta_context,
             "recommendations": self._recommendations(
                 any_accepted_candidate=any_accepted_candidate,
                 collapse_failed_count=collapse_failed_count,
@@ -163,6 +175,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 profit_aware_failed_count=profit_aware_failed_count,
                 symbol_count=len(symbol_results),
                 symbols_missing_real_diagnostics=symbols_missing_real_diagnostics,
+                symbols_missing_candle_ta_context=symbols_missing_candle_ta_context,
                 regime_specific_training_applied_any=any(regime_training_applied_by_symbol.values()),
             ),
             "approved_for_live_trading": False,
@@ -277,6 +290,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_candidate_score": cls._float_or_none(summary.get("best_candidate_score")),
             "candidate_status": best_candidate.get("candidate_status"),
             "feature_version_used": summary.get("feature_version_used"),
+            "candle_ta_context_features_attached": bool(summary.get("candle_ta_context_features_attached", False)),
             "real_feature_diagnostics_used": bool(summary.get("real_feature_diagnostics_used", False)),
             "real_feature_diagnostics_row_count": int(summary.get("real_feature_diagnostics_row_count", 0) or 0),
             "effective_gap_count_for_training": int(summary.get("effective_gap_count_for_training", 0) or 0),
@@ -295,6 +309,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "profit_total_r": cls._float_or_none(best_candidate.get("profit_total_r")),
             "walk_forward_profit_factor": cls._float_or_none(best_candidate.get("walk_forward_profit_factor")),
             "walk_forward_total_r": cls._float_or_none(best_candidate.get("walk_forward_global_total_r")),
+            "model_quality_validation_status": best_candidate.get(
+                "model_quality_validation_status",
+                summary.get("model_quality_validation_status"),
+            ),
             "walk_forward_profit_diagnostics": cls._as_dict(
                 summary.get("walk_forward_profit_diagnostics")
                 or best_candidate.get("walk_forward_profit_diagnostics")
@@ -323,6 +341,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 or best_candidate.get("regime_label_builder_status")
             ),
             "warnings": list(dict.fromkeys(summary_warnings + candidate_warnings)),
+            "accuracy": cls._float_or_none(best_candidate.get("model_accuracy")),
+            "best_baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
+            "predicted_class_distribution": cls._as_dict(best_candidate.get("predicted_class_distribution")),
+            "actual_class_distribution": cls._as_dict(best_candidate.get("actual_class_distribution")),
         }
 
     @staticmethod
@@ -359,6 +381,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         profit_aware_failed_count: int,
         symbol_count: int,
         symbols_missing_real_diagnostics: list[str],
+        symbols_missing_candle_ta_context: list[str],
         regime_specific_training_applied_any: bool,
     ) -> list[str]:
         recommendations: list[str] = []
@@ -372,6 +395,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
             recommendations.append("Review profit-aware gate thresholds before any broader multi-symbol expansion.")
         if symbols_missing_real_diagnostics:
             recommendations.append("Fix real diagnostics/regime attachment for non-BTC symbols.")
+        if symbols_missing_candle_ta_context:
+            recommendations.append("Ensure fv3 candle/TA context features are attached for every symbol before comparing quality.")
         if not regime_specific_training_applied_any:
             recommendations.append("Wire real regime-specific label builder into training pipeline.")
         recommendations.append("Keep traders-core, live trading, orders, and auto activation disabled.")

@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -68,6 +69,7 @@ from app.evaluation.candidate_acceptance_thresholds import (
 from app.evaluation.model_candidate_selector import ModelCandidateSelector
 from app.evaluation.model_quality_reporter import ModelQualityReporter
 from app.evaluation.model_quality_validator import validate_model_quality
+from app.features.feature_builder import FeatureBuilder
 from app.features.feature_pipeline import FeaturePipeline
 from app.features.feature_engineering_plan import FeatureEngineeringPlan
 from app.features.feature_models import feature_names_for_version
@@ -3086,6 +3088,129 @@ def build_walk_forward_profit_diagnostics_preview_payload() -> dict[str, object]
     return payload
 
 
+def build_candle_ta_context_preview_payload(
+    *,
+    symbol: str = "BTCUSDT",
+    interval: str = "15m",
+    limit: int = 300,
+) -> dict[str, object]:
+    """Build an ML38 candle/TA context preview from recent persisted candles."""
+
+    feature_version = "fv3_candle_ta_context"
+    with get_session() as session:
+        candles = CandleRepository(session).get_all(symbol=symbol, interval=interval)
+    selected_candles = candles[-max(int(limit), 1) :]
+    records = FeatureBuilder().build(
+        selected_candles,
+        symbol=symbol,
+        interval=interval,
+        feature_version=feature_version,
+    )
+    feature_names = feature_names_for_version(feature_version)
+    if not records:
+        return {
+            "symbol": symbol,
+            "interval": interval,
+            "feature_version": feature_version,
+            "limit": limit,
+            "candles_used": 0,
+            "rows_built": 0,
+            "feature_count": len(feature_names),
+            "candle_ta_context_features_attached": False,
+            "regime_features_attached": False,
+            "real_feature_diagnostics_used": False,
+            "nan_feature_count": 0,
+            "inf_feature_count": 0,
+            "feature_group_quality": {"group_name": "feature_group_quality", "groups": []},
+            "warnings": ["no_candles_available_for_preview"],
+            "approved_for_live_trading": False,
+            "approved_for_auto_activation": False,
+            "orders_enabled": False,
+            "traders_core_connected": False,
+        }
+
+    latest = records[-1]
+    nan_feature_count = 0
+    inf_feature_count = 0
+    for row in records:
+        for value in row.features_json.values():
+            if value is None:
+                continue
+            if math.isnan(float(value)):
+                nan_feature_count += 1
+            if math.isinf(float(value)):
+                inf_feature_count += 1
+
+    feature_rows = [
+        {
+            "direction_label": "UP" if float(record.features_json.get("candle_direction") or 0.0) > 0 else "DOWN",
+            "features_json": dict(record.features_json),
+        }
+        for record in records
+    ]
+    feature_group_quality = FeatureGroupQualityScorer().analyze(feature_rows)
+    regime_features_attached = all(
+        name in latest.features_json
+        for name in (
+            "regime_trend_up",
+            "regime_trend_down",
+            "regime_range",
+            "regime_high_volatility",
+            "regime_low_volatility",
+            "regime_unknown",
+        )
+    )
+    payload = {
+        "symbol": symbol,
+        "interval": interval,
+        "feature_version": feature_version,
+        "limit": limit,
+        "candles_used": len(selected_candles),
+        "rows_built": len(records),
+        "feature_count": len(feature_names),
+        "first_open_time": records[0].candle_open_time.isoformat(),
+        "last_open_time": latest.candle_open_time.isoformat(),
+        "candle_ta_context_features_attached": all(
+            name in latest.features_json
+            for name in (
+                "doji_score",
+                "trend_slope_long",
+                "distance_to_support",
+                "bollinger_position",
+                "stochastic_k",
+                "volume_zscore",
+            )
+        ),
+        "regime_features_attached": regime_features_attached,
+        "real_feature_diagnostics_used": True,
+        "nan_feature_count": nan_feature_count,
+        "inf_feature_count": inf_feature_count,
+        "feature_group_quality": feature_group_quality,
+        "latest_feature_snapshot": {
+            key: latest.features_json.get(key)
+            for key in (
+                "doji_score",
+                "hammer_score",
+                "trend_slope_short",
+                "trend_slope_medium",
+                "trend_slope_long",
+                "distance_to_support",
+                "distance_to_resistance",
+                "bollinger_position",
+                "rsi_value",
+                "stochastic_k",
+                "volume_zscore",
+                "pattern_strength_score",
+            )
+        },
+        "approved_for_live_trading": False,
+        "approved_for_auto_activation": False,
+        "orders_enabled": False,
+        "traders_core_connected": False,
+    }
+    return payload
+
+
 def run_label_grid_experiment(
     *,
     symbol: str,
@@ -3305,10 +3430,13 @@ def analyze_feature_regime_results(
         "feature_weak_signal_detected": dict(summary.get("feature_quality_summary", {})).get("weak_signal_detected"),
         "regime_data_available": dict(summary.get("regime_feature_summary", {})).get("regime_data_available"),
         "regime_features_attached": summary.get("regime_features_attached"),
+        "candle_ta_context_features_attached": summary.get("candle_ta_context_features_attached"),
         "regime_feature_count": summary.get("regime_feature_count"),
         "regime_specific_labeling_available": summary.get("regime_specific_labeling_available"),
         "regime_training_applied": summary.get("regime_training_applied"),
         "regime_specific_training_applied": summary.get("regime_specific_training_applied"),
+        "candidate_status": summary.get("candidate_status"),
+        "model_quality_validation_status": summary.get("model_quality_validation_status"),
         "effective_gap_count_for_training": summary.get("effective_gap_count_for_training"),
         "gap_severity_for_training": summary.get("gap_severity_for_training"),
         "feature_leakage_risk_detected": dict(summary.get("feature_leakage_summary", {})).get("leakage_risk_detected"),
@@ -4107,6 +4235,30 @@ def walk_forward_profit_diagnostics_preview() -> None:
     """Show ML36 walk-forward/profit diagnostics preview JSON."""
 
     payload = build_walk_forward_profit_diagnostics_preview_payload()
+
+    typer.echo(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+@cli.command("candle-ta-context-preview")
+def candle_ta_context_preview(
+    symbol: str = typer.Option("BTCUSDT", "--symbol"),
+    interval: str = typer.Option("15m", "--interval"),
+    limit: int = typer.Option(300, "--limit"),
+) -> None:
+    """Show ML38 candle/TA context preview JSON."""
+
+    payload = build_candle_ta_context_preview_payload(
+        symbol=symbol,
+        interval=interval,
+        limit=limit,
+    )
 
     typer.echo(
         json.dumps(

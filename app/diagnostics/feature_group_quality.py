@@ -162,15 +162,19 @@ class FeatureGroupQualityScorer:
         normalized = feature_name.lower()
         if normalized.startswith("regime_"):
             return "regime"
+        if any(token in normalized for token in ("doji", "hammer", "engulf", "harami", "star", "soldiers", "crows", "window_gap", "pattern_")):
+            return "candle_patterns"
+        if any(token in normalized for token in ("support", "resistance", "breakout", "breakdown", "recent_high", "recent_low", "range_position")):
+            return "support_resistance"
         if any(token in normalized for token in ("volume", "taker_buy")):
             return "volume"
-        if any(token in normalized for token in ("atr", "volatility")):
+        if any(token in normalized for token in ("atr", "volatility", "bollinger", "bandwidth", "squeeze")):
             return "volatility"
-        if any(token in normalized for token in ("ema", "trend", "slope", "pullback", "close_above")):
+        if any(token in normalized for token in ("ema", "trend", "slope", "pullback", "close_above", "higher_high", "higher_low", "lower_high", "lower_low", "impulse", "correction", "roc", "momentum")):
             return "trend"
-        if any(token in normalized for token in ("rsi", "macd", "return", "log_return")):
+        if any(token in normalized for token in ("rsi", "macd", "return", "log_return", "stochastic")):
             return "momentum"
-        if any(token in normalized for token in ("body", "wick", "range", "close_position")):
+        if any(token in normalized for token in ("body", "wick", "shadow", "range", "close_position", "open_position", "candle_direction", "bullish_candle", "bearish_candle", "neutral_candle")):
             return "price_action"
         return "unknown"
 
