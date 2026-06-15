@@ -302,21 +302,54 @@ class MultiSymbolFeatureRegimeAnalyzer:
         return "MULTIPLE"
 
     @staticmethod
-    def _best_candidate(summary: dict[str, Any]) -> dict[str, Any]:
+    def _candidate_status(candidate: dict[str, Any]) -> str:
+        return str(candidate.get("candidate_status") or "").upper()
+
+    @classmethod
+    def _is_failed_candidate(cls, candidate: dict[str, Any]) -> bool:
+        return cls._candidate_status(candidate) == "FAILED"
+
+    @classmethod
+    def _candidate_score(cls, candidate: dict[str, Any]) -> float | None:
+        if cls._is_failed_candidate(candidate):
+            return None
+
+        score = candidate.get("score")
+        if score is None:
+            return None
+
+        return float(score)
+
+    @classmethod
+    def _best_candidate(cls, summary: dict[str, Any]) -> dict[str, Any]:
         candidate_results = [
-            MultiSymbolFeatureRegimeAnalyzer._as_dict(item)
-            for item in MultiSymbolFeatureRegimeAnalyzer._as_list(summary.get("candidate_results"))
+            cls._as_dict(item)
+            for item in cls._as_list(summary.get("candidate_results"))
             if isinstance(item, dict)
         ]
+
+        eligible_candidates = [
+            candidate
+            for candidate in candidate_results
+            if not cls._is_failed_candidate(candidate)
+        ]
+
         best_config_id = summary.get("best_candidate_config_id")
         if best_config_id is not None:
-            for candidate in candidate_results:
+            for candidate in eligible_candidates:
                 if candidate.get("config_id") == best_config_id:
                     return candidate
-        scored = [item for item in candidate_results if item.get("score") is not None]
+
+        scored = [
+            candidate
+            for candidate in eligible_candidates
+            if cls._candidate_score(candidate) is not None
+        ]
+
         if scored:
-            return max(scored, key=lambda item: float(item["score"]))
-        return candidate_results[0] if candidate_results else {}
+            return max(scored, key=lambda candidate: cls._candidate_score(candidate) or -9999.0)
+
+        return eligible_candidates[0] if eligible_candidates else {}
 
     @classmethod
     def _symbol_result(cls, summary: dict[str, Any]) -> dict[str, Any]:
@@ -353,8 +386,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "failed_candidate_count": int(summary.get("failed_candidate_count", 0) or 0),
             "accepted_candidate_count": int(summary.get("accepted_candidate_count", 0) or 0),
             "rejected_candidate_count": int(summary.get("rejected_candidate_count", 0) or 0),
-            "best_candidate_config_id": summary.get("best_candidate_config_id"),
-            "best_candidate_score": cls._float_or_none(summary.get("best_candidate_score")),
+            "best_candidate_config_id": best_candidate.get("config_id"),
+            "best_candidate_score": cls._candidate_score(best_candidate),
             "candidate_status": best_candidate.get("candidate_status"),
             "feature_version_used": summary.get("feature_version_used"),
             "candle_ta_context_features_attached": bool(summary.get("candle_ta_context_features_attached", False)),
@@ -429,16 +462,18 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "configs_ranked": configs_ranked,
         }
 
-    @staticmethod
-    def _configs_ranked(symbol_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    @classmethod
+    def _configs_ranked(cls, symbol_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for symbol_result in symbol_results:
             for row in symbol_result.get("configs_ranked", []):
                 payload = dict(row)
                 payload["symbol"] = symbol_result["symbol"]
+                payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)
         rows.sort(
             key=lambda item: (
+                bool(item.get("excluded_from_best_selection", False)),
                 -float(item.get("score") or 0.0),
                 str(item.get("symbol") or ""),
                 str(item.get("config_id") or ""),
@@ -464,9 +499,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
 
     @staticmethod
     def _best_result(symbol_results: list[dict[str, Any]]) -> dict[str, Any] | None:
-        scored = [item for item in symbol_results if item["best_candidate_score"] is not None]
+        scored = [
+            item
+            for item in symbol_results
+            if item["best_candidate_score"] is not None
+            and str(item.get("candidate_status") or "").upper() != "FAILED"
+        ]
+
         if not scored:
             return None
+
         return max(scored, key=lambda item: float(item["best_candidate_score"]))
 
     @staticmethod

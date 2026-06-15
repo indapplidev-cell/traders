@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+from uuid import uuid4
+
 from dataclasses import dataclass
 from datetime import date
 from datetime import datetime, timezone
@@ -31,6 +34,55 @@ class TrainingConfig:
     epochs: int = 20
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
+
+
+def _safe_run_id_part(value: object) -> str:
+    text = str(value or "unknown")
+    text = re.sub(r"[^A-Za-z0-9_]+", "_", text)
+    text = re.sub(r"_+", "_", text).strip("_")
+    return text or "unknown"
+
+
+def build_training_run_id(
+    *,
+    model_version: str,
+    symbol: str,
+    interval: str,
+    horizon_candles: int,
+    label_version: str,
+    max_length: int = 100,
+) -> str:
+    suffix = uuid4().hex[:8]
+    base = "_".join(
+        [
+            "train",
+            _safe_run_id_part(model_version),
+            _safe_run_id_part(symbol),
+            _safe_run_id_part(interval),
+            f"h{int(horizon_candles)}",
+            _safe_run_id_part(label_version),
+            suffix,
+        ]
+    )
+
+    if len(base) <= max_length:
+        return base
+
+    shorter = "_".join(
+        [
+            "train",
+            _safe_run_id_part(model_version),
+            _safe_run_id_part(symbol),
+            _safe_run_id_part(interval),
+            f"h{int(horizon_candles)}",
+            suffix,
+        ]
+    )
+
+    if len(shorter) <= max_length:
+        return shorter
+
+    return f"{shorter[: max_length - 9]}_{suffix}"
 
 
 class TrainingService:
@@ -83,7 +135,13 @@ class TrainingService:
             weight_decay=weight_decay,
         )
         started_at = datetime.now(tz=timezone.utc)
-        run_id = f"train_{model_version}"
+        run_id = build_training_run_id(
+            model_version=model_version,
+            symbol=symbol,
+            interval=interval,
+            horizon_candles=horizon_candles,
+            label_version=label_version,
+        )
         self._training_run_repository.create(
             {
                 "run_id": run_id,
@@ -244,7 +302,7 @@ class TrainingService:
 
     @staticmethod
     def _build_model_version(model_name: str) -> str:
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y_%m_%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y_%m_%d_%H%M%S_%f")
         return f"ml_{model_name}_v1_{timestamp}"
 
     @staticmethod
