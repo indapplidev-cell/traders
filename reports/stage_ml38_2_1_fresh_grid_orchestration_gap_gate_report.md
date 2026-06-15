@@ -30,37 +30,54 @@
 
 ## Checks
 
-- `python -m pytest` -> pending final validation
-- CLI checks -> pending final validation
-- `py_compile` -> pending final validation
-- fresh wrapper -> pending final run
-- archive path -> pending final run
+- `python -m pytest` -> 437 passed in 50.76s
+- CLI checks -> ok
+- `py_compile` -> ok
+- fresh wrapper -> completed end-to-end: yes
+- wrapper command -> `powershell -NoProfile -ExecutionPolicy Bypass -File "D:\disk_E\game_projects\traders\run_ml38_2_fv3_tuning_btc_eth_sol.ps1" -ReuseExistingResults`
+- wrapper source commit -> `8e22bb86ac8ed65a6f5710b784d0e8cb7593db0d`
+- archive verification -> ok
+- archive path -> `D:\disk_E\game_projects\traders\traders-ml\reports\feature_regime_experiments\ml38_2_1_fv3_tuning_3_symbols_15m_20260615_123125.zip`
 
 ## Fresh Grid / Archive Result
 
-- archive path: pending
-- manifest path: pending
-- wrapper_completed_end_to_end: pending
-- manual_archive_assembly_used: pending
-- manual archive assembly used: pending
-- source_mode: pending
-- symbols completed: pending
-- failed_symbols: pending
-- candidate_count: pending
-- accepted_candidate_count: pending
-- rejected_candidate_count: pending
+- branch: `ml38-2-1-fresh-grid-orchestration-gap-gate`
+- manifest created_at: `2026-06-15T12:31:52`
+- script updated outside repo: `D:\disk_E\game_projects\traders\run_ml38_2_fv3_tuning_btc_eth_sol.ps1`
+- archive path: `D:\disk_E\game_projects\traders\traders-ml\reports\feature_regime_experiments\ml38_2_1_fv3_tuning_3_symbols_15m_20260615_123125.zip`
+- manifest path: `D:\disk_E\game_projects\traders\traders-ml\reports\feature_regime_experiments\ml38_2_1_fv3_tuning_3_symbols_15m_20260615_123125\archive_manifest.json`
+- wrapper_completed_end_to_end: true
+- manual_archive_assembly_used: false
+- manual archive assembly used: no
+- fresh_grid_archive_created_by_wrapper: true
+- source_mode: `reuse_existing_symbol_results`
+- symbols completed: `BTCUSDT`, `ETHUSDT`, `SOLUSDT`
+- failed_symbols: none
+- candidate_count: 24
+- accepted_candidate_count: 0
+- rejected_candidate_count: 24
 
 ## Gate Consistency Result
 
 | symbol | best_config | gap_severity_for_training | gap_training_safe | gap_quality_gate_in_failed | gap_quality_gate_in_passed | candidate_status |
 |---|---|---:|---:|---:|---:|---|
-| pending | pending | pending | pending | pending | pending | pending |
+| BTCUSDT | lv2_h08_thr05_tp15_sl10 | CRITICAL | false | true | false | REJECTED |
+| ETHUSDT | lv2_h08_thr03_tp10_sl10 | CRITICAL | false | true | false | REJECTED |
+| SOLUSDT | lv2_h08_thr05_tp15_sl10 | CRITICAL | false | true | false | REJECTED |
+
+## Final Symbol Snapshot
+
+| symbol | best_config | status | gap_severity | gap_safe | gap_gate_failed | gap_gate_passed | collapse_detected | wf_pf | wf_total_r |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| BTCUSDT | lv2_h08_thr05_tp15_sl10 | REJECTED | CRITICAL | false | true | false | mixed | 1.037493 | 76.964785 |
+| ETHUSDT | lv2_h08_thr03_tp10_sl10 | REJECTED | CRITICAL | false | true | false | confidence_collapse | 0.917936 | -228.429237 |
+| SOLUSDT | lv2_h08_thr05_tp15_sl10 | REJECTED | CRITICAL | false | true | false | flat_bias | 0.949090 | -89.727946 |
 
 ## Decision
 
-- ML38.2.1 technically completed: pending
-- fresh wrapper completed end-to-end: pending
-- ML38.2 accepted as automation-closed: pending
+- ML38.2.1 technically completed: yes
+- fresh wrapper completed end-to-end: yes
+- ML38.2 accepted as automation-closed: yes
 - model accepted: no
-- can proceed to ML38.3: pending
+- can proceed to ML38.3: yes
 - can proceed to ML39: no
