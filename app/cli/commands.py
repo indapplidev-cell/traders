@@ -23,6 +23,7 @@ from app.diagnostics.collapse_diagnostics_v2 import CollapseDiagnosticsV2
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 from app.diagnostics.walk_forward_profit_diagnostics import WalkForwardProfitDiagnostics
+from app.diagnostics.dataset_gap_report import DatasetGapReportBuilder
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 from app.db.repositories.candle_repository import CandleRepository
@@ -188,6 +189,46 @@ def check_candle_gaps_command(
         candles = repository.get_range(symbol=symbol, interval=interval, start_at=start_at, end_at=end_at)
     result = checker.check(candles=candles, interval=interval, start_at=start_at, end_at=end_at, symbol=symbol)
     typer.echo(json.dumps(result))
+
+
+@cli.command("dataset-gap-report")
+def dataset_gap_report_command(
+    symbol: str = typer.Option(..., "--symbol"),
+    interval: str = typer.Option(..., "--interval"),
+    start_date: str = typer.Option(..., "--start-date"),
+    end_date: str = typer.Option(..., "--end-date"),
+    limit_gaps: int = typer.Option(50, "--limit-gaps"),
+    output: Path | None = typer.Option(None, "--output"),
+) -> None:
+    start_at, end_at = _build_utc_date_range(_parse_date(start_date), _parse_date(end_date))
+    with get_session() as session:
+        candles = CandleRepository(session).get_range(
+            symbol=symbol,
+            interval=interval,
+            start_at=start_at,
+            end_at=end_at,
+        )
+
+    payload = DatasetGapReportBuilder().build(
+        candles=candles,
+        symbol=symbol,
+        interval=interval,
+        start_at=start_at,
+        end_at=end_at,
+        start_date=start_date,
+        end_date=end_date,
+        limit_gaps=limit_gaps,
+    )
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        payload["output_path"] = str(output)
+
+    typer.echo(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
 
 
 @cli.command("build-features")
