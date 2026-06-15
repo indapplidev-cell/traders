@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 from app.evaluation.anti_collapse_validator import AntiCollapseValidator
 from app.evaluation.model_quality_validator import validate_model_quality
 from app.experiments.label_grid_candidate_ranker import LabelGridCandidateRanker
@@ -1029,12 +1030,14 @@ class LabelGridExperimentRunner:
             else f"pipeline_failed_at_{failed_stage.stage}"
         )
         gap_quality = self._as_dict(getattr(pipeline_result, "gap_quality_summary", {}))
-        gap_failed = (
-            str(gap_quality.get("gap_severity_for_training") or "OK") == "CRITICAL"
-            or not bool(gap_quality.get("dataset_safe_for_training", True))
+        failed_gates_list, passed_gates_list = normalize_gap_quality_gate(
+            gap_severity_for_training=gap_quality.get("gap_severity_for_training"),
+            gap_training_safe=gap_quality.get("dataset_safe_for_training"),
+            failed_gates=[],
+            passed_gates=[],
         )
+        gap_failed = "gap_quality_gate" in failed_gates_list
         known_quality_rejection = gap_failed and failed_stage_name == "model_quality_validation"
-        failed_gates = ("gap_quality_gate",) if gap_failed else ()
         probability_diagnostics = self._as_dict(stage_payloads.get("probability_diagnostics"))
         model_quality_payload = self._as_dict(stage_payloads.get("model_quality_validation"))
         collapse_diagnostics_v2 = self._as_dict(
@@ -1112,8 +1115,8 @@ class LabelGridExperimentRunner:
             walk_forward_profit_factor=None,
             gate_policy_allowed_count=0,
             gate_policy_blocked_count=0,
-            failed_gates=failed_gates,
-            passed_gates=(),
+            failed_gates=tuple(failed_gates_list),
+            passed_gates=tuple(passed_gates_list),
             warnings=tuple(
                 dict.fromkeys(
                     [
@@ -1176,20 +1179,13 @@ class LabelGridExperimentRunner:
         raw_passed_gates: Any,
         gap_quality: dict[str, Any],
     ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        failed = {
-            str(item) for item in LabelGridExperimentRunner._as_list(raw_failed_gates) if item is not None
-        }
-        passed = {
-            str(item) for item in LabelGridExperimentRunner._as_list(raw_passed_gates) if item is not None
-        }
-        gap_failed = (
-            str(gap_quality.get("gap_severity_for_training") or "OK") == "CRITICAL"
-            or not bool(gap_quality.get("dataset_safe_for_training", True))
+        failed, passed = normalize_gap_quality_gate(
+            gap_severity_for_training=gap_quality.get("gap_severity_for_training"),
+            gap_training_safe=gap_quality.get("dataset_safe_for_training"),
+            failed_gates=LabelGridExperimentRunner._string_list(raw_failed_gates),
+            passed_gates=LabelGridExperimentRunner._string_list(raw_passed_gates),
         )
-        if gap_failed:
-            failed.add("gap_quality_gate")
-            passed.discard("gap_quality_gate")
-        return tuple(sorted(failed)), tuple(sorted(passed - failed))
+        return tuple(failed), tuple(passed)
 
     @staticmethod
     def _normalize_final_candidate_status(

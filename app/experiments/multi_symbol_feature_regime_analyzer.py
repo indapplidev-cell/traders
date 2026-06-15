@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
+
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml35"
@@ -322,6 +324,26 @@ class MultiSymbolFeatureRegimeAnalyzer:
         summary_warnings = [str(item) for item in cls._as_list(summary.get("warnings"))]
         candidate_warnings = [str(item) for item in cls._as_list(best_candidate.get("warnings"))]
         summary_regime_status = cls._as_dict(summary.get("regime_label_builder_status"))
+        gap_severity_for_training = str(summary.get("gap_severity_for_training") or "UNKNOWN")
+        gap_training_safe = bool(summary.get("gap_training_safe", False))
+        failed_gates, passed_gates = normalize_gap_quality_gate(
+            gap_severity_for_training=gap_severity_for_training,
+            gap_training_safe=gap_training_safe,
+            failed_gates=[str(item) for item in cls._as_list(best_candidate.get("failed_gates"))],
+            passed_gates=[str(item) for item in cls._as_list(best_candidate.get("passed_gates"))],
+        )
+        configs_ranked: list[dict[str, Any]] = []
+        for row in cls._as_list(summary.get("configs_ranked") or summary.get("ranking")):
+            payload = dict(row)
+            row_failed_gates, row_passed_gates = normalize_gap_quality_gate(
+                gap_severity_for_training=payload.get("gap_severity_for_training", gap_severity_for_training),
+                gap_training_safe=payload.get("gap_training_safe", gap_training_safe),
+                failed_gates=[str(item) for item in cls._as_list(payload.get("failed_gates"))],
+                passed_gates=[str(item) for item in cls._as_list(payload.get("passed_gates"))],
+            )
+            payload["failed_gates"] = row_failed_gates
+            payload["passed_gates"] = row_passed_gates
+            configs_ranked.append(payload)
         return {
             "symbol": str(summary.get("symbol")),
             "experiment_id": summary.get("experiment_id"),
@@ -342,8 +364,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "real_feature_diagnostics_row_count": int(summary.get("real_feature_diagnostics_row_count", 0) or 0),
             "real_feature_diagnostics_missing_reason": summary.get("real_feature_diagnostics_missing_reason"),
             "effective_gap_count_for_training": int(summary.get("effective_gap_count_for_training", 0) or 0),
-            "gap_severity_for_training": str(summary.get("gap_severity_for_training") or "UNKNOWN"),
-            "gap_training_safe": bool(summary.get("gap_training_safe", False)),
+            "gap_severity_for_training": gap_severity_for_training,
+            "gap_training_safe": gap_training_safe,
             "baseline_edge": cls._float_or_none(best_candidate.get("accuracy_edge")),
             "model_accuracy": cls._float_or_none(best_candidate.get("model_accuracy")),
             "baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
@@ -375,8 +397,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 summary.get("profit_aware_diagnostics")
                 or best_candidate.get("profit_aware_diagnostics")
             ),
-            "failed_gates": [str(item) for item in cls._as_list(best_candidate.get("failed_gates"))],
-            "passed_gates": [str(item) for item in cls._as_list(best_candidate.get("passed_gates"))],
+            "failed_gates": failed_gates,
+            "passed_gates": passed_gates,
             "regime_features_attached": bool(summary.get("regime_features_attached", False)),
             "regime_feature_count": int(summary.get("regime_feature_count", 0) or 0),
             "regime_features_missing_reason": summary.get("regime_features_missing_reason"),
@@ -404,9 +426,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "reasons_why_best_still_rejected": [
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
             ],
-            "configs_ranked": [
-                dict(item) for item in cls._as_list(summary.get("configs_ranked") or summary.get("ranking"))
-            ],
+            "configs_ranked": configs_ranked,
         }
 
     @staticmethod

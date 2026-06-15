@@ -20,6 +20,7 @@ from app.diagnostics.class_bias_diagnostics import ClassBiasDiagnostics
 from app.diagnostics.collapse_tuning_summary import CollapseTuningSummaryBuilder
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
+from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 from app.labels.label_builder import LabelBuilder
 from app.labels.label_config import LabelConfig
 from app.labels.regime_label_builder import RegimeLabelBuilder
@@ -1398,7 +1399,7 @@ class FeatureRegimeExperimentRunner:
                 message="Sample candidate started",
             )
             score = round(-6.10 - (index * 0.70), 6)
-            failed_gates = ("collapse_gate", "walk_forward_gate") if index == 0 else ("collapse_gate", "profit_aware_gate", "gap_quality_gate")
+            failed_gates = ("collapse_gate", "walk_forward_gate") if index == 0 else ("collapse_gate", "profit_aware_gate")
             result = FeatureRegimeCandidateResult(
                 candidate_id=candidate_id,
                 config_id=str(config_payload["config_id"]),
@@ -1517,6 +1518,12 @@ class FeatureRegimeExperimentRunner:
         )
         for item in inner_result.candidate_results:
             ranking_row = ranking_map.get(item.config_id, {})
+            failed_gates, passed_gates = normalize_gap_quality_gate(
+                gap_severity_for_training=gap_severity_for_training,
+                gap_training_safe=gap_training_safe,
+                failed_gates=list(item.failed_gates),
+                passed_gates=list(item.passed_gates),
+            )
             candidate = FeatureRegimeCandidateResult(
                 symbol=config.symbol,
                 interval=config.interval,
@@ -1528,8 +1535,8 @@ class FeatureRegimeExperimentRunner:
                 candidate_status=item.candidate_status,
                 raw_candidate_status=getattr(item, "raw_candidate_status", item.candidate_status),
                 score=ranking_row.get("score"),
-                failed_gates=tuple(item.failed_gates),
-                passed_gates=tuple(item.passed_gates),
+                failed_gates=tuple(failed_gates),
+                passed_gates=tuple(passed_gates),
                 warnings=tuple(item.warnings),
                 recommendations=tuple(item.recommendations),
                 regime_specific_training_applied=bool(

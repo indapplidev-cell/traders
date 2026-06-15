@@ -100,6 +100,16 @@ This report captures the completed ML38.2 implementation plus the fresh BTCUSDT/
 - Can proceed to ML38.3: `yes`
 - Can proceed to ML39: `no`
 
+## Compatibility Notes
+
+- flat bias: still present in BTCUSDT and SOLUSDT best candidates
+- down blindness: still present in BTCUSDT best candidate
+- collapse summary: all three best candidates still fail collapse evaluation
+- traders-core integration: no
+- live trading: no
+- orders/trades: no
+- model auto activation: no
+
 | symbol | best_config | status | failed_gates | passed_gates | collapse_type | flat_bias_detected | down_blindness_detected | WF PF | WF R | accuracy | baseline | score |
 |---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
 | BTCUSDT | lv2_h08_thr05_tp15_sl10 | REJECTED | baseline_edge_gate, collapse_gate, gap_quality_gate | gate_policy_replay_gate, profit_aware_gate, walk_forward_gate | mixed | 1 | 1 | 1.0374930558605095 | 76.96478511999912 | 0.33168160253031104 | 0.3511860832894043 | -2.0 |

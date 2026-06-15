@@ -5,6 +5,11 @@ from typing import Any
 from app.evaluation.candidate_acceptance_thresholds import (
     default_candidate_acceptance_thresholds,
 )
+from app.evaluation.gap_quality_gate_normalizer import (
+    gap_quality_gate_is_safe,
+    gap_quality_gate_should_fail,
+    normalize_gap_severity,
+)
 
 
 class ModelCandidateSelector:
@@ -31,18 +36,24 @@ class ModelCandidateSelector:
         profit_metrics = self._profit_metrics(profit_aware_summary)
         walk_metrics = self._walk_metrics(walk_forward_summary)
         gate_policy_status = str(gate_policy_replay_summary.get("gate_policy_replay_status") or "")
-        gap_severity = str(
-            gap_quality.get("gap_severity_for_training")
-            or gap_quality.get("gap_severity")
+        gap_severity = (
+            normalize_gap_severity(
+                gap_quality.get("gap_severity_for_training")
+                or gap_quality.get("gap_severity")
+            )
             or "OK"
         )
+        gap_training_safe = gap_quality.get("dataset_safe_for_training")
         effective_gap_count = int(
             gap_quality.get("effective_gap_count_for_training")
             or gap_quality.get("real_gap_count")
             or gap_quality.get("gap_count")
             or 0
         )
-        raw_gap_severity = str(gap_quality.get("gap_severity") or gap_severity)
+        raw_gap_severity = (
+            normalize_gap_severity(gap_quality.get("gap_severity"))
+            or gap_severity
+        )
         predicted_distribution = dict(anti_collapse.get("predicted_distribution", {}))
         actual_distribution = dict(anti_collapse.get("actual_distribution", {}))
         max_predicted_class_share = max(
@@ -74,9 +85,20 @@ class ModelCandidateSelector:
             and walk_metrics["global_profit_factor"] is not None
             and walk_metrics["global_profit_factor"] >= thresholds.min_walk_forward_profit_factor
         )
-        gap_passed = thresholds.gap_severity_allowed(gap_severity) and bool(
-            gap_quality.get("dataset_safe_for_training", True)
-        )
+        if gap_quality_gate_is_safe(
+            gap_severity_for_training=gap_severity,
+            gap_training_safe=gap_training_safe,
+        ):
+            gap_passed = True
+        elif gap_quality_gate_should_fail(
+            gap_severity_for_training=gap_severity,
+            gap_training_safe=gap_training_safe,
+        ):
+            gap_passed = False
+        else:
+            gap_passed = thresholds.gap_severity_allowed(gap_severity) and bool(
+                gap_quality.get("dataset_safe_for_training", True)
+            )
 
         gates = {
             "baseline_edge_gate": {
@@ -134,7 +156,7 @@ class ModelCandidateSelector:
                 "gap_severity": gap_severity,
                 "raw_gap_severity": raw_gap_severity,
                 "effective_gap_count_for_training": effective_gap_count,
-                "dataset_safe_for_training": gap_quality.get("dataset_safe_for_training"),
+                "dataset_safe_for_training": gap_training_safe,
                 "max_allowed_gap_severity": thresholds.max_allowed_gap_severity,
                 "explanation": (
                     "gap_quality_gate failed because training-safe gap_severity exceeds max_allowed_gap_severity"
