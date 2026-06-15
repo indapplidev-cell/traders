@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Fresh FV3 tuning with DB candle cache for traders-ml.
+r"""Fresh FV3 tuning with DB candle cache for traders-ml.
 
 File name without stage/version binding:
 
@@ -452,7 +452,8 @@ class Fv3CachedTuningWrapper:
         load_stderr = self.cache_output_dir / f"{symbol}-load-candles.stderr.log"
         self._status(
             "CACHE",
-            f"[{index}/{len(self.symbols)}] {symbol}: cache incomplete/unknown or force-redownload=True. Running load-candles...",
+            f"[{index}/{len(self.symbols)}] {symbol}: "
+            f"cache incomplete/unknown or force_redownload={self.args.force_redownload}. Running load-candles...",
         )
         load_exit_code = self._load_candles(symbol=symbol, stdout_path=load_stdout, stderr_path=load_stderr)
 
@@ -554,7 +555,59 @@ class Fv3CachedTuningWrapper:
         return int(completed.returncode)
 
     def _infer_cache_complete(self, payload: dict[str, Any]) -> tuple[bool | None, str]:
-        # Strong signals from ML38.3 dataset-gap-report semantics.
+        """Infer whether PostgreSQL candle cache is complete enough for training.
+
+        ML38.4.1 gap semantics:
+        - `gap_count`, `missing_open_times` and `is_valid=false` may include the unfinished
+          tail of the current end date.
+        - `trailing_incomplete_range_detected=true` is not a cache blocker.
+        - Real blockers are internal/real gaps, duplicates, misaligned candles, or empty cache.
+        """
+
+        if not isinstance(payload, dict):
+            return None, "check-candle-gaps output is not a JSON object."
+
+        unique_open_times = self._first_int(payload, "unique_open_times", "checked")
+        if unique_open_times is None or unique_open_times <= 0:
+            return False, "no candles found in DB cache."
+
+        duplicate_count = self._first_int(payload, "duplicate_count") or 0
+        if duplicate_count > 0:
+            return False, f"duplicate_count is {duplicate_count}."
+
+        misaligned_count = self._first_int(payload, "misaligned_count") or 0
+        if misaligned_count > 0:
+            return False, f"misaligned_count is {misaligned_count}."
+
+        # Prefer the new explicit real-gap fields when available. These fields exclude the
+        # trailing incomplete current-day tail and are therefore the source of truth.
+        if "real_gap_count" in payload or "real_missing_open_times" in payload:
+            real_gap_count = self._first_int(payload, "real_gap_count") or 0
+            real_missing_open_times = payload.get("real_missing_open_times") or []
+
+            if real_gap_count > 0:
+                return False, f"real_gap_count is {real_gap_count}."
+
+            if isinstance(real_missing_open_times, list) and real_missing_open_times:
+                return False, f"real_missing_open_times contains {len(real_missing_open_times)} missing candles."
+
+            if real_missing_open_times and not isinstance(real_missing_open_times, list):
+                return False, "real_missing_open_times is present but is not a list."
+
+            trailing_detected = bool(payload.get("trailing_incomplete_range_detected") or False)
+            trailing_count = self._first_int(payload, "trailing_incomplete_count") or 0
+
+            if trailing_detected:
+                return (
+                    True,
+                    "real_gap_count=0 and real_missing_open_times=[]; "
+                    f"ignored trailing incomplete range: {trailing_count}.",
+                )
+
+            return True, "real_gap_count=0 and real_missing_open_times=[]."
+
+        # Compatibility with older gap-check payloads that already expose effective/training-safe
+        # gap semantics.
         effective_gap_count = self._first_int(
             payload,
             "effective_gap_count_for_training",
@@ -562,8 +615,6 @@ class Fv3CachedTuningWrapper:
             "internal_missing_candle_count",
             "real_missing_candle_count",
             "missing_internal_count",
-            "missing_count",
-            "gap_count",
         )
 
         safe_flag = self._first_bool(
@@ -593,12 +644,15 @@ class Fv3CachedTuningWrapper:
         if effective_gap_count is not None and effective_gap_count > 0:
             return False, f"effective/internal gap count is {effective_gap_count}."
 
-        # Fallback for outputs containing lists.
-        for key in ("real_missing_open_times", "internal_missing_open_times", "missing_open_times"):
+        # Legacy fallback: when the CLI has no real/effective semantics, raw gap_count and
+        # missing_open_times are treated as blockers.
+        legacy_gap_count = self._first_int(payload, "gap_count", "missing_count")
+        if legacy_gap_count is not None and legacy_gap_count > 0:
+            return False, f"legacy gap_count is {legacy_gap_count}."
+
+        for key in ("internal_missing_open_times", "missing_open_times"):
             value = payload.get(key)
-            if isinstance(value, list):
-                if len(value) == 0:
-                    continue
+            if isinstance(value, list) and value:
                 return False, f"{key} contains {len(value)} missing candles."
 
         if safe_flag is True:
@@ -1043,6 +1097,8 @@ class Fv3CachedTuningWrapper:
                 source_mode_ok,
                 manual_archive_assembly_ok,
                 expected_symbols_ok,
+                cache_complete_ok,
+                gap_training_safe_ok,
             ]
         )
 
@@ -1265,7 +1321,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--ensure-candles-only", action="store_true", help="Only check/load candles and create archive; do not train.")
     parser.add_argument("--skip-candle-cache", action="store_true", help="Do not check or load candles before training.")
     parser.add_argument("--strict-cache", action="store_true", help="Fail if post-load candle cache status is incomplete or unknown.")
-    parser.add_argument("--force-redownload", action="store_true", help="Run load-candles even if cache check says data is complete.")
+    parser.add_argument("--force-redownload", action="store_true", default=False, help="Run load-candles even if cache check says data is complete.")
     parser.add_argument("--no-load-on-unknown-cache", action="store_true", help="Do not run load-candles when check-candle-gaps output is unknown.")
     parser.add_argument("--sequential", action="store_true", help="Run symbols sequentially instead of parallel.")
     parser.add_argument("--max-configs", type=int, default=None, help="Optional max configs per symbol for debugging only.")
