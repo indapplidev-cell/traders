@@ -41,6 +41,7 @@ class LabelGridExperimentConfig:
     run_walk_forward: bool = True
     run_gate_policy_replay: bool = True
     output_dir: Path = Path("reports/label_grid_experiments")
+    skip_candle_load: bool = False
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -826,6 +827,7 @@ class LabelGridExperimentRunner:
                 run_gate_policy_replay=config.run_gate_policy_replay,
                 export_report=True,
                 output_dir=candidate_runtime_dir,
+                skip_candle_load=config.skip_candle_load,
             )
         )
         if pipeline_result.status == "FAILED":

@@ -67,6 +67,7 @@ class FeatureRegimeExperimentConfig:
     run_candidate_selection: bool = True
     ranking_strategy: str = "default"
     output_dir: Path = Path("reports/feature_regime_experiments")
+    skip_candle_load: bool = False
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -1484,6 +1485,7 @@ class FeatureRegimeExperimentRunner:
                 run_walk_forward=True,
                 run_gate_policy_replay=True,
                 output_dir=runtime_dir,
+                skip_candle_load=config.skip_candle_load,
             )
         )
         ranking_map = {

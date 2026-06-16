@@ -715,6 +715,9 @@ class Fv3CachedTuningWrapper:
             experiment_id,
         ]
 
+        if self.tuning_command == DEFAULT_TUNING_COMMAND:
+            command.append("--skip-candle-load")
+
         if self.args.max_configs is not None:
             command.extend(["--max-configs", str(self.args.max_configs)])
 

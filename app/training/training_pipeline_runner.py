@@ -69,6 +69,7 @@ class TrainingPipelineConfig:
     run_gate_policy_replay: bool = True
     export_report: bool = True
     output_dir: Path = Path("reports/training_pipeline_runs")
+    skip_candle_load: bool = False
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -259,6 +260,7 @@ class LongHistoryTrainingPipelineRunner:
                 "sample_mode": config.sample_mode,
                 "run_gate_policy_replay": config.run_gate_policy_replay,
                 "export_report": config.export_report,
+                "skip_candle_load": config.skip_candle_load,
             },
         )
 
@@ -381,6 +383,7 @@ class LongHistoryTrainingPipelineRunner:
                 "run_gate_policy_replay": config.run_gate_policy_replay,
                 "export_report": config.export_report,
                 "output_dir": str(config.output_dir),
+                "skip_candle_load": config.skip_candle_load,
             },
             next_recommendations=self._next_recommendations(
                 quality_status=str(quality_summary.get("quality_status", INSUFFICIENT_REAL_HISTORY)),
@@ -569,6 +572,7 @@ class LongHistoryTrainingPipelineRunner:
                 "run_gate_policy_replay": config.run_gate_policy_replay,
                 "export_report": config.export_report,
                 "output_dir": str(config.output_dir),
+                "skip_candle_load": config.skip_candle_load,
             },
             next_recommendations=self._next_recommendations(
                 quality_status=str(quality_summary.get("quality_status", INSUFFICIENT_REAL_HISTORY)),
@@ -611,6 +615,8 @@ class LongHistoryTrainingPipelineRunner:
             return self._dry_run_stage_handler(stage)
         if config.sample_mode:
             return self._sample_mode_stage_handler(stage)
+        if stage == "load_candles" and config.skip_candle_load:
+            return self._skip_load_candles_stage()
         return {
             "health_check": self._health_check_real,
             "db_check": self._db_check_real,
@@ -1398,6 +1404,35 @@ class LongHistoryTrainingPipelineRunner:
             stage_payloads: dict[str, Any],
         ) -> dict[str, Any]:
             return {"status": COMPLETED, "message": message, "data": payload}
+
+        return handler
+
+    def _skip_load_candles_stage(
+        self,
+    ) -> Callable[[TrainingPipelineConfig, dict[str, Any]], dict[str, Any]]:
+        """Пропускает сетевую загрузку свечей для cached training режима.
+
+        Внешний wrapper уже проверяет PostgreSQL candle cache через
+        check-candle-gaps. Поэтому внутренний candidate pipeline не должен
+        повторно обращаться к Binance и не должен падать из-за сетевых timeout.
+        """
+
+        def handler(
+            config: TrainingPipelineConfig,
+            stage_payloads: dict[str, Any],
+        ) -> dict[str, Any]:
+            return {
+                "status": SKIPPED,
+                "message": "Candle loading skipped; using existing PostgreSQL DB cache.",
+                "data": {
+                    "skip_candle_load": True,
+                    "candle_source": "postgresql_db_cache",
+                    "symbol": config.symbol,
+                    "interval": config.interval,
+                    "start_date": config.start_date,
+                    "end_date": config.resolved_end_date(),
+                },
+            }
 
         return handler
 

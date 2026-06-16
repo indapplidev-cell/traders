@@ -43,3 +43,40 @@ def test_ml38_2_fv3_tuning_run_cli_dry_run_creates_outputs(tmp_path: Path) -> No
     assert payload["feature_version_used"] == "fv3_candle_ta_context"
     assert payload["experiment_status"] == "DRY_RUN_COMPLETED"
     assert Path(payload["summary_json_path"]).exists()
+
+def test_ml38_2_fv3_tuning_run_cli_passes_skip_candle_load_by_default(monkeypatch, tmp_path: Path) -> None:
+    captured = {}
+
+    def fake_run_ml38_2_fv3_tuning(**kwargs):
+        captured.update(kwargs)
+        return {
+            "feature_version_used": "fv3_candle_ta_context",
+            "experiment_status": "DRY_RUN_COMPLETED",
+            "summary_json_path": str(tmp_path / "summary.json"),
+        }
+
+    monkeypatch.setattr(
+        "app.cli.commands.run_ml38_2_fv3_tuning",
+        fake_run_ml38_2_fv3_tuning,
+    )
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "ml38-2-fv3-tuning-run",
+            "--symbol",
+            "BTCUSDT",
+            "--interval",
+            "15m",
+            "--start-date",
+            "2025-01-01",
+            "--dry-run",
+            "--max-configs",
+            "1",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["skip_candle_load"] is True

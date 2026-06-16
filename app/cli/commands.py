@@ -3272,6 +3272,7 @@ def run_label_grid_experiment(
     run_training: bool = True,
     run_walk_forward: bool = True,
     run_gate_policy_replay: bool = True,
+    skip_candle_load: bool = False,
     output_dir: Path = Path("reports/label_grid_experiments"),
 ) -> dict[str, object]:
     """Run the ML28 label-grid experiment session."""
@@ -3290,6 +3291,7 @@ def run_label_grid_experiment(
         run_training=run_training,
         run_walk_forward=run_walk_forward,
         run_gate_policy_replay=run_gate_policy_replay,
+        skip_candle_load=skip_candle_load,
         output_dir=output_dir,
     )
     result = LabelGridExperimentRunner().run(config)
@@ -3414,6 +3416,7 @@ def run_feature_regime_experiment(
     run_leakage_guard: bool = True,
     run_candidate_selection: bool = True,
     ranking_strategy: str = "default",
+    skip_candle_load: bool = False,
     output_dir: Path = Path("reports/feature_regime_experiments"),
 ) -> dict[str, object]:
     """Run the ML33 feature/regime-aware experiment flow."""
@@ -3436,6 +3439,7 @@ def run_feature_regime_experiment(
         run_leakage_guard=run_leakage_guard,
         run_candidate_selection=run_candidate_selection,
         ranking_strategy=ranking_strategy,
+        skip_candle_load=skip_candle_load,
         output_dir=output_dir,
     )
     result = FeatureRegimeExperimentRunner().run(config)
@@ -3575,6 +3579,7 @@ def run_ml38_2_fv3_tuning(
     max_configs: int | None = None,
     dry_run: bool = False,
     sample_mode: bool = False,
+    skip_candle_load: bool = True,
     output_dir: Path = Path("reports/feature_regime_experiments"),
 ) -> dict[str, object]:
     matrix = ML382FV3TuningMatrix().build()
@@ -3593,6 +3598,7 @@ def run_ml38_2_fv3_tuning(
         max_configs=max_configs,
         dry_run=dry_run,
         sample_mode=sample_mode,
+        skip_candle_load=skip_candle_load,
         ranking_strategy="ml38_2",
         output_dir=output_dir,
     )
@@ -3826,6 +3832,7 @@ def run_train_quality_pipeline(
     dry_run: bool = False,
     sample_mode: bool = False,
     run_gate_policy_replay: bool = True,
+    skip_candle_load: bool = False,
     export_report: bool = True,
     output_dir: Path = Path("reports/training_pipeline_runs"),
 ) -> dict[str, object]:
@@ -3841,6 +3848,7 @@ def run_train_quality_pipeline(
         dry_run=dry_run,
         sample_mode=sample_mode,
         run_gate_policy_replay=run_gate_policy_replay,
+        skip_candle_load=skip_candle_load,
         export_report=export_report,
         output_dir=output_dir,
     )
@@ -4435,6 +4443,11 @@ def label_grid_experiment_run_command(
         True,
         "--run-gate-policy-replay/--no-run-gate-policy-replay",
     ),
+    skip_candle_load: bool = typer.Option(
+        False,
+        "--skip-candle-load/--no-skip-candle-load",
+        help="Skip internal Binance candle loading and use existing PostgreSQL candle cache.",
+    ),
     output_dir: Path = typer.Option(
         Path("reports/label_grid_experiments"),
         "--output-dir",
@@ -4456,6 +4469,7 @@ def label_grid_experiment_run_command(
         run_training=run_training,
         run_walk_forward=run_walk_forward,
         run_gate_policy_replay=run_gate_policy_replay,
+        skip_candle_load=skip_candle_load,
         output_dir=output_dir,
     )
 
@@ -4559,6 +4573,11 @@ def feature_regime_experiment_run_command(
         "default",
         "--ranking-strategy",
     ),
+    skip_candle_load: bool = typer.Option(
+        False,
+        "--skip-candle-load/--no-skip-candle-load",
+        help="Skip internal Binance candle loading and use existing PostgreSQL candle cache.",
+    ),
     output_dir: Path = typer.Option(
         Path("reports/feature_regime_experiments"),
         "--output-dir",
@@ -4584,6 +4603,7 @@ def feature_regime_experiment_run_command(
         run_leakage_guard=run_leakage_guard,
         run_candidate_selection=run_candidate_selection,
         ranking_strategy=ranking_strategy,
+        skip_candle_load=skip_candle_load,
         output_dir=output_dir,
     )
 
@@ -4622,6 +4642,11 @@ def ml38_2_fv3_tuning_run_command(
     max_configs: int | None = typer.Option(None, "--max-configs"),
     dry_run: bool = typer.Option(False, "--dry-run"),
     sample_mode: bool = typer.Option(False, "--sample-mode"),
+    skip_candle_load: bool = typer.Option(
+        True,
+        "--skip-candle-load/--no-skip-candle-load",
+        help="Skip internal Binance candle loading and use existing PostgreSQL candle cache. Enabled by default for cached FV3 tuning.",
+    ),
     output_dir: Path = typer.Option(
         Path("reports/feature_regime_experiments"),
         "--output-dir",
@@ -4638,6 +4663,7 @@ def ml38_2_fv3_tuning_run_command(
         max_configs=max_configs,
         dry_run=dry_run,
         sample_mode=sample_mode,
+        skip_candle_load=skip_candle_load,
         output_dir=output_dir,
     )
     typer.echo(
@@ -4724,6 +4750,11 @@ def train_quality_pipeline_command(
         True,
         "--run-gate-policy-replay/--no-run-gate-policy-replay",
     ),
+    skip_candle_load: bool = typer.Option(
+        False,
+        "--skip-candle-load/--no-skip-candle-load",
+        help="Skip internal Binance candle loading and use existing PostgreSQL candle cache.",
+    ),
     export_report: bool = typer.Option(
         True,
         "--export-report/--no-export-report",
@@ -4746,6 +4777,7 @@ def train_quality_pipeline_command(
         dry_run=dry_run,
         sample_mode=sample_mode,
         run_gate_policy_replay=run_gate_policy_replay,
+        skip_candle_load=skip_candle_load,
         export_report=export_report,
         output_dir=output_dir,
     )
