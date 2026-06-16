@@ -20,6 +20,7 @@ from app.diagnostics.class_bias_diagnostics import ClassBiasDiagnostics
 from app.diagnostics.collapse_tuning_summary import CollapseTuningSummaryBuilder
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
+from app.diagnostics.anti_collapse_diagnostics import AntiCollapseDiagnostics
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 from app.labels.label_builder import LabelBuilder
 from app.labels.label_config import LabelConfig
@@ -147,6 +148,9 @@ class FeatureRegimeCandidateResult:
     collapse_tuning_summary: dict[str, Any] = field(default_factory=dict)
     collapse_tuning_summary_missing_reason: str | None = None
     score_components: dict[str, Any] = field(default_factory=dict)
+    anti_collapse_diagnostics: dict[str, Any] = field(default_factory=dict)
+    anti_collapse_score: float | None = None
+    anti_collapse_status: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -214,6 +218,9 @@ class FeatureRegimeCandidateResult:
             "collapse_tuning_summary": dict(self.collapse_tuning_summary),
             "collapse_tuning_summary_missing_reason": self.collapse_tuning_summary_missing_reason,
             "score_components": dict(self.score_components),
+            "anti_collapse_diagnostics": dict(self.anti_collapse_diagnostics),
+            "anti_collapse_score": self.anti_collapse_score,
+            "anti_collapse_status": self.anti_collapse_status,
         }
 
 
@@ -486,6 +493,7 @@ class FeatureRegimeExperimentRunner:
         self._reporter = reporter or FeatureRegimeExperimentReporter()
         self._class_bias_diagnostics = ClassBiasDiagnostics()
         self._collapse_tuning_summary_builder = CollapseTuningSummaryBuilder()
+        self._anti_collapse_diagnostics = AntiCollapseDiagnostics()
         self._ml38_2_ranker = ML382ConfigRanker()
 
     @staticmethod
@@ -1651,6 +1659,12 @@ class FeatureRegimeExperimentRunner:
                 collapse_diagnostics=self._as_dict(candidate.collapse_diagnostics_v2),
                 class_bias_diagnostics=class_bias,
             ) if candidate.collapse_diagnostics_v2 or class_bias else {}
+            anti_collapse = self._anti_collapse_diagnostics.build(
+                symbol=config.symbol,
+                config_id=candidate.config_id,
+                flat_bias_diagnostics=class_bias,
+                collapse_diagnostics_v2=self._as_dict(candidate.collapse_diagnostics_v2),
+            ).to_dict() if candidate.collapse_diagnostics_v2 or class_bias else {}
             enriched.append(
                 replace(
                     candidate,
@@ -1665,6 +1679,9 @@ class FeatureRegimeExperimentRunner:
                     collapse_tuning_summary_missing_reason=(
                         None if collapse_summary else "collapse_or_bias_diagnostics_not_available"
                     ),
+                    anti_collapse_diagnostics=anti_collapse,
+                    anti_collapse_score=anti_collapse.get("anti_collapse_score"),
+                    anti_collapse_status=anti_collapse.get("anti_collapse_status"),
                 )
             )
 

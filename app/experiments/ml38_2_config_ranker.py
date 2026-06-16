@@ -50,6 +50,22 @@ class ML382ConfigRanker:
         collapse_detected = bool(candidate.get("collapse_detected", False))
         bias = dict(candidate.get("flat_bias_diagnostics", {}))
         collapse_summary = dict(candidate.get("collapse_tuning_summary", {}))
+        anti_collapse_diagnostics = dict(candidate.get("anti_collapse_diagnostics", {}))
+        anti_collapse_score = self._safe_float(
+            candidate.get("anti_collapse_score")
+            if candidate.get("anti_collapse_score") is not None
+            else anti_collapse_diagnostics.get("anti_collapse_score")
+        )
+        anti_collapse_status = str(
+            candidate.get("anti_collapse_status")
+            or anti_collapse_diagnostics.get("anti_collapse_status")
+            or "UNKNOWN"
+        )
+        anti_collapse_bonus = 0.0
+        if anti_collapse_score >= 4.0:
+            anti_collapse_bonus = 1.5
+        elif anti_collapse_score >= 2.0:
+            anti_collapse_bonus = 0.75
 
         score_components = {
             "walk_forward_pf_bonus": 3.0 if walk_forward_pf > 1.0 else 0.0,
@@ -57,6 +73,7 @@ class ML382ConfigRanker:
             "accuracy_vs_baseline_bonus": 1.5 if accuracy > baseline else 0.0,
             "profit_aware_gate_bonus": 1.0 if "profit_aware_gate" in passed_gates else 0.0,
             "walk_forward_gate_bonus": 1.0 if "walk_forward_gate" in passed_gates else 0.0,
+            "anti_collapse_bonus": anti_collapse_bonus,
             "collapse_penalty": -3.0 if collapse_detected else 0.0,
             "flat_bias_penalty": -2.0
             if str(bias.get("symbol_bias_severity")) in {"HIGH", "CRITICAL"}
@@ -94,6 +111,9 @@ class ML382ConfigRanker:
             "candidate_status": str(candidate.get("candidate_status") or "UNKNOWN"),
             "score": score,
             "score_components": score_components,
+            "anti_collapse_diagnostics": anti_collapse_diagnostics,
+            "anti_collapse_score": anti_collapse_score,
+            "anti_collapse_status": anti_collapse_status,
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "collapse_type": collapse_summary.get("collapse_type") or candidate.get("collapse_type"),

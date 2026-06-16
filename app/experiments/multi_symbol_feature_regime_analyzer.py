@@ -75,6 +75,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         walk_forward_failed_count = gate_failure_counts.get("walk_forward_gate", 0)
         profit_aware_failed_count = gate_failure_counts.get("profit_aware_gate", 0)
         configs_ranked = self._configs_ranked(symbol_results)
+        anti_collapse_summary = self._anti_collapse_summary(symbol_results)
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -97,6 +98,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_global_config": None if best_result is None else best_result["best_candidate_config_id"],
             "configs_ranked": configs_ranked,
             "symbol_results": symbol_results,
+            "anti_collapse_summary": anti_collapse_summary,
             "gate_failure_counts": gate_failure_counts,
             "feature_version_summary": {
                 "all_feature_version_fv2": all_feature_version_fv2,
@@ -416,6 +418,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 "model_quality_validation_status",
                 summary.get("model_quality_validation_status"),
             ),
+            "anti_collapse_diagnostics": cls._as_dict(best_candidate.get("anti_collapse_diagnostics")),
+            "anti_collapse_score": cls._float_or_none(best_candidate.get("anti_collapse_score")),
+            "anti_collapse_status": best_candidate.get("anti_collapse_status"),
             "flat_bias_diagnostics": cls._as_dict(best_candidate.get("flat_bias_diagnostics")),
             "flat_bias_detected": bool(best_candidate.get("flat_bias_detected", False)),
             "down_blindness_detected": bool(best_candidate.get("down_blindness_detected", False)),
@@ -460,6 +465,60 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
             ],
             "configs_ranked": configs_ranked,
+        }
+
+    @classmethod
+    def _anti_collapse_summary(cls, symbol_results: list[dict[str, Any]]) -> dict[str, Any]:
+        """Собирает ML38.5 anti-collapse summary по всем символам.
+
+        Используется только для анализа качества.
+        Не принимает модель автоматически.
+        """
+        best_by_symbol: dict[str, dict[str, Any]] = {}
+        status_counts: dict[str, int] = {"GOOD": 0, "WATCH": 0, "WEAK": 0, "UNKNOWN": 0}
+
+        for symbol_result in symbol_results:
+            symbol = str(symbol_result.get("symbol") or "UNKNOWN")
+            best_row: dict[str, Any] | None = None
+            best_score: float | None = None
+
+            for row in cls._as_list(symbol_result.get("configs_ranked")):
+                if not isinstance(row, dict):
+                    continue
+                status = str(row.get("anti_collapse_status") or "UNKNOWN").upper()
+                if status not in status_counts:
+                    status_counts["UNKNOWN"] += 1
+                else:
+                    status_counts[status] += 1
+
+                score = cls._float_or_none(row.get("anti_collapse_score"))
+                if score is None:
+                    continue
+                if best_score is None or score > best_score:
+                    best_score = score
+                    best_row = row
+
+            if best_row is not None:
+                best_by_symbol[symbol] = {
+                    "config_id": best_row.get("config_id"),
+                    "candidate_status": best_row.get("candidate_status"),
+                    "anti_collapse_score": best_row.get("anti_collapse_score"),
+                    "anti_collapse_status": best_row.get("anti_collapse_status"),
+                    "collapse_type": best_row.get("collapse_type"),
+                    "flat_bias_detected": best_row.get("flat_bias_detected"),
+                    "down_blindness_detected": best_row.get("down_blindness_detected"),
+                    "walk_forward_profit_factor": best_row.get("walk_forward_profit_factor"),
+                    "walk_forward_total_r": best_row.get("walk_forward_total_r"),
+                }
+
+        return {
+            "diagnostic_name": "anti_collapse_multi_symbol_summary",
+            "diagnostic_version": "ml38_5",
+            "best_by_symbol": best_by_symbol,
+            "good_count": status_counts["GOOD"],
+            "watch_count": status_counts["WATCH"],
+            "weak_count": status_counts["WEAK"],
+            "unknown_count": status_counts["UNKNOWN"],
         }
 
     @classmethod

@@ -62,6 +62,7 @@ from app.experiments.ml38_2_fv3_tuning_matrix import (
     ML382FV3TuningMatrix,
     ML38_2_FEATURE_VERSION,
     ML38_2_REQUIRED_SYMBOLS,
+    ML38_5_ANTI_COLLAPSE_CONFIG_IDS,
 )
 from app.experiments.ml31_grid_improvement_analyzer import ML31GridImprovementAnalyzer
 from app.experiments.ml31_grid_improvement_reporter import ML31GridImprovementReporter
@@ -3560,8 +3561,11 @@ def build_ml38_2_fv3_tuning_preview_payload() -> dict[str, object]:
     return {
         "status": "ok",
         "stage": "ML38.2",
+        "anti_collapse_stage": payload.get("anti_collapse_stage"),
         "feature_version": payload["feature_version"],
         "config_count": payload["config_count"],
+        "anti_collapse_config_count": payload.get("anti_collapse_config_count"),
+        "anti_collapse_config_ids": list(ML38_5_ANTI_COLLAPSE_CONFIG_IDS),
         "configs": payload["configs"],
         "required_symbols": list(ML38_2_REQUIRED_SYMBOLS),
         "missing_configs": payload["missing_configs"],

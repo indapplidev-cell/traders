@@ -15,6 +15,7 @@ class LabelQualityGridConfig:
     flat_threshold: float
     description: str
     risk_note: str
+    anti_collapse_profile: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -27,6 +28,7 @@ class LabelQualityGridConfig:
             "flat_threshold": self.flat_threshold,
             "description": self.description,
             "risk_note": self.risk_note,
+            "anti_collapse_profile": self.anti_collapse_profile,
         }
 
 
@@ -68,6 +70,78 @@ class LabelQualityGridPlanner:
                 flat_threshold=0.5,
                 description="Closest extension of lv1 with stricter flat separation.",
                 risk_note="Can still collapse if feature set remains weak.",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h04_thr02_tp08_sl08_ac",
+                label_version="lv3_h04_thr02_tp08_sl08_ac",
+                horizon=4,
+                threshold=0.2,
+                take_profit_atr=0.8,
+                stop_loss_atr=0.8,
+                flat_threshold=0.2,
+                description="ML38.5 short intraday anti-collapse label: 1h horizon with low ATR threshold to increase directional samples.",
+                risk_note="Can add noise; must be rejected if collapse/walk-forward gates fail.",
+                anti_collapse_profile="intraday_directional_short",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h04_thr025_tp08_sl08_ac",
+                label_version="lv3_h04_thr025_tp08_sl08_ac",
+                horizon=4,
+                threshold=0.25,
+                take_profit_atr=0.8,
+                stop_loss_atr=0.8,
+                flat_threshold=0.25,
+                description="ML38.5 short intraday anti-collapse label: 1h horizon with slightly stricter directional threshold.",
+                risk_note="Can still be noisy on chop; only useful if probability separation improves.",
+                anti_collapse_profile="intraday_directional_short",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h06_thr025_tp10_sl08_ac",
+                label_version="lv3_h06_thr025_tp10_sl08_ac",
+                horizon=6,
+                threshold=0.25,
+                take_profit_atr=1.0,
+                stop_loss_atr=0.8,
+                flat_threshold=0.25,
+                description="ML38.5 medium intraday anti-collapse label: 1.5h horizon with asymmetric TP/SL to test directional sensitivity.",
+                risk_note="Can over-favor fast directional moves; walk-forward must remain positive.",
+                anti_collapse_profile="intraday_directional_medium",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h06_thr03_tp10_sl10_ac",
+                label_version="lv3_h06_thr03_tp10_sl10_ac",
+                horizon=6,
+                threshold=0.3,
+                take_profit_atr=1.0,
+                stop_loss_atr=1.0,
+                flat_threshold=0.3,
+                description="ML38.5 medium intraday anti-collapse label: 1.5h horizon with balanced TP/SL.",
+                risk_note="Should reduce label noise versus h04 but may still collapse if features are weak.",
+                anti_collapse_profile="intraday_directional_medium",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h08_thr025_tp10_sl08_ac",
+                label_version="lv3_h08_thr025_tp10_sl08_ac",
+                horizon=8,
+                threshold=0.25,
+                take_profit_atr=1.0,
+                stop_loss_atr=0.8,
+                flat_threshold=0.25,
+                description="ML38.5 h08 anti-collapse label: keep 2h horizon but lower flat threshold to reduce FLAT overprediction.",
+                risk_note="Can increase false positives; baseline and walk-forward gates must stay strict.",
+                anti_collapse_profile="intraday_directional_h08",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv3_h08_thr03_tp12_sl08_ac",
+                label_version="lv3_h08_thr03_tp12_sl08_ac",
+                horizon=8,
+                threshold=0.3,
+                take_profit_atr=1.2,
+                stop_loss_atr=0.8,
+                flat_threshold=0.3,
+                description="ML38.5 h08 anti-collapse label: stronger reward target with tighter SL to test cleaner directional edges.",
+                risk_note="Can reduce accepted signals if TP is too ambitious; evaluate by walk-forward only.",
+                anti_collapse_profile="intraday_directional_h08",
             ),
             LabelQualityGridConfig(
                 config_id="lv2_h12_thr03_tp10_sl10",
