@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from app.dataset.dataset_exporter import DatasetExporter
-from app.dataset.gap_aware_dataset_filter import GapAwareDatasetFilter
 from app.dataset.dataset_models import DatasetRow
 from app.dataset.dataset_splitter import DatasetSplitter
+from app.dataset.gap_aware_dataset_filter import GapAwareDatasetFilter
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 
@@ -40,6 +40,8 @@ class DatasetBuilder:
         missing_open_times: list[str] | None = None,
         gap_lookback_bars: int = 3,
         gap_lookahead_bars: int = 3,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
     ) -> dict[str, Any]:
         dataset_rows, summary = self.build_rows(
             symbol=symbol,
@@ -52,10 +54,15 @@ class DatasetBuilder:
             missing_open_times=missing_open_times,
             gap_lookback_bars=gap_lookback_bars,
             gap_lookahead_bars=gap_lookahead_bars,
+            start_at=start_at,
+            end_at=end_at,
         )
         splits = self.split_rows(dataset_rows, train_end=train_end, validation_end=validation_end)
         summary.update(
             {
+                "start_at": start_at.isoformat() if start_at is not None else None,
+                "end_at": end_at.isoformat() if end_at is not None else None,
+                "date_range_limited": start_at is not None and end_at is not None,
                 "train_end": train_end.isoformat() if train_end is not None else None,
                 "validation_end": validation_end.isoformat() if validation_end is not None else None,
                 "train_rows": len(splits["train"]),
@@ -92,18 +99,38 @@ class DatasetBuilder:
         missing_open_times: list[str] | None = None,
         gap_lookback_bars: int = 3,
         gap_lookahead_bars: int = 3,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
     ) -> tuple[list[DatasetRow], dict[str, Any]]:
-        feature_rows = self._feature_repository.get_all(
-            symbol=symbol,
-            interval=interval,
-            feature_version=feature_version,
-        )
-        label_rows = self._label_repository.get_all(
-            symbol=symbol,
-            interval=interval,
-            horizon_candles=horizon_candles,
-            label_version=label_version,
-        )
+        if start_at is not None and end_at is not None:
+            feature_rows = self._feature_repository.get_range(
+                symbol=symbol,
+                interval=interval,
+                feature_version=feature_version,
+                start_at=start_at,
+                end_at=end_at,
+            )
+            label_rows = self._label_repository.get_range(
+                symbol=symbol,
+                interval=interval,
+                horizon_candles=horizon_candles,
+                label_version=label_version,
+                start_at=start_at,
+                end_at=end_at,
+            )
+        else:
+            feature_rows = self._feature_repository.get_all(
+                symbol=symbol,
+                interval=interval,
+                feature_version=feature_version,
+            )
+            label_rows = self._label_repository.get_all(
+                symbol=symbol,
+                interval=interval,
+                horizon_candles=horizon_candles,
+                label_version=label_version,
+            )
+
         labels_by_open_time = {row.candle_open_time: row for row in label_rows}
 
         dataset_rows: list[DatasetRow] = []
@@ -144,6 +171,9 @@ class DatasetBuilder:
             "horizon_candles": horizon_candles,
             "feature_version": feature_version,
             "label_version": label_version,
+            "start_at": start_at.isoformat() if start_at is not None else None,
+            "end_at": end_at.isoformat() if end_at is not None else None,
+            "date_range_limited": start_at is not None and end_at is not None,
             "feature_rows": len(feature_rows),
             "label_rows": len(label_rows),
             "dataset_rows": len(dataset_rows),

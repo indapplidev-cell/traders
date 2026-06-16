@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -43,6 +44,27 @@ class FeatureRepository:
             .where(MlFeatures.symbol == symbol)
             .where(MlFeatures.interval == interval)
             .where(MlFeatures.feature_version == feature_version)
+            .order_by(MlFeatures.candle_open_time.asc())
+        )
+        return list(self._session.scalars(statement))
+
+    def get_range(
+        self,
+        symbol: str,
+        interval: str,
+        feature_version: str,
+        start_at: datetime,
+        end_at: datetime,
+    ) -> list[MlFeatures]:
+        """Возвращает признаки только в заданном временном диапазоне."""
+
+        statement = (
+            select(MlFeatures)
+            .where(MlFeatures.symbol == symbol)
+            .where(MlFeatures.interval == interval)
+            .where(MlFeatures.feature_version == feature_version)
+            .where(MlFeatures.candle_open_time >= start_at)
+            .where(MlFeatures.candle_open_time < end_at)
             .order_by(MlFeatures.candle_open_time.asc())
         )
         return list(self._session.scalars(statement))

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime
 
 import json
 from pathlib import Path
@@ -31,6 +32,8 @@ class BaselineService:
         label_version: str,
         train_end=None,
         validation_end=None,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
     ) -> dict[str, Any]:
         dataset_rows, dataset_summary = self._dataset_builder.build_rows(
             symbol=symbol,
@@ -38,6 +41,8 @@ class BaselineService:
             horizon_candles=horizon_candles,
             feature_version=feature_version,
             label_version=label_version,
+            start_at=start_at,
+            end_at=end_at,
         )
         splits = self._dataset_builder.split_rows(dataset_rows, train_end=train_end, validation_end=validation_end)
         train_rows = splits["train"]
@@ -88,6 +93,9 @@ class BaselineService:
             "horizon_candles": horizon_candles,
             "feature_version": feature_version,
             "label_version": label_version,
+            "start_at": start_at.isoformat() if start_at is not None else None,
+            "end_at": end_at.isoformat() if end_at is not None else None,
+            "date_range_limited": start_at is not None and end_at is not None,
             "train_end": train_end.isoformat() if train_end is not None else None,
             "validation_end": validation_end.isoformat() if validation_end is not None else None,
             "dataset_summary": dataset_summary,

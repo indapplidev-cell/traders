@@ -826,6 +826,7 @@ class LongHistoryTrainingPipelineRunner:
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
         feature_version = config.feature_version
+        start_at, end_at = self._resolved_datetime_range(config)
         with get_session() as session:
             candle_repository = CandleRepository(session)
             feature_repository = FeatureRepository(session)
@@ -837,6 +838,8 @@ class LongHistoryTrainingPipelineRunner:
                 symbol=config.symbol,
                 interval=config.interval,
                 feature_version=feature_version,
+                start_at=start_at,
+                end_at=end_at,
             )
         return {
             "status": COMPLETED,
@@ -859,16 +862,38 @@ class LongHistoryTrainingPipelineRunner:
             stop_loss_atr=self.DEFAULT_STOP_LOSS_ATR,
             flat_class_enabled=True,
         )
+        start_at, end_at = self._resolved_datetime_range(config)
         with get_session() as session:
             candle_repository = CandleRepository(session)
             feature_repository = FeatureRepository(session)
             label_repository = LabelRepository(session)
-            candles = candle_repository.get_all(symbol=config.symbol, interval=config.interval)
-            feature_rows = feature_repository.get_all(
-                symbol=config.symbol,
-                interval=config.interval,
-                feature_version=config.feature_version,
-            )
+            if hasattr(candle_repository, "get_range"):
+                candles = candle_repository.get_range(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                    start_at=start_at,
+                    end_at=end_at,
+                )
+            else:
+                candles = candle_repository.get_all(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                )
+            
+            if hasattr(feature_repository, "get_range"):
+                feature_rows = feature_repository.get_range(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                    feature_version=config.feature_version,
+                    start_at=start_at,
+                    end_at=end_at,
+                )
+            else:
+                feature_rows = feature_repository.get_all(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                    feature_version=config.feature_version,
+                )
             regime_builder_result = RegimeLabelBuilder().build(
                 candles=candles,
                 symbol=config.symbol,
@@ -888,6 +913,9 @@ class LongHistoryTrainingPipelineRunner:
                         "interval": config.interval,
                         "horizon_candles": horizon_candles,
                         "label_version": label_version,
+                        "start_at": start_at.isoformat(),
+                        "end_at": end_at.isoformat(),
+                        "date_range_limited": True,
                         "candles_used": len(candles),
                         "built": 0,
                         "inserted_or_updated": 0,
@@ -913,6 +941,9 @@ class LongHistoryTrainingPipelineRunner:
                 "interval": config.interval,
                 "horizon_candles": horizon_candles,
                 "label_version": label_version,
+                "start_at": start_at.isoformat(),
+                "end_at": end_at.isoformat(),
+                "date_range_limited": True,
                 "candles_used": len(candles),
                 "built": len(records),
                 "inserted_or_updated": inserted_or_updated,
@@ -935,6 +966,7 @@ class LongHistoryTrainingPipelineRunner:
         feature_version = config.feature_version
         label_version = self.DEFAULT_LABEL_VERSION
         horizon_candles = self._resolve_horizon_from_label_version(label_version)
+        start_at, end_at = self._resolved_datetime_range(config)
         with get_session() as session:
             feature_repository = FeatureRepository(session)
             label_repository = LabelRepository(session)
@@ -948,6 +980,8 @@ class LongHistoryTrainingPipelineRunner:
                 horizon_candles=horizon_candles,
                 feature_version=feature_version,
                 label_version=label_version,
+                start_at=start_at,
+                end_at=end_at,
             )
         return {
             "status": COMPLETED,
@@ -964,6 +998,7 @@ class LongHistoryTrainingPipelineRunner:
         label_version = self.DEFAULT_LABEL_VERSION
         horizon_candles = self._resolve_horizon_from_label_version(label_version)
         dataset_summary = dict(stage_payloads.get("build_dataset", {}))
+        start_at, end_at = self._resolved_datetime_range(config)
         with get_session() as session:
             feature_repository = FeatureRepository(session)
             label_repository = LabelRepository(session)
@@ -991,6 +1026,8 @@ class LongHistoryTrainingPipelineRunner:
                 feature_version=feature_version,
                 label_version=label_version,
                 model_name=self.DEFAULT_MODEL_NAME,
+                start_at=start_at,
+                end_at=end_at,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1011,6 +1048,9 @@ class LongHistoryTrainingPipelineRunner:
                 "horizon_candles": horizon_candles,
                 "sample_mode": False,
                 "real_training_executed": True,
+                "start_at": start_at.isoformat(),
+                "end_at": end_at.isoformat(),
+                "date_range_limited": True,
             },
         }
 
@@ -1020,6 +1060,7 @@ class LongHistoryTrainingPipelineRunner:
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
         model_version = self._require_model_version(stage_payloads, "probability_diagnostics")
+        start_at, end_at = self._resolved_datetime_range(config)
         result = self._with_diagnostics_service(
             lambda service: service.probability_report(
                 model_version=model_version,
@@ -1028,11 +1069,16 @@ class LongHistoryTrainingPipelineRunner:
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
                 feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
+                start_at=start_at,
+                end_at=end_at,
             )
         )
         collapse_v2 = result.get("collapse_v2", {})
         payload = dict(result)
         payload["collapse_detected"] = bool(collapse_v2.get("collapse_detected", False))
+        payload["start_at"] = start_at.isoformat()
+        payload["end_at"] = end_at.isoformat()
+        payload["date_range_limited"] = True
         return {
             "status": COMPLETED,
             "message": "Probability diagnostics generated",
@@ -1044,6 +1090,7 @@ class LongHistoryTrainingPipelineRunner:
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
+        start_at, end_at = self._resolved_datetime_range(config)
         result = self._with_diagnostics_service(
             lambda service: service.compare_models(
                 symbol=config.symbol,
@@ -1051,10 +1098,15 @@ class LongHistoryTrainingPipelineRunner:
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
                 feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
+                start_at=start_at,
+                end_at=end_at,
             )
         )
         payload = dict(result)
         payload["baseline_accuracy"] = self._extract_baseline_accuracy(result)
+        payload["start_at"] = start_at.isoformat()
+        payload["end_at"] = end_at.isoformat()
+        payload["date_range_limited"] = True
         return {
             "status": COMPLETED,
             "message": "Baseline comparison generated",
@@ -1067,6 +1119,7 @@ class LongHistoryTrainingPipelineRunner:
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
         model_version = self._require_model_version(stage_payloads, "calibration_diagnostics")
+        start_at, end_at = self._resolved_datetime_range(config)
         result = self._with_diagnostics_service(
             lambda service: service.calibration_report(
                 model_version=model_version,
@@ -1075,12 +1128,18 @@ class LongHistoryTrainingPipelineRunner:
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
                 feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
+                start_at=start_at,
+                end_at=end_at,
             )
         )
+        payload = dict(result)
+        payload["start_at"] = start_at.isoformat()
+        payload["end_at"] = end_at.isoformat()
+        payload["date_range_limited"] = True
         return {
             "status": COMPLETED,
             "message": "Calibration diagnostics generated",
-            "data": dict(result),
+            "data": payload,
         }
 
     def _profit_aware_evaluation_real(
@@ -1089,6 +1148,7 @@ class LongHistoryTrainingPipelineRunner:
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
         model_version = self._require_model_version(stage_payloads, "profit_aware_evaluation")
+        start_at, end_at = self._resolved_datetime_range(config)
         result = self._with_diagnostics_service(
             lambda service: service.profit_report_v2(
                 model_version=model_version,
@@ -1102,6 +1162,8 @@ class LongHistoryTrainingPipelineRunner:
                 fee_r=self.DEFAULT_FEE_R,
                 slippage_r=self.DEFAULT_SLIPPAGE_R,
                 same_candle_policy=self.DEFAULT_SAME_CANDLE_POLICY,
+                start_at=start_at,
+                end_at=end_at,
             )
         )
         payload = dict(result)
@@ -1109,6 +1171,9 @@ class LongHistoryTrainingPipelineRunner:
             payload,
             summary_keys=("total_r", "profit_factor", "signal_count", "same_candle_policy"),
         )
+        payload["start_at"] = start_at.isoformat()
+        payload["end_at"] = end_at.isoformat()
+        payload["date_range_limited"] = True
         return {
             "status": COMPLETED,
             "message": "Profit-aware evaluation generated",
@@ -1121,6 +1186,7 @@ class LongHistoryTrainingPipelineRunner:
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
         model_version = self._require_model_version(stage_payloads, "walk_forward_evaluation")
+        start_at, end_at = self._resolved_datetime_range(config)
         result = self._with_diagnostics_service(
             lambda service: service.walk_forward_eval(
                 model_version=model_version,
@@ -1140,6 +1206,8 @@ class LongHistoryTrainingPipelineRunner:
                 fee_r=self.DEFAULT_FEE_R,
                 slippage_r=self.DEFAULT_SLIPPAGE_R,
                 same_candle_policy=self.DEFAULT_SAME_CANDLE_POLICY,
+                start_at=start_at,
+                end_at=end_at,
             )
         )
         payload = dict(result)
@@ -1153,6 +1221,9 @@ class LongHistoryTrainingPipelineRunner:
                 "total_test_signal_count",
             ),
         )
+        payload["start_at"] = start_at.isoformat()
+        payload["end_at"] = end_at.isoformat()
+        payload["date_range_limited"] = True
         return {
             "status": COMPLETED,
             "message": "Walk-forward evaluation generated",
@@ -1647,11 +1718,20 @@ class LongHistoryTrainingPipelineRunner:
         }
 
     @staticmethod
+    @staticmethod
     def _parse_date(value: str) -> date:
         try:
             return date.fromisoformat(value)
         except ValueError as exc:
             raise ValueError(f"date must be in YYYY-MM-DD format: {value}") from exc
+
+    def _resolved_datetime_range(self, config: TrainingPipelineConfig) -> tuple[datetime, datetime]:
+        """Возвращает UTC datetime range для текущего pipeline config."""
+
+        return self._build_utc_date_range(
+            self._parse_date(config.start_date),
+            self._parse_date(config.resolved_end_date()),
+        )
 
     @staticmethod
     def _build_utc_date_range(start_date: date, end_date: date) -> tuple[datetime, datetime]:

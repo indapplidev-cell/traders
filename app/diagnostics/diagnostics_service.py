@@ -219,6 +219,8 @@ class DiagnosticsService:
         label_version: str,
         train_end=None,
         validation_end=None,
+        start_at=None,
+        end_at=None,
     ) -> dict[str, Any]:
         model_row = self._model_registry_repository.get_by_model_version(model_version)
         if model_row is None:
@@ -231,6 +233,8 @@ class DiagnosticsService:
             horizon_candles=horizon_candles,
             feature_version=feature_version,
             label_version=label_version,
+            start_at=start_at,
+            end_at=end_at,
         )
         split_rows = self._dataset_builder.split_rows(dataset_rows, train_end=train_end, validation_end=validation_end)
         split_reports = {
@@ -273,6 +277,9 @@ class DiagnosticsService:
             "collapse_detected": collapse_detected,
             "collapse_reason": collapse_reason,
             "is_active": bool(model_row.is_active),
+            "start_at": start_at.isoformat() if start_at is not None else None,
+            "end_at": end_at.isoformat() if end_at is not None else None,
+            "date_range_limited": start_at is not None and end_at is not None,
         }
         output_path = self._reports_dir / f"model_diagnostics_{model_version}.json"
         output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -401,6 +408,8 @@ class DiagnosticsService:
         label_version: str,
         train_end=None,
         validation_end=None,
+        start_at=None,
+        end_at=None,
     ) -> dict[str, Any]:
         diagnostics = self.model_report(
             model_version=model_version,
@@ -411,6 +420,8 @@ class DiagnosticsService:
             label_version=label_version,
             train_end=train_end,
             validation_end=validation_end,
+            start_at=start_at,
+            end_at=end_at,
         )
         predictions = self._build_prediction_rows(
             model_version=model_version,
@@ -421,6 +432,8 @@ class DiagnosticsService:
             label_version=label_version,
             train_end=train_end,
             validation_end=validation_end,
+            start_at=start_at,
+            end_at=end_at,
         )
         return self._calibration_evaluator.evaluate(
             model_version=model_version,
@@ -438,6 +451,8 @@ class DiagnosticsService:
         label_version: str,
         train_end=None,
         validation_end=None,
+        start_at=None,
+        end_at=None,
     ) -> dict[str, Any]:
         predictions = self._build_prediction_rows(
             model_version=model_version,
@@ -448,9 +463,14 @@ class DiagnosticsService:
             label_version=label_version,
             train_end=train_end,
             validation_end=validation_end,
+            start_at=start_at,
+            end_at=end_at,
         )
         report = self._prediction_probability_diagnostics.build_report(model_version=model_version, predictions=predictions)
         report["collapse_v2"] = self._prediction_collapse_detector.detect(report)
+        report["start_at"] = start_at.isoformat() if start_at is not None else None
+        report["end_at"] = end_at.isoformat() if end_at is not None else None
+        report["date_range_limited"] = start_at is not None and end_at is not None
         output_path = self._reports_dir / f"probability_diagnostics_{model_version}.json"
         output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         report["report_path"] = str(output_path)
@@ -524,6 +544,8 @@ class DiagnosticsService:
         same_candle_policy: str,
         train_end=None,
         validation_end=None,
+        start_at=None,
+        end_at=None,
     ) -> dict[str, Any]:
         predictions = self._build_prediction_rows(
             model_version=model_version,
@@ -534,6 +556,8 @@ class DiagnosticsService:
             label_version=label_version,
             train_end=train_end,
             validation_end=validation_end,
+            start_at=start_at,
+            end_at=end_at,
         )
         return self._profit_aware_evaluator_v2.evaluate(
             model_version=model_version,
@@ -596,6 +620,8 @@ class DiagnosticsService:
         fee_r: float,
         slippage_r: float,
         same_candle_policy: str,
+        start_at=None,
+        end_at=None,
     ) -> dict[str, Any]:
         dataset_rows, _ = self._dataset_builder.build_rows(
             symbol=symbol,
@@ -603,6 +629,8 @@ class DiagnosticsService:
             horizon_candles=horizon_candles,
             feature_version=feature_version,
             label_version=label_version,
+            start_at=start_at,
+            end_at=end_at,
         )
         config = WalkForwardConfig(
             mode=mode,
@@ -940,6 +968,8 @@ class DiagnosticsService:
         label_version: str,
         train_end=None,
         validation_end=None,
+        start_at=None,
+        end_at=None,
     ) -> dict[str, Any]:
         baseline_service = BaselineService(dataset_builder=self._dataset_builder, reports_dir=self._reports_dir)
         baseline_report = baseline_service.evaluate(
@@ -950,6 +980,8 @@ class DiagnosticsService:
             label_version=label_version,
             train_end=train_end,
             validation_end=validation_end,
+            start_at=start_at,
+            end_at=end_at,
         )
         model_rows = [
             row
@@ -974,6 +1006,8 @@ class DiagnosticsService:
                 label_version=label_version,
                 train_end=train_end,
                 validation_end=validation_end,
+                start_at=start_at,
+                end_at=end_at,
             )
             profit_report = profit_reports.get(row["model_version"])
             confidence_report = confidence_reports.get(row["model_version"])
@@ -1955,6 +1989,8 @@ class DiagnosticsService:
         label_version: str,
         train_end=None,
         validation_end=None,
+        start_at=None,
+        end_at=None,
     ) -> list[dict[str, Any]]:
         if self._candle_repository is None:
             raise ValueError("Candle repository is required for prediction-based diagnostics.")
@@ -1964,6 +2000,8 @@ class DiagnosticsService:
             horizon_candles=horizon_candles,
             feature_version=feature_version,
             label_version=label_version,
+            start_at=start_at,
+            end_at=end_at,
         )
         split_rows = self._dataset_builder.split_rows(dataset_rows, train_end=train_end, validation_end=validation_end)
         return self._build_prediction_rows_for_subset(

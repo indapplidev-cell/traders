@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -44,6 +45,29 @@ class LabelRepository:
             .where(MlLabels.interval == interval)
             .where(MlLabels.horizon_candles == horizon_candles)
             .where(MlLabels.label_version == label_version)
+            .order_by(MlLabels.candle_open_time.asc())
+        )
+        return list(self._session.scalars(statement))
+
+    def get_range(
+        self,
+        symbol: str,
+        interval: str,
+        horizon_candles: int,
+        label_version: str,
+        start_at: datetime,
+        end_at: datetime,
+    ) -> list[MlLabels]:
+        """Возвращает labels только в заданном временном диапазоне."""
+
+        statement = (
+            select(MlLabels)
+            .where(MlLabels.symbol == symbol)
+            .where(MlLabels.interval == interval)
+            .where(MlLabels.horizon_candles == horizon_candles)
+            .where(MlLabels.label_version == label_version)
+            .where(MlLabels.candle_open_time >= start_at)
+            .where(MlLabels.candle_open_time < end_at)
             .order_by(MlLabels.candle_open_time.asc())
         )
         return list(self._session.scalars(statement))

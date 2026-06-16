@@ -1164,6 +1164,13 @@ class FeatureRegimeExperimentRunner:
             payload["regime_label_builder_status"] = self._sample_regime_label_builder_status()
             return payload
 
+        from app.training.training_pipeline_runner import LongHistoryTrainingPipelineRunner
+
+        start_at, end_at = LongHistoryTrainingPipelineRunner._build_utc_date_range(
+            LongHistoryTrainingPipelineRunner._parse_date(config.start_date),
+            LongHistoryTrainingPipelineRunner._parse_date(config.resolved_end_date()),
+        )
+
         with get_session() as session:
             dataset_builder = DatasetBuilder(
                 feature_repository=FeatureRepository(session),
@@ -1176,6 +1183,8 @@ class FeatureRegimeExperimentRunner:
                     horizon_candles=horizon_candles,
                     feature_version=config.feature_version,
                     label_version=label_version,
+                    start_at=start_at,
+                    end_at=end_at,
                 )
             except Exception as exc:
                 rows = []
@@ -1196,6 +1205,9 @@ class FeatureRegimeExperimentRunner:
                 source="dataset_builder",
                 sample_mode=False,
             )
+            payload["start_at"] = start_at.isoformat()
+            payload["end_at"] = end_at.isoformat()
+            payload["date_range_limited"] = True
             payload["regime_label_builder_status"] = self._runtime_regime_label_builder_status(
                 label_config_payload=label_config_payload,
                 used_in_training=False,
@@ -1224,6 +1236,9 @@ class FeatureRegimeExperimentRunner:
             warnings=resolved_warnings,
             reason="dataset_rows_unavailable" if not runtime_rows else None,
         )
+        payload["start_at"] = start_at.isoformat()
+        payload["end_at"] = end_at.isoformat()
+        payload["date_range_limited"] = True
         payload["regime_label_builder_status"] = regime_status
         return payload
 
@@ -1960,14 +1975,57 @@ class FeatureRegimeExperimentRunner:
         config: FeatureRegimeExperimentConfig,
         label_config_payload: dict[str, Any],
     ) -> tuple[list[DatasetRow], list[str], str, dict[str, Any]]:
+        from app.training.training_pipeline_runner import LongHistoryTrainingPipelineRunner
+
         warnings: list[str] = []
+        start_at, end_at = LongHistoryTrainingPipelineRunner._build_utc_date_range(
+            LongHistoryTrainingPipelineRunner._parse_date(config.start_date),
+            LongHistoryTrainingPipelineRunner._parse_date(config.resolved_end_date()),
+        )
         with get_session() as session:
-            candles = CandleRepository(session).get_all(symbol=config.symbol, interval=config.interval)
-            feature_rows = FeatureRepository(session).get_all(
-                symbol=config.symbol,
-                interval=config.interval,
-                feature_version=config.feature_version,
-            )
+            candle_repository = CandleRepository(session)
+            feature_repository = FeatureRepository(session)
+
+            if hasattr(candle_repository, "get_range"):
+                try:
+                    candles = candle_repository.get_range(
+                        symbol=config.symbol,
+                        interval=config.interval,
+                        start_at=start_at,
+                        end_at=end_at,
+                    )
+                except AttributeError:
+                    candles = candle_repository.get_all(
+                        symbol=config.symbol,
+                        interval=config.interval,
+                    )
+            else:
+                candles = candle_repository.get_all(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                )
+
+            if hasattr(feature_repository, "get_range"):
+                try:
+                    feature_rows = feature_repository.get_range(
+                        symbol=config.symbol,
+                        interval=config.interval,
+                        feature_version=config.feature_version,
+                        start_at=start_at,
+                        end_at=end_at,
+                    )
+                except AttributeError:
+                    feature_rows = feature_repository.get_all(
+                        symbol=config.symbol,
+                        interval=config.interval,
+                        feature_version=config.feature_version,
+                    )
+            else:
+                feature_rows = feature_repository.get_all(
+                    symbol=config.symbol,
+                    interval=config.interval,
+                    feature_version=config.feature_version,
+                )
 
         if not candles:
             return [], ["market_data_missing_for_symbol"], "runtime_context", self._runtime_regime_label_builder_status(
