@@ -3580,6 +3580,7 @@ def run_ml38_2_fv3_tuning(
     start_date: str,
     end_date: str | None = None,
     experiment_id: str | None = None,
+    base_label_config_ids: list[str] | None = None,
     max_configs: int | None = None,
     dry_run: bool = False,
     sample_mode: bool = False,
@@ -3591,6 +3592,16 @@ def run_ml38_2_fv3_tuning(
         raise ValueError(
             f"ML38.2 tuning matrix is incomplete: {matrix['missing_configs']}"
         )
+
+    config_ids = list(matrix["config_ids"])
+    if base_label_config_ids:
+        requested = [str(item) for item in base_label_config_ids]
+        available = set(config_ids)
+        missing = [item for item in requested if item not in available]
+        if missing:
+            raise ValueError(f"Unknown ML38.2/FV3 label config ids: {missing}")
+        config_ids = [item for item in config_ids if item in set(requested)]
+
     return run_feature_regime_experiment(
         symbol=symbol,
         interval=interval,
@@ -3598,7 +3609,7 @@ def run_ml38_2_fv3_tuning(
         end_date=end_date,
         experiment_id=experiment_id,
         feature_version=ML38_2_FEATURE_VERSION,
-        base_label_config_ids=list(matrix["config_ids"]),
+        base_label_config_ids=config_ids,
         max_configs=max_configs,
         dry_run=dry_run,
         sample_mode=sample_mode,
@@ -4643,6 +4654,7 @@ def ml38_2_fv3_tuning_run_command(
     start_date: str = typer.Option(..., "--start-date"),
     end_date: str | None = typer.Option(None, "--end-date"),
     experiment_id: str | None = typer.Option(None, "--experiment-id"),
+    base_label_config_ids: list[str] | None = typer.Option(None, "--base-label-config-id"),
     max_configs: int | None = typer.Option(None, "--max-configs"),
     dry_run: bool = typer.Option(False, "--dry-run"),
     sample_mode: bool = typer.Option(False, "--sample-mode"),
@@ -4664,6 +4676,7 @@ def ml38_2_fv3_tuning_run_command(
         start_date=start_date,
         end_date=end_date,
         experiment_id=experiment_id,
+        base_label_config_ids=base_label_config_ids,
         max_configs=max_configs,
         dry_run=dry_run,
         sample_mode=sample_mode,

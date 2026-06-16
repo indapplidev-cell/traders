@@ -19,6 +19,7 @@ from app.registry.model_loader import ModelLoader
 from app.registry.model_registry import ModelRegistry
 from app.training.evaluator import Evaluator
 from app.training.loss import MultiTaskLoss
+from app.training.model_version_builder import build_unique_model_version
 from app.training.trainer import Trainer
 
 
@@ -121,7 +122,13 @@ class TrainingService:
         validation_end: date | None = None,
         disable_class_weights: bool = False,
     ) -> dict[str, Any]:
-        model_version = self._build_model_version(model_name)
+        model_version = self._build_model_version(
+            model_name=model_name,
+            symbol=symbol,
+            interval=interval,
+            horizon_candles=horizon_candles,
+            label_version=label_version,
+        )
         config = TrainingConfig(
             symbol=symbol,
             interval=interval,
@@ -301,9 +308,21 @@ class TrainingService:
         }
 
     @staticmethod
-    def _build_model_version(model_name: str) -> str:
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y_%m_%d_%H%M%S_%f")
-        return f"ml_{model_name}_v1_{timestamp}"
+    def _build_model_version(
+        *,
+        model_name: str,
+        symbol: str,
+        interval: str,
+        horizon_candles: int,
+        label_version: str,
+    ) -> str:
+        return build_unique_model_version(
+            model_name=model_name,
+            symbol=symbol,
+            interval=interval,
+            horizon_candles=horizon_candles,
+            label_version=label_version,
+        )
 
     @staticmethod
     def feature_columns(feature_version: str = "fv1") -> list[str]:

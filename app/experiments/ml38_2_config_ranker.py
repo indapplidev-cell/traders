@@ -5,6 +5,11 @@ from typing import Any
 
 ML38_2_CONFIG_RANKER_NAME = "ml38_2_config_ranker"
 ML38_2_CONFIG_RANKER_VERSION = "ml38_2"
+FAILED_CANDIDATE_STATUSES = {"FAILED", "ERROR"}
+FAILED_CANDIDATE_SCORE = -1_000_000.0
+
+def is_rankable_candidate_status(status: str | None) -> bool:
+    return str(status or "").upper() not in FAILED_CANDIDATE_STATUSES
 
 
 class ML382ConfigRanker:
@@ -13,6 +18,7 @@ class ML382ConfigRanker:
         ranked = [self._ranked_row(candidate) for candidate in normalized]
         ranked.sort(
             key=lambda item: (
+                bool(item.get("excluded_from_best_selection", False)),
                 -float(item["score"]),
                 item["candidate_status"] != "ACCEPTED",
                 item["config_id"],
@@ -21,7 +27,13 @@ class ML382ConfigRanker:
         for index, item in enumerate(ranked, start=1):
             item["rank"] = index
 
-        best = ranked[0] if ranked else None
+        eligible = [
+            item
+            for item in ranked
+            if not bool(item.get("excluded_from_best_selection", False))
+        ]
+        best = eligible[0] if eligible else None
+
         accepted_count = sum(int(item["candidate_status"] == "ACCEPTED") for item in ranked)
         rejected_count = sum(int(item["candidate_status"] == "REJECTED") for item in ranked)
         failed_count = sum(int(item["candidate_status"] == "FAILED") for item in ranked)
@@ -43,6 +55,8 @@ class ML382ConfigRanker:
     def _ranked_row(self, candidate: dict[str, Any]) -> dict[str, Any]:
         failed_gates = [str(item) for item in candidate.get("failed_gates", [])]
         passed_gates = [str(item) for item in candidate.get("passed_gates", [])]
+        candidate_status = str(candidate.get("candidate_status") or "UNKNOWN").upper()
+        excluded_from_best_selection = not is_rankable_candidate_status(candidate_status)
         walk_forward_pf = self._safe_float(candidate.get("walk_forward_profit_factor"))
         walk_forward_total_r = self._safe_float(candidate.get("walk_forward_total_r"))
         accuracy = self._safe_float(candidate.get("model_accuracy"))
@@ -84,7 +98,11 @@ class ML382ConfigRanker:
             "baseline_edge_gate_penalty": -2.0 if "baseline_edge_gate" in failed_gates else 0.0,
             "walk_forward_gate_penalty": -3.0 if "walk_forward_gate" in failed_gates else 0.0,
         }
-        score = round(sum(score_components.values()), 6)
+        if excluded_from_best_selection:
+            score_components["failed_candidate_penalty"] = FAILED_CANDIDATE_SCORE
+            score = FAILED_CANDIDATE_SCORE
+        else:
+            score = round(sum(score_components.values()), 6)
 
         rejection_reasons: list[str] = []
         if collapse_detected:
@@ -108,8 +126,9 @@ class ML382ConfigRanker:
             "rank": 0,
             "config_id": str(candidate.get("config_id") or ""),
             "candidate_id": str(candidate.get("candidate_id") or candidate.get("config_id") or ""),
-            "candidate_status": str(candidate.get("candidate_status") or "UNKNOWN"),
+            "candidate_status": candidate_status,
             "score": score,
+            "excluded_from_best_selection": excluded_from_best_selection,
             "score_components": score_components,
             "anti_collapse_diagnostics": anti_collapse_diagnostics,
             "anti_collapse_score": anti_collapse_score,

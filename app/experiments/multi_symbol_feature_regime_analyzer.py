@@ -492,6 +492,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     status_counts[status] += 1
 
                 score = cls._float_or_none(row.get("anti_collapse_score"))
+                if cls._is_failed_candidate(row):
+                    continue
+
+                score = cls._float_or_none(row.get("anti_collapse_score"))
                 if score is None:
                     continue
                 if best_score is None or score > best_score:

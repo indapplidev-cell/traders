@@ -30,7 +30,10 @@ from app.experiments.label_grid_experiment_runner import (
     LabelGridExperimentConfig,
     LabelGridExperimentRunner,
 )
-from app.experiments.ml38_2_config_ranker import ML382ConfigRanker
+from app.experiments.ml38_2_config_ranker import (
+    ML382ConfigRanker,
+    is_rankable_candidate_status,
+)
 from app.experiments.regime_experiment_planner import RegimeExperimentPlanner
 from app.features.feature_builder import FeatureBuilder
 from app.features.feature_models import feature_names_for_version
@@ -1730,15 +1733,36 @@ class FeatureRegimeExperimentRunner:
     ) -> FeatureRegimeCandidateResult | None:
         if not candidate_results:
             return None
+
+        candidates_by_config = {
+            candidate.config_id: candidate
+            for candidate in candidate_results
+        }
+
         if ranking:
-            best_config_id = ranking[0].get("config_id")
-            for candidate in candidate_results:
-                if candidate.config_id == best_config_id:
+            for row in ranking:
+                if bool(row.get("excluded_from_best_selection", False)):
+                    continue
+                candidate = candidates_by_config.get(str(row.get("config_id") or ""))
+                if candidate is None:
+                    continue
+                if is_rankable_candidate_status(candidate.candidate_status):
                     return candidate
-        scored = [item for item in candidate_results if item.score is not None]
+
+        scored = [
+            item
+            for item in candidate_results
+            if item.score is not None and is_rankable_candidate_status(item.candidate_status)
+        ]
         if scored:
             return max(scored, key=lambda item: float(item.score or 0.0))
-        return candidate_results[0]
+
+        eligible = [
+            item
+            for item in candidate_results
+            if is_rankable_candidate_status(item.candidate_status)
+        ]
+        return eligible[0] if eligible else None
 
     @staticmethod
     def _flat_bias_summary(candidate_results: list[FeatureRegimeCandidateResult]) -> dict[str, Any]:
@@ -1776,7 +1800,11 @@ class FeatureRegimeExperimentRunner:
 
     @staticmethod
     def _ranking(candidate_results: list[FeatureRegimeCandidateResult]) -> list[dict[str, Any]]:
-        scored = [item for item in candidate_results if item.score is not None]
+        scored = [
+            item
+            for item in candidate_results
+            if item.score is not None and is_rankable_candidate_status(item.candidate_status)
+        ]
         scored.sort(key=lambda item: float(item.score), reverse=True)
         ranking: list[dict[str, Any]] = []
         for index, item in enumerate(scored, start=1):
@@ -1787,6 +1815,7 @@ class FeatureRegimeExperimentRunner:
                     "config_id": item.config_id,
                     "score": item.score,
                     "candidate_status": item.candidate_status,
+                    "excluded_from_best_selection": False,
                     "failed_gates": list(item.failed_gates),
                 }
             )

@@ -73,6 +73,10 @@ DEFAULT_START_DATE = "2025-01-01"
 DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
 DEFAULT_EXPECTED_CANDIDATE_COUNT = 42
+FAST_DEBUG_SYMBOLS = "BTCUSDT,SOLUSDT"
+FAST_DEBUG_CONFIGS = "lv2_h08_thr03_tp10_sl10"
+FAST_DEBUG_START_DATE = "2026-05-01"
+FAST_DEBUG_END_DATE = "2026-06-15"
 
 
 @dataclass(frozen=True)
@@ -144,24 +148,38 @@ class TerminalProgress:
         print("\r" + " " * self._last_len + "\r", end="", flush=True)
         self._last_len = 0
 
+def _split_csv(value: str) -> tuple[str, ...]:
+    return tuple(part.strip() for part in str(value or "").split(",") if part.strip())
+
 
 class Fv3CachedTuningWrapper:
     def __init__(self, args: argparse.Namespace) -> None:
         self.args = args
         self.repo_root = Path(args.repo_root).resolve() if args.repo_root else Path(__file__).resolve().parent
         self.python_exe = self._resolve_python_exe()
-        self.symbols = tuple(part.strip().upper() for part in args.symbols.split(",") if part.strip())
+        self.fast_debug = bool(args.fast_debug)
+        raw_symbols = args.debug_symbols if self.fast_debug else args.symbols
+        raw_start_date = args.debug_start_date if self.fast_debug else args.start_date
+        raw_end_date = args.debug_end_date if self.fast_debug else args.end_date
+
+        self.symbols = tuple(part.upper() for part in _split_csv(raw_symbols))
+        self.debug_config_ids = tuple(_split_csv(args.debug_configs)) if self.fast_debug else ()
         self.interval = args.interval
-        self.start_date = args.start_date
-        self.end_date = args.end_date
+        self.start_date = raw_start_date
+        self.end_date = raw_end_date
         self.stage_name = args.stage_name
-        self.stage_context = args.stage_context
+        self.stage_context = (
+            f"{args.stage_context}; FAST DEBUG runtime-only validation"
+            if self.fast_debug
+            else args.stage_context
+        )
         self.tuning_command = args.tuning_command
         self.timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         self.output_root = self.repo_root / "reports" / "feature_regime_experiments"
 
         symbols_part = "_".join(symbol.lower() for symbol in self.symbols)
-        self.archive_base_name = f"fv3_cached_fresh_tuning_{symbols_part}_{self.interval}_{self.timestamp}"
+        mode_prefix = "fast_debug_" if self.fast_debug else ""
+        self.archive_base_name = f"{mode_prefix}fv3_cached_fresh_tuning_{symbols_part}_{self.interval}_{self.timestamp}"
         self.archive_stage_dir = self.output_root / self.archive_base_name
         self.archive_path = self.output_root / f"{self.archive_base_name}.zip"
         self.raw_output_dir = self.archive_stage_dir / "raw_outputs"
@@ -184,6 +202,14 @@ class Fv3CachedTuningWrapper:
 
     def run(self) -> dict[str, Any]:
         self._print_banner()
+        if self.fast_debug:
+            self._status(
+                "DEBUG",
+                "Fast debug mode enabled: "
+                f"symbols={list(self.symbols)} configs={list(self.debug_config_ids)} "
+                f"range={self.start_date}->{self.end_date}. "
+                "This is runtime validation only, not a full quality run.",
+            )
         self._preflight()
         self._ensure_stage_dirs()
 
@@ -718,6 +744,9 @@ class Fv3CachedTuningWrapper:
         if self.tuning_command == DEFAULT_TUNING_COMMAND:
             command.append("--skip-candle-load")
 
+        for config_id in self.debug_config_ids:
+            command.extend(["--base-label-config-id", config_id])
+
         if self.args.max_configs is not None:
             command.extend(["--max-configs", str(self.args.max_configs)])
 
@@ -1022,6 +1051,10 @@ class Fv3CachedTuningWrapper:
             "branch": self.current_branch,
             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "feature_version": FEATURE_VERSION,
+            "fast_debug": self.fast_debug,
+            "debug_config_ids": list(self.debug_config_ids),
+            "full_quality_run": not self.fast_debug,
+            "quality_decision_allowed": not self.fast_debug,
             "interval": self.interval,
             "start_date": self.start_date,
             "end_date": self.end_date,
@@ -1122,6 +1155,8 @@ class Fv3CachedTuningWrapper:
         }
 
     def _expected_candidate_count(self) -> int:
+        if self.fast_debug:
+            return len(self.symbols) * len(self.debug_config_ids)
         if self.args.max_configs is not None:
             return int(self.args.max_configs) * len(self.symbols)
         return DEFAULT_EXPECTED_CANDIDATE_COUNT
@@ -1148,6 +1183,10 @@ class Fv3CachedTuningWrapper:
             "status": status,
             "stage": self.stage_name,
             "stage_context": self.stage_context,
+            "fast_debug": self.fast_debug,
+            "debug_config_ids": list(self.debug_config_ids),
+            "full_quality_run": not self.fast_debug,
+            "quality_decision_allowed": not self.fast_debug,
             "branch": self.current_branch,
             "training_skipped": training_skipped,
             "candle_source": "postgresql_db_cache",
@@ -1328,6 +1367,31 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--no-load-on-unknown-cache", action="store_true", help="Do not run load-candles when check-candle-gaps output is unknown.")
     parser.add_argument("--sequential", action="store_true", help="Run symbols sequentially instead of parallel.")
     parser.add_argument("--max-configs", type=int, default=None, help="Optional max configs per symbol for debugging only.")
+    parser.add_argument(
+        "--fast-debug",
+        action="store_true",
+        help="Run a short runtime-only debug pass: BTCUSDT/SOLUSDT and one config by default.",
+    )
+    parser.add_argument(
+        "--debug-symbols",
+        default=FAST_DEBUG_SYMBOLS,
+        help="Comma-separated symbols used only when --fast-debug is set.",
+    )
+    parser.add_argument(
+        "--debug-configs",
+        default=FAST_DEBUG_CONFIGS,
+        help="Comma-separated label config ids used only when --fast-debug is set.",
+    )
+    parser.add_argument(
+        "--debug-start-date",
+        default=FAST_DEBUG_START_DATE,
+        help="Start date used only when --fast-debug is set.",
+    )
+    parser.add_argument(
+        "--debug-end-date",
+        default=FAST_DEBUG_END_DATE,
+        help="End date used only when --fast-debug is set.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Pass --dry-run to symbol tuning command.")
     parser.add_argument("--sample-mode", action="store_true", help="Pass --sample-mode to symbol tuning command.")
     parser.add_argument("--no-progress", action="store_true", help="Disable live terminal progress indicator.")

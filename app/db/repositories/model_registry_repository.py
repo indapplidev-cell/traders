@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import MlModelVersions
@@ -15,7 +16,13 @@ class ModelRegistryRepository:
     def create(self, payload: dict[str, Any]) -> MlModelVersions:
         row = MlModelVersions(**payload)
         self._session.add(row)
-        self._session.commit()
+        try:
+            self._session.commit()
+        except IntegrityError:
+            # Важно: после ошибки unique constraint SQLAlchemy session остаётся в broken state.
+            # Rollback обязателен, иначе последующие записи training_run тоже могут упасть.
+            self._session.rollback()
+            raise
         self._session.refresh(row)
         return row
 
