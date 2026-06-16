@@ -121,6 +121,8 @@ class TrainingService:
         train_end: date | None = None,
         validation_end: date | None = None,
         disable_class_weights: bool = False,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -168,6 +170,8 @@ class TrainingService:
                 horizon_candles=horizon_candles,
                 feature_version=feature_version,
                 label_version=label_version,
+                start_at=start_at,
+                end_at=end_at,
             )
             if not dataset_rows:
                 raise ValueError("No dataset rows available for training.")
@@ -214,6 +218,9 @@ class TrainingService:
                 "train_end": train_end.isoformat() if train_end is not None else None,
                 "validation_end": validation_end.isoformat() if validation_end is not None else None,
                 "disable_class_weights": disable_class_weights,
+                "start_at": start_at.isoformat() if start_at is not None else None,
+                "end_at": end_at.isoformat() if end_at is not None else None,
+                "date_range_limited": start_at is not None and end_at is not None,
                 "direction_class_weights": direction_class_weights,
             }
             combined_metrics = {
