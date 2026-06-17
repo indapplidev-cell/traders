@@ -21,6 +21,7 @@ from app.diagnostics.collapse_tuning_summary import CollapseTuningSummaryBuilder
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 from app.diagnostics.anti_collapse_diagnostics import AntiCollapseDiagnostics
+from app.diagnostics.confidence_profitability_diagnostics import ConfidenceProfitabilityDiagnostics
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 from app.labels.label_builder import LabelBuilder
 from app.labels.label_config import LabelConfig
@@ -154,6 +155,9 @@ class FeatureRegimeCandidateResult:
     anti_collapse_diagnostics: dict[str, Any] = field(default_factory=dict)
     anti_collapse_score: float | None = None
     anti_collapse_status: str | None = None
+    confidence_profitability_diagnostics: dict[str, Any] = field(default_factory=dict)
+    confidence_profitability_score: float | None = None
+    confidence_profitability_status: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -224,6 +228,9 @@ class FeatureRegimeCandidateResult:
             "anti_collapse_diagnostics": dict(self.anti_collapse_diagnostics),
             "anti_collapse_score": self.anti_collapse_score,
             "anti_collapse_status": self.anti_collapse_status,
+            "confidence_profitability_diagnostics": dict(self.confidence_profitability_diagnostics),
+            "confidence_profitability_score": self.confidence_profitability_score,
+            "confidence_profitability_status": self.confidence_profitability_status,
         }
 
 
@@ -497,6 +504,7 @@ class FeatureRegimeExperimentRunner:
         self._class_bias_diagnostics = ClassBiasDiagnostics()
         self._collapse_tuning_summary_builder = CollapseTuningSummaryBuilder()
         self._anti_collapse_diagnostics = AntiCollapseDiagnostics()
+        self._confidence_profitability_diagnostics = ConfidenceProfitabilityDiagnostics()
         self._ml38_2_ranker = ML382ConfigRanker()
 
     @staticmethod
@@ -1683,6 +1691,15 @@ class FeatureRegimeExperimentRunner:
                 flat_bias_diagnostics=class_bias,
                 collapse_diagnostics_v2=self._as_dict(candidate.collapse_diagnostics_v2),
             ).to_dict() if candidate.collapse_diagnostics_v2 or class_bias else {}
+            confidence_profitability = self._confidence_profitability_diagnostics.build(
+                symbol=config.symbol,
+                config_id=candidate.config_id,
+                probability_diagnostics=self._as_dict(candidate.probability_diagnostics),
+                collapse_diagnostics_v2=self._as_dict(candidate.collapse_diagnostics_v2),
+                profit_aware_diagnostics=self._as_dict(candidate.profit_aware_diagnostics),
+                walk_forward_profit_diagnostics=self._as_dict(candidate.walk_forward_profit_diagnostics),
+                anti_collapse_diagnostics=anti_collapse,
+            ).to_dict()
             enriched.append(
                 replace(
                     candidate,
@@ -1700,6 +1717,9 @@ class FeatureRegimeExperimentRunner:
                     anti_collapse_diagnostics=anti_collapse,
                     anti_collapse_score=anti_collapse.get("anti_collapse_score"),
                     anti_collapse_status=anti_collapse.get("anti_collapse_status"),
+                    confidence_profitability_diagnostics=confidence_profitability,
+                    confidence_profitability_score=confidence_profitability.get("confidence_profitability_score"),
+                    confidence_profitability_status=confidence_profitability.get("confidence_profitability_status"),
                 )
             )
 

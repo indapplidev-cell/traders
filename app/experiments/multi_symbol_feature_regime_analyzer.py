@@ -76,6 +76,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         profit_aware_failed_count = gate_failure_counts.get("profit_aware_gate", 0)
         configs_ranked = self._configs_ranked(symbol_results)
         anti_collapse_summary = self._anti_collapse_summary(symbol_results)
+        confidence_profitability_summary = self._confidence_profitability_summary(symbol_results)
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -99,6 +100,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "configs_ranked": configs_ranked,
             "symbol_results": symbol_results,
             "anti_collapse_summary": anti_collapse_summary,
+            "confidence_profitability_summary": confidence_profitability_summary,
             "gate_failure_counts": gate_failure_counts,
             "feature_version_summary": {
                 "all_feature_version_fv2": all_feature_version_fv2,
@@ -524,6 +526,72 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "weak_count": status_counts["WEAK"],
             "unknown_count": status_counts["UNKNOWN"],
         }
+    
+
+    @classmethod
+    def _confidence_profitability_summary(cls, symbol_results: list[dict[str, Any]]) -> dict[str, Any]:
+        """Сводка ML38.6 confidence/profitability по всем символам.
+    
+        Не принимает модель автоматически.
+        Только помогает понять, какие configs уменьшают confidence collapse и дают PF/R.
+        """
+        best_by_symbol: dict[str, dict[str, Any]] = {}
+        status_counts: dict[str, int] = {"GOOD": 0, "WATCH": 0, "WEAK": 0, "UNKNOWN": 0}
+    
+        for symbol_result in symbol_results:
+            symbol = str(symbol_result.get("symbol") or "UNKNOWN")
+            best_row: dict[str, Any] | None = None
+            best_score: float | None = None
+    
+            for row in cls._as_list(symbol_result.get("configs_ranked")):
+                if not isinstance(row, dict):
+                    continue
+                status = str(row.get("confidence_profitability_status") or "UNKNOWN").upper()
+                if status not in status_counts:
+                    status_counts["UNKNOWN"] += 1
+                else:
+                    status_counts[status] += 1
+    
+                if cls._is_failed_candidate(row):
+                    continue
+                
+                score = cls._float_or_none(row.get("confidence_profitability_score"))
+                if score is None:
+                    continue
+                if best_score is None or score > best_score:
+                    best_score = score
+                    best_row = row
+    
+            if best_row is not None:
+                diagnostics = cls._as_dict(best_row.get("confidence_profitability_diagnostics"))
+                best_by_symbol[symbol] = {
+                    "config_id": best_row.get("config_id"),
+                    "candidate_status": best_row.get("candidate_status"),
+                    "confidence_profitability_score": best_row.get("confidence_profitability_score"),
+                    "confidence_profitability_status": best_row.get("confidence_profitability_status"),
+                    "margin_q50": diagnostics.get("margin_q50"),
+                    "margin_q90": diagnostics.get("margin_q90"),
+                    "max_prob_q90": diagnostics.get("max_prob_q90"),
+                    "rows_above_045": diagnostics.get("rows_above_045"),
+                    "walk_forward_profit_factor": best_row.get("walk_forward_profit_factor"),
+                    "walk_forward_total_r": best_row.get("walk_forward_total_r"),
+                    "collapse_type": best_row.get("collapse_type"),
+                    "flat_bias_detected": best_row.get("flat_bias_detected"),
+                    "down_blindness_detected": best_row.get("down_blindness_detected"),
+                }
+    
+        return {
+            "diagnostic_name": "confidence_profitability_multi_symbol_summary",
+            "diagnostic_version": "ml38_6",
+            "best_by_symbol": best_by_symbol,
+            "good_count": status_counts["GOOD"],
+            "watch_count": status_counts["WATCH"],
+            "weak_count": status_counts["WEAK"],
+            "unknown_count": status_counts["UNKNOWN"],
+            "accepts_candidate": False,
+            "softens_gates": False,
+        }
+
 
     @classmethod
     def _configs_ranked(cls, symbol_results: list[dict[str, Any]]) -> list[dict[str, Any]]:

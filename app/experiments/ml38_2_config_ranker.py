@@ -81,6 +81,27 @@ class ML382ConfigRanker:
         elif anti_collapse_score >= 2.0:
             anti_collapse_bonus = 0.75
 
+        confidence_profitability_diagnostics = dict(
+            candidate.get("confidence_profitability_diagnostics", {})
+        )
+        confidence_profitability_score = self._safe_float(
+            candidate.get("confidence_profitability_score")
+            if candidate.get("confidence_profitability_score") is not None
+            else confidence_profitability_diagnostics.get("confidence_profitability_score")
+        )
+        confidence_profitability_status = str(
+            candidate.get("confidence_profitability_status")
+            or confidence_profitability_diagnostics.get("confidence_profitability_status")
+            or "UNKNOWN"
+        ).upper()
+        confidence_profitability_bonus = 0.0
+        if confidence_profitability_status == "GOOD":
+            confidence_profitability_bonus = 2.0
+        elif confidence_profitability_status == "WATCH":
+            confidence_profitability_bonus = 0.75
+        elif confidence_profitability_status == "WEAK":
+            confidence_profitability_bonus = -1.0
+
         score_components = {
             "walk_forward_pf_bonus": 3.0 if walk_forward_pf > 1.0 else 0.0,
             "walk_forward_total_r_bonus": 2.0 if walk_forward_total_r > 0.0 else 0.0,
@@ -88,6 +109,8 @@ class ML382ConfigRanker:
             "profit_aware_gate_bonus": 1.0 if "profit_aware_gate" in passed_gates else 0.0,
             "walk_forward_gate_bonus": 1.0 if "walk_forward_gate" in passed_gates else 0.0,
             "anti_collapse_bonus": anti_collapse_bonus,
+            "confidence_profitability_bonus": confidence_profitability_bonus,
+            "confidence_profitability_score_bonus": min(max(confidence_profitability_score, -3.0), 3.0) * 0.25,
             "collapse_penalty": -3.0 if collapse_detected else 0.0,
             "flat_bias_penalty": -2.0
             if str(bias.get("symbol_bias_severity")) in {"HIGH", "CRITICAL"}
@@ -133,6 +156,9 @@ class ML382ConfigRanker:
             "anti_collapse_diagnostics": anti_collapse_diagnostics,
             "anti_collapse_score": anti_collapse_score,
             "anti_collapse_status": anti_collapse_status,
+            "confidence_profitability_diagnostics": confidence_profitability_diagnostics,
+            "confidence_profitability_score": confidence_profitability_score,
+            "confidence_profitability_status": confidence_profitability_status,
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "collapse_type": collapse_summary.get("collapse_type") or candidate.get("collapse_type"),
