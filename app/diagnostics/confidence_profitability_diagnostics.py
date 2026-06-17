@@ -10,6 +10,8 @@ class ConfidenceProfitabilityDiagnosticsResult:
     diagnostic_version: str
     symbol: str | None
     config_id: str | None
+    probability_source: str | None
+    direction_temperature: float | None
     margin_q50: float | None
     margin_q90: float | None
     max_prob_q90: float | None
@@ -32,6 +34,8 @@ class ConfidenceProfitabilityDiagnosticsResult:
             "diagnostic_version": self.diagnostic_version,
             "symbol": self.symbol,
             "config_id": self.config_id,
+            "probability_source": self.probability_source,
+            "direction_temperature": self.direction_temperature,
             "margin_q50": self.margin_q50,
             "margin_q90": self.margin_q90,
             "max_prob_q90": self.max_prob_q90,
@@ -94,6 +98,11 @@ class ConfidenceProfitabilityDiagnostics:
             confidence_distribution.get("rows_above_thresholds")
             or probability_diagnostics.get("rows_above_thresholds")
             or {}
+        )
+
+        probability_source = probability_diagnostics.get("probability_source") or "unknown"
+        direction_temperature = self._optional_float(
+            probability_diagnostics.get("direction_temperature")
         )
 
         margin_q50 = self._first_float(
@@ -222,6 +231,8 @@ class ConfidenceProfitabilityDiagnostics:
             diagnostic_version=self.DIAGNOSTIC_VERSION,
             symbol=symbol,
             config_id=config_id,
+            probability_source=None if probability_source is None else str(probability_source),
+            direction_temperature=direction_temperature,
             margin_q50=margin_q50,
             margin_q90=margin_q90,
             max_prob_q90=max_prob_q90,

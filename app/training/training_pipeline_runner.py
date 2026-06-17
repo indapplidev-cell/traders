@@ -179,6 +179,12 @@ class LongHistoryTrainingPipelineRunner:
     DEFAULT_FEATURE_VERSION = "fv1"
     DEFAULT_LABEL_VERSION = "lv1"
     DEFAULT_MODEL_NAME = "candle_mlp"
+    DEFAULT_DIRECTION_LOSS_NAME = "focal"
+    DEFAULT_FOCAL_GAMMA = 2.0
+    DEFAULT_LABEL_SMOOTHING = 0.02
+    DEFAULT_CONFIDENCE_MARGIN_WEIGHT = 0.20
+    DEFAULT_CONFIDENCE_MARGIN_TARGET = 0.12
+    DEFAULT_PROBABILITY_TEMPERATURE_ENABLED = True
     DEFAULT_DIRECTION_ATR_THRESHOLD = 0.5
     DEFAULT_TAKE_PROFIT_ATR = 1.5
     DEFAULT_STOP_LOSS_ATR = 1.0
@@ -1028,6 +1034,12 @@ class LongHistoryTrainingPipelineRunner:
                 model_name=self.DEFAULT_MODEL_NAME,
                 start_at=start_at,
                 end_at=end_at,
+                direction_loss_name=self.DEFAULT_DIRECTION_LOSS_NAME,
+                focal_gamma=self.DEFAULT_FOCAL_GAMMA,
+                label_smoothing=self.DEFAULT_LABEL_SMOOTHING,
+                confidence_margin_weight=self.DEFAULT_CONFIDENCE_MARGIN_WEIGHT,
+                confidence_margin_target=self.DEFAULT_CONFIDENCE_MARGIN_TARGET,
+                probability_temperature_enabled=self.DEFAULT_PROBABILITY_TEMPERATURE_ENABLED,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1051,6 +1063,12 @@ class LongHistoryTrainingPipelineRunner:
                 "start_at": start_at.isoformat(),
                 "end_at": end_at.isoformat(),
                 "date_range_limited": True,
+                "direction_loss_name": self.DEFAULT_DIRECTION_LOSS_NAME,
+                "focal_gamma": self.DEFAULT_FOCAL_GAMMA,
+                "label_smoothing": self.DEFAULT_LABEL_SMOOTHING,
+                "confidence_margin_weight": self.DEFAULT_CONFIDENCE_MARGIN_WEIGHT,
+                "confidence_margin_target": self.DEFAULT_CONFIDENCE_MARGIN_TARGET,
+                "probability_temperature_enabled": self.DEFAULT_PROBABILITY_TEMPERATURE_ENABLED,
             },
         }
 

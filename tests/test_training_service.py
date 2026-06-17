@@ -42,6 +42,12 @@ def test_training_service_trains_and_registers_model(tmp_path: Path) -> None:
     assert len(registry_repository.created_payloads) == 1
     assert artifact_storage.exists(result["model_version"]) is True
 
+    training_config = artifact_storage.load_json(result["model_version"], "training_config.json")
+    metrics = artifact_storage.load_json(result["model_version"], "metrics.json")
+    assert "probability_calibration" in training_config
+    assert "probability_calibration" in metrics
+    assert "selected_temperature" in training_config["probability_calibration"]
+
 
 class FakeFeatureRepository:
     def get_all(self, symbol: str, interval: str, feature_version: str):

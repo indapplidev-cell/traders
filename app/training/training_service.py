@@ -19,6 +19,8 @@ from app.registry.model_loader import ModelLoader
 from app.registry.model_registry import ModelRegistry
 from app.training.evaluator import Evaluator
 from app.training.loss import MultiTaskLoss
+from app.training.probability_calibration import DEFAULT_TEMPERATURE_GRID
+from app.training.probability_calibration import fit_direction_temperature_for_model
 from app.training.model_version_builder import build_unique_model_version
 from app.training.trainer import Trainer
 
@@ -35,6 +37,12 @@ class TrainingConfig:
     epochs: int = 20
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
+    direction_loss_name: str = "cross_entropy"
+    focal_gamma: float = 2.0
+    label_smoothing: float = 0.0
+    confidence_margin_weight: float = 0.0
+    confidence_margin_target: float = 0.12
+    probability_temperature_enabled: bool = True
 
 
 def _safe_run_id_part(value: object) -> str:
@@ -123,6 +131,12 @@ class TrainingService:
         disable_class_weights: bool = False,
         start_at: datetime | None = None,
         end_at: datetime | None = None,
+        direction_loss_name: str = "cross_entropy",
+        focal_gamma: float = 2.0,
+        label_smoothing: float = 0.0,
+        confidence_margin_weight: float = 0.0,
+        confidence_margin_target: float = 0.12,
+        probability_temperature_enabled: bool = True,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -142,6 +156,12 @@ class TrainingService:
             epochs=epochs,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
+            direction_loss_name=direction_loss_name,
+            focal_gamma=focal_gamma,
+            label_smoothing=label_smoothing,
+            confidence_margin_weight=confidence_margin_weight,
+            confidence_margin_target=confidence_margin_target,
+            probability_temperature_enabled=probability_temperature_enabled,
         )
         started_at = datetime.now(tz=timezone.utc)
         run_id = build_training_run_id(
@@ -197,12 +217,37 @@ class TrainingService:
                 epochs=config.epochs,
                 learning_rate=config.learning_rate,
                 weight_decay=config.weight_decay,
-                loss_fn=MultiTaskLoss(direction_class_weights=direction_class_weights),
+                loss_fn=MultiTaskLoss(
+                    direction_class_weights=direction_class_weights,
+                    direction_loss_name=config.direction_loss_name,
+                    focal_gamma=config.focal_gamma,
+                    label_smoothing=config.label_smoothing,
+                    confidence_margin_weight=config.confidence_margin_weight,
+                    confidence_margin_target=config.confidence_margin_target,
+                ),
             )
             training_result = trainer.train(model=model, train_dataset=train_dataset, validation_dataset=validation_dataset)
-            train_metrics = self._evaluator.evaluate(model, train_dataset)
-            validation_metrics = self._evaluator.evaluate(model, validation_dataset)
-            test_metrics = self._evaluator.evaluate(model, test_dataset)
+            if config.probability_temperature_enabled:
+                temperature_report = fit_direction_temperature_for_model(
+                    model=model,
+                    validation_dataset=validation_dataset,
+                    candidate_temperatures=DEFAULT_TEMPERATURE_GRID,
+                )
+            else:
+                temperature_report = fit_direction_temperature_for_model(
+                    model=model,
+                    validation_dataset=TrainingService.empty_tensors(len(feature_columns)),
+                    candidate_temperatures=(1.0,),
+                )
+            probability_calibration = temperature_report.to_dict()
+            direction_temperature = float(probability_calibration.get("selected_temperature") or 1.0)
+            raw_train_metrics = self._evaluator.evaluate(model, train_dataset, direction_temperature=1.0)
+            raw_validation_metrics = self._evaluator.evaluate(model, validation_dataset, direction_temperature=1.0)
+            raw_test_metrics = self._evaluator.evaluate(model, test_dataset, direction_temperature=1.0)
+
+            train_metrics = self._evaluator.evaluate(model, train_dataset, direction_temperature=direction_temperature)
+            validation_metrics = self._evaluator.evaluate(model, validation_dataset, direction_temperature=direction_temperature)
+            test_metrics = self._evaluator.evaluate(model, test_dataset, direction_temperature=direction_temperature)
 
             training_config = {
                 "model_name": model_name,
@@ -222,6 +267,13 @@ class TrainingService:
                 "end_at": end_at.isoformat() if end_at is not None else None,
                 "date_range_limited": start_at is not None and end_at is not None,
                 "direction_class_weights": direction_class_weights,
+                "direction_loss_name": config.direction_loss_name,
+                "focal_gamma": config.focal_gamma,
+                "label_smoothing": config.label_smoothing,
+                "confidence_margin_weight": config.confidence_margin_weight,
+                "confidence_margin_target": config.confidence_margin_target,
+                "probability_temperature_enabled": config.probability_temperature_enabled,
+                "probability_calibration": probability_calibration,
             }
             combined_metrics = {
                 "train": train_metrics,
@@ -230,6 +282,10 @@ class TrainingService:
                 "training": training_result,
                 "dataset_summary": dataset_summary,
                 "direction_class_weights": direction_class_weights,
+                "raw_train": raw_train_metrics,
+                "raw_validation": raw_validation_metrics,
+                "raw_test": raw_test_metrics,
+                "probability_calibration": probability_calibration,
             }
             artifact_path = self._artifact_storage.save(
                 model_version=model_version,
@@ -279,6 +335,15 @@ class TrainingService:
                 "model_version": model_version,
                 "artifact_path": artifact_path,
                 "test_metrics": test_metrics,
+                "raw_test_metrics": raw_test_metrics,
+                "probability_calibration": probability_calibration,
+                "direction_temperature": direction_temperature,
+                "direction_loss_name": config.direction_loss_name,
+                "focal_gamma": config.focal_gamma,
+                "label_smoothing": config.label_smoothing,
+                "confidence_margin_weight": config.confidence_margin_weight,
+                "confidence_margin_target": config.confidence_margin_target,
+                "probability_temperature_enabled": config.probability_temperature_enabled,
             }
         except Exception as exc:
             finished_at = datetime.now(tz=timezone.utc)

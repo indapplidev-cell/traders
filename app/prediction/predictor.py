@@ -12,6 +12,9 @@ from app.features.feature_models import FeatureRecord
 from app.registry.artifact_storage import ArtifactStorage
 from app.registry.model_loader import ModelLoader
 
+from app.training.probability_calibration import direction_temperature_from_metadata
+from app.training.probability_calibration import softmax_with_temperature
+
 
 @dataclass(slots=True)
 class PredictionRuntime:
@@ -19,6 +22,7 @@ class PredictionRuntime:
     model: torch.nn.Module
     scaler: dict[str, list[float]]
     feature_columns: list[str]
+    direction_temperature: float = 1.0
 
 
 class Predictor:
@@ -91,12 +95,14 @@ class Predictor:
         if model_row is None or not self._artifact_storage.exists(model_row.model_version):
             return None
 
-        model, scaler, feature_columns, _, _ = self._model_loader.load(model_row.model_version)
+        model, scaler, feature_columns, training_config, metrics = self._model_loader.load(model_row.model_version)
+        direction_temperature = direction_temperature_from_metadata(training_config, metrics)
         return PredictionRuntime(
             model_row=model_row,
             model=model,
             scaler=scaler,
             feature_columns=feature_columns,
+            direction_temperature=direction_temperature,
         )
 
     def build_feature_records(
@@ -179,7 +185,10 @@ class Predictor:
         runtime.model.eval()
         with torch.no_grad():
             outputs = runtime.model(tensor)
-            direction_probabilities = torch.softmax(outputs["direction_logits"], dim=1).cpu().tolist()[0]
+            direction_probabilities = softmax_with_temperature(
+                outputs["direction_logits"],
+                temperature=runtime.direction_temperature,
+            ).cpu().tolist()[0]
             tp_probability = float(torch.sigmoid(outputs["tp_sl_logits"]).cpu().item())
             expected_move_atr = float(outputs["expected_move_atr"].cpu().item())
             risk_score = float(outputs["risk_score"].cpu().item())
@@ -200,6 +209,8 @@ class Predictor:
             "expected_move_atr": expected_move_atr,
             "risk_score": risk_score,
             "confidence": confidence,
+            "direction_temperature": float(runtime.direction_temperature),
+            "probability_source": "temperature_scaled" if runtime.direction_temperature != 1.0 else "raw_softmax",
             "model_version": runtime.model_row.model_version,
         }
 

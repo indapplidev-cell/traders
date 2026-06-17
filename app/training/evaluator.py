@@ -5,13 +5,19 @@ from typing import Any
 import torch
 
 from app.training.metrics import TrainingMetrics
+from app.training.probability_calibration import softmax_with_temperature
 
 
 class Evaluator:
     def __init__(self, metrics: TrainingMetrics | None = None) -> None:
         self._metrics = metrics or TrainingMetrics()
 
-    def evaluate(self, model: torch.nn.Module, dataset: dict[str, torch.Tensor]) -> dict[str, Any]:
+    def evaluate(
+        self,
+        model: torch.nn.Module,
+        dataset: dict[str, torch.Tensor],
+        direction_temperature: float = 1.0,
+    ) -> dict[str, Any]:
         if dataset["features"].shape[0] == 0:
             return {
                 "accuracy": 0.0,
@@ -22,12 +28,16 @@ class Evaluator:
                 "tp_before_sl_accuracy": None,
                 "average_expected_move_error": 0.0,
                 "rows": 0,
+                "direction_temperature": float(direction_temperature),
             }
 
         model.eval()
         with torch.no_grad():
             outputs = model(dataset["features"])
-            direction_probabilities_tensor = torch.softmax(outputs["direction_logits"], dim=1)
+            direction_probabilities_tensor = softmax_with_temperature(
+                outputs["direction_logits"],
+                temperature=direction_temperature,
+            )
             tp_probabilities_tensor = torch.sigmoid(outputs["tp_sl_logits"])
 
         metrics = self._metrics.compute(
@@ -39,6 +49,7 @@ class Evaluator:
             expected_move_targets=dataset["move_target"].cpu().tolist(),
         )
         metrics["rows"] = int(dataset["features"].shape[0])
+        metrics["direction_temperature"] = float(direction_temperature)
         return metrics
 
     @staticmethod

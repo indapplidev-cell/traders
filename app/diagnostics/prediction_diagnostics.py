@@ -8,6 +8,7 @@ import torch
 from app.dataset.dataset_models import DatasetRow
 from app.training.metrics import INDEX_TO_LABEL, LABEL_TO_INDEX
 from app.training.metrics import TrainingMetrics
+from app.training.probability_calibration import softmax_with_temperature
 from app.training.training_service import TrainingService
 
 
@@ -23,6 +24,7 @@ class PredictionDiagnostics:
         rows: list[DatasetRow],
         feature_columns: list[str],
         scaler: dict[str, list[float]],
+        direction_temperature: float = 1.0,
     ) -> dict[str, Any]:
         tensors = TrainingService.rows_to_tensors(rows, feature_columns, scaler)
         if tensors["features"].shape[0] == 0:
@@ -33,12 +35,19 @@ class PredictionDiagnostics:
                 "confidence_distribution": self._confidence_distribution([]),
                 "confusion_matrix": [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
                 "rows": 0,
+                "direction_temperature": float(direction_temperature),
+                "probability_source": "temperature_scaled"
+                if direction_temperature != 1.0
+                else "raw_softmax",
             }
 
         model.eval()
         with torch.no_grad():
             outputs = model(tensors["features"])
-            probabilities = torch.softmax(outputs["direction_logits"], dim=1).cpu().tolist()
+            probabilities = softmax_with_temperature(
+                outputs["direction_logits"],
+                temperature=direction_temperature,
+            ).cpu().tolist()
 
         predicted_indexes = [max(range(3), key=lambda index: probability_row[index]) for probability_row in probabilities]
         actual_indexes = tensors["direction_target"].cpu().tolist()
@@ -67,6 +76,10 @@ class PredictionDiagnostics:
             "accuracy": metrics["accuracy"],
             "brier_score": metrics["brier_score"],
             "rows": len(rows),
+            "direction_temperature": float(direction_temperature),
+            "probability_source": "temperature_scaled"
+            if direction_temperature != 1.0
+            else "raw_softmax",
         }
 
     @staticmethod

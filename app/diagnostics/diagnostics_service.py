@@ -45,6 +45,8 @@ from app.registry.model_loader import ModelLoader
 from app.training.loss import MultiTaskLoss
 from app.training.trainer import Trainer
 from app.training.training_service import TrainingService
+from app.training.probability_calibration import direction_temperature_from_metadata
+from app.training.probability_calibration import softmax_with_temperature
 from app.validation.walk_forward_evaluator import WalkForwardEvaluator
 from app.validation.walk_forward_splitter import WalkForwardConfig, WalkForwardSplitter
 
@@ -226,7 +228,8 @@ class DiagnosticsService:
         if model_row is None:
             raise ValueError(f"Unknown model_version: {model_version}")
 
-        model, scaler, feature_columns, _, _ = self._model_loader.load(model_version)
+        model, scaler, feature_columns, training_config, metrics = self._model_loader.load(model_version)
+        direction_temperature = direction_temperature_from_metadata(training_config, metrics)
         dataset_rows, _ = self._dataset_builder.build_rows(
             symbol=symbol,
             interval=interval,
@@ -238,7 +241,13 @@ class DiagnosticsService:
         )
         split_rows = self._dataset_builder.split_rows(dataset_rows, train_end=train_end, validation_end=validation_end)
         split_reports = {
-            split_name: self._prediction_diagnostics.analyze_split(model, rows, feature_columns, scaler)
+            split_name: self._prediction_diagnostics.analyze_split(
+                model,
+                rows,
+                feature_columns,
+                scaler,
+                direction_temperature=direction_temperature,
+            )
             for split_name, rows in split_rows.items()
         }
         collapse_detected, collapse_reason = self._detect_collapse(split_reports["test"]["predicted_counts"], split_reports["test"]["rows"])
@@ -467,6 +476,12 @@ class DiagnosticsService:
             end_at=end_at,
         )
         report = self._prediction_probability_diagnostics.build_report(model_version=model_version, predictions=predictions)
+        temperatures = sorted({float(row.get("direction_temperature", 1.0)) for row in predictions})
+        sources = sorted({str(row.get("probability_source", "unknown")) for row in predictions})
+        report["direction_temperatures"] = temperatures
+        report["probability_sources"] = sources
+        report["direction_temperature"] = temperatures[0] if len(temperatures) == 1 else None
+        report["probability_source"] = sources[0] if len(sources) == 1 else "mixed"
         report["collapse_v2"] = self._prediction_collapse_detector.detect(report)
         report["start_at"] = start_at.isoformat() if start_at is not None else None
         report["end_at"] = end_at.isoformat() if end_at is not None else None
@@ -2026,7 +2041,8 @@ class DiagnosticsService:
     ) -> list[dict[str, Any]]:
         if self._candle_repository is None:
             raise ValueError("Candle repository is required for prediction-based diagnostics.")
-        model, scaler, feature_columns, _, _ = self._model_loader.load(model_version)
+        model, scaler, feature_columns, training_config, metrics = self._model_loader.load(model_version)
+        direction_temperature = direction_temperature_from_metadata(training_config, metrics)
         tensors = TrainingService.rows_to_tensors(target_rows, feature_columns, scaler)
         candle_rows = self._candle_repository.get_all(symbol=symbol, interval=interval)
         candles_by_open_time = {row.open_time: row for row in candle_rows}
@@ -2036,7 +2052,10 @@ class DiagnosticsService:
         model.eval()
         with __import__("torch").no_grad():
             outputs = model(tensors["features"])
-            probabilities = __import__("torch").softmax(outputs["direction_logits"], dim=1).cpu().tolist()
+            probabilities = softmax_with_temperature(
+                outputs["direction_logits"],
+                temperature=direction_temperature,
+            ).cpu().tolist()
 
         predictions: list[dict[str, Any]] = []
         index_to_label = {0: "UP", 1: "DOWN", 2: "FLAT"}
@@ -2054,6 +2073,8 @@ class DiagnosticsService:
                     "prob_down": float(probability_row[1]),
                     "prob_flat": float(probability_row[2]),
                     "confidence": float(max(probability_row)),
+                    "direction_temperature": float(direction_temperature),
+                    "probability_source": "temperature_scaled" if direction_temperature != 1.0 else "raw_softmax",
                     "future_move_atr": float(row.future_move_atr),
                     "atr_14": float(row.features_json["atr_14"]),
                     "current_close": float(candle.close),
