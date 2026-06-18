@@ -1129,6 +1129,7 @@ class LongHistoryTrainingPipelineRunner:
         config: TrainingPipelineConfig,
         stage_payloads: dict[str, Any],
     ) -> dict[str, Any]:
+        model_version = self._require_model_version(stage_payloads, "baseline_compare")
         start_at, end_at = self._resolved_datetime_range(config)
         result = self._with_diagnostics_service(
             lambda service: service.compare_models(
@@ -1137,12 +1138,17 @@ class LongHistoryTrainingPipelineRunner:
                 horizon_candles=self._resolve_horizon_from_label_version(self.DEFAULT_LABEL_VERSION),
                 feature_version=config.feature_version,
                 label_version=self.DEFAULT_LABEL_VERSION,
+                train_end=None,
+                validation_end=None,
                 start_at=start_at,
                 end_at=end_at,
+                model_versions=[model_version],
+                skip_incompatible_models=False,
             )
         )
         payload = dict(result)
         payload["baseline_accuracy"] = self._extract_baseline_accuracy(result)
+        payload["candidate_model_version"] = model_version
         payload["start_at"] = start_at.isoformat()
         payload["end_at"] = end_at.isoformat()
         payload["date_range_limited"] = True

@@ -98,3 +98,60 @@ class FakeModelRegistryRepository:
                 "is_active": False,
             },
         ]
+
+
+def test_compare_models_skips_incompatible_legacy_artifacts(monkeypatch, tmp_path: Path) -> None:
+    class FakeBaselineService:
+        def __init__(self, dataset_builder, reports_dir):
+            self.dataset_builder = dataset_builder
+            self.reports_dir = reports_dir
+
+        def evaluate(self, **kwargs):
+            return {
+                "baselines": {
+                    "always_flat": {"test": {"accuracy": 0.2, "brier_score": 0.9}},
+                    "majority_class": {"test": {"accuracy": 0.3, "brier_score": 0.8}},
+                }
+            }
+
+    def fake_model_report(self, model_version, **kwargs):
+        if model_version == "mv_old":
+            raise RuntimeError("legacy artifact incompatible with ML38.8 CandleMLP")
+        return {
+            "report_path": str(tmp_path / f"{model_version}.json"),
+            "accuracy_test": 0.41,
+            "brier_score_test": 0.7,
+            "collapse_detected": False,
+            "collapse_reason": None,
+            "predicted_counts_test": {"UP": 5, "DOWN": 3, "FLAT": 2},
+            "actual_counts_test": {"UP": 4, "DOWN": 4, "FLAT": 2},
+        }
+
+    monkeypatch.setattr(diagnostics_service_module, "BaselineService", FakeBaselineService)
+    monkeypatch.setattr(DiagnosticsService, "model_report", fake_model_report)
+
+    service = DiagnosticsService(
+        dataset_builder=DatasetBuilder(
+            feature_repository=FakeFeatureRepository(),
+            label_repository=FakeLabelRepository(),
+            dataset_exporter=DatasetExporter(reports_dir=tmp_path / "reports"),
+        ),
+        feature_repository=FakeFeatureRepository(),
+        model_registry_repository=FakeModelRegistryRepository(),
+        artifact_storage=ArtifactStorage(base_dir=tmp_path / "artifacts"),
+        reports_dir=tmp_path / "reports",
+    )
+
+    result = service.compare_models(
+        symbol="BTCUSDT",
+        interval="15m",
+        horizon_candles=8,
+        feature_version="fv1",
+        label_version="lv1",
+        skip_incompatible_models=True,
+    )
+
+    assert result["best_model"]["model_version"] == "mv_new"
+    assert result["skipped_model_count"] == 1
+    assert result["skipped_model_errors"][0]["model_version"] == "mv_old"
+    assert "legacy artifact incompatible" in result["skipped_model_errors"][0]["error"]
