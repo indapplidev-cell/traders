@@ -1031,7 +1031,26 @@ class LabelGridExperimentRunner:
             if failed_stage is None
             else f"pipeline_failed_at_{failed_stage.stage}"
         )
+
+        train_payload = self._as_dict(stage_payloads.get("train_model"))
+        dataset_payload = self._as_dict(stage_payloads.get("build_dataset"))
+        build_labels_payload = self._as_dict(stage_payloads.get("build_labels"))
         gap_quality = self._as_dict(getattr(pipeline_result, "gap_quality_summary", {}))
+        model_quality_payload = self._as_dict(stage_payloads.get("model_quality_validation"))
+        if not model_quality_payload:
+            model_quality_payload = self._as_dict(getattr(pipeline_result, "quality_summary", {}))
+
+        candidate_selection = self._as_dict(model_quality_payload.get("candidate_selection"))
+        quality_gates = self._as_dict(model_quality_payload.get("quality_gates_summary"))
+        raw_candidate_status = candidate_selection.get("candidate_status")
+        normalized_raw_candidate_status = str(raw_candidate_status or "").upper()
+        normalized_final_candidate_status = (
+            self._normalize_final_candidate_status(raw_candidate_status, status="COMPLETED")
+            if normalized_raw_candidate_status not in {"", "UNKNOWN", "NONE"}
+            else None
+        )
+        quality_status = str(model_quality_payload.get("quality_status") or "").upper()
+
         failed_gates_list, passed_gates_list = normalize_gap_quality_gate(
             gap_severity_for_training=gap_quality.get("gap_severity_for_training"),
             gap_training_safe=gap_quality.get("dataset_safe_for_training"),
@@ -1039,9 +1058,41 @@ class LabelGridExperimentRunner:
             passed_gates=[],
         )
         gap_failed = "gap_quality_gate" in failed_gates_list
-        known_quality_rejection = gap_failed and failed_stage_name == "model_quality_validation"
-        probability_diagnostics = self._as_dict(stage_payloads.get("probability_diagnostics"))
-        model_quality_payload = self._as_dict(stage_payloads.get("model_quality_validation"))
+
+        quality_failed_gates, quality_passed_gates = self._finalize_gate_sets(
+            raw_failed_gates=candidate_selection.get(
+                "failed_gates",
+                quality_gates.get("failed_gates", []),
+            ),
+            raw_passed_gates=candidate_selection.get(
+                "passed_gates",
+                quality_gates.get("passed_gates", []),
+            ),
+            gap_quality=gap_quality,
+        )
+
+        known_quality_rejection = (
+            gap_failed and failed_stage_name == "model_quality_validation"
+        ) or (
+            bool(model_quality_payload)
+            and (
+                normalized_final_candidate_status == "REJECTED"
+                or quality_status == "QUALITY_REJECTED"
+            )
+        )
+
+        if known_quality_rejection:
+            failed_gates_list = list(
+                dict.fromkeys(list(failed_gates_list) + list(quality_failed_gates))
+            )
+            passed_gates_list = list(
+                dict.fromkeys(list(passed_gates_list) + list(quality_passed_gates))
+            )
+
+        probability_diagnostics = self._as_dict(
+            model_quality_payload.get("probability_diagnostics")
+            or stage_payloads.get("probability_diagnostics")
+        )
         collapse_diagnostics_v2 = self._as_dict(
             model_quality_payload.get("collapse_diagnostics_v2", {})
         )
@@ -1052,7 +1103,8 @@ class LabelGridExperimentRunner:
             model_quality_payload.get("profit_aware_diagnostics", {})
         )
         regime_label_builder_status = self._as_dict(
-            self._as_dict(stage_payloads.get("build_labels")).get("regime_label_builder_status", {})
+            model_quality_payload.get("regime_label_builder_status")
+            or build_labels_payload.get("regime_label_builder_status", {})
         )
         if not regime_label_builder_status:
             regime_label_builder_status = {
@@ -1067,41 +1119,59 @@ class LabelGridExperimentRunner:
                 "warnings": [],
                 "reason": failed_stage_reason,
             }
+
+        warning_items = [
+            failed_stage_reason,
+            f"failed_stage={failed_stage_name}" if failed_stage_name else failed_stage_reason,
+        ]
+        if known_quality_rejection:
+            warning_items.append("pipeline_failed_after_quality_decision_but_candidate_rejected")
+
         return LabelGridExperimentCandidateResult(
             config_id=label_config.config_id,
             label_config=label_config.to_dict(),
             status="COMPLETED" if known_quality_rejection else "FAILED",
-            quality_status="QUALITY_REJECTED" if known_quality_rejection else None,
-            candidate_status="REJECTED" if known_quality_rejection else "FAILED",
-            raw_candidate_status="CANDIDATE_REJECTED" if known_quality_rejection else "FAILED",
-            model_version=self._as_dict(stage_payloads.get("train_model")).get("model_version"),
-            training_run_id=self._as_dict(stage_payloads.get("train_model")).get(
-                "training_run_id"
+            quality_status=(
+                str(model_quality_payload.get("quality_status") or "QUALITY_REJECTED")
+                if known_quality_rejection
+                else None
             ),
-            dataset_rows=int(self._as_dict(stage_payloads.get("build_dataset")).get("dataset_rows", 0) or 0),
-            train_rows=int(self._as_dict(stage_payloads.get("build_dataset")).get("train_rows", 0) or 0),
+            candidate_status="REJECTED" if known_quality_rejection else "FAILED",
+            raw_candidate_status=(
+                str(raw_candidate_status or "CANDIDATE_REJECTED")
+                if known_quality_rejection
+                else "FAILED"
+            ),
+            model_version=model_quality_payload.get("model_version") or train_payload.get("model_version"),
+            training_run_id=model_quality_payload.get("training_run_id") or train_payload.get("training_run_id"),
+            dataset_rows=int(model_quality_payload.get("dataset_rows", dataset_payload.get("dataset_rows", 0)) or 0),
+            train_rows=int(model_quality_payload.get("train_rows", dataset_payload.get("train_rows", 0)) or 0),
             val_rows=int(
-                self._as_dict(stage_payloads.get("build_dataset")).get(
+                model_quality_payload.get(
                     "validation_rows",
-                    0,
+                    model_quality_payload.get(
+                        "val_rows",
+                        dataset_payload.get("validation_rows", dataset_payload.get("val_rows", 0)),
+                    ),
                 )
                 or 0
             ),
-            test_rows=int(self._as_dict(stage_payloads.get("build_dataset")).get("test_rows", 0) or 0),
-            class_distribution=self._as_dict(
-                self._as_dict(stage_payloads.get("build_labels")).get("direction_counts", {})
-            ),
+            test_rows=int(model_quality_payload.get("test_rows", dataset_payload.get("test_rows", 0)) or 0),
+            class_distribution=self._as_dict(build_labels_payload.get("direction_counts", {})),
             actual_distribution={},
             predicted_distribution={},
             model_accuracy=self._optional_float(
-                self._as_dict(stage_payloads.get("train_model")).get("model_accuracy")
+                model_quality_payload.get("model_accuracy", train_payload.get("model_accuracy"))
             ),
             baseline_accuracy=self._optional_float(
-                self._as_dict(stage_payloads.get("baseline_compare")).get("baseline_accuracy")
+                model_quality_payload.get(
+                    "baseline_accuracy",
+                    self._as_dict(stage_payloads.get("baseline_compare")).get("baseline_accuracy"),
+                )
             ),
-            accuracy_edge=None,
-            collapse_detected=False,
-            collapse_type=None,
+            accuracy_edge=self._optional_float(model_quality_payload.get("accuracy_edge")),
+            collapse_detected=bool(model_quality_payload.get("collapse_detected", False)),
+            collapse_type=self._as_dict(model_quality_payload.get("anti_collapse", {})).get("collapse_type"),
             feature_version_used=config.feature_version,
             gap_severity=gap_quality.get("gap_severity"),
             gap_count=int(gap_quality.get("gap_count", 0) or 0),
@@ -1119,16 +1189,9 @@ class LabelGridExperimentRunner:
             gate_policy_blocked_count=0,
             failed_gates=tuple(failed_gates_list),
             passed_gates=tuple(passed_gates_list),
-            warnings=tuple(
-                dict.fromkeys(
-                    [
-                        failed_stage_reason,
-                        f"failed_stage={failed_stage_name}" if failed_stage_name else failed_stage_reason,
-                    ]
-                )
-            ),
+            warnings=tuple(dict.fromkeys(warning_items)),
             recommendations=(
-                ("Reject candidate because gap quality gate failed before runtime summary completed.",)
+                ("Reject candidate from available quality decision; pipeline failure did not mean candidate execution crash.",)
                 if known_quality_rejection
                 else ("Inspect pipeline failure before retrying this candidate.",)
             ),
@@ -1150,9 +1213,7 @@ class LabelGridExperimentRunner:
             ),
             profit_aware_diagnostics=profit_aware_diagnostics,
             profit_aware_diagnostics_missing_reason=(
-                None
-                if profit_aware_diagnostics
-                else "not_computed_due_to_failed_training"
+                None if profit_aware_diagnostics else "not_computed_due_to_failed_training"
             ),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,
