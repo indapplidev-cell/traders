@@ -44,6 +44,68 @@ If you want to rerun without checking/downloading candles:
 Sequential mode:
 
     python run_fv3_cached_tuning.py --sequential
+
+START MODULE
+    1. python run_fv3_cached_tuning.py --fast-debug
+    Ожидание:
+        runtime_profile = fast_debug
+        wrapper_completed_end_to_end = true
+        strict_validation_ok = true
+        failed_candidate_count = 0
+    Этот режим не говорит о качестве модели. Он только проверяет, что pipeline живой.
+    
+    2. python run_fv3_cached_tuning.py --quick-quality --quick-quality-symbol SOLUSDT
+    Ожидание:
+        runtime_profile = quick_quality
+        symbols = ["SOLUSDT"]
+        selected_config_ids = ["lv4_h06_thr035_tp12_sl08_cp"]
+        start_date = 2026-04-01
+        end_date = 2026-06-15
+        candidate_count = 1
+        failed_candidate_count = 0
+        wrapper_completed_end_to_end = true
+        strict_validation_ok = true
+
+        Если результат:
+            accepted_candidate_count = 0
+            rejected_candidate_count = 1
+        тогда полный запуск не делать. Править labels/features/model.
+
+        Если результат:
+            accepted_candidate_count >= 1
+        тогда переходить к одной монете на полном периоде.
+
+    3. python run_fv3_cached_tuning.py --single-symbol-full --single-symbol-full-symbol SOLUSDT
+        Ожидание:
+            runtime_profile = single_symbol_full
+            symbols = ["SOLUSDT"]
+            start_date = 2025-01-01
+            end_date = 2026-06-15
+            candidate_count = 1
+            failed_candidate_count = 0
+            wrapper_completed_end_to_end = true
+            strict_validation_ok = true
+        
+        Если на полном периоде одной монеты снова:
+            accepted_candidate_count = 0
+        тогда полный запуск трёх монет не делать.
+
+        Если:
+            accepted_candidate_count >= 1
+        тогда можно запускать полный 3-symbol validation.
+    
+    4. python run_fv3_cached_tuning.py
+        Ожидание:
+            runtime_profile = full
+            symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+            full_quality_run = true
+            quality_decision_allowed = true
+            candidate_count = 60
+            failed_candidate_count = 0
+            wrapper_completed_end_to_end = true
+            strict_validation_ok = true
+        Даже если появится `ACCEPTED`, модель не активировать. Сначала прислать архив на анализ.
+
 """
 
 from __future__ import annotations
