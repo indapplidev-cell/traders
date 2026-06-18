@@ -7,7 +7,7 @@ def test_fast_debug_plan_uses_two_symbols_one_config_and_short_range() -> None:
 
     assert wrapper.fast_debug is True
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
-    assert wrapper.debug_config_ids == ("lv7_h10_thr055_tp10_sl10_be",)
+    assert wrapper.debug_config_ids == ("lv8_h12_thr06_tp12_sl12_cd",)
     assert wrapper.start_date == "2026-05-01"
     assert wrapper.end_date == "2026-06-15"
     assert wrapper._expected_candidate_count() == 2
@@ -21,7 +21,7 @@ def test_fast_debug_plan_uses_two_symbols_one_config_and_short_range() -> None:
     assert "--skip-candle-load" in command
     assert "--base-label-config-id" in command
     config_index = command.index("--base-label-config-id") + 1
-    assert command[config_index] == "lv7_h10_thr055_tp10_sl10_be"
+    assert command[config_index] == "lv8_h12_thr06_tp12_sl12_cd"
 
 
 def test_default_wrapper_expects_full_60_candidates() -> None:

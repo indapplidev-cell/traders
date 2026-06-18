@@ -76,6 +76,14 @@ class TrainingPipelineConfig:
     baseline_edge_entropy_penalty: float = 0.01
     baseline_edge_gate_min: float = 0.0
     collapse_critical_gate_enabled: bool = True
+    decision_calibration_enabled: bool = False
+    decision_flat_if_max_prob_below: float = 0.42
+    decision_flat_if_margin_below: float = 0.06
+    decision_min_direction_prob: float = 0.40
+    decision_min_up_down_margin: float = 0.03
+    decision_down_boost: float = 0.0
+    decision_up_penalty: float = 0.0
+    decision_flat_boost: float = 0.0
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -952,6 +960,15 @@ class LongHistoryTrainingPipelineRunner:
                         "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
                         "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
                         "flat_class_enabled": True,
+                        "config_id": label_version,
+                        "decision_calibration_enabled": config.decision_calibration_enabled,
+                        "decision_flat_if_max_prob_below": config.decision_flat_if_max_prob_below,
+                        "decision_flat_if_margin_below": config.decision_flat_if_margin_below,
+                        "decision_min_direction_prob": config.decision_min_direction_prob,
+                        "decision_min_up_down_margin": config.decision_min_up_down_margin,
+                        "decision_down_boost": config.decision_down_boost,
+                        "decision_up_penalty": config.decision_up_penalty,
+                        "decision_flat_boost": config.decision_flat_boost,
                         "regime_label_builder_status": regime_label_builder_status,
                         "first_open_time": None,
                         "last_open_time": None,
@@ -980,6 +997,15 @@ class LongHistoryTrainingPipelineRunner:
                 "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
                 "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
                 "flat_class_enabled": True,
+                "config_id": label_version,
+                "decision_calibration_enabled": config.decision_calibration_enabled,
+                "decision_flat_if_max_prob_below": config.decision_flat_if_max_prob_below,
+                "decision_flat_if_margin_below": config.decision_flat_if_margin_below,
+                "decision_min_direction_prob": config.decision_min_direction_prob,
+                "decision_min_up_down_margin": config.decision_min_up_down_margin,
+                "decision_down_boost": config.decision_down_boost,
+                "decision_up_penalty": config.decision_up_penalty,
+                "decision_flat_boost": config.decision_flat_boost,
                 "regime_label_builder_status": regime_label_builder_status,
                 "first_open_time": records[0].candle_open_time.isoformat() if records else None,
                 "last_open_time": records[-1].candle_open_time.isoformat() if records else None,
@@ -1131,6 +1157,14 @@ class LongHistoryTrainingPipelineRunner:
                 "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
                 "baseline_edge_gate_min": config.baseline_edge_gate_min,
                 "collapse_critical_gate_enabled": config.collapse_critical_gate_enabled,
+                "decision_calibration_enabled": config.decision_calibration_enabled,
+                "decision_flat_if_max_prob_below": config.decision_flat_if_max_prob_below,
+                "decision_flat_if_margin_below": config.decision_flat_if_margin_below,
+                "decision_min_direction_prob": config.decision_min_direction_prob,
+                "decision_min_up_down_margin": config.decision_min_up_down_margin,
+                "decision_down_boost": config.decision_down_boost,
+                "decision_up_penalty": config.decision_up_penalty,
+                "decision_flat_boost": config.decision_flat_boost,
             },
         }
 
@@ -1151,6 +1185,7 @@ class LongHistoryTrainingPipelineRunner:
                 label_version=self.DEFAULT_LABEL_VERSION,
                 start_at=start_at,
                 end_at=end_at,
+                label_config=self._label_config_summary(config, stage_payloads),
             )
         )
         collapse_v2 = result.get("collapse_v2", {})
@@ -1436,16 +1471,29 @@ class LongHistoryTrainingPipelineRunner:
         profit_aware_summary = self._as_dict(stage_payloads.get("profit_aware_evaluation"))
         walk_forward_summary = self._as_dict(stage_payloads.get("walk_forward_evaluation"))
         gate_policy_replay_summary = self._as_dict(stage_payloads.get("gate_policy_replay_evaluation"))
-        label_config_summary = self._label_config_summary(stage_payloads)
+        label_config_summary = self._label_config_summary(config, stage_payloads)
         feature_config_summary = self._feature_config_summary(config.feature_version)
+        calibrated_model_accuracy, calibrated_baseline_accuracy, calibrated_accuracy_edge = (
+            self._calibrated_accuracy_triplet(probability_diagnostics)
+        )
+        if calibrated_model_accuracy is not None:
+            training_summary["model_accuracy"] = calibrated_model_accuracy
+            training_summary["test_metrics"] = dict(training_summary.get("test_metrics", {}))
+            training_summary["test_metrics"]["accuracy"] = calibrated_model_accuracy
+        if calibrated_baseline_accuracy is not None:
+            baseline_summary["baseline_accuracy"] = calibrated_baseline_accuracy
         collapse_diagnostics_v2 = CollapseDiagnosticsV2().analyze(
             probability_report=probability_diagnostics,
             symbol=config.symbol,
             feature_version=str(feature_config_summary.get("feature_version")),
             label_version=str(label_config_summary.get("label_version")),
-            accuracy_edge=self._extract_baseline_accuracy_delta(
-                training_summary=training_summary,
-                baseline_summary=baseline_summary,
+            accuracy_edge=(
+                calibrated_accuracy_edge
+                if calibrated_accuracy_edge is not None
+                else self._extract_baseline_accuracy_delta(
+                    training_summary=training_summary,
+                    baseline_summary=baseline_summary,
+                )
             ),
             walk_forward_summary=walk_forward_summary,
         )
@@ -1502,16 +1550,29 @@ class LongHistoryTrainingPipelineRunner:
         probability_diagnostics = self._as_dict(raw_probability_diagnostics)
         profit_aware_summary = self._as_dict(raw_profit_aware_summary)
         walk_forward_summary = self._as_dict(raw_walk_forward_summary)
-        label_config_summary = self._label_config_summary(stage_payloads)
+        label_config_summary = self._label_config_summary(config, stage_payloads)
         feature_config_summary = self._feature_config_summary(config.feature_version)
+        calibrated_model_accuracy, calibrated_baseline_accuracy, calibrated_accuracy_edge = (
+            self._calibrated_accuracy_triplet(probability_diagnostics)
+        )
+        if calibrated_model_accuracy is not None:
+            training_summary["model_accuracy"] = calibrated_model_accuracy
+            training_summary["test_metrics"] = dict(training_summary.get("test_metrics", {}))
+            training_summary["test_metrics"]["accuracy"] = calibrated_model_accuracy
+        if calibrated_baseline_accuracy is not None:
+            baseline_summary["baseline_accuracy"] = calibrated_baseline_accuracy
         collapse_diagnostics_v2 = CollapseDiagnosticsV2().analyze(
             probability_report=probability_diagnostics,
             symbol=config.symbol,
             feature_version=str(feature_config_summary.get("feature_version")),
             label_version=str(label_config_summary.get("label_version")),
-            accuracy_edge=self._extract_baseline_accuracy_delta(
-                training_summary=training_summary,
-                baseline_summary=baseline_summary,
+            accuracy_edge=(
+                calibrated_accuracy_edge
+                if calibrated_accuracy_edge is not None
+                else self._extract_baseline_accuracy_delta(
+                    training_summary=training_summary,
+                    baseline_summary=baseline_summary,
+                )
             ),
             walk_forward_summary=walk_forward_summary,
         )
@@ -1524,8 +1585,8 @@ class LongHistoryTrainingPipelineRunner:
             profit_aware_summary=profit_aware_summary,
         )
         result = validate_model_quality(
-            training_summary=raw_training_summary,
-            baseline_summary=raw_baseline_summary,
+            training_summary=training_summary,
+            baseline_summary=baseline_summary,
             probability_diagnostics=raw_probability_diagnostics,
             calibration_summary=raw_calibration_summary,
             profit_aware_summary=raw_profit_aware_summary,
@@ -1662,6 +1723,7 @@ class LongHistoryTrainingPipelineRunner:
 
     def _label_config_summary(
         self,
+        config: TrainingPipelineConfig,
         stage_payloads: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         build_labels_payload = self._as_dict((stage_payloads or {}).get("build_labels"))
@@ -1675,6 +1737,31 @@ class LongHistoryTrainingPipelineRunner:
             "direction_counts": self._as_dict(build_labels_payload.get("direction_counts")),
             "regime_label_builder_status": self._as_dict(
                 build_labels_payload.get("regime_label_builder_status", {})
+            ),
+            "config_id": build_labels_payload.get("config_id", self.DEFAULT_LABEL_VERSION),
+            "decision_calibration_enabled": self._as_bool(
+                build_labels_payload.get("decision_calibration_enabled", config.decision_calibration_enabled),
+            ),
+            "decision_flat_if_max_prob_below": float(
+                build_labels_payload.get("decision_flat_if_max_prob_below", config.decision_flat_if_max_prob_below)
+            ),
+            "decision_flat_if_margin_below": float(
+                build_labels_payload.get("decision_flat_if_margin_below", config.decision_flat_if_margin_below)
+            ),
+            "decision_min_direction_prob": float(
+                build_labels_payload.get("decision_min_direction_prob", config.decision_min_direction_prob)
+            ),
+            "decision_min_up_down_margin": float(
+                build_labels_payload.get("decision_min_up_down_margin", config.decision_min_up_down_margin)
+            ),
+            "decision_down_boost": float(
+                build_labels_payload.get("decision_down_boost", config.decision_down_boost)
+            ),
+            "decision_up_penalty": float(
+                build_labels_payload.get("decision_up_penalty", config.decision_up_penalty)
+            ),
+            "decision_flat_boost": float(
+                build_labels_payload.get("decision_flat_boost", config.decision_flat_boost)
             ),
         }
 
@@ -1718,6 +1805,19 @@ class LongHistoryTrainingPipelineRunner:
         if model_accuracy is None or baseline_accuracy is None:
             return None
         return model_accuracy - baseline_accuracy
+
+    @staticmethod
+    def _calibrated_accuracy_triplet(
+        probability_diagnostics: dict[str, Any],
+    ) -> tuple[float | None, float | None, float | None]:
+        calibrated = dict(probability_diagnostics.get("calibrated_decision_diagnostics", {}))
+        model_accuracy = calibrated.get("calibrated_accuracy")
+        baseline_accuracy = calibrated.get("baseline_accuracy")
+        if model_accuracy is None or baseline_accuracy is None:
+            return None, None, None
+        model_accuracy = float(model_accuracy)
+        baseline_accuracy = float(baseline_accuracy)
+        return model_accuracy, baseline_accuracy, model_accuracy - baseline_accuracy
 
     @staticmethod
     def _extract_metric(

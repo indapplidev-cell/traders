@@ -8,6 +8,8 @@ __all__ = [
     "AntiCollapseDiagnosticsResult",
     "BaselineEdgeDiagnostics",
     "BaselineEdgeDiagnosticsResult",
+    "CalibratedPredictionDecisions",
+    "DecisionCalibrationConfig",
 ]
 
 
@@ -37,6 +39,17 @@ def __getattr__(name: str) -> Any:
         return {
             "BaselineEdgeDiagnostics": BaselineEdgeDiagnostics,
             "BaselineEdgeDiagnosticsResult": BaselineEdgeDiagnosticsResult,
+        }[name]
+
+    if name in {"CalibratedPredictionDecisions", "DecisionCalibrationConfig"}:
+        from app.diagnostics.calibrated_prediction_decisions import (
+            CalibratedPredictionDecisions,
+            DecisionCalibrationConfig,
+        )
+
+        return {
+            "CalibratedPredictionDecisions": CalibratedPredictionDecisions,
+            "DecisionCalibrationConfig": DecisionCalibrationConfig,
         }[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -156,6 +156,12 @@ class ML382ConfigRanker:
             confidence_profitability_bonus = 0.75
         elif confidence_profitability_status == "WEAK":
             confidence_profitability_bonus = -1.0
+        calibrated_decision = dict(candidate.get("calibrated_decision_diagnostics", {}))
+        calibrated_ratios = dict(calibrated_decision.get("calibrated_predicted_ratios", {}))
+        raw_ratios = dict(calibrated_decision.get("raw_predicted_ratios", {}))
+        calibrated_flat = float(calibrated_ratios.get("FLAT", 0.0))
+        calibrated_up = float(calibrated_ratios.get("UP", 0.0))
+        calibrated_down = float(calibrated_ratios.get("DOWN", 0.0))
 
         score_components = {
             "walk_forward_pf_bonus": 3.0 if walk_forward_pf > 1.0 else 0.0,
@@ -189,6 +195,24 @@ class ML382ConfigRanker:
         collapse_score, collapse_components, collapse_reasons = self._collapse_severity_score_component(candidate)
         score_components.update(baseline_components)
         score_components.update(collapse_components)
+        if not excluded_from_best_selection and calibrated_decision.get("enabled"):
+            score_components["calibrated_decision_enabled_bonus"] = 0.5
+            if 0.10 <= calibrated_flat <= 0.45:
+                score_components["calibrated_flat_coverage_bonus"] = 1.0
+            elif calibrated_flat < 0.05:
+                score_components["calibrated_flat_underprediction_penalty"] = -2.0
+            elif calibrated_flat > 0.60:
+                score_components["calibrated_flat_overprediction_penalty"] = -2.0
+
+            if calibrated_up <= 0.75:
+                score_components["calibrated_up_dominance_reduction_bonus"] = 1.0
+            else:
+                score_components["calibrated_up_dominance_penalty"] = -2.0
+
+            if calibrated_down >= 0.15:
+                score_components["calibrated_down_coverage_bonus"] = 1.0
+            else:
+                score_components["calibrated_down_blindness_penalty"] = -2.0
         if excluded_from_best_selection:
             score_components["failed_candidate_penalty"] = FAILED_CANDIDATE_SCORE
             score = FAILED_CANDIDATE_SCORE
@@ -251,6 +275,9 @@ class ML382ConfigRanker:
             "confidence_profitability_diagnostics": confidence_profitability_diagnostics,
             "confidence_profitability_score": confidence_profitability_score,
             "confidence_profitability_status": confidence_profitability_status,
+            "calibrated_decision_diagnostics": calibrated_decision,
+            "calibrated_predicted_ratios": calibrated_ratios,
+            "raw_predicted_ratios": raw_ratios,
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "collapse_type": collapse_summary.get("collapse_type") or candidate.get("collapse_type"),

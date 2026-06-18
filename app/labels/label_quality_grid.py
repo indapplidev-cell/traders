@@ -22,6 +22,14 @@ class LabelQualityGridConfig:
     baseline_edge_focal_gamma: float | None = None
     baseline_edge_margin_penalty: float | None = None
     baseline_edge_entropy_penalty: float | None = None
+    decision_calibration_enabled: bool = False
+    decision_flat_if_max_prob_below: float | None = None
+    decision_flat_if_margin_below: float | None = None
+    decision_min_direction_prob: float | None = None
+    decision_min_up_down_margin: float | None = None
+    decision_down_boost: float | None = None
+    decision_up_penalty: float | None = None
+    decision_flat_boost: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -41,6 +49,14 @@ class LabelQualityGridConfig:
             "baseline_edge_focal_gamma": self.baseline_edge_focal_gamma,
             "baseline_edge_margin_penalty": self.baseline_edge_margin_penalty,
             "baseline_edge_entropy_penalty": self.baseline_edge_entropy_penalty,
+            "decision_calibration_enabled": self.decision_calibration_enabled,
+            "decision_flat_if_max_prob_below": self.decision_flat_if_max_prob_below,
+            "decision_flat_if_margin_below": self.decision_flat_if_margin_below,
+            "decision_min_direction_prob": self.decision_min_direction_prob,
+            "decision_min_up_down_margin": self.decision_min_up_down_margin,
+            "decision_down_boost": self.decision_down_boost,
+            "decision_up_penalty": self.decision_up_penalty,
+            "decision_flat_boost": self.decision_flat_boost,
         }
 
 
@@ -508,6 +524,84 @@ class LabelQualityGridPlanner:
                 baseline_edge_focal_gamma=1.30,
                 baseline_edge_margin_penalty=0.015,
                 baseline_edge_entropy_penalty=0.01,
+            ),
+            LabelQualityGridConfig(
+                config_id="lv8_h10_thr055_tp10_sl10_cd",
+                label_version="lv8_h10_thr055_tp10_sl10_cd",
+                horizon=10,
+                threshold=0.55,
+                take_profit_atr=1.0,
+                stop_loss_atr=1.0,
+                flat_threshold=0.55,
+                description="ML38.9.3 calibrated decision profile: uncertainty-to-FLAT, moderate down correction.",
+                risk_note="Use calibrated decision diagnostics without softening collapse, bias, or baseline-edge gates.",
+                anti_collapse_profile="calibrated_decision_h10",
+                flat_bias_objective_enabled=True,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.25,
+                baseline_edge_margin_penalty=0.02,
+                baseline_edge_entropy_penalty=0.015,
+                decision_calibration_enabled=True,
+                decision_flat_if_max_prob_below=0.42,
+                decision_flat_if_margin_below=0.055,
+                decision_min_direction_prob=0.40,
+                decision_min_up_down_margin=0.030,
+                decision_down_boost=0.015,
+                decision_up_penalty=0.010,
+                decision_flat_boost=0.010,
+            ),
+            LabelQualityGridConfig(
+                config_id="lv8_h12_thr06_tp12_sl12_cd",
+                label_version="lv8_h12_thr06_tp12_sl12_cd",
+                horizon=12,
+                threshold=0.60,
+                take_profit_atr=1.2,
+                stop_loss_atr=1.2,
+                flat_threshold=0.60,
+                description="ML38.9.3 calibrated decision profile: stronger uncertainty-to-FLAT for h12.",
+                risk_note="Primary ML38.9.3 fast-debug and quick-quality candidate; keep strict gates unchanged.",
+                anti_collapse_profile="calibrated_decision_h12",
+                flat_bias_objective_enabled=True,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.30,
+                baseline_edge_margin_penalty=0.015,
+                baseline_edge_entropy_penalty=0.01,
+                decision_calibration_enabled=True,
+                decision_flat_if_max_prob_below=0.43,
+                decision_flat_if_margin_below=0.065,
+                decision_min_direction_prob=0.405,
+                decision_min_up_down_margin=0.035,
+                decision_down_boost=0.020,
+                decision_up_penalty=0.015,
+                decision_flat_boost=0.015,
+            ),
+            LabelQualityGridConfig(
+                config_id="lv8_h16_thr065_tp15_sl15_cd",
+                label_version="lv8_h16_thr065_tp15_sl15_cd",
+                horizon=16,
+                threshold=0.65,
+                take_profit_atr=1.5,
+                stop_loss_atr=1.5,
+                flat_threshold=0.65,
+                description="ML38.9.3 calibrated decision profile: slower horizon with stronger no-direction filter.",
+                risk_note="Use for one-symbol full validation after quick-quality; do not accept if walk-forward remains weak.",
+                anti_collapse_profile="calibrated_decision_h16",
+                flat_bias_objective_enabled=True,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.30,
+                baseline_edge_margin_penalty=0.015,
+                baseline_edge_entropy_penalty=0.01,
+                decision_calibration_enabled=True,
+                decision_flat_if_max_prob_below=0.44,
+                decision_flat_if_margin_below=0.070,
+                decision_min_direction_prob=0.410,
+                decision_min_up_down_margin=0.040,
+                decision_down_boost=0.020,
+                decision_up_penalty=0.020,
+                decision_flat_boost=0.020,
             ),
         ]
         return {

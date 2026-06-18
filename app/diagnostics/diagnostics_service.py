@@ -18,6 +18,7 @@ from app.diagnostics.dataset_diagnostics import DatasetDiagnostics
 from app.diagnostics.directional_opportunity_diagnostics import DirectionalOpportunityDiagnostics
 from app.diagnostics.feature_diagnostics_v2 import FeatureDiagnosticsV2
 from app.diagnostics.fold_label_diagnostics import FoldLabelDiagnostics
+from app.diagnostics.calibrated_prediction_decisions import CalibratedPredictionDecisions
 from app.diagnostics.prediction_collapse_detector import PredictionCollapseDetector
 from app.diagnostics.prediction_bias_root_cause import PredictionBiasRootCause
 from app.diagnostics.prediction_diagnostics import PredictionDiagnostics
@@ -101,6 +102,7 @@ class DiagnosticsService:
         self._label_diagnostics = label_diagnostics or LabelDiagnostics()
         self._prediction_probability_diagnostics = prediction_probability_diagnostics or PredictionProbabilityDiagnostics()
         self._prediction_collapse_detector = prediction_collapse_detector or PredictionCollapseDetector()
+        self._calibrated_prediction_decisions = CalibratedPredictionDecisions()
         self._model_loader = model_loader or ModelLoader(artifact_storage=self._artifact_storage)
         self._model_factory = model_factory or ModelFactory()
         self._confidence_gate_evaluator = confidence_gate_evaluator or ConfidenceGateEvaluator(reports_dir=self._reports_dir)
@@ -454,8 +456,9 @@ class DiagnosticsService:
         validation_end=None,
         start_at=None,
         end_at=None,
+        label_config: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        predictions = self._build_prediction_rows(
+        raw_predictions = self._build_prediction_rows(
             model_version=model_version,
             symbol=symbol,
             interval=interval,
@@ -467,8 +470,27 @@ class DiagnosticsService:
             start_at=start_at,
             end_at=end_at,
         )
-        report = self._prediction_probability_diagnostics.build_report(model_version=model_version, predictions=predictions)
+        raw_report = self._prediction_probability_diagnostics.build_report(
+            model_version=model_version,
+            predictions=raw_predictions,
+        )
+        raw_report["collapse_v2"] = self._prediction_collapse_detector.detect(raw_report)
+        calibrated_diagnostics = self._calibrated_prediction_decisions.build_report(
+            predictions=raw_predictions,
+            label_config=label_config,
+            symbol=symbol,
+            config_id=str(dict(label_config or {}).get("config_id") or label_version),
+        )
+        calibrated_predictions = list(calibrated_diagnostics.get("calibrated_rows", []))
+        report = self._prediction_probability_diagnostics.build_report(
+            model_version=model_version,
+            predictions=calibrated_predictions,
+        )
         report["collapse_v2"] = self._prediction_collapse_detector.detect(report)
+        report["raw_probability_diagnostics"] = raw_report
+        report["raw_collapse_v2"] = dict(raw_report.get("collapse_v2", {}))
+        report["calibrated_decision_diagnostics"] = calibrated_diagnostics
+        report["prediction_decision_source"] = "calibrated_decision_layer"
         report["start_at"] = start_at.isoformat() if start_at is not None else None
         report["end_at"] = end_at.isoformat() if end_at is not None else None
         report["date_range_limited"] = start_at is not None and end_at is not None

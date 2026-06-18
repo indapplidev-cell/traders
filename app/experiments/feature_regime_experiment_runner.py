@@ -109,6 +109,10 @@ class FeatureRegimeCandidateResult:
     feature_leakage_risk_detected: bool = False
     probability_diagnostics: dict[str, Any] = field(default_factory=dict)
     probability_diagnostics_missing_reason: str | None = None
+    calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
+    raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
+    raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    prediction_decision_source: str | None = None
     real_feature_diagnostics: dict[str, Any] = field(default_factory=dict)
     real_feature_diagnostics_missing_reason: str | None = None
     collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -188,6 +192,10 @@ class FeatureRegimeCandidateResult:
             "feature_leakage_risk_detected": self.feature_leakage_risk_detected,
             "probability_diagnostics": dict(self.probability_diagnostics),
             "probability_diagnostics_missing_reason": self.probability_diagnostics_missing_reason,
+            "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
+            "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
+            "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
+            "prediction_decision_source": self.prediction_decision_source,
             "real_feature_diagnostics": dict(self.real_feature_diagnostics),
             "real_feature_diagnostics_missing_reason": self.real_feature_diagnostics_missing_reason,
             "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
@@ -1611,6 +1619,16 @@ class FeatureRegimeExperimentRunner:
                     "probability_diagnostics_missing_reason",
                     None,
                 ),
+                calibrated_decision_diagnostics=self._as_dict(
+                    getattr(item, "calibrated_decision_diagnostics", {})
+                ),
+                raw_predicted_class_distribution=self._as_dict(
+                    getattr(item, "raw_predicted_class_distribution", {})
+                ),
+                raw_collapse_diagnostics_v2=self._as_dict(
+                    getattr(item, "raw_collapse_diagnostics_v2", {})
+                ),
+                prediction_decision_source=getattr(item, "prediction_decision_source", None),
                 real_feature_diagnostics_used=real_feature_diagnostics_used,
                 real_feature_diagnostics_row_count=real_feature_diagnostics_row_count,
                 regime_features_attached=regime_features_attached,
@@ -1694,14 +1712,30 @@ class FeatureRegimeExperimentRunner:
     ) -> tuple[list[FeatureRegimeCandidateResult], dict[str, Any] | None]:
         enriched: list[FeatureRegimeCandidateResult] = []
         for candidate in candidate_results:
+            calibrated_decision = self._as_dict(candidate.calibrated_decision_diagnostics)
+            calibrated_accuracy = calibrated_decision.get("calibrated_accuracy")
+            calibrated_baseline_accuracy = calibrated_decision.get("baseline_accuracy")
+            model_accuracy = (
+                float(calibrated_accuracy)
+                if calibrated_accuracy is not None
+                else candidate.model_accuracy
+            )
+            baseline_accuracy = (
+                float(calibrated_baseline_accuracy)
+                if calibrated_baseline_accuracy is not None
+                else candidate.baseline_accuracy
+            )
             baseline_edge_diagnostics = BaselineEdgeDiagnostics().evaluate(
-                accuracy=candidate.model_accuracy,
-                baseline_accuracy=candidate.baseline_accuracy,
+                accuracy=model_accuracy,
+                baseline_accuracy=baseline_accuracy,
                 symbol=config.symbol,
                 config_id=candidate.config_id,
                 min_positive_edge=float(candidate.label_config.get("baseline_edge_gate_min", 0.0) or 0.0),
             )
-            collapse_severity = classify_collapse_severity(candidate.collapse_diagnostics_v2)
+            collapse_source = self._as_dict(candidate.collapse_diagnostics_v2) or self._as_dict(
+                candidate.raw_collapse_diagnostics_v2
+            )
+            collapse_severity = classify_collapse_severity(collapse_source)
             class_bias = self._class_bias_payload(symbol=config.symbol, candidate=candidate)
             bias_failed_gates = self._bias_failed_gates(class_bias)
             failed_gates_list = [
@@ -1772,6 +1806,9 @@ class FeatureRegimeExperimentRunner:
                     confidence_profitability_diagnostics=confidence_profitability,
                     confidence_profitability_score=confidence_profitability.get("confidence_profitability_score"),
                     confidence_profitability_status=confidence_profitability.get("confidence_profitability_status"),
+                    model_accuracy=model_accuracy,
+                    baseline_accuracy=baseline_accuracy,
+                    accuracy_edge=baseline_edge_diagnostics.baseline_edge,
                     baseline_edge=baseline_edge_diagnostics.baseline_edge,
                     baseline_edge_status=baseline_edge_diagnostics.baseline_edge_status,
                     baseline_edge_diagnostics=baseline_edge_diagnostics.to_dict(),

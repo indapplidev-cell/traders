@@ -100,6 +100,10 @@ class LabelGridExperimentCandidateResult:
     probability_diagnostics_missing_reason: str | None = None
     collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
     collapse_diagnostics_v2_missing_reason: str | None = None
+    calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
+    raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
+    raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
+    prediction_decision_source: str | None = None
     regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
     regime_label_builder_status_missing_reason: str | None = None
     walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
@@ -156,6 +160,10 @@ class LabelGridExperimentCandidateResult:
             "probability_diagnostics_missing_reason": self.probability_diagnostics_missing_reason,
             "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
             "collapse_diagnostics_v2_missing_reason": self.collapse_diagnostics_v2_missing_reason,
+            "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
+            "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
+            "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
+            "prediction_decision_source": self.prediction_decision_source,
             "regime_label_builder_status": dict(self.regime_label_builder_status),
             "regime_label_builder_status_missing_reason": self.regime_label_builder_status_missing_reason,
             "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
@@ -844,6 +852,42 @@ class LabelGridExperimentRunner:
                     if label_config.baseline_edge_entropy_penalty is None
                     else float(label_config.baseline_edge_entropy_penalty)
                 ),
+                decision_calibration_enabled=label_config.decision_calibration_enabled,
+                decision_flat_if_max_prob_below=(
+                    0.42
+                    if label_config.decision_flat_if_max_prob_below is None
+                    else float(label_config.decision_flat_if_max_prob_below)
+                ),
+                decision_flat_if_margin_below=(
+                    0.06
+                    if label_config.decision_flat_if_margin_below is None
+                    else float(label_config.decision_flat_if_margin_below)
+                ),
+                decision_min_direction_prob=(
+                    0.40
+                    if label_config.decision_min_direction_prob is None
+                    else float(label_config.decision_min_direction_prob)
+                ),
+                decision_min_up_down_margin=(
+                    0.03
+                    if label_config.decision_min_up_down_margin is None
+                    else float(label_config.decision_min_up_down_margin)
+                ),
+                decision_down_boost=(
+                    0.0
+                    if label_config.decision_down_boost is None
+                    else float(label_config.decision_down_boost)
+                ),
+                decision_up_penalty=(
+                    0.0
+                    if label_config.decision_up_penalty is None
+                    else float(label_config.decision_up_penalty)
+                ),
+                decision_flat_boost=(
+                    0.0
+                    if label_config.decision_flat_boost is None
+                    else float(label_config.decision_flat_boost)
+                ),
             )
         )
         if pipeline_result.status == "FAILED":
@@ -908,6 +952,12 @@ class LabelGridExperimentRunner:
             quality_payload=quality_payload,
             key="profit_aware_diagnostics",
             fallback_reason="profit_aware_diagnostics_not_provided",
+        )
+        raw_probability_diagnostics = self._as_dict(
+            probability_diagnostics.get("raw_probability_diagnostics", {})
+        )
+        raw_predicted_class_distribution = dict(
+            raw_probability_diagnostics.get("predicted_direction_ratios", {})
         )
         failed_gates, passed_gates = self._finalize_gate_sets(
             raw_failed_gates=candidate_selection.get(
@@ -990,6 +1040,14 @@ class LabelGridExperimentRunner:
             probability_diagnostics_missing_reason=probability_diagnostics_missing_reason,
             collapse_diagnostics_v2=collapse_diagnostics_v2,
             collapse_diagnostics_v2_missing_reason=collapse_diagnostics_v2_missing_reason,
+            calibrated_decision_diagnostics=dict(
+                probability_diagnostics.get("calibrated_decision_diagnostics", {})
+            ),
+            raw_predicted_class_distribution=raw_predicted_class_distribution,
+            raw_collapse_diagnostics_v2=dict(
+                probability_diagnostics.get("raw_collapse_v2", {})
+            ),
+            prediction_decision_source=probability_diagnostics.get("prediction_decision_source"),
             regime_label_builder_status=regime_label_builder_status,
             regime_label_builder_status_missing_reason=regime_label_builder_status_missing_reason,
             walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,
@@ -1109,6 +1167,9 @@ class LabelGridExperimentRunner:
             model_quality_payload.get("probability_diagnostics")
             or stage_payloads.get("probability_diagnostics")
         )
+        raw_probability_diagnostics = self._as_dict(
+            probability_diagnostics.get("raw_probability_diagnostics", {})
+        )
         collapse_diagnostics_v2 = self._as_dict(
             model_quality_payload.get("collapse_diagnostics_v2", {})
         )
@@ -1219,6 +1280,16 @@ class LabelGridExperimentRunner:
             collapse_diagnostics_v2_missing_reason=(
                 None if collapse_diagnostics_v2 else "not_computed_due_to_failed_training"
             ),
+            calibrated_decision_diagnostics=dict(
+                probability_diagnostics.get("calibrated_decision_diagnostics", {})
+            ),
+            raw_predicted_class_distribution=dict(
+                raw_probability_diagnostics.get("predicted_direction_ratios", {})
+            ),
+            raw_collapse_diagnostics_v2=dict(
+                probability_diagnostics.get("raw_collapse_v2", {})
+            ),
+            prediction_decision_source=probability_diagnostics.get("prediction_decision_source"),
             regime_label_builder_status=regime_label_builder_status,
             regime_label_builder_status_missing_reason=None,
             walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,

@@ -11,9 +11,9 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert wrapper.single_symbol_full is False
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == (
-        "lv7_h08_thr052_tp10_sl10_be",
-        "lv7_h10_thr055_tp10_sl10_be",
-        "lv7_h12_thr06_tp12_sl12_be",
+        "lv8_h10_thr055_tp10_sl10_cd",
+        "lv8_h12_thr06_tp12_sl12_cd",
+        "lv8_h16_thr065_tp15_sl15_cd",
     )
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
@@ -31,9 +31,9 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv7_h08_thr052_tp10_sl10_be",
-        "lv7_h10_thr055_tp10_sl10_be",
-        "lv7_h12_thr06_tp12_sl12_be",
+        "lv8_h10_thr055_tp10_sl10_cd",
+        "lv8_h12_thr06_tp12_sl12_cd",
+        "lv8_h16_thr065_tp15_sl15_cd",
     ]
     assert command[command.index("--start-date") + 1] == "2026-04-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"
@@ -49,9 +49,9 @@ def test_single_symbol_full_profile_uses_one_symbol_full_range_and_selected_conf
     assert wrapper.single_symbol_full is True
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == (
-        "lv7_h08_thr052_tp10_sl10_be",
-        "lv7_h10_thr055_tp10_sl10_be",
-        "lv7_h12_thr06_tp12_sl12_be",
+        "lv8_h10_thr055_tp10_sl10_cd",
+        "lv8_h12_thr06_tp12_sl12_cd",
+        "lv8_h16_thr065_tp15_sl15_cd",
     )
     assert wrapper.start_date == "2025-01-01"
     assert wrapper.end_date == "2026-06-15"
@@ -69,9 +69,9 @@ def test_single_symbol_full_profile_uses_one_symbol_full_range_and_selected_conf
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv7_h08_thr052_tp10_sl10_be",
-        "lv7_h10_thr055_tp10_sl10_be",
-        "lv7_h12_thr06_tp12_sl12_be",
+        "lv8_h10_thr055_tp10_sl10_cd",
+        "lv8_h12_thr06_tp12_sl12_cd",
+        "lv8_h16_thr065_tp15_sl15_cd",
     ]
     assert command[command.index("--start-date") + 1] == "2025-01-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"
