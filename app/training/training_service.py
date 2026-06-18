@@ -52,6 +52,10 @@ class TrainingConfig:
     risk_loss_weight: float = 1.0
     direction_logit_gap_weight: float = 0.0
     direction_logit_gap_target: float = 0.35
+    direction_distribution_loss_weight: float = 0.0
+    flat_probability_floor_weight: float = 0.0
+    flat_probability_floor_target: float = 0.18
+    min_class_probability_floor: float = 0.04
     label_noise_hardening_enabled: bool = True
 
 
@@ -153,6 +157,10 @@ class TrainingService:
         risk_loss_weight: float = 1.0,
         direction_logit_gap_weight: float = 0.0,
         direction_logit_gap_target: float = 0.35,
+        direction_distribution_loss_weight: float = 0.0,
+        flat_probability_floor_weight: float = 0.0,
+        flat_probability_floor_target: float = 0.18,
+        min_class_probability_floor: float = 0.04,
         label_noise_hardening_enabled: bool = True,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
@@ -185,6 +193,10 @@ class TrainingService:
             risk_loss_weight=risk_loss_weight,
             direction_logit_gap_weight=direction_logit_gap_weight,
             direction_logit_gap_target=direction_logit_gap_target,
+            direction_distribution_loss_weight=direction_distribution_loss_weight,
+            flat_probability_floor_weight=flat_probability_floor_weight,
+            flat_probability_floor_target=flat_probability_floor_target,
+            min_class_probability_floor=min_class_probability_floor,
             label_noise_hardening_enabled=label_noise_hardening_enabled,
         )
         started_at = datetime.now(tz=timezone.utc)
@@ -254,8 +266,10 @@ class TrainingService:
                     risk_loss_weight=config.risk_loss_weight,
                     confidence_margin_weight=config.confidence_margin_weight,
                     confidence_margin_target=config.confidence_margin_target,
-                    direction_logit_gap_weight=config.direction_logit_gap_weight,
-                    direction_logit_gap_target=config.direction_logit_gap_target,
+                    direction_distribution_loss_weight=config.direction_distribution_loss_weight,
+                    flat_probability_floor_weight=config.flat_probability_floor_weight,
+                    flat_probability_floor_target=config.flat_probability_floor_target,
+                    min_class_probability_floor=config.min_class_probability_floor,
                 ),
             )
             training_result = trainer.train(model=model, train_dataset=train_dataset, validation_dataset=validation_dataset)
@@ -320,6 +334,10 @@ class TrainingService:
                 "risk_loss_weight": config.risk_loss_weight,
                 "direction_logit_gap_weight": config.direction_logit_gap_weight,
                 "direction_logit_gap_target": config.direction_logit_gap_target,
+                "direction_distribution_loss_weight": config.direction_distribution_loss_weight,
+                "flat_probability_floor_weight": config.flat_probability_floor_weight,
+                "flat_probability_floor_target": config.flat_probability_floor_target,
+                "min_class_probability_floor": config.min_class_probability_floor,
                 "label_noise_hardening_enabled": config.label_noise_hardening_enabled,
             }
             combined_metrics = {
@@ -393,6 +411,10 @@ class TrainingService:
                 "confidence_margin_weight": config.confidence_margin_weight,
                 "confidence_margin_target": config.confidence_margin_target,
                 "probability_temperature_enabled": config.probability_temperature_enabled,
+                "direction_distribution_loss_weight": config.direction_distribution_loss_weight,
+                "flat_probability_floor_weight": config.flat_probability_floor_weight,
+                "flat_probability_floor_target": config.flat_probability_floor_target,
+                "min_class_probability_floor": config.min_class_probability_floor,
             }
         except Exception as exc:
             finished_at = datetime.now(tz=timezone.utc)

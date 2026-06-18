@@ -184,12 +184,16 @@ class LongHistoryTrainingPipelineRunner:
     DEFAULT_LABEL_SMOOTHING = 0.01
     DEFAULT_CONFIDENCE_MARGIN_WEIGHT = 0.25
     DEFAULT_CONFIDENCE_MARGIN_TARGET = 0.18
-    DEFAULT_DIRECTION_LOSS_WEIGHT = 2.25
-    DEFAULT_TP_SL_LOSS_WEIGHT = 0.30
-    DEFAULT_MOVE_LOSS_WEIGHT = 0.25
-    DEFAULT_RISK_LOSS_WEIGHT = 0.25
-    DEFAULT_DIRECTION_LOGIT_GAP_WEIGHT = 0.15
-    DEFAULT_DIRECTION_LOGIT_GAP_TARGET = 0.35
+    DEFAULT_DIRECTION_LOSS_WEIGHT = 3.00
+    DEFAULT_TP_SL_LOSS_WEIGHT = 0.10
+    DEFAULT_MOVE_LOSS_WEIGHT = 0.10
+    DEFAULT_RISK_LOSS_WEIGHT = 0.10
+    DEFAULT_DIRECTION_LOGIT_GAP_WEIGHT = 0.20
+    DEFAULT_DIRECTION_LOGIT_GAP_TARGET = 0.45
+    DEFAULT_DIRECTION_DISTRIBUTION_LOSS_WEIGHT = 0.75
+    DEFAULT_FLAT_PROBABILITY_FLOOR_WEIGHT = 1.00
+    DEFAULT_FLAT_PROBABILITY_FLOOR_TARGET = 0.20
+    DEFAULT_MIN_CLASS_PROBABILITY_FLOOR = 0.05
     DEFAULT_LABEL_NOISE_HARDENING_ENABLED = True
     DEFAULT_PROBABILITY_TEMPERATURE_ENABLED = True
     DEFAULT_DIRECTION_ATR_THRESHOLD = 0.5
@@ -1053,6 +1057,10 @@ class LongHistoryTrainingPipelineRunner:
                 risk_loss_weight=self.DEFAULT_RISK_LOSS_WEIGHT,
                 direction_logit_gap_weight=self.DEFAULT_DIRECTION_LOGIT_GAP_WEIGHT,
                 direction_logit_gap_target=self.DEFAULT_DIRECTION_LOGIT_GAP_TARGET,
+                direction_distribution_loss_weight=self.DEFAULT_DIRECTION_DISTRIBUTION_LOSS_WEIGHT,
+                flat_probability_floor_weight=self.DEFAULT_FLAT_PROBABILITY_FLOOR_WEIGHT,
+                flat_probability_floor_target=self.DEFAULT_FLAT_PROBABILITY_FLOOR_TARGET,
+                min_class_probability_floor=self.DEFAULT_MIN_CLASS_PROBABILITY_FLOOR,
                 label_noise_hardening_enabled=self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
             )
         test_metrics = dict(result.get("test_metrics", {}))
@@ -1089,6 +1097,10 @@ class LongHistoryTrainingPipelineRunner:
                 "risk_loss_weight": self.DEFAULT_RISK_LOSS_WEIGHT,
                 "direction_logit_gap_weight": self.DEFAULT_DIRECTION_LOGIT_GAP_WEIGHT,
                 "direction_logit_gap_target": self.DEFAULT_DIRECTION_LOGIT_GAP_TARGET,
+                "direction_distribution_loss_weight": self.DEFAULT_DIRECTION_DISTRIBUTION_LOSS_WEIGHT,
+                "flat_probability_floor_weight": self.DEFAULT_FLAT_PROBABILITY_FLOOR_WEIGHT,
+                "flat_probability_floor_target": self.DEFAULT_FLAT_PROBABILITY_FLOOR_TARGET,
+                "min_class_probability_floor": self.DEFAULT_MIN_CLASS_PROBABILITY_FLOOR,
                 "label_noise_hardening_enabled": self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
             },
         }

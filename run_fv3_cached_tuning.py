@@ -52,16 +52,21 @@ START MODULE
         wrapper_completed_end_to_end = true
         strict_validation_ok = true
         failed_candidate_count = 0
+        selected_config_ids = ["lv5_h08_thr05_tp10_sl10_fb"]
     Этот режим не говорит о качестве модели. Он только проверяет, что pipeline живой.
     
     2. python run_fv3_cached_tuning.py --quick-quality --quick-quality-symbol SOLUSDT
     Ожидание:
         runtime_profile = quick_quality
         symbols = ["SOLUSDT"]
-        selected_config_ids = ["lv4_h06_thr035_tp12_sl08_cp"]
+        selected_config_ids = [
+            "lv5_h06_thr045_tp10_sl10_fb",
+            "lv5_h08_thr05_tp10_sl10_fb",
+            "lv5_h12_thr055_tp12_sl12_fb",
+        ]
         start_date = 2026-04-01
         end_date = 2026-06-15
-        candidate_count = 1
+        candidate_count = 3
         failed_candidate_count = 0
         wrapper_completed_end_to_end = true
         strict_validation_ok = true
@@ -100,7 +105,7 @@ START MODULE
             symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
             full_quality_run = true
             quality_decision_allowed = true
-            candidate_count = 60
+            candidate_count = 72
             failed_candidate_count = 0
             wrapper_completed_end_to_end = true
             strict_validation_ok = true
@@ -134,21 +139,28 @@ DEFAULT_INTERVAL = "15m"
 DEFAULT_START_DATE = "2025-01-01"
 DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
-DEFAULT_EXPECTED_CANDIDATE_COUNT = 60
+DEFAULT_EXPECTED_CANDIDATE_COUNT = 72
 
 # Runtime-only smoke profile: проверяет, что wrapper, DB cache, training pipeline,
 # архив и status semantics не сломаны. Не использовать как решение о качестве модели.
-FAST_DEBUG_CONFIGS = "lv4_h06_thr035_tp12_sl08_cp"
+FAST_DEBUG_CONFIGS = "lv5_h08_thr05_tp10_sl10_fb"
 FAST_DEBUG_SYMBOLS = "BTCUSDT,SOLUSDT"
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = "2026-06-15"
 
 # Intermediate quality profile: быстрая проверка качества на одной монете.
-# Это не финальный approval и не автоактивация модели.
-QUICK_QUALITY_CONFIGS = "lv4_h06_thr035_tp12_sl08_cp"
+# ML38.9 гоняет несколько flat/bias configs, но только на одной монете и коротком периоде.
+QUICK_QUALITY_CONFIGS = "lv5_h06_thr045_tp10_sl10_fb,lv5_h08_thr05_tp10_sl10_fb,lv5_h12_thr055_tp12_sl12_fb"
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"
 QUICK_QUALITY_END_DATE = DEFAULT_END_DATE
+
+# One-symbol full-period profile: запускать только если quick-quality дал ACCEPTED
+# или хотя бы REJECTED без collapse_gate.
+SINGLE_SYMBOL_FULL_CONFIGS = "lv5_h06_thr045_tp10_sl10_fb,lv5_h08_thr05_tp10_sl10_fb,lv5_h12_thr055_tp12_sl12_fb"
+SINGLE_SYMBOL_FULL_SYMBOL = "SOLUSDT"
+SINGLE_SYMBOL_FULL_START_DATE = DEFAULT_START_DATE
+SINGLE_SYMBOL_FULL_END_DATE = DEFAULT_END_DATE
 
 # One-symbol full-period profile: запускать только если quick-quality дал ACCEPTED.
 # Это ещё не full multi-symbol validation.

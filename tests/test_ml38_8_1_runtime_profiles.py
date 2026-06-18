@@ -10,10 +10,14 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert wrapper.quick_quality is True
     assert wrapper.single_symbol_full is False
     assert wrapper.symbols == ("SOLUSDT",)
-    assert wrapper.selected_config_ids == ("lv4_h06_thr035_tp12_sl08_cp",)
+    assert wrapper.selected_config_ids == (
+        "lv5_h06_thr045_tp10_sl10_fb",
+        "lv5_h08_thr05_tp10_sl10_fb",
+        "lv5_h12_thr055_tp12_sl12_fb",
+    )
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 1
+    assert wrapper._expected_candidate_count() == 3
     assert wrapper._full_quality_run() is False
     assert wrapper._quality_decision_allowed() is False
 
@@ -21,7 +25,16 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
 
     assert "--skip-candle-load" in command
     assert "--base-label-config-id" in command
-    assert command[command.index("--base-label-config-id") + 1] == "lv4_h06_thr035_tp12_sl08_cp"
+    config_values = [
+        command[index + 1]
+        for index, value in enumerate(command)
+        if value == "--base-label-config-id"
+    ]
+    assert config_values == [
+        "lv5_h06_thr045_tp10_sl10_fb",
+        "lv5_h08_thr05_tp10_sl10_fb",
+        "lv5_h12_thr055_tp12_sl12_fb",
+    ]
     assert command[command.index("--start-date") + 1] == "2026-04-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"
 
@@ -35,10 +48,14 @@ def test_single_symbol_full_profile_uses_one_symbol_full_range_and_selected_conf
     assert wrapper.quick_quality is False
     assert wrapper.single_symbol_full is True
     assert wrapper.symbols == ("SOLUSDT",)
-    assert wrapper.selected_config_ids == ("lv4_h06_thr035_tp12_sl08_cp",)
+    assert wrapper.selected_config_ids == (
+        "lv5_h06_thr045_tp10_sl10_fb",
+        "lv5_h08_thr05_tp10_sl10_fb",
+        "lv5_h12_thr055_tp12_sl12_fb",
+    )
     assert wrapper.start_date == "2025-01-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 1
+    assert wrapper._expected_candidate_count() == 3
     assert wrapper._full_quality_run() is False
     assert wrapper._quality_decision_allowed() is False
 
@@ -46,7 +63,16 @@ def test_single_symbol_full_profile_uses_one_symbol_full_range_and_selected_conf
 
     assert "--skip-candle-load" in command
     assert "--base-label-config-id" in command
-    assert command[command.index("--base-label-config-id") + 1] == "lv4_h06_thr035_tp12_sl08_cp"
+    config_values = [
+        command[index + 1]
+        for index, value in enumerate(command)
+        if value == "--base-label-config-id"
+    ]
+    assert config_values == [
+        "lv5_h06_thr045_tp10_sl10_fb",
+        "lv5_h08_thr05_tp10_sl10_fb",
+        "lv5_h12_thr055_tp12_sl12_fb",
+    ]
     assert command[command.index("--start-date") + 1] == "2025-01-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"
 
@@ -60,7 +86,7 @@ def test_full_profile_still_expects_original_three_symbol_full_grid() -> None:
     assert wrapper.selected_config_ids == ()
     assert wrapper.start_date == "2025-01-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 60
+    assert wrapper._expected_candidate_count() == 72
     assert wrapper._full_quality_run() is True
     assert wrapper._quality_decision_allowed() is True
 

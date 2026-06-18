@@ -23,6 +23,13 @@ ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS = (
     "lv4_h12_thr05_tp15_sl10_cp",
 )
 
+ML38_9_FLAT_BIAS_CONFIG_IDS = (
+    "lv5_h06_thr045_tp10_sl10_fb",
+    "lv5_h08_thr05_tp10_sl10_fb",
+    "lv5_h12_thr055_tp12_sl12_fb",
+    "lv5_h16_thr06_tp15_sl15_fb",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -34,6 +41,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h16_thr05_tp20_sl10",
     *ML38_5_ANTI_COLLAPSE_CONFIG_IDS,
     *ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS,
+    *ML38_9_FLAT_BIAS_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv3_candle_ta_context"
@@ -63,6 +71,9 @@ class ML382FV3TuningMatrix:
             "anti_collapse_config_ids": list(ML38_5_ANTI_COLLAPSE_CONFIG_IDS),
             "anti_collapse_config_count": len(ML38_5_ANTI_COLLAPSE_CONFIG_IDS),
             "confidence_profit_config_ids": list(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
+            "flat_bias_stage": "ML38.9",
+            "flat_bias_config_ids": list(ML38_9_FLAT_BIAS_CONFIG_IDS),
+            "flat_bias_config_count": len(ML38_9_FLAT_BIAS_CONFIG_IDS),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,
