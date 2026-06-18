@@ -48,6 +48,12 @@ def test_training_service_trains_and_registers_model(tmp_path: Path) -> None:
     assert "probability_calibration" in metrics
     assert "selected_temperature" in training_config["probability_calibration"]
 
+    assert "direction_head_diagnostics" in metrics
+    assert "label_noise_diagnostics" in metrics
+    assert "direction_loss_weight" in training_config
+    assert "direction_logit_gap_weight" in training_config
+    assert "label_noise_hardening_enabled" in training_config
+
 
 class FakeFeatureRepository:
     def get_all(self, symbol: str, interval: str, feature_version: str):

@@ -6,6 +6,9 @@ import torch.nn.functional as F
 
 
 DEFAULT_TEMPERATURE_GRID: tuple[float, ...] = (
+    0.30,
+    0.35,
+    0.40,
     0.45,
     0.50,
     0.55,

@@ -180,10 +180,17 @@ class LongHistoryTrainingPipelineRunner:
     DEFAULT_LABEL_VERSION = "lv1"
     DEFAULT_MODEL_NAME = "candle_mlp"
     DEFAULT_DIRECTION_LOSS_NAME = "focal"
-    DEFAULT_FOCAL_GAMMA = 2.0
-    DEFAULT_LABEL_SMOOTHING = 0.02
-    DEFAULT_CONFIDENCE_MARGIN_WEIGHT = 0.20
-    DEFAULT_CONFIDENCE_MARGIN_TARGET = 0.12
+    DEFAULT_FOCAL_GAMMA = 2.2
+    DEFAULT_LABEL_SMOOTHING = 0.01
+    DEFAULT_CONFIDENCE_MARGIN_WEIGHT = 0.25
+    DEFAULT_CONFIDENCE_MARGIN_TARGET = 0.18
+    DEFAULT_DIRECTION_LOSS_WEIGHT = 2.25
+    DEFAULT_TP_SL_LOSS_WEIGHT = 0.30
+    DEFAULT_MOVE_LOSS_WEIGHT = 0.25
+    DEFAULT_RISK_LOSS_WEIGHT = 0.25
+    DEFAULT_DIRECTION_LOGIT_GAP_WEIGHT = 0.15
+    DEFAULT_DIRECTION_LOGIT_GAP_TARGET = 0.35
+    DEFAULT_LABEL_NOISE_HARDENING_ENABLED = True
     DEFAULT_PROBABILITY_TEMPERATURE_ENABLED = True
     DEFAULT_DIRECTION_ATR_THRESHOLD = 0.5
     DEFAULT_TAKE_PROFIT_ATR = 1.5
@@ -1040,6 +1047,13 @@ class LongHistoryTrainingPipelineRunner:
                 confidence_margin_weight=self.DEFAULT_CONFIDENCE_MARGIN_WEIGHT,
                 confidence_margin_target=self.DEFAULT_CONFIDENCE_MARGIN_TARGET,
                 probability_temperature_enabled=self.DEFAULT_PROBABILITY_TEMPERATURE_ENABLED,
+                direction_loss_weight=self.DEFAULT_DIRECTION_LOSS_WEIGHT,
+                tp_sl_loss_weight=self.DEFAULT_TP_SL_LOSS_WEIGHT,
+                move_loss_weight=self.DEFAULT_MOVE_LOSS_WEIGHT,
+                risk_loss_weight=self.DEFAULT_RISK_LOSS_WEIGHT,
+                direction_logit_gap_weight=self.DEFAULT_DIRECTION_LOGIT_GAP_WEIGHT,
+                direction_logit_gap_target=self.DEFAULT_DIRECTION_LOGIT_GAP_TARGET,
+                label_noise_hardening_enabled=self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1069,6 +1083,13 @@ class LongHistoryTrainingPipelineRunner:
                 "confidence_margin_weight": self.DEFAULT_CONFIDENCE_MARGIN_WEIGHT,
                 "confidence_margin_target": self.DEFAULT_CONFIDENCE_MARGIN_TARGET,
                 "probability_temperature_enabled": self.DEFAULT_PROBABILITY_TEMPERATURE_ENABLED,
+                "direction_loss_weight": self.DEFAULT_DIRECTION_LOSS_WEIGHT,
+                "tp_sl_loss_weight": self.DEFAULT_TP_SL_LOSS_WEIGHT,
+                "move_loss_weight": self.DEFAULT_MOVE_LOSS_WEIGHT,
+                "risk_loss_weight": self.DEFAULT_RISK_LOSS_WEIGHT,
+                "direction_logit_gap_weight": self.DEFAULT_DIRECTION_LOGIT_GAP_WEIGHT,
+                "direction_logit_gap_target": self.DEFAULT_DIRECTION_LOGIT_GAP_TARGET,
+                "label_noise_hardening_enabled": self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
             },
         }
 

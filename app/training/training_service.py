@@ -12,6 +12,9 @@ import torch
 
 from app.dataset.dataset_builder import DatasetBuilder
 from app.dataset.dataset_models import DatasetRow
+from app.diagnostics.direction_head_separation_diagnostics import DirectionHeadSeparationDiagnostics
+from app.diagnostics.direction_head_separation_diagnostics import LabelNoiseDiagnostics
+from app.diagnostics.direction_head_separation_diagnostics import direction_sample_weight_for_row
 from app.features.feature_models import FEATURE_NAMES, feature_names_for_version
 from app.models.model_factory import ModelFactory
 from app.registry.artifact_storage import ArtifactStorage
@@ -43,6 +46,13 @@ class TrainingConfig:
     confidence_margin_weight: float = 0.0
     confidence_margin_target: float = 0.12
     probability_temperature_enabled: bool = True
+    direction_loss_weight: float = 1.0
+    tp_sl_loss_weight: float = 1.0
+    move_loss_weight: float = 1.0
+    risk_loss_weight: float = 1.0
+    direction_logit_gap_weight: float = 0.0
+    direction_logit_gap_target: float = 0.35
+    label_noise_hardening_enabled: bool = True
 
 
 def _safe_run_id_part(value: object) -> str:
@@ -137,6 +147,13 @@ class TrainingService:
         confidence_margin_weight: float = 0.0,
         confidence_margin_target: float = 0.12,
         probability_temperature_enabled: bool = True,
+        direction_loss_weight: float = 1.0,
+        tp_sl_loss_weight: float = 1.0,
+        move_loss_weight: float = 1.0,
+        risk_loss_weight: float = 1.0,
+        direction_logit_gap_weight: float = 0.0,
+        direction_logit_gap_target: float = 0.35,
+        label_noise_hardening_enabled: bool = True,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -162,6 +179,13 @@ class TrainingService:
             confidence_margin_weight=confidence_margin_weight,
             confidence_margin_target=confidence_margin_target,
             probability_temperature_enabled=probability_temperature_enabled,
+            direction_loss_weight=direction_loss_weight,
+            tp_sl_loss_weight=tp_sl_loss_weight,
+            move_loss_weight=move_loss_weight,
+            risk_loss_weight=risk_loss_weight,
+            direction_logit_gap_weight=direction_logit_gap_weight,
+            direction_logit_gap_target=direction_logit_gap_target,
+            label_noise_hardening_enabled=label_noise_hardening_enabled,
         )
         started_at = datetime.now(tz=timezone.utc)
         run_id = build_training_run_id(
@@ -203,6 +227,8 @@ class TrainingService:
             )
             if not split_rows["train"] or not split_rows["test"]:
                 raise ValueError("Train/test dataset is empty.")
+            
+            label_noise_diagnostics = LabelNoiseDiagnostics().build_by_split(split_rows)
 
             feature_columns = self.feature_columns(feature_version)
             scaler = self.fit_scaler(split_rows["train"], feature_columns)
@@ -222,11 +248,25 @@ class TrainingService:
                     direction_loss_name=config.direction_loss_name,
                     focal_gamma=config.focal_gamma,
                     label_smoothing=config.label_smoothing,
+                    direction_loss_weight=config.direction_loss_weight,
+                    tp_sl_loss_weight=config.tp_sl_loss_weight,
+                    move_loss_weight=config.move_loss_weight,
+                    risk_loss_weight=config.risk_loss_weight,
                     confidence_margin_weight=config.confidence_margin_weight,
                     confidence_margin_target=config.confidence_margin_target,
+                    direction_logit_gap_weight=config.direction_logit_gap_weight,
+                    direction_logit_gap_target=config.direction_logit_gap_target,
                 ),
             )
             training_result = trainer.train(model=model, train_dataset=train_dataset, validation_dataset=validation_dataset)
+            direction_head_diagnostics = DirectionHeadSeparationDiagnostics().build_for_splits(
+                model=model,
+                datasets={
+                    "train": train_dataset,
+                    "validation": validation_dataset,
+                    "test": test_dataset,
+                },
+            )
             if config.probability_temperature_enabled:
                 temperature_report = fit_direction_temperature_for_model(
                     model=model,
@@ -274,6 +314,13 @@ class TrainingService:
                 "confidence_margin_target": config.confidence_margin_target,
                 "probability_temperature_enabled": config.probability_temperature_enabled,
                 "probability_calibration": probability_calibration,
+                "direction_loss_weight": config.direction_loss_weight,
+                "tp_sl_loss_weight": config.tp_sl_loss_weight,
+                "move_loss_weight": config.move_loss_weight,
+                "risk_loss_weight": config.risk_loss_weight,
+                "direction_logit_gap_weight": config.direction_logit_gap_weight,
+                "direction_logit_gap_target": config.direction_logit_gap_target,
+                "label_noise_hardening_enabled": config.label_noise_hardening_enabled,
             }
             combined_metrics = {
                 "train": train_metrics,
@@ -286,6 +333,8 @@ class TrainingService:
                 "raw_validation": raw_validation_metrics,
                 "raw_test": raw_test_metrics,
                 "probability_calibration": probability_calibration,
+                "direction_head_diagnostics": direction_head_diagnostics,
+                "label_noise_diagnostics": label_noise_diagnostics,
             }
             artifact_path = self._artifact_storage.save(
                 model_version=model_version,
@@ -426,6 +475,7 @@ class TrainingService:
         return {
             "features": empty_features,
             "direction_target": empty_long,
+            "direction_sample_weight": empty_float,
             "tp_sl_target": empty_float,
             "tp_sl_mask": empty_float,
             "move_target": empty_float,
@@ -439,6 +489,7 @@ class TrainingService:
 
         feature_matrix: list[list[float]] = []
         direction_targets: list[int] = []
+        direction_sample_weights: list[float] = []
         tp_targets: list[float] = []
         tp_masks: list[float] = []
         move_targets: list[float] = []
@@ -452,6 +503,7 @@ class TrainingService:
             ]
             feature_matrix.append(scaled)
             direction_targets.append({"UP": 0, "DOWN": 1, "FLAT": 2}[row.direction_label])
+            direction_sample_weights.append(direction_sample_weight_for_row(row))
             if row.tp_before_sl is None:
                 tp_targets.append(0.0)
                 tp_masks.append(0.0)
@@ -464,6 +516,7 @@ class TrainingService:
         return {
             "features": torch.tensor(feature_matrix, dtype=torch.float32),
             "direction_target": torch.tensor(direction_targets, dtype=torch.long),
+            "direction_sample_weight": torch.tensor(direction_sample_weights, dtype=torch.float32),
             "tp_sl_target": torch.tensor(tp_targets, dtype=torch.float32),
             "tp_sl_mask": torch.tensor(tp_masks, dtype=torch.float32),
             "move_target": torch.tensor(move_targets, dtype=torch.float32),

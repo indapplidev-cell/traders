@@ -16,6 +16,7 @@ from app.diagnostics.regime_segment_diagnostics import RegimeSegmentDiagnostics
 from app.db.repositories.feature_repository import FeatureRepository
 from app.diagnostics.dataset_diagnostics import DatasetDiagnostics
 from app.diagnostics.directional_opportunity_diagnostics import DirectionalOpportunityDiagnostics
+from app.diagnostics.direction_head_separation_diagnostics import DirectionHeadSeparationDiagnostics
 from app.diagnostics.feature_diagnostics_v2 import FeatureDiagnosticsV2
 from app.diagnostics.fold_label_diagnostics import FoldLabelDiagnostics
 from app.diagnostics.prediction_collapse_detector import PredictionCollapseDetector
@@ -482,6 +483,7 @@ class DiagnosticsService:
         report["probability_sources"] = sources
         report["direction_temperature"] = temperatures[0] if len(temperatures) == 1 else None
         report["probability_source"] = sources[0] if len(sources) == 1 else "mixed"
+        report["direction_head_separation_stage"] = "ML38.8"
         report["collapse_v2"] = self._prediction_collapse_detector.detect(report)
         report["start_at"] = start_at.isoformat() if start_at is not None else None
         report["end_at"] = end_at.isoformat() if end_at is not None else None
