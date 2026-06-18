@@ -1685,7 +1685,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         result = wrapper.run()
-        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        print(json.dumps(result, ensure_ascii=True, indent=2, sort_keys=True))
         return 0
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
