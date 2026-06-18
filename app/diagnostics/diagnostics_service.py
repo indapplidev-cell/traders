@@ -43,6 +43,7 @@ from app.meta_label.meta_training_service import MetaTrainingService
 from app.registry.artifact_storage import ArtifactStorage
 from app.registry.model_loader import ModelLoader
 from app.training.loss import MultiTaskLoss
+from app.training.probability_calibration import direction_temperature_from_metadata, softmax_with_temperature
 from app.training.trainer import Trainer
 from app.training.training_service import TrainingService
 from app.validation.walk_forward_evaluator import WalkForwardEvaluator
@@ -2099,7 +2100,11 @@ class DiagnosticsService:
     ) -> list[dict[str, Any]]:
         if self._candle_repository is None:
             raise ValueError("Candle repository is required for prediction-based diagnostics.")
-        model, scaler, feature_columns, _, _ = self._model_loader.load(model_version)
+
+        model, scaler, feature_columns, training_config, metrics = self._model_loader.load(model_version)
+        direction_temperature = direction_temperature_from_metadata(training_config, metrics)
+        probability_source = "temperature_scaled" if direction_temperature != 1.0 else "raw_softmax"
+
         tensors = TrainingService.rows_to_tensors(target_rows, feature_columns, scaler)
         candle_rows = self._candle_repository.get_all(symbol=symbol, interval=interval)
         candles_by_open_time = {row.open_time: row for row in candle_rows}
@@ -2109,7 +2114,10 @@ class DiagnosticsService:
         model.eval()
         with __import__("torch").no_grad():
             outputs = model(tensors["features"])
-            probabilities = __import__("torch").softmax(outputs["direction_logits"], dim=1).cpu().tolist()
+            probabilities = softmax_with_temperature(
+                outputs["direction_logits"],
+                temperature=direction_temperature,
+            ).cpu().tolist()
 
         predictions: list[dict[str, Any]] = []
         index_to_label = {0: "UP", 1: "DOWN", 2: "FLAT"}
@@ -2127,6 +2135,8 @@ class DiagnosticsService:
                     "prob_down": float(probability_row[1]),
                     "prob_flat": float(probability_row[2]),
                     "confidence": float(max(probability_row)),
+                    "direction_temperature": float(direction_temperature),
+                    "probability_source": probability_source,
                     "future_move_atr": float(row.future_move_atr),
                     "atr_14": float(row.features_json["atr_14"]),
                     "current_close": float(candle.close),
