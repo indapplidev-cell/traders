@@ -73,10 +73,27 @@ DEFAULT_START_DATE = "2025-01-01"
 DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
 DEFAULT_EXPECTED_CANDIDATE_COUNT = 60
+
+# Runtime-only smoke profile: проверяет, что wrapper, DB cache, training pipeline,
+# архив и status semantics не сломаны. Не использовать как решение о качестве модели.
 FAST_DEBUG_CONFIGS = "lv4_h06_thr035_tp12_sl08_cp"
 FAST_DEBUG_SYMBOLS = "BTCUSDT,SOLUSDT"
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = "2026-06-15"
+
+# Intermediate quality profile: быстрая проверка качества на одной монете.
+# Это не финальный approval и не автоактивация модели.
+QUICK_QUALITY_CONFIGS = "lv4_h06_thr035_tp12_sl08_cp"
+QUICK_QUALITY_SYMBOL = "SOLUSDT"
+QUICK_QUALITY_START_DATE = "2026-04-01"
+QUICK_QUALITY_END_DATE = DEFAULT_END_DATE
+
+# One-symbol full-period profile: запускать только если quick-quality дал ACCEPTED.
+# Это ещё не full multi-symbol validation.
+SINGLE_SYMBOL_FULL_CONFIGS = "lv4_h06_thr035_tp12_sl08_cp"
+SINGLE_SYMBOL_FULL_SYMBOL = "SOLUSDT"
+SINGLE_SYMBOL_FULL_START_DATE = DEFAULT_START_DATE
+SINGLE_SYMBOL_FULL_END_DATE = DEFAULT_END_DATE
 
 
 @dataclass(frozen=True)
@@ -157,28 +174,51 @@ class Fv3CachedTuningWrapper:
         self.args = args
         self.repo_root = Path(args.repo_root).resolve() if args.repo_root else Path(__file__).resolve().parent
         self.python_exe = self._resolve_python_exe()
+
         self.fast_debug = bool(args.fast_debug)
-        raw_symbols = args.debug_symbols if self.fast_debug else args.symbols
-        raw_start_date = args.debug_start_date if self.fast_debug else args.start_date
-        raw_end_date = args.debug_end_date if self.fast_debug else args.end_date
+        self.quick_quality = bool(args.quick_quality)
+        self.single_symbol_full = bool(args.single_symbol_full)
+        self.runtime_profile = self._runtime_profile()
+
+        if self.fast_debug:
+            raw_symbols = args.debug_symbols
+            raw_start_date = args.debug_start_date
+            raw_end_date = args.debug_end_date
+            selected_config_ids = tuple(_split_csv(args.debug_configs))
+        elif self.quick_quality:
+            raw_symbols = args.quick_quality_symbol
+            raw_start_date = args.quick_quality_start_date
+            raw_end_date = args.quick_quality_end_date
+            selected_config_ids = tuple(_split_csv(args.quick_quality_configs))
+        elif self.single_symbol_full:
+            raw_symbols = args.single_symbol_full_symbol
+            raw_start_date = args.single_symbol_full_start_date
+            raw_end_date = args.single_symbol_full_end_date
+            selected_config_ids = tuple(_split_csv(args.single_symbol_full_configs))
+        else:
+            raw_symbols = args.symbols
+            raw_start_date = args.start_date
+            raw_end_date = args.end_date
+            selected_config_ids = ()
 
         self.symbols = tuple(part.upper() for part in _split_csv(raw_symbols))
         self.debug_config_ids = tuple(_split_csv(args.debug_configs)) if self.fast_debug else ()
+        self.quick_quality_config_ids = tuple(_split_csv(args.quick_quality_configs)) if self.quick_quality else ()
+        self.single_symbol_full_config_ids = (
+            tuple(_split_csv(args.single_symbol_full_configs)) if self.single_symbol_full else ()
+        )
+        self.selected_config_ids = selected_config_ids
         self.interval = args.interval
         self.start_date = raw_start_date
         self.end_date = raw_end_date
         self.stage_name = args.stage_name
-        self.stage_context = (
-            f"{args.stage_context}; FAST DEBUG runtime-only validation"
-            if self.fast_debug
-            else args.stage_context
-        )
+        self.stage_context = self._stage_context(args.stage_context)
         self.tuning_command = args.tuning_command
         self.timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         self.output_root = self.repo_root / "reports" / "feature_regime_experiments"
 
         symbols_part = "_".join(symbol.lower() for symbol in self.symbols)
-        mode_prefix = "fast_debug_" if self.fast_debug else ""
+        mode_prefix = self._runtime_mode_prefix()
         self.archive_base_name = f"{mode_prefix}fv3_cached_fresh_tuning_{symbols_part}_{self.interval}_{self.timestamp}"
         self.archive_stage_dir = self.output_root / self.archive_base_name
         self.archive_path = self.output_root / f"{self.archive_base_name}.zip"
@@ -202,13 +242,13 @@ class Fv3CachedTuningWrapper:
 
     def run(self) -> dict[str, Any]:
         self._print_banner()
-        if self.fast_debug:
+        if self.runtime_profile != "full":
             self._status(
-                "DEBUG",
-                "Fast debug mode enabled: "
-                f"symbols={list(self.symbols)} configs={list(self.debug_config_ids)} "
+                "PROFILE",
+                f"{self.runtime_profile} mode enabled: "
+                f"symbols={list(self.symbols)} configs={list(self.selected_config_ids)} "
                 f"range={self.start_date}->{self.end_date}. "
-                "This is runtime validation only, not a full quality run.",
+                "This is not a final full multi-symbol quality decision.",
             )
         self._preflight()
         self._ensure_stage_dirs()
@@ -271,6 +311,7 @@ class Fv3CachedTuningWrapper:
         print("FV3 cached fresh tuning wrapper")
         print(f"Stage name: {self.stage_name}")
         print(f"Context: {self.stage_context}")
+        print(f"Runtime profile: {self.runtime_profile}")
         print(f"Symbols: {', '.join(self.symbols)}")
         print(f"Interval: {self.interval}")
         print(f"Date range: {self.start_date} -> {self.end_date}")
@@ -283,6 +324,68 @@ class Fv3CachedTuningWrapper:
         if candidate.exists():
             return candidate
         return Path(sys.executable)
+
+    def _runtime_profile(self) -> str:
+        if self.fast_debug:
+            return "fast_debug"
+        if self.quick_quality:
+            return "quick_quality"
+        if self.single_symbol_full:
+            return "single_symbol_full"
+        return "full"
+
+    def _runtime_mode_prefix(self) -> str:
+        if self.fast_debug:
+            return "fast_debug_"
+        if self.quick_quality:
+            return "quick_quality_"
+        if self.single_symbol_full:
+            return "single_symbol_full_"
+        return ""
+
+    def _stage_context(self, base_context: str) -> str:
+        if self.fast_debug:
+            return f"{base_context}; FAST DEBUG runtime-only validation"
+        if self.quick_quality:
+            return f"{base_context}; QUICK QUALITY single-symbol intermediate validation"
+        if self.single_symbol_full:
+            return f"{base_context}; SINGLE SYMBOL FULL-PERIOD intermediate validation"
+        return base_context
+
+    def _full_quality_run(self) -> bool:
+        return self.runtime_profile == "full"
+
+    def _quality_decision_allowed(self) -> bool:
+        # Только полный 3-symbol run может считаться финальным quality decision.
+        # Fast/quick/single-symbol режимы дают только промежуточный сигнал.
+        return self.runtime_profile == "full"
+
+    def _accepted_candidate_count(self) -> int:
+        multi = self.multi_symbol_result or {}
+        return self._as_optional_int(multi.get("accepted_candidate_count")) or 0
+
+    def _next_recommended_action(self) -> str:
+        accepted = self._accepted_candidate_count()
+
+        if self.fast_debug:
+            if accepted > 0:
+                return "Fast-debug completed; still run quick-quality because fast-debug is runtime-only."
+            return "Run quick-quality for one symbol; do not run full multi-symbol validation yet."
+
+        if self.quick_quality:
+            if accepted > 0:
+                symbol = self.symbols[0] if self.symbols else SINGLE_SYMBOL_FULL_SYMBOL
+                return f"Run single-symbol-full for {symbol}; do not auto-activate the model."
+            return "Do not run full multi-symbol validation; continue improving labels/features/model."
+
+        if self.single_symbol_full:
+            if accepted > 0:
+                return "Run full BTCUSDT/ETHUSDT/SOLUSDT validation; do not auto-activate the model."
+            return "Do not run full multi-symbol validation; one-symbol full-period did not produce ACCEPTED."
+
+        if accepted > 0:
+            return "Full validation found ACCEPTED candidate; review stability/walk-forward/per-symbol consistency manually."
+        return "Full validation finished with no ACCEPTED candidates; continue ML38 improvements."
 
     def _preflight(self) -> None:
         if not self.repo_root.exists():
@@ -744,7 +847,7 @@ class Fv3CachedTuningWrapper:
         if self.tuning_command == DEFAULT_TUNING_COMMAND:
             command.append("--skip-candle-load")
 
-        for config_id in self.debug_config_ids:
+        for config_id in self.selected_config_ids:
             command.extend(["--base-label-config-id", config_id])
 
         if self.args.max_configs is not None:
@@ -1051,13 +1154,21 @@ class Fv3CachedTuningWrapper:
             "branch": self.current_branch,
             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "feature_version": FEATURE_VERSION,
+            "runtime_profile": self.runtime_profile,
             "fast_debug": self.fast_debug,
+            "quick_quality": self.quick_quality,
+            "single_symbol_full": self.single_symbol_full,
             "debug_config_ids": list(self.debug_config_ids),
-            "full_quality_run": not self.fast_debug,
-            "quality_decision_allowed": not self.fast_debug,
+            "quick_quality_config_ids": list(self.quick_quality_config_ids),
+            "single_symbol_full_config_ids": list(self.single_symbol_full_config_ids),
+            "selected_config_ids": list(self.selected_config_ids),
+            "full_quality_run": self._full_quality_run(),
+            "quality_decision_allowed": self._quality_decision_allowed(),
+            "intermediate_quality_run": self.quick_quality or self.single_symbol_full,
             "debug_start_date": self.start_date if self.fast_debug else None,
             "debug_end_date": self.end_date if self.fast_debug else None,
             "debug_date_range_expected_to_limit_builders": self.fast_debug,
+            "next_recommended_action": self._next_recommended_action(),
             "interval": self.interval,
             "start_date": self.start_date,
             "end_date": self.end_date,
@@ -1158,8 +1269,8 @@ class Fv3CachedTuningWrapper:
         }
 
     def _expected_candidate_count(self) -> int:
-        if self.fast_debug:
-            return len(self.symbols) * len(self.debug_config_ids)
+        if self.selected_config_ids:
+            return len(self.symbols) * len(self.selected_config_ids)
         if self.args.max_configs is not None:
             return int(self.args.max_configs) * len(self.symbols)
         return DEFAULT_EXPECTED_CANDIDATE_COUNT
@@ -1186,13 +1297,21 @@ class Fv3CachedTuningWrapper:
             "status": status,
             "stage": self.stage_name,
             "stage_context": self.stage_context,
+            "runtime_profile": self.runtime_profile,
             "fast_debug": self.fast_debug,
+            "quick_quality": self.quick_quality,
+            "single_symbol_full": self.single_symbol_full,
             "debug_config_ids": list(self.debug_config_ids),
-            "full_quality_run": not self.fast_debug,
-            "quality_decision_allowed": not self.fast_debug,
+            "quick_quality_config_ids": list(self.quick_quality_config_ids),
+            "single_symbol_full_config_ids": list(self.single_symbol_full_config_ids),
+            "selected_config_ids": list(self.selected_config_ids),
+            "full_quality_run": self._full_quality_run(),
+            "quality_decision_allowed": self._quality_decision_allowed(),
+            "intermediate_quality_run": self.quick_quality or self.single_symbol_full,
             "debug_start_date": self.start_date if self.fast_debug else None,
             "debug_end_date": self.end_date if self.fast_debug else None,
             "debug_date_range_expected_to_limit_builders": self.fast_debug,
+            "next_recommended_action": self._next_recommended_action(),
             "branch": self.current_branch,
             "training_skipped": training_skipped,
             "candle_source": "postgresql_db_cache",
@@ -1373,10 +1492,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--no-load-on-unknown-cache", action="store_true", help="Do not run load-candles when check-candle-gaps output is unknown.")
     parser.add_argument("--sequential", action="store_true", help="Run symbols sequentially instead of parallel.")
     parser.add_argument("--max-configs", type=int, default=None, help="Optional max configs per symbol for debugging only.")
-    parser.add_argument(
+    profile_group = parser.add_mutually_exclusive_group()
+    profile_group.add_argument(
         "--fast-debug",
         action="store_true",
         help="Run a short runtime-only debug pass: BTCUSDT/SOLUSDT and one config by default.",
+    )
+    profile_group.add_argument(
+        "--quick-quality",
+        action="store_true",
+        help="Run one-symbol short-range intermediate quality validation. Not a final approval.",
+    )
+    profile_group.add_argument(
+        "--single-symbol-full",
+        action="store_true",
+        help="Run one-symbol full-period intermediate validation. Use only after quick-quality improves.",
     )
     parser.add_argument(
         "--debug-symbols",
@@ -1397,6 +1527,46 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--debug-end-date",
         default=FAST_DEBUG_END_DATE,
         help="End date used only when --fast-debug is set.",
+    )
+    parser.add_argument(
+        "--quick-quality-symbol",
+        default=QUICK_QUALITY_SYMBOL,
+        help="Symbol used only when --quick-quality is set.",
+    )
+    parser.add_argument(
+        "--quick-quality-configs",
+        default=QUICK_QUALITY_CONFIGS,
+        help="Comma-separated label config ids used only when --quick-quality is set.",
+    )
+    parser.add_argument(
+        "--quick-quality-start-date",
+        default=QUICK_QUALITY_START_DATE,
+        help="Start date used only when --quick-quality is set.",
+    )
+    parser.add_argument(
+        "--quick-quality-end-date",
+        default=QUICK_QUALITY_END_DATE,
+        help="End date used only when --quick-quality is set.",
+    )
+    parser.add_argument(
+        "--single-symbol-full-symbol",
+        default=SINGLE_SYMBOL_FULL_SYMBOL,
+        help="Symbol used only when --single-symbol-full is set.",
+    )
+    parser.add_argument(
+        "--single-symbol-full-configs",
+        default=SINGLE_SYMBOL_FULL_CONFIGS,
+        help="Comma-separated label config ids used only when --single-symbol-full is set.",
+    )
+    parser.add_argument(
+        "--single-symbol-full-start-date",
+        default=SINGLE_SYMBOL_FULL_START_DATE,
+        help="Start date used only when --single-symbol-full is set.",
+    )
+    parser.add_argument(
+        "--single-symbol-full-end-date",
+        default=SINGLE_SYMBOL_FULL_END_DATE,
+        help="End date used only when --single-symbol-full is set.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Pass --dry-run to symbol tuning command.")
     parser.add_argument("--sample-mode", action="store_true", help="Pass --sample-mode to symbol tuning command.")
