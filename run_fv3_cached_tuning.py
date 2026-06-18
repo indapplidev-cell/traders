@@ -86,7 +86,7 @@ START MODULE
             symbols = ["SOLUSDT"]
             start_date = 2025-01-01
             end_date = 2026-06-15
-            candidate_count = 1
+            candidate_count = 3
             failed_candidate_count = 0
             wrapper_completed_end_to_end = true
             strict_validation_ok = true
@@ -139,32 +139,38 @@ DEFAULT_INTERVAL = "15m"
 DEFAULT_START_DATE = "2025-01-01"
 DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
-DEFAULT_EXPECTED_CANDIDATE_COUNT = 72
+#
+# Full FV3 matrix after ML38.9:
+#   8 base ML38.2 configs
+# + 6 anti-collapse ML38.5 configs
+# + 6 confidence/profitability ML38.6 configs
+# + 4 flat/bias ML38.9 configs
+# = 24 configs * 3 symbols = 72 candidates.
+DEFAULT_FULL_GRID_CONFIG_COUNT = 24
+DEFAULT_EXPECTED_CANDIDATE_COUNT = len(DEFAULT_SYMBOLS) * DEFAULT_FULL_GRID_CONFIG_COUNT
 
-# Runtime-only smoke profile: проверяет, что wrapper, DB cache, training pipeline,
-# архив и status semantics не сломаны. Не использовать как решение о качестве модели.
+# Runtime-only smoke profile: checks wrapper, DB cache, training pipeline,
+# archive assembly, and status semantics. This is not a quality decision.
 FAST_DEBUG_CONFIGS = "lv5_h08_thr05_tp10_sl10_fb"
 FAST_DEBUG_SYMBOLS = "BTCUSDT,SOLUSDT"
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = "2026-06-15"
 
-# Intermediate quality profile: быстрая проверка качества на одной монете.
-# ML38.9 гоняет несколько flat/bias configs, но только на одной монете и коротком периоде.
-QUICK_QUALITY_CONFIGS = "lv5_h06_thr045_tp10_sl10_fb,lv5_h08_thr05_tp10_sl10_fb,lv5_h12_thr055_tp12_sl12_fb"
+# Intermediate quality profile: quick one-symbol, short-range check.
+# It should use the best compact subset of ML38.9 flat/bias configs.
+QUICK_QUALITY_CONFIGS = (
+    "lv5_h06_thr045_tp10_sl10_fb,"
+    "lv5_h08_thr05_tp10_sl10_fb,"
+    "lv5_h12_thr055_tp12_sl12_fb"
+)
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"
 QUICK_QUALITY_END_DATE = DEFAULT_END_DATE
 
-# One-symbol full-period profile: запускать только если quick-quality дал ACCEPTED
-# или хотя бы REJECTED без collapse_gate.
-SINGLE_SYMBOL_FULL_CONFIGS = "lv5_h06_thr045_tp10_sl10_fb,lv5_h08_thr05_tp10_sl10_fb,lv5_h12_thr055_tp12_sl12_fb"
-SINGLE_SYMBOL_FULL_SYMBOL = "SOLUSDT"
-SINGLE_SYMBOL_FULL_START_DATE = DEFAULT_START_DATE
-SINGLE_SYMBOL_FULL_END_DATE = DEFAULT_END_DATE
-
-# One-symbol full-period profile: запускать только если quick-quality дал ACCEPTED.
-# Это ещё не full multi-symbol validation.
-SINGLE_SYMBOL_FULL_CONFIGS = "lv4_h06_thr035_tp12_sl08_cp"
+# One-symbol full-period profile: run only after quick-quality improves.
+# It must use the same compact ML38.9 flat/bias shortlist as quick-quality,
+# but on the full 2025+ date range for one symbol.
+SINGLE_SYMBOL_FULL_CONFIGS = QUICK_QUALITY_CONFIGS
 SINGLE_SYMBOL_FULL_SYMBOL = "SOLUSDT"
 SINGLE_SYMBOL_FULL_START_DATE = DEFAULT_START_DATE
 SINGLE_SYMBOL_FULL_END_DATE = DEFAULT_END_DATE
