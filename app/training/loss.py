@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Sequence
 
 import torch
@@ -64,6 +65,10 @@ class MultiTaskLoss:
         class_probability_floor_targets: Sequence[float] | None = None,
         dominant_class_ceiling_weight: float = 0.0,
         dominant_class_ceiling_target: float = 0.75,
+        baseline_edge_loss_fn: Callable[..., torch.Tensor] | None = None,
+        baseline_edge_focal_gamma: float = 1.25,
+        baseline_edge_margin_penalty: float = 0.02,
+        baseline_edge_entropy_penalty: float = 0.01,
     ) -> None:
         weights = torch.tensor(direction_class_weights, dtype=torch.float32) if direction_class_weights is not None else None
         self._direction_loss_name = direction_loss_name
@@ -87,6 +92,10 @@ class MultiTaskLoss:
         self._dominant_class_ceiling_weight = float(dominant_class_ceiling_weight)
         self._dominant_class_ceiling_target = float(dominant_class_ceiling_target)
         self._direction_class_weights = weights
+        self._baseline_edge_loss_fn = baseline_edge_loss_fn
+        self._baseline_edge_focal_gamma = float(baseline_edge_focal_gamma)
+        self._baseline_edge_margin_penalty = float(baseline_edge_margin_penalty)
+        self._baseline_edge_entropy_penalty = float(baseline_edge_entropy_penalty)
 
         if direction_loss_name == "focal":
             self._direction_loss = FocalCrossEntropyLoss(
@@ -196,6 +205,18 @@ class MultiTaskLoss:
         targets: torch.Tensor,
         sample_weights: torch.Tensor | None = None,
     ) -> torch.Tensor:
+        if self._baseline_edge_loss_fn is not None:
+            weight = self._direction_class_weights.to(logits.device) if self._direction_class_weights is not None else None
+            return self._baseline_edge_loss_fn(
+                logits,
+                targets,
+                sample_weights=sample_weights,
+                class_weights=weight,
+                focal_gamma=self._baseline_edge_focal_gamma,
+                confidence_margin_penalty=self._baseline_edge_margin_penalty,
+                entropy_floor_penalty=self._baseline_edge_entropy_penalty,
+            )
+
         if self._direction_loss_name == "focal":
             return self._direction_loss(logits, targets, sample_weights=sample_weights)
 
@@ -291,7 +312,7 @@ def _direction_sample_weights(batch: dict[str, torch.Tensor], logits: torch.Tens
     weights = batch.get("direction_sample_weight")
     if weights is None:
         return torch.ones((logits.shape[0],), dtype=logits.dtype, device=logits.device)
-    return weights.to(dtype=logits.dtype, device=logits.device).clamp(0.20, 1.50)
+    return weights.to(dtype=logits.dtype, device=logits.device).clamp(0.20, 4.00)
 
 
 def _weighted_mean(values: torch.Tensor, sample_weights: torch.Tensor | None = None) -> torch.Tensor:
@@ -302,3 +323,44 @@ def _weighted_mean(values: torch.Tensor, sample_weights: torch.Tensor | None = N
         weights = weights.view_as(values)
     denominator = torch.sum(weights).clamp_min(1e-8)
     return torch.sum(values * weights) / denominator
+
+
+def baseline_edge_aware_direction_loss(
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    *,
+    sample_weights: torch.Tensor | None = None,
+    class_weights: torch.Tensor | None = None,
+    focal_gamma: float = 1.25,
+    confidence_margin_penalty: float = 0.02,
+    entropy_floor_penalty: float = 0.01,
+) -> torch.Tensor:
+    """Direction loss for ML38.9.2.
+
+    This loss keeps cross entropy as the core objective, adds focal pressure for
+    hard rows, uses sample weights from baseline_edge_sample_weight_for_row, and
+    adds small regularizers to discourage low-margin uniform outputs and extreme
+    one-class collapse.
+    """
+    ce = F.cross_entropy(logits, targets, weight=class_weights, reduction="none")
+    probs = torch.softmax(logits, dim=1)
+    target_probs = probs.gather(1, targets.view(-1, 1)).squeeze(1)
+    focal = torch.pow(1.0 - target_probs.clamp(0.0, 1.0), focal_gamma)
+    per_row = ce * focal
+
+    if sample_weights is not None:
+        per_row = per_row * sample_weights.to(per_row.device).float()
+
+    loss = per_row.mean()
+
+    if confidence_margin_penalty > 0:
+        top2 = torch.topk(probs, k=2, dim=1).values
+        margin = top2[:, 0] - top2[:, 1]
+        loss = loss + confidence_margin_penalty * torch.relu(0.08 - margin).mean()
+
+    if entropy_floor_penalty > 0:
+        mean_probs = probs.mean(dim=0)
+        max_mean_prob = mean_probs.max()
+        loss = loss + entropy_floor_penalty * torch.relu(max_mean_prob - 0.78)
+
+    return loss

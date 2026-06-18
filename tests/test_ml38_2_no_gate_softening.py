@@ -11,6 +11,8 @@ def test_ml38_2_no_gate_softening_keeps_walk_forward_and_baseline_failures_visib
                 "walk_forward_total_r": -11.0,
                 "model_accuracy": 0.34,
                 "baseline_accuracy": 0.39,
+                "baseline_edge": -0.05,
+                "collapse_severity": "CRITICAL",
                 "passed_gates": ["gap_quality_gate"],
                 "failed_gates": ["collapse_gate", "baseline_edge_gate", "walk_forward_gate"],
                 "collapse_detected": True,
@@ -28,5 +30,6 @@ def test_ml38_2_no_gate_softening_keeps_walk_forward_and_baseline_failures_visib
     assert row["candidate_status"] == "REJECTED"
     assert "baseline_edge_gate" in row["failed_gates"]
     assert "walk_forward_gate" in row["failed_gates"]
-    assert row["score_components"]["baseline_edge_gate_penalty"] == -2.0
+    assert row["score_components"]["baseline_edge_negative_penalty"] == -3.0
+    assert row["score_components"]["critical_collapse_penalty"] == -5.0
     assert row["score_components"]["walk_forward_gate_penalty"] == -3.0

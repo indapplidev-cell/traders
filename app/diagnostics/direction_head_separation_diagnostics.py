@@ -322,3 +322,65 @@ def direction_sample_weight_for_row(row: DatasetRow) -> float:
     if max_excursion <= 0.75:
         return 0.85
     return 0.45
+
+
+def baseline_edge_sample_weight_for_row(
+    row,
+    *,
+    base_weight: float | None = None,
+    enabled: bool = True,
+    directional_opportunity_boost: float = 1.20,
+    clean_flat_boost: float = 1.15,
+    noisy_flat_penalty: float = 0.85,
+    min_weight: float = 0.20,
+    max_weight: float = 4.00,
+) -> float:
+    """Baseline-edge-aware sample weight.
+
+    The goal is not to blindly boost UP/DOWN. The goal is to make training care
+    more about rows where the model can realistically beat a naive baseline:
+    - clear UP/DOWN directional opportunity;
+    - clean low-move FLAT rows;
+    - less noisy ambiguous FLAT rows.
+    """
+    if base_weight is None:
+        base_weight = direction_sample_weight_for_row(row)
+
+    weight = float(base_weight)
+    if not enabled:
+        return _clamp_float(weight, min_weight, max_weight)
+
+    label = str(getattr(row, "direction_label", "") or "").upper()
+    future_move_atr = abs(_safe_float(getattr(row, "future_move_atr", 0.0), 0.0))
+    max_favorable_move_atr = abs(
+        _safe_float(getattr(row, "max_favorable_move_atr", future_move_atr), future_move_atr)
+    )
+    max_adverse_move_atr = abs(_safe_float(getattr(row, "max_adverse_move_atr", 0.0), 0.0))
+    tp_before_sl = getattr(row, "tp_before_sl", None)
+
+    if label in {"UP", "DOWN"}:
+        if max_favorable_move_atr >= 0.50 or future_move_atr >= 0.50:
+            weight *= directional_opportunity_boost
+        if tp_before_sl is True:
+            weight *= 1.05
+        if max_adverse_move_atr > 0 and max_favorable_move_atr >= max_adverse_move_atr * 1.25:
+            weight *= 1.05
+
+    if label == "FLAT":
+        if future_move_atr <= 0.25 and max_favorable_move_atr <= 0.35:
+            weight *= clean_flat_boost
+        elif future_move_atr >= 0.60 or max_favorable_move_atr >= 0.70:
+            weight *= noisy_flat_penalty
+
+    return _clamp_float(weight, min_weight, max_weight)
+
+
+def _safe_float(value, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _clamp_float(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, float(value)))

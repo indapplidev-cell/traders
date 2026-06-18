@@ -16,7 +16,9 @@ from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
 from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.diagnostics.baseline_edge_diagnostics import BaselineEdgeDiagnostics
 from app.diagnostics.class_bias_diagnostics import ClassBiasDiagnostics
+from app.diagnostics.collapse_diagnostics_v2 import classify_collapse_severity
 from app.diagnostics.collapse_tuning_summary import CollapseTuningSummaryBuilder
 from app.diagnostics.real_feature_diagnostics_service import RealFeatureDiagnosticsService
 from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
@@ -158,6 +160,12 @@ class FeatureRegimeCandidateResult:
     confidence_profitability_diagnostics: dict[str, Any] = field(default_factory=dict)
     confidence_profitability_score: float | None = None
     confidence_profitability_status: str | None = None
+    baseline_edge: float | None = None
+    baseline_edge_status: str | None = None
+    baseline_edge_diagnostics: dict[str, Any] = field(default_factory=dict)
+    collapse_severity: str | None = None
+    collapse_gate_failed: bool = False
+    collapse_severity_reasons: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -231,6 +239,12 @@ class FeatureRegimeCandidateResult:
             "confidence_profitability_diagnostics": dict(self.confidence_profitability_diagnostics),
             "confidence_profitability_score": self.confidence_profitability_score,
             "confidence_profitability_status": self.confidence_profitability_status,
+            "baseline_edge": self.baseline_edge,
+            "baseline_edge_status": self.baseline_edge_status,
+            "baseline_edge_diagnostics": dict(self.baseline_edge_diagnostics),
+            "collapse_severity": self.collapse_severity,
+            "collapse_gate_failed": self.collapse_gate_failed,
+            "collapse_severity_reasons": list(self.collapse_severity_reasons),
         }
 
 
@@ -1680,12 +1694,41 @@ class FeatureRegimeExperimentRunner:
     ) -> tuple[list[FeatureRegimeCandidateResult], dict[str, Any] | None]:
         enriched: list[FeatureRegimeCandidateResult] = []
         for candidate in candidate_results:
+            baseline_edge_diagnostics = BaselineEdgeDiagnostics().evaluate(
+                accuracy=candidate.model_accuracy,
+                baseline_accuracy=candidate.baseline_accuracy,
+                symbol=config.symbol,
+                config_id=candidate.config_id,
+                min_positive_edge=float(candidate.label_config.get("baseline_edge_gate_min", 0.0) or 0.0),
+            )
+            collapse_severity = classify_collapse_severity(candidate.collapse_diagnostics_v2)
             class_bias = self._class_bias_payload(symbol=config.symbol, candidate=candidate)
             bias_failed_gates = self._bias_failed_gates(class_bias)
-            failed_gates = tuple(dict.fromkeys([*candidate.failed_gates, *bias_failed_gates]))
-            passed_gates = tuple(gate for gate in candidate.passed_gates if gate not in bias_failed_gates)
+            failed_gates_list = [
+                gate
+                for gate in dict.fromkeys([*candidate.failed_gates, *bias_failed_gates])
+                if gate not in {"baseline_edge_gate", "collapse_gate"}
+            ]
+            passed_gates_list = [
+                gate
+                for gate in candidate.passed_gates
+                if gate not in {*bias_failed_gates, "baseline_edge_gate", "collapse_gate"}
+            ]
             candidate_status = candidate.candidate_status
+            if baseline_edge_diagnostics.baseline_edge_gate_failed and "baseline_edge_gate" not in failed_gates_list:
+                failed_gates_list.append("baseline_edge_gate")
+            elif not baseline_edge_diagnostics.baseline_edge_gate_failed:
+                passed_gates_list.append("baseline_edge_gate")
+            if collapse_severity["collapse_gate_failed"] and "collapse_gate" not in failed_gates_list:
+                failed_gates_list.append("collapse_gate")
+            elif collapse_severity["collapse_severity"] == "OK":
+                passed_gates_list.append("collapse_gate")
+            passed_gates_list = list(dict.fromkeys(passed_gates_list))
             if bias_failed_gates and candidate_status == "ACCEPTED":
+                candidate_status = "REJECTED"
+            if (
+                baseline_edge_diagnostics.baseline_edge_gate_failed or collapse_severity["collapse_gate_failed"]
+            ) and candidate_status == "ACCEPTED":
                 candidate_status = "REJECTED"
             collapse_summary = self._collapse_tuning_summary_builder.build(
                 collapse_diagnostics=self._as_dict(candidate.collapse_diagnostics_v2),
@@ -1709,8 +1752,8 @@ class FeatureRegimeExperimentRunner:
             enriched.append(
                 replace(
                     candidate,
-                    failed_gates=failed_gates,
-                    passed_gates=passed_gates,
+                    failed_gates=tuple(failed_gates_list),
+                    passed_gates=tuple(passed_gates_list),
                     candidate_status=candidate_status,
                     flat_bias_diagnostics=class_bias,
                     flat_bias_diagnostics_missing_reason=(
@@ -1729,6 +1772,12 @@ class FeatureRegimeExperimentRunner:
                     confidence_profitability_diagnostics=confidence_profitability,
                     confidence_profitability_score=confidence_profitability.get("confidence_profitability_score"),
                     confidence_profitability_status=confidence_profitability.get("confidence_profitability_status"),
+                    baseline_edge=baseline_edge_diagnostics.baseline_edge,
+                    baseline_edge_status=baseline_edge_diagnostics.baseline_edge_status,
+                    baseline_edge_diagnostics=baseline_edge_diagnostics.to_dict(),
+                    collapse_severity=collapse_severity["collapse_severity"],
+                    collapse_gate_failed=bool(collapse_severity["collapse_gate_failed"]),
+                    collapse_severity_reasons=tuple(collapse_severity["collapse_severity_reasons"]),
                 )
             )
 
@@ -1840,10 +1889,11 @@ class FeatureRegimeExperimentRunner:
     def _baseline_edge_summary(candidate_results: list[FeatureRegimeCandidateResult]) -> dict[str, Any]:
         return {
             "positive_accuracy_edge_count": sum(
-                int((item.accuracy_edge or 0.0) > 0.0) for item in candidate_results
+                int(((item.baseline_edge if item.baseline_edge is not None else item.accuracy_edge) or 0.0) > 0.0)
+                for item in candidate_results
             ),
             "accuracy_edge_by_config": {
-                item.config_id: item.accuracy_edge
+                item.config_id: item.baseline_edge if item.baseline_edge is not None else item.accuracy_edge
                 for item in candidate_results
             },
         }

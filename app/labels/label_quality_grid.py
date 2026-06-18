@@ -16,6 +16,12 @@ class LabelQualityGridConfig:
     description: str
     risk_note: str
     anti_collapse_profile: str | None = None
+    flat_bias_objective_enabled: bool = False
+    bias_aware_objective_enabled: bool = False
+    baseline_edge_objective_enabled: bool = False
+    baseline_edge_focal_gamma: float | None = None
+    baseline_edge_margin_penalty: float | None = None
+    baseline_edge_entropy_penalty: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -29,6 +35,12 @@ class LabelQualityGridConfig:
             "description": self.description,
             "risk_note": self.risk_note,
             "anti_collapse_profile": self.anti_collapse_profile,
+            "flat_bias_objective_enabled": self.flat_bias_objective_enabled,
+            "bias_aware_objective_enabled": self.bias_aware_objective_enabled,
+            "baseline_edge_objective_enabled": self.baseline_edge_objective_enabled,
+            "baseline_edge_focal_gamma": self.baseline_edge_focal_gamma,
+            "baseline_edge_margin_penalty": self.baseline_edge_margin_penalty,
+            "baseline_edge_entropy_penalty": self.baseline_edge_entropy_penalty,
         }
 
 
@@ -442,6 +454,60 @@ class LabelQualityGridPlanner:
                 description="ML38.9.1 bias-aware objective: conservative h16 config for single-symbol full-period validation.",
                 risk_note="Can become too selective; use after quick-quality improves.",
                 anti_collapse_profile="bias_aware_h16",
+            ),
+            LabelQualityGridConfig(
+                config_id="lv7_h08_thr052_tp10_sl10_be",
+                label_version="lv7_h08_thr052_tp10_sl10_be",
+                horizon=8,
+                threshold=0.52,
+                take_profit_atr=1.0,
+                stop_loss_atr=1.0,
+                flat_threshold=0.52,
+                description="ML38.9.2 baseline-edge-aware balanced short horizon",
+                risk_note="May still be rejected if baseline edge stays weak or collapse severity turns critical.",
+                anti_collapse_profile="baseline_edge_h08",
+                flat_bias_objective_enabled=True,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.20,
+                baseline_edge_margin_penalty=0.02,
+                baseline_edge_entropy_penalty=0.01,
+            ),
+            LabelQualityGridConfig(
+                config_id="lv7_h10_thr055_tp10_sl10_be",
+                label_version="lv7_h10_thr055_tp10_sl10_be",
+                horizon=10,
+                threshold=0.55,
+                take_profit_atr=1.0,
+                stop_loss_atr=1.0,
+                flat_threshold=0.55,
+                description="ML38.9.2 baseline-edge-aware default quick-quality candidate",
+                risk_note="Use as ML38.9.2 fast-debug and quick-quality shortlist; keep baseline and collapse gates strict.",
+                anti_collapse_profile="baseline_edge_h10",
+                flat_bias_objective_enabled=True,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.25,
+                baseline_edge_margin_penalty=0.02,
+                baseline_edge_entropy_penalty=0.015,
+            ),
+            LabelQualityGridConfig(
+                config_id="lv7_h12_thr06_tp12_sl12_be",
+                label_version="lv7_h12_thr06_tp12_sl12_be",
+                horizon=12,
+                threshold=0.60,
+                take_profit_atr=1.2,
+                stop_loss_atr=1.2,
+                flat_threshold=0.60,
+                description="ML38.9.2 baseline-edge-aware longer confirmation candidate",
+                risk_note="Can reduce signal density; keep walk-forward and baseline-edge gates unchanged.",
+                anti_collapse_profile="baseline_edge_h12",
+                flat_bias_objective_enabled=True,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.30,
+                baseline_edge_margin_penalty=0.015,
+                baseline_edge_entropy_penalty=0.01,
             ),
         ]
         return {

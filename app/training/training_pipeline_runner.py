@@ -70,6 +70,12 @@ class TrainingPipelineConfig:
     export_report: bool = True
     output_dir: Path = Path("reports/training_pipeline_runs")
     skip_candle_load: bool = False
+    baseline_edge_objective_enabled: bool = False
+    baseline_edge_focal_gamma: float = 1.25
+    baseline_edge_margin_penalty: float = 0.02
+    baseline_edge_entropy_penalty: float = 0.01
+    baseline_edge_gate_min: float = 0.0
+    collapse_critical_gate_enabled: bool = True
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -1071,6 +1077,10 @@ class LongHistoryTrainingPipelineRunner:
                 dominant_class_ceiling_weight=self.DEFAULT_DOMINANT_CLASS_CEILING_WEIGHT,
                 dominant_class_ceiling_target=self.DEFAULT_DOMINANT_CLASS_CEILING_TARGET,
                 label_noise_hardening_enabled=self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
+                baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
+                baseline_edge_focal_gamma=config.baseline_edge_focal_gamma,
+                baseline_edge_margin_penalty=config.baseline_edge_margin_penalty,
+                baseline_edge_entropy_penalty=config.baseline_edge_entropy_penalty,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1115,6 +1125,12 @@ class LongHistoryTrainingPipelineRunner:
                 "dominant_class_ceiling_weight": self.DEFAULT_DOMINANT_CLASS_CEILING_WEIGHT,
                 "dominant_class_ceiling_target": self.DEFAULT_DOMINANT_CLASS_CEILING_TARGET,
                 "label_noise_hardening_enabled": self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
+                "baseline_edge_objective_enabled": config.baseline_edge_objective_enabled,
+                "baseline_edge_focal_gamma": config.baseline_edge_focal_gamma,
+                "baseline_edge_margin_penalty": config.baseline_edge_margin_penalty,
+                "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
+                "baseline_edge_gate_min": config.baseline_edge_gate_min,
+                "collapse_critical_gate_enabled": config.collapse_critical_gate_enabled,
             },
         }
 

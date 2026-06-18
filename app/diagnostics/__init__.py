@@ -6,6 +6,8 @@ __all__ = [
     "DiagnosticsService",
     "AntiCollapseDiagnostics",
     "AntiCollapseDiagnosticsResult",
+    "BaselineEdgeDiagnostics",
+    "BaselineEdgeDiagnosticsResult",
 ]
 
 
@@ -24,6 +26,17 @@ def __getattr__(name: str) -> Any:
         return {
             "AntiCollapseDiagnostics": AntiCollapseDiagnostics,
             "AntiCollapseDiagnosticsResult": AntiCollapseDiagnosticsResult,
+        }[name]
+
+    if name in {"BaselineEdgeDiagnostics", "BaselineEdgeDiagnosticsResult"}:
+        from app.diagnostics.baseline_edge_diagnostics import (
+            BaselineEdgeDiagnostics,
+            BaselineEdgeDiagnosticsResult,
+        )
+
+        return {
+            "BaselineEdgeDiagnostics": BaselineEdgeDiagnostics,
+            "BaselineEdgeDiagnosticsResult": BaselineEdgeDiagnosticsResult,
         }[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

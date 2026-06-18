@@ -139,25 +139,50 @@ DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_INTERVAL = "15m"
 DEFAULT_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
-DEFAULT_FULL_GRID_CONFIG_COUNT = 28
 
-# ML38.9.1: full grid = 28 configs * 3 symbols.
-DEFAULT_EXPECTED_CANDIDATE_COUNT = 84
 
-# Runtime smoke: one balanced-bias config, two symbols, short period.
-FAST_DEBUG_CONFIGS = "lv6_h10_thr055_tp10_sl10_ba"
+def _infer_default_full_grid_config_count() -> int:
+    try:
+        from app.experiments.ml38_2_fv3_tuning_matrix import ML382FV3TuningMatrix
+
+        payload = ML382FV3TuningMatrix().build()
+        return int(payload.get("config_count") or len(payload.get("configs", [])))
+    except Exception:
+        return 0
+
+
+def _infer_default_expected_candidate_count() -> int:
+    try:
+        from app.experiments.ml38_2_fv3_tuning_matrix import ML382FV3TuningMatrix
+
+        payload = ML382FV3TuningMatrix().build()
+        config_count = int(payload.get("config_count") or len(payload.get("configs", [])))
+        return config_count * len(DEFAULT_SYMBOLS)
+    except Exception:
+        return 0
+
+
+DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
+DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
+
+# Runtime smoke: one baseline-edge-aware config, two symbols, short period.
+FAST_DEBUG_CONFIGS = ("lv7_h10_thr055_tp10_sl10_be",)
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 
-# Intermediate quality: one symbol, three ML38.9.1 configs, short period.
-QUICK_QUALITY_CONFIGS = "lv6_h08_thr052_tp10_sl10_ba,lv6_h10_thr055_tp10_sl10_ba,lv6_h12_thr06_tp12_sl12_ba"
+# Intermediate quality: one symbol, three ML38.9.2 configs, short period.
+QUICK_QUALITY_CONFIGS = (
+    "lv7_h08_thr052_tp10_sl10_be",
+    "lv7_h10_thr055_tp10_sl10_be",
+    "lv7_h12_thr06_tp12_sl12_be",
+)
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"
 QUICK_QUALITY_END_DATE = DEFAULT_END_DATE
 
-# Intermediate heavy check: one symbol, full period, ML38.9.1 shortlist.
-SINGLE_SYMBOL_FULL_CONFIGS = "lv6_h08_thr052_tp10_sl10_ba,lv6_h10_thr055_tp10_sl10_ba,lv6_h12_thr06_tp12_sl12_ba,lv6_h16_thr065_tp15_sl15_ba"
+# Intermediate heavy check: one symbol, full period, ML38.9.2 shortlist.
+SINGLE_SYMBOL_FULL_CONFIGS = QUICK_QUALITY_CONFIGS
 SINGLE_SYMBOL_FULL_SYMBOL = "SOLUSDT"
 SINGLE_SYMBOL_FULL_START_DATE = DEFAULT_START_DATE
 SINGLE_SYMBOL_FULL_END_DATE = DEFAULT_END_DATE

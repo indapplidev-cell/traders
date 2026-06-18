@@ -828,6 +828,22 @@ class LabelGridExperimentRunner:
                 export_report=True,
                 output_dir=candidate_runtime_dir,
                 skip_candle_load=config.skip_candle_load,
+                baseline_edge_objective_enabled=label_config.baseline_edge_objective_enabled,
+                baseline_edge_focal_gamma=(
+                    1.25
+                    if label_config.baseline_edge_focal_gamma is None
+                    else float(label_config.baseline_edge_focal_gamma)
+                ),
+                baseline_edge_margin_penalty=(
+                    0.02
+                    if label_config.baseline_edge_margin_penalty is None
+                    else float(label_config.baseline_edge_margin_penalty)
+                ),
+                baseline_edge_entropy_penalty=(
+                    0.01
+                    if label_config.baseline_edge_entropy_penalty is None
+                    else float(label_config.baseline_edge_entropy_penalty)
+                ),
             )
         )
         if pipeline_result.status == "FAILED":

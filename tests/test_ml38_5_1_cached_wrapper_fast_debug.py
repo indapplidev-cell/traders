@@ -7,7 +7,7 @@ def test_fast_debug_plan_uses_two_symbols_one_config_and_short_range() -> None:
 
     assert wrapper.fast_debug is True
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
-    assert wrapper.debug_config_ids == ("lv6_h10_thr055_tp10_sl10_ba",)
+    assert wrapper.debug_config_ids == ("lv7_h10_thr055_tp10_sl10_be",)
     assert wrapper.start_date == "2026-05-01"
     assert wrapper.end_date == "2026-06-15"
     assert wrapper._expected_candidate_count() == 2
@@ -21,7 +21,7 @@ def test_fast_debug_plan_uses_two_symbols_one_config_and_short_range() -> None:
     assert "--skip-candle-load" in command
     assert "--base-label-config-id" in command
     config_index = command.index("--base-label-config-id") + 1
-    assert command[config_index] == "lv6_h10_thr055_tp10_sl10_ba"
+    assert command[config_index] == "lv7_h10_thr055_tp10_sl10_be"
 
 
 def test_default_wrapper_expects_full_60_candidates() -> None:
@@ -33,7 +33,7 @@ def test_default_wrapper_expects_full_60_candidates() -> None:
     assert wrapper.debug_config_ids == ()
     assert wrapper.start_date == "2025-01-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 84
+    assert wrapper._expected_candidate_count() == run_fv3_cached_tuning.DEFAULT_EXPECTED_CANDIDATE_COUNT
 
 
 def test_fast_debug_final_result_marks_builder_date_range_expected() -> None:

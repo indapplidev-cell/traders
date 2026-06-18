@@ -11,6 +11,8 @@ def test_ml38_2_config_ranking_penalizes_collapse_and_flat_bias() -> None:
                 "walk_forward_total_r": 10.0,
                 "model_accuracy": 0.41,
                 "baseline_accuracy": 0.39,
+                "baseline_edge": 0.02,
+                "collapse_severity": "OK",
                 "passed_gates": ["profit_aware_gate", "walk_forward_gate"],
                 "failed_gates": [],
                 "collapse_detected": False,
@@ -28,6 +30,8 @@ def test_ml38_2_config_ranking_penalizes_collapse_and_flat_bias() -> None:
                 "walk_forward_total_r": -20.0,
                 "model_accuracy": 0.35,
                 "baseline_accuracy": 0.39,
+                "baseline_edge": -0.04,
+                "collapse_severity": "CRITICAL",
                 "passed_gates": [],
                 "failed_gates": ["baseline_edge_gate", "walk_forward_gate"],
                 "collapse_detected": True,
@@ -43,6 +47,7 @@ def test_ml38_2_config_ranking_penalizes_collapse_and_flat_bias() -> None:
 
     assert payload["ranking"][0]["config_id"] == "stable_cfg"
     assert payload["ranking"][0]["score"] > payload["ranking"][1]["score"]
-    assert payload["ranking"][1]["score_components"]["collapse_penalty"] == -3.0
+    assert payload["ranking"][1]["score_components"]["critical_collapse_penalty"] == -5.0
+    assert payload["ranking"][1]["score_components"]["baseline_edge_negative_penalty"] == -3.0
     assert "flat_bias_detected" in payload["ranking"][1]["rejection_reasons"]
     assert "down_blindness_detected" in payload["ranking"][1]["rejection_reasons"]

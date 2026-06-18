@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 
 class CollapseDiagnosticsV2:
@@ -240,3 +240,80 @@ class CollapseDiagnosticsV2:
         if not recommendations:
             recommendations.append("Collapse profile looks stable enough for research review.")
         return list(dict.fromkeys(recommendations))
+
+
+CRITICAL_COLLAPSE_TYPES = {
+    "SINGLE_CLASS_COLLAPSE",
+    "DOWN_BLINDNESS",
+    "FLAT_UNDERPREDICTION_CRITICAL",
+    "UNIFORM_PROBABILITY_COLLAPSE",
+}
+
+
+def classify_collapse_severity(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Classify collapse severity without softening safety gates.
+
+    Severity meaning:
+    - OK: no collapse detected.
+    - WATCH: collapse/bias is present, but not automatically critical.
+    - CRITICAL: model is structurally unsafe and must fail collapse_gate.
+    """
+    data: Mapping[str, Any] = payload or {}
+
+    collapse_detected = bool(data.get("collapse_detected"))
+    collapse_type = data.get("collapse_type")
+    dominant_class_ratio = _to_float(data.get("dominant_class_ratio"))
+    flat_prediction_rate = _to_float(data.get("flat_prediction_rate"))
+    down_prediction_rate = _to_float(data.get("down_prediction_rate"))
+    up_prediction_rate = _to_float(data.get("up_prediction_rate"))
+    actual_distribution = data.get("actual_distribution") or {}
+    actual_down = _to_float(actual_distribution.get("DOWN"))
+    actual_flat = _to_float(actual_distribution.get("FLAT"))
+
+    reasons: list[str] = []
+
+    if not collapse_detected:
+        return {
+            "collapse_severity": "OK",
+            "collapse_gate_failed": False,
+            "collapse_severity_reasons": [],
+        }
+
+    normalized_type = str(collapse_type or "").upper()
+
+    if normalized_type in CRITICAL_COLLAPSE_TYPES:
+        reasons.append(f"critical_collapse_type={collapse_type}")
+
+    if dominant_class_ratio is not None and dominant_class_ratio >= 0.90:
+        reasons.append(f"dominant_class_ratio={dominant_class_ratio:.4f}")
+
+    if actual_flat is not None and actual_flat >= 0.20:
+        if flat_prediction_rate is not None and flat_prediction_rate <= 0.01:
+            reasons.append(
+                f"flat_underprediction: predicted={flat_prediction_rate:.4f}, actual={actual_flat:.4f}"
+            )
+
+    if actual_down is not None and actual_down >= 0.25:
+        if down_prediction_rate is not None and down_prediction_rate <= 0.10:
+            reasons.append(
+                f"down_underprediction: predicted={down_prediction_rate:.4f}, actual={actual_down:.4f}"
+            )
+
+    if up_prediction_rate is not None and up_prediction_rate >= 0.85:
+        reasons.append(f"up_overprediction={up_prediction_rate:.4f}")
+
+    severity = "CRITICAL" if reasons else "WATCH"
+    return {
+        "collapse_severity": severity,
+        "collapse_gate_failed": severity == "CRITICAL",
+        "collapse_severity_reasons": reasons,
+    }
+
+
+def _to_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None

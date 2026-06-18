@@ -13,6 +13,61 @@ def is_rankable_candidate_status(status: str | None) -> bool:
 
 
 class ML382ConfigRanker:
+    def _baseline_edge_score_component(self, candidate: dict) -> tuple[float, dict[str, float], list[str]]:
+        edge = candidate.get("baseline_edge")
+        components: dict[str, float] = {}
+        reasons: list[str] = []
+
+        if edge is None:
+            components["baseline_edge_unknown_penalty"] = -1.0
+            reasons.append("baseline_edge_unknown")
+            return -1.0, components, reasons
+
+        edge = float(edge)
+        if edge < 0:
+            components["baseline_edge_negative_penalty"] = -3.0
+            reasons.append("baseline_edge_gate_failed")
+            return -3.0, components, reasons
+
+        if edge == 0:
+            components["baseline_edge_zero_penalty"] = -1.5
+            reasons.append("baseline_edge_gate_failed")
+            return -1.5, components, reasons
+
+        if edge >= 0.03:
+            components["baseline_edge_strong_bonus"] = 3.0
+            return 3.0, components, reasons
+
+        if edge >= 0.015:
+            components["baseline_edge_medium_bonus"] = 1.5
+            return 1.5, components, reasons
+
+        components["baseline_edge_weak_bonus"] = 0.5
+        return 0.5, components, reasons
+
+    def _collapse_severity_score_component(self, candidate: dict) -> tuple[float, dict[str, float], list[str]]:
+        severity = str(candidate.get("collapse_severity") or "UNKNOWN").upper()
+        components: dict[str, float] = {}
+        reasons: list[str] = []
+
+        if severity == "CRITICAL":
+            components["critical_collapse_penalty"] = -5.0
+            reasons.append("collapse_gate_failed")
+            return -5.0, components, reasons
+
+        if severity == "WATCH":
+            components["collapse_watch_penalty"] = -1.5
+            reasons.append("collapse_severity=WATCH")
+            return -1.5, components, reasons
+
+        if severity == "OK":
+            components["collapse_ok_bonus"] = 1.0
+            return 1.0, components, reasons
+
+        components["collapse_unknown_penalty"] = -1.0
+        reasons.append("collapse_severity_unknown")
+        return -1.0, components, reasons
+
     def rank(self, candidates: list[object]) -> dict[str, Any]:
         normalized = [self._normalize_candidate(candidate) for candidate in candidates]
         ranked = [self._ranked_row(candidate) for candidate in normalized]
@@ -111,7 +166,6 @@ class ML382ConfigRanker:
             "anti_collapse_bonus": anti_collapse_bonus,
             "confidence_profitability_bonus": confidence_profitability_bonus,
             "confidence_profitability_score_bonus": min(max(confidence_profitability_score, -3.0), 3.0) * 0.25,
-            "collapse_penalty": -3.0 if collapse_detected else 0.0,
             "flat_bias_penalty": -2.0
             if str(bias.get("symbol_bias_severity")) in {"HIGH", "CRITICAL"}
             else 0.0,
@@ -128,16 +182,31 @@ class ML382ConfigRanker:
             if bool(bias.get("up_dominance_detected", False))
             else 0.0,
             "bias_gate_penalty": -2.0 if "bias_gate" in failed_gates else 0.0,
-            "baseline_edge_gate_penalty": -2.0 if "baseline_edge_gate" in failed_gates else 0.0,
             "walk_forward_gate_penalty": -3.0 if "walk_forward_gate" in failed_gates else 0.0,
         }
+        rejection_reasons: list[str] = []
+        baseline_score, baseline_components, baseline_reasons = self._baseline_edge_score_component(candidate)
+        collapse_score, collapse_components, collapse_reasons = self._collapse_severity_score_component(candidate)
+        score_components.update(baseline_components)
+        score_components.update(collapse_components)
         if excluded_from_best_selection:
             score_components["failed_candidate_penalty"] = FAILED_CANDIDATE_SCORE
             score = FAILED_CANDIDATE_SCORE
         else:
             score = round(sum(score_components.values()), 6)
 
-        rejection_reasons: list[str] = []
+        for reason in baseline_reasons:
+            if reason not in rejection_reasons:
+                rejection_reasons.append(reason)
+        if "baseline_edge_gate_failed" in baseline_reasons and "baseline_edge_gate" not in failed_gates:
+            failed_gates.append("baseline_edge_gate")
+
+        for reason in collapse_reasons:
+            if reason not in rejection_reasons:
+                rejection_reasons.append(reason)
+        if "collapse_gate_failed" in collapse_reasons and "collapse_gate" not in failed_gates:
+            failed_gates.append("collapse_gate")
+
         if collapse_detected:
             rejection_reasons.append(
                 f"collapse_type={collapse_summary.get('collapse_type') or candidate.get('collapse_type') or 'unknown'}"
@@ -157,8 +226,10 @@ class ML382ConfigRanker:
                 rejection_reasons.append(str(reason))
         if "bias_gate" in failed_gates:
             rejection_reasons.append("bias_gate_failed")
-        if "baseline_edge_gate" in failed_gates:
+        if "baseline_edge_gate" in failed_gates and "baseline_edge_gate_failed" not in rejection_reasons:
             rejection_reasons.append("baseline_edge_gate_failed")
+        if "collapse_gate" in failed_gates and "collapse_gate_failed" not in rejection_reasons:
+            rejection_reasons.append("collapse_gate_failed")
         if "walk_forward_gate" in failed_gates:
             rejection_reasons.append("walk_forward_gate_failed")
         if candidate.get("candidate_status") == "REJECTED" and not rejection_reasons:

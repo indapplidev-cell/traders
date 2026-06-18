@@ -14,6 +14,7 @@ from app.dataset.dataset_builder import DatasetBuilder
 from app.dataset.dataset_models import DatasetRow
 from app.diagnostics.direction_head_separation_diagnostics import DirectionHeadSeparationDiagnostics
 from app.diagnostics.direction_head_separation_diagnostics import LabelNoiseDiagnostics
+from app.diagnostics.direction_head_separation_diagnostics import baseline_edge_sample_weight_for_row
 from app.diagnostics.direction_head_separation_diagnostics import direction_sample_weight_for_row
 from app.features.feature_models import FEATURE_NAMES, feature_names_for_version
 from app.models.model_factory import ModelFactory
@@ -22,6 +23,7 @@ from app.registry.model_loader import ModelLoader
 from app.registry.model_registry import ModelRegistry
 from app.training.evaluator import Evaluator
 from app.training.loss import MultiTaskLoss
+from app.training.loss import baseline_edge_aware_direction_loss
 from app.training.probability_calibration import DEFAULT_TEMPERATURE_GRID
 from app.training.probability_calibration import fit_direction_temperature_for_model
 from app.training.model_version_builder import build_unique_model_version
@@ -61,6 +63,10 @@ class TrainingConfig:
     dominant_class_ceiling_weight: float = 0.0
     dominant_class_ceiling_target: float = 0.75
     label_noise_hardening_enabled: bool = True
+    baseline_edge_objective_enabled: bool = False
+    baseline_edge_focal_gamma: float = 1.25
+    baseline_edge_margin_penalty: float = 0.02
+    baseline_edge_entropy_penalty: float = 0.01
 
 
 def _safe_run_id_part(value: object) -> str:
@@ -170,6 +176,10 @@ class TrainingService:
         dominant_class_ceiling_weight: float = 0.0,
         dominant_class_ceiling_target: float = 0.75,
         label_noise_hardening_enabled: bool = True,
+        baseline_edge_objective_enabled: bool = False,
+        baseline_edge_focal_gamma: float = 1.25,
+        baseline_edge_margin_penalty: float = 0.02,
+        baseline_edge_entropy_penalty: float = 0.01,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -210,6 +220,10 @@ class TrainingService:
             dominant_class_ceiling_weight=dominant_class_ceiling_weight,
             dominant_class_ceiling_target=dominant_class_ceiling_target,
             label_noise_hardening_enabled=label_noise_hardening_enabled,
+            baseline_edge_objective_enabled=baseline_edge_objective_enabled,
+            baseline_edge_focal_gamma=baseline_edge_focal_gamma,
+            baseline_edge_margin_penalty=baseline_edge_margin_penalty,
+            baseline_edge_entropy_penalty=baseline_edge_entropy_penalty,
         )
         started_at = datetime.now(tz=timezone.utc)
         run_id = build_training_run_id(
@@ -256,9 +270,24 @@ class TrainingService:
 
             feature_columns = self.feature_columns(feature_version)
             scaler = self.fit_scaler(split_rows["train"], feature_columns)
-            train_dataset = self.rows_to_tensors(split_rows["train"], feature_columns, scaler)
-            validation_dataset = self.rows_to_tensors(split_rows["validation"], feature_columns, scaler)
-            test_dataset = self.rows_to_tensors(split_rows["test"], feature_columns, scaler)
+            train_dataset = self.rows_to_tensors(
+                split_rows["train"],
+                feature_columns,
+                scaler,
+                baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
+            )
+            validation_dataset = self.rows_to_tensors(
+                split_rows["validation"],
+                feature_columns,
+                scaler,
+                baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
+            )
+            test_dataset = self.rows_to_tensors(
+                split_rows["test"],
+                feature_columns,
+                scaler,
+                baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
+            )
             direction_class_weights = None if disable_class_weights else self.compute_direction_class_weights(split_rows["train"])
 
             torch.manual_seed(42)
@@ -286,6 +315,12 @@ class TrainingService:
                     class_probability_floor_targets=config.class_probability_floor_targets,
                     dominant_class_ceiling_weight=config.dominant_class_ceiling_weight,
                     dominant_class_ceiling_target=config.dominant_class_ceiling_target,
+                    baseline_edge_loss_fn=(
+                        baseline_edge_aware_direction_loss if config.baseline_edge_objective_enabled else None
+                    ),
+                    baseline_edge_focal_gamma=config.baseline_edge_focal_gamma,
+                    baseline_edge_margin_penalty=config.baseline_edge_margin_penalty,
+                    baseline_edge_entropy_penalty=config.baseline_edge_entropy_penalty,
                 ),
             )
             training_result = trainer.train(model=model, train_dataset=train_dataset, validation_dataset=validation_dataset)
@@ -359,6 +394,10 @@ class TrainingService:
                 "dominant_class_ceiling_weight": config.dominant_class_ceiling_weight,
                 "dominant_class_ceiling_target": config.dominant_class_ceiling_target,
                 "label_noise_hardening_enabled": config.label_noise_hardening_enabled,
+                "baseline_edge_objective_enabled": config.baseline_edge_objective_enabled,
+                "baseline_edge_focal_gamma": config.baseline_edge_focal_gamma,
+                "baseline_edge_margin_penalty": config.baseline_edge_margin_penalty,
+                "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
             }
             combined_metrics = {
                 "train": train_metrics,
@@ -440,6 +479,10 @@ class TrainingService:
                 "dominant_class_ceiling_weight": config.dominant_class_ceiling_weight,
                 "dominant_class_ceiling_target": config.dominant_class_ceiling_target,
                 "label_noise_hardening_enabled": config.label_noise_hardening_enabled,
+                "baseline_edge_objective_enabled": config.baseline_edge_objective_enabled,
+                "baseline_edge_focal_gamma": config.baseline_edge_focal_gamma,
+                "baseline_edge_margin_penalty": config.baseline_edge_margin_penalty,
+                "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
             }
         except Exception as exc:
             finished_at = datetime.now(tz=timezone.utc)
@@ -530,19 +573,46 @@ class TrainingService:
         }
 
     @staticmethod
-    def rows_to_tensors(rows: list[DatasetRow], feature_columns: list[str], scaler: dict[str, list[float]]) -> dict[str, torch.Tensor]:
+    def _build_baseline_edge_direction_sample_weights(
+        rows: list[DatasetRow],
+        *,
+        enabled: bool,
+    ) -> list[float]:
+        weights: list[float] = []
+        for row in rows:
+            base_weight = direction_sample_weight_for_row(row)
+            weights.append(
+                baseline_edge_sample_weight_for_row(
+                    row,
+                    base_weight=base_weight,
+                    enabled=enabled,
+                )
+            )
+        return weights
+
+    @staticmethod
+    def rows_to_tensors(
+        rows: list[DatasetRow],
+        feature_columns: list[str],
+        scaler: dict[str, list[float]],
+        *,
+        baseline_edge_objective_enabled: bool = False,
+    ) -> dict[str, torch.Tensor]:
         if not rows:
             return TrainingService.empty_tensors(len(feature_columns))
 
         feature_matrix: list[list[float]] = []
         direction_targets: list[int] = []
-        direction_sample_weights: list[float] = []
+        direction_sample_weights = TrainingService._build_baseline_edge_direction_sample_weights(
+            rows,
+            enabled=baseline_edge_objective_enabled,
+        )
         tp_targets: list[float] = []
         tp_masks: list[float] = []
         move_targets: list[float] = []
         risk_targets: list[float] = []
 
-        for row in rows:
+        for index, row in enumerate(rows):
             feature_values = [float(row.features_json[column]) for column in feature_columns]
             scaled = [
                 (value - scaler["mean"][index]) / scaler["std"][index]
@@ -550,7 +620,7 @@ class TrainingService:
             ]
             feature_matrix.append(scaled)
             direction_targets.append({"UP": 0, "DOWN": 1, "FLAT": 2}[row.direction_label])
-            direction_sample_weights.append(direction_sample_weight_for_row(row))
+            direction_sample_weights[index] = float(direction_sample_weights[index])
             if row.tp_before_sl is None:
                 tp_targets.append(0.0)
                 tp_masks.append(0.0)
