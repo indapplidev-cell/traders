@@ -1681,6 +1681,12 @@ class FeatureRegimeExperimentRunner:
         enriched: list[FeatureRegimeCandidateResult] = []
         for candidate in candidate_results:
             class_bias = self._class_bias_payload(symbol=config.symbol, candidate=candidate)
+            bias_failed_gates = self._bias_failed_gates(class_bias)
+            failed_gates = tuple(dict.fromkeys([*candidate.failed_gates, *bias_failed_gates]))
+            passed_gates = tuple(gate for gate in candidate.passed_gates if gate not in bias_failed_gates)
+            candidate_status = candidate.candidate_status
+            if bias_failed_gates and candidate_status == "ACCEPTED":
+                candidate_status = "REJECTED"
             collapse_summary = self._collapse_tuning_summary_builder.build(
                 collapse_diagnostics=self._as_dict(candidate.collapse_diagnostics_v2),
                 class_bias_diagnostics=class_bias,
@@ -1703,6 +1709,9 @@ class FeatureRegimeExperimentRunner:
             enriched.append(
                 replace(
                     candidate,
+                    failed_gates=failed_gates,
+                    passed_gates=passed_gates,
+                    candidate_status=candidate_status,
                     flat_bias_diagnostics=class_bias,
                     flat_bias_diagnostics_missing_reason=(
                         None if class_bias else "predicted_or_actual_distribution_not_available"
@@ -1759,6 +1768,12 @@ class FeatureRegimeExperimentRunner:
             symbol=symbol,
             config_id=candidate.config_id,
         )
+
+    @staticmethod
+    def _bias_failed_gates(class_bias: dict[str, Any]) -> tuple[str, ...]:
+        if not class_bias:
+            return ()
+        return ("bias_gate",) if bool(class_bias.get("bias_gate_failed", False)) else ()
 
     @staticmethod
     def _best_candidate_from_ranking(

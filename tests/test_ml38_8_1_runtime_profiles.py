@@ -11,9 +11,9 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert wrapper.single_symbol_full is False
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == (
-        "lv5_h06_thr045_tp10_sl10_fb",
-        "lv5_h08_thr05_tp10_sl10_fb",
-        "lv5_h12_thr055_tp12_sl12_fb",
+        "lv6_h08_thr052_tp10_sl10_ba",
+        "lv6_h10_thr055_tp10_sl10_ba",
+        "lv6_h12_thr06_tp12_sl12_ba",
     )
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
@@ -31,9 +31,9 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv5_h06_thr045_tp10_sl10_fb",
-        "lv5_h08_thr05_tp10_sl10_fb",
-        "lv5_h12_thr055_tp12_sl12_fb",
+        "lv6_h08_thr052_tp10_sl10_ba",
+        "lv6_h10_thr055_tp10_sl10_ba",
+        "lv6_h12_thr06_tp12_sl12_ba",
     ]
     assert command[command.index("--start-date") + 1] == "2026-04-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"
@@ -49,13 +49,14 @@ def test_single_symbol_full_profile_uses_one_symbol_full_range_and_selected_conf
     assert wrapper.single_symbol_full is True
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == (
-        "lv5_h06_thr045_tp10_sl10_fb",
-        "lv5_h08_thr05_tp10_sl10_fb",
-        "lv5_h12_thr055_tp12_sl12_fb",
+        "lv6_h08_thr052_tp10_sl10_ba",
+        "lv6_h10_thr055_tp10_sl10_ba",
+        "lv6_h12_thr06_tp12_sl12_ba",
+        "lv6_h16_thr065_tp15_sl15_ba",
     )
     assert wrapper.start_date == "2025-01-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 3
+    assert wrapper._expected_candidate_count() == 4
     assert wrapper._full_quality_run() is False
     assert wrapper._quality_decision_allowed() is False
 
@@ -69,9 +70,10 @@ def test_single_symbol_full_profile_uses_one_symbol_full_range_and_selected_conf
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv5_h06_thr045_tp10_sl10_fb",
-        "lv5_h08_thr05_tp10_sl10_fb",
-        "lv5_h12_thr055_tp12_sl12_fb",
+        "lv6_h08_thr052_tp10_sl10_ba",
+        "lv6_h10_thr055_tp10_sl10_ba",
+        "lv6_h12_thr06_tp12_sl12_ba",
+        "lv6_h16_thr065_tp15_sl15_ba",
     ]
     assert command[command.index("--start-date") + 1] == "2025-01-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"
@@ -86,7 +88,7 @@ def test_full_profile_still_expects_original_three_symbol_full_grid() -> None:
     assert wrapper.selected_config_ids == ()
     assert wrapper.start_date == "2025-01-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 72
+    assert wrapper._expected_candidate_count() == 84
     assert wrapper._full_quality_run() is True
     assert wrapper._quality_decision_allowed() is True
 

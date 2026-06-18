@@ -194,6 +194,11 @@ class LongHistoryTrainingPipelineRunner:
     DEFAULT_FLAT_PROBABILITY_FLOOR_WEIGHT = 1.00
     DEFAULT_FLAT_PROBABILITY_FLOOR_TARGET = 0.20
     DEFAULT_MIN_CLASS_PROBABILITY_FLOOR = 0.05
+    DEFAULT_CLASS_PROBABILITY_FLOOR_WEIGHT = 1.50
+    # Class order: UP, DOWN, FLAT.
+    DEFAULT_CLASS_PROBABILITY_FLOOR_TARGETS = (0.10, 0.18, 0.12)
+    DEFAULT_DOMINANT_CLASS_CEILING_WEIGHT = 1.25
+    DEFAULT_DOMINANT_CLASS_CEILING_TARGET = 0.72
     DEFAULT_LABEL_NOISE_HARDENING_ENABLED = True
     DEFAULT_PROBABILITY_TEMPERATURE_ENABLED = True
     DEFAULT_DIRECTION_ATR_THRESHOLD = 0.5
@@ -1061,6 +1066,10 @@ class LongHistoryTrainingPipelineRunner:
                 flat_probability_floor_weight=self.DEFAULT_FLAT_PROBABILITY_FLOOR_WEIGHT,
                 flat_probability_floor_target=self.DEFAULT_FLAT_PROBABILITY_FLOOR_TARGET,
                 min_class_probability_floor=self.DEFAULT_MIN_CLASS_PROBABILITY_FLOOR,
+                class_probability_floor_weight=self.DEFAULT_CLASS_PROBABILITY_FLOOR_WEIGHT,
+                class_probability_floor_targets=self.DEFAULT_CLASS_PROBABILITY_FLOOR_TARGETS,
+                dominant_class_ceiling_weight=self.DEFAULT_DOMINANT_CLASS_CEILING_WEIGHT,
+                dominant_class_ceiling_target=self.DEFAULT_DOMINANT_CLASS_CEILING_TARGET,
                 label_noise_hardening_enabled=self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
             )
         test_metrics = dict(result.get("test_metrics", {}))
@@ -1101,6 +1110,10 @@ class LongHistoryTrainingPipelineRunner:
                 "flat_probability_floor_weight": self.DEFAULT_FLAT_PROBABILITY_FLOOR_WEIGHT,
                 "flat_probability_floor_target": self.DEFAULT_FLAT_PROBABILITY_FLOOR_TARGET,
                 "min_class_probability_floor": self.DEFAULT_MIN_CLASS_PROBABILITY_FLOOR,
+                "class_probability_floor_weight": self.DEFAULT_CLASS_PROBABILITY_FLOOR_WEIGHT,
+                "class_probability_floor_targets": list(self.DEFAULT_CLASS_PROBABILITY_FLOOR_TARGETS),
+                "dominant_class_ceiling_weight": self.DEFAULT_DOMINANT_CLASS_CEILING_WEIGHT,
+                "dominant_class_ceiling_target": self.DEFAULT_DOMINANT_CLASS_CEILING_TARGET,
                 "label_noise_hardening_enabled": self.DEFAULT_LABEL_NOISE_HARDENING_ENABLED,
             },
         }

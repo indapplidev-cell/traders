@@ -5,7 +5,7 @@ from app.features.feature_models import FEATURE_NAMES
 from app.training.training_service import TrainingService
 
 
-def test_class_weights_are_computed_with_inverse_frequency_rule() -> None:
+def test_class_weights_are_computed_with_bias_aware_capped_rule() -> None:
     rows = [
         _row("UP", datetime(2025, 1, 1, tzinfo=timezone.utc)),
         _row("UP", datetime(2025, 1, 2, tzinfo=timezone.utc)),
@@ -14,7 +14,7 @@ def test_class_weights_are_computed_with_inverse_frequency_rule() -> None:
 
     weights = TrainingService.compute_direction_class_weights(rows)
 
-    assert weights == [0.5, 1.0, 0.0]
+    assert weights == [0.65, 1.15, 0.0]
 
 
 def _row(direction_label: str, open_time: datetime) -> DatasetRow:

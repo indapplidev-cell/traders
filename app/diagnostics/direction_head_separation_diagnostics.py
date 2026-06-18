@@ -295,21 +295,30 @@ def direction_sample_weight_for_row(row: DatasetRow) -> float:
     adverse = abs(float(raw_adverse or 0.0))
     directional_edge = favorable - adverse
 
-    if label in {"UP", "DOWN"}:
+    if label == "DOWN":
         if directional_edge >= 0.80:
-            return 1.20
+            return 1.45
         if directional_edge >= 0.45:
-            return 1.05
+            return 1.25
         if directional_edge >= 0.20:
-            return 0.75
+            return 0.85
+        return 0.45
+
+    if label == "UP":
+        if directional_edge >= 0.80:
+            return 1.05
+        if directional_edge >= 0.45:
+            return 0.95
+        if directional_edge >= 0.20:
+            return 0.70
         return 0.40
 
     # FLAT: стабильный flat теперь важнее, чем в ML38.8.
     max_excursion = max(favorable, adverse)
     if max_excursion <= 0.30 and future_move <= 0.20:
-        return 1.35
+        return 1.45
     if max_excursion <= 0.50 and future_move <= 0.30:
-        return 1.15
+        return 1.25
     if max_excursion <= 0.75:
-        return 0.80
+        return 0.85
     return 0.45

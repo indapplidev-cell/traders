@@ -118,6 +118,16 @@ class ML382ConfigRanker:
             "down_blindness_penalty": -2.0
             if bool(bias.get("down_blindness_detected", False))
             else 0.0,
+            "up_bias_penalty": -2.0
+            if bool(bias.get("up_bias_detected", False))
+            else 0.0,
+            "flat_underprediction_penalty": -2.0
+            if bool(bias.get("flat_underprediction_detected", False))
+            else 0.0,
+            "up_dominance_penalty": -3.0
+            if bool(bias.get("up_dominance_detected", False))
+            else 0.0,
+            "bias_gate_penalty": -2.0 if "bias_gate" in failed_gates else 0.0,
             "baseline_edge_gate_penalty": -2.0 if "baseline_edge_gate" in failed_gates else 0.0,
             "walk_forward_gate_penalty": -3.0 if "walk_forward_gate" in failed_gates else 0.0,
         }
@@ -136,6 +146,17 @@ class ML382ConfigRanker:
             rejection_reasons.append("flat_bias_detected")
         if bool(bias.get("down_blindness_detected", False)):
             rejection_reasons.append("down_blindness_detected")
+        if bool(bias.get("flat_underprediction_detected", False)):
+            rejection_reasons.append("flat_underprediction_detected")
+        if bool(bias.get("up_bias_detected", False)):
+            rejection_reasons.append("up_bias_detected")
+        if bool(bias.get("up_dominance_detected", False)):
+            rejection_reasons.append("up_dominance_detected")
+        for reason in bias.get("bias_rejection_reasons", []):
+            if str(reason) not in rejection_reasons:
+                rejection_reasons.append(str(reason))
+        if "bias_gate" in failed_gates:
+            rejection_reasons.append("bias_gate_failed")
         if "baseline_edge_gate" in failed_gates:
             rejection_reasons.append("baseline_edge_gate_failed")
         if "walk_forward_gate" in failed_gates:
@@ -164,6 +185,11 @@ class ML382ConfigRanker:
             "collapse_type": collapse_summary.get("collapse_type") or candidate.get("collapse_type"),
             "flat_bias_detected": bool(bias.get("flat_bias_detected", False)),
             "down_blindness_detected": bool(bias.get("down_blindness_detected", False)),
+            "flat_underprediction_detected": bool(bias.get("flat_underprediction_detected", False)),
+            "up_bias_detected": bool(bias.get("up_bias_detected", False)),
+            "up_dominance_detected": bool(bias.get("up_dominance_detected", False)),
+            "bias_gate_failed": bool(bias.get("bias_gate_failed", False)),
+            "bias_rejection_reasons": list(bias.get("bias_rejection_reasons", [])),
             "symbol_bias_severity": bias.get("symbol_bias_severity"),
             "walk_forward_profit_factor": walk_forward_pf,
             "walk_forward_total_r": walk_forward_total_r,

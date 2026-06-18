@@ -134,43 +134,30 @@ from typing import Any
 DEFAULT_STAGE_NAME = "FV3_CACHED_FRESH_TUNING"
 DEFAULT_STAGE_CONTEXT = "Fresh FV3 tuning using PostgreSQL candle cache"
 FEATURE_VERSION = "fv3_candle_ta_context"
-DEFAULT_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
-DEFAULT_INTERVAL = "15m"
 DEFAULT_START_DATE = "2025-01-01"
 DEFAULT_END_DATE = "2026-06-15"
+DEFAULT_INTERVAL = "15m"
+DEFAULT_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
-#
-# Full FV3 matrix after ML38.9:
-#   8 base ML38.2 configs
-# + 6 anti-collapse ML38.5 configs
-# + 6 confidence/profitability ML38.6 configs
-# + 4 flat/bias ML38.9 configs
-# = 24 configs * 3 symbols = 72 candidates.
-DEFAULT_FULL_GRID_CONFIG_COUNT = 24
-DEFAULT_EXPECTED_CANDIDATE_COUNT = len(DEFAULT_SYMBOLS) * DEFAULT_FULL_GRID_CONFIG_COUNT
+DEFAULT_FULL_GRID_CONFIG_COUNT = 28
 
-# Runtime-only smoke profile: checks wrapper, DB cache, training pipeline,
-# archive assembly, and status semantics. This is not a quality decision.
-FAST_DEBUG_CONFIGS = "lv5_h08_thr05_tp10_sl10_fb"
-FAST_DEBUG_SYMBOLS = "BTCUSDT,SOLUSDT"
+# ML38.9.1: full grid = 28 configs * 3 symbols.
+DEFAULT_EXPECTED_CANDIDATE_COUNT = 84
+
+# Runtime smoke: one balanced-bias config, two symbols, short period.
+FAST_DEBUG_CONFIGS = "lv6_h10_thr055_tp10_sl10_ba"
+FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
-FAST_DEBUG_END_DATE = "2026-06-15"
+FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 
-# Intermediate quality profile: quick one-symbol, short-range check.
-# It should use the best compact subset of ML38.9 flat/bias configs.
-QUICK_QUALITY_CONFIGS = (
-    "lv5_h06_thr045_tp10_sl10_fb,"
-    "lv5_h08_thr05_tp10_sl10_fb,"
-    "lv5_h12_thr055_tp12_sl12_fb"
-)
+# Intermediate quality: one symbol, three ML38.9.1 configs, short period.
+QUICK_QUALITY_CONFIGS = "lv6_h08_thr052_tp10_sl10_ba,lv6_h10_thr055_tp10_sl10_ba,lv6_h12_thr06_tp12_sl12_ba"
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"
 QUICK_QUALITY_END_DATE = DEFAULT_END_DATE
 
-# One-symbol full-period profile: run only after quick-quality improves.
-# It must use the same compact ML38.9 flat/bias shortlist as quick-quality,
-# but on the full 2025+ date range for one symbol.
-SINGLE_SYMBOL_FULL_CONFIGS = QUICK_QUALITY_CONFIGS
+# Intermediate heavy check: one symbol, full period, ML38.9.1 shortlist.
+SINGLE_SYMBOL_FULL_CONFIGS = "lv6_h08_thr052_tp10_sl10_ba,lv6_h10_thr055_tp10_sl10_ba,lv6_h12_thr06_tp12_sl12_ba,lv6_h16_thr065_tp15_sl15_ba"
 SINGLE_SYMBOL_FULL_SYMBOL = "SOLUSDT"
 SINGLE_SYMBOL_FULL_START_DATE = DEFAULT_START_DATE
 SINGLE_SYMBOL_FULL_END_DATE = DEFAULT_END_DATE
@@ -245,7 +232,9 @@ class TerminalProgress:
         print("\r" + " " * self._last_len + "\r", end="", flush=True)
         self._last_len = 0
 
-def _split_csv(value: str) -> tuple[str, ...]:
+def _split_csv(value: str | tuple[str, ...] | list[str]) -> tuple[str, ...]:
+    if isinstance(value, (tuple, list)):
+        return tuple(str(part).strip() for part in value if str(part).strip())
     return tuple(part.strip() for part in str(value or "").split(",") if part.strip())
 
 

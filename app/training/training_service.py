@@ -56,6 +56,10 @@ class TrainingConfig:
     flat_probability_floor_weight: float = 0.0
     flat_probability_floor_target: float = 0.18
     min_class_probability_floor: float = 0.04
+    class_probability_floor_weight: float = 0.0
+    class_probability_floor_targets: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    dominant_class_ceiling_weight: float = 0.0
+    dominant_class_ceiling_target: float = 0.75
     label_noise_hardening_enabled: bool = True
 
 
@@ -161,6 +165,10 @@ class TrainingService:
         flat_probability_floor_weight: float = 0.0,
         flat_probability_floor_target: float = 0.18,
         min_class_probability_floor: float = 0.04,
+        class_probability_floor_weight: float = 0.0,
+        class_probability_floor_targets: tuple[float, float, float] | None = None,
+        dominant_class_ceiling_weight: float = 0.0,
+        dominant_class_ceiling_target: float = 0.75,
         label_noise_hardening_enabled: bool = True,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
@@ -197,6 +205,10 @@ class TrainingService:
             flat_probability_floor_weight=flat_probability_floor_weight,
             flat_probability_floor_target=flat_probability_floor_target,
             min_class_probability_floor=min_class_probability_floor,
+            class_probability_floor_weight=class_probability_floor_weight,
+            class_probability_floor_targets=tuple(class_probability_floor_targets or (0.0, 0.0, 0.0)),
+            dominant_class_ceiling_weight=dominant_class_ceiling_weight,
+            dominant_class_ceiling_target=dominant_class_ceiling_target,
             label_noise_hardening_enabled=label_noise_hardening_enabled,
         )
         started_at = datetime.now(tz=timezone.utc)
@@ -270,6 +282,10 @@ class TrainingService:
                     flat_probability_floor_weight=config.flat_probability_floor_weight,
                     flat_probability_floor_target=config.flat_probability_floor_target,
                     min_class_probability_floor=config.min_class_probability_floor,
+                    class_probability_floor_weight=config.class_probability_floor_weight,
+                    class_probability_floor_targets=config.class_probability_floor_targets,
+                    dominant_class_ceiling_weight=config.dominant_class_ceiling_weight,
+                    dominant_class_ceiling_target=config.dominant_class_ceiling_target,
                 ),
             )
             training_result = trainer.train(model=model, train_dataset=train_dataset, validation_dataset=validation_dataset)
@@ -338,6 +354,10 @@ class TrainingService:
                 "flat_probability_floor_weight": config.flat_probability_floor_weight,
                 "flat_probability_floor_target": config.flat_probability_floor_target,
                 "min_class_probability_floor": config.min_class_probability_floor,
+                "class_probability_floor_weight": config.class_probability_floor_weight,
+                "class_probability_floor_targets": list(config.class_probability_floor_targets),
+                "dominant_class_ceiling_weight": config.dominant_class_ceiling_weight,
+                "dominant_class_ceiling_target": config.dominant_class_ceiling_target,
                 "label_noise_hardening_enabled": config.label_noise_hardening_enabled,
             }
             combined_metrics = {
@@ -415,6 +435,11 @@ class TrainingService:
                 "flat_probability_floor_weight": config.flat_probability_floor_weight,
                 "flat_probability_floor_target": config.flat_probability_floor_target,
                 "min_class_probability_floor": config.min_class_probability_floor,
+                "class_probability_floor_weight": config.class_probability_floor_weight,
+                "class_probability_floor_targets": list(config.class_probability_floor_targets),
+                "dominant_class_ceiling_weight": config.dominant_class_ceiling_weight,
+                "dominant_class_ceiling_target": config.dominant_class_ceiling_target,
+                "label_noise_hardening_enabled": config.label_noise_hardening_enabled,
             }
         except Exception as exc:
             finished_at = datetime.now(tz=timezone.utc)
@@ -553,10 +578,23 @@ class TrainingService:
         total = len(rows)
         num_classes = len(label_counts)
         weights: list[float] = []
+
+        # ML38.9.1: class weights are capped so that minority classes help,
+        # but do not explode. DOWN/FLAT get mild structural boost because
+        # quick-quality showed UP-dominance, FLAT-underprediction and weak DOWN coverage.
+        class_boost = {
+            "UP": 0.90,
+            "DOWN": 1.15,
+            "FLAT": 1.20,
+        }
+
         for label in ["UP", "DOWN", "FLAT"]:
             count = label_counts[label]
             if count == 0:
                 weights.append(0.0)
-            else:
-                weights.append(total / (num_classes * count))
+                continue
+
+            raw_weight = total / (num_classes * count)
+            boosted = raw_weight * class_boost[label]
+            weights.append(min(max(boosted, 0.65), 1.85))
         return weights

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -58,6 +60,10 @@ class MultiTaskLoss:
         flat_probability_floor_weight: float = 0.0,
         flat_probability_floor_target: float = 0.18,
         min_class_probability_floor: float = 0.04,
+        class_probability_floor_weight: float = 0.0,
+        class_probability_floor_targets: Sequence[float] | None = None,
+        dominant_class_ceiling_weight: float = 0.0,
+        dominant_class_ceiling_target: float = 0.75,
     ) -> None:
         weights = torch.tensor(direction_class_weights, dtype=torch.float32) if direction_class_weights is not None else None
         self._direction_loss_name = direction_loss_name
@@ -73,6 +79,13 @@ class MultiTaskLoss:
         self._flat_probability_floor_weight = float(flat_probability_floor_weight)
         self._flat_probability_floor_target = float(flat_probability_floor_target)
         self._min_class_probability_floor = float(min_class_probability_floor)
+        self._class_probability_floor_weight = float(class_probability_floor_weight)
+        raw_floor_targets = tuple(float(item) for item in (class_probability_floor_targets or (0.0, 0.0, 0.0)))
+        if len(raw_floor_targets) != 3:
+            raise ValueError("class_probability_floor_targets must contain exactly 3 values: UP, DOWN, FLAT")
+        self._class_probability_floor_targets = raw_floor_targets
+        self._dominant_class_ceiling_weight = float(dominant_class_ceiling_weight)
+        self._dominant_class_ceiling_target = float(dominant_class_ceiling_target)
         self._direction_class_weights = weights
 
         if direction_loss_name == "focal":
@@ -117,6 +130,12 @@ class MultiTaskLoss:
         flat_probability_floor_loss = self._flat_probability_floor_loss(
             probabilities=direction_probabilities,
         )
+        class_probability_floor_loss = self._class_probability_floor_loss(
+            probabilities=direction_probabilities,
+        )
+        dominant_class_ceiling_loss = self._dominant_class_ceiling_loss(
+            probabilities=direction_probabilities,
+        )
 
         tp_mask = batch["tp_sl_mask"] > 0
         if torch.any(tp_mask):
@@ -136,6 +155,8 @@ class MultiTaskLoss:
             + self._direction_logit_gap_weight * direction_logit_gap_loss
             + self._direction_distribution_loss_weight * direction_distribution_loss
             + self._flat_probability_floor_weight * flat_probability_floor_loss
+            + self._class_probability_floor_weight * class_probability_floor_loss
+            + self._dominant_class_ceiling_weight * dominant_class_ceiling_loss
         )
         predicted_distribution = direction_probabilities.mean(dim=0)
         return total_loss, {
@@ -147,6 +168,8 @@ class MultiTaskLoss:
             "direction_logit_gap_loss": float(direction_logit_gap_loss.detach().item()),
             "direction_distribution_loss": float(direction_distribution_loss.detach().item()),
             "flat_probability_floor_loss": float(flat_probability_floor_loss.detach().item()),
+            "class_probability_floor_loss": float(class_probability_floor_loss.detach().item()),
+            "dominant_class_ceiling_loss": float(dominant_class_ceiling_loss.detach().item()),
             "direction_sample_weight_mean": float(direction_sample_weights.mean().detach().item()),
             "direction_predicted_up_probability_mean": float(predicted_distribution[0].detach().item()),
             "direction_predicted_down_probability_mean": float(predicted_distribution[1].detach().item()),
@@ -160,6 +183,10 @@ class MultiTaskLoss:
             "flat_probability_floor_weight": self._flat_probability_floor_weight,
             "flat_probability_floor_target": self._flat_probability_floor_target,
             "min_class_probability_floor": self._min_class_probability_floor,
+            "class_probability_floor_weight": self._class_probability_floor_weight,
+            "class_probability_floor_targets": list(self._class_probability_floor_targets),
+            "dominant_class_ceiling_weight": self._dominant_class_ceiling_weight,
+            "dominant_class_ceiling_target": self._dominant_class_ceiling_target,
             "total_loss": float(total_loss.detach().item()),
         }
 
@@ -229,6 +256,28 @@ class MultiTaskLoss:
         flat_probability_mean = probabilities[:, 2].mean()
         deficit = torch.relu(probabilities.new_tensor(self._flat_probability_floor_target) - flat_probability_mean)
         return deficit ** 2
+
+    def _class_probability_floor_loss(self, probabilities: torch.Tensor) -> torch.Tensor:
+        if self._class_probability_floor_weight <= 0:
+            return probabilities.new_tensor(0.0)
+
+        predicted_distribution = probabilities.mean(dim=0)
+        floor_targets = probabilities.new_tensor(self._class_probability_floor_targets)
+        deficits = torch.relu(floor_targets - predicted_distribution)
+
+        # UP, DOWN, FLAT. DOWN and FLAT get stronger pressure because quick-quality
+        # showed UP-dominance plus weak DOWN/FLAT coverage.
+        class_penalty = probabilities.new_tensor([0.75, 1.35, 1.25])
+        return torch.mean(class_penalty * deficits ** 2)
+
+    def _dominant_class_ceiling_loss(self, probabilities: torch.Tensor) -> torch.Tensor:
+        if self._dominant_class_ceiling_weight <= 0:
+            return probabilities.new_tensor(0.0)
+
+        predicted_distribution = probabilities.mean(dim=0)
+        dominant_probability = torch.max(predicted_distribution)
+        excess = torch.relu(dominant_probability - probabilities.new_tensor(self._dominant_class_ceiling_target))
+        return excess ** 2
 
 
 def _target_logit_gap(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:

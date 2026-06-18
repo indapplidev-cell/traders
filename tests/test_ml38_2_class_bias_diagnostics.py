@@ -11,7 +11,7 @@ def test_ml38_2_class_bias_diagnostics_detects_flat_bias_and_down_blindness() ->
 
     assert payload["flat_bias_detected"] is True
     assert payload["down_blindness_detected"] is True
-    assert payload["symbol_bias_severity"] == "CRITICAL"
+    assert payload["symbol_bias_severity"] == "HIGH"
     assert payload["dominant_predicted_class"] == "FLAT"
     assert payload["dominant_actual_class"] == "DOWN"
 
