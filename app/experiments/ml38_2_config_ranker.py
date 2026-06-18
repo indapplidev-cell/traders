@@ -266,6 +266,9 @@ class ML382ConfigRanker:
             "walk_forward_total_r": walk_forward_total_r,
             "accuracy": accuracy,
             "baseline_accuracy": baseline,
+            "baseline_edge": candidate.get("baseline_edge"),
+            "baseline_edge_status": candidate.get("baseline_edge_status"),
+            "collapse_severity": candidate.get("collapse_severity"),
             "rejection_reasons": rejection_reasons,
         }
 

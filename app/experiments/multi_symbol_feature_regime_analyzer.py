@@ -403,11 +403,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "effective_gap_count_for_training": int(summary.get("effective_gap_count_for_training", 0) or 0),
             "gap_severity_for_training": gap_severity_for_training,
             "gap_training_safe": gap_training_safe,
-            "baseline_edge": cls._float_or_none(best_candidate.get("accuracy_edge")),
+            "baseline_edge": cls._float_or_none(
+                best_candidate.get("baseline_edge", best_candidate.get("accuracy_edge"))
+            ),
+            "baseline_edge_status": best_candidate.get("baseline_edge_status"),
             "model_accuracy": cls._float_or_none(best_candidate.get("model_accuracy")),
             "baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
             "collapse_detected": bool(best_candidate.get("collapse_detected", False)),
             "collapse_type": best_candidate.get("collapse_type"),
+            "collapse_severity": best_candidate.get("collapse_severity"),
+            "collapse_gate_failed": bool(best_candidate.get("collapse_gate_failed", False)),
             "collapse_diagnostics_v2": cls._as_dict(
                 summary.get("collapse_diagnostics_v2")
                 or best_candidate.get("collapse_diagnostics_v2")

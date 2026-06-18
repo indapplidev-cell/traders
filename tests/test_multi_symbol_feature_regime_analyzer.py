@@ -50,8 +50,11 @@ def _write_summary(
                 "model_accuracy": 0.41,
                 "baseline_accuracy": 0.39,
                 "accuracy_edge": edge,
+                "baseline_edge": edge,
+                "baseline_edge_status": "STRONG_EDGE" if edge > 0 else "NEGATIVE_EDGE",
                 "collapse_detected": True,
                 "collapse_type": "MIXED_COLLAPSE",
+                "collapse_severity": "WATCH",
                 "profit_factor": profit_factor,
                 "profit_total_r": -10.0,
                 "walk_forward_profit_factor": walk_forward_profit_factor,
@@ -59,6 +62,20 @@ def _write_summary(
                 "failed_gates": failed_gates,
                 "passed_gates": ["gap_quality_gate"],
                 "warnings": [],
+            }
+        ],
+        "configs_ranked": [
+            {
+                "config_id": "lv2_h08_thr04_tp10_sl10",
+                "candidate_status": "REJECTED",
+                "score": score,
+                "accuracy": 0.41,
+                "baseline_accuracy": 0.39,
+                "baseline_edge": edge,
+                "baseline_edge_status": "STRONG_EDGE" if edge > 0 else "NEGATIVE_EDGE",
+                "collapse_severity": "WATCH",
+                "failed_gates": failed_gates,
+                "passed_gates": ["gap_quality_gate"],
             }
         ],
     }
@@ -126,10 +143,12 @@ def test_multi_symbol_feature_regime_analyzer_aggregates_expected_fields(tmp_pat
     assert payload["any_accepted_candidate"] is False
     assert payload["any_positive_baseline_edge"] is True
     assert payload["all_positive_baseline_edge"] is False
+    assert payload["configs_ranked"][0]["baseline_edge"] == 0.018072
+    assert payload["configs_ranked"][0]["baseline_edge_status"] == "STRONG_EDGE"
+    assert payload["configs_ranked"][0]["collapse_severity"] == "WATCH"
     assert payload["symbols_missing_real_diagnostics"] == ["ETHUSDT", "SOLUSDT"]
     assert payload["symbols_missing_regime_features"] == ["ETHUSDT", "SOLUSDT"]
     assert payload["collapse_failed_count"] == 3
     assert payload["walk_forward_failed_count"] == 3
     assert payload["profit_aware_failed_count"] == 2
     assert json.dumps(payload)
-
