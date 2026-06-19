@@ -4,8 +4,8 @@ from collections import Counter
 from typing import Any
 
 from app.features.technical_indicators import TechnicalIndicators
-from app.labels.direction_label_builder import DirectionLabelBuilder
-from app.labels.label_config import LabelConfig
+from app.labels.label_config import LabelConfig, normalize_label_mode
+from app.labels.first_touch_label_builder import build_label_mode_snapshot
 from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP, LabelRecord
 from app.labels.tp_sl_label_builder import TpSlLabelBuilder
 
@@ -16,8 +16,9 @@ class LabelBuilder:
         direction_label_builder: DirectionLabelBuilder | None = None,
         tp_sl_label_builder: TpSlLabelBuilder | None = None,
     ) -> None:
-        self._direction_label_builder = direction_label_builder or DirectionLabelBuilder()
+        self._direction_label_builder = direction_label_builder
         self._tp_sl_label_builder = tp_sl_label_builder or TpSlLabelBuilder()
+        self._last_label_mode_rows: list[dict[str, Any]] = []
 
     def build(
         self,
@@ -31,10 +32,12 @@ class LabelBuilder:
         stop_loss_atr: float = 1.0,
         flat_class_enabled: bool = True,
         config: LabelConfig | None = None,
+        feature_rows: list[Any] | None = None,
     ) -> list[LabelRecord]:
         if not candles:
             return []
 
+        label_mode = normalize_label_mode(None if config is None else config.label_mode)
         if config is not None:
             horizon_candles = config.horizon_candles
             label_version = config.label_version
@@ -42,13 +45,24 @@ class LabelBuilder:
             take_profit_atr = config.take_profit_atr
             stop_loss_atr = config.stop_loss_atr
             flat_class_enabled = config.flat_class_enabled
+            label_mode = normalize_label_mode(config.label_mode)
 
         highs = [float(candle.high) for candle in candles]
         lows = [float(candle.low) for candle in candles]
         closes = [float(candle.close) for candle in candles]
         atr_14 = TechnicalIndicators.atr(highs, lows, closes, 14)
+        feature_map: dict[Any, dict[str, Any]] = {}
+        for row in feature_rows or []:
+            if isinstance(row, dict):
+                candle_open_time = row.get("candle_open_time")
+                features_json = dict(row.get("features_json", {}))
+            else:
+                candle_open_time = getattr(row, "candle_open_time", None)
+                features_json = dict(getattr(row, "features_json", {}))
+            feature_map[candle_open_time] = features_json
 
         records: list[LabelRecord] = []
+        mode_rows: list[dict[str, Any]] = []
         for index, candle in enumerate(candles):
             if index + horizon_candles >= len(candles):
                 break
@@ -66,13 +80,18 @@ class LabelBuilder:
             up_move_atr = (max(float(future_candle.high) for future_candle in future_window) - current_close) / atr_value
             down_move_atr = (current_close - min(float(future_candle.low) for future_candle in future_window)) / atr_value
 
-            direction_label = self._direction_label_builder.build(
-                future_return=future_return,
-                atr=atr_value,
-                current_close=current_close,
+            snapshot = build_label_mode_snapshot(
+                current_candle=candle,
+                future_candles=future_window,
+                atr_value=atr_value,
                 direction_atr_threshold=direction_atr_threshold,
+                take_profit_atr=take_profit_atr,
+                stop_loss_atr=stop_loss_atr,
                 flat_class_enabled=flat_class_enabled,
+                features_json=feature_map.get(candle.open_time),
+                label_mode=label_mode,
             )
+            direction_label = str(snapshot["selected_direction_label"])
             tp_before_sl = self._tp_sl_label_builder.build(
                 direction_label=direction_label,
                 current_close=current_close,
@@ -107,7 +126,9 @@ class LabelBuilder:
                     label_version=label_version,
                 )
             )
+            mode_rows.append(snapshot)
 
+        self._last_label_mode_rows = mode_rows
         return records
 
     def summarize(self, records: list[LabelRecord]) -> dict[str, int]:
@@ -117,3 +138,6 @@ class LabelBuilder:
             LABEL_DOWN: counts.get(LABEL_DOWN, 0),
             LABEL_FLAT: counts.get(LABEL_FLAT, 0),
         }
+
+    def last_label_mode_rows(self) -> list[dict[str, Any]]:
+        return [dict(item) for item in self._last_label_mode_rows]

@@ -3,9 +3,9 @@ from app.experiments.ml38_2_fv3_tuning_matrix import ML38_9_5_DECISION_POLICY_CO
 
 
 EXPECTED_QUICK_QUALITY_CONFIGS = (
-    "lv11_h08_thr052_tp10_sl10_fv4",
-    "lv11_h12_thr06_tp12_sl12_fv4",
-    "lv11_h16_thr065_tp15_sl15_fv4",
+    "lv12_h08_ft_tp10_sl10",
+    "lv12_h12_ft_tp12_sl12",
+    "lv12_h12_setup_ft_tp12_sl12",
 )
 
 EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS = (

@@ -107,6 +107,9 @@ class LabelGridExperimentCandidateResult:
     decision_policy_selected_policy_id: str | None = None
     prediction_root_cause_audit: dict[str, Any] = field(default_factory=dict)
     book_driven_forensic_audit: dict[str, Any] = field(default_factory=dict)
+    label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
+    flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
+    setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -173,6 +176,9 @@ class LabelGridExperimentCandidateResult:
             "decision_policy_selected_policy_id": self.decision_policy_selected_policy_id,
             "prediction_root_cause_audit": dict(self.prediction_root_cause_audit),
             "book_driven_forensic_audit": dict(self.book_driven_forensic_audit),
+            "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
+            "flat_subtype_audit": dict(self.flat_subtype_audit),
+            "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -784,6 +790,7 @@ class LabelGridExperimentRunner:
                 "take_profit_atr": label_config.take_profit_atr,
                 "stop_loss_atr": label_config.stop_loss_atr,
                 "flat_class_enabled": True,
+                "label_mode": label_config.label_mode,
             },
             feature_config_summary={
                 "feature_version": config.feature_version,
@@ -823,6 +830,7 @@ class LabelGridExperimentRunner:
         pipeline_runner.DEFAULT_DIRECTION_ATR_THRESHOLD = label_config.threshold
         pipeline_runner.DEFAULT_TAKE_PROFIT_ATR = label_config.take_profit_atr
         pipeline_runner.DEFAULT_STOP_LOSS_ATR = label_config.stop_loss_atr
+        pipeline_runner.DEFAULT_LABEL_MODE = label_config.label_mode
         if not config.run_walk_forward:
             pipeline_runner._stage_handlers["walk_forward_evaluation"] = (
                 lambda pipeline_config, stage_payloads: {
@@ -1135,6 +1143,15 @@ class LabelGridExperimentRunner:
             book_driven_forensic_audit=self._as_dict(
                 probability_diagnostics.get("book_driven_forensic_audit", {})
             ),
+            label_mode_comparison_audit=self._as_dict(
+                quality_payload.get("label_mode_comparison_audit", {})
+            ),
+            flat_subtype_audit=self._as_dict(
+                quality_payload.get("flat_subtype_audit", {})
+            ),
+            setup_aware_label_diagnostics=self._as_dict(
+                quality_payload.get("setup_aware_label_diagnostics", {})
+            ),
             raw_predicted_class_distribution=raw_predicted_class_distribution,
             calibrated_predicted_class_distribution=calibrated_predicted_class_distribution,
             raw_collapse_diagnostics_v2=dict(
@@ -1401,6 +1418,24 @@ class LabelGridExperimentRunner:
             ),
             book_driven_forensic_audit=self._as_dict(
                 probability_diagnostics.get("book_driven_forensic_audit", {})
+            ),
+            label_mode_comparison_audit=self._as_dict(
+                model_quality_payload.get(
+                    "label_mode_comparison_audit",
+                    build_labels_payload.get("label_mode_comparison_audit", {}),
+                )
+            ),
+            flat_subtype_audit=self._as_dict(
+                model_quality_payload.get(
+                    "flat_subtype_audit",
+                    build_labels_payload.get("flat_subtype_audit", {}),
+                )
+            ),
+            setup_aware_label_diagnostics=self._as_dict(
+                model_quality_payload.get(
+                    "setup_aware_label_diagnostics",
+                    build_labels_payload.get("setup_aware_label_diagnostics", {}),
+                )
             ),
             raw_predicted_class_distribution=dict(
                 raw_probability_diagnostics.get("predicted_direction_ratios", {})

@@ -84,6 +84,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
         confidence_profitability_summary = self._confidence_profitability_summary(symbol_results)
         prediction_root_cause_summary = self._prediction_root_cause_summary(configs_ranked)
         book_driven_forensic_summary = self._book_driven_forensic_summary(configs_ranked)
+        label_mode_audit_summary = self._label_mode_audit_summary(symbol_results)
+        flat_subtype_summary = self._flat_subtype_summary(symbol_results)
+        setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
                 int(item.get("decision_policy_selected_policy_id") is not None)
@@ -138,6 +141,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
             "book_driven_forensic_summary": book_driven_forensic_summary,
+            "label_mode_audit_summary": label_mode_audit_summary,
+            "flat_subtype_summary": flat_subtype_summary,
+            "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,
             "feature_version_summary": {
@@ -455,6 +461,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
             payload["book_driven_forensic_audit"] = cls._as_dict(
                 payload.get("book_driven_forensic_audit")
             )
+            payload["label_mode_comparison_audit"] = cls._as_dict(
+                payload.get("label_mode_comparison_audit")
+            )
+            payload["flat_subtype_audit"] = cls._as_dict(
+                payload.get("flat_subtype_audit")
+            )
+            payload["setup_aware_label_diagnostics"] = cls._as_dict(
+                payload.get("setup_aware_label_diagnostics")
+            )
             configs_ranked.append(payload)
         return {
             "symbol": str(summary.get("symbol")),
@@ -571,6 +586,18 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "book_driven_forensic_audit": cls._as_dict(
                 best_candidate.get("book_driven_forensic_audit")
             ),
+            "label_mode_comparison_audit": cls._as_dict(
+                summary.get("label_mode_comparison_audit")
+                or best_candidate.get("label_mode_comparison_audit")
+            ),
+            "flat_subtype_audit": cls._as_dict(
+                summary.get("flat_subtype_audit")
+                or best_candidate.get("flat_subtype_audit")
+            ),
+            "setup_aware_label_diagnostics": cls._as_dict(
+                summary.get("setup_aware_label_diagnostics")
+                or best_candidate.get("setup_aware_label_diagnostics")
+            ),
             "prediction_decision_source": best_candidate.get("prediction_decision_source"),
             "reasons_why_best_still_rejected": [
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
@@ -638,6 +665,69 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "top_next_action_recommendations": [
                 name for name, _count in recommendation_counts.most_common(5)
             ],
+        }
+
+    @staticmethod
+    def _label_mode_audit_summary(symbol_results: list[dict[str, Any]]) -> dict[str, Any]:
+        recommendation_by_symbol: dict[str, str | None] = {}
+        conflict_ratio_by_symbol: dict[str, float | None] = {}
+        ambiguous_ratio_by_symbol: dict[str, float | None] = {}
+        for item in symbol_results:
+            audit = dict(item.get("label_mode_comparison_audit", {}))
+            symbol = str(item.get("symbol") or "UNKNOWN")
+            recommendation_by_symbol[symbol] = audit.get("label_mode_recommendation")
+            conflict_ratio_by_symbol[symbol] = (
+                None
+                if audit.get("future_close_vs_first_touch_conflict_ratio") is None
+                else float(audit["future_close_vs_first_touch_conflict_ratio"])
+            )
+            ambiguous_ratio_by_symbol[symbol] = (
+                None
+                if audit.get("first_touch_ambiguous_ratio") is None
+                else float(audit["first_touch_ambiguous_ratio"])
+            )
+        return {
+            "diagnostic_name": "label_mode_audit_multi_symbol_summary",
+            "diagnostic_version": "ml38_9_9",
+            "recommendation_by_symbol": recommendation_by_symbol,
+            "conflict_ratio_by_symbol": conflict_ratio_by_symbol,
+            "ambiguous_ratio_by_symbol": ambiguous_ratio_by_symbol,
+        }
+
+    @staticmethod
+    def _flat_subtype_summary(symbol_results: list[dict[str, Any]]) -> dict[str, Any]:
+        dominant_by_symbol: dict[str, Any] = {}
+        counts_by_symbol: dict[str, Any] = {}
+        for item in symbol_results:
+            audit = dict(item.get("flat_subtype_audit", {}))
+            symbol = str(item.get("symbol") or "UNKNOWN")
+            dominant_by_symbol[symbol] = audit.get("dominant_flat_subtype")
+            counts_by_symbol[symbol] = dict(audit.get("flat_subtype_counts", {}))
+        return {
+            "diagnostic_name": "flat_subtype_multi_symbol_summary",
+            "diagnostic_version": "ml38_9_9",
+            "dominant_flat_subtype_by_symbol": dominant_by_symbol,
+            "flat_subtype_counts_by_symbol": counts_by_symbol,
+        }
+
+    @staticmethod
+    def _setup_aware_label_summary(symbol_results: list[dict[str, Any]]) -> dict[str, Any]:
+        recommended_by_symbol: dict[str, Any] = {}
+        ambiguous_ratio_by_symbol: dict[str, Any] = {}
+        for item in symbol_results:
+            audit = dict(item.get("setup_aware_label_diagnostics", {}))
+            symbol = str(item.get("symbol") or "UNKNOWN")
+            recommended_by_symbol[symbol] = dict(
+                audit.get("recommended_label_mode_by_setup_type", {})
+            )
+            ambiguous_ratio_by_symbol[symbol] = dict(
+                audit.get("ambiguous_ratio_by_setup_type", {})
+            )
+        return {
+            "diagnostic_name": "setup_aware_label_multi_symbol_summary",
+            "diagnostic_version": "ml38_9_9",
+            "recommended_label_mode_by_symbol": recommended_by_symbol,
+            "ambiguous_ratio_by_symbol": ambiguous_ratio_by_symbol,
         }
 
     @classmethod
@@ -782,6 +872,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 )
                 payload["book_driven_forensic_audit"] = cls._as_dict(
                     payload.get("book_driven_forensic_audit")
+                )
+                payload["label_mode_comparison_audit"] = cls._as_dict(
+                    payload.get("label_mode_comparison_audit")
+                )
+                payload["flat_subtype_audit"] = cls._as_dict(
+                    payload.get("flat_subtype_audit")
+                )
+                payload["setup_aware_label_diagnostics"] = cls._as_dict(
+                    payload.get("setup_aware_label_diagnostics")
                 )
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)

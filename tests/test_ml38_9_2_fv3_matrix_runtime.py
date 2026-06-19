@@ -19,7 +19,7 @@ def test_ml38_9_2_runtime_profiles_now_delegate_to_lv11_fv4_configs() -> None:
 
     assert wrapper.runtime_profile == "quick_quality"
     assert wrapper.selected_config_ids == (
-        "lv11_h08_thr052_tp10_sl10_fv4",
-        "lv11_h12_thr06_tp12_sl12_fv4",
-        "lv11_h16_thr065_tp15_sl15_fv4",
+        "lv12_h08_ft_tp10_sl10",
+        "lv12_h12_ft_tp12_sl12",
+        "lv12_h12_setup_ft_tp12_sl12",
     )

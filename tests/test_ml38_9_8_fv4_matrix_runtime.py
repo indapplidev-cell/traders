@@ -20,14 +20,14 @@ def test_fv4_matrix_and_runtime_profiles_use_lv11_configs_while_keeping_lv10_ava
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--fast-debug"])
     )
-    assert fast_wrapper.selected_config_ids == ("lv11_h08_thr052_tp10_sl10_fv4",)
+    assert fast_wrapper.selected_config_ids == ("lv12_h08_ft_tp10_sl10",)
 
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--symbol", "SOLUSDT"])
     )
     assert quick_wrapper.symbols == ("SOLUSDT",)
     assert quick_wrapper.selected_config_ids == (
-        "lv11_h08_thr052_tp10_sl10_fv4",
-        "lv11_h12_thr06_tp12_sl12_fv4",
-        "lv11_h16_thr065_tp15_sl15_fv4",
+        "lv12_h08_ft_tp10_sl10",
+        "lv12_h12_ft_tp12_sl12",
+        "lv12_h12_setup_ft_tp12_sl12",
     )

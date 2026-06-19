@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from app.features.technical_indicators import TechnicalIndicators
 from app.labels.direction_label_builder import DirectionLabelBuilder
-from app.labels.label_config import LabelConfig
+from app.labels.label_config import LabelConfig, normalize_label_mode
+from app.labels.first_touch_label_builder import build_label_mode_snapshot
 from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP, LabelRecord
 from app.labels.regime_label_config import RegimeLabelConfigPlanner
 from app.labels.tp_sl_label_builder import TpSlLabelBuilder
@@ -25,6 +26,7 @@ class RegimeLabelBuilderResult:
     missing_requirements: tuple[str, ...]
     warnings: tuple[str, ...] = ()
     reason: str | None = None
+    label_mode_rows: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -103,6 +105,7 @@ class RegimeLabelBuilder:
                 missing_requirements=tuple(missing_requirements),
                 warnings=tuple(warnings),
                 reason=reason,
+                label_mode_rows=[],
             )
 
         configured_horizons = {
@@ -118,6 +121,8 @@ class RegimeLabelBuilder:
         atr_14 = TechnicalIndicators.atr(highs, lows, closes, 14)
 
         records: list[LabelRecord] = []
+        label_mode = normalize_label_mode(base_config.label_mode)
+        label_mode_rows: list[dict[str, Any]] = []
         label_distribution_by_regime: dict[str, Counter[str]] = defaultdict(Counter)
         regime_label_config_used: dict[str, str] = {}
 
@@ -155,13 +160,18 @@ class RegimeLabelBuilder:
             take_profit_atr = float(regime_config.get("take_profit_atr", base_config.take_profit_atr))
             stop_loss_atr = float(regime_config.get("stop_loss_atr", base_config.stop_loss_atr))
 
-            direction_label = self._direction_label_builder.build(
-                future_return=future_return,
-                atr=atr_value,
-                current_close=current_close,
+            snapshot = build_label_mode_snapshot(
+                current_candle=candle,
+                future_candles=future_window,
+                atr_value=atr_value,
                 direction_atr_threshold=effective_threshold,
+                take_profit_atr=take_profit_atr,
+                stop_loss_atr=stop_loss_atr,
                 flat_class_enabled=base_config.flat_class_enabled,
+                features_json=features_json,
+                label_mode=label_mode,
             )
+            direction_label = str(snapshot["selected_direction_label"])
             tp_before_sl = self._tp_sl_label_builder.build(
                 direction_label=direction_label,
                 current_close=current_close,
@@ -196,6 +206,7 @@ class RegimeLabelBuilder:
             )
             records.append(record)
             label_distribution_by_regime[regime][direction_label] += 1
+            label_mode_rows.append(snapshot)
 
         if not records:
             missing_requirements.append("regime_runtime_labels_not_built")
@@ -221,6 +232,7 @@ class RegimeLabelBuilder:
             missing_requirements=tuple(missing_requirements),
             warnings=tuple(dict.fromkeys(warnings)),
             reason=reason,
+            label_mode_rows=label_mode_rows,
         )
 
     @staticmethod

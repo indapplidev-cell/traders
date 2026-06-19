@@ -165,17 +165,17 @@ def _infer_default_expected_candidate_count() -> int:
 DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
 DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
-# Runtime smoke: one fv4 decision-policy config, two symbols, short period.
-FAST_DEBUG_CONFIGS = ("lv11_h08_thr052_tp10_sl10_fv4",)
+# Runtime smoke: one experimental label-mode config, two symbols, short period.
+FAST_DEBUG_CONFIGS = ("lv12_h08_ft_tp10_sl10",)
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 
-# Intermediate quality: one symbol, three fv4 configs, short period.
+# Intermediate quality: one symbol, three experimental label-mode configs, short period.
 QUICK_QUALITY_CONFIGS = (
-    "lv11_h08_thr052_tp10_sl10_fv4",
-    "lv11_h12_thr06_tp12_sl12_fv4",
-    "lv11_h16_thr065_tp15_sl15_fv4",
+    "lv12_h08_ft_tp10_sl10",
+    "lv12_h12_ft_tp12_sl12",
+    "lv12_h12_setup_ft_tp12_sl12",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"

@@ -67,6 +67,13 @@ ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS = (
     "lv11_h16_thr065_tp15_sl15_fv4",
 )
 
+ML38_9_9_LABEL_MODE_CONFIG_IDS = (
+    "lv12_h08_ft_tp10_sl10",
+    "lv12_h12_ft_tp12_sl12",
+    "lv12_h16_ft_tp15_sl15",
+    "lv12_h12_setup_ft_tp12_sl12",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -85,6 +92,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_9_4_BOUNDED_CALIBRATION_CONFIG_IDS,
     *ML38_9_5_DECISION_POLICY_CONFIG_IDS,
     *ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS,
+    *ML38_9_9_LABEL_MODE_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
@@ -135,6 +143,9 @@ class ML382FV3TuningMatrix:
             "book_setup_context_stage": "ML38.9.8",
             "book_setup_context_config_ids": list(ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS),
             "book_setup_context_config_count": len(ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS),
+            "label_mode_stage": "ML38.9.9",
+            "label_mode_config_ids": list(ML38_9_9_LABEL_MODE_CONFIG_IDS),
+            "label_mode_config_count": len(ML38_9_9_LABEL_MODE_CONFIG_IDS),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,

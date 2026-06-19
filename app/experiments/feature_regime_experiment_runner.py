@@ -116,6 +116,9 @@ class FeatureRegimeCandidateResult:
     decision_policy_selected_policy_id: str | None = None
     prediction_root_cause_audit: dict[str, Any] = field(default_factory=dict)
     book_driven_forensic_audit: dict[str, Any] = field(default_factory=dict)
+    label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
+    flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
+    setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -214,6 +217,9 @@ class FeatureRegimeCandidateResult:
             "decision_policy_selected_policy_id": self.decision_policy_selected_policy_id,
             "prediction_root_cause_audit": dict(self.prediction_root_cause_audit),
             "book_driven_forensic_audit": dict(self.book_driven_forensic_audit),
+            "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
+            "flat_subtype_audit": dict(self.flat_subtype_audit),
+            "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -376,6 +382,9 @@ class FeatureRegimeExperimentResult:
     flat_bias_summary: dict[str, Any] = field(default_factory=dict)
     down_blindness_summary: dict[str, Any] = field(default_factory=dict)
     baseline_edge_summary: dict[str, Any] = field(default_factory=dict)
+    label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
+    flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
+    setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -466,6 +475,9 @@ class FeatureRegimeExperimentResult:
             "flat_bias_summary": dict(self.flat_bias_summary),
             "down_blindness_summary": dict(self.down_blindness_summary),
             "baseline_edge_summary": dict(self.baseline_edge_summary),
+            "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
+            "flat_subtype_audit": dict(self.flat_subtype_audit),
+            "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
         }
 
 
@@ -1083,6 +1095,15 @@ class FeatureRegimeExperimentRunner:
             flat_bias_summary=flat_bias_summary,
             down_blindness_summary=down_blindness_summary,
             baseline_edge_summary=baseline_edge_summary,
+            label_mode_comparison_audit=self._as_dict(
+                {} if best_candidate is None else best_candidate.label_mode_comparison_audit
+            ),
+            flat_subtype_audit=self._as_dict(
+                {} if best_candidate is None else best_candidate.flat_subtype_audit
+            ),
+            setup_aware_label_diagnostics=self._as_dict(
+                {} if best_candidate is None else best_candidate.setup_aware_label_diagnostics
+            ),
         )
 
         for candidate in candidate_results:
@@ -1777,6 +1798,15 @@ class FeatureRegimeExperimentRunner:
                 book_driven_forensic_audit=self._as_dict(
                     getattr(item, "book_driven_forensic_audit", {})
                 ),
+                label_mode_comparison_audit=self._as_dict(
+                    getattr(item, "label_mode_comparison_audit", {})
+                ),
+                flat_subtype_audit=self._as_dict(
+                    getattr(item, "flat_subtype_audit", {})
+                ),
+                setup_aware_label_diagnostics=self._as_dict(
+                    getattr(item, "setup_aware_label_diagnostics", {})
+                ),
                 raw_predicted_class_distribution=self._as_dict(
                     getattr(item, "raw_predicted_class_distribution", {})
                 ),
@@ -1863,6 +1893,15 @@ class FeatureRegimeExperimentRunner:
                 ),
                 book_driven_forensic_audit=self._as_dict(
                     candidate_payload.get("book_driven_forensic_audit")
+                ),
+                label_mode_comparison_audit=self._as_dict(
+                    candidate_payload.get("label_mode_comparison_audit")
+                ),
+                flat_subtype_audit=self._as_dict(
+                    candidate_payload.get("flat_subtype_audit")
+                ),
+                setup_aware_label_diagnostics=self._as_dict(
+                    candidate_payload.get("setup_aware_label_diagnostics")
                 ),
                 prediction_decision_source=candidate_payload.get("prediction_decision_source"),
                 predicted_class_distribution=self._as_dict(
@@ -2179,6 +2218,9 @@ class FeatureRegimeExperimentRunner:
                     ),
                     "prediction_root_cause_audit": dict(item.prediction_root_cause_audit),
                     "book_driven_forensic_audit": dict(item.book_driven_forensic_audit),
+                    "label_mode_comparison_audit": dict(item.label_mode_comparison_audit),
+                    "flat_subtype_audit": dict(item.flat_subtype_audit),
+                    "setup_aware_label_diagnostics": dict(item.setup_aware_label_diagnostics),
                     "prediction_decision_source": item.prediction_decision_source,
                 }
             )

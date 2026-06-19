@@ -28,7 +28,10 @@ from app.evaluation.model_quality_validator import (
 )
 from app.diagnostics.collapse_diagnostics_v2 import CollapseDiagnosticsV2
 from app.diagnostics.diagnostics_service import DiagnosticsService
+from app.diagnostics.flat_subtype_audit import FlatSubtypeAudit
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
+from app.diagnostics.label_mode_comparison_audit import LabelModeComparisonAudit
+from app.diagnostics.setup_aware_label_diagnostics import SetupAwareLabelDiagnostics
 from app.diagnostics.walk_forward_profit_diagnostics import WalkForwardProfitDiagnostics
 from app.db.session import get_session
 from app.features.feature_pipeline import FeaturePipeline
@@ -165,6 +168,9 @@ class TrainingPipelineResult:
     next_recommendations: tuple[str, ...]
     prediction_root_cause_audit: dict[str, Any] = field(default_factory=dict)
     book_driven_forensic_audit: dict[str, Any] = field(default_factory=dict)
+    label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
+    flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
+    setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -201,6 +207,9 @@ class TrainingPipelineResult:
             "next_recommendations": list(self.next_recommendations),
             "prediction_root_cause_audit": dict(self.prediction_root_cause_audit),
             "book_driven_forensic_audit": dict(self.book_driven_forensic_audit),
+            "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
+            "flat_subtype_audit": dict(self.flat_subtype_audit),
+            "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
         }
 
 
@@ -233,6 +242,7 @@ class LongHistoryTrainingPipelineRunner:
     DEFAULT_DIRECTION_ATR_THRESHOLD = 0.5
     DEFAULT_TAKE_PROFIT_ATR = 1.5
     DEFAULT_STOP_LOSS_ATR = 1.0
+    DEFAULT_LABEL_MODE = "future_close_atr"
     DEFAULT_FEE_R = 0.02
     DEFAULT_SLIPPAGE_R = 0.01
     DEFAULT_SAME_CANDLE_POLICY = "conservative"
@@ -448,6 +458,15 @@ class LongHistoryTrainingPipelineRunner:
             ),
             book_driven_forensic_audit=self._as_dict(
                 quality_summary.get("book_driven_forensic_audit")
+            ),
+            label_mode_comparison_audit=self._as_dict(
+                quality_summary.get("label_mode_comparison_audit")
+            ),
+            flat_subtype_audit=self._as_dict(
+                quality_summary.get("flat_subtype_audit")
+            ),
+            setup_aware_label_diagnostics=self._as_dict(
+                quality_summary.get("setup_aware_label_diagnostics")
             ),
         )
 
@@ -925,6 +944,7 @@ class LongHistoryTrainingPipelineRunner:
             take_profit_atr=self.DEFAULT_TAKE_PROFIT_ATR,
             stop_loss_atr=self.DEFAULT_STOP_LOSS_ATR,
             flat_class_enabled=True,
+            label_mode=self.DEFAULT_LABEL_MODE,
         )
         start_at, end_at = self._resolved_datetime_range(config)
         with get_session() as session:
@@ -968,6 +988,10 @@ class LongHistoryTrainingPipelineRunner:
             builder = LabelBuilder()
             records = list(regime_builder_result.records)
             regime_label_builder_status = regime_builder_result.to_dict()
+            label_mode_rows = list(regime_builder_result.label_mode_rows)
+            label_mode_comparison_audit = LabelModeComparisonAudit().evaluate(label_mode_rows)
+            flat_subtype_audit = FlatSubtypeAudit().evaluate(label_mode_rows)
+            setup_aware_label_diagnostics = SetupAwareLabelDiagnostics().evaluate(label_mode_rows)
             if not records:
                 return {
                     "status": FAILED,
@@ -988,6 +1012,7 @@ class LongHistoryTrainingPipelineRunner:
                         "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
                         "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
                         "flat_class_enabled": True,
+                        "label_mode": self.DEFAULT_LABEL_MODE,
                         "config_id": label_version,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
                         "decision_flat_if_max_prob_below": config.decision_flat_if_max_prob_below,
@@ -1009,6 +1034,9 @@ class LongHistoryTrainingPipelineRunner:
                         "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                         "decision_policy_grid_stage": config.decision_policy_grid_stage,
                         "regime_label_builder_status": regime_label_builder_status,
+                        "label_mode_comparison_audit": label_mode_comparison_audit,
+                        "flat_subtype_audit": flat_subtype_audit,
+                        "setup_aware_label_diagnostics": setup_aware_label_diagnostics,
                         "first_open_time": None,
                         "last_open_time": None,
                     },
@@ -1036,6 +1064,7 @@ class LongHistoryTrainingPipelineRunner:
                 "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
                 "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
                 "flat_class_enabled": True,
+                "label_mode": self.DEFAULT_LABEL_MODE,
                 "config_id": label_version,
                 "decision_calibration_enabled": config.decision_calibration_enabled,
                 "decision_flat_if_max_prob_below": config.decision_flat_if_max_prob_below,
@@ -1057,6 +1086,9 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
                 "regime_label_builder_status": regime_label_builder_status,
+                "label_mode_comparison_audit": label_mode_comparison_audit,
+                "flat_subtype_audit": flat_subtype_audit,
+                "setup_aware_label_diagnostics": setup_aware_label_diagnostics,
                 "first_open_time": records[0].candle_open_time.isoformat() if records else None,
                 "last_open_time": records[-1].candle_open_time.isoformat() if records else None,
             },
@@ -1588,6 +1620,7 @@ class LongHistoryTrainingPipelineRunner:
             ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        build_labels_payload = self._as_dict(stage_payloads.get("build_labels"))
         prediction_root_cause_audit = self._as_dict(
             probability_diagnostics.get("prediction_root_cause_audit")
         )
@@ -1598,6 +1631,14 @@ class LongHistoryTrainingPipelineRunner:
         )
         if book_driven_forensic_audit:
             payload["book_driven_forensic_audit"] = book_driven_forensic_audit
+        for key in (
+            "label_mode_comparison_audit",
+            "flat_subtype_audit",
+            "setup_aware_label_diagnostics",
+        ):
+            value = self._as_dict(build_labels_payload.get(key))
+            if value:
+                payload[key] = value
         return {
             "status": COMPLETED,
             "message": "Model quality validation sample completed",
@@ -1677,6 +1718,7 @@ class LongHistoryTrainingPipelineRunner:
             ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        build_labels_payload = self._as_dict(stage_payloads.get("build_labels"))
         prediction_root_cause_audit = self._as_dict(
             probability_diagnostics.get("prediction_root_cause_audit")
         )
@@ -1687,6 +1729,14 @@ class LongHistoryTrainingPipelineRunner:
         )
         if book_driven_forensic_audit:
             payload["book_driven_forensic_audit"] = book_driven_forensic_audit
+        for key in (
+            "label_mode_comparison_audit",
+            "flat_subtype_audit",
+            "setup_aware_label_diagnostics",
+        ):
+            value = self._as_dict(build_labels_payload.get(key))
+            if value:
+                payload[key] = value
         return {
             "status": COMPLETED,
             "message": "Model quality validation completed",
@@ -1815,6 +1865,7 @@ class LongHistoryTrainingPipelineRunner:
             "take_profit_atr": self.DEFAULT_TAKE_PROFIT_ATR,
             "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
             "flat_class_enabled": True,
+            "label_mode": build_labels_payload.get("label_mode", self.DEFAULT_LABEL_MODE),
             "direction_counts": self._as_dict(build_labels_payload.get("direction_counts")),
             "regime_label_builder_status": self._as_dict(
                 build_labels_payload.get("regime_label_builder_status", {})
