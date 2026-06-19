@@ -22,6 +22,15 @@ class LabelRecord:
     max_favorable_move_atr: float
     max_adverse_move_atr: float
     label_version: str
+    opportunity_label: int = 0
+    opportunity_direction: str = "NONE"
+    opportunity_reason: str = "no_setup"
+    opportunity_score: float = 0.0
+    setup_type: str = "no_setup"
+    setup_quality_score: float = 0.0
+    setup_invalidation_distance_atr: float = 0.0
+    setup_expected_move_atr: float = 0.0
+    label_ambiguity_score: float = 1.0
 
     def to_dict(self) -> dict[str, Any]:
         return {

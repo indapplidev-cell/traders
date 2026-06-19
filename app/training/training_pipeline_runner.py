@@ -31,6 +31,7 @@ from app.diagnostics.diagnostics_service import DiagnosticsService
 from app.diagnostics.flat_subtype_audit import FlatSubtypeAudit
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.diagnostics.label_mode_comparison_audit import LabelModeComparisonAudit
+from app.diagnostics.opportunity_diagnostics import OpportunityDiagnostics
 from app.diagnostics.setup_aware_label_diagnostics import SetupAwareLabelDiagnostics
 from app.diagnostics.walk_forward_profit_diagnostics import WalkForwardProfitDiagnostics
 from app.db.session import get_session
@@ -73,6 +74,7 @@ class TrainingPipelineConfig:
     export_report: bool = True
     output_dir: Path = Path("reports/training_pipeline_runs")
     skip_candle_load: bool = False
+    training_objective: str = "direction_global"
     baseline_edge_objective_enabled: bool = False
     baseline_edge_focal_gamma: float = 1.25
     baseline_edge_margin_penalty: float = 0.02
@@ -239,6 +241,7 @@ class LongHistoryTrainingPipelineRunner:
     DEFAULT_DOMINANT_CLASS_CEILING_TARGET = 0.72
     DEFAULT_LABEL_NOISE_HARDENING_ENABLED = True
     DEFAULT_PROBABILITY_TEMPERATURE_ENABLED = True
+    DEFAULT_OPPORTUNITY_LOSS_WEIGHT = 1.0
     DEFAULT_DIRECTION_ATR_THRESHOLD = 0.5
     DEFAULT_TAKE_PROFIT_ATR = 1.5
     DEFAULT_STOP_LOSS_ATR = 1.0
@@ -445,6 +448,7 @@ class LongHistoryTrainingPipelineRunner:
                 "export_report": config.export_report,
                 "output_dir": str(config.output_dir),
                 "skip_candle_load": config.skip_candle_load,
+                "training_objective": config.training_objective,
                 "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
             },
@@ -651,6 +655,7 @@ class LongHistoryTrainingPipelineRunner:
                 "export_report": config.export_report,
                 "output_dir": str(config.output_dir),
                 "skip_candle_load": config.skip_candle_load,
+                "training_objective": config.training_objective,
                 "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
             },
@@ -992,6 +997,7 @@ class LongHistoryTrainingPipelineRunner:
             label_mode_comparison_audit = LabelModeComparisonAudit().evaluate(label_mode_rows)
             flat_subtype_audit = FlatSubtypeAudit().evaluate(label_mode_rows)
             setup_aware_label_diagnostics = SetupAwareLabelDiagnostics().evaluate(label_mode_rows)
+            opportunity_diagnostics = OpportunityDiagnostics().evaluate(label_mode_rows)
             if not records:
                 return {
                     "status": FAILED,
@@ -1014,6 +1020,7 @@ class LongHistoryTrainingPipelineRunner:
                         "flat_class_enabled": True,
                         "label_mode": self.DEFAULT_LABEL_MODE,
                         "config_id": label_version,
+                        "training_objective": config.training_objective,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
                         "decision_flat_if_max_prob_below": config.decision_flat_if_max_prob_below,
                         "decision_flat_if_margin_below": config.decision_flat_if_margin_below,
@@ -1037,6 +1044,7 @@ class LongHistoryTrainingPipelineRunner:
                         "label_mode_comparison_audit": label_mode_comparison_audit,
                         "flat_subtype_audit": flat_subtype_audit,
                         "setup_aware_label_diagnostics": setup_aware_label_diagnostics,
+                        "opportunity_diagnostics": opportunity_diagnostics,
                         "first_open_time": None,
                         "last_open_time": None,
                     },
@@ -1066,6 +1074,7 @@ class LongHistoryTrainingPipelineRunner:
                 "flat_class_enabled": True,
                 "label_mode": self.DEFAULT_LABEL_MODE,
                 "config_id": label_version,
+                "training_objective": config.training_objective,
                 "decision_calibration_enabled": config.decision_calibration_enabled,
                 "decision_flat_if_max_prob_below": config.decision_flat_if_max_prob_below,
                 "decision_flat_if_margin_below": config.decision_flat_if_margin_below,
@@ -1089,6 +1098,7 @@ class LongHistoryTrainingPipelineRunner:
                 "label_mode_comparison_audit": label_mode_comparison_audit,
                 "flat_subtype_audit": flat_subtype_audit,
                 "setup_aware_label_diagnostics": setup_aware_label_diagnostics,
+                "opportunity_diagnostics": opportunity_diagnostics,
                 "first_open_time": records[0].candle_open_time.isoformat() if records else None,
                 "last_open_time": records[-1].candle_open_time.isoformat() if records else None,
             },
@@ -1164,9 +1174,11 @@ class LongHistoryTrainingPipelineRunner:
                 model_name=self.DEFAULT_MODEL_NAME,
                 start_at=start_at,
                 end_at=end_at,
+                training_objective=config.training_objective,
                 direction_loss_name=self.DEFAULT_DIRECTION_LOSS_NAME,
                 focal_gamma=self.DEFAULT_FOCAL_GAMMA,
                 label_smoothing=self.DEFAULT_LABEL_SMOOTHING,
+                opportunity_loss_weight=self.DEFAULT_OPPORTUNITY_LOSS_WEIGHT,
                 confidence_margin_weight=self.DEFAULT_CONFIDENCE_MARGIN_WEIGHT,
                 confidence_margin_target=self.DEFAULT_CONFIDENCE_MARGIN_TARGET,
                 probability_temperature_enabled=self.DEFAULT_PROBABILITY_TEMPERATURE_ENABLED,
@@ -1212,9 +1224,11 @@ class LongHistoryTrainingPipelineRunner:
                 "start_at": start_at.isoformat(),
                 "end_at": end_at.isoformat(),
                 "date_range_limited": True,
+                "training_objective": config.training_objective,
                 "direction_loss_name": self.DEFAULT_DIRECTION_LOSS_NAME,
                 "focal_gamma": self.DEFAULT_FOCAL_GAMMA,
                 "label_smoothing": self.DEFAULT_LABEL_SMOOTHING,
+                "opportunity_loss_weight": self.DEFAULT_OPPORTUNITY_LOSS_WEIGHT,
                 "confidence_margin_weight": self.DEFAULT_CONFIDENCE_MARGIN_WEIGHT,
                 "confidence_margin_target": self.DEFAULT_CONFIDENCE_MARGIN_TARGET,
                 "probability_temperature_enabled": self.DEFAULT_PROBABILITY_TEMPERATURE_ENABLED,
@@ -1866,6 +1880,7 @@ class LongHistoryTrainingPipelineRunner:
             "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
             "flat_class_enabled": True,
             "label_mode": build_labels_payload.get("label_mode", self.DEFAULT_LABEL_MODE),
+            "training_objective": build_labels_payload.get("training_objective", config.training_objective),
             "direction_counts": self._as_dict(build_labels_payload.get("direction_counts")),
             "regime_label_builder_status": self._as_dict(
                 build_labels_payload.get("regime_label_builder_status", {})

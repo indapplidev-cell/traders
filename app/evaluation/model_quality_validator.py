@@ -57,6 +57,7 @@ class ModelQualityValidationResult:
     regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
     walk_forward_profit_diagnostics: dict[str, Any] = field(default_factory=dict)
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
+    opportunity_diagnostics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -96,6 +97,7 @@ class ModelQualityValidationResult:
             "regime_label_builder_status": dict(self.regime_label_builder_status),
             "walk_forward_profit_diagnostics": dict(self.walk_forward_profit_diagnostics),
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
+            "opportunity_diagnostics": dict(self.opportunity_diagnostics),
         }
 
 
@@ -253,6 +255,7 @@ class ModelQualityValidator:
             regime_label_builder_status_summary=regime_label_builder_status_summary,
             label_config_summary=label_config_summary,
         )
+        opportunity_diagnostics = self._normalize_mapping(training_summary.get("opportunity_diagnostics"))
 
         integration_status = {
             "training_executed": real_training_executed,
@@ -384,6 +387,7 @@ class ModelQualityValidator:
                 reasons.append("quality_signals_inconclusive")
 
         quality_gates_summary = self._build_quality_gates_summary(
+            training_summary=training_summary,
             gap_quality=gap_quality,
             anti_collapse=anti_collapse,
             accuracy_edge=accuracy_edge,
@@ -446,6 +450,7 @@ class ModelQualityValidator:
             regime_label_builder_status=regime_label_builder_status,
             walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,
             profit_aware_diagnostics=profit_aware_diagnostics,
+            opportunity_diagnostics=opportunity_diagnostics,
         )
 
     def _quality_approved(
@@ -856,6 +861,7 @@ class ModelQualityValidator:
     def _build_quality_gates_summary(
         self,
         *,
+        training_summary: dict[str, Any],
         gap_quality: dict[str, Any],
         anti_collapse: dict[str, Any],
         accuracy_edge: float | None,
@@ -876,6 +882,8 @@ class ModelQualityValidator:
             baseline_accuracy=None if accuracy_edge is None else -accuracy_edge,
             accuracy_edge=accuracy_edge,
         )
+        opportunity_diagnostics = self._normalize_mapping(training_summary.get("opportunity_diagnostics"))
+        opportunity_test = self._normalize_mapping(opportunity_diagnostics.get("test"))
         return {
             "baseline_edge_minimum": self.MIN_BASELINE_EDGE,
             "baseline_edge_passed": "baseline_edge_gate" in selector_payload["passed_gates"],
@@ -884,6 +892,10 @@ class ModelQualityValidator:
             "walk_forward_gate_passed": "walk_forward_gate" in selector_payload["passed_gates"],
             "gap_quality_gate_passed": "gap_quality_gate" in selector_payload["passed_gates"],
             "gate_policy_replay_gate_passed": "gate_policy_replay_gate" in selector_payload["passed_gates"],
+            "opportunity_baseline_edge": opportunity_test.get("opportunity_baseline_edge"),
+            "opportunity_collapse_gate": self._normalize_mapping(opportunity_test.get("opportunity_collapse_gate")),
+            "no_trade_dominance_gate": self._normalize_mapping(opportunity_test.get("no_trade_dominance_gate")),
+            "setup_edge_gate": self._normalize_mapping(opportunity_test.get("setup_edge_gate")),
             "failed_gates": list(selector_payload["failed_gates"]),
             "passed_gates": list(selector_payload["passed_gates"]),
         }

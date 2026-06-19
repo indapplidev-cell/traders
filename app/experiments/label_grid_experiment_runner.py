@@ -857,6 +857,7 @@ class LabelGridExperimentRunner:
                 export_report=True,
                 output_dir=candidate_runtime_dir,
                 skip_candle_load=config.skip_candle_load,
+                training_objective=label_config.training_objective,
                 baseline_edge_objective_enabled=label_config.baseline_edge_objective_enabled,
                 baseline_edge_focal_gamma=(
                     1.25

@@ -16,6 +16,7 @@ from app.diagnostics.direction_head_separation_diagnostics import DirectionHeadS
 from app.diagnostics.direction_head_separation_diagnostics import LabelNoiseDiagnostics
 from app.diagnostics.direction_head_separation_diagnostics import baseline_edge_sample_weight_for_row
 from app.diagnostics.direction_head_separation_diagnostics import direction_sample_weight_for_row
+from app.diagnostics.opportunity_diagnostics import OpportunityDiagnostics
 from app.features.feature_models import FEATURE_NAMES, feature_names_for_version
 from app.models.model_factory import ModelFactory
 from app.registry.artifact_storage import ArtifactStorage
@@ -42,9 +43,11 @@ class TrainingConfig:
     epochs: int = 20
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
+    training_objective: str = "direction_global"
     direction_loss_name: str = "cross_entropy"
     focal_gamma: float = 2.0
     label_smoothing: float = 0.0
+    opportunity_loss_weight: float = 1.0
     confidence_margin_weight: float = 0.0
     confidence_margin_target: float = 0.12
     probability_temperature_enabled: bool = True
@@ -155,9 +158,11 @@ class TrainingService:
         disable_class_weights: bool = False,
         start_at: datetime | None = None,
         end_at: datetime | None = None,
+        training_objective: str = "direction_global",
         direction_loss_name: str = "cross_entropy",
         focal_gamma: float = 2.0,
         label_smoothing: float = 0.0,
+        opportunity_loss_weight: float = 1.0,
         confidence_margin_weight: float = 0.0,
         confidence_margin_target: float = 0.12,
         probability_temperature_enabled: bool = True,
@@ -199,9 +204,11 @@ class TrainingService:
             epochs=epochs,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
+            training_objective=training_objective,
             direction_loss_name=direction_loss_name,
             focal_gamma=focal_gamma,
             label_smoothing=label_smoothing,
+            opportunity_loss_weight=opportunity_loss_weight,
             confidence_margin_weight=confidence_margin_weight,
             confidence_margin_target=confidence_margin_target,
             probability_temperature_enabled=probability_temperature_enabled,
@@ -274,21 +281,32 @@ class TrainingService:
                 split_rows["train"],
                 feature_columns,
                 scaler,
+                training_objective=config.training_objective,
                 baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
             )
             validation_dataset = self.rows_to_tensors(
                 split_rows["validation"],
                 feature_columns,
                 scaler,
+                training_objective=config.training_objective,
                 baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
             )
             test_dataset = self.rows_to_tensors(
                 split_rows["test"],
                 feature_columns,
                 scaler,
+                training_objective=config.training_objective,
                 baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
             )
-            direction_class_weights = None if disable_class_weights else self.compute_direction_class_weights(split_rows["train"])
+            direction_class_weights = None if disable_class_weights else self.compute_direction_class_weights(
+                split_rows["train"],
+                training_objective=config.training_objective,
+            )
+            opportunity_diagnostics = {
+                "train": OpportunityDiagnostics().evaluate(split_rows["train"], train_rows=split_rows["train"]),
+                "validation": OpportunityDiagnostics().evaluate(split_rows["validation"], train_rows=split_rows["train"]),
+                "test": OpportunityDiagnostics().evaluate(split_rows["test"], train_rows=split_rows["train"]),
+            }
 
             torch.manual_seed(42)
             model = self._model_factory.create(model_name=model_name, input_dim=len(feature_columns))
@@ -296,11 +314,14 @@ class TrainingService:
                 epochs=config.epochs,
                 learning_rate=config.learning_rate,
                 weight_decay=config.weight_decay,
+                training_objective=config.training_objective,
                 loss_fn=MultiTaskLoss(
                     direction_class_weights=direction_class_weights,
+                    training_objective=config.training_objective,
                     direction_loss_name=config.direction_loss_name,
                     focal_gamma=config.focal_gamma,
                     label_smoothing=config.label_smoothing,
+                    opportunity_loss_weight=config.opportunity_loss_weight,
                     direction_loss_weight=config.direction_loss_weight,
                     tp_sl_loss_weight=config.tp_sl_loss_weight,
                     move_loss_weight=config.move_loss_weight,
@@ -346,13 +367,43 @@ class TrainingService:
                 )
             probability_calibration = temperature_report.to_dict()
             direction_temperature = float(probability_calibration.get("selected_temperature") or 1.0)
-            raw_train_metrics = self._evaluator.evaluate(model, train_dataset, direction_temperature=1.0)
-            raw_validation_metrics = self._evaluator.evaluate(model, validation_dataset, direction_temperature=1.0)
-            raw_test_metrics = self._evaluator.evaluate(model, test_dataset, direction_temperature=1.0)
+            raw_train_metrics = self._evaluator.evaluate(
+                model,
+                train_dataset,
+                direction_temperature=1.0,
+                training_objective=config.training_objective,
+            )
+            raw_validation_metrics = self._evaluator.evaluate(
+                model,
+                validation_dataset,
+                direction_temperature=1.0,
+                training_objective=config.training_objective,
+            )
+            raw_test_metrics = self._evaluator.evaluate(
+                model,
+                test_dataset,
+                direction_temperature=1.0,
+                training_objective=config.training_objective,
+            )
 
-            train_metrics = self._evaluator.evaluate(model, train_dataset, direction_temperature=direction_temperature)
-            validation_metrics = self._evaluator.evaluate(model, validation_dataset, direction_temperature=direction_temperature)
-            test_metrics = self._evaluator.evaluate(model, test_dataset, direction_temperature=direction_temperature)
+            train_metrics = self._evaluator.evaluate(
+                model,
+                train_dataset,
+                direction_temperature=direction_temperature,
+                training_objective=config.training_objective,
+            )
+            validation_metrics = self._evaluator.evaluate(
+                model,
+                validation_dataset,
+                direction_temperature=direction_temperature,
+                training_objective=config.training_objective,
+            )
+            test_metrics = self._evaluator.evaluate(
+                model,
+                test_dataset,
+                direction_temperature=direction_temperature,
+                training_objective=config.training_objective,
+            )
 
             training_config = {
                 "model_name": model_name,
@@ -372,9 +423,11 @@ class TrainingService:
                 "end_at": end_at.isoformat() if end_at is not None else None,
                 "date_range_limited": start_at is not None and end_at is not None,
                 "direction_class_weights": direction_class_weights,
+                "training_objective": config.training_objective,
                 "direction_loss_name": config.direction_loss_name,
                 "focal_gamma": config.focal_gamma,
                 "label_smoothing": config.label_smoothing,
+                "opportunity_loss_weight": config.opportunity_loss_weight,
                 "confidence_margin_weight": config.confidence_margin_weight,
                 "confidence_margin_target": config.confidence_margin_target,
                 "probability_temperature_enabled": config.probability_temperature_enabled,
@@ -398,6 +451,7 @@ class TrainingService:
                 "baseline_edge_focal_gamma": config.baseline_edge_focal_gamma,
                 "baseline_edge_margin_penalty": config.baseline_edge_margin_penalty,
                 "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
+                "model_output_contract": self.model_output_contract(config.training_objective),
             }
             combined_metrics = {
                 "train": train_metrics,
@@ -412,6 +466,7 @@ class TrainingService:
                 "probability_calibration": probability_calibration,
                 "direction_head_diagnostics": direction_head_diagnostics,
                 "label_noise_diagnostics": label_noise_diagnostics,
+                "opportunity_diagnostics": opportunity_diagnostics,
             }
             artifact_path = self._artifact_storage.save(
                 model_version=model_version,
@@ -464,9 +519,11 @@ class TrainingService:
                 "raw_test_metrics": raw_test_metrics,
                 "probability_calibration": probability_calibration,
                 "direction_temperature": direction_temperature,
+                "training_objective": config.training_objective,
                 "direction_loss_name": config.direction_loss_name,
                 "focal_gamma": config.focal_gamma,
                 "label_smoothing": config.label_smoothing,
+                "opportunity_loss_weight": config.opportunity_loss_weight,
                 "confidence_margin_weight": config.confidence_margin_weight,
                 "confidence_margin_target": config.confidence_margin_target,
                 "probability_temperature_enabled": config.probability_temperature_enabled,
@@ -483,6 +540,8 @@ class TrainingService:
                 "baseline_edge_focal_gamma": config.baseline_edge_focal_gamma,
                 "baseline_edge_margin_penalty": config.baseline_edge_margin_penalty,
                 "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
+                "opportunity_diagnostics": opportunity_diagnostics,
+                "model_output_contract": self.model_output_contract(config.training_objective),
             }
         except Exception as exc:
             finished_at = datetime.now(tz=timezone.utc)
@@ -509,8 +568,14 @@ class TrainingService:
             label_version=model_row.label_version,
         )
         split_rows = self._dataset_builder.split_rows(dataset_rows)
-        test_dataset = self.rows_to_tensors(split_rows["test"], feature_columns, scaler)
-        test_metrics = self._evaluator.evaluate(model, test_dataset)
+        training_objective = str(training_config.get("training_objective", "direction_global"))
+        test_dataset = self.rows_to_tensors(
+            split_rows["test"],
+            feature_columns,
+            scaler,
+            training_objective=training_objective,
+        )
+        test_metrics = self._evaluator.evaluate(model, test_dataset, training_objective=training_objective)
         return {
             "model_version": model_version,
             "model_name": training_config["model_name"],
@@ -570,7 +635,9 @@ class TrainingService:
             "tp_sl_mask": empty_float,
             "move_target": empty_float,
             "risk_target": empty_float,
+            "opportunity_target": empty_float,
         }
+
 
     @staticmethod
     def _build_baseline_edge_direction_sample_weights(
@@ -596,6 +663,7 @@ class TrainingService:
         feature_columns: list[str],
         scaler: dict[str, list[float]],
         *,
+        training_objective: str = "direction_global",
         baseline_edge_objective_enabled: bool = False,
     ) -> dict[str, torch.Tensor]:
         if not rows:
@@ -611,6 +679,7 @@ class TrainingService:
         tp_masks: list[float] = []
         move_targets: list[float] = []
         risk_targets: list[float] = []
+        opportunity_targets: list[float] = []
 
         for index, row in enumerate(rows):
             feature_values = [float(row.features_json[column]) for column in feature_columns]
@@ -627,8 +696,17 @@ class TrainingService:
             else:
                 tp_targets.append(1.0 if row.tp_before_sl else 0.0)
                 tp_masks.append(1.0)
-            move_targets.append(float(row.future_move_atr))
-            risk_targets.append(float(row.max_adverse_move_atr))
+            move_targets.append(
+                float(row.setup_expected_move_atr if training_objective == "opportunity_first" else row.future_move_atr)
+            )
+            risk_targets.append(
+                float(
+                    row.setup_invalidation_distance_atr
+                    if training_objective == "opportunity_first"
+                    else row.max_adverse_move_atr
+                )
+            )
+            opportunity_targets.append(float(row.opportunity_label))
 
         return {
             "features": torch.tensor(feature_matrix, dtype=torch.float32),
@@ -638,14 +716,22 @@ class TrainingService:
             "tp_sl_mask": torch.tensor(tp_masks, dtype=torch.float32),
             "move_target": torch.tensor(move_targets, dtype=torch.float32),
             "risk_target": torch.tensor(risk_targets, dtype=torch.float32),
+            "opportunity_target": torch.tensor(opportunity_targets, dtype=torch.float32),
         }
 
     @staticmethod
-    def compute_direction_class_weights(rows: list[DatasetRow]) -> list[float]:
+    def compute_direction_class_weights(
+        rows: list[DatasetRow],
+        *,
+        training_objective: str = "direction_global",
+    ) -> list[float]:
         label_counts = {"UP": 0, "DOWN": 0, "FLAT": 0}
-        for row in rows:
+        effective_rows = rows
+        if training_objective == "opportunity_first":
+            effective_rows = [row for row in rows if int(getattr(row, "opportunity_label", 0) or 0) == 1]
+        for row in effective_rows:
             label_counts[row.direction_label] += 1
-        total = len(rows)
+        total = len(effective_rows)
         num_classes = len(label_counts)
         weights: list[float] = []
 
@@ -668,3 +754,27 @@ class TrainingService:
             boosted = raw_weight * class_boost[label]
             weights.append(min(max(boosted, 0.65), 1.85))
         return weights
+
+    @staticmethod
+    def model_output_contract(training_objective: str) -> dict[str, Any]:
+        fields = [
+            "risk_score",
+            "expected_move_atr",
+            "invalidation_distance_atr",
+        ]
+        if training_objective == "opportunity_first":
+            fields = [
+                "opportunity_probability",
+                "direction_probabilities_conditioned_on_opportunity",
+                "no_trade_probability",
+                "setup_type",
+                "setup_direction",
+                "setup_quality_score",
+                "risk_score",
+                "expected_move_atr",
+                "invalidation_distance_atr",
+            ]
+        return {
+            "training_objective": training_objective,
+            "fields": fields,
+        }

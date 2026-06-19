@@ -46,9 +46,11 @@ class MultiTaskLoss:
     def __init__(
         self,
         direction_class_weights: list[float] | None = None,
+        training_objective: str = "direction_global",
         direction_loss_name: str = "cross_entropy",
         focal_gamma: float = 2.0,
         label_smoothing: float = 0.0,
+        opportunity_loss_weight: float = 1.0,
         direction_loss_weight: float = 1.0,
         tp_sl_loss_weight: float = 1.0,
         move_loss_weight: float = 1.0,
@@ -71,7 +73,9 @@ class MultiTaskLoss:
         baseline_edge_entropy_penalty: float = 0.01,
     ) -> None:
         weights = torch.tensor(direction_class_weights, dtype=torch.float32) if direction_class_weights is not None else None
+        self._training_objective = training_objective
         self._direction_loss_name = direction_loss_name
+        self._opportunity_loss_weight = float(opportunity_loss_weight)
         self._direction_loss_weight = float(direction_loss_weight)
         self._tp_sl_loss_weight = float(tp_sl_loss_weight)
         self._move_loss_weight = float(move_loss_weight)
@@ -116,47 +120,77 @@ class MultiTaskLoss:
         direction_targets = batch["direction_target"]
         direction_sample_weights = _direction_sample_weights(batch, direction_logits)
         direction_probabilities = torch.softmax(direction_logits, dim=1)
+        opportunity_targets = batch.get("opportunity_target")
+        opportunity_mask = None if opportunity_targets is None else (opportunity_targets > 0.5)
+        masked_direction_probabilities = direction_probabilities
+        masked_direction_targets = direction_targets
+        if self._training_objective == "opportunity_first" and opportunity_mask is not None and torch.any(opportunity_mask):
+            masked_direction_probabilities = direction_probabilities[opportunity_mask]
+            masked_direction_targets = direction_targets[opportunity_mask]
 
-        direction_loss = self._compute_direction_loss(
-            direction_logits,
-            direction_targets,
-            sample_weights=direction_sample_weights,
-        )
+        opportunity_loss = direction_logits.new_tensor(0.0)
+        if self._training_objective == "opportunity_first" and opportunity_targets is not None:
+            opportunity_loss = self._bce(outputs["opportunity_logit"], opportunity_targets)
+            if torch.any(opportunity_mask):
+                direction_loss = self._compute_direction_loss(
+                    direction_logits[opportunity_mask],
+                    direction_targets[opportunity_mask],
+                    sample_weights=direction_sample_weights[opportunity_mask],
+                )
+            else:
+                direction_loss = direction_logits.new_tensor(0.0)
+        else:
+            direction_loss = self._compute_direction_loss(
+                direction_logits,
+                direction_targets,
+                sample_weights=direction_sample_weights,
+            )
         confidence_margin_loss = self._confidence_margin_loss(
             direction_logits,
             direction_targets,
-            sample_weights=direction_sample_weights,
+            sample_weights=direction_sample_weights if self._training_objective != "opportunity_first" or opportunity_mask is None else direction_sample_weights * opportunity_mask.float(),
         )
         direction_logit_gap_loss = self._direction_logit_gap_loss(
             direction_logits,
             direction_targets,
-            sample_weights=direction_sample_weights,
+            sample_weights=direction_sample_weights if self._training_objective != "opportunity_first" or opportunity_mask is None else direction_sample_weights * opportunity_mask.float(),
         )
         direction_distribution_loss = self._direction_distribution_loss(
-            probabilities=direction_probabilities,
-            targets=direction_targets,
+            probabilities=masked_direction_probabilities,
+            targets=masked_direction_targets,
         )
         flat_probability_floor_loss = self._flat_probability_floor_loss(
-            probabilities=direction_probabilities,
+            probabilities=masked_direction_probabilities,
         )
         class_probability_floor_loss = self._class_probability_floor_loss(
-            probabilities=direction_probabilities,
+            probabilities=masked_direction_probabilities,
         )
         dominant_class_ceiling_loss = self._dominant_class_ceiling_loss(
-            probabilities=direction_probabilities,
+            probabilities=masked_direction_probabilities,
         )
 
         tp_mask = batch["tp_sl_mask"] > 0
+        if self._training_objective == "opportunity_first" and opportunity_mask is not None:
+            tp_mask = tp_mask & opportunity_mask
         if torch.any(tp_mask):
             tp_sl_loss = self._bce(outputs["tp_sl_logits"][tp_mask], batch["tp_sl_target"][tp_mask])
         else:
             tp_sl_loss = direction_logits.new_tensor(0.0)
 
-        move_loss = self._regression(outputs["expected_move_atr"], batch["move_target"])
-        risk_loss = self._regression(outputs["risk_score"], batch["risk_target"])
+        if self._training_objective == "opportunity_first" and opportunity_mask is not None:
+            if torch.any(opportunity_mask):
+                move_loss = self._regression(outputs["expected_move_atr"][opportunity_mask], batch["move_target"][opportunity_mask])
+                risk_loss = self._regression(outputs["risk_score"][opportunity_mask], batch["risk_target"][opportunity_mask])
+            else:
+                move_loss = direction_logits.new_tensor(0.0)
+                risk_loss = direction_logits.new_tensor(0.0)
+        else:
+            move_loss = self._regression(outputs["expected_move_atr"], batch["move_target"])
+            risk_loss = self._regression(outputs["risk_score"], batch["risk_target"])
 
         total_loss = (
-            self._direction_loss_weight * direction_loss
+            self._opportunity_loss_weight * opportunity_loss
+            + self._direction_loss_weight * direction_loss
             + self._tp_sl_loss_weight * tp_sl_loss
             + self._move_loss_weight * move_loss
             + self._risk_loss_weight * risk_loss
@@ -169,6 +203,7 @@ class MultiTaskLoss:
         )
         predicted_distribution = direction_probabilities.mean(dim=0)
         return total_loss, {
+            "opportunity_loss": float(opportunity_loss.detach().item()),
             "direction_loss": float(direction_loss.detach().item()),
             "tp_sl_loss": float(tp_sl_loss.detach().item()),
             "move_loss": float(move_loss.detach().item()),
@@ -183,7 +218,9 @@ class MultiTaskLoss:
             "direction_predicted_up_probability_mean": float(predicted_distribution[0].detach().item()),
             "direction_predicted_down_probability_mean": float(predicted_distribution[1].detach().item()),
             "direction_predicted_flat_probability_mean": float(predicted_distribution[2].detach().item()),
+            "training_objective": self._training_objective,
             "direction_loss_name": self._direction_loss_name,
+            "opportunity_loss_weight": self._opportunity_loss_weight,
             "direction_loss_weight": self._direction_loss_weight,
             "tp_sl_loss_weight": self._tp_sl_loss_weight,
             "move_loss_weight": self._move_loss_weight,
@@ -255,7 +292,7 @@ class MultiTaskLoss:
         probabilities: torch.Tensor,
         targets: torch.Tensor,
     ) -> torch.Tensor:
-        if self._direction_distribution_loss_weight <= 0:
+        if self._direction_distribution_loss_weight <= 0 or probabilities.shape[0] == 0:
             return probabilities.new_tensor(0.0)
 
         predicted_distribution = probabilities.mean(dim=0)
@@ -271,7 +308,7 @@ class MultiTaskLoss:
         return torch.mean(class_penalty * (predicted_distribution - target_distribution) ** 2)
 
     def _flat_probability_floor_loss(self, probabilities: torch.Tensor) -> torch.Tensor:
-        if self._flat_probability_floor_weight <= 0:
+        if self._flat_probability_floor_weight <= 0 or probabilities.shape[0] == 0:
             return probabilities.new_tensor(0.0)
 
         flat_probability_mean = probabilities[:, 2].mean()
@@ -279,7 +316,7 @@ class MultiTaskLoss:
         return deficit ** 2
 
     def _class_probability_floor_loss(self, probabilities: torch.Tensor) -> torch.Tensor:
-        if self._class_probability_floor_weight <= 0:
+        if self._class_probability_floor_weight <= 0 or probabilities.shape[0] == 0:
             return probabilities.new_tensor(0.0)
 
         predicted_distribution = probabilities.mean(dim=0)
@@ -292,7 +329,7 @@ class MultiTaskLoss:
         return torch.mean(class_penalty * deficits ** 2)
 
     def _dominant_class_ceiling_loss(self, probabilities: torch.Tensor) -> torch.Tensor:
-        if self._dominant_class_ceiling_weight <= 0:
+        if self._dominant_class_ceiling_weight <= 0 or probabilities.shape[0] == 0:
             return probabilities.new_tensor(0.0)
 
         predicted_distribution = probabilities.mean(dim=0)

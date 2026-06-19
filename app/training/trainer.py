@@ -16,12 +16,14 @@ class Trainer:
         weight_decay: float = 1e-4,
         loss_fn: MultiTaskLoss | None = None,
         evaluator: Evaluator | None = None,
+        training_objective: str = "direction_global",
     ) -> None:
         self._epochs = epochs
         self._learning_rate = learning_rate
         self._weight_decay = weight_decay
         self._loss_fn = loss_fn or MultiTaskLoss()
         self._evaluator = evaluator or Evaluator()
+        self._training_objective = training_objective
 
     def train(
         self,
@@ -42,7 +44,11 @@ class Trainer:
 
             epoch_record = {"epoch": float(epoch + 1), **losses}
             if validation_dataset["features"].shape[0] > 0:
-                validation_metrics = self._evaluator.evaluate(model, validation_dataset)
+                validation_metrics = self._evaluator.evaluate(
+                    model,
+                    validation_dataset,
+                    training_objective=self._training_objective,
+                )
                 epoch_record["validation_accuracy"] = float(validation_metrics["accuracy"])
                 epoch_record["validation_brier_score"] = float(validation_metrics["brier_score"])
             history.append(epoch_record)

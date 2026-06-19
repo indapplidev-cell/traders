@@ -9,6 +9,7 @@ from app.labels.direction_label_builder import DirectionLabelBuilder
 from app.labels.label_config import LabelConfig, normalize_label_mode
 from app.labels.first_touch_label_builder import build_label_mode_snapshot
 from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP, LabelRecord
+from app.labels.opportunity_label_builder import OpportunityLabelBuilder
 from app.labels.regime_label_config import RegimeLabelConfigPlanner
 from app.labels.tp_sl_label_builder import TpSlLabelBuilder
 
@@ -57,6 +58,7 @@ class RegimeLabelBuilder:
         self._planner = planner or RegimeLabelConfigPlanner()
         self._direction_label_builder = direction_label_builder or DirectionLabelBuilder()
         self._tp_sl_label_builder = tp_sl_label_builder or TpSlLabelBuilder()
+        self._opportunity_label_builder = OpportunityLabelBuilder()
 
     def build(
         self,
@@ -190,6 +192,14 @@ class RegimeLabelBuilder:
             else:
                 max_favorable_move_atr = max(up_move_atr, down_move_atr)
                 max_adverse_move_atr = min(up_move_atr, down_move_atr)
+            opportunity_payload = self._opportunity_label_builder.build(
+                features_json=features_json,
+                direction_label=direction_label,
+                tp_before_sl=tp_before_sl,
+                future_move_atr=float(future_move_atr),
+                max_favorable_move_atr=float(max_favorable_move_atr),
+                max_adverse_move_atr=float(max_adverse_move_atr),
+            )
 
             record = LabelRecord(
                 symbol=symbol,
@@ -203,10 +213,19 @@ class RegimeLabelBuilder:
                 max_favorable_move_atr=float(max_favorable_move_atr),
                 max_adverse_move_atr=float(max_adverse_move_atr),
                 label_version=base_config.label_version,
+                opportunity_label=opportunity_payload.opportunity_label,
+                opportunity_direction=opportunity_payload.opportunity_direction,
+                opportunity_reason=opportunity_payload.opportunity_reason,
+                opportunity_score=opportunity_payload.opportunity_score,
+                setup_type=opportunity_payload.setup_type,
+                setup_quality_score=opportunity_payload.setup_quality_score,
+                setup_invalidation_distance_atr=opportunity_payload.setup_invalidation_distance_atr,
+                setup_expected_move_atr=opportunity_payload.setup_expected_move_atr,
+                label_ambiguity_score=opportunity_payload.label_ambiguity_score,
             )
             records.append(record)
             label_distribution_by_regime[regime][direction_label] += 1
-            label_mode_rows.append(snapshot)
+            label_mode_rows.append({**snapshot, **opportunity_payload.to_dict()})
 
         if not records:
             missing_requirements.append("regime_runtime_labels_not_built")

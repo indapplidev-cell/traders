@@ -60,6 +60,7 @@ class CandleMLP(nn.Module):
             nn.SiLU(),
         )
         self.direction_head = DirectionHead(hidden_dim=96)
+        self.opportunity_head = AuxiliaryRegressionHead(hidden_dim=96)
         self.tp_sl_head = AuxiliaryRegressionHead(hidden_dim=96)
         self.move_head = AuxiliaryRegressionHead(hidden_dim=96)
         self.risk_head = AuxiliaryRegressionHead(hidden_dim=96)
@@ -67,10 +68,13 @@ class CandleMLP(nn.Module):
     def forward(self, inputs: torch.Tensor) -> dict[str, torch.Tensor]:
         hidden = self.backbone(inputs)
         direction_logits = self.direction_head(hidden)
+        risk_score = self.risk_head(hidden)
         return {
             "direction_logits": direction_logits,
             "direction_hidden": hidden,
+            "opportunity_logit": self.opportunity_head(hidden),
             "tp_sl_logits": self.tp_sl_head(hidden),
             "expected_move_atr": self.move_head(hidden),
-            "risk_score": self.risk_head(hidden),
+            "risk_score": risk_score,
+            "invalidation_distance_atr": risk_score,
         }

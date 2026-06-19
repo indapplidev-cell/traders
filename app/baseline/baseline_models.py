@@ -5,6 +5,12 @@ from collections import Counter
 from app.dataset.dataset_models import DatasetRow
 
 
+def _row_value(row, key: str, default=None):
+    if isinstance(row, dict):
+        return row.get(key, default)
+    return getattr(row, key, default)
+
+
 class BaselineModels:
     LABEL_ORDER = ["UP", "DOWN", "FLAT"]
 
@@ -44,4 +50,55 @@ class BaselineModels:
                 predictions.append("DOWN")
             else:
                 predictions.append("FLAT")
+        return predictions
+
+    @staticmethod
+    def always_no_trade_baseline(rows: list[DatasetRow]) -> list[int]:
+        return [0] * len(rows)
+
+    @classmethod
+    def majority_opportunity_baseline(
+        cls,
+        train_rows: list[DatasetRow],
+        target_rows: list[DatasetRow],
+    ) -> tuple[int, list[int]]:
+        positive_count = sum(int(_row_value(row, "opportunity_label", 0) or 0) for row in train_rows)
+        negative_count = max(0, len(train_rows) - positive_count)
+        majority = 1 if positive_count > negative_count else 0
+        return majority, [majority] * len(target_rows)
+
+    @staticmethod
+    def setup_rule_baseline(rows: list[DatasetRow]) -> list[int]:
+        predictions: list[int] = []
+        for row in rows:
+            predictions.append(
+                int(
+                    str(_row_value(row, "setup_type", "no_setup")) != "no_setup"
+                    and float(_row_value(row, "setup_quality_score", 0.0) or 0.0) >= 0.55
+                    and float(_row_value(row, "label_ambiguity_score", 1.0) or 1.0) <= 0.45
+                )
+            )
+        return predictions
+
+    @staticmethod
+    def first_touch_setup_baseline(rows: list[DatasetRow]) -> list[int]:
+        predictions: list[int] = []
+        for row in rows:
+            direction_label = str(
+                _row_value(
+                    row,
+                    "direction_label",
+                    _row_value(row, "selected_direction_label", "FLAT"),
+                )
+            )
+            tp_first = _row_value(row, "tp_before_sl", _row_value(row, "first_touch_tp_hit", False))
+            predictions.append(
+                int(
+                    str(_row_value(row, "setup_type", "no_setup")) != "no_setup"
+                    and direction_label in {"UP", "DOWN"}
+                    and bool(tp_first)
+                    and float(_row_value(row, "setup_expected_move_atr", 0.0) or 0.0) >= 0.45
+                    and float(_row_value(row, "setup_invalidation_distance_atr", 0.0) or 0.0) <= 1.10
+                )
+            )
         return predictions

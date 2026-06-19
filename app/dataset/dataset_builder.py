@@ -7,6 +7,7 @@ from app.dataset.dataset_exporter import DatasetExporter
 from app.dataset.dataset_models import DatasetRow
 from app.dataset.dataset_splitter import DatasetSplitter
 from app.dataset.gap_aware_dataset_filter import GapAwareDatasetFilter
+from app.labels.opportunity_label_builder import OpportunityLabelBuilder
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 
@@ -25,6 +26,7 @@ class DatasetBuilder:
         self._dataset_splitter = dataset_splitter or DatasetSplitter()
         self._dataset_exporter = dataset_exporter or DatasetExporter()
         self._gap_aware_filter = gap_aware_filter or GapAwareDatasetFilter()
+        self._opportunity_label_builder = OpportunityLabelBuilder()
 
     def build(
         self,
@@ -146,6 +148,14 @@ class DatasetBuilder:
             if label_row is None:
                 dropped_missing_labels += 1
                 continue
+            opportunity_payload = self._opportunity_label_builder.build(
+                features_json=feature_row.features_json,
+                direction_label=label_row.direction_label,
+                tp_before_sl=label_row.tp_before_sl,
+                future_move_atr=float(label_row.future_move_atr),
+                max_favorable_move_atr=float(label_row.max_favorable_move_atr),
+                max_adverse_move_atr=float(label_row.max_adverse_move_atr),
+            )
 
             dataset_rows.append(
                 DatasetRow(
@@ -162,6 +172,15 @@ class DatasetBuilder:
                     future_move_atr=float(label_row.future_move_atr),
                     max_favorable_move_atr=float(label_row.max_favorable_move_atr),
                     max_adverse_move_atr=float(label_row.max_adverse_move_atr),
+                    opportunity_label=opportunity_payload.opportunity_label,
+                    opportunity_direction=opportunity_payload.opportunity_direction,
+                    opportunity_reason=opportunity_payload.opportunity_reason,
+                    opportunity_score=opportunity_payload.opportunity_score,
+                    setup_type=opportunity_payload.setup_type,
+                    setup_quality_score=opportunity_payload.setup_quality_score,
+                    setup_invalidation_distance_atr=opportunity_payload.setup_invalidation_distance_atr,
+                    setup_expected_move_atr=opportunity_payload.setup_expected_move_atr,
+                    label_ambiguity_score=opportunity_payload.label_ambiguity_score,
                 )
             )
 
@@ -179,6 +198,8 @@ class DatasetBuilder:
             "dataset_rows": len(dataset_rows),
             "dropped_incomplete_features": dropped_incomplete_features,
             "dropped_missing_labels": dropped_missing_labels,
+            "opportunity_rows": sum(int(row.opportunity_label) for row in dataset_rows),
+            "no_trade_rows": sum(int(not row.opportunity_label) for row in dataset_rows),
         }
         if apply_gap_filter or gap_count > 0 or missing_open_times:
             dataset_rows, gap_filter_summary = self._gap_aware_filter.apply(
