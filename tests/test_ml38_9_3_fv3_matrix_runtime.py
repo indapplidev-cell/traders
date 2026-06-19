@@ -18,7 +18,7 @@ def test_quick_quality_uses_calibrated_decision_configs() -> None:
 
     assert wrapper.runtime_profile == "quick_quality"
     assert wrapper.selected_config_ids == (
-        "lv8_h10_thr055_tp10_sl10_cd",
-        "lv8_h12_thr06_tp12_sl12_cd",
-        "lv8_h16_thr065_tp15_sl15_cd",
+        "lv9_h08_thr052_tp10_sl10_bc",
+        "lv9_h12_thr06_tp12_sl12_bc",
+        "lv9_h16_thr065_tp15_sl15_bc",
     )

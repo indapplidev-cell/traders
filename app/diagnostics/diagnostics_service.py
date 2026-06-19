@@ -482,15 +482,30 @@ class DiagnosticsService:
             config_id=str(dict(label_config or {}).get("config_id") or label_version),
         )
         calibrated_predictions = list(calibrated_diagnostics.get("calibrated_rows", []))
+        selected_predictions = list(
+            calibrated_diagnostics.get("selected_rows", calibrated_predictions)
+        )
         report = self._prediction_probability_diagnostics.build_report(
+            model_version=model_version,
+            predictions=selected_predictions,
+        )
+        report["collapse_v2"] = self._prediction_collapse_detector.detect(report)
+        calibrated_report = self._prediction_probability_diagnostics.build_report(
             model_version=model_version,
             predictions=calibrated_predictions,
         )
-        report["collapse_v2"] = self._prediction_collapse_detector.detect(report)
+        calibrated_report["collapse_v2"] = self._prediction_collapse_detector.detect(calibrated_report)
         report["raw_probability_diagnostics"] = raw_report
         report["raw_collapse_v2"] = dict(raw_report.get("collapse_v2", {}))
+        report["calibrated_probability_diagnostics"] = calibrated_report
+        report["calibrated_collapse_v2"] = dict(calibrated_report.get("collapse_v2", {}))
         report["calibrated_decision_diagnostics"] = calibrated_diagnostics
-        report["prediction_decision_source"] = "calibrated_decision_layer"
+        report["bounded_calibrated_decision_selection"] = dict(
+            calibrated_diagnostics.get("bounded_calibrated_decision_selection", {})
+        )
+        report["prediction_decision_source"] = str(
+            calibrated_diagnostics.get("selected_decision_source") or "calibrated_decision_layer"
+        )
         report["start_at"] = start_at.isoformat() if start_at is not None else None
         report["end_at"] = end_at.isoformat() if end_at is not None else None
         report["date_range_limited"] = start_at is not None and end_at is not None

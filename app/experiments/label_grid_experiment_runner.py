@@ -101,7 +101,9 @@ class LabelGridExperimentCandidateResult:
     collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
     collapse_diagnostics_v2_missing_reason: str | None = None
     calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
+    bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
+    calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
     prediction_decision_source: str | None = None
     regime_label_builder_status: dict[str, Any] = field(default_factory=dict)
@@ -161,7 +163,9 @@ class LabelGridExperimentCandidateResult:
             "collapse_diagnostics_v2": dict(self.collapse_diagnostics_v2),
             "collapse_diagnostics_v2_missing_reason": self.collapse_diagnostics_v2_missing_reason,
             "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
+            "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
+            "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
             "prediction_decision_source": self.prediction_decision_source,
             "regime_label_builder_status": dict(self.regime_label_builder_status),
@@ -888,6 +892,51 @@ class LabelGridExperimentRunner:
                     if label_config.decision_flat_boost is None
                     else float(label_config.decision_flat_boost)
                 ),
+                decision_calibration_mode=(
+                    "legacy_calibration"
+                    if label_config.decision_calibration_mode is None
+                    else str(label_config.decision_calibration_mode)
+                ),
+                decision_fallback_to_raw=(
+                    False
+                    if label_config.decision_fallback_to_raw is None
+                    else bool(label_config.decision_fallback_to_raw)
+                ),
+                decision_max_flat_ratio=(
+                    0.45
+                    if label_config.decision_max_flat_ratio is None
+                    else float(label_config.decision_max_flat_ratio)
+                ),
+                decision_min_down_ratio_when_actual_down_high=(
+                    0.12
+                    if label_config.decision_min_down_ratio_when_actual_down_high is None
+                    else float(label_config.decision_min_down_ratio_when_actual_down_high)
+                ),
+                decision_min_up_ratio_when_actual_up_high=(
+                    0.12
+                    if label_config.decision_min_up_ratio_when_actual_up_high is None
+                    else float(label_config.decision_min_up_ratio_when_actual_up_high)
+                ),
+                decision_max_dominant_class_ratio=(
+                    0.75
+                    if label_config.decision_max_dominant_class_ratio is None
+                    else float(label_config.decision_max_dominant_class_ratio)
+                ),
+                decision_require_non_worse_baseline_edge=(
+                    True
+                    if label_config.decision_require_non_worse_baseline_edge is None
+                    else bool(label_config.decision_require_non_worse_baseline_edge)
+                ),
+                decision_baseline_edge_tolerance=(
+                    0.0025
+                    if label_config.decision_baseline_edge_tolerance is None
+                    else float(label_config.decision_baseline_edge_tolerance)
+                ),
+                decision_actual_class_high_threshold=(
+                    0.25
+                    if label_config.decision_actual_class_high_threshold is None
+                    else float(label_config.decision_actual_class_high_threshold)
+                ),
             )
         )
         if pipeline_result.status == "FAILED":
@@ -956,8 +1005,14 @@ class LabelGridExperimentRunner:
         raw_probability_diagnostics = self._as_dict(
             probability_diagnostics.get("raw_probability_diagnostics", {})
         )
+        calibrated_probability_diagnostics = self._as_dict(
+            probability_diagnostics.get("calibrated_probability_diagnostics", {})
+        )
         raw_predicted_class_distribution = dict(
             raw_probability_diagnostics.get("predicted_direction_ratios", {})
+        )
+        calibrated_predicted_class_distribution = dict(
+            calibrated_probability_diagnostics.get("predicted_direction_ratios", {})
         )
         failed_gates, passed_gates = self._finalize_gate_sets(
             raw_failed_gates=candidate_selection.get(
@@ -1043,7 +1098,11 @@ class LabelGridExperimentRunner:
             calibrated_decision_diagnostics=dict(
                 probability_diagnostics.get("calibrated_decision_diagnostics", {})
             ),
+            bounded_calibrated_decision_selection=dict(
+                probability_diagnostics.get("bounded_calibrated_decision_selection", {})
+            ),
             raw_predicted_class_distribution=raw_predicted_class_distribution,
+            calibrated_predicted_class_distribution=calibrated_predicted_class_distribution,
             raw_collapse_diagnostics_v2=dict(
                 probability_diagnostics.get("raw_collapse_v2", {})
             ),
@@ -1283,8 +1342,16 @@ class LabelGridExperimentRunner:
             calibrated_decision_diagnostics=dict(
                 probability_diagnostics.get("calibrated_decision_diagnostics", {})
             ),
+            bounded_calibrated_decision_selection=dict(
+                probability_diagnostics.get("bounded_calibrated_decision_selection", {})
+            ),
             raw_predicted_class_distribution=dict(
                 raw_probability_diagnostics.get("predicted_direction_ratios", {})
+            ),
+            calibrated_predicted_class_distribution=dict(
+                probability_diagnostics.get("calibrated_probability_diagnostics", {}).get(
+                    "predicted_direction_ratios", {}
+                )
             ),
             raw_collapse_diagnostics_v2=dict(
                 probability_diagnostics.get("raw_collapse_v2", {})

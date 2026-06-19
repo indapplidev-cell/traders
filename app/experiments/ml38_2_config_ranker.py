@@ -162,6 +162,15 @@ class ML382ConfigRanker:
         calibrated_flat = float(calibrated_ratios.get("FLAT", 0.0))
         calibrated_up = float(calibrated_ratios.get("UP", 0.0))
         calibrated_down = float(calibrated_ratios.get("DOWN", 0.0))
+        bounded_selection = dict(candidate.get("bounded_calibrated_decision_selection", {}))
+        decision_source = str(candidate.get("prediction_decision_source") or "")
+        bounded_calibration_bonus = 0.0
+        bounded_calibration_fallback_penalty = 0.0
+        if bounded_selection:
+            if decision_source == "calibrated_decision_layer":
+                bounded_calibration_bonus = 0.5
+            elif decision_source.startswith("raw_argmax_fallback"):
+                bounded_calibration_fallback_penalty = -0.25
 
         score_components = {
             "walk_forward_pf_bonus": 3.0 if walk_forward_pf > 1.0 else 0.0,
@@ -189,6 +198,8 @@ class ML382ConfigRanker:
             else 0.0,
             "bias_gate_penalty": -2.0 if "bias_gate" in failed_gates else 0.0,
             "walk_forward_gate_penalty": -3.0 if "walk_forward_gate" in failed_gates else 0.0,
+            "bounded_calibration_bonus": bounded_calibration_bonus,
+            "bounded_calibration_fallback_penalty": bounded_calibration_fallback_penalty,
         }
         rejection_reasons: list[str] = []
         baseline_score, baseline_components, baseline_reasons = self._baseline_edge_score_component(candidate)
@@ -276,8 +287,10 @@ class ML382ConfigRanker:
             "confidence_profitability_score": confidence_profitability_score,
             "confidence_profitability_status": confidence_profitability_status,
             "calibrated_decision_diagnostics": calibrated_decision,
+            "bounded_calibrated_decision_selection": bounded_selection,
             "calibrated_predicted_ratios": calibrated_ratios,
             "raw_predicted_ratios": raw_ratios,
+            "prediction_decision_source": decision_source,
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "collapse_type": collapse_summary.get("collapse_type") or candidate.get("collapse_type"),

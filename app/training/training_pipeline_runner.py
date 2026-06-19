@@ -84,6 +84,15 @@ class TrainingPipelineConfig:
     decision_down_boost: float = 0.0
     decision_up_penalty: float = 0.0
     decision_flat_boost: float = 0.0
+    decision_calibration_mode: str = "legacy_calibration"
+    decision_fallback_to_raw: bool = False
+    decision_max_flat_ratio: float = 0.45
+    decision_min_down_ratio_when_actual_down_high: float = 0.12
+    decision_min_up_ratio_when_actual_up_high: float = 0.12
+    decision_max_dominant_class_ratio: float = 0.75
+    decision_require_non_worse_baseline_edge: bool = True
+    decision_baseline_edge_tolerance: float = 0.0025
+    decision_actual_class_high_threshold: float = 0.25
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -969,6 +978,15 @@ class LongHistoryTrainingPipelineRunner:
                         "decision_down_boost": config.decision_down_boost,
                         "decision_up_penalty": config.decision_up_penalty,
                         "decision_flat_boost": config.decision_flat_boost,
+                        "decision_calibration_mode": config.decision_calibration_mode,
+                        "decision_fallback_to_raw": config.decision_fallback_to_raw,
+                        "decision_max_flat_ratio": config.decision_max_flat_ratio,
+                        "decision_min_down_ratio_when_actual_down_high": config.decision_min_down_ratio_when_actual_down_high,
+                        "decision_min_up_ratio_when_actual_up_high": config.decision_min_up_ratio_when_actual_up_high,
+                        "decision_max_dominant_class_ratio": config.decision_max_dominant_class_ratio,
+                        "decision_require_non_worse_baseline_edge": config.decision_require_non_worse_baseline_edge,
+                        "decision_baseline_edge_tolerance": config.decision_baseline_edge_tolerance,
+                        "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
                         "regime_label_builder_status": regime_label_builder_status,
                         "first_open_time": None,
                         "last_open_time": None,
@@ -1006,6 +1024,15 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_down_boost": config.decision_down_boost,
                 "decision_up_penalty": config.decision_up_penalty,
                 "decision_flat_boost": config.decision_flat_boost,
+                "decision_calibration_mode": config.decision_calibration_mode,
+                "decision_fallback_to_raw": config.decision_fallback_to_raw,
+                "decision_max_flat_ratio": config.decision_max_flat_ratio,
+                "decision_min_down_ratio_when_actual_down_high": config.decision_min_down_ratio_when_actual_down_high,
+                "decision_min_up_ratio_when_actual_up_high": config.decision_min_up_ratio_when_actual_up_high,
+                "decision_max_dominant_class_ratio": config.decision_max_dominant_class_ratio,
+                "decision_require_non_worse_baseline_edge": config.decision_require_non_worse_baseline_edge,
+                "decision_baseline_edge_tolerance": config.decision_baseline_edge_tolerance,
+                "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
                 "regime_label_builder_status": regime_label_builder_status,
                 "first_open_time": records[0].candle_open_time.isoformat() if records else None,
                 "last_open_time": records[-1].candle_open_time.isoformat() if records else None,
@@ -1165,6 +1192,15 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_down_boost": config.decision_down_boost,
                 "decision_up_penalty": config.decision_up_penalty,
                 "decision_flat_boost": config.decision_flat_boost,
+                "decision_calibration_mode": config.decision_calibration_mode,
+                "decision_fallback_to_raw": config.decision_fallback_to_raw,
+                "decision_max_flat_ratio": config.decision_max_flat_ratio,
+                "decision_min_down_ratio_when_actual_down_high": config.decision_min_down_ratio_when_actual_down_high,
+                "decision_min_up_ratio_when_actual_up_high": config.decision_min_up_ratio_when_actual_up_high,
+                "decision_max_dominant_class_ratio": config.decision_max_dominant_class_ratio,
+                "decision_require_non_worse_baseline_edge": config.decision_require_non_worse_baseline_edge,
+                "decision_baseline_edge_tolerance": config.decision_baseline_edge_tolerance,
+                "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
             },
         }
 
@@ -1762,6 +1798,52 @@ class LongHistoryTrainingPipelineRunner:
             ),
             "decision_flat_boost": float(
                 build_labels_payload.get("decision_flat_boost", config.decision_flat_boost)
+            ),
+            "decision_calibration_mode": str(
+                build_labels_payload.get("decision_calibration_mode", config.decision_calibration_mode)
+                or config.decision_calibration_mode
+            ),
+            "decision_fallback_to_raw": self._as_bool(
+                build_labels_payload.get("decision_fallback_to_raw", config.decision_fallback_to_raw)
+            ),
+            "decision_max_flat_ratio": float(
+                build_labels_payload.get("decision_max_flat_ratio", config.decision_max_flat_ratio)
+            ),
+            "decision_min_down_ratio_when_actual_down_high": float(
+                build_labels_payload.get(
+                    "decision_min_down_ratio_when_actual_down_high",
+                    config.decision_min_down_ratio_when_actual_down_high,
+                )
+            ),
+            "decision_min_up_ratio_when_actual_up_high": float(
+                build_labels_payload.get(
+                    "decision_min_up_ratio_when_actual_up_high",
+                    config.decision_min_up_ratio_when_actual_up_high,
+                )
+            ),
+            "decision_max_dominant_class_ratio": float(
+                build_labels_payload.get(
+                    "decision_max_dominant_class_ratio",
+                    config.decision_max_dominant_class_ratio,
+                )
+            ),
+            "decision_require_non_worse_baseline_edge": self._as_bool(
+                build_labels_payload.get(
+                    "decision_require_non_worse_baseline_edge",
+                    config.decision_require_non_worse_baseline_edge,
+                )
+            ),
+            "decision_baseline_edge_tolerance": float(
+                build_labels_payload.get(
+                    "decision_baseline_edge_tolerance",
+                    config.decision_baseline_edge_tolerance,
+                )
+            ),
+            "decision_actual_class_high_threshold": float(
+                build_labels_payload.get(
+                    "decision_actual_class_high_threshold",
+                    config.decision_actual_class_high_threshold,
+                )
             ),
         }
 

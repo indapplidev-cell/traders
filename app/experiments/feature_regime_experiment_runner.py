@@ -110,7 +110,9 @@ class FeatureRegimeCandidateResult:
     probability_diagnostics: dict[str, Any] = field(default_factory=dict)
     probability_diagnostics_missing_reason: str | None = None
     calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
+    bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
+    calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
     prediction_decision_source: str | None = None
     real_feature_diagnostics: dict[str, Any] = field(default_factory=dict)
@@ -193,7 +195,9 @@ class FeatureRegimeCandidateResult:
             "probability_diagnostics": dict(self.probability_diagnostics),
             "probability_diagnostics_missing_reason": self.probability_diagnostics_missing_reason,
             "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
+            "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
+            "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
             "prediction_decision_source": self.prediction_decision_source,
             "real_feature_diagnostics": dict(self.real_feature_diagnostics),
@@ -1622,8 +1626,14 @@ class FeatureRegimeExperimentRunner:
                 calibrated_decision_diagnostics=self._as_dict(
                     getattr(item, "calibrated_decision_diagnostics", {})
                 ),
+                bounded_calibrated_decision_selection=self._as_dict(
+                    getattr(item, "bounded_calibrated_decision_selection", {})
+                ),
                 raw_predicted_class_distribution=self._as_dict(
                     getattr(item, "raw_predicted_class_distribution", {})
+                ),
+                calibrated_predicted_class_distribution=self._as_dict(
+                    getattr(item, "calibrated_predicted_class_distribution", {})
                 ),
                 raw_collapse_diagnostics_v2=self._as_dict(
                     getattr(item, "raw_collapse_diagnostics_v2", {})
