@@ -106,6 +106,7 @@ class FeatureRegimeExperimentReporter:
             "setup_aware_label_diagnostics": payload.get("setup_aware_label_diagnostics"),
             "schwager_slice_robustness": payload.get("schwager_slice_robustness"),
             "schwager_robustness_decision_board": payload.get("schwager_robustness_decision_board"),
+            "class_margin_objective_decision": payload.get("class_margin_objective_decision"),
             "approved_for_live_trading": False,
             "approved_for_auto_activation": False,
             "orders_enabled": False,
@@ -257,6 +258,7 @@ class FeatureRegimeExperimentReporter:
             f"- setup_aware_label_diagnostics: `{payload.get('setup_aware_label_diagnostics')}`",
             f"- schwager_slice_robustness: `{payload.get('schwager_slice_robustness')}`",
             f"- schwager_robustness_decision_board: `{payload.get('schwager_robustness_decision_board')}`",
+            f"- class_margin_objective_decision: `{payload.get('class_margin_objective_decision')}`",
             "",
             "## Recommendations",
                 "",
@@ -283,6 +285,7 @@ class FeatureRegimeExperimentReporter:
         root_cause_audit = dict(payload.get("prediction_root_cause_audit", {}))
         forensic_audit = dict(payload.get("book_driven_forensic_audit", {}))
         robustness_board = dict(payload.get("schwager_robustness_decision_board", {}))
+        class_margin_decision = dict(payload.get("class_margin_objective_decision", {}))
         collapse_signature = dict(root_cause_audit.get("up_collapse_signature", {}))
         warnings = root_cause_audit.get("warnings") or []
         recommendations = root_cause_audit.get("recommendations") or []
@@ -337,6 +340,12 @@ class FeatureRegimeExperimentReporter:
             f"- secondary_failures: `{robustness_board.get('secondary_failures')}`",
             f"- what_not_to_do_next: `{robustness_board.get('what_not_to_do_next')}`",
             f"- what_to_do_next: `{robustness_board.get('what_to_do_next')}`",
+            "",
+            "## Class-Margin Objective Decision",
+            "",
+            f"- class_margin_objective_allowed: `{class_margin_decision.get('class_margin_objective_allowed')}`",
+            f"- reason: `{class_margin_decision.get('reason')}`",
+            f"- missing_diagnostics: `{class_margin_decision.get('missing_diagnostics')}`",
             "",
         ]
         return "\n".join(lines)

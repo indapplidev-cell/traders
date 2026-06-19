@@ -112,6 +112,7 @@ class LabelGridExperimentCandidateResult:
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
     schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
     schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
+    class_margin_objective_decision: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -183,6 +184,7 @@ class LabelGridExperimentCandidateResult:
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
             "schwager_slice_robustness": dict(self.schwager_slice_robustness),
             "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
+            "class_margin_objective_decision": dict(self.class_margin_objective_decision),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -961,6 +963,35 @@ class LabelGridExperimentRunner:
                 ),
                 decision_policy_grid_enabled=bool(label_config.decision_policy_grid_enabled),
                 decision_policy_grid_stage=label_config.decision_policy_grid_stage,
+                class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
+                true_class_margin_weight=(
+                    0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
+                ),
+                true_class_margin_target=(
+                    0.06 if label_config.true_class_margin_target is None else float(label_config.true_class_margin_target)
+                ),
+                up_down_margin_weight=(
+                    0.0 if label_config.up_down_margin_weight is None else float(label_config.up_down_margin_weight)
+                ),
+                up_down_margin_target=(
+                    0.05 if label_config.up_down_margin_target is None else float(label_config.up_down_margin_target)
+                ),
+                flat_margin_weight=(
+                    0.0 if label_config.flat_margin_weight is None else float(label_config.flat_margin_weight)
+                ),
+                flat_margin_target=(
+                    0.05 if label_config.flat_margin_target is None else float(label_config.flat_margin_target)
+                ),
+                hard_negative_margin_weight=(
+                    0.0
+                    if label_config.hard_negative_margin_weight is None
+                    else float(label_config.hard_negative_margin_weight)
+                ),
+                hard_negative_margin_target=(
+                    0.08
+                    if label_config.hard_negative_margin_target is None
+                    else float(label_config.hard_negative_margin_target)
+                ),
             )
         )
         if pipeline_result.status == "FAILED":
@@ -1162,6 +1193,9 @@ class LabelGridExperimentRunner:
             ),
             schwager_robustness_decision_board=self._as_dict(
                 quality_payload.get("schwager_robustness_decision_board", {})
+            ),
+            class_margin_objective_decision=self._as_dict(
+                quality_payload.get("class_margin_objective_decision", {})
             ),
             raw_predicted_class_distribution=raw_predicted_class_distribution,
             calibrated_predicted_class_distribution=calibrated_predicted_class_distribution,
@@ -1453,6 +1487,10 @@ class LabelGridExperimentRunner:
             ),
             schwager_robustness_decision_board=self._as_dict(
                 model_quality_payload.get("schwager_robustness_decision_board", {})
+            ),
+            class_margin_objective_decision=self._as_dict(
+                model_quality_payload.get("class_margin_objective_decision")
+                or train_payload.get("class_margin_objective_decision", {})
             ),
             raw_predicted_class_distribution=dict(
                 raw_probability_diagnostics.get("predicted_direction_ratios", {})

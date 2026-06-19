@@ -80,6 +80,12 @@ ML38_10_1_OPPORTUNITY_CONFIG_IDS = (
     "lv13_h16_opportunity_ft",
 )
 
+ML38_10_3_CLASS_MARGIN_CONFIG_IDS = (
+    "lv14_h08_cm_setup",
+    "lv14_h12_cm_setup",
+    "lv14_h16_cm_setup",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -100,6 +106,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS,
     *ML38_9_9_LABEL_MODE_CONFIG_IDS,
     *ML38_10_1_OPPORTUNITY_CONFIG_IDS,
+    *ML38_10_3_CLASS_MARGIN_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
@@ -156,6 +163,9 @@ class ML382FV3TuningMatrix:
             "opportunity_first_stage": "ML38.10.1",
             "opportunity_first_config_ids": list(ML38_10_1_OPPORTUNITY_CONFIG_IDS),
             "opportunity_first_config_count": len(ML38_10_1_OPPORTUNITY_CONFIG_IDS),
+            "class_margin_stage": "ML38.10.3",
+            "class_margin_config_ids": list(ML38_10_3_CLASS_MARGIN_CONFIG_IDS),
+            "class_margin_config_count": len(ML38_10_3_CLASS_MARGIN_CONFIG_IDS),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,

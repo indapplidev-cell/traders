@@ -27,6 +27,7 @@ from app.evaluation.model_quality_validator import (
     validate_model_quality,
 )
 from app.diagnostics.collapse_diagnostics_v2 import CollapseDiagnosticsV2
+from app.diagnostics.class_margin_objective_decision import load_latest_class_margin_runtime_evidence
 from app.diagnostics.diagnostics_service import DiagnosticsService
 from app.diagnostics.flat_subtype_audit import FlatSubtypeAudit
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
@@ -101,6 +102,15 @@ class TrainingPipelineConfig:
     decision_actual_class_high_threshold: float = 0.25
     decision_policy_grid_enabled: bool = False
     decision_policy_grid_stage: str | None = None
+    class_margin_objective_enabled: bool = False
+    true_class_margin_weight: float = 0.0
+    true_class_margin_target: float = 0.06
+    up_down_margin_weight: float = 0.0
+    up_down_margin_target: float = 0.05
+    flat_margin_weight: float = 0.0
+    flat_margin_target: float = 0.05
+    hard_negative_margin_weight: float = 0.0
+    hard_negative_margin_target: float = 0.08
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -176,6 +186,7 @@ class TrainingPipelineResult:
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
     schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
     schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
+    class_margin_objective_decision: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -217,6 +228,7 @@ class TrainingPipelineResult:
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
             "schwager_slice_robustness": dict(self.schwager_slice_robustness),
             "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
+            "class_margin_objective_decision": dict(self.class_margin_objective_decision),
         }
 
 
@@ -456,6 +468,7 @@ class LongHistoryTrainingPipelineRunner:
                 "training_objective": config.training_objective,
                 "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
+                "class_margin_objective_enabled": config.class_margin_objective_enabled,
             },
             next_recommendations=self._next_recommendations(
                 quality_status=str(quality_summary.get("quality_status", INSUFFICIENT_REAL_HISTORY)),
@@ -482,6 +495,10 @@ class LongHistoryTrainingPipelineRunner:
             ),
             schwager_robustness_decision_board=self._as_dict(
                 quality_summary.get("schwager_robustness_decision_board")
+            ),
+            class_margin_objective_decision=self._as_dict(
+                quality_summary.get("class_margin_objective_decision")
+                or model_summary.get("class_margin_objective_decision")
             ),
         )
 
@@ -1162,6 +1179,18 @@ class LongHistoryTrainingPipelineRunner:
         horizon_candles = self._resolve_horizon_from_label_version(label_version)
         dataset_summary = dict(stage_payloads.get("build_dataset", {}))
         start_at, end_at = self._resolved_datetime_range(config)
+        class_margin_objective_decision = {
+            "diagnostic_name": "class_margin_objective_decision",
+            "diagnostic_version": "ml38_10_3",
+            "class_margin_objective_allowed": False,
+            "reason": "class_margin_config_disabled",
+            "required_diagnostics": [],
+            "missing_diagnostics": [],
+            "class_margin_objective_enabled": False,
+        }
+        if config.class_margin_objective_enabled:
+            class_margin_objective_decision = load_latest_class_margin_runtime_evidence()
+            class_margin_objective_decision["class_margin_objective_enabled"] = True
         with get_session() as session:
             feature_repository = FeatureRepository(session)
             label_repository = LabelRepository(session)
@@ -1218,6 +1247,24 @@ class LongHistoryTrainingPipelineRunner:
                 baseline_edge_focal_gamma=config.baseline_edge_focal_gamma,
                 baseline_edge_margin_penalty=config.baseline_edge_margin_penalty,
                 baseline_edge_entropy_penalty=config.baseline_edge_entropy_penalty,
+                class_margin_objective_enabled=config.class_margin_objective_enabled,
+                class_margin_objective_allowed=bool(
+                    class_margin_objective_decision.get("class_margin_objective_allowed", False)
+                ),
+                class_margin_objective_reason=str(
+                    class_margin_objective_decision.get("reason") or "class_margin_config_disabled"
+                ),
+                class_margin_feature_separability_rating=class_margin_objective_decision.get(
+                    "feature_separability_rating"
+                ),
+                true_class_margin_weight=config.true_class_margin_weight,
+                true_class_margin_target=config.true_class_margin_target,
+                up_down_margin_weight=config.up_down_margin_weight,
+                up_down_margin_target=config.up_down_margin_target,
+                flat_margin_weight=config.flat_margin_weight,
+                flat_margin_target=config.flat_margin_target,
+                hard_negative_margin_weight=config.hard_negative_margin_weight,
+                hard_negative_margin_target=config.hard_negative_margin_target,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1289,6 +1336,16 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
                 "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
+                "class_margin_objective_enabled": config.class_margin_objective_enabled,
+                "class_margin_objective_decision": class_margin_objective_decision,
+                "true_class_margin_weight": config.true_class_margin_weight,
+                "true_class_margin_target": config.true_class_margin_target,
+                "up_down_margin_weight": config.up_down_margin_weight,
+                "up_down_margin_target": config.up_down_margin_target,
+                "flat_margin_weight": config.flat_margin_weight,
+                "flat_margin_target": config.flat_margin_target,
+                "hard_negative_margin_weight": config.hard_negative_margin_weight,
+                "hard_negative_margin_target": config.hard_negative_margin_target,
             },
         }
 
@@ -1667,6 +1724,11 @@ class LongHistoryTrainingPipelineRunner:
         )
         if schwager_slice_robustness:
             payload["schwager_slice_robustness"] = schwager_slice_robustness
+        class_margin_objective_decision = self._as_dict(
+            training_summary.get("class_margin_objective_decision")
+        )
+        if class_margin_objective_decision:
+            payload["class_margin_objective_decision"] = class_margin_objective_decision
         for key in (
             "label_mode_comparison_audit",
             "flat_subtype_audit",
@@ -1773,6 +1835,11 @@ class LongHistoryTrainingPipelineRunner:
         )
         if schwager_slice_robustness:
             payload["schwager_slice_robustness"] = schwager_slice_robustness
+        class_margin_objective_decision = self._as_dict(
+            training_summary.get("class_margin_objective_decision")
+        )
+        if class_margin_objective_decision:
+            payload["class_margin_objective_decision"] = class_margin_objective_decision
         for key in (
             "label_mode_comparison_audit",
             "flat_subtype_audit",
@@ -1995,6 +2062,33 @@ class LongHistoryTrainingPipelineRunner:
             "decision_policy_grid_stage": build_labels_payload.get(
                 "decision_policy_grid_stage",
                 config.decision_policy_grid_stage,
+            ),
+            "class_margin_objective_enabled": self._as_bool(
+                build_labels_payload.get("class_margin_objective_enabled", config.class_margin_objective_enabled),
+            ),
+            "true_class_margin_weight": float(
+                build_labels_payload.get("true_class_margin_weight", config.true_class_margin_weight)
+            ),
+            "true_class_margin_target": float(
+                build_labels_payload.get("true_class_margin_target", config.true_class_margin_target)
+            ),
+            "up_down_margin_weight": float(
+                build_labels_payload.get("up_down_margin_weight", config.up_down_margin_weight)
+            ),
+            "up_down_margin_target": float(
+                build_labels_payload.get("up_down_margin_target", config.up_down_margin_target)
+            ),
+            "flat_margin_weight": float(
+                build_labels_payload.get("flat_margin_weight", config.flat_margin_weight)
+            ),
+            "flat_margin_target": float(
+                build_labels_payload.get("flat_margin_target", config.flat_margin_target)
+            ),
+            "hard_negative_margin_weight": float(
+                build_labels_payload.get("hard_negative_margin_weight", config.hard_negative_margin_weight)
+            ),
+            "hard_negative_margin_target": float(
+                build_labels_payload.get("hard_negative_margin_target", config.hard_negative_margin_target)
             ),
         }
 

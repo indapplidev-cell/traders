@@ -121,6 +121,7 @@ class FeatureRegimeCandidateResult:
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
     schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
     schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
+    class_margin_objective_decision: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -224,6 +225,7 @@ class FeatureRegimeCandidateResult:
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
             "schwager_slice_robustness": dict(self.schwager_slice_robustness),
             "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
+            "class_margin_objective_decision": dict(self.class_margin_objective_decision),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -391,6 +393,7 @@ class FeatureRegimeExperimentResult:
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
     schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
     schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
+    class_margin_objective_decision: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -486,6 +489,7 @@ class FeatureRegimeExperimentResult:
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
             "schwager_slice_robustness": dict(self.schwager_slice_robustness),
             "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
+            "class_margin_objective_decision": dict(self.class_margin_objective_decision),
         }
 
 
@@ -1117,6 +1121,9 @@ class FeatureRegimeExperimentRunner:
             ),
             schwager_robustness_decision_board=self._as_dict(
                 {} if best_candidate is None else best_candidate.schwager_robustness_decision_board
+            ),
+            class_margin_objective_decision=self._as_dict(
+                {} if best_candidate is None else best_candidate.class_margin_objective_decision
             ),
         )
 
@@ -1827,6 +1834,9 @@ class FeatureRegimeExperimentRunner:
                 schwager_robustness_decision_board=self._as_dict(
                     getattr(item, "schwager_robustness_decision_board", {})
                 ),
+                class_margin_objective_decision=self._as_dict(
+                    getattr(item, "class_margin_objective_decision", {})
+                ),
                 raw_predicted_class_distribution=self._as_dict(
                     getattr(item, "raw_predicted_class_distribution", {})
                 ),
@@ -1928,6 +1938,9 @@ class FeatureRegimeExperimentRunner:
                 ),
                 schwager_robustness_decision_board=self._as_dict(
                     candidate_payload.get("schwager_robustness_decision_board")
+                ),
+                class_margin_objective_decision=self._as_dict(
+                    candidate_payload.get("class_margin_objective_decision")
                 ),
                 prediction_decision_source=candidate_payload.get("prediction_decision_source"),
                 predicted_class_distribution=self._as_dict(
@@ -2249,6 +2262,7 @@ class FeatureRegimeExperimentRunner:
                     "setup_aware_label_diagnostics": dict(item.setup_aware_label_diagnostics),
                     "schwager_slice_robustness": dict(item.schwager_slice_robustness),
                     "schwager_robustness_decision_board": dict(item.schwager_robustness_decision_board),
+                    "class_margin_objective_decision": dict(item.class_margin_objective_decision),
                     "prediction_decision_source": item.prediction_decision_source,
                 }
             )

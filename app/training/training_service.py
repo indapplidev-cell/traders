@@ -70,6 +70,18 @@ class TrainingConfig:
     baseline_edge_focal_gamma: float = 1.25
     baseline_edge_margin_penalty: float = 0.02
     baseline_edge_entropy_penalty: float = 0.01
+    class_margin_objective_enabled: bool = False
+    class_margin_objective_allowed: bool = False
+    class_margin_objective_reason: str | None = None
+    class_margin_feature_separability_rating: str | None = None
+    true_class_margin_weight: float = 0.0
+    true_class_margin_target: float = 0.06
+    up_down_margin_weight: float = 0.0
+    up_down_margin_target: float = 0.05
+    flat_margin_weight: float = 0.0
+    flat_margin_target: float = 0.05
+    hard_negative_margin_weight: float = 0.0
+    hard_negative_margin_target: float = 0.08
 
 
 def _safe_run_id_part(value: object) -> str:
@@ -185,6 +197,18 @@ class TrainingService:
         baseline_edge_focal_gamma: float = 1.25,
         baseline_edge_margin_penalty: float = 0.02,
         baseline_edge_entropy_penalty: float = 0.01,
+        class_margin_objective_enabled: bool = False,
+        class_margin_objective_allowed: bool = False,
+        class_margin_objective_reason: str | None = None,
+        class_margin_feature_separability_rating: str | None = None,
+        true_class_margin_weight: float = 0.0,
+        true_class_margin_target: float = 0.06,
+        up_down_margin_weight: float = 0.0,
+        up_down_margin_target: float = 0.05,
+        flat_margin_weight: float = 0.0,
+        flat_margin_target: float = 0.05,
+        hard_negative_margin_weight: float = 0.0,
+        hard_negative_margin_target: float = 0.08,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -231,6 +255,18 @@ class TrainingService:
             baseline_edge_focal_gamma=baseline_edge_focal_gamma,
             baseline_edge_margin_penalty=baseline_edge_margin_penalty,
             baseline_edge_entropy_penalty=baseline_edge_entropy_penalty,
+            class_margin_objective_enabled=class_margin_objective_enabled,
+            class_margin_objective_allowed=class_margin_objective_allowed,
+            class_margin_objective_reason=class_margin_objective_reason,
+            class_margin_feature_separability_rating=class_margin_feature_separability_rating,
+            true_class_margin_weight=true_class_margin_weight,
+            true_class_margin_target=true_class_margin_target,
+            up_down_margin_weight=up_down_margin_weight,
+            up_down_margin_target=up_down_margin_target,
+            flat_margin_weight=flat_margin_weight,
+            flat_margin_target=flat_margin_target,
+            hard_negative_margin_weight=hard_negative_margin_weight,
+            hard_negative_margin_target=hard_negative_margin_target,
         )
         started_at = datetime.now(tz=timezone.utc)
         run_id = build_training_run_id(
@@ -283,6 +319,9 @@ class TrainingService:
                 scaler,
                 training_objective=config.training_objective,
                 baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
+                class_margin_objective_enabled=config.class_margin_objective_enabled,
+                class_margin_objective_allowed=config.class_margin_objective_allowed,
+                class_margin_feature_separability_rating=config.class_margin_feature_separability_rating,
             )
             validation_dataset = self.rows_to_tensors(
                 split_rows["validation"],
@@ -290,6 +329,9 @@ class TrainingService:
                 scaler,
                 training_objective=config.training_objective,
                 baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
+                class_margin_objective_enabled=config.class_margin_objective_enabled,
+                class_margin_objective_allowed=config.class_margin_objective_allowed,
+                class_margin_feature_separability_rating=config.class_margin_feature_separability_rating,
             )
             test_dataset = self.rows_to_tensors(
                 split_rows["test"],
@@ -297,6 +339,9 @@ class TrainingService:
                 scaler,
                 training_objective=config.training_objective,
                 baseline_edge_objective_enabled=config.baseline_edge_objective_enabled,
+                class_margin_objective_enabled=config.class_margin_objective_enabled,
+                class_margin_objective_allowed=config.class_margin_objective_allowed,
+                class_margin_feature_separability_rating=config.class_margin_feature_separability_rating,
             )
             direction_class_weights = None if disable_class_weights else self.compute_direction_class_weights(
                 split_rows["train"],
@@ -342,6 +387,16 @@ class TrainingService:
                     baseline_edge_focal_gamma=config.baseline_edge_focal_gamma,
                     baseline_edge_margin_penalty=config.baseline_edge_margin_penalty,
                     baseline_edge_entropy_penalty=config.baseline_edge_entropy_penalty,
+                    class_margin_objective_enabled=config.class_margin_objective_enabled,
+                    class_margin_objective_allowed=config.class_margin_objective_allowed,
+                    true_class_margin_weight=config.true_class_margin_weight,
+                    true_class_margin_target=config.true_class_margin_target,
+                    up_down_margin_weight=config.up_down_margin_weight,
+                    up_down_margin_target=config.up_down_margin_target,
+                    flat_margin_weight=config.flat_margin_weight,
+                    flat_margin_target=config.flat_margin_target,
+                    hard_negative_margin_weight=config.hard_negative_margin_weight,
+                    hard_negative_margin_target=config.hard_negative_margin_target,
                 ),
             )
             training_result = trainer.train(model=model, train_dataset=train_dataset, validation_dataset=validation_dataset)
@@ -451,6 +506,18 @@ class TrainingService:
                 "baseline_edge_focal_gamma": config.baseline_edge_focal_gamma,
                 "baseline_edge_margin_penalty": config.baseline_edge_margin_penalty,
                 "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
+                "class_margin_objective_enabled": config.class_margin_objective_enabled,
+                "class_margin_objective_allowed": config.class_margin_objective_allowed,
+                "class_margin_objective_reason": config.class_margin_objective_reason,
+                "class_margin_feature_separability_rating": config.class_margin_feature_separability_rating,
+                "true_class_margin_weight": config.true_class_margin_weight,
+                "true_class_margin_target": config.true_class_margin_target,
+                "up_down_margin_weight": config.up_down_margin_weight,
+                "up_down_margin_target": config.up_down_margin_target,
+                "flat_margin_weight": config.flat_margin_weight,
+                "flat_margin_target": config.flat_margin_target,
+                "hard_negative_margin_weight": config.hard_negative_margin_weight,
+                "hard_negative_margin_target": config.hard_negative_margin_target,
                 "model_output_contract": self.model_output_contract(config.training_objective),
             }
             combined_metrics = {
@@ -467,6 +534,12 @@ class TrainingService:
                 "direction_head_diagnostics": direction_head_diagnostics,
                 "label_noise_diagnostics": label_noise_diagnostics,
                 "opportunity_diagnostics": opportunity_diagnostics,
+                "class_margin_objective_decision": {
+                    "class_margin_objective_enabled": config.class_margin_objective_enabled,
+                    "class_margin_objective_allowed": config.class_margin_objective_allowed,
+                    "reason": config.class_margin_objective_reason,
+                    "feature_separability_rating": config.class_margin_feature_separability_rating,
+                },
             }
             artifact_path = self._artifact_storage.save(
                 model_version=model_version,
@@ -540,7 +613,20 @@ class TrainingService:
                 "baseline_edge_focal_gamma": config.baseline_edge_focal_gamma,
                 "baseline_edge_margin_penalty": config.baseline_edge_margin_penalty,
                 "baseline_edge_entropy_penalty": config.baseline_edge_entropy_penalty,
+                "class_margin_objective_enabled": config.class_margin_objective_enabled,
+                "class_margin_objective_allowed": config.class_margin_objective_allowed,
+                "class_margin_objective_reason": config.class_margin_objective_reason,
+                "class_margin_feature_separability_rating": config.class_margin_feature_separability_rating,
+                "true_class_margin_weight": config.true_class_margin_weight,
+                "true_class_margin_target": config.true_class_margin_target,
+                "up_down_margin_weight": config.up_down_margin_weight,
+                "up_down_margin_target": config.up_down_margin_target,
+                "flat_margin_weight": config.flat_margin_weight,
+                "flat_margin_target": config.flat_margin_target,
+                "hard_negative_margin_weight": config.hard_negative_margin_weight,
+                "hard_negative_margin_target": config.hard_negative_margin_target,
                 "opportunity_diagnostics": opportunity_diagnostics,
+                "class_margin_objective_decision": combined_metrics["class_margin_objective_decision"],
                 "model_output_contract": self.model_output_contract(config.training_objective),
             }
         except Exception as exc:
@@ -636,6 +722,7 @@ class TrainingService:
             "move_target": empty_float,
             "risk_target": empty_float,
             "opportunity_target": empty_float,
+            "flat_margin_allowed_mask": empty_float,
         }
 
 
@@ -658,6 +745,62 @@ class TrainingService:
         return weights
 
     @staticmethod
+    def _class_margin_weight_for_row(
+        row: DatasetRow,
+        *,
+        feature_separability_rating: str | None,
+    ) -> float:
+        weight = 1.0
+        ambiguity = float(getattr(row, "label_ambiguity_score", 1.0) or 1.0)
+        setup_quality = float(getattr(row, "setup_quality_score", 0.0) or 0.0)
+        opportunity_label = int(getattr(row, "opportunity_label", 0) or 0)
+
+        if ambiguity >= 0.85:
+            weight *= 0.45
+        elif ambiguity >= 0.55:
+            weight *= 0.70
+        elif ambiguity <= 0.25:
+            weight *= 1.15
+
+        if setup_quality >= 0.80:
+            weight *= 1.20
+        elif setup_quality >= 0.55:
+            weight *= 1.10
+        elif setup_quality <= 0.20:
+            weight *= 0.90
+
+        if opportunity_label == 1:
+            weight *= 1.10
+        elif str(getattr(row, "direction_label", "FLAT")).upper() == "FLAT":
+            weight *= 0.95
+
+        rating = str(feature_separability_rating or "").upper()
+        if rating == "GOOD":
+            weight *= 1.10
+        elif rating == "WEAK":
+            weight *= 0.80
+
+        return max(0.20, min(4.00, float(weight)))
+
+    @staticmethod
+    def _flat_margin_allowed_for_row(row: DatasetRow) -> float:
+        if str(getattr(row, "direction_label", "") or "").upper() != "FLAT":
+            return 0.0
+        if int(getattr(row, "opportunity_label", 0) or 0) != 0:
+            return 0.0
+        ambiguity = float(getattr(row, "label_ambiguity_score", 1.0) or 1.0)
+        future_move = abs(float(getattr(row, "future_move_atr", 0.0) or 0.0))
+        favorable = abs(float(getattr(row, "max_favorable_move_atr", 0.0) or 0.0))
+        adverse = abs(float(getattr(row, "max_adverse_move_atr", 0.0) or 0.0))
+        if ambiguity > 0.45:
+            return 0.0
+        if max(favorable, adverse) > 0.35:
+            return 0.0
+        if future_move > 0.25:
+            return 0.0
+        return 1.0
+
+    @staticmethod
     def rows_to_tensors(
         rows: list[DatasetRow],
         feature_columns: list[str],
@@ -665,6 +808,9 @@ class TrainingService:
         *,
         training_objective: str = "direction_global",
         baseline_edge_objective_enabled: bool = False,
+        class_margin_objective_enabled: bool = False,
+        class_margin_objective_allowed: bool = False,
+        class_margin_feature_separability_rating: str | None = None,
     ) -> dict[str, torch.Tensor]:
         if not rows:
             return TrainingService.empty_tensors(len(feature_columns))
@@ -680,6 +826,10 @@ class TrainingService:
         move_targets: list[float] = []
         risk_targets: list[float] = []
         opportunity_targets: list[float] = []
+        flat_margin_allowed_mask: list[float] = []
+        class_margin_weighting_enabled = (
+            bool(class_margin_objective_enabled) and bool(class_margin_objective_allowed)
+        )
 
         for index, row in enumerate(rows):
             feature_values = [float(row.features_json[column]) for column in feature_columns]
@@ -690,6 +840,11 @@ class TrainingService:
             feature_matrix.append(scaled)
             direction_targets.append({"UP": 0, "DOWN": 1, "FLAT": 2}[row.direction_label])
             direction_sample_weights[index] = float(direction_sample_weights[index])
+            if class_margin_weighting_enabled:
+                direction_sample_weights[index] *= TrainingService._class_margin_weight_for_row(
+                    row,
+                    feature_separability_rating=class_margin_feature_separability_rating,
+                )
             if row.tp_before_sl is None:
                 tp_targets.append(0.0)
                 tp_masks.append(0.0)
@@ -707,6 +862,7 @@ class TrainingService:
                 )
             )
             opportunity_targets.append(float(row.opportunity_label))
+            flat_margin_allowed_mask.append(TrainingService._flat_margin_allowed_for_row(row))
 
         return {
             "features": torch.tensor(feature_matrix, dtype=torch.float32),
@@ -717,6 +873,7 @@ class TrainingService:
             "move_target": torch.tensor(move_targets, dtype=torch.float32),
             "risk_target": torch.tensor(risk_targets, dtype=torch.float32),
             "opportunity_target": torch.tensor(opportunity_targets, dtype=torch.float32),
+            "flat_margin_allowed_mask": torch.tensor(flat_margin_allowed_mask, dtype=torch.float32),
         }
 
     @staticmethod

@@ -71,6 +71,16 @@ class MultiTaskLoss:
         baseline_edge_focal_gamma: float = 1.25,
         baseline_edge_margin_penalty: float = 0.02,
         baseline_edge_entropy_penalty: float = 0.01,
+        class_margin_objective_enabled: bool = False,
+        class_margin_objective_allowed: bool = False,
+        true_class_margin_weight: float = 0.0,
+        true_class_margin_target: float = 0.06,
+        up_down_margin_weight: float = 0.0,
+        up_down_margin_target: float = 0.05,
+        flat_margin_weight: float = 0.0,
+        flat_margin_target: float = 0.05,
+        hard_negative_margin_weight: float = 0.0,
+        hard_negative_margin_target: float = 0.08,
     ) -> None:
         weights = torch.tensor(direction_class_weights, dtype=torch.float32) if direction_class_weights is not None else None
         self._training_objective = training_objective
@@ -100,6 +110,16 @@ class MultiTaskLoss:
         self._baseline_edge_focal_gamma = float(baseline_edge_focal_gamma)
         self._baseline_edge_margin_penalty = float(baseline_edge_margin_penalty)
         self._baseline_edge_entropy_penalty = float(baseline_edge_entropy_penalty)
+        self._class_margin_objective_enabled = bool(class_margin_objective_enabled)
+        self._class_margin_objective_allowed = bool(class_margin_objective_allowed)
+        self._true_class_margin_weight = float(true_class_margin_weight)
+        self._true_class_margin_target = float(true_class_margin_target)
+        self._up_down_margin_weight = float(up_down_margin_weight)
+        self._up_down_margin_target = float(up_down_margin_target)
+        self._flat_margin_weight = float(flat_margin_weight)
+        self._flat_margin_target = float(flat_margin_target)
+        self._hard_negative_margin_weight = float(hard_negative_margin_weight)
+        self._hard_negative_margin_target = float(hard_negative_margin_target)
 
         if direction_loss_name == "focal":
             self._direction_loss = FocalCrossEntropyLoss(
@@ -168,6 +188,32 @@ class MultiTaskLoss:
         dominant_class_ceiling_loss = self._dominant_class_ceiling_loss(
             probabilities=masked_direction_probabilities,
         )
+        regularizer_sample_weights = (
+            direction_sample_weights
+            if self._training_objective != "opportunity_first" or opportunity_mask is None
+            else direction_sample_weights * opportunity_mask.float()
+        )
+        true_class_margin_loss = self._true_class_margin_loss(
+            direction_logits,
+            direction_targets,
+            sample_weights=regularizer_sample_weights,
+        )
+        up_down_margin_loss = self._up_down_margin_loss(
+            direction_logits,
+            direction_targets,
+            sample_weights=regularizer_sample_weights,
+        )
+        flat_margin_loss = self._flat_margin_loss(
+            direction_logits,
+            direction_targets,
+            batch=batch,
+            sample_weights=regularizer_sample_weights,
+        )
+        hard_negative_margin_loss = self._hard_negative_margin_loss(
+            direction_logits,
+            direction_targets,
+            sample_weights=regularizer_sample_weights,
+        )
 
         tp_mask = batch["tp_sl_mask"] > 0
         if self._training_objective == "opportunity_first" and opportunity_mask is not None:
@@ -200,6 +246,10 @@ class MultiTaskLoss:
             + self._flat_probability_floor_weight * flat_probability_floor_loss
             + self._class_probability_floor_weight * class_probability_floor_loss
             + self._dominant_class_ceiling_weight * dominant_class_ceiling_loss
+            + self._true_class_margin_weight * true_class_margin_loss
+            + self._up_down_margin_weight * up_down_margin_loss
+            + self._flat_margin_weight * flat_margin_loss
+            + self._hard_negative_margin_weight * hard_negative_margin_loss
         )
         predicted_distribution = direction_probabilities.mean(dim=0)
         return total_loss, {
@@ -214,6 +264,10 @@ class MultiTaskLoss:
             "flat_probability_floor_loss": float(flat_probability_floor_loss.detach().item()),
             "class_probability_floor_loss": float(class_probability_floor_loss.detach().item()),
             "dominant_class_ceiling_loss": float(dominant_class_ceiling_loss.detach().item()),
+            "true_class_margin_loss": float(true_class_margin_loss.detach().item()),
+            "up_down_margin_loss": float(up_down_margin_loss.detach().item()),
+            "flat_margin_loss": float(flat_margin_loss.detach().item()),
+            "hard_negative_margin_loss": float(hard_negative_margin_loss.detach().item()),
             "direction_sample_weight_mean": float(direction_sample_weights.mean().detach().item()),
             "direction_predicted_up_probability_mean": float(predicted_distribution[0].detach().item()),
             "direction_predicted_down_probability_mean": float(predicted_distribution[1].detach().item()),
@@ -233,6 +287,16 @@ class MultiTaskLoss:
             "class_probability_floor_targets": list(self._class_probability_floor_targets),
             "dominant_class_ceiling_weight": self._dominant_class_ceiling_weight,
             "dominant_class_ceiling_target": self._dominant_class_ceiling_target,
+            "class_margin_objective_enabled": self._class_margin_objective_enabled,
+            "class_margin_objective_allowed": self._class_margin_objective_allowed,
+            "true_class_margin_weight": self._true_class_margin_weight,
+            "true_class_margin_target": self._true_class_margin_target,
+            "up_down_margin_weight": self._up_down_margin_weight,
+            "up_down_margin_target": self._up_down_margin_target,
+            "flat_margin_weight": self._flat_margin_weight,
+            "flat_margin_target": self._flat_margin_target,
+            "hard_negative_margin_weight": self._hard_negative_margin_weight,
+            "hard_negative_margin_target": self._hard_negative_margin_target,
             "total_loss": float(total_loss.detach().item()),
         }
 
@@ -336,6 +400,109 @@ class MultiTaskLoss:
         dominant_probability = torch.max(predicted_distribution)
         excess = torch.relu(dominant_probability - probabilities.new_tensor(self._dominant_class_ceiling_target))
         return excess ** 2
+
+    def _true_class_margin_loss(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        sample_weights: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if not self._class_margin_active() or self._true_class_margin_weight <= 0 or logits.shape[0] == 0:
+            return logits.new_tensor(0.0)
+
+        probabilities = torch.softmax(logits, dim=1)
+        target_probabilities = probabilities.gather(1, targets.view(-1, 1)).squeeze(1)
+        mask = F.one_hot(targets, num_classes=logits.shape[1]).bool()
+        competing_probabilities = probabilities.masked_fill(mask, 0.0).max(dim=1).values
+        deficit = torch.relu(
+            logits.new_tensor(self._true_class_margin_target)
+            - (target_probabilities - competing_probabilities)
+        )
+        return _weighted_mean(deficit, sample_weights)
+
+    def _up_down_margin_loss(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        sample_weights: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if not self._class_margin_active() or self._up_down_margin_weight <= 0 or logits.shape[0] == 0:
+            return logits.new_tensor(0.0)
+
+        probabilities = torch.softmax(logits, dim=1)
+        directional_mask = (targets == 0) | (targets == 1)
+        if not torch.any(directional_mask):
+            return logits.new_tensor(0.0)
+
+        direction_targets = targets[directional_mask]
+        direction_probabilities = probabilities[directional_mask]
+        target_direction_probabilities = direction_probabilities.gather(1, direction_targets.view(-1, 1)).squeeze(1)
+        opposite_targets = torch.where(direction_targets == 0, 1, 0)
+        opposite_probabilities = direction_probabilities.gather(1, opposite_targets.view(-1, 1)).squeeze(1)
+        deficit = torch.relu(
+            logits.new_tensor(self._up_down_margin_target)
+            - (target_direction_probabilities - opposite_probabilities)
+        )
+        masked_weights = None if sample_weights is None else sample_weights[directional_mask]
+        return _weighted_mean(deficit, masked_weights)
+
+    def _flat_margin_loss(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        *,
+        batch: dict[str, torch.Tensor],
+        sample_weights: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if not self._class_margin_active() or self._flat_margin_weight <= 0 or logits.shape[0] == 0:
+            return logits.new_tensor(0.0)
+
+        base_mask = targets == 2
+        allowed_mask = batch.get("flat_margin_allowed_mask")
+        if allowed_mask is not None:
+            base_mask = base_mask & (allowed_mask.to(device=targets.device) > 0.5)
+        if not torch.any(base_mask):
+            return logits.new_tensor(0.0)
+
+        probabilities = torch.softmax(logits[base_mask], dim=1)
+        flat_probabilities = probabilities[:, 2]
+        competing_probabilities = probabilities[:, :2].max(dim=1).values
+        deficit = torch.relu(
+            logits.new_tensor(self._flat_margin_target)
+            - (flat_probabilities - competing_probabilities)
+        )
+        masked_weights = None if sample_weights is None else sample_weights[base_mask]
+        return _weighted_mean(deficit, masked_weights)
+
+    def _hard_negative_margin_loss(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        sample_weights: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if not self._class_margin_active() or self._hard_negative_margin_weight <= 0 or logits.shape[0] == 0:
+            return logits.new_tensor(0.0)
+
+        probabilities = torch.softmax(logits, dim=1)
+        target_probabilities = probabilities.gather(1, targets.view(-1, 1)).squeeze(1)
+        predicted_labels = torch.argmax(probabilities, dim=1)
+        hard_mask = predicted_labels != targets
+        if not torch.any(hard_mask):
+            return logits.new_tensor(0.0)
+
+        mask = F.one_hot(targets, num_classes=logits.shape[1]).bool()
+        competing_probabilities = probabilities.masked_fill(mask, 0.0).max(dim=1).values
+        hard_target_probabilities = target_probabilities[hard_mask]
+        hard_competing_probabilities = competing_probabilities[hard_mask]
+        deficit = torch.relu(
+            logits.new_tensor(self._hard_negative_margin_target)
+            - (hard_target_probabilities - hard_competing_probabilities)
+        )
+        masked_weights = None if sample_weights is None else sample_weights[hard_mask]
+        return _weighted_mean(deficit, masked_weights)
+
+    def _class_margin_active(self) -> bool:
+        return self._class_margin_objective_enabled and self._class_margin_objective_allowed
 
 
 def _target_logit_gap(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:

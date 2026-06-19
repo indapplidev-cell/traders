@@ -210,6 +210,7 @@ class LabelGridExperimentReporter:
         root_cause_audit = dict(candidate.get("prediction_root_cause_audit", {}))
         forensic_audit = dict(candidate.get("book_driven_forensic_audit", {}))
         robustness_board = dict(candidate.get("schwager_robustness_decision_board", {}))
+        class_margin_decision = dict(candidate.get("class_margin_objective_decision", {}))
         collapse_signature = dict(root_cause_audit.get("up_collapse_signature", {}))
         warnings = root_cause_audit.get("warnings") or []
         recommendations = root_cause_audit.get("recommendations") or []
@@ -257,6 +258,12 @@ class LabelGridExperimentReporter:
             f"- primary_failure: `{robustness_board.get('primary_failure')}`",
             f"- what_not_to_do_next: `{robustness_board.get('what_not_to_do_next')}`",
             f"- what_to_do_next: `{robustness_board.get('what_to_do_next')}`",
+            "",
+            "## Class-Margin Objective Decision",
+            "",
+            f"- class_margin_objective_allowed: `{class_margin_decision.get('class_margin_objective_allowed')}`",
+            f"- reason: `{class_margin_decision.get('reason')}`",
+            f"- missing_diagnostics: `{class_margin_decision.get('missing_diagnostics')}`",
             "",
         ]
         return "\n".join(lines)

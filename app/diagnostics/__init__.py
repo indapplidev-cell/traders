@@ -23,6 +23,8 @@ __all__ = [
     "SchwagerRobustnessDecisionBoard",
     "SetupContextAudit",
     "DecisionCalibrationConfig",
+    "evaluate_class_margin_objective_decision",
+    "load_latest_class_margin_runtime_evidence",
     "choose_bounded_calibrated_decisions",
     "evaluate_decision_distribution",
 ]
@@ -107,6 +109,20 @@ def __getattr__(name: str) -> Any:
         from app.diagnostics.book_driven_forensic_audit import BookDrivenForensicAudit
 
         return {"BookDrivenForensicAudit": BookDrivenForensicAudit}[name]
+
+    if name in {
+        "evaluate_class_margin_objective_decision",
+        "load_latest_class_margin_runtime_evidence",
+    }:
+        from app.diagnostics.class_margin_objective_decision import (
+            evaluate_class_margin_objective_decision,
+            load_latest_class_margin_runtime_evidence,
+        )
+
+        return {
+            "evaluate_class_margin_objective_decision": evaluate_class_margin_objective_decision,
+            "load_latest_class_margin_runtime_evidence": load_latest_class_margin_runtime_evidence,
+        }[name]
 
     if name in {"FeatureClassStats", "FeatureLabelSeparabilityAudit"}:
         from app.diagnostics.feature_label_separability_audit import (
