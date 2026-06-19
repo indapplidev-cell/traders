@@ -163,6 +163,7 @@ class TrainingPipelineResult:
     safety: dict[str, Any]
     command_snapshot: dict[str, Any]
     next_recommendations: tuple[str, ...]
+    prediction_root_cause_audit: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -197,6 +198,7 @@ class TrainingPipelineResult:
             "safety": dict(self.safety),
             "command_snapshot": dict(self.command_snapshot),
             "next_recommendations": list(self.next_recommendations),
+            "prediction_root_cause_audit": dict(self.prediction_root_cause_audit),
         }
 
 
@@ -438,6 +440,9 @@ class LongHistoryTrainingPipelineRunner:
                 quality_status=str(quality_summary.get("quality_status", INSUFFICIENT_REAL_HISTORY)),
                 dry_run=config.dry_run,
                 sample_mode=config.sample_mode,
+            ),
+            prediction_root_cause_audit=self._as_dict(
+                quality_summary.get("prediction_root_cause_audit")
             ),
         )
 

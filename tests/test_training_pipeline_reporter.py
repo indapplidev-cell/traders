@@ -120,3 +120,51 @@ def test_training_pipeline_reporter_compact_summary_reports_zero_skips_for_real_
     assert payload["completed_stage_count"] == 1
     assert payload["failed_stage_count"] == 0
     assert payload["skipped_stage_count"] == 0
+
+
+def test_training_pipeline_report_json_includes_prediction_root_cause_audit(tmp_path) -> None:
+    reporter = TrainingPipelineReporter()
+    result = TrainingPipelineResult(
+        run_id="root_cause_report_case",
+        status="COMPLETED",
+        symbol="SOLUSDT",
+        interval="15m",
+        start_date="2025-01-01",
+        end_date="2025-01-10",
+        dry_run=False,
+        sample_mode=False,
+        run_gate_policy_replay=True,
+        export_report=True,
+        started_at="2026-06-11T10:00:00+00:00",
+        ended_at="2026-06-11T10:01:00+00:00",
+        duration_seconds=60.0,
+        stage_results=(),
+        quality_summary={"quality_status": "QUALITY_REJECTED"},
+        model_summary={"model_version": "ml_test_v1"},
+        baseline_summary={"baseline_accuracy": 0.45},
+        gate_policy_replay_summary={},
+        gap_quality_summary={},
+        anti_collapse_summary={},
+        candidate_selection_summary={},
+        label_config_summary={},
+        quality_gates_summary={},
+        output_dir=str(tmp_path),
+        log_path=str(tmp_path / "training_pipeline.log"),
+        events_path=str(tmp_path / "training_pipeline_events.jsonl"),
+        json_report_path=str(tmp_path / "training_pipeline_report.json"),
+        markdown_report_path=str(tmp_path / "training_pipeline_report.md"),
+        safety={},
+        command_snapshot={},
+        next_recommendations=(),
+        prediction_root_cause_audit={
+            "diagnostic_name": "prediction_root_cause_audit",
+            "diagnostic_version": "ml38_9_6",
+            "warnings": ["actual_down_rows_mapped_to_up"],
+        },
+    )
+
+    path = reporter.write_json_report(result)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert payload["prediction_root_cause_audit"]["diagnostic_name"] == "prediction_root_cause_audit"
+    assert payload["prediction_root_cause_audit"]["warnings"] == ["actual_down_rows_mapped_to_up"]
