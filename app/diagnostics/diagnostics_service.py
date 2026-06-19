@@ -23,6 +23,7 @@ from app.diagnostics.decision_policy_grid import DecisionPolicyGrid
 from app.diagnostics.prediction_collapse_detector import PredictionCollapseDetector
 from app.diagnostics.prediction_bias_root_cause import PredictionBiasRootCause
 from app.diagnostics.prediction_diagnostics import PredictionDiagnostics
+from app.diagnostics.prediction_root_cause_audit import PredictionRootCauseAuditor
 from app.diagnostics.prediction_probability_diagnostics import PredictionProbabilityDiagnostics
 from app.evaluation.calibration_evaluator import CalibrationEvaluator
 from app.evaluation.confidence_gate_evaluator import ConfidenceGateEvaluator
@@ -483,8 +484,14 @@ class DiagnosticsService:
             symbol=symbol,
             config_id=str(dict(label_config or {}).get("config_id") or label_version),
         )
+        config_id = str(dict(label_config or {}).get("config_id") or label_version)
         calibrated_predictions = list(calibrated_diagnostics.get("calibrated_rows", []))
-        selected_predictions = list(calibrated_diagnostics.get("selected_rows", calibrated_predictions))
+        selected_prediction_rows = list(calibrated_diagnostics.get("selected_rows", calibrated_predictions))
+        selected_prediction_labels = [
+            str(row.get("predicted_label", "FLAT")).upper()
+            for row in selected_prediction_rows
+            if isinstance(row, dict)
+        ]
         prediction_decision_source = str(
             calibrated_diagnostics.get("selected_decision_source") or "calibrated_decision_layer"
         )
@@ -496,9 +503,13 @@ class DiagnosticsService:
                 actual_labels=actual_labels,
                 baseline_accuracy=calibrated_diagnostics.get("baseline_accuracy"),
             )
-            selected_predictions = self._rows_with_selected_predictions(
+            selected_prediction_labels = [
+                str(label).upper()
+                for label in decision_policy_grid_diagnostics.get("selected_predictions", [])
+            ]
+            selected_prediction_rows = self._rows_with_selected_predictions(
                 source_rows=raw_predictions,
-                selected_predictions=decision_policy_grid_diagnostics.get("selected_predictions", []),
+                selected_predictions=selected_prediction_labels,
                 selected_decision_source=str(
                     decision_policy_grid_diagnostics.get("selected_decision_source")
                     or "decision_policy_grid:raw_argmax"
@@ -510,7 +521,7 @@ class DiagnosticsService:
             )
         report = self._prediction_probability_diagnostics.build_report(
             model_version=model_version,
-            predictions=selected_predictions,
+            predictions=selected_prediction_rows,
         )
         report["collapse_v2"] = self._prediction_collapse_detector.detect(report)
         calibrated_report = self._prediction_probability_diagnostics.build_report(
@@ -526,6 +537,13 @@ class DiagnosticsService:
         report["bounded_calibrated_decision_selection"] = dict(
             calibrated_diagnostics.get("bounded_calibrated_decision_selection", {})
         )
+        report["prediction_root_cause_audit"] = self.build_prediction_root_cause_audit(
+            prediction_rows=raw_predictions,
+            symbol=symbol,
+            config_id=config_id,
+            decision_source=prediction_decision_source,
+            selected_predictions=selected_prediction_labels,
+        )
         if decision_policy_grid_diagnostics:
             report["decision_policy_grid_diagnostics"] = decision_policy_grid_diagnostics
         report["prediction_decision_source"] = prediction_decision_source
@@ -536,6 +554,68 @@ class DiagnosticsService:
         output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         report["report_path"] = str(output_path)
         return report
+
+    def build_prediction_root_cause_audit(
+        self,
+        prediction_rows: list[dict[str, object]] | list[object],
+        *,
+        symbol: str | None = None,
+        config_id: str | None = None,
+        decision_source: str | None = None,
+        selected_predictions: list[str] | None = None,
+    ) -> dict[str, object]:
+        """Build diagnostic-only root-cause audit for selected candidate predictions."""
+
+        def _get(row: object, *names: str) -> object | None:
+            if isinstance(row, dict):
+                for name in names:
+                    if name in row:
+                        return row[name]
+            for name in names:
+                if hasattr(row, name):
+                    return getattr(row, name)
+            return None
+
+        actual_labels: list[object] = []
+        predicted_labels: list[object] = []
+        probability_rows: list[dict[str, float]] = []
+        split_names: list[object] = []
+        regime_labels: list[object] = []
+        timestamps: list[object] = []
+
+        for index, row in enumerate(prediction_rows or []):
+            actual = _get(row, "actual", "actual_label", "label", "target", "y_true")
+            predicted = None
+            if selected_predictions is not None and index < len(selected_predictions):
+                predicted = selected_predictions[index]
+            if predicted is None:
+                predicted = _get(row, "prediction", "predicted", "predicted_label", "y_pred")
+
+            actual_labels.append(actual)
+            predicted_labels.append(predicted)
+            probability_rows.append(
+                {
+                    "DOWN": float(_get(row, "prob_down", "prob_DOWN", "down_probability", "DOWN") or 0.0),
+                    "FLAT": float(_get(row, "prob_flat", "prob_FLAT", "flat_probability", "FLAT") or 0.0),
+                    "UP": float(_get(row, "prob_up", "prob_UP", "up_probability", "UP") or 0.0),
+                }
+            )
+            split_names.append(_get(row, "split", "split_name", "dataset_split") or "unknown")
+            regime_labels.append(_get(row, "regime", "market_regime", "regime_label") or "unknown")
+            timestamps.append(_get(row, "open_time", "timestamp", "time"))
+
+        auditor = PredictionRootCauseAuditor()
+        return auditor.build(
+            actual_labels=actual_labels,
+            predicted_labels=predicted_labels,
+            probability_rows=probability_rows,
+            split_names=split_names,
+            regime_labels=regime_labels,
+            timestamps=timestamps,
+            symbol=symbol,
+            config_id=config_id,
+            decision_source=decision_source,
+        )
 
     @staticmethod
     def _rows_with_selected_predictions(

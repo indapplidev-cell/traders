@@ -1575,6 +1575,11 @@ class LongHistoryTrainingPipelineRunner:
             ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        prediction_root_cause_audit = self._as_dict(
+            probability_diagnostics.get("prediction_root_cause_audit")
+        )
+        if prediction_root_cause_audit:
+            payload["prediction_root_cause_audit"] = prediction_root_cause_audit
         return {
             "status": COMPLETED,
             "message": "Model quality validation sample completed",
@@ -1654,6 +1659,11 @@ class LongHistoryTrainingPipelineRunner:
             ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        prediction_root_cause_audit = self._as_dict(
+            probability_diagnostics.get("prediction_root_cause_audit")
+        )
+        if prediction_root_cause_audit:
+            payload["prediction_root_cause_audit"] = prediction_root_cause_audit
         return {
             "status": COMPLETED,
             "message": "Model quality validation completed",

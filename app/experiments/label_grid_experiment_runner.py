@@ -105,6 +105,7 @@ class LabelGridExperimentCandidateResult:
     bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
     decision_policy_grid_diagnostics: dict[str, Any] = field(default_factory=dict)
     decision_policy_selected_policy_id: str | None = None
+    prediction_root_cause_audit: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -169,6 +170,7 @@ class LabelGridExperimentCandidateResult:
             "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
             "decision_policy_grid_diagnostics": dict(self.decision_policy_grid_diagnostics),
             "decision_policy_selected_policy_id": self.decision_policy_selected_policy_id,
+            "prediction_root_cause_audit": dict(self.prediction_root_cause_audit),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -1125,6 +1127,9 @@ class LabelGridExperimentRunner:
             decision_policy_selected_policy_id=selected_policy_payload.get(
                 "decision_policy_selected_policy_id"
             ),
+            prediction_root_cause_audit=self._as_dict(
+                probability_diagnostics.get("prediction_root_cause_audit", {})
+            ),
             raw_predicted_class_distribution=raw_predicted_class_distribution,
             calibrated_predicted_class_distribution=calibrated_predicted_class_distribution,
             raw_collapse_diagnostics_v2=dict(
@@ -1385,6 +1390,9 @@ class LabelGridExperimentRunner:
             decision_policy_grid_diagnostics=dict(selected_policy_payload["decision_policy_grid_diagnostics"]),
             decision_policy_selected_policy_id=selected_policy_payload.get(
                 "decision_policy_selected_policy_id"
+            ),
+            prediction_root_cause_audit=self._as_dict(
+                probability_diagnostics.get("prediction_root_cause_audit", {})
             ),
             raw_predicted_class_distribution=dict(
                 raw_probability_diagnostics.get("predicted_direction_ratios", {})

@@ -251,6 +251,10 @@ class FeatureRegimeExperimentReporter:
 
     @staticmethod
     def _candidate_markdown(payload: dict[str, Any]) -> str:
+        root_cause_audit = dict(payload.get("prediction_root_cause_audit", {}))
+        collapse_signature = dict(root_cause_audit.get("up_collapse_signature", {}))
+        warnings = root_cause_audit.get("warnings") or []
+        recommendations = root_cause_audit.get("recommendations") or []
         lines = [
             f"# Feature/Regime Candidate - {payload.get('candidate_id')}",
             "",
@@ -275,6 +279,14 @@ class FeatureRegimeExperimentReporter:
             f"- approved_for_auto_activation: `{payload.get('approved_for_auto_activation')}`",
             f"- orders_enabled: `{payload.get('orders_enabled')}`",
             f"- traders_core_connected: `{payload.get('traders_core_connected')}`",
+            "",
+            "## Prediction root-cause audit",
+            "",
+            f"- warnings: `{warnings}`",
+            f"- actual_down_predicted_up_ratio: `{collapse_signature.get('actual_down_predicted_up_ratio')}`",
+            f"- actual_flat_predicted_up_ratio: `{collapse_signature.get('actual_flat_predicted_up_ratio')}`",
+            f"- predicted_up_actual_down_or_flat_share: `{collapse_signature.get('predicted_up_actual_down_or_flat_share')}`",
+            f"- recommendation: `{recommendations[0] if recommendations else None}`",
             "",
         ]
         return "\n".join(lines)

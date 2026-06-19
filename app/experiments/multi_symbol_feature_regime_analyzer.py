@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 import json
 from pathlib import Path
 from typing import Any, Iterable
@@ -78,6 +79,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         configs_ranked = self._configs_ranked(symbol_results)
         anti_collapse_summary = self._anti_collapse_summary(symbol_results)
         confidence_profitability_summary = self._confidence_profitability_summary(symbol_results)
+        prediction_root_cause_summary = self._prediction_root_cause_summary(configs_ranked)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
                 int(item.get("decision_policy_selected_policy_id") is not None)
@@ -130,6 +132,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "symbol_results": symbol_results,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
+            "prediction_root_cause_summary": prediction_root_cause_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,
             "feature_version_summary": {
@@ -412,6 +415,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             )
             payload["failed_gates"] = row_failed_gates
             payload["passed_gates"] = row_passed_gates
+            payload["prediction_root_cause_audit"] = cls._as_dict(
+                payload.get("prediction_root_cause_audit")
+            )
             configs_ranked.append(payload)
         return {
             "symbol": str(summary.get("symbol")),
@@ -508,11 +514,45 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ) or cls._as_dict(best_candidate.get("decision_policy_grid_diagnostics")).get(
                 "selected_policy_id"
             ),
+            "prediction_root_cause_audit": cls._as_dict(
+                best_candidate.get("prediction_root_cause_audit")
+            ),
             "prediction_decision_source": best_candidate.get("prediction_decision_source"),
             "reasons_why_best_still_rejected": [
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
             ],
             "configs_ranked": configs_ranked,
+        }
+
+    @staticmethod
+    def _prediction_root_cause_summary(candidates: list[dict[str, object]]) -> dict[str, object]:
+        warning_counts: Counter[str] = Counter()
+        recommendation_counts: Counter[str] = Counter()
+        available_count = 0
+
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            audit = candidate.get("prediction_root_cause_audit") or {}
+            if not isinstance(audit, dict):
+                continue
+            if audit.get("diagnostic_name") != "prediction_root_cause_audit":
+                continue
+            available_count += 1
+            for warning in audit.get("warnings") or []:
+                warning_counts[str(warning)] += 1
+            for recommendation in audit.get("recommendations") or []:
+                recommendation_counts[str(recommendation)] += 1
+
+        return {
+            "diagnostic_name": "prediction_root_cause_summary",
+            "diagnostic_version": "ml38_9_6",
+            "available_candidate_count": available_count,
+            "warning_counts": dict(warning_counts),
+            "top_warnings": [warning for warning, _count in warning_counts.most_common(5)],
+            "top_recommendations": [
+                text for text, _count in recommendation_counts.most_common(5)
+            ],
         }
 
     @classmethod
@@ -651,6 +691,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload["decision_policy_selected_policy_id"] = payload.get(
                     "decision_policy_selected_policy_id",
                     decision_policy_payload.get("selected_policy_id"),
+                )
+                payload["prediction_root_cause_audit"] = cls._as_dict(
+                    payload.get("prediction_root_cause_audit")
                 )
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)

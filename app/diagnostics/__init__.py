@@ -13,6 +13,8 @@ __all__ = [
     "DecisionPolicyConfig",
     "DecisionPolicyGrid",
     "DecisionPolicyResult",
+    "PredictionRootCauseAuditor",
+    "RootCauseThresholds",
     "DecisionCalibrationConfig",
     "choose_bounded_calibrated_decisions",
     "evaluate_decision_distribution",
@@ -81,6 +83,17 @@ def __getattr__(name: str) -> Any:
             "DecisionPolicyConfig": DecisionPolicyConfig,
             "DecisionPolicyGrid": DecisionPolicyGrid,
             "DecisionPolicyResult": DecisionPolicyResult,
+        }[name]
+
+    if name in {"PredictionRootCauseAuditor", "RootCauseThresholds"}:
+        from app.diagnostics.prediction_root_cause_audit import (
+            PredictionRootCauseAuditor,
+            RootCauseThresholds,
+        )
+
+        return {
+            "PredictionRootCauseAuditor": PredictionRootCauseAuditor,
+            "RootCauseThresholds": RootCauseThresholds,
         }[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

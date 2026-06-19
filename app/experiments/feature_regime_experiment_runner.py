@@ -114,6 +114,7 @@ class FeatureRegimeCandidateResult:
     bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
     decision_policy_grid_diagnostics: dict[str, Any] = field(default_factory=dict)
     decision_policy_selected_policy_id: str | None = None
+    prediction_root_cause_audit: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -201,6 +202,7 @@ class FeatureRegimeCandidateResult:
             "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
             "decision_policy_grid_diagnostics": dict(self.decision_policy_grid_diagnostics),
             "decision_policy_selected_policy_id": self.decision_policy_selected_policy_id,
+            "prediction_root_cause_audit": dict(self.prediction_root_cause_audit),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -1637,6 +1639,9 @@ class FeatureRegimeExperimentRunner:
                 decision_policy_grid_diagnostics=self._as_dict(
                     getattr(item, "decision_policy_grid_diagnostics", {})
                 ),
+                prediction_root_cause_audit=self._as_dict(
+                    getattr(item, "prediction_root_cause_audit", {})
+                ),
                 raw_predicted_class_distribution=self._as_dict(
                     getattr(item, "raw_predicted_class_distribution", {})
                 ),
@@ -1708,6 +1713,9 @@ class FeatureRegimeExperimentRunner:
                 ),
                 decision_policy_selected_policy_id=candidate_payload.get(
                     "decision_policy_selected_policy_id"
+                ),
+                prediction_root_cause_audit=self._as_dict(
+                    candidate_payload.get("prediction_root_cause_audit")
                 ),
                 prediction_decision_source=candidate_payload.get("prediction_decision_source"),
                 predicted_class_distribution=self._as_dict(
@@ -1861,6 +1869,9 @@ class FeatureRegimeExperimentRunner:
                     decision_policy_selected_policy_id=candidate_payload.get(
                         "decision_policy_selected_policy_id"
                     ),
+                    prediction_root_cause_audit=self._as_dict(
+                        candidate_payload.get("prediction_root_cause_audit")
+                    ),
                     prediction_decision_source=candidate_payload.get("prediction_decision_source"),
                     predicted_class_distribution=self._as_dict(
                         candidate_payload.get("predicted_class_distribution")
@@ -2012,9 +2023,11 @@ class FeatureRegimeExperimentRunner:
                     "excluded_from_best_selection": False,
                     "failed_gates": list(item.failed_gates),
                     "decision_policy_grid_diagnostics": dict(item.decision_policy_grid_diagnostics),
-                    "decision_policy_selected_policy_id": dict(item.decision_policy_grid_diagnostics).get(
-                        "selected_policy_id"
+                    "decision_policy_selected_policy_id": (
+                        item.decision_policy_selected_policy_id
+                        or dict(item.decision_policy_grid_diagnostics).get("selected_policy_id")
                     ),
+                    "prediction_root_cause_audit": dict(item.prediction_root_cause_audit),
                     "prediction_decision_source": item.prediction_decision_source,
                 }
             )

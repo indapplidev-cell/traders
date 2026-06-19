@@ -207,6 +207,10 @@ class LabelGridExperimentReporter:
 
     @staticmethod
     def _candidate_markdown(candidate: dict[str, Any]) -> str:
+        root_cause_audit = dict(candidate.get("prediction_root_cause_audit", {}))
+        collapse_signature = dict(root_cause_audit.get("up_collapse_signature", {}))
+        warnings = root_cause_audit.get("warnings") or []
+        recommendations = root_cause_audit.get("recommendations") or []
         lines = [
             f"# Candidate Result - {candidate.get('config_id')}",
             "",
@@ -231,6 +235,14 @@ class LabelGridExperimentReporter:
             f"- approved_for_auto_activation: `{candidate.get('approved_for_auto_activation')}`",
             f"- orders_enabled: `{candidate.get('orders_enabled')}`",
             f"- traders_core_connected: `{candidate.get('traders_core_connected')}`",
+            "",
+            "## Prediction root-cause audit",
+            "",
+            f"- warnings: `{warnings}`",
+            f"- actual_down_predicted_up_ratio: `{collapse_signature.get('actual_down_predicted_up_ratio')}`",
+            f"- actual_flat_predicted_up_ratio: `{collapse_signature.get('actual_flat_predicted_up_ratio')}`",
+            f"- predicted_up_actual_down_or_flat_share: `{collapse_signature.get('predicted_up_actual_down_or_flat_share')}`",
+            f"- recommendation: `{recommendations[0] if recommendations else None}`",
             "",
         ]
         return "\n".join(lines)
