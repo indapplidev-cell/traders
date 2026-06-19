@@ -43,6 +43,7 @@ from app.labels.label_config import LabelConfig
 from app.labels.regime_label_builder import RegimeLabelBuilder
 from app.registry.artifact_storage import ArtifactStorage
 from app.registry.model_registry import ModelRegistry
+from app.training.two_stage_thresholds import DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
 from app.training.training_service import TrainingService
 from app.training.training_pipeline_logger import TrainingPipelineLogger
 from app.training.training_pipeline_reporter import TrainingPipelineReporter
@@ -102,6 +103,14 @@ class TrainingPipelineConfig:
     decision_actual_class_high_threshold: float = 0.25
     decision_policy_grid_enabled: bool = False
     decision_policy_grid_stage: str | None = None
+    opportunity_probability_threshold: float = 0.5
+    opportunity_threshold_sweep_enabled: bool = False
+    opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
+    opportunity_min_precision: float = 0.25
+    opportunity_min_recall: float = 0.50
+    opportunity_max_predicted_trade_rate: float = 0.15
+    opportunity_max_predicted_to_actual_trade_rate_ratio: float = 3.0
+    opportunity_max_false_positive_rate: float = 0.25
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1265,6 +1274,16 @@ class LongHistoryTrainingPipelineRunner:
                 flat_margin_target=config.flat_margin_target,
                 hard_negative_margin_weight=config.hard_negative_margin_weight,
                 hard_negative_margin_target=config.hard_negative_margin_target,
+                opportunity_probability_threshold=config.opportunity_probability_threshold,
+                opportunity_threshold_sweep_enabled=config.opportunity_threshold_sweep_enabled,
+                opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
+                opportunity_min_precision=config.opportunity_min_precision,
+                opportunity_min_recall=config.opportunity_min_recall,
+                opportunity_max_predicted_trade_rate=config.opportunity_max_predicted_trade_rate,
+                opportunity_max_predicted_to_actual_trade_rate_ratio=(
+                    config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                ),
+                opportunity_max_false_positive_rate=config.opportunity_max_false_positive_rate,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1336,6 +1355,16 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
                 "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
+                "opportunity_probability_threshold": config.opportunity_probability_threshold,
+                "opportunity_threshold_sweep_enabled": config.opportunity_threshold_sweep_enabled,
+                "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
+                "opportunity_min_precision": config.opportunity_min_precision,
+                "opportunity_min_recall": config.opportunity_min_recall,
+                "opportunity_max_predicted_trade_rate": config.opportunity_max_predicted_trade_rate,
+                "opportunity_max_predicted_to_actual_trade_rate_ratio": (
+                    config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                ),
+                "opportunity_max_false_positive_rate": config.opportunity_max_false_positive_rate,
                 "class_margin_objective_enabled": config.class_margin_objective_enabled,
                 "class_margin_objective_decision": class_margin_objective_decision,
                 "true_class_margin_weight": config.true_class_margin_weight,
@@ -1737,6 +1766,7 @@ class LongHistoryTrainingPipelineRunner:
             value = self._as_dict(build_labels_payload.get(key))
             if value:
                 payload[key] = value
+        self._attach_two_stage_threshold_payload(payload=payload, training_summary=training_summary)
         payload["schwager_robustness_decision_board"] = SchwagerRobustnessDecisionBoard().evaluate(
             payload
         )
@@ -1848,6 +1878,7 @@ class LongHistoryTrainingPipelineRunner:
             value = self._as_dict(build_labels_payload.get(key))
             if value:
                 payload[key] = value
+        self._attach_two_stage_threshold_payload(payload=payload, training_summary=training_summary)
         payload["schwager_robustness_decision_board"] = SchwagerRobustnessDecisionBoard().evaluate(
             payload
         )
@@ -1856,6 +1887,42 @@ class LongHistoryTrainingPipelineRunner:
             "message": "Model quality validation completed",
             "data": payload,
         }
+
+    def _attach_two_stage_threshold_payload(
+        self,
+        *,
+        payload: dict[str, Any],
+        training_summary: dict[str, Any],
+    ) -> None:
+        test_metrics = self._as_dict(training_summary.get("test_metrics"))
+        for key in (
+            "opportunity_probability_threshold",
+            "selected_opportunity_threshold",
+            "opportunity_threshold_selection",
+        ):
+            value = training_summary.get(key)
+            if value is not None:
+                payload[key] = value
+        if "opportunity_threshold_selection" in training_summary:
+            payload["opportunity_threshold_sweep"] = self._as_dict(
+                training_summary.get("opportunity_threshold_selection")
+            )
+        for key in (
+            "predicted_to_actual_trade_rate_ratio",
+            "predicted_trade_rate",
+            "actual_trade_rate",
+            "opportunity_precision",
+            "opportunity_recall",
+            "opportunity_f1",
+            "opportunity_false_positive_rate",
+        ):
+            value = test_metrics.get(key)
+            if value is not None:
+                payload[key] = value
+        if "two_stage_trade_diagnostics" in test_metrics:
+            payload["two_stage_trade_diagnostics"] = self._as_dict(
+                test_metrics.get("two_stage_trade_diagnostics")
+            )
 
     def _sample_payload_stage(
         self,
@@ -2062,6 +2129,51 @@ class LongHistoryTrainingPipelineRunner:
             "decision_policy_grid_stage": build_labels_payload.get(
                 "decision_policy_grid_stage",
                 config.decision_policy_grid_stage,
+            ),
+            "opportunity_probability_threshold": float(
+                build_labels_payload.get(
+                    "opportunity_probability_threshold",
+                    config.opportunity_probability_threshold,
+                )
+            ),
+            "opportunity_threshold_sweep_enabled": self._as_bool(
+                build_labels_payload.get(
+                    "opportunity_threshold_sweep_enabled",
+                    config.opportunity_threshold_sweep_enabled,
+                )
+            ),
+            "opportunity_threshold_candidates": [
+                float(item)
+                for item in self._as_list(
+                    build_labels_payload.get(
+                        "opportunity_threshold_candidates",
+                        config.opportunity_threshold_candidates,
+                    )
+                )
+            ],
+            "opportunity_min_precision": float(
+                build_labels_payload.get("opportunity_min_precision", config.opportunity_min_precision)
+            ),
+            "opportunity_min_recall": float(
+                build_labels_payload.get("opportunity_min_recall", config.opportunity_min_recall)
+            ),
+            "opportunity_max_predicted_trade_rate": float(
+                build_labels_payload.get(
+                    "opportunity_max_predicted_trade_rate",
+                    config.opportunity_max_predicted_trade_rate,
+                )
+            ),
+            "opportunity_max_predicted_to_actual_trade_rate_ratio": float(
+                build_labels_payload.get(
+                    "opportunity_max_predicted_to_actual_trade_rate_ratio",
+                    config.opportunity_max_predicted_to_actual_trade_rate_ratio,
+                )
+            ),
+            "opportunity_max_false_positive_rate": float(
+                build_labels_payload.get(
+                    "opportunity_max_false_positive_rate",
+                    config.opportunity_max_false_positive_rate,
+                )
             ),
             "class_margin_objective_enabled": self._as_bool(
                 build_labels_payload.get("class_margin_objective_enabled", config.class_margin_objective_enabled),

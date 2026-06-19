@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from app.training.two_stage_thresholds import compute_opportunity_threshold_metrics
+
 
 LABEL_TO_INDEX = {"UP": 0, "DOWN": 1, "FLAT": 2}
 INDEX_TO_LABEL = {0: "UP", 1: "DOWN", 2: "FLAT"}
@@ -20,6 +22,7 @@ class TrainingMetrics:
         direction_mask: list[bool] | None = None,
         opportunity_probabilities: list[float] | None = None,
         opportunity_targets: list[int] | None = None,
+        opportunity_probability_threshold: float = 0.5,
         training_objective: str = "direction_global",
     ) -> dict[str, Any]:
         if training_objective == "trade_two_stage":
@@ -32,6 +35,7 @@ class TrainingMetrics:
                 expected_move_targets=expected_move_targets,
                 opportunity_probabilities=opportunity_probabilities,
                 opportunity_targets=opportunity_targets,
+                opportunity_probability_threshold=opportunity_probability_threshold,
             )
         masked_direction_probabilities, masked_direction_targets = self._apply_direction_mask(
             direction_probabilities=direction_probabilities,
@@ -149,6 +153,7 @@ class TrainingMetrics:
         expected_move_targets: list[float],
         opportunity_probabilities: list[float] | None,
         opportunity_targets: list[int] | None,
+        opportunity_probability_threshold: float = 0.5,
     ) -> dict[str, Any]:
         predicted_classes = [self._argmax(probabilities) for probabilities in direction_probabilities]
         confusion_matrix = [[0, 0, 0] for _ in range(3)]
@@ -175,36 +180,34 @@ class TrainingMetrics:
 
         opportunity_probabilities = opportunity_probabilities or []
         opportunity_targets = opportunity_targets or []
-        predicted_trade_flags = [int(probability >= 0.5) for probability in opportunity_probabilities]
+        threshold = float(opportunity_probability_threshold)
+        predicted_trade_flags = [int(probability >= threshold) for probability in opportunity_probabilities]
         actual_trade_flags = [int(target) for target in opportunity_targets]
-        predicted_trade_rate = (
-            sum(predicted_trade_flags) / len(predicted_trade_flags)
-            if predicted_trade_flags
-            else 0.0
+        opportunity_threshold_metrics = compute_opportunity_threshold_metrics(
+            opportunity_probabilities,
+            opportunity_targets,
+            threshold=threshold,
         )
+        predicted_trade_rate = opportunity_threshold_metrics.predicted_trade_rate
         actual_trade_rate = (
-            sum(actual_trade_flags) / len(actual_trade_flags)
-            if actual_trade_flags
+            opportunity_threshold_metrics.actual_trade_rate
+            if opportunity_threshold_metrics.row_count > 0
             else trade_row_ratio
         )
+        predicted_to_actual_trade_rate_ratio = (
+            opportunity_threshold_metrics.predicted_to_actual_trade_rate_ratio
+            if opportunity_threshold_metrics.row_count > 0
+            else (0.0 if trade_row_ratio == 0.0 else predicted_trade_rate / trade_row_ratio)
+        )
 
-        true_positive_count = 0
-        false_positive_count = 0
-        false_negative_count = 0
-        true_negative_count = 0
+        true_positive_count = opportunity_threshold_metrics.true_positive_count
+        false_positive_count = opportunity_threshold_metrics.false_positive_count
+        false_negative_count = opportunity_threshold_metrics.false_negative_count
+        true_negative_count = opportunity_threshold_metrics.true_negative_count
         two_stage_confusion_matrix = [[0, 0, 0] for _ in range(3)]
         two_stage_correct = 0
         for index, actual_trade in enumerate(actual_trade_flags):
             predicted_trade = predicted_trade_flags[index]
-            if actual_trade == 1 and predicted_trade == 1:
-                true_positive_count += 1
-            elif actual_trade == 0 and predicted_trade == 1:
-                false_positive_count += 1
-            elif actual_trade == 1 and predicted_trade == 0:
-                false_negative_count += 1
-            else:
-                true_negative_count += 1
-
             actual_class = 0 if actual_trade == 0 else (1 if direction_targets[index] == 0 else 2)
             if predicted_trade == 0:
                 predicted_class = 0
@@ -213,31 +216,11 @@ class TrainingMetrics:
             two_stage_confusion_matrix[actual_class][predicted_class] += 1
             two_stage_correct += int(actual_class == predicted_class)
 
-        opportunity_accuracy = (
-            (true_positive_count + true_negative_count) / len(actual_trade_flags)
-            if actual_trade_flags
-            else 0.0
-        )
-        opportunity_precision = (
-            true_positive_count / (true_positive_count + false_positive_count)
-            if (true_positive_count + false_positive_count) > 0
-            else 0.0
-        )
-        opportunity_recall = (
-            true_positive_count / (true_positive_count + false_negative_count)
-            if (true_positive_count + false_negative_count) > 0
-            else 0.0
-        )
-        opportunity_f1 = (
-            2.0 * opportunity_precision * opportunity_recall / (opportunity_precision + opportunity_recall)
-            if (opportunity_precision + opportunity_recall) > 0
-            else 0.0
-        )
-        opportunity_false_positive_rate = (
-            false_positive_count / (false_positive_count + true_negative_count)
-            if (false_positive_count + true_negative_count) > 0
-            else 0.0
-        )
+        opportunity_accuracy = opportunity_threshold_metrics.accuracy
+        opportunity_precision = opportunity_threshold_metrics.precision
+        opportunity_recall = opportunity_threshold_metrics.recall
+        opportunity_f1 = opportunity_threshold_metrics.f1
+        opportunity_false_positive_rate = opportunity_threshold_metrics.false_positive_rate
         two_stage_accuracy = two_stage_correct / len(actual_trade_flags) if actual_trade_flags else 0.0
 
         return {
@@ -255,8 +238,10 @@ class TrainingMetrics:
             "direction_accuracy_on_trade_rows": direction_accuracy_on_trade_rows,
             "trade_row_ratio": trade_row_ratio,
             "no_trade_row_ratio": no_trade_row_ratio,
+            "opportunity_probability_threshold": threshold,
             "predicted_trade_rate": predicted_trade_rate,
             "actual_trade_rate": actual_trade_rate,
+            "predicted_to_actual_trade_rate_ratio": predicted_to_actual_trade_rate_ratio,
             "opportunity_accuracy": opportunity_accuracy,
             "opportunity_precision": opportunity_precision,
             "opportunity_recall": opportunity_recall,

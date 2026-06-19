@@ -53,8 +53,8 @@ START MODULE
         strict_validation_ok = true
         failed_candidate_count = 0
         selected_config_ids = [
+            "lv17_h08_tts_thr060",
             "lv16_h08_trade_two_stage",
-            "lv15_h08_setup_pure_ft",
         ]
         symbols = ["BTCUSDT", "SOLUSDT"]
         candidate_count = 4
@@ -66,9 +66,9 @@ START MODULE
         runtime_profile = quick_quality
         symbols = ["SOLUSDT"]
         selected_config_ids = [
-            "lv16_h08_trade_two_stage",
-            "lv16_h12_trade_two_stage",
-            "lv15_h12_setup_pure_ft",
+            "lv17_h08_tts_thr060",
+            "lv17_h08_tts_thr065",
+            "lv17_h12_tts_thr065",
         ]
         start_date = 2026-04-01
         end_date = 2026-06-15
@@ -168,12 +168,12 @@ DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
 # Runtime smoke: Prompt 4-6 plus ML38.10.4 setup-semantics coverage, two symbols, short period.
 # Covers:
-# - ML38.10.5 trade/no-trade two-stage via lv16_h08_trade_two_stage
-# - ML38.10.4 setup-pure label semantics via lv15_h08_setup_pure_ft
+# - ML38.10.6 threshold-control two-stage via lv17_h08_tts_thr060
+# - ML38.10.5 legacy two-stage comparison via lv16_h08_trade_two_stage
 # - ML38.10.2 Schwager robustness board through candidate report payloads
 FAST_DEBUG_CONFIGS = (
+    "lv17_h08_tts_thr060",
     "lv16_h08_trade_two_stage",
-    "lv15_h08_setup_pure_ft",
 )
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
@@ -182,9 +182,9 @@ FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 # Intermediate quality: one symbol, short period, Prompt 4-6 smoke shortlist.
 # Keep this small: it is not final validation and must not replace full research review.
 QUICK_QUALITY_CONFIGS = (
-    "lv16_h08_trade_two_stage",
-    "lv16_h12_trade_two_stage",
-    "lv15_h12_setup_pure_ft",
+    "lv17_h08_tts_thr060",
+    "lv17_h08_tts_thr065",
+    "lv17_h12_tts_thr065",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"

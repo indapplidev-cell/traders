@@ -98,6 +98,12 @@ ML38_10_5_TRADE_TWO_STAGE_CONFIG_IDS = (
     "lv16_h16_trade_two_stage",
 )
 
+ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS = (
+    "lv17_h08_tts_thr060",
+    "lv17_h08_tts_thr065",
+    "lv17_h12_tts_thr065",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -121,6 +127,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_10_3_CLASS_MARGIN_CONFIG_IDS,
     *ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS,
     *ML38_10_5_TRADE_TWO_STAGE_CONFIG_IDS,
+    *ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
@@ -186,6 +193,9 @@ class ML382FV3TuningMatrix:
             "trade_two_stage_stage": "ML38.10.5",
             "trade_two_stage_config_ids": list(ML38_10_5_TRADE_TWO_STAGE_CONFIG_IDS),
             "trade_two_stage_config_count": len(ML38_10_5_TRADE_TWO_STAGE_CONFIG_IDS),
+            "two_stage_threshold_stage": "ML38.10.6",
+            "two_stage_threshold_config_ids": list(ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS),
+            "two_stage_threshold_config_count": len(ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,

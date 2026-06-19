@@ -173,6 +173,27 @@ class ML382ConfigRanker:
         selected_policy_id = decision_policy_payload.get("selected_policy_id")
         selected_policy_edge = selected_policy.get("baseline_edge")
         selected_policy_safe = selected_policy.get("distribution_safe")
+        training_objective = str(
+            candidate.get("training_objective")
+            or dict(candidate.get("label_config", {})).get("training_objective")
+            or ""
+        )
+        two_stage_trade_diagnostics = dict(candidate.get("two_stage_trade_diagnostics", {}))
+        precision_control_gates = dict(two_stage_trade_diagnostics.get("precision_control_gates", {}))
+        opportunity_precision = self._safe_float(candidate.get("opportunity_precision"))
+        opportunity_recall = self._safe_float(candidate.get("opportunity_recall"))
+        opportunity_f1 = self._safe_float(candidate.get("opportunity_f1"))
+        opportunity_false_positive_rate = self._safe_float(candidate.get("opportunity_false_positive_rate"))
+        predicted_trade_rate = self._safe_float(candidate.get("predicted_trade_rate"))
+        actual_trade_rate = self._safe_float(candidate.get("actual_trade_rate"))
+        predicted_to_actual_trade_rate_ratio = self._safe_float(
+            candidate.get("predicted_to_actual_trade_rate_ratio")
+        )
+        direction_accuracy_on_trade_rows = self._safe_float(
+            dict(two_stage_trade_diagnostics).get("direction_accuracy_on_trade_rows")
+            if two_stage_trade_diagnostics
+            else candidate.get("direction_accuracy_on_trade_rows")
+        )
         bounded_calibration_bonus = 0.0
         bounded_calibration_fallback_penalty = 0.0
         if bounded_selection:
@@ -229,6 +250,23 @@ class ML382ConfigRanker:
             score_components["decision_policy_baseline_edge_bonus"] = min(3.0, edge * 50.0)
         else:
             score_components["decision_policy_baseline_edge_bonus"] = 0.0
+        if training_objective == "trade_two_stage":
+            trade_rate_ceiling = float(precision_control_gates.get("max_predicted_trade_rate", 0.15) or 0.15)
+            score_components["opportunity_f1_bonus"] = min(3.0, opportunity_f1 * 6.0)
+            score_components["opportunity_precision_bonus"] = min(2.5, opportunity_precision * 5.0)
+            score_components["direction_accuracy_trade_rows_bonus"] = min(
+                1.0,
+                max(0.0, direction_accuracy_on_trade_rows - 0.45) * 4.0,
+            )
+            score_components["trade_rate_ratio_penalty"] = -max(
+                0.0,
+                predicted_to_actual_trade_rate_ratio - 1.50,
+            )
+            score_components["opportunity_false_positive_penalty"] = -opportunity_false_positive_rate * 4.0
+            score_components["predicted_trade_rate_ceiling_penalty"] = -max(
+                0.0,
+                predicted_trade_rate - trade_rate_ceiling,
+            ) * 20.0
         rejection_reasons: list[str] = []
         baseline_score, baseline_components, baseline_reasons = self._baseline_edge_score_component(candidate)
         collapse_score, collapse_components, collapse_reasons = self._collapse_severity_score_component(candidate)
@@ -327,6 +365,7 @@ class ML382ConfigRanker:
             "calibrated_predicted_ratios": calibrated_ratios,
             "raw_predicted_ratios": raw_ratios,
             "prediction_decision_source": decision_source,
+            "training_objective": training_objective,
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "collapse_type": collapse_summary.get("collapse_type") or candidate.get("collapse_type"),
@@ -345,6 +384,45 @@ class ML382ConfigRanker:
             "baseline_edge": candidate.get("baseline_edge"),
             "baseline_edge_status": candidate.get("baseline_edge_status"),
             "collapse_severity": candidate.get("collapse_severity"),
+            "opportunity_probability_threshold": candidate.get("opportunity_probability_threshold"),
+            "selected_opportunity_threshold": candidate.get("selected_opportunity_threshold"),
+            "opportunity_threshold_selection": dict(candidate.get("opportunity_threshold_selection", {})),
+            "opportunity_threshold_sweep": dict(candidate.get("opportunity_threshold_sweep", {})),
+            "predicted_to_actual_trade_rate_ratio": predicted_to_actual_trade_rate_ratio,
+            "predicted_trade_rate": predicted_trade_rate,
+            "actual_trade_rate": actual_trade_rate,
+            "opportunity_precision": opportunity_precision,
+            "opportunity_recall": opportunity_recall,
+            "opportunity_f1": opportunity_f1,
+            "opportunity_false_positive_rate": opportunity_false_positive_rate,
+            "two_stage_trade_diagnostics": two_stage_trade_diagnostics,
+            "opportunity_precision_gate": {
+                "passed": "opportunity_precision_below_gate" not in two_stage_trade_diagnostics.get("warnings", []),
+                "minimum": precision_control_gates.get("min_precision"),
+                "actual": opportunity_precision,
+            },
+            "opportunity_recall_gate": {
+                "passed": "opportunity_recall_below_gate" not in two_stage_trade_diagnostics.get("warnings", []),
+                "minimum": precision_control_gates.get("min_recall"),
+                "actual": opportunity_recall,
+            },
+            "predicted_trade_rate_gate": {
+                "passed": "predicted_trade_rate_above_gate" not in two_stage_trade_diagnostics.get("warnings", []),
+                "maximum": precision_control_gates.get("max_predicted_trade_rate"),
+                "actual": predicted_trade_rate,
+            },
+            "trade_rate_ratio_gate": {
+                "passed": "predicted_to_actual_trade_rate_ratio_above_gate"
+                not in two_stage_trade_diagnostics.get("warnings", []),
+                "maximum": precision_control_gates.get("max_predicted_to_actual_trade_rate_ratio"),
+                "actual": predicted_to_actual_trade_rate_ratio,
+            },
+            "opportunity_false_positive_gate": {
+                "passed": "opportunity_false_positive_rate_above_gate"
+                not in two_stage_trade_diagnostics.get("warnings", []),
+                "maximum": precision_control_gates.get("max_false_positive_rate"),
+                "actual": opportunity_false_positive_rate,
+            },
             "rejection_reasons": rejection_reasons,
         }
 

@@ -29,6 +29,7 @@ from app.training.loss import baseline_edge_aware_direction_loss
 from app.training.probability_calibration import DEFAULT_TEMPERATURE_GRID
 from app.training.probability_calibration import fit_direction_temperature_for_model
 from app.training.model_version_builder import build_unique_model_version
+from app.training.two_stage_thresholds import DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
 from app.training.training_objectives import TRAINING_OBJECTIVE_TRADE_TWO_STAGE
 from app.training.training_objectives import is_trade_aware_objective
 from app.training.training_objectives import is_trade_two_stage_objective
@@ -86,6 +87,14 @@ class TrainingConfig:
     flat_margin_target: float = 0.05
     hard_negative_margin_weight: float = 0.0
     hard_negative_margin_target: float = 0.08
+    opportunity_probability_threshold: float = 0.5
+    opportunity_threshold_sweep_enabled: bool = False
+    opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
+    opportunity_min_precision: float = 0.25
+    opportunity_min_recall: float = 0.50
+    opportunity_max_predicted_trade_rate: float = 0.15
+    opportunity_max_predicted_to_actual_trade_rate_ratio: float = 3.0
+    opportunity_max_false_positive_rate: float = 0.25
 
 
 def _safe_run_id_part(value: object) -> str:
@@ -213,6 +222,14 @@ class TrainingService:
         flat_margin_target: float = 0.05,
         hard_negative_margin_weight: float = 0.0,
         hard_negative_margin_target: float = 0.08,
+        opportunity_probability_threshold: float = 0.5,
+        opportunity_threshold_sweep_enabled: bool = False,
+        opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
+        opportunity_min_precision: float = 0.25,
+        opportunity_min_recall: float = 0.50,
+        opportunity_max_predicted_trade_rate: float = 0.15,
+        opportunity_max_predicted_to_actual_trade_rate_ratio: float = 3.0,
+        opportunity_max_false_positive_rate: float = 0.25,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -271,6 +288,14 @@ class TrainingService:
             flat_margin_target=flat_margin_target,
             hard_negative_margin_weight=hard_negative_margin_weight,
             hard_negative_margin_target=hard_negative_margin_target,
+            opportunity_probability_threshold=opportunity_probability_threshold,
+            opportunity_threshold_sweep_enabled=opportunity_threshold_sweep_enabled,
+            opportunity_threshold_candidates=tuple(opportunity_threshold_candidates),
+            opportunity_min_precision=opportunity_min_precision,
+            opportunity_min_recall=opportunity_min_recall,
+            opportunity_max_predicted_trade_rate=opportunity_max_predicted_trade_rate,
+            opportunity_max_predicted_to_actual_trade_rate_ratio=opportunity_max_predicted_to_actual_trade_rate_ratio,
+            opportunity_max_false_positive_rate=opportunity_max_false_positive_rate,
         )
         started_at = datetime.now(tz=timezone.utc)
         run_id = build_training_run_id(
@@ -426,22 +451,53 @@ class TrainingService:
                 )
             probability_calibration = temperature_report.to_dict()
             direction_temperature = float(probability_calibration.get("selected_temperature") or 1.0)
+            opportunity_threshold_selection = None
+            selected_opportunity_threshold = float(config.opportunity_probability_threshold)
+            if is_trade_two_stage_objective(config.training_objective) and config.opportunity_threshold_sweep_enabled:
+                validation_threshold_probe = self._evaluator.evaluate(
+                    model,
+                    validation_dataset,
+                    direction_temperature=direction_temperature,
+                    opportunity_probability_threshold=float(config.opportunity_probability_threshold),
+                    opportunity_threshold_sweep_enabled=True,
+                    opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
+                    opportunity_min_precision=float(config.opportunity_min_precision),
+                    opportunity_min_recall=float(config.opportunity_min_recall),
+                    opportunity_max_predicted_trade_rate=float(config.opportunity_max_predicted_trade_rate),
+                    opportunity_max_predicted_to_actual_trade_rate_ratio=float(
+                        config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                    ),
+                    opportunity_max_false_positive_rate=float(config.opportunity_max_false_positive_rate),
+                    training_objective=config.training_objective,
+                )
+                opportunity_threshold_selection = validation_threshold_probe.get("opportunity_threshold_sweep")
+                if isinstance(opportunity_threshold_selection, dict):
+                    selected_opportunity_threshold = float(
+                        opportunity_threshold_selection.get(
+                            "selected_threshold",
+                            config.opportunity_probability_threshold,
+                        )
+                        or config.opportunity_probability_threshold
+                    )
             raw_train_metrics = self._evaluator.evaluate(
                 model,
                 train_dataset,
                 direction_temperature=1.0,
+                opportunity_probability_threshold=selected_opportunity_threshold,
                 training_objective=config.training_objective,
             )
             raw_validation_metrics = self._evaluator.evaluate(
                 model,
                 validation_dataset,
                 direction_temperature=1.0,
+                opportunity_probability_threshold=selected_opportunity_threshold,
                 training_objective=config.training_objective,
             )
             raw_test_metrics = self._evaluator.evaluate(
                 model,
                 test_dataset,
                 direction_temperature=1.0,
+                opportunity_probability_threshold=selected_opportunity_threshold,
                 training_objective=config.training_objective,
             )
 
@@ -449,22 +505,46 @@ class TrainingService:
                 model,
                 train_dataset,
                 direction_temperature=direction_temperature,
+                opportunity_probability_threshold=selected_opportunity_threshold,
                 training_objective=config.training_objective,
             )
             validation_metrics = self._evaluator.evaluate(
                 model,
                 validation_dataset,
                 direction_temperature=direction_temperature,
+                opportunity_probability_threshold=selected_opportunity_threshold,
+                opportunity_threshold_sweep_enabled=(
+                    is_trade_two_stage_objective(config.training_objective)
+                    and config.opportunity_threshold_sweep_enabled
+                ),
+                opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
+                opportunity_min_precision=float(config.opportunity_min_precision),
+                opportunity_min_recall=float(config.opportunity_min_recall),
+                opportunity_max_predicted_trade_rate=float(config.opportunity_max_predicted_trade_rate),
+                opportunity_max_predicted_to_actual_trade_rate_ratio=float(
+                    config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                ),
+                opportunity_max_false_positive_rate=float(config.opportunity_max_false_positive_rate),
                 training_objective=config.training_objective,
             )
             test_metrics = self._evaluator.evaluate(
                 model,
                 test_dataset,
                 direction_temperature=direction_temperature,
+                opportunity_probability_threshold=selected_opportunity_threshold,
                 training_objective=config.training_objective,
             )
             if config.training_objective == "trade_two_stage":
-                test_metrics["two_stage_trade_diagnostics"] = TwoStageTradeDiagnostics().evaluate_metrics(test_metrics)
+                test_metrics["two_stage_trade_diagnostics"] = TwoStageTradeDiagnostics().evaluate_metrics(
+                    test_metrics,
+                    min_precision=float(config.opportunity_min_precision),
+                    min_recall=float(config.opportunity_min_recall),
+                    max_predicted_trade_rate=float(config.opportunity_max_predicted_trade_rate),
+                    max_predicted_to_actual_trade_rate_ratio=float(
+                        config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                    ),
+                    max_false_positive_rate=float(config.opportunity_max_false_positive_rate),
+                )
 
             training_config = {
                 "model_name": model_name,
@@ -524,6 +604,18 @@ class TrainingService:
                 "flat_margin_target": config.flat_margin_target,
                 "hard_negative_margin_weight": config.hard_negative_margin_weight,
                 "hard_negative_margin_target": config.hard_negative_margin_target,
+                "opportunity_probability_threshold": float(config.opportunity_probability_threshold),
+                "opportunity_threshold_sweep_enabled": bool(config.opportunity_threshold_sweep_enabled),
+                "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
+                "opportunity_min_precision": float(config.opportunity_min_precision),
+                "opportunity_min_recall": float(config.opportunity_min_recall),
+                "opportunity_max_predicted_trade_rate": float(config.opportunity_max_predicted_trade_rate),
+                "opportunity_max_predicted_to_actual_trade_rate_ratio": float(
+                    config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                ),
+                "opportunity_max_false_positive_rate": float(config.opportunity_max_false_positive_rate),
+                "selected_opportunity_threshold": selected_opportunity_threshold,
+                "opportunity_threshold_selection": opportunity_threshold_selection,
                 "model_output_contract": self.model_output_contract(config.training_objective),
             }
             combined_metrics = {
@@ -623,6 +715,8 @@ class TrainingService:
                 "class_margin_objective_allowed": config.class_margin_objective_allowed,
                 "class_margin_objective_reason": config.class_margin_objective_reason,
                 "class_margin_feature_separability_rating": config.class_margin_feature_separability_rating,
+                "selected_opportunity_threshold": selected_opportunity_threshold,
+                "opportunity_threshold_selection": opportunity_threshold_selection,
                 "true_class_margin_weight": config.true_class_margin_weight,
                 "true_class_margin_target": config.true_class_margin_target,
                 "up_down_margin_weight": config.up_down_margin_weight,
@@ -631,6 +725,16 @@ class TrainingService:
                 "flat_margin_target": config.flat_margin_target,
                 "hard_negative_margin_weight": config.hard_negative_margin_weight,
                 "hard_negative_margin_target": config.hard_negative_margin_target,
+                "opportunity_probability_threshold": float(config.opportunity_probability_threshold),
+                "opportunity_threshold_sweep_enabled": bool(config.opportunity_threshold_sweep_enabled),
+                "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
+                "opportunity_min_precision": float(config.opportunity_min_precision),
+                "opportunity_min_recall": float(config.opportunity_min_recall),
+                "opportunity_max_predicted_trade_rate": float(config.opportunity_max_predicted_trade_rate),
+                "opportunity_max_predicted_to_actual_trade_rate_ratio": float(
+                    config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                ),
+                "opportunity_max_false_positive_rate": float(config.opportunity_max_false_positive_rate),
                 "opportunity_diagnostics": opportunity_diagnostics,
                 "class_margin_objective_decision": combined_metrics["class_margin_objective_decision"],
                 "model_output_contract": self.model_output_contract(config.training_objective),
@@ -661,13 +765,25 @@ class TrainingService:
         )
         split_rows = self._dataset_builder.split_rows(dataset_rows)
         training_objective = str(training_config.get("training_objective", "direction_global"))
+        selected_opportunity_threshold = float(
+            training_config.get(
+                "selected_opportunity_threshold",
+                training_config.get("opportunity_probability_threshold", 0.5),
+            )
+            or 0.5
+        )
         test_dataset = self.rows_to_tensors(
             split_rows["test"],
             feature_columns,
             scaler,
             training_objective=training_objective,
         )
-        test_metrics = self._evaluator.evaluate(model, test_dataset, training_objective=training_objective)
+        test_metrics = self._evaluator.evaluate(
+            model,
+            test_dataset,
+            opportunity_probability_threshold=selected_opportunity_threshold,
+            training_objective=training_objective,
+        )
         return {
             "model_version": model_version,
             "model_name": training_config["model_name"],

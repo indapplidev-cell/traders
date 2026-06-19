@@ -136,6 +136,18 @@ class FeatureRegimeCandidateResult:
     walk_forward_profit_diagnostics_missing_reason: str | None = None
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     profit_aware_diagnostics_missing_reason: str | None = None
+    opportunity_probability_threshold: float | None = None
+    selected_opportunity_threshold: float | None = None
+    opportunity_threshold_selection: dict[str, Any] = field(default_factory=dict)
+    opportunity_threshold_sweep: dict[str, Any] = field(default_factory=dict)
+    predicted_to_actual_trade_rate_ratio: float | None = None
+    predicted_trade_rate: float | None = None
+    actual_trade_rate: float | None = None
+    opportunity_precision: float | None = None
+    opportunity_recall: float | None = None
+    opportunity_f1: float | None = None
+    opportunity_false_positive_rate: float | None = None
+    two_stage_trade_diagnostics: dict[str, Any] = field(default_factory=dict)
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
     orders_enabled: bool = False
@@ -240,6 +252,18 @@ class FeatureRegimeCandidateResult:
             "walk_forward_profit_diagnostics_missing_reason": self.walk_forward_profit_diagnostics_missing_reason,
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
+            "opportunity_probability_threshold": self.opportunity_probability_threshold,
+            "selected_opportunity_threshold": self.selected_opportunity_threshold,
+            "opportunity_threshold_selection": dict(self.opportunity_threshold_selection),
+            "opportunity_threshold_sweep": dict(self.opportunity_threshold_sweep),
+            "predicted_to_actual_trade_rate_ratio": self.predicted_to_actual_trade_rate_ratio,
+            "predicted_trade_rate": self.predicted_trade_rate,
+            "actual_trade_rate": self.actual_trade_rate,
+            "opportunity_precision": self.opportunity_precision,
+            "opportunity_recall": self.opportunity_recall,
+            "opportunity_f1": self.opportunity_f1,
+            "opportunity_false_positive_rate": self.opportunity_false_positive_rate,
+            "two_stage_trade_diagnostics": dict(self.two_stage_trade_diagnostics),
             "approved_for_live_trading": self.approved_for_live_trading,
             "approved_for_auto_activation": self.approved_for_auto_activation,
             "orders_enabled": self.orders_enabled,
@@ -1889,6 +1913,32 @@ class FeatureRegimeExperimentRunner:
                     item,
                     "profit_aware_diagnostics_missing_reason",
                     None,
+                ),
+                opportunity_probability_threshold=getattr(item, "opportunity_probability_threshold", None),
+                selected_opportunity_threshold=getattr(item, "selected_opportunity_threshold", None),
+                opportunity_threshold_selection=self._as_dict(
+                    getattr(item, "opportunity_threshold_selection", {})
+                ),
+                opportunity_threshold_sweep=self._as_dict(
+                    getattr(item, "opportunity_threshold_sweep", {})
+                ),
+                predicted_to_actual_trade_rate_ratio=getattr(
+                    item,
+                    "predicted_to_actual_trade_rate_ratio",
+                    None,
+                ),
+                predicted_trade_rate=getattr(item, "predicted_trade_rate", None),
+                actual_trade_rate=getattr(item, "actual_trade_rate", None),
+                opportunity_precision=getattr(item, "opportunity_precision", None),
+                opportunity_recall=getattr(item, "opportunity_recall", None),
+                opportunity_f1=getattr(item, "opportunity_f1", None),
+                opportunity_false_positive_rate=getattr(
+                    item,
+                    "opportunity_false_positive_rate",
+                    None,
+                ),
+                two_stage_trade_diagnostics=self._as_dict(
+                    getattr(item, "two_stage_trade_diagnostics", {})
                 ),
                 model_quality_validation_status=getattr(item, "model_quality_validation_status", "COMPLETED"),
                 model_accuracy=getattr(item, "model_accuracy", None),

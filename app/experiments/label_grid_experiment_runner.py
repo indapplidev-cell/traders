@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -24,6 +24,7 @@ from app.training.training_pipeline_runner import (
 
 LABEL_GRID_EXPERIMENT_RUNNER_NAME = "label_grid_experiment_runner"
 LABEL_GRID_EXPERIMENT_RUNNER_VERSION = "ml28"
+LABEL_QUALITY_GRID_CONFIG_FIELD_NAMES = {item.name for item in fields(LabelQualityGridConfig)}
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +124,18 @@ class LabelGridExperimentCandidateResult:
     walk_forward_profit_diagnostics_missing_reason: str | None = None
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     profit_aware_diagnostics_missing_reason: str | None = None
+    opportunity_probability_threshold: float | None = None
+    selected_opportunity_threshold: float | None = None
+    opportunity_threshold_selection: dict[str, Any] = field(default_factory=dict)
+    opportunity_threshold_sweep: dict[str, Any] = field(default_factory=dict)
+    predicted_to_actual_trade_rate_ratio: float | None = None
+    predicted_trade_rate: float | None = None
+    actual_trade_rate: float | None = None
+    opportunity_precision: float | None = None
+    opportunity_recall: float | None = None
+    opportunity_f1: float | None = None
+    opportunity_false_positive_rate: float | None = None
+    two_stage_trade_diagnostics: dict[str, Any] = field(default_factory=dict)
     approved_for_traders_core_integration: bool = False
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
@@ -195,6 +208,18 @@ class LabelGridExperimentCandidateResult:
             "walk_forward_profit_diagnostics_missing_reason": self.walk_forward_profit_diagnostics_missing_reason,
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
+            "opportunity_probability_threshold": self.opportunity_probability_threshold,
+            "selected_opportunity_threshold": self.selected_opportunity_threshold,
+            "opportunity_threshold_selection": dict(self.opportunity_threshold_selection),
+            "opportunity_threshold_sweep": dict(self.opportunity_threshold_sweep),
+            "predicted_to_actual_trade_rate_ratio": self.predicted_to_actual_trade_rate_ratio,
+            "predicted_trade_rate": self.predicted_trade_rate,
+            "actual_trade_rate": self.actual_trade_rate,
+            "opportunity_precision": self.opportunity_precision,
+            "opportunity_recall": self.opportunity_recall,
+            "opportunity_f1": self.opportunity_f1,
+            "opportunity_false_positive_rate": self.opportunity_false_positive_rate,
+            "two_stage_trade_diagnostics": dict(self.two_stage_trade_diagnostics),
             "approved_for_traders_core_integration": self.approved_for_traders_core_integration,
             "approved_for_live_trading": self.approved_for_live_trading,
             "approved_for_auto_activation": self.approved_for_auto_activation,
@@ -620,7 +645,12 @@ class LabelGridExperimentRunner:
 
     def _select_configs(self, config: LabelGridExperimentConfig) -> list[LabelQualityGridConfig]:
         payload = self._grid_planner.build_grid()
-        configs = [LabelQualityGridConfig(**item) for item in payload["configs"]]
+        configs = [
+            LabelQualityGridConfig(
+                **{key: value for key, value in item.items() if key in LABEL_QUALITY_GRID_CONFIG_FIELD_NAMES}
+            )
+            for item in payload["configs"]
+        ]
         if config.label_config_ids:
             requested = set(config.label_config_ids)
             configs = [item for item in configs if item.config_id in requested]
@@ -963,6 +993,16 @@ class LabelGridExperimentRunner:
                 ),
                 decision_policy_grid_enabled=bool(label_config.decision_policy_grid_enabled),
                 decision_policy_grid_stage=label_config.decision_policy_grid_stage,
+                opportunity_probability_threshold=float(label_config.opportunity_probability_threshold),
+                opportunity_threshold_sweep_enabled=bool(label_config.opportunity_threshold_sweep_enabled),
+                opportunity_threshold_candidates=tuple(label_config.opportunity_threshold_candidates),
+                opportunity_min_precision=float(label_config.opportunity_min_precision),
+                opportunity_min_recall=float(label_config.opportunity_min_recall),
+                opportunity_max_predicted_trade_rate=float(label_config.opportunity_max_predicted_trade_rate),
+                opportunity_max_predicted_to_actual_trade_rate_ratio=float(
+                    label_config.opportunity_max_predicted_to_actual_trade_rate_ratio
+                ),
+                opportunity_max_false_positive_rate=float(label_config.opportunity_max_false_positive_rate),
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1116,6 +1156,9 @@ class LabelGridExperimentRunner:
             "predicted_class_distribution": dict(anti_collapse.get("predicted_distribution", {})),
         }
         apply_selected_decision_policy_metrics(selected_policy_payload)
+        opportunity_threshold_selection = self._as_dict(quality_payload.get("opportunity_threshold_selection"))
+        opportunity_threshold_sweep = self._as_dict(quality_payload.get("opportunity_threshold_sweep"))
+        two_stage_trade_diagnostics = self._as_dict(quality_payload.get("two_stage_trade_diagnostics"))
         return LabelGridExperimentCandidateResult(
             config_id=label_config.config_id,
             label_config=label_config.to_dict(),
@@ -1209,6 +1252,26 @@ class LabelGridExperimentRunner:
             walk_forward_profit_diagnostics_missing_reason=walk_forward_profit_diagnostics_missing_reason,
             profit_aware_diagnostics=profit_aware_diagnostics,
             profit_aware_diagnostics_missing_reason=profit_aware_diagnostics_missing_reason,
+            opportunity_probability_threshold=self._optional_float(
+                quality_payload.get("opportunity_probability_threshold")
+            ),
+            selected_opportunity_threshold=self._optional_float(
+                quality_payload.get("selected_opportunity_threshold")
+            ),
+            opportunity_threshold_selection=opportunity_threshold_selection,
+            opportunity_threshold_sweep=opportunity_threshold_sweep,
+            predicted_to_actual_trade_rate_ratio=self._optional_float(
+                quality_payload.get("predicted_to_actual_trade_rate_ratio")
+            ),
+            predicted_trade_rate=self._optional_float(quality_payload.get("predicted_trade_rate")),
+            actual_trade_rate=self._optional_float(quality_payload.get("actual_trade_rate")),
+            opportunity_precision=self._optional_float(quality_payload.get("opportunity_precision")),
+            opportunity_recall=self._optional_float(quality_payload.get("opportunity_recall")),
+            opportunity_f1=self._optional_float(quality_payload.get("opportunity_f1")),
+            opportunity_false_positive_rate=self._optional_float(
+                quality_payload.get("opportunity_false_positive_rate")
+            ),
+            two_stage_trade_diagnostics=two_stage_trade_diagnostics,
             approved_for_traders_core_integration=bool(
                 quality_payload.get("approved_for_traders_core_integration", False)
             ),

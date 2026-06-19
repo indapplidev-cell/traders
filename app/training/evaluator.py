@@ -6,6 +6,8 @@ import torch
 
 from app.training.metrics import TrainingMetrics
 from app.training.probability_calibration import softmax_with_temperature
+from app.training.two_stage_thresholds import DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
+from app.training.two_stage_thresholds import select_opportunity_threshold
 
 
 class Evaluator:
@@ -17,6 +19,14 @@ class Evaluator:
         model: torch.nn.Module,
         dataset: dict[str, torch.Tensor],
         direction_temperature: float = 1.0,
+        opportunity_probability_threshold: float = 0.5,
+        opportunity_threshold_sweep_enabled: bool = False,
+        opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
+        opportunity_min_precision: float = 0.25,
+        opportunity_min_recall: float = 0.50,
+        opportunity_max_predicted_trade_rate: float = 0.15,
+        opportunity_max_predicted_to_actual_trade_rate_ratio: float = 3.0,
+        opportunity_max_false_positive_rate: float = 0.25,
         training_objective: str = "direction_global",
     ) -> dict[str, Any]:
         if dataset["features"].shape[0] == 0:
@@ -31,6 +41,7 @@ class Evaluator:
                 "rows": 0,
                 "direction_temperature": float(direction_temperature),
                 "direction_evaluation_rows": 0,
+                "opportunity_probability_threshold": float(opportunity_probability_threshold),
             }
 
         opportunity_target_tensor = dataset.get("opportunity_target")
@@ -70,6 +81,7 @@ class Evaluator:
             direction_mask=direction_mask,
             opportunity_probabilities=opportunity_probabilities_tensor.cpu().tolist(),
             opportunity_targets=[int(value) for value in opportunity_target_tensor.cpu().tolist()],
+            opportunity_probability_threshold=float(opportunity_probability_threshold),
             training_objective=training_objective,
         )
         metrics["rows"] = int(dataset["features"].shape[0])
@@ -77,6 +89,20 @@ class Evaluator:
         metrics["training_objective"] = training_objective
         metrics["opportunity_probability_mean"] = float(opportunity_probabilities_tensor.mean().detach().item())
         metrics["no_trade_probability_mean"] = float((1.0 - opportunity_probabilities_tensor).mean().detach().item())
+        if training_objective == "trade_two_stage" and opportunity_threshold_sweep_enabled:
+            threshold_selection = select_opportunity_threshold(
+                opportunity_probabilities_tensor.cpu().tolist(),
+                [int(value) for value in opportunity_target_tensor.cpu().tolist()],
+                candidates=tuple(float(item) for item in opportunity_threshold_candidates),
+                min_precision=float(opportunity_min_precision),
+                min_recall=float(opportunity_min_recall),
+                max_predicted_trade_rate=float(opportunity_max_predicted_trade_rate),
+                max_predicted_to_actual_trade_rate_ratio=float(
+                    opportunity_max_predicted_to_actual_trade_rate_ratio
+                ),
+                max_false_positive_rate=float(opportunity_max_false_positive_rate),
+            )
+            metrics["opportunity_threshold_sweep"] = threshold_selection.to_dict()
 
         conditioned_direction_probabilities = direction_probabilities_tensor
         if training_objective == "opportunity_first" and direction_mask and any(direction_mask):

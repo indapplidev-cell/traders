@@ -884,6 +884,14 @@ class ModelQualityValidator:
         )
         opportunity_diagnostics = self._normalize_mapping(training_summary.get("opportunity_diagnostics"))
         opportunity_test = self._normalize_mapping(opportunity_diagnostics.get("test"))
+        test_metrics = self._normalize_mapping(training_summary.get("test_metrics"))
+        two_stage_trade_diagnostics = self._normalize_mapping(test_metrics.get("two_stage_trade_diagnostics"))
+        precision_control_gates = self._normalize_mapping(two_stage_trade_diagnostics.get("precision_control_gates"))
+        two_stage_warnings = [
+            str(item)
+            for item in two_stage_trade_diagnostics.get("warnings", [])
+            if item is not None
+        ]
         return {
             "baseline_edge_minimum": self.MIN_BASELINE_EDGE,
             "baseline_edge_passed": "baseline_edge_gate" in selector_payload["passed_gates"],
@@ -896,6 +904,32 @@ class ModelQualityValidator:
             "opportunity_collapse_gate": self._normalize_mapping(opportunity_test.get("opportunity_collapse_gate")),
             "no_trade_dominance_gate": self._normalize_mapping(opportunity_test.get("no_trade_dominance_gate")),
             "setup_edge_gate": self._normalize_mapping(opportunity_test.get("setup_edge_gate")),
+            "two_stage_trade_diagnostics": two_stage_trade_diagnostics,
+            "opportunity_precision_gate": {
+                "passed": "opportunity_precision_below_gate" not in two_stage_warnings,
+                "minimum": precision_control_gates.get("min_precision"),
+                "actual": test_metrics.get("opportunity_precision"),
+            },
+            "opportunity_recall_gate": {
+                "passed": "opportunity_recall_below_gate" not in two_stage_warnings,
+                "minimum": precision_control_gates.get("min_recall"),
+                "actual": test_metrics.get("opportunity_recall"),
+            },
+            "predicted_trade_rate_gate": {
+                "passed": "predicted_trade_rate_above_gate" not in two_stage_warnings,
+                "maximum": precision_control_gates.get("max_predicted_trade_rate"),
+                "actual": test_metrics.get("predicted_trade_rate"),
+            },
+            "trade_rate_ratio_gate": {
+                "passed": "predicted_to_actual_trade_rate_ratio_above_gate" not in two_stage_warnings,
+                "maximum": precision_control_gates.get("max_predicted_to_actual_trade_rate_ratio"),
+                "actual": test_metrics.get("predicted_to_actual_trade_rate_ratio"),
+            },
+            "opportunity_false_positive_gate": {
+                "passed": "opportunity_false_positive_rate_above_gate" not in two_stage_warnings,
+                "maximum": precision_control_gates.get("max_false_positive_rate"),
+                "actual": test_metrics.get("opportunity_false_positive_rate"),
+            },
             "failed_gates": list(selector_payload["failed_gates"]),
             "passed_gates": list(selector_payload["passed_gates"]),
         }

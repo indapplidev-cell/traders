@@ -30,20 +30,20 @@ def test_ml38_10_4_setup_pure_configs_are_in_grid_and_matrix() -> None:
     ]
 
 
-def test_ml38_10_4_runtime_smoke_uses_setup_pure_configs() -> None:
+def test_ml38_10_4_runtime_profiles_follow_ml38_10_6_threshold_shortlists() -> None:
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--fast-debug"])
     )
     assert fast_wrapper.selected_config_ids == (
+        "lv17_h08_tts_thr060",
         "lv16_h08_trade_two_stage",
-        "lv15_h08_setup_pure_ft",
     )
 
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     )
     assert quick_wrapper.selected_config_ids == (
-        "lv16_h08_trade_two_stage",
-        "lv16_h12_trade_two_stage",
-        "lv15_h12_setup_pure_ft",
+        "lv17_h08_tts_thr060",
+        "lv17_h08_tts_thr065",
+        "lv17_h12_tts_thr065",
     )
