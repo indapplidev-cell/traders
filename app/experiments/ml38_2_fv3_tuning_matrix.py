@@ -61,6 +61,12 @@ ML38_9_5_DECISION_POLICY_CONFIG_IDS = (
     "lv10_h16_thr065_tp15_sl15_dp",
 )
 
+ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS = (
+    "lv11_h08_thr052_tp10_sl10_fv4",
+    "lv11_h12_thr06_tp12_sl12_fv4",
+    "lv11_h16_thr065_tp15_sl15_fv4",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -78,9 +84,10 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_9_3_CALIBRATED_DECISION_CONFIG_IDS,
     *ML38_9_4_BOUNDED_CALIBRATION_CONFIG_IDS,
     *ML38_9_5_DECISION_POLICY_CONFIG_IDS,
+    *ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
-ML38_2_FEATURE_VERSION = "fv3_candle_ta_context"
+ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
 
 
 class ML382FV3TuningMatrix:
@@ -125,6 +132,9 @@ class ML382FV3TuningMatrix:
             "decision_policy_grid_stage": "ML38.9.5",
             "decision_policy_config_ids": list(ML38_9_5_DECISION_POLICY_CONFIG_IDS),
             "decision_policy_config_count": len(ML38_9_5_DECISION_POLICY_CONFIG_IDS),
+            "book_setup_context_stage": "ML38.9.8",
+            "book_setup_context_config_ids": list(ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS),
+            "book_setup_context_config_count": len(ML38_9_8_BOOK_SETUP_CONTEXT_CONFIG_IDS),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,

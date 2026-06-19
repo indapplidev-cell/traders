@@ -133,7 +133,7 @@ from typing import Any
 
 DEFAULT_STAGE_NAME = "FV3_CACHED_FRESH_TUNING"
 DEFAULT_STAGE_CONTEXT = "Fresh FV3 tuning using PostgreSQL candle cache"
-FEATURE_VERSION = "fv3_candle_ta_context"
+FEATURE_VERSION = "fv4_book_setup_context"
 DEFAULT_START_DATE = "2025-01-01"
 DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_INTERVAL = "15m"
@@ -165,17 +165,17 @@ def _infer_default_expected_candidate_count() -> int:
 DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
 DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
-# Runtime smoke: one decision-policy-grid config, two symbols, short period.
-FAST_DEBUG_CONFIGS = ("lv10_h12_thr06_tp12_sl12_dp",)
+# Runtime smoke: one fv4 decision-policy config, two symbols, short period.
+FAST_DEBUG_CONFIGS = ("lv11_h08_thr052_tp10_sl10_fv4",)
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 
-# Intermediate quality: one symbol, three ML38.9.5 configs, short period.
+# Intermediate quality: one symbol, three fv4 configs, short period.
 QUICK_QUALITY_CONFIGS = (
-    "lv10_h08_thr052_tp10_sl10_dp",
-    "lv10_h12_thr06_tp12_sl12_dp",
-    "lv10_h16_thr065_tp15_sl15_dp",
+    "lv11_h08_thr052_tp10_sl10_fv4",
+    "lv11_h12_thr06_tp12_sl12_fv4",
+    "lv11_h16_thr065_tp15_sl15_fv4",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"
@@ -1628,6 +1628,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--quick-quality-symbol",
+        "--symbol",
         default=QUICK_QUALITY_SYMBOL,
         help="Symbol used only when --quick-quality is set.",
     )

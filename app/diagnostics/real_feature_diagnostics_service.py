@@ -9,7 +9,12 @@ from app.diagnostics.regime_feature_diagnostics import RegimeFeatureDiagnostics
 from app.features.feature_models import (
     CANDLE_MORPHOLOGY_FEATURE_NAMES,
     CANDLE_PATTERN_FEATURE_NAMES,
+    FV4_BOOK_SETUP_CONTEXT_FEATURE_NAMES,
     FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
+    HTF_CONTEXT_FEATURE_NAMES,
+    NISON_CONTEXT_FEATURE_NAMES,
+    ALTUNINA_CONTEXT_FEATURE_NAMES,
+    PATH_CONTEXT_FEATURE_NAMES,
     TECHNICAL_CONTEXT_FEATURE_NAMES,
 )
 
@@ -18,6 +23,7 @@ class RealFeatureDiagnosticsService:
     DIAGNOSTIC_NAME = "real_feature_diagnostics_service"
     DIAGNOSTIC_VERSION = "ml36"
     FV3_FEATURE_VERSION = "fv3_candle_ta_context"
+    FV4_FEATURE_VERSION = "fv4_book_setup_context"
     FV3_REQUIRED_FEATURES = {
         "doji_score",
         "hammer_score",
@@ -26,6 +32,11 @@ class RealFeatureDiagnosticsService:
         "bollinger_position",
         "stochastic_k",
         "volume_zscore",
+    }
+    FV4_REQUIRED_FEATURES = {
+        "nison_reversal_context_score",
+        "alt_trend_continuation_long_score",
+        "path_8_high_low_expansion_atr",
     }
 
     def __init__(
@@ -70,8 +81,11 @@ class RealFeatureDiagnosticsService:
             if sample_mode:
                 recommendations.insert(0, "Sample-mode diagnostics are useful only for wiring checks.")
             candle_ta_context_missing_reason = None
+            book_setup_context_missing_reason = None
             if feature_version == self.FV3_FEATURE_VERSION:
                 candle_ta_context_missing_reason = reason or "fv3_candle_ta_context_rows_unavailable"
+            if feature_version == self.FV4_FEATURE_VERSION:
+                book_setup_context_missing_reason = reason or "fv4_book_setup_context_rows_unavailable"
             return {
                 "diagnostic_name": self.DIAGNOSTIC_NAME,
                 "diagnostic_version": self.DIAGNOSTIC_VERSION,
@@ -107,9 +121,24 @@ class RealFeatureDiagnosticsService:
                 "candle_pattern_feature_count": 0,
                 "technical_context_feature_count": 0,
                 "candle_ta_context_feature_count": 0,
+                "fv4_feature_count": 0,
+                "book_setup_context_feature_count": 0,
+                "nison_feature_count": 0,
+                "altunina_feature_count": 0,
+                "path_context_feature_count": 0,
+                "htf_context_feature_count": 0,
+                "missing_context_feature_count": len(HTF_CONTEXT_FEATURE_NAMES)
+                if feature_version == self.FV4_FEATURE_VERSION
+                else 0,
                 "regime_feature_count": 0,
                 "candle_ta_context_features_attached": False,
+                "book_setup_context_features_attached": False,
                 "candle_ta_context_missing_reason": candle_ta_context_missing_reason,
+                "book_setup_context_missing_reason": book_setup_context_missing_reason,
+                "higher_timeframe_context_available": False,
+                "higher_timeframe_context_reason": (
+                    "not_integrated_yet" if feature_version == self.FV4_FEATURE_VERSION else None
+                ),
                 "warnings": list(dict.fromkeys(warnings_list or ["dataset_rows_unavailable"])),
                 "recommendations": recommendations,
             }
@@ -128,9 +157,29 @@ class RealFeatureDiagnosticsService:
         feature_names = set(self._feature_names(normalized_rows))
         feature_count = len(feature_names)
         candle_ta_context_features_attached = self._has_fv3_feature_set(normalized_rows)
+        book_setup_context_features_attached = self._has_fv4_feature_set(normalized_rows)
         candle_ta_context_missing_reason = None
         if feature_version == self.FV3_FEATURE_VERSION and not candle_ta_context_features_attached:
             candle_ta_context_missing_reason = "fv3_required_features_missing_from_rows"
+        book_setup_context_missing_reason = None
+        if feature_version == self.FV4_FEATURE_VERSION and not book_setup_context_features_attached:
+            book_setup_context_missing_reason = "fv4_required_features_missing_from_rows"
+        higher_timeframe_context_available = False
+        higher_timeframe_context_reason = (
+            "not_integrated_yet" if feature_version == self.FV4_FEATURE_VERSION else None
+        )
+        nison_feature_count = self._count_present_features(feature_names, NISON_CONTEXT_FEATURE_NAMES)
+        altunina_feature_count = self._count_present_features(feature_names, ALTUNINA_CONTEXT_FEATURE_NAMES)
+        path_context_feature_count = self._count_present_features(feature_names, PATH_CONTEXT_FEATURE_NAMES)
+        htf_context_feature_count = 0 if not higher_timeframe_context_available else self._count_present_features(
+            feature_names,
+            HTF_CONTEXT_FEATURE_NAMES,
+        )
+        missing_context_feature_count = (
+            len(HTF_CONTEXT_FEATURE_NAMES) - htf_context_feature_count
+            if feature_version == self.FV4_FEATURE_VERSION
+            else 0
+        )
         return {
             "diagnostic_name": self.DIAGNOSTIC_NAME,
             "diagnostic_version": self.DIAGNOSTIC_VERSION,
@@ -165,9 +214,28 @@ class RealFeatureDiagnosticsService:
                 feature_names,
                 FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
             ),
+            "fv4_feature_count": self._count_present_features(
+                feature_names,
+                FV4_BOOK_SETUP_CONTEXT_FEATURE_NAMES,
+            ),
+            "book_setup_context_feature_count": (
+                nison_feature_count
+                + altunina_feature_count
+                + path_context_feature_count
+                + htf_context_feature_count
+            ),
+            "nison_feature_count": nison_feature_count,
+            "altunina_feature_count": altunina_feature_count,
+            "path_context_feature_count": path_context_feature_count,
+            "htf_context_feature_count": htf_context_feature_count,
+            "missing_context_feature_count": missing_context_feature_count,
             "regime_feature_count": sum(int(name.startswith("regime_")) for name in feature_names),
             "candle_ta_context_features_attached": candle_ta_context_features_attached,
+            "book_setup_context_features_attached": book_setup_context_features_attached,
             "candle_ta_context_missing_reason": candle_ta_context_missing_reason,
+            "book_setup_context_missing_reason": book_setup_context_missing_reason,
+            "higher_timeframe_context_available": higher_timeframe_context_available,
+            "higher_timeframe_context_reason": higher_timeframe_context_reason,
             "warnings": list(dict.fromkeys(warnings_list)),
             "recommendations": list(dict.fromkeys(recommendations)),
         }
@@ -205,3 +273,8 @@ class RealFeatureDiagnosticsService:
     def _has_fv3_feature_set(cls, rows: list[dict[str, Any]]) -> bool:
         feature_names = set(cls._feature_names(rows))
         return cls.FV3_REQUIRED_FEATURES.issubset(feature_names)
+
+    @classmethod
+    def _has_fv4_feature_set(cls, rows: list[dict[str, Any]]) -> bool:
+        feature_names = set(cls._feature_names(rows))
+        return cls.FV4_REQUIRED_FEATURES.issubset(feature_names)

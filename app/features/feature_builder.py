@@ -5,12 +5,14 @@ import json
 import math
 from typing import Any
 
+from app.features.book_setup_context_features import BookSetupContextFeatureBuilder
 from app.features.feature_models import FeatureRecord, feature_names_for_version
 from app.features.technical_indicators import TechnicalIndicators
 
 
 class FeatureBuilder:
     FV3_FEATURE_VERSION = "fv3_candle_ta_context"
+    FV4_FEATURE_VERSION = "fv4_book_setup_context"
     SHORT_WINDOW = 9
     MEDIUM_WINDOW = 21
     LONG_WINDOW = 50
@@ -60,6 +62,7 @@ class FeatureBuilder:
         rolling_low_48 = TechnicalIndicators.rolling_min(lows, self.SUPPORT_RESISTANCE_WINDOW)
         rolling_high_prev_48 = self._rolling_previous_extreme(highs, self.SUPPORT_RESISTANCE_WINDOW, highest=True)
         rolling_low_prev_48 = self._rolling_previous_extreme(lows, self.SUPPORT_RESISTANCE_WINDOW, highest=False)
+        book_setup_context_builder = BookSetupContextFeatureBuilder()
 
         log_returns = self._log_returns(closes)
         close_slope_3 = self._normalized_slope_series(closes, atr_14, 3)
@@ -182,7 +185,7 @@ class FeatureBuilder:
                 )
             )
 
-            if feature_version == self.FV3_FEATURE_VERSION:
+            if feature_version in {self.FV3_FEATURE_VERSION, self.FV4_FEATURE_VERSION}:
                 feature_values.update(
                     self._build_fv3_features(
                         index=index,
@@ -227,6 +230,15 @@ class FeatureBuilder:
                         correction_duration_series=correction_duration_series,
                         support_touch_counts=support_touch_counts,
                         resistance_touch_counts=resistance_touch_counts,
+                    )
+                )
+
+            if feature_version == self.FV4_FEATURE_VERSION:
+                feature_values.update(
+                    book_setup_context_builder.build(
+                        candles=candles,
+                        index=index,
+                        base_features=feature_values,
                     )
                 )
 

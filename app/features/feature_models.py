@@ -4,6 +4,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from app.features.book_setup_context_features import (
+    ALTUNINA_CONTEXT_FEATURE_NAMES,
+    BOOK_SETUP_CONTEXT_FEATURE_NAMES,
+    HTF_CONTEXT_FEATURE_NAMES,
+    NISON_CONTEXT_FEATURE_NAMES,
+    PATH_CONTEXT_FEATURE_NAMES,
+)
+
 
 def _unique_names(*groups: list[str]) -> list[str]:
     ordered: list[str] = []
@@ -223,11 +231,17 @@ FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES = _unique_names(
     TECHNICAL_CONTEXT_FEATURE_NAMES,
 )
 
+FV4_BOOK_SETUP_CONTEXT_FEATURE_NAMES = _unique_names(
+    FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
+    BOOK_SETUP_CONTEXT_FEATURE_NAMES,
+)
+
 FEATURE_NAMES_BY_VERSION = {
     "fv1": FEATURE_NAMES,
     "fv2": FV2_FEATURE_NAMES,
     "fv2_regime": FV2_REGIME_FEATURE_NAMES,
     "fv3_candle_ta_context": FV3_CANDLE_TA_CONTEXT_FEATURE_NAMES,
+    "fv4_book_setup_context": FV4_BOOK_SETUP_CONTEXT_FEATURE_NAMES,
 }
 
 

@@ -145,6 +145,15 @@ class FeatureRegimeCandidateResult:
     candle_ta_context_features_attached: bool = False
     candle_ta_context_feature_count: int = 0
     candle_ta_context_missing_reason: str | None = None
+    book_setup_context_features_attached: bool = False
+    book_setup_context_feature_count: int = 0
+    book_setup_context_missing_reason: str | None = None
+    fv4_feature_count: int = 0
+    nison_feature_count: int = 0
+    altunina_feature_count: int = 0
+    path_context_feature_count: int = 0
+    htf_context_feature_count: int = 0
+    missing_context_feature_count: int = 0
     model_quality_validation_status: str | None = None
     model_accuracy: float | None = None
     baseline_accuracy: float | None = None
@@ -234,6 +243,15 @@ class FeatureRegimeCandidateResult:
             "candle_ta_context_features_attached": self.candle_ta_context_features_attached,
             "candle_ta_context_feature_count": self.candle_ta_context_feature_count,
             "candle_ta_context_missing_reason": self.candle_ta_context_missing_reason,
+            "book_setup_context_features_attached": self.book_setup_context_features_attached,
+            "book_setup_context_feature_count": self.book_setup_context_feature_count,
+            "book_setup_context_missing_reason": self.book_setup_context_missing_reason,
+            "fv4_feature_count": self.fv4_feature_count,
+            "nison_feature_count": self.nison_feature_count,
+            "altunina_feature_count": self.altunina_feature_count,
+            "path_context_feature_count": self.path_context_feature_count,
+            "htf_context_feature_count": self.htf_context_feature_count,
+            "missing_context_feature_count": self.missing_context_feature_count,
             "model_quality_validation_status": self.model_quality_validation_status,
             "model_accuracy": self.model_accuracy,
             "baseline_accuracy": self.baseline_accuracy,
@@ -340,6 +358,15 @@ class FeatureRegimeExperimentResult:
     candle_ta_context_features_attached: bool = False
     candle_ta_context_feature_count: int = 0
     candle_ta_context_missing_reason: str | None = None
+    book_setup_context_features_attached: bool = False
+    book_setup_context_feature_count: int = 0
+    book_setup_context_missing_reason: str | None = None
+    fv4_feature_count: int = 0
+    nison_feature_count: int = 0
+    altunina_feature_count: int = 0
+    path_context_feature_count: int = 0
+    htf_context_feature_count: int = 0
+    missing_context_feature_count: int = 0
     regime_features_missing_reason: str | None = None
     candidate_status: str | None = None
     model_quality_validation_status: str | None = None
@@ -421,6 +448,15 @@ class FeatureRegimeExperimentResult:
             "candle_ta_context_features_attached": self.candle_ta_context_features_attached,
             "candle_ta_context_feature_count": self.candle_ta_context_feature_count,
             "candle_ta_context_missing_reason": self.candle_ta_context_missing_reason,
+            "book_setup_context_features_attached": self.book_setup_context_features_attached,
+            "book_setup_context_feature_count": self.book_setup_context_feature_count,
+            "book_setup_context_missing_reason": self.book_setup_context_missing_reason,
+            "fv4_feature_count": self.fv4_feature_count,
+            "nison_feature_count": self.nison_feature_count,
+            "altunina_feature_count": self.altunina_feature_count,
+            "path_context_feature_count": self.path_context_feature_count,
+            "htf_context_feature_count": self.htf_context_feature_count,
+            "missing_context_feature_count": self.missing_context_feature_count,
             "regime_features_missing_reason": self.regime_features_missing_reason,
             "candidate_status": self.candidate_status,
             "model_quality_validation_status": self.model_quality_validation_status,
@@ -582,7 +618,11 @@ class FeatureRegimeExperimentRunner:
         if not rows:
             return False
         if feature_version != RealFeatureDiagnosticsService.FV3_FEATURE_VERSION:
-            return True
+            if feature_version != RealFeatureDiagnosticsService.FV4_FEATURE_VERSION:
+                return True
+            return RealFeatureDiagnosticsService.FV4_REQUIRED_FEATURES.issubset(
+                cls._feature_names_from_rows(rows)
+            )
         return RealFeatureDiagnosticsService.FV3_REQUIRED_FEATURES.issubset(
             cls._feature_names_from_rows(rows)
         )
@@ -603,6 +643,24 @@ class FeatureRegimeExperimentRunner:
             diagnostics.get("candle_ta_context_missing_reason")
             or real_feature_diagnostics_missing_reason
             or "fv3_candle_ta_context_features_not_attached"
+        )
+
+    @staticmethod
+    def _book_setup_context_missing_reason(
+        *,
+        feature_version: str,
+        attached: bool,
+        diagnostics: dict[str, Any],
+        real_feature_diagnostics_missing_reason: str | None,
+    ) -> str | None:
+        if attached:
+            return None
+        if feature_version != RealFeatureDiagnosticsService.FV4_FEATURE_VERSION:
+            return "feature_version_not_fv4_book_setup_context"
+        return str(
+            diagnostics.get("book_setup_context_missing_reason")
+            or real_feature_diagnostics_missing_reason
+            or "fv4_book_setup_context_features_not_attached"
         )
 
     @staticmethod
@@ -709,13 +767,19 @@ class FeatureRegimeExperimentRunner:
         return primary_status
 
     def build_preview(self) -> dict[str, Any]:
-        feature_names = feature_names_for_version("fv3_candle_ta_context")
+        feature_names = feature_names_for_version("fv4_book_setup_context")
         regime_feature_count = len([name for name in feature_names if name.startswith("regime_")])
         return {
             "runner_name": FEATURE_REGIME_EXPERIMENT_RUNNER_NAME,
             "runner_version": FEATURE_REGIME_EXPERIMENT_RUNNER_VERSION,
-            "feature_version_default": "fv3_candle_ta_context",
-            "feature_versions_available": ["fv1", "fv2", "fv2_regime", "fv3_candle_ta_context"],
+            "feature_version_default": "fv4_book_setup_context",
+            "feature_versions_available": [
+                "fv1",
+                "fv2",
+                "fv2_regime",
+                "fv3_candle_ta_context",
+                "fv4_book_setup_context",
+            ],
             "available_base_label_configs": self._base_grid_planner.build_grid()["configs"],
             "available_regime_configs": self._regime_label_planner.build_configs()["configs"],
             "feature_diagnostics_plan": {
@@ -728,10 +792,13 @@ class FeatureRegimeExperimentRunner:
                 "regime_experiment_plan": True,
             },
             "feature_regime_integration": {
-                "feature_version_used": "fv3_candle_ta_context",
+                "feature_version_used": "fv4_book_setup_context",
                 "regime_features_attached": True,
                 "regime_feature_count": regime_feature_count,
                 "candle_ta_context_features_attached": True,
+                "book_setup_context_features_attached": True,
+                "book_setup_context_feature_count": len(feature_names_for_version("fv4_book_setup_context"))
+                - len(feature_names_for_version("fv3_candle_ta_context")),
                 "regime_specific_labeling_available": True,
                 "regime_specific_training_applied": True,
             },
@@ -988,6 +1055,21 @@ class FeatureRegimeExperimentRunner:
             candle_ta_context_features_attached=bool(diagnostics.get("candle_ta_context_features_attached", False)),
             candle_ta_context_feature_count=int(diagnostics.get("candle_ta_context_feature_count", 0) or 0),
             candle_ta_context_missing_reason=diagnostics.get("candle_ta_context_missing_reason"),
+            book_setup_context_features_attached=bool(
+                diagnostics.get("book_setup_context_features_attached", False)
+            ),
+            book_setup_context_feature_count=int(
+                diagnostics.get("book_setup_context_feature_count", 0) or 0
+            ),
+            book_setup_context_missing_reason=diagnostics.get("book_setup_context_missing_reason"),
+            fv4_feature_count=int(diagnostics.get("fv4_feature_count", 0) or 0),
+            nison_feature_count=int(diagnostics.get("nison_feature_count", 0) or 0),
+            altunina_feature_count=int(diagnostics.get("altunina_feature_count", 0) or 0),
+            path_context_feature_count=int(diagnostics.get("path_context_feature_count", 0) or 0),
+            htf_context_feature_count=int(diagnostics.get("htf_context_feature_count", 0) or 0),
+            missing_context_feature_count=int(
+                diagnostics.get("missing_context_feature_count", 0) or 0
+            ),
             regime_features_missing_reason=diagnostics.get("regime_features_missing_reason"),
             candidate_status=None if best_candidate is None else best_candidate.candidate_status,
             model_quality_validation_status=(
@@ -1126,6 +1208,9 @@ class FeatureRegimeExperimentRunner:
                 "real_feature_diagnostics_row_count": real_feature_diagnostics.get("row_count"),
                 "regime_features_attached": regime_features_attached,
                 "candle_ta_context_features_attached": real_feature_diagnostics.get("candle_ta_context_features_attached"),
+                "book_setup_context_features_attached": real_feature_diagnostics.get(
+                    "book_setup_context_features_attached"
+                ),
             },
             message="Diagnostics collection completed",
         )
@@ -1149,6 +1234,29 @@ class FeatureRegimeExperimentRunner:
                 real_feature_diagnostics.get("candle_ta_context_feature_count", 0) or 0
             ),
             "candle_ta_context_missing_reason": candle_ta_context_missing_reason,
+            "book_setup_context_features_attached": bool(
+                real_feature_diagnostics.get("book_setup_context_features_attached", False)
+            ),
+            "book_setup_context_feature_count": int(
+                real_feature_diagnostics.get("book_setup_context_feature_count", 0) or 0
+            ),
+            "book_setup_context_missing_reason": real_feature_diagnostics.get(
+                "book_setup_context_missing_reason"
+            ),
+            "fv4_feature_count": int(real_feature_diagnostics.get("fv4_feature_count", 0) or 0),
+            "nison_feature_count": int(real_feature_diagnostics.get("nison_feature_count", 0) or 0),
+            "altunina_feature_count": int(
+                real_feature_diagnostics.get("altunina_feature_count", 0) or 0
+            ),
+            "path_context_feature_count": int(
+                real_feature_diagnostics.get("path_context_feature_count", 0) or 0
+            ),
+            "htf_context_feature_count": int(
+                real_feature_diagnostics.get("htf_context_feature_count", 0) or 0
+            ),
+            "missing_context_feature_count": int(
+                real_feature_diagnostics.get("missing_context_feature_count", 0) or 0
+            ),
             "regime_feature_count": regime_feature_count,
             "regime_features_missing_reason": regime_features_missing_reason,
             "regime_feature_source": str(real_feature_diagnostics.get("source", "unknown")),
@@ -1570,6 +1678,22 @@ class FeatureRegimeExperimentRunner:
         candle_ta_context_feature_count = int(
             real_feature_diagnostics.get("candle_ta_context_feature_count", 0) or 0
         )
+        book_setup_context_features_attached = bool(
+            real_feature_diagnostics.get("book_setup_context_features_attached", False)
+        )
+        book_setup_context_feature_count = int(
+            real_feature_diagnostics.get("book_setup_context_feature_count", 0) or 0
+        )
+        fv4_feature_count = int(real_feature_diagnostics.get("fv4_feature_count", 0) or 0)
+        nison_feature_count = int(real_feature_diagnostics.get("nison_feature_count", 0) or 0)
+        altunina_feature_count = int(real_feature_diagnostics.get("altunina_feature_count", 0) or 0)
+        path_context_feature_count = int(
+            real_feature_diagnostics.get("path_context_feature_count", 0) or 0
+        )
+        htf_context_feature_count = int(real_feature_diagnostics.get("htf_context_feature_count", 0) or 0)
+        missing_context_feature_count = int(
+            real_feature_diagnostics.get("missing_context_feature_count", 0) or 0
+        )
         regime_feature_count = int(real_feature_diagnostics.get("regime_feature_count", 0) or 0)
         regime_features_attached = bool(regime_feature_count > 0)
         if isinstance(real_feature_diagnostics.get("regime_feature_diagnostics"), dict):
@@ -1584,6 +1708,12 @@ class FeatureRegimeExperimentRunner:
         candle_ta_context_missing_reason = self._candle_ta_context_missing_reason(
             feature_version=config.feature_version,
             attached=candle_ta_context_features_attached,
+            diagnostics=real_feature_diagnostics,
+            real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
+        )
+        book_setup_context_missing_reason = self._book_setup_context_missing_reason(
+            feature_version=config.feature_version,
+            attached=book_setup_context_features_attached,
             diagnostics=real_feature_diagnostics,
             real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
         )
@@ -1665,6 +1795,15 @@ class FeatureRegimeExperimentRunner:
                 candle_ta_context_features_attached=candle_ta_context_features_attached,
                 candle_ta_context_feature_count=candle_ta_context_feature_count,
                 candle_ta_context_missing_reason=candle_ta_context_missing_reason,
+                book_setup_context_features_attached=book_setup_context_features_attached,
+                book_setup_context_feature_count=book_setup_context_feature_count,
+                book_setup_context_missing_reason=book_setup_context_missing_reason,
+                fv4_feature_count=fv4_feature_count,
+                nison_feature_count=nison_feature_count,
+                altunina_feature_count=altunina_feature_count,
+                path_context_feature_count=path_context_feature_count,
+                htf_context_feature_count=htf_context_feature_count,
+                missing_context_feature_count=missing_context_feature_count,
                 real_feature_diagnostics=real_feature_diagnostics,
                 real_feature_diagnostics_missing_reason=real_feature_diagnostics_missing_reason,
                 collapse_diagnostics_v2=self._as_dict(item.collapse_diagnostics_v2),

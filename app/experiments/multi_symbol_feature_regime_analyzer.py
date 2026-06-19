@@ -55,6 +55,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
         all_feature_version_fv3_candle_ta_context = all(
             item["feature_version_used"] == "fv3_candle_ta_context" for item in symbol_results
         )
+        all_feature_version_fv4_book_setup_context = all(
+            item["feature_version_used"] == "fv4_book_setup_context" for item in symbol_results
+        )
         all_gap_training_safe = all(
             item["gap_training_safe"]
             and item["effective_gap_count_for_training"] == 0
@@ -143,6 +146,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     item["symbol"]: item["feature_version_used"] for item in symbol_results
                 },
                 "all_feature_version_fv3_candle_ta_context": all_feature_version_fv3_candle_ta_context,
+                "all_feature_version_fv4_book_setup_context": all_feature_version_fv4_book_setup_context,
             },
             "gap_training_safety_summary": {
                 "all_gap_training_safe": all_gap_training_safe,
@@ -184,6 +188,34 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 },
                 "candle_ta_context_missing_reason_by_symbol": {
                     item["symbol"]: item["candle_ta_context_missing_reason"] for item in symbol_results
+                },
+                "book_setup_context_features_attached_by_symbol": {
+                    item["symbol"]: item.get("book_setup_context_features_attached", False)
+                    for item in symbol_results
+                },
+                "book_setup_context_feature_count_by_symbol": {
+                    item["symbol"]: item.get("book_setup_context_feature_count", 0)
+                    for item in symbol_results
+                },
+                "nison_feature_count_by_symbol": {
+                    item["symbol"]: item.get("nison_feature_count", 0)
+                    for item in symbol_results
+                },
+                "altunina_feature_count_by_symbol": {
+                    item["symbol"]: item.get("altunina_feature_count", 0)
+                    for item in symbol_results
+                },
+                "path_context_feature_count_by_symbol": {
+                    item["symbol"]: item.get("path_context_feature_count", 0)
+                    for item in symbol_results
+                },
+                "htf_context_feature_count_by_symbol": {
+                    item["symbol"]: item.get("htf_context_feature_count", 0)
+                    for item in symbol_results
+                },
+                "missing_context_feature_count_by_symbol": {
+                    item["symbol"]: item.get("missing_context_feature_count", 0)
+                    for item in symbol_results
                 },
                 "symbols_missing_candle_ta_context_features": symbols_missing_candle_ta_context,
             },
@@ -440,6 +472,20 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "candle_ta_context_features_attached": bool(summary.get("candle_ta_context_features_attached", False)),
             "candle_ta_context_feature_count": int(summary.get("candle_ta_context_feature_count", 0) or 0),
             "candle_ta_context_missing_reason": summary.get("candle_ta_context_missing_reason"),
+            "book_setup_context_features_attached": bool(
+                summary.get("book_setup_context_features_attached", False)
+            ),
+            "book_setup_context_feature_count": int(
+                summary.get("book_setup_context_feature_count", 0) or 0
+            ),
+            "fv4_feature_count": int(summary.get("fv4_feature_count", 0) or 0),
+            "nison_feature_count": int(summary.get("nison_feature_count", 0) or 0),
+            "altunina_feature_count": int(summary.get("altunina_feature_count", 0) or 0),
+            "path_context_feature_count": int(summary.get("path_context_feature_count", 0) or 0),
+            "htf_context_feature_count": int(summary.get("htf_context_feature_count", 0) or 0),
+            "missing_context_feature_count": int(
+                summary.get("missing_context_feature_count", 0) or 0
+            ),
             "real_feature_diagnostics_used": bool(summary.get("real_feature_diagnostics_used", False)),
             "real_feature_diagnostics_row_count": int(summary.get("real_feature_diagnostics_row_count", 0) or 0),
             "real_feature_diagnostics_missing_reason": summary.get("real_feature_diagnostics_missing_reason"),
