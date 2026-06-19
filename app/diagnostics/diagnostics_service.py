@@ -21,6 +21,7 @@ from app.diagnostics.fold_label_diagnostics import FoldLabelDiagnostics
 from app.diagnostics.calibrated_prediction_decisions import CalibratedPredictionDecisions
 from app.diagnostics.decision_policy_grid import DecisionPolicyGrid
 from app.diagnostics.book_driven_forensic_audit import BookDrivenForensicAudit
+from app.diagnostics.schwager_robustness_decision_board import build_schwager_slice_robustness
 from app.diagnostics.prediction_collapse_detector import PredictionCollapseDetector
 from app.diagnostics.prediction_bias_root_cause import PredictionBiasRootCause
 from app.diagnostics.prediction_diagnostics import PredictionDiagnostics
@@ -558,6 +559,10 @@ class DiagnosticsService:
                 "decision_policy_selected_policy_id": dict(decision_policy_grid_diagnostics).get("selected_policy_id"),
                 "prediction_root_cause_audit": report["prediction_root_cause_audit"],
             },
+        )
+        report["schwager_slice_robustness"] = build_schwager_slice_robustness(
+            selected_prediction_rows,
+            label_mode=dict(label_config or {}).get("label_mode"),
         )
         if decision_policy_grid_diagnostics:
             report["decision_policy_grid_diagnostics"] = decision_policy_grid_diagnostics

@@ -320,6 +320,10 @@ class ML382ConfigRanker:
             "decision_policy_selected_policy_id": selected_policy_id,
             "prediction_root_cause_audit": dict(candidate.get("prediction_root_cause_audit", {})),
             "book_driven_forensic_audit": dict(candidate.get("book_driven_forensic_audit", {})),
+            "schwager_slice_robustness": dict(candidate.get("schwager_slice_robustness", {})),
+            "schwager_robustness_decision_board": dict(
+                candidate.get("schwager_robustness_decision_board", {})
+            ),
             "calibrated_predicted_ratios": calibrated_ratios,
             "raw_predicted_ratios": raw_ratios,
             "prediction_decision_source": decision_source,

@@ -20,6 +20,7 @@ __all__ = [
     "FeatureLabelSeparabilityAudit",
     "LabelAmbiguityAudit",
     "SchwagerNegativeResultAnalyzer",
+    "SchwagerRobustnessDecisionBoard",
     "SetupContextAudit",
     "DecisionCalibrationConfig",
     "choose_bounded_calibrated_decisions",
@@ -127,6 +128,11 @@ def __getattr__(name: str) -> Any:
         from app.diagnostics.schwager_negative_result_analyzer import SchwagerNegativeResultAnalyzer
 
         return {"SchwagerNegativeResultAnalyzer": SchwagerNegativeResultAnalyzer}[name]
+
+    if name in {"SchwagerRobustnessDecisionBoard"}:
+        from app.diagnostics.schwager_robustness_decision_board import SchwagerRobustnessDecisionBoard
+
+        return {"SchwagerRobustnessDecisionBoard": SchwagerRobustnessDecisionBoard}[name]
 
     if name in {"SetupContextAudit"}:
         from app.diagnostics.setup_context_audit import SetupContextAudit

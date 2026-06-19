@@ -104,6 +104,8 @@ class FeatureRegimeExperimentReporter:
             "label_mode_comparison_audit": payload.get("label_mode_comparison_audit"),
             "flat_subtype_audit": payload.get("flat_subtype_audit"),
             "setup_aware_label_diagnostics": payload.get("setup_aware_label_diagnostics"),
+            "schwager_slice_robustness": payload.get("schwager_slice_robustness"),
+            "schwager_robustness_decision_board": payload.get("schwager_robustness_decision_board"),
             "approved_for_live_trading": False,
             "approved_for_auto_activation": False,
             "orders_enabled": False,
@@ -253,6 +255,8 @@ class FeatureRegimeExperimentReporter:
             f"- label_mode_comparison_audit: `{payload.get('label_mode_comparison_audit')}`",
             f"- flat_subtype_audit: `{payload.get('flat_subtype_audit')}`",
             f"- setup_aware_label_diagnostics: `{payload.get('setup_aware_label_diagnostics')}`",
+            f"- schwager_slice_robustness: `{payload.get('schwager_slice_robustness')}`",
+            f"- schwager_robustness_decision_board: `{payload.get('schwager_robustness_decision_board')}`",
             "",
             "## Recommendations",
                 "",
@@ -278,6 +282,7 @@ class FeatureRegimeExperimentReporter:
     def _candidate_markdown(payload: dict[str, Any]) -> str:
         root_cause_audit = dict(payload.get("prediction_root_cause_audit", {}))
         forensic_audit = dict(payload.get("book_driven_forensic_audit", {}))
+        robustness_board = dict(payload.get("schwager_robustness_decision_board", {}))
         collapse_signature = dict(root_cause_audit.get("up_collapse_signature", {}))
         warnings = root_cause_audit.get("warnings") or []
         recommendations = root_cause_audit.get("recommendations") or []
@@ -324,6 +329,14 @@ class FeatureRegimeExperimentReporter:
             f"- label_mode_recommendation: `{dict(payload.get('label_mode_comparison_audit', {})).get('label_mode_recommendation')}`",
             f"- dominant_flat_subtype: `{dict(payload.get('flat_subtype_audit', {})).get('dominant_flat_subtype')}`",
             f"- recommended_label_mode_by_setup_type: `{dict(payload.get('setup_aware_label_diagnostics', {})).get('recommended_label_mode_by_setup_type')}`",
+            "",
+            "## Schwager Decision Board",
+            "",
+            f"- final_research_decision: `{robustness_board.get('final_research_decision')}`",
+            f"- primary_failure: `{robustness_board.get('primary_failure')}`",
+            f"- secondary_failures: `{robustness_board.get('secondary_failures')}`",
+            f"- what_not_to_do_next: `{robustness_board.get('what_not_to_do_next')}`",
+            f"- what_to_do_next: `{robustness_board.get('what_to_do_next')}`",
             "",
         ]
         return "\n".join(lines)

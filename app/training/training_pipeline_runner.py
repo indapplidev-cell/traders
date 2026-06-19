@@ -32,6 +32,7 @@ from app.diagnostics.flat_subtype_audit import FlatSubtypeAudit
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.diagnostics.label_mode_comparison_audit import LabelModeComparisonAudit
 from app.diagnostics.opportunity_diagnostics import OpportunityDiagnostics
+from app.diagnostics.schwager_robustness_decision_board import SchwagerRobustnessDecisionBoard
 from app.diagnostics.setup_aware_label_diagnostics import SetupAwareLabelDiagnostics
 from app.diagnostics.walk_forward_profit_diagnostics import WalkForwardProfitDiagnostics
 from app.db.session import get_session
@@ -173,6 +174,8 @@ class TrainingPipelineResult:
     label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
     flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
+    schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
+    schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -212,6 +215,8 @@ class TrainingPipelineResult:
             "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
             "flat_subtype_audit": dict(self.flat_subtype_audit),
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
+            "schwager_slice_robustness": dict(self.schwager_slice_robustness),
+            "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
         }
 
 
@@ -472,6 +477,12 @@ class LongHistoryTrainingPipelineRunner:
             setup_aware_label_diagnostics=self._as_dict(
                 quality_summary.get("setup_aware_label_diagnostics")
             ),
+            schwager_slice_robustness=self._as_dict(
+                quality_summary.get("schwager_slice_robustness")
+            ),
+            schwager_robustness_decision_board=self._as_dict(
+                quality_summary.get("schwager_robustness_decision_board")
+            ),
         )
 
         if config.export_report:
@@ -666,6 +677,12 @@ class LongHistoryTrainingPipelineRunner:
             ),
             book_driven_forensic_audit=self._as_dict(
                 quality_summary.get("book_driven_forensic_audit")
+            ),
+            schwager_slice_robustness=self._as_dict(
+                quality_summary.get("schwager_slice_robustness")
+            ),
+            schwager_robustness_decision_board=self._as_dict(
+                quality_summary.get("schwager_robustness_decision_board")
             ),
         )
         self._reporter.write_json_report(temporary_result)
@@ -1645,6 +1662,11 @@ class LongHistoryTrainingPipelineRunner:
         )
         if book_driven_forensic_audit:
             payload["book_driven_forensic_audit"] = book_driven_forensic_audit
+        schwager_slice_robustness = self._as_dict(
+            probability_diagnostics.get("schwager_slice_robustness")
+        )
+        if schwager_slice_robustness:
+            payload["schwager_slice_robustness"] = schwager_slice_robustness
         for key in (
             "label_mode_comparison_audit",
             "flat_subtype_audit",
@@ -1653,6 +1675,9 @@ class LongHistoryTrainingPipelineRunner:
             value = self._as_dict(build_labels_payload.get(key))
             if value:
                 payload[key] = value
+        payload["schwager_robustness_decision_board"] = SchwagerRobustnessDecisionBoard().evaluate(
+            payload
+        )
         return {
             "status": COMPLETED,
             "message": "Model quality validation sample completed",
@@ -1743,6 +1768,11 @@ class LongHistoryTrainingPipelineRunner:
         )
         if book_driven_forensic_audit:
             payload["book_driven_forensic_audit"] = book_driven_forensic_audit
+        schwager_slice_robustness = self._as_dict(
+            probability_diagnostics.get("schwager_slice_robustness")
+        )
+        if schwager_slice_robustness:
+            payload["schwager_slice_robustness"] = schwager_slice_robustness
         for key in (
             "label_mode_comparison_audit",
             "flat_subtype_audit",
@@ -1751,6 +1781,9 @@ class LongHistoryTrainingPipelineRunner:
             value = self._as_dict(build_labels_payload.get(key))
             if value:
                 payload[key] = value
+        payload["schwager_robustness_decision_board"] = SchwagerRobustnessDecisionBoard().evaluate(
+            payload
+        )
         return {
             "status": COMPLETED,
             "message": "Model quality validation completed",

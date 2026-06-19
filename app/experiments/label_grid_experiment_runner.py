@@ -110,6 +110,8 @@ class LabelGridExperimentCandidateResult:
     label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
     flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
+    schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
+    schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -179,6 +181,8 @@ class LabelGridExperimentCandidateResult:
             "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
             "flat_subtype_audit": dict(self.flat_subtype_audit),
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
+            "schwager_slice_robustness": dict(self.schwager_slice_robustness),
+            "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -1153,6 +1157,12 @@ class LabelGridExperimentRunner:
             setup_aware_label_diagnostics=self._as_dict(
                 quality_payload.get("setup_aware_label_diagnostics", {})
             ),
+            schwager_slice_robustness=self._as_dict(
+                quality_payload.get("schwager_slice_robustness", {})
+            ),
+            schwager_robustness_decision_board=self._as_dict(
+                quality_payload.get("schwager_robustness_decision_board", {})
+            ),
             raw_predicted_class_distribution=raw_predicted_class_distribution,
             calibrated_predicted_class_distribution=calibrated_predicted_class_distribution,
             raw_collapse_diagnostics_v2=dict(
@@ -1437,6 +1447,12 @@ class LabelGridExperimentRunner:
                     "setup_aware_label_diagnostics",
                     build_labels_payload.get("setup_aware_label_diagnostics", {}),
                 )
+            ),
+            schwager_slice_robustness=self._as_dict(
+                model_quality_payload.get("schwager_slice_robustness", {})
+            ),
+            schwager_robustness_decision_board=self._as_dict(
+                model_quality_payload.get("schwager_robustness_decision_board", {})
             ),
             raw_predicted_class_distribution=dict(
                 raw_probability_diagnostics.get("predicted_direction_ratios", {})

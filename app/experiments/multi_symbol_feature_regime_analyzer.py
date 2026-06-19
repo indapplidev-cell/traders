@@ -84,6 +84,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         confidence_profitability_summary = self._confidence_profitability_summary(symbol_results)
         prediction_root_cause_summary = self._prediction_root_cause_summary(configs_ranked)
         book_driven_forensic_summary = self._book_driven_forensic_summary(configs_ranked)
+        schwager_robustness_summary = self._schwager_robustness_summary(configs_ranked)
         label_mode_audit_summary = self._label_mode_audit_summary(symbol_results)
         flat_subtype_summary = self._flat_subtype_summary(symbol_results)
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
@@ -141,6 +142,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
             "book_driven_forensic_summary": book_driven_forensic_summary,
+            "schwager_robustness_summary": schwager_robustness_summary,
             "label_mode_audit_summary": label_mode_audit_summary,
             "flat_subtype_summary": flat_subtype_summary,
             "setup_aware_label_summary": setup_aware_label_summary,
@@ -470,6 +472,12 @@ class MultiSymbolFeatureRegimeAnalyzer:
             payload["setup_aware_label_diagnostics"] = cls._as_dict(
                 payload.get("setup_aware_label_diagnostics")
             )
+            payload["schwager_slice_robustness"] = cls._as_dict(
+                payload.get("schwager_slice_robustness")
+            )
+            payload["schwager_robustness_decision_board"] = cls._as_dict(
+                payload.get("schwager_robustness_decision_board")
+            )
             configs_ranked.append(payload)
         return {
             "symbol": str(summary.get("symbol")),
@@ -598,6 +606,14 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 summary.get("setup_aware_label_diagnostics")
                 or best_candidate.get("setup_aware_label_diagnostics")
             ),
+            "schwager_slice_robustness": cls._as_dict(
+                summary.get("schwager_slice_robustness")
+                or best_candidate.get("schwager_slice_robustness")
+            ),
+            "schwager_robustness_decision_board": cls._as_dict(
+                summary.get("schwager_robustness_decision_board")
+                or best_candidate.get("schwager_robustness_decision_board")
+            ),
             "prediction_decision_source": best_candidate.get("prediction_decision_source"),
             "reasons_why_best_still_rejected": [
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
@@ -664,6 +680,40 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "top_final_diagnoses": [name for name, _count in diagnosis_counts.most_common(5)],
             "top_next_action_recommendations": [
                 name for name, _count in recommendation_counts.most_common(5)
+            ],
+        }
+
+    @staticmethod
+    def _schwager_robustness_summary(candidates: list[dict[str, object]]) -> dict[str, object]:
+        decision_counts: Counter[str] = Counter()
+        primary_failure_counts: Counter[str] = Counter()
+        available_count = 0
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            board = candidate.get("schwager_robustness_decision_board") or {}
+            if not isinstance(board, dict):
+                continue
+            if board.get("diagnostic_name") != "schwager_robustness_decision_board":
+                continue
+            available_count += 1
+            decision = board.get("final_research_decision")
+            primary_failure = board.get("primary_failure")
+            if decision:
+                decision_counts[str(decision)] += 1
+            if primary_failure:
+                primary_failure_counts[str(primary_failure)] += 1
+        return {
+            "diagnostic_name": "schwager_robustness_multi_symbol_summary",
+            "diagnostic_version": "ml38_10_2",
+            "available_candidate_count": available_count,
+            "final_research_decision_counts": dict(decision_counts),
+            "primary_failure_counts": dict(primary_failure_counts),
+            "top_final_research_decisions": [
+                name for name, _count in decision_counts.most_common(5)
+            ],
+            "top_primary_failures": [
+                name for name, _count in primary_failure_counts.most_common(5)
             ],
         }
 

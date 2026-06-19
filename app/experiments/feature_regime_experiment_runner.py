@@ -119,6 +119,8 @@ class FeatureRegimeCandidateResult:
     label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
     flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
+    schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
+    schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -220,6 +222,8 @@ class FeatureRegimeCandidateResult:
             "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
             "flat_subtype_audit": dict(self.flat_subtype_audit),
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
+            "schwager_slice_robustness": dict(self.schwager_slice_robustness),
+            "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -385,6 +389,8 @@ class FeatureRegimeExperimentResult:
     label_mode_comparison_audit: dict[str, Any] = field(default_factory=dict)
     flat_subtype_audit: dict[str, Any] = field(default_factory=dict)
     setup_aware_label_diagnostics: dict[str, Any] = field(default_factory=dict)
+    schwager_slice_robustness: dict[str, Any] = field(default_factory=dict)
+    schwager_robustness_decision_board: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -478,6 +484,8 @@ class FeatureRegimeExperimentResult:
             "label_mode_comparison_audit": dict(self.label_mode_comparison_audit),
             "flat_subtype_audit": dict(self.flat_subtype_audit),
             "setup_aware_label_diagnostics": dict(self.setup_aware_label_diagnostics),
+            "schwager_slice_robustness": dict(self.schwager_slice_robustness),
+            "schwager_robustness_decision_board": dict(self.schwager_robustness_decision_board),
         }
 
 
@@ -1103,6 +1111,12 @@ class FeatureRegimeExperimentRunner:
             ),
             setup_aware_label_diagnostics=self._as_dict(
                 {} if best_candidate is None else best_candidate.setup_aware_label_diagnostics
+            ),
+            schwager_slice_robustness=self._as_dict(
+                {} if best_candidate is None else best_candidate.schwager_slice_robustness
+            ),
+            schwager_robustness_decision_board=self._as_dict(
+                {} if best_candidate is None else best_candidate.schwager_robustness_decision_board
             ),
         )
 
@@ -1807,6 +1821,12 @@ class FeatureRegimeExperimentRunner:
                 setup_aware_label_diagnostics=self._as_dict(
                     getattr(item, "setup_aware_label_diagnostics", {})
                 ),
+                schwager_slice_robustness=self._as_dict(
+                    getattr(item, "schwager_slice_robustness", {})
+                ),
+                schwager_robustness_decision_board=self._as_dict(
+                    getattr(item, "schwager_robustness_decision_board", {})
+                ),
                 raw_predicted_class_distribution=self._as_dict(
                     getattr(item, "raw_predicted_class_distribution", {})
                 ),
@@ -1902,6 +1922,12 @@ class FeatureRegimeExperimentRunner:
                 ),
                 setup_aware_label_diagnostics=self._as_dict(
                     candidate_payload.get("setup_aware_label_diagnostics")
+                ),
+                schwager_slice_robustness=self._as_dict(
+                    candidate_payload.get("schwager_slice_robustness")
+                ),
+                schwager_robustness_decision_board=self._as_dict(
+                    candidate_payload.get("schwager_robustness_decision_board")
                 ),
                 prediction_decision_source=candidate_payload.get("prediction_decision_source"),
                 predicted_class_distribution=self._as_dict(
@@ -2221,6 +2247,8 @@ class FeatureRegimeExperimentRunner:
                     "label_mode_comparison_audit": dict(item.label_mode_comparison_audit),
                     "flat_subtype_audit": dict(item.flat_subtype_audit),
                     "setup_aware_label_diagnostics": dict(item.setup_aware_label_diagnostics),
+                    "schwager_slice_robustness": dict(item.schwager_slice_robustness),
+                    "schwager_robustness_decision_board": dict(item.schwager_robustness_decision_board),
                     "prediction_decision_source": item.prediction_decision_source,
                 }
             )

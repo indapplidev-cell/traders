@@ -76,6 +76,7 @@ class MultiSymbolFeatureRegimeReporter:
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
+            "schwager_robustness_summary": payload.get("schwager_robustness_summary"),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -135,12 +136,12 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 "## Symbol Comparison Table",
                 "",
-            "| Symbol | Best Config | Score | Collapse Type | Flat Bias | Down Blindness | Baseline Edge | Profit Factor | Walk-Forward PF | Real Diagnostics | Diag Rows | Regime Features | Regime Count | Candle/TA Context | Candle/TA Count | Failed Gates |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| Symbol | Best Config | Score | Collapse Type | Flat Bias | Down Blindness | Baseline Edge | Profit Factor | Walk-Forward PF | Final Decision | Real Diagnostics | Diag Rows | Regime Features | Regime Count | Candle/TA Context | Candle/TA Count | Failed Gates |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
         for item in self._as_list(payload.get("symbol_results")):
             lines.append(
-                "| `{symbol}` | `{config}` | `{score}` | `{collapse_type}` | `{flat_bias}` | `{down_blindness}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{real_diag}` | `{diag_rows}` | `{regime_features}` | `{regime_count}` | `{candle_ta}` | `{candle_ta_count}` | `{failed_gates}` |".format(
+                "| `{symbol}` | `{config}` | `{score}` | `{collapse_type}` | `{flat_bias}` | `{down_blindness}` | `{edge}` | `{profit_factor}` | `{walk_forward_pf}` | `{final_decision}` | `{real_diag}` | `{diag_rows}` | `{regime_features}` | `{regime_count}` | `{candle_ta}` | `{candle_ta_count}` | `{failed_gates}` |".format(
                     symbol=item.get("symbol"),
                     config=item.get("best_candidate_config_id"),
                     score=item.get("best_candidate_score"),
@@ -150,6 +151,7 @@ class MultiSymbolFeatureRegimeReporter:
                     edge=item.get("baseline_edge"),
                     profit_factor=item.get("profit_factor"),
                     walk_forward_pf=item.get("walk_forward_profit_factor"),
+                    final_decision=self._as_dict(item.get("schwager_robustness_decision_board")).get("final_research_decision"),
                     real_diag=item.get("real_feature_diagnostics_used"),
                     diag_rows=item.get("real_feature_diagnostics_row_count"),
                     regime_features=item.get("regime_features_attached"),
@@ -160,7 +162,7 @@ class MultiSymbolFeatureRegimeReporter:
                 )
             )
         if not self._as_list(payload.get("symbol_results")):
-            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
 
         lines.extend(
             [
@@ -229,6 +231,10 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- label_mode_audit_summary: `{payload.get('label_mode_audit_summary')}`",
                 f"- flat_subtype_summary: `{payload.get('flat_subtype_summary')}`",
                 f"- setup_aware_label_summary: `{payload.get('setup_aware_label_summary')}`",
+                "",
+                "## Schwager Robustness",
+                "",
+                f"- schwager_robustness_summary: `{payload.get('schwager_robustness_summary')}`",
                 "",
                 "## Recommendations",
                 "",

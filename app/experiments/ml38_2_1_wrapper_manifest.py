@@ -66,6 +66,9 @@ def build_ml38_2_1_wrapper_manifest(
         "candidate_count": payload.get("candidate_count"),
         "accepted_candidate_count": payload.get("accepted_candidate_count"),
         "rejected_candidate_count": payload.get("rejected_candidate_count"),
+        "schwager_robustness_summary": dict(
+            payload.get("schwager_robustness_summary", {})
+        ),
         "run_results": [dict(item) for item in run_results],
         "multi_symbol_result": payload,
         "included_files": list(included_files),
