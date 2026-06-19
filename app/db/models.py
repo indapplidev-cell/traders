@@ -87,19 +87,15 @@ class MlLabels(Base):
     max_favorable_move_atr: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False)
     max_adverse_move_atr: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False)
     label_version: Mapped[str] = mapped_column(String(50), nullable=False)
-    opportunity_label: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    opportunity_direction: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'NONE'"))
-    opportunity_reason: Mapped[str] = mapped_column(String(100), nullable=False, server_default=text("'no_setup'"))
-    opportunity_score: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("0"))
-    setup_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=text("'no_setup'"))
-    setup_quality_score: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("0"))
-    setup_invalidation_distance_atr: Mapped[float] = mapped_column(
-        Numeric(20, 8),
-        nullable=False,
-        server_default=text("0"),
-    )
-    setup_expected_move_atr: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("0"))
-    label_ambiguity_score: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("1"))
+    opportunity_label: Mapped[int] = mapped_column(default=0, nullable=False)
+    opportunity_direction: Mapped[str] = mapped_column(String(20), default="NONE", nullable=False)
+    opportunity_reason: Mapped[str] = mapped_column(String(100), default="no_setup", nullable=False)
+    opportunity_score: Mapped[float] = mapped_column(Numeric(10, 6), default=0.0, nullable=False)
+    setup_type: Mapped[str] = mapped_column(String(100), default="no_setup", nullable=False)
+    setup_quality_score: Mapped[float] = mapped_column(Numeric(10, 6), default=0.0, nullable=False)
+    setup_invalidation_distance_atr: Mapped[float] = mapped_column(Numeric(10, 6), default=0.0, nullable=False)
+    setup_expected_move_atr: Mapped[float] = mapped_column(Numeric(10, 6), default=0.0, nullable=False)
+    label_ambiguity_score: Mapped[float] = mapped_column(Numeric(10, 6), default=1.0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
