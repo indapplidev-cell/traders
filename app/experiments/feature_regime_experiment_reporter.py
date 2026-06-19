@@ -252,6 +252,7 @@ class FeatureRegimeExperimentReporter:
     @staticmethod
     def _candidate_markdown(payload: dict[str, Any]) -> str:
         root_cause_audit = dict(payload.get("prediction_root_cause_audit", {}))
+        forensic_audit = dict(payload.get("book_driven_forensic_audit", {}))
         collapse_signature = dict(root_cause_audit.get("up_collapse_signature", {}))
         warnings = root_cause_audit.get("warnings") or []
         recommendations = root_cause_audit.get("recommendations") or []
@@ -287,6 +288,11 @@ class FeatureRegimeExperimentReporter:
             f"- actual_flat_predicted_up_ratio: `{collapse_signature.get('actual_flat_predicted_up_ratio')}`",
             f"- predicted_up_actual_down_or_flat_share: `{collapse_signature.get('predicted_up_actual_down_or_flat_share')}`",
             f"- recommendation: `{recommendations[0] if recommendations else None}`",
+            "",
+            "## Book-driven forensic audit",
+            "",
+            f"- final_diagnosis: `{forensic_audit.get('final_diagnosis')}`",
+            f"- next_action_recommendation: `{forensic_audit.get('next_action_recommendation')}`",
             "",
         ]
         return "\n".join(lines)

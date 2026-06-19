@@ -80,6 +80,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         anti_collapse_summary = self._anti_collapse_summary(symbol_results)
         confidence_profitability_summary = self._confidence_profitability_summary(symbol_results)
         prediction_root_cause_summary = self._prediction_root_cause_summary(configs_ranked)
+        book_driven_forensic_summary = self._book_driven_forensic_summary(configs_ranked)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
                 int(item.get("decision_policy_selected_policy_id") is not None)
@@ -133,6 +134,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
+            "book_driven_forensic_summary": book_driven_forensic_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,
             "feature_version_summary": {
@@ -418,6 +420,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             payload["prediction_root_cause_audit"] = cls._as_dict(
                 payload.get("prediction_root_cause_audit")
             )
+            payload["book_driven_forensic_audit"] = cls._as_dict(
+                payload.get("book_driven_forensic_audit")
+            )
             configs_ranked.append(payload)
         return {
             "symbol": str(summary.get("symbol")),
@@ -517,6 +522,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "prediction_root_cause_audit": cls._as_dict(
                 best_candidate.get("prediction_root_cause_audit")
             ),
+            "book_driven_forensic_audit": cls._as_dict(
+                best_candidate.get("book_driven_forensic_audit")
+            ),
             "prediction_decision_source": best_candidate.get("prediction_decision_source"),
             "reasons_why_best_still_rejected": [
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
@@ -552,6 +560,37 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "top_warnings": [warning for warning, _count in warning_counts.most_common(5)],
             "top_recommendations": [
                 text for text, _count in recommendation_counts.most_common(5)
+            ],
+        }
+
+    @staticmethod
+    def _book_driven_forensic_summary(candidates: list[dict[str, object]]) -> dict[str, object]:
+        diagnosis_counts: Counter[str] = Counter()
+        recommendation_counts: Counter[str] = Counter()
+        available_count = 0
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            audit = candidate.get("book_driven_forensic_audit") or {}
+            if not isinstance(audit, dict):
+                continue
+            if audit.get("diagnostic_name") != "book_driven_forensic_audit":
+                continue
+            available_count += 1
+            diagnosis = audit.get("final_diagnosis")
+            recommendation = audit.get("next_action_recommendation")
+            if diagnosis:
+                diagnosis_counts[str(diagnosis)] += 1
+            if recommendation:
+                recommendation_counts[str(recommendation)] += 1
+        return {
+            "diagnostic_name": "book_driven_forensic_summary",
+            "diagnostic_version": "ml38_9_7",
+            "available_candidate_count": available_count,
+            "final_diagnosis_counts": dict(diagnosis_counts),
+            "top_final_diagnoses": [name for name, _count in diagnosis_counts.most_common(5)],
+            "top_next_action_recommendations": [
+                name for name, _count in recommendation_counts.most_common(5)
             ],
         }
 
@@ -694,6 +733,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 )
                 payload["prediction_root_cause_audit"] = cls._as_dict(
                     payload.get("prediction_root_cause_audit")
+                )
+                payload["book_driven_forensic_audit"] = cls._as_dict(
+                    payload.get("book_driven_forensic_audit")
                 )
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)

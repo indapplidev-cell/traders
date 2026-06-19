@@ -164,6 +164,7 @@ class TrainingPipelineResult:
     command_snapshot: dict[str, Any]
     next_recommendations: tuple[str, ...]
     prediction_root_cause_audit: dict[str, Any] = field(default_factory=dict)
+    book_driven_forensic_audit: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -199,6 +200,7 @@ class TrainingPipelineResult:
             "command_snapshot": dict(self.command_snapshot),
             "next_recommendations": list(self.next_recommendations),
             "prediction_root_cause_audit": dict(self.prediction_root_cause_audit),
+            "book_driven_forensic_audit": dict(self.book_driven_forensic_audit),
         }
 
 
@@ -444,6 +446,9 @@ class LongHistoryTrainingPipelineRunner:
             prediction_root_cause_audit=self._as_dict(
                 quality_summary.get("prediction_root_cause_audit")
             ),
+            book_driven_forensic_audit=self._as_dict(
+                quality_summary.get("book_driven_forensic_audit")
+            ),
         )
 
         if config.export_report:
@@ -634,6 +639,9 @@ class LongHistoryTrainingPipelineRunner:
                 quality_status=str(quality_summary.get("quality_status", INSUFFICIENT_REAL_HISTORY)),
                 dry_run=config.dry_run,
                 sample_mode=config.sample_mode,
+            ),
+            book_driven_forensic_audit=self._as_dict(
+                quality_summary.get("book_driven_forensic_audit")
             ),
         )
         self._reporter.write_json_report(temporary_result)
@@ -1585,6 +1593,11 @@ class LongHistoryTrainingPipelineRunner:
         )
         if prediction_root_cause_audit:
             payload["prediction_root_cause_audit"] = prediction_root_cause_audit
+        book_driven_forensic_audit = self._as_dict(
+            probability_diagnostics.get("book_driven_forensic_audit")
+        )
+        if book_driven_forensic_audit:
+            payload["book_driven_forensic_audit"] = book_driven_forensic_audit
         return {
             "status": COMPLETED,
             "message": "Model quality validation sample completed",
@@ -1669,6 +1682,11 @@ class LongHistoryTrainingPipelineRunner:
         )
         if prediction_root_cause_audit:
             payload["prediction_root_cause_audit"] = prediction_root_cause_audit
+        book_driven_forensic_audit = self._as_dict(
+            probability_diagnostics.get("book_driven_forensic_audit")
+        )
+        if book_driven_forensic_audit:
+            payload["book_driven_forensic_audit"] = book_driven_forensic_audit
         return {
             "status": COMPLETED,
             "message": "Model quality validation completed",

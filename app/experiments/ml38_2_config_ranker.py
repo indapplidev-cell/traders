@@ -319,6 +319,7 @@ class ML382ConfigRanker:
             "decision_policy_grid_diagnostics": decision_policy_payload,
             "decision_policy_selected_policy_id": selected_policy_id,
             "prediction_root_cause_audit": dict(candidate.get("prediction_root_cause_audit", {})),
+            "book_driven_forensic_audit": dict(candidate.get("book_driven_forensic_audit", {})),
             "calibrated_predicted_ratios": calibrated_ratios,
             "raw_predicted_ratios": raw_ratios,
             "prediction_decision_source": decision_source,

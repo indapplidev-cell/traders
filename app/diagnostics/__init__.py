@@ -15,6 +15,12 @@ __all__ = [
     "DecisionPolicyResult",
     "PredictionRootCauseAuditor",
     "RootCauseThresholds",
+    "BookDrivenForensicAudit",
+    "FeatureClassStats",
+    "FeatureLabelSeparabilityAudit",
+    "LabelAmbiguityAudit",
+    "SchwagerNegativeResultAnalyzer",
+    "SetupContextAudit",
     "DecisionCalibrationConfig",
     "choose_bounded_calibrated_decisions",
     "evaluate_decision_distribution",
@@ -95,5 +101,36 @@ def __getattr__(name: str) -> Any:
             "PredictionRootCauseAuditor": PredictionRootCauseAuditor,
             "RootCauseThresholds": RootCauseThresholds,
         }[name]
+
+    if name in {"BookDrivenForensicAudit"}:
+        from app.diagnostics.book_driven_forensic_audit import BookDrivenForensicAudit
+
+        return {"BookDrivenForensicAudit": BookDrivenForensicAudit}[name]
+
+    if name in {"FeatureClassStats", "FeatureLabelSeparabilityAudit"}:
+        from app.diagnostics.feature_label_separability_audit import (
+            FeatureClassStats,
+            FeatureLabelSeparabilityAudit,
+        )
+
+        return {
+            "FeatureClassStats": FeatureClassStats,
+            "FeatureLabelSeparabilityAudit": FeatureLabelSeparabilityAudit,
+        }[name]
+
+    if name in {"LabelAmbiguityAudit"}:
+        from app.diagnostics.label_ambiguity_audit import LabelAmbiguityAudit
+
+        return {"LabelAmbiguityAudit": LabelAmbiguityAudit}[name]
+
+    if name in {"SchwagerNegativeResultAnalyzer"}:
+        from app.diagnostics.schwager_negative_result_analyzer import SchwagerNegativeResultAnalyzer
+
+        return {"SchwagerNegativeResultAnalyzer": SchwagerNegativeResultAnalyzer}[name]
+
+    if name in {"SetupContextAudit"}:
+        from app.diagnostics.setup_context_audit import SetupContextAudit
+
+        return {"SetupContextAudit": SetupContextAudit}[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

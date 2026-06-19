@@ -20,6 +20,7 @@ from app.diagnostics.feature_diagnostics_v2 import FeatureDiagnosticsV2
 from app.diagnostics.fold_label_diagnostics import FoldLabelDiagnostics
 from app.diagnostics.calibrated_prediction_decisions import CalibratedPredictionDecisions
 from app.diagnostics.decision_policy_grid import DecisionPolicyGrid
+from app.diagnostics.book_driven_forensic_audit import BookDrivenForensicAudit
 from app.diagnostics.prediction_collapse_detector import PredictionCollapseDetector
 from app.diagnostics.prediction_bias_root_cause import PredictionBiasRootCause
 from app.diagnostics.prediction_diagnostics import PredictionDiagnostics
@@ -544,6 +545,20 @@ class DiagnosticsService:
             decision_source=prediction_decision_source,
             selected_predictions=selected_prediction_labels,
         )
+        report["book_driven_forensic_audit"] = self.build_book_driven_forensic_audit(
+            prediction_rows=raw_predictions,
+            candidate_payload={
+                "symbol": symbol,
+                "config_id": config_id,
+                "model_accuracy": calibrated_diagnostics.get("selected_accuracy"),
+                "baseline_accuracy": calibrated_diagnostics.get("baseline_accuracy"),
+                "baseline_edge": calibrated_diagnostics.get("selected_baseline_edge"),
+                "collapse_severity": dict(report.get("collapse_v2", {})).get("collapse_severity"),
+                "prediction_decision_source": prediction_decision_source,
+                "decision_policy_selected_policy_id": dict(decision_policy_grid_diagnostics).get("selected_policy_id"),
+                "prediction_root_cause_audit": report["prediction_root_cause_audit"],
+            },
+        )
         if decision_policy_grid_diagnostics:
             report["decision_policy_grid_diagnostics"] = decision_policy_grid_diagnostics
         report["prediction_decision_source"] = prediction_decision_source
@@ -615,6 +630,17 @@ class DiagnosticsService:
             symbol=symbol,
             config_id=config_id,
             decision_source=decision_source,
+        )
+
+    def build_book_driven_forensic_audit(
+        self,
+        *,
+        prediction_rows: list[dict[str, object]] | list[object],
+        candidate_payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return BookDrivenForensicAudit().evaluate(
+            rows=prediction_rows,
+            candidate_payload=candidate_payload,
         )
 
     @staticmethod
@@ -2293,7 +2319,13 @@ class DiagnosticsService:
                     "direction_temperature": float(direction_temperature),
                     "probability_source": probability_source,
                     "future_move_atr": float(row.future_move_atr),
+                    "max_favorable_move_atr": float(
+                        getattr(row, "max_favorable_move_atr", row.future_move_atr)
+                    ),
+                    "max_adverse_move_atr": float(getattr(row, "max_adverse_move_atr", 0.0)),
+                    "tp_before_sl": getattr(row, "tp_before_sl", None),
                     "atr_14": float(row.features_json["atr_14"]),
+                    "features_json": dict(row.features_json),
                     "current_close": float(candle.close),
                     "future_candles": [
                         {
