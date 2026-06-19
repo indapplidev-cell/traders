@@ -148,13 +148,17 @@ class DatasetBuilder:
             if label_row is None:
                 dropped_missing_labels += 1
                 continue
-            opportunity_payload = self._opportunity_label_builder.build(
+            computed_opportunity_payload = self._opportunity_label_builder.build(
                 features_json=feature_row.features_json,
                 direction_label=label_row.direction_label,
                 tp_before_sl=label_row.tp_before_sl,
                 future_move_atr=float(label_row.future_move_atr),
                 max_favorable_move_atr=float(label_row.max_favorable_move_atr),
                 max_adverse_move_atr=float(label_row.max_adverse_move_atr),
+            )
+            opportunity_values = self._resolve_opportunity_values(
+                label_row=label_row,
+                computed_payload=computed_opportunity_payload,
             )
 
             dataset_rows.append(
@@ -172,15 +176,15 @@ class DatasetBuilder:
                     future_move_atr=float(label_row.future_move_atr),
                     max_favorable_move_atr=float(label_row.max_favorable_move_atr),
                     max_adverse_move_atr=float(label_row.max_adverse_move_atr),
-                    opportunity_label=opportunity_payload.opportunity_label,
-                    opportunity_direction=opportunity_payload.opportunity_direction,
-                    opportunity_reason=opportunity_payload.opportunity_reason,
-                    opportunity_score=opportunity_payload.opportunity_score,
-                    setup_type=opportunity_payload.setup_type,
-                    setup_quality_score=opportunity_payload.setup_quality_score,
-                    setup_invalidation_distance_atr=opportunity_payload.setup_invalidation_distance_atr,
-                    setup_expected_move_atr=opportunity_payload.setup_expected_move_atr,
-                    label_ambiguity_score=opportunity_payload.label_ambiguity_score,
+                    opportunity_label=opportunity_values["opportunity_label"],
+                    opportunity_direction=opportunity_values["opportunity_direction"],
+                    opportunity_reason=opportunity_values["opportunity_reason"],
+                    opportunity_score=opportunity_values["opportunity_score"],
+                    setup_type=opportunity_values["setup_type"],
+                    setup_quality_score=opportunity_values["setup_quality_score"],
+                    setup_invalidation_distance_atr=opportunity_values["setup_invalidation_distance_atr"],
+                    setup_expected_move_atr=opportunity_values["setup_expected_move_atr"],
+                    label_ambiguity_score=opportunity_values["label_ambiguity_score"],
                 )
             )
 
@@ -214,6 +218,76 @@ class DatasetBuilder:
             summary["dataset_rows"] = len(dataset_rows)
             summary["gap_filter_summary"] = gap_filter_summary
         return dataset_rows, summary
+
+    @staticmethod
+    def _resolve_opportunity_values(label_row: Any, computed_payload: Any) -> dict[str, Any]:
+        if not DatasetBuilder._has_persisted_opportunity_payload(label_row):
+            return computed_payload.to_dict()
+
+        return {
+            "opportunity_label": int(getattr(label_row, "opportunity_label", computed_payload.opportunity_label) or 0),
+            "opportunity_direction": str(
+                getattr(label_row, "opportunity_direction", computed_payload.opportunity_direction) or "NONE"
+            ),
+            "opportunity_reason": str(
+                getattr(label_row, "opportunity_reason", computed_payload.opportunity_reason) or "no_setup"
+            ),
+            "opportunity_score": float(
+                getattr(label_row, "opportunity_score", computed_payload.opportunity_score) or 0.0
+            ),
+            "setup_type": str(getattr(label_row, "setup_type", computed_payload.setup_type) or "no_setup"),
+            "setup_quality_score": float(
+                getattr(label_row, "setup_quality_score", computed_payload.setup_quality_score) or 0.0
+            ),
+            "setup_invalidation_distance_atr": float(
+                getattr(
+                    label_row,
+                    "setup_invalidation_distance_atr",
+                    computed_payload.setup_invalidation_distance_atr,
+                )
+                or 0.0
+            ),
+            "setup_expected_move_atr": float(
+                getattr(label_row, "setup_expected_move_atr", computed_payload.setup_expected_move_atr) or 0.0
+            ),
+            "label_ambiguity_score": float(
+                getattr(label_row, "label_ambiguity_score", computed_payload.label_ambiguity_score) or 1.0
+            ),
+        }
+
+    @staticmethod
+    def _has_persisted_opportunity_payload(label_row: Any) -> bool:
+        required_fields = (
+            "opportunity_label",
+            "opportunity_direction",
+            "opportunity_reason",
+            "opportunity_score",
+            "setup_type",
+            "setup_quality_score",
+            "setup_invalidation_distance_atr",
+            "setup_expected_move_atr",
+            "label_ambiguity_score",
+        )
+        if not all(hasattr(label_row, field_name) for field_name in required_fields):
+            return False
+
+        opportunity_label = int(getattr(label_row, "opportunity_label", 0) or 0)
+        opportunity_direction = str(getattr(label_row, "opportunity_direction", "NONE") or "NONE")
+        setup_type = str(getattr(label_row, "setup_type", "no_setup") or "no_setup")
+        opportunity_score = float(getattr(label_row, "opportunity_score", 0.0) or 0.0)
+        setup_quality_score = float(getattr(label_row, "setup_quality_score", 0.0) or 0.0)
+        label_ambiguity_score = float(getattr(label_row, "label_ambiguity_score", 1.0) or 1.0)
+
+        return any(
+            (
+                opportunity_label == 1,
+                opportunity_direction != "NONE",
+                setup_type != "no_setup",
+                opportunity_score > 0.0,
+                setup_quality_score > 0.0,
+                label_ambiguity_score != 1.0,
+            )
+        )
 
     def split_rows(
         self,

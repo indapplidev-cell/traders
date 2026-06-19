@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Index, Numeric, String, Text, UniqueConstraint, func, text
+from sqlalchemy import JSON, Boolean, DateTime, Index, Integer, Numeric, String, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -87,6 +87,19 @@ class MlLabels(Base):
     max_favorable_move_atr: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False)
     max_adverse_move_atr: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False)
     label_version: Mapped[str] = mapped_column(String(50), nullable=False)
+    opportunity_label: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    opportunity_direction: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'NONE'"))
+    opportunity_reason: Mapped[str] = mapped_column(String(100), nullable=False, server_default=text("'no_setup'"))
+    opportunity_score: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("0"))
+    setup_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=text("'no_setup'"))
+    setup_quality_score: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("0"))
+    setup_invalidation_distance_atr: Mapped[float] = mapped_column(
+        Numeric(20, 8),
+        nullable=False,
+        server_default=text("0"),
+    )
+    setup_expected_move_atr: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("0"))
+    label_ambiguity_score: Mapped[float] = mapped_column(Numeric(20, 8), nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 

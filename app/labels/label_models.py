@@ -45,4 +45,13 @@ class LabelRecord:
             "max_favorable_move_atr": self.max_favorable_move_atr,
             "max_adverse_move_atr": self.max_adverse_move_atr,
             "label_version": self.label_version,
+            "opportunity_label": int(self.opportunity_label),
+            "opportunity_direction": self.opportunity_direction,
+            "opportunity_reason": self.opportunity_reason,
+            "opportunity_score": float(self.opportunity_score),
+            "setup_type": self.setup_type,
+            "setup_quality_score": float(self.setup_quality_score),
+            "setup_invalidation_distance_atr": float(self.setup_invalidation_distance_atr),
+            "setup_expected_move_atr": float(self.setup_expected_move_atr),
+            "label_ambiguity_score": float(self.label_ambiguity_score),
         }
