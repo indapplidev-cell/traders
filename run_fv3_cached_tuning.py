@@ -52,17 +52,23 @@ START MODULE
         wrapper_completed_end_to_end = true
         strict_validation_ok = true
         failed_candidate_count = 0
-        selected_config_ids = ["lv5_h08_thr05_tp10_sl10_fb"]
-    Этот режим не говорит о качестве модели. Он только проверяет, что pipeline живой.
-    
+        selected_config_ids = [
+            "lv13_h08_opportunity_ft",
+            "lv14_h08_cm_setup",
+        ]
+        symbols = ["BTCUSDT", "SOLUSDT"]
+        candidate_count = 4
+    Этот режим не говорит о качестве модели. Он только проверяет, что pipeline живой
+    и что smoke реально покрывает Prompt 4-6.
+
     2. python run_fv3_cached_tuning.py --quick-quality --quick-quality-symbol SOLUSDT
     Ожидание:
         runtime_profile = quick_quality
         symbols = ["SOLUSDT"]
         selected_config_ids = [
-            "lv5_h06_thr045_tp10_sl10_fb",
-            "lv5_h08_thr05_tp10_sl10_fb",
-            "lv5_h12_thr055_tp12_sl12_fb",
+            "lv13_h08_opportunity_ft",
+            "lv13_h12_opportunity_ft",
+            "lv14_h08_cm_setup",
         ]
         start_date = 2026-04-01
         end_date = 2026-06-15
@@ -71,14 +77,14 @@ START MODULE
         wrapper_completed_end_to_end = true
         strict_validation_ok = true
 
-        Если результат:
+        Если result/candidate reports показывают:
             accepted_candidate_count = 0
-            rejected_candidate_count = 1
-        тогда полный запуск не делать. Править labels/features/model.
+        тогда полный запуск не делать. Анализировать Schwager board, opportunity diagnostics,
+        baseline edge, collapse, separability и class-margin guard.
 
-        Если результат:
+        Если:
             accepted_candidate_count >= 1
-        тогда переходить к одной монете на полном периоде.
+        модель всё равно не активировать автоматически. Сначала прислать архив на анализ.
 
     3. python run_fv3_cached_tuning.py --single-symbol-full --single-symbol-full-symbol SOLUSDT
         Ожидание:
@@ -90,26 +96,21 @@ START MODULE
             failed_candidate_count = 0
             wrapper_completed_end_to_end = true
             strict_validation_ok = true
-        
-        Если на полном периоде одной монеты снова:
-            accepted_candidate_count = 0
-        тогда полный запуск трёх монет не делать.
 
-        Если:
-            accepted_candidate_count >= 1
-        тогда можно запускать полный 3-symbol validation.
-    
+        Запускать только после отдельного разрешения.
+
     4. python run_fv3_cached_tuning.py
         Ожидание:
             runtime_profile = full
             symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
             full_quality_run = true
             quality_decision_allowed = true
-            candidate_count = 72
             failed_candidate_count = 0
             wrapper_completed_end_to_end = true
             strict_validation_ok = true
-        Даже если появится `ACCEPTED`, модель не активировать. Сначала прислать архив на анализ.
+
+        Не запускать без отдельного разрешения.
+        Даже если появится ACCEPTED, модель не активировать. Сначала прислать архив на анализ.
 
 """
 
@@ -165,17 +166,25 @@ def _infer_default_expected_candidate_count() -> int:
 DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
 DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
-# Runtime smoke: one experimental label-mode config, two symbols, short period.
-FAST_DEBUG_CONFIGS = ("lv12_h08_ft_tp10_sl10",)
+# Runtime smoke: Prompt 4-6 coverage, two symbols, short period.
+# Covers:
+# - ML38.10.1 opportunity_first contract via lv13_h08_opportunity_ft
+# - ML38.10.3 class-margin guard via lv14_h08_cm_setup
+# - ML38.10.2 Schwager robustness board through candidate report payloads
+FAST_DEBUG_CONFIGS = (
+    "lv13_h08_opportunity_ft",
+    "lv14_h08_cm_setup",
+)
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 
-# Intermediate quality: one symbol, three experimental label-mode configs, short period.
+# Intermediate quality: one symbol, short period, Prompt 4-6 smoke shortlist.
+# Keep this small: it is not final validation and must not replace full research review.
 QUICK_QUALITY_CONFIGS = (
-    "lv12_h08_ft_tp10_sl10",
-    "lv12_h12_ft_tp12_sl12",
-    "lv12_h12_setup_ft_tp12_sl12",
+    "lv13_h08_opportunity_ft",
+    "lv13_h12_opportunity_ft",
+    "lv14_h08_cm_setup",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"

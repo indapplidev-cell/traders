@@ -1,16 +1,19 @@
 import run_fv3_cached_tuning
 
 
-def test_fast_debug_plan_uses_two_symbols_one_config_and_short_range() -> None:
+def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -> None:
     args = run_fv3_cached_tuning.parse_args(["--fast-debug"])
     wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(args)
 
     assert wrapper.fast_debug is True
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
-    assert wrapper.debug_config_ids == ("lv12_h08_ft_tp10_sl10",)
+    assert wrapper.debug_config_ids == (
+        "lv13_h08_opportunity_ft",
+        "lv14_h08_cm_setup",
+    )
     assert wrapper.start_date == "2026-05-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 2
+    assert wrapper._expected_candidate_count() == 4
 
     command = wrapper._symbol_command("BTCUSDT", "debug_experiment")
 
@@ -20,8 +23,16 @@ def test_fast_debug_plan_uses_two_symbols_one_config_and_short_range() -> None:
     assert command[end_date_index] == "2026-06-15"
     assert "--skip-candle-load" in command
     assert "--base-label-config-id" in command
-    config_index = command.index("--base-label-config-id") + 1
-    assert command[config_index] == "lv12_h08_ft_tp10_sl10"
+
+    config_values = [
+        command[index + 1]
+        for index, value in enumerate(command)
+        if value == "--base-label-config-id"
+    ]
+    assert config_values == [
+        "lv13_h08_opportunity_ft",
+        "lv14_h08_cm_setup",
+    ]
 
 
 def test_default_wrapper_expects_full_60_candidates() -> None:

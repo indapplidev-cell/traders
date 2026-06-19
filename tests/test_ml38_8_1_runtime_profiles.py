@@ -11,9 +11,9 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert wrapper.single_symbol_full is False
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == (
-        "lv12_h08_ft_tp10_sl10",
-        "lv12_h12_ft_tp12_sl12",
-        "lv12_h12_setup_ft_tp12_sl12",
+        "lv13_h08_opportunity_ft",
+        "lv13_h12_opportunity_ft",
+        "lv14_h08_cm_setup",
     )
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
@@ -31,9 +31,9 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv12_h08_ft_tp10_sl10",
-        "lv12_h12_ft_tp12_sl12",
-        "lv12_h12_setup_ft_tp12_sl12",
+        "lv13_h08_opportunity_ft",
+        "lv13_h12_opportunity_ft",
+        "lv14_h08_cm_setup",
     ]
     assert command[command.index("--start-date") + 1] == "2026-04-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"

@@ -12,13 +12,14 @@ def test_ml38_9_3_matrix_includes_calibrated_decision_configs() -> None:
     assert "lv8_h16_thr065_tp15_sl15_cd" in config_ids
 
 
-def test_quick_quality_uses_decision_policy_configs() -> None:
+def test_quick_quality_uses_current_prompt_4_6_smoke_configs() -> None:
     args = run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(args)
 
     assert wrapper.runtime_profile == "quick_quality"
+    assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == (
-        "lv12_h08_ft_tp10_sl10",
-        "lv12_h12_ft_tp12_sl12",
-        "lv12_h12_setup_ft_tp12_sl12",
+        "lv13_h08_opportunity_ft",
+        "lv13_h12_opportunity_ft",
+        "lv14_h08_cm_setup",
     )

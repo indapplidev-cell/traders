@@ -3,7 +3,7 @@ import run_fv3_cached_tuning
 from app.experiments.ml38_2_fv3_tuning_matrix import ML382FV3TuningMatrix
 
 
-def test_fv4_matrix_and_runtime_profiles_use_lv11_configs_while_keeping_lv10_available() -> None:
+def test_fv4_matrix_keeps_book_configs_and_runtime_uses_prompt_4_6_smoke_shortlist() -> None:
     payload = ML382FV3TuningMatrix().build()
 
     assert payload["feature_version"] == "fv4_book_setup_context"
@@ -20,14 +20,17 @@ def test_fv4_matrix_and_runtime_profiles_use_lv11_configs_while_keeping_lv10_ava
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--fast-debug"])
     )
-    assert fast_wrapper.selected_config_ids == ("lv12_h08_ft_tp10_sl10",)
+    assert fast_wrapper.selected_config_ids == (
+        "lv13_h08_opportunity_ft",
+        "lv14_h08_cm_setup",
+    )
 
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--symbol", "SOLUSDT"])
     )
     assert quick_wrapper.symbols == ("SOLUSDT",)
     assert quick_wrapper.selected_config_ids == (
-        "lv12_h08_ft_tp10_sl10",
-        "lv12_h12_ft_tp12_sl12",
-        "lv12_h12_setup_ft_tp12_sl12",
+        "lv13_h08_opportunity_ft",
+        "lv13_h12_opportunity_ft",
+        "lv14_h08_cm_setup",
     )

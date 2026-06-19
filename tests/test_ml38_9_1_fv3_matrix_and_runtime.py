@@ -18,20 +18,23 @@ def test_ml38_9_1_label_grid_and_matrix_include_bias_aware_configs() -> None:
         assert config_id in matrix["config_ids"]
 
 
-def test_ml38_9_1_runtime_profiles_use_bias_aware_shortlists() -> None:
+def test_runtime_profiles_use_current_smoke_shortlists() -> None:
     fast_args = run_fv3_cached_tuning.parse_args(["--fast-debug"])
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(fast_args)
     assert fast_wrapper.runtime_profile == "fast_debug"
-    assert fast_wrapper.selected_config_ids == ("lv12_h08_ft_tp10_sl10",)
+    assert fast_wrapper.selected_config_ids == (
+        "lv13_h08_opportunity_ft",
+        "lv14_h08_cm_setup",
+    )
 
     quick_args = run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(quick_args)
     assert quick_wrapper.runtime_profile == "quick_quality"
     assert quick_wrapper.symbols == ("SOLUSDT",)
     assert quick_wrapper.selected_config_ids == (
-        "lv12_h08_ft_tp10_sl10",
-        "lv12_h12_ft_tp12_sl12",
-        "lv12_h12_setup_ft_tp12_sl12",
+        "lv13_h08_opportunity_ft",
+        "lv13_h12_opportunity_ft",
+        "lv14_h08_cm_setup",
     )
 
     full_args = run_fv3_cached_tuning.parse_args(["--single-symbol-full", "--single-symbol-full-symbol", "SOLUSDT"])

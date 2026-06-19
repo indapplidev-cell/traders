@@ -1,11 +1,18 @@
 import run_fv3_cached_tuning
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_9_5_DECISION_POLICY_CONFIG_IDS
+from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_1_OPPORTUNITY_CONFIG_IDS
+from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_3_CLASS_MARGIN_CONFIG_IDS
 
+
+EXPECTED_FAST_DEBUG_CONFIGS = (
+    "lv13_h08_opportunity_ft",
+    "lv14_h08_cm_setup",
+)
 
 EXPECTED_QUICK_QUALITY_CONFIGS = (
-    "lv12_h08_ft_tp10_sl10",
-    "lv12_h12_ft_tp12_sl12",
-    "lv12_h12_setup_ft_tp12_sl12",
+    "lv13_h08_opportunity_ft",
+    "lv13_h12_opportunity_ft",
+    "lv14_h08_cm_setup",
 )
 
 EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS = (
@@ -15,7 +22,50 @@ EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS = (
 )
 
 
-def test_ml38_9_5_single_symbol_full_uses_decision_policy_shortlist() -> None:
+def test_fast_debug_uses_prompt_4_6_smoke_shortlist() -> None:
+    args = run_fv3_cached_tuning.parse_args(["--fast-debug"])
+    wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(args)
+
+    assert wrapper.runtime_profile == "fast_debug"
+    assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
+    assert wrapper.selected_config_ids == EXPECTED_FAST_DEBUG_CONFIGS
+    assert wrapper._expected_candidate_count() == 4
+    assert "lv13_h08_opportunity_ft" in ML38_10_1_OPPORTUNITY_CONFIG_IDS
+    assert "lv14_h08_cm_setup" in ML38_10_3_CLASS_MARGIN_CONFIG_IDS
+
+
+def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
+    args = run_fv3_cached_tuning.parse_args([
+        "--quick-quality",
+        "--quick-quality-symbol",
+        "SOLUSDT",
+    ])
+    wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(args)
+
+    assert wrapper.runtime_profile == "quick_quality"
+    assert wrapper.symbols == ("SOLUSDT",)
+    assert wrapper.selected_config_ids == EXPECTED_QUICK_QUALITY_CONFIGS
+    assert wrapper._expected_candidate_count() == 3
+
+    opportunity_configs = [
+        config_id
+        for config_id in wrapper.selected_config_ids
+        if config_id in ML38_10_1_OPPORTUNITY_CONFIG_IDS
+    ]
+    class_margin_configs = [
+        config_id
+        for config_id in wrapper.selected_config_ids
+        if config_id in ML38_10_3_CLASS_MARGIN_CONFIG_IDS
+    ]
+
+    assert opportunity_configs == [
+        "lv13_h08_opportunity_ft",
+        "lv13_h12_opportunity_ft",
+    ]
+    assert class_margin_configs == ["lv14_h08_cm_setup"]
+
+
+def test_ml38_9_5_single_symbol_full_still_uses_decision_policy_shortlist() -> None:
     args = run_fv3_cached_tuning.parse_args([
         "--single-symbol-full",
         "--single-symbol-full-symbol",
@@ -28,22 +78,3 @@ def test_ml38_9_5_single_symbol_full_uses_decision_policy_shortlist() -> None:
     assert wrapper.selected_config_ids == EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS
     assert all(config_id in ML38_9_5_DECISION_POLICY_CONFIG_IDS for config_id in wrapper.selected_config_ids)
     assert all(config_id.endswith("_dp") for config_id in wrapper.selected_config_ids)
-
-
-def test_ml38_9_5_quick_quality_and_single_symbol_full_use_decision_policy_shortlists() -> None:
-    quick_args = run_fv3_cached_tuning.parse_args([
-        "--quick-quality",
-        "--quick-quality-symbol",
-        "SOLUSDT",
-    ])
-    full_args = run_fv3_cached_tuning.parse_args([
-        "--single-symbol-full",
-        "--single-symbol-full-symbol",
-        "SOLUSDT",
-    ])
-
-    quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(quick_args)
-    full_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(full_args)
-
-    assert quick_wrapper.selected_config_ids == EXPECTED_QUICK_QUALITY_CONFIGS
-    assert full_wrapper.selected_config_ids == EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS

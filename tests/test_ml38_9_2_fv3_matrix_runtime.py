@@ -13,13 +13,14 @@ def test_ml38_9_2_matrix_contains_baseline_edge_configs() -> None:
     assert "lv7_h12_thr06_tp12_sl12_be" in payload["baseline_edge_config_ids"]
 
 
-def test_ml38_9_2_runtime_profiles_now_delegate_to_lv11_fv4_configs() -> None:
+def test_ml38_9_2_runtime_profile_uses_current_prompt_4_6_quick_quality_shortlist() -> None:
     args = run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(args)
 
     assert wrapper.runtime_profile == "quick_quality"
+    assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == (
-        "lv12_h08_ft_tp10_sl10",
-        "lv12_h12_ft_tp12_sl12",
-        "lv12_h12_setup_ft_tp12_sl12",
+        "lv13_h08_opportunity_ft",
+        "lv13_h12_opportunity_ft",
+        "lv14_h08_cm_setup",
     )
