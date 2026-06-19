@@ -2,7 +2,11 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from app.labels.label_builder import LabelBuilder
-from app.labels.label_config import LabelConfig
+from app.labels.label_config import (
+    LABEL_MODE_SETUP_PURE_FIRST_TOUCH,
+    LabelConfig,
+    normalize_label_mode,
+)
 from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP
 
 
@@ -40,6 +44,10 @@ def test_label_config_changes_direction_threshold_and_flat_behavior() -> None:
     assert default_by_time[target_time].direction_label == LABEL_FLAT
     assert configured_by_time[target_time].direction_label in {LABEL_UP, LABEL_DOWN}
     assert LABEL_FLAT not in {label.direction_label for label in configured_labels}
+
+
+def test_label_config_supports_setup_pure_first_touch_mode() -> None:
+    assert normalize_label_mode(LABEL_MODE_SETUP_PURE_FIRST_TOUCH) == LABEL_MODE_SETUP_PURE_FIRST_TOUCH
 
 
 def _build_candles() -> list[SimpleNamespace]:

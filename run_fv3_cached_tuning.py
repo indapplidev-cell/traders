@@ -53,7 +53,7 @@ START MODULE
         strict_validation_ok = true
         failed_candidate_count = 0
         selected_config_ids = [
-            "lv13_h08_opportunity_ft",
+            "lv15_h08_setup_pure_ft",
             "lv14_h08_cm_setup",
         ]
         symbols = ["BTCUSDT", "SOLUSDT"]
@@ -66,8 +66,8 @@ START MODULE
         runtime_profile = quick_quality
         symbols = ["SOLUSDT"]
         selected_config_ids = [
-            "lv13_h08_opportunity_ft",
-            "lv13_h12_opportunity_ft",
+            "lv15_h08_setup_pure_ft",
+            "lv15_h12_setup_pure_ft",
             "lv14_h08_cm_setup",
         ]
         start_date = 2026-04-01
@@ -166,13 +166,13 @@ def _infer_default_expected_candidate_count() -> int:
 DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
 DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
-# Runtime smoke: Prompt 4-6 coverage, two symbols, short period.
+# Runtime smoke: Prompt 4-6 plus ML38.10.4 setup-semantics coverage, two symbols, short period.
 # Covers:
-# - ML38.10.1 opportunity_first contract via lv13_h08_opportunity_ft
+# - ML38.10.4 setup-pure label semantics via lv15_h08_setup_pure_ft
 # - ML38.10.3 class-margin guard via lv14_h08_cm_setup
 # - ML38.10.2 Schwager robustness board through candidate report payloads
 FAST_DEBUG_CONFIGS = (
-    "lv13_h08_opportunity_ft",
+    "lv15_h08_setup_pure_ft",
     "lv14_h08_cm_setup",
 )
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
@@ -182,8 +182,8 @@ FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 # Intermediate quality: one symbol, short period, Prompt 4-6 smoke shortlist.
 # Keep this small: it is not final validation and must not replace full research review.
 QUICK_QUALITY_CONFIGS = (
-    "lv13_h08_opportunity_ft",
-    "lv13_h12_opportunity_ft",
+    "lv15_h08_setup_pure_ft",
+    "lv15_h12_setup_pure_ft",
     "lv14_h08_cm_setup",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"

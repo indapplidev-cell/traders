@@ -1,17 +1,17 @@
 import run_fv3_cached_tuning
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_9_5_DECISION_POLICY_CONFIG_IDS
-from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_1_OPPORTUNITY_CONFIG_IDS
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_3_CLASS_MARGIN_CONFIG_IDS
+from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS
 
 
 EXPECTED_FAST_DEBUG_CONFIGS = (
-    "lv13_h08_opportunity_ft",
+    "lv15_h08_setup_pure_ft",
     "lv14_h08_cm_setup",
 )
 
 EXPECTED_QUICK_QUALITY_CONFIGS = (
-    "lv13_h08_opportunity_ft",
-    "lv13_h12_opportunity_ft",
+    "lv15_h08_setup_pure_ft",
+    "lv15_h12_setup_pure_ft",
     "lv14_h08_cm_setup",
 )
 
@@ -30,7 +30,7 @@ def test_fast_debug_uses_prompt_4_6_smoke_shortlist() -> None:
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
     assert wrapper.selected_config_ids == EXPECTED_FAST_DEBUG_CONFIGS
     assert wrapper._expected_candidate_count() == 4
-    assert "lv13_h08_opportunity_ft" in ML38_10_1_OPPORTUNITY_CONFIG_IDS
+    assert "lv15_h08_setup_pure_ft" in ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS
     assert "lv14_h08_cm_setup" in ML38_10_3_CLASS_MARGIN_CONFIG_IDS
 
 
@@ -47,10 +47,10 @@ def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
     assert wrapper.selected_config_ids == EXPECTED_QUICK_QUALITY_CONFIGS
     assert wrapper._expected_candidate_count() == 3
 
-    opportunity_configs = [
+    setup_semantics_configs = [
         config_id
         for config_id in wrapper.selected_config_ids
-        if config_id in ML38_10_1_OPPORTUNITY_CONFIG_IDS
+        if config_id in ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS
     ]
     class_margin_configs = [
         config_id
@@ -58,9 +58,9 @@ def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
         if config_id in ML38_10_3_CLASS_MARGIN_CONFIG_IDS
     ]
 
-    assert opportunity_configs == [
-        "lv13_h08_opportunity_ft",
-        "lv13_h12_opportunity_ft",
+    assert setup_semantics_configs == [
+        "lv15_h08_setup_pure_ft",
+        "lv15_h12_setup_pure_ft",
     ]
     assert class_margin_configs == ["lv14_h08_cm_setup"]
 

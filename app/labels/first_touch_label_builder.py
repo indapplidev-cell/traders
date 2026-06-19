@@ -9,6 +9,7 @@ from app.labels.label_config import (
     LABEL_MODE_FUTURE_CLOSE_ATR,
     LABEL_MODE_MFE_MAE_DOMINANCE,
     LABEL_MODE_SETUP_AWARE_FIRST_TOUCH,
+    LABEL_MODE_SETUP_PURE_FIRST_TOUCH,
     normalize_label_mode,
 )
 from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP
@@ -66,6 +67,64 @@ def resolve_setup_type(features_json: Mapping[str, Any] | None) -> str:
     if path_score >= 0.55:
         return "path_context"
     return "no_setup"
+
+
+def resolve_setup_direction(features_json: Mapping[str, Any] | None) -> str:
+    features = dict(features_json or {})
+    support_distance = _safe_float(features.get("support_distance_atr"), 9.0)
+    resistance_distance = _safe_float(features.get("resistance_distance_atr"), 9.0)
+    near_support = bool(features.get("near_support")) or support_distance <= 0.35
+    near_resistance = bool(features.get("near_resistance")) or resistance_distance <= 0.35
+
+    bullish_context = max(
+        _safe_float(features.get("nison_bullish_engulfing")),
+        _safe_float(features.get("nison_hammer")),
+        _safe_float(features.get("alt_support_retest")),
+        _safe_float(features.get("path_pullback_to_support")),
+    )
+    bearish_context = max(
+        _safe_float(features.get("nison_bearish_engulfing")),
+        _safe_float(features.get("nison_shooting_star")),
+        _safe_float(features.get("alt_resistance_rejection")),
+        _safe_float(features.get("path_rejection_from_resistance")),
+    )
+    trend_strength = _safe_float(features.get("trend_strength"), 0.0)
+
+    if near_support and not near_resistance:
+        return LABEL_UP
+    if near_resistance and not near_support:
+        return LABEL_DOWN
+    if bullish_context >= 0.55 and bullish_context > bearish_context:
+        return LABEL_UP
+    if bearish_context >= 0.55 and bearish_context > bullish_context:
+        return LABEL_DOWN
+    if trend_strength >= 0.60:
+        return LABEL_UP
+    if trend_strength <= -0.60:
+        return LABEL_DOWN
+    return "NONE"
+
+
+def resolve_setup_pure_first_touch_label(
+    *,
+    features_json: Mapping[str, Any] | None,
+    first_touch_label: str,
+    first_touch_payload: Mapping[str, Any],
+) -> tuple[str, str, str]:
+    setup_type = resolve_setup_type(features_json)
+    setup_direction = resolve_setup_direction(features_json)
+
+    if setup_type == "no_setup":
+        return LABEL_FLAT, setup_direction, "no_setup"
+    if setup_direction not in {LABEL_UP, LABEL_DOWN}:
+        return LABEL_FLAT, setup_direction, "setup_direction_unavailable"
+    if bool(first_touch_payload.get("first_touch_ambiguous")):
+        return LABEL_FLAT, setup_direction, "first_touch_ambiguous"
+    if first_touch_label not in {LABEL_UP, LABEL_DOWN}:
+        return LABEL_FLAT, setup_direction, "first_touch_no_trade"
+    if first_touch_label != setup_direction:
+        return LABEL_FLAT, setup_direction, "setup_direction_conflict"
+    return setup_direction, setup_direction, "confirmed_setup_first_touch"
 
 
 class FirstTouchDirectionLabelBuilder:
@@ -332,12 +391,18 @@ def build_label_mode_snapshot(
     setup_type = resolve_setup_type(features_json)
     setup_context_present = setup_type != "no_setup"
     setup_aware_first_touch_label = first_touch_label if setup_context_present else LABEL_FLAT
+    setup_pure_first_touch_label, setup_direction, setup_purity_reason = resolve_setup_pure_first_touch_label(
+        features_json=features_json,
+        first_touch_label=first_touch_label,
+        first_touch_payload=first_touch_payload,
+    )
 
     mode_labels = {
         LABEL_MODE_FUTURE_CLOSE_ATR: future_close_label,
         LABEL_MODE_FIRST_TOUCH_TP_SL: first_touch_label,
         LABEL_MODE_MFE_MAE_DOMINANCE: mfe_mae_dominance_label,
         LABEL_MODE_SETUP_AWARE_FIRST_TOUCH: setup_aware_first_touch_label,
+        LABEL_MODE_SETUP_PURE_FIRST_TOUCH: setup_pure_first_touch_label,
     }
     normalized_label_mode = normalize_label_mode(label_mode)
     return {
@@ -346,6 +411,9 @@ def build_label_mode_snapshot(
         "first_touch_tp_sl_label": first_touch_label,
         "mfe_mae_dominance_label": mfe_mae_dominance_label,
         "setup_aware_first_touch_label": setup_aware_first_touch_label,
+        "setup_pure_first_touch_label": setup_pure_first_touch_label,
+        "setup_direction": setup_direction,
+        "setup_purity_reason": setup_purity_reason,
         "selected_label_mode": normalized_label_mode,
         "selected_direction_label": mode_labels[normalized_label_mode],
         "future_return": float(future_return),

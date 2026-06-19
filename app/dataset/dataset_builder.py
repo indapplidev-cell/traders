@@ -156,14 +156,9 @@ class DatasetBuilder:
                 max_favorable_move_atr=float(label_row.max_favorable_move_atr),
                 max_adverse_move_atr=float(label_row.max_adverse_move_atr),
             )
-            opportunity_values = self._resolve_opportunity_values(
-                label_row=label_row,
-                computed_payload=computed_opportunity_payload,
-            )
-
             opportunity_payload = self._resolve_opportunity_payload(
                 label_row=label_row,
-                features_json=feature_row.features_json,
+                computed_payload=computed_opportunity_payload,
             )
 
             dataset_rows.append(
@@ -225,7 +220,7 @@ class DatasetBuilder:
         return dataset_rows, summary
 
     @staticmethod
-    def _resolve_opportunity_values(label_row: Any, computed_payload: Any) -> dict[str, Any]:
+    def _resolve_opportunity_payload(label_row: Any, computed_payload: Any) -> dict[str, Any]:
         if not DatasetBuilder._has_persisted_opportunity_payload(label_row):
             return computed_payload.to_dict()
 
@@ -278,18 +273,26 @@ class DatasetBuilder:
 
         opportunity_label = int(getattr(label_row, "opportunity_label", 0) or 0)
         opportunity_direction = str(getattr(label_row, "opportunity_direction", "NONE") or "NONE")
+        opportunity_reason = str(getattr(label_row, "opportunity_reason", "no_setup") or "no_setup")
         setup_type = str(getattr(label_row, "setup_type", "no_setup") or "no_setup")
         opportunity_score = float(getattr(label_row, "opportunity_score", 0.0) or 0.0)
         setup_quality_score = float(getattr(label_row, "setup_quality_score", 0.0) or 0.0)
+        setup_expected_move_atr = float(getattr(label_row, "setup_expected_move_atr", 0.0) or 0.0)
         label_ambiguity_score = float(getattr(label_row, "label_ambiguity_score", 1.0) or 1.0)
 
+        # Important:
+        # Columns can exist because migration 0004 added defaults.
+        # That does not mean the label was really persisted by the new opportunity builder.
+        # Treat all-default payload as non-persisted and recompute from features.
         return any(
             (
                 opportunity_label == 1,
                 opportunity_direction != "NONE",
+                opportunity_reason not in {"no_setup", "low_edge_context", ""},
                 setup_type != "no_setup",
                 opportunity_score > 0.0,
                 setup_quality_score > 0.0,
+                setup_expected_move_atr > 0.0,
                 label_ambiguity_score != 1.0,
             )
         )
@@ -304,48 +307,6 @@ class DatasetBuilder:
         if train_end is not None or validation_end is not None:
             splitter = DatasetSplitter(train_end=train_end, validation_end=validation_end)
         return splitter.split(dataset_rows)
-
-    def _resolve_opportunity_payload(self, *, label_row: Any, features_json: dict[str, Any]) -> dict[str, Any]:
-        if self._has_persisted_opportunity_payload(label_row):
-            return {
-                "opportunity_label": int(getattr(label_row, "opportunity_label", 0) or 0),
-                "opportunity_direction": str(getattr(label_row, "opportunity_direction", "NONE") or "NONE"),
-                "opportunity_reason": str(getattr(label_row, "opportunity_reason", "no_setup") or "no_setup"),
-                "opportunity_score": float(getattr(label_row, "opportunity_score", 0.0) or 0.0),
-                "setup_type": str(getattr(label_row, "setup_type", "no_setup") or "no_setup"),
-                "setup_quality_score": float(getattr(label_row, "setup_quality_score", 0.0) or 0.0),
-                "setup_invalidation_distance_atr": float(
-                    getattr(label_row, "setup_invalidation_distance_atr", 0.0) or 0.0
-                ),
-                "setup_expected_move_atr": float(getattr(label_row, "setup_expected_move_atr", 0.0) or 0.0),
-                "label_ambiguity_score": float(getattr(label_row, "label_ambiguity_score", 1.0) or 1.0),
-            }
-
-        return self._opportunity_label_builder.build(
-            features_json=features_json,
-            direction_label=label_row.direction_label,
-            tp_before_sl=label_row.tp_before_sl,
-            future_move_atr=float(label_row.future_move_atr),
-            max_favorable_move_atr=float(label_row.max_favorable_move_atr),
-            max_adverse_move_atr=float(label_row.max_adverse_move_atr),
-        ).to_dict()
-
-    @staticmethod
-    def _has_persisted_opportunity_payload(label_row: Any) -> bool:
-        return all(
-            hasattr(label_row, field_name)
-            for field_name in (
-                "opportunity_label",
-                "opportunity_direction",
-                "opportunity_reason",
-                "opportunity_score",
-                "setup_type",
-                "setup_quality_score",
-                "setup_invalidation_distance_atr",
-                "setup_expected_move_atr",
-                "label_ambiguity_score",
-            )
-        )
 
     @staticmethod
     def _first_open_time(rows: list[DatasetRow]) -> str | None:

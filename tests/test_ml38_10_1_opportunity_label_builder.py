@@ -1,6 +1,7 @@
-from app.labels.label_models import LABEL_FLAT, LABEL_UP
+from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP
 from app.labels.opportunity_label_builder import (
     OPPORTUNITY_REASON_NO_SETUP,
+    OPPORTUNITY_REASON_SETUP_DIRECTION_CONFLICT,
     OpportunityLabelBuilder,
 )
 
@@ -39,3 +40,22 @@ def test_opportunity_label_builder_keeps_no_setup_as_no_trade() -> None:
     assert payload.opportunity_label == 0
     assert payload.opportunity_direction == "NONE"
     assert payload.opportunity_reason == OPPORTUNITY_REASON_NO_SETUP
+
+
+def test_opportunity_label_builder_blocks_counter_setup_direction() -> None:
+    payload = OpportunityLabelBuilder().build(
+        features_json={
+            "nison_bullish_engulfing": 0.92,
+            "near_support": True,
+            "support_distance_atr": 0.10,
+        },
+        direction_label=LABEL_DOWN,
+        tp_before_sl=True,
+        future_move_atr=-0.90,
+        max_favorable_move_atr=1.20,
+        max_adverse_move_atr=0.25,
+    )
+
+    assert payload.opportunity_label == 0
+    assert payload.opportunity_direction == "NONE"
+    assert payload.opportunity_reason == OPPORTUNITY_REASON_SETUP_DIRECTION_CONFLICT

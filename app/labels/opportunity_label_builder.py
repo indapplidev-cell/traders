@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from app.labels.first_touch_label_builder import resolve_setup_type
+from app.labels.first_touch_label_builder import resolve_setup_direction, resolve_setup_type
 from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP
 
 
@@ -17,6 +17,8 @@ OPPORTUNITY_REASON_NO_SETUP = "no_setup"
 OPPORTUNITY_REASON_AMBIGUOUS_TOUCH = "ambiguous_touch"
 OPPORTUNITY_REASON_VOLATILE_FLAT = "volatile_flat"
 OPPORTUNITY_REASON_LOW_EDGE_CONTEXT = "low_edge_context"
+OPPORTUNITY_REASON_SETUP_DIRECTION_CONFLICT = "setup_direction_conflict"
+OPPORTUNITY_REASON_SETUP_DIRECTION_UNAVAILABLE = "setup_direction_unavailable"
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -113,17 +115,19 @@ class OpportunityLabelBuilder:
 
         if setup_type == "no_setup":
             opportunity_reason = OPPORTUNITY_REASON_NO_SETUP
+        elif setup_direction == OPPORTUNITY_DIRECTION_NONE:
+            opportunity_reason = OPPORTUNITY_REASON_SETUP_DIRECTION_UNAVAILABLE
         elif direction_label == LABEL_FLAT:
             opportunity_reason = (
                 OPPORTUNITY_REASON_VOLATILE_FLAT
                 if max_favorable_move_atr >= self.MIN_EXPECTED_MOVE_ATR and invalidation_distance_atr >= 0.35
                 else OPPORTUNITY_REASON_LOW_EDGE_CONTEXT
             )
+        elif direction_label in {LABEL_UP, LABEL_DOWN} and setup_direction != direction_label:
+            opportunity_reason = OPPORTUNITY_REASON_SETUP_DIRECTION_CONFLICT
         elif tp_before_sl is None or label_ambiguity_score > self.MAX_LABEL_AMBIGUITY_SCORE:
             opportunity_reason = OPPORTUNITY_REASON_AMBIGUOUS_TOUCH
         elif tp_before_sl is not True:
-            opportunity_reason = OPPORTUNITY_REASON_LOW_EDGE_CONTEXT
-        elif setup_direction == OPPORTUNITY_DIRECTION_NONE:
             opportunity_reason = OPPORTUNITY_REASON_LOW_EDGE_CONTEXT
         elif (
             setup_quality_score >= self.MIN_SETUP_QUALITY_SCORE
@@ -159,14 +163,10 @@ class OpportunityLabelBuilder:
         features_json: Mapping[str, Any],
         direction_label: str,
     ) -> str:
-        near_support = bool(features_json.get("near_support")) or _safe_float(features_json.get("support_distance_atr"), 9.0) <= 0.35
-        near_resistance = bool(features_json.get("near_resistance")) or _safe_float(features_json.get("resistance_distance_atr"), 9.0) <= 0.35
-        if near_support and not near_resistance:
-            return LABEL_UP
-        if near_resistance and not near_support:
-            return LABEL_DOWN
-        if direction_label in {LABEL_UP, LABEL_DOWN}:
-            return direction_label
+        del direction_label
+        resolved_direction = resolve_setup_direction(features_json)
+        if resolved_direction in {LABEL_UP, LABEL_DOWN}:
+            return resolved_direction
         return OPPORTUNITY_DIRECTION_NONE
 
     @staticmethod

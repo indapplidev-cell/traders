@@ -10,11 +10,8 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert wrapper.quick_quality is True
     assert wrapper.single_symbol_full is False
     assert wrapper.symbols == ("SOLUSDT",)
-    assert wrapper.selected_config_ids == (
-        "lv13_h08_opportunity_ft",
-        "lv13_h12_opportunity_ft",
-        "lv14_h08_cm_setup",
-    )
+    assert wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
+    assert "lv15_h12_setup_pure_ft" in wrapper.selected_config_ids
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
     assert wrapper._expected_candidate_count() == 3
@@ -31,8 +28,8 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv13_h08_opportunity_ft",
-        "lv13_h12_opportunity_ft",
+        "lv15_h08_setup_pure_ft",
+        "lv15_h12_setup_pure_ft",
         "lv14_h08_cm_setup",
     ]
     assert command[command.index("--start-date") + 1] == "2026-04-01"

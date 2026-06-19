@@ -1,5 +1,6 @@
 from app.experiments.ml38_2_fv3_tuning_matrix import ML382FV3TuningMatrix
 from app.labels.label_quality_grid import LabelQualityGridPlanner
+from app.labels.label_config import LABEL_MODE_SETUP_PURE_FIRST_TOUCH
 
 
 def test_opportunity_first_configs_are_in_grid_and_matrix() -> None:
@@ -18,3 +19,4 @@ def test_opportunity_first_configs_are_in_grid_and_matrix() -> None:
 
     assert matrix_payload["opportunity_first_stage"] == "ML38.10.1"
     assert matrix_payload["opportunity_first_config_count"] == 3
+    assert grid_configs["lv15_h08_setup_pure_ft"]["label_mode"] == LABEL_MODE_SETUP_PURE_FIRST_TOUCH

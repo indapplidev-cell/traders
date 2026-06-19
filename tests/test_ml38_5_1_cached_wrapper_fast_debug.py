@@ -7,10 +7,8 @@ def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -
 
     assert wrapper.fast_debug is True
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
-    assert wrapper.debug_config_ids == (
-        "lv13_h08_opportunity_ft",
-        "lv14_h08_cm_setup",
-    )
+    assert wrapper.debug_config_ids == run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv15_h08_setup_pure_ft" in wrapper.debug_config_ids
     assert wrapper.start_date == "2026-05-01"
     assert wrapper.end_date == "2026-06-15"
     assert wrapper._expected_candidate_count() == 4
@@ -30,7 +28,7 @@ def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv13_h08_opportunity_ft",
+        "lv15_h08_setup_pure_ft",
         "lv14_h08_cm_setup",
     ]
 

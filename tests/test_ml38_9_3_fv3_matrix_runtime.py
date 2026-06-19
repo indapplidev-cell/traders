@@ -18,8 +18,5 @@ def test_quick_quality_uses_current_prompt_4_6_smoke_configs() -> None:
 
     assert wrapper.runtime_profile == "quick_quality"
     assert wrapper.symbols == ("SOLUSDT",)
-    assert wrapper.selected_config_ids == (
-        "lv13_h08_opportunity_ft",
-        "lv13_h12_opportunity_ft",
-        "lv14_h08_cm_setup",
-    )
+    assert wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
+    assert "lv15_h12_setup_pure_ft" in wrapper.selected_config_ids
