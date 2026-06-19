@@ -77,6 +77,34 @@ class MultiSymbolFeatureRegimeAnalyzer:
         configs_ranked = self._configs_ranked(symbol_results)
         anti_collapse_summary = self._anti_collapse_summary(symbol_results)
         confidence_profitability_summary = self._confidence_profitability_summary(symbol_results)
+        decision_policy_summary = {
+            "candidates_with_decision_policy": sum(
+                int(item.get("decision_policy_selected_policy_id") is not None)
+                for item in symbol_results
+            ),
+            "selected_policy_by_symbol": {
+                item["symbol"]: item.get("decision_policy_selected_policy_id")
+                for item in symbol_results
+                if item.get("decision_policy_selected_policy_id") is not None
+            },
+            "positive_policy_edge_symbols": [
+                item["symbol"]
+                for item in symbol_results
+                if (
+                    self._as_dict(item.get("decision_policy_grid_diagnostics")).get("selected_policy", {}).get(
+                        "baseline_edge"
+                    )
+                    is not None
+                    and float(
+                        self._as_dict(item.get("decision_policy_grid_diagnostics")).get(
+                            "selected_policy",
+                            {},
+                        ).get("baseline_edge")
+                    )
+                    > 0.0
+                )
+            ],
+        }
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -101,6 +129,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "symbol_results": symbol_results,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
+            "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,
             "feature_version_summary": {
                 "all_feature_version_fv2": all_feature_version_fv2,
@@ -468,6 +497,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
             "predicted_class_distribution": cls._as_dict(best_candidate.get("predicted_class_distribution")),
             "actual_class_distribution": cls._as_dict(best_candidate.get("actual_class_distribution")),
+            "decision_policy_grid_diagnostics": cls._as_dict(
+                best_candidate.get("decision_policy_grid_diagnostics")
+            ),
+            "decision_policy_selected_policy_id": cls._as_dict(
+                best_candidate.get("decision_policy_grid_diagnostics")
+            ).get("selected_policy_id"),
+            "prediction_decision_source": best_candidate.get("prediction_decision_source"),
             "reasons_why_best_still_rejected": [
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
             ],
@@ -604,6 +640,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
         for symbol_result in symbol_results:
             for row in symbol_result.get("configs_ranked", []):
                 payload = dict(row)
+                decision_policy_payload = cls._as_dict(payload.get("decision_policy_grid_diagnostics"))
+                payload["decision_policy_grid_diagnostics"] = decision_policy_payload
+                payload["decision_policy_selected_policy_id"] = decision_policy_payload.get("selected_policy_id")
+                payload["prediction_decision_source"] = payload.get("prediction_decision_source")
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)

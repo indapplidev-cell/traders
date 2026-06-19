@@ -1,6 +1,7 @@
 from app.experiments.ml38_2_fv3_tuning_matrix import (
     ML382FV3TuningMatrix,
     ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS,
+    ML38_9_5_DECISION_POLICY_CONFIG_IDS,
     ML38_9_4_BOUNDED_CALIBRATION_CONFIG_IDS,
     ML38_9_3_CALIBRATED_DECISION_CONFIG_IDS,
     ML38_9_2_BASELINE_EDGE_CONFIG_IDS,
@@ -37,9 +38,13 @@ def test_fv3_matrix_count_matches_ml38_9_expanded_grid() -> None:
     assert payload["bounded_calibration_stage"] == "ML38.9.4"
     assert payload["bounded_calibration_config_count"] == len(ML38_9_4_BOUNDED_CALIBRATION_CONFIG_IDS)
     assert payload["bounded_calibration_config_count"] == 3
+    assert payload["decision_policy_grid_stage"] == "ML38.9.5"
+    assert payload["decision_policy_config_count"] == len(ML38_9_5_DECISION_POLICY_CONFIG_IDS)
+    assert payload["decision_policy_config_count"] == 3
     assert payload["config_count"] >= 20
     assert set(ML38_9_FLAT_BIAS_CONFIG_IDS).issubset(set(payload["config_ids"]))
     assert set(ML38_9_1_BIAS_AWARE_CONFIG_IDS).issubset(set(payload["config_ids"]))
     assert set(ML38_9_2_BASELINE_EDGE_CONFIG_IDS).issubset(set(payload["config_ids"]))
     assert set(ML38_9_3_CALIBRATED_DECISION_CONFIG_IDS).issubset(set(payload["config_ids"]))
     assert set(ML38_9_4_BOUNDED_CALIBRATION_CONFIG_IDS).issubset(set(payload["config_ids"]))
+    assert set(ML38_9_5_DECISION_POLICY_CONFIG_IDS).issubset(set(payload["config_ids"]))

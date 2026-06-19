@@ -1,21 +1,21 @@
 import run_fv3_cached_tuning
-from app.experiments.ml38_2_fv3_tuning_matrix import ML38_9_4_BOUNDED_CALIBRATION_CONFIG_IDS
+from app.experiments.ml38_2_fv3_tuning_matrix import ML38_9_5_DECISION_POLICY_CONFIG_IDS
 
 
 EXPECTED_QUICK_QUALITY_CONFIGS = (
-    "lv9_h08_thr052_tp10_sl10_bc",
-    "lv9_h12_thr06_tp12_sl12_bc",
-    "lv9_h16_thr065_tp15_sl15_bc",
+    "lv10_h08_thr052_tp10_sl10_dp",
+    "lv10_h12_thr06_tp12_sl12_dp",
+    "lv10_h16_thr065_tp15_sl15_dp",
 )
 
 EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS = (
-    "lv9_h08_thr052_tp10_sl10_bc",
-    "lv9_h12_thr06_tp12_sl12_bc",
-    "lv9_h16_thr065_tp15_sl15_bc",
+    "lv10_h08_thr052_tp10_sl10_dp",
+    "lv10_h12_thr06_tp12_sl12_dp",
+    "lv10_h16_thr065_tp15_sl15_dp",
 )
 
 
-def test_ml38_9_single_symbol_full_uses_calibrated_decision_shortlist() -> None:
+def test_ml38_9_5_single_symbol_full_uses_decision_policy_shortlist() -> None:
     args = run_fv3_cached_tuning.parse_args([
         "--single-symbol-full",
         "--single-symbol-full-symbol",
@@ -26,11 +26,11 @@ def test_ml38_9_single_symbol_full_uses_calibrated_decision_shortlist() -> None:
     assert wrapper.runtime_profile == "single_symbol_full"
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS
-    assert all(config_id in ML38_9_4_BOUNDED_CALIBRATION_CONFIG_IDS for config_id in wrapper.selected_config_ids)
-    assert all(config_id.endswith("_bc") for config_id in wrapper.selected_config_ids)
+    assert all(config_id in ML38_9_5_DECISION_POLICY_CONFIG_IDS for config_id in wrapper.selected_config_ids)
+    assert all(config_id.endswith("_dp") for config_id in wrapper.selected_config_ids)
 
 
-def test_ml38_9_quick_quality_and_single_symbol_full_use_calibrated_decision_shortlists() -> None:
+def test_ml38_9_5_quick_quality_and_single_symbol_full_use_decision_policy_shortlists() -> None:
     quick_args = run_fv3_cached_tuning.parse_args([
         "--quick-quality",
         "--quick-quality-symbol",

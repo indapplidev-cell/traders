@@ -111,6 +111,7 @@ class FeatureRegimeCandidateResult:
     probability_diagnostics_missing_reason: str | None = None
     calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
     bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
+    decision_policy_grid_diagnostics: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -196,6 +197,7 @@ class FeatureRegimeCandidateResult:
             "probability_diagnostics_missing_reason": self.probability_diagnostics_missing_reason,
             "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
             "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
+            "decision_policy_grid_diagnostics": dict(self.decision_policy_grid_diagnostics),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -1629,6 +1631,9 @@ class FeatureRegimeExperimentRunner:
                 bounded_calibrated_decision_selection=self._as_dict(
                     getattr(item, "bounded_calibrated_decision_selection", {})
                 ),
+                decision_policy_grid_diagnostics=self._as_dict(
+                    getattr(item, "decision_policy_grid_diagnostics", {})
+                ),
                 raw_predicted_class_distribution=self._as_dict(
                     getattr(item, "raw_predicted_class_distribution", {})
                 ),
@@ -1964,6 +1969,11 @@ class FeatureRegimeExperimentRunner:
                     "candidate_status": item.candidate_status,
                     "excluded_from_best_selection": False,
                     "failed_gates": list(item.failed_gates),
+                    "decision_policy_grid_diagnostics": dict(item.decision_policy_grid_diagnostics),
+                    "decision_policy_selected_policy_id": dict(item.decision_policy_grid_diagnostics).get(
+                        "selected_policy_id"
+                    ),
+                    "prediction_decision_source": item.prediction_decision_source,
                 }
             )
         return ranking

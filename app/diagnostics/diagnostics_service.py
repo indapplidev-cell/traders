@@ -19,6 +19,7 @@ from app.diagnostics.directional_opportunity_diagnostics import DirectionalOppor
 from app.diagnostics.feature_diagnostics_v2 import FeatureDiagnosticsV2
 from app.diagnostics.fold_label_diagnostics import FoldLabelDiagnostics
 from app.diagnostics.calibrated_prediction_decisions import CalibratedPredictionDecisions
+from app.diagnostics.decision_policy_grid import DecisionPolicyGrid
 from app.diagnostics.prediction_collapse_detector import PredictionCollapseDetector
 from app.diagnostics.prediction_bias_root_cause import PredictionBiasRootCause
 from app.diagnostics.prediction_diagnostics import PredictionDiagnostics
@@ -103,6 +104,7 @@ class DiagnosticsService:
         self._prediction_probability_diagnostics = prediction_probability_diagnostics or PredictionProbabilityDiagnostics()
         self._prediction_collapse_detector = prediction_collapse_detector or PredictionCollapseDetector()
         self._calibrated_prediction_decisions = CalibratedPredictionDecisions()
+        self._decision_policy_grid = DecisionPolicyGrid()
         self._model_loader = model_loader or ModelLoader(artifact_storage=self._artifact_storage)
         self._model_factory = model_factory or ModelFactory()
         self._confidence_gate_evaluator = confidence_gate_evaluator or ConfidenceGateEvaluator(reports_dir=self._reports_dir)
@@ -482,9 +484,30 @@ class DiagnosticsService:
             config_id=str(dict(label_config or {}).get("config_id") or label_version),
         )
         calibrated_predictions = list(calibrated_diagnostics.get("calibrated_rows", []))
-        selected_predictions = list(
-            calibrated_diagnostics.get("selected_rows", calibrated_predictions)
+        selected_predictions = list(calibrated_diagnostics.get("selected_rows", calibrated_predictions))
+        prediction_decision_source = str(
+            calibrated_diagnostics.get("selected_decision_source") or "calibrated_decision_layer"
         )
+        decision_policy_grid_diagnostics: dict[str, Any] = {}
+        if bool(dict(label_config or {}).get("decision_policy_grid_enabled", False)):
+            actual_labels = [str(row.get("actual_label", "FLAT")).upper() for row in raw_predictions]
+            decision_policy_grid_diagnostics = self._decision_policy_grid.evaluate(
+                probability_rows=raw_predictions,
+                actual_labels=actual_labels,
+                baseline_accuracy=calibrated_diagnostics.get("baseline_accuracy"),
+            )
+            selected_predictions = self._rows_with_selected_predictions(
+                source_rows=raw_predictions,
+                selected_predictions=decision_policy_grid_diagnostics.get("selected_predictions", []),
+                selected_decision_source=str(
+                    decision_policy_grid_diagnostics.get("selected_decision_source")
+                    or "decision_policy_grid:raw_argmax"
+                ),
+            )
+            prediction_decision_source = str(
+                decision_policy_grid_diagnostics.get("selected_decision_source")
+                or prediction_decision_source
+            )
         report = self._prediction_probability_diagnostics.build_report(
             model_version=model_version,
             predictions=selected_predictions,
@@ -503,9 +526,9 @@ class DiagnosticsService:
         report["bounded_calibrated_decision_selection"] = dict(
             calibrated_diagnostics.get("bounded_calibrated_decision_selection", {})
         )
-        report["prediction_decision_source"] = str(
-            calibrated_diagnostics.get("selected_decision_source") or "calibrated_decision_layer"
-        )
+        if decision_policy_grid_diagnostics:
+            report["decision_policy_grid_diagnostics"] = decision_policy_grid_diagnostics
+        report["prediction_decision_source"] = prediction_decision_source
         report["start_at"] = start_at.isoformat() if start_at is not None else None
         report["end_at"] = end_at.isoformat() if end_at is not None else None
         report["date_range_limited"] = start_at is not None and end_at is not None
@@ -513,6 +536,21 @@ class DiagnosticsService:
         output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
         report["report_path"] = str(output_path)
         return report
+
+    @staticmethod
+    def _rows_with_selected_predictions(
+        *,
+        source_rows: Sequence[dict[str, Any]],
+        selected_predictions: Sequence[str],
+        selected_decision_source: str,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for row, selected_label in zip(source_rows, selected_predictions):
+            selected_row = dict(row)
+            selected_row["predicted_label"] = str(selected_label).upper()
+            selected_row["selected_decision_source"] = selected_decision_source
+            rows.append(selected_row)
+        return rows
 
     def feature_diagnostics_v2(
         self,

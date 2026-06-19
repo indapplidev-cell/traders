@@ -10,6 +10,9 @@ __all__ = [
     "BaselineEdgeDiagnosticsResult",
     "BoundedDecisionCalibrationConfig",
     "CalibratedPredictionDecisions",
+    "DecisionPolicyConfig",
+    "DecisionPolicyGrid",
+    "DecisionPolicyResult",
     "DecisionCalibrationConfig",
     "choose_bounded_calibrated_decisions",
     "evaluate_decision_distribution",
@@ -65,6 +68,19 @@ def __getattr__(name: str) -> Any:
             "DecisionCalibrationConfig": DecisionCalibrationConfig,
             "choose_bounded_calibrated_decisions": choose_bounded_calibrated_decisions,
             "evaluate_decision_distribution": evaluate_decision_distribution,
+        }[name]
+
+    if name in {"DecisionPolicyConfig", "DecisionPolicyGrid", "DecisionPolicyResult"}:
+        from app.diagnostics.decision_policy_grid import (
+            DecisionPolicyConfig,
+            DecisionPolicyGrid,
+            DecisionPolicyResult,
+        )
+
+        return {
+            "DecisionPolicyConfig": DecisionPolicyConfig,
+            "DecisionPolicyGrid": DecisionPolicyGrid,
+            "DecisionPolicyResult": DecisionPolicyResult,
         }[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -164,6 +164,11 @@ class ML382ConfigRanker:
         calibrated_down = float(calibrated_ratios.get("DOWN", 0.0))
         bounded_selection = dict(candidate.get("bounded_calibrated_decision_selection", {}))
         decision_source = str(candidate.get("prediction_decision_source") or "")
+        decision_policy_payload = dict(candidate.get("decision_policy_grid_diagnostics", {}))
+        selected_policy = dict(decision_policy_payload.get("selected_policy", {}))
+        selected_policy_id = decision_policy_payload.get("selected_policy_id")
+        selected_policy_edge = selected_policy.get("baseline_edge")
+        selected_policy_safe = selected_policy.get("distribution_safe")
         bounded_calibration_bonus = 0.0
         bounded_calibration_fallback_penalty = 0.0
         if bounded_selection:
@@ -201,6 +206,25 @@ class ML382ConfigRanker:
             "bounded_calibration_bonus": bounded_calibration_bonus,
             "bounded_calibration_fallback_penalty": bounded_calibration_fallback_penalty,
         }
+        if selected_policy_id:
+            score_components["decision_policy_grid_bonus"] = 0.75
+        else:
+            score_components["decision_policy_grid_bonus"] = 0.0
+
+        if selected_policy_safe is True:
+            score_components["decision_policy_distribution_bonus"] = 1.0
+        else:
+            score_components["decision_policy_distribution_bonus"] = 0.0
+
+        try:
+            edge = float(selected_policy_edge)
+        except (TypeError, ValueError):
+            edge = None
+
+        if edge is not None and edge > 0.0:
+            score_components["decision_policy_baseline_edge_bonus"] = min(3.0, edge * 50.0)
+        else:
+            score_components["decision_policy_baseline_edge_bonus"] = 0.0
         rejection_reasons: list[str] = []
         baseline_score, baseline_components, baseline_reasons = self._baseline_edge_score_component(candidate)
         collapse_score, collapse_components, collapse_reasons = self._collapse_severity_score_component(candidate)
@@ -288,6 +312,8 @@ class ML382ConfigRanker:
             "confidence_profitability_status": confidence_profitability_status,
             "calibrated_decision_diagnostics": calibrated_decision,
             "bounded_calibrated_decision_selection": bounded_selection,
+            "decision_policy_grid_diagnostics": decision_policy_payload,
+            "decision_policy_selected_policy_id": selected_policy_id,
             "calibrated_predicted_ratios": calibrated_ratios,
             "raw_predicted_ratios": raw_ratios,
             "prediction_decision_source": decision_source,

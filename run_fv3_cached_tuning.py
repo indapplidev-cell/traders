@@ -165,27 +165,27 @@ def _infer_default_expected_candidate_count() -> int:
 DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
 DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
-# Runtime smoke: one bounded-calibration config, two symbols, short period.
-FAST_DEBUG_CONFIGS = ("lv9_h12_thr06_tp12_sl12_bc",)
+# Runtime smoke: one decision-policy-grid config, two symbols, short period.
+FAST_DEBUG_CONFIGS = ("lv10_h12_thr06_tp12_sl12_dp",)
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
 FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 
-# Intermediate quality: one symbol, three ML38.9.4 configs, short period.
+# Intermediate quality: one symbol, three ML38.9.5 configs, short period.
 QUICK_QUALITY_CONFIGS = (
-    "lv9_h08_thr052_tp10_sl10_bc",
-    "lv9_h12_thr06_tp12_sl12_bc",
-    "lv9_h16_thr065_tp15_sl15_bc",
+    "lv10_h08_thr052_tp10_sl10_dp",
+    "lv10_h12_thr06_tp12_sl12_dp",
+    "lv10_h16_thr065_tp15_sl15_dp",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"
 QUICK_QUALITY_END_DATE = DEFAULT_END_DATE
 
-# Intermediate heavy check: one symbol, full period, ML38.9.4 shortlist.
+# Intermediate heavy check: one symbol, full period, ML38.9.5 shortlist.
 SINGLE_SYMBOL_FULL_CONFIGS = (
-    "lv9_h08_thr052_tp10_sl10_bc",
-    "lv9_h12_thr06_tp12_sl12_bc",
-    "lv9_h16_thr065_tp15_sl15_bc",
+    "lv10_h08_thr052_tp10_sl10_dp",
+    "lv10_h12_thr06_tp12_sl12_dp",
+    "lv10_h16_thr065_tp15_sl15_dp",
 )
 SINGLE_SYMBOL_FULL_SYMBOL = "SOLUSDT"
 SINGLE_SYMBOL_FULL_START_DATE = DEFAULT_START_DATE

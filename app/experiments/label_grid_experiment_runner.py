@@ -102,6 +102,7 @@ class LabelGridExperimentCandidateResult:
     collapse_diagnostics_v2_missing_reason: str | None = None
     calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
     bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
+    decision_policy_grid_diagnostics: dict[str, Any] = field(default_factory=dict)
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -164,6 +165,7 @@ class LabelGridExperimentCandidateResult:
             "collapse_diagnostics_v2_missing_reason": self.collapse_diagnostics_v2_missing_reason,
             "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
             "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
+            "decision_policy_grid_diagnostics": dict(self.decision_policy_grid_diagnostics),
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -937,6 +939,8 @@ class LabelGridExperimentRunner:
                     if label_config.decision_actual_class_high_threshold is None
                     else float(label_config.decision_actual_class_high_threshold)
                 ),
+                decision_policy_grid_enabled=bool(label_config.decision_policy_grid_enabled),
+                decision_policy_grid_stage=label_config.decision_policy_grid_stage,
             )
         )
         if pipeline_result.status == "FAILED":
@@ -1100,6 +1104,9 @@ class LabelGridExperimentRunner:
             ),
             bounded_calibrated_decision_selection=dict(
                 probability_diagnostics.get("bounded_calibrated_decision_selection", {})
+            ),
+            decision_policy_grid_diagnostics=dict(
+                probability_diagnostics.get("decision_policy_grid_diagnostics", {})
             ),
             raw_predicted_class_distribution=raw_predicted_class_distribution,
             calibrated_predicted_class_distribution=calibrated_predicted_class_distribution,
@@ -1344,6 +1351,9 @@ class LabelGridExperimentRunner:
             ),
             bounded_calibrated_decision_selection=dict(
                 probability_diagnostics.get("bounded_calibrated_decision_selection", {})
+            ),
+            decision_policy_grid_diagnostics=dict(
+                probability_diagnostics.get("decision_policy_grid_diagnostics", {})
             ),
             raw_predicted_class_distribution=dict(
                 raw_probability_diagnostics.get("predicted_direction_ratios", {})

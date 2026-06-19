@@ -93,6 +93,8 @@ class TrainingPipelineConfig:
     decision_require_non_worse_baseline_edge: bool = True
     decision_baseline_edge_tolerance: float = 0.0025
     decision_actual_class_high_threshold: float = 0.25
+    decision_policy_grid_enabled: bool = False
+    decision_policy_grid_stage: str | None = None
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -429,6 +431,8 @@ class LongHistoryTrainingPipelineRunner:
                 "export_report": config.export_report,
                 "output_dir": str(config.output_dir),
                 "skip_candle_load": config.skip_candle_load,
+                "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
+                "decision_policy_grid_stage": config.decision_policy_grid_stage,
             },
             next_recommendations=self._next_recommendations(
                 quality_status=str(quality_summary.get("quality_status", INSUFFICIENT_REAL_HISTORY)),
@@ -618,6 +622,8 @@ class LongHistoryTrainingPipelineRunner:
                 "export_report": config.export_report,
                 "output_dir": str(config.output_dir),
                 "skip_candle_load": config.skip_candle_load,
+                "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
+                "decision_policy_grid_stage": config.decision_policy_grid_stage,
             },
             next_recommendations=self._next_recommendations(
                 quality_status=str(quality_summary.get("quality_status", INSUFFICIENT_REAL_HISTORY)),
@@ -987,6 +993,8 @@ class LongHistoryTrainingPipelineRunner:
                         "decision_require_non_worse_baseline_edge": config.decision_require_non_worse_baseline_edge,
                         "decision_baseline_edge_tolerance": config.decision_baseline_edge_tolerance,
                         "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
+                        "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
+                        "decision_policy_grid_stage": config.decision_policy_grid_stage,
                         "regime_label_builder_status": regime_label_builder_status,
                         "first_open_time": None,
                         "last_open_time": None,
@@ -1033,6 +1041,8 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_require_non_worse_baseline_edge": config.decision_require_non_worse_baseline_edge,
                 "decision_baseline_edge_tolerance": config.decision_baseline_edge_tolerance,
                 "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
+                "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
+                "decision_policy_grid_stage": config.decision_policy_grid_stage,
                 "regime_label_builder_status": regime_label_builder_status,
                 "first_open_time": records[0].candle_open_time.isoformat() if records else None,
                 "last_open_time": records[-1].candle_open_time.isoformat() if records else None,
@@ -1201,6 +1211,8 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_require_non_worse_baseline_edge": config.decision_require_non_worse_baseline_edge,
                 "decision_baseline_edge_tolerance": config.decision_baseline_edge_tolerance,
                 "decision_actual_class_high_threshold": config.decision_actual_class_high_threshold,
+                "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
+                "decision_policy_grid_stage": config.decision_policy_grid_stage,
             },
         }
 
@@ -1844,6 +1856,13 @@ class LongHistoryTrainingPipelineRunner:
                     "decision_actual_class_high_threshold",
                     config.decision_actual_class_high_threshold,
                 )
+            ),
+            "decision_policy_grid_enabled": self._as_bool(
+                build_labels_payload.get("decision_policy_grid_enabled", config.decision_policy_grid_enabled),
+            ),
+            "decision_policy_grid_stage": build_labels_payload.get(
+                "decision_policy_grid_stage",
+                config.decision_policy_grid_stage,
             ),
         }
 

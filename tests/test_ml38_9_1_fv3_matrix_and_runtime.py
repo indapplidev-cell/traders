@@ -22,16 +22,16 @@ def test_ml38_9_1_runtime_profiles_use_bias_aware_shortlists() -> None:
     fast_args = run_fv3_cached_tuning.parse_args(["--fast-debug"])
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(fast_args)
     assert fast_wrapper.runtime_profile == "fast_debug"
-    assert fast_wrapper.selected_config_ids == ("lv9_h12_thr06_tp12_sl12_bc",)
+    assert fast_wrapper.selected_config_ids == ("lv10_h12_thr06_tp12_sl12_dp",)
 
     quick_args = run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(quick_args)
     assert quick_wrapper.runtime_profile == "quick_quality"
     assert quick_wrapper.symbols == ("SOLUSDT",)
     assert quick_wrapper.selected_config_ids == (
-        "lv9_h08_thr052_tp10_sl10_bc",
-        "lv9_h12_thr06_tp12_sl12_bc",
-        "lv9_h16_thr065_tp15_sl15_bc",
+        "lv10_h08_thr052_tp10_sl10_dp",
+        "lv10_h12_thr06_tp12_sl12_dp",
+        "lv10_h16_thr065_tp15_sl15_dp",
     )
 
     full_args = run_fv3_cached_tuning.parse_args(["--single-symbol-full", "--single-symbol-full-symbol", "SOLUSDT"])
@@ -39,9 +39,9 @@ def test_ml38_9_1_runtime_profiles_use_bias_aware_shortlists() -> None:
     assert full_wrapper.runtime_profile == "single_symbol_full"
     assert full_wrapper.symbols == ("SOLUSDT",)
     assert full_wrapper.selected_config_ids == (
-        "lv9_h08_thr052_tp10_sl10_bc",
-        "lv9_h12_thr06_tp12_sl12_bc",
-        "lv9_h16_thr065_tp15_sl15_bc",
+        "lv10_h08_thr052_tp10_sl10_dp",
+        "lv10_h12_thr06_tp12_sl12_dp",
+        "lv10_h16_thr065_tp15_sl15_dp",
     )
     assert run_fv3_cached_tuning.DEFAULT_EXPECTED_CANDIDATE_COUNT == (
         ML382FV3TuningMatrix().build()["config_count"] * len(run_fv3_cached_tuning.DEFAULT_SYMBOLS)
