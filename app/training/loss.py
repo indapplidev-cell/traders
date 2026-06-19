@@ -7,6 +7,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from app.training.training_objectives import TRAINING_OBJECTIVE_TRADE_TWO_STAGE
+from app.training.training_objectives import is_trade_two_stage_objective
+
 
 class FocalCrossEntropyLoss(nn.Module):
     """Focal loss для direction head с optional sample weights."""
@@ -135,6 +138,38 @@ class MultiTaskLoss:
         self._bce = nn.BCEWithLogitsLoss()
         self._regression = nn.HuberLoss()
 
+    @staticmethod
+    def _balanced_bce_with_logits(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        targets = targets.to(dtype=logits.dtype, device=logits.device)
+        positive_count = torch.clamp(targets.sum(), min=1.0)
+        negative_count = torch.clamp((1.0 - targets).sum(), min=1.0)
+        pos_weight = torch.clamp(negative_count / positive_count, min=1.0, max=12.0)
+        return F.binary_cross_entropy_with_logits(logits, targets, pos_weight=pos_weight)
+
+    @staticmethod
+    def _binary_trade_direction_loss(
+        direction_logits: torch.Tensor,
+        direction_trade_targets: torch.Tensor,
+        direction_trade_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        trade_mask = direction_trade_mask > 0.5
+        if not torch.any(trade_mask):
+            return direction_logits.new_tensor(0.0)
+
+        # Use only UP/DOWN logits. FLAT is not a direction class in trade_two_stage.
+        up_down_logits = direction_logits[trade_mask][:, :2]
+        targets = direction_trade_targets[trade_mask].to(dtype=torch.long, device=direction_logits.device)
+
+        up_count = torch.clamp((targets == 0).sum().to(dtype=torch.float32), min=1.0)
+        down_count = torch.clamp((targets == 1).sum().to(dtype=torch.float32), min=1.0)
+        total = up_count + down_count
+        weights = torch.stack([
+            torch.clamp(total / (2.0 * up_count), min=0.65, max=2.50),
+            torch.clamp(total / (2.0 * down_count), min=0.65, max=2.50),
+        ]).to(device=direction_logits.device, dtype=direction_logits.dtype)
+
+        return F.cross_entropy(up_down_logits, targets, weight=weights)
+
     def compute(self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, dict[str, float]]:
         direction_logits = outputs["direction_logits"]
         direction_targets = batch["direction_target"]
@@ -142,6 +177,17 @@ class MultiTaskLoss:
         direction_probabilities = torch.softmax(direction_logits, dim=1)
         opportunity_targets = batch.get("opportunity_target")
         opportunity_mask = None if opportunity_targets is None else (opportunity_targets > 0.5)
+        trade_two_stage = is_trade_two_stage_objective(self._training_objective)
+        direction_trade_targets = batch.get("direction_trade_target")
+        direction_trade_mask = batch.get("direction_trade_mask")
+        if direction_trade_targets is None:
+            direction_trade_targets = torch.where(direction_targets == 0, 0, 1).to(dtype=torch.long)
+        if direction_trade_mask is None:
+            direction_trade_mask = (
+                opportunity_mask.to(dtype=torch.float32)
+                if opportunity_mask is not None
+                else torch.ones_like(direction_targets, dtype=torch.float32)
+            )
         masked_direction_probabilities = direction_probabilities
         masked_direction_targets = direction_targets
         if self._training_objective == "opportunity_first" and opportunity_mask is not None and torch.any(opportunity_mask):
@@ -149,7 +195,14 @@ class MultiTaskLoss:
             masked_direction_targets = direction_targets[opportunity_mask]
 
         opportunity_loss = direction_logits.new_tensor(0.0)
-        if self._training_objective == "opportunity_first" and opportunity_targets is not None:
+        if trade_two_stage and opportunity_targets is not None:
+            opportunity_loss = self._balanced_bce_with_logits(outputs["opportunity_logit"], opportunity_targets)
+            direction_loss = self._binary_trade_direction_loss(
+                direction_logits=direction_logits,
+                direction_trade_targets=direction_trade_targets,
+                direction_trade_mask=direction_trade_mask,
+            )
+        elif self._training_objective == "opportunity_first" and opportunity_targets is not None:
             opportunity_loss = self._bce(outputs["opportunity_logit"], opportunity_targets)
             if torch.any(opportunity_mask):
                 direction_loss = self._compute_direction_loss(
@@ -165,15 +218,23 @@ class MultiTaskLoss:
                 direction_targets,
                 sample_weights=direction_sample_weights,
             )
+        if trade_two_stage:
+            regularizer_sample_weights = direction_trade_mask.to(dtype=direction_logits.dtype, device=direction_logits.device)
+        else:
+            regularizer_sample_weights = (
+                direction_sample_weights
+                if self._training_objective != "opportunity_first" or opportunity_mask is None
+                else direction_sample_weights * opportunity_mask.float()
+            )
         confidence_margin_loss = self._confidence_margin_loss(
             direction_logits,
             direction_targets,
-            sample_weights=direction_sample_weights if self._training_objective != "opportunity_first" or opportunity_mask is None else direction_sample_weights * opportunity_mask.float(),
+            sample_weights=regularizer_sample_weights,
         )
         direction_logit_gap_loss = self._direction_logit_gap_loss(
             direction_logits,
             direction_targets,
-            sample_weights=direction_sample_weights if self._training_objective != "opportunity_first" or opportunity_mask is None else direction_sample_weights * opportunity_mask.float(),
+            sample_weights=regularizer_sample_weights,
         )
         direction_distribution_loss = self._direction_distribution_loss(
             probabilities=masked_direction_probabilities,
@@ -187,11 +248,6 @@ class MultiTaskLoss:
         )
         dominant_class_ceiling_loss = self._dominant_class_ceiling_loss(
             probabilities=masked_direction_probabilities,
-        )
-        regularizer_sample_weights = (
-            direction_sample_weights
-            if self._training_objective != "opportunity_first" or opportunity_mask is None
-            else direction_sample_weights * opportunity_mask.float()
         )
         true_class_margin_loss = self._true_class_margin_loss(
             direction_logits,
@@ -214,19 +270,26 @@ class MultiTaskLoss:
             direction_targets,
             sample_weights=regularizer_sample_weights,
         )
+        if trade_two_stage:
+            direction_distribution_loss = direction_logits.new_tensor(0.0)
+            flat_probability_floor_loss = direction_logits.new_tensor(0.0)
+            class_probability_floor_loss = direction_logits.new_tensor(0.0)
+            dominant_class_ceiling_loss = direction_logits.new_tensor(0.0)
+            flat_margin_loss = direction_logits.new_tensor(0.0)
 
         tp_mask = batch["tp_sl_mask"] > 0
-        if self._training_objective == "opportunity_first" and opportunity_mask is not None:
-            tp_mask = tp_mask & opportunity_mask
+        trade_aware_mask = direction_trade_mask > 0.5 if trade_two_stage else opportunity_mask
+        if self._training_objective in {"opportunity_first", TRAINING_OBJECTIVE_TRADE_TWO_STAGE} and trade_aware_mask is not None:
+            tp_mask = tp_mask & trade_aware_mask
         if torch.any(tp_mask):
             tp_sl_loss = self._bce(outputs["tp_sl_logits"][tp_mask], batch["tp_sl_target"][tp_mask])
         else:
             tp_sl_loss = direction_logits.new_tensor(0.0)
 
-        if self._training_objective == "opportunity_first" and opportunity_mask is not None:
-            if torch.any(opportunity_mask):
-                move_loss = self._regression(outputs["expected_move_atr"][opportunity_mask], batch["move_target"][opportunity_mask])
-                risk_loss = self._regression(outputs["risk_score"][opportunity_mask], batch["risk_target"][opportunity_mask])
+        if self._training_objective in {"opportunity_first", TRAINING_OBJECTIVE_TRADE_TWO_STAGE} and trade_aware_mask is not None:
+            if torch.any(trade_aware_mask):
+                move_loss = self._regression(outputs["expected_move_atr"][trade_aware_mask], batch["move_target"][trade_aware_mask])
+                risk_loss = self._regression(outputs["risk_score"][trade_aware_mask], batch["risk_target"][trade_aware_mask])
             else:
                 move_loss = direction_logits.new_tensor(0.0)
                 risk_loss = direction_logits.new_tensor(0.0)
@@ -272,6 +335,9 @@ class MultiTaskLoss:
             "direction_predicted_up_probability_mean": float(predicted_distribution[0].detach().item()),
             "direction_predicted_down_probability_mean": float(predicted_distribution[1].detach().item()),
             "direction_predicted_flat_probability_mean": float(predicted_distribution[2].detach().item()),
+            "trade_two_stage_enabled": float(1.0 if trade_two_stage else 0.0),
+            "trade_row_ratio": float(direction_trade_mask.float().mean().detach().item()) if direction_trade_mask is not None else 0.0,
+            "direction_trade_rows": float((direction_trade_mask > 0.5).sum().detach().item()) if direction_trade_mask is not None else 0.0,
             "training_objective": self._training_objective,
             "direction_loss_name": self._direction_loss_name,
             "opportunity_loss_weight": self._opportunity_loss_weight,

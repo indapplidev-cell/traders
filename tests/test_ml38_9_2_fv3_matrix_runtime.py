@@ -20,4 +20,4 @@ def test_ml38_9_2_runtime_profile_uses_current_prompt_4_6_quick_quality_shortlis
     assert wrapper.runtime_profile == "quick_quality"
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
-    assert "lv15_h12_setup_pure_ft" in wrapper.selected_config_ids
+    assert "lv16_h12_trade_two_stage" in wrapper.selected_config_ids

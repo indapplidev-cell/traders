@@ -17,6 +17,7 @@ from app.diagnostics.direction_head_separation_diagnostics import LabelNoiseDiag
 from app.diagnostics.direction_head_separation_diagnostics import baseline_edge_sample_weight_for_row
 from app.diagnostics.direction_head_separation_diagnostics import direction_sample_weight_for_row
 from app.diagnostics.opportunity_diagnostics import OpportunityDiagnostics
+from app.diagnostics.two_stage_trade_diagnostics import TwoStageTradeDiagnostics
 from app.features.feature_models import FEATURE_NAMES, feature_names_for_version
 from app.models.model_factory import ModelFactory
 from app.registry.artifact_storage import ArtifactStorage
@@ -28,6 +29,9 @@ from app.training.loss import baseline_edge_aware_direction_loss
 from app.training.probability_calibration import DEFAULT_TEMPERATURE_GRID
 from app.training.probability_calibration import fit_direction_temperature_for_model
 from app.training.model_version_builder import build_unique_model_version
+from app.training.training_objectives import TRAINING_OBJECTIVE_TRADE_TWO_STAGE
+from app.training.training_objectives import is_trade_aware_objective
+from app.training.training_objectives import is_trade_two_stage_objective
 from app.training.trainer import Trainer
 
 
@@ -459,6 +463,8 @@ class TrainingService:
                 direction_temperature=direction_temperature,
                 training_objective=config.training_objective,
             )
+            if config.training_objective == "trade_two_stage":
+                test_metrics["two_stage_trade_diagnostics"] = TwoStageTradeDiagnostics().evaluate_metrics(test_metrics)
 
             training_config = {
                 "model_name": model_name,
@@ -717,11 +723,14 @@ class TrainingService:
             "features": empty_features,
             "direction_target": empty_long,
             "direction_sample_weight": empty_float,
+            "direction_trade_target": empty_long,
+            "direction_trade_mask": empty_float,
             "tp_sl_target": empty_float,
             "tp_sl_mask": empty_float,
             "move_target": empty_float,
             "risk_target": empty_float,
             "opportunity_target": empty_float,
+            "no_trade_target": empty_float,
             "flat_margin_allowed_mask": empty_float,
         }
 
@@ -826,6 +835,9 @@ class TrainingService:
         move_targets: list[float] = []
         risk_targets: list[float] = []
         opportunity_targets: list[float] = []
+        direction_trade_targets: list[int] = []
+        direction_trade_masks: list[float] = []
+        no_trade_targets: list[float] = []
         flat_margin_allowed_mask: list[float] = []
         class_margin_weighting_enabled = (
             bool(class_margin_objective_enabled) and bool(class_margin_objective_allowed)
@@ -860,25 +872,40 @@ class TrainingService:
                 getattr(row, "setup_invalidation_distance_atr", max_adverse_move_atr) or 0.0
             )
 
-            if training_objective == "opportunity_first":
+            if is_trade_aware_objective(training_objective):
                 move_targets.append(setup_expected_move_atr)
                 risk_targets.append(setup_invalidation_distance_atr)
             else:
                 move_targets.append(future_move_atr)
                 risk_targets.append(max_adverse_move_atr)
 
-            opportunity_targets.append(float(getattr(row, "opportunity_label", 1.0) or 0.0))
+            opportunity_target = float(getattr(row, "opportunity_label", 1.0) or 0.0)
+            opportunity_targets.append(opportunity_target)
+
+            row_direction_label = str(getattr(row, "direction_label", "FLAT") or "FLAT").upper()
+            direction_trade_target = 0 if row_direction_label == "UP" else 1
+            direction_trade_mask = 1.0 if opportunity_target > 0.5 and row_direction_label in {"UP", "DOWN"} else 0.0
+
+            # For trade_two_stage, NO_TRADE is learned by opportunity_head, not by direction_head.
+            # direction_trade_target is meaningful only when direction_trade_mask == 1.
+            direction_trade_targets.append(direction_trade_target)
+            direction_trade_masks.append(direction_trade_mask)
+            no_trade_targets.append(1.0 - opportunity_target)
+
             flat_margin_allowed_mask.append(TrainingService._flat_margin_allowed_for_row(row))
 
         return {
             "features": torch.tensor(feature_matrix, dtype=torch.float32),
             "direction_target": torch.tensor(direction_targets, dtype=torch.long),
             "direction_sample_weight": torch.tensor(direction_sample_weights, dtype=torch.float32),
+            "direction_trade_target": torch.tensor(direction_trade_targets, dtype=torch.long),
+            "direction_trade_mask": torch.tensor(direction_trade_masks, dtype=torch.float32),
             "tp_sl_target": torch.tensor(tp_targets, dtype=torch.float32),
             "tp_sl_mask": torch.tensor(tp_masks, dtype=torch.float32),
             "move_target": torch.tensor(move_targets, dtype=torch.float32),
             "risk_target": torch.tensor(risk_targets, dtype=torch.float32),
             "opportunity_target": torch.tensor(opportunity_targets, dtype=torch.float32),
+            "no_trade_target": torch.tensor(no_trade_targets, dtype=torch.float32),
             "flat_margin_allowed_mask": torch.tensor(flat_margin_allowed_mask, dtype=torch.float32),
         }
 
@@ -890,8 +917,13 @@ class TrainingService:
     ) -> list[float]:
         label_counts = {"UP": 0, "DOWN": 0, "FLAT": 0}
         effective_rows = rows
-        if training_objective == "opportunity_first":
-            effective_rows = [row for row in rows if int(getattr(row, "opportunity_label", 0) or 0) == 1]
+        if is_trade_aware_objective(training_objective):
+            effective_rows = [
+                row
+                for row in rows
+                if int(getattr(row, "opportunity_label", 0) or 0) == 1
+                and str(getattr(row, "direction_label", "") or "").upper() in {"UP", "DOWN"}
+            ]
         for row in effective_rows:
             label_counts[row.direction_label] += 1
         total = len(effective_rows)
@@ -916,6 +948,8 @@ class TrainingService:
             raw_weight = total / (num_classes * count)
             boosted = raw_weight * class_boost[label]
             weights.append(min(max(boosted, 0.65), 1.85))
+        if is_trade_two_stage_objective(training_objective) and len(weights) == 3:
+            weights[2] = 0.0
         return weights
 
     @staticmethod
@@ -925,7 +959,21 @@ class TrainingService:
             "expected_move_atr",
             "invalidation_distance_atr",
         ]
-        if training_objective == "opportunity_first":
+        if is_trade_two_stage_objective(training_objective):
+            fields = [
+                "trade_probability",
+                "no_trade_probability",
+                "direction_probabilities_conditioned_on_trade",
+                "trade_decision",
+                "direction_decision_if_trade",
+                "setup_type",
+                "setup_direction",
+                "setup_quality_score",
+                "risk_score",
+                "expected_move_atr",
+                "invalidation_distance_atr",
+            ]
+        elif training_objective == "opportunity_first":
             fields = [
                 "opportunity_probability",
                 "direction_probabilities_conditioned_on_opportunity",

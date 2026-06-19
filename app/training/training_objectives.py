@@ -1,0 +1,24 @@
+from __future__ import annotations
+
+TRAINING_OBJECTIVE_DIRECTION_GLOBAL = "direction_global"
+TRAINING_OBJECTIVE_OPPORTUNITY_FIRST = "opportunity_first"
+TRAINING_OBJECTIVE_TRADE_TWO_STAGE = "trade_two_stage"
+
+TRADE_AWARE_OBJECTIVES = {
+    TRAINING_OBJECTIVE_OPPORTUNITY_FIRST,
+    TRAINING_OBJECTIVE_TRADE_TWO_STAGE,
+}
+
+SUPPORTED_TRAINING_OBJECTIVES = {
+    TRAINING_OBJECTIVE_DIRECTION_GLOBAL,
+    TRAINING_OBJECTIVE_OPPORTUNITY_FIRST,
+    TRAINING_OBJECTIVE_TRADE_TWO_STAGE,
+}
+
+
+def is_trade_aware_objective(training_objective: str) -> bool:
+    return str(training_objective or TRAINING_OBJECTIVE_DIRECTION_GLOBAL) in TRADE_AWARE_OBJECTIVES
+
+
+def is_trade_two_stage_objective(training_objective: str) -> bool:
+    return str(training_objective or TRAINING_OBJECTIVE_DIRECTION_GLOBAL) == TRAINING_OBJECTIVE_TRADE_TWO_STAGE

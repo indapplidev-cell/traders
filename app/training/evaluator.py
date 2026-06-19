@@ -57,7 +57,7 @@ class Evaluator:
                 dtype=torch.float32,
             )
             direction_mask = None
-            if training_objective == "opportunity_first":
+            if training_objective in {"opportunity_first", "trade_two_stage"}:
                 direction_mask = (opportunity_target_tensor > 0).cpu().tolist()
 
         metrics = self._metrics.compute(
@@ -70,6 +70,7 @@ class Evaluator:
             direction_mask=direction_mask,
             opportunity_probabilities=opportunity_probabilities_tensor.cpu().tolist(),
             opportunity_targets=[int(value) for value in opportunity_target_tensor.cpu().tolist()],
+            training_objective=training_objective,
         )
         metrics["rows"] = int(dataset["features"].shape[0])
         metrics["direction_temperature"] = float(direction_temperature)
@@ -87,6 +88,18 @@ class Evaluator:
             "DOWN": float(direction_probability_mean[1].detach().item()),
             "FLAT": float(direction_probability_mean[2].detach().item()),
         }
+        if training_objective == "trade_two_stage":
+            trade_mask_tensor = opportunity_target_tensor > 0
+            if torch.any(trade_mask_tensor):
+                trade_direction_probs = direction_probabilities_tensor[trade_mask_tensor][:, :2]
+                trade_direction_probs = trade_direction_probs / trade_direction_probs.sum(dim=1, keepdim=True).clamp_min(1e-8)
+                trade_direction_mean = trade_direction_probs.mean(dim=0)
+                metrics["direction_probabilities_conditioned_on_trade_mean"] = {
+                    "UP": float(trade_direction_mean[0].detach().item()),
+                    "DOWN": float(trade_direction_mean[1].detach().item()),
+                }
+            else:
+                metrics["direction_probabilities_conditioned_on_trade_mean"] = {"UP": 0.0, "DOWN": 0.0}
         return metrics
 
     @staticmethod

@@ -26,11 +26,11 @@ def test_ml38_9_9_matrix_keeps_label_modes_and_runtime_uses_prompt_4_6_smoke_sho
         run_fv3_cached_tuning.parse_args(["--fast-debug"])
     )
     assert fast_wrapper.selected_config_ids == run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
-    assert "lv15_h08_setup_pure_ft" in fast_wrapper.selected_config_ids
+    assert "lv16_h08_trade_two_stage" in fast_wrapper.selected_config_ids
 
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--symbol", "SOLUSDT"])
     )
     assert quick_wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
-    assert "lv15_h12_setup_pure_ft" in quick_wrapper.selected_config_ids
+    assert "lv16_h12_trade_two_stage" in quick_wrapper.selected_config_ids
     assert len(quick_wrapper.selected_config_ids) == 3
