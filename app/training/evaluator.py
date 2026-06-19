@@ -33,6 +33,15 @@ class Evaluator:
                 "direction_evaluation_rows": 0,
             }
 
+        opportunity_target_tensor = dataset.get("opportunity_target")
+        if opportunity_target_tensor is None:
+            opportunity_target_tensor = torch.ones_like(
+                dataset["direction_target"],
+                dtype=torch.float32,
+            )
+        else:
+            opportunity_target_tensor = opportunity_target_tensor.to(dtype=torch.float32)
+
         model.eval()
         with torch.no_grad():
             raw_outputs = model(dataset["features"])
@@ -43,9 +52,13 @@ class Evaluator:
             )
             tp_probabilities_tensor = torch.sigmoid(outputs["tp_sl_logits"])
             opportunity_probabilities_tensor = torch.sigmoid(outputs["opportunity_logit"])
+            opportunity_target_tensor = opportunity_target_tensor.to(
+                device=direction_probabilities_tensor.device,
+                dtype=torch.float32,
+            )
             direction_mask = None
             if training_objective == "opportunity_first":
-                direction_mask = (dataset["opportunity_target"] > 0).cpu().tolist()
+                direction_mask = (opportunity_target_tensor > 0).cpu().tolist()
 
         metrics = self._metrics.compute(
             direction_probabilities=direction_probabilities_tensor.cpu().tolist(),
@@ -56,16 +69,18 @@ class Evaluator:
             expected_move_targets=dataset["move_target"].cpu().tolist(),
             direction_mask=direction_mask,
             opportunity_probabilities=opportunity_probabilities_tensor.cpu().tolist(),
-            opportunity_targets=dataset["opportunity_target"].cpu().tolist(),
+            opportunity_targets=[int(value) for value in opportunity_target_tensor.cpu().tolist()],
         )
         metrics["rows"] = int(dataset["features"].shape[0])
         metrics["direction_temperature"] = float(direction_temperature)
         metrics["training_objective"] = training_objective
         metrics["opportunity_probability_mean"] = float(opportunity_probabilities_tensor.mean().detach().item())
         metrics["no_trade_probability_mean"] = float((1.0 - opportunity_probabilities_tensor).mean().detach().item())
+
         conditioned_direction_probabilities = direction_probabilities_tensor
         if training_objective == "opportunity_first" and direction_mask and any(direction_mask):
-            conditioned_direction_probabilities = direction_probabilities_tensor[dataset["opportunity_target"] > 0]
+            conditioned_direction_probabilities = direction_probabilities_tensor[opportunity_target_tensor > 0]
+
         direction_probability_mean = conditioned_direction_probabilities.mean(dim=0)
         metrics["direction_probabilities_conditioned_on_opportunity_mean"] = {
             "UP": float(direction_probability_mean[0].detach().item()),

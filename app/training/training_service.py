@@ -851,17 +851,23 @@ class TrainingService:
             else:
                 tp_targets.append(1.0 if row.tp_before_sl else 0.0)
                 tp_masks.append(1.0)
-            move_targets.append(
-                float(row.setup_expected_move_atr if training_objective == "opportunity_first" else row.future_move_atr)
+            future_move_atr = float(getattr(row, "future_move_atr", 0.0) or 0.0)
+            max_adverse_move_atr = float(getattr(row, "max_adverse_move_atr", 0.0) or 0.0)
+            setup_expected_move_atr = float(
+                getattr(row, "setup_expected_move_atr", future_move_atr) or 0.0
             )
-            risk_targets.append(
-                float(
-                    row.setup_invalidation_distance_atr
-                    if training_objective == "opportunity_first"
-                    else row.max_adverse_move_atr
-                )
+            setup_invalidation_distance_atr = float(
+                getattr(row, "setup_invalidation_distance_atr", max_adverse_move_atr) or 0.0
             )
-            opportunity_targets.append(float(row.opportunity_label))
+
+            if training_objective == "opportunity_first":
+                move_targets.append(setup_expected_move_atr)
+                risk_targets.append(setup_invalidation_distance_atr)
+            else:
+                move_targets.append(future_move_atr)
+                risk_targets.append(max_adverse_move_atr)
+
+            opportunity_targets.append(float(getattr(row, "opportunity_label", 1.0) or 0.0))
             flat_margin_allowed_mask.append(TrainingService._flat_margin_allowed_for_row(row))
 
         return {
