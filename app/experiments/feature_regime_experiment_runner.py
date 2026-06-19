@@ -12,6 +12,7 @@ from app.db.repositories.candle_repository import CandleRepository
 from app.db.repositories.feature_repository import FeatureRepository
 from app.db.repositories.label_repository import LabelRepository
 from app.db.session import get_session
+from app.diagnostics.decision_policy_grid import apply_selected_decision_policy_metrics
 from app.diagnostics.feature_group_quality import FeatureGroupQualityScorer
 from app.diagnostics.feature_leakage_guard import FeatureLeakageGuard
 from app.diagnostics.feature_quality_diagnostics import FeatureQualityDiagnostics
@@ -112,6 +113,7 @@ class FeatureRegimeCandidateResult:
     calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
     bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
     decision_policy_grid_diagnostics: dict[str, Any] = field(default_factory=dict)
+    decision_policy_selected_policy_id: str | None = None
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -198,6 +200,7 @@ class FeatureRegimeCandidateResult:
             "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
             "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
             "decision_policy_grid_diagnostics": dict(self.decision_policy_grid_diagnostics),
+            "decision_policy_selected_policy_id": self.decision_policy_selected_policy_id,
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -1691,6 +1694,32 @@ class FeatureRegimeExperimentRunner:
                 collapse_detected=bool(getattr(item, "collapse_detected", False)),
                 collapse_type=getattr(item, "collapse_type", None),
             )
+            candidate_payload = candidate.to_dict()
+            apply_selected_decision_policy_metrics(candidate_payload)
+            candidate = replace(
+                candidate,
+                model_accuracy=candidate_payload.get("model_accuracy"),
+                baseline_accuracy=candidate_payload.get("baseline_accuracy"),
+                accuracy_edge=candidate_payload.get("accuracy_edge"),
+                baseline_edge=candidate_payload.get("baseline_edge"),
+                baseline_edge_status=candidate_payload.get("baseline_edge_status"),
+                baseline_edge_diagnostics=self._as_dict(
+                    candidate_payload.get("baseline_edge_diagnostics")
+                ),
+                decision_policy_selected_policy_id=candidate_payload.get(
+                    "decision_policy_selected_policy_id"
+                ),
+                prediction_decision_source=candidate_payload.get("prediction_decision_source"),
+                predicted_class_distribution=self._as_dict(
+                    candidate_payload.get("predicted_class_distribution")
+                ),
+                actual_class_distribution=self._as_dict(
+                    candidate_payload.get("actual_class_distribution")
+                ),
+                collapse_diagnostics_v2=self._as_dict(
+                    candidate_payload.get("collapse_diagnostics_v2")
+                ),
+            )
             candidate_results.append(candidate)
             logger.event(
                 event=(
@@ -1727,31 +1756,31 @@ class FeatureRegimeExperimentRunner:
     ) -> tuple[list[FeatureRegimeCandidateResult], dict[str, Any] | None]:
         enriched: list[FeatureRegimeCandidateResult] = []
         for candidate in candidate_results:
-            calibrated_decision = self._as_dict(candidate.calibrated_decision_diagnostics)
-            calibrated_accuracy = calibrated_decision.get("calibrated_accuracy")
-            calibrated_baseline_accuracy = calibrated_decision.get("baseline_accuracy")
-            model_accuracy = (
-                float(calibrated_accuracy)
-                if calibrated_accuracy is not None
-                else candidate.model_accuracy
-            )
-            baseline_accuracy = (
-                float(calibrated_baseline_accuracy)
-                if calibrated_baseline_accuracy is not None
-                else candidate.baseline_accuracy
-            )
+            candidate_payload = candidate.to_dict()
+            apply_selected_decision_policy_metrics(candidate_payload)
+            model_accuracy = candidate_payload.get("model_accuracy")
+            baseline_accuracy = candidate_payload.get("baseline_accuracy")
             baseline_edge_diagnostics = BaselineEdgeDiagnostics().evaluate(
-                accuracy=model_accuracy,
-                baseline_accuracy=baseline_accuracy,
+                accuracy=float(model_accuracy) if model_accuracy is not None else 0.0,
+                baseline_accuracy=float(baseline_accuracy) if baseline_accuracy is not None else 0.0,
                 symbol=config.symbol,
                 config_id=candidate.config_id,
                 min_positive_edge=float(candidate.label_config.get("baseline_edge_gate_min", 0.0) or 0.0),
             )
-            collapse_source = self._as_dict(candidate.collapse_diagnostics_v2) or self._as_dict(
-                candidate.raw_collapse_diagnostics_v2
+            collapse_source = self._as_dict(candidate_payload.get("collapse_diagnostics_v2")) or self._as_dict(
+                candidate_payload.get("raw_collapse_diagnostics_v2")
             )
             collapse_severity = classify_collapse_severity(collapse_source)
-            class_bias = self._class_bias_payload(symbol=config.symbol, candidate=candidate)
+            candidate_for_bias = replace(
+                candidate,
+                predicted_class_distribution=self._as_dict(
+                    candidate_payload.get("predicted_class_distribution")
+                ),
+                actual_class_distribution=self._as_dict(
+                    candidate_payload.get("actual_class_distribution")
+                ),
+            )
+            class_bias = self._class_bias_payload(symbol=config.symbol, candidate=candidate_for_bias)
             bias_failed_gates = self._bias_failed_gates(class_bias)
             failed_gates_list = [
                 gate
@@ -1780,22 +1809,24 @@ class FeatureRegimeExperimentRunner:
             ) and candidate_status == "ACCEPTED":
                 candidate_status = "REJECTED"
             collapse_summary = self._collapse_tuning_summary_builder.build(
-                collapse_diagnostics=self._as_dict(candidate.collapse_diagnostics_v2),
+                collapse_diagnostics=self._as_dict(candidate_payload.get("collapse_diagnostics_v2")),
                 class_bias_diagnostics=class_bias,
-            ) if candidate.collapse_diagnostics_v2 or class_bias else {}
+            ) if candidate_payload.get("collapse_diagnostics_v2") or class_bias else {}
             anti_collapse = self._anti_collapse_diagnostics.build(
                 symbol=config.symbol,
                 config_id=candidate.config_id,
                 flat_bias_diagnostics=class_bias,
-                collapse_diagnostics_v2=self._as_dict(candidate.collapse_diagnostics_v2),
-            ).to_dict() if candidate.collapse_diagnostics_v2 or class_bias else {}
+                collapse_diagnostics_v2=self._as_dict(candidate_payload.get("collapse_diagnostics_v2")),
+            ).to_dict() if candidate_payload.get("collapse_diagnostics_v2") or class_bias else {}
             confidence_profitability = self._confidence_profitability_diagnostics.build(
                 symbol=config.symbol,
                 config_id=candidate.config_id,
-                probability_diagnostics=self._as_dict(candidate.probability_diagnostics),
-                collapse_diagnostics_v2=self._as_dict(candidate.collapse_diagnostics_v2),
-                profit_aware_diagnostics=self._as_dict(candidate.profit_aware_diagnostics),
-                walk_forward_profit_diagnostics=self._as_dict(candidate.walk_forward_profit_diagnostics),
+                probability_diagnostics=self._as_dict(candidate_payload.get("probability_diagnostics")),
+                collapse_diagnostics_v2=self._as_dict(candidate_payload.get("collapse_diagnostics_v2")),
+                profit_aware_diagnostics=self._as_dict(candidate_payload.get("profit_aware_diagnostics")),
+                walk_forward_profit_diagnostics=self._as_dict(
+                    candidate_payload.get("walk_forward_profit_diagnostics")
+                ),
                 anti_collapse_diagnostics=anti_collapse,
             ).to_dict()
             enriched.append(
@@ -1827,6 +1858,17 @@ class FeatureRegimeExperimentRunner:
                     baseline_edge=baseline_edge_diagnostics.baseline_edge,
                     baseline_edge_status=baseline_edge_diagnostics.baseline_edge_status,
                     baseline_edge_diagnostics=baseline_edge_diagnostics.to_dict(),
+                    decision_policy_selected_policy_id=candidate_payload.get(
+                        "decision_policy_selected_policy_id"
+                    ),
+                    prediction_decision_source=candidate_payload.get("prediction_decision_source"),
+                    predicted_class_distribution=self._as_dict(
+                        candidate_payload.get("predicted_class_distribution")
+                    ),
+                    actual_class_distribution=self._as_dict(
+                        candidate_payload.get("actual_class_distribution")
+                    ),
+                    collapse_diagnostics_v2=self._as_dict(candidate_payload.get("collapse_diagnostics_v2")),
                     collapse_severity=collapse_severity["collapse_severity"],
                     collapse_gate_failed=bool(collapse_severity["collapse_gate_failed"]),
                     collapse_severity_reasons=tuple(collapse_severity["collapse_severity_reasons"]),

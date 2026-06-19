@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from app.diagnostics.decision_policy_grid import apply_selected_decision_policy_metrics
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
@@ -386,7 +387,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
 
     @classmethod
     def _symbol_result(cls, summary: dict[str, Any]) -> dict[str, Any]:
-        best_candidate = cls._best_candidate(summary)
+        best_candidate = dict(cls._best_candidate(summary))
+        apply_selected_decision_policy_metrics(best_candidate)
         summary_warnings = [str(item) for item in cls._as_list(summary.get("warnings"))]
         candidate_warnings = [str(item) for item in cls._as_list(best_candidate.get("warnings"))]
         summary_regime_status = cls._as_dict(summary.get("regime_label_builder_status"))
@@ -401,6 +403,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         configs_ranked: list[dict[str, Any]] = []
         for row in cls._as_list(summary.get("configs_ranked") or summary.get("ranking")):
             payload = dict(row)
+            apply_selected_decision_policy_metrics(payload)
             row_failed_gates, row_passed_gates = normalize_gap_quality_gate(
                 gap_severity_for_training=payload.get("gap_severity_for_training", gap_severity_for_training),
                 gap_training_safe=payload.get("gap_training_safe", gap_training_safe),
@@ -500,9 +503,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "decision_policy_grid_diagnostics": cls._as_dict(
                 best_candidate.get("decision_policy_grid_diagnostics")
             ),
-            "decision_policy_selected_policy_id": cls._as_dict(
-                best_candidate.get("decision_policy_grid_diagnostics")
-            ).get("selected_policy_id"),
+            "decision_policy_selected_policy_id": best_candidate.get(
+                "decision_policy_selected_policy_id"
+            ) or cls._as_dict(best_candidate.get("decision_policy_grid_diagnostics")).get(
+                "selected_policy_id"
+            ),
             "prediction_decision_source": best_candidate.get("prediction_decision_source"),
             "reasons_why_best_still_rejected": [
                 str(item) for item in cls._as_list(summary.get("reasons_why_best_still_rejected"))
@@ -640,10 +645,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
         for symbol_result in symbol_results:
             for row in symbol_result.get("configs_ranked", []):
                 payload = dict(row)
+                apply_selected_decision_policy_metrics(payload)
                 decision_policy_payload = cls._as_dict(payload.get("decision_policy_grid_diagnostics"))
                 payload["decision_policy_grid_diagnostics"] = decision_policy_payload
-                payload["decision_policy_selected_policy_id"] = decision_policy_payload.get("selected_policy_id")
-                payload["prediction_decision_source"] = payload.get("prediction_decision_source")
+                payload["decision_policy_selected_policy_id"] = payload.get(
+                    "decision_policy_selected_policy_id",
+                    decision_policy_payload.get("selected_policy_id"),
+                )
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)

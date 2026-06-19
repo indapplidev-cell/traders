@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.diagnostics.decision_policy_grid import apply_selected_decision_policy_metrics
+
 
 ML38_2_CONFIG_RANKER_NAME = "ml38_2_config_ranker"
 ML38_2_CONFIG_RANKER_VERSION = "ml38_2"
@@ -108,6 +110,8 @@ class ML382ConfigRanker:
         }
 
     def _ranked_row(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        candidate = dict(candidate)
+        apply_selected_decision_policy_metrics(candidate)
         failed_gates = [str(item) for item in candidate.get("failed_gates", [])]
         passed_gates = [str(item) for item in candidate.get("passed_gates", [])]
         candidate_status = str(candidate.get("candidate_status") or "UNKNOWN").upper()

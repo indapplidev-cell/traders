@@ -7,6 +7,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from app.diagnostics.decision_policy_grid import apply_selected_decision_policy_metrics
 from app.diagnostics.gap_quality_diagnostics import GapQualityDiagnostics
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 from app.evaluation.anti_collapse_validator import AntiCollapseValidator
@@ -103,6 +104,7 @@ class LabelGridExperimentCandidateResult:
     calibrated_decision_diagnostics: dict[str, Any] = field(default_factory=dict)
     bounded_calibrated_decision_selection: dict[str, Any] = field(default_factory=dict)
     decision_policy_grid_diagnostics: dict[str, Any] = field(default_factory=dict)
+    decision_policy_selected_policy_id: str | None = None
     raw_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     calibrated_predicted_class_distribution: dict[str, Any] = field(default_factory=dict)
     raw_collapse_diagnostics_v2: dict[str, Any] = field(default_factory=dict)
@@ -166,6 +168,7 @@ class LabelGridExperimentCandidateResult:
             "calibrated_decision_diagnostics": dict(self.calibrated_decision_diagnostics),
             "bounded_calibrated_decision_selection": dict(self.bounded_calibrated_decision_selection),
             "decision_policy_grid_diagnostics": dict(self.decision_policy_grid_diagnostics),
+            "decision_policy_selected_policy_id": self.decision_policy_selected_policy_id,
             "raw_predicted_class_distribution": dict(self.raw_predicted_class_distribution),
             "calibrated_predicted_class_distribution": dict(self.calibrated_predicted_class_distribution),
             "raw_collapse_diagnostics_v2": dict(self.raw_collapse_diagnostics_v2),
@@ -1052,6 +1055,19 @@ class LabelGridExperimentRunner:
                 + self._string_list(candidate_selection.get("recommendations"))
             )
         )
+        selected_policy_payload = {
+            "model_accuracy": self._optional_float(quality_payload.get("model_accuracy")),
+            "baseline_accuracy": self._optional_float(quality_payload.get("baseline_accuracy")),
+            "accuracy_edge": self._optional_float(quality_payload.get("accuracy_edge")),
+            "collapse_diagnostics_v2": collapse_diagnostics_v2,
+            "decision_policy_grid_diagnostics": dict(
+                probability_diagnostics.get("decision_policy_grid_diagnostics", {})
+            ),
+            "prediction_decision_source": probability_diagnostics.get("prediction_decision_source"),
+            "actual_class_distribution": dict(anti_collapse.get("actual_distribution", {})),
+            "predicted_class_distribution": dict(anti_collapse.get("predicted_distribution", {})),
+        }
+        apply_selected_decision_policy_metrics(selected_policy_payload)
         return LabelGridExperimentCandidateResult(
             config_id=label_config.config_id,
             label_config=label_config.to_dict(),
@@ -1066,11 +1082,11 @@ class LabelGridExperimentRunner:
             val_rows=int(quality_payload.get("val_rows", 0) or 0),
             test_rows=int(quality_payload.get("test_rows", 0) or 0),
             class_distribution=dict(class_distribution),
-            actual_distribution=dict(anti_collapse.get("actual_distribution", {})),
-            predicted_distribution=dict(anti_collapse.get("predicted_distribution", {})),
-            model_accuracy=self._optional_float(quality_payload.get("model_accuracy")),
-            baseline_accuracy=self._optional_float(quality_payload.get("baseline_accuracy")),
-            accuracy_edge=self._optional_float(quality_payload.get("accuracy_edge")),
+            actual_distribution=dict(selected_policy_payload.get("actual_class_distribution", {})),
+            predicted_distribution=dict(selected_policy_payload.get("predicted_class_distribution", {})),
+            model_accuracy=self._optional_float(selected_policy_payload.get("model_accuracy")),
+            baseline_accuracy=self._optional_float(selected_policy_payload.get("baseline_accuracy")),
+            accuracy_edge=self._optional_float(selected_policy_payload.get("accuracy_edge")),
             collapse_detected=bool(quality_payload.get("collapse_detected", False)),
             collapse_type=anti_collapse.get("collapse_type"),
             feature_version_used=dict(quality_payload.get("feature_config", {})).get("feature_version")
@@ -1105,15 +1121,16 @@ class LabelGridExperimentRunner:
             bounded_calibrated_decision_selection=dict(
                 probability_diagnostics.get("bounded_calibrated_decision_selection", {})
             ),
-            decision_policy_grid_diagnostics=dict(
-                probability_diagnostics.get("decision_policy_grid_diagnostics", {})
+            decision_policy_grid_diagnostics=dict(selected_policy_payload["decision_policy_grid_diagnostics"]),
+            decision_policy_selected_policy_id=selected_policy_payload.get(
+                "decision_policy_selected_policy_id"
             ),
             raw_predicted_class_distribution=raw_predicted_class_distribution,
             calibrated_predicted_class_distribution=calibrated_predicted_class_distribution,
             raw_collapse_diagnostics_v2=dict(
                 probability_diagnostics.get("raw_collapse_v2", {})
             ),
-            prediction_decision_source=probability_diagnostics.get("prediction_decision_source"),
+            prediction_decision_source=selected_policy_payload.get("prediction_decision_source"),
             regime_label_builder_status=regime_label_builder_status,
             regime_label_builder_status_missing_reason=regime_label_builder_status_missing_reason,
             walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,
@@ -1269,6 +1286,26 @@ class LabelGridExperimentRunner:
         ]
         if known_quality_rejection:
             warning_items.append("pipeline_failed_after_quality_decision_but_candidate_rejected")
+        selected_policy_payload = {
+            "model_accuracy": self._optional_float(
+                model_quality_payload.get("model_accuracy", train_payload.get("model_accuracy"))
+            ),
+            "baseline_accuracy": self._optional_float(
+                model_quality_payload.get(
+                    "baseline_accuracy",
+                    self._as_dict(stage_payloads.get("baseline_compare")).get("baseline_accuracy"),
+                )
+            ),
+            "accuracy_edge": self._optional_float(model_quality_payload.get("accuracy_edge")),
+            "collapse_diagnostics_v2": collapse_diagnostics_v2,
+            "decision_policy_grid_diagnostics": dict(
+                probability_diagnostics.get("decision_policy_grid_diagnostics", {})
+            ),
+            "prediction_decision_source": probability_diagnostics.get("prediction_decision_source"),
+            "actual_class_distribution": dict(collapse_diagnostics_v2.get("actual_distribution", {})),
+            "predicted_class_distribution": dict(collapse_diagnostics_v2.get("predicted_distribution", {})),
+        }
+        apply_selected_decision_policy_metrics(selected_policy_payload)
 
         return LabelGridExperimentCandidateResult(
             config_id=label_config.config_id,
@@ -1301,18 +1338,11 @@ class LabelGridExperimentRunner:
             ),
             test_rows=int(model_quality_payload.get("test_rows", dataset_payload.get("test_rows", 0)) or 0),
             class_distribution=self._as_dict(build_labels_payload.get("direction_counts", {})),
-            actual_distribution={},
-            predicted_distribution={},
-            model_accuracy=self._optional_float(
-                model_quality_payload.get("model_accuracy", train_payload.get("model_accuracy"))
-            ),
-            baseline_accuracy=self._optional_float(
-                model_quality_payload.get(
-                    "baseline_accuracy",
-                    self._as_dict(stage_payloads.get("baseline_compare")).get("baseline_accuracy"),
-                )
-            ),
-            accuracy_edge=self._optional_float(model_quality_payload.get("accuracy_edge")),
+            actual_distribution=dict(selected_policy_payload.get("actual_class_distribution", {})),
+            predicted_distribution=dict(selected_policy_payload.get("predicted_class_distribution", {})),
+            model_accuracy=self._optional_float(selected_policy_payload.get("model_accuracy")),
+            baseline_accuracy=self._optional_float(selected_policy_payload.get("baseline_accuracy")),
+            accuracy_edge=self._optional_float(selected_policy_payload.get("accuracy_edge")),
             collapse_detected=bool(model_quality_payload.get("collapse_detected", False)),
             collapse_type=self._as_dict(model_quality_payload.get("anti_collapse", {})).get("collapse_type"),
             feature_version_used=config.feature_version,
@@ -1352,8 +1382,9 @@ class LabelGridExperimentRunner:
             bounded_calibrated_decision_selection=dict(
                 probability_diagnostics.get("bounded_calibrated_decision_selection", {})
             ),
-            decision_policy_grid_diagnostics=dict(
-                probability_diagnostics.get("decision_policy_grid_diagnostics", {})
+            decision_policy_grid_diagnostics=dict(selected_policy_payload["decision_policy_grid_diagnostics"]),
+            decision_policy_selected_policy_id=selected_policy_payload.get(
+                "decision_policy_selected_policy_id"
             ),
             raw_predicted_class_distribution=dict(
                 raw_probability_diagnostics.get("predicted_direction_ratios", {})
@@ -1366,7 +1397,7 @@ class LabelGridExperimentRunner:
             raw_collapse_diagnostics_v2=dict(
                 probability_diagnostics.get("raw_collapse_v2", {})
             ),
-            prediction_decision_source=probability_diagnostics.get("prediction_decision_source"),
+            prediction_decision_source=selected_policy_payload.get("prediction_decision_source"),
             regime_label_builder_status=regime_label_builder_status,
             regime_label_builder_status_missing_reason=None,
             walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 
 DIRECTION_LABELS: tuple[str, str, str] = ("DOWN", "FLAT", "UP")
@@ -398,3 +399,168 @@ class DecisionPolicyGrid:
             score -= max(0.0, dominant_class_ratio - 0.55) * 10.0
 
         return score
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_direction_distribution(value: Any) -> dict[str, float]:
+    if not isinstance(value, Mapping):
+        return {label: 0.0 for label in DIRECTION_LABELS}
+
+    normalized = {
+        label: _safe_float(value.get(label), 0.0)
+        for label in DIRECTION_LABELS
+    }
+    total = sum(normalized.values())
+    if total > 0.0:
+        return {label: normalized[label] / total for label in DIRECTION_LABELS}
+    return normalized
+
+
+def get_selected_decision_policy_payload(
+    diagnostics: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not isinstance(diagnostics, Mapping):
+        return None
+
+    selected = diagnostics.get("selected_policy")
+    if isinstance(selected, Mapping):
+        return dict(selected)
+
+    best = diagnostics.get("best_policy")
+    if isinstance(best, Mapping):
+        return dict(best)
+
+    return None
+
+
+def selected_decision_policy_metrics(
+    diagnostics: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    selected = get_selected_decision_policy_payload(diagnostics)
+    if not selected:
+        return None
+
+    accuracy = _safe_float(selected.get("accuracy"), 0.0)
+    baseline_accuracy = _safe_float(selected.get("baseline_accuracy"), 0.0)
+    baseline_edge = selected.get("baseline_edge")
+    if baseline_edge is None:
+        baseline_edge = accuracy - baseline_accuracy
+    baseline_edge = _safe_float(baseline_edge, 0.0)
+
+    predicted_ratios = _normalize_direction_distribution(
+        selected.get("predicted_ratios") or selected.get("predicted_distribution")
+    )
+    actual_ratios = _normalize_direction_distribution(
+        selected.get("actual_ratios") or selected.get("actual_distribution")
+    )
+    selected_policy_id = (
+        selected.get("policy_id")
+        or selected.get("decision_policy_id")
+        or selected.get("id")
+        or (diagnostics.get("selected_policy_id") if isinstance(diagnostics, Mapping) else None)
+    )
+    baseline_edge_status = selected.get("baseline_edge_status")
+    if baseline_edge_status is None:
+        baseline_edge_status = "POSITIVE_EDGE" if baseline_edge >= 0.0 else "NEGATIVE_EDGE"
+
+    return {
+        "decision_policy_selected_policy_id": selected_policy_id,
+        "prediction_decision_source": (
+            diagnostics.get("selected_decision_source")
+            if isinstance(diagnostics, Mapping)
+            else None
+        )
+        or (
+            f"decision_policy_grid:{selected_policy_id}"
+            if selected_policy_id
+            else "decision_policy_grid"
+        ),
+        "model_accuracy": accuracy,
+        "accuracy": accuracy,
+        "baseline_accuracy": baseline_accuracy,
+        "accuracy_edge": baseline_edge,
+        "baseline_edge": baseline_edge,
+        "baseline_edge_status": baseline_edge_status,
+        "predicted_class_distribution": predicted_ratios,
+        "actual_class_distribution": actual_ratios,
+        "selected_policy_distribution_safe": bool(selected.get("distribution_safe", False)),
+        "selected_policy_dominant_class": selected.get("dominant_class"),
+        "selected_policy_dominant_class_ratio": selected.get("dominant_class_ratio"),
+        "selected_policy_rejection_reasons": list(
+            selected.get("distribution_rejection_reasons") or []
+        ),
+    }
+
+
+def sync_collapse_distribution_from_selected_policy(
+    candidate: MutableMapping[str, Any],
+) -> MutableMapping[str, Any]:
+    predicted = candidate.get("predicted_class_distribution")
+    actual = candidate.get("actual_class_distribution")
+    collapse = candidate.get("collapse_diagnostics_v2")
+
+    if not isinstance(predicted, Mapping) or not isinstance(actual, Mapping):
+        return candidate
+    if not isinstance(collapse, MutableMapping):
+        return candidate
+
+    predicted = _normalize_direction_distribution(predicted)
+    actual = _normalize_direction_distribution(actual)
+
+    collapse["predicted_distribution"] = predicted
+    collapse["actual_distribution"] = actual
+    collapse["down_prediction_rate"] = predicted["DOWN"]
+    collapse["flat_prediction_rate"] = predicted["FLAT"]
+    collapse["up_prediction_rate"] = predicted["UP"]
+
+    dominant_class = max(predicted, key=predicted.get)
+    collapse["dominant_class"] = dominant_class
+    collapse["dominant_class_ratio"] = predicted[dominant_class]
+    collapse["flat_underprediction_detected"] = (
+        actual["FLAT"] >= 0.20 and predicted["FLAT"] < 0.05
+    )
+    return candidate
+
+
+def apply_selected_decision_policy_metrics(
+    candidate: MutableMapping[str, Any],
+) -> MutableMapping[str, Any]:
+    diagnostics = candidate.get("decision_policy_grid_diagnostics")
+    metrics = selected_decision_policy_metrics(diagnostics)
+    if not metrics:
+        return candidate
+
+    candidate.update(metrics)
+
+    baseline_diag = candidate.get("baseline_edge_diagnostics")
+    if isinstance(baseline_diag, MutableMapping):
+        baseline_diag["accuracy"] = metrics["accuracy"]
+        baseline_diag["baseline_accuracy"] = metrics["baseline_accuracy"]
+        baseline_diag["baseline_edge"] = metrics["baseline_edge"]
+        baseline_diag["baseline_edge_status"] = metrics["baseline_edge_status"]
+        baseline_diag["baseline_edge_gate_failed"] = metrics["baseline_edge"] < _safe_float(
+            baseline_diag.get("baseline_edge_gate_min"),
+            0.0,
+        )
+    else:
+        candidate["baseline_edge_diagnostics"] = {
+            "diagnostic_name": "baseline_edge_diagnostics",
+            "diagnostic_version": "ml38_9_5_1",
+            "accuracy": metrics["accuracy"],
+            "baseline_accuracy": metrics["baseline_accuracy"],
+            "baseline_edge": metrics["baseline_edge"],
+            "baseline_edge_status": metrics["baseline_edge_status"],
+            "baseline_edge_gate_min": 0.0,
+            "baseline_edge_gate_failed": metrics["baseline_edge"] < 0.0,
+        }
+
+    sync_collapse_distribution_from_selected_policy(candidate)
+    return candidate

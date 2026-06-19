@@ -56,3 +56,29 @@ def test_probability_report_includes_decision_policy_grid_diagnostics(tmp_path) 
 
     assert payload["decision_policy_grid_diagnostics"]["diagnostic_version"] == "ml38_9_5"
     assert payload["prediction_decision_source"].startswith("decision_policy_grid:")
+
+
+def test_decision_policy_selected_metrics_are_top_level_source() -> None:
+    candidate = {
+        "model_accuracy": 0.24,
+        "baseline_accuracy": 0.39,
+        "baseline_edge": -0.15,
+        "decision_policy_grid_diagnostics": {
+            "selected_decision_source": "decision_policy_grid:raw_argmax",
+            "selected_policy": {
+                "policy_id": "raw_argmax",
+                "accuracy": 0.38,
+                "baseline_accuracy": 0.39,
+                "baseline_edge": -0.01,
+                "predicted_ratios": {"DOWN": 0.07, "FLAT": 0.0, "UP": 0.93},
+                "actual_ratios": {"DOWN": 0.36, "FLAT": 0.24, "UP": 0.40},
+            },
+        },
+    }
+
+    from app.diagnostics.decision_policy_grid import apply_selected_decision_policy_metrics
+
+    updated = apply_selected_decision_policy_metrics(candidate)
+
+    assert updated["model_accuracy"] == 0.38
+    assert updated["baseline_edge"] == -0.01
