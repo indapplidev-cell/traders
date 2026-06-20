@@ -1952,6 +1952,7 @@ class LongHistoryTrainingPipelineRunner:
             "setup_quality_bucket_metrics_after_mask",
             "setup_quality_distribution",
             "setup_quality_filter_summary",
+            "trap_invalidation_feature_impact_audit",
         ):
             value = test_metrics.get(key)
             if value is not None:
@@ -1965,6 +1966,7 @@ class LongHistoryTrainingPipelineRunner:
                 "setup_quality_decision_mask_summary",
                 "setup_quality_bucket_metrics_raw",
                 "setup_quality_bucket_metrics_after_mask",
+                "trap_invalidation_feature_impact_audit",
             ):
                 value = diagnostics_payload.get(key)
                 if value is not None and key not in payload:

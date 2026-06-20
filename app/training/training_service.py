@@ -593,7 +593,7 @@ class TrainingService:
                 training_objective=config.training_objective,
             )
             if config.training_objective == "trade_two_stage":
-                test_metrics["two_stage_trade_diagnostics"] = TwoStageTradeDiagnostics().evaluate_metrics(
+                two_stage_diagnostics = TwoStageTradeDiagnostics().evaluate_metrics(
                     test_metrics,
                     min_precision=float(config.opportunity_min_precision),
                     min_recall=float(config.opportunity_min_recall),
@@ -604,6 +604,12 @@ class TrainingService:
                     max_false_positive_rate=float(config.opportunity_max_false_positive_rate),
                     setup_quality_min_threshold=config.setup_quality_min_threshold,
                 )
+                trap_feature_audit = dict(
+                    test_metrics.get("trap_invalidation_feature_impact_audit") or {}
+                )
+                if trap_feature_audit:
+                    two_stage_diagnostics["trap_invalidation_feature_impact_audit"] = trap_feature_audit
+                test_metrics["two_stage_trade_diagnostics"] = two_stage_diagnostics
 
             training_config = {
                 "model_name": model_name,
@@ -923,6 +929,8 @@ class TrainingService:
             "no_trade_target": empty_float,
             "setup_quality_score": empty_float,
             "flat_margin_allowed_mask": empty_float,
+            "feature_columns": tuple(),
+            "raw_feature_values": empty_features,
         }
 
 
@@ -1031,12 +1039,14 @@ class TrainingService:
         no_trade_targets: list[float] = []
         setup_quality_scores: list[float] = []
         flat_margin_allowed_mask: list[float] = []
+        raw_feature_matrix: list[list[float]] = []
         class_margin_weighting_enabled = (
             bool(class_margin_objective_enabled) and bool(class_margin_objective_allowed)
         )
 
         for index, row in enumerate(rows):
             feature_values = [float(row.features_json[column]) for column in feature_columns]
+            raw_feature_matrix.append(list(feature_values))
             scaled = [
                 (value - scaler["mean"][index]) / scaler["std"][index]
                 for index, value in enumerate(feature_values)
@@ -1101,6 +1111,8 @@ class TrainingService:
             "no_trade_target": torch.tensor(no_trade_targets, dtype=torch.float32),
             "setup_quality_score": torch.tensor(setup_quality_scores, dtype=torch.float32),
             "flat_margin_allowed_mask": torch.tensor(flat_margin_allowed_mask, dtype=torch.float32),
+            "feature_columns": tuple(feature_columns),
+            "raw_feature_values": torch.tensor(raw_feature_matrix, dtype=torch.float32),
         }
 
     @staticmethod

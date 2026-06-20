@@ -4,6 +4,7 @@ from typing import Any
 
 import torch
 
+from app.diagnostics.trap_invalidation_feature_impact_audit import TrapInvalidationFeatureImpactAudit
 from app.training.metrics import TrainingMetrics
 from app.training.probability_calibration import softmax_with_temperature
 from app.training.two_stage_thresholds import DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
@@ -11,8 +12,15 @@ from app.training.two_stage_thresholds import select_opportunity_threshold
 
 
 class Evaluator:
-    def __init__(self, metrics: TrainingMetrics | None = None) -> None:
+    def __init__(
+        self,
+        metrics: TrainingMetrics | None = None,
+        trap_invalidation_feature_impact_audit: TrapInvalidationFeatureImpactAudit | None = None,
+    ) -> None:
         self._metrics = metrics or TrainingMetrics()
+        self._trap_invalidation_feature_impact_audit = (
+            trap_invalidation_feature_impact_audit or TrapInvalidationFeatureImpactAudit()
+        )
 
     def evaluate(
         self,
@@ -116,6 +124,28 @@ class Evaluator:
             setup_quality_decision_mask_min_threshold=setup_quality_decision_mask_min_threshold,
             training_objective=training_objective,
         )
+        if training_objective == "trade_two_stage":
+            feature_columns = list(dataset.get("feature_columns") or [])
+            raw_feature_values_tensor = dataset.get("raw_feature_values")
+            raw_feature_values = (
+                raw_feature_values_tensor.cpu().tolist()
+                if hasattr(raw_feature_values_tensor, "cpu")
+                else list(raw_feature_values_tensor or [])
+            )
+            metrics["trap_invalidation_feature_impact_audit"] = (
+                self._trap_invalidation_feature_impact_audit.analyze(
+                    feature_names=feature_columns,
+                    feature_rows=raw_feature_values,
+                    opportunity_probabilities=opportunity_probabilities_tensor.cpu().tolist(),
+                    opportunity_targets=[int(value) for value in opportunity_target_tensor.cpu().tolist()],
+                    direction_targets=[int(value) for value in dataset["direction_target"].cpu().tolist()],
+                    direction_probabilities=direction_probabilities_tensor.cpu().tolist(),
+                    setup_quality_scores=setup_quality_score_tensor.cpu().tolist(),
+                    opportunity_probability_threshold=float(opportunity_probability_threshold),
+                    setup_quality_decision_mask_enabled=bool(setup_quality_decision_mask_enabled),
+                    setup_quality_decision_mask_min_threshold=setup_quality_decision_mask_min_threshold,
+                )
+            )
         metrics["rows"] = int(dataset["features"].shape[0])
         metrics["direction_temperature"] = float(direction_temperature)
         metrics["training_objective"] = training_objective

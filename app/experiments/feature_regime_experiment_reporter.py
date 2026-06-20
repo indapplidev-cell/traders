@@ -133,6 +133,12 @@ class FeatureRegimeExperimentReporter:
             "raw_opportunity_f1": payload.get("raw_opportunity_f1"),
             "opportunity_false_positive_rate": payload.get("opportunity_false_positive_rate"),
             "two_stage_trade_diagnostics": payload.get("two_stage_trade_diagnostics"),
+            "trap_invalidation_feature_impact_audit": self._as_dict(
+                self._as_dict(payload.get("two_stage_trade_diagnostics")).get(
+                    "trap_invalidation_feature_impact_audit"
+                )
+                or payload.get("trap_invalidation_feature_impact_audit")
+            ),
             "approved_for_live_trading": False,
             "approved_for_auto_activation": False,
             "orders_enabled": False,
@@ -320,6 +326,12 @@ class FeatureRegimeExperimentReporter:
         forensic_audit = dict(payload.get("book_driven_forensic_audit", {}))
         robustness_board = dict(payload.get("schwager_robustness_decision_board", {}))
         class_margin_decision = dict(payload.get("class_margin_objective_decision", {}))
+        trap_feature_audit = dict(
+            dict(payload.get("two_stage_trade_diagnostics", {})).get(
+                "trap_invalidation_feature_impact_audit",
+                payload.get("trap_invalidation_feature_impact_audit", {}),
+            )
+        )
         collapse_signature = dict(root_cause_audit.get("up_collapse_signature", {}))
         warnings = root_cause_audit.get("warnings") or []
         recommendations = root_cause_audit.get("recommendations") or []
@@ -360,6 +372,9 @@ class FeatureRegimeExperimentReporter:
             f"- opportunity_false_positive_rate: `{payload.get('opportunity_false_positive_rate')}`",
             f"- setup_quality_decision_mask_summary: `{payload.get('setup_quality_decision_mask_summary')}`",
             f"- two_stage_trade_diagnostics: `{payload.get('two_stage_trade_diagnostics')}`",
+            f"- trap_invalidation_feature_impact_status: `{trap_feature_audit.get('feature_impact_status')}`",
+            f"- trap_invalidation_recommendation: `{trap_feature_audit.get('recommendation')}`",
+            f"- trap_invalidation_top_features: `{trap_feature_audit.get('top_separating_features')}`",
             "",
             "## Safety",
             "",
