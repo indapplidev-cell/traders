@@ -73,6 +73,8 @@ class SchwagerRobustnessDecisionBoard:
         label_audit = _extract_or_build_label_audit(payload, book_audit, prediction_rows)
         setup_audit = _extract_or_build_setup_audit(payload, book_audit, prediction_rows)
         opportunity_diagnostics = _extract_opportunity_diagnostics(payload)
+        two_stage_trade_diagnostics = _extract_two_stage_trade_diagnostics(payload)
+        two_stage_quality_status = _two_stage_quality_status(two_stage_trade_diagnostics)
         negative_result = _extract_or_build_negative_result(
             payload=payload,
             book_audit=book_audit,
@@ -116,6 +118,7 @@ class SchwagerRobustnessDecisionBoard:
 
         primary_failure = _primary_failure(
             negative_result=negative_result,
+            two_stage_quality_status=two_stage_quality_status,
             label_noise_status=label_noise_status,
             feature_separability_status=feature_separability_status,
             setup_edge_status=setup_edge_status,
@@ -129,6 +132,7 @@ class SchwagerRobustnessDecisionBoard:
         )
         secondary_failures = _secondary_failures(
             primary_failure=primary_failure,
+            two_stage_quality_status=two_stage_quality_status,
             failed_gates=failed_gates,
             model_edge_status=model_edge_status,
             walk_forward_status=walk_forward_status,
@@ -165,6 +169,15 @@ class SchwagerRobustnessDecisionBoard:
             "bias_status": bias_status,
             "setup_edge_status": setup_edge_status,
             "opportunity_status": opportunity_status,
+            "two_stage_quality_status": two_stage_quality_status,
+            "two_stage_quality_gate_passed": bool(
+                _as_dict(two_stage_trade_diagnostics.get("two_stage_quality_gate")).get("passed")
+                or two_stage_trade_diagnostics.get("two_stage_quality_gate_passed")
+            ),
+            "anti_undertrading_gate_passed": bool(
+                _as_dict(two_stage_trade_diagnostics.get("anti_undertrading_gate")).get("passed")
+                or two_stage_trade_diagnostics.get("anti_undertrading_gate_passed")
+            ),
             "label_noise_status": label_noise_status,
             "feature_separability_status": feature_separability_status,
             "overfit_risk_status": overfit_risk_status,
@@ -200,6 +213,38 @@ def _extract_opportunity_diagnostics(payload: Mapping[str, Any]) -> dict[str, An
     if nested and isinstance(nested.get("test"), Mapping):
         return dict(nested["test"])
     return nested
+
+
+def _extract_two_stage_trade_diagnostics(payload: Mapping[str, Any]) -> dict[str, Any]:
+    diagnostics = _as_dict(payload.get("two_stage_trade_diagnostics"))
+    if diagnostics:
+        return diagnostics
+    probability_diagnostics = _as_dict(payload.get("probability_diagnostics"))
+    nested = _as_dict(probability_diagnostics.get("two_stage_trade_diagnostics"))
+    if nested:
+        return nested
+    candidate_selection = _as_dict(payload.get("candidate_selection"))
+    return _as_dict(candidate_selection.get("two_stage_trade_diagnostics"))
+
+
+def _two_stage_quality_status(two_stage_trade_diagnostics: Mapping[str, Any]) -> str:
+    if not two_stage_trade_diagnostics:
+        return "UNAVAILABLE"
+    quality_gate = _as_dict(two_stage_trade_diagnostics.get("two_stage_quality_gate"))
+    anti_undertrading_gate = _as_dict(two_stage_trade_diagnostics.get("anti_undertrading_gate"))
+    quality_passed = bool(
+        two_stage_trade_diagnostics.get("two_stage_quality_gate_passed")
+        or quality_gate.get("passed")
+    )
+    anti_undertrading_passed = bool(
+        two_stage_trade_diagnostics.get("anti_undertrading_gate_passed")
+        or anti_undertrading_gate.get("passed")
+    )
+    if quality_passed and anti_undertrading_passed:
+        return "PASSED"
+    if not anti_undertrading_passed:
+        return "UNDERTRADING"
+    return "WEAK"
 
 
 def _extract_or_build_feature_audit(
@@ -415,6 +460,7 @@ def _overfit_risk_status(slice_robustness: Mapping[str, Any]) -> str:
 def _primary_failure(
     *,
     negative_result: Mapping[str, Any],
+    two_stage_quality_status: str,
     label_noise_status: str,
     feature_separability_status: str,
     setup_edge_status: str,
@@ -427,6 +473,18 @@ def _primary_failure(
     overfit_risk_status: str,
 ) -> str:
     root_bucket = str(negative_result.get("root_cause_bucket") or "").upper()
+    if two_stage_quality_status == "UNDERTRADING":
+        return "two_stage_undertrading"
+    if two_stage_quality_status == "PASSED":
+        if walk_forward_status == "UNSTABLE" or profit_status in {"NEGATIVE", "POOR", "NOT_PROFITABLE"}:
+            return "two_stage_needs_profit_validation"
+        if model_edge_status == "NEGATIVE_EDGE":
+            return "two_stage_needs_profit_validation"
+        if overfit_risk_status == "HIGH":
+            return "overfit_risk_high"
+        if bias_status in {"HIGH", "CRITICAL"}:
+            return "symbol_bias_high"
+        return "no_hard_failure_detected"
     if label_noise_status == "HIGH_NOISE" or root_bucket == "LABEL_AMBIGUITY_HIGH":
         return "label_noise_high"
     if feature_separability_status == "WEAK" or root_bucket == "FEATURE_SEPARABILITY_WEAK":
@@ -453,6 +511,7 @@ def _primary_failure(
 def _secondary_failures(
     *,
     primary_failure: str,
+    two_stage_quality_status: str,
     failed_gates: Sequence[str],
     model_edge_status: str,
     walk_forward_status: str,
@@ -477,6 +536,7 @@ def _secondary_failures(
         (label_noise_status == "HIGH_NOISE", "label_noise_high"),
         (feature_separability_status == "WEAK", "feature_separability_weak"),
         (overfit_risk_status == "HIGH", "overfit_risk_high"),
+        (two_stage_quality_status == "UNDERTRADING", "two_stage_undertrading"),
     ):
         if condition:
             failures.append(name)
@@ -494,6 +554,10 @@ def _final_research_decision(
     overfit_risk_status: str,
     bias_status: str,
 ) -> str:
+    if primary_failure == "two_stage_needs_profit_validation":
+        return "TWO_STAGE_PROMISING_REJECTED_BY_PROFIT"
+    if primary_failure == "two_stage_undertrading":
+        return "TWO_STAGE_REJECTED_UNDERTRADING"
     if primary_failure == "label_noise_high":
         return "NEEDS_LABEL_REWORK"
     if primary_failure == "feature_separability_weak":
@@ -516,9 +580,14 @@ def _final_research_decision(
 def _what_not_to_do_next(
     *,
     primary_failure: str,
-    negative_result: Mapping[str, Any],
+    negative_result: Mapping[str, Any,],
 ) -> list[str]:
     actions = ["do_not_soften_gates"]
+    if primary_failure == "two_stage_needs_profit_validation":
+        actions.append("do_not_rework_labels_yet")
+        actions.append("do_not_relax_two_stage_quality_gate")
+    if primary_failure == "two_stage_undertrading":
+        actions.append("do_not_rank_precision_without_recall")
     if str(negative_result.get("root_cause_bucket") or "").upper() == "POST_PROCESSING_NOT_ROOT_CAUSE":
         actions.append("do_not_add_more_decision_policies")
     if primary_failure != "no_hard_failure_detected":
@@ -574,6 +643,16 @@ def _what_to_do_next(
         "overfit_risk_high": [
             "run_more_quick_quality_symbols",
             "inspect_slice_robustness_before_any_full_runtime",
+        ],
+        "two_stage_needs_profit_validation": [
+            "run_more_quick_quality_symbols",
+            "inspect_profit_aware_breakdown",
+            "inspect_walk_forward_breakdown",
+        ],
+        "two_stage_undertrading": [
+            "tighten_anti_undertrading_ranking",
+            "inspect_threshold_sweep_for_recall_collapse",
+            "compare_balanced_lv19_against_precision_trap_candidate",
         ],
     }
     actions = list(mapping.get(primary_failure, []))

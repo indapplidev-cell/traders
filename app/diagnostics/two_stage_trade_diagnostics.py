@@ -5,17 +5,20 @@ from typing import Any
 
 class TwoStageTradeDiagnostics:
     diagnostic_name = "two_stage_trade_diagnostics"
-    diagnostic_version = "ml38.10.8"
+    diagnostic_version = "ml38.10.9"
 
     def evaluate_metrics(
         self,
         metrics: dict[str, Any],
         *,
-        min_precision: float = 0.25,
-        min_recall: float = 0.50,
-        max_predicted_trade_rate: float = 0.15,
-        max_predicted_to_actual_trade_rate_ratio: float = 3.0,
-        max_false_positive_rate: float = 0.25,
+        min_precision: float = 0.30,
+        min_recall: float = 0.45,
+        min_f1: float = 0.35,
+        min_predicted_trade_rate: float = 0.03,
+        max_predicted_trade_rate: float = 0.14,
+        max_predicted_to_actual_trade_rate_ratio: float = 2.5,
+        max_false_positive_rate: float = 0.10,
+        min_direction_trade_rows: int = 20,
         setup_quality_min_threshold: float | None = None,
     ) -> dict[str, Any]:
         trade_row_ratio = float(metrics.get("trade_row_ratio", 0.0) or 0.0)
@@ -28,6 +31,7 @@ class TwoStageTradeDiagnostics:
         direction_accuracy = float(metrics.get("direction_accuracy_on_trade_rows", 0.0) or 0.0)
         direction_rows = int(metrics.get("direction_trade_rows", 0) or 0)
         threshold = float(metrics.get("opportunity_probability_threshold", 0.5) or 0.5)
+
         setup_quality_bucket_metrics = dict(metrics.get("setup_quality_bucket_metrics", {}))
         setup_quality_bucket_metrics_raw = dict(
             metrics.get("setup_quality_bucket_metrics_raw", {})
@@ -38,7 +42,8 @@ class TwoStageTradeDiagnostics:
         setup_quality_distribution = dict(metrics.get("setup_quality_distribution", {}))
         setup_quality_filter_summary = dict(metrics.get("setup_quality_filter_summary", {}))
         setup_quality_precision_signal = self._build_setup_quality_precision_signal(
-            setup_quality_bucket_metrics=setup_quality_bucket_metrics_after_mask or setup_quality_bucket_metrics,
+            setup_quality_bucket_metrics=setup_quality_bucket_metrics_after_mask
+            or setup_quality_bucket_metrics,
         )
         setup_quality_decision_mask_summary = {
             "enabled": bool(metrics.get("setup_quality_decision_mask_enabled", False)),
@@ -50,7 +55,17 @@ class TwoStageTradeDiagnostics:
             ),
         }
 
+        missing_or_zero_bucket = dict(
+            setup_quality_bucket_metrics_after_mask.get("missing_or_zero", {})
+        )
+        missing_or_zero_false_positive_count = int(
+            missing_or_zero_bucket.get("false_positive_count", 0) or 0
+        )
+
         warnings: list[str] = []
+        quality_gate_failures: list[str] = []
+        anti_undertrading_failures: list[str] = []
+
         if trade_row_ratio < 0.03:
             warnings.append("trade_rows_too_sparse")
         if predicted_trade_rate > max(0.20, trade_row_ratio * 4.0):
@@ -63,28 +78,43 @@ class TwoStageTradeDiagnostics:
             warnings.append("opportunity_precision_too_low")
         if direction_rows == 0:
             warnings.append("no_direction_trade_rows")
+
         if opportunity_precision < min_precision:
             warnings.append("opportunity_precision_below_gate")
+            quality_gate_failures.append("opportunity_precision_below_gate")
         if opportunity_recall < min_recall:
             warnings.append("opportunity_recall_below_gate")
+            quality_gate_failures.append("opportunity_recall_below_gate")
+        if opportunity_f1 < min_f1:
+            warnings.append("opportunity_f1_below_gate")
+            quality_gate_failures.append("opportunity_f1_below_gate")
+        if predicted_trade_rate < min_predicted_trade_rate:
+            warnings.append("predicted_trade_rate_below_gate")
+            quality_gate_failures.append("predicted_trade_rate_below_gate")
+            anti_undertrading_failures.append("predicted_trade_rate_below_gate")
         if predicted_trade_rate > max_predicted_trade_rate:
             warnings.append("predicted_trade_rate_above_gate")
+            quality_gate_failures.append("predicted_trade_rate_above_gate")
         if predicted_to_actual_ratio > max_predicted_to_actual_trade_rate_ratio:
             warnings.append("predicted_to_actual_trade_rate_ratio_above_gate")
+            quality_gate_failures.append("predicted_to_actual_trade_rate_ratio_above_gate")
         if false_positive_rate > max_false_positive_rate:
             warnings.append("opportunity_false_positive_rate_above_gate")
+            quality_gate_failures.append("opportunity_false_positive_rate_above_gate")
+        if missing_or_zero_false_positive_count > 0:
+            warnings.append("missing_or_zero_false_positive_count_above_gate")
+            quality_gate_failures.append("missing_or_zero_false_positive_count_above_gate")
+        if direction_rows < min_direction_trade_rows:
+            warnings.append("direction_trade_rows_below_quality_gate")
+            quality_gate_failures.append("direction_trade_rows_below_quality_gate")
 
-        status = "WATCH"
-        if warnings:
-            status = "NEEDS_REWORK"
-        if (
-            trade_row_ratio >= 0.03
-            and opportunity_precision >= max(0.10, min_precision)
-            and opportunity_recall >= max(0.10, min_recall)
-            and opportunity_f1 >= 0.10
-            and direction_accuracy >= 0.45
-        ):
-            status = "PROMISING"
+        if opportunity_recall < 0.35:
+            anti_undertrading_failures.append("opportunity_recall_below_anti_undertrading_minimum")
+        if opportunity_f1 < 0.20:
+            anti_undertrading_failures.append("opportunity_f1_below_anti_undertrading_minimum")
+        if direction_rows < 10:
+            anti_undertrading_failures.append("direction_trade_rows_below_anti_undertrading_minimum")
+
         precision_control_warnings = {
             "opportunity_precision_below_gate",
             "opportunity_recall_below_gate",
@@ -93,11 +123,49 @@ class TwoStageTradeDiagnostics:
             "opportunity_false_positive_rate_above_gate",
         }
 
+        two_stage_quality_gate = {
+            "passed": not quality_gate_failures,
+            "failed_reasons": list(dict.fromkeys(quality_gate_failures)),
+            "min_precision": float(min_precision),
+            "min_recall": float(min_recall),
+            "min_f1": float(min_f1),
+            "min_predicted_trade_rate": float(min_predicted_trade_rate),
+            "max_predicted_trade_rate": float(max_predicted_trade_rate),
+            "max_predicted_to_actual_trade_rate_ratio": float(max_predicted_to_actual_trade_rate_ratio),
+            "max_false_positive_rate": float(max_false_positive_rate),
+            "min_direction_trade_rows": int(min_direction_trade_rows),
+            "missing_or_zero_false_positive_count": int(missing_or_zero_false_positive_count),
+        }
+        anti_undertrading_gate = {
+            "passed": not anti_undertrading_failures,
+            "failed_reasons": list(dict.fromkeys(anti_undertrading_failures)),
+            "min_predicted_trade_rate": float(min_predicted_trade_rate),
+            "min_recall": 0.35,
+            "min_f1": 0.20,
+            "min_direction_trade_rows": 10,
+        }
+
+        status = "WATCH"
+        if warnings:
+            status = "NEEDS_REWORK"
+        if two_stage_quality_gate["passed"] and anti_undertrading_gate["passed"]:
+            status = "TWO_STAGE_PROMISING"
+        elif not anti_undertrading_gate["passed"]:
+            status = "TWO_STAGE_UNDERTRADING"
+        elif (
+            trade_row_ratio >= 0.03
+            and opportunity_precision >= max(0.10, min_precision)
+            and opportunity_recall >= max(0.10, min_recall)
+            and opportunity_f1 >= 0.10
+            and direction_accuracy >= 0.45
+        ):
+            status = "PROMISING"
+
         return {
             "diagnostic_name": self.diagnostic_name,
             "diagnostic_version": self.diagnostic_version,
             "status": status,
-            "warnings": warnings,
+            "warnings": list(dict.fromkeys(warnings)),
             "opportunity_probability_threshold": threshold,
             "setup_quality_min_threshold": (
                 metrics.get("setup_quality_min_threshold")
@@ -115,14 +183,22 @@ class TwoStageTradeDiagnostics:
             "opportunity_false_positive_rate": false_positive_rate,
             "direction_accuracy_on_trade_rows": direction_accuracy,
             "direction_trade_rows": direction_rows,
-            "precision_control_passed": not any(reason in precision_control_warnings for reason in warnings),
+            "precision_control_passed": not any(
+                reason in precision_control_warnings for reason in warnings
+            ),
             "precision_control_gates": {
                 "min_precision": float(min_precision),
                 "min_recall": float(min_recall),
                 "max_predicted_trade_rate": float(max_predicted_trade_rate),
-                "max_predicted_to_actual_trade_rate_ratio": float(max_predicted_to_actual_trade_rate_ratio),
+                "max_predicted_to_actual_trade_rate_ratio": float(
+                    max_predicted_to_actual_trade_rate_ratio
+                ),
                 "max_false_positive_rate": float(max_false_positive_rate),
             },
+            "two_stage_quality_gate": two_stage_quality_gate,
+            "two_stage_quality_gate_passed": bool(two_stage_quality_gate["passed"]),
+            "anti_undertrading_gate": anti_undertrading_gate,
+            "anti_undertrading_gate_passed": bool(anti_undertrading_gate["passed"]),
             "setup_quality_bucket_metrics": setup_quality_bucket_metrics,
             "setup_quality_bucket_metrics_raw": setup_quality_bucket_metrics_raw,
             "setup_quality_bucket_metrics_after_mask": setup_quality_bucket_metrics_after_mask,

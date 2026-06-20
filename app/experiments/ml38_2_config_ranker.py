@@ -9,10 +9,23 @@ ML38_2_CONFIG_RANKER_NAME = "ml38_2_config_ranker"
 ML38_2_CONFIG_RANKER_VERSION = "ml38_2"
 FAILED_CANDIDATE_STATUSES = {"FAILED", "ERROR"}
 FAILED_CANDIDATE_SCORE = -1_000_000.0
-SETUP_QUALITY_FILTER_MIN_PRECISION = 0.30
-SETUP_QUALITY_FILTER_MIN_RECALL = 0.45
+TWO_STAGE_QUALITY_MIN_PRECISION = 0.30
+TWO_STAGE_QUALITY_MIN_RECALL = 0.45
+TWO_STAGE_QUALITY_MIN_F1 = 0.35
+TWO_STAGE_QUALITY_MIN_PREDICTED_TRADE_RATE = 0.03
+TWO_STAGE_QUALITY_MAX_PREDICTED_TRADE_RATE = 0.14
+TWO_STAGE_QUALITY_MAX_TRADE_RATE_RATIO = 2.5
+TWO_STAGE_QUALITY_MAX_FALSE_POSITIVE_RATE = 0.10
+TWO_STAGE_QUALITY_MIN_DIRECTION_TRADE_ROWS = 20
+ANTI_UNDERTRADING_MIN_RECALL = 0.35
+ANTI_UNDERTRADING_MIN_F1 = 0.20
+ANTI_UNDERTRADING_MIN_DIRECTION_TRADE_ROWS = 10
+
+# Backward-compatible aliases for ML38.10.7 tests and old reports.
+SETUP_QUALITY_FILTER_MIN_PRECISION = TWO_STAGE_QUALITY_MIN_PRECISION
+SETUP_QUALITY_FILTER_MIN_RECALL = TWO_STAGE_QUALITY_MIN_RECALL
 SETUP_QUALITY_FILTER_MAX_PREDICTED_TRADE_RATE = 0.15
-SETUP_QUALITY_FILTER_MAX_TRADE_RATE_RATIO = 2.5
+SETUP_QUALITY_FILTER_MAX_TRADE_RATE_RATIO = TWO_STAGE_QUALITY_MAX_TRADE_RATE_RATIO
 SETUP_QUALITY_FILTER_MAX_FALSE_POSITIVE_RATE = 0.12
 
 def is_rankable_candidate_status(status: str | None) -> bool:
@@ -61,6 +74,120 @@ def evaluate_setup_quality_filter(
         return {"passed": False, "reason": "opportunity_false_positive_rate_too_high"}
 
     return {"passed": True, "reason": "passed"}
+
+
+def evaluate_two_stage_quality_gate(
+    *,
+    opportunity_precision: Any,
+    opportunity_recall: Any,
+    opportunity_f1: Any,
+    predicted_trade_rate: Any,
+    actual_trade_rate: Any,
+    predicted_to_actual_trade_rate_ratio: Any,
+    opportunity_false_positive_rate: Any,
+    direction_trade_rows: Any,
+    missing_or_zero_false_positive_count: Any,
+) -> dict[str, Any]:
+    required_metrics = (
+        opportunity_precision,
+        opportunity_recall,
+        opportunity_f1,
+        predicted_trade_rate,
+        actual_trade_rate,
+        predicted_to_actual_trade_rate_ratio,
+        opportunity_false_positive_rate,
+    )
+    if any(value is None for value in required_metrics):
+        return {
+            "passed": False,
+            "reason": "missing_two_stage_metrics",
+            "failed_reasons": ["missing_two_stage_metrics"],
+        }
+
+    actual_trade_rate_value = float(actual_trade_rate)
+    if actual_trade_rate_value <= 0.0:
+        return {
+            "passed": False,
+            "reason": "no_actual_trade_rows",
+            "failed_reasons": ["no_actual_trade_rows"],
+        }
+
+    precision_value = float(opportunity_precision)
+    recall_value = float(opportunity_recall)
+    f1_value = float(opportunity_f1)
+    predicted_trade_rate_value = float(predicted_trade_rate)
+    trade_rate_ratio_value = float(predicted_to_actual_trade_rate_ratio)
+    false_positive_rate_value = float(opportunity_false_positive_rate)
+    direction_rows_value = int(direction_trade_rows or 0)
+    missing_fp_value = int(missing_or_zero_false_positive_count or 0)
+
+    failed_reasons: list[str] = []
+    if precision_value < TWO_STAGE_QUALITY_MIN_PRECISION:
+        failed_reasons.append("precision_below_minimum")
+    if recall_value < TWO_STAGE_QUALITY_MIN_RECALL:
+        failed_reasons.append("recall_below_minimum")
+    if f1_value < TWO_STAGE_QUALITY_MIN_F1:
+        failed_reasons.append("f1_below_minimum")
+    if predicted_trade_rate_value < TWO_STAGE_QUALITY_MIN_PREDICTED_TRADE_RATE:
+        failed_reasons.append("predicted_trade_rate_too_low")
+    if predicted_trade_rate_value > TWO_STAGE_QUALITY_MAX_PREDICTED_TRADE_RATE:
+        failed_reasons.append("predicted_trade_rate_too_high")
+    if trade_rate_ratio_value > TWO_STAGE_QUALITY_MAX_TRADE_RATE_RATIO:
+        failed_reasons.append("predicted_to_actual_trade_rate_ratio_too_high")
+    if false_positive_rate_value > TWO_STAGE_QUALITY_MAX_FALSE_POSITIVE_RATE:
+        failed_reasons.append("opportunity_false_positive_rate_too_high")
+    if missing_fp_value > 0:
+        failed_reasons.append("missing_or_zero_false_positive_count_above_zero")
+    if direction_rows_value < TWO_STAGE_QUALITY_MIN_DIRECTION_TRADE_ROWS:
+        failed_reasons.append("direction_trade_rows_too_low")
+
+    return {
+        "passed": not failed_reasons,
+        "reason": "passed" if not failed_reasons else failed_reasons[0],
+        "failed_reasons": failed_reasons,
+        "minimums": {
+            "precision": TWO_STAGE_QUALITY_MIN_PRECISION,
+            "recall": TWO_STAGE_QUALITY_MIN_RECALL,
+            "f1": TWO_STAGE_QUALITY_MIN_F1,
+            "predicted_trade_rate": TWO_STAGE_QUALITY_MIN_PREDICTED_TRADE_RATE,
+            "direction_trade_rows": TWO_STAGE_QUALITY_MIN_DIRECTION_TRADE_ROWS,
+        },
+        "maximums": {
+            "predicted_trade_rate": TWO_STAGE_QUALITY_MAX_PREDICTED_TRADE_RATE,
+            "predicted_to_actual_trade_rate_ratio": TWO_STAGE_QUALITY_MAX_TRADE_RATE_RATIO,
+            "opportunity_false_positive_rate": TWO_STAGE_QUALITY_MAX_FALSE_POSITIVE_RATE,
+            "missing_or_zero_false_positive_count": 0,
+        },
+    }
+
+
+def evaluate_anti_undertrading_gate(
+    *,
+    opportunity_recall: Any,
+    opportunity_f1: Any,
+    predicted_trade_rate: Any,
+    direction_trade_rows: Any,
+) -> dict[str, Any]:
+    recall_value = float(opportunity_recall or 0.0)
+    f1_value = float(opportunity_f1 or 0.0)
+    predicted_trade_rate_value = float(predicted_trade_rate or 0.0)
+    direction_rows_value = int(direction_trade_rows or 0)
+
+    failed_reasons: list[str] = []
+    if predicted_trade_rate_value < TWO_STAGE_QUALITY_MIN_PREDICTED_TRADE_RATE:
+        failed_reasons.append("predicted_trade_rate_too_low")
+    if recall_value < ANTI_UNDERTRADING_MIN_RECALL:
+        failed_reasons.append("recall_too_low")
+    if f1_value < ANTI_UNDERTRADING_MIN_F1:
+        failed_reasons.append("f1_too_low")
+    if direction_rows_value < ANTI_UNDERTRADING_MIN_DIRECTION_TRADE_ROWS:
+        failed_reasons.append("direction_trade_rows_too_low")
+
+    return {
+        "passed": not failed_reasons,
+        "reason": "passed" if not failed_reasons else failed_reasons[0],
+        "failed_reasons": failed_reasons,
+    }
 
 
 class ML382ConfigRanker:
@@ -301,6 +428,18 @@ class ML382ConfigRanker:
                 else two_stage_trade_diagnostics.get("opportunity_false_positive_rate")
             ),
         )
+        two_stage_quality_gate = {
+            "passed": False,
+            "reason": "not_trade_two_stage",
+            "failed_reasons": ["not_trade_two_stage"],
+        }
+        anti_undertrading_gate = {
+            "passed": False,
+            "reason": "not_trade_two_stage",
+            "failed_reasons": ["not_trade_two_stage"],
+        }
+        missing_or_zero_false_positives = 0
+        undertrading_risk_detected = False
         bounded_calibration_bonus = 0.0
         bounded_calibration_fallback_penalty = 0.0
         if bounded_selection:
@@ -383,6 +522,29 @@ class ML382ConfigRanker:
                     0.0,
                     (raw_predicted_trade_rate - masked_predicted_trade_rate) / raw_predicted_trade_rate,
                 )
+            direction_trade_rows = int(
+                candidate.get("direction_trade_rows")
+                or two_stage_trade_diagnostics.get("direction_trade_rows")
+                or 0
+            )
+            two_stage_quality_gate = evaluate_two_stage_quality_gate(
+                opportunity_precision=opportunity_precision,
+                opportunity_recall=opportunity_recall,
+                opportunity_f1=opportunity_f1,
+                predicted_trade_rate=predicted_trade_rate,
+                actual_trade_rate=actual_trade_rate,
+                predicted_to_actual_trade_rate_ratio=predicted_to_actual_trade_rate_ratio,
+                opportunity_false_positive_rate=opportunity_false_positive_rate,
+                direction_trade_rows=direction_trade_rows,
+                missing_or_zero_false_positive_count=missing_or_zero_false_positives,
+            )
+            anti_undertrading_gate = evaluate_anti_undertrading_gate(
+                opportunity_recall=opportunity_recall,
+                opportunity_f1=opportunity_f1,
+                predicted_trade_rate=predicted_trade_rate,
+                direction_trade_rows=direction_trade_rows,
+            )
+            undertrading_risk_detected = not bool(anti_undertrading_gate.get("passed"))
             score_components["opportunity_f1_bonus"] = min(3.0, opportunity_f1 * 6.0)
             score_components["opportunity_precision_bonus"] = min(2.5, opportunity_precision * 5.0)
             score_components["direction_accuracy_trade_rows_bonus"] = min(
@@ -418,6 +580,34 @@ class ML382ConfigRanker:
             score_components["setup_quality_over_masking_penalty"] = (
                 -1.5
                 if forced_no_trade_count > 0 and predicted_trade_removed_ratio > 0.35 and opportunity_recall < 0.45
+                else 0.0
+            )
+            score_components["two_stage_quality_gate_bonus"] = (
+                3.0 if bool(two_stage_quality_gate.get("passed")) else -1.5
+            )
+            score_components["anti_undertrading_gate_bonus"] = (
+                1.25 if bool(anti_undertrading_gate.get("passed")) else -3.0
+            )
+            score_components["opportunity_f1_quality_bonus"] = min(2.0, opportunity_f1 * 5.0)
+            score_components["balanced_trade_rate_bonus"] = (
+                1.0 if 0.06 <= predicted_trade_rate <= 0.14 else 0.0
+            )
+            score_components["undertrading_predicted_trade_rate_penalty"] = (
+                -4.0 if predicted_trade_rate < TWO_STAGE_QUALITY_MIN_PREDICTED_TRADE_RATE else 0.0
+            )
+            score_components["undertrading_recall_penalty"] = (
+                -4.0 if opportunity_recall < ANTI_UNDERTRADING_MIN_RECALL else 0.0
+            )
+            score_components["undertrading_f1_penalty"] = (
+                -3.0 if opportunity_f1 < ANTI_UNDERTRADING_MIN_F1 else 0.0
+            )
+            score_components["undertrading_direction_rows_penalty"] = (
+                -2.0 if direction_trade_rows < ANTI_UNDERTRADING_MIN_DIRECTION_TRADE_ROWS else 0.0
+            )
+            score_components["precision_trap_penalty"] = (
+                -6.0
+                if opportunity_precision >= 0.80
+                and (opportunity_recall < 0.10 or predicted_trade_rate < 0.01)
                 else 0.0
             )
         rejection_reasons: list[str] = []
@@ -486,6 +676,20 @@ class ML382ConfigRanker:
             rejection_reasons.append("collapse_gate_failed")
         if "walk_forward_gate" in failed_gates:
             rejection_reasons.append("walk_forward_gate_failed")
+        if training_objective == "trade_two_stage":
+            if bool(two_stage_quality_gate.get("passed")):
+                if "two_stage_quality_gate_passed_but_candidate_still_rejected" not in rejection_reasons:
+                    rejection_reasons.append("two_stage_quality_gate_passed_but_candidate_still_rejected")
+            else:
+                for reason in two_stage_quality_gate.get("failed_reasons", []):
+                    formatted = f"two_stage_quality_gate_failed:{reason}"
+                    if formatted not in rejection_reasons:
+                        rejection_reasons.append(formatted)
+            if not bool(anti_undertrading_gate.get("passed")):
+                for reason in anti_undertrading_gate.get("failed_reasons", []):
+                    formatted = f"anti_undertrading_gate_failed:{reason}"
+                    if formatted not in rejection_reasons:
+                        rejection_reasons.append(formatted)
         if candidate.get("candidate_status") == "REJECTED" and not rejection_reasons:
             rejection_reasons.extend(f"failed_gate={gate}" for gate in failed_gates)
         if candidate.get("candidate_status") != "REJECTED":
@@ -544,6 +748,12 @@ class ML382ConfigRanker:
             "opportunity_threshold_sweep": dict(candidate.get("opportunity_threshold_sweep", {})),
             "setup_quality_filter_passed": bool(setup_quality_filter.get("passed", False)),
             "setup_quality_filter_reason": setup_quality_filter.get("reason"),
+            "two_stage_quality_gate": two_stage_quality_gate,
+            "two_stage_quality_gate_passed": bool(two_stage_quality_gate.get("passed", False)),
+            "anti_undertrading_gate": anti_undertrading_gate,
+            "anti_undertrading_gate_passed": bool(anti_undertrading_gate.get("passed", False)),
+            "undertrading_risk_detected": bool(undertrading_risk_detected),
+            "missing_or_zero_false_positive_count": int(missing_or_zero_false_positives),
             "setup_quality_bucket_metrics": setup_quality_bucket_metrics,
             "setup_quality_bucket_metrics_raw": setup_quality_bucket_metrics_raw,
             "setup_quality_bucket_metrics_after_mask": setup_quality_bucket_metrics_after_mask,
