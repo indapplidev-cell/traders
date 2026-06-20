@@ -248,9 +248,22 @@ class ML382ConfigRanker:
             if candidate.get("setup_quality_min_threshold") is not None
             else two_stage_trade_diagnostics.get("setup_quality_min_threshold")
         )
+        setup_quality_decision_mask_summary = dict(
+            candidate.get("setup_quality_decision_mask_summary")
+            or two_stage_trade_diagnostics.get("setup_quality_decision_mask_summary", {})
+        )
         setup_quality_bucket_metrics = dict(
             candidate.get("setup_quality_bucket_metrics")
             or two_stage_trade_diagnostics.get("setup_quality_bucket_metrics", {})
+        )
+        setup_quality_bucket_metrics_raw = dict(
+            candidate.get("setup_quality_bucket_metrics_raw")
+            or two_stage_trade_diagnostics.get("setup_quality_bucket_metrics_raw", {})
+        )
+        setup_quality_bucket_metrics_after_mask = dict(
+            candidate.get("setup_quality_bucket_metrics_after_mask")
+            or two_stage_trade_diagnostics.get("setup_quality_bucket_metrics_after_mask", {})
+            or setup_quality_bucket_metrics
         )
         setup_quality_filter_summary = dict(
             candidate.get("setup_quality_filter_summary")
@@ -345,6 +358,31 @@ class ML382ConfigRanker:
         else:
             score_components["decision_policy_baseline_edge_bonus"] = 0.0
         if training_objective == "trade_two_stage":
+            missing_or_zero_bucket = dict(
+                setup_quality_bucket_metrics_after_mask.get("missing_or_zero", {})
+            )
+            missing_or_zero_false_positives = int(
+                missing_or_zero_bucket.get("false_positive_count", 0) or 0
+            )
+            low_quality_false_positive_count = sum(
+                int(dict(setup_quality_bucket_metrics_after_mask.get(bucket_name, {})).get("false_positive_count", 0) or 0)
+                for bucket_name in ("low_0_00_0_40", "mid_0_40_0_60")
+            )
+            raw_predicted_trade_rate = self._safe_float(candidate.get("raw_predicted_trade_rate"))
+            masked_predicted_trade_rate = self._safe_float(
+                candidate.get("masked_predicted_trade_rate")
+                if candidate.get("masked_predicted_trade_rate") is not None
+                else predicted_trade_rate
+            )
+            forced_no_trade_count = self._safe_float(
+                setup_quality_decision_mask_summary.get("forced_no_trade_count")
+            )
+            predicted_trade_removed_ratio = 0.0
+            if raw_predicted_trade_rate > 0.0:
+                predicted_trade_removed_ratio = max(
+                    0.0,
+                    (raw_predicted_trade_rate - masked_predicted_trade_rate) / raw_predicted_trade_rate,
+                )
             score_components["opportunity_f1_bonus"] = min(3.0, opportunity_f1 * 6.0)
             score_components["opportunity_precision_bonus"] = min(2.5, opportunity_precision * 5.0)
             score_components["direction_accuracy_trade_rows_bonus"] = min(
@@ -352,9 +390,22 @@ class ML382ConfigRanker:
                 max(0.0, direction_accuracy_on_trade_rows - 0.45) * 4.0,
             )
             score_components["setup_quality_filter_bonus"] = 0.5 if bool(setup_quality_filter.get("passed")) else 0.0
+            score_components["setup_quality_missing_fp_zero_bonus"] = (
+                1.0 if missing_or_zero_false_positives == 0 else -2.0
+            )
+            score_components["setup_quality_precision_gate_bonus"] = (
+                0.75 if opportunity_precision >= 0.30 else 0.0
+            )
+            score_components["setup_quality_trade_rate_bonus"] = (
+                0.50 if predicted_trade_rate <= 0.13 else 0.0
+            )
+            score_components["setup_quality_low_bucket_fp_penalty"] = -min(
+                2.0,
+                low_quality_false_positive_count * 0.5,
+            )
             score_components["trade_rate_ratio_penalty"] = -max(
                 0.0,
-                predicted_to_actual_trade_rate_ratio - SETUP_QUALITY_FILTER_MAX_TRADE_RATE_RATIO,
+                predicted_to_actual_trade_rate_ratio - 2.5,
             )
             score_components["opportunity_false_positive_penalty"] = -max(
                 0.0,
@@ -364,6 +415,11 @@ class ML382ConfigRanker:
                 0.0,
                 predicted_trade_rate - SETUP_QUALITY_FILTER_MAX_PREDICTED_TRADE_RATE,
             ) * 20.0
+            score_components["setup_quality_over_masking_penalty"] = (
+                -1.5
+                if forced_no_trade_count > 0 and predicted_trade_removed_ratio > 0.35 and opportunity_recall < 0.45
+                else 0.0
+            )
         rejection_reasons: list[str] = []
         baseline_score, baseline_components, baseline_reasons = self._baseline_edge_score_component(candidate)
         collapse_score, collapse_components, collapse_reasons = self._collapse_severity_score_component(candidate)
@@ -489,13 +545,21 @@ class ML382ConfigRanker:
             "setup_quality_filter_passed": bool(setup_quality_filter.get("passed", False)),
             "setup_quality_filter_reason": setup_quality_filter.get("reason"),
             "setup_quality_bucket_metrics": setup_quality_bucket_metrics,
+            "setup_quality_bucket_metrics_raw": setup_quality_bucket_metrics_raw,
+            "setup_quality_bucket_metrics_after_mask": setup_quality_bucket_metrics_after_mask,
             "setup_quality_filter_summary": setup_quality_filter_summary,
+            "setup_quality_decision_mask_summary": setup_quality_decision_mask_summary,
             "predicted_to_actual_trade_rate_ratio": predicted_to_actual_trade_rate_ratio,
             "predicted_trade_rate": predicted_trade_rate,
             "actual_trade_rate": actual_trade_rate,
             "opportunity_precision": opportunity_precision,
             "opportunity_recall": opportunity_recall,
             "opportunity_f1": opportunity_f1,
+            "raw_predicted_trade_rate": candidate.get("raw_predicted_trade_rate"),
+            "masked_predicted_trade_rate": candidate.get("masked_predicted_trade_rate"),
+            "raw_opportunity_precision": candidate.get("raw_opportunity_precision"),
+            "raw_opportunity_recall": candidate.get("raw_opportunity_recall"),
+            "raw_opportunity_f1": candidate.get("raw_opportunity_f1"),
             "opportunity_false_positive_rate": opportunity_false_positive_rate,
             "two_stage_trade_diagnostics": two_stage_trade_diagnostics,
             "precision_control_passed": bool(two_stage_trade_diagnostics.get("precision_control_passed", False)),

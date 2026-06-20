@@ -105,6 +105,8 @@ class TrainingPipelineConfig:
     decision_policy_grid_stage: str | None = None
     opportunity_probability_threshold: float = 0.5
     setup_quality_min_threshold: float | None = None
+    setup_quality_decision_mask_enabled: bool = False
+    setup_quality_decision_mask_min_threshold: float | None = None
     opportunity_threshold_sweep_enabled: bool = False
     opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
     opportunity_min_precision: float = 0.25
@@ -995,6 +997,8 @@ class LongHistoryTrainingPipelineRunner:
             flat_class_enabled=True,
             label_mode=self.DEFAULT_LABEL_MODE,
             setup_quality_min_threshold=config.setup_quality_min_threshold,
+            setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+            setup_quality_decision_mask_min_threshold=config.setup_quality_decision_mask_min_threshold,
         )
         start_at, end_at = self._resolved_datetime_range(config)
         with get_session() as session:
@@ -1086,6 +1090,8 @@ class LongHistoryTrainingPipelineRunner:
                         "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                         "decision_policy_grid_stage": config.decision_policy_grid_stage,
                         "setup_quality_min_threshold": config.setup_quality_min_threshold,
+                        "setup_quality_decision_mask_enabled": config.setup_quality_decision_mask_enabled,
+                        "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
                         "regime_label_builder_status": regime_label_builder_status,
                         "label_mode_comparison_audit": label_mode_comparison_audit,
                         "flat_subtype_audit": flat_subtype_audit,
@@ -1141,6 +1147,8 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_policy_grid_enabled": config.decision_policy_grid_enabled,
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
                 "setup_quality_min_threshold": config.setup_quality_min_threshold,
+                "setup_quality_decision_mask_enabled": config.setup_quality_decision_mask_enabled,
+                "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
                 "regime_label_builder_status": regime_label_builder_status,
                 "label_mode_comparison_audit": label_mode_comparison_audit,
                 "flat_subtype_audit": flat_subtype_audit,
@@ -1280,6 +1288,8 @@ class LongHistoryTrainingPipelineRunner:
                 hard_negative_margin_target=config.hard_negative_margin_target,
                 opportunity_probability_threshold=config.opportunity_probability_threshold,
                 setup_quality_min_threshold=config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=config.setup_quality_decision_mask_min_threshold,
                 opportunity_threshold_sweep_enabled=config.opportunity_threshold_sweep_enabled,
                 opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
                 opportunity_min_precision=config.opportunity_min_precision,
@@ -1362,6 +1372,8 @@ class LongHistoryTrainingPipelineRunner:
                 "decision_policy_grid_stage": config.decision_policy_grid_stage,
                 "opportunity_probability_threshold": config.opportunity_probability_threshold,
                 "setup_quality_min_threshold": config.setup_quality_min_threshold,
+                "setup_quality_decision_mask_enabled": config.setup_quality_decision_mask_enabled,
+                "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
                 "opportunity_threshold_sweep_enabled": config.opportunity_threshold_sweep_enabled,
                 "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
                 "opportunity_min_precision": config.opportunity_min_precision,
@@ -1904,6 +1916,8 @@ class LongHistoryTrainingPipelineRunner:
         for key in (
             "opportunity_probability_threshold",
             "setup_quality_min_threshold",
+            "setup_quality_decision_mask_enabled",
+            "setup_quality_decision_mask_min_threshold",
             "selected_opportunity_threshold",
             "opportunity_threshold_selection",
         ):
@@ -1918,11 +1932,24 @@ class LongHistoryTrainingPipelineRunner:
             "predicted_to_actual_trade_rate_ratio",
             "predicted_trade_rate",
             "actual_trade_rate",
+            "raw_predicted_trade_rate",
+            "masked_predicted_trade_rate",
             "opportunity_precision",
             "opportunity_recall",
             "opportunity_f1",
+            "raw_opportunity_precision",
+            "raw_opportunity_recall",
+            "raw_opportunity_f1",
             "opportunity_false_positive_rate",
+            "setup_quality_decision_mask_enabled",
+            "setup_quality_decision_mask_min_threshold",
+            "setup_quality_masked_row_count",
+            "setup_quality_forced_no_trade_count",
+            "setup_quality_mask_false_positive_removed_count",
+            "setup_quality_mask_trade_prediction_removed_count",
             "setup_quality_bucket_metrics",
+            "setup_quality_bucket_metrics_raw",
+            "setup_quality_bucket_metrics_after_mask",
             "setup_quality_distribution",
             "setup_quality_filter_summary",
         ):
@@ -1933,6 +1960,15 @@ class LongHistoryTrainingPipelineRunner:
             payload["two_stage_trade_diagnostics"] = self._as_dict(
                 test_metrics.get("two_stage_trade_diagnostics")
             )
+            diagnostics_payload = self._as_dict(test_metrics.get("two_stage_trade_diagnostics"))
+            for key in (
+                "setup_quality_decision_mask_summary",
+                "setup_quality_bucket_metrics_raw",
+                "setup_quality_bucket_metrics_after_mask",
+            ):
+                value = diagnostics_payload.get(key)
+                if value is not None and key not in payload:
+                    payload[key] = value
 
     def _sample_payload_stage(
         self,
@@ -2149,6 +2185,16 @@ class LongHistoryTrainingPipelineRunner:
             "setup_quality_min_threshold": build_labels_payload.get(
                 "setup_quality_min_threshold",
                 config.setup_quality_min_threshold,
+            ),
+            "setup_quality_decision_mask_enabled": self._as_bool(
+                build_labels_payload.get(
+                    "setup_quality_decision_mask_enabled",
+                    config.setup_quality_decision_mask_enabled,
+                )
+            ),
+            "setup_quality_decision_mask_min_threshold": build_labels_payload.get(
+                "setup_quality_decision_mask_min_threshold",
+                config.setup_quality_decision_mask_min_threshold,
             ),
             "opportunity_threshold_sweep_enabled": self._as_bool(
                 build_labels_payload.get(

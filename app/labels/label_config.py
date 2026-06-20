@@ -33,3 +33,12 @@ class LabelConfig:
     flat_class_enabled: bool = True
     label_mode: str = LABEL_MODE_FUTURE_CLOSE_ATR
     setup_quality_min_threshold: float | None = None
+    setup_quality_decision_mask_enabled: bool = False
+    setup_quality_decision_mask_min_threshold: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.setup_quality_decision_mask_min_threshold is None:
+            return
+        threshold = float(self.setup_quality_decision_mask_min_threshold)
+        if threshold < 0.0 or threshold > 1.0:
+            raise ValueError("setup_quality_decision_mask_min_threshold must be between 0.0 and 1.0")

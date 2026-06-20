@@ -42,6 +42,8 @@ def test_training_service_persists_threshold_control_configuration(tmp_path: Pat
         training_objective="trade_two_stage",
         opportunity_probability_threshold=0.60,
         setup_quality_min_threshold=0.55,
+        setup_quality_decision_mask_enabled=True,
+        setup_quality_decision_mask_min_threshold=0.57,
         opportunity_threshold_sweep_enabled=True,
         opportunity_threshold_candidates=(0.50, 0.60, 0.70),
         opportunity_min_precision=0.25,
@@ -56,9 +58,13 @@ def test_training_service_persists_threshold_control_configuration(tmp_path: Pat
     assert result["selected_opportunity_threshold"] in (0.50, 0.60, 0.70)
     assert isinstance(result["opportunity_threshold_selection"], dict)
     assert result["test_metrics"]["opportunity_probability_threshold"] == result["selected_opportunity_threshold"]
+    assert result["setup_quality_decision_mask_enabled"] is True
+    assert result["setup_quality_decision_mask_min_threshold"] == 0.57
 
     training_config = artifact_storage.load_json(result["model_version"], "training_config.json")
     assert training_config["opportunity_threshold_sweep_enabled"] is True
     assert training_config["setup_quality_min_threshold"] == 0.55
+    assert training_config["setup_quality_decision_mask_enabled"] is True
+    assert training_config["setup_quality_decision_mask_min_threshold"] == 0.57
     assert training_config["selected_opportunity_threshold"] in [0.50, 0.60, 0.70]
     assert isinstance(training_config["opportunity_threshold_selection"], dict)

@@ -20,4 +20,4 @@ def test_ml38_9_2_runtime_profile_uses_current_prompt_4_6_quick_quality_shortlis
     assert wrapper.runtime_profile == "quick_quality"
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
-    assert "lv18_h12_tts_thr070_sq065" in wrapper.selected_config_ids
+    assert "lv19_h12_tts_thr070_sqmask065" in wrapper.selected_config_ids

@@ -89,6 +89,8 @@ class TrainingConfig:
     hard_negative_margin_target: float = 0.08
     opportunity_probability_threshold: float = 0.5
     setup_quality_min_threshold: float | None = None
+    setup_quality_decision_mask_enabled: bool = False
+    setup_quality_decision_mask_min_threshold: float | None = None
     opportunity_threshold_sweep_enabled: bool = False
     opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
     opportunity_min_precision: float = 0.25
@@ -225,6 +227,8 @@ class TrainingService:
         hard_negative_margin_target: float = 0.08,
         opportunity_probability_threshold: float = 0.5,
         setup_quality_min_threshold: float | None = None,
+        setup_quality_decision_mask_enabled: bool = False,
+        setup_quality_decision_mask_min_threshold: float | None = None,
         opportunity_threshold_sweep_enabled: bool = False,
         opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
         opportunity_min_precision: float = 0.25,
@@ -292,6 +296,8 @@ class TrainingService:
             hard_negative_margin_target=hard_negative_margin_target,
             opportunity_probability_threshold=opportunity_probability_threshold,
             setup_quality_min_threshold=setup_quality_min_threshold,
+            setup_quality_decision_mask_enabled=setup_quality_decision_mask_enabled,
+            setup_quality_decision_mask_min_threshold=setup_quality_decision_mask_min_threshold,
             opportunity_threshold_sweep_enabled=opportunity_threshold_sweep_enabled,
             opportunity_threshold_candidates=tuple(opportunity_threshold_candidates),
             opportunity_min_precision=opportunity_min_precision,
@@ -463,6 +469,12 @@ class TrainingService:
                     direction_temperature=direction_temperature,
                     opportunity_probability_threshold=float(config.opportunity_probability_threshold),
                     setup_quality_min_threshold=config.setup_quality_min_threshold,
+                    setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                    setup_quality_decision_mask_min_threshold=(
+                        config.setup_quality_decision_mask_min_threshold
+                        if config.setup_quality_decision_mask_min_threshold is not None
+                        else config.setup_quality_min_threshold
+                    ),
                     opportunity_threshold_sweep_enabled=True,
                     opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
                     opportunity_min_precision=float(config.opportunity_min_precision),
@@ -489,6 +501,12 @@ class TrainingService:
                 direction_temperature=1.0,
                 opportunity_probability_threshold=selected_opportunity_threshold,
                 setup_quality_min_threshold=config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=(
+                    config.setup_quality_decision_mask_min_threshold
+                    if config.setup_quality_decision_mask_min_threshold is not None
+                    else config.setup_quality_min_threshold
+                ),
                 training_objective=config.training_objective,
             )
             raw_validation_metrics = self._evaluator.evaluate(
@@ -497,6 +515,12 @@ class TrainingService:
                 direction_temperature=1.0,
                 opportunity_probability_threshold=selected_opportunity_threshold,
                 setup_quality_min_threshold=config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=(
+                    config.setup_quality_decision_mask_min_threshold
+                    if config.setup_quality_decision_mask_min_threshold is not None
+                    else config.setup_quality_min_threshold
+                ),
                 training_objective=config.training_objective,
             )
             raw_test_metrics = self._evaluator.evaluate(
@@ -505,6 +529,12 @@ class TrainingService:
                 direction_temperature=1.0,
                 opportunity_probability_threshold=selected_opportunity_threshold,
                 setup_quality_min_threshold=config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=(
+                    config.setup_quality_decision_mask_min_threshold
+                    if config.setup_quality_decision_mask_min_threshold is not None
+                    else config.setup_quality_min_threshold
+                ),
                 training_objective=config.training_objective,
             )
 
@@ -514,6 +544,12 @@ class TrainingService:
                 direction_temperature=direction_temperature,
                 opportunity_probability_threshold=selected_opportunity_threshold,
                 setup_quality_min_threshold=config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=(
+                    config.setup_quality_decision_mask_min_threshold
+                    if config.setup_quality_decision_mask_min_threshold is not None
+                    else config.setup_quality_min_threshold
+                ),
                 training_objective=config.training_objective,
             )
             validation_metrics = self._evaluator.evaluate(
@@ -522,6 +558,12 @@ class TrainingService:
                 direction_temperature=direction_temperature,
                 opportunity_probability_threshold=selected_opportunity_threshold,
                 setup_quality_min_threshold=config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=(
+                    config.setup_quality_decision_mask_min_threshold
+                    if config.setup_quality_decision_mask_min_threshold is not None
+                    else config.setup_quality_min_threshold
+                ),
                 opportunity_threshold_sweep_enabled=(
                     is_trade_two_stage_objective(config.training_objective)
                     and config.opportunity_threshold_sweep_enabled
@@ -542,6 +584,12 @@ class TrainingService:
                 direction_temperature=direction_temperature,
                 opportunity_probability_threshold=selected_opportunity_threshold,
                 setup_quality_min_threshold=config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=config.setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=(
+                    config.setup_quality_decision_mask_min_threshold
+                    if config.setup_quality_decision_mask_min_threshold is not None
+                    else config.setup_quality_min_threshold
+                ),
                 training_objective=config.training_objective,
             )
             if config.training_objective == "trade_two_stage":
@@ -617,6 +665,8 @@ class TrainingService:
                 "hard_negative_margin_target": config.hard_negative_margin_target,
                 "opportunity_probability_threshold": float(config.opportunity_probability_threshold),
                 "setup_quality_min_threshold": config.setup_quality_min_threshold,
+                "setup_quality_decision_mask_enabled": bool(config.setup_quality_decision_mask_enabled),
+                "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
                 "opportunity_threshold_sweep_enabled": bool(config.opportunity_threshold_sweep_enabled),
                 "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
                 "opportunity_min_precision": float(config.opportunity_min_precision),
@@ -739,6 +789,8 @@ class TrainingService:
                 "hard_negative_margin_target": config.hard_negative_margin_target,
                 "opportunity_probability_threshold": float(config.opportunity_probability_threshold),
                 "setup_quality_min_threshold": config.setup_quality_min_threshold,
+                "setup_quality_decision_mask_enabled": bool(config.setup_quality_decision_mask_enabled),
+                "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
                 "opportunity_threshold_sweep_enabled": bool(config.opportunity_threshold_sweep_enabled),
                 "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
                 "opportunity_min_precision": float(config.opportunity_min_precision),
@@ -796,6 +848,14 @@ class TrainingService:
             test_dataset,
             opportunity_probability_threshold=selected_opportunity_threshold,
             setup_quality_min_threshold=training_config.get("setup_quality_min_threshold"),
+            setup_quality_decision_mask_enabled=bool(
+                training_config.get("setup_quality_decision_mask_enabled", False)
+            ),
+            setup_quality_decision_mask_min_threshold=(
+                training_config.get("setup_quality_decision_mask_min_threshold")
+                if training_config.get("setup_quality_decision_mask_min_threshold") is not None
+                else training_config.get("setup_quality_min_threshold")
+            ),
             training_objective=training_objective,
         )
         return {

@@ -4,17 +4,18 @@ from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_3_CLASS_MARGIN_CONF
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_7_SETUP_QUALITY_FILTER_CONFIG_IDS
+from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS
 
 
 EXPECTED_FAST_DEBUG_CONFIGS = (
-    "lv18_h08_tts_thr065_sq060",
-    "lv17_h12_tts_thr065",
+    "lv19_h08_tts_thr065_sqmask060",
+    "lv18_h12_tts_thr065_sq060",
 )
 
 EXPECTED_QUICK_QUALITY_CONFIGS = (
-    "lv18_h08_tts_thr065_sq060",
-    "lv18_h12_tts_thr065_sq060",
-    "lv18_h12_tts_thr070_sq065",
+    "lv19_h08_tts_thr065_sqmask060",
+    "lv19_h12_tts_thr065_sqmask060",
+    "lv19_h12_tts_thr070_sqmask065",
 )
 
 EXPECTED_SINGLE_SYMBOL_FULL_CONFIGS = (
@@ -33,7 +34,7 @@ def test_fast_debug_uses_prompt_4_6_smoke_shortlist() -> None:
     assert wrapper.selected_config_ids == EXPECTED_FAST_DEBUG_CONFIGS
     assert wrapper._expected_candidate_count() == 4
     assert "lv15_h08_setup_pure_ft" in ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS
-    assert "lv18_h08_tts_thr065_sq060" in wrapper.selected_config_ids
+    assert "lv19_h08_tts_thr065_sqmask060" in wrapper.selected_config_ids
 
 
 def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
@@ -73,7 +74,8 @@ def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
     assert setup_semantics_configs == []
     assert class_margin_configs == []
     assert threshold_configs == []
-    assert setup_quality_filter_configs == list(EXPECTED_QUICK_QUALITY_CONFIGS)
+    assert setup_quality_filter_configs == []
+    assert list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS) == list(EXPECTED_QUICK_QUALITY_CONFIGS)
 
 
 def test_ml38_9_5_single_symbol_full_still_uses_decision_policy_shortlist() -> None:

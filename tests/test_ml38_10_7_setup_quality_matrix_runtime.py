@@ -6,6 +6,7 @@ from app.experiments.ml38_2_fv3_tuning_matrix import ML382FV3TuningMatrix
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_5_TRADE_TWO_STAGE_CONFIG_IDS
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS
 from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_7_SETUP_QUALITY_FILTER_CONFIG_IDS
+from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS
 from app.labels.label_config import LABEL_MODE_SETUP_PURE_FIRST_TOUCH
 from app.labels.label_quality_grid import LabelQualityGridPlanner
 
@@ -22,17 +23,19 @@ def test_ml38_10_7_setup_quality_configs_are_in_grid_and_runtime_shortlists() ->
         assert payload["setup_quality_min_threshold"] is not None
 
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
-        "lv18_h08_tts_thr065_sq060",
-        "lv17_h12_tts_thr065",
-    )
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
-        "lv18_h08_tts_thr065_sq060",
+        "lv19_h08_tts_thr065_sqmask060",
         "lv18_h12_tts_thr065_sq060",
-        "lv18_h12_tts_thr070_sq065",
+    )
+    assert list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS) == list(
+        run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
     )
 
     matrix_payload = ML382FV3TuningMatrix().build()
     assert matrix_payload["setup_quality_filter_stage"] == "ML38.10.7"
     assert matrix_payload["setup_quality_filter_config_ids"] == list(ML38_10_7_SETUP_QUALITY_FILTER_CONFIG_IDS)
+    assert matrix_payload["setup_quality_decision_mask_stage"] == "ML38.10.8"
+    assert matrix_payload["setup_quality_decision_mask_config_ids"] == list(
+        ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS
+    )
     assert all(config_id in matrix_payload["config_ids"] for config_id in ML38_10_5_TRADE_TWO_STAGE_CONFIG_IDS)
     assert all(config_id in matrix_payload["config_ids"] for config_id in ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS)

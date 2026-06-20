@@ -30,20 +30,20 @@ def test_ml38_10_4_setup_pure_configs_are_in_grid_and_matrix() -> None:
     ]
 
 
-def test_ml38_10_4_runtime_profiles_follow_ml38_10_7_setup_quality_shortlists() -> None:
+def test_ml38_10_4_runtime_profiles_follow_ml38_10_8_setup_quality_shortlists() -> None:
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--fast-debug"])
     )
     assert fast_wrapper.selected_config_ids == (
-        "lv18_h08_tts_thr065_sq060",
-        "lv17_h12_tts_thr065",
+        "lv19_h08_tts_thr065_sqmask060",
+        "lv18_h12_tts_thr065_sq060",
     )
 
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     )
     assert quick_wrapper.selected_config_ids == (
-        "lv18_h08_tts_thr065_sq060",
-        "lv18_h12_tts_thr065_sq060",
-        "lv18_h12_tts_thr070_sq065",
+        "lv19_h08_tts_thr065_sqmask060",
+        "lv19_h12_tts_thr065_sqmask060",
+        "lv19_h12_tts_thr070_sqmask065",
     )

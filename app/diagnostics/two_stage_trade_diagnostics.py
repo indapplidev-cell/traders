@@ -5,7 +5,7 @@ from typing import Any
 
 class TwoStageTradeDiagnostics:
     diagnostic_name = "two_stage_trade_diagnostics"
-    diagnostic_version = "ml38.10.7"
+    diagnostic_version = "ml38.10.8"
 
     def evaluate_metrics(
         self,
@@ -29,11 +29,26 @@ class TwoStageTradeDiagnostics:
         direction_rows = int(metrics.get("direction_trade_rows", 0) or 0)
         threshold = float(metrics.get("opportunity_probability_threshold", 0.5) or 0.5)
         setup_quality_bucket_metrics = dict(metrics.get("setup_quality_bucket_metrics", {}))
+        setup_quality_bucket_metrics_raw = dict(
+            metrics.get("setup_quality_bucket_metrics_raw", {})
+        )
+        setup_quality_bucket_metrics_after_mask = dict(
+            metrics.get("setup_quality_bucket_metrics_after_mask", setup_quality_bucket_metrics)
+        )
         setup_quality_distribution = dict(metrics.get("setup_quality_distribution", {}))
         setup_quality_filter_summary = dict(metrics.get("setup_quality_filter_summary", {}))
         setup_quality_precision_signal = self._build_setup_quality_precision_signal(
-            setup_quality_bucket_metrics=setup_quality_bucket_metrics,
+            setup_quality_bucket_metrics=setup_quality_bucket_metrics_after_mask or setup_quality_bucket_metrics,
         )
+        setup_quality_decision_mask_summary = {
+            "enabled": bool(metrics.get("setup_quality_decision_mask_enabled", False)),
+            "min_threshold": metrics.get("setup_quality_decision_mask_min_threshold"),
+            "masked_row_count": int(metrics.get("setup_quality_masked_row_count", 0) or 0),
+            "forced_no_trade_count": int(metrics.get("setup_quality_forced_no_trade_count", 0) or 0),
+            "trade_prediction_removed_count": int(
+                metrics.get("setup_quality_mask_trade_prediction_removed_count", 0) or 0
+            ),
+        }
 
         warnings: list[str] = []
         if trade_row_ratio < 0.03:
@@ -109,8 +124,11 @@ class TwoStageTradeDiagnostics:
                 "max_false_positive_rate": float(max_false_positive_rate),
             },
             "setup_quality_bucket_metrics": setup_quality_bucket_metrics,
+            "setup_quality_bucket_metrics_raw": setup_quality_bucket_metrics_raw,
+            "setup_quality_bucket_metrics_after_mask": setup_quality_bucket_metrics_after_mask,
             "setup_quality_distribution": setup_quality_distribution,
             "setup_quality_filter_summary": setup_quality_filter_summary,
+            "setup_quality_decision_mask_summary": setup_quality_decision_mask_summary,
             "setup_quality_precision_signal": setup_quality_precision_signal,
         }
 

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import math
 from typing import Any
 
-from app.training.two_stage_thresholds import compute_opportunity_threshold_metrics
+from app.training.two_stage_thresholds import OpportunityThresholdMetrics
 
 
 LABEL_TO_INDEX = {"UP": 0, "DOWN": 1, "FLAT": 2}
@@ -32,6 +31,8 @@ class TrainingMetrics:
         opportunity_probability_threshold: float = 0.5,
         setup_quality_scores: list[float] | None = None,
         setup_quality_min_threshold: float | None = None,
+        setup_quality_decision_mask_enabled: bool = False,
+        setup_quality_decision_mask_min_threshold: float | None = None,
         training_objective: str = "direction_global",
     ) -> dict[str, Any]:
         if training_objective == "trade_two_stage":
@@ -47,6 +48,8 @@ class TrainingMetrics:
                 opportunity_probability_threshold=opportunity_probability_threshold,
                 setup_quality_scores=setup_quality_scores,
                 setup_quality_min_threshold=setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=setup_quality_decision_mask_enabled,
+                setup_quality_decision_mask_min_threshold=setup_quality_decision_mask_min_threshold,
             )
         masked_direction_probabilities, masked_direction_targets = self._apply_direction_mask(
             direction_probabilities=direction_probabilities,
@@ -167,6 +170,8 @@ class TrainingMetrics:
         opportunity_probability_threshold: float = 0.5,
         setup_quality_scores: list[float] | None = None,
         setup_quality_min_threshold: float | None = None,
+        setup_quality_decision_mask_enabled: bool = False,
+        setup_quality_decision_mask_min_threshold: float | None = None,
     ) -> dict[str, Any]:
         predicted_classes = [self._argmax(probabilities) for probabilities in direction_probabilities]
         confusion_matrix = [[0, 0, 0] for _ in range(3)]
@@ -194,12 +199,31 @@ class TrainingMetrics:
         opportunity_probabilities = opportunity_probabilities or []
         opportunity_targets = opportunity_targets or []
         threshold = float(opportunity_probability_threshold)
-        predicted_trade_flags = [int(probability >= threshold) for probability in opportunity_probabilities]
         actual_trade_flags = [int(target) for target in opportunity_targets]
-        opportunity_threshold_metrics = compute_opportunity_threshold_metrics(
-            opportunity_probabilities,
-            opportunity_targets,
+        decision_mask_payload = self.apply_setup_quality_decision_mask(
+            opportunity_probabilities=opportunity_probabilities,
+            setup_quality_scores=setup_quality_scores,
+            probability_threshold=threshold,
+            setup_quality_decision_mask_enabled=setup_quality_decision_mask_enabled,
+            setup_quality_decision_mask_min_threshold=(
+                setup_quality_decision_mask_min_threshold
+                if setup_quality_decision_mask_min_threshold is not None
+                else setup_quality_min_threshold
+            ),
+        )
+        raw_predicted_trade_flags = list(decision_mask_payload["raw_predicted_trade_flags"])
+        predicted_trade_flags = list(decision_mask_payload["masked_predicted_trade_flags"])
+        raw_opportunity_threshold_metrics = self._compute_binary_trade_metrics(
+            predicted_trade_flags=raw_predicted_trade_flags,
+            actual_trade_flags=actual_trade_flags,
             threshold=threshold,
+            fallback_actual_trade_rate=trade_row_ratio,
+        )
+        opportunity_threshold_metrics = self._compute_binary_trade_metrics(
+            predicted_trade_flags=predicted_trade_flags,
+            actual_trade_flags=actual_trade_flags,
+            threshold=threshold,
+            fallback_actual_trade_rate=trade_row_ratio,
         )
         predicted_trade_rate = opportunity_threshold_metrics.predicted_trade_rate
         actual_trade_rate = (
@@ -235,6 +259,11 @@ class TrainingMetrics:
         opportunity_f1 = opportunity_threshold_metrics.f1
         opportunity_false_positive_rate = opportunity_threshold_metrics.false_positive_rate
         two_stage_accuracy = two_stage_correct / len(actual_trade_flags) if actual_trade_flags else 0.0
+        setup_quality_bucket_metrics_raw = self._compute_setup_quality_bucket_metrics(
+            setup_quality_scores=setup_quality_scores or [],
+            predicted_trade_flags=raw_predicted_trade_flags,
+            actual_trade_flags=actual_trade_flags,
+        )
         setup_quality_bucket_metrics = self._compute_setup_quality_bucket_metrics(
             setup_quality_scores=setup_quality_scores or [],
             predicted_trade_flags=predicted_trade_flags,
@@ -255,7 +284,15 @@ class TrainingMetrics:
             setup_quality_scores=setup_quality_scores or [],
             predicted_trade_flags=predicted_trade_flags,
             actual_trade_flags=actual_trade_flags,
-            setup_quality_min_threshold=setup_quality_min_threshold,
+            setup_quality_min_threshold=(
+                decision_mask_payload["setup_quality_decision_mask_min_threshold"]
+                if decision_mask_payload["setup_quality_decision_mask_enabled"]
+                else setup_quality_min_threshold
+            ),
+        )
+        setup_quality_mask_false_positive_removed_count = max(
+            0,
+            raw_opportunity_threshold_metrics.false_positive_count - false_positive_count,
         )
 
         return {
@@ -277,21 +314,173 @@ class TrainingMetrics:
             "predicted_trade_rate": predicted_trade_rate,
             "actual_trade_rate": actual_trade_rate,
             "predicted_to_actual_trade_rate_ratio": predicted_to_actual_trade_rate_ratio,
+            "raw_predicted_trade_rate": raw_opportunity_threshold_metrics.predicted_trade_rate,
+            "masked_predicted_trade_rate": predicted_trade_rate,
             "opportunity_accuracy": opportunity_accuracy,
             "opportunity_precision": opportunity_precision,
             "opportunity_recall": opportunity_recall,
             "opportunity_f1": opportunity_f1,
             "opportunity_false_positive_rate": opportunity_false_positive_rate,
+            "raw_opportunity_precision": raw_opportunity_threshold_metrics.precision,
+            "raw_opportunity_recall": raw_opportunity_threshold_metrics.recall,
+            "raw_opportunity_f1": raw_opportunity_threshold_metrics.f1,
+            "raw_opportunity_false_positive_rate": raw_opportunity_threshold_metrics.false_positive_rate,
+            "raw_predicted_to_actual_trade_rate_ratio": (
+                raw_opportunity_threshold_metrics.predicted_to_actual_trade_rate_ratio
+            ),
             "opportunity_true_positive_count": true_positive_count,
             "opportunity_false_positive_count": false_positive_count,
             "opportunity_false_negative_count": false_negative_count,
             "opportunity_true_negative_count": true_negative_count,
             "opportunity_positive_rate": predicted_trade_rate,
             "setup_quality_min_threshold": setup_quality_min_threshold,
+            "setup_quality_decision_mask_enabled": bool(
+                decision_mask_payload["setup_quality_decision_mask_enabled"]
+            ),
+            "setup_quality_decision_mask_min_threshold": decision_mask_payload[
+                "setup_quality_decision_mask_min_threshold"
+            ],
+            "setup_quality_masked_row_count": int(decision_mask_payload["setup_quality_masked_row_count"]),
+            "setup_quality_forced_no_trade_count": int(
+                decision_mask_payload["setup_quality_forced_no_trade_count"]
+            ),
+            "setup_quality_mask_false_positive_removed_count": int(
+                setup_quality_mask_false_positive_removed_count
+            ),
+            "setup_quality_mask_trade_prediction_removed_count": int(
+                decision_mask_payload["setup_quality_mask_trade_prediction_removed_count"]
+            ),
             "setup_quality_bucket_metrics": setup_quality_bucket_metrics,
+            "setup_quality_bucket_metrics_raw": setup_quality_bucket_metrics_raw,
+            "setup_quality_bucket_metrics_after_mask": setup_quality_bucket_metrics,
             "setup_quality_distribution": setup_quality_distribution,
             "setup_quality_filter_summary": setup_quality_filter_summary,
         }
+
+    @staticmethod
+    def apply_setup_quality_decision_mask(
+        *,
+        opportunity_probabilities: list[float] | None,
+        setup_quality_scores: list[float] | None,
+        probability_threshold: float,
+        setup_quality_decision_mask_enabled: bool,
+        setup_quality_decision_mask_min_threshold: float | None,
+    ) -> dict[str, Any]:
+        probabilities = list(opportunity_probabilities or [])
+        scores = list(setup_quality_scores or [])
+        raw_predicted_trade_flags = [int(float(probability) >= float(probability_threshold)) for probability in probabilities]
+        if not setup_quality_decision_mask_enabled:
+            return {
+                "raw_predicted_trade_flags": raw_predicted_trade_flags,
+                "masked_predicted_trade_flags": list(raw_predicted_trade_flags),
+                "setup_quality_decision_mask_enabled": False,
+                "setup_quality_decision_mask_min_threshold": setup_quality_decision_mask_min_threshold,
+                "setup_quality_masked_row_count": 0,
+                "setup_quality_forced_no_trade_count": 0,
+                "setup_quality_mask_trade_prediction_removed_count": 0,
+            }
+
+        min_threshold = (
+            0.0
+            if setup_quality_decision_mask_min_threshold is None
+            else float(setup_quality_decision_mask_min_threshold)
+        )
+        masked_predicted_trade_flags: list[int] = []
+        masked_row_count = 0
+        forced_no_trade_count = 0
+
+        for index, raw_flag in enumerate(raw_predicted_trade_flags):
+            score = scores[index] if index < len(scores) else None
+            quality_value = 0.0 if score is None else float(score or 0.0)
+            setup_quality_blocked = score is None or quality_value <= 0.0 or quality_value < min_threshold
+            if setup_quality_blocked:
+                masked_row_count += 1
+                masked_flag = 0
+            else:
+                masked_flag = raw_flag
+            if raw_flag == 1 and masked_flag == 0:
+                forced_no_trade_count += 1
+            masked_predicted_trade_flags.append(masked_flag)
+
+        return {
+            "raw_predicted_trade_flags": raw_predicted_trade_flags,
+            "masked_predicted_trade_flags": masked_predicted_trade_flags,
+            "setup_quality_decision_mask_enabled": True,
+            "setup_quality_decision_mask_min_threshold": min_threshold,
+            "setup_quality_masked_row_count": int(masked_row_count),
+            "setup_quality_forced_no_trade_count": int(forced_no_trade_count),
+            "setup_quality_mask_trade_prediction_removed_count": int(forced_no_trade_count),
+        }
+
+    @staticmethod
+    def _compute_binary_trade_metrics(
+        *,
+        predicted_trade_flags: list[int],
+        actual_trade_flags: list[int],
+        threshold: float,
+        fallback_actual_trade_rate: float,
+    ) -> OpportunityThresholdMetrics:
+        row_count = min(len(predicted_trade_flags), len(actual_trade_flags))
+        predicted_flags = [int(value) for value in predicted_trade_flags[:row_count]]
+        actual_flags = [int(value) for value in actual_trade_flags[:row_count]]
+
+        true_positive_count = 0
+        false_positive_count = 0
+        false_negative_count = 0
+        true_negative_count = 0
+        for predicted_trade, actual_trade in zip(predicted_flags, actual_flags):
+            if actual_trade == 1 and predicted_trade == 1:
+                true_positive_count += 1
+            elif actual_trade == 0 and predicted_trade == 1:
+                false_positive_count += 1
+            elif actual_trade == 1 and predicted_trade == 0:
+                false_negative_count += 1
+            else:
+                true_negative_count += 1
+
+        predicted_trade_rate = sum(predicted_flags) / row_count if row_count > 0 else 0.0
+        actual_trade_rate = sum(actual_flags) / row_count if row_count > 0 else fallback_actual_trade_rate
+        if actual_trade_rate == 0.0:
+            predicted_to_actual_trade_rate_ratio = 0.0 if predicted_trade_rate == 0.0 else 999.0
+        else:
+            predicted_to_actual_trade_rate_ratio = predicted_trade_rate / actual_trade_rate
+        accuracy = (true_positive_count + true_negative_count) / row_count if row_count > 0 else 0.0
+        precision = (
+            true_positive_count / (true_positive_count + false_positive_count)
+            if (true_positive_count + false_positive_count) > 0
+            else 0.0
+        )
+        recall = (
+            true_positive_count / (true_positive_count + false_negative_count)
+            if (true_positive_count + false_negative_count) > 0
+            else 0.0
+        )
+        f1 = (
+            2.0 * precision * recall / (precision + recall)
+            if (precision + recall) > 0.0
+            else 0.0
+        )
+        false_positive_rate = (
+            false_positive_count / (false_positive_count + true_negative_count)
+            if (false_positive_count + true_negative_count) > 0
+            else 0.0
+        )
+        return OpportunityThresholdMetrics(
+            threshold=float(threshold),
+            row_count=row_count,
+            true_positive_count=true_positive_count,
+            false_positive_count=false_positive_count,
+            false_negative_count=false_negative_count,
+            true_negative_count=true_negative_count,
+            actual_trade_rate=actual_trade_rate,
+            predicted_trade_rate=predicted_trade_rate,
+            predicted_to_actual_trade_rate_ratio=predicted_to_actual_trade_rate_ratio,
+            accuracy=accuracy,
+            precision=precision,
+            recall=recall,
+            f1=f1,
+            false_positive_rate=false_positive_rate,
+        )
 
     @staticmethod
     def _setup_quality_bucket_name(value: float) -> str:
@@ -391,16 +580,16 @@ class TrainingMetrics:
             above_indices = list(range(len(actual_trade_flags)))
         else:
             threshold = float(setup_quality_min_threshold)
-            below_indices = [
-                index
-                for index, value in enumerate(setup_quality_scores[: len(actual_trade_flags)])
-                if float(value or 0.0) < threshold
-            ]
-            above_indices = [
-                index
-                for index in range(len(actual_trade_flags))
-                if index not in set(below_indices)
-            ]
+            below_indices = []
+            above_indices = []
+            for index in range(len(actual_trade_flags)):
+                value = setup_quality_scores[index] if index < len(setup_quality_scores) else None
+                quality_value = 0.0 if value is None else float(value or 0.0)
+                blocked = value is None or quality_value <= 0.0 or quality_value < threshold
+                if blocked:
+                    below_indices.append(index)
+                else:
+                    above_indices.append(index)
 
         def _trade_rate(indices: list[int], source: list[int]) -> float:
             if not indices:

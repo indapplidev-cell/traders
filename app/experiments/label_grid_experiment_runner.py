@@ -126,18 +126,28 @@ class LabelGridExperimentCandidateResult:
     profit_aware_diagnostics_missing_reason: str | None = None
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
+    setup_quality_decision_mask_enabled: bool = False
+    setup_quality_decision_mask_min_threshold: float | None = None
     selected_opportunity_threshold: float | None = None
     opportunity_threshold_selection: dict[str, Any] = field(default_factory=dict)
     opportunity_threshold_sweep: dict[str, Any] = field(default_factory=dict)
     setup_quality_filter_passed: bool = False
     setup_quality_bucket_metrics: dict[str, Any] = field(default_factory=dict)
+    setup_quality_bucket_metrics_raw: dict[str, Any] = field(default_factory=dict)
+    setup_quality_bucket_metrics_after_mask: dict[str, Any] = field(default_factory=dict)
     setup_quality_filter_summary: dict[str, Any] = field(default_factory=dict)
+    setup_quality_decision_mask_summary: dict[str, Any] = field(default_factory=dict)
     predicted_to_actual_trade_rate_ratio: float | None = None
     predicted_trade_rate: float | None = None
+    raw_predicted_trade_rate: float | None = None
+    masked_predicted_trade_rate: float | None = None
     actual_trade_rate: float | None = None
     opportunity_precision: float | None = None
     opportunity_recall: float | None = None
     opportunity_f1: float | None = None
+    raw_opportunity_precision: float | None = None
+    raw_opportunity_recall: float | None = None
+    raw_opportunity_f1: float | None = None
     opportunity_false_positive_rate: float | None = None
     two_stage_trade_diagnostics: dict[str, Any] = field(default_factory=dict)
     approved_for_traders_core_integration: bool = False
@@ -214,18 +224,28 @@ class LabelGridExperimentCandidateResult:
             "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
+            "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
+            "setup_quality_decision_mask_min_threshold": self.setup_quality_decision_mask_min_threshold,
             "selected_opportunity_threshold": self.selected_opportunity_threshold,
             "opportunity_threshold_selection": dict(self.opportunity_threshold_selection),
             "opportunity_threshold_sweep": dict(self.opportunity_threshold_sweep),
             "setup_quality_filter_passed": self.setup_quality_filter_passed,
             "setup_quality_bucket_metrics": dict(self.setup_quality_bucket_metrics),
+            "setup_quality_bucket_metrics_raw": dict(self.setup_quality_bucket_metrics_raw),
+            "setup_quality_bucket_metrics_after_mask": dict(self.setup_quality_bucket_metrics_after_mask),
             "setup_quality_filter_summary": dict(self.setup_quality_filter_summary),
+            "setup_quality_decision_mask_summary": dict(self.setup_quality_decision_mask_summary),
             "predicted_to_actual_trade_rate_ratio": self.predicted_to_actual_trade_rate_ratio,
             "predicted_trade_rate": self.predicted_trade_rate,
+            "raw_predicted_trade_rate": self.raw_predicted_trade_rate,
+            "masked_predicted_trade_rate": self.masked_predicted_trade_rate,
             "actual_trade_rate": self.actual_trade_rate,
             "opportunity_precision": self.opportunity_precision,
             "opportunity_recall": self.opportunity_recall,
             "opportunity_f1": self.opportunity_f1,
+            "raw_opportunity_precision": self.raw_opportunity_precision,
+            "raw_opportunity_recall": self.raw_opportunity_recall,
+            "raw_opportunity_f1": self.raw_opportunity_f1,
             "opportunity_false_positive_rate": self.opportunity_false_positive_rate,
             "two_stage_trade_diagnostics": dict(self.two_stage_trade_diagnostics),
             "approved_for_traders_core_integration": self.approved_for_traders_core_integration,
@@ -1003,6 +1023,8 @@ class LabelGridExperimentRunner:
                 decision_policy_grid_stage=label_config.decision_policy_grid_stage,
                 opportunity_probability_threshold=float(label_config.opportunity_probability_threshold),
                 setup_quality_min_threshold=label_config.setup_quality_min_threshold,
+                setup_quality_decision_mask_enabled=bool(label_config.setup_quality_decision_mask_enabled),
+                setup_quality_decision_mask_min_threshold=label_config.setup_quality_decision_mask_min_threshold,
                 opportunity_threshold_sweep_enabled=bool(label_config.opportunity_threshold_sweep_enabled),
                 opportunity_threshold_candidates=tuple(label_config.opportunity_threshold_candidates),
                 opportunity_min_precision=float(label_config.opportunity_min_precision),
@@ -1267,6 +1289,12 @@ class LabelGridExperimentRunner:
             setup_quality_min_threshold=self._optional_float(
                 quality_payload.get("setup_quality_min_threshold")
             ),
+            setup_quality_decision_mask_enabled=bool(
+                quality_payload.get("setup_quality_decision_mask_enabled", False)
+            ),
+            setup_quality_decision_mask_min_threshold=self._optional_float(
+                quality_payload.get("setup_quality_decision_mask_min_threshold")
+            ),
             selected_opportunity_threshold=self._optional_float(
                 quality_payload.get("selected_opportunity_threshold")
             ),
@@ -1277,18 +1305,41 @@ class LabelGridExperimentRunner:
                 quality_payload.get("setup_quality_bucket_metrics")
                 or two_stage_trade_diagnostics.get("setup_quality_bucket_metrics", {})
             ),
+            setup_quality_bucket_metrics_raw=self._as_dict(
+                quality_payload.get("setup_quality_bucket_metrics_raw")
+                or two_stage_trade_diagnostics.get("setup_quality_bucket_metrics_raw", {})
+            ),
+            setup_quality_bucket_metrics_after_mask=self._as_dict(
+                quality_payload.get("setup_quality_bucket_metrics_after_mask")
+                or two_stage_trade_diagnostics.get("setup_quality_bucket_metrics_after_mask", {})
+            ),
             setup_quality_filter_summary=self._as_dict(
                 quality_payload.get("setup_quality_filter_summary")
                 or two_stage_trade_diagnostics.get("setup_quality_filter_summary", {})
+            ),
+            setup_quality_decision_mask_summary=self._as_dict(
+                quality_payload.get("setup_quality_decision_mask_summary")
+                or two_stage_trade_diagnostics.get("setup_quality_decision_mask_summary", {})
             ),
             predicted_to_actual_trade_rate_ratio=self._optional_float(
                 quality_payload.get("predicted_to_actual_trade_rate_ratio")
             ),
             predicted_trade_rate=self._optional_float(quality_payload.get("predicted_trade_rate")),
+            raw_predicted_trade_rate=self._optional_float(quality_payload.get("raw_predicted_trade_rate")),
+            masked_predicted_trade_rate=self._optional_float(
+                quality_payload.get("masked_predicted_trade_rate")
+            ),
             actual_trade_rate=self._optional_float(quality_payload.get("actual_trade_rate")),
             opportunity_precision=self._optional_float(quality_payload.get("opportunity_precision")),
             opportunity_recall=self._optional_float(quality_payload.get("opportunity_recall")),
             opportunity_f1=self._optional_float(quality_payload.get("opportunity_f1")),
+            raw_opportunity_precision=self._optional_float(
+                quality_payload.get("raw_opportunity_precision")
+            ),
+            raw_opportunity_recall=self._optional_float(
+                quality_payload.get("raw_opportunity_recall")
+            ),
+            raw_opportunity_f1=self._optional_float(quality_payload.get("raw_opportunity_f1")),
             opportunity_false_positive_rate=self._optional_float(
                 quality_payload.get("opportunity_false_positive_rate")
             ),
