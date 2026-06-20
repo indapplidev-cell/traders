@@ -1,3 +1,4 @@
+import pytest
 from datetime import datetime, timezone
 
 from app.dataset.dataset_models import DatasetRow
@@ -45,41 +46,51 @@ def _dataset_row(
     )
 
 def test_rows_to_tensors_exposes_raw_feature_values_for_trap_audit() -> None:
-    feature_columns = list(SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES[:3])
+    feature_columns = [
+        "schwager_false_breakout_risk_score",
+        "schwager_bull_trap_risk_score",
+        "schwager_trap_safe_setup_score",
+    ]
     rows = [
-    _dataset_row(
-        direction_label="UP",
-        features_json={
-            "schwager_bull_trap_risk_score": 0.8,
-            "schwager_bear_trap_risk_score": 0.0,
-            "schwager_trap_safe_setup_score": 0.2,
-        },
-        opportunity_label=1,
-        opportunity_direction="UP",
-    ),
-    _dataset_row(
-        direction_label="FLAT",
-        features_json={
-            "schwager_bull_trap_risk_score": 0.1,
-            "schwager_bear_trap_risk_score": 0.0,
-            "schwager_trap_safe_setup_score": 0.9,
-        },
-        opportunity_label=0,
-        opportunity_direction="NONE",
-        future_return=0.0,
-        future_move_atr=0.0,
-    ),
-]
-    rows.opportunity_label = 1
-    rows.setup_quality_score = 0.9
+        _dataset_row(
+            direction_label="UP",
+            features_json={
+                "schwager_false_breakout_risk_score": 0.4,
+                "schwager_bull_trap_risk_score": 0.8,
+                "schwager_trap_safe_setup_score": 0.2,
+            },
+            opportunity_label=1,
+            opportunity_direction="UP",
+            setup_quality_score=0.9,
+        ),
+        _dataset_row(
+            direction_label="FLAT",
+            features_json={
+                "schwager_false_breakout_risk_score": 0.7,
+                "schwager_bull_trap_risk_score": 0.1,
+                "schwager_trap_safe_setup_score": 0.9,
+            },
+            opportunity_label=0,
+            opportunity_direction="NONE",
+            setup_quality_score=0.0,
+            future_return=0.0,
+            future_move_atr=0.0,
+        ),
+    ]
 
     tensors = TrainingService.rows_to_tensors(
-        [rows],
+        rows,
         feature_columns,
         {"mean": [0.0, 0.0, 0.0], "std": [1.0, 1.0, 1.0]},
         training_objective="trade_two_stage",
     )
 
     assert tuple(tensors["feature_columns"]) == tuple(feature_columns)
-    assert tensors["raw_feature_values"].shape == (1, 3)
-    assert tensors["raw_feature_values"].tolist()[0] == [0.1, 0.2, 0.3]
+    assert tensors["raw_feature_values"].shape == (2, 3)
+
+    raw_values = tensors["raw_feature_values"].tolist()
+    assert raw_values[0] == pytest.approx([0.4, 0.8, 0.2])
+    assert raw_values[1] == pytest.approx([0.7, 0.1, 0.9])
+
+    assert tensors["opportunity_target"].tolist() == [1.0, 0.0]
+    assert tensors["setup_quality_score"].tolist() == pytest.approx([0.9, 0.0])
