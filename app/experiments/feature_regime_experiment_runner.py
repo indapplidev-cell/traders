@@ -137,9 +137,13 @@ class FeatureRegimeCandidateResult:
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     profit_aware_diagnostics_missing_reason: str | None = None
     opportunity_probability_threshold: float | None = None
+    setup_quality_min_threshold: float | None = None
     selected_opportunity_threshold: float | None = None
     opportunity_threshold_selection: dict[str, Any] = field(default_factory=dict)
     opportunity_threshold_sweep: dict[str, Any] = field(default_factory=dict)
+    setup_quality_filter_passed: bool = False
+    setup_quality_bucket_metrics: dict[str, Any] = field(default_factory=dict)
+    setup_quality_filter_summary: dict[str, Any] = field(default_factory=dict)
     predicted_to_actual_trade_rate_ratio: float | None = None
     predicted_trade_rate: float | None = None
     actual_trade_rate: float | None = None
@@ -253,9 +257,13 @@ class FeatureRegimeCandidateResult:
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
+            "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "selected_opportunity_threshold": self.selected_opportunity_threshold,
             "opportunity_threshold_selection": dict(self.opportunity_threshold_selection),
             "opportunity_threshold_sweep": dict(self.opportunity_threshold_sweep),
+            "setup_quality_filter_passed": self.setup_quality_filter_passed,
+            "setup_quality_bucket_metrics": dict(self.setup_quality_bucket_metrics),
+            "setup_quality_filter_summary": dict(self.setup_quality_filter_summary),
             "predicted_to_actual_trade_rate_ratio": self.predicted_to_actual_trade_rate_ratio,
             "predicted_trade_rate": self.predicted_trade_rate,
             "actual_trade_rate": self.actual_trade_rate,
@@ -1915,12 +1923,22 @@ class FeatureRegimeExperimentRunner:
                     None,
                 ),
                 opportunity_probability_threshold=getattr(item, "opportunity_probability_threshold", None),
+                setup_quality_min_threshold=getattr(item, "setup_quality_min_threshold", None),
                 selected_opportunity_threshold=getattr(item, "selected_opportunity_threshold", None),
                 opportunity_threshold_selection=self._as_dict(
                     getattr(item, "opportunity_threshold_selection", {})
                 ),
                 opportunity_threshold_sweep=self._as_dict(
                     getattr(item, "opportunity_threshold_sweep", {})
+                ),
+                setup_quality_filter_passed=bool(
+                    getattr(item, "setup_quality_filter_passed", False)
+                ),
+                setup_quality_bucket_metrics=self._as_dict(
+                    getattr(item, "setup_quality_bucket_metrics", {})
+                ),
+                setup_quality_filter_summary=self._as_dict(
+                    getattr(item, "setup_quality_filter_summary", {})
                 ),
                 predicted_to_actual_trade_rate_ratio=getattr(
                     item,
@@ -2551,6 +2569,8 @@ class FeatureRegimeExperimentRunner:
             take_profit_atr=float(label_config_payload["take_profit_atr"]),
             stop_loss_atr=float(label_config_payload["stop_loss_atr"]),
             flat_class_enabled=True,
+            label_mode=str(label_config_payload.get("label_mode") or "future_close_atr"),
+            setup_quality_min_threshold=label_config_payload.get("setup_quality_min_threshold"),
         )
         regime_result = RegimeLabelBuilder().build(
             candles=candles,

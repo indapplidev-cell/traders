@@ -32,3 +32,4 @@ class LabelConfig:
     stop_loss_atr: float = 1.0
     flat_class_enabled: bool = True
     label_mode: str = LABEL_MODE_FUTURE_CLOSE_ATR
+    setup_quality_min_threshold: float | None = None

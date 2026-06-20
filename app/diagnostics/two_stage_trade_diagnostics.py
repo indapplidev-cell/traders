@@ -5,7 +5,7 @@ from typing import Any
 
 class TwoStageTradeDiagnostics:
     diagnostic_name = "two_stage_trade_diagnostics"
-    diagnostic_version = "ml38.10.6"
+    diagnostic_version = "ml38.10.7"
 
     def evaluate_metrics(
         self,
@@ -16,6 +16,7 @@ class TwoStageTradeDiagnostics:
         max_predicted_trade_rate: float = 0.15,
         max_predicted_to_actual_trade_rate_ratio: float = 3.0,
         max_false_positive_rate: float = 0.25,
+        setup_quality_min_threshold: float | None = None,
     ) -> dict[str, Any]:
         trade_row_ratio = float(metrics.get("trade_row_ratio", 0.0) or 0.0)
         predicted_trade_rate = float(metrics.get("predicted_trade_rate", 0.0) or 0.0)
@@ -27,6 +28,12 @@ class TwoStageTradeDiagnostics:
         direction_accuracy = float(metrics.get("direction_accuracy_on_trade_rows", 0.0) or 0.0)
         direction_rows = int(metrics.get("direction_trade_rows", 0) or 0)
         threshold = float(metrics.get("opportunity_probability_threshold", 0.5) or 0.5)
+        setup_quality_bucket_metrics = dict(metrics.get("setup_quality_bucket_metrics", {}))
+        setup_quality_distribution = dict(metrics.get("setup_quality_distribution", {}))
+        setup_quality_filter_summary = dict(metrics.get("setup_quality_filter_summary", {}))
+        setup_quality_precision_signal = self._build_setup_quality_precision_signal(
+            setup_quality_bucket_metrics=setup_quality_bucket_metrics,
+        )
 
         warnings: list[str] = []
         if trade_row_ratio < 0.03:
@@ -77,6 +84,11 @@ class TwoStageTradeDiagnostics:
             "status": status,
             "warnings": warnings,
             "opportunity_probability_threshold": threshold,
+            "setup_quality_min_threshold": (
+                metrics.get("setup_quality_min_threshold")
+                if metrics.get("setup_quality_min_threshold") is not None
+                else setup_quality_min_threshold
+            ),
             "trade_row_ratio": trade_row_ratio,
             "no_trade_row_ratio": float(metrics.get("no_trade_row_ratio", 0.0) or 0.0),
             "predicted_trade_rate": predicted_trade_rate,
@@ -96,4 +108,52 @@ class TwoStageTradeDiagnostics:
                 "max_predicted_to_actual_trade_rate_ratio": float(max_predicted_to_actual_trade_rate_ratio),
                 "max_false_positive_rate": float(max_false_positive_rate),
             },
+            "setup_quality_bucket_metrics": setup_quality_bucket_metrics,
+            "setup_quality_distribution": setup_quality_distribution,
+            "setup_quality_filter_summary": setup_quality_filter_summary,
+            "setup_quality_precision_signal": setup_quality_precision_signal,
+        }
+
+    @staticmethod
+    def _build_setup_quality_precision_signal(
+        *,
+        setup_quality_bucket_metrics: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not setup_quality_bucket_metrics:
+            return {
+                "best_precision_bucket": None,
+                "best_precision_bucket_precision": 0.0,
+                "best_precision_bucket_recall": 0.0,
+                "recommended_next_action": "setup_quality_score_not_discriminative",
+            }
+
+        ranked = [
+            (
+                str(bucket_name),
+                float(dict(bucket_payload).get("precision", 0.0) or 0.0),
+                float(dict(bucket_payload).get("recall", 0.0) or 0.0),
+                int(dict(bucket_payload).get("row_count", 0) or 0),
+            )
+            for bucket_name, bucket_payload in setup_quality_bucket_metrics.items()
+            if int(dict(bucket_payload).get("row_count", 0) or 0) > 0
+        ]
+        if not ranked:
+            return {
+                "best_precision_bucket": None,
+                "best_precision_bucket_precision": 0.0,
+                "best_precision_bucket_recall": 0.0,
+                "recommended_next_action": "setup_quality_score_not_discriminative",
+            }
+        ranked.sort(key=lambda item: (item[1], item[2], item[3]), reverse=True)
+        best_bucket, best_precision, best_recall, _ = ranked[0]
+        recommended_next_action = "setup_quality_score_not_discriminative"
+        if best_bucket in {"good_0_60_0_75", "strong_0_75_1_00"} and best_precision >= 0.30 and best_recall >= 0.45:
+            recommended_next_action = "evaluate_setup_quality_filtered_runtime"
+        elif best_bucket == "strong_0_75_1_00" and best_precision >= 0.30 and best_recall < 0.45:
+            recommended_next_action = "lower_setup_quality_threshold_or_add_features"
+        return {
+            "best_precision_bucket": best_bucket,
+            "best_precision_bucket_precision": float(best_precision),
+            "best_precision_bucket_recall": float(best_recall),
+            "recommended_next_action": recommended_next_action,
         }

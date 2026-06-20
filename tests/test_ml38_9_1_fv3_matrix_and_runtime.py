@@ -23,14 +23,14 @@ def test_runtime_profiles_use_current_smoke_shortlists() -> None:
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(fast_args)
     assert fast_wrapper.runtime_profile == "fast_debug"
     assert fast_wrapper.selected_config_ids == run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
-    assert "lv17_h08_tts_thr060" in fast_wrapper.selected_config_ids
+    assert "lv18_h08_tts_thr065_sq060" in fast_wrapper.selected_config_ids
 
     quick_args = run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(quick_args)
     assert quick_wrapper.runtime_profile == "quick_quality"
     assert quick_wrapper.symbols == ("SOLUSDT",)
     assert quick_wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
-    assert "lv17_h12_tts_thr065" in quick_wrapper.selected_config_ids
+    assert "lv18_h12_tts_thr070_sq065" in quick_wrapper.selected_config_ids
 
     full_args = run_fv3_cached_tuning.parse_args(["--single-symbol-full", "--single-symbol-full-symbol", "SOLUSDT"])
     full_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(full_args)

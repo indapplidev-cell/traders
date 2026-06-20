@@ -88,6 +88,7 @@ class TrainingConfig:
     hard_negative_margin_weight: float = 0.0
     hard_negative_margin_target: float = 0.08
     opportunity_probability_threshold: float = 0.5
+    setup_quality_min_threshold: float | None = None
     opportunity_threshold_sweep_enabled: bool = False
     opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
     opportunity_min_precision: float = 0.25
@@ -223,6 +224,7 @@ class TrainingService:
         hard_negative_margin_weight: float = 0.0,
         hard_negative_margin_target: float = 0.08,
         opportunity_probability_threshold: float = 0.5,
+        setup_quality_min_threshold: float | None = None,
         opportunity_threshold_sweep_enabled: bool = False,
         opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
         opportunity_min_precision: float = 0.25,
@@ -289,6 +291,7 @@ class TrainingService:
             hard_negative_margin_weight=hard_negative_margin_weight,
             hard_negative_margin_target=hard_negative_margin_target,
             opportunity_probability_threshold=opportunity_probability_threshold,
+            setup_quality_min_threshold=setup_quality_min_threshold,
             opportunity_threshold_sweep_enabled=opportunity_threshold_sweep_enabled,
             opportunity_threshold_candidates=tuple(opportunity_threshold_candidates),
             opportunity_min_precision=opportunity_min_precision,
@@ -459,6 +462,7 @@ class TrainingService:
                     validation_dataset,
                     direction_temperature=direction_temperature,
                     opportunity_probability_threshold=float(config.opportunity_probability_threshold),
+                    setup_quality_min_threshold=config.setup_quality_min_threshold,
                     opportunity_threshold_sweep_enabled=True,
                     opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
                     opportunity_min_precision=float(config.opportunity_min_precision),
@@ -484,6 +488,7 @@ class TrainingService:
                 train_dataset,
                 direction_temperature=1.0,
                 opportunity_probability_threshold=selected_opportunity_threshold,
+                setup_quality_min_threshold=config.setup_quality_min_threshold,
                 training_objective=config.training_objective,
             )
             raw_validation_metrics = self._evaluator.evaluate(
@@ -491,6 +496,7 @@ class TrainingService:
                 validation_dataset,
                 direction_temperature=1.0,
                 opportunity_probability_threshold=selected_opportunity_threshold,
+                setup_quality_min_threshold=config.setup_quality_min_threshold,
                 training_objective=config.training_objective,
             )
             raw_test_metrics = self._evaluator.evaluate(
@@ -498,6 +504,7 @@ class TrainingService:
                 test_dataset,
                 direction_temperature=1.0,
                 opportunity_probability_threshold=selected_opportunity_threshold,
+                setup_quality_min_threshold=config.setup_quality_min_threshold,
                 training_objective=config.training_objective,
             )
 
@@ -506,6 +513,7 @@ class TrainingService:
                 train_dataset,
                 direction_temperature=direction_temperature,
                 opportunity_probability_threshold=selected_opportunity_threshold,
+                setup_quality_min_threshold=config.setup_quality_min_threshold,
                 training_objective=config.training_objective,
             )
             validation_metrics = self._evaluator.evaluate(
@@ -513,6 +521,7 @@ class TrainingService:
                 validation_dataset,
                 direction_temperature=direction_temperature,
                 opportunity_probability_threshold=selected_opportunity_threshold,
+                setup_quality_min_threshold=config.setup_quality_min_threshold,
                 opportunity_threshold_sweep_enabled=(
                     is_trade_two_stage_objective(config.training_objective)
                     and config.opportunity_threshold_sweep_enabled
@@ -532,6 +541,7 @@ class TrainingService:
                 test_dataset,
                 direction_temperature=direction_temperature,
                 opportunity_probability_threshold=selected_opportunity_threshold,
+                setup_quality_min_threshold=config.setup_quality_min_threshold,
                 training_objective=config.training_objective,
             )
             if config.training_objective == "trade_two_stage":
@@ -544,6 +554,7 @@ class TrainingService:
                         config.opportunity_max_predicted_to_actual_trade_rate_ratio
                     ),
                     max_false_positive_rate=float(config.opportunity_max_false_positive_rate),
+                    setup_quality_min_threshold=config.setup_quality_min_threshold,
                 )
 
             training_config = {
@@ -605,6 +616,7 @@ class TrainingService:
                 "hard_negative_margin_weight": config.hard_negative_margin_weight,
                 "hard_negative_margin_target": config.hard_negative_margin_target,
                 "opportunity_probability_threshold": float(config.opportunity_probability_threshold),
+                "setup_quality_min_threshold": config.setup_quality_min_threshold,
                 "opportunity_threshold_sweep_enabled": bool(config.opportunity_threshold_sweep_enabled),
                 "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
                 "opportunity_min_precision": float(config.opportunity_min_precision),
@@ -726,6 +738,7 @@ class TrainingService:
                 "hard_negative_margin_weight": config.hard_negative_margin_weight,
                 "hard_negative_margin_target": config.hard_negative_margin_target,
                 "opportunity_probability_threshold": float(config.opportunity_probability_threshold),
+                "setup_quality_min_threshold": config.setup_quality_min_threshold,
                 "opportunity_threshold_sweep_enabled": bool(config.opportunity_threshold_sweep_enabled),
                 "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
                 "opportunity_min_precision": float(config.opportunity_min_precision),
@@ -782,6 +795,7 @@ class TrainingService:
             model,
             test_dataset,
             opportunity_probability_threshold=selected_opportunity_threshold,
+            setup_quality_min_threshold=training_config.get("setup_quality_min_threshold"),
             training_objective=training_objective,
         )
         return {
@@ -847,6 +861,7 @@ class TrainingService:
             "risk_target": empty_float,
             "opportunity_target": empty_float,
             "no_trade_target": empty_float,
+            "setup_quality_score": empty_float,
             "flat_margin_allowed_mask": empty_float,
         }
 
@@ -954,6 +969,7 @@ class TrainingService:
         direction_trade_targets: list[int] = []
         direction_trade_masks: list[float] = []
         no_trade_targets: list[float] = []
+        setup_quality_scores: list[float] = []
         flat_margin_allowed_mask: list[float] = []
         class_margin_weighting_enabled = (
             bool(class_margin_objective_enabled) and bool(class_margin_objective_allowed)
@@ -997,6 +1013,7 @@ class TrainingService:
 
             opportunity_target = float(getattr(row, "opportunity_label", 1.0) or 0.0)
             opportunity_targets.append(opportunity_target)
+            setup_quality_scores.append(float(getattr(row, "setup_quality_score", 0.0) or 0.0))
 
             row_direction_label = str(getattr(row, "direction_label", "FLAT") or "FLAT").upper()
             direction_trade_target = 0 if row_direction_label == "UP" else 1
@@ -1022,6 +1039,7 @@ class TrainingService:
             "risk_target": torch.tensor(risk_targets, dtype=torch.float32),
             "opportunity_target": torch.tensor(opportunity_targets, dtype=torch.float32),
             "no_trade_target": torch.tensor(no_trade_targets, dtype=torch.float32),
+            "setup_quality_score": torch.tensor(setup_quality_scores, dtype=torch.float32),
             "flat_margin_allowed_mask": torch.tensor(flat_margin_allowed_mask, dtype=torch.float32),
         }
 

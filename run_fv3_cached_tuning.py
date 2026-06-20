@@ -166,14 +166,14 @@ def _infer_default_expected_candidate_count() -> int:
 DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
 DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
-# Runtime smoke: Prompt 4-6 plus ML38.10.4 setup-semantics coverage, two symbols, short period.
+# Runtime smoke: Prompt 4-6 plus ML38.10.7 setup-quality filtering coverage, two symbols, short period.
 # Covers:
-# - ML38.10.6 threshold-control two-stage via lv17_h08_tts_thr060
-# - ML38.10.5 legacy two-stage comparison via lv16_h08_trade_two_stage
+# - ML38.10.7 setup-quality filtered two-stage via lv18_h08_tts_thr065_sq060
+# - ML38.10.6 threshold-control comparison via lv17_h12_tts_thr065
 # - ML38.10.2 Schwager robustness board through candidate report payloads
 FAST_DEBUG_CONFIGS = (
-    "lv17_h08_tts_thr060",
-    "lv16_h08_trade_two_stage",
+    "lv18_h08_tts_thr065_sq060",
+    "lv17_h12_tts_thr065",
 )
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
@@ -182,9 +182,9 @@ FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 # Intermediate quality: one symbol, short period, Prompt 4-6 smoke shortlist.
 # Keep this small: it is not final validation and must not replace full research review.
 QUICK_QUALITY_CONFIGS = (
-    "lv17_h08_tts_thr060",
-    "lv17_h08_tts_thr065",
-    "lv17_h12_tts_thr065",
+    "lv18_h08_tts_thr065_sq060",
+    "lv18_h12_tts_thr065_sq060",
+    "lv18_h12_tts_thr070_sq065",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"

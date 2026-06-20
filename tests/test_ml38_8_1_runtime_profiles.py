@@ -11,7 +11,7 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert wrapper.single_symbol_full is False
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
-    assert "lv17_h12_tts_thr065" in wrapper.selected_config_ids
+    assert "lv18_h12_tts_thr070_sq065" in wrapper.selected_config_ids
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
     assert wrapper._expected_candidate_count() == 3
@@ -28,9 +28,9 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
         if value == "--base-label-config-id"
     ]
     assert config_values == [
-        "lv17_h08_tts_thr060",
-        "lv17_h08_tts_thr065",
-        "lv17_h12_tts_thr065",
+        "lv18_h08_tts_thr065_sq060",
+        "lv18_h12_tts_thr065_sq060",
+        "lv18_h12_tts_thr070_sq065",
     ]
     assert command[command.index("--start-date") + 1] == "2026-04-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"

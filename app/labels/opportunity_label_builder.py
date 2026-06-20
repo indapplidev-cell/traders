@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.labels.first_touch_label_builder import resolve_setup_direction, resolve_setup_type
+from app.labels.label_config import LabelConfig
 from app.labels.label_models import LABEL_DOWN, LABEL_FLAT, LABEL_UP
 
 
@@ -19,6 +20,7 @@ OPPORTUNITY_REASON_VOLATILE_FLAT = "volatile_flat"
 OPPORTUNITY_REASON_LOW_EDGE_CONTEXT = "low_edge_context"
 OPPORTUNITY_REASON_SETUP_DIRECTION_CONFLICT = "setup_direction_conflict"
 OPPORTUNITY_REASON_SETUP_DIRECTION_UNAVAILABLE = "setup_direction_unavailable"
+OPPORTUNITY_REASON_SETUP_QUALITY_BELOW_THRESHOLD = "setup_quality_below_threshold"
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -76,8 +78,10 @@ class OpportunityLabelBuilder:
         future_move_atr: float,
         max_favorable_move_atr: float,
         max_adverse_move_atr: float,
+        config: LabelConfig | None = None,
     ) -> OpportunityLabelPayload:
         features = dict(features_json or {})
+        setup_quality_min_threshold = self._resolve_setup_quality_min_threshold(config)
         setup_type = resolve_setup_type(features)
         setup_direction = self._setup_direction(
             features_json=features,
@@ -130,6 +134,21 @@ class OpportunityLabelBuilder:
         elif tp_before_sl is not True:
             opportunity_reason = OPPORTUNITY_REASON_LOW_EDGE_CONTEXT
         elif (
+            setup_quality_min_threshold is not None
+            and setup_quality_score < setup_quality_min_threshold
+        ):
+            return OpportunityLabelPayload(
+                opportunity_label=0,
+                opportunity_direction=OPPORTUNITY_DIRECTION_NONE,
+                opportunity_reason=OPPORTUNITY_REASON_SETUP_QUALITY_BELOW_THRESHOLD,
+                opportunity_score=0.0,
+                setup_type=setup_type,
+                setup_quality_score=setup_quality_score,
+                setup_invalidation_distance_atr=invalidation_distance_atr,
+                setup_expected_move_atr=expected_move_atr,
+                label_ambiguity_score=label_ambiguity_score,
+            )
+        elif (
             setup_quality_score >= self.MIN_SETUP_QUALITY_SCORE
             and expected_move_atr >= self.MIN_EXPECTED_MOVE_ATR
             and invalidation_distance_atr <= self.MAX_INVALIDATION_DISTANCE_ATR
@@ -156,6 +175,12 @@ class OpportunityLabelBuilder:
             setup_expected_move_atr=expected_move_atr,
             label_ambiguity_score=label_ambiguity_score,
         )
+
+    @staticmethod
+    def _resolve_setup_quality_min_threshold(config: LabelConfig | None) -> float | None:
+        if config is None or config.setup_quality_min_threshold is None:
+            return None
+        return max(0.0, min(1.0, float(config.setup_quality_min_threshold)))
 
     @staticmethod
     def _setup_direction(

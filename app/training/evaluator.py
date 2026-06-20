@@ -20,6 +20,7 @@ class Evaluator:
         dataset: dict[str, torch.Tensor],
         direction_temperature: float = 1.0,
         opportunity_probability_threshold: float = 0.5,
+        setup_quality_min_threshold: float | None = None,
         opportunity_threshold_sweep_enabled: bool = False,
         opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
         opportunity_min_precision: float = 0.25,
@@ -42,6 +43,10 @@ class Evaluator:
                 "direction_temperature": float(direction_temperature),
                 "direction_evaluation_rows": 0,
                 "opportunity_probability_threshold": float(opportunity_probability_threshold),
+                "setup_quality_min_threshold": setup_quality_min_threshold,
+                "setup_quality_bucket_metrics": {},
+                "setup_quality_distribution": {},
+                "setup_quality_filter_summary": {},
             }
 
         opportunity_target_tensor = dataset.get("opportunity_target")
@@ -52,6 +57,14 @@ class Evaluator:
             )
         else:
             opportunity_target_tensor = opportunity_target_tensor.to(dtype=torch.float32)
+        setup_quality_score_tensor = dataset.get("setup_quality_score")
+        if setup_quality_score_tensor is None:
+            setup_quality_score_tensor = torch.zeros_like(
+                dataset["direction_target"],
+                dtype=torch.float32,
+            )
+        else:
+            setup_quality_score_tensor = setup_quality_score_tensor.to(dtype=torch.float32)
 
         model.eval()
         with torch.no_grad():
@@ -82,6 +95,8 @@ class Evaluator:
             opportunity_probabilities=opportunity_probabilities_tensor.cpu().tolist(),
             opportunity_targets=[int(value) for value in opportunity_target_tensor.cpu().tolist()],
             opportunity_probability_threshold=float(opportunity_probability_threshold),
+            setup_quality_scores=setup_quality_score_tensor.cpu().tolist(),
+            setup_quality_min_threshold=setup_quality_min_threshold,
             training_objective=training_objective,
         )
         metrics["rows"] = int(dataset["features"].shape[0])

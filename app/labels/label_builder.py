@@ -119,6 +119,7 @@ class LabelBuilder:
                 future_move_atr=float(future_move_atr),
                 max_favorable_move_atr=float(max_favorable_move_atr),
                 max_adverse_move_atr=float(max_adverse_move_atr),
+                config=config,
             )
 
             records.append(

@@ -173,6 +173,7 @@ class TrainingPipelineReporter:
                 f"- horizon_candles: `{result.label_config_summary.get('horizon_candles')}`",
                 f"- label_mode: `{result.label_config_summary.get('label_mode')}`",
                 f"- opportunity_probability_threshold: `{result.label_config_summary.get('opportunity_probability_threshold')}`",
+                f"- setup_quality_min_threshold: `{result.label_config_summary.get('setup_quality_min_threshold')}`",
                 f"- opportunity_threshold_sweep_enabled: `{result.label_config_summary.get('opportunity_threshold_sweep_enabled')}`",
                 f"- opportunity_threshold_candidates: `{result.label_config_summary.get('opportunity_threshold_candidates')}`",
                 "",

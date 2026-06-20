@@ -9,9 +9,58 @@ ML38_2_CONFIG_RANKER_NAME = "ml38_2_config_ranker"
 ML38_2_CONFIG_RANKER_VERSION = "ml38_2"
 FAILED_CANDIDATE_STATUSES = {"FAILED", "ERROR"}
 FAILED_CANDIDATE_SCORE = -1_000_000.0
+SETUP_QUALITY_FILTER_MIN_PRECISION = 0.30
+SETUP_QUALITY_FILTER_MIN_RECALL = 0.45
+SETUP_QUALITY_FILTER_MAX_PREDICTED_TRADE_RATE = 0.15
+SETUP_QUALITY_FILTER_MAX_TRADE_RATE_RATIO = 2.5
+SETUP_QUALITY_FILTER_MAX_FALSE_POSITIVE_RATE = 0.12
 
 def is_rankable_candidate_status(status: str | None) -> bool:
     return str(status or "").upper() not in FAILED_CANDIDATE_STATUSES
+
+
+def evaluate_setup_quality_filter(
+    *,
+    opportunity_precision: Any,
+    opportunity_recall: Any,
+    predicted_trade_rate: Any,
+    actual_trade_rate: Any,
+    predicted_to_actual_trade_rate_ratio: Any,
+    opportunity_false_positive_rate: Any,
+) -> dict[str, Any]:
+    required_metrics = (
+        opportunity_precision,
+        opportunity_recall,
+        predicted_trade_rate,
+        actual_trade_rate,
+        predicted_to_actual_trade_rate_ratio,
+        opportunity_false_positive_rate,
+    )
+    if any(value is None for value in required_metrics):
+        return {"passed": False, "reason": "missing_two_stage_metrics"}
+
+    actual_trade_rate_value = float(actual_trade_rate)
+    if actual_trade_rate_value <= 0.0:
+        return {"passed": False, "reason": "no_actual_trade_rows"}
+
+    precision_value = float(opportunity_precision)
+    recall_value = float(opportunity_recall)
+    predicted_trade_rate_value = float(predicted_trade_rate)
+    trade_rate_ratio_value = float(predicted_to_actual_trade_rate_ratio)
+    false_positive_rate_value = float(opportunity_false_positive_rate)
+
+    if precision_value < SETUP_QUALITY_FILTER_MIN_PRECISION:
+        return {"passed": False, "reason": "precision_below_minimum"}
+    if recall_value < SETUP_QUALITY_FILTER_MIN_RECALL:
+        return {"passed": False, "reason": "recall_below_minimum"}
+    if predicted_trade_rate_value > SETUP_QUALITY_FILTER_MAX_PREDICTED_TRADE_RATE:
+        return {"passed": False, "reason": "predicted_trade_rate_too_high"}
+    if trade_rate_ratio_value > SETUP_QUALITY_FILTER_MAX_TRADE_RATE_RATIO:
+        return {"passed": False, "reason": "predicted_to_actual_trade_rate_ratio_too_high"}
+    if false_positive_rate_value > SETUP_QUALITY_FILTER_MAX_FALSE_POSITIVE_RATE:
+        return {"passed": False, "reason": "opportunity_false_positive_rate_too_high"}
+
+    return {"passed": True, "reason": "passed"}
 
 
 class ML382ConfigRanker:
@@ -194,6 +243,51 @@ class ML382ConfigRanker:
             if two_stage_trade_diagnostics
             else candidate.get("direction_accuracy_on_trade_rows")
         )
+        setup_quality_min_threshold = (
+            candidate.get("setup_quality_min_threshold")
+            if candidate.get("setup_quality_min_threshold") is not None
+            else two_stage_trade_diagnostics.get("setup_quality_min_threshold")
+        )
+        setup_quality_bucket_metrics = dict(
+            candidate.get("setup_quality_bucket_metrics")
+            or two_stage_trade_diagnostics.get("setup_quality_bucket_metrics", {})
+        )
+        setup_quality_filter_summary = dict(
+            candidate.get("setup_quality_filter_summary")
+            or two_stage_trade_diagnostics.get("setup_quality_filter_summary", {})
+        )
+        setup_quality_filter = evaluate_setup_quality_filter(
+            opportunity_precision=(
+                candidate.get("opportunity_precision")
+                if candidate.get("opportunity_precision") is not None
+                else two_stage_trade_diagnostics.get("opportunity_precision")
+            ),
+            opportunity_recall=(
+                candidate.get("opportunity_recall")
+                if candidate.get("opportunity_recall") is not None
+                else two_stage_trade_diagnostics.get("opportunity_recall")
+            ),
+            predicted_trade_rate=(
+                candidate.get("predicted_trade_rate")
+                if candidate.get("predicted_trade_rate") is not None
+                else two_stage_trade_diagnostics.get("predicted_trade_rate")
+            ),
+            actual_trade_rate=(
+                candidate.get("actual_trade_rate")
+                if candidate.get("actual_trade_rate") is not None
+                else two_stage_trade_diagnostics.get("actual_trade_rate")
+            ),
+            predicted_to_actual_trade_rate_ratio=(
+                candidate.get("predicted_to_actual_trade_rate_ratio")
+                if candidate.get("predicted_to_actual_trade_rate_ratio") is not None
+                else two_stage_trade_diagnostics.get("predicted_to_actual_trade_rate_ratio")
+            ),
+            opportunity_false_positive_rate=(
+                candidate.get("opportunity_false_positive_rate")
+                if candidate.get("opportunity_false_positive_rate") is not None
+                else two_stage_trade_diagnostics.get("opportunity_false_positive_rate")
+            ),
+        )
         bounded_calibration_bonus = 0.0
         bounded_calibration_fallback_penalty = 0.0
         if bounded_selection:
@@ -251,21 +345,24 @@ class ML382ConfigRanker:
         else:
             score_components["decision_policy_baseline_edge_bonus"] = 0.0
         if training_objective == "trade_two_stage":
-            trade_rate_ceiling = float(precision_control_gates.get("max_predicted_trade_rate", 0.15) or 0.15)
             score_components["opportunity_f1_bonus"] = min(3.0, opportunity_f1 * 6.0)
             score_components["opportunity_precision_bonus"] = min(2.5, opportunity_precision * 5.0)
             score_components["direction_accuracy_trade_rows_bonus"] = min(
                 1.0,
                 max(0.0, direction_accuracy_on_trade_rows - 0.45) * 4.0,
             )
+            score_components["setup_quality_filter_bonus"] = 0.5 if bool(setup_quality_filter.get("passed")) else 0.0
             score_components["trade_rate_ratio_penalty"] = -max(
                 0.0,
-                predicted_to_actual_trade_rate_ratio - 1.50,
+                predicted_to_actual_trade_rate_ratio - SETUP_QUALITY_FILTER_MAX_TRADE_RATE_RATIO,
             )
-            score_components["opportunity_false_positive_penalty"] = -opportunity_false_positive_rate * 4.0
+            score_components["opportunity_false_positive_penalty"] = -max(
+                0.0,
+                opportunity_false_positive_rate - SETUP_QUALITY_FILTER_MAX_FALSE_POSITIVE_RATE,
+            ) * 10.0
             score_components["predicted_trade_rate_ceiling_penalty"] = -max(
                 0.0,
-                predicted_trade_rate - trade_rate_ceiling,
+                predicted_trade_rate - SETUP_QUALITY_FILTER_MAX_PREDICTED_TRADE_RATE,
             ) * 20.0
         rejection_reasons: list[str] = []
         baseline_score, baseline_components, baseline_reasons = self._baseline_edge_score_component(candidate)
@@ -385,9 +482,14 @@ class ML382ConfigRanker:
             "baseline_edge_status": candidate.get("baseline_edge_status"),
             "collapse_severity": candidate.get("collapse_severity"),
             "opportunity_probability_threshold": candidate.get("opportunity_probability_threshold"),
+            "setup_quality_min_threshold": setup_quality_min_threshold,
             "selected_opportunity_threshold": candidate.get("selected_opportunity_threshold"),
             "opportunity_threshold_selection": dict(candidate.get("opportunity_threshold_selection", {})),
             "opportunity_threshold_sweep": dict(candidate.get("opportunity_threshold_sweep", {})),
+            "setup_quality_filter_passed": bool(setup_quality_filter.get("passed", False)),
+            "setup_quality_filter_reason": setup_quality_filter.get("reason"),
+            "setup_quality_bucket_metrics": setup_quality_bucket_metrics,
+            "setup_quality_filter_summary": setup_quality_filter_summary,
             "predicted_to_actual_trade_rate_ratio": predicted_to_actual_trade_rate_ratio,
             "predicted_trade_rate": predicted_trade_rate,
             "actual_trade_rate": actual_trade_rate,
@@ -396,6 +498,7 @@ class ML382ConfigRanker:
             "opportunity_f1": opportunity_f1,
             "opportunity_false_positive_rate": opportunity_false_positive_rate,
             "two_stage_trade_diagnostics": two_stage_trade_diagnostics,
+            "precision_control_passed": bool(two_stage_trade_diagnostics.get("precision_control_passed", False)),
             "opportunity_precision_gate": {
                 "passed": "opportunity_precision_below_gate" not in two_stage_trade_diagnostics.get("warnings", []),
                 "minimum": precision_control_gates.get("min_precision"),
