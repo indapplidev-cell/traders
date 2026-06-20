@@ -10,6 +10,7 @@ from app.features.book_setup_context_features import (
     HTF_CONTEXT_FEATURE_NAMES,
     NISON_CONTEXT_FEATURE_NAMES,
     PATH_CONTEXT_FEATURE_NAMES,
+    SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES,
 )
 
 

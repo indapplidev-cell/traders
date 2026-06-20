@@ -29,15 +29,20 @@ def test_ml38_10_6_threshold_configs_are_in_grid_and_matrix() -> None:
     assert matrix["two_stage_threshold_config_ids"] == list(ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS)
 
 
-def test_ml38_10_6_runtime_shortlists_use_threshold_configs() -> None:
+def test_ml38_10_6_runtime_shortlists_use_current_configs() -> None:
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
+        "lv20_h08_tts_thr065_sqmask060_trap",
         "lv19_h08_tts_thr065_sqmask060",
-        "lv18_h12_tts_thr065_sq060",
     )
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
-        "lv19_h08_tts_thr065_sqmask060",
+        "lv20_h08_tts_thr065_sqmask060_trap",
+        "lv20_h12_tts_thr065_sqmask060_trap",
         "lv19_h12_tts_thr065_sqmask060",
-        "lv19_h12_tts_thr070_sqmask065",
     )
-    assert all(config_id in ML382FV3TuningMatrix().build()["config_ids"] for config_id in ML38_10_7_SETUP_QUALITY_FILTER_CONFIG_IDS)
-    assert list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS) == list(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS)
+    assert "lv20_h08_tts_thr065_sqmask060_trap" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv19_h08_tts_thr065_sqmask060" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv20_h12_tts_thr065_sqmask060_trap" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
+
+    matrix_config_ids = ML382FV3TuningMatrix().build()["config_ids"]
+    assert all(config_id in matrix_config_ids for config_id in ML38_10_7_SETUP_QUALITY_FILTER_CONFIG_IDS)
+    assert all(config_id in matrix_config_ids for config_id in ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS)

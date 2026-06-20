@@ -66,10 +66,24 @@ HTF_CONTEXT_FEATURE_NAMES = [
     "htf_4h_support_resistance_context_score",
 ]
 
+SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES = [
+    "schwager_false_breakout_risk_score",
+    "schwager_bull_trap_risk_score",
+    "schwager_bear_trap_risk_score",
+    "schwager_failed_breakout_return_inside_range_score",
+    "schwager_spike_high_retest_risk_score",
+    "schwager_spike_low_retest_risk_score",
+    "schwager_stop_hunt_like_move_score",
+    "schwager_range_reentry_after_breakout_score",
+    "schwager_invalidation_quality_score",
+    "schwager_trap_safe_setup_score",
+]
+
 BOOK_SETUP_CONTEXT_FEATURE_NAMES = [
     *NISON_CONTEXT_FEATURE_NAMES,
     *ALTUNINA_CONTEXT_FEATURE_NAMES,
     *PATH_CONTEXT_FEATURE_NAMES,
+    *SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES,
     *HTF_CONTEXT_FEATURE_NAMES,
 ]
 
@@ -273,6 +287,16 @@ class BookSetupContextFeatureBuilder:
         volume_8_confirmation_score = self._volume_confirmation_score(candles, index, length=8)
         volume_16_exhaustion_score = self._volume_exhaustion_score(candles, index, length=16)
 
+        schwager_trap_context = self._trap_invalidation_context(
+            candles=candles,
+            index=index,
+            atr_value=atr_value,
+            volume_confirms_direction=volume_confirms_direction,
+            range_chop_score=range_chop_score,
+            path_16_chop_score=path_16_chop_score,
+            path_16_trend_consistency_score=path_16_trend_consistency_score,
+        )
+
         return {
             "nison_reversal_context_score": nison_reversal_context,
             "nison_continuation_context_score": nison_continuation_context,
@@ -368,12 +392,140 @@ class BookSetupContextFeatureBuilder:
             "path_16_chop_score": path_16_chop_score,
             "volume_8_confirmation_score": volume_8_confirmation_score,
             "volume_16_exhaustion_score": volume_16_exhaustion_score,
+            **schwager_trap_context,
             "htf_1h_trend_score": 0.0,
             "htf_1h_range_position": 0.0,
             "htf_1h_volatility_score": 0.0,
             "htf_4h_trend_score": 0.0,
             "htf_4h_range_position": 0.0,
             "htf_4h_support_resistance_context_score": 0.0,
+        }
+
+    def _trap_invalidation_context(
+        self,
+        *,
+        candles: Sequence[Any],
+        index: int,
+        atr_value: float,
+        volume_confirms_direction: float,
+        range_chop_score: float,
+        path_16_chop_score: float,
+        path_16_trend_consistency_score: float,
+    ) -> dict[str, float]:
+        zero = {name: 0.0 for name in SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES}
+        if atr_value <= 0.0 or index < 1 or index >= len(candles):
+            return zero
+
+        previous_window = self._previous_window(candles, index, length=24)
+        if not previous_window:
+            return zero
+
+        previous_high = max(self._high(candle) for candle in previous_window)
+        previous_low = min(self._low(candle) for candle in previous_window)
+        previous_volume_avg = mean(self._volume(candle) for candle in previous_window)
+
+        current = candles[index]
+        open_value = self._open(current)
+        high_value = self._high(current)
+        low_value = self._low(current)
+        close_value = self._close(current)
+        volume_value = self._volume(current)
+
+        candle_range = max(high_value - low_value, 0.0)
+        if candle_range <= 0.0:
+            return zero
+
+        upper_wick_pressure = self._score(
+            max(high_value - max(open_value, close_value), 0.0) / candle_range
+        )
+        lower_wick_pressure = self._score(
+            max(min(open_value, close_value) - low_value, 0.0) / candle_range
+        )
+        close_position = self._score((close_value - low_value) / candle_range)
+
+        breakout_up_atr = max(0.0, high_value - previous_high) / atr_value
+        breakout_down_atr = max(0.0, previous_low - low_value) / atr_value
+        close_back_inside_after_up = 1.0 if high_value > previous_high and close_value <= previous_high else 0.0
+        close_back_inside_after_down = 1.0 if low_value < previous_low and close_value >= previous_low else 0.0
+        close_inside_previous_range = 1.0 if previous_low <= close_value <= previous_high else 0.0
+
+        volume_burst_score = 0.0
+        if previous_volume_avg > 0.0:
+            volume_burst_score = self._positive_score((volume_value / previous_volume_avg) - 1.0, scale=1.2)
+
+        false_breakout_up = self._combine(
+            self._positive_score(breakout_up_atr - 0.05, scale=0.45),
+            close_back_inside_after_up,
+            upper_wick_pressure,
+            max(range_chop_score, 1.0 - volume_confirms_direction),
+        )
+        false_breakout_down = self._combine(
+            self._positive_score(breakout_down_atr - 0.05, scale=0.45),
+            close_back_inside_after_down,
+            lower_wick_pressure,
+            max(range_chop_score, 1.0 - volume_confirms_direction),
+        )
+        false_breakout_risk = max(false_breakout_up, false_breakout_down)
+
+        bull_trap_risk = self._combine(
+            false_breakout_up,
+            1.0 - close_position,
+            self._positive_score(breakout_up_atr, scale=0.75),
+        )
+        bear_trap_risk = self._combine(
+            false_breakout_down,
+            close_position,
+            self._positive_score(breakout_down_atr, scale=0.75),
+        )
+
+        spike_high_retest_risk = self._combine(
+            self._proximity_to_level_score(high_value, previous_high, atr_value, tolerance_atr=0.35),
+            upper_wick_pressure,
+            close_back_inside_after_up,
+        )
+        spike_low_retest_risk = self._combine(
+            self._proximity_to_level_score(low_value, previous_low, atr_value, tolerance_atr=0.35),
+            lower_wick_pressure,
+            close_back_inside_after_down,
+        )
+        failed_breakout_return_inside_range = self._combine(
+            false_breakout_risk,
+            close_inside_previous_range,
+            max(upper_wick_pressure, lower_wick_pressure),
+        )
+        stop_hunt_like_move = self._combine(
+            false_breakout_risk,
+            volume_burst_score,
+            max(upper_wick_pressure, lower_wick_pressure),
+        )
+        range_reentry_after_breakout = self._combine(
+            max(false_breakout_up, false_breakout_down),
+            close_inside_previous_range,
+            max(range_chop_score, path_16_chop_score),
+        )
+        invalidation_quality = 1.0 - self._combine(
+            false_breakout_risk,
+            stop_hunt_like_move,
+            max(range_chop_score, path_16_chop_score),
+        )
+        trap_safe_setup = self._combine(
+            invalidation_quality,
+            volume_confirms_direction,
+            path_16_trend_consistency_score,
+            1.0 - path_16_chop_score,
+        )
+
+        return {
+            "schwager_false_breakout_risk_score": false_breakout_risk,
+            "schwager_bull_trap_risk_score": bull_trap_risk,
+            "schwager_bear_trap_risk_score": bear_trap_risk,
+            "schwager_failed_breakout_return_inside_range_score": failed_breakout_return_inside_range,
+            "schwager_spike_high_retest_risk_score": spike_high_retest_risk,
+            "schwager_spike_low_retest_risk_score": spike_low_retest_risk,
+            "schwager_stop_hunt_like_move_score": stop_hunt_like_move,
+            "schwager_range_reentry_after_breakout_score": range_reentry_after_breakout,
+            "schwager_invalidation_quality_score": self._score(invalidation_quality),
+            "schwager_trap_safe_setup_score": trap_safe_setup,
         }
 
     def _feature(self, base_features: Mapping[str, float], name: str, default: float = 0.0) -> float:
@@ -662,6 +814,29 @@ class BookSetupContextFeatureBuilder:
         if start < 0:
             return None
         return list(candles[start : index + 1])
+
+    @staticmethod
+    def _previous_window(candles: Sequence[Any], index: int, length: int) -> list[Any] | None:
+        end = index
+        start = max(0, end - length)
+        if start >= end:
+            return None
+        return list(candles[start:end])
+
+    def _proximity_to_level_score(
+        self,
+        value: float,
+        level: float,
+        atr_value: float,
+        *,
+        tolerance_atr: float,
+    ) -> float:
+        if atr_value <= 0.0 or tolerance_atr <= 0.0:
+            return 0.0
+        distance_atr = abs(value - level) / atr_value
+        if distance_atr >= tolerance_atr:
+            return 0.0
+        return self._score(1.0 - (distance_atr / tolerance_atr))
 
     @staticmethod
     def _open(candle: Any) -> float:

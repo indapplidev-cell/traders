@@ -15,6 +15,7 @@ from app.features.feature_models import (
     NISON_CONTEXT_FEATURE_NAMES,
     ALTUNINA_CONTEXT_FEATURE_NAMES,
     PATH_CONTEXT_FEATURE_NAMES,
+    SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES,
     TECHNICAL_CONTEXT_FEATURE_NAMES,
 )
 
@@ -37,6 +38,7 @@ class RealFeatureDiagnosticsService:
         "nison_reversal_context_score",
         "alt_trend_continuation_long_score",
         "path_8_high_low_expansion_atr",
+        "schwager_false_breakout_risk_score",
     }
 
     def __init__(
@@ -171,6 +173,10 @@ class RealFeatureDiagnosticsService:
         nison_feature_count = self._count_present_features(feature_names, NISON_CONTEXT_FEATURE_NAMES)
         altunina_feature_count = self._count_present_features(feature_names, ALTUNINA_CONTEXT_FEATURE_NAMES)
         path_context_feature_count = self._count_present_features(feature_names, PATH_CONTEXT_FEATURE_NAMES)
+        schwager_trap_feature_count = self._count_present_features(
+            feature_names,
+            SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES,
+        )
         htf_context_feature_count = 0 if not higher_timeframe_context_available else self._count_present_features(
             feature_names,
             HTF_CONTEXT_FEATURE_NAMES,
@@ -222,11 +228,13 @@ class RealFeatureDiagnosticsService:
                 nison_feature_count
                 + altunina_feature_count
                 + path_context_feature_count
+                + schwager_trap_feature_count
                 + htf_context_feature_count
             ),
             "nison_feature_count": nison_feature_count,
             "altunina_feature_count": altunina_feature_count,
             "path_context_feature_count": path_context_feature_count,
+            "schwager_trap_feature_count": schwager_trap_feature_count,
             "htf_context_feature_count": htf_context_feature_count,
             "missing_context_feature_count": missing_context_feature_count,
             "regime_feature_count": sum(int(name.startswith("regime_")) for name in feature_names),

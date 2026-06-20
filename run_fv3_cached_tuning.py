@@ -166,14 +166,14 @@ def _infer_default_expected_candidate_count() -> int:
 DEFAULT_FULL_GRID_CONFIG_COUNT = _infer_default_full_grid_config_count()
 DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 
-# Runtime smoke: Prompt 4-6 plus ML38.10.8 setup-quality decision-mask coverage, two symbols, short period.
+# Runtime smoke: ML38.10.10 false-breakout/trap feature layer plus lv19 comparator.
 # Covers:
-# - ML38.10.8 masked two-stage via lv19_h08_tts_thr065_sqmask060
-# - ML38.10.7 unmasked setup-quality filtered comparator via lv18_h12_tts_thr065_sq060
-# - ML38.10.2 Schwager robustness board through candidate report payloads
+# - ML38.10.10 trap/invalidation features via lv20_h08_tts_thr065_sqmask060_trap
+# - ML38.10.8 masked two-stage comparator via lv19_h08_tts_thr065_sqmask060
+# - ML38.10.9 two-stage acceptance/anti-undertrading gates through candidate reports
 FAST_DEBUG_CONFIGS = (
+    "lv20_h08_tts_thr065_sqmask060_trap",
     "lv19_h08_tts_thr065_sqmask060",
-    "lv18_h12_tts_thr065_sq060",
 )
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
 FAST_DEBUG_START_DATE = "2026-05-01"
@@ -182,9 +182,9 @@ FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 # Intermediate quality: one symbol, short period, Prompt 4-6 smoke shortlist.
 # Keep this small: it is not final validation and must not replace full research review.
 QUICK_QUALITY_CONFIGS = (
-    "lv19_h08_tts_thr065_sqmask060",
+    "lv20_h08_tts_thr065_sqmask060_trap",
+    "lv20_h12_tts_thr065_sqmask060_trap",
     "lv19_h12_tts_thr065_sqmask060",
-    "lv19_h12_tts_thr070_sqmask065",
 )
 QUICK_QUALITY_SYMBOL = "SOLUSDT"
 QUICK_QUALITY_START_DATE = "2026-04-01"

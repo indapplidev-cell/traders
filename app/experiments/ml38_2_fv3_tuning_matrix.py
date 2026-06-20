@@ -114,6 +114,12 @@ ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS = (
     "lv19_h12_tts_thr070_sqmask065",
 )
 
+ML38_10_10_FALSE_BREAKOUT_TRAP_CONFIG_IDS = (
+    "lv20_h08_tts_thr065_sqmask060_trap",
+    "lv20_h12_tts_thr065_sqmask060_trap",
+    "lv20_h12_tts_thr070_sqmask065_trap",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -140,6 +146,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_10_6_TWO_STAGE_THRESHOLD_CONFIG_IDS,
     *ML38_10_7_SETUP_QUALITY_FILTER_CONFIG_IDS,
     *ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS,
+    *ML38_10_10_FALSE_BREAKOUT_TRAP_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
@@ -214,6 +221,9 @@ class ML382FV3TuningMatrix:
             "setup_quality_decision_mask_stage": "ML38.10.8",
             "setup_quality_decision_mask_config_ids": list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS),
             "setup_quality_decision_mask_config_count": len(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS),
+            "false_breakout_trap_stage": "ML38.10.10",
+            "false_breakout_trap_config_ids": list(ML38_10_10_FALSE_BREAKOUT_TRAP_CONFIG_IDS),
+            "false_breakout_trap_config_count": len(ML38_10_10_FALSE_BREAKOUT_TRAP_CONFIG_IDS),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,

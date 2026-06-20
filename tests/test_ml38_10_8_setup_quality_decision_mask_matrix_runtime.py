@@ -10,7 +10,7 @@ from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_8_SETUP_QUALITY_DEC
 from app.labels.label_quality_grid import LabelQualityGridPlanner
 
 
-def test_ml38_10_8_grid_matrix_and_runtime_shortlists_include_lv19_without_removing_historical_configs() -> None:
+def test_ml38_10_8_grid_matrix_and_runtime_shortlists_keep_historical_configs() -> None:
     grid = LabelQualityGridPlanner().build_grid()
     configs_by_id = {item["config_id"]: item for item in grid["configs"]}
 
@@ -25,10 +25,14 @@ def test_ml38_10_8_grid_matrix_and_runtime_shortlists_include_lv19_without_remov
     assert matrix["setup_quality_decision_mask_stage"] == "ML38.10.8"
     assert matrix["setup_quality_decision_mask_config_ids"] == list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS)
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
+        "lv20_h08_tts_thr065_sqmask060_trap",
         "lv19_h08_tts_thr065_sqmask060",
-        "lv18_h12_tts_thr065_sq060",
     )
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == tuple(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS)
+    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
+        "lv20_h08_tts_thr065_sqmask060_trap",
+        "lv20_h12_tts_thr065_sqmask060_trap",
+        "lv19_h12_tts_thr065_sqmask060",
+    )
 
     for config_id in (
         *ML38_10_5_TRADE_TWO_STAGE_CONFIG_IDS,
