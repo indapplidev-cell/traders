@@ -32,5 +32,5 @@ def test_ml38_9_9_matrix_keeps_label_modes_and_runtime_uses_prompt_4_6_smoke_sho
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--symbol", "SOLUSDT"])
     )
     assert quick_wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
-    assert "lv21_h12_tts_thr065_sqmask060_epq065" in quick_wrapper.selected_config_ids
+    assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in quick_wrapper.selected_config_ids
     assert len(quick_wrapper.selected_config_ids) == 3

@@ -9,8 +9,8 @@ def test_ml38_10_14_label_grid_contains_entry_path_quality_configs() -> None:
     }
 
     for config_id in (
-        "lv21_h08_tts_thr065_sqmask060_epq065",
-        "lv21_h12_tts_thr065_sqmask060_epq065",
+        "lv22_h08_tts_thr065_sqmask060_epq070_sp045",
+        "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
         "lv21_h12_tts_thr065_sqmask060_epq070",
     ):
         assert config_id in configs
@@ -23,4 +23,4 @@ def test_ml38_10_14_label_grid_contains_entry_path_quality_configs() -> None:
 def test_ml38_10_14_fv3_matrix_includes_entry_path_quality_stage() -> None:
     payload = ML382FV3TuningMatrix().build()
     assert payload["entry_path_quality_stage"] == "ML38.10.14"
-    assert "lv21_h12_tts_thr065_sqmask060_epq065" in payload["config_ids"]
+    assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in payload["config_ids"]

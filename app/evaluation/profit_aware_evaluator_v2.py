@@ -86,10 +86,13 @@ class ProfitAwareEvaluatorV2:
         profit_exit_root_cause_audit = dict(
             summary.get("profit_exit_root_cause_audit") or {}
         )
+        entry_path_filter_summary = self._entry_path_prediction_filter_summary(predictions)
+        summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
         return {
             "gate_results": gate_results,
             "summary": summary,
             "profit_exit_root_cause_audit": profit_exit_root_cause_audit,
+            "entry_path_prediction_filter_summary": entry_path_filter_summary,
         }
 
     def evaluate_single_gate(
@@ -245,6 +248,9 @@ class ProfitAwareEvaluatorV2:
             "signal_count": signal_count,
             "resolved_signal_count": resolved_count,
             "skipped_flat_count": selection["skipped_flat_count"],
+            "skipped_entry_path_filter_count": int(
+                selection.get("skipped_entry_path_filter_count", 0) or 0
+            ),
             "coverage": (signal_count / selection["total_rows"]) if selection["total_rows"] else 0.0,
             "win_count": win_count,
             "loss_count": loss_count,
@@ -285,6 +291,9 @@ class ProfitAwareEvaluatorV2:
             "signal_count": 0,
             "resolved_signal_count": 0,
             "skipped_flat_count": selection["skipped_flat_count"],
+            "skipped_entry_path_filter_count": int(
+                selection.get("skipped_entry_path_filter_count", 0) or 0
+            ),
             "coverage": 0.0,
             "win_count": 0,
             "loss_count": 0,
@@ -312,6 +321,37 @@ class ProfitAwareEvaluatorV2:
             "max_drawdown_r": 0.0,
             "same_candle_policy": same_candle_policy,
             "reject_reason": "no_signals",
+        }
+
+    @staticmethod
+    def _entry_path_prediction_filter_summary(predictions: list[dict[str, Any]]) -> dict[str, Any]:
+        total = len(predictions)
+        blocked_rows = [row for row in predictions if bool(row.get("entry_path_filter_blocked", False))]
+        passed_rows = [row for row in predictions if not bool(row.get("entry_path_filter_blocked", False))]
+
+        def _mean(rows: list[dict[str, Any]], key: str) -> float | None:
+            values = [float(row.get(key, 0.0) or 0.0) for row in rows if row.get(key) is not None]
+            return (sum(values) / len(values)) if values else None
+
+        return {
+            "entry_path_filter_enabled": any(
+                bool(row.get("entry_path_filter_enabled", False)) for row in predictions
+            ),
+            "total_prediction_rows": int(total),
+            "blocked_prediction_rows": int(len(blocked_rows)),
+            "passed_prediction_rows": int(len(passed_rows)),
+            "blocked_prediction_rate": (len(blocked_rows) / total) if total else 0.0,
+            "avg_blocked_entry_path_quality_score": _mean(blocked_rows, "entry_path_quality_score"),
+            "avg_passed_entry_path_quality_score": _mean(passed_rows, "entry_path_quality_score"),
+            "avg_blocked_stop_pressure_risk_score": _mean(blocked_rows, "stop_pressure_risk_score"),
+            "avg_passed_stop_pressure_risk_score": _mean(passed_rows, "stop_pressure_risk_score"),
+            "blocked_original_label_counts": {
+                label: sum(
+                    int(str(row.get("entry_path_original_predicted_label")).upper() == label)
+                    for row in blocked_rows
+                )
+                for label in ("UP", "DOWN", "FLAT")
+            },
         }
 
     @staticmethod

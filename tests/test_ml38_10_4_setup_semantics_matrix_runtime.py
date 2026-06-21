@@ -35,7 +35,7 @@ def test_ml38_10_4_runtime_profiles_follow_current_smoke_shortlists() -> None:
         run_fv3_cached_tuning.parse_args(["--fast-debug"])
     )
     assert fast_wrapper.selected_config_ids == (
-        "lv21_h08_tts_thr065_sqmask060_epq065",
+        "lv22_h08_tts_thr065_sqmask060_epq070_sp045",
         "lv19_h08_tts_thr065_sqmask060",
     )
 
@@ -43,7 +43,7 @@ def test_ml38_10_4_runtime_profiles_follow_current_smoke_shortlists() -> None:
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     )
     assert quick_wrapper.selected_config_ids == (
-        "lv21_h12_tts_thr065_sqmask060_epq065",
+        "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
         "lv21_h12_tts_thr065_sqmask060_epq070",
         "lv19_h12_tts_thr065_sqmask060",
     )

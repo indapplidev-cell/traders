@@ -1208,11 +1208,27 @@ class LabelGridExperimentRunner:
         apply_selected_decision_policy_metrics(selected_policy_payload)
         opportunity_threshold_selection = self._as_dict(quality_payload.get("opportunity_threshold_selection"))
         opportunity_threshold_sweep = self._as_dict(quality_payload.get("opportunity_threshold_sweep"))
-        two_stage_trade_diagnostics = self._as_dict(quality_payload.get("two_stage_trade_diagnostics"))
-        entry_path_quality_filter_diagnostics = self._as_dict(
-            quality_payload.get("entry_path_quality_filter_diagnostics")
-            or two_stage_trade_diagnostics.get("entry_path_quality_filter_diagnostics", {})
+        test_metrics = self._as_dict(quality_payload.get("test_metrics"))
+        two_stage_trade_diagnostics = self._as_dict(
+            quality_payload.get("two_stage_trade_diagnostics")
+            or test_metrics.get("two_stage_trade_diagnostics", {})
         )
+
+        def _first_present(key: str, default: Any = None) -> Any:
+            for source in (quality_payload, test_metrics, two_stage_trade_diagnostics):
+                if isinstance(source, dict) and key in source and source.get(key) is not None:
+                    return source.get(key)
+            return default
+
+        def _first_dict(key: str) -> dict[str, Any]:
+            for source in (quality_payload, test_metrics, two_stage_trade_diagnostics):
+                value = source.get(key) if isinstance(source, dict) else None
+                if isinstance(value, dict) and value:
+                    return dict(value)
+            return {}
+
+        entry_path_quality_filter_diagnostics = _first_dict("entry_path_quality_filter_diagnostics")
+        entry_path_quality_filter_summary = _first_dict("entry_path_quality_filter_summary")
         return LabelGridExperimentCandidateResult(
             config_id=label_config.config_id,
             label_config=label_config.to_dict(),
@@ -1345,48 +1361,40 @@ class LabelGridExperimentRunner:
                 or two_stage_trade_diagnostics.get("setup_quality_decision_mask_summary", {})
             ),
             entry_path_quality_filter_enabled=bool(
-                quality_payload.get("entry_path_quality_filter_enabled", False)
+                _first_present("entry_path_quality_filter_enabled", False)
             ),
             entry_path_quality_min_threshold=self._optional_float(
-                quality_payload.get("entry_path_quality_min_threshold")
+                _first_present("entry_path_quality_min_threshold")
             ),
             stop_pressure_max_risk_score=self._optional_float(
-                quality_payload.get("stop_pressure_max_risk_score")
+                _first_present("stop_pressure_max_risk_score")
             ),
             entry_path_quality_masked_row_count=int(
-                quality_payload.get("entry_path_quality_masked_row_count", 0) or 0
+                _first_present("entry_path_quality_masked_row_count", 0) or 0
             ),
             entry_path_quality_forced_no_trade_count=int(
-                quality_payload.get("entry_path_quality_forced_no_trade_count", 0) or 0
+                _first_present("entry_path_quality_forced_no_trade_count", 0) or 0
             ),
             entry_path_quality_mask_false_positive_removed_count=int(
-                quality_payload.get("entry_path_quality_mask_false_positive_removed_count", 0) or 0
+                _first_present("entry_path_quality_mask_false_positive_removed_count", 0) or 0
             ),
-            entry_path_quality_filter_summary=self._as_dict(
-                quality_payload.get("entry_path_quality_filter_summary", {})
-            ),
+            entry_path_quality_filter_summary=entry_path_quality_filter_summary,
             entry_path_quality_filter_diagnostics=entry_path_quality_filter_diagnostics,
             predicted_to_actual_trade_rate_ratio=self._optional_float(
-                quality_payload.get("predicted_to_actual_trade_rate_ratio")
+                _first_present("predicted_to_actual_trade_rate_ratio")
             ),
-            predicted_trade_rate=self._optional_float(quality_payload.get("predicted_trade_rate")),
-            raw_predicted_trade_rate=self._optional_float(quality_payload.get("raw_predicted_trade_rate")),
-            masked_predicted_trade_rate=self._optional_float(
-                quality_payload.get("masked_predicted_trade_rate")
-            ),
-            actual_trade_rate=self._optional_float(quality_payload.get("actual_trade_rate")),
-            opportunity_precision=self._optional_float(quality_payload.get("opportunity_precision")),
-            opportunity_recall=self._optional_float(quality_payload.get("opportunity_recall")),
-            opportunity_f1=self._optional_float(quality_payload.get("opportunity_f1")),
-            raw_opportunity_precision=self._optional_float(
-                quality_payload.get("raw_opportunity_precision")
-            ),
-            raw_opportunity_recall=self._optional_float(
-                quality_payload.get("raw_opportunity_recall")
-            ),
-            raw_opportunity_f1=self._optional_float(quality_payload.get("raw_opportunity_f1")),
+            predicted_trade_rate=self._optional_float(_first_present("predicted_trade_rate")),
+            raw_predicted_trade_rate=self._optional_float(_first_present("raw_predicted_trade_rate")),
+            masked_predicted_trade_rate=self._optional_float(_first_present("masked_predicted_trade_rate")),
+            actual_trade_rate=self._optional_float(_first_present("actual_trade_rate")),
+            opportunity_precision=self._optional_float(_first_present("opportunity_precision")),
+            opportunity_recall=self._optional_float(_first_present("opportunity_recall")),
+            opportunity_f1=self._optional_float(_first_present("opportunity_f1")),
+            raw_opportunity_precision=self._optional_float(_first_present("raw_opportunity_precision")),
+            raw_opportunity_recall=self._optional_float(_first_present("raw_opportunity_recall")),
+            raw_opportunity_f1=self._optional_float(_first_present("raw_opportunity_f1")),
             opportunity_false_positive_rate=self._optional_float(
-                quality_payload.get("opportunity_false_positive_rate")
+                _first_present("opportunity_false_positive_rate")
             ),
             two_stage_trade_diagnostics=two_stage_trade_diagnostics,
             approved_for_traders_core_integration=bool(

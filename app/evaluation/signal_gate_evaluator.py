@@ -42,7 +42,11 @@ class SignalGateEvaluator:
     def select_signals(self, predictions: list[dict[str, Any]], gate_type: str, threshold: float) -> dict[str, Any]:
         selected: list[dict[str, Any]] = []
         skipped_flat_count = 0
+        skipped_entry_path_filter_count = 0
         for row in predictions:
+            if bool(row.get("entry_path_filter_blocked", False)):
+                skipped_entry_path_filter_count += 1
+                continue
             measured = self._measure(row)
             signal_direction, skipped_flat = self._gate_decision(gate_type, threshold, measured)
             if skipped_flat:
@@ -64,6 +68,7 @@ class SignalGateEvaluator:
             "signal_rows": selected,
             "signal_count": len(selected),
             "skipped_flat_count": skipped_flat_count,
+            "skipped_entry_path_filter_count": skipped_entry_path_filter_count,
         }
 
     def _evaluate_threshold(self, predictions: list[dict[str, Any]], gate_type: str, threshold: float) -> dict[str, Any]:

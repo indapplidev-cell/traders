@@ -16,6 +16,7 @@ from app.diagnostics.regime_segment_diagnostics import RegimeSegmentDiagnostics
 from app.db.repositories.feature_repository import FeatureRepository
 from app.diagnostics.dataset_diagnostics import DatasetDiagnostics
 from app.diagnostics.directional_opportunity_diagnostics import DirectionalOpportunityDiagnostics
+from app.diagnostics.entry_path_quality_filter import EntryPathQualityFilter
 from app.diagnostics.feature_diagnostics_v2 import FeatureDiagnosticsV2
 from app.diagnostics.fold_label_diagnostics import FoldLabelDiagnostics
 from app.diagnostics.calibrated_prediction_decisions import CalibratedPredictionDecisions
@@ -108,6 +109,7 @@ class DiagnosticsService:
         self._prediction_collapse_detector = prediction_collapse_detector or PredictionCollapseDetector()
         self._calibrated_prediction_decisions = CalibratedPredictionDecisions()
         self._decision_policy_grid = DecisionPolicyGrid()
+        self._entry_path_quality_filter = EntryPathQualityFilter()
         self._model_loader = model_loader or ModelLoader(artifact_storage=self._artifact_storage)
         self._model_factory = model_factory or ModelFactory()
         self._confidence_gate_evaluator = confidence_gate_evaluator or ConfidenceGateEvaluator(reports_dir=self._reports_dir)
@@ -2329,6 +2331,11 @@ class DiagnosticsService:
                     ),
                     "max_adverse_move_atr": float(getattr(row, "max_adverse_move_atr", 0.0)),
                     "tp_before_sl": getattr(row, "tp_before_sl", None),
+                    "setup_quality_score": float(getattr(row, "setup_quality_score", 0.0) or 0.0),
+                    "setup_expected_move_atr": float(getattr(row, "setup_expected_move_atr", 0.0) or 0.0),
+                    "setup_invalidation_distance_atr": float(
+                        getattr(row, "setup_invalidation_distance_atr", 0.0) or 0.0
+                    ),
                     "atr_14": float(row.features_json["atr_14"]),
                     "features_json": dict(row.features_json),
                     "current_close": float(candle.close),
@@ -2342,7 +2349,11 @@ class DiagnosticsService:
                     ],
                 }
             )
-        return predictions
+        return self._apply_entry_path_filter_to_prediction_rows(
+            predictions=predictions,
+            feature_columns=feature_columns,
+            training_config=training_config,
+        )
 
     def _load_meta_label_records(self, symbol: str, interval: str, label_version: str) -> list[MetaLabelRecord]:
         path = self._reports_dir / f"ema_meta_labels_{symbol}_{interval}_{label_version}.json"
@@ -2796,6 +2807,85 @@ class DiagnosticsService:
             slippage_r=slippage_r,
             same_candle_policy=same_candle_policy,
         )
+
+    def _apply_entry_path_filter_to_prediction_rows(
+        self,
+        *,
+        predictions: list[dict[str, Any]],
+        feature_columns: list[str] | tuple[str, ...],
+        training_config: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Apply ML38.10.14 ex-ante entry-path filter to prediction rows.
+
+        This is still research-only. It does not use realized MAE/MFE to decide.
+        It uses feature context and setup fields already available on DatasetRow.
+        """
+        if not bool(training_config.get("entry_path_quality_filter_enabled", False)):
+            return predictions
+
+        entry_threshold = training_config.get("entry_path_quality_min_threshold")
+        stop_threshold = training_config.get("stop_pressure_max_risk_score")
+        if entry_threshold is None and stop_threshold is None:
+            return predictions
+
+        entry_threshold = 0.0 if entry_threshold is None else float(entry_threshold)
+        stop_threshold = 1.0 if stop_threshold is None else float(stop_threshold)
+        columns = list(feature_columns or [])
+
+        feature_rows: list[list[float]] = []
+        setup_quality_scores: list[float] = []
+        expected_move_atr: list[float] = []
+        invalidation_distance_atr: list[float] = []
+
+        for row in predictions:
+            features_json = row.get("features_json") if isinstance(row.get("features_json"), dict) else {}
+            feature_rows.append([
+                float(features_json.get(column, 0.0) or 0.0)
+                for column in columns
+            ])
+            setup_quality_scores.append(float(row.get("setup_quality_score", 0.0) or 0.0))
+            expected_move_atr.append(float(row.get("setup_expected_move_atr", 0.0) or 0.0))
+            invalidation_distance_atr.append(
+                float(row.get("setup_invalidation_distance_atr", 0.0) or 0.0)
+            )
+
+        score_payload = self._entry_path_quality_filter.score_rows(
+            feature_names=columns,
+            feature_rows=feature_rows,
+            setup_quality_scores=setup_quality_scores,
+            expected_move_atr=expected_move_atr,
+            invalidation_distance_atr=invalidation_distance_atr,
+        )
+        score_rows = list(score_payload.get("score_rows", []))
+
+        filtered_rows: list[dict[str, Any]] = []
+        for row, score in zip(predictions, score_rows):
+            entry_score = float(score.get("entry_path_quality_score", 0.0) or 0.0)
+            stop_score = float(score.get("stop_pressure_risk_score", 1.0) or 1.0)
+            blocked = entry_score < entry_threshold or stop_score > stop_threshold
+            enriched = dict(row)
+            enriched.update(score)
+            enriched["entry_path_filter_enabled"] = True
+            enriched["entry_path_filter_threshold"] = entry_threshold
+            enriched["entry_path_filter_stop_threshold"] = stop_threshold
+            enriched["entry_path_filter_blocked"] = bool(blocked)
+            enriched["entry_path_original_predicted_label"] = row.get("predicted_label")
+            if blocked:
+                enriched["predicted_label"] = "FLAT"
+                enriched["entry_path_filter_block_reason"] = (
+                    "low_entry_quality"
+                    if entry_score < entry_threshold
+                    else "high_stop_pressure"
+                )
+            else:
+                enriched["entry_path_filter_block_reason"] = None
+            filtered_rows.append(enriched)
+
+        # If score_rows is unexpectedly shorter, keep remaining predictions unchanged.
+        if len(filtered_rows) < len(predictions):
+            filtered_rows.extend(predictions[len(filtered_rows):])
+
+        return filtered_rows
 
     def _build_rule_prediction_rows(
         self,

@@ -31,17 +31,17 @@ def test_ml38_10_6_threshold_configs_are_in_grid_and_matrix() -> None:
 
 def test_ml38_10_6_runtime_shortlists_use_current_configs() -> None:
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
-        "lv21_h08_tts_thr065_sqmask060_epq065",
+        "lv22_h08_tts_thr065_sqmask060_epq070_sp045",
         "lv19_h08_tts_thr065_sqmask060",
     )
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
-        "lv21_h12_tts_thr065_sqmask060_epq065",
+        "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
         "lv21_h12_tts_thr065_sqmask060_epq070",
         "lv19_h12_tts_thr065_sqmask060",
     )
-    assert "lv21_h08_tts_thr065_sqmask060_epq065" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv22_h08_tts_thr065_sqmask060_epq070_sp045" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
     assert "lv19_h08_tts_thr065_sqmask060" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
-    assert "lv21_h12_tts_thr065_sqmask060_epq065" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
+    assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
 
     matrix_config_ids = ML382FV3TuningMatrix().build()["config_ids"]
     assert all(config_id in matrix_config_ids for config_id in ML38_10_7_SETUP_QUALITY_FILTER_CONFIG_IDS)
