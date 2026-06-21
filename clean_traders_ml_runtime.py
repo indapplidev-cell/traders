@@ -270,10 +270,19 @@ def restore_tracked_runtime_reports(dry_run: bool) -> None:
 
 
 def clean_untracked_runtime_files(dry_run: bool) -> None:
-    """Удаляет untracked runtime-файлы, папки, cache и архивы."""
+    """Удаляет runtime-файлы, папки, cache и архивы.
+
+    Важно:
+    - git clean -fd удаляет обычные untracked-файлы;
+    - git clean -fdX удаляет ignored-файлы.
+
+    После ML38.10.13.1 runtime-папки и архивы могут быть добавлены в .gitignore.
+    Поэтому одного git clean -fd уже недостаточно: ignored runtime artifacts
+    остаются на диске и не отображаются в git status --short.
+    """
     print()
     print("=" * 88)
-    print("Clean untracked runtime files")
+    print("Clean runtime files")
     print("=" * 88)
 
     targets = [*RUNTIME_PATHS_TO_CLEAN]
@@ -281,18 +290,30 @@ def clean_untracked_runtime_files(dry_run: bool) -> None:
     targets.extend(f":(glob){pattern}" for pattern in ARCHIVE_PATTERNS_TO_CLEAN)
     targets.extend(CACHE_PATHS_TO_CLEAN)
 
-    preview_args = ["clean", "-nd", "--", *targets]
-    print("Preview:")
-    run_git(preview_args, check=False)
+    preview_untracked_args = ["clean", "-nd", "--", *targets]
+    preview_ignored_args = ["clean", "-ndX", "--", *targets]
+
+    print("Preview untracked runtime files:")
+    run_git(preview_untracked_args, check=False)
+
+    print()
+    print("Preview ignored runtime files:")
+    run_git(preview_ignored_args, check=False)
 
     if dry_run:
         print("DRY RUN: удаление не выполнялось.")
         return
 
-    clean_args = ["clean", "-fd", "--", *targets]
+    clean_untracked_args = ["clean", "-fd", "--", *targets]
+    clean_ignored_args = ["clean", "-fdX", "--", *targets]
+
     print()
-    print("Apply clean:")
-    run_git(clean_args, check=False)
+    print("Apply clean for untracked runtime files:")
+    run_git(clean_untracked_args, check=False)
+
+    print()
+    print("Apply clean for ignored runtime files:")
+    run_git(clean_ignored_args, check=False)
 
 def _safe_dir_size_bytes(path: Path) -> int:
     total = 0
