@@ -18,10 +18,13 @@ venv/
 build/
 dist/
 *.egg-info/
+*.zip
 
 # Runtime artifacts
 artifacts/models/
 reports/replay_*.md
+reports/feature_regime_experiments/
+reports/label_grid_experiments/
 
 # OS / IDE
 .DS_Store
