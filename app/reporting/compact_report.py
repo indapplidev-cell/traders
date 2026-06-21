@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timezone
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -83,6 +84,23 @@ HEAVY_FILE_PATTERNS = (
     "per_candle",
     "tensors",
 )
+
+# ML38.10.13.2: strict compact pruning.
+# These files are useful for deep runtime debugging, but they dominate ZIP size.
+# Compact archives must keep decision summaries, not raw process streams.
+STRICT_COMPACT_ARCHIVE_PATTERNS = (
+    "raw_outputs/*.stdout.json",
+    "raw_outputs/*-run.stdout.json",
+    "raw_outputs/*-analysis.stdout.json",
+    "*/training_pipeline.log",
+    "*/training_pipeline_events.jsonl",
+    "*/label_grid_experiment.log",
+    "*/label_grid_experiment_events.jsonl",
+    "*/feature_regime_experiment.log",
+    "*/feature_regime_experiment_events.jsonl",
+)
+
+STRICT_COMPACT_EXCLUSION_REASON = "strict_compact_runtime_stream"
 
 EXCLUDED_ARCHIVE_PATH_PARTS = (
     "artifacts/models/",
@@ -377,59 +395,126 @@ def build_archive_manifest(
     report_profile: str,
     excluded_paths: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Build a size manifest for an already assembled report/archive directory."""
+    """Build a size manifest for files that will be included in report ZIP.
+
+    Before ML38.10.13.2 this manifest counted every file in the stage directory.
+    That was misleading for compact archives because the ZIP writer skips excluded
+    files. Now `file_count` and `total_size_*` describe included files, while
+    `stage_*` and `pruned_*` describe what was left out.
+    """
 
     root = Path(root_dir)
-    file_entries: list[dict[str, Any]] = []
+    normalized_profile = CompactReportBuilder._normalize_profile(report_profile)
+
+    included_entries: list[dict[str, Any]] = []
+    pruned_entries: list[dict[str, Any]] = []
     model_artifacts_included = False
+    model_artifacts_present_in_stage = False
     heavy_payload_files_included = False
+    pruned_reason_counts: dict[str, int] = {}
+    strict_compact_pruned_stdout_json_count = 0
+    strict_compact_pruned_log_file_count = 0
+    strict_compact_pruned_events_file_count = 0
 
     if root.exists():
         for path in root.rglob("*"):
             if not path.is_file():
                 continue
+
             try:
                 size_bytes = path.stat().st_size
             except OSError:
                 size_bytes = 0
+
             relative_path = _safe_relative_path(path, root)
             normalized_relative_path = _normalize_path(relative_path)
             suffix = path.suffix.lower()
-            if _is_model_artifact_path(normalized_relative_path, suffix=suffix):
-                model_artifacts_included = True
-            if _is_heavy_payload_path(normalized_relative_path):
-                heavy_payload_files_included = True
-            file_entries.append(
-                {
-                    "path": relative_path,
-                    "size_bytes": int(size_bytes),
-                    "size_mb": _bytes_to_mb(size_bytes),
-                }
+            exclusion_reason = report_file_exclusion_reason(
+                path,
+                archive_root=root,
+                report_profile=normalized_profile,
             )
+            entry = {
+                "path": relative_path,
+                "size_bytes": int(size_bytes),
+                "size_mb": _bytes_to_mb(size_bytes),
+            }
 
-    total_size_bytes = sum(int(item["size_bytes"]) for item in file_entries)
+            if _is_model_artifact_path(normalized_relative_path, suffix=suffix):
+                model_artifacts_present_in_stage = True
+
+            if exclusion_reason is None:
+                if _is_model_artifact_path(normalized_relative_path, suffix=suffix):
+                    model_artifacts_included = True
+                if _is_heavy_payload_path(normalized_relative_path):
+                    heavy_payload_files_included = True
+                included_entries.append(entry)
+                continue
+
+            entry["excluded_reason"] = exclusion_reason
+            pruned_entries.append(entry)
+            pruned_reason_counts[exclusion_reason] = pruned_reason_counts.get(exclusion_reason, 0) + 1
+
+            if exclusion_reason == STRICT_COMPACT_EXCLUSION_REASON:
+                if normalized_relative_path.endswith(".stdout.json"):
+                    strict_compact_pruned_stdout_json_count += 1
+                elif normalized_relative_path.endswith(".events.jsonl") or normalized_relative_path.endswith("_events.jsonl"):
+                    strict_compact_pruned_events_file_count += 1
+                elif normalized_relative_path.endswith(".log"):
+                    strict_compact_pruned_log_file_count += 1
+
+    included_total_size_bytes = sum(int(item["size_bytes"]) for item in included_entries)
+    pruned_total_size_bytes = sum(int(item["size_bytes"]) for item in pruned_entries)
+    stage_total_size_bytes = included_total_size_bytes + pruned_total_size_bytes
+
     largest_files = sorted(
-        file_entries,
+        included_entries,
         key=lambda item: int(item["size_bytes"]),
         reverse=True,
     )[:20]
-    normalized_profile = CompactReportBuilder._normalize_profile(report_profile)
+    largest_pruned_files = sorted(
+        pruned_entries,
+        key=lambda item: int(item["size_bytes"]),
+        reverse=True,
+    )[:20]
 
     if normalized_profile in {COMPACT_REPORT_PROFILE, STANDARD_REPORT_PROFILE}:
         heavy_payloads_included = False
     else:
         heavy_payloads_included = heavy_payload_files_included
 
+    strict_compact_pruned_entries = [
+        item for item in pruned_entries if item.get("excluded_reason") == STRICT_COMPACT_EXCLUSION_REASON
+    ]
+    strict_compact_pruned_size_bytes = sum(
+        int(item["size_bytes"]) for item in strict_compact_pruned_entries
+    )
+
     return {
         "report_profile": normalized_profile,
         "created_at_utc": _utc_now_iso(),
         "root_dir": str(root),
-        "file_count": len(file_entries),
-        "total_size_bytes": int(total_size_bytes),
-        "total_size_mb": _bytes_to_mb(total_size_bytes),
+        "file_count": len(included_entries),
+        "total_size_bytes": int(included_total_size_bytes),
+        "total_size_mb": _bytes_to_mb(included_total_size_bytes),
+        "stage_file_count": len(included_entries) + len(pruned_entries),
+        "stage_total_size_bytes": int(stage_total_size_bytes),
+        "stage_total_size_mb": _bytes_to_mb(stage_total_size_bytes),
+        "pruned_file_count": len(pruned_entries),
+        "pruned_total_size_bytes": int(pruned_total_size_bytes),
+        "pruned_total_size_mb": _bytes_to_mb(pruned_total_size_bytes),
+        "pruned_reason_counts": pruned_reason_counts,
+        "strict_compact_pruned_file_count": len(strict_compact_pruned_entries),
+        "strict_compact_pruned_size_bytes": int(strict_compact_pruned_size_bytes),
+        "strict_compact_pruned_size_mb": _bytes_to_mb(strict_compact_pruned_size_bytes),
+        "strict_compact_pruned_stdout_json_count": strict_compact_pruned_stdout_json_count,
+        "strict_compact_pruned_log_file_count": strict_compact_pruned_log_file_count,
+        "strict_compact_pruned_events_file_count": strict_compact_pruned_events_file_count,
         "largest_files": largest_files,
+        "largest_pruned_files": largest_pruned_files,
         "heavy_payloads_included": bool(heavy_payloads_included),
         "model_artifacts_included": bool(model_artifacts_included),
+        "model_artifacts_present_in_stage": bool(model_artifacts_present_in_stage),
         "excluded_paths": list(excluded_paths or []),
     }
 
@@ -457,6 +542,13 @@ def _is_heavy_payload_path(normalized_relative_path: str) -> bool:
     return any(pattern in normalized_relative_path for pattern in HEAVY_FILE_PATTERNS)
 
 
+def _is_strict_compact_pruned_path(normalized_relative_path: str) -> bool:
+    return any(
+        fnmatch(normalized_relative_path, pattern)
+        for pattern in STRICT_COMPACT_ARCHIVE_PATTERNS
+    )
+
+
 def _bytes_to_mb(size_bytes: int | float) -> float:
     return round(float(size_bytes) / (1024.0 * 1024.0), 6)
 
@@ -464,36 +556,56 @@ def _bytes_to_mb(size_bytes: int | float) -> float:
 def _utc_now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat(timespec="seconds")
 
-def should_include_report_file(
+def report_file_exclusion_reason(
     path: Path,
     *,
     archive_root: Path,
     report_profile: str = COMPACT_REPORT_PROFILE,
-) -> bool:
-    """Return False for files that must never be included in report archives.
-
-    Even `debug` profile must not include model binaries or Python cache files.
-    Compact/standard additionally skip known heavy raw payload files.
-    """
+) -> str | None:
+    """Return exclusion reason for report archive file, or None if included."""
 
     normalized_profile = CompactReportBuilder._normalize_profile(report_profile)
     relative_path = _normalize_path(_safe_relative_path(Path(path), Path(archive_root)))
     suffix = Path(path).suffix.lower()
 
     if suffix in EXCLUDED_ARCHIVE_SUFFIXES:
-        return False
+        return "excluded_suffix"
 
     if any(part in relative_path for part in EXCLUDED_ARCHIVE_PATH_PARTS):
-        return False
+        return "excluded_path_part"
 
     if _is_model_artifact_path(relative_path, suffix=suffix):
-        return False
+        return "model_artifact"
+
+    if normalized_profile == COMPACT_REPORT_PROFILE:
+        if _is_strict_compact_pruned_path(relative_path):
+            return STRICT_COMPACT_EXCLUSION_REASON
 
     if normalized_profile in {COMPACT_REPORT_PROFILE, STANDARD_REPORT_PROFILE}:
         if _is_heavy_payload_path(relative_path):
-            return False
+            return "heavy_payload_path"
 
-    return True
+    return None
+
+
+def should_include_report_file(
+    path: Path,
+    *,
+    archive_root: Path,
+    report_profile: str = COMPACT_REPORT_PROFILE,
+) -> bool:
+    """Return False for files that must not be included in report archives.
+
+    Even `debug` profile must not include model binaries or Python cache files.
+    Compact additionally skips runtime stdout/log/event streams.
+    Compact/standard additionally skip known heavy raw payload files.
+    """
+
+    return report_file_exclusion_reason(
+        path,
+        archive_root=archive_root,
+        report_profile=report_profile,
+    ) is None
 
 
 def compact_json_file(

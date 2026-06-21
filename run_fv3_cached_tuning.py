@@ -134,6 +134,7 @@ from app.reporting.compact_report import (
     COMPACT_REPORT_PROFILE,
     DEBUG_REPORT_PROFILE,
     STANDARD_REPORT_PROFILE,
+    STRICT_COMPACT_ARCHIVE_PATTERNS,
     build_archive_manifest,
     build_compact_summary,
     copy_report_file,
@@ -1273,8 +1274,17 @@ class Fv3CachedTuningWrapper:
                 "raw_predictions",
                 "prediction_rows",
                 "raw_feature_values",
+                *STRICT_COMPACT_ARCHIVE_PATTERNS,
             ],
         )
+        strict_pruned_count = int(size_manifest.get("strict_compact_pruned_file_count") or 0)
+        strict_pruned_mb = float(size_manifest.get("strict_compact_pruned_size_mb") or 0.0)
+        if strict_pruned_count:
+            self._status(
+                "ARCHIVE",
+                f"Strict compact pruning excluded {strict_pruned_count} runtime stream files "
+                f"({strict_pruned_mb:.2f} MB uncompressed).",
+            )
         manifest["included_files"] = included_files
         manifest["report_profile"] = self.report_profile
         manifest["archive_size_manifest"] = size_manifest
