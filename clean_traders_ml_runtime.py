@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -114,6 +115,9 @@ TECHNICAL_COMMIT_MESSAGES = {
     "new_only": "новые файлы",
     "mixed": "добавлены и изменены",
 }
+
+MODEL_ARTIFACT_ROOT = Path("artifacts/models")
+DEFAULT_KEEP_LAST_MODELS = 10
 
 
 @dataclass(frozen=True)
@@ -289,6 +293,139 @@ def clean_untracked_runtime_files(dry_run: bool) -> None:
     print()
     print("Apply clean:")
     run_git(clean_args, check=False)
+
+def _safe_dir_size_bytes(path: Path) -> int:
+    total = 0
+    if not path.exists():
+        return 0
+    for item in path.rglob("*"):
+        if item.is_file():
+            try:
+                total += item.stat().st_size
+            except OSError:
+                pass
+    return total
+
+
+def _model_artifact_dirs(root: Path) -> list[Path]:
+    model_root = root / MODEL_ARTIFACT_ROOT
+    if not model_root.exists():
+        return []
+    return sorted(
+        [path for path in model_root.iterdir() if path.is_dir()],
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+
+
+def _active_model_artifact_paths() -> tuple[set[str], str | None]:
+    try:
+        from sqlalchemy import select
+
+        from app.db.models import MlModelVersions
+        from app.db.session import get_session
+
+        active_paths: set[str] = set()
+        with get_session() as session:
+            rows = list(
+                session.scalars(
+                    select(MlModelVersions).where(MlModelVersions.is_active.is_(True))
+                )
+            )
+            for row in rows:
+                if row.artifact_path:
+                    active_paths.add(str(row.artifact_path).replace("\\", "/"))
+        return active_paths, None
+    except Exception as exc:
+        return set(), f"{type(exc).__name__}: {exc}"
+
+
+def _is_active_artifact_dir(path: Path, active_paths: set[str]) -> bool:
+    normalized = path.as_posix()
+    for active_path in active_paths:
+        if active_path and (active_path in normalized or normalized in active_path):
+            return True
+    return False
+
+
+def cleanup_model_artifacts(
+    *,
+    root: Path,
+    keep_last_models: int,
+    apply: bool,
+    force_without_db: bool,
+) -> None:
+    print()
+    print("=" * 88)
+    print("Model artifact retention cleanup")
+    print("=" * 88)
+
+    model_dirs = _model_artifact_dirs(root)
+    model_root = root / MODEL_ARTIFACT_ROOT
+    print(f"Model artifact root: {model_root}")
+    print(f"Model directory count: {len(model_dirs)}")
+    print(f"Keep last models: {keep_last_models}")
+
+    if not model_dirs:
+        print("No model artifact directories found.")
+        return
+
+    active_paths, db_error = _active_model_artifact_paths()
+    if db_error:
+        print(f"Active model DB check failed: {db_error}")
+        if apply and not force_without_db:
+            raise SystemExit(
+                "Refusing to delete model artifacts because active-model DB check failed. "
+                "Use --models-force-without-db only if you intentionally accept this risk."
+            )
+    else:
+        print(f"Active model artifact paths from DB: {len(active_paths)}")
+
+    keep_last_models = max(0, int(keep_last_models))
+    kept_by_recency = set(model_dirs[:keep_last_models])
+    delete_candidates: list[Path] = []
+    protected_active: list[Path] = []
+
+    for path in model_dirs:
+        if path in kept_by_recency:
+            continue
+        if _is_active_artifact_dir(path, active_paths):
+            protected_active.append(path)
+            continue
+        delete_candidates.append(path)
+
+    bytes_to_delete = sum(_safe_dir_size_bytes(path) for path in delete_candidates)
+    print(f"Delete candidate count: {len(delete_candidates)}")
+    print(f"Protected active count: {len(protected_active)}")
+    print(f"Estimated bytes to delete: {bytes_to_delete}")
+    print(f"Estimated MB to delete: {bytes_to_delete / (1024 * 1024):.3f}")
+
+    print()
+    print("Newest kept directories:")
+    for path in model_dirs[:keep_last_models]:
+        print(f"  KEEP {path}")
+
+    print()
+    print("Delete candidates:")
+    for path in delete_candidates[:50]:
+        print(f"  DELETE {path}")
+    if len(delete_candidates) > 50:
+        print(f"  ... and {len(delete_candidates) - 50} more")
+
+    if protected_active:
+        print()
+        print("Protected active model dirs:")
+        for path in protected_active:
+            print(f"  ACTIVE_KEEP {path}")
+
+    if not apply:
+        print()
+        print("DRY RUN: model artifacts were not deleted.")
+        return
+
+    for path in delete_candidates:
+        shutil.rmtree(path)
+    print(f"Deleted model artifact dirs: {len(delete_candidates)}")
 
 
 def _parse_porcelain_line(line: str) -> StatusEntry | None:
@@ -511,10 +648,51 @@ def main() -> int:
         action="store_true",
         help="Разрешить включать удаления файлов в technical commit.",
     )
+    parser.add_argument(
+        "--models-dry-run",
+        action="store_true",
+        help="Показать, какие artifacts/models будут удалены по retention policy, но не удалять.",
+    )
+    parser.add_argument(
+        "--models-apply",
+        action="store_true",
+        help="Применить очистку artifacts/models по retention policy.",
+    )
+    parser.add_argument(
+        "--models-only",
+        action="store_true",
+        help="Выполнить только model artifact retention cleanup и выйти.",
+    )
+    parser.add_argument(
+        "--keep-last-models",
+        type=int,
+        default=DEFAULT_KEEP_LAST_MODELS,
+        help="Сколько последних model artifact директорий оставить.",
+    )
+    parser.add_argument(
+        "--models-force-without-db",
+        action="store_true",
+        help="Разрешить удаление model artifacts, даже если не удалось проверить active models в БД.",
+    )
     args = parser.parse_args()
 
-    ensure_git_repo()
+    root = ensure_git_repo()
+
+    if args.models_dry_run and args.models_apply:
+        raise SystemExit("Use either --models-dry-run or --models-apply, not both.")
+
+    if args.models_dry_run or args.models_apply:
+        cleanup_model_artifacts(
+            root=root,
+            keep_last_models=args.keep_last_models,
+            apply=args.models_apply,
+            force_without_db=args.models_force_without_db,
+        )
+        if args.models_only:
+            return 0
+
     print_status("Status before cleanup")
+
     restore_tracked_runtime_reports(dry_run=args.dry_run)
     clean_untracked_runtime_files(dry_run=args.dry_run)
     print_status("Status after cleanup")

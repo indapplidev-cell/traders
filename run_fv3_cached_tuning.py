@@ -130,6 +130,15 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from app.reporting.compact_report import (
+    COMPACT_REPORT_PROFILE,
+    DEBUG_REPORT_PROFILE,
+    STANDARD_REPORT_PROFILE,
+    build_archive_manifest,
+    build_compact_summary,
+    copy_report_file,
+    should_include_report_file,
+)
 
 
 DEFAULT_STAGE_NAME = "FV3_CACHED_FRESH_TUNING"
@@ -338,6 +347,7 @@ class Fv3CachedTuningWrapper:
         self.analysis_markdown_path = self.repo_root / "reports" / "multi_symbol_feature_regime_analysis.md"
         self.stage_report_path = Path(args.stage_report_path).resolve() if args.stage_report_path else None
         self.script_path = Path(__file__).resolve()
+        self.report_profile = self._resolve_report_profile(args.report_profile)
         self.progress = TerminalProgress(enabled=not args.no_progress)
 
         self.stage_initialized = False
@@ -424,6 +434,7 @@ class Fv3CachedTuningWrapper:
         print(f"Date range: {self.start_date} -> {self.end_date}")
         print(f"Candle source: PostgreSQL DB cache, with CLI load only when cache is incomplete")
         print(f"Training mode: {'skipped: ensure-candles-only' if self.args.ensure_candles_only else ('sequential' if self.args.sequential else 'parallel')}")
+        print(f"Report profile: {self.report_profile}")
         print("=" * 92)
 
     def _resolve_python_exe(self) -> Path:
@@ -1172,9 +1183,29 @@ class Fv3CachedTuningWrapper:
             destination = self.per_symbol_stage_dir / source.name
             if destination.exists():
                 shutil.rmtree(destination)
+            destination.mkdir(parents=True, exist_ok=True)
 
-            shutil.copytree(source, destination)
-            self._status("ARCHIVE", f"{run.symbol}: staged {source.name}")
+            copied_count = 0
+            skipped_count = 0
+            for item in source.rglob("*"):
+                if not item.is_file():
+                    continue
+                relative_path = item.relative_to(source)
+                target = destination / relative_path
+                if copy_report_file(
+                    item,
+                    target,
+                    archive_root=self.archive_stage_dir,
+                    report_profile=self.report_profile,
+                ):
+                    copied_count += 1
+                else:
+                    skipped_count += 1
+
+            self._status(
+                "ARCHIVE",
+                f"{run.symbol}: staged {source.name} copied={copied_count} skipped={skipped_count} profile={self.report_profile}",
+            )
 
     def _run_multi_symbol_analysis(self) -> dict[str, Any]:
         stdout_path = self.raw_output_dir / "multi-symbol-analysis.stdout.json"
@@ -1209,19 +1240,46 @@ class Fv3CachedTuningWrapper:
         return payload
 
     def _finalize_archive(self, *, wrapper_completed_end_to_end: bool) -> Path:
-        self._status("ARCHIVE", "Finalizing archive manifest and zip...")
+        self._status("ARCHIVE", f"Finalizing archive manifest and zip with report_profile={self.report_profile}...")
 
-        self._copy_if_exists(self.analysis_json_path, self.archive_stage_dir / "multi_symbol_feature_regime_analysis.json")
-        self._copy_if_exists(self.analysis_markdown_path, self.archive_stage_dir / "multi_symbol_feature_regime_analysis.md")
+        self._copy_report_file_if_exists(
+            self.analysis_json_path,
+            self.archive_stage_dir / "multi_symbol_feature_regime_analysis.json",
+        )
+        self._copy_report_file_if_exists(
+            self.analysis_markdown_path,
+            self.archive_stage_dir / "multi_symbol_feature_regime_analysis.md",
+        )
         if self.stage_report_path:
-            self._copy_if_exists(self.stage_report_path, self.archive_stage_dir / self.stage_report_path.name)
-        self._copy_if_exists(self.script_path, self.archive_stage_dir / self.script_path.name)
+            self._copy_report_file_if_exists(
+                self.stage_report_path,
+                self.archive_stage_dir / self.stage_report_path.name,
+            )
+        self._copy_report_file_if_exists(self.script_path, self.archive_stage_dir / self.script_path.name)
 
         manifest = self._build_manifest(wrapper_completed_end_to_end=wrapper_completed_end_to_end)
-        self._write_json(self.manifest_path, manifest)
-
         included_files = self._included_files()
+        size_manifest = build_archive_manifest(
+            self.archive_stage_dir,
+            report_profile=self.report_profile,
+            excluded_paths=[
+                "artifacts/models/",
+                "*.pt",
+                "*.pth",
+                "*.onnx",
+                "*.ckpt",
+                "__pycache__/",
+                ".pytest_cache/",
+                "raw_predictions",
+                "prediction_rows",
+                "raw_feature_values",
+            ],
+        )
         manifest["included_files"] = included_files
+        manifest["report_profile"] = self.report_profile
+        manifest["archive_size_manifest"] = size_manifest
+        manifest["model_artifacts_included"] = bool(size_manifest.get("model_artifacts_included", False))
+        manifest["heavy_payloads_included"] = bool(size_manifest.get("heavy_payloads_included", False))
         self._write_json(self.manifest_path, manifest)
 
         if self.archive_path.exists():
@@ -1229,8 +1287,15 @@ class Fv3CachedTuningWrapper:
 
         with zipfile.ZipFile(self.archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for item in self.archive_stage_dir.rglob("*"):
-                if item.is_file():
-                    archive.write(item, item.relative_to(self.archive_stage_dir).as_posix())
+                if not item.is_file():
+                    continue
+                if not should_include_report_file(
+                    item,
+                    archive_root=self.archive_stage_dir,
+                    report_profile=self.report_profile,
+                ):
+                    continue
+                archive.write(item, item.relative_to(self.archive_stage_dir).as_posix())
 
         if not self.archive_path.exists():
             raise WrapperError(f"Archive was not created: {self.archive_path}")
@@ -1316,8 +1381,14 @@ class Fv3CachedTuningWrapper:
             "best_candidate_score": multi.get("best_candidate_score"),
             "validation": validation,
             "run_results": [asdict(run) for run in self.run_results],
-            "multi_symbol_result": self.multi_symbol_result,
+            "multi_symbol_result": build_compact_summary(
+                self.multi_symbol_result or {},
+                profile=self.report_profile,
+            ),
             "included_files": [],
+            "report_profile": self.report_profile,
+            "heavy_payloads_included": self.report_profile == DEBUG_REPORT_PROFILE,
+            "model_artifacts_included": False,
         }
 
     def _validation_summary(
@@ -1445,7 +1516,13 @@ class Fv3CachedTuningWrapper:
             "best_candidate_score": multi.get("best_candidate_score"),
             "validation": validation,
             "experiments": [asdict(run) for run in self.run_results],
-            "multi_symbol_result": self.multi_symbol_result,
+            "multi_symbol_result": build_compact_summary(
+                self.multi_symbol_result or {},
+                profile=self.report_profile,
+            ),
+            "report_profile": self.report_profile,
+            "heavy_payloads_included": self.report_profile == DEBUG_REPORT_PROFILE,
+            "model_artifacts_included": False,
         }
 
     def _included_files(self) -> list[str]:
@@ -1456,6 +1533,11 @@ class Fv3CachedTuningWrapper:
             item.relative_to(self.archive_stage_dir).as_posix()
             for item in self.archive_stage_dir.rglob("*")
             if item.is_file()
+            and should_include_report_file(
+                item,
+                archive_root=self.archive_stage_dir,
+                report_profile=self.report_profile,
+            )
         )
 
     def _copy_if_exists(self, source: Path, destination: Path) -> bool:
@@ -1473,6 +1555,57 @@ class Fv3CachedTuningWrapper:
 
         shutil.copy2(source, destination)
         return True
+    
+    def _copy_report_file_if_exists(self, source: Path, destination: Path) -> bool:
+        if not source.exists():
+            self._status("ARCHIVE", f"Optional file not found, skip copy: {source}")
+            return False
+
+        if source.is_dir():
+            if destination.exists():
+                shutil.rmtree(destination)
+            destination.mkdir(parents=True, exist_ok=True)
+            copied_count = 0
+            skipped_count = 0
+            for item in source.rglob("*"):
+                if not item.is_file():
+                    continue
+                target = destination / item.relative_to(source)
+                if copy_report_file(
+                    item,
+                    target,
+                    archive_root=self.archive_stage_dir,
+                    report_profile=self.report_profile,
+                ):
+                    copied_count += 1
+                else:
+                    skipped_count += 1
+            self._status(
+                "ARCHIVE",
+                f"Copied report dir {source} -> {destination} copied={copied_count} skipped={skipped_count}",
+            )
+            return copied_count > 0
+
+        return copy_report_file(
+            source,
+            destination,
+            archive_root=self.archive_stage_dir,
+            report_profile=self.report_profile,
+        )
+
+    def _resolve_report_profile(self, raw_profile: str) -> str:
+        normalized = str(raw_profile or "auto").strip().lower()
+        if normalized == "auto":
+            if self.fast_debug or self.quick_quality:
+                return COMPACT_REPORT_PROFILE
+            if self.single_symbol_full:
+                return STANDARD_REPORT_PROFILE
+            return STANDARD_REPORT_PROFILE
+        if normalized in {COMPACT_REPORT_PROFILE, STANDARD_REPORT_PROFILE, DEBUG_REPORT_PROFILE}:
+            return normalized
+        raise WrapperError(
+            f"Unknown report profile: {raw_profile!r}. Expected auto, compact, standard, debug."
+        )
 
     def _run_command_capture(self, command: list[str], label: str) -> str:
         self._status("COMMAND", label)
@@ -1599,6 +1732,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--no-load-on-unknown-cache", action="store_true", help="Do not run load-candles when check-candle-gaps output is unknown.")
     parser.add_argument("--sequential", action="store_true", help="Run symbols sequentially instead of parallel.")
     parser.add_argument("--max-configs", type=int, default=None, help="Optional max configs per symbol for debugging only.")
+    parser.add_argument(
+        "--report-profile",
+        choices=("auto", COMPACT_REPORT_PROFILE, STANDARD_REPORT_PROFILE, DEBUG_REPORT_PROFILE),
+        default="auto",
+        help=(
+            "Report/archive size profile. auto uses compact for --fast-debug/--quick-quality, "
+            "standard for heavier validation, debug only when raw payloads are explicitly needed."
+        ),
+    )
     profile_group = parser.add_mutually_exclusive_group()
     profile_group.add_argument(
         "--fast-debug",
