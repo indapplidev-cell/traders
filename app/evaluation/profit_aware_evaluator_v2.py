@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config.settings import PROJECT_ROOT
+from app.diagnostics.profit_exit_root_cause_audit import ProfitExitRootCauseAudit
 from app.evaluation.signal_gate_evaluator import SignalGateEvaluator
 
 
@@ -13,10 +14,14 @@ class ProfitAwareEvaluatorV2:
         self,
         reports_dir: Path | None = None,
         signal_gate_evaluator: SignalGateEvaluator | None = None,
+        profit_exit_root_cause_audit: ProfitExitRootCauseAudit | None = None,
     ) -> None:
         self._reports_dir = reports_dir or (PROJECT_ROOT / "reports")
         self._reports_dir.mkdir(parents=True, exist_ok=True)
         self._signal_gate_evaluator = signal_gate_evaluator or SignalGateEvaluator(reports_dir=self._reports_dir)
+        self._profit_exit_root_cause_audit = (
+            profit_exit_root_cause_audit or ProfitExitRootCauseAudit()
+        )
 
     def evaluate(
         self,
@@ -75,7 +80,17 @@ class ProfitAwareEvaluatorV2:
                     same_candle_policy=same_candle_policy,
                 )
                 gate_results.append(single["summary"])
-        return {"gate_results": gate_results}
+
+        best_gate = self._best_gate_summary(gate_results)
+        summary = dict(best_gate or {})
+        profit_exit_root_cause_audit = dict(
+            summary.get("profit_exit_root_cause_audit") or {}
+        )
+        return {
+            "gate_results": gate_results,
+            "summary": summary,
+            "profit_exit_root_cause_audit": profit_exit_root_cause_audit,
+        }
 
     def evaluate_single_gate(
         self,
@@ -91,7 +106,19 @@ class ProfitAwareEvaluatorV2:
         selection = self._signal_gate_evaluator.select_signals(predictions, gate_type, threshold)
         signal_rows = selection["signal_rows"]
         if not signal_rows:
-            return {"summary": self._empty_gate_report(selection, same_candle_policy), "signal_rows": [], "outcomes": []}
+            summary = self._empty_gate_report(selection, same_candle_policy)
+            summary["profit_exit_root_cause_audit"] = self._profit_exit_root_cause_audit.analyze(
+                signal_rows=[],
+                outcomes=[],
+                take_profit_atr=take_profit_atr,
+                stop_loss_atr=stop_loss_atr,
+                fee_r=fee_r,
+                slippage_r=slippage_r,
+                same_candle_policy=same_candle_policy,
+                gate_type=gate_type,
+                threshold=threshold,
+            )
+            return {"summary": summary, "signal_rows": [], "outcomes": []}
 
         outcomes = [
             self._simulate_trade(
@@ -104,8 +131,20 @@ class ProfitAwareEvaluatorV2:
             )
             for row in signal_rows
         ]
+        summary = self._build_gate_report(selection, signal_rows, outcomes, same_candle_policy)
+        summary["profit_exit_root_cause_audit"] = self._profit_exit_root_cause_audit.analyze(
+            signal_rows=signal_rows,
+            outcomes=outcomes,
+            take_profit_atr=take_profit_atr,
+            stop_loss_atr=stop_loss_atr,
+            fee_r=fee_r,
+            slippage_r=slippage_r,
+            same_candle_policy=same_candle_policy,
+            gate_type=gate_type,
+            threshold=threshold,
+        )
         return {
-            "summary": self._build_gate_report(selection, signal_rows, outcomes, same_candle_policy),
+            "summary": summary,
             "signal_rows": signal_rows,
             "outcomes": outcomes,
         }
@@ -150,6 +189,24 @@ class ProfitAwareEvaluatorV2:
                 return self._with_costs("SL", -1.0, fee_r, slippage_r)
         raw_r = max(-1.0, min(take_profit_atr / stop_loss_atr, (-float(row["future_move_atr"])) / stop_loss_atr))
         return self._with_costs("NEITHER", raw_r, fee_r, slippage_r)
+
+    @staticmethod
+    def _best_gate_summary(gate_results: list[dict[str, Any]]) -> dict[str, Any] | None:
+        eligible = [
+            dict(row)
+            for row in gate_results
+            if int(row.get("resolved_signal_count", 0) or 0) > 0
+        ]
+        if not eligible:
+            return None
+        return max(
+            eligible,
+            key=lambda row: (
+                float(row.get("total_r", 0.0) or 0.0),
+                float(row.get("profit_factor", 0.0) or 0.0),
+                int(row.get("resolved_signal_count", 0) or 0),
+            ),
+        )
 
     @staticmethod
     def _with_costs(result: str, raw_r: float, fee_r: float, slippage_r: float) -> dict[str, Any]:

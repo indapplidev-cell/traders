@@ -318,6 +318,51 @@ class LongHistoryTrainingPipelineRunner:
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
+    
+    def _attach_profit_exit_root_cause_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        profit_aware_summary: Any = None,
+        walk_forward_profit_diagnostics: Any = None,
+    ) -> dict[str, Any]:
+        """Attach ML38.10.13 exit/root-cause diagnostics only when real profit payloads exist.
+
+        Dry-run and lightweight sample-mode paths must not fail just because
+        profit-aware diagnostics are absent.
+        """
+
+        if not isinstance(payload, dict):
+            return payload
+
+        profit_aware_summary_payload = self._as_dict(profit_aware_summary)
+        if profit_aware_summary_payload:
+            try:
+                profit_aware_diagnostics_payload = (
+                    WalkForwardProfitDiagnostics().build_profit_aware_diagnostics(
+                        profit_aware_summary=profit_aware_summary_payload
+                    )
+                )
+            except Exception as exc:  # defensive payload enrichment only
+                payload["profit_exit_root_cause_audit_missing_reason"] = (
+                    f"profit_aware_diagnostics_build_failed:{type(exc).__name__}"
+                )
+            else:
+                profit_exit_root_cause_audit = self._as_dict(
+                    profit_aware_diagnostics_payload.get("profit_exit_root_cause_audit")
+                )
+                if profit_exit_root_cause_audit:
+                    payload["profit_exit_root_cause_audit"] = profit_exit_root_cause_audit
+
+        walk_forward_profit_payload = self._as_dict(walk_forward_profit_diagnostics)
+        if walk_forward_profit_payload:
+            walk_forward_exit_summary = self._as_dict(
+                walk_forward_profit_payload.get("walk_forward_profit_exit_root_cause_summary")
+            )
+            if walk_forward_exit_summary:
+                payload["walk_forward_profit_exit_root_cause_summary"] = walk_forward_exit_summary
+
+        return payload
 
     @staticmethod
     def _as_list(value: Any) -> list[Any]:
@@ -1755,6 +1800,11 @@ class LongHistoryTrainingPipelineRunner:
             ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        payload = self._attach_profit_exit_root_cause_payload(
+            payload,
+            profit_aware_summary=profit_aware_summary,
+            walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,
+        )
         build_labels_payload = self._as_dict(stage_payloads.get("build_labels"))
         prediction_root_cause_audit = self._as_dict(
             probability_diagnostics.get("prediction_root_cause_audit")
@@ -1867,6 +1917,11 @@ class LongHistoryTrainingPipelineRunner:
             ),
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        payload = self._attach_profit_exit_root_cause_payload(
+            payload,
+            profit_aware_summary=profit_aware_summary,
+            walk_forward_profit_diagnostics=walk_forward_profit_diagnostics,
+        )
         build_labels_payload = self._as_dict(stage_payloads.get("build_labels"))
         prediction_root_cause_audit = self._as_dict(
             probability_diagnostics.get("prediction_root_cause_audit")

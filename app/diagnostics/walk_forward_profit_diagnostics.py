@@ -64,6 +64,9 @@ class WalkForwardProfitDiagnostics:
         profit_aware_diagnostics = self.build_profit_aware_diagnostics(
             profit_aware_summary=profit_aware_summary
         )
+        walk_forward_exit_root_cause_summary = self._summarize_walk_forward_exit_audits(
+            folds=folds
+        )
         recommendations = self._recommendations(
             walk_forward_profit_factor=self._safe_float(walk_summary.get("global_profit_factor")),
             walk_forward_total_r=self._safe_float(walk_summary.get("global_total_r")),
@@ -91,6 +94,8 @@ class WalkForwardProfitDiagnostics:
             "profit_aware_profit_factor": profit_aware_diagnostics.get("profit_aware_profit_factor"),
             "profit_aware_total_r": profit_aware_diagnostics.get("profit_aware_total_r"),
             "profit_aware_threshold_used": profit_aware_diagnostics.get("profit_aware_threshold_used"),
+            "profit_exit_root_cause_audit": profit_aware_diagnostics.get("profit_exit_root_cause_audit"),
+            "walk_forward_profit_exit_root_cause_summary": walk_forward_exit_root_cause_summary,
             "recommendations": recommendations,
         }
 
@@ -110,6 +115,10 @@ class WalkForwardProfitDiagnostics:
         total_r = self._safe_float(summary.get("total_r"))
         threshold_used = summary.get("threshold")
         gate_type = summary.get("gate_type")
+        profit_exit_root_cause_audit = self._normalize_mapping(
+            profit_aware_summary.get("profit_exit_root_cause_audit")
+            or summary.get("profit_exit_root_cause_audit")
+        )
         if best_gate is not None:
             if profit_factor is None:
                 profit_factor = self._safe_float(best_gate.get("profit_factor"))
@@ -119,12 +128,17 @@ class WalkForwardProfitDiagnostics:
                 threshold_used = best_gate.get("threshold")
             if gate_type is None:
                 gate_type = best_gate.get("gate_type")
+            if not profit_exit_root_cause_audit:
+                profit_exit_root_cause_audit = self._normalize_mapping(
+                    best_gate.get("profit_exit_root_cause_audit")
+                )
         return {
             "profit_aware_profit_factor": profit_factor,
             "profit_aware_total_r": total_r,
             "profit_aware_threshold_used": self._safe_float(threshold_used),
             "profit_aware_gate_type": gate_type,
             "best_gate": self._gate_snapshot(best_gate),
+            "profit_exit_root_cause_audit": profit_exit_root_cause_audit,
         }
 
     @staticmethod
@@ -144,6 +158,56 @@ class WalkForwardProfitDiagnostics:
                 int(row.get("resolved_signal_count", 0) or 0),
             ),
         )
+
+    def _summarize_walk_forward_exit_audits(
+        self,
+        *,
+        folds: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        audits: list[dict[str, Any]] = []
+        for fold in folds:
+            test_result = self._normalize_mapping(fold.get("test_result"))
+            audit = self._normalize_mapping(test_result.get("profit_exit_root_cause_audit"))
+            if audit:
+                audits.append(audit)
+
+        if not audits:
+            return {
+                "diagnostic_name": "walk_forward_profit_exit_root_cause_summary",
+                "diagnostic_version": "ml38.10.13",
+                "audit_status": "NO_FOLD_EXIT_AUDITS",
+                "fold_audit_count": 0,
+                "primary_root_cause_counts": {},
+                "dominant_primary_root_cause": None,
+            }
+
+        primary_counts: dict[str, int] = {}
+        status_counts: dict[str, int] = {}
+        total_resolved = 0
+        total_r = 0.0
+        for audit in audits:
+            primary = str(audit.get("primary_root_cause") or "unknown")
+            status = str(audit.get("root_cause_status") or "unknown")
+            primary_counts[primary] = primary_counts.get(primary, 0) + 1
+            status_counts[status] = status_counts.get(status, 0) + 1
+            total_resolved += int(audit.get("resolved_signal_count", 0) or 0)
+            total_r += float(audit.get("total_r", 0.0) or 0.0)
+
+        dominant_primary = max(
+            primary_counts.items(),
+            key=lambda item: (item[1], item[0]),
+        )[0]
+        return {
+            "diagnostic_name": "walk_forward_profit_exit_root_cause_summary",
+            "diagnostic_version": "ml38.10.13",
+            "audit_status": "COMPLETED",
+            "fold_audit_count": len(audits),
+            "primary_root_cause_counts": primary_counts,
+            "root_cause_status_counts": status_counts,
+            "dominant_primary_root_cause": dominant_primary,
+            "resolved_signal_count": total_resolved,
+            "total_r_from_fold_audits": total_r,
+        }
 
     def _recommendations(
         self,

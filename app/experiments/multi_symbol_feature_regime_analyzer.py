@@ -554,6 +554,18 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 summary.get("profit_aware_diagnostics")
                 or best_candidate.get("profit_aware_diagnostics")
             ),
+            "profit_exit_root_cause_audit": cls._as_dict(
+                summary.get("profit_exit_root_cause_audit")
+                or best_candidate.get("profit_exit_root_cause_audit")
+                or cls._as_dict(best_candidate.get("profit_aware_diagnostics")).get("profit_exit_root_cause_audit")
+            ),
+            "walk_forward_profit_exit_root_cause_summary": cls._as_dict(
+                summary.get("walk_forward_profit_exit_root_cause_summary")
+                or best_candidate.get("walk_forward_profit_exit_root_cause_summary")
+                or cls._as_dict(best_candidate.get("walk_forward_profit_diagnostics")).get(
+                    "walk_forward_profit_exit_root_cause_summary"
+                )
+            ),
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "regime_features_attached": bool(summary.get("regime_features_attached", False)),
