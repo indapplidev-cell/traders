@@ -28,4 +28,4 @@ def test_fv4_matrix_keeps_book_configs_and_runtime_uses_prompt_4_6_smoke_shortli
     )
     assert quick_wrapper.symbols == ("SOLUSDT",)
     assert quick_wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
-    assert "lv20_h12_tts_thr065_sqmask060_trap" in quick_wrapper.selected_config_ids
+    assert "lv21_h12_tts_thr065_sqmask060_epq065" in quick_wrapper.selected_config_ids

@@ -114,6 +114,9 @@ class TrainingPipelineConfig:
     opportunity_max_predicted_trade_rate: float = 0.15
     opportunity_max_predicted_to_actual_trade_rate_ratio: float = 3.0
     opportunity_max_false_positive_rate: float = 0.25
+    entry_path_quality_filter_enabled: bool = False
+    entry_path_quality_min_threshold: float | None = None
+    stop_pressure_max_risk_score: float | None = None
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1137,6 +1140,9 @@ class LongHistoryTrainingPipelineRunner:
                         "setup_quality_min_threshold": config.setup_quality_min_threshold,
                         "setup_quality_decision_mask_enabled": config.setup_quality_decision_mask_enabled,
                         "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
+                        "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
+                        "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
+                        "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
                         "regime_label_builder_status": regime_label_builder_status,
                         "label_mode_comparison_audit": label_mode_comparison_audit,
                         "flat_subtype_audit": flat_subtype_audit,
@@ -1194,6 +1200,9 @@ class LongHistoryTrainingPipelineRunner:
                 "setup_quality_min_threshold": config.setup_quality_min_threshold,
                 "setup_quality_decision_mask_enabled": config.setup_quality_decision_mask_enabled,
                 "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
+                "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
+                "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
+                "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
                 "regime_label_builder_status": regime_label_builder_status,
                 "label_mode_comparison_audit": label_mode_comparison_audit,
                 "flat_subtype_audit": flat_subtype_audit,
@@ -1344,6 +1353,9 @@ class LongHistoryTrainingPipelineRunner:
                     config.opportunity_max_predicted_to_actual_trade_rate_ratio
                 ),
                 opportunity_max_false_positive_rate=config.opportunity_max_false_positive_rate,
+                entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1420,6 +1432,9 @@ class LongHistoryTrainingPipelineRunner:
                 "setup_quality_decision_mask_enabled": config.setup_quality_decision_mask_enabled,
                 "setup_quality_decision_mask_min_threshold": config.setup_quality_decision_mask_min_threshold,
                 "opportunity_threshold_sweep_enabled": config.opportunity_threshold_sweep_enabled,
+                "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
+                "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
+                "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
                 "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
                 "opportunity_min_precision": config.opportunity_min_precision,
                 "opportunity_min_recall": config.opportunity_min_recall,
@@ -2252,6 +2267,20 @@ class LongHistoryTrainingPipelineRunner:
             "setup_quality_decision_mask_min_threshold": build_labels_payload.get(
                 "setup_quality_decision_mask_min_threshold",
                 config.setup_quality_decision_mask_min_threshold,
+            ),
+            "entry_path_quality_filter_enabled": self._as_bool(
+                build_labels_payload.get(
+                    "entry_path_quality_filter_enabled",
+                    config.entry_path_quality_filter_enabled,
+                )
+            ),
+            "entry_path_quality_min_threshold": build_labels_payload.get(
+                "entry_path_quality_min_threshold",
+                config.entry_path_quality_min_threshold,
+            ),
+            "stop_pressure_max_risk_score": build_labels_payload.get(
+                "stop_pressure_max_risk_score",
+                config.stop_pressure_max_risk_score,
             ),
             "opportunity_threshold_sweep_enabled": self._as_bool(
                 build_labels_payload.get(

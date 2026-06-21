@@ -22,11 +22,11 @@ def test_ml38_10_10_configs_are_in_matrix() -> None:
         assert config_id in config_ids
 
 
-def test_ml38_10_10_runtime_shortlists_cover_lv20_and_lv19_comparator() -> None:
-    assert "lv20_h08_tts_thr065_sqmask060_trap" in FAST_DEBUG_CONFIGS
+def test_ml38_10_10_runtime_shortlists_keep_lv19_comparator_and_move_current_smoke_to_lv21() -> None:
+    assert "lv21_h08_tts_thr065_sqmask060_epq065" in FAST_DEBUG_CONFIGS
     assert "lv19_h08_tts_thr065_sqmask060" in FAST_DEBUG_CONFIGS
 
-    assert "lv20_h08_tts_thr065_sqmask060_trap" in QUICK_QUALITY_CONFIGS
-    assert "lv20_h12_tts_thr065_sqmask060_trap" in QUICK_QUALITY_CONFIGS
+    assert "lv21_h12_tts_thr065_sqmask060_epq065" in QUICK_QUALITY_CONFIGS
+    assert "lv21_h12_tts_thr065_sqmask060_epq070" in QUICK_QUALITY_CONFIGS
     assert "lv19_h12_tts_thr065_sqmask060" in QUICK_QUALITY_CONFIGS
     assert len(QUICK_QUALITY_CONFIGS) == 3

@@ -98,6 +98,9 @@ class TrainingConfig:
     opportunity_max_predicted_trade_rate: float = 0.15
     opportunity_max_predicted_to_actual_trade_rate_ratio: float = 3.0
     opportunity_max_false_positive_rate: float = 0.25
+    entry_path_quality_filter_enabled: bool = False
+    entry_path_quality_min_threshold: float | None = None
+    stop_pressure_max_risk_score: float | None = None
 
 
 def _safe_run_id_part(value: object) -> str:
@@ -236,6 +239,9 @@ class TrainingService:
         opportunity_max_predicted_trade_rate: float = 0.15,
         opportunity_max_predicted_to_actual_trade_rate_ratio: float = 3.0,
         opportunity_max_false_positive_rate: float = 0.25,
+        entry_path_quality_filter_enabled: bool = False,
+        entry_path_quality_min_threshold: float | None = None,
+        stop_pressure_max_risk_score: float | None = None,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -304,7 +310,10 @@ class TrainingService:
             opportunity_min_recall=opportunity_min_recall,
             opportunity_max_predicted_trade_rate=opportunity_max_predicted_trade_rate,
             opportunity_max_predicted_to_actual_trade_rate_ratio=opportunity_max_predicted_to_actual_trade_rate_ratio,
-            opportunity_max_false_positive_rate=opportunity_max_false_positive_rate,
+            opportunity_max_false_positive_rate=float(opportunity_max_false_positive_rate),
+            entry_path_quality_filter_enabled=bool(entry_path_quality_filter_enabled),
+            entry_path_quality_min_threshold=entry_path_quality_min_threshold,
+            stop_pressure_max_risk_score=stop_pressure_max_risk_score,
         )
         started_at = datetime.now(tz=timezone.utc)
         run_id = build_training_run_id(
@@ -475,6 +484,9 @@ class TrainingService:
                         if config.setup_quality_decision_mask_min_threshold is not None
                         else config.setup_quality_min_threshold
                     ),
+                    entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                    entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                    stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                     opportunity_threshold_sweep_enabled=True,
                     opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
                     opportunity_min_precision=float(config.opportunity_min_precision),
@@ -507,6 +519,9 @@ class TrainingService:
                     if config.setup_quality_decision_mask_min_threshold is not None
                     else config.setup_quality_min_threshold
                 ),
+                entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
             )
             raw_validation_metrics = self._evaluator.evaluate(
@@ -521,6 +536,9 @@ class TrainingService:
                     if config.setup_quality_decision_mask_min_threshold is not None
                     else config.setup_quality_min_threshold
                 ),
+                entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
             )
             raw_test_metrics = self._evaluator.evaluate(
@@ -535,6 +553,9 @@ class TrainingService:
                     if config.setup_quality_decision_mask_min_threshold is not None
                     else config.setup_quality_min_threshold
                 ),
+                entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
             )
 
@@ -550,6 +571,9 @@ class TrainingService:
                     if config.setup_quality_decision_mask_min_threshold is not None
                     else config.setup_quality_min_threshold
                 ),
+                entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
             )
             validation_metrics = self._evaluator.evaluate(
@@ -564,6 +588,9 @@ class TrainingService:
                     if config.setup_quality_decision_mask_min_threshold is not None
                     else config.setup_quality_min_threshold
                 ),
+                entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 opportunity_threshold_sweep_enabled=(
                     is_trade_two_stage_objective(config.training_objective)
                     and config.opportunity_threshold_sweep_enabled
@@ -590,6 +617,9 @@ class TrainingService:
                     if config.setup_quality_decision_mask_min_threshold is not None
                     else config.setup_quality_min_threshold
                 ),
+                entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
             )
             if config.training_objective == "trade_two_stage":
@@ -682,6 +712,9 @@ class TrainingService:
                     config.opportunity_max_predicted_to_actual_trade_rate_ratio
                 ),
                 "opportunity_max_false_positive_rate": float(config.opportunity_max_false_positive_rate),
+                "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
+                "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
+                "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
                 "selected_opportunity_threshold": selected_opportunity_threshold,
                 "opportunity_threshold_selection": opportunity_threshold_selection,
                 "model_output_contract": self.model_output_contract(config.training_objective),
@@ -861,6 +894,15 @@ class TrainingService:
                 training_config.get("setup_quality_decision_mask_min_threshold")
                 if training_config.get("setup_quality_decision_mask_min_threshold") is not None
                 else training_config.get("setup_quality_min_threshold")
+            ),
+            entry_path_quality_filter_enabled=bool(
+                training_config.get("entry_path_quality_filter_enabled", False)
+            ),
+            entry_path_quality_min_threshold=training_config.get(
+                "entry_path_quality_min_threshold"
+            ),
+            stop_pressure_max_risk_score=training_config.get(
+                "stop_pressure_max_risk_score"
             ),
             training_objective=training_objective,
         )

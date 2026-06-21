@@ -4,6 +4,7 @@ from typing import Any
 
 import torch
 
+from app.diagnostics.entry_path_quality_filter import EntryPathQualityFilter
 from app.diagnostics.trap_invalidation_feature_impact_audit import TrapInvalidationFeatureImpactAudit
 from app.training.metrics import TrainingMetrics
 from app.training.probability_calibration import softmax_with_temperature
@@ -16,11 +17,13 @@ class Evaluator:
         self,
         metrics: TrainingMetrics | None = None,
         trap_invalidation_feature_impact_audit: TrapInvalidationFeatureImpactAudit | None = None,
+        entry_path_quality_filter: EntryPathQualityFilter | None = None,
     ) -> None:
         self._metrics = metrics or TrainingMetrics()
         self._trap_invalidation_feature_impact_audit = (
             trap_invalidation_feature_impact_audit or TrapInvalidationFeatureImpactAudit()
         )
+        self._entry_path_quality_filter = entry_path_quality_filter or EntryPathQualityFilter()
 
     def evaluate(
         self,
@@ -31,6 +34,9 @@ class Evaluator:
         setup_quality_min_threshold: float | None = None,
         setup_quality_decision_mask_enabled: bool = False,
         setup_quality_decision_mask_min_threshold: float | None = None,
+        entry_path_quality_filter_enabled: bool = False,
+        entry_path_quality_min_threshold: float | None = None,
+        stop_pressure_max_risk_score: float | None = None,
         opportunity_threshold_sweep_enabled: bool = False,
         opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
         opportunity_min_precision: float = 0.25,
@@ -70,6 +76,15 @@ class Evaluator:
                 "setup_quality_bucket_metrics_after_mask": {},
                 "setup_quality_distribution": {},
                 "setup_quality_filter_summary": {},
+                "entry_path_quality_filter_enabled": bool(entry_path_quality_filter_enabled),
+                "entry_path_quality_min_threshold": entry_path_quality_min_threshold,
+                "stop_pressure_max_risk_score": stop_pressure_max_risk_score,
+                "entry_path_quality_masked_row_count": 0,
+                "entry_path_quality_forced_no_trade_count": 0,
+                "entry_path_quality_mask_trade_prediction_removed_count": 0,
+                "entry_path_quality_mask_false_positive_removed_count": 0,
+                "entry_path_quality_filter_summary": {},
+                "entry_path_quality_filter_diagnostics": {},
             }
 
         opportunity_target_tensor = dataset.get("opportunity_target")
@@ -107,6 +122,33 @@ class Evaluator:
             if training_objective in {"opportunity_first", "trade_two_stage"}:
                 direction_mask = (opportunity_target_tensor > 0).cpu().tolist()
 
+        feature_columns = list(dataset.get("feature_columns") or [])
+        raw_feature_values_tensor = dataset.get("raw_feature_values")
+        raw_feature_values = (
+            raw_feature_values_tensor.cpu().tolist()
+            if hasattr(raw_feature_values_tensor, "cpu")
+            else list(raw_feature_values_tensor or [])
+        )
+        def _to_float_list(value: Any) -> list[float]:
+            if value is None:
+                return []
+            if hasattr(value, "cpu"):
+                value = value.cpu().tolist()
+            return [float(item) for item in list(value)]
+
+        move_target_tensor = dataset.get("move_target")
+        risk_target_tensor = dataset.get("risk_target")
+        move_targets = _to_float_list(move_target_tensor)
+        risk_targets = _to_float_list(risk_target_tensor)
+        setup_quality_scores = setup_quality_score_tensor.cpu().tolist()
+        entry_path_quality_payload = self._entry_path_quality_filter.score_rows(
+            feature_names=feature_columns,
+            feature_rows=raw_feature_values,
+            setup_quality_scores=setup_quality_scores,
+            expected_move_atr=[float(value) for value in move_targets],
+            invalidation_distance_atr=[float(value) for value in risk_targets],
+        )
+
         metrics = self._metrics.compute(
             direction_probabilities=direction_probabilities_tensor.cpu().tolist(),
             direction_targets=dataset["direction_target"].cpu().tolist(),
@@ -118,20 +160,19 @@ class Evaluator:
             opportunity_probabilities=opportunity_probabilities_tensor.cpu().tolist(),
             opportunity_targets=[int(value) for value in opportunity_target_tensor.cpu().tolist()],
             opportunity_probability_threshold=float(opportunity_probability_threshold),
-            setup_quality_scores=setup_quality_score_tensor.cpu().tolist(),
+            setup_quality_scores=setup_quality_scores,
             setup_quality_min_threshold=setup_quality_min_threshold,
             setup_quality_decision_mask_enabled=setup_quality_decision_mask_enabled,
             setup_quality_decision_mask_min_threshold=setup_quality_decision_mask_min_threshold,
+            entry_path_quality_filter_enabled=entry_path_quality_filter_enabled,
+            entry_path_quality_scores=list(entry_path_quality_payload.get("entry_path_quality_scores", [])),
+            stop_pressure_risk_scores=list(entry_path_quality_payload.get("stop_pressure_risk_scores", [])),
+            entry_path_quality_min_threshold=entry_path_quality_min_threshold,
+            stop_pressure_max_risk_score=stop_pressure_max_risk_score,
             training_objective=training_objective,
         )
+        metrics["entry_path_quality_filter_diagnostics"] = entry_path_quality_payload
         if training_objective == "trade_two_stage":
-            feature_columns = list(dataset.get("feature_columns") or [])
-            raw_feature_values_tensor = dataset.get("raw_feature_values")
-            raw_feature_values = (
-                raw_feature_values_tensor.cpu().tolist()
-                if hasattr(raw_feature_values_tensor, "cpu")
-                else list(raw_feature_values_tensor or [])
-            )
             metrics["trap_invalidation_feature_impact_audit"] = (
                 self._trap_invalidation_feature_impact_audit.analyze(
                     feature_names=feature_columns,

@@ -8,13 +8,13 @@ from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_8_SETUP_QUALITY_DEC
 
 
 EXPECTED_FAST_DEBUG_CONFIGS = (
-    "lv20_h08_tts_thr065_sqmask060_trap",
+    "lv21_h08_tts_thr065_sqmask060_epq065",
     "lv19_h08_tts_thr065_sqmask060",
 )
 
 EXPECTED_QUICK_QUALITY_CONFIGS = (
-    "lv20_h08_tts_thr065_sqmask060_trap",
-    "lv20_h12_tts_thr065_sqmask060_trap",
+    "lv21_h12_tts_thr065_sqmask060_epq065",
+    "lv21_h12_tts_thr065_sqmask060_epq070",
     "lv19_h12_tts_thr065_sqmask060",
 )
 
@@ -75,8 +75,8 @@ def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
     assert class_margin_configs == []
     assert threshold_configs == []
     assert setup_quality_filter_configs == []
-    assert "lv20_h08_tts_thr065_sqmask060_trap" in EXPECTED_QUICK_QUALITY_CONFIGS
-    assert "lv20_h12_tts_thr065_sqmask060_trap" in EXPECTED_QUICK_QUALITY_CONFIGS
+    assert "lv21_h12_tts_thr065_sqmask060_epq065" in EXPECTED_QUICK_QUALITY_CONFIGS
+    assert "lv21_h12_tts_thr065_sqmask060_epq070" in EXPECTED_QUICK_QUALITY_CONFIGS
     assert "lv19_h12_tts_thr065_sqmask060" in EXPECTED_QUICK_QUALITY_CONFIGS
 
 

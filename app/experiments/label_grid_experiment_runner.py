@@ -137,6 +137,14 @@ class LabelGridExperimentCandidateResult:
     setup_quality_bucket_metrics_after_mask: dict[str, Any] = field(default_factory=dict)
     setup_quality_filter_summary: dict[str, Any] = field(default_factory=dict)
     setup_quality_decision_mask_summary: dict[str, Any] = field(default_factory=dict)
+    entry_path_quality_filter_enabled: bool = False
+    entry_path_quality_min_threshold: float | None = None
+    stop_pressure_max_risk_score: float | None = None
+    entry_path_quality_masked_row_count: int = 0
+    entry_path_quality_forced_no_trade_count: int = 0
+    entry_path_quality_mask_false_positive_removed_count: int = 0
+    entry_path_quality_filter_summary: dict[str, Any] = field(default_factory=dict)
+    entry_path_quality_filter_diagnostics: dict[str, Any] = field(default_factory=dict)
     predicted_to_actual_trade_rate_ratio: float | None = None
     predicted_trade_rate: float | None = None
     raw_predicted_trade_rate: float | None = None
@@ -235,6 +243,14 @@ class LabelGridExperimentCandidateResult:
             "setup_quality_bucket_metrics_after_mask": dict(self.setup_quality_bucket_metrics_after_mask),
             "setup_quality_filter_summary": dict(self.setup_quality_filter_summary),
             "setup_quality_decision_mask_summary": dict(self.setup_quality_decision_mask_summary),
+            "entry_path_quality_filter_enabled": self.entry_path_quality_filter_enabled,
+            "entry_path_quality_min_threshold": self.entry_path_quality_min_threshold,
+            "stop_pressure_max_risk_score": self.stop_pressure_max_risk_score,
+            "entry_path_quality_masked_row_count": self.entry_path_quality_masked_row_count,
+            "entry_path_quality_forced_no_trade_count": self.entry_path_quality_forced_no_trade_count,
+            "entry_path_quality_mask_false_positive_removed_count": self.entry_path_quality_mask_false_positive_removed_count,
+            "entry_path_quality_filter_summary": dict(self.entry_path_quality_filter_summary),
+            "entry_path_quality_filter_diagnostics": dict(self.entry_path_quality_filter_diagnostics),
             "predicted_to_actual_trade_rate_ratio": self.predicted_to_actual_trade_rate_ratio,
             "predicted_trade_rate": self.predicted_trade_rate,
             "raw_predicted_trade_rate": self.raw_predicted_trade_rate,
@@ -1034,6 +1050,9 @@ class LabelGridExperimentRunner:
                     label_config.opportunity_max_predicted_to_actual_trade_rate_ratio
                 ),
                 opportunity_max_false_positive_rate=float(label_config.opportunity_max_false_positive_rate),
+                entry_path_quality_filter_enabled=bool(label_config.entry_path_quality_filter_enabled),
+                entry_path_quality_min_threshold=label_config.entry_path_quality_min_threshold,
+                stop_pressure_max_risk_score=label_config.stop_pressure_max_risk_score,
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1190,6 +1209,10 @@ class LabelGridExperimentRunner:
         opportunity_threshold_selection = self._as_dict(quality_payload.get("opportunity_threshold_selection"))
         opportunity_threshold_sweep = self._as_dict(quality_payload.get("opportunity_threshold_sweep"))
         two_stage_trade_diagnostics = self._as_dict(quality_payload.get("two_stage_trade_diagnostics"))
+        entry_path_quality_filter_diagnostics = self._as_dict(
+            quality_payload.get("entry_path_quality_filter_diagnostics")
+            or two_stage_trade_diagnostics.get("entry_path_quality_filter_diagnostics", {})
+        )
         return LabelGridExperimentCandidateResult(
             config_id=label_config.config_id,
             label_config=label_config.to_dict(),
@@ -1321,6 +1344,28 @@ class LabelGridExperimentRunner:
                 quality_payload.get("setup_quality_decision_mask_summary")
                 or two_stage_trade_diagnostics.get("setup_quality_decision_mask_summary", {})
             ),
+            entry_path_quality_filter_enabled=bool(
+                quality_payload.get("entry_path_quality_filter_enabled", False)
+            ),
+            entry_path_quality_min_threshold=self._optional_float(
+                quality_payload.get("entry_path_quality_min_threshold")
+            ),
+            stop_pressure_max_risk_score=self._optional_float(
+                quality_payload.get("stop_pressure_max_risk_score")
+            ),
+            entry_path_quality_masked_row_count=int(
+                quality_payload.get("entry_path_quality_masked_row_count", 0) or 0
+            ),
+            entry_path_quality_forced_no_trade_count=int(
+                quality_payload.get("entry_path_quality_forced_no_trade_count", 0) or 0
+            ),
+            entry_path_quality_mask_false_positive_removed_count=int(
+                quality_payload.get("entry_path_quality_mask_false_positive_removed_count", 0) or 0
+            ),
+            entry_path_quality_filter_summary=self._as_dict(
+                quality_payload.get("entry_path_quality_filter_summary", {})
+            ),
+            entry_path_quality_filter_diagnostics=entry_path_quality_filter_diagnostics,
             predicted_to_actual_trade_rate_ratio=self._optional_float(
                 quality_payload.get("predicted_to_actual_trade_rate_ratio")
             ),
