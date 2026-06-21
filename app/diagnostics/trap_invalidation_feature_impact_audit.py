@@ -10,11 +10,11 @@ class TrapInvalidationFeatureImpactAudit:
     """Audit whether Schwager trap/invalidation features separate TP/FP trade decisions.
 
     This audit is intentionally diagnostic-only. It must not approve a model,
-    activate a model, or change live-trading behavior.
+    activate a model, connect traders-core, or change live-trading behavior.
     """
 
     DIAGNOSTIC_NAME = "trap_invalidation_feature_impact_audit"
-    DIAGNOSTIC_VERSION = "ml38.10.11"
+    DIAGNOSTIC_VERSION = "ml38.10.12"
 
     RISK_FEATURE_HINTS = (
         "risk",
@@ -70,6 +70,7 @@ class TrapInvalidationFeatureImpactAudit:
                 "skip_reason": "no_rows_or_no_trap_features",
                 "feature_names": list(trap_features),
                 "feature_impact_status": "UNKNOWN",
+                "directional_feature_impact_status": "UNKNOWN",
                 "recommendation": "run_training_with_fv4_trap_features_before_using_this_audit",
             }
 
@@ -109,12 +110,20 @@ class TrapInvalidationFeatureImpactAudit:
                     "fp_minus_tp_mean": payload.get("false_positive_minus_true_positive_mean"),
                     "abs_fp_tp_separation": payload.get("abs_fp_tp_separation"),
                     "impact_direction": payload.get("impact_direction"),
+                    "expected_direction_matches": payload.get("expected_direction_matches"),
                 }
                 for feature_name, payload in feature_impacts.items()
             ),
             key=lambda item: float(item.get("abs_fp_tp_separation") or 0.0),
             reverse=True,
         )
+        top_expected_direction_features = [
+            item for item in top_separating_features if item.get("expected_direction_matches") is True
+        ]
+        top_unexpected_direction_features = [
+            item for item in top_separating_features if item.get("expected_direction_matches") is False
+        ]
+
         max_abs_separation = float(
             top_separating_features[0].get("abs_fp_tp_separation") or 0.0
         ) if top_separating_features else 0.0
@@ -123,6 +132,28 @@ class TrapInvalidationFeatureImpactAudit:
             if top_separating_features
             else 0.0
         )
+        actionable_direction_features = [
+            item for item in top_separating_features if item.get("expected_direction_matches") is not None
+        ]
+        expected_direction_count = len(top_expected_direction_features)
+        unexpected_direction_count = len(top_unexpected_direction_features)
+        actionable_direction_count = len(actionable_direction_features)
+        expected_direction_ratio = (
+            expected_direction_count / actionable_direction_count
+            if actionable_direction_count > 0
+            else 0.0
+        )
+        strong_expected_direction_feature_count = sum(
+            1
+            for item in top_expected_direction_features
+            if float(item.get("abs_fp_tp_separation") or 0.0) >= 0.08
+        )
+        strong_unexpected_direction_feature_count = sum(
+            1
+            for item in top_unexpected_direction_features
+            if float(item.get("abs_fp_tp_separation") or 0.0) >= 0.08
+        )
+
         tp_count = len(row_groups["true_positive"])
         fp_count = len(row_groups["false_positive"])
         strong_tp_count = len(row_groups["strong_setup_true_positive"])
@@ -133,6 +164,16 @@ class TrapInvalidationFeatureImpactAudit:
             max_abs_separation=max_abs_separation,
             average_abs_separation=average_abs_separation,
         )
+        directional_feature_impact_status = self._directional_impact_status(
+            tp_count=tp_count,
+            fp_count=fp_count,
+            expected_direction_count=expected_direction_count,
+            unexpected_direction_count=unexpected_direction_count,
+            expected_direction_ratio=expected_direction_ratio,
+            max_abs_separation=max_abs_separation,
+            strong_expected_direction_feature_count=strong_expected_direction_feature_count,
+            strong_unexpected_direction_feature_count=strong_unexpected_direction_feature_count,
+        )
 
         return {
             "diagnostic_name": self.DIAGNOSTIC_NAME,
@@ -142,6 +183,7 @@ class TrapInvalidationFeatureImpactAudit:
             "feature_names": list(trap_features),
             "audit_status": "COMPLETED",
             "feature_impact_status": feature_impact_status,
+            "directional_feature_impact_status": directional_feature_impact_status,
             "opportunity_probability_threshold": threshold,
             "setup_quality_decision_mask_enabled": bool(setup_quality_decision_mask_enabled),
             "setup_quality_decision_mask_min_threshold": setup_quality_decision_mask_min_threshold,
@@ -154,12 +196,23 @@ class TrapInvalidationFeatureImpactAudit:
             "strong_setup_false_positive_count": strong_fp_count,
             "max_abs_fp_tp_separation": max_abs_separation,
             "average_abs_fp_tp_separation": average_abs_separation,
+            "expected_direction_feature_count": expected_direction_count,
+            "unexpected_direction_feature_count": unexpected_direction_count,
+            "actionable_direction_feature_count": actionable_direction_count,
+            "expected_direction_ratio": expected_direction_ratio,
+            "strong_expected_direction_feature_count": strong_expected_direction_feature_count,
+            "strong_unexpected_direction_feature_count": strong_unexpected_direction_feature_count,
             "top_separating_features": top_separating_features[:10],
+            "top_expected_direction_features": top_expected_direction_features[:10],
+            "top_unexpected_direction_features": top_unexpected_direction_features[:10],
             "feature_impacts": feature_impacts,
             "recommendation": self._recommendation(
                 feature_impact_status=feature_impact_status,
+                directional_feature_impact_status=directional_feature_impact_status,
                 strong_fp_count=strong_fp_count,
                 max_abs_separation=max_abs_separation,
+                expected_direction_count=expected_direction_count,
+                unexpected_direction_count=unexpected_direction_count,
             ),
             "approved_for_live_trading": False,
             "approved_for_auto_activation": False,
@@ -256,6 +309,7 @@ class TrapInvalidationFeatureImpactAudit:
             "false_positive_minus_true_positive_mean": diff,
             "abs_fp_tp_separation": abs_diff,
             "impact_direction": cls._impact_direction(feature_name=feature_name, diff=diff),
+            "expected_direction_matches": cls._expected_direction_matches(feature_name=feature_name, diff=diff),
         }
 
     @staticmethod
@@ -305,6 +359,8 @@ class TrapInvalidationFeatureImpactAudit:
     def _impact_direction(cls, *, feature_name: str, diff: float | None) -> str:
         if diff is None:
             return "unknown"
+        if abs(float(diff)) < 1e-12:
+            return "no_mean_difference"
         name = feature_name.lower()
         is_quality = any(token in name for token in cls.QUALITY_FEATURE_HINTS)
         is_risk = any(token in name for token in cls.RISK_FEATURE_HINTS)
@@ -317,6 +373,19 @@ class TrapInvalidationFeatureImpactAudit:
                 return "expected_risk_higher_on_false_positive"
             return "unexpected_risk_higher_on_true_positive"
         return "neutral"
+
+    @classmethod
+    def _expected_direction_matches(cls, *, feature_name: str, diff: float | None) -> bool | None:
+        if diff is None or abs(float(diff)) < 1e-12:
+            return None
+        name = feature_name.lower()
+        is_quality = any(token in name for token in cls.QUALITY_FEATURE_HINTS)
+        is_risk = any(token in name for token in cls.RISK_FEATURE_HINTS)
+        if is_quality:
+            return bool(diff < 0)
+        if is_risk:
+            return bool(diff > 0)
+        return None
 
     @staticmethod
     def _impact_status(
@@ -335,13 +404,46 @@ class TrapInvalidationFeatureImpactAudit:
         return "NO_CLEAR_IMPACT"
 
     @staticmethod
+    def _directional_impact_status(
+        *,
+        tp_count: int,
+        fp_count: int,
+        expected_direction_count: int,
+        unexpected_direction_count: int,
+        expected_direction_ratio: float,
+        max_abs_separation: float,
+        strong_expected_direction_feature_count: int,
+        strong_unexpected_direction_feature_count: int,
+    ) -> str:
+        if tp_count < 10 or fp_count < 10:
+            return "INSUFFICIENT_ROWS"
+        if strong_expected_direction_feature_count >= 2 and expected_direction_ratio >= 0.60:
+            return "USEFUL_DIRECTIONAL"
+        if expected_direction_count >= 2 and expected_direction_ratio >= 0.50 and max_abs_separation >= 0.04:
+            return "WEAK_DIRECTIONAL"
+        if strong_unexpected_direction_feature_count > strong_expected_direction_feature_count:
+            return "MISALIGNED_STRONG_FEATURES"
+        if unexpected_direction_count > expected_direction_count and max_abs_separation >= 0.04:
+            return "MISALIGNED"
+        return "NO_CLEAR_DIRECTIONAL_IMPACT"
+
+    @staticmethod
     def _recommendation(
         *,
         feature_impact_status: str,
+        directional_feature_impact_status: str,
         strong_fp_count: int,
         max_abs_separation: float,
+        expected_direction_count: int,
+        unexpected_direction_count: int,
     ) -> str:
-        if feature_impact_status == "USEFUL" and strong_fp_count > 0:
+        if directional_feature_impact_status == "USEFUL_DIRECTIONAL" and strong_fp_count > 0:
+            return "consider_trap_risk_decision_penalty_or_mask_after_multi_symbol_confirmation"
+        if directional_feature_impact_status == "WEAK_DIRECTIONAL":
+            return "inspect_expected_direction_features_before_adding_penalty"
+        if directional_feature_impact_status.startswith("MISALIGNED"):
+            return "do_not_use_trap_penalty_yet_rewrite_feature_formulas_or_directionality"
+        if feature_impact_status == "USEFUL" and strong_fp_count > 0 and expected_direction_count >= unexpected_direction_count:
             return "consider_trap_risk_decision_penalty_or_mask"
         if feature_impact_status == "WEAK_BUT_PRESENT":
             return "inspect_top_separating_features_before_adding_penalty"

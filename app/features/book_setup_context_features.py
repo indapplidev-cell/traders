@@ -412,6 +412,16 @@ class BookSetupContextFeatureBuilder:
         path_16_chop_score: float,
         path_16_trend_consistency_score: float,
     ) -> dict[str, float]:
+        """Build stronger Schwager-style false-breakout/trap/invalidation features.
+
+        ML38.10.12 change:
+        - a trap is no longer just "touched previous high/low and closed inside";
+        - risk is concentrated when there is a material level sweep, wick rejection,
+          return back inside the prior range, weak confirmation/chop, and optional volume burst;
+        - safe setup score rewards clean continuation away from the swept level and penalizes traps.
+
+        Diagnostic-only features. They do not open trades and do not connect to traders-core.
+        """
         zero = {name: 0.0 for name in SCHWAGER_TRAP_INVALIDATION_FEATURE_NAMES}
         if atr_value <= 0.0 or index < 1 or index >= len(candles):
             return zero
@@ -435,6 +445,8 @@ class BookSetupContextFeatureBuilder:
         if candle_range <= 0.0:
             return zero
 
+        body_size = abs(close_value - open_value)
+        body_to_range = self._score(body_size / candle_range)
         upper_wick_pressure = self._score(
             max(high_value - max(open_value, close_value), 0.0) / candle_range
         )
@@ -445,74 +457,171 @@ class BookSetupContextFeatureBuilder:
 
         breakout_up_atr = max(0.0, high_value - previous_high) / atr_value
         breakout_down_atr = max(0.0, previous_low - low_value) / atr_value
+        close_above_previous_high_atr = max(0.0, close_value - previous_high) / atr_value
+        close_below_previous_low_atr = max(0.0, previous_low - close_value) / atr_value
+        reentry_depth_after_up_atr = max(0.0, previous_high - close_value) / atr_value if high_value > previous_high else 0.0
+        reentry_depth_after_down_atr = max(0.0, close_value - previous_low) / atr_value if low_value < previous_low else 0.0
+
         close_back_inside_after_up = 1.0 if high_value > previous_high and close_value <= previous_high else 0.0
         close_back_inside_after_down = 1.0 if low_value < previous_low and close_value >= previous_low else 0.0
         close_inside_previous_range = 1.0 if previous_low <= close_value <= previous_high else 0.0
+        bearish_reversal_close = 1.0 if close_value < open_value else 0.0
+        bullish_reversal_close = 1.0 if close_value > open_value else 0.0
 
         volume_burst_score = 0.0
         if previous_volume_avg > 0.0:
-            volume_burst_score = self._positive_score((volume_value / previous_volume_avg) - 1.0, scale=1.2)
+            volume_burst_score = self._positive_score((volume_value / previous_volume_avg) - 1.0, scale=1.0)
 
-        false_breakout_up = self._combine(
-            self._positive_score(breakout_up_atr - 0.05, scale=0.45),
-            close_back_inside_after_up,
-            upper_wick_pressure,
-            max(range_chop_score, 1.0 - volume_confirms_direction),
+        breakout_up_size_score = self._positive_score(breakout_up_atr - 0.05, scale=0.85)
+        breakout_down_size_score = self._positive_score(breakout_down_atr - 0.05, scale=0.85)
+        up_reentry_depth_score = self._positive_score(reentry_depth_after_up_atr, scale=0.65)
+        down_reentry_depth_score = self._positive_score(reentry_depth_after_down_atr, scale=0.65)
+        up_continuation_depth_score = self._positive_score(close_above_previous_high_atr, scale=0.85)
+        down_continuation_depth_score = self._positive_score(close_below_previous_low_atr, scale=0.85)
+        chop_pressure = max(range_chop_score, path_16_chop_score)
+        weak_confirmation_pressure = max(chop_pressure, 1.0 - volume_confirms_direction)
+
+        # Core trap signal: sweep level -> reject level -> return inside range.
+        # The multiplier makes sustained breakouts with tiny wicks score low even if they touched a level.
+        up_rejection_core = self._weighted_combine(
+            (close_back_inside_after_up, 0.35),
+            (up_reentry_depth_score, 0.25),
+            (upper_wick_pressure, 0.20),
+            (1.0 - close_position, 0.12),
+            (bearish_reversal_close, 0.08),
         )
-        false_breakout_down = self._combine(
-            self._positive_score(breakout_down_atr - 0.05, scale=0.45),
-            close_back_inside_after_down,
-            lower_wick_pressure,
-            max(range_chop_score, 1.0 - volume_confirms_direction),
+        down_rejection_core = self._weighted_combine(
+            (close_back_inside_after_down, 0.35),
+            (down_reentry_depth_score, 0.25),
+            (lower_wick_pressure, 0.20),
+            (close_position, 0.12),
+            (bullish_reversal_close, 0.08),
+        )
+        up_rejection_gate = max(close_back_inside_after_up, up_reentry_depth_score, upper_wick_pressure)
+        down_rejection_gate = max(close_back_inside_after_down, down_reentry_depth_score, lower_wick_pressure)
+
+        false_breakout_up = self._score(
+            self._weighted_combine(
+                (breakout_up_size_score, 0.18),
+                (up_rejection_core, 0.52),
+                (weak_confirmation_pressure, 0.16),
+                (volume_burst_score, 0.10),
+                (body_to_range, 0.04),
+            )
+            * up_rejection_gate
+        )
+        false_breakout_down = self._score(
+            self._weighted_combine(
+                (breakout_down_size_score, 0.18),
+                (down_rejection_core, 0.52),
+                (weak_confirmation_pressure, 0.16),
+                (volume_burst_score, 0.10),
+                (body_to_range, 0.04),
+            )
+            * down_rejection_gate
         )
         false_breakout_risk = max(false_breakout_up, false_breakout_down)
 
-        bull_trap_risk = self._combine(
-            false_breakout_up,
-            1.0 - close_position,
-            self._positive_score(breakout_up_atr, scale=0.75),
+        bull_trap_risk = self._score(
+            self._weighted_combine(
+                (false_breakout_up, 0.55),
+                (up_reentry_depth_score, 0.20),
+                (1.0 - close_position, 0.15),
+                (upper_wick_pressure, 0.10),
+            )
         )
-        bear_trap_risk = self._combine(
-            false_breakout_down,
-            close_position,
-            self._positive_score(breakout_down_atr, scale=0.75),
+        bear_trap_risk = self._score(
+            self._weighted_combine(
+                (false_breakout_down, 0.55),
+                (down_reentry_depth_score, 0.20),
+                (close_position, 0.15),
+                (lower_wick_pressure, 0.10),
+            )
         )
 
-        spike_high_retest_risk = self._combine(
-            self._proximity_to_level_score(high_value, previous_high, atr_value, tolerance_atr=0.35),
-            upper_wick_pressure,
-            close_back_inside_after_up,
+        spike_high_retest_risk = self._score(
+            self._weighted_combine(
+                (self._proximity_to_level_score(high_value, previous_high, atr_value, tolerance_atr=0.30), 0.25),
+                (upper_wick_pressure, 0.35),
+                (close_back_inside_after_up, 0.25),
+                (up_reentry_depth_score, 0.15),
+            )
         )
-        spike_low_retest_risk = self._combine(
-            self._proximity_to_level_score(low_value, previous_low, atr_value, tolerance_atr=0.35),
-            lower_wick_pressure,
-            close_back_inside_after_down,
+        spike_low_retest_risk = self._score(
+            self._weighted_combine(
+                (self._proximity_to_level_score(low_value, previous_low, atr_value, tolerance_atr=0.30), 0.25),
+                (lower_wick_pressure, 0.35),
+                (close_back_inside_after_down, 0.25),
+                (down_reentry_depth_score, 0.15),
+            )
         )
-        failed_breakout_return_inside_range = self._combine(
-            false_breakout_risk,
-            close_inside_previous_range,
-            max(upper_wick_pressure, lower_wick_pressure),
+        failed_breakout_return_inside_range = self._score(
+            self._weighted_combine(
+                (false_breakout_risk, 0.45),
+                (close_inside_previous_range, 0.25),
+                (max(up_reentry_depth_score, down_reentry_depth_score), 0.20),
+                (max(upper_wick_pressure, lower_wick_pressure), 0.10),
+            )
         )
-        stop_hunt_like_move = self._combine(
-            false_breakout_risk,
-            volume_burst_score,
-            max(upper_wick_pressure, lower_wick_pressure),
+        stop_hunt_like_move = self._score(
+            self._weighted_combine(
+                (false_breakout_risk, 0.45),
+                (volume_burst_score, 0.25),
+                (max(upper_wick_pressure, lower_wick_pressure), 0.20),
+                (max(breakout_up_size_score, breakout_down_size_score), 0.10),
+            )
         )
-        range_reentry_after_breakout = self._combine(
-            max(false_breakout_up, false_breakout_down),
-            close_inside_previous_range,
-            max(range_chop_score, path_16_chop_score),
+        range_reentry_after_breakout = self._score(
+            self._weighted_combine(
+                (failed_breakout_return_inside_range, 0.45),
+                (close_inside_previous_range, 0.20),
+                (chop_pressure, 0.20),
+                (max(close_back_inside_after_up, close_back_inside_after_down), 0.15),
+            )
         )
-        invalidation_quality = 1.0 - self._combine(
-            false_breakout_risk,
-            stop_hunt_like_move,
-            max(range_chop_score, path_16_chop_score),
+
+        sustained_up_breakout = self._weighted_combine(
+            (breakout_up_size_score, 0.20),
+            (up_continuation_depth_score, 0.30),
+            (close_position, 0.20),
+            (1.0 - upper_wick_pressure, 0.15),
+            (volume_confirms_direction, 0.15),
         )
-        trap_safe_setup = self._combine(
-            invalidation_quality,
-            volume_confirms_direction,
+        sustained_down_breakout = self._weighted_combine(
+            (breakout_down_size_score, 0.20),
+            (down_continuation_depth_score, 0.30),
+            (1.0 - close_position, 0.20),
+            (1.0 - lower_wick_pressure, 0.15),
+            (volume_confirms_direction, 0.15),
+        )
+        continuation_quality = max(
+            sustained_up_breakout,
+            sustained_down_breakout,
             path_16_trend_consistency_score,
-            1.0 - path_16_chop_score,
+        )
+        trap_risk = max(
+            false_breakout_risk,
+            bull_trap_risk,
+            bear_trap_risk,
+            failed_breakout_return_inside_range,
+            stop_hunt_like_move,
+            range_reentry_after_breakout,
+        )
+        invalidation_quality = self._score(
+            self._weighted_combine(
+                (1.0 - trap_risk, 0.45),
+                (continuation_quality, 0.25),
+                (volume_confirms_direction, 0.15),
+                (1.0 - chop_pressure, 0.15),
+            )
+        )
+        trap_safe_setup = self._score(
+            self._weighted_combine(
+                (invalidation_quality, 0.45),
+                (continuation_quality, 0.25),
+                (volume_confirms_direction, 0.15),
+                (1.0 - max(false_breakout_risk, stop_hunt_like_move), 0.15),
+            )
         )
 
         return {
@@ -524,7 +633,7 @@ class BookSetupContextFeatureBuilder:
             "schwager_spike_low_retest_risk_score": spike_low_retest_risk,
             "schwager_stop_hunt_like_move_score": stop_hunt_like_move,
             "schwager_range_reentry_after_breakout_score": range_reentry_after_breakout,
-            "schwager_invalidation_quality_score": self._score(invalidation_quality),
+            "schwager_invalidation_quality_score": invalidation_quality,
             "schwager_trap_safe_setup_score": trap_safe_setup,
         }
 
@@ -553,6 +662,16 @@ class BookSetupContextFeatureBuilder:
         if not normalized:
             return 0.0
         return sum(normalized) / len(normalized)
+
+    def _weighted_combine(self, *weighted_values: tuple[float, float]) -> float:
+        total_weight = sum(max(float(weight), 0.0) for _, weight in weighted_values)
+        if total_weight <= 0.0:
+            return 0.0
+        weighted_sum = sum(
+            self._score(float(value)) * max(float(weight), 0.0)
+            for value, weight in weighted_values
+        )
+        return self._score(weighted_sum / total_weight)
 
     def _proximity_score(self, distance_atr: float | None) -> float:
         if distance_atr is None:
