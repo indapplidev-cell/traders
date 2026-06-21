@@ -60,6 +60,21 @@ CACHE_PATHS_TO_CLEAN = [
     "htmlcov/",
 ]
 
+# Эти пути нельзя удалять никакой runtime-очисткой.
+# Даже если они ignored в .gitignore, cleaner обязан их защищать.
+GIT_CLEAN_EXCLUDE_PATTERNS = [
+    ".venv/",
+    ".venv/**",
+    ".venv_broken/",
+    ".venv_broken/**",
+    "venv/",
+    "venv/**",
+    "env/",
+    "env/**",
+    ".git/",
+    ".git/**",
+]
+
 # Архивы проекта обычно появляются после ручной упаковки или передачи в чат.
 # Их нельзя коммитить в репозиторий traders-ml.
 ARCHIVE_PATTERNS_TO_CLEAN = [
@@ -290,8 +305,12 @@ def clean_untracked_runtime_files(dry_run: bool) -> None:
     targets.extend(f":(glob){pattern}" for pattern in ARCHIVE_PATTERNS_TO_CLEAN)
     targets.extend(CACHE_PATHS_TO_CLEAN)
 
-    preview_untracked_args = ["clean", "-nd", "--", *targets]
-    preview_ignored_args = ["clean", "-ndX", "--", *targets]
+    clean_excludes: list[str] = []
+    for pattern in GIT_CLEAN_EXCLUDE_PATTERNS:
+        clean_excludes.extend(["-e", pattern])
+
+    preview_untracked_args = ["clean", "-nd", *clean_excludes, "--", *targets]
+    preview_ignored_args = ["clean", "-ndX", *clean_excludes, "--", *targets]
 
     print("Preview untracked runtime files:")
     run_git(preview_untracked_args, check=False)
@@ -304,8 +323,8 @@ def clean_untracked_runtime_files(dry_run: bool) -> None:
         print("DRY RUN: удаление не выполнялось.")
         return
 
-    clean_untracked_args = ["clean", "-fd", "--", *targets]
-    clean_ignored_args = ["clean", "-fdX", "--", *targets]
+    clean_untracked_args = ["clean", "-fd", *clean_excludes, "--", *targets]
+    clean_ignored_args = ["clean", "-fdX", *clean_excludes, "--", *targets]
 
     print()
     print("Apply clean for untracked runtime files:")
