@@ -57,7 +57,10 @@ class SignalGateEvaluator:
                 skipped_entry_path_filter_count += 1
                 continue
 
-            measured = self._measure(row)
+            measured = self._measure(
+                row,
+                use_entry_path_original_label=not apply_entry_path_filter,
+            )
             signal_direction, skipped_flat = self._gate_decision(gate_type, threshold, measured)
             if skipped_flat:
                 skipped_flat_count += 1
@@ -71,6 +74,7 @@ class SignalGateEvaluator:
             enriched["directional_edge"] = measured["directional_edge"]
             enriched["entropy"] = measured["entropy"]
             enriched["directional_confidence"] = measured["directional_confidence"]
+            enriched["signal_gate_predicted_label"] = measured["predicted_label"]
             enriched["signal_gate_row_index"] = int(row_index)
             enriched["signal_gate_type"] = str(gate_type)
             enriched["signal_gate_threshold"] = float(threshold)
@@ -150,17 +154,25 @@ class SignalGateEvaluator:
         raise ValueError(f"Unsupported gate_type: {gate_type}")
 
     @staticmethod
-    def _measure(row: dict[str, Any]) -> dict[str, Any]:
+    def _measure(
+        row: dict[str, Any],
+        *,
+        use_entry_path_original_label: bool = False,
+    ) -> dict[str, Any]:
         prob_up = float(row["prob_up"])
         prob_down = float(row["prob_down"])
         prob_flat = float(row["prob_flat"])
+        predicted_label = row.get("predicted_label")
+        if use_entry_path_original_label and row.get("entry_path_original_predicted_label") is not None:
+            predicted_label = row.get("entry_path_original_predicted_label")
+        predicted_label = str(predicted_label or "").upper()
         ordered = sorted([prob_up, prob_down, prob_flat], reverse=True)
         entropy = 0.0
         for probability in (prob_up, prob_down, prob_flat):
             if probability > 0:
                 entropy -= probability * math.log(probability)
         return {
-            "predicted_label": row["predicted_label"],
+            "predicted_label": predicted_label,
             "confidence": float(row["confidence"]),
             "prob_up": prob_up,
             "prob_down": prob_down,

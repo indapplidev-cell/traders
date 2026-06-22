@@ -494,9 +494,43 @@ class MultiSymbolFeatureRegimeAnalyzer:
             failed_gates=[str(item) for item in cls._as_list(best_candidate.get("failed_gates"))],
             passed_gates=[str(item) for item in cls._as_list(best_candidate.get("passed_gates"))],
         )
+        candidate_results_by_config_id = {
+            str(candidate.get("config_id")): candidate
+            for candidate in [
+                cls._as_dict(item)
+                for item in cls._as_list(summary.get("candidate_results"))
+                if isinstance(item, dict)
+            ]
+            if candidate.get("config_id") is not None
+        }
+
+        entry_path_candidate_payload_keys = (
+            "entry_path_quality_filter_enabled",
+            "entry_path_quality_min_threshold",
+            "stop_pressure_max_risk_score",
+            "entry_path_quality_masked_row_count",
+            "entry_path_quality_forced_no_trade_count",
+            "entry_path_quality_mask_trade_prediction_removed_count",
+            "entry_path_quality_mask_false_positive_removed_count",
+            "entry_path_quality_filter_summary",
+            "entry_path_quality_filter_diagnostics",
+            "entry_path_prediction_filter_summary",
+            "stop_pressure_effectiveness_audit",
+        )
+
         configs_ranked: list[dict[str, Any]] = []
         for row in cls._as_list(summary.get("configs_ranked") or summary.get("ranking")):
             payload = dict(row)
+            matching_candidate = candidate_results_by_config_id.get(str(payload.get("config_id")))
+            if matching_candidate:
+                for key in entry_path_candidate_payload_keys:
+                    value = matching_candidate.get(key)
+                    if value is None:
+                        continue
+                    if isinstance(value, dict) and not value:
+                        continue
+                    if key not in payload or payload.get(key) in (None, {}, []):
+                        payload[key] = value
             apply_selected_decision_policy_metrics(payload)
             row_failed_gates, row_passed_gates = normalize_gap_quality_gate(
                 gap_severity_for_training=payload.get("gap_severity_for_training", gap_severity_for_training),

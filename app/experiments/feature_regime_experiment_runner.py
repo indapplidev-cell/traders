@@ -149,6 +149,17 @@ class FeatureRegimeCandidateResult:
     setup_quality_bucket_metrics_after_mask: dict[str, Any] = field(default_factory=dict)
     setup_quality_filter_summary: dict[str, Any] = field(default_factory=dict)
     setup_quality_decision_mask_summary: dict[str, Any] = field(default_factory=dict)
+    entry_path_quality_filter_enabled: bool = False
+    entry_path_quality_min_threshold: float | None = None
+    stop_pressure_max_risk_score: float | None = None
+    entry_path_quality_masked_row_count: int = 0
+    entry_path_quality_forced_no_trade_count: int = 0
+    entry_path_quality_mask_trade_prediction_removed_count: int = 0
+    entry_path_quality_mask_false_positive_removed_count: int = 0
+    entry_path_quality_filter_summary: dict[str, Any] = field(default_factory=dict)
+    entry_path_quality_filter_diagnostics: dict[str, Any] = field(default_factory=dict)
+    entry_path_prediction_filter_summary: dict[str, Any] = field(default_factory=dict)
+    stop_pressure_effectiveness_audit: dict[str, Any] = field(default_factory=dict)
     predicted_to_actual_trade_rate_ratio: float | None = None
     predicted_trade_rate: float | None = None
     raw_predicted_trade_rate: float | None = None
@@ -279,6 +290,17 @@ class FeatureRegimeCandidateResult:
             "setup_quality_bucket_metrics_after_mask": dict(self.setup_quality_bucket_metrics_after_mask),
             "setup_quality_filter_summary": dict(self.setup_quality_filter_summary),
             "setup_quality_decision_mask_summary": dict(self.setup_quality_decision_mask_summary),
+            "entry_path_quality_filter_enabled": self.entry_path_quality_filter_enabled,
+            "entry_path_quality_min_threshold": self.entry_path_quality_min_threshold,
+            "stop_pressure_max_risk_score": self.stop_pressure_max_risk_score,
+            "entry_path_quality_masked_row_count": self.entry_path_quality_masked_row_count,
+            "entry_path_quality_forced_no_trade_count": self.entry_path_quality_forced_no_trade_count,
+            "entry_path_quality_mask_trade_prediction_removed_count": self.entry_path_quality_mask_trade_prediction_removed_count,
+            "entry_path_quality_mask_false_positive_removed_count": self.entry_path_quality_mask_false_positive_removed_count,
+            "entry_path_quality_filter_summary": dict(self.entry_path_quality_filter_summary),
+            "entry_path_quality_filter_diagnostics": dict(self.entry_path_quality_filter_diagnostics),
+            "entry_path_prediction_filter_summary": dict(self.entry_path_prediction_filter_summary),
+            "stop_pressure_effectiveness_audit": dict(self.stop_pressure_effectiveness_audit),
             "predicted_to_actual_trade_rate_ratio": self.predicted_to_actual_trade_rate_ratio,
             "predicted_trade_rate": self.predicted_trade_rate,
             "raw_predicted_trade_rate": self.raw_predicted_trade_rate,
@@ -1813,6 +1835,16 @@ class FeatureRegimeExperimentRunner:
         )
         for item in inner_result.candidate_results:
             ranking_row = ranking_map.get(item.config_id, {})
+            entry_path_prediction_filter_summary = self._as_dict(
+                getattr(item, "entry_path_prediction_filter_summary", {})
+            )
+            stop_pressure_effectiveness_audit = self._as_dict(
+                getattr(item, "stop_pressure_effectiveness_audit", {})
+            )
+            if not stop_pressure_effectiveness_audit:
+                stop_pressure_effectiveness_audit = self._as_dict(
+                    entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
+                )
             failed_gates, passed_gates = normalize_gap_quality_gate(
                 gap_severity_for_training=gap_severity_for_training,
                 gap_training_safe=gap_training_safe,
@@ -1977,6 +2009,39 @@ class FeatureRegimeExperimentRunner:
                 setup_quality_decision_mask_summary=self._as_dict(
                     getattr(item, "setup_quality_decision_mask_summary", {})
                 ),
+                entry_path_quality_filter_enabled=bool(
+                    getattr(item, "entry_path_quality_filter_enabled", False)
+                ),
+                entry_path_quality_min_threshold=getattr(
+                    item,
+                    "entry_path_quality_min_threshold",
+                    None,
+                ),
+                stop_pressure_max_risk_score=getattr(
+                    item,
+                    "stop_pressure_max_risk_score",
+                    None,
+                ),
+                entry_path_quality_masked_row_count=int(
+                    getattr(item, "entry_path_quality_masked_row_count", 0) or 0
+                ),
+                entry_path_quality_forced_no_trade_count=int(
+                    getattr(item, "entry_path_quality_forced_no_trade_count", 0) or 0
+                ),
+                entry_path_quality_mask_trade_prediction_removed_count=int(
+                    getattr(item, "entry_path_quality_mask_trade_prediction_removed_count", 0) or 0
+                ),
+                entry_path_quality_mask_false_positive_removed_count=int(
+                    getattr(item, "entry_path_quality_mask_false_positive_removed_count", 0) or 0
+                ),
+                entry_path_quality_filter_summary=self._as_dict(
+                    getattr(item, "entry_path_quality_filter_summary", {})
+                ),
+                entry_path_quality_filter_diagnostics=self._as_dict(
+                    getattr(item, "entry_path_quality_filter_diagnostics", {})
+                ),
+                entry_path_prediction_filter_summary=entry_path_prediction_filter_summary,
+                stop_pressure_effectiveness_audit=stop_pressure_effectiveness_audit,
                 predicted_to_actual_trade_rate_ratio=getattr(
                     item,
                     "predicted_to_actual_trade_rate_ratio",

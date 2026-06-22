@@ -2864,12 +2864,19 @@ class DiagnosticsService:
             stop_score = float(score.get("stop_pressure_risk_score", 1.0) or 1.0)
             blocked = entry_score < entry_threshold or stop_score > stop_threshold
             enriched = dict(row)
+            original_predicted_label = row.get(
+                "entry_path_original_predicted_label",
+                row.get("predicted_label"),
+            )
             enriched.update(score)
             enriched["entry_path_filter_enabled"] = True
             enriched["entry_path_filter_threshold"] = entry_threshold
             enriched["entry_path_filter_stop_threshold"] = stop_threshold
             enriched["entry_path_filter_blocked"] = bool(blocked)
-            enriched["entry_path_original_predicted_label"] = row.get("predicted_label")
+            enriched["entry_path_original_predicted_label"] = original_predicted_label
+            enriched["entry_path_filtered_predicted_label"] = (
+                "FLAT" if blocked else row.get("predicted_label")
+            )
             if blocked:
                 enriched["predicted_label"] = "FLAT"
                 enriched["entry_path_filter_block_reason"] = (
