@@ -566,6 +566,66 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     "walk_forward_profit_exit_root_cause_summary"
                 )
             ),
+            "entry_path_quality_filter_enabled": bool(
+                summary.get(
+                    "entry_path_quality_filter_enabled",
+                    best_candidate.get("entry_path_quality_filter_enabled", False),
+                )
+            ),
+            "entry_path_quality_min_threshold": cls._float_or_none(
+                summary.get("entry_path_quality_min_threshold")
+                or best_candidate.get("entry_path_quality_min_threshold")
+            ),
+            "stop_pressure_max_risk_score": cls._float_or_none(
+                summary.get("stop_pressure_max_risk_score")
+                or best_candidate.get("stop_pressure_max_risk_score")
+            ),
+            "entry_path_quality_masked_row_count": int(
+                summary.get(
+                    "entry_path_quality_masked_row_count",
+                    best_candidate.get("entry_path_quality_masked_row_count", 0),
+                )
+                or 0
+            ),
+            "entry_path_quality_forced_no_trade_count": int(
+                summary.get(
+                    "entry_path_quality_forced_no_trade_count",
+                    best_candidate.get("entry_path_quality_forced_no_trade_count", 0),
+                )
+                or 0
+            ),
+            "entry_path_quality_mask_trade_prediction_removed_count": int(
+                summary.get(
+                    "entry_path_quality_mask_trade_prediction_removed_count",
+                    best_candidate.get("entry_path_quality_mask_trade_prediction_removed_count", 0),
+                )
+                or 0
+            ),
+            "entry_path_quality_mask_false_positive_removed_count": int(
+                summary.get(
+                    "entry_path_quality_mask_false_positive_removed_count",
+                    best_candidate.get("entry_path_quality_mask_false_positive_removed_count", 0),
+                )
+                or 0
+            ),
+            "entry_path_quality_filter_summary": cls._as_dict(
+                summary.get("entry_path_quality_filter_summary")
+                or best_candidate.get("entry_path_quality_filter_summary")
+            ),
+            "entry_path_prediction_filter_summary": cls._as_dict(
+                summary.get("entry_path_prediction_filter_summary")
+                or best_candidate.get("entry_path_prediction_filter_summary")
+                or cls._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
+                    "entry_path_prediction_filter_summary"
+                )
+            ),
+            "stop_pressure_effectiveness_audit": cls._as_dict(
+                summary.get("stop_pressure_effectiveness_audit")
+                or best_candidate.get("stop_pressure_effectiveness_audit")
+                or cls._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
+                    "stop_pressure_effectiveness_audit"
+                )
+            ),
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "regime_features_attached": bool(summary.get("regime_features_attached", False)),

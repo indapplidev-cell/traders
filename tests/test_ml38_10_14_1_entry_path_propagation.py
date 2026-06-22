@@ -55,3 +55,4 @@ def test_ml38_10_14_1_candidate_result_reads_entry_path_fields_from_test_metrics
     assert result.opportunity_precision == 0.33
     assert result.opportunity_recall == 0.44
     assert result.opportunity_false_positive_rate == 0.08
+    assert result.to_dict()["entry_path_quality_mask_trade_prediction_removed_count"] == 0

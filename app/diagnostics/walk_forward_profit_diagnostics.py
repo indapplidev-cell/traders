@@ -119,6 +119,15 @@ class WalkForwardProfitDiagnostics:
             profit_aware_summary.get("profit_exit_root_cause_audit")
             or summary.get("profit_exit_root_cause_audit")
         )
+        entry_path_prediction_filter_summary = self._normalize_mapping(
+            profit_aware_summary.get("entry_path_prediction_filter_summary")
+            or summary.get("entry_path_prediction_filter_summary")
+        )
+        stop_pressure_effectiveness_audit = self._normalize_mapping(
+            profit_aware_summary.get("stop_pressure_effectiveness_audit")
+            or summary.get("stop_pressure_effectiveness_audit")
+            or entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
+        )
         if best_gate is not None:
             if profit_factor is None:
                 profit_factor = self._safe_float(best_gate.get("profit_factor"))
@@ -132,6 +141,15 @@ class WalkForwardProfitDiagnostics:
                 profit_exit_root_cause_audit = self._normalize_mapping(
                     best_gate.get("profit_exit_root_cause_audit")
                 )
+            if not entry_path_prediction_filter_summary:
+                entry_path_prediction_filter_summary = self._normalize_mapping(
+                    best_gate.get("entry_path_prediction_filter_summary")
+                )
+            if not stop_pressure_effectiveness_audit:
+                stop_pressure_effectiveness_audit = self._normalize_mapping(
+                    best_gate.get("stop_pressure_effectiveness_audit")
+                    or entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
+                )
         return {
             "profit_aware_profit_factor": profit_factor,
             "profit_aware_total_r": total_r,
@@ -139,6 +157,8 @@ class WalkForwardProfitDiagnostics:
             "profit_aware_gate_type": gate_type,
             "best_gate": self._gate_snapshot(best_gate),
             "profit_exit_root_cause_audit": profit_exit_root_cause_audit,
+            "entry_path_prediction_filter_summary": entry_path_prediction_filter_summary,
+            "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,
         }
 
     @staticmethod

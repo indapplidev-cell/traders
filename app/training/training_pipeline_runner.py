@@ -356,6 +356,26 @@ class LongHistoryTrainingPipelineRunner:
                 )
                 if profit_exit_root_cause_audit:
                     payload["profit_exit_root_cause_audit"] = profit_exit_root_cause_audit
+                entry_path_prediction_filter_summary = self._as_dict(
+                    profit_aware_summary_payload.get("entry_path_prediction_filter_summary")
+                    or self._as_dict(profit_aware_summary_payload.get("summary")).get(
+                        "entry_path_prediction_filter_summary"
+                    )
+                    or profit_aware_diagnostics_payload.get("entry_path_prediction_filter_summary")
+                )
+                if entry_path_prediction_filter_summary:
+                    payload["entry_path_prediction_filter_summary"] = entry_path_prediction_filter_summary
+
+                stop_pressure_effectiveness_audit = self._as_dict(
+                    profit_aware_summary_payload.get("stop_pressure_effectiveness_audit")
+                    or self._as_dict(profit_aware_summary_payload.get("summary")).get(
+                        "stop_pressure_effectiveness_audit"
+                    )
+                    or profit_aware_diagnostics_payload.get("stop_pressure_effectiveness_audit")
+                    or entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
+                )
+                if stop_pressure_effectiveness_audit:
+                    payload["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
 
         walk_forward_profit_payload = self._as_dict(walk_forward_profit_diagnostics)
         if walk_forward_profit_payload:
@@ -2022,6 +2042,15 @@ class LongHistoryTrainingPipelineRunner:
             "setup_quality_bucket_metrics_after_mask",
             "setup_quality_distribution",
             "setup_quality_filter_summary",
+            "entry_path_quality_filter_enabled",
+            "entry_path_quality_min_threshold",
+            "stop_pressure_max_risk_score",
+            "entry_path_quality_masked_row_count",
+            "entry_path_quality_forced_no_trade_count",
+            "entry_path_quality_mask_trade_prediction_removed_count",
+            "entry_path_quality_mask_false_positive_removed_count",
+            "entry_path_quality_filter_summary",
+            "entry_path_quality_filter_diagnostics",
             "trap_invalidation_feature_impact_audit",
         ):
             value = test_metrics.get(key)
@@ -2036,6 +2065,8 @@ class LongHistoryTrainingPipelineRunner:
                 "setup_quality_decision_mask_summary",
                 "setup_quality_bucket_metrics_raw",
                 "setup_quality_bucket_metrics_after_mask",
+                "entry_path_quality_filter_summary",
+                "entry_path_quality_filter_diagnostics",
                 "trap_invalidation_feature_impact_audit",
             ):
                 value = diagnostics_payload.get(key)

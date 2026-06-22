@@ -121,6 +121,11 @@ class ProfitAwareEvaluatorV2:
                 gate_type=gate_type,
                 threshold=threshold,
             )
+            entry_path_filter_summary = self._entry_path_prediction_filter_summary(predictions)
+            summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
+            summary["stop_pressure_effectiveness_audit"] = dict(
+                entry_path_filter_summary.get("stop_pressure_effectiveness_audit") or {}
+            )
             return {"summary": summary, "signal_rows": [], "outcomes": []}
 
         outcomes = [
@@ -145,6 +150,11 @@ class ProfitAwareEvaluatorV2:
             same_candle_policy=same_candle_policy,
             gate_type=gate_type,
             threshold=threshold,
+        )
+        entry_path_filter_summary = self._entry_path_prediction_filter_summary(predictions)
+        summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
+        summary["stop_pressure_effectiveness_audit"] = dict(
+            entry_path_filter_summary.get("stop_pressure_effectiveness_audit") or {}
         )
         return {
             "summary": summary,
@@ -333,6 +343,109 @@ class ProfitAwareEvaluatorV2:
             values = [float(row.get(key, 0.0) or 0.0) for row in rows if row.get(key) is not None]
             return (sum(values) / len(values)) if values else None
 
+        def _label(row: dict[str, Any], key: str, fallback: str = "") -> str:
+            value = row.get(key, fallback)
+            return str(value or fallback).upper()
+
+        def _original_label(row: dict[str, Any]) -> str:
+            return _label(row, "entry_path_original_predicted_label", _label(row, "predicted_label", ""))
+
+        def _is_original_trade(row: dict[str, Any]) -> bool:
+            return _original_label(row) in {"UP", "DOWN"}
+
+        def _is_actual_trade(row: dict[str, Any]) -> bool:
+            return _label(row, "actual_label", _label(row, "target_label", "")) in {"UP", "DOWN"}
+
+        def _is_false_positive_removed(row: dict[str, Any]) -> bool:
+            return bool(row.get("entry_path_filter_blocked", False)) and _is_original_trade(row) and not _is_actual_trade(row)
+
+        def _is_true_positive_removed(row: dict[str, Any]) -> bool:
+            return bool(row.get("entry_path_filter_blocked", False)) and _is_original_trade(row) and _is_actual_trade(row)
+
+        def _quality_blocked(row: dict[str, Any]) -> bool:
+            reason = str(row.get("entry_path_filter_block_reason") or "")
+            if reason == "low_entry_quality":
+                return True
+            threshold = row.get("entry_path_filter_threshold")
+            if threshold is None:
+                return False
+            return float(row.get("entry_path_quality_score", 0.0) or 0.0) < float(threshold)
+
+        def _stop_blocked(row: dict[str, Any]) -> bool:
+            reason = str(row.get("entry_path_filter_block_reason") or "")
+            if reason == "high_stop_pressure":
+                return True
+            threshold = row.get("entry_path_filter_stop_threshold")
+            if threshold is None:
+                return False
+            return float(row.get("stop_pressure_risk_score", 0.0) or 0.0) > float(threshold)
+
+        predicted_trade_rows = [row for row in predictions if _is_original_trade(row)]
+        blocked_predicted_trade_rows = [row for row in blocked_rows if _is_original_trade(row)]
+        blocked_by_quality_rows = [row for row in blocked_rows if _quality_blocked(row)]
+        blocked_by_stop_rows = [row for row in blocked_rows if _stop_blocked(row)]
+        blocked_by_both_rows = [row for row in blocked_rows if _quality_blocked(row) and _stop_blocked(row)]
+        blocked_false_positive_rows = [row for row in blocked_rows if _is_false_positive_removed(row)]
+        blocked_true_positive_rows = [row for row in blocked_rows if _is_true_positive_removed(row)]
+        stop_blocked_false_positive_rows = [row for row in blocked_by_stop_rows if _is_false_positive_removed(row)]
+        stop_blocked_true_positive_rows = [row for row in blocked_by_stop_rows if _is_true_positive_removed(row)]
+        quality_blocked_false_positive_rows = [row for row in blocked_by_quality_rows if _is_false_positive_removed(row)]
+        quality_blocked_true_positive_rows = [row for row in blocked_by_quality_rows if _is_true_positive_removed(row)]
+
+        stop_pressure_effectiveness_status = "NO_ENTRY_PATH_FILTER"
+        if any(bool(row.get("entry_path_filter_enabled", False)) for row in predictions):
+            if not blocked_by_stop_rows:
+                stop_pressure_effectiveness_status = "NO_STOP_PRESSURE_BLOCKS"
+            elif stop_blocked_false_positive_rows and stop_blocked_true_positive_rows:
+                stop_pressure_effectiveness_status = "STOP_PRESSURE_MIXED_TRUE_AND_FALSE_POSITIVE_BLOCKS"
+            elif stop_blocked_false_positive_rows:
+                stop_pressure_effectiveness_status = "STOP_PRESSURE_REMOVED_FALSE_POSITIVES"
+            elif stop_blocked_true_positive_rows:
+                stop_pressure_effectiveness_status = "STOP_PRESSURE_REMOVED_ONLY_TRUE_POSITIVES"
+            else:
+                stop_pressure_effectiveness_status = "STOP_PRESSURE_BLOCKED_ONLY_NON_TRADE_ROWS"
+
+        stop_pressure_effectiveness_audit = {
+            "diagnostic_name": "stop_pressure_effectiveness_audit",
+            "diagnostic_version": "ml38.10.14.2",
+            "entry_path_filter_enabled": any(
+                bool(row.get("entry_path_filter_enabled", False)) for row in predictions
+            ),
+            "entry_path_quality_threshold": next(
+                (row.get("entry_path_filter_threshold") for row in predictions if row.get("entry_path_filter_threshold") is not None),
+                None,
+            ),
+            "stop_pressure_threshold": next(
+                (row.get("entry_path_filter_stop_threshold") for row in predictions if row.get("entry_path_filter_stop_threshold") is not None),
+                None,
+            ),
+            "status": stop_pressure_effectiveness_status,
+            "total_prediction_rows": int(total),
+            "original_predicted_trade_rows": int(len(predicted_trade_rows)),
+            "blocked_prediction_rows": int(len(blocked_rows)),
+            "blocked_original_predicted_trade_rows": int(len(blocked_predicted_trade_rows)),
+            "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
+            "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "blocked_by_both_count": int(len(blocked_by_both_rows)),
+            "removed_false_positive_count": int(len(blocked_false_positive_rows)),
+            "removed_true_positive_count": int(len(blocked_true_positive_rows)),
+            "low_entry_quality_removed_false_positive_count": int(len(quality_blocked_false_positive_rows)),
+            "low_entry_quality_removed_true_positive_count": int(len(quality_blocked_true_positive_rows)),
+            "high_stop_pressure_removed_false_positive_count": int(len(stop_blocked_false_positive_rows)),
+            "high_stop_pressure_removed_true_positive_count": int(len(stop_blocked_true_positive_rows)),
+            "stop_pressure_effective_for_false_positive_reduction": bool(len(stop_blocked_false_positive_rows) > 0),
+            "stop_pressure_blocked_trade_rows_rate": (
+                len([row for row in blocked_by_stop_rows if _is_original_trade(row)]) / len(predicted_trade_rows)
+                if predicted_trade_rows
+                else 0.0
+            ),
+            "false_positive_removed_rate_among_blocked_trades": (
+                len(blocked_false_positive_rows) / len(blocked_predicted_trade_rows)
+                if blocked_predicted_trade_rows
+                else 0.0
+            ),
+        }
+
         return {
             "entry_path_filter_enabled": any(
                 bool(row.get("entry_path_filter_enabled", False)) for row in predictions
@@ -341,17 +454,30 @@ class ProfitAwareEvaluatorV2:
             "blocked_prediction_rows": int(len(blocked_rows)),
             "passed_prediction_rows": int(len(passed_rows)),
             "blocked_prediction_rate": (len(blocked_rows) / total) if total else 0.0,
+            "original_predicted_trade_rows": int(len(predicted_trade_rows)),
+            "blocked_original_predicted_trade_rows": int(len(blocked_predicted_trade_rows)),
+            "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
+            "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "blocked_by_both_count": int(len(blocked_by_both_rows)),
+            "removed_false_positive_count": int(len(blocked_false_positive_rows)),
+            "removed_true_positive_count": int(len(blocked_true_positive_rows)),
             "avg_blocked_entry_path_quality_score": _mean(blocked_rows, "entry_path_quality_score"),
             "avg_passed_entry_path_quality_score": _mean(passed_rows, "entry_path_quality_score"),
             "avg_blocked_stop_pressure_risk_score": _mean(blocked_rows, "stop_pressure_risk_score"),
             "avg_passed_stop_pressure_risk_score": _mean(passed_rows, "stop_pressure_risk_score"),
             "blocked_original_label_counts": {
                 label: sum(
-                    int(str(row.get("entry_path_original_predicted_label")).upper() == label)
+                    int(_original_label(row) == label)
                     for row in blocked_rows
                 )
                 for label in ("UP", "DOWN", "FLAT")
             },
+            "block_reason_counts": {
+                "low_entry_quality": int(len([row for row in blocked_rows if str(row.get("entry_path_filter_block_reason") or "") == "low_entry_quality"])),
+                "high_stop_pressure": int(len([row for row in blocked_rows if str(row.get("entry_path_filter_block_reason") or "") == "high_stop_pressure"])),
+                "unknown": int(len([row for row in blocked_rows if not str(row.get("entry_path_filter_block_reason") or "")])),
+            },
+            "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,
         }
 
     @staticmethod

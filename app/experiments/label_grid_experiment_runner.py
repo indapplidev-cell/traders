@@ -142,9 +142,12 @@ class LabelGridExperimentCandidateResult:
     stop_pressure_max_risk_score: float | None = None
     entry_path_quality_masked_row_count: int = 0
     entry_path_quality_forced_no_trade_count: int = 0
+    entry_path_quality_mask_trade_prediction_removed_count: int = 0
     entry_path_quality_mask_false_positive_removed_count: int = 0
     entry_path_quality_filter_summary: dict[str, Any] = field(default_factory=dict)
     entry_path_quality_filter_diagnostics: dict[str, Any] = field(default_factory=dict)
+    entry_path_prediction_filter_summary: dict[str, Any] = field(default_factory=dict)
+    stop_pressure_effectiveness_audit: dict[str, Any] = field(default_factory=dict)
     predicted_to_actual_trade_rate_ratio: float | None = None
     predicted_trade_rate: float | None = None
     raw_predicted_trade_rate: float | None = None
@@ -248,9 +251,12 @@ class LabelGridExperimentCandidateResult:
             "stop_pressure_max_risk_score": self.stop_pressure_max_risk_score,
             "entry_path_quality_masked_row_count": self.entry_path_quality_masked_row_count,
             "entry_path_quality_forced_no_trade_count": self.entry_path_quality_forced_no_trade_count,
+            "entry_path_quality_mask_trade_prediction_removed_count": self.entry_path_quality_mask_trade_prediction_removed_count,
             "entry_path_quality_mask_false_positive_removed_count": self.entry_path_quality_mask_false_positive_removed_count,
             "entry_path_quality_filter_summary": dict(self.entry_path_quality_filter_summary),
             "entry_path_quality_filter_diagnostics": dict(self.entry_path_quality_filter_diagnostics),
+            "entry_path_prediction_filter_summary": dict(self.entry_path_prediction_filter_summary),
+            "stop_pressure_effectiveness_audit": dict(self.stop_pressure_effectiveness_audit),
             "predicted_to_actual_trade_rate_ratio": self.predicted_to_actual_trade_rate_ratio,
             "predicted_trade_rate": self.predicted_trade_rate,
             "raw_predicted_trade_rate": self.raw_predicted_trade_rate,
@@ -1213,15 +1219,42 @@ class LabelGridExperimentRunner:
             quality_payload.get("two_stage_trade_diagnostics")
             or test_metrics.get("two_stage_trade_diagnostics", {})
         )
+        profit_aware_diagnostics_payload = self._as_dict(
+            quality_payload.get("profit_aware_diagnostics")
+        )
+        profit_aware_best_gate = self._as_dict(
+            profit_aware_diagnostics_payload.get("best_gate")
+        )
+        profit_entry_path_summary = self._as_dict(
+            quality_payload.get("entry_path_prediction_filter_summary")
+            or profit_aware_diagnostics_payload.get("entry_path_prediction_filter_summary")
+            or profit_aware_best_gate.get("entry_path_prediction_filter_summary")
+        )
+        profit_stop_pressure_audit = self._as_dict(
+            quality_payload.get("stop_pressure_effectiveness_audit")
+            or profit_aware_diagnostics_payload.get("stop_pressure_effectiveness_audit")
+            or profit_aware_best_gate.get("stop_pressure_effectiveness_audit")
+            or profit_entry_path_summary.get("stop_pressure_effectiveness_audit")
+        )
+
+        metric_sources = (
+            quality_payload,
+            test_metrics,
+            two_stage_trade_diagnostics,
+            profit_aware_diagnostics_payload,
+            profit_aware_best_gate,
+            profit_entry_path_summary,
+            profit_stop_pressure_audit,
+        )
 
         def _first_present(key: str, default: Any = None) -> Any:
-            for source in (quality_payload, test_metrics, two_stage_trade_diagnostics):
+            for source in metric_sources:
                 if isinstance(source, dict) and key in source and source.get(key) is not None:
                     return source.get(key)
             return default
 
         def _first_dict(key: str) -> dict[str, Any]:
-            for source in (quality_payload, test_metrics, two_stage_trade_diagnostics):
+            for source in metric_sources:
                 value = source.get(key) if isinstance(source, dict) else None
                 if isinstance(value, dict) and value:
                     return dict(value)
@@ -1229,6 +1262,12 @@ class LabelGridExperimentRunner:
 
         entry_path_quality_filter_diagnostics = _first_dict("entry_path_quality_filter_diagnostics")
         entry_path_quality_filter_summary = _first_dict("entry_path_quality_filter_summary")
+        entry_path_prediction_filter_summary = _first_dict("entry_path_prediction_filter_summary")
+        stop_pressure_effectiveness_audit = _first_dict("stop_pressure_effectiveness_audit")
+        if not stop_pressure_effectiveness_audit:
+            stop_pressure_effectiveness_audit = self._as_dict(
+                entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
+            )
         return LabelGridExperimentCandidateResult(
             config_id=label_config.config_id,
             label_config=label_config.to_dict(),
@@ -1375,11 +1414,16 @@ class LabelGridExperimentRunner:
             entry_path_quality_forced_no_trade_count=int(
                 _first_present("entry_path_quality_forced_no_trade_count", 0) or 0
             ),
+            entry_path_quality_mask_trade_prediction_removed_count=int(
+                _first_present("entry_path_quality_mask_trade_prediction_removed_count", 0) or 0
+            ),
             entry_path_quality_mask_false_positive_removed_count=int(
                 _first_present("entry_path_quality_mask_false_positive_removed_count", 0) or 0
             ),
             entry_path_quality_filter_summary=entry_path_quality_filter_summary,
             entry_path_quality_filter_diagnostics=entry_path_quality_filter_diagnostics,
+            entry_path_prediction_filter_summary=entry_path_prediction_filter_summary,
+            stop_pressure_effectiveness_audit=stop_pressure_effectiveness_audit,
             predicted_to_actual_trade_rate_ratio=self._optional_float(
                 _first_present("predicted_to_actual_trade_rate_ratio")
             ),
