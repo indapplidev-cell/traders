@@ -123,6 +123,7 @@ COMMIT_ALLOWED_PREFIXES = [
 ]
 
 COMMIT_ALLOWED_EXACT_FILES = {
+    ".gitignore",
     "README.md",
     "pyproject.toml",
     "requirements.txt",
@@ -149,14 +150,29 @@ COMMIT_ALLOWED_DELETION_EXACT_FILES = {
 CLEANER_LOG_PATH: Path | None = None
 
 TECHNICAL_COMMIT_MESSAGES = {
-    "modified_only": "новые изменения",
-    "new_only": "новые файлы",
-    "mixed": "добавлены и изменены",
+    # ASCII messages avoid mojibake in Windows PowerShell / Git console output.
+    "modified_only": "new changes",
+    "new_only": "new files",
+    "mixed": "added and changed",
 }
 
 MODEL_ARTIFACT_ROOT = Path("artifacts/models")
 DEFAULT_KEEP_LAST_MODELS = 10
 DEFAULT_PROJECT_ARCHIVE_OUTPUT = "reports/project_archives/after_38_10_14_3_traders-ml-light.zip"
+
+# Runtime outputs are intentionally created by this script/packer and must not
+# pollute cleaner status output or technical commits.
+RUNTIME_OUTPUT_GITIGNORE_LINES = [
+    "reports/cleaner_logs/",
+    "reports/project_archives/",
+]
+
+STATUS_NOISE_PATTERNS = [
+    "reports/cleaner_logs/",
+    "reports/cleaner_logs/*",
+    "reports/project_archives/",
+    "reports/project_archives/*",
+]
 
 
 def _init_cleaner_log(root: Path) -> Path:
@@ -291,19 +307,82 @@ def ensure_git_repo() -> Path:
 
 
 def print_status(title: str) -> None:
-    """Печатает короткий git status."""
+    """Печатает короткий git status без cleaner/packer runtime noise."""
     print()
     print("=" * 88)
     print(title)
     print("=" * 88)
-    result = run_git(["status", "--short"], check=False)
-    if not result.stdout.strip():
+    lines = _git_status_short_lines(include_noise=False)
+    if not lines:
         print("git status --short: clean")
+        return
+    for line in lines:
+        print(line)
+        _log_detail(f"Status line: {line}")
 
 
 def _matches_any(path: str, patterns: list[str]) -> bool:
     normalized = path.replace("\\", "/")
     return any(fnmatch.fnmatch(normalized, pattern) for pattern in patterns)
+
+
+def _is_status_noise_path(path: str) -> bool:
+    normalized = path.replace("\\", "/").rstrip("/")
+    patterns = [pattern.rstrip("/") for pattern in STATUS_NOISE_PATTERNS]
+    if normalized in patterns:
+        return True
+    return any(fnmatch.fnmatch(normalized, pattern) for pattern in STATUS_NOISE_PATTERNS)
+
+
+def _git_status_short_lines(*, include_noise: bool = False) -> list[str]:
+    result = subprocess.run(
+        ["git", "status", "--short"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        if result.stderr.strip():
+            print(result.stderr.rstrip(), file=sys.stderr)
+            _log_detail("STDERR:\n" + result.stderr.rstrip())
+        raise RuntimeError("Не удалось получить git status --short")
+
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    if include_noise:
+        return lines
+
+    filtered: list[str] = []
+    for line in lines:
+        path = line[3:].strip() if len(line) >= 4 else line.strip()
+        if _is_status_noise_path(path):
+            _log_detail(f"Ignored status noise: {line}")
+            continue
+        filtered.append(line)
+    return filtered
+
+
+def ensure_runtime_outputs_gitignored(root: Path, *, dry_run: bool) -> None:
+    """Ensures cleaner/packer runtime outputs stay out of git status."""
+    gitignore_path = root / ".gitignore"
+    existing = gitignore_path.read_text(encoding="utf-8") if gitignore_path.exists() else ""
+    existing_lines = {line.strip() for line in existing.splitlines()}
+    missing = [line for line in RUNTIME_OUTPUT_GITIGNORE_LINES if line not in existing_lines]
+
+    if not missing:
+        _log_detail(".gitignore already contains cleaner/packer runtime output rules.")
+        return
+
+    _log_detail("Missing .gitignore runtime output rules: " + ", ".join(missing))
+    if dry_run:
+        print("DRY RUN: .gitignore needs runtime output rules:", ", ".join(missing))
+        return
+
+    suffix = "" if existing.endswith(("\n", "\r\n")) or not existing else "\n"
+    block = "\n# Local cleaner / packer runtime outputs\n" + "\n".join(missing) + "\n"
+    gitignore_path.write_text(existing + suffix + block, encoding="utf-8")
+    print(".gitignore updated for cleaner/packer runtime outputs.")
+    _log_detail(".gitignore updated with: " + ", ".join(missing))
 
 
 def _tracked_runtime_report_files() -> list[str]:
@@ -1034,14 +1113,13 @@ def build_project_archive(*, root: Path, output: str, dry_run: bool, disabled: b
     print(f"Project archive created: {output_path}")
 
 def warn_if_changes_remain() -> None:
-    """Показывает, остались ли изменения, которые скрипт не должен трогать."""
-    result = run_git(["status", "--short"], check=False)
-    remaining = [line for line in result.stdout.splitlines() if line.strip()]
+    """Показывает, остались ли значимые изменения, кроме runtime outputs."""
+    remaining = _git_status_short_lines(include_noise=False)
 
     if not remaining:
         print()
-        print("Готово: рабочая папка чистая.")
-        _log_detail("Working tree is clean before archive build.")
+        print("Готово: значимых изменений до сборки архива не осталось.")
+        _log_detail("No significant working-tree changes before archive build.")
         _compact_progress("Remaining changes", 0, 0)
         return
 
@@ -1052,9 +1130,7 @@ def warn_if_changes_remain() -> None:
     _emit_detail_group("Remaining changes", remaining)
 
     print()
-    print(
-        "Остались изменения вне разрешённых зон. Полный список смотри в cleaner log."
-    )
+    print("Остались изменения вне разрешённых зон. Полный список смотри в cleaner log.")
     _log_detail(
         "These may be real deletions, conflicts, or files outside allowed commit zones."
     )
