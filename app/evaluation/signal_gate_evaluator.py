@@ -39,14 +39,24 @@ class SignalGateEvaluator:
         report["report_path"] = str(output_path)
         return report
 
-    def select_signals(self, predictions: list[dict[str, Any]], gate_type: str, threshold: float) -> dict[str, Any]:
+    def select_signals(
+        self,
+        predictions: list[dict[str, Any]],
+        gate_type: str,
+        threshold: float,
+        *,
+        apply_entry_path_filter: bool = True,
+    ) -> dict[str, Any]:
         selected: list[dict[str, Any]] = []
         skipped_flat_count = 0
         skipped_entry_path_filter_count = 0
-        for row in predictions:
-            if bool(row.get("entry_path_filter_blocked", False)):
+
+        for row_index, row in enumerate(predictions):
+            entry_path_blocked = bool(row.get("entry_path_filter_blocked", False))
+            if apply_entry_path_filter and entry_path_blocked:
                 skipped_entry_path_filter_count += 1
                 continue
+
             measured = self._measure(row)
             signal_direction, skipped_flat = self._gate_decision(gate_type, threshold, measured)
             if skipped_flat:
@@ -54,13 +64,19 @@ class SignalGateEvaluator:
                 continue
             if signal_direction is None:
                 continue
+
             enriched = dict(row)
             enriched["signal_direction"] = signal_direction
             enriched["margin"] = measured["margin"]
             enriched["directional_edge"] = measured["directional_edge"]
             enriched["entropy"] = measured["entropy"]
             enriched["directional_confidence"] = measured["directional_confidence"]
+            enriched["signal_gate_row_index"] = int(row_index)
+            enriched["signal_gate_type"] = str(gate_type)
+            enriched["signal_gate_threshold"] = float(threshold)
+            enriched["signal_gate_entry_path_filter_applied"] = bool(apply_entry_path_filter)
             selected.append(enriched)
+
         return {
             "gate_type": gate_type,
             "threshold": threshold,
@@ -69,6 +85,7 @@ class SignalGateEvaluator:
             "signal_count": len(selected),
             "skipped_flat_count": skipped_flat_count,
             "skipped_entry_path_filter_count": skipped_entry_path_filter_count,
+            "entry_path_filter_applied": bool(apply_entry_path_filter),
         }
 
     def _evaluate_threshold(self, predictions: list[dict[str, Any]], gate_type: str, threshold: float) -> dict[str, Any]:

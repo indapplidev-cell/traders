@@ -77,6 +77,22 @@ class MultiSymbolFeatureRegimeReporter:
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
             "schwager_robustness_summary": payload.get("schwager_robustness_summary"),
+            "configs_ranked": payload.get("configs_ranked"),
+            "entry_path_audit_by_symbol": {
+                item.get("symbol"): {
+                    "entry_path_quality_filter_enabled": item.get("entry_path_quality_filter_enabled"),
+                    "entry_path_quality_min_threshold": item.get("entry_path_quality_min_threshold"),
+                    "stop_pressure_max_risk_score": item.get("stop_pressure_max_risk_score"),
+                    "entry_path_final_signal_original_count": item.get("entry_path_final_signal_original_count"),
+                    "entry_path_final_signal_filtered_count": item.get("entry_path_final_signal_filtered_count"),
+                    "entry_path_final_signal_blocked_count": item.get("entry_path_final_signal_blocked_count"),
+                    "entry_path_stream_consistency_ok": item.get("entry_path_stream_consistency_ok"),
+                    "stop_pressure_status": self._as_dict(
+                        item.get("stop_pressure_effectiveness_audit")
+                    ).get("status"),
+                }
+                for item in self._as_list(payload.get("symbol_results"))
+            },
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -218,6 +234,10 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- walk_forward_summary: `{payload.get('walk_forward_summary')}`",
                 f"- profit_aware_summary: `{payload.get('profit_aware_summary')}`",
                 "",
+                "## Entry-Path / Stop-Pressure Audit",
+                "",
+                "| Symbol | Best Config | EPQ Enabled | EPQ Thr | Stop Thr | Original Signals | Filtered Signals | Blocked Signals | Consistent | Stop Status |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
                 "## Collapse Summary",
                 "",
                 f"- collapse_summary: `{payload.get('collapse_summary')}`",
@@ -255,4 +275,31 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
             ]
         )
+        lines.extend(
+            [
+                "",
+                "## Entry-Path / Stop-Pressure Audit",
+                "",
+                "| Symbol | Best Config | EPQ Enabled | EPQ Thr | Stop Thr | Original Signals | Filtered Signals | Blocked Signals | Consistent | Stop Status |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for item in self._as_list(payload.get("symbol_results")):
+            stop_audit = self._as_dict(item.get("stop_pressure_effectiveness_audit"))
+            lines.append(
+                "| `{symbol}` | `{config}` | `{enabled}` | `{epq}` | `{stop}` | `{original}` | `{filtered}` | `{blocked}` | `{consistent}` | `{status}` |".format(
+                    symbol=item.get("symbol"),
+                    config=item.get("best_candidate_config_id"),
+                    enabled=item.get("entry_path_quality_filter_enabled"),
+                    epq=item.get("entry_path_quality_min_threshold"),
+                    stop=item.get("stop_pressure_max_risk_score"),
+                    original=item.get("entry_path_final_signal_original_count"),
+                    filtered=item.get("entry_path_final_signal_filtered_count"),
+                    blocked=item.get("entry_path_final_signal_blocked_count"),
+                    consistent=item.get("entry_path_stream_consistency_ok"),
+                    status=stop_audit.get("status"),
+                )
+            )
+        if not self._as_list(payload.get("symbol_results")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)

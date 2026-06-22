@@ -86,13 +86,23 @@ class ProfitAwareEvaluatorV2:
         profit_exit_root_cause_audit = dict(
             summary.get("profit_exit_root_cause_audit") or {}
         )
-        entry_path_filter_summary = self._entry_path_prediction_filter_summary(predictions)
+        entry_path_filter_summary = dict(
+            summary.get("entry_path_prediction_filter_summary")
+            or self._entry_path_prediction_filter_summary(predictions)
+        )
+        stop_pressure_effectiveness_audit = dict(
+            summary.get("stop_pressure_effectiveness_audit")
+            or entry_path_filter_summary.get("stop_pressure_effectiveness_audit")
+            or {}
+        )
         summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
+        summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
         return {
             "gate_results": gate_results,
             "summary": summary,
             "profit_exit_root_cause_audit": profit_exit_root_cause_audit,
             "entry_path_prediction_filter_summary": entry_path_filter_summary,
+            "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,
         }
 
     def evaluate_single_gate(
@@ -106,8 +116,29 @@ class ProfitAwareEvaluatorV2:
         slippage_r: float = 0.0,
         same_candle_policy: str = "conservative",
     ) -> dict[str, Any]:
-        selection = self._signal_gate_evaluator.select_signals(predictions, gate_type, threshold)
+        original_selection = self._signal_gate_evaluator.select_signals(
+            predictions,
+            gate_type,
+            threshold,
+            apply_entry_path_filter=False,
+        )
+        selection = self._signal_gate_evaluator.select_signals(
+            predictions,
+            gate_type,
+            threshold,
+            apply_entry_path_filter=True,
+        )
         signal_rows = selection["signal_rows"]
+        entry_path_filter_summary = self._entry_path_final_decision_filter_summary(
+            predictions=predictions,
+            original_selection=original_selection,
+            filtered_selection=selection,
+            gate_type=gate_type,
+            threshold=threshold,
+        )
+        stop_pressure_effectiveness_audit = dict(
+            entry_path_filter_summary.get("stop_pressure_effectiveness_audit") or {}
+        )
         if not signal_rows:
             summary = self._empty_gate_report(selection, same_candle_policy)
             summary["profit_exit_root_cause_audit"] = self._profit_exit_root_cause_audit.analyze(
@@ -121,11 +152,8 @@ class ProfitAwareEvaluatorV2:
                 gate_type=gate_type,
                 threshold=threshold,
             )
-            entry_path_filter_summary = self._entry_path_prediction_filter_summary(predictions)
             summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
-            summary["stop_pressure_effectiveness_audit"] = dict(
-                entry_path_filter_summary.get("stop_pressure_effectiveness_audit") or {}
-            )
+            summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
             return {"summary": summary, "signal_rows": [], "outcomes": []}
 
         outcomes = [
@@ -151,11 +179,8 @@ class ProfitAwareEvaluatorV2:
             gate_type=gate_type,
             threshold=threshold,
         )
-        entry_path_filter_summary = self._entry_path_prediction_filter_summary(predictions)
         summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
-        summary["stop_pressure_effectiveness_audit"] = dict(
-            entry_path_filter_summary.get("stop_pressure_effectiveness_audit") or {}
-        )
+        summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
         return {
             "summary": summary,
             "signal_rows": signal_rows,
@@ -477,6 +502,196 @@ class ProfitAwareEvaluatorV2:
                 "high_stop_pressure": int(len([row for row in blocked_rows if str(row.get("entry_path_filter_block_reason") or "") == "high_stop_pressure"])),
                 "unknown": int(len([row for row in blocked_rows if not str(row.get("entry_path_filter_block_reason") or "")])),
             },
+            "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,
+        }
+
+    @staticmethod
+    def _entry_path_final_decision_filter_summary(
+        *,
+        predictions: list[dict[str, Any]],
+        original_selection: dict[str, Any],
+        filtered_selection: dict[str, Any],
+        gate_type: str,
+        threshold: float,
+    ) -> dict[str, Any]:
+        """Entry-path audit aligned with the final profit-aware gate decision stream.
+
+        ML38.10.14.3:
+        - old audit counted all prediction rows;
+        - this audit counts only rows that the selected profit gate would turn into
+          LONG/SHORT signals before entry-path filtering.
+        """
+
+        original_signal_rows = [
+            dict(row) for row in original_selection.get("signal_rows", [])
+        ]
+        filtered_signal_rows = [
+            dict(row) for row in filtered_selection.get("signal_rows", [])
+        ]
+
+        def _label(row: dict[str, Any], key: str, fallback: str = "") -> str:
+            value = row.get(key, fallback)
+            return str(value or fallback).upper()
+
+        def _is_actual_trade(row: dict[str, Any]) -> bool:
+            return _label(row, "actual_label", _label(row, "target_label", "")) in {"UP", "DOWN"}
+
+        def _is_signal_correct(row: dict[str, Any]) -> bool:
+            direction = str(row.get("signal_direction") or "").upper()
+            actual = _label(row, "actual_label", _label(row, "target_label", ""))
+            return (direction == "LONG" and actual == "UP") or (
+                direction == "SHORT" and actual == "DOWN"
+            )
+
+        def _mean(rows: list[dict[str, Any]], key: str) -> float | None:
+            values = [
+                float(row.get(key, 0.0) or 0.0)
+                for row in rows
+                if row.get(key) is not None
+            ]
+            return (sum(values) / len(values)) if values else None
+
+        original_signal_count = len(original_signal_rows)
+        filtered_signal_count = len(filtered_signal_rows)
+
+        blocked_signal_rows = [
+            row for row in original_signal_rows
+            if bool(row.get("entry_path_filter_blocked", False))
+        ]
+
+        blocked_by_quality_rows = [
+            row for row in blocked_signal_rows
+            if str(row.get("entry_path_filter_block_reason") or "") == "low_entry_quality"
+            or (
+                row.get("entry_path_filter_threshold") is not None
+                and float(row.get("entry_path_quality_score", 0.0) or 0.0)
+                < float(row.get("entry_path_filter_threshold"))
+            )
+        ]
+
+        blocked_by_stop_rows = [
+            row for row in blocked_signal_rows
+            if str(row.get("entry_path_filter_block_reason") or "") == "high_stop_pressure"
+            or (
+                row.get("entry_path_filter_stop_threshold") is not None
+                and float(row.get("stop_pressure_risk_score", 0.0) or 0.0)
+                > float(row.get("entry_path_filter_stop_threshold"))
+            )
+        ]
+
+        removed_non_opportunity_rows = [
+            row for row in blocked_signal_rows if not _is_actual_trade(row)
+        ]
+        removed_wrong_direction_rows = [
+            row for row in blocked_signal_rows
+            if _is_actual_trade(row) and not _is_signal_correct(row)
+        ]
+        removed_correct_direction_rows = [
+            row for row in blocked_signal_rows if _is_signal_correct(row)
+        ]
+
+        stop_blocked_false_rows = [
+            row for row in blocked_by_stop_rows
+            if (not _is_actual_trade(row)) or (_is_actual_trade(row) and not _is_signal_correct(row))
+        ]
+        stop_blocked_correct_rows = [
+            row for row in blocked_by_stop_rows if _is_signal_correct(row)
+        ]
+
+        consistency_delta = original_signal_count - filtered_signal_count - len(blocked_signal_rows)
+        consistency_ok = consistency_delta == 0
+
+        if not any(bool(row.get("entry_path_filter_enabled", False)) for row in predictions):
+            status = "NO_ENTRY_PATH_FILTER"
+        elif not blocked_signal_rows:
+            status = "NO_FINAL_SIGNAL_BLOCKS"
+        elif stop_blocked_false_rows and stop_blocked_correct_rows:
+            status = "STOP_PRESSURE_MIXED_TRUE_AND_FALSE_SIGNAL_BLOCKS"
+        elif stop_blocked_false_rows:
+            status = "STOP_PRESSURE_REMOVED_FALSE_SIGNALS"
+        elif stop_blocked_correct_rows:
+            status = "STOP_PRESSURE_REMOVED_ONLY_CORRECT_SIGNALS"
+        elif removed_non_opportunity_rows or removed_wrong_direction_rows:
+            status = "ENTRY_PATH_REMOVED_FALSE_SIGNALS"
+        else:
+            status = "ENTRY_PATH_REMOVED_ONLY_CORRECT_SIGNALS"
+
+        stop_pressure_effectiveness_audit = {
+            "diagnostic_name": "stop_pressure_effectiveness_audit",
+            "diagnostic_version": "ml38.10.14.3",
+            "audit_stream": "final_profit_aware_gate_signal_stream",
+            "gate_type": str(gate_type),
+            "threshold": float(threshold),
+            "entry_path_filter_enabled": any(
+                bool(row.get("entry_path_filter_enabled", False)) for row in predictions
+            ),
+            "entry_path_quality_threshold": next(
+                (
+                    row.get("entry_path_filter_threshold")
+                    for row in predictions
+                    if row.get("entry_path_filter_threshold") is not None
+                ),
+                None,
+            ),
+            "stop_pressure_threshold": next(
+                (
+                    row.get("entry_path_filter_stop_threshold")
+                    for row in predictions
+                    if row.get("entry_path_filter_stop_threshold") is not None
+                ),
+                None,
+            ),
+            "status": status,
+            "original_final_signal_count": int(original_signal_count),
+            "filtered_final_signal_count": int(filtered_signal_count),
+            "blocked_final_signal_count": int(len(blocked_signal_rows)),
+            "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
+            "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "removed_non_opportunity_signal_count": int(len(removed_non_opportunity_rows)),
+            "removed_wrong_direction_signal_count": int(len(removed_wrong_direction_rows)),
+            "removed_correct_direction_signal_count": int(len(removed_correct_direction_rows)),
+            "high_stop_pressure_removed_false_signal_count": int(len(stop_blocked_false_rows)),
+            "high_stop_pressure_removed_correct_signal_count": int(len(stop_blocked_correct_rows)),
+            "stop_pressure_effective_for_false_signal_reduction": bool(len(stop_blocked_false_rows) > 0),
+            "stream_consistency_ok": bool(consistency_ok),
+            "stream_consistency_delta": int(consistency_delta),
+        }
+
+        return {
+            "diagnostic_name": "entry_path_prediction_filter_summary",
+            "diagnostic_version": "ml38.10.14.3",
+            "audit_stream": "final_profit_aware_gate_signal_stream",
+            "gate_type": str(gate_type),
+            "threshold": float(threshold),
+            "entry_path_filter_enabled": any(
+                bool(row.get("entry_path_filter_enabled", False)) for row in predictions
+            ),
+            "total_prediction_rows": int(len(predictions)),
+            "original_final_signal_count": int(original_signal_count),
+            "filtered_final_signal_count": int(filtered_signal_count),
+            "blocked_final_signal_count": int(len(blocked_signal_rows)),
+            "blocked_prediction_rows": int(len(blocked_signal_rows)),
+            "passed_prediction_rows": int(filtered_signal_count),
+            "blocked_prediction_rate": (
+                len(blocked_signal_rows) / original_signal_count
+                if original_signal_count
+                else 0.0
+            ),
+            "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
+            "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "removed_false_positive_count": int(
+                len(removed_non_opportunity_rows) + len(removed_wrong_direction_rows)
+            ),
+            "removed_true_positive_count": int(len(removed_correct_direction_rows)),
+            "removed_non_opportunity_signal_count": int(len(removed_non_opportunity_rows)),
+            "removed_wrong_direction_signal_count": int(len(removed_wrong_direction_rows)),
+            "removed_correct_direction_signal_count": int(len(removed_correct_direction_rows)),
+            "avg_blocked_entry_path_quality_score": _mean(blocked_signal_rows, "entry_path_quality_score"),
+            "avg_passed_entry_path_quality_score": _mean(filtered_signal_rows, "entry_path_quality_score"),
+            "avg_blocked_stop_pressure_risk_score": _mean(blocked_signal_rows, "stop_pressure_risk_score"),
+            "avg_passed_stop_pressure_risk_score": _mean(filtered_signal_rows, "stop_pressure_risk_score"),
+            "stream_consistency_ok": bool(consistency_ok),
+            "stream_consistency_delta": int(consistency_delta),
             "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,
         }
 
