@@ -23,6 +23,12 @@
 Только очистить мусор, без commit:
     python clean_traders_ml.py --no-commit
 
+Только очистка + restore runtime-отчётов + technical commit, без архивации:
+    python clean_traders_ml.py --cleanup-commit-only
+
+Только сборка project archive, без очистки, restore и commit:
+    python clean_traders_ml.py --archive-only
+
 Отключить автоматическую сборку project archive:
     python clean_traders_ml.py --no-project-archive
 
@@ -60,6 +66,13 @@ RUNTIME_REPORT_PATTERNS = [
     "reports/probability_diagnostics_*.json",
     "reports/profit_eval_v2_*.json",
     "reports/walk_forward_eval_*.json",
+    # These debug status reports are tracked in the repository.
+    # If a previous cleanup deleted them, the next wrapper refuses to start.
+    # They must be restored before runtime verification.
+    "reports/_debug_training_pipeline_status/*/training_pipeline.log",
+    "reports/_debug_training_pipeline_status/*/training_pipeline_events.jsonl",
+    "reports/_debug_training_pipeline_status/*/training_pipeline_report.json",
+    "reports/_debug_training_pipeline_status/*/training_pipeline_report.md",
 ]
 
 CACHE_PATHS_TO_CLEAN = [
@@ -1156,6 +1169,17 @@ def main() -> int:
         help="Не собирать lightweight project archive после cleanup и technical commit.",
     )
     parser.add_argument(
+        "--cleanup-commit-only",
+        "--clean-commit-only",
+        action="store_true",
+        help="Выполнить только restore/cleanup и technical commit, без сборки архива.",
+    )
+    parser.add_argument(
+        "--archive-only",
+        action="store_true",
+        help="Выполнить только сборку lightweight project archive, без cleanup, restore и commit.",
+    )
+    parser.add_argument(
         "--project-archive-output",
         default=DEFAULT_PROJECT_ARCHIVE_OUTPUT,
         help=(
@@ -1198,13 +1222,33 @@ def main() -> int:
 
     root = ensure_git_repo()
 
+    if args.archive_only and args.cleanup_commit_only:
+        raise SystemExit("Use either --archive-only or --cleanup-commit-only, not both.")
+    if args.archive_only and args.no_project_archive:
+        raise SystemExit("--archive-only conflicts with --no-project-archive.")
+    if args.archive_only and args.no_commit:
+        raise SystemExit("--archive-only conflicts with --no-commit because commit is skipped by design.")
+
     log_path = _init_cleaner_log(root)
-    print("Идет подготовка к очистке и добавлению проекта в git ...")
+    if args.archive_only:
+        print("Идет подготовка к архивации проекта ...")
+    else:
+        print("Идет подготовка к очистке и добавлению проекта в git ...")
     print(f"Лог очистки: {log_path}")
     _log_detail(f"Project root: {root}")
 
     if args.models_dry_run and args.models_apply:
         raise SystemExit("Use either --models-dry-run or --models-apply, not both.")
+
+    if args.archive_only:
+        _log_detail("Mode: archive-only")
+        build_project_archive(
+            root=root,
+            output=args.project_archive_output,
+            dry_run=args.dry_run,
+            disabled=False,
+        )
+        return 0
 
     if args.models_dry_run or args.models_apply:
         cleanup_model_artifacts(
@@ -1229,6 +1273,13 @@ def main() -> int:
     )
     print_status("Status after technical commit")
     warn_if_changes_remain()
+
+    if args.cleanup_commit_only:
+        print()
+        print("Режим --cleanup-commit-only: архивация пропущена.")
+        _log_detail("Mode cleanup-commit-only: archive build skipped.")
+        return 0
+
     build_project_archive(
         root=root,
         output=args.project_archive_output,
