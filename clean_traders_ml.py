@@ -1237,6 +1237,14 @@ def main() -> int:
     print(f"Лог очистки: {log_path}")
     _log_detail(f"Project root: {root}")
 
+    # Важно: wrapper run_fv3_cached_tuning.py проверяет обычный git status --short
+    # и не знает про внутренний STATUS_NOISE_PATTERNS cleaner-а. Поэтому runtime
+    # директории логов/архивов должны быть реально прописаны в .gitignore, иначе
+    # после --cleanup-commit-only репозиторий визуально clean для cleaner-а, но
+    # wrapper падает на ?? reports/cleaner_logs/.
+    if not args.archive_only:
+        ensure_runtime_outputs_gitignored(root, dry_run=args.dry_run)
+
     if args.models_dry_run and args.models_apply:
         raise SystemExit("Use either --models-dry-run or --models-apply, not both.")
 

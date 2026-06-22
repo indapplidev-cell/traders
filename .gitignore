@@ -30,3 +30,7 @@ reports/label_grid_experiments/
 .DS_Store
 .idea/
 .vscode/
+
+# Local cleaner / packer runtime outputs
+reports/cleaner_logs/
+reports/project_archives/
