@@ -1199,7 +1199,7 @@ def main() -> int:
     root = ensure_git_repo()
 
     log_path = _init_cleaner_log(root)
-    print("Идет подготовка к очистке и добавлении проекта в git ...")
+    print("Идет подготовка к очистке и добавлению проекта в git ...")
     print(f"Лог очистки: {log_path}")
     _log_detail(f"Project root: {root}")
 
