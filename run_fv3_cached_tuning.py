@@ -111,6 +111,10 @@ START MODULE
 
         Не запускать без отдельного разрешения.
         Даже если появится ACCEPTED, модель не активировать. Сначала прислать архив на анализ.
+    
+    5. Runtime compact archives чистые, но проектный архив для лёгкой передачи проекта надо собирать через:
+
+        python pack_traders_ml_project.py --output reports/project_archives/after_38_10_14_3_traders-ml-light.zip
 
 """
 
