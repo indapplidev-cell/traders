@@ -380,6 +380,55 @@ class MultiSymbolFeatureRegimeAnalyzer:
             return next(iter(values))
         return "MULTIPLE"
 
+    @classmethod
+    def _entry_path_audit_payload(cls, candidate: dict[str, Any]) -> dict[str, Any]:
+        profit_aware = cls._as_dict(candidate.get("profit_aware_diagnostics"))
+        best_gate = cls._as_dict(profit_aware.get("best_gate"))
+
+        entry_summary = cls._as_dict(
+            candidate.get("entry_path_prediction_filter_summary")
+            or profit_aware.get("entry_path_prediction_filter_summary")
+            or best_gate.get("entry_path_prediction_filter_summary")
+        )
+        stop_audit = cls._as_dict(
+            candidate.get("stop_pressure_effectiveness_audit")
+            or profit_aware.get("stop_pressure_effectiveness_audit")
+            or best_gate.get("stop_pressure_effectiveness_audit")
+            or entry_summary.get("stop_pressure_effectiveness_audit")
+        )
+
+        return {
+            "entry_path_quality_filter_enabled": bool(
+                candidate.get("entry_path_quality_filter_enabled")
+                or entry_summary.get("entry_path_filter_enabled")
+                or stop_audit.get("entry_path_filter_enabled")
+            ),
+            "entry_path_quality_min_threshold": cls._float_or_none(
+                candidate.get("entry_path_quality_min_threshold")
+                or entry_summary.get("entry_path_quality_threshold")
+                or stop_audit.get("entry_path_quality_threshold")
+            ),
+            "stop_pressure_max_risk_score": cls._float_or_none(
+                candidate.get("stop_pressure_max_risk_score")
+                or entry_summary.get("stop_pressure_threshold")
+                or stop_audit.get("stop_pressure_threshold")
+            ),
+            "entry_path_prediction_filter_summary": entry_summary,
+            "stop_pressure_effectiveness_audit": stop_audit,
+            "entry_path_final_signal_original_count": int(
+                entry_summary.get("original_final_signal_count", 0) or 0
+            ),
+            "entry_path_final_signal_filtered_count": int(
+                entry_summary.get("filtered_final_signal_count", 0) or 0
+            ),
+            "entry_path_final_signal_blocked_count": int(
+                entry_summary.get("blocked_final_signal_count", 0) or 0
+            ),
+            "entry_path_stream_consistency_ok": bool(
+                entry_summary.get("stream_consistency_ok", True)
+            ),
+        }
+
     @staticmethod
     def _candidate_status(candidate: dict[str, Any]) -> str:
         return str(candidate.get("candidate_status") or "").upper()
@@ -478,7 +527,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             payload["schwager_robustness_decision_board"] = cls._as_dict(
                 payload.get("schwager_robustness_decision_board")
             )
+            payload.update(cls._entry_path_audit_payload(payload))
             configs_ranked.append(payload)
+        best_entry_path_audit = cls._entry_path_audit_payload(best_candidate)
         return {
             "symbol": str(summary.get("symbol")),
             "experiment_id": summary.get("experiment_id"),
@@ -567,18 +618,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 )
             ),
             "entry_path_quality_filter_enabled": bool(
-                summary.get(
-                    "entry_path_quality_filter_enabled",
-                    best_candidate.get("entry_path_quality_filter_enabled", False),
-                )
+                best_entry_path_audit.get("entry_path_quality_filter_enabled", False)
             ),
             "entry_path_quality_min_threshold": cls._float_or_none(
-                summary.get("entry_path_quality_min_threshold")
-                or best_candidate.get("entry_path_quality_min_threshold")
+                best_entry_path_audit.get("entry_path_quality_min_threshold")
             ),
             "stop_pressure_max_risk_score": cls._float_or_none(
-                summary.get("stop_pressure_max_risk_score")
-                or best_candidate.get("stop_pressure_max_risk_score")
+                best_entry_path_audit.get("stop_pressure_max_risk_score")
             ),
             "entry_path_quality_masked_row_count": int(
                 summary.get(
@@ -613,19 +659,21 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 or best_candidate.get("entry_path_quality_filter_summary")
             ),
             "entry_path_prediction_filter_summary": cls._as_dict(
-                summary.get("entry_path_prediction_filter_summary")
-                or best_candidate.get("entry_path_prediction_filter_summary")
-                or cls._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
-                    "entry_path_prediction_filter_summary"
-                )
+                best_entry_path_audit.get("entry_path_prediction_filter_summary")
             ),
             "stop_pressure_effectiveness_audit": cls._as_dict(
-                summary.get("stop_pressure_effectiveness_audit")
-                or best_candidate.get("stop_pressure_effectiveness_audit")
-                or cls._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
-                    "stop_pressure_effectiveness_audit"
-                )
+                best_entry_path_audit.get("stop_pressure_effectiveness_audit")
             ),
+            "entry_path_final_signal_original_count": int(
+                best_entry_path_audit.get("entry_path_final_signal_original_count", 0) or 0
+            ),
+            "entry_path_final_signal_filtered_count": int(
+                best_entry_path_audit.get("entry_path_final_signal_filtered_count", 0) or 0
+            ),
+            "entry_path_final_signal_blocked_count": int(
+                best_entry_path_audit.get("entry_path_final_signal_blocked_count", 0) or 0
+            ),
+            "entry_path_stream_consistency_ok": best_entry_path_audit["entry_path_stream_consistency_ok"],
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
             "regime_features_attached": bool(summary.get("regime_features_attached", False)),
@@ -1004,6 +1052,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload["setup_aware_label_diagnostics"] = cls._as_dict(
                     payload.get("setup_aware_label_diagnostics")
                 )
+                payload.update(cls._entry_path_audit_payload(payload))
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)

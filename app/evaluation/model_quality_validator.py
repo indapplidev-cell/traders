@@ -275,14 +275,6 @@ class ModelQualityValidator:
 
         if probability_diagnostics_was_none:
             warnings.append("probability_diagnostics_not_provided")
-        if calibration_summary_was_none:
-            warnings.append("calibration_summary_not_provided")
-        if profit_aware_summary_was_none:
-            warnings.append("profit_aware_summary_not_provided")
-        if walk_forward_summary_was_none:
-            warnings.append("walk_forward_summary_not_provided")
-        if gate_policy_replay_summary_was_none:
-            warnings.append("gate_policy_replay_summary_not_provided")
 
         if sample_mode:
             warnings.append("sample_mode_true")
@@ -740,7 +732,7 @@ class ModelQualityValidator:
         self,
         *,
         anti_collapse_summary: dict[str, Any],
-        probability_diagnostics: dict[str, Any],
+        probability_diagnostics: dict[str, Any] | None,
     ) -> dict[str, Any]:
         normalized_anti_collapse = self._normalize_mapping(anti_collapse_summary)
         if normalized_anti_collapse:
@@ -936,13 +928,13 @@ class ModelQualityValidator:
 
 
 def validate_model_quality(
-    training_summary: dict[str, Any],
-    baseline_summary: dict[str, Any],
-    probability_diagnostics: dict[str, Any],
-    calibration_summary: dict[str, Any],
-    profit_aware_summary: dict[str, Any],
-    walk_forward_summary: dict[str, Any],
-    gate_policy_replay_summary: dict[str, Any],
+    training_summary: dict[str, Any] | None,
+    baseline_summary: dict[str, Any] | None,
+    probability_diagnostics: dict[str, Any] | None,
+    calibration_summary: dict[str, Any] | None,
+    profit_aware_summary: dict[str, Any] | None,
+    walk_forward_summary: dict[str, Any] | None,
+    gate_policy_replay_summary: dict[str, Any] | None,
     gap_quality_summary: dict[str, Any] | None = None,
     anti_collapse_summary: dict[str, Any] | None = None,
     candidate_selection_summary: dict[str, Any] | None = None,

@@ -329,10 +329,10 @@ class LongHistoryTrainingPipelineRunner:
         profit_aware_summary: Any = None,
         walk_forward_profit_diagnostics: Any = None,
     ) -> dict[str, Any]:
-        """Attach ML38.10.13 exit/root-cause diagnostics only when real profit payloads exist.
+        """Attach ML38.10.13+ exit/root-cause diagnostics defensively.
 
-        Dry-run and lightweight sample-mode paths must not fail just because
-        profit-aware diagnostics are absent.
+        Dry-run and sample-mode paths often do not have real profit-aware or
+        walk-forward payloads. This enrichment must never fail the pipeline.
         """
 
         if not isinstance(payload, dict):
@@ -346,7 +346,7 @@ class LongHistoryTrainingPipelineRunner:
                         profit_aware_summary=profit_aware_summary_payload
                     )
                 )
-            except Exception as exc:  # defensive payload enrichment only
+            except Exception as exc:
                 payload["profit_exit_root_cause_audit_missing_reason"] = (
                     f"profit_aware_diagnostics_build_failed:{type(exc).__name__}"
                 )
@@ -356,34 +356,38 @@ class LongHistoryTrainingPipelineRunner:
                 )
                 if profit_exit_root_cause_audit:
                     payload["profit_exit_root_cause_audit"] = profit_exit_root_cause_audit
+
                 entry_path_prediction_filter_summary = self._as_dict(
-                    profit_aware_summary_payload.get("entry_path_prediction_filter_summary")
-                    or self._as_dict(profit_aware_summary_payload.get("summary")).get(
+                    profit_aware_diagnostics_payload.get(
                         "entry_path_prediction_filter_summary"
                     )
-                    or profit_aware_diagnostics_payload.get("entry_path_prediction_filter_summary")
                 )
                 if entry_path_prediction_filter_summary:
-                    payload["entry_path_prediction_filter_summary"] = entry_path_prediction_filter_summary
+                    payload["entry_path_prediction_filter_summary"] = (
+                        entry_path_prediction_filter_summary
+                    )
 
                 stop_pressure_effectiveness_audit = self._as_dict(
-                    profit_aware_summary_payload.get("stop_pressure_effectiveness_audit")
-                    or self._as_dict(profit_aware_summary_payload.get("summary")).get(
+                    profit_aware_diagnostics_payload.get(
                         "stop_pressure_effectiveness_audit"
                     )
-                    or profit_aware_diagnostics_payload.get("stop_pressure_effectiveness_audit")
-                    or entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
                 )
                 if stop_pressure_effectiveness_audit:
-                    payload["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
+                    payload["stop_pressure_effectiveness_audit"] = (
+                        stop_pressure_effectiveness_audit
+                    )
 
         walk_forward_profit_payload = self._as_dict(walk_forward_profit_diagnostics)
         if walk_forward_profit_payload:
             walk_forward_exit_summary = self._as_dict(
-                walk_forward_profit_payload.get("walk_forward_profit_exit_root_cause_summary")
+                walk_forward_profit_payload.get(
+                    "walk_forward_profit_exit_root_cause_summary"
+                )
             )
             if walk_forward_exit_summary:
-                payload["walk_forward_profit_exit_root_cause_summary"] = walk_forward_exit_summary
+                payload["walk_forward_profit_exit_root_cause_summary"] = (
+                    walk_forward_exit_summary
+                )
 
         return payload
 
@@ -1894,8 +1898,10 @@ class LongHistoryTrainingPipelineRunner:
         training_summary = self._as_dict(raw_training_summary)
         baseline_summary = self._as_dict(raw_baseline_summary)
         probability_diagnostics = self._as_dict(raw_probability_diagnostics)
+        calibration_summary = self._as_dict(raw_calibration_summary)
         profit_aware_summary = self._as_dict(raw_profit_aware_summary)
         walk_forward_summary = self._as_dict(raw_walk_forward_summary)
+        gate_policy_replay_summary = self._as_dict(raw_gate_policy_replay_summary)
         label_config_summary = self._label_config_summary(config, stage_payloads)
         feature_config_summary = self._feature_config_summary(config.feature_version)
         calibrated_model_accuracy, calibrated_baseline_accuracy, calibrated_accuracy_edge = (
