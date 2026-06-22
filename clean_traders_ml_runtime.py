@@ -62,17 +62,19 @@ CACHE_PATHS_TO_CLEAN = [
 
 # Эти пути нельзя удалять никакой runtime-очисткой.
 # Даже если они ignored в .gitignore, cleaner обязан их защищать.
-GIT_CLEAN_EXCLUDE_PATTERNS = [
-    ".venv/",
-    ".venv/**",
-    ".venv_broken/",
-    ".venv_broken/**",
-    "venv/",
-    "venv/**",
-    "env/",
-    "env/**",
-    ".git/",
-    ".git/**",
+PROTECTED_CLEANUP_ROOT_NAMES = {
+    ".git",
+    ".venv",
+    ".venv_broken",
+    "venv",
+    "env",
+    "artifacts",
+}
+
+PYTHON_CACHE_PATTERNS_TO_CLEAN = [
+    "__pycache__",
+    "**/__pycache__",
+    "**/*.pyc",
 ]
 
 # Архивы проекта обычно появляются после ручной упаковки или передачи в чат.
@@ -284,55 +286,183 @@ def restore_tracked_runtime_reports(dry_run: bool) -> None:
     run_git(args, check=True)
 
 
-def clean_untracked_runtime_files(dry_run: bool) -> None:
-    """Удаляет runtime-файлы, папки, cache и архивы.
+def _relative_display_path(root: Path, path: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def _is_protected_cleanup_path(root: Path, path: Path) -> bool:
+    """Запрещает runtime-cleaner удалять .venv, .git, artifacts и другие корневые зоны."""
+    try:
+        relative = path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return True
+
+    if not relative.parts:
+        return True
+
+    return relative.parts[0] in PROTECTED_CLEANUP_ROOT_NAMES
+
+
+def _expand_cleanup_patterns(root: Path, patterns: list[str]) -> list[Path]:
+    """Раскрывает cleanup patterns.
 
     Важно:
-    - git clean -fd удаляет обычные untracked-файлы;
-    - git clean -fdX удаляет ignored-файлы.
+    - если pattern указывает на директорию с trailing slash, не возвращаем саму
+      директорию целиком, а возвращаем её детей;
+    - это защищает от удаления tracked директории целиком, если внутри есть
+      tracked historical reports.
+    """
+    result: list[Path] = []
 
-    После ML38.10.13.1 runtime-папки и архивы могут быть добавлены в .gitignore.
-    Поэтому одного git clean -fd уже недостаточно: ignored runtime artifacts
-    остаются на диске и не отображаются в git status --short.
+    for pattern in patterns:
+        normalized = pattern.replace("\\", "/").strip()
+        if not normalized:
+            continue
+
+        if any(symbol in normalized for symbol in "*?["):
+            result.extend(root.glob(normalized))
+            continue
+
+        path = root / normalized
+
+        if normalized.endswith("/") and path.exists() and path.is_dir():
+            result.extend(path.iterdir())
+            continue
+
+        result.append(path)
+
+    return result
+
+
+def _git_tracked_paths(root: Path) -> set[str]:
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        if result.stderr.strip():
+            print(result.stderr.rstrip(), file=sys.stderr)
+        return set()
+
+    return {
+        line.strip().replace("\\", "/")
+        for line in result.stdout.splitlines()
+        if line.strip()
+    }
+
+
+def _is_tracked_or_contains_tracked_path(
+    *,
+    root: Path,
+    path: Path,
+    tracked_paths: set[str],
+) -> bool:
+    relative_path = _relative_display_path(root, path).rstrip("/")
+
+    if relative_path in tracked_paths:
+        return True
+
+    if path.is_dir():
+        prefix = f"{relative_path}/"
+        return any(tracked_path.startswith(prefix) for tracked_path in tracked_paths)
+
+    return False
+
+
+def _collect_runtime_cleanup_candidates(root: Path) -> list[Path]:
+    """Собирает только явно разрешённые runtime/cache/report targets.
+
+    Никакого широкого git clean -X здесь быть не должно.
+    """
+    patterns = [
+        *RUNTIME_PATHS_TO_CLEAN,
+        *RUNTIME_REPORT_PATTERNS,
+        *ARCHIVE_PATTERNS_TO_CLEAN,
+        *CACHE_PATHS_TO_CLEAN,
+        *PYTHON_CACHE_PATTERNS_TO_CLEAN,
+    ]
+
+    tracked_paths = _git_tracked_paths(root)
+
+    candidates: list[Path] = []
+    for path in _expand_cleanup_patterns(root, patterns):
+        if not path.exists():
+            continue
+
+        if _is_protected_cleanup_path(root, path):
+            print(f"SKIP protected cleanup path: {_relative_display_path(root, path)}")
+            continue
+
+        if _is_tracked_or_contains_tracked_path(
+            root=root,
+            path=path,
+            tracked_paths=tracked_paths,
+        ):
+            print(f"SKIP tracked cleanup path: {_relative_display_path(root, path)}")
+            continue
+
+        candidates.append(path)
+
+    unique: dict[str, Path] = {}
+    for path in candidates:
+        unique[str(path.resolve())] = path
+
+    return sorted(
+        unique.values(),
+        key=lambda item: (len(item.resolve().parts), str(item.resolve())),
+        reverse=True,
+    )
+
+
+def _remove_runtime_cleanup_candidate(path: Path) -> None:
+    if not path.exists():
+        return
+    if path.is_dir():
+        shutil.rmtree(path)
+        return
+    path.unlink()
+
+
+def clean_untracked_runtime_files(*, root: Path, dry_run: bool) -> None:
+    """Удаляет только явно разрешённые runtime-файлы, cache и архивы.
+
+    Важно:
+    - НЕ использовать git clean -fdX;
+    - .venv, .git, artifacts и другие protected root paths нельзя удалять;
+    - ignored runtime reports чистятся через Python по whitelist-паттернам.
     """
     print()
     print("=" * 88)
     print("Clean runtime files")
     print("=" * 88)
 
-    targets = [*RUNTIME_PATHS_TO_CLEAN]
-    targets.extend(f":(glob){pattern}" for pattern in RUNTIME_REPORT_PATTERNS)
-    targets.extend(f":(glob){pattern}" for pattern in ARCHIVE_PATTERNS_TO_CLEAN)
-    targets.extend(CACHE_PATHS_TO_CLEAN)
+    candidates = _collect_runtime_cleanup_candidates(root)
 
-    clean_excludes: list[str] = []
-    for pattern in GIT_CLEAN_EXCLUDE_PATTERNS:
-        clean_excludes.extend(["-e", pattern])
+    if not candidates:
+        print("No runtime cleanup candidates found.")
+        return
 
-    preview_untracked_args = ["clean", "-nd", *clean_excludes, "--", *targets]
-    preview_ignored_args = ["clean", "-ndX", *clean_excludes, "--", *targets]
-
-    print("Preview untracked runtime files:")
-    run_git(preview_untracked_args, check=False)
-
-    print()
-    print("Preview ignored runtime files:")
-    run_git(preview_ignored_args, check=False)
+    print("Cleanup candidates:")
+    for path in candidates:
+        print(f"Would remove {_relative_display_path(root, path)}")
 
     if dry_run:
         print("DRY RUN: удаление не выполнялось.")
         return
 
-    clean_untracked_args = ["clean", "-fd", *clean_excludes, "--", *targets]
-    clean_ignored_args = ["clean", "-fdX", *clean_excludes, "--", *targets]
-
     print()
-    print("Apply clean for untracked runtime files:")
-    run_git(clean_untracked_args, check=False)
-
-    print()
-    print("Apply clean for ignored runtime files:")
-    run_git(clean_ignored_args, check=False)
+    print("Apply safe Python cleanup:")
+    for path in candidates:
+        display_path = _relative_display_path(root, path)
+        print(f"Removing {display_path}")
+        _remove_runtime_cleanup_candidate(path)
 
 def _safe_dir_size_bytes(path: Path) -> int:
     total = 0
@@ -734,7 +864,7 @@ def main() -> int:
     print_status("Status before cleanup")
 
     restore_tracked_runtime_reports(dry_run=args.dry_run)
-    clean_untracked_runtime_files(dry_run=args.dry_run)
+    clean_untracked_runtime_files(root=root, dry_run=args.dry_run)
     print_status("Status after cleanup")
     create_technical_commit(
         dry_run=args.dry_run,
