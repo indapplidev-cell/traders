@@ -25,10 +25,13 @@ def test_ml38_10_8_grid_matrix_and_runtime_shortlists_keep_historical_configs() 
     assert matrix["setup_quality_decision_mask_stage"] == "ML38.10.8"
     assert matrix["setup_quality_decision_mask_config_ids"] == list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS)
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
+        "lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff",
         "lv22_h08_tts_thr065_sqmask060_epq070_sp045",
         "lv19_h08_tts_thr065_sqmask060",
     )
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
+        "lv23_h12_tts_thr065_sqmask060_epq065_sp050_eff",
+        "lv23_h12_tts_thr065_sqmask060_epq068_sp047_eff",
         "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
         "lv21_h12_tts_thr065_sqmask060_epq070",
         "lv19_h12_tts_thr065_sqmask060",

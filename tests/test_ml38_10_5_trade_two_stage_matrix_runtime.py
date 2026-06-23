@@ -34,16 +34,17 @@ def test_ml38_10_5_runtime_smoke_uses_current_shortlists() -> None:
     fast_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--fast-debug"])
     )
-    assert fast_wrapper.selected_config_ids == (
-        "lv22_h08_tts_thr065_sqmask060_epq070_sp045",
-        "lv19_h08_tts_thr065_sqmask060",
-    )
+    assert fast_wrapper.selected_config_ids == run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff" in fast_wrapper.selected_config_ids
+    assert "lv22_h08_tts_thr065_sqmask060_epq070_sp045" in fast_wrapper.selected_config_ids
+    assert "lv19_h08_tts_thr065_sqmask060" in fast_wrapper.selected_config_ids
 
     quick_wrapper = run_fv3_cached_tuning.Fv3CachedTuningWrapper(
         run_fv3_cached_tuning.parse_args(["--quick-quality", "--quick-quality-symbol", "SOLUSDT"])
     )
-    assert quick_wrapper.selected_config_ids == (
-        "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
-        "lv21_h12_tts_thr065_sqmask060_epq070",
-        "lv19_h12_tts_thr065_sqmask060",
-    )
+    assert quick_wrapper.selected_config_ids == run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
+    assert "lv23_h12_tts_thr065_sqmask060_epq065_sp050_eff" in quick_wrapper.selected_config_ids
+    assert "lv23_h12_tts_thr065_sqmask060_epq068_sp047_eff" in quick_wrapper.selected_config_ids
+    assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in quick_wrapper.selected_config_ids
+    assert "lv21_h12_tts_thr065_sqmask060_epq070" in quick_wrapper.selected_config_ids
+    assert "lv19_h12_tts_thr065_sqmask060" in quick_wrapper.selected_config_ids

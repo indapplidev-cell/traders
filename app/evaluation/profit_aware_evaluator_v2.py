@@ -618,7 +618,7 @@ class ProfitAwareEvaluatorV2:
 
         stop_pressure_effectiveness_audit = {
             "diagnostic_name": "stop_pressure_effectiveness_audit",
-            "diagnostic_version": "ml38.10.14.3",
+            "diagnostic_version": "ml38.10.15",
             "audit_stream": "final_profit_aware_gate_signal_stream",
             "gate_type": str(gate_type),
             "threshold": float(threshold),
@@ -653,13 +653,39 @@ class ProfitAwareEvaluatorV2:
             "high_stop_pressure_removed_false_signal_count": int(len(stop_blocked_false_rows)),
             "high_stop_pressure_removed_correct_signal_count": int(len(stop_blocked_correct_rows)),
             "stop_pressure_effective_for_false_signal_reduction": bool(len(stop_blocked_false_rows) > 0),
+            "stop_pressure_false_signal_precision": (
+                len(stop_blocked_false_rows) / len(blocked_by_stop_rows)
+                if blocked_by_stop_rows
+                else 0.0
+            ),
+            "filter_false_signal_precision": (
+                (len(removed_non_opportunity_rows) + len(removed_wrong_direction_rows))
+                / len(blocked_signal_rows)
+                if blocked_signal_rows
+                else 0.0
+            ),
+            "correct_signal_retention_rate": (
+                (len(original_signal_rows) - len(removed_correct_direction_rows))
+                / len(original_signal_rows)
+                if original_signal_rows
+                else 0.0
+            ),
+            "entry_path_effectiveness_score": (
+                (
+                    (len(removed_non_opportunity_rows) + len(removed_wrong_direction_rows))
+                    / len(blocked_signal_rows)
+                )
+                - (len(removed_correct_direction_rows) / len(original_signal_rows))
+                if blocked_signal_rows and original_signal_rows
+                else 0.0
+            ),
             "stream_consistency_ok": bool(consistency_ok),
             "stream_consistency_delta": int(consistency_delta),
         }
 
         return {
             "diagnostic_name": "entry_path_prediction_filter_summary",
-            "diagnostic_version": "ml38.10.14.3",
+            "diagnostic_version": "ml38.10.15",
             "audit_stream": "final_profit_aware_gate_signal_stream",
             "gate_type": str(gate_type),
             "threshold": float(threshold),
@@ -683,6 +709,10 @@ class ProfitAwareEvaluatorV2:
                 len(removed_non_opportunity_rows) + len(removed_wrong_direction_rows)
             ),
             "removed_true_positive_count": int(len(removed_correct_direction_rows)),
+            "filter_false_signal_precision": stop_pressure_effectiveness_audit["filter_false_signal_precision"],
+            "stop_pressure_false_signal_precision": stop_pressure_effectiveness_audit["stop_pressure_false_signal_precision"],
+            "correct_signal_retention_rate": stop_pressure_effectiveness_audit["correct_signal_retention_rate"],
+            "entry_path_effectiveness_score": stop_pressure_effectiveness_audit["entry_path_effectiveness_score"],
             "removed_non_opportunity_signal_count": int(len(removed_non_opportunity_rows)),
             "removed_wrong_direction_signal_count": int(len(removed_wrong_direction_rows)),
             "removed_correct_direction_signal_count": int(len(removed_correct_direction_rows)),

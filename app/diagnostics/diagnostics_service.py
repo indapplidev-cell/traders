@@ -2849,12 +2849,21 @@ class DiagnosticsService:
                 float(row.get("setup_invalidation_distance_atr", 0.0) or 0.0)
             )
 
+        predicted_labels = [
+            str(row.get("entry_path_original_predicted_label", row.get("predicted_label", "")) or "").upper()
+            for row in predictions
+        ]
         score_payload = self._entry_path_quality_filter.score_rows(
             feature_names=columns,
             feature_rows=feature_rows,
             setup_quality_scores=setup_quality_scores,
             expected_move_atr=expected_move_atr,
             invalidation_distance_atr=invalidation_distance_atr,
+            predicted_labels=predicted_labels,
+            score_profile=training_config.get(
+                "entry_path_quality_score_profile",
+                "legacy_balanced_v1",
+            ),
         )
         score_rows = list(score_payload.get("score_rows", []))
 
@@ -2878,7 +2887,7 @@ class DiagnosticsService:
                 "FLAT" if blocked else row.get("predicted_label")
             )
             if blocked:
-                enriched["predicted_label"] = "FLAT"
+                enriched["predicted_label"] = "FLAT"    
                 enriched["entry_path_filter_block_reason"] = (
                     "low_entry_quality"
                     if entry_score < entry_threshold
