@@ -404,11 +404,21 @@ class ProfitAwareEvaluatorV2:
             if threshold is None:
                 return False
             return float(row.get("stop_pressure_risk_score", 0.0) or 0.0) > float(threshold)
+        
+        def _mae_blocked(row: dict[str, Any]) -> bool:
+            reason = str(row.get("entry_path_filter_block_reason") or "")
+            if reason == "high_mae_pressure":
+                return True
+            threshold = row.get("entry_path_filter_mae_threshold")
+            if threshold is None:
+                return False
+            return float(row.get("mae_pressure_risk_score", 0.0) or 0.0) > float(threshold)
 
         predicted_trade_rows = [row for row in predictions if _is_original_trade(row)]
         blocked_predicted_trade_rows = [row for row in blocked_rows if _is_original_trade(row)]
         blocked_by_quality_rows = [row for row in blocked_rows if _quality_blocked(row)]
         blocked_by_stop_rows = [row for row in blocked_rows if _stop_blocked(row)]
+        blocked_by_mae_rows = [row for row in blocked_rows if _mae_blocked(row)]
         blocked_by_both_rows = [row for row in blocked_rows if _quality_blocked(row) and _stop_blocked(row)]
         blocked_false_positive_rows = [row for row in blocked_rows if _is_false_positive_removed(row)]
         blocked_true_positive_rows = [row for row in blocked_rows if _is_true_positive_removed(row)]
@@ -432,7 +442,7 @@ class ProfitAwareEvaluatorV2:
 
         stop_pressure_effectiveness_audit = {
             "diagnostic_name": "stop_pressure_effectiveness_audit",
-            "diagnostic_version": "ml38.10.14.2",
+            "diagnostic_version": "ml38.10.16",
             "entry_path_filter_enabled": any(
                 bool(row.get("entry_path_filter_enabled", False)) for row in predictions
             ),
@@ -444,6 +454,18 @@ class ProfitAwareEvaluatorV2:
                 (row.get("entry_path_filter_stop_threshold") for row in predictions if row.get("entry_path_filter_stop_threshold") is not None),
                 None,
             ),
+            "mae_pressure_threshold": next(
+                (
+                    row.get("entry_path_filter_mae_threshold")
+                    for row in predictions
+                    if row.get("entry_path_filter_mae_threshold") is not None
+                ),
+                None,
+            ),
+            "mae_pressure_threshold": next(
+                (row.get("entry_path_filter_mae_threshold") for row in predictions if row.get("entry_path_filter_mae_threshold") is not None),
+                None,
+            ),
             "status": stop_pressure_effectiveness_status,
             "total_prediction_rows": int(total),
             "original_predicted_trade_rows": int(len(predicted_trade_rows)),
@@ -451,6 +473,8 @@ class ProfitAwareEvaluatorV2:
             "blocked_original_predicted_trade_rows": int(len(blocked_predicted_trade_rows)),
             "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
             "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
+            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "blocked_by_both_count": int(len(blocked_by_both_rows)),
             "removed_false_positive_count": int(len(blocked_false_positive_rows)),
             "removed_true_positive_count": int(len(blocked_true_positive_rows)),
@@ -483,6 +507,8 @@ class ProfitAwareEvaluatorV2:
             "blocked_original_predicted_trade_rows": int(len(blocked_predicted_trade_rows)),
             "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
             "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
+            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "blocked_by_both_count": int(len(blocked_by_both_rows)),
             "removed_false_positive_count": int(len(blocked_false_positive_rows)),
             "removed_true_positive_count": int(len(blocked_true_positive_rows)),
@@ -490,6 +516,8 @@ class ProfitAwareEvaluatorV2:
             "avg_passed_entry_path_quality_score": _mean(passed_rows, "entry_path_quality_score"),
             "avg_blocked_stop_pressure_risk_score": _mean(blocked_rows, "stop_pressure_risk_score"),
             "avg_passed_stop_pressure_risk_score": _mean(passed_rows, "stop_pressure_risk_score"),
+            "avg_blocked_mae_pressure_risk_score": _mean(blocked_rows, "mae_pressure_risk_score"),
+            "avg_passed_mae_pressure_risk_score": _mean(passed_rows, "mae_pressure_risk_score"),
             "blocked_original_label_counts": {
                 label: sum(
                     int(_original_label(row) == label)
@@ -500,6 +528,7 @@ class ProfitAwareEvaluatorV2:
             "block_reason_counts": {
                 "low_entry_quality": int(len([row for row in blocked_rows if str(row.get("entry_path_filter_block_reason") or "") == "low_entry_quality"])),
                 "high_stop_pressure": int(len([row for row in blocked_rows if str(row.get("entry_path_filter_block_reason") or "") == "high_stop_pressure"])),
+                "high_mae_pressure": int(len([row for row in blocked_rows if str(row.get("entry_path_filter_block_reason") or "") == "high_mae_pressure"])),
                 "unknown": int(len([row for row in blocked_rows if not str(row.get("entry_path_filter_block_reason") or "")])),
             },
             "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,
@@ -579,6 +608,16 @@ class ProfitAwareEvaluatorV2:
             )
         ]
 
+        blocked_by_mae_rows = [
+            row for row in blocked_signal_rows
+            if str(row.get("entry_path_filter_block_reason") or "") == "high_mae_pressure"
+            or (
+                row.get("entry_path_filter_mae_threshold") is not None
+                and float(row.get("mae_pressure_risk_score", 0.0) or 0.0)
+                > float(row.get("entry_path_filter_mae_threshold"))
+            )
+        ]
+
         removed_non_opportunity_rows = [
             row for row in blocked_signal_rows if not _is_actual_trade(row)
         ]
@@ -618,7 +657,7 @@ class ProfitAwareEvaluatorV2:
 
         stop_pressure_effectiveness_audit = {
             "diagnostic_name": "stop_pressure_effectiveness_audit",
-            "diagnostic_version": "ml38.10.15",
+            "diagnostic_version": "ml38.10.16",
             "audit_stream": "final_profit_aware_gate_signal_stream",
             "gate_type": str(gate_type),
             "threshold": float(threshold),
@@ -685,7 +724,7 @@ class ProfitAwareEvaluatorV2:
 
         return {
             "diagnostic_name": "entry_path_prediction_filter_summary",
-            "diagnostic_version": "ml38.10.15",
+            "diagnostic_version": "ml38.10.16",
             "audit_stream": "final_profit_aware_gate_signal_stream",
             "gate_type": str(gate_type),
             "threshold": float(threshold),
@@ -720,6 +759,8 @@ class ProfitAwareEvaluatorV2:
             "avg_passed_entry_path_quality_score": _mean(filtered_signal_rows, "entry_path_quality_score"),
             "avg_blocked_stop_pressure_risk_score": _mean(blocked_signal_rows, "stop_pressure_risk_score"),
             "avg_passed_stop_pressure_risk_score": _mean(filtered_signal_rows, "stop_pressure_risk_score"),
+            "avg_blocked_mae_pressure_risk_score": _mean(blocked_signal_rows, "mae_pressure_risk_score"),
+            "avg_passed_mae_pressure_risk_score": _mean(filtered_signal_rows, "mae_pressure_risk_score"),
             "stream_consistency_ok": bool(consistency_ok),
             "stream_consistency_delta": int(consistency_delta),
             "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,

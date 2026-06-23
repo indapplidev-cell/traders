@@ -5,9 +5,10 @@ from typing import Any
 
 
 ENTRY_PATH_QUALITY_FILTER_NAME = "entry_path_quality_filter"
-ENTRY_PATH_QUALITY_FILTER_VERSION = "ml38.10.15"
+ENTRY_PATH_QUALITY_FILTER_VERSION = "ml38.10.16"
 ENTRY_PATH_SCORE_PROFILE_LEGACY = "legacy_balanced_v1"
 ENTRY_PATH_SCORE_PROFILE_DIRECTIONAL_CONTEXT_V2 = "directional_context_v2"
+ENTRY_PATH_SCORE_PROFILE_MAE_AWARE_RR_V3 = "mae_aware_rr_v3"
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +23,8 @@ class EntryPathQualityScores:
     wick_pressure_risk_score: float = 0.0
     exhaustion_risk_score: float = 0.0
     stop_pressure_effectiveness_filter_score: float = 0.0
+    mae_pressure_risk_score: float = 0.0
+    rr_adjusted_entry_score: float = 0.0
 
     def to_dict(self) -> dict[str, float]:
         return {
@@ -35,6 +38,8 @@ class EntryPathQualityScores:
             "wick_pressure_risk_score": float(self.wick_pressure_risk_score),
             "exhaustion_risk_score": float(self.exhaustion_risk_score),
             "stop_pressure_effectiveness_filter_score": float(self.stop_pressure_effectiveness_filter_score),
+            "mae_pressure_risk_score": float(self.mae_pressure_risk_score),
+            "rr_adjusted_entry_score": float(self.rr_adjusted_entry_score),
         }
 
 
@@ -77,6 +82,8 @@ class EntryPathQualityFilter:
         wick_scores: list[float] = []
         exhaustion_scores: list[float] = []
         effectiveness_scores: list[float] = []
+        mae_pressure_scores: list[float] = []
+        rr_adjusted_scores: list[float] = []
 
         for index in range(row_count):
             features = list(feature_rows[index]) if index < len(feature_rows) else []
@@ -92,7 +99,10 @@ class EntryPathQualityFilter:
             chop_risk = self._chop_risk(feature_index=feature_index, features=features)
             trap_risk = self._trap_risk(feature_index=feature_index, features=features)
 
-            if profile == ENTRY_PATH_SCORE_PROFILE_DIRECTIONAL_CONTEXT_V2:
+            if profile in {
+                ENTRY_PATH_SCORE_PROFILE_DIRECTIONAL_CONTEXT_V2,
+                ENTRY_PATH_SCORE_PROFILE_MAE_AWARE_RR_V3,
+            }:
                 directional_context = self._directional_context(
                     feature_index=feature_index,
                     features=features,
@@ -128,11 +138,38 @@ class EntryPathQualityFilter:
                     + 0.08 * (1.0 - chop_risk)
                     + 0.07 * (1.0 - trap_risk)
                 )
+                mae_pressure_risk = self._bounded(
+                    0.24 * chop_risk
+                    + 0.20 * trap_risk
+                    + 0.18 * direction_opposition
+                    + 0.16 * wick_pressure
+                    + 0.12 * exhaustion_risk
+                    + 0.10 * (1.0 - invalidation_quality)
+                    - 0.08 * direction_alignment
+                )
+                rr_adjusted_entry_score = self._bounded(
+                    0.44 * entry_quality
+                    + 0.24 * adjusted_rr_quality
+                    + 0.18 * (1.0 - mae_pressure_risk)
+                    + 0.14 * followthrough
+                )
+                if profile == ENTRY_PATH_SCORE_PROFILE_MAE_AWARE_RR_V3:
+                    stop_pressure_risk = self._bounded(
+                        0.58 * stop_pressure_risk
+                        + 0.32 * mae_pressure_risk
+                        + 0.10 * (1.0 - rr_adjusted_entry_score)
+                    )
+                    entry_quality = self._bounded(
+                        0.62 * entry_quality
+                        + 0.26 * rr_adjusted_entry_score
+                        + 0.12 * (1.0 - mae_pressure_risk)
+                    )
                 stop_pressure_effectiveness_filter_score = self._bounded(
-                    0.55 * stop_pressure_risk
-                    + 0.25 * direction_opposition
+                    0.45 * stop_pressure_risk
+                    + 0.25 * mae_pressure_risk
+                    + 0.15 * direction_opposition
                     + 0.10 * wick_pressure
-                    + 0.10 * exhaustion_risk
+                    + 0.05 * exhaustion_risk
                 )
                 risk_reward_quality = adjusted_rr_quality
             else:
@@ -153,6 +190,8 @@ class EntryPathQualityFilter:
                     + 0.10 * (1.0 - trap_risk)
                 )
                 stop_pressure_effectiveness_filter_score = stop_pressure_risk
+                mae_pressure_risk = stop_pressure_risk
+                rr_adjusted_entry_score = entry_quality
 
             score = EntryPathQualityScores(
                 entry_path_quality_score=entry_quality,
@@ -165,6 +204,8 @@ class EntryPathQualityFilter:
                 wick_pressure_risk_score=wick_pressure,
                 exhaustion_risk_score=exhaustion_risk,
                 stop_pressure_effectiveness_filter_score=stop_pressure_effectiveness_filter_score,
+                mae_pressure_risk_score=mae_pressure_risk,
+                rr_adjusted_entry_score=rr_adjusted_entry_score,
             )
             payload = score.to_dict()
             score_rows.append(payload)
@@ -178,6 +219,8 @@ class EntryPathQualityFilter:
             wick_scores.append(payload["wick_pressure_risk_score"])
             exhaustion_scores.append(payload["exhaustion_risk_score"])
             effectiveness_scores.append(payload["stop_pressure_effectiveness_filter_score"])
+            mae_pressure_scores.append(payload["mae_pressure_risk_score"])
+            rr_adjusted_scores.append(payload["rr_adjusted_entry_score"])
 
         return {
             "diagnostic_name": ENTRY_PATH_QUALITY_FILTER_NAME,
@@ -194,6 +237,8 @@ class EntryPathQualityFilter:
             "wick_pressure_risk_scores": wick_scores,
             "exhaustion_risk_scores": exhaustion_scores,
             "stop_pressure_effectiveness_filter_scores": effectiveness_scores,
+            "mae_pressure_risk_scores": mae_pressure_scores,
+            "rr_adjusted_entry_scores": rr_adjusted_scores,
             "score_rows": score_rows,
             "summary": {
                 "avg_entry_path_quality_score": self._mean(entry_scores),
@@ -206,6 +251,8 @@ class EntryPathQualityFilter:
                 "avg_wick_pressure_risk_score": self._mean(wick_scores),
                 "avg_exhaustion_risk_score": self._mean(exhaustion_scores),
                 "avg_stop_pressure_effectiveness_filter_score": self._mean(effectiveness_scores),
+                "avg_mae_pressure_risk_score": self._mean(mae_pressure_scores),
+                "avg_rr_adjusted_entry_score": self._mean(rr_adjusted_scores),
                 "low_entry_quality_row_count": sum(int(value < 0.60) for value in entry_scores),
                 "high_stop_pressure_row_count": sum(int(value > 0.55) for value in stop_scores),
             },

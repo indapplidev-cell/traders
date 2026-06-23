@@ -138,6 +138,12 @@ ML38_10_15_ENTRY_EFFECTIVENESS_CONFIG_IDS = (
     "lv23_h12_tts_thr065_sqmask060_epq068_sp047_eff",
 )
 
+ML38_10_16_MAE_AWARE_ENTRY_EXIT_CONFIG_IDS = (
+    "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae",
+    "lv24_h12_tts_thr065_sqmask060_epq068_sp047_mae",
+    "lv24_h12_tts_thr065_sqmask060_epq070_sp045_mae_rr",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -168,6 +174,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_10_14_ENTRY_PATH_QUALITY_CONFIG_IDS,
     *ML38_10_14_1_ENTRY_PATH_STOP_PRESSURE_CONFIG_IDS,
     *ML38_10_15_ENTRY_EFFECTIVENESS_CONFIG_IDS,
+    *ML38_10_16_MAE_AWARE_ENTRY_EXIT_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
@@ -254,6 +261,9 @@ class ML382FV3TuningMatrix:
             "entry_path_effectiveness_tuning_stage": "ML38.10.15",
             "entry_path_effectiveness_tuning_config_ids": list(ML38_10_15_ENTRY_EFFECTIVENESS_CONFIG_IDS),
             "entry_path_effectiveness_tuning_config_count": len(ML38_10_15_ENTRY_EFFECTIVENESS_CONFIG_IDS),
+            "mae_aware_entry_exit_tuning_stage": "ML38.10.16",
+            "mae_aware_entry_exit_tuning_config_ids": list(ML38_10_16_MAE_AWARE_ENTRY_EXIT_CONFIG_IDS),
+            "mae_aware_entry_exit_tuning_config_count": len(ML38_10_16_MAE_AWARE_ENTRY_EXIT_CONFIG_IDS),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,

@@ -2825,11 +2825,13 @@ class DiagnosticsService:
 
         entry_threshold = training_config.get("entry_path_quality_min_threshold")
         stop_threshold = training_config.get("stop_pressure_max_risk_score")
-        if entry_threshold is None and stop_threshold is None:
+        mae_threshold = training_config.get("mae_pressure_max_risk_score")
+        if entry_threshold is None and stop_threshold is None and mae_threshold is None:
             return predictions
 
         entry_threshold = 0.0 if entry_threshold is None else float(entry_threshold)
         stop_threshold = 1.0 if stop_threshold is None else float(stop_threshold)
+        mae_threshold = 1.0 if mae_threshold is None else float(mae_threshold)
         columns = list(feature_columns or [])
 
         feature_rows: list[list[float]] = []
@@ -2871,7 +2873,12 @@ class DiagnosticsService:
         for row, score in zip(predictions, score_rows):
             entry_score = float(score.get("entry_path_quality_score", 0.0) or 0.0)
             stop_score = float(score.get("stop_pressure_risk_score", 1.0) or 1.0)
-            blocked = entry_score < entry_threshold or stop_score > stop_threshold
+            mae_score = float(score.get("mae_pressure_risk_score", stop_score) or stop_score)
+            blocked = (
+                entry_score < entry_threshold
+                or stop_score > stop_threshold
+                or mae_score > mae_threshold
+            )
             enriched = dict(row)
             original_predicted_label = row.get(
                 "entry_path_original_predicted_label",
@@ -2881,18 +2888,21 @@ class DiagnosticsService:
             enriched["entry_path_filter_enabled"] = True
             enriched["entry_path_filter_threshold"] = entry_threshold
             enriched["entry_path_filter_stop_threshold"] = stop_threshold
+            enriched["entry_path_filter_mae_threshold"] = mae_threshold
             enriched["entry_path_filter_blocked"] = bool(blocked)
             enriched["entry_path_original_predicted_label"] = original_predicted_label
             enriched["entry_path_filtered_predicted_label"] = (
                 "FLAT" if blocked else row.get("predicted_label")
             )
             if blocked:
-                enriched["predicted_label"] = "FLAT"    
-                enriched["entry_path_filter_block_reason"] = (
-                    "low_entry_quality"
-                    if entry_score < entry_threshold
-                    else "high_stop_pressure"
-                )
+                enriched["predicted_label"] = "FLAT"
+                if entry_score < entry_threshold:
+                    block_reason = "low_entry_quality"
+                elif mae_score > mae_threshold:
+                    block_reason = "high_mae_pressure"
+                else:
+                    block_reason = "high_stop_pressure"
+                enriched["entry_path_filter_block_reason"] = block_reason
             else:
                 enriched["entry_path_filter_block_reason"] = None
             filtered_rows.append(enriched)
