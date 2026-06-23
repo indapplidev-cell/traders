@@ -462,10 +462,6 @@ class ProfitAwareEvaluatorV2:
                 ),
                 None,
             ),
-            "mae_pressure_threshold": next(
-                (row.get("entry_path_filter_mae_threshold") for row in predictions if row.get("entry_path_filter_mae_threshold") is not None),
-                None,
-            ),
             "status": stop_pressure_effectiveness_status,
             "total_prediction_rows": int(total),
             "original_predicted_trade_rows": int(len(predicted_trade_rows)),
@@ -473,7 +469,6 @@ class ProfitAwareEvaluatorV2:
             "blocked_original_predicted_trade_rows": int(len(blocked_predicted_trade_rows)),
             "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
             "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
-            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "blocked_by_both_count": int(len(blocked_by_both_rows)),
             "removed_false_positive_count": int(len(blocked_false_positive_rows)),
@@ -507,7 +502,6 @@ class ProfitAwareEvaluatorV2:
             "blocked_original_predicted_trade_rows": int(len(blocked_predicted_trade_rows)),
             "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
             "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
-            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "blocked_by_both_count": int(len(blocked_by_both_rows)),
             "removed_false_positive_count": int(len(blocked_false_positive_rows)),
@@ -680,12 +674,21 @@ class ProfitAwareEvaluatorV2:
                 ),
                 None,
             ),
+            "mae_pressure_threshold": next(
+                (
+                    row.get("entry_path_filter_mae_threshold")
+                    for row in predictions
+                    if row.get("entry_path_filter_mae_threshold") is not None
+                ),
+                None,
+            ),
             "status": status,
             "original_final_signal_count": int(original_signal_count),
             "filtered_final_signal_count": int(filtered_signal_count),
             "blocked_final_signal_count": int(len(blocked_signal_rows)),
             "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
             "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "removed_non_opportunity_signal_count": int(len(removed_non_opportunity_rows)),
             "removed_wrong_direction_signal_count": int(len(removed_wrong_direction_rows)),
             "removed_correct_direction_signal_count": int(len(removed_correct_direction_rows)),
@@ -744,6 +747,7 @@ class ProfitAwareEvaluatorV2:
             ),
             "blocked_by_low_entry_quality_count": int(len(blocked_by_quality_rows)),
             "blocked_by_high_stop_pressure_count": int(len(blocked_by_stop_rows)),
+            "blocked_by_high_mae_pressure_count": int(len(blocked_by_mae_rows)),
             "removed_false_positive_count": int(
                 len(removed_non_opportunity_rows) + len(removed_wrong_direction_rows)
             ),

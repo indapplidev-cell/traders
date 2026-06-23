@@ -29,7 +29,7 @@ def test_ml38_10_15_directional_context_profile_rewards_aligned_long_setup() -> 
         score_profile="directional_context_v2",
     )
 
-    assert result["diagnostic_version"] == "ml38.10.15"
+    assert result["diagnostic_version"] == "ml38.10.16"
     assert result["score_profile"] == "directional_context_v2"
     first, second = result["score_rows"]
     assert first["entry_path_quality_score"] > second["entry_path_quality_score"]
@@ -46,5 +46,5 @@ def test_ml38_10_15_matrix_and_runtime_include_lv23_configs() -> None:
     assert "lv23_h12_tts_thr065_sqmask060_epq065_sp050_eff" in config_ids
     assert "lv23_h12_tts_thr065_sqmask060_epq068_sp047_eff" in config_ids
     assert payload["entry_path_effectiveness_tuning_stage"] == "ML38.10.15"
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv23_")
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv23_")
+    assert "lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv23_h12_tts_thr065_sqmask060_epq065_sp050_eff" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS

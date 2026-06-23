@@ -71,6 +71,6 @@ def test_ml38_10_14_3_profit_audit_is_aligned_with_final_signal_stream() -> None
     assert summary["filtered_final_signal_count"] == 1
     assert summary["blocked_final_signal_count"] == 2
     assert summary["stream_consistency_ok"] is True
-    assert stop_audit["diagnostic_version"] == "ml38.10.15"
+    assert stop_audit["diagnostic_version"] == "ml38.10.16"
     assert stop_audit["stream_consistency_ok"] is True
     assert stop_audit["blocked_by_high_stop_pressure_count"] == 1

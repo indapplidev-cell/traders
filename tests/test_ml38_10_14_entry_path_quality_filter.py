@@ -21,7 +21,7 @@ def test_ml38_10_14_entry_path_quality_scores_good_setup_above_bad_setup() -> No
     )
 
     assert result["diagnostic_name"] == "entry_path_quality_filter"
-    assert result["diagnostic_version"] == "ml38.10.15"
+    assert result["diagnostic_version"] == "ml38.10.16"
     assert result["entry_path_quality_scores"][0] > result["entry_path_quality_scores"][1]
     assert result["stop_pressure_risk_scores"][0] < result["stop_pressure_risk_scores"][1]
     assert result["safety"]["uses_realized_mae_mfe_for_filter"] is False
