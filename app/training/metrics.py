@@ -36,8 +36,10 @@ class TrainingMetrics:
         entry_path_quality_filter_enabled: bool = False,
         entry_path_quality_scores: list[float] | None = None,
         stop_pressure_risk_scores: list[float] | None = None,
+        mae_pressure_risk_scores: list[float] | None = None,
         entry_path_quality_min_threshold: float | None = None,
         stop_pressure_max_risk_score: float | None = None,
+        mae_pressure_max_risk_score: float | None = None,
         training_objective: str = "direction_global",
     ) -> dict[str, Any]:
         if training_objective == "trade_two_stage":
@@ -58,8 +60,10 @@ class TrainingMetrics:
                 entry_path_quality_filter_enabled=entry_path_quality_filter_enabled,
                 entry_path_quality_scores=entry_path_quality_scores,
                 stop_pressure_risk_scores=stop_pressure_risk_scores,
+                mae_pressure_risk_scores=mae_pressure_risk_scores,
                 entry_path_quality_min_threshold=entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=stop_pressure_max_risk_score,
+                mae_pressure_max_risk_score=mae_pressure_max_risk_score,
             )
         masked_direction_probabilities, masked_direction_targets = self._apply_direction_mask(
             direction_probabilities=direction_probabilities,
@@ -185,8 +189,10 @@ class TrainingMetrics:
         entry_path_quality_filter_enabled: bool = False,
         entry_path_quality_scores: list[float] | None = None,
         stop_pressure_risk_scores: list[float] | None = None,
+        mae_pressure_risk_scores: list[float] | None = None,
         entry_path_quality_min_threshold: float | None = None,
         stop_pressure_max_risk_score: float | None = None,
+        mae_pressure_max_risk_score: float | None = None,
     ) -> dict[str, Any]:
         predicted_classes = [self._argmax(probabilities) for probabilities in direction_probabilities]
         confusion_matrix = [[0, 0, 0] for _ in range(3)]
@@ -232,9 +238,11 @@ class TrainingMetrics:
             predicted_trade_flags=setup_masked_trade_flags,
             entry_path_quality_scores=entry_path_quality_scores,
             stop_pressure_risk_scores=stop_pressure_risk_scores,
+            mae_pressure_risk_scores=mae_pressure_risk_scores,
             entry_path_quality_filter_enabled=entry_path_quality_filter_enabled,
             entry_path_quality_min_threshold=entry_path_quality_min_threshold,
             stop_pressure_max_risk_score=stop_pressure_max_risk_score,
+            mae_pressure_max_risk_score=mae_pressure_max_risk_score,
         )
         predicted_trade_flags = list(entry_path_mask_payload["masked_predicted_trade_flags"])
         raw_opportunity_threshold_metrics = self._compute_binary_trade_metrics(
@@ -332,10 +340,12 @@ class TrainingMetrics:
         entry_path_quality_filter_summary = self._compute_entry_path_quality_filter_summary(
             entry_path_quality_scores=entry_path_quality_scores or [],
             stop_pressure_risk_scores=stop_pressure_risk_scores or [],
+            mae_pressure_risk_scores=mae_pressure_risk_scores or [],
             predicted_trade_flags=predicted_trade_flags,
             actual_trade_flags=actual_trade_flags,
             entry_path_quality_min_threshold=entry_path_mask_payload.get("entry_path_quality_min_threshold"),
             stop_pressure_max_risk_score=entry_path_mask_payload.get("stop_pressure_max_risk_score"),
+            mae_pressure_max_risk_score=entry_path_mask_payload.get("mae_pressure_max_risk_score"),
         )
 
         return {
@@ -406,6 +416,9 @@ class TrainingMetrics:
             ),
             "stop_pressure_max_risk_score": entry_path_mask_payload.get(
                 "stop_pressure_max_risk_score"
+            ),
+            "mae_pressure_max_risk_score": entry_path_mask_payload.get(
+                "mae_pressure_max_risk_score"
             ),
             "entry_path_quality_masked_row_count": int(
                 entry_path_mask_payload["entry_path_quality_masked_row_count"]
@@ -483,9 +496,11 @@ class TrainingMetrics:
         predicted_trade_flags: list[int],
         entry_path_quality_scores: list[float] | None,
         stop_pressure_risk_scores: list[float] | None,
+        mae_pressure_risk_scores: list[float] | None,
         entry_path_quality_filter_enabled: bool,
         entry_path_quality_min_threshold: float | None,
         stop_pressure_max_risk_score: float | None,
+        mae_pressure_max_risk_score: float | None,
     ) -> dict[str, Any]:
         raw_flags = [int(value) for value in predicted_trade_flags]
         if not entry_path_quality_filter_enabled:
@@ -494,6 +509,7 @@ class TrainingMetrics:
                 "entry_path_quality_filter_enabled": False,
                 "entry_path_quality_min_threshold": entry_path_quality_min_threshold,
                 "stop_pressure_max_risk_score": stop_pressure_max_risk_score,
+                "mae_pressure_max_risk_score": mae_pressure_max_risk_score,
                 "entry_path_quality_masked_row_count": 0,
                 "entry_path_quality_forced_no_trade_count": 0,
                 "entry_path_quality_mask_trade_prediction_removed_count": 0,
@@ -501,8 +517,10 @@ class TrainingMetrics:
 
         quality_threshold = 0.0 if entry_path_quality_min_threshold is None else float(entry_path_quality_min_threshold)
         stop_threshold = 1.0 if stop_pressure_max_risk_score is None else float(stop_pressure_max_risk_score)
+        mae_threshold = 1.0 if mae_pressure_max_risk_score is None else float(mae_pressure_max_risk_score)
         quality_scores = list(entry_path_quality_scores or [])
         stop_scores = list(stop_pressure_risk_scores or [])
+        mae_scores = list(mae_pressure_risk_scores or [])
 
         masked_flags: list[int] = []
         masked_row_count = 0
@@ -511,9 +529,11 @@ class TrainingMetrics:
         for index, raw_flag in enumerate(raw_flags):
             quality_value = quality_scores[index] if index < len(quality_scores) else 0.0
             stop_value = stop_scores[index] if index < len(stop_scores) else 1.0
+            mae_value = mae_scores[index] if index < len(mae_scores) else stop_value
             quality_blocked = float(quality_value or 0.0) < quality_threshold
             stop_blocked = float(stop_value or 0.0) > stop_threshold
-            blocked = quality_blocked or stop_blocked
+            mae_blocked = float(mae_value or 0.0) > mae_threshold
+            blocked = quality_blocked or stop_blocked or mae_blocked
             if blocked:
                 masked_row_count += 1
                 masked_flag = 0
@@ -528,6 +548,7 @@ class TrainingMetrics:
             "entry_path_quality_filter_enabled": True,
             "entry_path_quality_min_threshold": quality_threshold,
             "stop_pressure_max_risk_score": stop_threshold,
+            "mae_pressure_max_risk_score": mae_threshold,
             "entry_path_quality_masked_row_count": int(masked_row_count),
             "entry_path_quality_forced_no_trade_count": int(forced_no_trade_count),
             "entry_path_quality_mask_trade_prediction_removed_count": int(forced_no_trade_count),
@@ -538,20 +559,28 @@ class TrainingMetrics:
         *,
         entry_path_quality_scores: list[float],
         stop_pressure_risk_scores: list[float],
+        mae_pressure_risk_scores: list[float],
         predicted_trade_flags: list[int],
         actual_trade_flags: list[int],
         entry_path_quality_min_threshold: float | None,
         stop_pressure_max_risk_score: float | None,
+        mae_pressure_max_risk_score: float | None,
     ) -> dict[str, Any]:
         row_count = len(actual_trade_flags)
         quality_threshold = 0.0 if entry_path_quality_min_threshold is None else float(entry_path_quality_min_threshold)
         stop_threshold = 1.0 if stop_pressure_max_risk_score is None else float(stop_pressure_max_risk_score)
+        mae_threshold = 1.0 if mae_pressure_max_risk_score is None else float(mae_pressure_max_risk_score)
         blocked_indices: list[int] = []
         passed_indices: list[int] = []
         for index in range(row_count):
             quality_value = entry_path_quality_scores[index] if index < len(entry_path_quality_scores) else 0.0
             stop_value = stop_pressure_risk_scores[index] if index < len(stop_pressure_risk_scores) else 1.0
-            if float(quality_value or 0.0) < quality_threshold or float(stop_value or 0.0) > stop_threshold:
+            mae_value = mae_pressure_risk_scores[index] if index < len(mae_pressure_risk_scores) else stop_value
+            if (
+                float(quality_value or 0.0) < quality_threshold
+                or float(stop_value or 0.0) > stop_threshold
+                or float(mae_value or 0.0) > mae_threshold
+            ):
                 blocked_indices.append(index)
             else:
                 passed_indices.append(index)
@@ -564,6 +593,7 @@ class TrainingMetrics:
         return {
             "entry_path_quality_min_threshold": entry_path_quality_min_threshold,
             "stop_pressure_max_risk_score": stop_pressure_max_risk_score,
+            "mae_pressure_max_risk_score": mae_pressure_max_risk_score,
             "rows_blocked_by_entry_path_filter": int(len(blocked_indices)),
             "rows_passed_entry_path_filter": int(len(passed_indices)),
             "actual_trade_rate_blocked": float(_rate(blocked_indices, actual_trade_flags)),

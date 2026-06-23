@@ -83,6 +83,7 @@ class MultiSymbolFeatureRegimeReporter:
                     "entry_path_quality_filter_enabled": item.get("entry_path_quality_filter_enabled"),
                     "entry_path_quality_min_threshold": item.get("entry_path_quality_min_threshold"),
                     "stop_pressure_max_risk_score": item.get("stop_pressure_max_risk_score"),
+                    "mae_pressure_max_risk_score": item.get("mae_pressure_max_risk_score"),
                     "entry_path_final_signal_original_count": item.get("entry_path_final_signal_original_count"),
                     "entry_path_final_signal_filtered_count": item.get("entry_path_final_signal_filtered_count"),
                     "entry_path_final_signal_blocked_count": item.get("entry_path_final_signal_blocked_count"),
@@ -276,8 +277,8 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 "## Entry-Path / Stop-Pressure Audit",
                 "",
-                "| Symbol | Best Config | EPQ Enabled | EPQ Thr | Stop Thr | Original Signals | Filtered Signals | Blocked Signals | Consistent | Stop Status |",
-                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+                "| Symbol | Best config | Enabled | EPQ threshold | Stop threshold | MAE threshold | Original | Filtered | Blocked | Stream OK | Stop status |",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|",
             ]
         )
         for item in self._as_list(payload.get("symbol_results")):
@@ -289,6 +290,7 @@ class MultiSymbolFeatureRegimeReporter:
                     enabled=item.get("entry_path_quality_filter_enabled"),
                     epq=item.get("entry_path_quality_min_threshold"),
                     stop=item.get("stop_pressure_max_risk_score"),
+                    mae=item.get("mae_pressure_max_risk_score"),
                     original=item.get("entry_path_final_signal_original_count"),
                     filtered=item.get("entry_path_final_signal_filtered_count"),
                     blocked=item.get("entry_path_final_signal_blocked_count"),

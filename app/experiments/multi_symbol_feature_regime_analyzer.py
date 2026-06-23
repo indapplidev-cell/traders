@@ -413,6 +413,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 or entry_summary.get("stop_pressure_threshold")
                 or stop_audit.get("stop_pressure_threshold")
             ),
+            "mae_pressure_max_risk_score": cls._float_or_none(
+                candidate.get("mae_pressure_max_risk_score")
+                or entry_summary.get("mae_pressure_threshold")
+                or stop_audit.get("mae_pressure_threshold")
+            ),
             "entry_path_prediction_filter_summary": entry_summary,
             "stop_pressure_effectiveness_audit": stop_audit,
             "entry_path_final_signal_original_count": int(
@@ -508,6 +513,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "entry_path_quality_filter_enabled",
             "entry_path_quality_min_threshold",
             "stop_pressure_max_risk_score",
+            "mae_pressure_max_risk_score",
             "entry_path_quality_masked_row_count",
             "entry_path_quality_forced_no_trade_count",
             "entry_path_quality_mask_trade_prediction_removed_count",
@@ -659,6 +665,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
             "stop_pressure_max_risk_score": cls._float_or_none(
                 best_entry_path_audit.get("stop_pressure_max_risk_score")
+            ),
+            "mae_pressure_max_risk_score": cls._float_or_none(
+                best_entry_path_audit.get("mae_pressure_max_risk_score")
             ),
             "entry_path_quality_masked_row_count": int(
                 summary.get(

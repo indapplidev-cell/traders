@@ -101,6 +101,7 @@ class TrainingConfig:
     entry_path_quality_filter_enabled: bool = False
     entry_path_quality_min_threshold: float | None = None
     stop_pressure_max_risk_score: float | None = None
+    mae_pressure_max_risk_score: float | None = None
 
 
 def _safe_run_id_part(value: object) -> str:
@@ -242,6 +243,7 @@ class TrainingService:
         entry_path_quality_filter_enabled: bool = False,
         entry_path_quality_min_threshold: float | None = None,
         stop_pressure_max_risk_score: float | None = None,
+        mae_pressure_max_risk_score: float | None = None,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -314,6 +316,7 @@ class TrainingService:
             entry_path_quality_filter_enabled=bool(entry_path_quality_filter_enabled),
             entry_path_quality_min_threshold=entry_path_quality_min_threshold,
             stop_pressure_max_risk_score=stop_pressure_max_risk_score,
+            mae_pressure_max_risk_score=mae_pressure_max_risk_score,
         )
         started_at = datetime.now(tz=timezone.utc)
         run_id = build_training_run_id(
@@ -487,6 +490,7 @@ class TrainingService:
                     entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
                     entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                     stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
+                    mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
                     opportunity_threshold_sweep_enabled=True,
                     opportunity_threshold_candidates=tuple(config.opportunity_threshold_candidates),
                     opportunity_min_precision=float(config.opportunity_min_precision),
@@ -520,6 +524,7 @@ class TrainingService:
                     else config.setup_quality_min_threshold
                 ),
                 entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
@@ -537,6 +542,7 @@ class TrainingService:
                     else config.setup_quality_min_threshold
                 ),
                 entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
@@ -554,6 +560,7 @@ class TrainingService:
                     else config.setup_quality_min_threshold
                 ),
                 entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
@@ -572,6 +579,7 @@ class TrainingService:
                     else config.setup_quality_min_threshold
                 ),
                 entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
@@ -589,6 +597,7 @@ class TrainingService:
                     else config.setup_quality_min_threshold
                 ),
                 entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 opportunity_threshold_sweep_enabled=(
@@ -618,6 +627,7 @@ class TrainingService:
                     else config.setup_quality_min_threshold
                 ),
                 entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
+                mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 training_objective=config.training_objective,
@@ -715,6 +725,7 @@ class TrainingService:
                 "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
                 "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
                 "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
+                "mae_pressure_max_risk_score": config.mae_pressure_max_risk_score,
                 "selected_opportunity_threshold": selected_opportunity_threshold,
                 "opportunity_threshold_selection": opportunity_threshold_selection,
                 "model_output_contract": self.model_output_contract(config.training_objective),
@@ -903,6 +914,9 @@ class TrainingService:
             ),
             stop_pressure_max_risk_score=training_config.get(
                 "stop_pressure_max_risk_score"
+            ),
+            mae_pressure_max_risk_score=training_config.get(
+                "mae_pressure_max_risk_score"
             ),
             training_objective=training_objective,
         )

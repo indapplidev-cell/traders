@@ -140,6 +140,7 @@ class LabelGridExperimentCandidateResult:
     entry_path_quality_filter_enabled: bool = False
     entry_path_quality_min_threshold: float | None = None
     stop_pressure_max_risk_score: float | None = None
+    mae_pressure_max_risk_score: float | None = None
     entry_path_quality_masked_row_count: int = 0
     entry_path_quality_forced_no_trade_count: int = 0
     entry_path_quality_mask_trade_prediction_removed_count: int = 0
@@ -249,6 +250,7 @@ class LabelGridExperimentCandidateResult:
             "entry_path_quality_filter_enabled": self.entry_path_quality_filter_enabled,
             "entry_path_quality_min_threshold": self.entry_path_quality_min_threshold,
             "stop_pressure_max_risk_score": self.stop_pressure_max_risk_score,
+            "mae_pressure_max_risk_score": self.mae_pressure_max_risk_score,
             "entry_path_quality_masked_row_count": self.entry_path_quality_masked_row_count,
             "entry_path_quality_forced_no_trade_count": self.entry_path_quality_forced_no_trade_count,
             "entry_path_quality_mask_trade_prediction_removed_count": self.entry_path_quality_mask_trade_prediction_removed_count,
@@ -1059,6 +1061,7 @@ class LabelGridExperimentRunner:
                 entry_path_quality_filter_enabled=bool(label_config.entry_path_quality_filter_enabled),
                 entry_path_quality_min_threshold=label_config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=label_config.stop_pressure_max_risk_score,
+                mae_pressure_max_risk_score=label_config.mae_pressure_max_risk_score,
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1407,6 +1410,9 @@ class LabelGridExperimentRunner:
             ),
             stop_pressure_max_risk_score=self._optional_float(
                 _first_present("stop_pressure_max_risk_score")
+            ),
+            mae_pressure_max_risk_score=self._optional_float(
+                _first_present("mae_pressure_max_risk_score")
             ),
             entry_path_quality_masked_row_count=int(
                 _first_present("entry_path_quality_masked_row_count", 0) or 0

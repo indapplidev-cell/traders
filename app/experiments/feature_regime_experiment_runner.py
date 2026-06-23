@@ -152,6 +152,7 @@ class FeatureRegimeCandidateResult:
     entry_path_quality_filter_enabled: bool = False
     entry_path_quality_min_threshold: float | None = None
     stop_pressure_max_risk_score: float | None = None
+    mae_pressure_max_risk_score: float | None = None
     entry_path_quality_masked_row_count: int = 0
     entry_path_quality_forced_no_trade_count: int = 0
     entry_path_quality_mask_trade_prediction_removed_count: int = 0
@@ -293,6 +294,7 @@ class FeatureRegimeCandidateResult:
             "entry_path_quality_filter_enabled": self.entry_path_quality_filter_enabled,
             "entry_path_quality_min_threshold": self.entry_path_quality_min_threshold,
             "stop_pressure_max_risk_score": self.stop_pressure_max_risk_score,
+            "mae_pressure_max_risk_score": self.mae_pressure_max_risk_score,
             "entry_path_quality_masked_row_count": self.entry_path_quality_masked_row_count,
             "entry_path_quality_forced_no_trade_count": self.entry_path_quality_forced_no_trade_count,
             "entry_path_quality_mask_trade_prediction_removed_count": self.entry_path_quality_mask_trade_prediction_removed_count,
@@ -2020,6 +2022,11 @@ class FeatureRegimeExperimentRunner:
                 stop_pressure_max_risk_score=getattr(
                     item,
                     "stop_pressure_max_risk_score",
+                    None,
+                ),
+                mae_pressure_max_risk_score=getattr(
+                    item,
+                    "mae_pressure_max_risk_score",
                     None,
                 ),
                 entry_path_quality_masked_row_count=int(

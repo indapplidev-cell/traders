@@ -117,6 +117,7 @@ class TrainingPipelineConfig:
     entry_path_quality_filter_enabled: bool = False
     entry_path_quality_min_threshold: float | None = None
     stop_pressure_max_risk_score: float | None = None
+    mae_pressure_max_risk_score: float | None = None
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1167,6 +1168,7 @@ class LongHistoryTrainingPipelineRunner:
                         "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
                         "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
                         "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
+                        "mae_pressure_max_risk_score": config.mae_pressure_max_risk_score,
                         "regime_label_builder_status": regime_label_builder_status,
                         "label_mode_comparison_audit": label_mode_comparison_audit,
                         "flat_subtype_audit": flat_subtype_audit,
@@ -1227,6 +1229,7 @@ class LongHistoryTrainingPipelineRunner:
                 "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
                 "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
                 "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
+                "mae_pressure_max_risk_score": config.mae_pressure_max_risk_score,
                 "regime_label_builder_status": regime_label_builder_status,
                 "label_mode_comparison_audit": label_mode_comparison_audit,
                 "flat_subtype_audit": flat_subtype_audit,
@@ -1380,6 +1383,7 @@ class LongHistoryTrainingPipelineRunner:
                 entry_path_quality_filter_enabled=bool(config.entry_path_quality_filter_enabled),
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
+                mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {
@@ -1459,6 +1463,7 @@ class LongHistoryTrainingPipelineRunner:
                 "entry_path_quality_filter_enabled": bool(config.entry_path_quality_filter_enabled),
                 "entry_path_quality_min_threshold": config.entry_path_quality_min_threshold,
                 "stop_pressure_max_risk_score": config.stop_pressure_max_risk_score,
+                "mae_pressure_max_risk_score": config.mae_pressure_max_risk_score,
                 "opportunity_threshold_candidates": list(config.opportunity_threshold_candidates),
                 "opportunity_min_precision": config.opportunity_min_precision,
                 "opportunity_min_recall": config.opportunity_min_recall,
@@ -2051,6 +2056,7 @@ class LongHistoryTrainingPipelineRunner:
             "entry_path_quality_filter_enabled",
             "entry_path_quality_min_threshold",
             "stop_pressure_max_risk_score",
+            "mae_pressure_max_risk_score",
             "entry_path_quality_masked_row_count",
             "entry_path_quality_forced_no_trade_count",
             "entry_path_quality_mask_trade_prediction_removed_count",
@@ -2318,6 +2324,10 @@ class LongHistoryTrainingPipelineRunner:
             "stop_pressure_max_risk_score": build_labels_payload.get(
                 "stop_pressure_max_risk_score",
                 config.stop_pressure_max_risk_score,
+            ),
+            "mae_pressure_max_risk_score": build_labels_payload.get(
+                "mae_pressure_max_risk_score",
+                config.mae_pressure_max_risk_score,
             ),
             "opportunity_threshold_sweep_enabled": self._as_bool(
                 build_labels_payload.get(

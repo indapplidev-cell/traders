@@ -37,6 +37,7 @@ class Evaluator:
         entry_path_quality_filter_enabled: bool = False,
         entry_path_quality_min_threshold: float | None = None,
         stop_pressure_max_risk_score: float | None = None,
+        mae_pressure_max_risk_score: float | None = None,
         opportunity_threshold_sweep_enabled: bool = False,
         opportunity_threshold_candidates: tuple[float, ...] = DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
         opportunity_min_precision: float = 0.25,
@@ -79,6 +80,7 @@ class Evaluator:
                 "entry_path_quality_filter_enabled": bool(entry_path_quality_filter_enabled),
                 "entry_path_quality_min_threshold": entry_path_quality_min_threshold,
                 "stop_pressure_max_risk_score": stop_pressure_max_risk_score,
+                "mae_pressure_max_risk_score": mae_pressure_max_risk_score,
                 "entry_path_quality_masked_row_count": 0,
                 "entry_path_quality_forced_no_trade_count": 0,
                 "entry_path_quality_mask_trade_prediction_removed_count": 0,
@@ -167,8 +169,10 @@ class Evaluator:
             entry_path_quality_filter_enabled=entry_path_quality_filter_enabled,
             entry_path_quality_scores=list(entry_path_quality_payload.get("entry_path_quality_scores", [])),
             stop_pressure_risk_scores=list(entry_path_quality_payload.get("stop_pressure_risk_scores", [])),
+            mae_pressure_risk_scores=list(entry_path_quality_payload.get("mae_pressure_risk_scores", [])),
             entry_path_quality_min_threshold=entry_path_quality_min_threshold,
             stop_pressure_max_risk_score=stop_pressure_max_risk_score,
+            mae_pressure_max_risk_score=mae_pressure_max_risk_score,
             training_objective=training_objective,
         )
         metrics["entry_path_quality_filter_diagnostics"] = entry_path_quality_payload
