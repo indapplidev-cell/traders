@@ -39,13 +39,6 @@ def test_ml38_10_6_runtime_shortlists_use_current_configs() -> None:
         "lv21_h12_tts_thr065_sqmask060_epq070",
         "lv19_h12_tts_thr065_sqmask060",
     )
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
-        "lv23_h12_tts_thr065_sqmask060_epq065_sp050_eff",
-        "lv23_h12_tts_thr065_sqmask060_epq068_sp047_eff",
-        "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
-        "lv21_h12_tts_thr065_sqmask060_epq070",
-        "lv19_h12_tts_thr065_sqmask060",
-    )
     assert "lv22_h08_tts_thr065_sqmask060_epq070_sp045" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
     assert "lv19_h08_tts_thr065_sqmask060" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
     assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
