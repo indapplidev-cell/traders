@@ -496,11 +496,11 @@ class TrainingMetrics:
         predicted_trade_flags: list[int],
         entry_path_quality_scores: list[float] | None,
         stop_pressure_risk_scores: list[float] | None,
-        mae_pressure_risk_scores: list[float] | None,
         entry_path_quality_filter_enabled: bool,
         entry_path_quality_min_threshold: float | None,
         stop_pressure_max_risk_score: float | None,
-        mae_pressure_max_risk_score: float | None,
+        mae_pressure_risk_scores: list[float] | None = None,
+        mae_pressure_max_risk_score: float | None = None,
     ) -> dict[str, Any]:
         raw_flags = [int(value) for value in predicted_trade_flags]
         if not entry_path_quality_filter_enabled:
