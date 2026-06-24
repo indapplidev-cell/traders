@@ -13,7 +13,7 @@ class ProfitExitRootCauseAudit:
     """
 
     diagnostic_name = "profit_exit_root_cause_audit"
-    diagnostic_version = "ml38.10.13"
+    diagnostic_version = "ml38.10.17"
 
     def analyze(
         self,

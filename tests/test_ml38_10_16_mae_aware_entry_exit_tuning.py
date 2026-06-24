@@ -117,5 +117,5 @@ def test_ml38_10_16_matrix_and_runtime_include_lv24_configs() -> None:
     assert "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae" in config_ids
     assert "lv24_h12_tts_thr065_sqmask060_epq068_sp047_mae" in config_ids
     assert "lv24_h12_tts_thr065_sqmask060_epq070_sp045_mae_rr" in config_ids
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv24_")
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv24_")
+    assert "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv24_h12_tts_thr065_sqmask060_epq068_sp047_mae" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS

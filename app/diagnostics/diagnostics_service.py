@@ -739,7 +739,7 @@ class DiagnosticsService:
         exit_timeout_bars: int | None = None,
         exit_mitigation_loss_r: float | None = None,
         exit_neutral_abs_r: float | None = None,
-    ) -> dict[str, Any]
+    ) -> dict[str, Any]:
         predictions = self._build_prediction_rows(
             model_version=model_version,
             symbol=symbol,

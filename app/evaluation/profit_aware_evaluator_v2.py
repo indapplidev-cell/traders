@@ -192,6 +192,10 @@ class ProfitAwareEvaluatorV2:
                 fee_r=fee_r,
                 slippage_r=slippage_r,
                 same_candle_policy=same_candle_policy,
+                exit_policy_profile=exit_policy_profile,
+                exit_timeout_bars=exit_timeout_bars,
+                exit_mitigation_loss_r=exit_mitigation_loss_r,
+                exit_neutral_abs_r=exit_neutral_abs_r,
             )
             for row in signal_rows
         ]
