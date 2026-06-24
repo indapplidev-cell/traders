@@ -2979,7 +2979,7 @@ class LabelQualityGridPlanner:
             ),
             LabelQualityGridConfig(
                 config_id="lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit",
-                label_version="lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit",
+                label_version="lv25_h08_tts_epq70_sp45_xmit",
                 horizon=8,
                 threshold=0.52,
                 take_profit_atr=1.10,
@@ -3039,7 +3039,7 @@ class LabelQualityGridPlanner:
             ),
             LabelQualityGridConfig(
                 config_id="lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit",
-                label_version="lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit",
+                label_version="lv25_h12_tts_epq70_sp45_xmit",
                 horizon=12,
                 threshold=0.60,
                 take_profit_atr=1.20,
@@ -3099,7 +3099,7 @@ class LabelQualityGridPlanner:
             ),
             LabelQualityGridConfig(
                 config_id="lv25_h12_tts_thr065_sqmask060_epq072_sp043_exit_mit_strict",
-                label_version="lv25_h12_tts_thr065_sqmask060_epq072_sp043_exit_mit_strict",
+                label_version="lv25_h12_tts_epq72_sp43_xmit_strict",
                 horizon=12,
                 threshold=0.60,
                 take_profit_atr=1.20,
