@@ -237,7 +237,11 @@ class ProfitAwareEvaluatorV2:
         exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
         policy = str(exit_policy_profile or "classic_tp_sl")
-        mitigation_enabled = policy == "stop_loss_mitigation_v1" and exit_mitigation_loss_r is not None
+        mitigation_enabled = policy in {
+            "stop_loss_mitigation_v1",
+            "stop_loss_mitigation_recovery_guard_v1",
+        } and exit_mitigation_loss_r is not None
+        recovery_guard_enabled = policy == "stop_loss_mitigation_recovery_guard_v1"
         timeout_bars = int(exit_timeout_bars or 0)
         neutral_abs_r = None if exit_neutral_abs_r is None else abs(float(exit_neutral_abs_r))
         mitigation_loss_r = None if exit_mitigation_loss_r is None else abs(float(exit_mitigation_loss_r))
@@ -256,24 +260,54 @@ class ProfitAwareEvaluatorV2:
                 if mitigation_enabled and mitigation_loss_r is not None
                 else None
             )
-            for candle in future_candles:
+            for index, candle in enumerate(future_candles):
                 high = float(candle["high"])
                 low = float(candle["low"])
                 tp_hit = high >= take_profit
                 sl_hit = low <= stop_loss
                 mitigation_hit = mitigation_price is not None and low <= mitigation_price
                 if tp_hit and sl_hit:
-                    return self._resolve_ambiguous(take_profit_atr, stop_loss_atr, fee_r, slippage_r, same_candle_policy)
+                    return self._resolve_ambiguous(
+                        take_profit_atr,
+                        stop_loss_atr,
+                        fee_r,
+                        slippage_r,
+                        same_candle_policy,
+                    )
                 if sl_hit:
                     return self._with_costs("SL", -1.0, fee_r, slippage_r)
                 if tp_hit and mitigation_hit:
                     if same_candle_policy == "optimistic":
                         return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
-                    return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+                    audit = self._exit_mitigation_path_audit(
+                        signal_direction="LONG",
+                        remaining_candles=future_candles[index + 1:],
+                        current_close=current_close,
+                        atr_value=atr_value,
+                        take_profit_price=take_profit,
+                        stop_loss_price=stop_loss,
+                        take_profit_atr=take_profit_atr,
+                        stop_loss_atr=stop_loss_atr,
+                    )
+                    if recovery_guard_enabled and audit["exit_mitigation_path_class"].startswith("PREMATURE"):
+                        continue
+                    return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r, **audit)
                 if tp_hit:
                     return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
                 if mitigation_hit:
-                    return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+                    audit = self._exit_mitigation_path_audit(
+                        signal_direction="LONG",
+                        remaining_candles=future_candles[index + 1:],
+                        current_close=current_close,
+                        atr_value=atr_value,
+                        take_profit_price=take_profit,
+                        stop_loss_price=stop_loss,
+                        take_profit_atr=take_profit_atr,
+                        stop_loss_atr=stop_loss_atr,
+                    )
+                    if recovery_guard_enabled and audit["exit_mitigation_path_class"].startswith("PREMATURE"):
+                        continue
+                    return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r, **audit)
             raw_r = self._timeout_or_horizon_raw_r(
                 row=row,
                 future_candles=future_candles,
@@ -294,24 +328,54 @@ class ProfitAwareEvaluatorV2:
             if mitigation_enabled and mitigation_loss_r is not None
             else None
         )
-        for candle in future_candles:
+        for index, candle in enumerate(future_candles):
             high = float(candle["high"])
             low = float(candle["low"])
             tp_hit = low <= take_profit
             sl_hit = high >= stop_loss
             mitigation_hit = mitigation_price is not None and high >= mitigation_price
             if tp_hit and sl_hit:
-                return self._resolve_ambiguous(take_profit_atr, stop_loss_atr, fee_r, slippage_r, same_candle_policy)
+                return self._resolve_ambiguous(
+                    take_profit_atr,
+                    stop_loss_atr,
+                    fee_r,
+                    slippage_r,
+                    same_candle_policy,
+                )
             if sl_hit:
                 return self._with_costs("SL", -1.0, fee_r, slippage_r)
             if tp_hit and mitigation_hit:
                 if same_candle_policy == "optimistic":
                     return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
-                return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+                audit = self._exit_mitigation_path_audit(
+                    signal_direction="SHORT",
+                    remaining_candles=future_candles[index + 1:],
+                    current_close=current_close,
+                    atr_value=atr_value,
+                    take_profit_price=take_profit,
+                    stop_loss_price=stop_loss,
+                    take_profit_atr=take_profit_atr,
+                    stop_loss_atr=stop_loss_atr,
+                )
+                if recovery_guard_enabled and audit["exit_mitigation_path_class"].startswith("PREMATURE"):
+                    continue
+                return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r, **audit)
             if tp_hit:
                 return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
             if mitigation_hit:
-                return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+                audit = self._exit_mitigation_path_audit(
+                    signal_direction="SHORT",
+                    remaining_candles=future_candles[index + 1:],
+                    current_close=current_close,
+                    atr_value=atr_value,
+                    take_profit_price=take_profit,
+                    stop_loss_price=stop_loss,
+                    take_profit_atr=take_profit_atr,
+                    stop_loss_atr=stop_loss_atr,
+                )
+                if recovery_guard_enabled and audit["exit_mitigation_path_class"].startswith("PREMATURE"):
+                    continue
+                return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r, **audit)
         raw_r = self._timeout_or_horizon_raw_r(
             row=row,
             future_candles=future_candles,
@@ -324,6 +388,78 @@ class ProfitAwareEvaluatorV2:
         if neutral_abs_r is not None and abs(raw_r) <= neutral_abs_r:
             return self._with_costs("TIMEOUT_NEUTRAL", 0.0, fee_r, slippage_r)
         return self._with_costs("NEITHER", raw_r, fee_r, slippage_r)
+
+    @staticmethod
+    def _exit_mitigation_path_audit(
+        *,
+        signal_direction: str,
+        remaining_candles: list[dict[str, Any]],
+        current_close: float,
+        atr_value: float,
+        take_profit_price: float,
+        stop_loss_price: float,
+        take_profit_atr: float,
+        stop_loss_atr: float,
+    ) -> dict[str, Any]:
+        max_recovery_r = 0.0
+        max_adverse_r = 0.0
+        first_path_event = "NO_DECISIVE_RECOVERY_OR_SL"
+        signal_direction = str(signal_direction or "").upper()
+        for candle in remaining_candles:
+            high = float(candle.get("high", current_close) or current_close)
+            low = float(candle.get("low", current_close) or current_close)
+            if signal_direction == "SHORT":
+                favorable_atr = max(0.0, (current_close - low) / max(atr_value, 1e-9))
+                adverse_atr = max(0.0, (high - current_close) / max(atr_value, 1e-9))
+                tp_recovered = low <= take_profit_price
+                breakeven_recovered = low <= current_close
+                full_sl_hit = high >= stop_loss_price
+            else:
+                favorable_atr = max(0.0, (high - current_close) / max(atr_value, 1e-9))
+                adverse_atr = max(0.0, (current_close - low) / max(atr_value, 1e-9))
+                tp_recovered = high >= take_profit_price
+                breakeven_recovered = high >= current_close
+                full_sl_hit = low <= stop_loss_price
+            max_recovery_r = max(max_recovery_r, favorable_atr / max(stop_loss_atr, 1e-9))
+            max_adverse_r = max(max_adverse_r, adverse_atr / max(stop_loss_atr, 1e-9))
+            if full_sl_hit:
+                first_path_event = "FULL_SL_AFTER_MITIGATION"
+                break
+            if tp_recovered:
+                first_path_event = "TAKE_PROFIT_RECOVERY_AFTER_MITIGATION"
+                break
+            if breakeven_recovered:
+                first_path_event = "BREAKEVEN_RECOVERY_AFTER_MITIGATION"
+                break
+        would_hit_full_sl = first_path_event == "FULL_SL_AFTER_MITIGATION"
+        would_recover_to_tp = first_path_event == "TAKE_PROFIT_RECOVERY_AFTER_MITIGATION"
+        would_recover_to_breakeven = first_path_event in {
+            "TAKE_PROFIT_RECOVERY_AFTER_MITIGATION",
+            "BREAKEVEN_RECOVERY_AFTER_MITIGATION",
+        }
+        if would_hit_full_sl:
+            path_class = "SAVED_FULL_SL"
+            recovery_risk_score = 0.0
+        elif would_recover_to_tp:
+            path_class = "PREMATURE_CUT_TP_RECOVERY"
+            recovery_risk_score = 1.0
+        elif would_recover_to_breakeven:
+            path_class = "PREMATURE_CUT_BREAKEVEN_RECOVERY"
+            recovery_risk_score = 0.75
+        else:
+            path_class = "UNRESOLVED_AFTER_MITIGATION"
+            recovery_risk_score = min(0.50, max_recovery_r)
+        return {
+            "mitigation_path_audit_status": "COMPLETED",
+            "exit_mitigation_path_class": path_class,
+            "exit_mitigation_first_path_event": first_path_event,
+            "would_hit_full_sl_after_mitigation": bool(would_hit_full_sl),
+            "would_recover_to_breakeven_after_mitigation": bool(would_recover_to_breakeven),
+            "would_recover_to_take_profit_after_mitigation": bool(would_recover_to_tp),
+            "max_recovery_r_after_mitigation": float(max_recovery_r),
+            "max_adverse_r_after_mitigation": float(max_adverse_r),
+            "exit_mitigation_recovery_risk_score": float(recovery_risk_score),
+        }
 
     @staticmethod
     def _timeout_or_horizon_raw_r(
@@ -366,8 +502,10 @@ class ProfitAwareEvaluatorV2:
         )
 
     @staticmethod
-    def _with_costs(result: str, raw_r: float, fee_r: float, slippage_r: float) -> dict[str, Any]:
-        return {"result": result, "raw_r": raw_r, "net_r": raw_r - fee_r - slippage_r}
+    def _with_costs(result: str, raw_r: float, fee_r: float, slippage_r: float, **extra: Any) -> dict[str, Any]:
+        payload = {"result": result, "raw_r": raw_r, "net_r": raw_r - fee_r - slippage_r}
+        payload.update(extra)
+        return payload
 
     @staticmethod
     def _build_gate_report(
@@ -387,6 +525,17 @@ class ProfitAwareEvaluatorV2:
         loss_count = sum(int(item["result"] == "SL") for item in resolved_outcomes)
         exit_mitigated_count = sum(int(item["result"] == "EXIT_MITIGATED") for item in resolved_outcomes)
         timeout_neutral_count = sum(int(item["result"] == "TIMEOUT_NEUTRAL") for item in resolved_outcomes)
+        exit_mitigation_saved_full_sl_count = sum(
+            int(item.get("exit_mitigation_path_class") == "SAVED_FULL_SL") for item in resolved_outcomes
+        )
+        exit_mitigation_premature_recovery_count = sum(
+            int(str(item.get("exit_mitigation_path_class") or "").startswith("PREMATURE"))
+            for item in resolved_outcomes
+        )
+        exit_mitigation_unresolved_count = sum(
+            int(item.get("exit_mitigation_path_class") == "UNRESOLVED_AFTER_MITIGATION")
+            for item in resolved_outcomes
+        )
         neither_count = sum(int(item["result"] == "NEITHER") for item in resolved_outcomes)
         ambiguous_count = sum(int(item["result"] == "AMBIGUOUS") for item in outcomes)
         gross_profit_r = sum(value for value in net_values if value > 0)
@@ -412,6 +561,9 @@ class ProfitAwareEvaluatorV2:
             "loss_count": loss_count,
             "exit_mitigated_count": exit_mitigated_count,
             "timeout_neutral_count": timeout_neutral_count,
+            "exit_mitigation_saved_full_sl_count": exit_mitigation_saved_full_sl_count,
+            "exit_mitigation_premature_recovery_count": exit_mitigation_premature_recovery_count,
+            "exit_mitigation_unresolved_count": exit_mitigation_unresolved_count,
             "neither_count": neither_count,
             "ambiguous_count": ambiguous_count,
             "gross_profit_r": gross_profit_r,
@@ -424,6 +576,8 @@ class ProfitAwareEvaluatorV2:
             "loss_rate": (loss_count / resolved_count) if resolved_count else None,
             "exit_mitigated_rate": (exit_mitigated_count / resolved_count) if resolved_count else None,
             "timeout_neutral_rate": (timeout_neutral_count / resolved_count) if resolved_count else None,
+            "exit_mitigation_saved_full_sl_rate": (exit_mitigation_saved_full_sl_count / exit_mitigated_count) if exit_mitigated_count else None,
+            "exit_mitigation_premature_recovery_rate": (exit_mitigation_premature_recovery_count / exit_mitigated_count) if exit_mitigated_count else None,
             "max_win_r": max(net_values) if net_values else None,
             "max_loss_r": min(net_values) if net_values else None,
             "long_count": len(long_rows),
@@ -459,6 +613,9 @@ class ProfitAwareEvaluatorV2:
             "loss_count": 0,
             "exit_mitigated_count": 0,
             "timeout_neutral_count": 0,
+            "exit_mitigation_saved_full_sl_count": 0,
+            "exit_mitigation_premature_recovery_count": 0,
+            "exit_mitigation_unresolved_count": 0,
             "neither_count": 0,
             "ambiguous_count": 0,
             "gross_profit_r": 0.0,
@@ -471,6 +628,8 @@ class ProfitAwareEvaluatorV2:
             "loss_rate": None,
             "exit_mitigated_rate": None,
             "timeout_neutral_rate": None,
+            "exit_mitigation_saved_full_sl_rate": None,
+            "exit_mitigation_premature_recovery_rate": None,
             "max_win_r": None,
             "max_loss_r": None,
             "long_count": 0,

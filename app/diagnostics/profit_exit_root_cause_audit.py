@@ -13,7 +13,7 @@ class ProfitExitRootCauseAudit:
     """
 
     diagnostic_name = "profit_exit_root_cause_audit"
-    diagnostic_version = "ml38.10.17"
+    diagnostic_version = "ml38.10.18"
 
     def analyze(
         self,
@@ -104,6 +104,14 @@ class ProfitExitRootCauseAudit:
                 mfe_to_tp=mfe_to_tp,
                 mae_to_sl=mae_to_sl,
             )
+            if result == "EXIT_MITIGATED":
+                path_class = str(outcome.get("exit_mitigation_path_class") or "UNKNOWN")
+                if path_class == "SAVED_FULL_SL":
+                    row_causes.append("exit_mitigation_saved_full_sl")
+                elif path_class.startswith("PREMATURE"):
+                    row_causes.append("exit_mitigation_premature_recovery_cut")
+                elif path_class == "UNRESOLVED_AFTER_MITIGATION":
+                    row_causes.append("exit_mitigation_unresolved_path")
             for cause in row_causes:
                 root_cause_counts[cause] += 1
 
@@ -121,6 +129,14 @@ class ProfitExitRootCauseAudit:
                 "margin": self._safe_float(row.get("margin")),
                 "directional_edge": self._safe_float(row.get("directional_edge")),
                 "tp_before_sl_label": row.get("tp_before_sl"),
+                "exit_mitigation_path_class": outcome.get("exit_mitigation_path_class"),
+                "exit_mitigation_first_path_event": outcome.get("exit_mitigation_first_path_event"),
+                "would_hit_full_sl_after_mitigation": outcome.get("would_hit_full_sl_after_mitigation"),
+                "would_recover_to_breakeven_after_mitigation": outcome.get("would_recover_to_breakeven_after_mitigation"),
+                "would_recover_to_take_profit_after_mitigation": outcome.get("would_recover_to_take_profit_after_mitigation"),
+                "max_recovery_r_after_mitigation": self._safe_float(outcome.get("max_recovery_r_after_mitigation")),
+                "max_adverse_r_after_mitigation": self._safe_float(outcome.get("max_adverse_r_after_mitigation")),
+                "exit_mitigation_recovery_risk_score": self._safe_float(outcome.get("exit_mitigation_recovery_risk_score")),
             }
             enriched_rows.append(enriched)
             if net_r is not None and net_r > 0.0:
@@ -141,6 +157,16 @@ class ProfitExitRootCauseAudit:
         loss_count = len(losing_rows)
         exit_mitigated_count = int(result_counts.get("EXIT_MITIGATED", 0))
         timeout_neutral_count = int(result_counts.get("TIMEOUT_NEUTRAL", 0))
+        exit_mitigation_path_counts: Counter[str] = Counter(
+            str(row.get("exit_mitigation_path_class") or "UNKNOWN")
+            for row in enriched_rows
+            if str(row.get("result") or "") == "EXIT_MITIGATED"
+        )
+        exit_mitigation_saved_full_sl_count = int(exit_mitigation_path_counts.get("SAVED_FULL_SL", 0))
+        exit_mitigation_premature_recovery_count = int(
+            sum(value for key, value in exit_mitigation_path_counts.items() if key.startswith("PREMATURE"))
+        )
+        exit_mitigation_unresolved_count = int(exit_mitigation_path_counts.get("UNRESOLVED_AFTER_MITIGATION", 0))
         root_cause_status, primary_root_cause = self._status_and_primary_cause(
             root_cause_counts=root_cause_counts,
             result_counts=result_counts,
@@ -171,8 +197,14 @@ class ProfitExitRootCauseAudit:
             "loss_count": int(loss_count),
             "exit_mitigated_count": int(exit_mitigated_count),
             "timeout_neutral_count": int(timeout_neutral_count),
+            "exit_mitigation_path_counts": dict(exit_mitigation_path_counts),
+            "exit_mitigation_saved_full_sl_count": int(exit_mitigation_saved_full_sl_count),
+            "exit_mitigation_premature_recovery_count": int(exit_mitigation_premature_recovery_count),
+            "exit_mitigation_unresolved_count": int(exit_mitigation_unresolved_count),
             "exit_mitigated_rate": exit_mitigated_count / resolved_count if resolved_count else 0.0,
             "timeout_neutral_rate": timeout_neutral_count / resolved_count if resolved_count else 0.0,
+            "exit_mitigation_saved_full_sl_rate": exit_mitigation_saved_full_sl_count / exit_mitigated_count if exit_mitigated_count else 0.0,
+            "exit_mitigation_premature_recovery_rate": exit_mitigation_premature_recovery_count / exit_mitigated_count if exit_mitigated_count else 0.0,
             "win_rate": win_count / resolved_count if resolved_count else 0.0,
             "loss_rate": loss_count / resolved_count if resolved_count else 0.0,
             "result_counts": dict(result_counts),
@@ -347,6 +379,10 @@ class ProfitExitRootCauseAudit:
             recommendations.append("compare_exit_mitigated_rate_against_sl_rate_and_total_r")
         if root_cause_counts.get("timeout_neutral_exit", 0) > 0:
             recommendations.append("check_timeout_neutral_exit_does_not_hide_profitable_late_moves")
+        if root_cause_counts.get("exit_mitigation_premature_recovery_cut", 0) > 0:
+            recommendations.append("add_recovery_risk_guard_or_delay_exit_mitigation")
+        if root_cause_counts.get("exit_mitigation_saved_full_sl", 0) > 0:
+            recommendations.append("separate_saved_full_sl_exits_from_premature_recovery_cuts")
         return list(dict.fromkeys(recommendations))
 
     @staticmethod
