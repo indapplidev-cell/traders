@@ -69,4 +69,4 @@ def test_ml38_10_13_profit_aware_evaluator_exposes_best_gate_summary_audit() -> 
     assert payload["gate_results"]
     assert payload["summary"]
     assert payload["profit_exit_root_cause_audit"]
-    assert payload["profit_exit_root_cause_audit"]["diagnostic_version"] == "ml38.10.13"
+    assert payload["profit_exit_root_cause_audit"]["diagnostic_version"] == "ml38.10.17"

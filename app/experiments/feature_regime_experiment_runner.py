@@ -2038,22 +2038,22 @@ class FeatureRegimeExperimentRunner:
                     None,
                 ),
                 exit_policy_profile=getattr(
-                    label_grid_candidate,
+                    item,
                     "exit_policy_profile",
                     None,
                 ),
                 exit_timeout_bars=getattr(
-                    label_grid_candidate,
+                    item,
                     "exit_timeout_bars",
                     None,
                 ),
                 exit_mitigation_loss_r=getattr(
-                    label_grid_candidate,
+                    item,
                     "exit_mitigation_loss_r",
                     None,
                 ),
                 exit_neutral_abs_r=getattr(
-                    label_grid_candidate,
+                    item,
                     "exit_neutral_abs_r",
                     None,
                 ),
