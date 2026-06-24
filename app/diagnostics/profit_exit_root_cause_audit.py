@@ -27,6 +27,10 @@ class ProfitExitRootCauseAudit:
         same_candle_policy: str,
         gate_type: str | None = None,
         threshold: float | None = None,
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
         rows_and_outcomes = [
             (dict(row), dict(outcome))
@@ -48,6 +52,10 @@ class ProfitExitRootCauseAudit:
                 "fee_r": float(fee_r),
                 "slippage_r": float(slippage_r),
                 "same_candle_policy": same_candle_policy,
+                "exit_policy_profile": exit_policy_profile or "classic_tp_sl",
+                "exit_timeout_bars": exit_timeout_bars,
+                "exit_mitigation_loss_r": exit_mitigation_loss_r,
+                "exit_neutral_abs_r": exit_neutral_abs_r,
                 "signal_count": int(len(signal_rows)),
                 "resolved_signal_count": 0,
                 "ambiguous_count": int(ambiguous_count),
@@ -131,6 +139,8 @@ class ProfitExitRootCauseAudit:
         )
         win_count = len(winning_rows)
         loss_count = len(losing_rows)
+        exit_mitigated_count = int(result_counts.get("EXIT_MITIGATED", 0))
+        timeout_neutral_count = int(result_counts.get("TIMEOUT_NEUTRAL", 0))
         root_cause_status, primary_root_cause = self._status_and_primary_cause(
             root_cause_counts=root_cause_counts,
             result_counts=result_counts,
@@ -150,11 +160,19 @@ class ProfitExitRootCauseAudit:
             "fee_r": float(fee_r),
             "slippage_r": float(slippage_r),
             "same_candle_policy": same_candle_policy,
+            "exit_policy_profile": exit_policy_profile or "classic_tp_sl",
+            "exit_timeout_bars": exit_timeout_bars,
+            "exit_mitigation_loss_r": exit_mitigation_loss_r,
+            "exit_neutral_abs_r": exit_neutral_abs_r,
             "signal_count": int(len(signal_rows)),
             "resolved_signal_count": int(resolved_count),
             "ambiguous_count": int(ambiguous_count),
             "win_count": int(win_count),
             "loss_count": int(loss_count),
+            "exit_mitigated_count": int(exit_mitigated_count),
+            "timeout_neutral_count": int(timeout_neutral_count),
+            "exit_mitigated_rate": exit_mitigated_count / resolved_count if resolved_count else 0.0,
+            "timeout_neutral_rate": timeout_neutral_count / resolved_count if resolved_count else 0.0,
             "win_rate": win_count / resolved_count if resolved_count else 0.0,
             "loss_rate": loss_count / resolved_count if resolved_count else 0.0,
             "result_counts": dict(result_counts),
@@ -203,6 +221,10 @@ class ProfitExitRootCauseAudit:
         causes: list[str] = []
         if result == "SL":
             causes.append("stop_loss_hit")
+        if result == "EXIT_MITIGATED":
+            causes.append("stop_loss_mitigated_before_full_sl")
+        if result == "TIMEOUT_NEUTRAL":
+            causes.append("timeout_neutral_exit")
         if result == "NEITHER":
             causes.append("target_not_reached_before_horizon")
         if mfe_to_tp < 0.70:
@@ -321,6 +343,10 @@ class ProfitExitRootCauseAudit:
 
         if root_cause_counts.get("target_nearly_reached_but_not_captured", 0) > 0:
             recommendations.append("inspect_partial_take_profit_or_trailing_exit_logic_in_research_only")
+        if root_cause_counts.get("stop_loss_mitigated_before_full_sl", 0) > 0:
+            recommendations.append("compare_exit_mitigated_rate_against_sl_rate_and_total_r")
+        if root_cause_counts.get("timeout_neutral_exit", 0) > 0:
+            recommendations.append("check_timeout_neutral_exit_does_not_hide_profitable_late_moves")
         return list(dict.fromkeys(recommendations))
 
     @staticmethod

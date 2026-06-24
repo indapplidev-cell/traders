@@ -118,6 +118,10 @@ class TrainingPipelineConfig:
     entry_path_quality_min_threshold: float | None = None
     stop_pressure_max_risk_score: float | None = None
     mae_pressure_max_risk_score: float | None = None
+    exit_policy_profile: str | None = None
+    exit_timeout_bars: int | None = None
+    exit_mitigation_loss_r: float | None = None
+    exit_neutral_abs_r: float | None = None
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1141,6 +1145,10 @@ class LongHistoryTrainingPipelineRunner:
                         "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
                         "flat_class_enabled": True,
                         "label_mode": self.DEFAULT_LABEL_MODE,
+                        "exit_policy_profile": config.exit_policy_profile,
+                        "exit_timeout_bars": config.exit_timeout_bars,
+                        "exit_mitigation_loss_r": config.exit_mitigation_loss_r,
+                        "exit_neutral_abs_r": config.exit_neutral_abs_r,
                         "config_id": label_version,
                         "training_objective": config.training_objective,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1202,6 +1210,10 @@ class LongHistoryTrainingPipelineRunner:
                 "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
                 "flat_class_enabled": True,
                 "label_mode": self.DEFAULT_LABEL_MODE,
+                "exit_policy_profile": config.exit_policy_profile,
+                "exit_timeout_bars": config.exit_timeout_bars,
+                "exit_mitigation_loss_r": config.exit_mitigation_loss_r,
+                "exit_neutral_abs_r": config.exit_neutral_abs_r,
                 "config_id": label_version,
                 "training_objective": config.training_objective,
                 "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1602,6 +1614,10 @@ class LongHistoryTrainingPipelineRunner:
                 same_candle_policy=self.DEFAULT_SAME_CANDLE_POLICY,
                 start_at=start_at,
                 end_at=end_at,
+                exit_policy_profile=config.exit_policy_profile,
+                exit_timeout_bars=config.exit_timeout_bars,
+                exit_mitigation_loss_r=config.exit_mitigation_loss_r,
+                exit_neutral_abs_r=config.exit_neutral_abs_r,
             )
         )
         payload = dict(result)
@@ -1646,6 +1662,10 @@ class LongHistoryTrainingPipelineRunner:
                 same_candle_policy=self.DEFAULT_SAME_CANDLE_POLICY,
                 start_at=start_at,
                 end_at=end_at,
+                exit_policy_profile=config.exit_policy_profile,
+                exit_timeout_bars=config.exit_timeout_bars,
+                exit_mitigation_loss_r=config.exit_mitigation_loss_r,
+                exit_neutral_abs_r=config.exit_neutral_abs_r,
             )
         )
         payload = dict(result)
@@ -2208,6 +2228,10 @@ class LongHistoryTrainingPipelineRunner:
             "stop_loss_atr": self.DEFAULT_STOP_LOSS_ATR,
             "flat_class_enabled": True,
             "label_mode": build_labels_payload.get("label_mode", self.DEFAULT_LABEL_MODE),
+            "exit_policy_profile": config.exit_policy_profile,
+            "exit_timeout_bars": config.exit_timeout_bars,
+            "exit_mitigation_loss_r": config.exit_mitigation_loss_r,
+            "exit_neutral_abs_r": config.exit_neutral_abs_r,
             "training_objective": build_labels_payload.get("training_objective", config.training_objective),
             "direction_counts": self._as_dict(build_labels_payload.get("direction_counts")),
             "regime_label_builder_status": self._as_dict(

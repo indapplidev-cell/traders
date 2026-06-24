@@ -735,7 +735,11 @@ class DiagnosticsService:
         validation_end=None,
         start_at=None,
         end_at=None,
-    ) -> dict[str, Any]:
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
+    ) -> dict[str, Any]
         predictions = self._build_prediction_rows(
             model_version=model_version,
             symbol=symbol,
@@ -756,6 +760,10 @@ class DiagnosticsService:
             fee_r=fee_r,
             slippage_r=slippage_r,
             same_candle_policy=same_candle_policy,
+            exit_policy_profile=exit_policy_profile,
+            exit_timeout_bars=exit_timeout_bars,
+            exit_mitigation_loss_r=exit_mitigation_loss_r,
+            exit_neutral_abs_r=exit_neutral_abs_r,
         )
 
     def walk_forward_plan(
@@ -811,6 +819,10 @@ class DiagnosticsService:
         same_candle_policy: str,
         start_at=None,
         end_at=None,
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
         dataset_rows, _ = self._dataset_builder.build_rows(
             symbol=symbol,
@@ -848,6 +860,10 @@ class DiagnosticsService:
             fee_r=fee_r,
             slippage_r=slippage_r,
             same_candle_policy=same_candle_policy,
+            exit_policy_profile=exit_policy_profile,
+            exit_timeout_bars=exit_timeout_bars,
+            exit_mitigation_loss_r=exit_mitigation_loss_r,
+            exit_neutral_abs_r=exit_neutral_abs_r,
         )
 
     def fold_label_diagnostics(

@@ -650,6 +650,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 or best_candidate.get("profit_exit_root_cause_audit")
                 or cls._as_dict(best_candidate.get("profit_aware_diagnostics")).get("profit_exit_root_cause_audit")
             ),
+            "exit_policy_profile": best_candidate.get("exit_policy_profile") or cls._as_dict(best_candidate.get("label_config")).get("exit_policy_profile"),
+            "exit_timeout_bars": best_candidate.get("exit_timeout_bars") or cls._as_dict(best_candidate.get("label_config")).get("exit_timeout_bars"),
+            "exit_mitigation_loss_r": best_candidate.get("exit_mitigation_loss_r") or cls._as_dict(best_candidate.get("label_config")).get("exit_mitigation_loss_r"),
+            "exit_neutral_abs_r": best_candidate.get("exit_neutral_abs_r") or cls._as_dict(best_candidate.get("label_config")).get("exit_neutral_abs_r"),
             "walk_forward_profit_exit_root_cause_summary": cls._as_dict(
                 summary.get("walk_forward_profit_exit_root_cause_summary")
                 or best_candidate.get("walk_forward_profit_exit_root_cause_summary")

@@ -44,6 +44,10 @@ class WalkForwardEvaluator:
         fee_r: float,
         slippage_r: float,
         same_candle_policy: str,
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
         plan = self._walk_forward_splitter.build_plan(dataset_rows, config)
         fold_reports: list[dict[str, Any]] = []
@@ -58,6 +62,10 @@ class WalkForwardEvaluator:
                 fee_r=fee_r,
                 slippage_r=slippage_r,
                 same_candle_policy=same_candle_policy,
+                exit_policy_profile=exit_policy_profile,
+                exit_timeout_bars=exit_timeout_bars,
+                exit_mitigation_loss_r=exit_mitigation_loss_r,
+                exit_neutral_abs_r=exit_neutral_abs_r,
             )
             selected_gate_payload = self._gate_selector.select(validation_profit["gate_results"])
             selected_gate = selected_gate_payload["selected_gate"]
@@ -75,6 +83,10 @@ class WalkForwardEvaluator:
                     fee_r=fee_r,
                     slippage_r=slippage_r,
                     same_candle_policy=same_candle_policy,
+                    exit_policy_profile=exit_policy_profile,
+                    exit_timeout_bars=exit_timeout_bars,
+                    exit_mitigation_loss_r=exit_mitigation_loss_r,
+                    exit_neutral_abs_r=exit_neutral_abs_r,
                 )
                 bias_report = self._direction_bias_diagnostics.build_report(
                     predictions=test_predictions,
@@ -98,6 +110,10 @@ class WalkForwardEvaluator:
         report = {
             "model_version": model_version,
             "label_version": label_version,
+            "exit_policy_profile": exit_policy_profile or "classic_tp_sl",
+            "exit_timeout_bars": exit_timeout_bars,
+            "exit_mitigation_loss_r": exit_mitigation_loss_r,
+            "exit_neutral_abs_r": exit_neutral_abs_r,
             "folds": public_folds,
             "summary": summary,
         }

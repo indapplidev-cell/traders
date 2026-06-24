@@ -153,6 +153,10 @@ class FeatureRegimeCandidateResult:
     entry_path_quality_min_threshold: float | None = None
     stop_pressure_max_risk_score: float | None = None
     mae_pressure_max_risk_score: float | None = None
+    exit_policy_profile: str | None = None
+    exit_timeout_bars: int | None = None
+    exit_mitigation_loss_r: float | None = None
+    exit_neutral_abs_r: float | None = None
     entry_path_quality_masked_row_count: int = 0
     entry_path_quality_forced_no_trade_count: int = 0
     entry_path_quality_mask_trade_prediction_removed_count: int = 0
@@ -295,6 +299,10 @@ class FeatureRegimeCandidateResult:
             "entry_path_quality_min_threshold": self.entry_path_quality_min_threshold,
             "stop_pressure_max_risk_score": self.stop_pressure_max_risk_score,
             "mae_pressure_max_risk_score": self.mae_pressure_max_risk_score,
+            "exit_policy_profile": self.exit_policy_profile,
+            "exit_timeout_bars": self.exit_timeout_bars,
+            "exit_mitigation_loss_r": self.exit_mitigation_loss_r,
+            "exit_neutral_abs_r": self.exit_neutral_abs_r,
             "entry_path_quality_masked_row_count": self.entry_path_quality_masked_row_count,
             "entry_path_quality_forced_no_trade_count": self.entry_path_quality_forced_no_trade_count,
             "entry_path_quality_mask_trade_prediction_removed_count": self.entry_path_quality_mask_trade_prediction_removed_count,
@@ -2027,6 +2035,26 @@ class FeatureRegimeExperimentRunner:
                 mae_pressure_max_risk_score=getattr(
                     item,
                     "mae_pressure_max_risk_score",
+                    None,
+                ),
+                exit_policy_profile=getattr(
+                    label_grid_candidate,
+                    "exit_policy_profile",
+                    None,
+                ),
+                exit_timeout_bars=getattr(
+                    label_grid_candidate,
+                    "exit_timeout_bars",
+                    None,
+                ),
+                exit_mitigation_loss_r=getattr(
+                    label_grid_candidate,
+                    "exit_mitigation_loss_r",
+                    None,
+                ),
+                exit_neutral_abs_r=getattr(
+                    label_grid_candidate,
+                    "exit_neutral_abs_r",
                     None,
                 ),
                 entry_path_quality_masked_row_count=int(

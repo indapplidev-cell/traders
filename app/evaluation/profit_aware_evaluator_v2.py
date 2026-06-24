@@ -32,6 +32,10 @@ class ProfitAwareEvaluatorV2:
         fee_r: float = 0.0,
         slippage_r: float = 0.0,
         same_candle_policy: str = "conservative",
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
         evaluation = self.evaluate_predictions(
             predictions=predictions,
@@ -40,6 +44,10 @@ class ProfitAwareEvaluatorV2:
             fee_r=fee_r,
             slippage_r=slippage_r,
             same_candle_policy=same_candle_policy,
+            exit_policy_profile=exit_policy_profile,
+            exit_timeout_bars=exit_timeout_bars,
+            exit_mitigation_loss_r=exit_mitigation_loss_r,
+            exit_neutral_abs_r=exit_neutral_abs_r
         )
         gate_results = evaluation["gate_results"]
 
@@ -50,6 +58,10 @@ class ProfitAwareEvaluatorV2:
             "fee_r": fee_r,
             "slippage_r": slippage_r,
             "same_candle_policy": same_candle_policy,
+            "exit_policy_profile": exit_policy_profile or "classic_tp_sl",
+            "exit_timeout_bars": exit_timeout_bars,
+            "exit_mitigation_loss_r": exit_mitigation_loss_r,
+            "exit_neutral_abs_r": exit_neutral_abs_r,
             "gate_results": gate_results,
         }
         output_path = self._reports_dir / f"profit_eval_v2_{model_version}.json"
@@ -65,6 +77,10 @@ class ProfitAwareEvaluatorV2:
         fee_r: float = 0.0,
         slippage_r: float = 0.0,
         same_candle_policy: str = "conservative",
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
         gate_results: list[dict[str, Any]] = []
         for gate_type, thresholds in self._signal_gate_evaluator.GATE_THRESHOLDS.items():
@@ -78,6 +94,10 @@ class ProfitAwareEvaluatorV2:
                     fee_r=fee_r,
                     slippage_r=slippage_r,
                     same_candle_policy=same_candle_policy,
+                    exit_policy_profile=exit_policy_profile,
+                    exit_timeout_bars=exit_timeout_bars,
+                    exit_mitigation_loss_r=exit_mitigation_loss_r,
+                    exit_neutral_abs_r=exit_neutral_abs_r,
                 )
                 gate_results.append(single["summary"])
 
@@ -115,6 +135,10 @@ class ProfitAwareEvaluatorV2:
         fee_r: float = 0.0,
         slippage_r: float = 0.0,
         same_candle_policy: str = "conservative",
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
         original_selection = self._signal_gate_evaluator.select_signals(
             predictions,
@@ -151,6 +175,10 @@ class ProfitAwareEvaluatorV2:
                 same_candle_policy=same_candle_policy,
                 gate_type=gate_type,
                 threshold=threshold,
+                exit_policy_profile=exit_policy_profile or "classic_tp_sl",
+                exit_timeout_bars=exit_timeout_bars,
+                exit_mitigation_loss_r=exit_mitigation_loss_r,
+                exit_neutral_abs_r=exit_neutral_abs_r,
             )
             summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
             summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
@@ -178,6 +206,10 @@ class ProfitAwareEvaluatorV2:
             same_candle_policy=same_candle_policy,
             gate_type=gate_type,
             threshold=threshold,
+            exit_policy_profile=exit_policy_profile or "classic_tp_sl",
+            exit_timeout_bars=exit_timeout_bars,
+            exit_mitigation_loss_r=exit_mitigation_loss_r,
+            exit_neutral_abs_r=exit_neutral_abs_r,
         )
         summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
         summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
@@ -195,38 +227,121 @@ class ProfitAwareEvaluatorV2:
         fee_r: float,
         slippage_r: float,
         same_candle_policy: str,
+        exit_policy_profile: str | None = None,
+        exit_timeout_bars: int | None = None,
+        exit_mitigation_loss_r: float | None = None,
+        exit_neutral_abs_r: float | None = None,
     ) -> dict[str, Any]:
+        policy = str(exit_policy_profile or "classic_tp_sl")
+        mitigation_enabled = policy == "stop_loss_mitigation_v1" and exit_mitigation_loss_r is not None
+        timeout_bars = int(exit_timeout_bars or 0)
+        neutral_abs_r = None if exit_neutral_abs_r is None else abs(float(exit_neutral_abs_r))
+        mitigation_loss_r = None if exit_mitigation_loss_r is None else abs(float(exit_mitigation_loss_r))
+
         current_close = float(row["current_close"])
         atr_value = float(row["atr_14"])
-        future_candles = row["future_candles"]
+        future_candles = list(row["future_candles"])
+        if timeout_bars > 0:
+            future_candles = future_candles[:timeout_bars]
+
         if row["signal_direction"] == "LONG":
             take_profit = current_close + (take_profit_atr * atr_value)
             stop_loss = current_close - (stop_loss_atr * atr_value)
+            mitigation_price = (
+                current_close - (mitigation_loss_r * stop_loss_atr * atr_value)
+                if mitigation_enabled and mitigation_loss_r is not None
+                else None
+            )
             for candle in future_candles:
-                tp_hit = float(candle["high"]) >= take_profit
-                sl_hit = float(candle["low"]) <= stop_loss
+                high = float(candle["high"])
+                low = float(candle["low"])
+                tp_hit = high >= take_profit
+                sl_hit = low <= stop_loss
+                mitigation_hit = mitigation_price is not None and low <= mitigation_price
                 if tp_hit and sl_hit:
                     return self._resolve_ambiguous(take_profit_atr, stop_loss_atr, fee_r, slippage_r, same_candle_policy)
-                if tp_hit:
-                    return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
                 if sl_hit:
                     return self._with_costs("SL", -1.0, fee_r, slippage_r)
-            raw_r = max(-1.0, min(take_profit_atr / stop_loss_atr, float(row["future_move_atr"]) / stop_loss_atr))
+                if tp_hit and mitigation_hit:
+                    if same_candle_policy == "optimistic":
+                        return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
+                    return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+                if tp_hit:
+                    return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
+                if mitigation_hit:
+                    return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+            raw_r = self._timeout_or_horizon_raw_r(
+                row=row,
+                future_candles=future_candles,
+                current_close=current_close,
+                atr_value=atr_value,
+                signal_direction="LONG",
+                take_profit_atr=take_profit_atr,
+                stop_loss_atr=stop_loss_atr,
+            )
+            if neutral_abs_r is not None and abs(raw_r) <= neutral_abs_r:
+                return self._with_costs("TIMEOUT_NEUTRAL", 0.0, fee_r, slippage_r)
             return self._with_costs("NEITHER", raw_r, fee_r, slippage_r)
 
         take_profit = current_close - (take_profit_atr * atr_value)
         stop_loss = current_close + (stop_loss_atr * atr_value)
+        mitigation_price = (
+            current_close + (mitigation_loss_r * stop_loss_atr * atr_value)
+            if mitigation_enabled and mitigation_loss_r is not None
+            else None
+        )
         for candle in future_candles:
-            tp_hit = float(candle["low"]) <= take_profit
-            sl_hit = float(candle["high"]) >= stop_loss
+            high = float(candle["high"])
+            low = float(candle["low"])
+            tp_hit = low <= take_profit
+            sl_hit = high >= stop_loss
+            mitigation_hit = mitigation_price is not None and high >= mitigation_price
             if tp_hit and sl_hit:
                 return self._resolve_ambiguous(take_profit_atr, stop_loss_atr, fee_r, slippage_r, same_candle_policy)
-            if tp_hit:
-                return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
             if sl_hit:
                 return self._with_costs("SL", -1.0, fee_r, slippage_r)
-        raw_r = max(-1.0, min(take_profit_atr / stop_loss_atr, (-float(row["future_move_atr"])) / stop_loss_atr))
+            if tp_hit and mitigation_hit:
+                if same_candle_policy == "optimistic":
+                    return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
+                return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+            if tp_hit:
+                return self._with_costs("TP", take_profit_atr / stop_loss_atr, fee_r, slippage_r)
+            if mitigation_hit:
+                return self._with_costs("EXIT_MITIGATED", -float(mitigation_loss_r), fee_r, slippage_r)
+        raw_r = self._timeout_or_horizon_raw_r(
+            row=row,
+            future_candles=future_candles,
+            current_close=current_close,
+            atr_value=atr_value,
+            signal_direction="SHORT",
+            take_profit_atr=take_profit_atr,
+            stop_loss_atr=stop_loss_atr,
+        )
+        if neutral_abs_r is not None and abs(raw_r) <= neutral_abs_r:
+            return self._with_costs("TIMEOUT_NEUTRAL", 0.0, fee_r, slippage_r)
         return self._with_costs("NEITHER", raw_r, fee_r, slippage_r)
+
+    @staticmethod
+    def _timeout_or_horizon_raw_r(
+        *,
+        row: dict[str, Any],
+        future_candles: list[dict[str, Any]],
+        current_close: float,
+        atr_value: float,
+        signal_direction: str,
+        take_profit_atr: float,
+        stop_loss_atr: float,
+    ) -> float:
+        if future_candles:
+            last_close = float(future_candles[-1].get("close", current_close) or current_close)
+            move_atr = (last_close - current_close) / max(atr_value, 1e-9)
+            if signal_direction == "SHORT":
+                move_atr = -move_atr
+        else:
+            move_atr = float(row.get("future_move_atr", 0.0) or 0.0)
+            if signal_direction == "SHORT":
+                move_atr = -move_atr
+        return max(-1.0, min(take_profit_atr / stop_loss_atr, move_atr / stop_loss_atr))
 
     @staticmethod
     def _best_gate_summary(gate_results: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -266,6 +381,8 @@ class ProfitAwareEvaluatorV2:
         short_outcomes = [item for row, item in included if row["signal_direction"] == "SHORT"]
         win_count = sum(int(item["result"] == "TP") for item in resolved_outcomes)
         loss_count = sum(int(item["result"] == "SL") for item in resolved_outcomes)
+        exit_mitigated_count = sum(int(item["result"] == "EXIT_MITIGATED") for item in resolved_outcomes)
+        timeout_neutral_count = sum(int(item["result"] == "TIMEOUT_NEUTRAL") for item in resolved_outcomes)
         neither_count = sum(int(item["result"] == "NEITHER") for item in resolved_outcomes)
         ambiguous_count = sum(int(item["result"] == "AMBIGUOUS") for item in outcomes)
         gross_profit_r = sum(value for value in net_values if value > 0)
@@ -289,6 +406,8 @@ class ProfitAwareEvaluatorV2:
             "coverage": (signal_count / selection["total_rows"]) if selection["total_rows"] else 0.0,
             "win_count": win_count,
             "loss_count": loss_count,
+            "exit_mitigated_count": exit_mitigated_count,
+            "timeout_neutral_count": timeout_neutral_count,
             "neither_count": neither_count,
             "ambiguous_count": ambiguous_count,
             "gross_profit_r": gross_profit_r,
@@ -299,6 +418,8 @@ class ProfitAwareEvaluatorV2:
             "expectancy_r": avg_r,
             "win_rate": (win_count / resolved_count) if resolved_count else None,
             "loss_rate": (loss_count / resolved_count) if resolved_count else None,
+            "exit_mitigated_rate": (exit_mitigated_count / resolved_count) if resolved_count else None,
+            "timeout_neutral_rate": (timeout_neutral_count / resolved_count) if resolved_count else None,
             "max_win_r": max(net_values) if net_values else None,
             "max_loss_r": min(net_values) if net_values else None,
             "long_count": len(long_rows),
@@ -332,6 +453,8 @@ class ProfitAwareEvaluatorV2:
             "coverage": 0.0,
             "win_count": 0,
             "loss_count": 0,
+            "exit_mitigated_count": 0,
+            "timeout_neutral_count": 0,
             "neither_count": 0,
             "ambiguous_count": 0,
             "gross_profit_r": 0.0,
@@ -342,6 +465,8 @@ class ProfitAwareEvaluatorV2:
             "expectancy_r": None,
             "win_rate": None,
             "loss_rate": None,
+            "exit_mitigated_rate": None,
+            "timeout_neutral_rate": None,
             "max_win_r": None,
             "max_loss_r": None,
             "long_count": 0,
