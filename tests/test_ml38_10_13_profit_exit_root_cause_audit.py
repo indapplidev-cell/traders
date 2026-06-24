@@ -41,7 +41,7 @@ def test_ml38_10_13_profit_exit_audit_detects_stop_pressure() -> None:
     )
 
     assert audit["diagnostic_name"] == "profit_exit_root_cause_audit"
-    assert audit["diagnostic_version"] == "ml38.10.17"
+    assert audit["diagnostic_version"] == "ml38.10.18"
     assert audit["audit_status"] == "COMPLETED"
     assert audit["root_cause_status"] == "STOP_PRESSURE_DOMINANT"
     assert audit["primary_root_cause"] == "stop_loss_hit"

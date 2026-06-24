@@ -59,7 +59,7 @@ def test_ml38_10_17_exit_policy_can_mitigate_before_full_stop_loss() -> None:
     assert mitigated["summary"]["exit_mitigated_count"] == 1
     assert mitigated["summary"]["loss_count"] == 0
     audit = mitigated["summary"]["profit_exit_root_cause_audit"]
-    assert audit["diagnostic_version"] == "ml38.10.17"
+    assert audit["diagnostic_version"] == "ml38.10.18"
     assert audit["exit_policy_profile"] == "stop_loss_mitigation_v1"
     assert audit["exit_mitigated_count"] == 1
     assert audit["root_cause_counts"]["stop_loss_mitigated_before_full_sl"] == 1
@@ -100,5 +100,5 @@ def test_ml38_10_17_matrix_and_runtime_include_lv25_exit_configs() -> None:
     matrix = ML382FV3TuningMatrix().build()
     assert matrix["exit_outcome_stop_loss_mitigation_stage"] == "ML38.10.17"
     assert "lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit" in matrix["config_ids"]
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv25_")
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv25_")
+    assert "lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
