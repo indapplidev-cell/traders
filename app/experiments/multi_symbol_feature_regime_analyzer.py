@@ -132,6 +132,18 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_symbol": None if best_result is None else best_result["symbol"],
             "best_candidate_config_id": None if best_result is None else best_result["best_candidate_config_id"],
             "best_candidate_score": None if best_result is None else best_result["best_candidate_score"],
+            "directional_edge_bias_audit": None if best_result is None else self._as_dict(best_result.get("directional_edge_bias_audit")),
+            "directional_side_filter_summary": None if best_result is None else self._as_dict(best_result.get("directional_side_filter_summary")),
+            "directional_side_filter_profile": None if best_result is None else best_result.get("directional_side_filter_profile"),
+            "allowed_signal_directions": [] if best_result is None else list(best_result.get("allowed_signal_directions") or []),
+            "direction_balance_ratio": None if best_result is None else self._float_or_none(best_result.get("direction_balance_ratio")),
+            "directional_profit_skew_r": None if best_result is None else self._float_or_none(best_result.get("directional_profit_skew_r")),
+            "directional_profit_skew_ratio": None if best_result is None else self._float_or_none(best_result.get("directional_profit_skew_ratio")),
+            "long_total_r": None if best_result is None else self._float_or_none(best_result.get("long_total_r")),
+            "short_total_r": None if best_result is None else self._float_or_none(best_result.get("short_total_r")),
+            "long_avg_r": None if best_result is None else self._float_or_none(best_result.get("long_avg_r")),
+            "short_avg_r": None if best_result is None else self._float_or_none(best_result.get("short_avg_r")),
+            "dominant_direction": None if best_result is None else best_result.get("dominant_direction"),
             "best_config_by_symbol": {
                 item["symbol"]: item["best_candidate_config_id"] for item in symbol_results
             },
@@ -434,6 +446,25 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
         }
 
+    @classmethod
+    def _directional_side_audit_payload(cls, candidate: dict[str, Any]) -> dict[str, Any]:
+        directional_audit = cls._as_dict(candidate.get("directional_edge_bias_audit"))
+        side_filter_summary = cls._as_dict(candidate.get("directional_side_filter_summary"))
+        return {
+            "directional_edge_bias_audit": directional_audit,
+            "directional_side_filter_summary": side_filter_summary,
+            "directional_side_filter_profile": candidate.get("directional_side_filter_profile"),
+            "allowed_signal_directions": list(candidate.get("allowed_signal_directions") or []),
+            "direction_balance_ratio": cls._float_or_none(directional_audit.get("direction_balance_ratio")),
+            "directional_profit_skew_r": cls._float_or_none(directional_audit.get("directional_profit_skew_r")),
+            "directional_profit_skew_ratio": cls._float_or_none(directional_audit.get("directional_profit_skew_ratio")),
+            "long_total_r": cls._float_or_none(directional_audit.get("long_total_r")),
+            "short_total_r": cls._float_or_none(directional_audit.get("short_total_r")),
+            "long_avg_r": cls._float_or_none(directional_audit.get("long_avg_r")),
+            "short_avg_r": cls._float_or_none(directional_audit.get("short_avg_r")),
+            "dominant_direction": directional_audit.get("dominant_direction"),
+        }
+
     @staticmethod
     def _candidate_status(candidate: dict[str, Any]) -> str:
         return str(candidate.get("candidate_status") or "").upper()
@@ -568,8 +599,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.get("schwager_robustness_decision_board")
             )
             payload.update(cls._entry_path_audit_payload(payload))
+            payload.update(cls._directional_side_audit_payload(payload))
             configs_ranked.append(payload)
         best_entry_path_audit = cls._entry_path_audit_payload(best_candidate)
+        best_directional_side_audit = cls._directional_side_audit_payload(best_candidate)
         return {
             "symbol": str(summary.get("symbol")),
             "experiment_id": summary.get("experiment_id"),
@@ -645,6 +678,32 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 summary.get("profit_aware_diagnostics")
                 or best_candidate.get("profit_aware_diagnostics")
             ),
+            "directional_edge_bias_audit": cls._as_dict(
+                best_directional_side_audit.get("directional_edge_bias_audit")
+            ),
+            "directional_side_filter_summary": cls._as_dict(
+                best_directional_side_audit.get("directional_side_filter_summary")
+            ),
+            "directional_side_filter_profile": best_directional_side_audit.get(
+                "directional_side_filter_profile"
+            ),
+            "allowed_signal_directions": list(
+                best_directional_side_audit.get("allowed_signal_directions") or []
+            ),
+            "direction_balance_ratio": cls._float_or_none(
+                best_directional_side_audit.get("direction_balance_ratio")
+            ),
+            "directional_profit_skew_r": cls._float_or_none(
+                best_directional_side_audit.get("directional_profit_skew_r")
+            ),
+            "directional_profit_skew_ratio": cls._float_or_none(
+                best_directional_side_audit.get("directional_profit_skew_ratio")
+            ),
+            "long_total_r": cls._float_or_none(best_directional_side_audit.get("long_total_r")),
+            "short_total_r": cls._float_or_none(best_directional_side_audit.get("short_total_r")),
+            "long_avg_r": cls._float_or_none(best_directional_side_audit.get("long_avg_r")),
+            "short_avg_r": cls._float_or_none(best_directional_side_audit.get("short_avg_r")),
+            "dominant_direction": best_directional_side_audit.get("dominant_direction"),
             "profit_exit_root_cause_audit": cls._as_dict(
                 summary.get("profit_exit_root_cause_audit")
                 or best_candidate.get("profit_exit_root_cause_audit")

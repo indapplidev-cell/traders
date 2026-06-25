@@ -94,6 +94,19 @@ class MultiSymbolFeatureRegimeReporter:
                 }
                 for item in self._as_list(payload.get("symbol_results"))
             },
+            "directional_audit_by_symbol": {
+                item.get("symbol"): {
+                    "directional_edge_bias_audit": item.get("directional_edge_bias_audit"),
+                    "directional_side_filter_summary": item.get("directional_side_filter_summary"),
+                    "directional_side_filter_profile": item.get("directional_side_filter_profile"),
+                    "allowed_signal_directions": item.get("allowed_signal_directions"),
+                    "direction_balance_ratio": item.get("direction_balance_ratio"),
+                    "directional_profit_skew_r": item.get("directional_profit_skew_r"),
+                    "long_total_r": item.get("long_total_r"),
+                    "short_total_r": item.get("short_total_r"),
+                }
+                for item in self._as_list(payload.get("symbol_results"))
+            },
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -300,4 +313,20 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not self._as_list(payload.get("symbol_results")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        lines.extend(
+            [
+                "",
+                "## Directional Side Audit",
+                "",
+            ]
+        )
+        for item in self._as_list(payload.get("symbol_results")):
+            lines.append(f"### {item.get('symbol')}")
+            lines.append(f"- side_filter_profile: `{item.get('directional_side_filter_profile')}`")
+            lines.append(f"- allowed_signal_directions: `{item.get('allowed_signal_directions')}`")
+            lines.append(f"- direction_balance_ratio: `{item.get('direction_balance_ratio')}`")
+            lines.append(f"- long_total_r: `{item.get('long_total_r')}`")
+            lines.append(f"- short_total_r: `{item.get('short_total_r')}`")
+        if not self._as_list(payload.get("symbol_results")):
+            lines.append("- side_filter_profile: `None`")
         return "\n".join(lines)

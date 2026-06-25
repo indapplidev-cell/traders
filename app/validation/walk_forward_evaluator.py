@@ -48,6 +48,8 @@ class WalkForwardEvaluator:
         exit_timeout_bars: int | None = None,
         exit_mitigation_loss_r: float | None = None,
         exit_neutral_abs_r: float | None = None,
+        directional_side_filter_profile: str | None = None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         plan = self._walk_forward_splitter.build_plan(dataset_rows, config)
         fold_reports: list[dict[str, Any]] = []
@@ -66,6 +68,8 @@ class WalkForwardEvaluator:
                 exit_timeout_bars=exit_timeout_bars,
                 exit_mitigation_loss_r=exit_mitigation_loss_r,
                 exit_neutral_abs_r=exit_neutral_abs_r,
+                directional_side_filter_profile=directional_side_filter_profile,
+                allowed_signal_directions=allowed_signal_directions,
             )
             selected_gate_payload = self._gate_selector.select(validation_profit["gate_results"])
             selected_gate = selected_gate_payload["selected_gate"]
@@ -87,6 +91,8 @@ class WalkForwardEvaluator:
                     exit_timeout_bars=exit_timeout_bars,
                     exit_mitigation_loss_r=exit_mitigation_loss_r,
                     exit_neutral_abs_r=exit_neutral_abs_r,
+                    directional_side_filter_profile=directional_side_filter_profile,
+                    allowed_signal_directions=allowed_signal_directions,
                 )
                 bias_report = self._direction_bias_diagnostics.build_report(
                     predictions=test_predictions,
@@ -114,6 +120,8 @@ class WalkForwardEvaluator:
             "exit_timeout_bars": exit_timeout_bars,
             "exit_mitigation_loss_r": exit_mitigation_loss_r,
             "exit_neutral_abs_r": exit_neutral_abs_r,
+            "directional_side_filter_profile": directional_side_filter_profile,
+            "allowed_signal_directions": list(allowed_signal_directions or []),
             "folds": public_folds,
             "summary": summary,
         }

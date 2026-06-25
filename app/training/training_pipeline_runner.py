@@ -122,6 +122,8 @@ class TrainingPipelineConfig:
     exit_timeout_bars: int | None = None
     exit_mitigation_loss_r: float | None = None
     exit_neutral_abs_r: float | None = None
+    directional_side_filter_profile: str | None = None
+    allowed_signal_directions: tuple[str, ...] | None = None
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1149,6 +1151,8 @@ class LongHistoryTrainingPipelineRunner:
                         "exit_timeout_bars": config.exit_timeout_bars,
                         "exit_mitigation_loss_r": config.exit_mitigation_loss_r,
                         "exit_neutral_abs_r": config.exit_neutral_abs_r,
+                        "directional_side_filter_profile": config.directional_side_filter_profile,
+                        "allowed_signal_directions": list(config.allowed_signal_directions or []),
                         "config_id": label_version,
                         "training_objective": config.training_objective,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1214,6 +1218,8 @@ class LongHistoryTrainingPipelineRunner:
                 "exit_timeout_bars": config.exit_timeout_bars,
                 "exit_mitigation_loss_r": config.exit_mitigation_loss_r,
                 "exit_neutral_abs_r": config.exit_neutral_abs_r,
+                "directional_side_filter_profile": config.directional_side_filter_profile,
+                "allowed_signal_directions": list(config.allowed_signal_directions or []),
                 "config_id": label_version,
                 "training_objective": config.training_objective,
                 "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1618,6 +1624,8 @@ class LongHistoryTrainingPipelineRunner:
                 exit_timeout_bars=config.exit_timeout_bars,
                 exit_mitigation_loss_r=config.exit_mitigation_loss_r,
                 exit_neutral_abs_r=config.exit_neutral_abs_r,
+                directional_side_filter_profile=config.directional_side_filter_profile,
+                allowed_signal_directions=config.allowed_signal_directions,
             )
         )
         payload = dict(result)
@@ -1666,6 +1674,8 @@ class LongHistoryTrainingPipelineRunner:
                 exit_timeout_bars=config.exit_timeout_bars,
                 exit_mitigation_loss_r=config.exit_mitigation_loss_r,
                 exit_neutral_abs_r=config.exit_neutral_abs_r,
+                directional_side_filter_profile=config.directional_side_filter_profile,
+                allowed_signal_directions=config.allowed_signal_directions,
             )
         )
         payload = dict(result)

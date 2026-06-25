@@ -739,6 +739,8 @@ class DiagnosticsService:
         exit_timeout_bars: int | None = None,
         exit_mitigation_loss_r: float | None = None,
         exit_neutral_abs_r: float | None = None,
+        directional_side_filter_profile: str | None = None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         predictions = self._build_prediction_rows(
             model_version=model_version,
@@ -764,6 +766,8 @@ class DiagnosticsService:
             exit_timeout_bars=exit_timeout_bars,
             exit_mitigation_loss_r=exit_mitigation_loss_r,
             exit_neutral_abs_r=exit_neutral_abs_r,
+            directional_side_filter_profile=directional_side_filter_profile,
+            allowed_signal_directions=allowed_signal_directions,
         )
 
     def walk_forward_plan(
@@ -823,6 +827,8 @@ class DiagnosticsService:
         exit_timeout_bars: int | None = None,
         exit_mitigation_loss_r: float | None = None,
         exit_neutral_abs_r: float | None = None,
+        directional_side_filter_profile: str | None = None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         dataset_rows, _ = self._dataset_builder.build_rows(
             symbol=symbol,
@@ -864,6 +870,8 @@ class DiagnosticsService:
             exit_timeout_bars=exit_timeout_bars,
             exit_mitigation_loss_r=exit_mitigation_loss_r,
             exit_neutral_abs_r=exit_neutral_abs_r,
+            directional_side_filter_profile=directional_side_filter_profile,
+            allowed_signal_directions=allowed_signal_directions,
         )
 
     def fold_label_diagnostics(

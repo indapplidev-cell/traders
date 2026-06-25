@@ -124,6 +124,10 @@ class LabelGridExperimentCandidateResult:
     walk_forward_profit_diagnostics_missing_reason: str | None = None
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     profit_aware_diagnostics_missing_reason: str | None = None
+    directional_edge_bias_audit: dict[str, Any] = field(default_factory=dict)
+    directional_side_filter_summary: dict[str, Any] = field(default_factory=dict)
+    directional_side_filter_profile: str | None = None
+    allowed_signal_directions: tuple[str, ...] = ()
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -238,6 +242,10 @@ class LabelGridExperimentCandidateResult:
             "walk_forward_profit_diagnostics_missing_reason": self.walk_forward_profit_diagnostics_missing_reason,
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
+            "directional_edge_bias_audit": dict(self.directional_edge_bias_audit),
+            "directional_side_filter_summary": dict(self.directional_side_filter_summary),
+            "directional_side_filter_profile": self.directional_side_filter_profile,
+            "allowed_signal_directions": list(self.allowed_signal_directions),
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -1074,6 +1082,8 @@ class LabelGridExperimentRunner:
                 exit_timeout_bars=label_config.exit_timeout_bars,
                 exit_mitigation_loss_r=label_config.exit_mitigation_loss_r,
                 exit_neutral_abs_r=label_config.exit_neutral_abs_r,
+                directional_side_filter_profile=label_config.directional_side_filter_profile,
+                allowed_signal_directions=label_config.allowed_signal_directions,
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1240,6 +1250,21 @@ class LabelGridExperimentRunner:
         profit_aware_best_gate = self._as_dict(
             profit_aware_diagnostics_payload.get("best_gate")
         )
+        profit_aware_summary = self._as_dict(
+            profit_aware_diagnostics_payload.get("summary")
+        )
+        directional_edge_bias_audit = self._as_dict(
+            quality_payload.get("directional_edge_bias_audit")
+            or profit_aware_diagnostics_payload.get("directional_edge_bias_audit")
+            or profit_aware_summary.get("directional_edge_bias_audit")
+            or profit_aware_best_gate.get("directional_edge_bias_audit")
+        )
+        directional_side_filter_summary = self._as_dict(
+            quality_payload.get("directional_side_filter_summary")
+            or profit_aware_diagnostics_payload.get("directional_side_filter_summary")
+            or profit_aware_summary.get("directional_side_filter_summary")
+            or profit_aware_best_gate.get("directional_side_filter_summary")
+        )
         profit_entry_path_summary = self._as_dict(
             quality_payload.get("entry_path_prediction_filter_summary")
             or profit_aware_diagnostics_payload.get("entry_path_prediction_filter_summary")
@@ -1260,6 +1285,7 @@ class LabelGridExperimentRunner:
             profit_aware_best_gate,
             profit_entry_path_summary,
             profit_stop_pressure_audit,
+            directional_side_filter_summary,
         )
 
         def _first_present(key: str, default: Any = None) -> Any:
@@ -1376,6 +1402,17 @@ class LabelGridExperimentRunner:
             walk_forward_profit_diagnostics_missing_reason=walk_forward_profit_diagnostics_missing_reason,
             profit_aware_diagnostics=profit_aware_diagnostics,
             profit_aware_diagnostics_missing_reason=profit_aware_diagnostics_missing_reason,
+            directional_edge_bias_audit=directional_edge_bias_audit,
+            directional_side_filter_summary=directional_side_filter_summary,
+            directional_side_filter_profile=(
+                directional_side_filter_summary.get("profile")
+                or label_config.directional_side_filter_profile
+            ),
+            allowed_signal_directions=tuple(
+                directional_side_filter_summary.get("allowed_signal_directions")
+                or label_config.allowed_signal_directions
+                or ()
+            ),
             opportunity_probability_threshold=self._optional_float(
                 quality_payload.get("opportunity_probability_threshold")
             ),
@@ -1766,6 +1803,10 @@ class LabelGridExperimentRunner:
             profit_aware_diagnostics_missing_reason=(
                 None if profit_aware_diagnostics else "not_computed_due_to_failed_training"
             ),
+            directional_edge_bias_audit={},
+            directional_side_filter_summary={},
+            directional_side_filter_profile=None,
+            allowed_signal_directions=(),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,
             approved_for_auto_activation=False,

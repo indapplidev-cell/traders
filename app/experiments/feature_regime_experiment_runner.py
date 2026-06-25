@@ -136,6 +136,10 @@ class FeatureRegimeCandidateResult:
     walk_forward_profit_diagnostics_missing_reason: str | None = None
     profit_aware_diagnostics: dict[str, Any] = field(default_factory=dict)
     profit_aware_diagnostics_missing_reason: str | None = None
+    directional_edge_bias_audit: dict[str, Any] = field(default_factory=dict)
+    directional_side_filter_summary: dict[str, Any] = field(default_factory=dict)
+    directional_side_filter_profile: str | None = None
+    allowed_signal_directions: tuple[str, ...] = ()
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -282,6 +286,10 @@ class FeatureRegimeCandidateResult:
             "walk_forward_profit_diagnostics_missing_reason": self.walk_forward_profit_diagnostics_missing_reason,
             "profit_aware_diagnostics": dict(self.profit_aware_diagnostics),
             "profit_aware_diagnostics_missing_reason": self.profit_aware_diagnostics_missing_reason,
+            "directional_edge_bias_audit": dict(self.directional_edge_bias_audit),
+            "directional_side_filter_summary": dict(self.directional_side_filter_summary),
+            "directional_side_filter_profile": self.directional_side_filter_profile,
+            "allowed_signal_directions": list(self.allowed_signal_directions),
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -1983,6 +1991,20 @@ class FeatureRegimeExperimentRunner:
                     item,
                     "profit_aware_diagnostics_missing_reason",
                     None,
+                ),
+                directional_edge_bias_audit=self._as_dict(
+                    getattr(item, "directional_edge_bias_audit", {})
+                ),
+                directional_side_filter_summary=self._as_dict(
+                    getattr(item, "directional_side_filter_summary", {})
+                ),
+                directional_side_filter_profile=getattr(
+                    item,
+                    "directional_side_filter_profile",
+                    None,
+                ),
+                allowed_signal_directions=tuple(
+                    getattr(item, "allowed_signal_directions", ()) or ()
                 ),
                 opportunity_probability_threshold=getattr(item, "opportunity_probability_threshold", None),
                 setup_quality_min_threshold=getattr(item, "setup_quality_min_threshold", None),

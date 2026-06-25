@@ -36,6 +36,8 @@ class ProfitAwareEvaluatorV2:
         exit_timeout_bars: int | None = None,
         exit_mitigation_loss_r: float | None = None,
         exit_neutral_abs_r: float | None = None,
+        directional_side_filter_profile: str | None = None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         evaluation = self.evaluate_predictions(
             predictions=predictions,
@@ -47,7 +49,9 @@ class ProfitAwareEvaluatorV2:
             exit_policy_profile=exit_policy_profile,
             exit_timeout_bars=exit_timeout_bars,
             exit_mitigation_loss_r=exit_mitigation_loss_r,
-            exit_neutral_abs_r=exit_neutral_abs_r
+            exit_neutral_abs_r=exit_neutral_abs_r,
+            directional_side_filter_profile=directional_side_filter_profile,
+            allowed_signal_directions=allowed_signal_directions,
         )
         gate_results = evaluation["gate_results"]
 
@@ -62,6 +66,8 @@ class ProfitAwareEvaluatorV2:
             "exit_timeout_bars": exit_timeout_bars,
             "exit_mitigation_loss_r": exit_mitigation_loss_r,
             "exit_neutral_abs_r": exit_neutral_abs_r,
+            "directional_side_filter_profile": directional_side_filter_profile,
+            "allowed_signal_directions": list(allowed_signal_directions or []),
             "gate_results": gate_results,
         }
         output_path = self._reports_dir / f"profit_eval_v2_{model_version}.json"
@@ -81,6 +87,8 @@ class ProfitAwareEvaluatorV2:
         exit_timeout_bars: int | None = None,
         exit_mitigation_loss_r: float | None = None,
         exit_neutral_abs_r: float | None = None,
+        directional_side_filter_profile: str | None = None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         gate_results: list[dict[str, Any]] = []
         for gate_type, thresholds in self._signal_gate_evaluator.GATE_THRESHOLDS.items():
@@ -98,6 +106,8 @@ class ProfitAwareEvaluatorV2:
                     exit_timeout_bars=exit_timeout_bars,
                     exit_mitigation_loss_r=exit_mitigation_loss_r,
                     exit_neutral_abs_r=exit_neutral_abs_r,
+                    directional_side_filter_profile=directional_side_filter_profile,
+                    allowed_signal_directions=allowed_signal_directions,
                 )
                 gate_results.append(single["summary"])
 
@@ -139,6 +149,8 @@ class ProfitAwareEvaluatorV2:
         exit_timeout_bars: int | None = None,
         exit_mitigation_loss_r: float | None = None,
         exit_neutral_abs_r: float | None = None,
+        directional_side_filter_profile: str | None = None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         original_selection = self._signal_gate_evaluator.select_signals(
             predictions,
@@ -152,7 +164,12 @@ class ProfitAwareEvaluatorV2:
             threshold,
             apply_entry_path_filter=True,
         )
-        signal_rows = selection["signal_rows"]
+        original_side_signal_rows = list(selection["signal_rows"])
+        signal_rows, directional_side_filter_summary = self._apply_directional_side_filter(
+            signal_rows=original_side_signal_rows,
+            directional_side_filter_profile=directional_side_filter_profile,
+            allowed_signal_directions=allowed_signal_directions,
+        )
         entry_path_filter_summary = self._entry_path_final_decision_filter_summary(
             predictions=predictions,
             original_selection=original_selection,
@@ -182,6 +199,9 @@ class ProfitAwareEvaluatorV2:
             )
             summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
             summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
+            summary["directional_side_filter_summary"] = directional_side_filter_summary
+            summary["directional_side_filter_profile"] = directional_side_filter_summary.get("profile")
+            summary["allowed_signal_directions"] = directional_side_filter_summary.get("allowed_signal_directions")
             return {"summary": summary, "signal_rows": [], "outcomes": []}
 
         outcomes = [
@@ -199,7 +219,13 @@ class ProfitAwareEvaluatorV2:
             )
             for row in signal_rows
         ]
-        summary = self._build_gate_report(selection, signal_rows, outcomes, same_candle_policy)
+        summary = self._build_gate_report(
+            selection,
+            signal_rows,
+            outcomes,
+            same_candle_policy,
+            directional_side_filter_summary=directional_side_filter_summary,
+        )
         summary["profit_exit_root_cause_audit"] = self._profit_exit_root_cause_audit.analyze(
             signal_rows=signal_rows,
             outcomes=outcomes,
@@ -508,6 +534,104 @@ class ProfitAwareEvaluatorV2:
         return payload
 
     @staticmethod
+    def _normalize_allowed_signal_directions(
+        *,
+        directional_side_filter_profile: str | None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None,
+    ) -> tuple[str, ...]:
+        if allowed_signal_directions:
+            normalized = tuple(
+                direction
+                for direction in (
+                    str(item or "").upper().strip()
+                    for item in allowed_signal_directions
+                )
+                if direction in {"LONG", "SHORT"}
+            )
+            if normalized:
+                return tuple(dict.fromkeys(normalized))
+
+        profile = str(directional_side_filter_profile or "").lower().strip()
+        if profile in {"long_only_research", "suppress_short_research"}:
+            return ("LONG",)
+        if profile == "short_only_research":
+            return ("SHORT",)
+        return ("LONG", "SHORT")
+
+    @staticmethod
+    def _directional_side_filter_summary(
+        *,
+        original_signal_rows: list[dict[str, Any]],
+        filtered_signal_rows: list[dict[str, Any]],
+        directional_side_filter_profile: str | None,
+        allowed_signal_directions: tuple[str, ...],
+    ) -> dict[str, Any]:
+        def _count(rows: list[dict[str, Any]], direction: str) -> int:
+            return sum(
+                int(str(row.get("signal_direction") or "").upper() == direction)
+                for row in rows
+            )
+
+        original_long_count = _count(original_signal_rows, "LONG")
+        original_short_count = _count(original_signal_rows, "SHORT")
+        filtered_long_count = _count(filtered_signal_rows, "LONG")
+        filtered_short_count = _count(filtered_signal_rows, "SHORT")
+        original_signal_count = len(original_signal_rows)
+        filtered_signal_count = len(filtered_signal_rows)
+        removed_signal_count = max(0, original_signal_count - filtered_signal_count)
+
+        profile = directional_side_filter_profile or "both_directions"
+        active = set(allowed_signal_directions) != {"LONG", "SHORT"}
+
+        return {
+            "diagnostic_name": "directional_side_filter_summary",
+            "diagnostic_version": "ml38.10.20",
+            "profile": profile,
+            "active": bool(active),
+            "research_only": bool(active),
+            "allowed_signal_directions": list(allowed_signal_directions),
+            "original_signal_count": original_signal_count,
+            "filtered_signal_count": filtered_signal_count,
+            "removed_signal_count": removed_signal_count,
+            "original_long_count": original_long_count,
+            "original_short_count": original_short_count,
+            "filtered_long_count": filtered_long_count,
+            "filtered_short_count": filtered_short_count,
+            "removed_long_count": max(0, original_long_count - filtered_long_count),
+            "removed_short_count": max(0, original_short_count - filtered_short_count),
+            "removed_signal_rate": (
+                removed_signal_count / original_signal_count
+                if original_signal_count
+                else None
+            ),
+        }
+
+    @classmethod
+    def _apply_directional_side_filter(
+        cls,
+        *,
+        signal_rows: list[dict[str, Any]],
+        directional_side_filter_profile: str | None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        allowed = cls._normalize_allowed_signal_directions(
+            directional_side_filter_profile=directional_side_filter_profile,
+            allowed_signal_directions=allowed_signal_directions,
+        )
+        filtered_rows = [
+            row
+            for row in signal_rows
+            if str(row.get("signal_direction") or "").upper() in set(allowed)
+        ]
+        summary = cls._directional_side_filter_summary(
+            original_signal_rows=list(signal_rows),
+            filtered_signal_rows=filtered_rows,
+            directional_side_filter_profile=directional_side_filter_profile,
+            allowed_signal_directions=allowed,
+        )
+        return filtered_rows, summary
+
+    @staticmethod
     def _directional_side_metrics(outcomes: list[dict[str, Any]]) -> dict[str, Any]:
         net_values = [float(item.get("net_r", 0.0) or 0.0) for item in outcomes]
         resolved_count = len(net_values)
@@ -661,6 +785,7 @@ class ProfitAwareEvaluatorV2:
         signal_rows: list[dict[str, Any]],
         outcomes: list[dict[str, Any]],
         same_candle_policy: str,
+        directional_side_filter_summary: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         signal_count = len(signal_rows)
         included = [(row, item) for row, item in zip(signal_rows, outcomes) if item["result"] != "AMBIGUOUS"]
@@ -748,6 +873,13 @@ class ProfitAwareEvaluatorV2:
             "dominant_direction": directional_edge_bias_audit.get("dominant_direction"),
             "dominant_direction_ratio": directional_edge_bias_audit.get("dominant_direction_ratio"),
             "directional_edge_bias_audit": directional_edge_bias_audit,
+            "directional_side_filter_summary": dict(directional_side_filter_summary or {}),
+            "directional_side_filter_profile": (
+                dict(directional_side_filter_summary or {}).get("profile")
+            ),
+            "allowed_signal_directions": (
+                dict(directional_side_filter_summary or {}).get("allowed_signal_directions")
+            ),
             "avg_confidence_on_signals": (sum(float(row["confidence"]) for row in resolved_rows) / resolved_count) if resolved_count else None,
             "avg_margin_on_signals": (sum(float(row["margin"]) for row in resolved_rows) / resolved_count) if resolved_count else None,
             "avg_directional_edge_on_signals": (
@@ -820,6 +952,9 @@ class ProfitAwareEvaluatorV2:
                 "short_count": 0,
                 "directional_edge_bias_warning": False,
             },
+            "directional_side_filter_summary": {},
+            "directional_side_filter_profile": None,
+            "allowed_signal_directions": None,
             "avg_confidence_on_signals": None,
             "avg_margin_on_signals": None,
             "avg_directional_edge_on_signals": None,
