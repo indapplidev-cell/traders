@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from app.diagnostics.decision_policy_grid import apply_selected_decision_policy_metrics
+from app.diagnostics.directional_side_ablation_comparator import DirectionalSideAblationComparator
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
@@ -15,6 +16,14 @@ MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml35"
 
 class MultiSymbolFeatureRegimeAnalyzer:
     """Aggregate multiple feature/regime experiment summaries into one report."""
+
+    def __init__(
+        self,
+        directional_side_ablation_comparator: DirectionalSideAblationComparator | None = None,
+    ) -> None:
+        self._directional_side_ablation_comparator = (
+            directional_side_ablation_comparator or DirectionalSideAblationComparator()
+        )
 
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
@@ -116,6 +125,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 )
             ],
         }
+        directional_side_ablation_comparator = self._directional_side_ablation_comparator.compare(
+            configs_ranked
+        )
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -150,6 +162,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_global_config": None if best_result is None else best_result["best_candidate_config_id"],
             "configs_ranked": configs_ranked,
             "symbol_results": symbol_results,
+            "directional_side_ablation_comparator": directional_side_ablation_comparator,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,

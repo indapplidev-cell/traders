@@ -1265,6 +1265,33 @@ class LabelGridExperimentRunner:
             or profit_aware_summary.get("directional_side_filter_summary")
             or profit_aware_best_gate.get("directional_side_filter_summary")
         )
+        resolved_directional_side_filter_profile = (
+            directional_side_filter_summary.get("profile")
+            or label_config.directional_side_filter_profile
+        )
+        resolved_allowed_signal_directions = tuple(
+            directional_side_filter_summary.get("allowed_signal_directions")
+            or label_config.allowed_signal_directions
+            or ()
+        )
+        directional_side_warnings: list[str] = []
+        directional_side_recommendations: list[str] = []
+        if resolved_directional_side_filter_profile is not None:
+            directional_side_warnings.append("directional_side_filter_is_research_only")
+            directional_side_recommendations.extend(
+                [
+                    "compare_side_ablation_against_both_direction_baseline",
+                    "validate_side_filter_on_multi_symbol_before_acceptance",
+                ]
+            )
+        if resolved_directional_side_filter_profile == "suppress_short_research":
+            directional_side_warnings.append("short_side_suppression_not_live_ready")
+        if resolved_directional_side_filter_profile == "short_only_research":
+            directional_side_recommendations.append("inspect_short_side_feature_failure_modes")
+        warnings = tuple(dict.fromkeys(list(warnings) + directional_side_warnings))
+        recommendations = tuple(
+            dict.fromkeys(list(recommendations) + directional_side_recommendations)
+        )
         profit_entry_path_summary = self._as_dict(
             quality_payload.get("entry_path_prediction_filter_summary")
             or profit_aware_diagnostics_payload.get("entry_path_prediction_filter_summary")
@@ -1404,15 +1431,8 @@ class LabelGridExperimentRunner:
             profit_aware_diagnostics_missing_reason=profit_aware_diagnostics_missing_reason,
             directional_edge_bias_audit=directional_edge_bias_audit,
             directional_side_filter_summary=directional_side_filter_summary,
-            directional_side_filter_profile=(
-                directional_side_filter_summary.get("profile")
-                or label_config.directional_side_filter_profile
-            ),
-            allowed_signal_directions=tuple(
-                directional_side_filter_summary.get("allowed_signal_directions")
-                or label_config.allowed_signal_directions
-                or ()
-            ),
+            directional_side_filter_profile=resolved_directional_side_filter_profile,
+            allowed_signal_directions=resolved_allowed_signal_directions,
             opportunity_probability_threshold=self._optional_float(
                 quality_payload.get("opportunity_probability_threshold")
             ),
@@ -1645,6 +1665,19 @@ class LabelGridExperimentRunner:
         ]
         if known_quality_rejection:
             warning_items.append("pipeline_failed_after_quality_decision_but_candidate_rejected")
+        side_filter_recommendations: list[str] = []
+        if label_config.directional_side_filter_profile is not None:
+            warning_items.append("directional_side_filter_is_research_only")
+            side_filter_recommendations.extend(
+                [
+                    "compare_side_ablation_against_both_direction_baseline",
+                    "validate_side_filter_on_multi_symbol_before_acceptance",
+                ]
+            )
+        if label_config.directional_side_filter_profile == "suppress_short_research":
+            warning_items.append("short_side_suppression_not_live_ready")
+        if label_config.directional_side_filter_profile == "short_only_research":
+            side_filter_recommendations.append("inspect_short_side_feature_failure_modes")
         selected_policy_payload = {
             "model_accuracy": self._optional_float(
                 model_quality_payload.get("model_accuracy", train_payload.get("model_accuracy"))
@@ -1723,9 +1756,23 @@ class LabelGridExperimentRunner:
             passed_gates=tuple(passed_gates_list),
             warnings=tuple(dict.fromkeys(warning_items)),
             recommendations=(
-                ("Reject candidate from available quality decision; pipeline failure did not mean candidate execution crash.",)
+                tuple(
+                    dict.fromkeys(
+                        [
+                            "Reject candidate from available quality decision; pipeline failure did not mean candidate execution crash.",
+                            *side_filter_recommendations,
+                        ]
+                    )
+                )
                 if known_quality_rejection
-                else ("Inspect pipeline failure before retrying this candidate.",)
+                else tuple(
+                    dict.fromkeys(
+                        [
+                            "Inspect pipeline failure before retrying this candidate.",
+                            *side_filter_recommendations,
+                        ]
+                    )
+                )
             ),
             probability_diagnostics=probability_diagnostics,
             probability_diagnostics_missing_reason=(
@@ -1805,8 +1852,8 @@ class LabelGridExperimentRunner:
             ),
             directional_edge_bias_audit={},
             directional_side_filter_summary={},
-            directional_side_filter_profile=None,
-            allowed_signal_directions=(),
+            directional_side_filter_profile=label_config.directional_side_filter_profile,
+            allowed_signal_directions=tuple(label_config.allowed_signal_directions or ()),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,
             approved_for_auto_activation=False,

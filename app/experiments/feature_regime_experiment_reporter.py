@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.diagnostics.directional_side_ablation_comparator import (
+    DirectionalSideAblationComparator,
+)
+
 
 class FeatureRegimeExperimentReporter:
     """Serialize and export feature/regime experiment results."""
@@ -113,6 +117,7 @@ class FeatureRegimeExperimentReporter:
             "schwager_slice_robustness": payload.get("schwager_slice_robustness"),
             "schwager_robustness_decision_board": payload.get("schwager_robustness_decision_board"),
             "class_margin_objective_decision": payload.get("class_margin_objective_decision"),
+            "directional_side_ablation_comparator": self._directional_side_ablation_comparator(payload),
             "opportunity_probability_threshold": payload.get("opportunity_probability_threshold"),
             "setup_quality_min_threshold": payload.get("setup_quality_min_threshold"),
             "setup_quality_decision_mask_enabled": payload.get("setup_quality_decision_mask_enabled"),
@@ -212,7 +217,19 @@ class FeatureRegimeExperimentReporter:
             return dict(to_dict())
         raise TypeError("candidate must be a dict or provide to_dict()")
 
+    def _directional_side_ablation_comparator(self, payload: dict[str, Any]) -> dict[str, Any]:
+        existing = payload.get("directional_side_ablation_comparator")
+        if isinstance(existing, dict) and existing:
+            return dict(existing)
+        candidates = [
+            item
+            for item in self._as_list(payload.get("configs_ranked") or payload.get("candidate_results"))
+            if isinstance(item, dict)
+        ]
+        return DirectionalSideAblationComparator().compare(candidates)
+
     def _summary_markdown(self, payload: dict[str, Any]) -> str:
+        comparator = self._directional_side_ablation_comparator(payload)
         lines = [
             f"# Feature/Regime Experiment Summary - {payload.get('experiment_id')}",
             "",
@@ -316,19 +333,56 @@ class FeatureRegimeExperimentReporter:
             f"- mae_pressure_max_risk_score: `{payload.get('mae_pressure_max_risk_score')}`",
             f"- directional_side_filter_profile: `{payload.get('directional_side_filter_profile')}`",
             f"- allowed_signal_directions: `{payload.get('allowed_signal_directions')}`",
+            f"- directional_side_filter_summary: `{payload.get('directional_side_filter_summary')}`",
+            f"- directional_edge_bias_audit: `{payload.get('directional_edge_bias_audit')}`",
             f"- entry_path_prediction_filter_summary: `{payload.get('entry_path_prediction_filter_summary')}`",
             f"- stop_pressure_effectiveness_audit: `{payload.get('stop_pressure_effectiveness_audit')}`",
             "",
-            "## Label Mode Audits",
+            "## Directional Side Ablation Comparator",
             "",
-            f"- label_mode_comparison_audit: `{payload.get('label_mode_comparison_audit')}`",
-            f"- flat_subtype_audit: `{payload.get('flat_subtype_audit')}`",
-            f"- setup_aware_label_diagnostics: `{payload.get('setup_aware_label_diagnostics')}`",
-            f"- schwager_slice_robustness: `{payload.get('schwager_slice_robustness')}`",
-            f"- schwager_robustness_decision_board: `{payload.get('schwager_robustness_decision_board')}`",
-            f"- class_margin_objective_decision: `{payload.get('class_margin_objective_decision')}`",
+            f"- diagnostic_status: `{comparator.get('diagnostic_status')}`",
+            f"- side_profile_counts: `{comparator.get('side_profile_counts')}`",
+            f"- best_by_side_profile: `{comparator.get('best_by_side_profile')}`",
+            f"- long_only_vs_both_delta: `{comparator.get('long_only_vs_both_delta')}`",
+            f"- suppress_short_vs_both_delta: `{comparator.get('suppress_short_vs_both_delta')}`",
+            f"- short_only_vs_both_delta: `{comparator.get('short_only_vs_both_delta')}`",
+            f"- warnings: `{comparator.get('warnings')}`",
+            f"- recommendations: `{comparator.get('recommendations')}`",
             "",
-            "## Recommendations",
+            "| Side profile | Config | PF | Total R | WF PF | WF R | Signals | Long R | Short R |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        comparison_board = self._as_list(comparator.get("comparison_board"))
+        for row in comparison_board:
+            lines.append(
+                "| `{side}` | `{config}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` | `{signals}` | `{long_r}` | `{short_r}` |".format(
+                    side=self._as_dict(row).get("side_profile"),
+                    config=self._as_dict(row).get("config_id"),
+                    pf=self._as_dict(row).get("profit_factor"),
+                    total_r=self._as_dict(row).get("profit_total_r"),
+                    wf_pf=self._as_dict(row).get("walk_forward_profit_factor"),
+                    wf_r=self._as_dict(row).get("walk_forward_total_r"),
+                    signals=self._as_dict(row).get("resolved_signal_count"),
+                    long_r=self._as_dict(row).get("long_total_r"),
+                    short_r=self._as_dict(row).get("short_total_r"),
+                )
+            )
+        if not comparison_board:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        lines.extend(
+            [
+                "",
+                "## Label Mode Audits",
+                "",
+                f"- label_mode_comparison_audit: `{payload.get('label_mode_comparison_audit')}`",
+                f"- flat_subtype_audit: `{payload.get('flat_subtype_audit')}`",
+                f"- setup_aware_label_diagnostics: `{payload.get('setup_aware_label_diagnostics')}`",
+                f"- schwager_slice_robustness: `{payload.get('schwager_slice_robustness')}`",
+                f"- schwager_robustness_decision_board: `{payload.get('schwager_robustness_decision_board')}`",
+                f"- class_margin_objective_decision: `{payload.get('class_margin_objective_decision')}`",
+                "",
+                "## Recommendations",
                 "",
             ]
         )

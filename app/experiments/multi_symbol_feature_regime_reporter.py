@@ -107,6 +107,9 @@ class MultiSymbolFeatureRegimeReporter:
                 }
                 for item in self._as_list(payload.get("symbol_results"))
             },
+            "directional_side_ablation_comparator": payload.get(
+                "directional_side_ablation_comparator"
+            ),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -329,4 +332,42 @@ class MultiSymbolFeatureRegimeReporter:
             lines.append(f"- short_total_r: `{item.get('short_total_r')}`")
         if not self._as_list(payload.get("symbol_results")):
             lines.append("- side_filter_profile: `None`")
+        comparator = self._as_dict(payload.get("directional_side_ablation_comparator"))
+        best_by_profile = self._as_dict(comparator.get("best_by_side_profile"))
+        lines.extend(
+            [
+                "",
+                "## Directional side ablation comparator",
+                "",
+                f"- diagnostic_status: `{comparator.get('diagnostic_status')}`",
+                f"- side_profile_counts: `{comparator.get('side_profile_counts')}`",
+                f"- best LONG_ONLY: `{self._as_dict(best_by_profile.get('LONG_ONLY'))}`",
+                f"- best SHORT_ONLY: `{self._as_dict(best_by_profile.get('SHORT_ONLY'))}`",
+                f"- best SUPPRESS_SHORT: `{self._as_dict(best_by_profile.get('SUPPRESS_SHORT'))}`",
+                f"- best BOTH_DIRECTIONS: `{self._as_dict(best_by_profile.get('BOTH_DIRECTIONS'))}`",
+                f"- long_only_vs_both_delta: `{comparator.get('long_only_vs_both_delta')}`",
+                f"- suppress_short_vs_both_delta: `{comparator.get('suppress_short_vs_both_delta')}`",
+                f"- warnings: `{comparator.get('warnings')}`",
+                f"- recommendations: `{comparator.get('recommendations')}`",
+                "",
+                "| Side profile | Config | PF | Total R | WF PF | WF R | Signals | Long R | Short R |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in self._as_list(comparator.get("comparison_board")):
+            lines.append(
+                "| `{side}` | `{config}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` | `{signals}` | `{long_r}` | `{short_r}` |".format(
+                    side=row.get("side_profile"),
+                    config=row.get("config_id"),
+                    pf=row.get("profit_factor"),
+                    total_r=row.get("profit_total_r"),
+                    wf_pf=row.get("walk_forward_profit_factor"),
+                    wf_r=row.get("walk_forward_total_r"),
+                    signals=row.get("resolved_signal_count"),
+                    long_r=row.get("long_total_r"),
+                    short_r=row.get("short_total_r"),
+                )
+            )
+        if not self._as_list(comparator.get("comparison_board")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)
