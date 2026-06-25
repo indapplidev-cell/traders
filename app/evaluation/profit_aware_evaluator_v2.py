@@ -508,6 +508,154 @@ class ProfitAwareEvaluatorV2:
         return payload
 
     @staticmethod
+    def _directional_side_metrics(outcomes: list[dict[str, Any]]) -> dict[str, Any]:
+        net_values = [float(item.get("net_r", 0.0) or 0.0) for item in outcomes]
+        resolved_count = len(net_values)
+        win_count = sum(int(item.get("result") == "TP") for item in outcomes)
+        loss_count = sum(int(item.get("result") == "SL") for item in outcomes)
+        exit_mitigated_count = sum(int(item.get("result") == "EXIT_MITIGATED") for item in outcomes)
+        timeout_neutral_count = sum(int(item.get("result") == "TIMEOUT_NEUTRAL") for item in outcomes)
+        gross_profit_r = sum(value for value in net_values if value > 0)
+        gross_loss_r = abs(sum(value for value in net_values if value < 0))
+        profit_factor = (
+            gross_profit_r / gross_loss_r
+            if gross_loss_r > 0
+            else (float("inf") if gross_profit_r > 0 else 0.0)
+        )
+        total_r = sum(net_values)
+        return {
+            "resolved_signal_count": resolved_count,
+            "win_count": win_count,
+            "loss_count": loss_count,
+            "exit_mitigated_count": exit_mitigated_count,
+            "timeout_neutral_count": timeout_neutral_count,
+            "gross_profit_r": float(gross_profit_r),
+            "gross_loss_r": float(gross_loss_r),
+            "profit_factor": profit_factor if resolved_count else None,
+            "total_r": float(total_r),
+            "avg_r": (total_r / resolved_count) if resolved_count else None,
+            "win_rate": (win_count / resolved_count) if resolved_count else None,
+            "loss_rate": (loss_count / resolved_count) if resolved_count else None,
+        }
+
+    @staticmethod
+    def _directional_edge_bias_audit(
+        resolved_rows: list[dict[str, Any]],
+        resolved_outcomes: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        pairs = list(zip(resolved_rows, resolved_outcomes))
+        long_outcomes = [
+            outcome
+            for row, outcome in pairs
+            if str(row.get("signal_direction") or "").upper() == "LONG"
+        ]
+        short_outcomes = [
+            outcome
+            for row, outcome in pairs
+            if str(row.get("signal_direction") or "").upper() == "SHORT"
+        ]
+        long_metrics = ProfitAwareEvaluatorV2._directional_side_metrics(long_outcomes)
+        short_metrics = ProfitAwareEvaluatorV2._directional_side_metrics(short_outcomes)
+
+        long_count = int(long_metrics["resolved_signal_count"])
+        short_count = int(short_metrics["resolved_signal_count"])
+        total_count = long_count + short_count
+        max_count = max(long_count, short_count)
+        min_count = min(long_count, short_count)
+
+        if total_count <= 0:
+            dominant_direction = None
+            dominant_direction_ratio = None
+            direction_balance_ratio = None
+            direction_count_imbalance_ratio = None
+        else:
+            if long_count > short_count:
+                dominant_direction = "LONG"
+            elif short_count > long_count:
+                dominant_direction = "SHORT"
+            else:
+                dominant_direction = "BALANCED"
+            dominant_direction_ratio = max_count / total_count
+            direction_balance_ratio = (min_count / max_count) if max_count else None
+            direction_count_imbalance_ratio = (
+                (max_count / min_count) if min_count else (999.0 if max_count else None)
+            )
+
+        long_avg_r = long_metrics.get("avg_r")
+        short_avg_r = short_metrics.get("avg_r")
+        long_total_r = float(long_metrics.get("total_r", 0.0) or 0.0)
+        short_total_r = float(short_metrics.get("total_r", 0.0) or 0.0)
+        total_r = long_total_r + short_total_r
+
+        if long_avg_r is not None and short_avg_r is not None:
+            directional_profit_skew_r = abs(float(long_avg_r) - float(short_avg_r))
+        else:
+            directional_profit_skew_r = None
+        directional_profit_skew_ratio = (
+            abs(long_total_r - short_total_r) / max(abs(total_r), 1e-9)
+            if total_count
+            else None
+        )
+
+        warnings: list[str] = []
+        if direction_balance_ratio is not None and direction_balance_ratio < 0.40:
+            warnings.append("DIRECTION_COUNT_IMBALANCE")
+        if (
+            directional_profit_skew_r is not None
+            and directional_profit_skew_r > 0.25
+            and long_count > 0
+            and short_count > 0
+        ):
+            warnings.append("DIRECTIONAL_PROFIT_SKEW")
+        if (
+            dominant_direction == "LONG"
+            and long_avg_r is not None
+            and long_avg_r < 0
+            and dominant_direction_ratio
+            and dominant_direction_ratio >= 0.65
+        ):
+            warnings.append("DOMINANT_LONG_SIDE_LOSING")
+        if (
+            dominant_direction == "SHORT"
+            and short_avg_r is not None
+            and short_avg_r < 0
+            and dominant_direction_ratio
+            and dominant_direction_ratio >= 0.65
+        ):
+            warnings.append("DOMINANT_SHORT_SIDE_LOSING")
+
+        if not total_count:
+            status = "NO_RESOLVED_SIGNALS"
+        elif warnings:
+            status = "DIRECTIONAL_BIAS_RISK"
+        else:
+            status = "OK"
+
+        return {
+            "diagnostic_name": "directional_edge_bias_audit",
+            "diagnostic_version": "ml38.10.19",
+            "status": status,
+            "warning_count": len(warnings),
+            "warnings": warnings,
+            "resolved_signal_count": total_count,
+            "long": long_metrics,
+            "short": short_metrics,
+            "long_count": long_count,
+            "short_count": short_count,
+            "dominant_direction": dominant_direction,
+            "dominant_direction_ratio": dominant_direction_ratio,
+            "direction_balance_ratio": direction_balance_ratio,
+            "direction_count_imbalance_ratio": direction_count_imbalance_ratio,
+            "long_avg_r": long_avg_r,
+            "short_avg_r": short_avg_r,
+            "long_total_r": long_total_r,
+            "short_total_r": short_total_r,
+            "directional_profit_skew_r": directional_profit_skew_r,
+            "directional_profit_skew_ratio": directional_profit_skew_ratio,
+            "directional_edge_bias_warning": bool(warnings),
+        }
+
+    @staticmethod
     def _build_gate_report(
         selection: dict[str, Any],
         signal_rows: list[dict[str, Any]],
@@ -546,6 +694,10 @@ class ProfitAwareEvaluatorV2:
         avg_r = (total_r / resolved_count) if resolved_count else None
         long_rows = [row for row in resolved_rows if row["signal_direction"] == "LONG"]
         short_rows = [row for row in resolved_rows if row["signal_direction"] == "SHORT"]
+        directional_edge_bias_audit = ProfitAwareEvaluatorV2._directional_edge_bias_audit(
+            resolved_rows=resolved_rows,
+            resolved_outcomes=resolved_outcomes,
+        )
         return {
             "gate_type": selection["gate_type"],
             "threshold": selection["threshold"],
@@ -586,6 +738,16 @@ class ProfitAwareEvaluatorV2:
             "short_total_r": sum(item["net_r"] for item in short_outcomes),
             "long_win_rate": ProfitAwareEvaluatorV2._win_rate(long_outcomes),
             "short_win_rate": ProfitAwareEvaluatorV2._win_rate(short_outcomes),
+            "long_avg_r": directional_edge_bias_audit.get("long_avg_r"),
+            "short_avg_r": directional_edge_bias_audit.get("short_avg_r"),
+            "direction_balance_ratio": directional_edge_bias_audit.get("direction_balance_ratio"),
+            "direction_count_imbalance_ratio": directional_edge_bias_audit.get("direction_count_imbalance_ratio"),
+            "directional_profit_skew_r": directional_edge_bias_audit.get("directional_profit_skew_r"),
+            "directional_profit_skew_ratio": directional_edge_bias_audit.get("directional_profit_skew_ratio"),
+            "directional_edge_bias_warning": directional_edge_bias_audit.get("directional_edge_bias_warning"),
+            "dominant_direction": directional_edge_bias_audit.get("dominant_direction"),
+            "dominant_direction_ratio": directional_edge_bias_audit.get("dominant_direction_ratio"),
+            "directional_edge_bias_audit": directional_edge_bias_audit,
             "avg_confidence_on_signals": (sum(float(row["confidence"]) for row in resolved_rows) / resolved_count) if resolved_count else None,
             "avg_margin_on_signals": (sum(float(row["margin"]) for row in resolved_rows) / resolved_count) if resolved_count else None,
             "avg_directional_edge_on_signals": (
@@ -638,6 +800,26 @@ class ProfitAwareEvaluatorV2:
             "short_total_r": 0.0,
             "long_win_rate": None,
             "short_win_rate": None,
+            "long_avg_r": None,
+            "short_avg_r": None,
+            "direction_balance_ratio": None,
+            "direction_count_imbalance_ratio": None,
+            "directional_profit_skew_r": None,
+            "directional_profit_skew_ratio": None,
+            "directional_edge_bias_warning": False,
+            "dominant_direction": None,
+            "dominant_direction_ratio": None,
+            "directional_edge_bias_audit": {
+                "diagnostic_name": "directional_edge_bias_audit",
+                "diagnostic_version": "ml38.10.19",
+                "status": "NO_RESOLVED_SIGNALS",
+                "warning_count": 0,
+                "warnings": [],
+                "resolved_signal_count": 0,
+                "long_count": 0,
+                "short_count": 0,
+                "directional_edge_bias_warning": False,
+            },
             "avg_confidence_on_signals": None,
             "avg_margin_on_signals": None,
             "avg_directional_edge_on_signals": None,

@@ -121,5 +121,5 @@ def test_ml38_10_18_matrix_and_runtime_include_lv26_recovery_guard_configs() -> 
     matrix = ML382FV3TuningMatrix().build()
     assert matrix["exit_mitigation_path_audit_stage"] == "ML38.10.18"
     assert "lv26_h12_tts_thr065_sqmask060_epq070_sp045_recovery_guard" in matrix["config_ids"]
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv26_")
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv26_")
+    assert "lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard" in run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    assert "lv26_h12_tts_thr065_sqmask060_epq070_sp045_recovery_guard" in run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS

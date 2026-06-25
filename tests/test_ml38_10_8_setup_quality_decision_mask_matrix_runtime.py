@@ -26,6 +26,7 @@ def test_ml38_10_8_grid_matrix_and_runtime_shortlists_keep_historical_configs() 
     assert matrix["setup_quality_decision_mask_config_ids"] == list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS)
     
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
+        "lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
         "lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard",
         "lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit",
         "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae",
@@ -35,6 +36,8 @@ def test_ml38_10_8_grid_matrix_and_runtime_shortlists_keep_historical_configs() 
     )
     
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
+        "lv27_h12_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
+        "lv27_h12_tts_thr065_sqmask060_epq072_sp043_rguard_dirbias_strict",
         "lv26_h12_tts_thr065_sqmask060_epq070_sp045_recovery_guard",
         "lv26_h12_tts_thr065_sqmask060_epq072_sp043_recovery_guard_strict",
         "lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit",
