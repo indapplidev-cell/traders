@@ -1,0 +1,141 @@
+{
+  "model_version": "ml_candle_mlp_v1_btcusdt_15m_h8_lv27_h08_tts_epq70_sp45_dbias_2026_06_25_231108_252691_9c0a4c430e",
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "horizon_candles": 8,
+  "feature_version": "fv4_book_setup_context",
+  "label_version": "lv27_h08_tts_epq70_sp45_dbias",
+  "train_end": null,
+  "validation_end": null,
+  "actual_counts_train": {
+    "UP": 81,
+    "DOWN": 86,
+    "FLAT": 2551
+  },
+  "actual_counts_validation": {
+    "UP": 20,
+    "DOWN": 11,
+    "FLAT": 552
+  },
+  "actual_counts_test": {
+    "UP": 20,
+    "DOWN": 25,
+    "FLAT": 538
+  },
+  "predicted_counts_train": {
+    "UP": 1288,
+    "DOWN": 1299,
+    "FLAT": 131
+  },
+  "predicted_counts_validation": {
+    "UP": 299,
+    "DOWN": 256,
+    "FLAT": 28
+  },
+  "predicted_counts_test": {
+    "UP": 191,
+    "DOWN": 373,
+    "FLAT": 19
+  },
+  "average_probabilities_train": {
+    "UP": 0.42288774565599635,
+    "DOWN": 0.3865905985958474,
+    "FLAT": 0.1905216553726119
+  },
+  "average_probabilities_validation": {
+    "UP": 0.4515247126309581,
+    "DOWN": 0.376523414652277,
+    "FLAT": 0.1719518737231683
+  },
+  "average_probabilities_test": {
+    "UP": 0.29642084471587454,
+    "DOWN": 0.5230203677339424,
+    "FLAT": 0.1805587868185436
+  },
+  "confidence_distribution": {
+    "train": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 257,
+      "0.4-0.6": 518,
+      "0.6-0.8": 430,
+      "0.8-1.0": 1513
+    },
+    "validation": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 39,
+      "0.4-0.6": 76,
+      "0.6-0.8": 98,
+      "0.8-1.0": 370
+    },
+    "test": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 31,
+      "0.4-0.6": 93,
+      "0.6-0.8": 104,
+      "0.8-1.0": 355
+    }
+  },
+  "confusion_matrix_train": [
+    [
+      81,
+      0,
+      0
+    ],
+    [
+      0,
+      86,
+      0
+    ],
+    [
+      1207,
+      1213,
+      131
+    ]
+  ],
+  "confusion_matrix_validation": [
+    [
+      20,
+      0,
+      0
+    ],
+    [
+      0,
+      11,
+      0
+    ],
+    [
+      279,
+      245,
+      28
+    ]
+  ],
+  "confusion_matrix_test": [
+    [
+      20,
+      0,
+      0
+    ],
+    [
+      0,
+      25,
+      0
+    ],
+    [
+      171,
+      348,
+      19
+    ]
+  ],
+  "accuracy_train": 0.10963944076526858,
+  "accuracy_validation": 0.10120068610634649,
+  "accuracy_test": 0.1097770154373928,
+  "brier_score_train": 1.1469409511836441,
+  "brier_score_validation": 1.2300947805773819,
+  "brier_score_test": 1.1621541522776482,
+  "collapse_detected": false,
+  "collapse_reason": null,
+  "is_active": false,
+  "start_at": "2026-05-01T00:00:00+00:00",
+  "end_at": "2026-06-16T00:00:00+00:00",
+  "date_range_limited": true
+}

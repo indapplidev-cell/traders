@@ -3,16 +3,33 @@
   "interval": "15m",
   "horizon_candles": 8,
   "feature_version": "fv4_book_setup_context",
-  "label_version": "lv28_h08_tts_epq70_sp45_long",
-  "requested_model_versions": [
-    "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1"
-  ],
-  "compared_model_versions": [
-    "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1"
-  ],
-  "skipped_model_count": 0,
-  "skipped_model_errors": [],
-  "baseline_results": {
+  "label_version": "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae",
+  "start_at": "2026-05-01T00:00:00+00:00",
+  "end_at": "2026-06-16T00:00:00+00:00",
+  "date_range_limited": true,
+  "train_end": null,
+  "validation_end": null,
+  "dataset_summary": {
+    "symbol": "BTCUSDT",
+    "interval": "15m",
+    "horizon_candles": 8,
+    "feature_version": "fv4_book_setup_context",
+    "label_version": "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae",
+    "start_at": "2026-05-01T00:00:00+00:00",
+    "end_at": "2026-06-16T00:00:00+00:00",
+    "date_range_limited": true,
+    "feature_rows": 4401,
+    "label_rows": 4380,
+    "dataset_rows": 3884,
+    "dropped_incomplete_features": 509,
+    "dropped_missing_labels": 8,
+    "opportunity_rows": 211,
+    "no_trade_rows": 3673
+  },
+  "train_rows": 2718,
+  "validation_rows": 583,
+  "test_rows": 583,
+  "baselines": {
     "always_flat": {
       "validation": {
         "accuracy": 0.9468267581475128,
@@ -295,90 +312,5 @@
         "rows": 583
       }
     }
-  },
-  "model_results": [
-    {
-      "model_version": "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1",
-      "is_active": false,
-      "accuracy": 0.1097770154373928,
-      "brier_score": 1.1621541522776482,
-      "collapse_detected": false,
-      "collapse_reason": null,
-      "predicted_counts_test": {
-        "UP": 191,
-        "DOWN": 373,
-        "FLAT": 19
-      },
-      "actual_counts_test": {
-        "UP": 20,
-        "DOWN": 25,
-        "FLAT": 538
-      },
-      "best_confidence_eval": null,
-      "best_profit_eval": null,
-      "calibration_eval": null,
-      "report_path": "D:\\disk_E\\game_projects\\traders\\traders-ml\\reports\\model_diagnostics_ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1.json"
-    }
-  ],
-  "best_baseline": {
-    "name": "always_flat",
-    "test_metrics": {
-      "accuracy": 0.9228130360205832,
-      "precision_up": 0.0,
-      "precision_down": 0.0,
-      "confusion_matrix": [
-        [
-          0,
-          0,
-          20
-        ],
-        [
-          0,
-          0,
-          25
-        ],
-        [
-          0,
-          0,
-          538
-        ]
-      ],
-      "brier_score": 0.15437392795883362,
-      "predicted_counts": {
-        "UP": 0,
-        "DOWN": 0,
-        "FLAT": 583
-      },
-      "actual_counts": {
-        "UP": 20,
-        "DOWN": 25,
-        "FLAT": 538
-      },
-      "rows": 583
-    }
-  },
-  "best_model": {
-    "model_version": "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1",
-    "is_active": false,
-    "accuracy": 0.1097770154373928,
-    "brier_score": 1.1621541522776482,
-    "collapse_detected": false,
-    "collapse_reason": null,
-    "predicted_counts_test": {
-      "UP": 191,
-      "DOWN": 373,
-      "FLAT": 19
-    },
-    "actual_counts_test": {
-      "UP": 20,
-      "DOWN": 25,
-      "FLAT": 538
-    },
-    "best_confidence_eval": null,
-    "best_profit_eval": null,
-    "calibration_eval": null,
-    "report_path": "D:\\disk_E\\game_projects\\traders\\traders-ml\\reports\\model_diagnostics_ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1.json"
-  },
-  "is_best_model_better_than_best_baseline": false,
-  "notes": "Best model does not outperform the best baseline on current comparison."
+  }
 }
