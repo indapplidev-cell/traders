@@ -346,6 +346,7 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- best SUPPRESS_SHORT: `{self._as_dict(best_by_profile.get('SUPPRESS_SHORT'))}`",
                 f"- best BOTH_DIRECTIONS: `{self._as_dict(best_by_profile.get('BOTH_DIRECTIONS'))}`",
                 f"- long_only_vs_both_delta: `{comparator.get('long_only_vs_both_delta')}`",
+                f"- short_only_vs_both_delta: `{comparator.get('short_only_vs_both_delta')}`",
                 f"- suppress_short_vs_both_delta: `{comparator.get('suppress_short_vs_both_delta')}`",
                 f"- warnings: `{comparator.get('warnings')}`",
                 f"- recommendations: `{comparator.get('recommendations')}`",

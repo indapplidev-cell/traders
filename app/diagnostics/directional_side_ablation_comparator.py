@@ -52,7 +52,7 @@ class DirectionalSideAblationComparator:
             side_profile = candidate["side_profile"]
             side_profile_counts[side_profile] += 1
             grouped_candidates[side_profile].append(candidate)
-            comparison_board.append(cls._comparison_row(candidate))
+            comparison_board.append(cls._candidate_row(candidate))
 
         best_by_side_profile = {
             profile: cls._best_candidate_payload(grouped_candidates[profile])
@@ -73,7 +73,7 @@ class DirectionalSideAblationComparator:
         )
         short_only_vs_both_delta = cls._delta(short_best, both_best, "SHORT_ONLY", "BOTH_DIRECTIONS")
 
-        side_ablation_available = any(
+        has_side_ablation = any(
             side_profile_counts[profile] > 0
             for profile in ("LONG_ONLY", "SHORT_ONLY", "SUPPRESS_SHORT")
         )
@@ -82,7 +82,7 @@ class DirectionalSideAblationComparator:
             for delta in (long_only_vs_both_delta, suppress_short_vs_both_delta)
         )
 
-        if side_ablation_available:
+        if has_side_ablation:
             warnings.append("research_only_side_suppression_not_live_ready")
             recommendations.append("validate_side_filter_on_multi_symbol_before_acceptance")
 
@@ -107,14 +107,7 @@ class DirectionalSideAblationComparator:
         if short_best:
             recommendations.append("inspect_short_side_feature_failure_modes")
 
-        if not side_ablation_available:
-            diagnostic_status = "NO_SIDE_ABLATION_CANDIDATES"
-        elif improving_research_only:
-            diagnostic_status = "SIDE_ABLATION_IMPROVES_PROFIT_BUT_RESEARCH_ONLY"
-        elif long_only_vs_both_delta["available"] or suppress_short_vs_both_delta["available"] or short_only_vs_both_delta["available"]:
-            diagnostic_status = "SIDE_ABLATION_AVAILABLE"
-        else:
-            diagnostic_status = "SIDE_ABLATION_NOT_HELPFUL"
+        diagnostic_status = "COMPLETED" if has_side_ablation else "NO_SIDE_ABLATION_CANDIDATES"
 
         return {
             "diagnostic_name": cls.diagnostic_name,
@@ -133,115 +126,137 @@ class DirectionalSideAblationComparator:
 
     @classmethod
     def _normalize_candidate(cls, candidate: dict[str, Any]) -> dict[str, Any]:
-        side_filter_summary = cls._as_dict(candidate.get("directional_side_filter_summary"))
+        return cls._candidate_row(candidate)
+
+    @classmethod
+    def _candidate_row(cls, candidate: dict[str, Any]) -> dict[str, Any]:
+        label_config = cls._as_dict(candidate.get("label_config"))
+        profit_aware = cls._as_dict(candidate.get("profit_aware_diagnostics"))
+        best_gate = cls._as_dict(profit_aware.get("best_gate"))
+        walk_forward = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
         directional_audit = cls._as_dict(candidate.get("directional_edge_bias_audit"))
-        directional_side_filter_profile = candidate.get("directional_side_filter_profile")
-        allowed_signal_directions = tuple(candidate.get("allowed_signal_directions") or ())
+        side_summary = cls._as_dict(candidate.get("directional_side_filter_summary"))
+
+        side_profile = cls._side_profile(candidate)
+        profit_factor = cls._float_or_none(
+            cls._first_present(
+                candidate.get("profit_factor"),
+                profit_aware.get("profit_factor"),
+                profit_aware.get("best_profit_factor"),
+                best_gate.get("profit_factor"),
+            )
+        )
+        profit_total_r = cls._float_or_none(
+            cls._first_present(
+                candidate.get("profit_total_r"),
+                profit_aware.get("profit_total_r"),
+                profit_aware.get("total_r"),
+                best_gate.get("total_r"),
+            )
+        )
+        walk_forward_profit_factor = cls._float_or_none(
+            cls._first_present(
+                candidate.get("walk_forward_profit_factor"),
+                walk_forward.get("walk_forward_profit_factor"),
+                walk_forward.get("profit_factor"),
+            )
+        )
         walk_forward_total_r = cls._float_or_none(
-            candidate.get("walk_forward_total_r", candidate.get("walk_forward_global_total_r"))
+            cls._first_present(
+                candidate.get("walk_forward_total_r"),
+                candidate.get("walk_forward_global_total_r"),
+                walk_forward.get("walk_forward_total_r"),
+                walk_forward.get("walk_forward_global_total_r"),
+                walk_forward.get("global_total_r"),
+                walk_forward.get("total_r"),
+            )
         )
         resolved_signal_count = cls._int_or_zero(
-            candidate.get("resolved_signal_count", candidate.get("signal_count"))
+            cls._first_present(
+                candidate.get("resolved_signal_count"),
+                profit_aware.get("resolved_signal_count"),
+                best_gate.get("resolved_signal_count"),
+                side_summary.get("kept_signal_count"),
+                side_summary.get("filtered_signal_count"),
+            )
         )
+        signal_count = cls._int_or_zero(
+            cls._first_present(
+                candidate.get("signal_count"),
+                profit_aware.get("signal_count"),
+                side_summary.get("original_signal_count"),
+                resolved_signal_count,
+            )
+        )
+        removed_signal_count = cls._int_or_zero(
+            cls._first_present(
+                side_summary.get("removed_signal_count"),
+                side_summary.get("side_filter_removed_signal_count"),
+                0,
+            )
+        )
+        removed_signal_rate = cls._float_or_none(
+            cls._first_present(
+                side_summary.get("removed_signal_rate"),
+                side_summary.get("side_filter_removed_signal_rate"),
+            )
+        )
+
         return {
-            "config_id": candidate.get("config_id"),
-            "candidate_status": candidate.get("candidate_status"),
-            "status": candidate.get("status"),
-            "profit_factor": cls._float_or_none(candidate.get("profit_factor")),
-            "profit_total_r": cls._float_or_none(candidate.get("profit_total_r")),
-            "walk_forward_profit_factor": cls._float_or_none(candidate.get("walk_forward_profit_factor")),
+            "config_id": str(candidate.get("config_id") or candidate.get("candidate_id") or ""),
+            "candidate_status": candidate.get("candidate_status") or candidate.get("status"),
+            "side_profile": side_profile,
+            "directional_side_filter_profile": candidate.get("directional_side_filter_profile")
+            or label_config.get("directional_side_filter_profile"),
+            "allowed_signal_directions": candidate.get("allowed_signal_directions")
+            or label_config.get("allowed_signal_directions")
+            or [],
+            "research_only": side_profile in {"LONG_ONLY", "SHORT_ONLY", "SUPPRESS_SHORT"},
+            "profit_factor": profit_factor,
+            "profit_total_r": profit_total_r,
+            "walk_forward_profit_factor": walk_forward_profit_factor,
             "walk_forward_total_r": walk_forward_total_r,
+            "signal_count": signal_count,
             "resolved_signal_count": resolved_signal_count,
-            "signal_count": cls._int_or_zero(candidate.get("signal_count")),
-            "directional_side_filter_profile": directional_side_filter_profile,
-            "allowed_signal_directions": list(allowed_signal_directions),
-            "directional_side_filter_summary": side_filter_summary,
-            "directional_edge_bias_audit": directional_audit,
-            "long_total_r": cls._float_or_none(candidate.get("long_total_r", directional_audit.get("long_total_r"))),
-            "short_total_r": cls._float_or_none(candidate.get("short_total_r", directional_audit.get("short_total_r"))),
-            "long_avg_r": cls._float_or_none(candidate.get("long_avg_r", directional_audit.get("long_avg_r"))),
-            "short_avg_r": cls._float_or_none(candidate.get("short_avg_r", directional_audit.get("short_avg_r"))),
+            "side_filter_removed_signal_count": removed_signal_count,
+            "side_filter_removed_signal_rate": removed_signal_rate,
             "direction_balance_ratio": cls._float_or_none(
-                candidate.get("direction_balance_ratio", directional_audit.get("direction_balance_ratio"))
+                cls._first_present(
+                    candidate.get("direction_balance_ratio"),
+                    directional_audit.get("direction_balance_ratio"),
+                )
             ),
             "directional_profit_skew_r": cls._float_or_none(
-                candidate.get("directional_profit_skew_r", directional_audit.get("directional_profit_skew_r"))
+                cls._first_present(
+                    candidate.get("directional_profit_skew_r"),
+                    directional_audit.get("directional_profit_skew_r"),
+                )
             ),
             "directional_profit_skew_ratio": cls._float_or_none(
-                candidate.get(
-                    "directional_profit_skew_ratio",
+                cls._first_present(
+                    candidate.get("directional_profit_skew_ratio"),
                     directional_audit.get("directional_profit_skew_ratio"),
                 )
             ),
-            "side_filter_removed_signal_count": cls._int_or_zero(
-                side_filter_summary.get("removed_signal_count")
+            "long_total_r": cls._float_or_none(
+                cls._first_present(candidate.get("long_total_r"), directional_audit.get("long_total_r"))
             ),
-            "side_filter_removed_signal_rate": cls._float_or_none(
-                side_filter_summary.get("removed_signal_rate")
+            "short_total_r": cls._float_or_none(
+                cls._first_present(candidate.get("short_total_r"), directional_audit.get("short_total_r"))
             ),
-            "research_only": bool(side_filter_summary.get("research_only", False)),
-            "side_profile": cls._side_profile(directional_side_filter_profile),
-        }
-
-    @staticmethod
-    def _comparison_row(candidate: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "config_id": candidate.get("config_id"),
-            "side_profile": candidate.get("side_profile"),
-            "candidate_status": candidate.get("candidate_status"),
-            "profit_factor": candidate.get("profit_factor"),
-            "profit_total_r": candidate.get("profit_total_r"),
-            "walk_forward_profit_factor": candidate.get("walk_forward_profit_factor"),
-            "walk_forward_total_r": candidate.get("walk_forward_total_r"),
-            "resolved_signal_count": candidate.get("resolved_signal_count"),
-            "direction_balance_ratio": candidate.get("direction_balance_ratio"),
-            "long_total_r": candidate.get("long_total_r"),
-            "short_total_r": candidate.get("short_total_r"),
-            "long_avg_r": candidate.get("long_avg_r"),
-            "short_avg_r": candidate.get("short_avg_r"),
-            "directional_profit_skew_r": candidate.get("directional_profit_skew_r"),
-            "directional_profit_skew_ratio": candidate.get("directional_profit_skew_ratio"),
-            "side_filter_removed_signal_count": candidate.get("side_filter_removed_signal_count"),
-            "side_filter_removed_signal_rate": candidate.get("side_filter_removed_signal_rate"),
-            "research_only": candidate.get("research_only"),
+            "long_avg_r": cls._float_or_none(
+                cls._first_present(candidate.get("long_avg_r"), directional_audit.get("long_avg_r"))
+            ),
+            "short_avg_r": cls._float_or_none(
+                cls._first_present(candidate.get("short_avg_r"), directional_audit.get("short_avg_r"))
+            ),
         }
 
     @classmethod
     def _best_candidate_payload(cls, candidates: list[dict[str, Any]]) -> dict[str, Any] | None:
         if not candidates:
             return None
-        best = max(
-            candidates,
-            key=lambda item: (
-                cls._sortable_float(item.get("profit_factor")),
-                cls._sortable_float(item.get("profit_total_r")),
-                cls._sortable_float(item.get("walk_forward_profit_factor")),
-                cls._int_or_zero(item.get("resolved_signal_count")),
-            ),
-        )
-        return {
-            "config_id": best.get("config_id"),
-            "candidate_status": best.get("candidate_status"),
-            "profit_factor": best.get("profit_factor"),
-            "profit_total_r": best.get("profit_total_r"),
-            "walk_forward_profit_factor": best.get("walk_forward_profit_factor"),
-            "walk_forward_total_r": best.get("walk_forward_total_r"),
-            "resolved_signal_count": best.get("resolved_signal_count"),
-            "signal_count": best.get("signal_count"),
-            "directional_side_filter_profile": best.get("directional_side_filter_profile"),
-            "allowed_signal_directions": list(best.get("allowed_signal_directions") or []),
-            "direction_balance_ratio": best.get("direction_balance_ratio"),
-            "long_total_r": best.get("long_total_r"),
-            "short_total_r": best.get("short_total_r"),
-            "long_avg_r": best.get("long_avg_r"),
-            "short_avg_r": best.get("short_avg_r"),
-            "directional_profit_skew_r": best.get("directional_profit_skew_r"),
-            "directional_profit_skew_ratio": best.get("directional_profit_skew_ratio"),
-            "side_filter_removed_signal_count": best.get("side_filter_removed_signal_count"),
-            "side_filter_removed_signal_rate": best.get("side_filter_removed_signal_rate"),
-            "research_only": best.get("research_only"),
-            "side_profile": best.get("side_profile"),
-        }
+        return dict(max(candidates, key=cls._row_score))
 
     @classmethod
     def _delta(
@@ -251,28 +266,32 @@ class DirectionalSideAblationComparator:
         left_side_profile: str,
         right_side_profile: str,
     ) -> dict[str, Any]:
-        if not left or not right:
-            return cls._empty_delta(left_side_profile, right_side_profile)
-        return {
-            "available": True,
+        payload = {
+            "available": bool(left and right),
             "left_side_profile": left_side_profile,
             "right_side_profile": right_side_profile,
-            "profit_factor_delta": cls._delta_value(left.get("profit_factor"), right.get("profit_factor")),
-            "profit_total_r_delta": cls._delta_value(left.get("profit_total_r"), right.get("profit_total_r")),
-            "walk_forward_profit_factor_delta": cls._delta_value(
-                left.get("walk_forward_profit_factor"),
-                right.get("walk_forward_profit_factor"),
-            ),
-            "walk_forward_total_r_delta": cls._delta_value(
-                left.get("walk_forward_total_r"),
-                right.get("walk_forward_total_r"),
-            ),
-            "resolved_signal_count_delta": cls._int_or_zero(left.get("resolved_signal_count")) - cls._int_or_zero(
-                right.get("resolved_signal_count")
-            ),
-            "left_config_id": left.get("config_id"),
-            "right_config_id": right.get("config_id"),
+            "left_config_id": left.get("config_id") if left else None,
+            "right_config_id": right.get("config_id") if right else None,
+            "profit_factor_delta": None,
+            "profit_total_r_delta": None,
+            "walk_forward_profit_factor_delta": None,
+            "walk_forward_total_r_delta": None,
+            "resolved_signal_count_delta": None,
         }
+        if not left or not right:
+            return payload
+        for key, delta_key in (
+            ("profit_factor", "profit_factor_delta"),
+            ("profit_total_r", "profit_total_r_delta"),
+            ("walk_forward_profit_factor", "walk_forward_profit_factor_delta"),
+            ("walk_forward_total_r", "walk_forward_total_r_delta"),
+            ("resolved_signal_count", "resolved_signal_count_delta"),
+        ):
+            left_value = left.get(key)
+            right_value = right.get(key)
+            if isinstance(left_value, (int, float)) and isinstance(right_value, (int, float)):
+                payload[delta_key] = float(left_value) - float(right_value)
+        return payload
 
     @staticmethod
     def _empty_delta(left_side_profile: str, right_side_profile: str) -> dict[str, Any]:
@@ -306,14 +325,35 @@ class DirectionalSideAblationComparator:
         )
 
     @classmethod
-    def _side_profile(cls, directional_side_filter_profile: Any) -> str:
-        profile = str(directional_side_filter_profile or "").strip().lower()
-        if profile == "long_only_research":
+    def _side_profile(cls, candidate: dict[str, Any]) -> str:
+        label_config = cls._as_dict(candidate.get("label_config"))
+        profile = cls._first_present(
+            candidate.get("directional_side_filter_profile"),
+            candidate.get("side_filter_profile"),
+            label_config.get("directional_side_filter_profile"),
+            label_config.get("side_filter_profile"),
+        )
+        profile_text = str(profile or "").strip().lower()
+        if profile_text in {"long_only_research", "long_only", "long"}:
             return "LONG_ONLY"
-        if profile == "short_only_research":
+        if profile_text in {"short_only_research", "short_only", "short"}:
             return "SHORT_ONLY"
-        if profile == "suppress_short_research":
+        if profile_text in {"suppress_short_research", "suppress_short", "no_short", "long_no_short"}:
             return "SUPPRESS_SHORT"
+        allowed = cls._first_present(
+            candidate.get("allowed_signal_directions"),
+            label_config.get("allowed_signal_directions"),
+        )
+        if isinstance(allowed, str):
+            allowed_values = {allowed.upper()}
+        elif isinstance(allowed, (list, tuple, set)):
+            allowed_values = {str(item).upper() for item in allowed}
+        else:
+            allowed_values = set()
+        if allowed_values == {"LONG"}:
+            return "LONG_ONLY"
+        if allowed_values == {"SHORT"}:
+            return "SHORT_ONLY"
         return "BOTH_DIRECTIONS"
 
     @classmethod
@@ -325,19 +365,49 @@ class DirectionalSideAblationComparator:
         return {profile: None for profile in cls.SIDE_PROFILES}
 
     @staticmethod
-    def _sortable_float(value: Any) -> float:
-        if value is None:
-            return float("-inf")
-        return float(value)
+    def _row_score(row: dict[str, Any]) -> float:
+        score = 0.0
+        pf = row.get("profit_factor")
+        total_r = row.get("profit_total_r")
+        wf_pf = row.get("walk_forward_profit_factor")
+        wf_r = row.get("walk_forward_total_r")
+        resolved = row.get("resolved_signal_count") or 0
+        if isinstance(pf, (int, float)):
+            score += float(pf) * 10.0
+        if isinstance(total_r, (int, float)):
+            score += float(total_r) * 0.25
+        if isinstance(wf_pf, (int, float)):
+            score += float(wf_pf) * 10.0
+        if isinstance(wf_r, (int, float)):
+            score += float(wf_r) * 0.10
+        score += min(float(resolved), 200.0) * 0.01
+        return score
 
     @staticmethod
     def _float_or_none(value: Any) -> float | None:
-        return None if value is None else float(value)
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _int_or_zero(value: Any) -> int:
-        return int(value or 0)
+        if value is None:
+            return 0
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
 
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
-        return dict(value) if isinstance(value, dict) else {}
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _first_present(*values: Any) -> Any:
+        for value in values:
+            if value is not None:
+                return value
+        return None

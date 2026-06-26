@@ -126,7 +126,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ],
         }
         directional_side_ablation_comparator = self._directional_side_ablation_comparator.compare(
-            configs_ranked
+            self._directional_side_candidate_payloads(summaries)
         )
 
         return {
@@ -859,6 +859,26 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ],
             "configs_ranked": configs_ranked,
         }
+
+    @classmethod
+    def _directional_side_candidate_payloads(
+        cls,
+        summaries: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        payloads: list[dict[str, Any]] = []
+        for summary in summaries:
+            symbol = str(summary.get("symbol") or "")
+            source_items = cls._as_list(summary.get("candidate_results")) or cls._as_list(
+                summary.get("configs_ranked") or summary.get("ranking")
+            )
+            for item in source_items:
+                if not isinstance(item, dict):
+                    continue
+                payload = dict(item)
+                if symbol and payload.get("symbol") is None:
+                    payload["symbol"] = symbol
+                payloads.append(payload)
+        return payloads
 
     @staticmethod
     def _prediction_root_cause_summary(candidates: list[dict[str, object]]) -> dict[str, object]:

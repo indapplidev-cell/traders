@@ -223,7 +223,7 @@ class FeatureRegimeExperimentReporter:
             return dict(existing)
         candidates = [
             item
-            for item in self._as_list(payload.get("configs_ranked") or payload.get("candidate_results"))
+            for item in self._as_list(payload.get("candidate_results") or payload.get("configs_ranked"))
             if isinstance(item, dict)
         ]
         return DirectionalSideAblationComparator().compare(candidates)

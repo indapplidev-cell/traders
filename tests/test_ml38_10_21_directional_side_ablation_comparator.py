@@ -133,7 +133,7 @@ def test_ml38_10_21_long_only_improvement_is_research_only() -> None:
         ]
     )
 
-    assert payload["diagnostic_status"] == "SIDE_ABLATION_IMPROVES_PROFIT_BUT_RESEARCH_ONLY"
+    assert payload["diagnostic_status"] == "COMPLETED"
     assert "research_only_side_suppression_not_live_ready" in payload["warnings"]
     assert "do_not_accept_long_only_without_multisymbol_confirmation" in payload["recommendations"]
 
@@ -274,3 +274,136 @@ def test_ml38_10_21_candidate_warnings_for_side_filter() -> None:
 
     assert "directional_side_filter_is_research_only" in result.warnings
     assert "short_side_suppression_not_live_ready" in result.warnings
+
+
+def test_ml38_10_21_1_comparator_uses_top_level_side_profile_and_profit_metrics() -> None:
+    candidates = [
+        {
+            "config_id": "both",
+            "candidate_status": "REJECTED",
+            "profit_factor": 0.88,
+            "profit_total_r": -10.0,
+            "walk_forward_profit_factor": 1.10,
+            "walk_forward_total_r": 14.0,
+            "allowed_signal_directions": [],
+            "directional_side_filter_profile": None,
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 200}},
+        },
+        {
+            "config_id": "long_only",
+            "candidate_status": "REJECTED",
+            "profit_factor": 1.21,
+            "profit_total_r": 6.0,
+            "walk_forward_profit_factor": None,
+            "walk_forward_total_r": 0.0,
+            "allowed_signal_directions": ["LONG"],
+            "directional_side_filter_profile": "long_only_research",
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 82}},
+        },
+        {
+            "config_id": "short_only",
+            "candidate_status": "REJECTED",
+            "profit_factor": 0.71,
+            "profit_total_r": -16.0,
+            "walk_forward_profit_factor": None,
+            "walk_forward_total_r": 0.0,
+            "allowed_signal_directions": ["SHORT"],
+            "directional_side_filter_profile": "short_only_research",
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 130}},
+        },
+        {
+            "config_id": "suppress_short",
+            "candidate_status": "REJECTED",
+            "profit_factor": 1.21,
+            "profit_total_r": 6.0,
+            "walk_forward_profit_factor": None,
+            "walk_forward_total_r": 0.0,
+            "allowed_signal_directions": ["LONG"],
+            "directional_side_filter_profile": "suppress_short_research",
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 82}},
+        },
+    ]
+
+    payload = DirectionalSideAblationComparator().compare(candidates)
+
+    assert payload["diagnostic_status"] == "COMPLETED"
+    assert payload["side_profile_counts"]["BOTH_DIRECTIONS"] == 1
+    assert payload["side_profile_counts"]["LONG_ONLY"] == 1
+    assert payload["side_profile_counts"]["SHORT_ONLY"] == 1
+    assert payload["side_profile_counts"]["SUPPRESS_SHORT"] == 1
+
+    rows_by_id = {row["config_id"]: row for row in payload["comparison_board"]}
+    assert rows_by_id["long_only"]["side_profile"] == "LONG_ONLY"
+    assert rows_by_id["short_only"]["side_profile"] == "SHORT_ONLY"
+    assert rows_by_id["suppress_short"]["side_profile"] == "SUPPRESS_SHORT"
+    assert rows_by_id["long_only"]["profit_factor"] == 1.21
+    assert rows_by_id["long_only"]["profit_total_r"] == 6.0
+
+    assert payload["long_only_vs_both_delta"]["available"] is True
+    assert payload["short_only_vs_both_delta"]["available"] is True
+    assert payload["suppress_short_vs_both_delta"]["available"] is True
+    assert payload["long_only_vs_both_delta"]["profit_factor_delta"] > 0
+
+
+def test_ml38_10_21_1_comparator_runtime_like_lv28_payload_not_classified_as_both_only() -> None:
+    candidates = [
+        {
+            "config_id": "lv26_h12_tts_thr065_sqmask060_epq070_sp045_recovery_guard",
+            "candidate_status": "REJECTED",
+            "profit_factor": 0.8895295315138203,
+            "profit_total_r": -9.42993551088067,
+            "walk_forward_profit_factor": 1.110662053716805,
+            "walk_forward_total_r": 14.748955351633274,
+            "allowed_signal_directions": [],
+            "directional_side_filter_profile": None,
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 212}},
+        },
+        {
+            "config_id": "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
+            "candidate_status": "REJECTED",
+            "profit_factor": 1.2177579215197265,
+            "profit_total_r": 6.06054584640129,
+            "walk_forward_profit_factor": None,
+            "walk_forward_total_r": 0.0,
+            "allowed_signal_directions": ["LONG"],
+            "directional_side_filter_profile": "long_only_research",
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 82}},
+        },
+        {
+            "config_id": "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_short_only",
+            "candidate_status": "REJECTED",
+            "profit_factor": 0.7173565914379416,
+            "profit_total_r": -16.260481357281964,
+            "walk_forward_profit_factor": None,
+            "walk_forward_total_r": 0.0,
+            "allowed_signal_directions": ["SHORT"],
+            "directional_side_filter_profile": "short_only_research",
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 130}},
+        },
+        {
+            "config_id": "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short",
+            "candidate_status": "REJECTED",
+            "profit_factor": 1.2177579215197265,
+            "profit_total_r": 6.06054584640129,
+            "walk_forward_profit_factor": None,
+            "walk_forward_total_r": 0.0,
+            "allowed_signal_directions": ["LONG"],
+            "directional_side_filter_profile": "suppress_short_research",
+            "profit_aware_diagnostics": {"best_gate": {"resolved_signal_count": 82}},
+        },
+    ]
+
+    payload = DirectionalSideAblationComparator().compare(candidates)
+
+    assert payload["diagnostic_status"] == "COMPLETED"
+    assert payload["side_profile_counts"] == {
+        "BOTH_DIRECTIONS": 1,
+        "LONG_ONLY": 1,
+        "SHORT_ONLY": 1,
+        "SUPPRESS_SHORT": 1,
+    }
+    assert payload["long_only_vs_both_delta"]["available"] is True
+    assert payload["long_only_vs_both_delta"]["profit_total_r_delta"] > 0
+    assert payload["short_only_vs_both_delta"]["available"] is True
+    assert payload["short_only_vs_both_delta"]["profit_total_r_delta"] < 0
+    assert payload["suppress_short_vs_both_delta"]["available"] is True
