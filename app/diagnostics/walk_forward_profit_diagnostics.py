@@ -5,7 +5,7 @@ from typing import Any
 
 class WalkForwardProfitDiagnostics:
     DIAGNOSTIC_NAME = "walk_forward_profit_diagnostics"
-    DIAGNOSTIC_VERSION = "ml36"
+    DIAGNOSTIC_VERSION = "ml38.10.22"
 
     def analyze(
         self,
@@ -23,7 +23,49 @@ class WalkForwardProfitDiagnostics:
         fold_count = int(walk_summary.get("fold_count", len(folds)) or 0)
         profitable_fold_count = int(walk_summary.get("folds_profitable_on_test", 0) or 0)
         folds_with_gate = int(walk_summary.get("folds_with_selected_gate", fold_count) or 0)
+        fold_snapshots = [
+            snapshot
+            for snapshot in (self._fold_snapshot(fold) for fold in folds)
+            if snapshot is not None
+        ]
+        resolved_signal_counts = [
+            int(snapshot.get("resolved_signal_count", 0) or 0)
+            for snapshot in fold_snapshots
+        ]
+        zero_signal_fold_count = sum(int(value == 0) for value in resolved_signal_counts)
+        low_signal_fold_count = sum(int(value < 5) for value in resolved_signal_counts)
+        min_resolved_signal_count = min(resolved_signal_counts) if resolved_signal_counts else 0
+        max_resolved_signal_count = max(resolved_signal_counts) if resolved_signal_counts else 0
+        median_resolved_signal_count = self._median_int(resolved_signal_counts)
+        total_resolved_signal_count = sum(resolved_signal_counts)
+        fold_signal_summary = {
+            "fold_count": fold_count,
+            "folds_with_gate": folds_with_gate,
+            "fold_snapshot_count": len(fold_snapshots),
+            "total_resolved_signal_count": total_resolved_signal_count,
+            "zero_signal_fold_count": zero_signal_fold_count,
+            "low_signal_fold_count": low_signal_fold_count,
+            "min_resolved_signal_count": min_resolved_signal_count,
+            "median_resolved_signal_count": median_resolved_signal_count,
+            "max_resolved_signal_count": max_resolved_signal_count,
+        }
         unprofitable_fold_count = max(folds_with_gate - profitable_fold_count, 0)
+        profitable_fold_rate = (
+            profitable_fold_count / folds_with_gate if folds_with_gate else 0.0
+        )
+        walk_forward_stability_payload = self._walk_forward_stability_payload(
+            walk_forward_profit_factor=self._safe_float(walk_summary.get("global_profit_factor")),
+            walk_forward_total_r=self._safe_float(walk_summary.get("global_total_r")),
+            fold_count=fold_count,
+            folds_with_gate=folds_with_gate,
+            profitable_fold_count=profitable_fold_count,
+            profitable_fold_rate=profitable_fold_rate,
+            total_resolved_signal_count=total_resolved_signal_count,
+            zero_signal_fold_count=zero_signal_fold_count,
+            low_signal_fold_count=low_signal_fold_count,
+            min_resolved_signal_count=min_resolved_signal_count,
+            median_resolved_signal_count=median_resolved_signal_count,
+        )
         best_fold = self._fold_snapshot(
             max(
                 (fold for fold in folds if fold.get("test_result") is not None),
@@ -90,6 +132,22 @@ class WalkForwardProfitDiagnostics:
             "worst_fold": worst_fold,
             "best_fold": best_fold,
             "low_signal_folds": low_signal_folds,
+            "fold_snapshots": fold_snapshots,
+            "fold_signal_summary": fold_signal_summary,
+            "fold_profit_summary": {
+                "profitable_fold_count": profitable_fold_count,
+                "unprofitable_fold_count": unprofitable_fold_count,
+                "profitable_fold_rate": profitable_fold_rate,
+            },
+            "zero_signal_fold_count": zero_signal_fold_count,
+            "low_signal_fold_count": low_signal_fold_count,
+            "min_resolved_signal_count": min_resolved_signal_count,
+            "median_resolved_signal_count": median_resolved_signal_count,
+            "max_resolved_signal_count": max_resolved_signal_count,
+            "total_resolved_signal_count": total_resolved_signal_count,
+            "walk_forward_stability_status": walk_forward_stability_payload["walk_forward_stability_status"],
+            "walk_forward_stability_verdict": walk_forward_stability_payload["walk_forward_stability_verdict"],
+            "walk_forward_stability_warnings": walk_forward_stability_payload["walk_forward_stability_warnings"],
             "regime_related_failures": regime_related_failures,
             "profit_aware_profit_factor": profit_aware_diagnostics.get("profit_aware_profit_factor"),
             "profit_aware_total_r": profit_aware_diagnostics.get("profit_aware_total_r"),
@@ -286,6 +344,82 @@ class WalkForwardProfitDiagnostics:
             "resolved_signal_count": int(gate.get("resolved_signal_count", 0) or 0),
             "profit_factor": self._safe_float(gate.get("profit_factor")),
             "total_r": self._safe_float(gate.get("total_r")),
+        }
+
+    @staticmethod
+    def _median_int(values: list[int]) -> int | None:
+        if not values:
+            return None
+        ordered = sorted(int(value) for value in values)
+        middle = len(ordered) // 2
+        if len(ordered) % 2:
+            return ordered[middle]
+        return int((ordered[middle - 1] + ordered[middle]) / 2)
+
+    @staticmethod
+    def _walk_forward_stability_payload(
+        *,
+        walk_forward_profit_factor: float | None,
+        walk_forward_total_r: float | None,
+        fold_count: int,
+        folds_with_gate: int,
+        profitable_fold_count: int,
+        profitable_fold_rate: float,
+        total_resolved_signal_count: int,
+        zero_signal_fold_count: int,
+        low_signal_fold_count: int,
+        min_resolved_signal_count: int,
+        median_resolved_signal_count: int | None,
+    ) -> dict[str, Any]:
+        warnings: list[str] = []
+        if fold_count <= 0:
+            warnings.append("walk_forward_has_no_folds")
+        if folds_with_gate <= 0:
+            warnings.append("walk_forward_has_no_selected_gate_folds")
+        if zero_signal_fold_count > 0:
+            warnings.append("walk_forward_has_zero_signal_folds")
+        if low_signal_fold_count > 0:
+            warnings.append("walk_forward_has_low_signal_folds")
+        if total_resolved_signal_count < 20:
+            warnings.append("walk_forward_total_signal_count_too_low")
+        if min_resolved_signal_count < 3:
+            warnings.append("walk_forward_min_fold_signal_count_too_low")
+        if median_resolved_signal_count is not None and median_resolved_signal_count < 5:
+            warnings.append("walk_forward_median_fold_signal_count_too_low")
+        if walk_forward_profit_factor is None:
+            warnings.append("walk_forward_profit_factor_missing")
+        elif walk_forward_profit_factor <= 1.0:
+            warnings.append("walk_forward_profit_factor_not_profitable")
+        if walk_forward_total_r is None:
+            warnings.append("walk_forward_total_r_missing")
+        elif walk_forward_total_r <= 0.0:
+            warnings.append("walk_forward_total_r_not_positive")
+        if profitable_fold_rate < 0.50:
+            warnings.append("walk_forward_profitable_fold_rate_too_low")
+
+        if fold_count <= 0 or folds_with_gate <= 0:
+            verdict = "REJECT_NO_WALK_FORWARD_EVIDENCE"
+            status = "NO_WALK_FORWARD_EVIDENCE"
+        elif zero_signal_fold_count > 0 or low_signal_fold_count > 0 or total_resolved_signal_count < 20:
+            verdict = "REJECT_LOW_SIGNAL_WALK_FORWARD"
+            status = "LOW_SIGNAL_WALK_FORWARD"
+        elif (
+            walk_forward_profit_factor is not None
+            and walk_forward_profit_factor > 1.0
+            and walk_forward_total_r is not None
+            and walk_forward_total_r > 0.0
+            and profitable_fold_rate >= 0.50
+        ):
+            verdict = "CANDIDATE_FOR_NEXT_GRID_RESEARCH_ONLY"
+            status = "STABLE_ENOUGH_FOR_RESEARCH"
+        else:
+            verdict = "REJECT_WALK_FORWARD_UNSTABLE"
+            status = "WALK_FORWARD_UNSTABLE"
+
+        return {
+            "walk_forward_stability_status": status,
+            "walk_forward_stability_verdict": verdict,
+            "walk_forward_stability_warnings": list(dict.fromkeys(warnings)),
         }
 
     @staticmethod

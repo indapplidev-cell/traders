@@ -7,6 +7,9 @@ from typing import Any, Iterable
 
 from app.diagnostics.decision_policy_grid import apply_selected_decision_policy_metrics
 from app.diagnostics.directional_side_ablation_comparator import DirectionalSideAblationComparator
+from app.diagnostics.directional_side_walk_forward_stability import (
+    DirectionalSideWalkForwardStabilityAnalyzer,
+)
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
@@ -20,9 +23,14 @@ class MultiSymbolFeatureRegimeAnalyzer:
     def __init__(
         self,
         directional_side_ablation_comparator: DirectionalSideAblationComparator | None = None,
+        directional_side_walk_forward_stability_analyzer: DirectionalSideWalkForwardStabilityAnalyzer | None = None,
     ) -> None:
         self._directional_side_ablation_comparator = (
             directional_side_ablation_comparator or DirectionalSideAblationComparator()
+        )
+        self._directional_side_walk_forward_stability_analyzer = (
+            directional_side_walk_forward_stability_analyzer
+            or DirectionalSideWalkForwardStabilityAnalyzer()
         )
 
     @staticmethod
@@ -125,8 +133,14 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 )
             ],
         }
+        directional_side_candidate_payloads = self._directional_side_candidate_payloads(summaries)
         directional_side_ablation_comparator = self._directional_side_ablation_comparator.compare(
-            self._directional_side_candidate_payloads(summaries)
+            directional_side_candidate_payloads
+        )
+        directional_side_walk_forward_stability = (
+            self._directional_side_walk_forward_stability_analyzer.analyze(
+                directional_side_candidate_payloads
+            )
         )
 
         return {
@@ -163,6 +177,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "configs_ranked": configs_ranked,
             "symbol_results": symbol_results,
             "directional_side_ablation_comparator": directional_side_ablation_comparator,
+            "directional_side_walk_forward_stability": directional_side_walk_forward_stability,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -478,6 +493,40 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "dominant_direction": directional_audit.get("dominant_direction"),
         }
 
+    @classmethod
+    def _walk_forward_stability_payload(cls, candidate: dict[str, Any]) -> dict[str, Any]:
+        walk_diag = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
+        fold_signal_summary = cls._as_dict(walk_diag.get("fold_signal_summary"))
+        return {
+            "walk_forward_stability_status": walk_diag.get("walk_forward_stability_status"),
+            "walk_forward_stability_verdict": walk_diag.get("walk_forward_stability_verdict"),
+            "walk_forward_stability_warnings": list(
+                cls._as_list(walk_diag.get("walk_forward_stability_warnings"))
+            ),
+            "walk_forward_low_signal_fold_count": int(
+                walk_diag.get("low_signal_fold_count", 0) or 0
+            ),
+            "walk_forward_zero_signal_fold_count": int(
+                walk_diag.get("zero_signal_fold_count", 0) or 0
+            ),
+            "walk_forward_total_resolved_signal_count": int(
+                walk_diag.get(
+                    "total_resolved_signal_count",
+                    fold_signal_summary.get("total_resolved_signal_count", 0),
+                )
+                or 0
+            ),
+            "walk_forward_min_resolved_signal_count": cls._float_or_none(
+                walk_diag.get("min_resolved_signal_count")
+            ),
+            "walk_forward_median_resolved_signal_count": cls._float_or_none(
+                walk_diag.get("median_resolved_signal_count")
+            ),
+            "walk_forward_max_resolved_signal_count": cls._float_or_none(
+                walk_diag.get("max_resolved_signal_count")
+            ),
+        }
+
     @staticmethod
     def _candidate_status(candidate: dict[str, Any]) -> str:
         return str(candidate.get("candidate_status") or "").upper()
@@ -566,6 +615,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "entry_path_quality_filter_diagnostics",
             "entry_path_prediction_filter_summary",
             "stop_pressure_effectiveness_audit",
+            "walk_forward_profit_diagnostics",
         )
 
         configs_ranked: list[dict[str, Any]] = []
@@ -613,6 +663,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             )
             payload.update(cls._entry_path_audit_payload(payload))
             payload.update(cls._directional_side_audit_payload(payload))
+            payload.update(cls._walk_forward_stability_payload(payload))
             configs_ranked.append(payload)
         best_entry_path_audit = cls._entry_path_audit_payload(best_candidate)
         best_directional_side_audit = cls._directional_side_audit_payload(best_candidate)
@@ -1192,6 +1243,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     payload.get("setup_aware_label_diagnostics")
                 )
                 payload.update(cls._entry_path_audit_payload(payload))
+                payload.update(cls._directional_side_audit_payload(payload))
+                payload.update(cls._walk_forward_stability_payload(payload))
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)

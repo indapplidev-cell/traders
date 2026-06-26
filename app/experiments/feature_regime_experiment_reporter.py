@@ -7,6 +7,9 @@ from typing import Any
 from app.diagnostics.directional_side_ablation_comparator import (
     DirectionalSideAblationComparator,
 )
+from app.diagnostics.directional_side_walk_forward_stability import (
+    DirectionalSideWalkForwardStabilityAnalyzer,
+)
 
 
 class FeatureRegimeExperimentReporter:
@@ -118,6 +121,7 @@ class FeatureRegimeExperimentReporter:
             "schwager_robustness_decision_board": payload.get("schwager_robustness_decision_board"),
             "class_margin_objective_decision": payload.get("class_margin_objective_decision"),
             "directional_side_ablation_comparator": self._directional_side_ablation_comparator(payload),
+            "directional_side_walk_forward_stability": self._directional_side_walk_forward_stability(payload),
             "opportunity_probability_threshold": payload.get("opportunity_probability_threshold"),
             "setup_quality_min_threshold": payload.get("setup_quality_min_threshold"),
             "setup_quality_decision_mask_enabled": payload.get("setup_quality_decision_mask_enabled"),
@@ -228,8 +232,20 @@ class FeatureRegimeExperimentReporter:
         ]
         return DirectionalSideAblationComparator().compare(candidates)
 
+    def _directional_side_walk_forward_stability(self, payload: dict[str, Any]) -> dict[str, Any]:
+        existing = payload.get("directional_side_walk_forward_stability")
+        if isinstance(existing, dict) and existing:
+            return dict(existing)
+        candidates = [
+            item
+            for item in self._as_list(payload.get("candidate_results") or payload.get("configs_ranked"))
+            if isinstance(item, dict)
+        ]
+        return DirectionalSideWalkForwardStabilityAnalyzer().analyze(candidates)
+
     def _summary_markdown(self, payload: dict[str, Any]) -> str:
         comparator = self._directional_side_ablation_comparator(payload)
+        stability = self._directional_side_walk_forward_stability(payload)
         lines = [
             f"# Feature/Regime Experiment Summary - {payload.get('experiment_id')}",
             "",
@@ -372,6 +388,14 @@ class FeatureRegimeExperimentReporter:
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         lines.extend(
             [
+                "",
+                "## Directional side walk-forward stability",
+                "",
+                f"- diagnostic_status: `{stability.get('diagnostic_status')}`",
+                f"- best_research_side_profile: `{stability.get('best_research_side_profile')}`",
+                f"- best_research_verdict: `{stability.get('best_research_verdict')}`",
+                f"- warnings: `{stability.get('warnings')}`",
+                f"- recommendations: `{stability.get('recommendations')}`",
                 "",
                 "## Label Mode Audits",
                 "",

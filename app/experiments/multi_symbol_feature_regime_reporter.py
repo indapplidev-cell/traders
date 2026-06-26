@@ -110,6 +110,9 @@ class MultiSymbolFeatureRegimeReporter:
             "directional_side_ablation_comparator": payload.get(
                 "directional_side_ablation_comparator"
             ),
+            "directional_side_walk_forward_stability": payload.get(
+                "directional_side_walk_forward_stability"
+            ),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -371,4 +374,45 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not self._as_list(comparator.get("comparison_board")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        stability = self._as_dict(payload.get("directional_side_walk_forward_stability"))
+        stability_by_profile = self._as_dict(stability.get("stability_by_side_profile"))
+        lines.extend(
+            [
+                "",
+                "## Directional side walk-forward stability",
+                "",
+                f"- diagnostic_status: `{stability.get('diagnostic_status')}`",
+                f"- side_profile_counts: `{stability.get('side_profile_counts')}`",
+                f"- best_research_side_profile: `{stability.get('best_research_side_profile')}`",
+                f"- best_research_verdict: `{stability.get('best_research_verdict')}`",
+                f"- long_only_best: `{self._as_dict(stability_by_profile.get('LONG_ONLY'))}`",
+                f"- short_only_best: `{self._as_dict(stability_by_profile.get('SHORT_ONLY'))}`",
+                f"- suppress_short_best: `{self._as_dict(stability_by_profile.get('SUPPRESS_SHORT'))}`",
+                f"- both_directions_best: `{self._as_dict(stability_by_profile.get('BOTH_DIRECTIONS'))}`",
+                f"- long_only_vs_both_stability_delta: `{stability.get('long_only_vs_both_stability_delta')}`",
+                f"- suppress_short_vs_both_stability_delta: `{stability.get('suppress_short_vs_both_stability_delta')}`",
+                f"- warnings: `{stability.get('warnings')}`",
+                f"- recommendations: `{stability.get('recommendations')}`",
+                "",
+                "| Side profile | Config | Verdict | WF PF | WF R | WF signals | Low folds | Zero folds | Test PF | Test R |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in self._as_list(stability.get("comparison_board")):
+            lines.append(
+                "| `{side}` | `{config}` | `{verdict}` | `{wf_pf}` | `{wf_r}` | `{wf_signals}` | `{low}` | `{zero}` | `{pf}` | `{total_r}` |".format(
+                    side=row.get("side_profile"),
+                    config=row.get("config_id"),
+                    verdict=row.get("walk_forward_stability_verdict"),
+                    wf_pf=row.get("walk_forward_profit_factor"),
+                    wf_r=row.get("walk_forward_total_r"),
+                    wf_signals=row.get("total_walk_forward_resolved_signal_count"),
+                    low=row.get("low_signal_fold_count"),
+                    zero=row.get("zero_signal_fold_count"),
+                    pf=row.get("profit_factor"),
+                    total_r=row.get("profit_total_r"),
+                )
+            )
+        if not self._as_list(stability.get("comparison_board")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)

@@ -216,6 +216,22 @@ class DirectionalSideAblationComparator:
             "profit_total_r": profit_total_r,
             "walk_forward_profit_factor": walk_forward_profit_factor,
             "walk_forward_total_r": walk_forward_total_r,
+            "walk_forward_stability_status": cls._as_dict(candidate.get("walk_forward_profit_diagnostics")).get("walk_forward_stability_status"),
+            "walk_forward_stability_verdict": cls._as_dict(candidate.get("walk_forward_profit_diagnostics")).get("walk_forward_stability_verdict"),
+            "walk_forward_stability_warnings": list(
+                cls._as_list(
+                    cls._as_dict(candidate.get("walk_forward_profit_diagnostics")).get("walk_forward_stability_warnings")
+                )
+            ),
+            "walk_forward_low_signal_fold_count": cls._int_or_zero(
+                cls._as_dict(candidate.get("walk_forward_profit_diagnostics")).get("low_signal_fold_count")
+            ),
+            "walk_forward_zero_signal_fold_count": cls._int_or_zero(
+                cls._as_dict(candidate.get("walk_forward_profit_diagnostics")).get("zero_signal_fold_count")
+            ),
+            "walk_forward_total_resolved_signal_count": cls._int_or_zero(
+                cls._as_dict(candidate.get("walk_forward_profit_diagnostics")).get("total_resolved_signal_count")
+            ),
             "signal_count": signal_count,
             "resolved_signal_count": resolved_signal_count,
             "side_filter_removed_signal_count": removed_signal_count,
@@ -404,6 +420,16 @@ class DirectionalSideAblationComparator:
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
         return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _as_list(value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return list(value)
+        if isinstance(value, (tuple, set)):
+            return list(value)
+        return [value]
 
     @staticmethod
     def _first_present(*values: Any) -> Any:
