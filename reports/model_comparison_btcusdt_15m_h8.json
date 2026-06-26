@@ -5,10 +5,10 @@
   "feature_version": "fv4_book_setup_context",
   "label_version": "lv28_h08_tts_epq70_sp45_long",
   "requested_model_versions": [
-    "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1"
+    "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_26_014643_282021_ffca4f5d5a"
   ],
   "compared_model_versions": [
-    "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1"
+    "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_26_014643_282021_ffca4f5d5a"
   ],
   "skipped_model_count": 0,
   "skipped_model_errors": [],
@@ -298,7 +298,7 @@
   },
   "model_results": [
     {
-      "model_version": "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1",
+      "model_version": "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_26_014643_282021_ffca4f5d5a",
       "is_active": false,
       "accuracy": 0.1097770154373928,
       "brier_score": 1.1621541522776482,
@@ -317,7 +317,7 @@
       "best_confidence_eval": null,
       "best_profit_eval": null,
       "calibration_eval": null,
-      "report_path": "D:\\disk_E\\game_projects\\traders\\traders-ml\\reports\\model_diagnostics_ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1.json"
+      "report_path": "D:\\disk_E\\game_projects\\traders\\traders-ml\\reports\\model_diagnostics_ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_26_014643_282021_ffca4f5d5a.json"
     }
   ],
   "best_baseline": {
@@ -358,7 +358,7 @@
     }
   },
   "best_model": {
-    "model_version": "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1",
+    "model_version": "ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_26_014643_282021_ffca4f5d5a",
     "is_active": false,
     "accuracy": 0.1097770154373928,
     "brier_score": 1.1621541522776482,
@@ -377,7 +377,7 @@
     "best_confidence_eval": null,
     "best_profit_eval": null,
     "calibration_eval": null,
-    "report_path": "D:\\disk_E\\game_projects\\traders\\traders-ml\\reports\\model_diagnostics_ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_25_231337_531490_017273b4f1.json"
+    "report_path": "D:\\disk_E\\game_projects\\traders\\traders-ml\\reports\\model_diagnostics_ml_candle_mlp_v1_btcusdt_15m_h8_lv28_h08_tts_epq70_sp45_long_2026_06_26_014643_282021_ffca4f5d5a.json"
   },
   "is_best_model_better_than_best_baseline": false,
   "notes": "Best model does not outperform the best baseline on current comparison."

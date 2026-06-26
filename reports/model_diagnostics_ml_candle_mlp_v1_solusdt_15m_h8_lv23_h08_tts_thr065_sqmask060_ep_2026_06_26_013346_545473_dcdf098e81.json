@@ -1,0 +1,141 @@
+{
+  "model_version": "ml_candle_mlp_v1_solusdt_15m_h8_lv23_h08_tts_thr065_sqmask060_ep_2026_06_26_013346_545473_dcdf098e81",
+  "symbol": "SOLUSDT",
+  "interval": "15m",
+  "horizon_candles": 8,
+  "feature_version": "fv4_book_setup_context",
+  "label_version": "lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff",
+  "train_end": null,
+  "validation_end": null,
+  "actual_counts_train": {
+    "UP": 86,
+    "DOWN": 112,
+    "FLAT": 2510
+  },
+  "actual_counts_validation": {
+    "UP": 23,
+    "DOWN": 17,
+    "FLAT": 540
+  },
+  "actual_counts_test": {
+    "UP": 21,
+    "DOWN": 16,
+    "FLAT": 544
+  },
+  "predicted_counts_train": {
+    "UP": 1675,
+    "DOWN": 1018,
+    "FLAT": 15
+  },
+  "predicted_counts_validation": {
+    "UP": 380,
+    "DOWN": 197,
+    "FLAT": 3
+  },
+  "predicted_counts_test": {
+    "UP": 253,
+    "DOWN": 326,
+    "FLAT": 2
+  },
+  "average_probabilities_train": {
+    "UP": 0.4894189221627647,
+    "DOWN": 0.33654779491483877,
+    "FLAT": 0.1740332834719731
+  },
+  "average_probabilities_validation": {
+    "UP": 0.5414308103507963,
+    "DOWN": 0.3117546761151532,
+    "FLAT": 0.14681451504343543
+  },
+  "average_probabilities_test": {
+    "UP": 0.3767814422875848,
+    "DOWN": 0.47294715655368086,
+    "FLAT": 0.15027139932173664
+  },
+  "confidence_distribution": {
+    "train": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 144,
+      "0.4-0.6": 501,
+      "0.6-0.8": 499,
+      "0.8-1.0": 1564
+    },
+    "validation": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 21,
+      "0.4-0.6": 58,
+      "0.6-0.8": 87,
+      "0.8-1.0": 414
+    },
+    "test": {
+      "0.0-0.2": 0,
+      "0.2-0.4": 13,
+      "0.4-0.6": 67,
+      "0.6-0.8": 87,
+      "0.8-1.0": 414
+    }
+  },
+  "confusion_matrix_train": [
+    [
+      86,
+      0,
+      0
+    ],
+    [
+      0,
+      112,
+      0
+    ],
+    [
+      1589,
+      906,
+      15
+    ]
+  ],
+  "confusion_matrix_validation": [
+    [
+      23,
+      0,
+      0
+    ],
+    [
+      0,
+      17,
+      0
+    ],
+    [
+      357,
+      180,
+      3
+    ]
+  ],
+  "confusion_matrix_test": [
+    [
+      21,
+      0,
+      0
+    ],
+    [
+      0,
+      16,
+      0
+    ],
+    [
+      232,
+      310,
+      2
+    ]
+  ],
+  "accuracy_train": 0.07865583456425407,
+  "accuracy_validation": 0.07413793103448275,
+  "accuracy_test": 0.06712564543889846,
+  "brier_score_train": 1.1756637652761561,
+  "brier_score_validation": 1.2867943515635947,
+  "brier_score_test": 1.2837844657923116,
+  "collapse_detected": false,
+  "collapse_reason": null,
+  "is_active": false,
+  "start_at": "2026-05-01T00:00:00+00:00",
+  "end_at": "2026-06-16T00:00:00+00:00",
+  "date_range_limited": true
+}

@@ -19,7 +19,7 @@
 | Symbol | Best Config | Score | Collapse Type | Flat Bias | Down Blindness | Baseline Edge | Profit Factor | Walk-Forward PF | Final Decision | Real Diagnostics | Diag Rows | Regime Features | Regime Count | Candle/TA Context | Candle/TA Count | Failed Gates |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `BTCUSDT` | `lv19_h08_tts_thr065_sqmask060` | `-1.909237` | `mixed` | `False` | `False` | `-0.7512864493996569` | `0.9076671290871174` | `None` | `NEEDS_LABEL_REWORK` | `True` | `3884` | `True` | `8` | `True` | `170` | `profit_aware_gate,walk_forward_gate,bias_gate,baseline_edge_gate` |
-| `SOLUSDT` | `lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias` | `-2.127594` | `mixed` | `False` | `False` | `-0.82960413080895` | `0.7019361339389568` | `None` | `NEEDS_LABEL_REWORK` | `True` | `3869` | `True` | `8` | `True` | `170` | `profit_aware_gate,walk_forward_gate,bias_gate,baseline_edge_gate` |
+| `SOLUSDT` | `lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias` | `-2.127594` | `mixed` | `False` | `False` | `-0.82960413080895` | `0.7019361339389568` | `None` | `NEEDS_LABEL_REWORK` | `True` | `4051` | `True` | `8` | `True` | `170` | `profit_aware_gate,walk_forward_gate,bias_gate,baseline_edge_gate` |
 
 ## Best Symbol
 
@@ -124,32 +124,33 @@
 
 ## Directional side ablation comparator
 
-- diagnostic_status: `NO_SIDE_ABLATION_CANDIDATES`
-- side_profile_counts: `{'BOTH_DIRECTIONS': 16, 'LONG_ONLY': 0, 'SHORT_ONLY': 0, 'SUPPRESS_SHORT': 0}`
-- best LONG_ONLY: `{}`
+- diagnostic_status: `COMPLETED`
+- side_profile_counts: `{'BOTH_DIRECTIONS': 14, 'LONG_ONLY': 2, 'SHORT_ONLY': 0, 'SUPPRESS_SHORT': 0}`
+- best LONG_ONLY: `{'config_id': 'lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only', 'candidate_status': 'REJECTED', 'side_profile': 'LONG_ONLY', 'directional_side_filter_profile': 'long_only_research', 'allowed_signal_directions': ['LONG'], 'research_only': True, 'profit_factor': 1.0169450928337886, 'profit_total_r': 0.29755583016132725, 'walk_forward_profit_factor': None, 'walk_forward_total_r': 0.0, 'signal_count': 47, 'resolved_signal_count': 47, 'side_filter_removed_signal_count': 0, 'side_filter_removed_signal_rate': None, 'direction_balance_ratio': None, 'directional_profit_skew_r': None, 'directional_profit_skew_ratio': None, 'long_total_r': None, 'short_total_r': None, 'long_avg_r': None, 'short_avg_r': None}`
 - best SHORT_ONLY: `{}`
 - best SUPPRESS_SHORT: `{}`
-- best BOTH_DIRECTIONS: `{'config_id': 'lv19_h08_tts_thr065_sqmask060', 'candidate_status': 'REJECTED', 'profit_factor': None, 'profit_total_r': None, 'walk_forward_profit_factor': 0.0, 'walk_forward_total_r': 0.0, 'resolved_signal_count': 0, 'signal_count': 0, 'directional_side_filter_profile': None, 'allowed_signal_directions': [], 'direction_balance_ratio': None, 'long_total_r': None, 'short_total_r': None, 'long_avg_r': None, 'short_avg_r': None, 'directional_profit_skew_r': None, 'directional_profit_skew_ratio': None, 'side_filter_removed_signal_count': 0, 'side_filter_removed_signal_rate': None, 'research_only': False, 'side_profile': 'BOTH_DIRECTIONS'}`
-- long_only_vs_both_delta: `{'available': False, 'left_side_profile': 'LONG_ONLY', 'right_side_profile': 'BOTH_DIRECTIONS', 'profit_factor_delta': None, 'profit_total_r_delta': None, 'walk_forward_profit_factor_delta': None, 'walk_forward_total_r_delta': None, 'resolved_signal_count_delta': None, 'left_config_id': None, 'right_config_id': None}`
-- suppress_short_vs_both_delta: `{'available': False, 'left_side_profile': 'SUPPRESS_SHORT', 'right_side_profile': 'BOTH_DIRECTIONS', 'profit_factor_delta': None, 'profit_total_r_delta': None, 'walk_forward_profit_factor_delta': None, 'walk_forward_total_r_delta': None, 'resolved_signal_count_delta': None, 'left_config_id': None, 'right_config_id': None}`
-- warnings: `[]`
-- recommendations: `['compare_lv28_against_lv27_lv26_before_acceptance', 'do_not_accept_long_only_without_multisymbol_confirmation', 'inspect_short_side_failure_modes_before_live_use']`
+- best BOTH_DIRECTIONS: `{'config_id': 'lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard', 'candidate_status': 'REJECTED', 'side_profile': 'BOTH_DIRECTIONS', 'directional_side_filter_profile': None, 'allowed_signal_directions': [], 'research_only': False, 'profit_factor': 0.9772408209177343, 'profit_total_r': -1.2564360557529568, 'walk_forward_profit_factor': None, 'walk_forward_total_r': 0.0, 'signal_count': 155, 'resolved_signal_count': 155, 'side_filter_removed_signal_count': 0, 'side_filter_removed_signal_rate': None, 'direction_balance_ratio': None, 'directional_profit_skew_r': None, 'directional_profit_skew_ratio': None, 'long_total_r': None, 'short_total_r': None, 'long_avg_r': None, 'short_avg_r': None}`
+- long_only_vs_both_delta: `{'available': True, 'left_side_profile': 'LONG_ONLY', 'right_side_profile': 'BOTH_DIRECTIONS', 'left_config_id': 'lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only', 'right_config_id': 'lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard', 'profit_factor_delta': 0.0397042719160543, 'profit_total_r_delta': 1.553991885914284, 'walk_forward_profit_factor_delta': None, 'walk_forward_total_r_delta': 0.0, 'resolved_signal_count_delta': -108.0}`
+- short_only_vs_both_delta: `{'available': False, 'left_side_profile': 'SHORT_ONLY', 'right_side_profile': 'BOTH_DIRECTIONS', 'left_config_id': None, 'right_config_id': 'lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard', 'profit_factor_delta': None, 'profit_total_r_delta': None, 'walk_forward_profit_factor_delta': None, 'walk_forward_total_r_delta': None, 'resolved_signal_count_delta': None}`
+- suppress_short_vs_both_delta: `{'available': False, 'left_side_profile': 'SUPPRESS_SHORT', 'right_side_profile': 'BOTH_DIRECTIONS', 'left_config_id': None, 'right_config_id': 'lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard', 'profit_factor_delta': None, 'profit_total_r_delta': None, 'walk_forward_profit_factor_delta': None, 'walk_forward_total_r_delta': None, 'resolved_signal_count_delta': None}`
+- warnings: `['research_only_side_suppression_not_live_ready', 'side_ablation_improves_pf_but_may_overfit_symbol_window']`
+- recommendations: `['compare_lv28_against_lv27_lv26_before_acceptance', 'do_not_accept_long_only_without_multisymbol_confirmation', 'inspect_short_side_failure_modes_before_live_use', 'validate_side_filter_on_multi_symbol_before_acceptance', 'if_long_only_wins_add_future_stage_for_short_side_feature_repair']`
 
 | Side profile | Config | PF | Total R | WF PF | WF R | Signals | Long R | Short R |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `BOTH_DIRECTIONS` | `lv19_h08_tts_thr065_sqmask060` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv22_h08_tts_thr065_sqmask060_epq070_sp045` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv19_h08_tts_thr065_sqmask060` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv22_h08_tts_thr065_sqmask060_epq070_sp045` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
-| `BOTH_DIRECTIONS` | `lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias` | `None` | `None` | `0.0` | `0.0` | `0` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv19_h08_tts_thr065_sqmask060` | `0.9076671290871174` | `-15.360121186907046` | `None` | `0.0` | `328` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv22_h08_tts_thr065_sqmask060_epq070_sp045` | `0.771384802637114` | `-19.657408049148934` | `None` | `0.0` | `155` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff` | `0.7826658800247098` | `-18.687408049148925` | `None` | `0.0` | `156` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae` | `0.7680127384032253` | `-19.260895281084533` | `None` | `0.0` | `156` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit` | `0.6713382125943828` | `-22.59407703541051` | `None` | `0.0` | `155` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard` | `0.9772408209177343` | `-1.2564360557529568` | `None` | `0.0` | `155` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias` | `0.9772408209177343` | `-1.2564360557529568` | `None` | `0.0` | `155` | `None` | `None` |
+| `LONG_ONLY` | `lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only` | `1.0169450928337886` | `0.29755583016132725` | `None` | `0.0` | `47` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv19_h08_tts_thr065_sqmask060` | `0.8111449051208732` | `-38.091971646970585` | `None` | `0.0` | `391` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv22_h08_tts_thr065_sqmask060_epq070_sp045` | `0.7211233501997454` | `-21.56412233343922` | `None` | `0.0` | `139` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff` | `0.7336678139216363` | `-20.594122333439213` | `None` | `0.0` | `140` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae` | `0.7160463627720224` | `-21.297626846706553` | `None` | `0.0` | `140` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit` | `0.46701029834848723` | `-36.13933641533196` | `None` | `0.0` | `139` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard` | `0.7019361339389568` | `-17.19936480895271` | `None` | `0.0` | `139` | `None` | `None` |
+| `BOTH_DIRECTIONS` | `lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias` | `0.7019361339389568` | `-17.19936480895271` | `None` | `0.0` | `139` | `None` | `None` |
+| `LONG_ONLY` | `lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only` | `0.9231743358596666` | `-1.3838342026199033` | `None` | `0.0` | `49` | `None` | `None` |
