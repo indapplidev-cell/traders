@@ -118,7 +118,7 @@ def test_ml38_10_20_grid_matrix_and_runtime_include_lv28_side_ablation() -> None
     assert matrix["directional_side_ablation_stage"] == "ML38.10.20"
     assert "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_only" in matrix["config_ids"]
 
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv28_")
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 8
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv28_")
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 16
+    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv29_")
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 9
+    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv29_")
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 19

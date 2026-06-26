@@ -829,6 +829,12 @@ class DiagnosticsService:
         exit_neutral_abs_r: float | None = None,
         directional_side_filter_profile: str | None = None,
         allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
+        side_aware_validation_relaxation_enabled: bool = False,
+        side_aware_min_validation_signal_count: int | None = None,
+        side_aware_min_validation_profit_factor: float | None = None,
+        side_aware_min_validation_total_r: float | None = None,
+        side_aware_min_validation_expectancy_r: float | None = None,
+        side_aware_allow_single_direction_validation: bool = False,
     ) -> dict[str, Any]:
         dataset_rows, _ = self._dataset_builder.build_rows(
             symbol=symbol,
@@ -872,6 +878,12 @@ class DiagnosticsService:
             exit_neutral_abs_r=exit_neutral_abs_r,
             directional_side_filter_profile=directional_side_filter_profile,
             allowed_signal_directions=allowed_signal_directions,
+            side_aware_validation_relaxation_enabled=side_aware_validation_relaxation_enabled,
+            side_aware_min_validation_signal_count=side_aware_min_validation_signal_count,
+            side_aware_min_validation_profit_factor=side_aware_min_validation_profit_factor,
+            side_aware_min_validation_total_r=side_aware_min_validation_total_r,
+            side_aware_min_validation_expectancy_r=side_aware_min_validation_expectancy_r,
+            side_aware_allow_single_direction_validation=side_aware_allow_single_direction_validation,
         )
 
     def fold_label_diagnostics(

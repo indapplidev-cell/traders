@@ -100,6 +100,14 @@ class MultiSymbolFeatureRegimeReporter:
                     "directional_side_filter_summary": item.get("directional_side_filter_summary"),
                     "directional_side_filter_profile": item.get("directional_side_filter_profile"),
                     "allowed_signal_directions": item.get("allowed_signal_directions"),
+                    "validation_gate_failure_reason_counts": item.get("validation_gate_failure_reason_counts"),
+                    "side_aware_relaxed_fold_count": item.get("side_aware_relaxed_fold_count"),
+                    "side_aware_validation_relaxation_enabled": item.get("side_aware_validation_relaxation_enabled"),
+                    "side_aware_min_validation_signal_count": item.get("side_aware_min_validation_signal_count"),
+                    "side_aware_min_validation_profit_factor": item.get("side_aware_min_validation_profit_factor"),
+                    "side_aware_min_validation_total_r": item.get("side_aware_min_validation_total_r"),
+                    "side_aware_min_validation_expectancy_r": item.get("side_aware_min_validation_expectancy_r"),
+                    "side_aware_allow_single_direction_validation": item.get("side_aware_allow_single_direction_validation"),
                     "direction_balance_ratio": item.get("direction_balance_ratio"),
                     "directional_profit_skew_r": item.get("directional_profit_skew_r"),
                     "long_total_r": item.get("long_total_r"),
@@ -115,6 +123,28 @@ class MultiSymbolFeatureRegimeReporter:
             ),
             "directional_side_signal_recovery_summary": payload.get(
                 "directional_side_signal_recovery_summary"
+            ),
+            "validation_gate_failure_reason_counts": payload.get(
+                "validation_gate_failure_reason_counts"
+            ),
+            "side_aware_relaxed_fold_count": payload.get("side_aware_relaxed_fold_count"),
+            "side_aware_validation_relaxation_enabled": payload.get(
+                "side_aware_validation_relaxation_enabled"
+            ),
+            "side_aware_min_validation_signal_count": payload.get(
+                "side_aware_min_validation_signal_count"
+            ),
+            "side_aware_min_validation_profit_factor": payload.get(
+                "side_aware_min_validation_profit_factor"
+            ),
+            "side_aware_min_validation_total_r": payload.get(
+                "side_aware_min_validation_total_r"
+            ),
+            "side_aware_min_validation_expectancy_r": payload.get(
+                "side_aware_min_validation_expectancy_r"
+            ),
+            "side_aware_allow_single_direction_validation": payload.get(
+                "side_aware_allow_single_direction_validation"
             ),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
@@ -333,6 +363,12 @@ class MultiSymbolFeatureRegimeReporter:
             lines.append(f"### {item.get('symbol')}")
             lines.append(f"- side_filter_profile: `{item.get('directional_side_filter_profile')}`")
             lines.append(f"- allowed_signal_directions: `{item.get('allowed_signal_directions')}`")
+            lines.append(
+                f"- validation_gate_failure_reason_counts: `{item.get('validation_gate_failure_reason_counts')}`"
+            )
+            lines.append(
+                f"- side_aware_relaxed_fold_count: `{item.get('side_aware_relaxed_fold_count')}`"
+            )
             lines.append(f"- direction_balance_ratio: `{item.get('direction_balance_ratio')}`")
             lines.append(f"- long_total_r: `{item.get('long_total_r')}`")
             lines.append(f"- short_total_r: `{item.get('short_total_r')}`")
@@ -427,20 +463,26 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- status_counts: `{recovery_summary.get('status_counts')}`",
                 f"- verdict_counts: `{recovery_summary.get('verdict_counts')}`",
                 "",
-                "| Symbol | Config | Side recovery status | Side recovery verdict | Primary signal loss reason counts |",
-                "| --- | --- | --- | --- | --- |",
+                "### ML38.10.24 validation gate diagnostics",
+                f"- validation gate failure reasons: `{payload.get('validation_gate_failure_reason_counts')}`",
+                f"- side-aware relaxed folds: `{payload.get('side_aware_relaxed_fold_count')}`",
+                "",
+                "| Symbol | Config | Side recovery status | Side recovery verdict | Primary signal loss reason counts | Gate fail reasons | Relaxed folds |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
         for row in self._as_list(payload.get("configs_ranked"))[:10]:
             lines.append(
-                "| `{symbol}` | `{config}` | `{status}` | `{verdict}` | `{reasons}` |".format(
+                "| `{symbol}` | `{config}` | `{status}` | `{verdict}` | `{reasons}` | `{gate_fail}` | `{relaxed}` |".format(
                     symbol=row.get("symbol"),
                     config=row.get("config_id"),
                     status=row.get("directional_side_signal_recovery_status"),
                     verdict=row.get("directional_side_signal_recovery_verdict"),
                     reasons=row.get("primary_signal_loss_reason_counts"),
+                    gate_fail=row.get("validation_gate_failure_reason_counts"),
+                    relaxed=row.get("side_aware_relaxed_fold_count"),
                 )
             )
         if not self._as_list(payload.get("configs_ranked")):
-            lines.append("| `-` | `-` | `-` | `-` | `-` |")
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)

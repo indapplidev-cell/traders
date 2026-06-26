@@ -35,4 +35,4 @@ def test_ml38_9_9_matrix_keeps_label_modes_and_runtime_uses_prompt_4_6_smoke_sho
     assert "lv26_h12_tts_thr065_sqmask060_epq070_sp045_recovery_guard" in quick_wrapper.selected_config_ids
     assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in quick_wrapper.selected_config_ids
     assert "lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit" in quick_wrapper.selected_config_ids
-    assert len(quick_wrapper.selected_config_ids) == 16
+    assert len(quick_wrapper.selected_config_ids) == 19

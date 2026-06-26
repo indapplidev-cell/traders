@@ -87,6 +87,12 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
                 warnings.append("best_research_side_profile_has_signal_recovery_problem")
             if recovery_verdict in {"CHECK_SIDE_FILTER_STRICTNESS", "CHECK_GATE_THRESHOLDS"}:
                 recommendations.append("inspect_directional_side_signal_recovery_diagnostics_before_new_grid")
+            if self._as_dict(best_research.get("validation_gate_failure_reason_counts")):
+                recommendations.append(
+                    "inspect_validation_gate_failure_reason_counts_before_new_threshold_grid"
+                )
+            if self._int_or_zero(best_research.get("side_aware_relaxed_fold_count")) > 0:
+                warnings.append("side_aware_validation_relaxation_is_research_only")
         if (
             short_only
             and self._float_or_none(short_only.get("profit_total_r")) is not None
@@ -198,6 +204,12 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
             "directional_side_signal_recovery_status": signal_recovery.get("diagnostic_status"),
             "directional_side_signal_recovery_verdict": signal_recovery.get("verdict"),
             "primary_signal_loss_reason_counts": signal_loss_reason_counts,
+            "validation_gate_failure_reason_counts": self._as_dict(
+                signal_recovery.get("validation_gate_failure_reason_counts")
+            ),
+            "side_aware_relaxed_fold_count": self._int_or_zero(
+                signal_recovery.get("side_aware_relaxed_fold_count")
+            ),
             "side_filter_removed_all_fold_count": self._int_or_zero(
                 signal_recovery.get("side_filter_removed_all_fold_count")
             ),

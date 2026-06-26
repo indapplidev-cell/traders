@@ -96,6 +96,13 @@ class DirectionalSideSignalRecoveryDiagnostics:
             "raw_signal_available_but_filtered_out_count": raw_signal_available_but_filtered_out_count,
             "threshold_too_strict_fold_count": threshold_too_strict_fold_count,
             "primary_signal_loss_reason_counts": reason_counts,
+            "validation_gate_failure_reason_counts": self._merge_reason_counts(
+                row.get("validation_gate_failure_reason_counts") for row in fold_rows
+            ),
+            "side_aware_relaxed_fold_count": sum(
+                int(row.get("side_aware_validation_relaxation_enabled", False))
+                for row in fold_rows
+            ),
             "total_original_signal_count": total_original_signal_count,
             "total_filtered_signal_count": total_filtered_signal_count,
             "total_removed_signal_count": total_removed_signal_count,
@@ -112,6 +119,12 @@ class DirectionalSideSignalRecoveryDiagnostics:
     def _fold_row(self, fold: dict[str, Any]) -> dict[str, Any]:
         selected_gate = self._as_dict(fold.get("selected_gate"))
         test_result = self._as_dict(fold.get("test_result"))
+        gate_selection_diagnostics = self._as_dict(
+            fold.get("validation_gate_selection_diagnostics")
+        )
+        gate_failure_reason_counts = self._as_dict(
+            gate_selection_diagnostics.get("failure_reason_counts")
+        )
         side_summary = self._as_dict(test_result.get("directional_side_filter_summary"))
         gate_reject_reason = fold.get("gate_reject_reason")
         validation_gates = [
@@ -150,6 +163,7 @@ class DirectionalSideSignalRecoveryDiagnostics:
             side_filter_active=side_active,
             side_filter_removed_all=side_removed_all,
             threshold_too_strict=threshold_too_strict,
+            validation_gate_failure_reason_counts=gate_failure_reason_counts,
         )
         return {
             "fold_index": fold.get("fold_index"),
@@ -178,6 +192,35 @@ class DirectionalSideSignalRecoveryDiagnostics:
             "threshold_too_strict_after_side_filter": threshold_too_strict,
             "primary_signal_loss_reason": primary_reason,
             "validation_gate_probe_count": len(validation_gates),
+            "validation_gate_selection_mode": gate_selection_diagnostics.get("selection_mode"),
+            "side_aware_validation_relaxation_enabled": bool(
+                gate_selection_diagnostics.get(
+                    "side_aware_validation_relaxation_enabled",
+                    False,
+                )
+            ),
+            "effective_min_signal_count": gate_selection_diagnostics.get(
+                "effective_min_signal_count"
+            ),
+            "effective_min_profit_factor": self._float_or_none(
+                gate_selection_diagnostics.get("effective_min_profit_factor")
+            ),
+            "effective_min_total_r": self._float_or_none(
+                gate_selection_diagnostics.get("effective_min_total_r")
+            ),
+            "effective_min_expectancy_r": self._float_or_none(
+                gate_selection_diagnostics.get("effective_min_expectancy_r")
+            ),
+            "validation_gate_failure_reason_counts": gate_failure_reason_counts,
+            "best_failed_gate_by_signal_count": self._as_dict(
+                gate_selection_diagnostics.get("best_failed_gate_by_signal_count")
+            ),
+            "best_failed_gate_by_total_r": self._as_dict(
+                gate_selection_diagnostics.get("best_failed_gate_by_total_r")
+            ),
+            "best_failed_gate_by_profit_factor": self._as_dict(
+                gate_selection_diagnostics.get("best_failed_gate_by_profit_factor")
+            ),
             "best_validation_by_filtered_count": best_validation_by_filtered_count,
             "best_validation_by_original_count": best_validation_by_original_count,
         }
@@ -226,8 +269,20 @@ class DirectionalSideSignalRecoveryDiagnostics:
         side_filter_active: bool,
         side_filter_removed_all: bool,
         threshold_too_strict: bool,
+        validation_gate_failure_reason_counts: dict[str, Any] | None = None,
     ) -> str:
         if not selected_gate_present:
+            reason_counts = (
+                dict(validation_gate_failure_reason_counts)
+                if isinstance(validation_gate_failure_reason_counts, dict)
+                else {}
+            )
+            if reason_counts:
+                primary_reason = max(
+                    reason_counts.items(),
+                    key=lambda item: (int(item[1] or 0), str(item[0])),
+                )[0]
+                return f"no_selected_gate:{primary_reason}"
             return f"no_selected_gate:{gate_reject_reason or 'unknown'}"
         if side_filter_removed_all:
             return "side_filter_removed_all_signals"
@@ -261,6 +316,15 @@ class DirectionalSideSignalRecoveryDiagnostics:
             return None if value is None else float(value)
         except (TypeError, ValueError):
             return None
+
+    @classmethod
+    def _merge_reason_counts(cls, items: Any) -> dict[str, int]:
+        merged: dict[str, int] = {}
+        for item in items:
+            counts = cls._as_dict(item)
+            for reason, count in counts.items():
+                merged[str(reason)] = merged.get(str(reason), 0) + int(count or 0)
+        return merged
 
     @staticmethod
     def _median_int(values: list[int]) -> int | None:

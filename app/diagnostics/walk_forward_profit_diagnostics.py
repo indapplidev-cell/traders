@@ -9,7 +9,7 @@ from app.diagnostics.directional_side_signal_recovery_diagnostics import (
 
 class WalkForwardProfitDiagnostics:
     DIAGNOSTIC_NAME = "walk_forward_profit_diagnostics"
-    DIAGNOSTIC_VERSION = "ml38.10.23"
+    DIAGNOSTIC_VERSION = "ml38.10.24"
 
     def analyze(
         self,
@@ -168,6 +168,12 @@ class WalkForwardProfitDiagnostics:
             "directional_side_signal_recovery_status": directional_side_signal_recovery_diagnostics.get("diagnostic_status"),
             "directional_side_signal_recovery_verdict": directional_side_signal_recovery_diagnostics.get("verdict"),
             "primary_signal_loss_reason_counts": directional_side_signal_recovery_diagnostics.get("primary_signal_loss_reason_counts"),
+            "validation_gate_failure_reason_counts": directional_side_signal_recovery_diagnostics.get(
+                "validation_gate_failure_reason_counts"
+            ),
+            "side_aware_relaxed_fold_count": directional_side_signal_recovery_diagnostics.get(
+                "side_aware_relaxed_fold_count"
+            ),
             "side_filter_removed_all_fold_count": directional_side_signal_recovery_diagnostics.get("side_filter_removed_all_fold_count"),
             "raw_signal_available_but_filtered_out_count": directional_side_signal_recovery_diagnostics.get("raw_signal_available_but_filtered_out_count"),
             "threshold_too_strict_fold_count": directional_side_signal_recovery_diagnostics.get("threshold_too_strict_fold_count"),

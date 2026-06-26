@@ -169,6 +169,12 @@ ML38_10_20_DIRECTIONAL_SIDE_ABLATION_CONFIG_IDS = (
     "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short",
 )
 
+ML38_10_24_WALK_FORWARD_VALIDATION_GATE_DIAGNOSTICS_CONFIG_IDS = (
+    "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
+    "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
+    "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_relax",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -204,6 +210,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_10_18_EXIT_MITIGATION_PATH_AUDIT_CONFIG_IDS,
     *ML38_10_19_DIRECTIONAL_EDGE_BIAS_HARDENING_CONFIG_IDS,
     *ML38_10_20_DIRECTIONAL_SIDE_ABLATION_CONFIG_IDS,
+    *ML38_10_24_WALK_FORWARD_VALIDATION_GATE_DIAGNOSTICS_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
@@ -305,6 +312,13 @@ class ML382FV3TuningMatrix:
             "directional_side_ablation_stage": "ML38.10.20",
             "directional_side_ablation_config_ids": list(ML38_10_20_DIRECTIONAL_SIDE_ABLATION_CONFIG_IDS),
             "directional_side_ablation_config_count": len(ML38_10_20_DIRECTIONAL_SIDE_ABLATION_CONFIG_IDS),
+            "walk_forward_validation_gate_diagnostics_stage": "ML38.10.24",
+            "walk_forward_validation_gate_diagnostics_config_ids": list(
+                ML38_10_24_WALK_FORWARD_VALIDATION_GATE_DIAGNOSTICS_CONFIG_IDS
+            ),
+            "walk_forward_validation_gate_diagnostics_config_count": len(
+                ML38_10_24_WALK_FORWARD_VALIDATION_GATE_DIAGNOSTICS_CONFIG_IDS
+            ),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
             "configs": configs,

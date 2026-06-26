@@ -128,6 +128,12 @@ class LabelGridExperimentCandidateResult:
     directional_side_filter_summary: dict[str, Any] = field(default_factory=dict)
     directional_side_filter_profile: str | None = None
     allowed_signal_directions: tuple[str, ...] = ()
+    side_aware_validation_relaxation_enabled: bool = False
+    side_aware_min_validation_signal_count: int | None = None
+    side_aware_min_validation_profit_factor: float | None = None
+    side_aware_min_validation_total_r: float | None = None
+    side_aware_min_validation_expectancy_r: float | None = None
+    side_aware_allow_single_direction_validation: bool = False
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -246,6 +252,12 @@ class LabelGridExperimentCandidateResult:
             "directional_side_filter_summary": dict(self.directional_side_filter_summary),
             "directional_side_filter_profile": self.directional_side_filter_profile,
             "allowed_signal_directions": list(self.allowed_signal_directions),
+            "side_aware_validation_relaxation_enabled": self.side_aware_validation_relaxation_enabled,
+            "side_aware_min_validation_signal_count": self.side_aware_min_validation_signal_count,
+            "side_aware_min_validation_profit_factor": self.side_aware_min_validation_profit_factor,
+            "side_aware_min_validation_total_r": self.side_aware_min_validation_total_r,
+            "side_aware_min_validation_expectancy_r": self.side_aware_min_validation_expectancy_r,
+            "side_aware_allow_single_direction_validation": self.side_aware_allow_single_direction_validation,
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -1084,6 +1096,12 @@ class LabelGridExperimentRunner:
                 exit_neutral_abs_r=label_config.exit_neutral_abs_r,
                 directional_side_filter_profile=label_config.directional_side_filter_profile,
                 allowed_signal_directions=label_config.allowed_signal_directions,
+                side_aware_validation_relaxation_enabled=label_config.side_aware_validation_relaxation_enabled,
+                side_aware_min_validation_signal_count=label_config.side_aware_min_validation_signal_count,
+                side_aware_min_validation_profit_factor=label_config.side_aware_min_validation_profit_factor,
+                side_aware_min_validation_total_r=label_config.side_aware_min_validation_total_r,
+                side_aware_min_validation_expectancy_r=label_config.side_aware_min_validation_expectancy_r,
+                side_aware_allow_single_direction_validation=label_config.side_aware_allow_single_direction_validation,
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1433,6 +1451,22 @@ class LabelGridExperimentRunner:
             directional_side_filter_summary=directional_side_filter_summary,
             directional_side_filter_profile=resolved_directional_side_filter_profile,
             allowed_signal_directions=resolved_allowed_signal_directions,
+            side_aware_validation_relaxation_enabled=bool(
+                label_config.side_aware_validation_relaxation_enabled
+            ),
+            side_aware_min_validation_signal_count=label_config.side_aware_min_validation_signal_count,
+            side_aware_min_validation_profit_factor=self._optional_float(
+                label_config.side_aware_min_validation_profit_factor
+            ),
+            side_aware_min_validation_total_r=self._optional_float(
+                label_config.side_aware_min_validation_total_r
+            ),
+            side_aware_min_validation_expectancy_r=self._optional_float(
+                label_config.side_aware_min_validation_expectancy_r
+            ),
+            side_aware_allow_single_direction_validation=bool(
+                label_config.side_aware_allow_single_direction_validation
+            ),
             opportunity_probability_threshold=self._optional_float(
                 quality_payload.get("opportunity_probability_threshold")
             ),
@@ -1854,6 +1888,16 @@ class LabelGridExperimentRunner:
             directional_side_filter_summary={},
             directional_side_filter_profile=label_config.directional_side_filter_profile,
             allowed_signal_directions=tuple(label_config.allowed_signal_directions or ()),
+            side_aware_validation_relaxation_enabled=bool(
+                label_config.side_aware_validation_relaxation_enabled
+            ),
+            side_aware_min_validation_signal_count=label_config.side_aware_min_validation_signal_count,
+            side_aware_min_validation_profit_factor=label_config.side_aware_min_validation_profit_factor,
+            side_aware_min_validation_total_r=label_config.side_aware_min_validation_total_r,
+            side_aware_min_validation_expectancy_r=label_config.side_aware_min_validation_expectancy_r,
+            side_aware_allow_single_direction_validation=bool(
+                label_config.side_aware_allow_single_direction_validation
+            ),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,
             approved_for_auto_activation=False,

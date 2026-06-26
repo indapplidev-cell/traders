@@ -165,6 +165,14 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "directional_side_filter_summary": None if best_result is None else self._as_dict(best_result.get("directional_side_filter_summary")),
             "directional_side_filter_profile": None if best_result is None else best_result.get("directional_side_filter_profile"),
             "allowed_signal_directions": [] if best_result is None else list(best_result.get("allowed_signal_directions") or []),
+            "validation_gate_failure_reason_counts": None if best_result is None else self._as_dict(best_result.get("validation_gate_failure_reason_counts")),
+            "side_aware_relaxed_fold_count": 0 if best_result is None else int(best_result.get("side_aware_relaxed_fold_count", 0) or 0),
+            "side_aware_validation_relaxation_enabled": False if best_result is None else bool(best_result.get("side_aware_validation_relaxation_enabled", False)),
+            "side_aware_min_validation_signal_count": None if best_result is None else best_result.get("side_aware_min_validation_signal_count"),
+            "side_aware_min_validation_profit_factor": None if best_result is None else self._float_or_none(best_result.get("side_aware_min_validation_profit_factor")),
+            "side_aware_min_validation_total_r": None if best_result is None else self._float_or_none(best_result.get("side_aware_min_validation_total_r")),
+            "side_aware_min_validation_expectancy_r": None if best_result is None else self._float_or_none(best_result.get("side_aware_min_validation_expectancy_r")),
+            "side_aware_allow_single_direction_validation": False if best_result is None else bool(best_result.get("side_aware_allow_single_direction_validation", False)),
             "direction_balance_ratio": None if best_result is None else self._float_or_none(best_result.get("direction_balance_ratio")),
             "directional_profit_skew_r": None if best_result is None else self._float_or_none(best_result.get("directional_profit_skew_r")),
             "directional_profit_skew_ratio": None if best_result is None else self._float_or_none(best_result.get("directional_profit_skew_ratio")),
@@ -562,6 +570,88 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
         }
 
+    @classmethod
+    def _directional_side_validation_gate_payload(
+        cls,
+        candidate: dict[str, Any],
+    ) -> dict[str, Any]:
+        walk_diag = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
+        recovery = cls._as_dict(walk_diag.get("directional_side_signal_recovery_diagnostics"))
+        label_config = cls._as_dict(candidate.get("label_config"))
+
+        def first_present(*values: Any) -> Any:
+            for value in values:
+                if value is not None:
+                    return value
+            return None
+
+        return {
+            "validation_gate_failure_reason_counts": cls._as_dict(
+                first_present(
+                    candidate.get("validation_gate_failure_reason_counts"),
+                    walk_diag.get("validation_gate_failure_reason_counts"),
+                    recovery.get("validation_gate_failure_reason_counts"),
+                )
+            ),
+            "side_aware_relaxed_fold_count": int(
+                first_present(
+                    candidate.get("side_aware_relaxed_fold_count"),
+                    walk_diag.get("side_aware_relaxed_fold_count"),
+                    recovery.get("side_aware_relaxed_fold_count"),
+                    0,
+                )
+                or 0
+            ),
+            "side_aware_validation_relaxation_enabled": bool(
+                first_present(
+                    candidate.get("side_aware_validation_relaxation_enabled"),
+                    walk_diag.get("side_aware_validation_relaxation_enabled"),
+                    recovery.get("side_aware_validation_relaxation_enabled"),
+                    label_config.get("side_aware_validation_relaxation_enabled"),
+                    False,
+                )
+            ),
+            "side_aware_min_validation_signal_count": first_present(
+                candidate.get("side_aware_min_validation_signal_count"),
+                walk_diag.get("side_aware_min_validation_signal_count"),
+                recovery.get("side_aware_min_validation_signal_count"),
+                label_config.get("side_aware_min_validation_signal_count"),
+            ),
+            "side_aware_min_validation_profit_factor": cls._float_or_none(
+                first_present(
+                    candidate.get("side_aware_min_validation_profit_factor"),
+                    walk_diag.get("side_aware_min_validation_profit_factor"),
+                    recovery.get("side_aware_min_validation_profit_factor"),
+                    label_config.get("side_aware_min_validation_profit_factor"),
+                )
+            ),
+            "side_aware_min_validation_total_r": cls._float_or_none(
+                first_present(
+                    candidate.get("side_aware_min_validation_total_r"),
+                    walk_diag.get("side_aware_min_validation_total_r"),
+                    recovery.get("side_aware_min_validation_total_r"),
+                    label_config.get("side_aware_min_validation_total_r"),
+                )
+            ),
+            "side_aware_min_validation_expectancy_r": cls._float_or_none(
+                first_present(
+                    candidate.get("side_aware_min_validation_expectancy_r"),
+                    walk_diag.get("side_aware_min_validation_expectancy_r"),
+                    recovery.get("side_aware_min_validation_expectancy_r"),
+                    label_config.get("side_aware_min_validation_expectancy_r"),
+                )
+            ),
+            "side_aware_allow_single_direction_validation": bool(
+                first_present(
+                    candidate.get("side_aware_allow_single_direction_validation"),
+                    walk_diag.get("side_aware_allow_single_direction_validation"),
+                    recovery.get("side_aware_allow_single_direction_validation"),
+                    label_config.get("side_aware_allow_single_direction_validation"),
+                    False,
+                )
+            ),
+        }
+
     @staticmethod
     def _candidate_status(candidate: dict[str, Any]) -> str:
         return str(candidate.get("candidate_status") or "").upper()
@@ -700,10 +790,14 @@ class MultiSymbolFeatureRegimeAnalyzer:
             payload.update(cls._directional_side_audit_payload(payload))
             payload.update(cls._walk_forward_stability_payload(payload))
             payload.update(cls._directional_side_signal_recovery_payload(payload))
+            payload.update(cls._directional_side_validation_gate_payload(payload))
             configs_ranked.append(payload)
         best_entry_path_audit = cls._entry_path_audit_payload(best_candidate)
         best_directional_side_audit = cls._directional_side_audit_payload(best_candidate)
         best_signal_recovery = cls._directional_side_signal_recovery_payload(best_candidate)
+        best_validation_gate_diagnostics = cls._directional_side_validation_gate_payload(
+            best_candidate
+        )
         return {
             "symbol": str(summary.get("symbol")),
             "experiment_id": summary.get("experiment_id"),
@@ -825,6 +919,14 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "directional_side_signal_recovery_status": best_signal_recovery.get("directional_side_signal_recovery_status"),
             "directional_side_signal_recovery_verdict": best_signal_recovery.get("directional_side_signal_recovery_verdict"),
             "primary_signal_loss_reason_counts": best_signal_recovery.get("primary_signal_loss_reason_counts"),
+            "validation_gate_failure_reason_counts": best_validation_gate_diagnostics.get("validation_gate_failure_reason_counts"),
+            "side_aware_relaxed_fold_count": best_validation_gate_diagnostics.get("side_aware_relaxed_fold_count"),
+            "side_aware_validation_relaxation_enabled": best_validation_gate_diagnostics.get("side_aware_validation_relaxation_enabled"),
+            "side_aware_min_validation_signal_count": best_validation_gate_diagnostics.get("side_aware_min_validation_signal_count"),
+            "side_aware_min_validation_profit_factor": best_validation_gate_diagnostics.get("side_aware_min_validation_profit_factor"),
+            "side_aware_min_validation_total_r": best_validation_gate_diagnostics.get("side_aware_min_validation_total_r"),
+            "side_aware_min_validation_expectancy_r": best_validation_gate_diagnostics.get("side_aware_min_validation_expectancy_r"),
+            "side_aware_allow_single_direction_validation": best_validation_gate_diagnostics.get("side_aware_allow_single_direction_validation"),
             "side_filter_removed_all_fold_count": best_signal_recovery.get("side_filter_removed_all_fold_count"),
             "raw_signal_available_but_filtered_out_count": best_signal_recovery.get("raw_signal_available_but_filtered_out_count"),
             "threshold_too_strict_fold_count": best_signal_recovery.get("threshold_too_strict_fold_count"),
@@ -1290,6 +1392,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._directional_side_audit_payload(payload))
                 payload.update(cls._walk_forward_stability_payload(payload))
                 payload.update(cls._directional_side_signal_recovery_payload(payload))
+                payload.update(cls._directional_side_validation_gate_payload(payload))
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)

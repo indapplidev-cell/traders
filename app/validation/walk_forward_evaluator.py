@@ -50,6 +50,12 @@ class WalkForwardEvaluator:
         exit_neutral_abs_r: float | None = None,
         directional_side_filter_profile: str | None = None,
         allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
+        side_aware_validation_relaxation_enabled: bool = False,
+        side_aware_min_validation_signal_count: int | None = None,
+        side_aware_min_validation_profit_factor: float | None = None,
+        side_aware_min_validation_total_r: float | None = None,
+        side_aware_min_validation_expectancy_r: float | None = None,
+        side_aware_allow_single_direction_validation: bool = False,
     ) -> dict[str, Any]:
         plan = self._walk_forward_splitter.build_plan(dataset_rows, config)
         fold_reports: list[dict[str, Any]] = []
@@ -71,7 +77,17 @@ class WalkForwardEvaluator:
                 directional_side_filter_profile=directional_side_filter_profile,
                 allowed_signal_directions=allowed_signal_directions,
             )
-            selected_gate_payload = self._gate_selector.select(validation_profit["gate_results"])
+            selected_gate_payload = self._gate_selector.select(
+                validation_profit["gate_results"],
+                directional_side_filter_profile=directional_side_filter_profile,
+                allowed_signal_directions=allowed_signal_directions,
+                side_aware_validation_relaxation_enabled=side_aware_validation_relaxation_enabled,
+                side_aware_min_validation_signal_count=side_aware_min_validation_signal_count,
+                side_aware_min_validation_profit_factor=side_aware_min_validation_profit_factor,
+                side_aware_min_validation_total_r=side_aware_min_validation_total_r,
+                side_aware_min_validation_expectancy_r=side_aware_min_validation_expectancy_r,
+                side_aware_allow_single_direction_validation=side_aware_allow_single_direction_validation,
+            )
             selected_gate = selected_gate_payload["selected_gate"]
 
             test_result = None
@@ -105,6 +121,7 @@ class WalkForwardEvaluator:
                     "selected_gate": selected_gate,
                     "gate_reject_reason": selected_gate_payload["reject_reason"],
                     "validation_gate_results": validation_profit["gate_results"],
+                    "validation_gate_selection_diagnostics": selected_gate_payload.get("diagnostics", {}),
                     "test_result": test_result["summary"] if test_result is not None else None,
                     "direction_bias": bias_report,
                     "_test_outcomes": test_result["outcomes"] if test_result is not None else [],
@@ -122,6 +139,12 @@ class WalkForwardEvaluator:
             "exit_neutral_abs_r": exit_neutral_abs_r,
             "directional_side_filter_profile": directional_side_filter_profile,
             "allowed_signal_directions": list(allowed_signal_directions or []),
+            "side_aware_validation_relaxation_enabled": side_aware_validation_relaxation_enabled,
+            "side_aware_min_validation_signal_count": side_aware_min_validation_signal_count,
+            "side_aware_min_validation_profit_factor": side_aware_min_validation_profit_factor,
+            "side_aware_min_validation_total_r": side_aware_min_validation_total_r,
+            "side_aware_min_validation_expectancy_r": side_aware_min_validation_expectancy_r,
+            "side_aware_allow_single_direction_validation": side_aware_allow_single_direction_validation,
             "folds": public_folds,
             "summary": summary,
         }
@@ -158,6 +181,10 @@ class WalkForwardEvaluator:
         global_win_count = 0
         global_resolved_signal_count = 0
         global_net_values: list[float] = []
+        validation_gate_failure_reason_counts: dict[str, int] = {}
+        validation_gate_passed_probe_count = 0
+        validation_gate_probe_count = 0
+        side_aware_relaxed_fold_count = 0
         for fold in folds_with_gate:
             gate_type = fold["selected_gate"]["gate_type"]
             stable_gate_types[gate_type] = stable_gate_types.get(gate_type, 0) + 1
@@ -179,6 +206,16 @@ class WalkForwardEvaluator:
                     float(fold["direction_bias"].get("predicted_down_ratio", 0.0)),
                     float(fold["direction_bias"].get("predicted_flat_ratio", 0.0)),
                 )
+        for fold in folds:
+            diagnostics = fold.get("validation_gate_selection_diagnostics") or {}
+            if diagnostics.get("side_aware_validation_relaxation_enabled"):
+                side_aware_relaxed_fold_count += 1
+            validation_gate_probe_count += int(diagnostics.get("gate_probe_count", 0) or 0)
+            validation_gate_passed_probe_count += int(diagnostics.get("passed_gate_count", 0) or 0)
+            for reason, count in dict(diagnostics.get("failure_reason_counts") or {}).items():
+                validation_gate_failure_reason_counts[str(reason)] = (
+                    validation_gate_failure_reason_counts.get(str(reason), 0) + int(count or 0)
+                )
         total_test_signal_count = sum(int(row.get("signal_count", 0)) for row in test_results)
         total_test_r = sum(float(row.get("total_r", 0.0)) for row in test_results)
         global_profit_factor = None
@@ -192,6 +229,10 @@ class WalkForwardEvaluator:
         return {
             "fold_count": len(folds),
             "folds_with_selected_gate": len(folds_with_gate),
+            "validation_gate_probe_count": validation_gate_probe_count,
+            "validation_gate_passed_probe_count": validation_gate_passed_probe_count,
+            "validation_gate_failure_reason_counts": validation_gate_failure_reason_counts,
+            "side_aware_relaxed_fold_count": side_aware_relaxed_fold_count,
             "folds_profitable_on_test": len(profitable_folds),
             "total_test_signal_count": total_test_signal_count,
             "total_test_r": total_test_r,

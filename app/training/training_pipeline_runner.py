@@ -124,6 +124,12 @@ class TrainingPipelineConfig:
     exit_neutral_abs_r: float | None = None
     directional_side_filter_profile: str | None = None
     allowed_signal_directions: tuple[str, ...] | None = None
+    side_aware_validation_relaxation_enabled: bool = False
+    side_aware_min_validation_signal_count: int | None = None
+    side_aware_min_validation_profit_factor: float | None = None
+    side_aware_min_validation_total_r: float | None = None
+    side_aware_min_validation_expectancy_r: float | None = None
+    side_aware_allow_single_direction_validation: bool = False
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1153,6 +1159,12 @@ class LongHistoryTrainingPipelineRunner:
                         "exit_neutral_abs_r": config.exit_neutral_abs_r,
                         "directional_side_filter_profile": config.directional_side_filter_profile,
                         "allowed_signal_directions": list(config.allowed_signal_directions or []),
+                        "side_aware_validation_relaxation_enabled": config.side_aware_validation_relaxation_enabled,
+                        "side_aware_min_validation_signal_count": config.side_aware_min_validation_signal_count,
+                        "side_aware_min_validation_profit_factor": config.side_aware_min_validation_profit_factor,
+                        "side_aware_min_validation_total_r": config.side_aware_min_validation_total_r,
+                        "side_aware_min_validation_expectancy_r": config.side_aware_min_validation_expectancy_r,
+                        "side_aware_allow_single_direction_validation": config.side_aware_allow_single_direction_validation,
                         "config_id": label_version,
                         "training_objective": config.training_objective,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1220,6 +1232,12 @@ class LongHistoryTrainingPipelineRunner:
                 "exit_neutral_abs_r": config.exit_neutral_abs_r,
                 "directional_side_filter_profile": config.directional_side_filter_profile,
                 "allowed_signal_directions": list(config.allowed_signal_directions or []),
+                "side_aware_validation_relaxation_enabled": config.side_aware_validation_relaxation_enabled,
+                "side_aware_min_validation_signal_count": config.side_aware_min_validation_signal_count,
+                "side_aware_min_validation_profit_factor": config.side_aware_min_validation_profit_factor,
+                "side_aware_min_validation_total_r": config.side_aware_min_validation_total_r,
+                "side_aware_min_validation_expectancy_r": config.side_aware_min_validation_expectancy_r,
+                "side_aware_allow_single_direction_validation": config.side_aware_allow_single_direction_validation,
                 "config_id": label_version,
                 "training_objective": config.training_objective,
                 "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1676,6 +1694,12 @@ class LongHistoryTrainingPipelineRunner:
                 exit_neutral_abs_r=config.exit_neutral_abs_r,
                 directional_side_filter_profile=config.directional_side_filter_profile,
                 allowed_signal_directions=config.allowed_signal_directions,
+                side_aware_validation_relaxation_enabled=config.side_aware_validation_relaxation_enabled,
+                side_aware_min_validation_signal_count=config.side_aware_min_validation_signal_count,
+                side_aware_min_validation_profit_factor=config.side_aware_min_validation_profit_factor,
+                side_aware_min_validation_total_r=config.side_aware_min_validation_total_r,
+                side_aware_min_validation_expectancy_r=config.side_aware_min_validation_expectancy_r,
+                side_aware_allow_single_direction_validation=config.side_aware_allow_single_direction_validation,
             )
         )
         payload = dict(result)

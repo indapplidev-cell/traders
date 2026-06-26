@@ -140,6 +140,12 @@ class FeatureRegimeCandidateResult:
     directional_side_filter_summary: dict[str, Any] = field(default_factory=dict)
     directional_side_filter_profile: str | None = None
     allowed_signal_directions: tuple[str, ...] = ()
+    side_aware_validation_relaxation_enabled: bool = False
+    side_aware_min_validation_signal_count: int | None = None
+    side_aware_min_validation_profit_factor: float | None = None
+    side_aware_min_validation_total_r: float | None = None
+    side_aware_min_validation_expectancy_r: float | None = None
+    side_aware_allow_single_direction_validation: bool = False
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -290,6 +296,12 @@ class FeatureRegimeCandidateResult:
             "directional_side_filter_summary": dict(self.directional_side_filter_summary),
             "directional_side_filter_profile": self.directional_side_filter_profile,
             "allowed_signal_directions": list(self.allowed_signal_directions),
+            "side_aware_validation_relaxation_enabled": self.side_aware_validation_relaxation_enabled,
+            "side_aware_min_validation_signal_count": self.side_aware_min_validation_signal_count,
+            "side_aware_min_validation_profit_factor": self.side_aware_min_validation_profit_factor,
+            "side_aware_min_validation_total_r": self.side_aware_min_validation_total_r,
+            "side_aware_min_validation_expectancy_r": self.side_aware_min_validation_expectancy_r,
+            "side_aware_allow_single_direction_validation": self.side_aware_allow_single_direction_validation,
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -2005,6 +2017,32 @@ class FeatureRegimeExperimentRunner:
                 ),
                 allowed_signal_directions=tuple(
                     getattr(item, "allowed_signal_directions", ()) or ()
+                ),
+                side_aware_validation_relaxation_enabled=bool(
+                    getattr(item, "side_aware_validation_relaxation_enabled", False)
+                ),
+                side_aware_min_validation_signal_count=getattr(
+                    item,
+                    "side_aware_min_validation_signal_count",
+                    None,
+                ),
+                side_aware_min_validation_profit_factor=getattr(
+                    item,
+                    "side_aware_min_validation_profit_factor",
+                    None,
+                ),
+                side_aware_min_validation_total_r=getattr(
+                    item,
+                    "side_aware_min_validation_total_r",
+                    None,
+                ),
+                side_aware_min_validation_expectancy_r=getattr(
+                    item,
+                    "side_aware_min_validation_expectancy_r",
+                    None,
+                ),
+                side_aware_allow_single_direction_validation=bool(
+                    getattr(item, "side_aware_allow_single_direction_validation", False)
                 ),
                 opportunity_probability_threshold=getattr(item, "opportunity_probability_threshold", None),
                 setup_quality_min_threshold=getattr(item, "setup_quality_min_threshold", None),
