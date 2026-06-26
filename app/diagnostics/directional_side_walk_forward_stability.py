@@ -9,7 +9,7 @@ from app.diagnostics.directional_side_ablation_comparator import (
 
 class DirectionalSideWalkForwardStabilityAnalyzer:
     diagnostic_name = "directional_side_walk_forward_stability"
-    diagnostic_version = "ml38.10.22"
+    diagnostic_version = "ml38.10.23"
     SIDE_PROFILES = DirectionalSideAblationComparator.SIDE_PROFILES
 
     def analyze(self, candidates: list[dict[str, Any]]) -> dict[str, Any]:
@@ -80,6 +80,13 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
             ):
                 warnings.append("test_window_profitable_but_walk_forward_unstable")
                 recommendations.append("do_not_promote_profitable_test_window_without_fold_signal_stability")
+        if best_research:
+            recovery_status = str(best_research.get("directional_side_signal_recovery_status") or "")
+            recovery_verdict = str(best_research.get("directional_side_signal_recovery_verdict") or "")
+            if recovery_status in {"SIDE_FILTER_REMOVED_SIGNAL_EVIDENCE", "THRESHOLD_TOO_STRICT_EVIDENCE"}:
+                warnings.append("best_research_side_profile_has_signal_recovery_problem")
+            if recovery_verdict in {"CHECK_SIDE_FILTER_STRICTNESS", "CHECK_GATE_THRESHOLDS"}:
+                recommendations.append("inspect_directional_side_signal_recovery_diagnostics_before_new_grid")
         if (
             short_only
             and self._float_or_none(short_only.get("profit_total_r")) is not None
@@ -118,6 +125,12 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
         wf_diag = self._as_dict(candidate.get("walk_forward_profit_diagnostics"))
         wf_signal_summary = self._as_dict(wf_diag.get("fold_signal_summary"))
         wf_profit_summary = self._as_dict(wf_diag.get("fold_profit_summary"))
+        signal_recovery = self._as_dict(
+            wf_diag.get("directional_side_signal_recovery_diagnostics")
+        )
+        signal_loss_reason_counts = self._as_dict(
+            signal_recovery.get("primary_signal_loss_reason_counts")
+        )
         fold_snapshots = self._as_list(wf_diag.get("fold_snapshots"))
         fold_count = self._int_or_zero(
             self._first_present(
@@ -181,6 +194,29 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
             "profitable_fold_count": profitable_fold_count,
             "profitable_fold_rate": profitable_fold_rate,
             "fold_snapshots": fold_snapshots,
+            "directional_side_signal_recovery_diagnostics": signal_recovery,
+            "directional_side_signal_recovery_status": signal_recovery.get("diagnostic_status"),
+            "directional_side_signal_recovery_verdict": signal_recovery.get("verdict"),
+            "primary_signal_loss_reason_counts": signal_loss_reason_counts,
+            "side_filter_removed_all_fold_count": self._int_or_zero(
+                signal_recovery.get("side_filter_removed_all_fold_count")
+            ),
+            "raw_signal_available_but_filtered_out_count": self._int_or_zero(
+                signal_recovery.get("raw_signal_available_but_filtered_out_count")
+            ),
+            "threshold_too_strict_fold_count": self._int_or_zero(
+                signal_recovery.get("threshold_too_strict_fold_count")
+            ),
+            "signal_recovery_total_original_signal_count": self._int_or_zero(
+                signal_recovery.get("total_original_signal_count")
+            ),
+            "signal_recovery_total_filtered_signal_count": self._int_or_zero(
+                signal_recovery.get("total_filtered_signal_count")
+            ),
+            "signal_recovery_total_removed_signal_count": self._int_or_zero(
+                signal_recovery.get("total_removed_signal_count")
+            ),
+            "signal_recovery_fold_rows": self._as_list(signal_recovery.get("fold_rows")),
             "walk_forward_stability_status": wf_diag.get("walk_forward_stability_status")
             or verdict_payload["status"],
             "walk_forward_stability_verdict": wf_diag.get("walk_forward_stability_verdict")

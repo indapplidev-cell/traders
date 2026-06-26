@@ -9,7 +9,7 @@ def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
     assert wrapper.debug_config_ids == run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
     assert "lv22_h08_tts_thr065_sqmask060_epq070_sp045" in wrapper.debug_config_ids
-    assert wrapper.start_date == "2026-05-01"
+    assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
     assert wrapper._expected_candidate_count() == 16
 
@@ -17,7 +17,7 @@ def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -
 
     start_date_index = command.index("--start-date") + 1
     end_date_index = command.index("--end-date") + 1
-    assert command[start_date_index] == "2026-05-01"
+    assert command[start_date_index] == "2026-04-01"
     assert command[end_date_index] == "2026-06-15"
     assert "--skip-candle-load" in command
     assert "--base-label-config-id" in command
@@ -71,6 +71,6 @@ def test_fast_debug_final_result_marks_builder_date_range_expected() -> None:
     assert result["fast_debug"] is True
     assert result["full_quality_run"] is False
     assert result["quality_decision_allowed"] is False
-    assert result["debug_start_date"] == "2026-05-01"
+    assert result["debug_start_date"] == "2026-04-01"
     assert result["debug_end_date"] == "2026-06-15"
     assert result["debug_date_range_expected_to_limit_builders"] is True

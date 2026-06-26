@@ -113,6 +113,9 @@ class MultiSymbolFeatureRegimeReporter:
             "directional_side_walk_forward_stability": payload.get(
                 "directional_side_walk_forward_stability"
             ),
+            "directional_side_signal_recovery_summary": payload.get(
+                "directional_side_signal_recovery_summary"
+            ),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -415,4 +418,29 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not self._as_list(stability.get("comparison_board")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        recovery_summary = self._as_dict(payload.get("directional_side_signal_recovery_summary"))
+        lines.extend(
+            [
+                "",
+                "## Directional side signal recovery",
+                "",
+                f"- status_counts: `{recovery_summary.get('status_counts')}`",
+                f"- verdict_counts: `{recovery_summary.get('verdict_counts')}`",
+                "",
+                "| Symbol | Config | Side recovery status | Side recovery verdict | Primary signal loss reason counts |",
+                "| --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in self._as_list(payload.get("configs_ranked"))[:10]:
+            lines.append(
+                "| `{symbol}` | `{config}` | `{status}` | `{verdict}` | `{reasons}` |".format(
+                    symbol=row.get("symbol"),
+                    config=row.get("config_id"),
+                    status=row.get("directional_side_signal_recovery_status"),
+                    verdict=row.get("directional_side_signal_recovery_verdict"),
+                    reasons=row.get("primary_signal_loss_reason_counts"),
+                )
+            )
+        if not self._as_list(payload.get("configs_ranked")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)

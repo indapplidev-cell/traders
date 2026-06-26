@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.diagnostics.directional_side_signal_recovery_diagnostics import (
+    DirectionalSideSignalRecoveryDiagnostics,
+)
+
 
 class WalkForwardProfitDiagnostics:
     DIAGNOSTIC_NAME = "walk_forward_profit_diagnostics"
-    DIAGNOSTIC_VERSION = "ml38.10.22"
+    DIAGNOSTIC_VERSION = "ml38.10.23"
 
     def analyze(
         self,
@@ -109,6 +113,12 @@ class WalkForwardProfitDiagnostics:
         walk_forward_exit_root_cause_summary = self._summarize_walk_forward_exit_audits(
             folds=folds
         )
+        directional_side_signal_recovery_diagnostics = (
+            DirectionalSideSignalRecoveryDiagnostics().analyze(
+                walk_forward_summary=walk_forward_summary,
+                side_profile=walk_forward_summary.get("directional_side_filter_profile"),
+            )
+        )
         recommendations = self._recommendations(
             walk_forward_profit_factor=self._safe_float(walk_summary.get("global_profit_factor")),
             walk_forward_total_r=self._safe_float(walk_summary.get("global_total_r")),
@@ -154,6 +164,13 @@ class WalkForwardProfitDiagnostics:
             "profit_aware_threshold_used": profit_aware_diagnostics.get("profit_aware_threshold_used"),
             "profit_exit_root_cause_audit": profit_aware_diagnostics.get("profit_exit_root_cause_audit"),
             "walk_forward_profit_exit_root_cause_summary": walk_forward_exit_root_cause_summary,
+            "directional_side_signal_recovery_diagnostics": directional_side_signal_recovery_diagnostics,
+            "directional_side_signal_recovery_status": directional_side_signal_recovery_diagnostics.get("diagnostic_status"),
+            "directional_side_signal_recovery_verdict": directional_side_signal_recovery_diagnostics.get("verdict"),
+            "primary_signal_loss_reason_counts": directional_side_signal_recovery_diagnostics.get("primary_signal_loss_reason_counts"),
+            "side_filter_removed_all_fold_count": directional_side_signal_recovery_diagnostics.get("side_filter_removed_all_fold_count"),
+            "raw_signal_available_but_filtered_out_count": directional_side_signal_recovery_diagnostics.get("raw_signal_available_but_filtered_out_count"),
+            "threshold_too_strict_fold_count": directional_side_signal_recovery_diagnostics.get("threshold_too_strict_fold_count"),
             "recommendations": recommendations,
         }
 
@@ -319,6 +336,7 @@ class WalkForwardProfitDiagnostics:
             return None
         test_result = self._normalize_mapping(fold.get("test_result"))
         selected_gate = self._normalize_mapping(fold.get("selected_gate"))
+        side_summary = self._normalize_mapping(test_result.get("directional_side_filter_summary"))
         return {
             "fold_index": fold.get("fold_index"),
             "train_start": fold.get("train_start"),
@@ -329,6 +347,14 @@ class WalkForwardProfitDiagnostics:
             "test_end": fold.get("test_end"),
             "gate_type": selected_gate.get("gate_type"),
             "threshold": self._safe_float(selected_gate.get("threshold")),
+            "gate_reject_reason": fold.get("gate_reject_reason"),
+            "directional_side_filter_profile": test_result.get("directional_side_filter_profile") or side_summary.get("profile"),
+            "allowed_signal_directions": list(side_summary.get("allowed_signal_directions") or []),
+            "original_signal_count_before_side_filter": int(side_summary.get("original_signal_count", test_result.get("signal_count", 0)) or 0),
+            "filtered_signal_count_after_side_filter": int(side_summary.get("filtered_signal_count", test_result.get("signal_count", 0)) or 0),
+            "removed_signal_count_by_side_filter": int(side_summary.get("removed_signal_count", 0) or 0),
+            "removed_long_count_by_side_filter": int(side_summary.get("removed_long_count", 0) or 0),
+            "removed_short_count_by_side_filter": int(side_summary.get("removed_short_count", 0) or 0),
             "signal_count": int(test_result.get("signal_count", 0) or 0),
             "resolved_signal_count": int(test_result.get("resolved_signal_count", 0) or 0),
             "profit_factor": self._safe_float(test_result.get("profit_factor")),

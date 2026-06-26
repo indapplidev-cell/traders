@@ -196,7 +196,7 @@ FAST_DEBUG_CONFIGS = (
     "lv19_h08_tts_thr065_sqmask060",
 )
 FAST_DEBUG_SYMBOLS = ("BTCUSDT", "SOLUSDT")
-FAST_DEBUG_START_DATE = "2026-05-01"
+FAST_DEBUG_START_DATE = "2026-04-01"
 FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 
 # Intermediate quality: one symbol, short period, Prompt 4-6 smoke shortlist.

@@ -142,6 +142,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 directional_side_candidate_payloads
             )
         )
+        directional_side_signal_recovery_summary = self._directional_side_signal_recovery_summary(
+            directional_side_candidate_payloads
+        )
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -178,6 +181,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "symbol_results": symbol_results,
             "directional_side_ablation_comparator": directional_side_ablation_comparator,
             "directional_side_walk_forward_stability": directional_side_walk_forward_stability,
+            "directional_side_signal_recovery_summary": directional_side_signal_recovery_summary,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -527,6 +531,37 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
         }
 
+    @classmethod
+    def _directional_side_signal_recovery_payload(cls, candidate: dict[str, Any]) -> dict[str, Any]:
+        walk_diag = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
+        recovery = cls._as_dict(walk_diag.get("directional_side_signal_recovery_diagnostics"))
+        return {
+            "directional_side_signal_recovery_diagnostics": recovery,
+            "directional_side_signal_recovery_status": recovery.get("diagnostic_status"),
+            "directional_side_signal_recovery_verdict": recovery.get("verdict"),
+            "primary_signal_loss_reason_counts": cls._as_dict(
+                recovery.get("primary_signal_loss_reason_counts")
+            ),
+            "side_filter_removed_all_fold_count": int(
+                recovery.get("side_filter_removed_all_fold_count", 0) or 0
+            ),
+            "raw_signal_available_but_filtered_out_count": int(
+                recovery.get("raw_signal_available_but_filtered_out_count", 0) or 0
+            ),
+            "threshold_too_strict_fold_count": int(
+                recovery.get("threshold_too_strict_fold_count", 0) or 0
+            ),
+            "signal_recovery_total_original_signal_count": int(
+                recovery.get("total_original_signal_count", 0) or 0
+            ),
+            "signal_recovery_total_filtered_signal_count": int(
+                recovery.get("total_filtered_signal_count", 0) or 0
+            ),
+            "signal_recovery_total_removed_signal_count": int(
+                recovery.get("total_removed_signal_count", 0) or 0
+            ),
+        }
+
     @staticmethod
     def _candidate_status(candidate: dict[str, Any]) -> str:
         return str(candidate.get("candidate_status") or "").upper()
@@ -664,9 +699,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
             payload.update(cls._entry_path_audit_payload(payload))
             payload.update(cls._directional_side_audit_payload(payload))
             payload.update(cls._walk_forward_stability_payload(payload))
+            payload.update(cls._directional_side_signal_recovery_payload(payload))
             configs_ranked.append(payload)
         best_entry_path_audit = cls._entry_path_audit_payload(best_candidate)
         best_directional_side_audit = cls._directional_side_audit_payload(best_candidate)
+        best_signal_recovery = cls._directional_side_signal_recovery_payload(best_candidate)
         return {
             "symbol": str(summary.get("symbol")),
             "experiment_id": summary.get("experiment_id"),
@@ -784,6 +821,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     "walk_forward_profit_exit_root_cause_summary"
                 )
             ),
+            "directional_side_signal_recovery_diagnostics": best_signal_recovery.get("directional_side_signal_recovery_diagnostics"),
+            "directional_side_signal_recovery_status": best_signal_recovery.get("directional_side_signal_recovery_status"),
+            "directional_side_signal_recovery_verdict": best_signal_recovery.get("directional_side_signal_recovery_verdict"),
+            "primary_signal_loss_reason_counts": best_signal_recovery.get("primary_signal_loss_reason_counts"),
+            "side_filter_removed_all_fold_count": best_signal_recovery.get("side_filter_removed_all_fold_count"),
+            "raw_signal_available_but_filtered_out_count": best_signal_recovery.get("raw_signal_available_but_filtered_out_count"),
+            "threshold_too_strict_fold_count": best_signal_recovery.get("threshold_too_strict_fold_count"),
             "entry_path_quality_filter_enabled": bool(
                 best_entry_path_audit.get("entry_path_quality_filter_enabled", False)
             ),
@@ -1245,6 +1289,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._entry_path_audit_payload(payload))
                 payload.update(cls._directional_side_audit_payload(payload))
                 payload.update(cls._walk_forward_stability_payload(payload))
+                payload.update(cls._directional_side_signal_recovery_payload(payload))
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)
@@ -1267,6 +1312,28 @@ class MultiSymbolFeatureRegimeAnalyzer:
             for gate_name in symbol_result["failed_gates"]:
                 counts[gate_name] = counts.get(gate_name, 0) + 1
         return counts
+
+    @classmethod
+    def _directional_side_signal_recovery_summary(cls, candidates: list[dict[str, Any]]) -> dict[str, Any]:
+        counts: dict[str, int] = {}
+        verdict_counts: dict[str, int] = {}
+        side_profiles: dict[str, int] = {}
+        for candidate in candidates:
+            payload = cls._directional_side_signal_recovery_payload(candidate)
+            status = str(payload.get("directional_side_signal_recovery_status") or "UNKNOWN")
+            verdict = str(payload.get("directional_side_signal_recovery_verdict") or "UNKNOWN")
+            profile = str(candidate.get("directional_side_filter_profile") or "both_directions")
+            counts[status] = counts.get(status, 0) + 1
+            verdict_counts[verdict] = verdict_counts.get(verdict, 0) + 1
+            side_profiles[profile] = side_profiles.get(profile, 0) + 1
+        return {
+            "diagnostic_name": "directional_side_signal_recovery_summary",
+            "diagnostic_version": "ml38.10.23",
+            "candidate_count": len(candidates),
+            "status_counts": counts,
+            "verdict_counts": verdict_counts,
+            "side_profile_counts": side_profiles,
+        }
 
     @staticmethod
     def _top_failed_gate(gate_failure_counts: dict[str, int]) -> str | None:
