@@ -142,6 +142,7 @@ from app.reporting.compact_report import (
     build_archive_manifest,
     build_compact_summary,
     copy_report_file,
+    prune_and_compact_report_tree,
     should_include_report_file,
 )
 
@@ -154,6 +155,9 @@ DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_INTERVAL = "15m"
 DEFAULT_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
+COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB = 350.0
+COMPACT_TOTAL_STAGE_MAX_SIZE_MB = 900.0
+COMPACT_RUNTIME_ARCHIVE_SIZE_GUARD_STAGE = "ml38.10.26.2"
 
 
 def _infer_default_full_grid_config_count() -> int:
@@ -387,6 +391,7 @@ class Fv3CachedTuningWrapper:
         self.run_results: list[SymbolRunResult] = []
         self.failed_symbols: list[str] = []
         self.multi_symbol_result: dict[str, Any] | None = None
+        self.compact_prune_summaries: list[dict[str, Any]] = []
 
     def run(self) -> dict[str, Any]:
         self._print_banner()
@@ -1291,6 +1296,130 @@ class Fv3CachedTuningWrapper:
                 f"Warning: no candidate result JSON files for {run.symbol}: {candidate_results_dir}",
             )
 
+    def _compact_prune_staged_symbol_output(
+        self,
+        run: SymbolRunResult,
+        directory: Path,
+    ) -> dict[str, Any]:
+        """Apply compact pruning to a staged per-symbol experiment directory.
+
+        Normal copy staging uses copy_report_file(), but ML38.10.26.1 introduced
+        a self-copy path where source == destination. That path must preserve the
+        summary, but it still must prune and compact files in place.
+        """
+
+        if self.report_profile != COMPACT_REPORT_PROFILE:
+            summary = {
+                "symbol": run.symbol,
+                "experiment_id": run.experiment_id,
+                "directory": str(directory),
+                "report_profile": self.report_profile,
+                "skipped": True,
+                "reason": "non_compact_report_profile",
+            }
+            self.compact_prune_summaries.append(summary)
+            return summary
+
+        before_summary_json = directory / "feature_regime_experiment_summary.json"
+        if not before_summary_json.exists():
+            raise WrapperError(
+                f"Cannot compact-prune staged output without summary JSON for {run.symbol}: {before_summary_json}"
+            )
+
+        summary = prune_and_compact_report_tree(
+            directory,
+            archive_root=self.archive_stage_dir,
+            report_profile=self.report_profile,
+        )
+        summary.update(
+            {
+                "symbol": run.symbol,
+                "experiment_id": run.experiment_id,
+                "stage": COMPACT_RUNTIME_ARCHIVE_SIZE_GUARD_STAGE,
+            }
+        )
+        self.compact_prune_summaries.append(summary)
+
+        if summary.get("errors"):
+            raise WrapperError(
+                f"Compact prune failed for {run.symbol}: {summary.get('errors')[:5]}"
+            )
+
+        self._validate_staged_symbol_output(run, directory)
+
+        after_mb = float(summary.get("after_size_mb") or 0.0)
+        if after_mb > COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB:
+            largest = summary.get("largest_files", [])[:10]
+            raise WrapperError(
+                "COMPACT_PER_SYMBOL_STAGE_SIZE_CAP_EXCEEDED: "
+                f"symbol={run.symbol} experiment_id={run.experiment_id} "
+                f"after_size_mb={after_mb:.2f} cap_mb={COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB:.2f}. "
+                f"largest_files={largest}"
+            )
+
+        self._status(
+            "ARCHIVE",
+            f"{run.symbol}: compact-pruned {directory.name} "
+            f"before={float(summary.get('before_size_mb') or 0.0):.2f}MB "
+            f"after={after_mb:.2f}MB "
+            f"pruned_files={summary.get('pruned_files')} "
+            f"compacted_json_files={summary.get('compacted_json_files')}",
+        )
+        return summary
+
+    def _validate_compact_stage_size_cap(self) -> dict[str, Any]:
+        if self.report_profile != COMPACT_REPORT_PROFILE:
+            return {
+                "skipped": True,
+                "reason": "non_compact_report_profile",
+                "report_profile": self.report_profile,
+            }
+
+        total_size = 0
+        file_count = 0
+        largest: list[dict[str, Any]] = []
+        for path in self.archive_stage_dir.rglob("*"):
+            if not path.is_file():
+                continue
+            if not should_include_report_file(
+                path,
+                archive_root=self.archive_stage_dir,
+                report_profile=self.report_profile,
+            ):
+                continue
+            try:
+                size = path.stat().st_size
+            except OSError:
+                size = 0
+            total_size += size
+            file_count += 1
+            largest.append(
+                {
+                    "path": path.relative_to(self.archive_stage_dir).as_posix(),
+                    "size_bytes": int(size),
+                    "size_mb": round(size / (1024.0 * 1024.0), 6),
+                }
+            )
+
+        total_mb = total_size / (1024.0 * 1024.0)
+        largest = sorted(largest, key=lambda item: int(item["size_bytes"]), reverse=True)[:20]
+        summary = {
+            "stage": COMPACT_RUNTIME_ARCHIVE_SIZE_GUARD_STAGE,
+            "report_profile": self.report_profile,
+            "included_file_count": int(file_count),
+            "included_total_size_bytes": int(total_size),
+            "included_total_size_mb": round(total_mb, 6),
+            "cap_mb": COMPACT_TOTAL_STAGE_MAX_SIZE_MB,
+            "largest_files": largest,
+        }
+        if total_mb > COMPACT_TOTAL_STAGE_MAX_SIZE_MB:
+            raise WrapperError(
+                "COMPACT_TOTAL_STAGE_SIZE_CAP_EXCEEDED: "
+                f"included_total_size_mb={total_mb:.2f} cap_mb={COMPACT_TOTAL_STAGE_MAX_SIZE_MB:.2f}. "
+                f"largest_files={largest[:10]}"
+            )
+        return summary
+
     def _stage_selected_runs(self) -> None:
         self._status("ARCHIVE", "Staging per-symbol experiment outputs...")
 
@@ -1318,8 +1447,10 @@ class Fv3CachedTuningWrapper:
                 self._status(
                     "ARCHIVE",
                     f"{run.symbol}: output already staged {source.name} "
-                    f"existing_files={existing_file_count} copied=0 skipped=0 profile={self.report_profile}",
+                    f"existing_files={existing_file_count} copied=0 skipped=0 profile={self.report_profile}; "
+                    "running in-place compact prune",
                 )
+                self._compact_prune_staged_symbol_output(run, source)
                 continue
 
             try:
@@ -1362,6 +1493,7 @@ class Fv3CachedTuningWrapper:
                     skipped_count += 1
 
             self._validate_staged_symbol_output(run, destination)
+            self._compact_prune_staged_symbol_output(run, destination)
 
             self._status(
                 "ARCHIVE",
@@ -1439,6 +1571,7 @@ class Fv3CachedTuningWrapper:
         )
         strict_pruned_count = int(size_manifest.get("strict_compact_pruned_file_count") or 0)
         strict_pruned_mb = float(size_manifest.get("strict_compact_pruned_size_mb") or 0.0)
+        compact_stage_size_guard = self._validate_compact_stage_size_cap()
         if strict_pruned_count:
             self._status(
                 "ARCHIVE",
@@ -1448,6 +1581,8 @@ class Fv3CachedTuningWrapper:
         manifest["included_files"] = included_files
         manifest["report_profile"] = self.report_profile
         manifest["archive_size_manifest"] = size_manifest
+        manifest["compact_prune_summaries"] = list(self.compact_prune_summaries)
+        manifest["compact_stage_size_guard"] = compact_stage_size_guard
         manifest["model_artifacts_included"] = bool(size_manifest.get("model_artifacts_included", False))
         manifest["heavy_payloads_included"] = bool(size_manifest.get("heavy_payloads_included", False))
         self._write_json(self.manifest_path, manifest)

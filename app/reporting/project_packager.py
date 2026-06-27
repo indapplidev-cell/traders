@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import zipfile
 from datetime import datetime, timezone
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -34,9 +35,28 @@ DEFAULT_EXCLUDED_FILENAMES = (
     ".coverage",
 )
 
+DEFAULT_EXCLUDED_REPORT_FILE_PATTERNS = (
+    "reports/baseline_*.json",
+    "reports/calibration_eval_*.json",
+    "reports/dataset_summary_*.json",
+    "reports/model_comparison_*.json",
+    "reports/model_diagnostics_*.json",
+    "reports/probability_diagnostics_*.json",
+    "reports/profit_eval_v2_*.json",
+    "reports/walk_forward_eval_*.json",
+    "reports/multi_symbol_feature_regime_analysis.json",
+    "reports/multi_symbol_feature_regime_analysis.md",
+    "reports/candle_cache_summary.json",
+)
+
 
 def normalize_zip_path(path: str) -> str:
     return path.replace("\\", "/").lstrip("./")
+
+
+def _matches_excluded_report_file_pattern(relative_path: str) -> bool:
+    normalized = normalize_zip_path(relative_path).lower()
+    return any(fnmatch(normalized, pattern.lower()) for pattern in DEFAULT_EXCLUDED_REPORT_FILE_PATTERNS)
 
 
 def should_include_project_file(path: Path, *, project_root: Path) -> bool:
@@ -51,6 +71,9 @@ def should_include_project_file(path: Path, *, project_root: Path) -> bool:
         return False
 
     if path.name in DEFAULT_EXCLUDED_FILENAMES:
+        return False
+
+    if _matches_excluded_report_file_pattern(relative_path):
         return False
 
     if path.suffix.lower() in DEFAULT_EXCLUDED_SUFFIXES:
@@ -97,11 +120,16 @@ def build_project_manifest(project_root: Path, files: list[Path]) -> dict[str, A
         "largest_files": largest_files,
         "excluded_dir_parts": list(DEFAULT_EXCLUDED_DIR_PARTS),
         "excluded_suffixes": list(DEFAULT_EXCLUDED_SUFFIXES),
+        "excluded_report_file_patterns": list(DEFAULT_EXCLUDED_REPORT_FILE_PATTERNS),
         "artifacts_included": any(item["path"].startswith("artifacts/") for item in entries),
         "runtime_reports_included": any(
             item["path"].startswith("reports/feature_regime_experiments/")
             or item["path"].startswith("reports/label_grid_experiments/")
+            or _matches_excluded_report_file_pattern(item["path"])
             for item in entries
+        ),
+        "generated_root_reports_included": any(
+            _matches_excluded_report_file_pattern(item["path"]) for item in entries
         ),
     }
 

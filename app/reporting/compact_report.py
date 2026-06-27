@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import os
+import shutil
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timezone
 from fnmatch import fnmatch
@@ -32,6 +35,21 @@ HEAVY_KEY_PATTERNS = (
     "per_row",
     "per_candle",
     "debug_rows",
+    "candidate_board_rows",
+    "best_failed_total_r_by_fold",
+    "best_failed_gate_candidates",
+    "gate_probes",
+    "passed_gates",
+    "fold_snapshots",
+    "low_signal_folds",
+    "directional_side_recovery_rows",
+    "validation_candidate_rows",
+    "validation_gate_candidates",
+    "full_candidate_payload",
+    "full_payload",
+    "runtime_payload",
+    "raw_stdout",
+    "raw_stderr",
 )
 
 ALWAYS_KEEP_KEYS = (
@@ -99,6 +117,11 @@ HEAVY_FILE_PATTERNS = (
     "per_row",
     "per_candle",
     "tensors",
+    "full_payload",
+    "full_candidate_payload",
+    "runtime_payload",
+    "raw_stdout",
+    "raw_stderr",
 )
 
 # ML38.10.13.2: strict compact pruning.
@@ -108,12 +131,26 @@ STRICT_COMPACT_ARCHIVE_PATTERNS = (
     "raw_outputs/*.stdout.json",
     "raw_outputs/*-run.stdout.json",
     "raw_outputs/*-analysis.stdout.json",
+    "raw_outputs/*.stderr.log",
+    "raw_outputs/*-run.stderr.log",
+    "raw_outputs/*-analysis.stderr.log",
+    "*/raw_outputs/*.stdout.json",
+    "*/raw_outputs/*-run.stdout.json",
+    "*/raw_outputs/*-analysis.stdout.json",
+    "*/raw_outputs/*.stderr.log",
+    "*/raw_outputs/*-run.stderr.log",
+    "*/raw_outputs/*-analysis.stderr.log",
     "*/training_pipeline.log",
     "*/training_pipeline_events.jsonl",
     "*/label_grid_experiment.log",
     "*/label_grid_experiment_events.jsonl",
     "*/feature_regime_experiment.log",
     "*/feature_regime_experiment_events.jsonl",
+    "*.full.json",
+    "*full_payload*.json",
+    "*runtime_payload*.json",
+    "*prediction_rows*.json",
+    "*raw_predictions*.json",
 )
 
 STRICT_COMPACT_EXCLUSION_REASON = "strict_compact_runtime_stream"
@@ -121,6 +158,12 @@ STRICT_COMPACT_EXCLUSION_REASON = "strict_compact_runtime_stream"
 EXCLUDED_ARCHIVE_PATH_PARTS = (
     "artifacts/models/",
     "/artifacts/models/",
+    "artifacts/",
+    "/artifacts/",
+    "models/",
+    "/models/",
+    "model_artifacts/",
+    "/model_artifacts/",
     "__pycache__/",
     "/__pycache__/",
     ".pytest_cache/",
@@ -132,6 +175,16 @@ EXCLUDED_ARCHIVE_SUFFIXES = (
     ".pth",
     ".onnx",
     ".ckpt",
+    ".pkl",
+    ".pickle",
+    ".joblib",
+    ".npy",
+    ".npz",
+    ".parquet",
+    ".feather",
+    ".sqlite",
+    ".sqlite3",
+    ".db",
     ".pyc",
     ".pyo",
 )
@@ -632,9 +685,8 @@ def compact_json_file(
 ) -> bool:
     """Copy JSON as compact JSON when possible.
 
-    If JSON parsing fails, return False so caller can decide whether to copy the
-    original file. This is intentional: markdown/log files should not go through
-    this function.
+    Safe for source != destination and also safe for in-place compaction when
+    caller passes a temp destination and replaces the original after success.
     """
 
     source = Path(source)
@@ -643,7 +695,7 @@ def compact_json_file(
         return False
 
     try:
-        payload = __import__("json").loads(source.read_text(encoding="utf-8", errors="replace"))
+        payload = json.loads(source.read_text(encoding="utf-8", errors="replace"))
     except Exception:
         return False
 
@@ -667,10 +719,13 @@ def compact_json_file(
     if isinstance(compact_payload, dict):
         compact_payload.setdefault("report_profile", normalized_profile)
         compact_payload.setdefault("compact_report_created_at_utc", _utc_now_iso())
+        if normalized_profile == COMPACT_REPORT_PROFILE:
+            compact_payload.setdefault("summary_payload_mode", "compact_capped_runtime_archive_ml38_10_26_2")
+            compact_payload.setdefault("summary_payload_compacted", True)
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(
-        __import__("json").dumps(compact_payload, ensure_ascii=False, indent=2, sort_keys=True),
+        json.dumps(compact_payload, ensure_ascii=False, indent=2, sort_keys=True),
         encoding="utf-8",
     )
     return True
@@ -706,5 +761,166 @@ def copy_report_file(
             return True
 
     destination.parent.mkdir(parents=True, exist_ok=True)
-    __import__("shutil").copy2(source, destination)
+    shutil.copy2(source, destination)
     return True
+
+
+def prune_and_compact_report_tree(
+    directory: Path,
+    *,
+    archive_root: Path,
+    report_profile: str = COMPACT_REPORT_PROFILE,
+) -> dict[str, Any]:
+    """Prune and compact a report tree in place.
+
+    Used by wrapper when per-symbol output is already written inside the final
+    archive stage directory. In that self-copy case we must not delete the whole
+    directory, but we still must apply the same compact archive rules that the
+    normal copy path applies.
+    """
+
+    root = Path(directory)
+    archive_root = Path(archive_root)
+
+    before_files = 0
+    before_size = 0
+    after_files = 0
+    after_size = 0
+    pruned_files = 0
+    pruned_size = 0
+    compacted_json_files = 0
+    compacted_json_before_size = 0
+    compacted_json_after_size = 0
+    kept_files = 0
+    errors: list[dict[str, Any]] = []
+    pruned_reason_counts: dict[str, int] = {}
+
+    if not root.exists():
+        return {
+            "directory": str(root),
+            "exists": False,
+            "before_files": 0,
+            "before_size_bytes": 0,
+            "after_files": 0,
+            "after_size_bytes": 0,
+            "pruned_files": 0,
+            "pruned_size_bytes": 0,
+            "compacted_json_files": 0,
+            "errors": [],
+        }
+
+    files = [path for path in root.rglob("*") if path.is_file()]
+    before_files = len(files)
+    for path in files:
+        try:
+            before_size += path.stat().st_size
+        except OSError:
+            pass
+
+    for path in files:
+        try:
+            file_size = path.stat().st_size
+        except OSError:
+            file_size = 0
+
+        reason = report_file_exclusion_reason(
+            path,
+            archive_root=archive_root,
+            report_profile=report_profile,
+        )
+        if reason is not None:
+            try:
+                path.unlink(missing_ok=True)
+                pruned_files += 1
+                pruned_size += file_size
+                pruned_reason_counts[reason] = pruned_reason_counts.get(reason, 0) + 1
+            except Exception as exc:
+                errors.append(
+                    {
+                        "path": _safe_relative_path(path, archive_root),
+                        "operation": "unlink",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+            continue
+
+        if path.suffix.lower() == ".json" and report_profile != DEBUG_REPORT_PROFILE:
+            tmp_path = path.with_name(f"{path.name}.compact_tmp")
+            try:
+                original_size = file_size
+                if compact_json_file(path, tmp_path, report_profile=report_profile):
+                    os.replace(tmp_path, path)
+                    new_size = path.stat().st_size
+                    compacted_json_files += 1
+                    compacted_json_before_size += original_size
+                    compacted_json_after_size += new_size
+                else:
+                    tmp_path.unlink(missing_ok=True)
+                    kept_files += 1
+            except Exception as exc:
+                tmp_path.unlink(missing_ok=True)
+                errors.append(
+                    {
+                        "path": _safe_relative_path(path, archive_root),
+                        "operation": "compact_json",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+                kept_files += 1
+        else:
+            kept_files += 1
+
+    for subdir in sorted(
+        [item for item in root.rglob("*") if item.is_dir()],
+        key=lambda item: len(item.parts),
+        reverse=True,
+    ):
+        try:
+            if not any(subdir.iterdir()):
+                subdir.rmdir()
+        except OSError:
+            pass
+
+    after_entries: list[dict[str, Any]] = []
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            size = path.stat().st_size
+        except OSError:
+            size = 0
+        after_files += 1
+        after_size += size
+        after_entries.append(
+            {
+                "path": _safe_relative_path(path, archive_root),
+                "size_bytes": int(size),
+                "size_mb": _bytes_to_mb(size),
+            }
+        )
+
+    largest_files = sorted(after_entries, key=lambda item: int(item["size_bytes"]), reverse=True)[:20]
+
+    return {
+        "directory": str(root),
+        "exists": True,
+        "report_profile": report_profile,
+        "before_files": int(before_files),
+        "before_size_bytes": int(before_size),
+        "before_size_mb": _bytes_to_mb(before_size),
+        "after_files": int(after_files),
+        "after_size_bytes": int(after_size),
+        "after_size_mb": _bytes_to_mb(after_size),
+        "pruned_files": int(pruned_files),
+        "pruned_size_bytes": int(pruned_size),
+        "pruned_size_mb": _bytes_to_mb(pruned_size),
+        "pruned_reason_counts": pruned_reason_counts,
+        "compacted_json_files": int(compacted_json_files),
+        "compacted_json_before_size_bytes": int(compacted_json_before_size),
+        "compacted_json_after_size_bytes": int(compacted_json_after_size),
+        "compacted_json_saved_size_bytes": int(max(0, compacted_json_before_size - compacted_json_after_size)),
+        "compacted_json_saved_size_mb": _bytes_to_mb(max(0, compacted_json_before_size - compacted_json_after_size)),
+        "kept_files": int(kept_files),
+        "largest_files": largest_files,
+        "errors": errors,
+    }
