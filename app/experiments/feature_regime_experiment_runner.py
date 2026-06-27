@@ -1249,6 +1249,14 @@ class FeatureRegimeExperimentRunner:
         self._reporter.write_summary_json(result, logger.paths.summary_json_path)
         self._reporter.write_summary_markdown(result, logger.paths.summary_markdown_path)
         logger.event(
+            event="summary_payload_compacted",
+            status="COMPLETED",
+            data={
+                "summary_json_path": str(logger.paths.summary_json_path),
+                "summary_payload_mode": FeatureRegimeExperimentReporter.SUMMARY_PAYLOAD_MODE,
+            },
+        )
+        logger.event(
             event="experiment_completed",
             status="COMPLETED",
             data={

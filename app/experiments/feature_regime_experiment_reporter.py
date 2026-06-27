@@ -15,6 +15,16 @@ from app.diagnostics.directional_side_walk_forward_stability import (
 class FeatureRegimeExperimentReporter:
     """Serialize and export feature/regime experiment results."""
 
+    SUMMARY_PAYLOAD_MODE = "compact_capped_ml38_10_25_1"
+    SUMMARY_CANDIDATE_RESULT_LIMIT = 128
+    SUMMARY_CONFIGS_RANKED_LIMIT = 128
+    SUMMARY_VALIDATION_BOARD_ROW_LIMIT = 6
+    SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT = 6
+    SUMMARY_FAILED_GATE_CANDIDATE_LIMIT = 3
+    SUMMARY_GATE_PROBE_LIMIT = 6
+    SUMMARY_PASSED_GATE_LIMIT = 6
+    SUMMARY_JSON_SOFT_MAX_BYTES = 15 * 1024 * 1024
+
     @staticmethod
     def _as_list(value: Any) -> list[Any]:
         if value is None:
@@ -29,6 +39,28 @@ class FeatureRegimeExperimentReporter:
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
 
+    @staticmethod
+    def _result_value(result: object, key: str, default: Any = None) -> Any:
+        if isinstance(result, dict):
+            return result.get(key, default)
+        return getattr(result, key, default)
+
+    @staticmethod
+    def _object_to_dict_shallow(value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return dict(value)
+        to_dict = getattr(value, "to_dict", None)
+        if callable(to_dict):
+            return dict(to_dict())
+        if value is None:
+            return {}
+        return {
+            name: getattr(value, name)
+            for name in dir(value)
+            if not name.startswith("_")
+            and not callable(getattr(value, name, None))
+        }
+
     def result_to_dict(self, result: object) -> dict[str, Any]:
         if isinstance(result, dict):
             return dict(result)
@@ -36,6 +68,490 @@ class FeatureRegimeExperimentReporter:
         if callable(to_dict):
             return dict(to_dict())
         raise TypeError("result must be a dict or provide to_dict()")
+
+    def _compact_gate_probe(self, value: Any) -> dict[str, Any]:
+        gate = self._as_dict(value)
+        if not gate:
+            return {}
+        return {
+            "gate_type": gate.get("gate_type"),
+            "threshold": gate.get("threshold"),
+            "signal_count": gate.get("signal_count"),
+            "resolved_signal_count": gate.get("resolved_signal_count"),
+            "long_count": gate.get("long_count"),
+            "short_count": gate.get("short_count"),
+            "profit_factor": gate.get("profit_factor"),
+            "total_r": gate.get("total_r"),
+            "expectancy_r": gate.get("expectancy_r"),
+            "max_drawdown_r": gate.get("max_drawdown_r"),
+            "passed": gate.get("passed"),
+            "fail_reasons": self._as_list(gate.get("fail_reasons")),
+            "warnings": self._as_list(gate.get("warnings")),
+            "primary_blocker": gate.get("primary_blocker"),
+            "repair_hint": gate.get("repair_hint"),
+            "distance_to_pass_score": gate.get("distance_to_pass_score"),
+            "threshold_deficits": self._as_dict(gate.get("threshold_deficits")),
+            "effective_min_signal_count": gate.get("effective_min_signal_count"),
+            "effective_min_profit_factor": gate.get("effective_min_profit_factor"),
+            "effective_min_total_r": gate.get("effective_min_total_r"),
+            "effective_min_expectancy_r": gate.get("effective_min_expectancy_r"),
+            "directional_side_filter_profile": gate.get("directional_side_filter_profile"),
+            "allowed_signal_directions": self._as_list(gate.get("allowed_signal_directions")),
+        }
+
+    def _compact_validation_candidate_board(self, value: Any) -> dict[str, Any]:
+        board = self._as_dict(value)
+        if not board:
+            return {}
+
+        rows = self._as_list(board.get("candidate_board_rows"))
+        best_failed = self._as_list(board.get("best_failed_total_r_by_fold"))
+        compact_rows: list[dict[str, Any]] = []
+        for row in rows[: self.SUMMARY_VALIDATION_BOARD_ROW_LIMIT]:
+            row = self._as_dict(row)
+            compact_rows.append(
+                {
+                    "fold_index": row.get("fold_index"),
+                    "train_start": row.get("train_start"),
+                    "train_end": row.get("train_end"),
+                    "validation_start": row.get("validation_start"),
+                    "validation_end": row.get("validation_end"),
+                    "test_start": row.get("test_start"),
+                    "test_end": row.get("test_end"),
+                    "selected_gate_present": row.get("selected_gate_present"),
+                    "gate_reject_reason": row.get("gate_reject_reason"),
+                    "selection_mode": row.get("selection_mode"),
+                    "directional_side_filter_profile": row.get("directional_side_filter_profile"),
+                    "allowed_signal_directions": self._as_list(row.get("allowed_signal_directions")),
+                    "side_aware_validation_relaxation_enabled": row.get(
+                        "side_aware_validation_relaxation_enabled"
+                    ),
+                    "effective_min_signal_count": row.get("effective_min_signal_count"),
+                    "effective_min_profit_factor": row.get("effective_min_profit_factor"),
+                    "effective_min_total_r": row.get("effective_min_total_r"),
+                    "effective_min_expectancy_r": row.get("effective_min_expectancy_r"),
+                    "primary_failure_reason": row.get("primary_failure_reason"),
+                    "has_total_r_below_min_blocker": row.get("has_total_r_below_min_blocker"),
+                    "recommended_validation_repair_profile": row.get(
+                        "recommended_validation_repair_profile"
+                    ),
+                    "total_r_repair_verdict": row.get("total_r_repair_verdict"),
+                    "total_r_repair_candidate_count": row.get("total_r_repair_candidate_count"),
+                    "min_total_r_deficit": row.get("min_total_r_deficit"),
+                    "median_total_r_deficit": row.get("median_total_r_deficit"),
+                    "max_total_r_deficit": row.get("max_total_r_deficit"),
+                    "best_failed_gate_by_distance_to_pass": self._compact_gate_probe(
+                        row.get("best_failed_gate_by_distance_to_pass")
+                    ),
+                    "best_failed_gate_candidate_count": len(
+                        self._as_list(row.get("best_failed_gate_candidates"))
+                    ),
+                    "best_failed_gate_candidates": [
+                        self._compact_gate_probe(item)
+                        for item in self._as_list(row.get("best_failed_gate_candidates"))[
+                            : self.SUMMARY_FAILED_GATE_CANDIDATE_LIMIT
+                        ]
+                    ],
+                }
+            )
+
+        return {
+            "diagnostic_name": board.get("diagnostic_name"),
+            "diagnostic_version": board.get("diagnostic_version"),
+            "diagnostic_status": board.get("diagnostic_status"),
+            "fold_count": board.get("fold_count"),
+            "folds_with_selected_gate": board.get("folds_with_selected_gate"),
+            "no_gate_fold_count": board.get("no_gate_fold_count"),
+            "candidate_board_rows_total_count": len(rows),
+            "candidate_board_rows_truncated": len(rows) > len(compact_rows),
+            "candidate_board_rows": compact_rows,
+            "total_r_below_min_fold_count": board.get("total_r_below_min_fold_count"),
+            "total_r_repair_candidate_fold_count": board.get(
+                "total_r_repair_candidate_fold_count"
+            ),
+            "best_failed_total_r_by_fold_total_count": len(best_failed),
+            "best_failed_total_r_by_fold_truncated": len(best_failed)
+            > self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT,
+            "best_failed_total_r_by_fold": [
+                self._as_dict(item)
+                for item in best_failed[: self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT]
+            ],
+            "median_best_total_r_deficit": board.get("median_best_total_r_deficit"),
+            "max_best_total_r_deficit": board.get("max_best_total_r_deficit"),
+            "recommended_validation_repair_profile": board.get(
+                "recommended_validation_repair_profile"
+            ),
+            "repair_profile_counts": self._as_dict(board.get("repair_profile_counts")),
+            "verdict": board.get("verdict"),
+            "warnings": self._as_list(board.get("warnings")),
+            "recommendations": self._as_list(board.get("recommendations")),
+        }
+
+    def _compact_directional_side_signal_recovery(self, value: Any) -> dict[str, Any]:
+        payload = self._as_dict(value)
+        if not payload:
+            return {}
+        fold_rows = self._as_list(payload.get("fold_signal_recovery_rows"))
+        preview = [self._as_dict(item) for item in fold_rows[:3]]
+        return {
+            "diagnostic_name": payload.get("diagnostic_name"),
+            "diagnostic_version": payload.get("diagnostic_version"),
+            "diagnostic_status": payload.get("diagnostic_status"),
+            "verdict": payload.get("verdict"),
+            "fold_count": payload.get("fold_count"),
+            "side_profile": payload.get("side_profile"),
+            "zero_signal_fold_count": payload.get("zero_signal_fold_count"),
+            "low_signal_fold_count": payload.get("low_signal_fold_count"),
+            "side_filter_removed_all_fold_count": payload.get("side_filter_removed_all_fold_count"),
+            "raw_signal_available_but_filtered_out_count": payload.get(
+                "raw_signal_available_but_filtered_out_count"
+            ),
+            "threshold_too_strict_fold_count": payload.get("threshold_too_strict_fold_count"),
+            "side_aware_relaxed_fold_count": payload.get("side_aware_relaxed_fold_count"),
+            "total_original_signal_count": payload.get("total_original_signal_count"),
+            "total_filtered_signal_count": payload.get("total_filtered_signal_count"),
+            "total_removed_signal_count": payload.get("total_removed_signal_count"),
+            "primary_signal_loss_reason_counts": self._as_dict(
+                payload.get("primary_signal_loss_reason_counts")
+            ),
+            "validation_gate_failure_reason_counts": self._as_dict(
+                payload.get("validation_gate_failure_reason_counts")
+            ),
+            "fold_signal_recovery_row_count": len(fold_rows),
+            "fold_signal_recovery_rows_truncated": len(fold_rows) > len(preview),
+            "fold_signal_recovery_rows": preview,
+            "warnings": self._as_list(payload.get("warnings")),
+            "recommendations": self._as_list(payload.get("recommendations")),
+        }
+
+    def _compact_walk_forward_profit_diagnostics(self, value: Any) -> dict[str, Any]:
+        payload = self._as_dict(value)
+        if not payload:
+            return {}
+
+        fold_snapshots_source = self._as_list(payload.get("fold_snapshots"))
+        low_signal_folds_source = self._as_list(payload.get("low_signal_folds"))
+        gate_probes_source = self._as_list(payload.get("gate_probes"))
+        passed_gates_source = self._as_list(payload.get("passed_gates"))
+
+        return {
+            "diagnostic_name": payload.get("diagnostic_name"),
+            "diagnostic_version": payload.get("diagnostic_version"),
+            "symbol": payload.get("symbol"),
+            "feature_version": payload.get("feature_version"),
+            "model_version": payload.get("model_version"),
+            "walk_forward_profit_factor": payload.get("walk_forward_profit_factor"),
+            "walk_forward_total_r": payload.get("walk_forward_total_r"),
+            "fold_count": payload.get("fold_count"),
+            "profitable_fold_count": payload.get("profitable_fold_count"),
+            "unprofitable_fold_count": payload.get("unprofitable_fold_count"),
+            "worst_fold": self._as_dict(payload.get("worst_fold")),
+            "best_fold": self._as_dict(payload.get("best_fold")),
+            "fold_snapshots": [
+                self._as_dict(item) for item in fold_snapshots_source[:6]
+            ],
+            "fold_snapshots_total_count": len(fold_snapshots_source),
+            "fold_snapshots_truncated": len(fold_snapshots_source) > 6,
+            "low_signal_folds": [
+                self._as_dict(item) for item in low_signal_folds_source[:6]
+            ],
+            "low_signal_folds_total_count": len(low_signal_folds_source),
+            "low_signal_folds_truncated": len(low_signal_folds_source) > 6,
+            "fold_signal_summary": self._as_dict(payload.get("fold_signal_summary")),
+            "fold_profit_summary": self._as_dict(payload.get("fold_profit_summary")),
+            "zero_signal_fold_count": payload.get("zero_signal_fold_count"),
+            "low_signal_fold_count": payload.get("low_signal_fold_count"),
+            "min_resolved_signal_count": payload.get("min_resolved_signal_count"),
+            "median_resolved_signal_count": payload.get("median_resolved_signal_count"),
+            "max_resolved_signal_count": payload.get("max_resolved_signal_count"),
+            "total_resolved_signal_count": payload.get("total_resolved_signal_count"),
+            "walk_forward_stability_status": payload.get("walk_forward_stability_status"),
+            "walk_forward_stability_verdict": payload.get("walk_forward_stability_verdict"),
+            "walk_forward_stability_warnings": self._as_list(
+                payload.get("walk_forward_stability_warnings")
+            ),
+            "walk_forward_stability_recommendations": self._as_list(
+                payload.get("walk_forward_stability_recommendations")
+            ),
+            "validation_gate_failure_reason_counts": self._as_dict(
+                payload.get("validation_gate_failure_reason_counts")
+            ),
+            "side_aware_relaxed_fold_count": payload.get("side_aware_relaxed_fold_count"),
+            "walk_forward_validation_candidate_board_status": payload.get(
+                "walk_forward_validation_candidate_board_status"
+            ),
+            "walk_forward_validation_candidate_board_verdict": payload.get(
+                "walk_forward_validation_candidate_board_verdict"
+            ),
+            "recommended_validation_repair_profile": payload.get(
+                "recommended_validation_repair_profile"
+            ),
+            "total_r_below_min_fold_count": payload.get("total_r_below_min_fold_count"),
+            "total_r_repair_candidate_fold_count": payload.get(
+                "total_r_repair_candidate_fold_count"
+            ),
+            "median_best_total_r_deficit": payload.get("median_best_total_r_deficit"),
+            "max_best_total_r_deficit": payload.get("max_best_total_r_deficit"),
+            "best_failed_total_r_by_fold": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("best_failed_total_r_by_fold"))[
+                    : self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT
+                ]
+            ],
+            "gate_probes_total_count": len(gate_probes_source),
+            "gate_probes_truncated": len(gate_probes_source) > self.SUMMARY_GATE_PROBE_LIMIT,
+            "gate_probes": [
+                self._compact_gate_probe(item)
+                for item in gate_probes_source[: self.SUMMARY_GATE_PROBE_LIMIT]
+            ],
+            "passed_gates_total_count": len(passed_gates_source),
+            "passed_gates_truncated": len(passed_gates_source) > self.SUMMARY_PASSED_GATE_LIMIT,
+            "passed_gates": [
+                self._compact_gate_probe(item)
+                for item in passed_gates_source[: self.SUMMARY_PASSED_GATE_LIMIT]
+            ],
+            "walk_forward_validation_candidate_board": self._compact_validation_candidate_board(
+                payload.get("walk_forward_validation_candidate_board")
+            ),
+            "directional_side_signal_recovery_diagnostics": (
+                self._compact_directional_side_signal_recovery(
+                    payload.get("directional_side_signal_recovery_diagnostics")
+                )
+            ),
+        }
+
+    def _compact_candidate_result(self, value: Any) -> dict[str, Any]:
+        candidate = self._object_to_dict_shallow(value)
+        if not candidate:
+            return {}
+
+        candidate["label_config"] = self._as_dict(candidate.get("label_config"))
+        candidate["failed_gates"] = self._as_list(candidate.get("failed_gates"))
+        candidate["passed_gates"] = self._as_list(candidate.get("passed_gates"))
+        candidate["warnings"] = self._as_list(candidate.get("warnings"))
+        candidate["recommendations"] = self._as_list(candidate.get("recommendations"))
+        candidate["prediction_root_cause_audit"] = self._as_dict(
+            candidate.get("prediction_root_cause_audit")
+        )
+        candidate["book_driven_forensic_audit"] = self._as_dict(
+            candidate.get("book_driven_forensic_audit")
+        )
+        candidate["label_mode_comparison_audit"] = self._as_dict(
+            candidate.get("label_mode_comparison_audit")
+        )
+        candidate["flat_subtype_audit"] = self._as_dict(candidate.get("flat_subtype_audit"))
+        candidate["setup_aware_label_diagnostics"] = self._as_dict(
+            candidate.get("setup_aware_label_diagnostics")
+        )
+        candidate["schwager_slice_robustness"] = self._as_dict(
+            candidate.get("schwager_slice_robustness")
+        )
+        candidate["schwager_robustness_decision_board"] = self._as_dict(
+            candidate.get("schwager_robustness_decision_board")
+        )
+        candidate["class_margin_objective_decision"] = self._as_dict(
+            candidate.get("class_margin_objective_decision")
+        )
+        candidate["directional_edge_bias_audit"] = self._as_dict(
+            candidate.get("directional_edge_bias_audit")
+        )
+        candidate["directional_side_filter_summary"] = self._as_dict(
+            candidate.get("directional_side_filter_summary")
+        )
+        candidate["profit_aware_diagnostics"] = self._as_dict(candidate.get("profit_aware_diagnostics"))
+        candidate["collapse_diagnostics_v2"] = self._as_dict(candidate.get("collapse_diagnostics_v2"))
+        candidate["real_feature_diagnostics"] = self._as_dict(candidate.get("real_feature_diagnostics"))
+        candidate["regime_label_builder_status"] = self._as_dict(
+            candidate.get("regime_label_builder_status")
+        )
+        candidate["two_stage_trade_diagnostics"] = self._as_dict(
+            candidate.get("two_stage_trade_diagnostics")
+        )
+
+        walk_forward = self._compact_walk_forward_profit_diagnostics(
+            candidate.get("walk_forward_profit_diagnostics")
+        )
+        candidate["walk_forward_profit_diagnostics"] = walk_forward
+        candidate["directional_side_signal_recovery_diagnostics"] = self._as_dict(
+            walk_forward.get("directional_side_signal_recovery_diagnostics")
+        )
+        candidate["directional_side_signal_recovery_status"] = walk_forward.get(
+            "directional_side_signal_recovery_diagnostics",
+            {},
+        ).get("diagnostic_status") or candidate.get("directional_side_signal_recovery_status")
+        candidate["directional_side_signal_recovery_verdict"] = walk_forward.get(
+            "directional_side_signal_recovery_diagnostics",
+            {},
+        ).get("verdict") or candidate.get("directional_side_signal_recovery_verdict")
+        candidate["primary_signal_loss_reason_counts"] = self._as_dict(
+            walk_forward.get("directional_side_signal_recovery_diagnostics", {}).get(
+                "primary_signal_loss_reason_counts"
+            )
+            or candidate.get("primary_signal_loss_reason_counts")
+        )
+        candidate["validation_gate_failure_reason_counts"] = self._as_dict(
+            walk_forward.get("validation_gate_failure_reason_counts")
+            or candidate.get("validation_gate_failure_reason_counts")
+        )
+        candidate["walk_forward_validation_candidate_board_status"] = (
+            walk_forward.get("walk_forward_validation_candidate_board_status")
+            or candidate.get("walk_forward_validation_candidate_board_status")
+        )
+        candidate["walk_forward_validation_candidate_board_verdict"] = (
+            walk_forward.get("walk_forward_validation_candidate_board_verdict")
+            or candidate.get("walk_forward_validation_candidate_board_verdict")
+        )
+        candidate["recommended_validation_repair_profile"] = (
+            walk_forward.get("recommended_validation_repair_profile")
+            or candidate.get("recommended_validation_repair_profile")
+        )
+        candidate["total_r_below_min_fold_count"] = (
+            walk_forward.get("total_r_below_min_fold_count")
+            if walk_forward.get("total_r_below_min_fold_count") is not None
+            else candidate.get("total_r_below_min_fold_count")
+        )
+        candidate["total_r_repair_candidate_fold_count"] = (
+            walk_forward.get("total_r_repair_candidate_fold_count")
+            if walk_forward.get("total_r_repair_candidate_fold_count") is not None
+            else candidate.get("total_r_repair_candidate_fold_count")
+        )
+        candidate["median_best_total_r_deficit"] = (
+            walk_forward.get("median_best_total_r_deficit")
+            if walk_forward.get("median_best_total_r_deficit") is not None
+            else candidate.get("median_best_total_r_deficit")
+        )
+        candidate["max_best_total_r_deficit"] = (
+            walk_forward.get("max_best_total_r_deficit")
+            if walk_forward.get("max_best_total_r_deficit") is not None
+            else candidate.get("max_best_total_r_deficit")
+        )
+        candidate["best_failed_total_r_by_fold"] = self._as_list(
+            walk_forward.get("best_failed_total_r_by_fold")
+            or candidate.get("best_failed_total_r_by_fold")
+        )[: self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT]
+        return candidate
+
+    def _compact_ranked_result(self, value: Any) -> dict[str, Any]:
+        row = self._object_to_dict_shallow(value)
+        if not row:
+            return {}
+
+        walk_forward = self._compact_walk_forward_profit_diagnostics(
+            row.get("walk_forward_profit_diagnostics")
+        )
+        payload = {
+            "rank": row.get("rank"),
+            "candidate_id": row.get("candidate_id"),
+            "config_id": row.get("config_id"),
+            "score": row.get("score"),
+            "status": row.get("status"),
+            "quality_status": row.get("quality_status"),
+            "candidate_status": row.get("candidate_status"),
+            "failed_gates": self._as_list(row.get("failed_gates")),
+            "passed_gates": self._as_list(row.get("passed_gates")),
+            "warnings": self._as_list(row.get("warnings")),
+            "recommendations": self._as_list(row.get("recommendations")),
+            "label_config": self._as_dict(row.get("label_config")),
+            "directional_side_filter_profile": row.get("directional_side_filter_profile"),
+            "allowed_signal_directions": self._as_list(row.get("allowed_signal_directions")),
+            "profit_factor": row.get("profit_factor"),
+            "profit_total_r": row.get("profit_total_r"),
+            "walk_forward_profit_factor": row.get("walk_forward_profit_factor"),
+            "walk_forward_total_r": row.get("walk_forward_total_r"),
+            "walk_forward_global_total_r": row.get("walk_forward_global_total_r"),
+            "walk_forward_profit_diagnostics": walk_forward,
+            "walk_forward_validation_candidate_board_status": (
+                walk_forward.get("walk_forward_validation_candidate_board_status")
+                or row.get("walk_forward_validation_candidate_board_status")
+            ),
+            "walk_forward_validation_candidate_board_verdict": (
+                walk_forward.get("walk_forward_validation_candidate_board_verdict")
+                or row.get("walk_forward_validation_candidate_board_verdict")
+            ),
+            "recommended_validation_repair_profile": (
+                walk_forward.get("recommended_validation_repair_profile")
+                or row.get("recommended_validation_repair_profile")
+            ),
+            "total_r_below_min_fold_count": (
+                walk_forward.get("total_r_below_min_fold_count")
+                if walk_forward.get("total_r_below_min_fold_count") is not None
+                else row.get("total_r_below_min_fold_count")
+            ),
+            "total_r_repair_candidate_fold_count": (
+                walk_forward.get("total_r_repair_candidate_fold_count")
+                if walk_forward.get("total_r_repair_candidate_fold_count") is not None
+                else row.get("total_r_repair_candidate_fold_count")
+            ),
+            "median_best_total_r_deficit": (
+                walk_forward.get("median_best_total_r_deficit")
+                if walk_forward.get("median_best_total_r_deficit") is not None
+                else row.get("median_best_total_r_deficit")
+            ),
+            "max_best_total_r_deficit": (
+                walk_forward.get("max_best_total_r_deficit")
+                if walk_forward.get("max_best_total_r_deficit") is not None
+                else row.get("max_best_total_r_deficit")
+            ),
+            "research_only_total_r_repair_enabled": row.get(
+                "research_only_total_r_repair_enabled"
+            ),
+            "validation_total_r_repair_profile": row.get(
+                "validation_total_r_repair_profile"
+            ),
+            "prediction_root_cause_audit": self._as_dict(
+                row.get("prediction_root_cause_audit")
+            ),
+            "book_driven_forensic_audit": self._as_dict(
+                row.get("book_driven_forensic_audit")
+            ),
+            "label_mode_comparison_audit": self._as_dict(
+                row.get("label_mode_comparison_audit")
+            ),
+            "flat_subtype_audit": self._as_dict(row.get("flat_subtype_audit")),
+            "setup_aware_label_diagnostics": self._as_dict(
+                row.get("setup_aware_label_diagnostics")
+            ),
+            "schwager_slice_robustness": self._as_dict(
+                row.get("schwager_slice_robustness")
+            ),
+            "schwager_robustness_decision_board": self._as_dict(
+                row.get("schwager_robustness_decision_board")
+            ),
+            "decision_policy_grid_diagnostics": self._as_dict(
+                row.get("decision_policy_grid_diagnostics")
+            ),
+            "decision_policy_selected_policy_id": row.get(
+                "decision_policy_selected_policy_id"
+            ),
+            "entry_path_quality_filter_enabled": row.get(
+                "entry_path_quality_filter_enabled"
+            ),
+            "entry_path_quality_min_threshold": row.get(
+                "entry_path_quality_min_threshold"
+            ),
+            "stop_pressure_max_risk_score": row.get("stop_pressure_max_risk_score"),
+            "mae_pressure_max_risk_score": row.get("mae_pressure_max_risk_score"),
+        }
+        return payload
+
+    def _best_candidate_payload(
+        self,
+        candidates: list[dict[str, Any]],
+        *,
+        best_candidate_config_id: Any,
+    ) -> dict[str, Any]:
+        best_config_id = None if best_candidate_config_id is None else str(best_candidate_config_id)
+        if best_config_id:
+            for candidate in candidates:
+                if str(candidate.get("config_id")) == best_config_id:
+                    return candidate
+        return candidates[0] if candidates else {}
+
+    def _summary_json_text(self, payload: dict[str, Any]) -> str:
+        text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+        if len(text.encode("utf-8")) <= self.SUMMARY_JSON_SOFT_MAX_BYTES:
+            return text
+        return json.dumps(payload, ensure_ascii=False, indent=None, sort_keys=True)
 
     def result_to_json(self, result: object, *, indent: int | None = 2) -> str:
         return json.dumps(
@@ -46,172 +562,354 @@ class FeatureRegimeExperimentReporter:
         )
 
     def compact_summary_to_dict(self, result: object) -> dict[str, Any]:
-        payload = self.result_to_dict(result)
-        walk_forward_diag = self._as_dict(payload.get("walk_forward_profit_diagnostics"))
-        return {
-            "status": payload.get("status"),
-            "experiment_id": payload.get("experiment_id"),
-            "experiment_status": payload.get("experiment_status"),
-            "config_count": payload.get("config_count"),
-            "candidate_count": payload.get("candidate_count"),
-            "evaluated_candidate_count": payload.get("evaluated_candidate_count"),
-            "failed_candidate_count": payload.get("failed_candidate_count"),
-            "accepted_candidate_count": payload.get("accepted_candidate_count"),
-            "rejected_candidate_count": payload.get("rejected_candidate_count"),
-            "best_candidate_config_id": payload.get("best_candidate_config_id"),
-            "best_candidate_score": payload.get("best_candidate_score"),
-            "feature_version_used": payload.get("feature_version_used"),
-            "real_feature_diagnostics_used": payload.get("real_feature_diagnostics_used"),
-            "real_feature_diagnostics_row_count": payload.get("real_feature_diagnostics_row_count"),
-            "feature_weak_signal_detected": self._as_dict(payload.get("feature_quality_summary")).get("weak_signal_detected"),
-            "regime_data_available": self._as_dict(payload.get("regime_feature_summary")).get("regime_data_available"),
-            "regime_features_attached": payload.get("regime_features_attached"),
-            "regime_feature_count": payload.get("regime_feature_count"),
-            "book_setup_context_features_attached": payload.get("book_setup_context_features_attached"),
-            "book_setup_context_feature_count": payload.get("book_setup_context_feature_count"),
-            "fv4_feature_count": payload.get("fv4_feature_count"),
-            "nison_feature_count": payload.get("nison_feature_count"),
-            "altunina_feature_count": payload.get("altunina_feature_count"),
-            "path_context_feature_count": payload.get("path_context_feature_count"),
-            "htf_context_feature_count": payload.get("htf_context_feature_count"),
-            "missing_context_feature_count": payload.get("missing_context_feature_count"),
-            "regime_specific_labeling_available": payload.get("regime_specific_labeling_available"),
-            "regime_training_applied": payload.get("regime_training_applied"),
-            "regime_specific_training_applied": payload.get("regime_specific_training_applied"),
-            "regime_label_builder_used_in_training_any": payload.get("regime_label_builder_used_in_training_any"),
-            "regime_label_builder_used_in_training_all": payload.get("regime_label_builder_used_in_training_all"),
-            "regime_specific_training_applied_any": payload.get("regime_specific_training_applied_any"),
-            "regime_specific_training_applied_all": payload.get("regime_specific_training_applied_all"),
-            "probability_diagnostics": payload.get("probability_diagnostics"),
-            "probability_diagnostics_missing_reason": payload.get("probability_diagnostics_missing_reason"),
-            "real_feature_diagnostics": payload.get("real_feature_diagnostics"),
-            "real_feature_diagnostics_missing_reason": payload.get("real_feature_diagnostics_missing_reason"),
-            "regime_label_builder_status": payload.get("regime_label_builder_status"),
-            "effective_gap_count_for_training": payload.get("effective_gap_count_for_training"),
-            "gap_severity_for_training": payload.get("gap_severity_for_training"),
-            "gap_training_safe": payload.get("gap_training_safe"),
-            "collapse_diagnostics_v2": payload.get("collapse_diagnostics_v2"),
-            "collapse_diagnostics_v2_missing_reason": payload.get("collapse_diagnostics_v2_missing_reason"),
-            "walk_forward_profit_diagnostics": payload.get("walk_forward_profit_diagnostics"),
-            "walk_forward_profit_diagnostics_missing_reason": payload.get("walk_forward_profit_diagnostics_missing_reason"),
-            "directional_side_signal_recovery_diagnostics": payload.get("directional_side_signal_recovery_diagnostics"),
-            "directional_side_signal_recovery_status": payload.get("directional_side_signal_recovery_status"),
-            "directional_side_signal_recovery_verdict": payload.get("directional_side_signal_recovery_verdict"),
-            "primary_signal_loss_reason_counts": payload.get("primary_signal_loss_reason_counts"),
-            "validation_gate_failure_reason_counts": payload.get("validation_gate_failure_reason_counts"),
-            "side_aware_relaxed_fold_count": payload.get("side_aware_relaxed_fold_count"),
-            "walk_forward_validation_candidate_board_status": payload.get(
-                "walk_forward_validation_candidate_board_status",
-                walk_forward_diag.get("walk_forward_validation_candidate_board_status"),
-            ),
-            "walk_forward_validation_candidate_board_verdict": payload.get(
-                "walk_forward_validation_candidate_board_verdict",
-                walk_forward_diag.get("walk_forward_validation_candidate_board_verdict"),
-            ),
-            "recommended_validation_repair_profile": payload.get(
-                "recommended_validation_repair_profile",
-                walk_forward_diag.get("recommended_validation_repair_profile"),
-            ),
-            "total_r_below_min_fold_count": payload.get(
-                "total_r_below_min_fold_count",
-                walk_forward_diag.get("total_r_below_min_fold_count"),
-            ),
-            "total_r_repair_candidate_fold_count": payload.get(
-                "total_r_repair_candidate_fold_count",
-                walk_forward_diag.get("total_r_repair_candidate_fold_count"),
-            ),
-            "median_best_total_r_deficit": payload.get(
-                "median_best_total_r_deficit",
-                walk_forward_diag.get("median_best_total_r_deficit"),
-            ),
-            "max_best_total_r_deficit": payload.get(
-                "max_best_total_r_deficit",
-                walk_forward_diag.get("max_best_total_r_deficit"),
-            ),
-            "research_only_total_r_repair_enabled": payload.get(
-                "research_only_total_r_repair_enabled"
-            ),
-            "validation_total_r_repair_profile": payload.get(
-                "validation_total_r_repair_profile"
-            ),
-            "profit_aware_diagnostics": payload.get("profit_aware_diagnostics"),
-            "profit_aware_diagnostics_missing_reason": payload.get("profit_aware_diagnostics_missing_reason"),
-            "directional_edge_bias_audit": payload.get("directional_edge_bias_audit"),
-            "directional_side_filter_summary": payload.get("directional_side_filter_summary"),
-            "directional_side_filter_profile": payload.get("directional_side_filter_profile"),
-            "allowed_signal_directions": payload.get("allowed_signal_directions"),
-            "profit_exit_root_cause_audit": payload.get("profit_exit_root_cause_audit"),
-            "walk_forward_profit_exit_root_cause_summary": payload.get("walk_forward_profit_exit_root_cause_summary"),
-            "regime_label_builder_status_missing_reason": payload.get("regime_label_builder_status_missing_reason"),
-            "missing_requirements": payload.get("missing_requirements"),
-            "feature_leakage_risk_detected": self._as_dict(payload.get("feature_leakage_summary")).get("leakage_risk_detected"),
-            "output_dir": payload.get("output_dir"),
-            "summary_json_path": payload.get("summary_json_path"),
-            "summary_markdown_path": payload.get("summary_markdown_path"),
-            "model_accepted": payload.get("model_accepted"),
-            "reasons_why_best_still_rejected": payload.get("reasons_why_best_still_rejected"),
-            "configs_ranked": payload.get("configs_ranked"),
-            "confidence_profitability_diagnostics": payload.get("confidence_profitability_diagnostics"),
-            "flat_bias_summary": payload.get("flat_bias_summary"),
-            "down_blindness_summary": payload.get("down_blindness_summary"),
-            "baseline_edge_summary": payload.get("baseline_edge_summary"),
-            "label_mode_comparison_audit": payload.get("label_mode_comparison_audit"),
-            "flat_subtype_audit": payload.get("flat_subtype_audit"),
-            "setup_aware_label_diagnostics": payload.get("setup_aware_label_diagnostics"),
-            "schwager_slice_robustness": payload.get("schwager_slice_robustness"),
-            "schwager_robustness_decision_board": payload.get("schwager_robustness_decision_board"),
-            "class_margin_objective_decision": payload.get("class_margin_objective_decision"),
-            "directional_side_ablation_comparator": self._directional_side_ablation_comparator(payload),
-            "directional_side_walk_forward_stability": self._directional_side_walk_forward_stability(payload),
-            "opportunity_probability_threshold": payload.get("opportunity_probability_threshold"),
-            "setup_quality_min_threshold": payload.get("setup_quality_min_threshold"),
-            "setup_quality_decision_mask_enabled": payload.get("setup_quality_decision_mask_enabled"),
-            "setup_quality_decision_mask_min_threshold": payload.get("setup_quality_decision_mask_min_threshold"),
-            "selected_opportunity_threshold": payload.get("selected_opportunity_threshold"),
-            "opportunity_threshold_selection": payload.get("opportunity_threshold_selection"),
-            "opportunity_threshold_sweep": payload.get("opportunity_threshold_sweep"),
-            "setup_quality_filter_passed": payload.get("setup_quality_filter_passed"),
-            "setup_quality_bucket_metrics": payload.get("setup_quality_bucket_metrics"),
-            "setup_quality_bucket_metrics_raw": payload.get("setup_quality_bucket_metrics_raw"),
-            "setup_quality_bucket_metrics_after_mask": payload.get("setup_quality_bucket_metrics_after_mask"),
-            "setup_quality_filter_summary": payload.get("setup_quality_filter_summary"),
-            "setup_quality_decision_mask_summary": payload.get("setup_quality_decision_mask_summary"),
-            "entry_path_quality_filter_enabled": payload.get("entry_path_quality_filter_enabled"),
-            "entry_path_quality_min_threshold": payload.get("entry_path_quality_min_threshold"),
-            "stop_pressure_max_risk_score": payload.get("stop_pressure_max_risk_score"),
-            "mae_pressure_max_risk_score": payload.get("mae_pressure_max_risk_score"),
-            "entry_path_quality_masked_row_count": payload.get("entry_path_quality_masked_row_count"),
-            "entry_path_quality_forced_no_trade_count": payload.get("entry_path_quality_forced_no_trade_count"),
-            "entry_path_quality_mask_trade_prediction_removed_count": payload.get("entry_path_quality_mask_trade_prediction_removed_count"),
-            "entry_path_quality_mask_false_positive_removed_count": payload.get("entry_path_quality_mask_false_positive_removed_count"),
-            "entry_path_quality_filter_summary": payload.get("entry_path_quality_filter_summary"),
-            "entry_path_quality_filter_diagnostics": payload.get("entry_path_quality_filter_diagnostics"),
-            "entry_path_prediction_filter_summary": payload.get("entry_path_prediction_filter_summary"),
-            "stop_pressure_effectiveness_audit": payload.get("stop_pressure_effectiveness_audit"),
-            "predicted_to_actual_trade_rate_ratio": payload.get("predicted_to_actual_trade_rate_ratio"),
-            "predicted_trade_rate": payload.get("predicted_trade_rate"),
-            "raw_predicted_trade_rate": payload.get("raw_predicted_trade_rate"),
-            "masked_predicted_trade_rate": payload.get("masked_predicted_trade_rate"),
-            "actual_trade_rate": payload.get("actual_trade_rate"),
-            "opportunity_precision": payload.get("opportunity_precision"),
-            "opportunity_recall": payload.get("opportunity_recall"),
-            "opportunity_f1": payload.get("opportunity_f1"),
-            "raw_opportunity_precision": payload.get("raw_opportunity_precision"),
-            "raw_opportunity_recall": payload.get("raw_opportunity_recall"),
-            "raw_opportunity_f1": payload.get("raw_opportunity_f1"),
-            "opportunity_false_positive_rate": payload.get("opportunity_false_positive_rate"),
-            "two_stage_trade_diagnostics": payload.get("two_stage_trade_diagnostics"),
-            "trap_invalidation_feature_impact_audit": self._as_dict(
-                self._as_dict(payload.get("two_stage_trade_diagnostics")).get(
-                    "trap_invalidation_feature_impact_audit"
-                )
-                or payload.get("trap_invalidation_feature_impact_audit")
-            ),
-            "approved_for_live_trading": False,
-            "approved_for_auto_activation": False,
-            "orders_enabled": False,
-            "traders_core_connected": False,
+        direct_keys = (
+            "status",
+            "experiment_id",
+            "experiment_status",
+            "symbol",
+            "interval",
+            "start_date",
+            "end_date",
+            "config_count",
+            "candidate_count",
+            "evaluated_candidate_count",
+            "failed_candidate_count",
+            "accepted_candidate_count",
+            "rejected_candidate_count",
+            "best_candidate_id",
+            "best_candidate_config_id",
+            "best_candidate_score",
+            "feature_quality_summary",
+            "feature_group_quality_summary",
+            "regime_feature_summary",
+            "feature_leakage_summary",
+            "regime_experiment_plan_summary",
+            "failed_gates_summary",
+            "warnings",
+            "recommendations",
+            "regime_training_applied",
+            "real_feature_diagnostics_used",
+            "real_feature_diagnostics_row_count",
+            "feature_version_used",
+            "regime_features_attached",
+            "regime_feature_count",
+            "regime_feature_source",
+            "regime_specific_labeling_available",
+            "regime_specific_training_applied",
+            "missing_requirements",
+            "effective_gap_count_for_training",
+            "gap_severity_for_training",
+            "gap_training_safe",
+            "output_dir",
+            "log_path",
+            "events_path",
+            "summary_json_path",
+            "summary_markdown_path",
+            "baseline_reference",
+            "probability_diagnostics",
+            "probability_diagnostics_missing_reason",
+            "real_feature_diagnostics",
+            "real_feature_diagnostics_missing_reason",
+            "collapse_diagnostics_v2",
+            "collapse_diagnostics_v2_missing_reason",
+            "regime_label_builder_status",
+            "regime_label_builder_status_missing_reason",
+            "walk_forward_profit_diagnostics_missing_reason",
+            "profit_aware_diagnostics",
+            "profit_aware_diagnostics_missing_reason",
+            "regime_label_builder_used_in_training_any",
+            "regime_label_builder_used_in_training_all",
+            "regime_specific_training_applied_any",
+            "regime_specific_training_applied_all",
+            "candle_ta_context_features_attached",
+            "candle_ta_context_feature_count",
+            "candle_ta_context_missing_reason",
+            "book_setup_context_features_attached",
+            "book_setup_context_feature_count",
+            "book_setup_context_missing_reason",
+            "fv4_feature_count",
+            "nison_feature_count",
+            "altunina_feature_count",
+            "path_context_feature_count",
+            "htf_context_feature_count",
+            "missing_context_feature_count",
+            "regime_features_missing_reason",
+            "candidate_status",
+            "model_quality_validation_status",
+            "model_accepted",
+            "reasons_why_best_still_rejected",
+            "flat_bias_summary",
+            "down_blindness_summary",
+            "baseline_edge_summary",
+            "label_mode_comparison_audit",
+            "flat_subtype_audit",
+            "setup_aware_label_diagnostics",
+            "schwager_slice_robustness",
+            "schwager_robustness_decision_board",
+            "class_margin_objective_decision",
+        )
+        payload = {
+            key: self._result_value(result, key)
+            for key in direct_keys
         }
+
+        candidate_results_source = self._as_list(self._result_value(result, "candidate_results"))
+        ranking_source = self._as_list(self._result_value(result, "ranking"))
+        configs_ranked_source = self._as_list(
+            self._result_value(result, "configs_ranked", ranking_source)
+        ) or ranking_source
+
+        compact_candidates = [
+            self._compact_candidate_result(item)
+            for item in candidate_results_source[: self.SUMMARY_CANDIDATE_RESULT_LIMIT]
+        ]
+        compact_ranking = [
+            self._compact_ranked_result(item)
+            for item in ranking_source[: self.SUMMARY_CONFIGS_RANKED_LIMIT]
+        ]
+        compact_configs_ranked = [
+            self._compact_ranked_result(item)
+            for item in configs_ranked_source[: self.SUMMARY_CONFIGS_RANKED_LIMIT]
+        ]
+
+        best_candidate = self._best_candidate_payload(
+            compact_candidates,
+            best_candidate_config_id=payload.get("best_candidate_config_id"),
+        )
+
+        walk_forward_diag = self._compact_walk_forward_profit_diagnostics(
+            self._result_value(result, "walk_forward_profit_diagnostics")
+            or best_candidate.get("walk_forward_profit_diagnostics")
+        )
+        recovery_diag = self._as_dict(
+            best_candidate.get("directional_side_signal_recovery_diagnostics")
+            or walk_forward_diag.get("directional_side_signal_recovery_diagnostics")
+        )
+
+        payload.update(
+            {
+                "summary_payload_mode": self.SUMMARY_PAYLOAD_MODE,
+                "summary_payload_compacted": True,
+                "candidate_results_total_count": len(candidate_results_source),
+                "candidate_results_included_count": len(compact_candidates),
+                "candidate_results_truncated": len(candidate_results_source)
+                > len(compact_candidates),
+                "candidate_results": compact_candidates,
+                "ranking_total_count": len(ranking_source),
+                "ranking_included_count": len(compact_ranking),
+                "ranking_truncated": len(ranking_source) > len(compact_ranking),
+                "ranking": compact_ranking,
+                "configs_ranked_total_count": len(configs_ranked_source),
+                "configs_ranked_included_count": len(compact_configs_ranked),
+                "configs_ranked_truncated": len(configs_ranked_source)
+                > len(compact_configs_ranked),
+                "configs_ranked": compact_configs_ranked,
+                "feature_weak_signal_detected": self._as_dict(
+                    payload.get("feature_quality_summary")
+                ).get("weak_signal_detected"),
+                "regime_data_available": self._as_dict(
+                    payload.get("regime_feature_summary")
+                ).get("regime_data_available"),
+                "feature_leakage_risk_detected": self._as_dict(
+                    payload.get("feature_leakage_summary")
+                ).get("leakage_risk_detected"),
+                "walk_forward_profit_diagnostics": walk_forward_diag,
+                "directional_side_signal_recovery_diagnostics": recovery_diag,
+                "directional_side_signal_recovery_status": (
+                    recovery_diag.get("diagnostic_status")
+                    or payload.get("directional_side_signal_recovery_status")
+                ),
+                "directional_side_signal_recovery_verdict": (
+                    recovery_diag.get("verdict")
+                    or payload.get("directional_side_signal_recovery_verdict")
+                ),
+                "primary_signal_loss_reason_counts": self._as_dict(
+                    recovery_diag.get("primary_signal_loss_reason_counts")
+                    or best_candidate.get("primary_signal_loss_reason_counts")
+                ),
+                "validation_gate_failure_reason_counts": self._as_dict(
+                    walk_forward_diag.get("validation_gate_failure_reason_counts")
+                    or best_candidate.get("validation_gate_failure_reason_counts")
+                ),
+                "side_aware_relaxed_fold_count": walk_forward_diag.get(
+                    "side_aware_relaxed_fold_count",
+                    best_candidate.get("side_aware_relaxed_fold_count"),
+                ),
+                "walk_forward_validation_candidate_board_status": (
+                    walk_forward_diag.get("walk_forward_validation_candidate_board_status")
+                    or best_candidate.get("walk_forward_validation_candidate_board_status")
+                ),
+                "walk_forward_validation_candidate_board_verdict": (
+                    walk_forward_diag.get("walk_forward_validation_candidate_board_verdict")
+                    or best_candidate.get("walk_forward_validation_candidate_board_verdict")
+                ),
+                "recommended_validation_repair_profile": (
+                    walk_forward_diag.get("recommended_validation_repair_profile")
+                    or best_candidate.get("recommended_validation_repair_profile")
+                ),
+                "total_r_below_min_fold_count": (
+                    walk_forward_diag.get("total_r_below_min_fold_count")
+                    if walk_forward_diag.get("total_r_below_min_fold_count") is not None
+                    else best_candidate.get("total_r_below_min_fold_count")
+                ),
+                "total_r_repair_candidate_fold_count": (
+                    walk_forward_diag.get("total_r_repair_candidate_fold_count")
+                    if walk_forward_diag.get("total_r_repair_candidate_fold_count") is not None
+                    else best_candidate.get("total_r_repair_candidate_fold_count")
+                ),
+                "median_best_total_r_deficit": (
+                    walk_forward_diag.get("median_best_total_r_deficit")
+                    if walk_forward_diag.get("median_best_total_r_deficit") is not None
+                    else best_candidate.get("median_best_total_r_deficit")
+                ),
+                "max_best_total_r_deficit": (
+                    walk_forward_diag.get("max_best_total_r_deficit")
+                    if walk_forward_diag.get("max_best_total_r_deficit") is not None
+                    else best_candidate.get("max_best_total_r_deficit")
+                ),
+                "research_only_total_r_repair_enabled": best_candidate.get(
+                    "research_only_total_r_repair_enabled"
+                ),
+                "validation_total_r_repair_profile": best_candidate.get(
+                    "validation_total_r_repair_profile"
+                ),
+                "directional_edge_bias_audit": self._as_dict(
+                    best_candidate.get("directional_edge_bias_audit")
+                ),
+                "directional_side_filter_summary": self._as_dict(
+                    best_candidate.get("directional_side_filter_summary")
+                ),
+                "directional_side_filter_profile": best_candidate.get(
+                    "directional_side_filter_profile"
+                ),
+                "allowed_signal_directions": self._as_list(
+                    best_candidate.get("allowed_signal_directions")
+                ),
+                "profit_exit_root_cause_audit": self._as_dict(
+                    best_candidate.get("profit_exit_root_cause_audit")
+                    or self._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
+                        "profit_exit_root_cause_audit"
+                    )
+                ),
+                "walk_forward_profit_exit_root_cause_summary": self._as_dict(
+                    best_candidate.get("walk_forward_profit_exit_root_cause_summary")
+                    or walk_forward_diag.get("walk_forward_profit_exit_root_cause_summary")
+                ),
+                "opportunity_probability_threshold": best_candidate.get(
+                    "opportunity_probability_threshold"
+                ),
+                "setup_quality_min_threshold": best_candidate.get(
+                    "setup_quality_min_threshold"
+                ),
+                "setup_quality_decision_mask_enabled": best_candidate.get(
+                    "setup_quality_decision_mask_enabled"
+                ),
+                "setup_quality_decision_mask_min_threshold": best_candidate.get(
+                    "setup_quality_decision_mask_min_threshold"
+                ),
+                "selected_opportunity_threshold": best_candidate.get(
+                    "selected_opportunity_threshold"
+                ),
+                "opportunity_threshold_selection": self._as_dict(
+                    best_candidate.get("opportunity_threshold_selection")
+                ),
+                "opportunity_threshold_sweep": self._as_dict(
+                    best_candidate.get("opportunity_threshold_sweep")
+                ),
+                "setup_quality_filter_passed": best_candidate.get(
+                    "setup_quality_filter_passed"
+                ),
+                "setup_quality_bucket_metrics": self._as_dict(
+                    best_candidate.get("setup_quality_bucket_metrics")
+                ),
+                "setup_quality_bucket_metrics_raw": self._as_dict(
+                    best_candidate.get("setup_quality_bucket_metrics_raw")
+                ),
+                "setup_quality_bucket_metrics_after_mask": self._as_dict(
+                    best_candidate.get("setup_quality_bucket_metrics_after_mask")
+                ),
+                "setup_quality_filter_summary": self._as_dict(
+                    best_candidate.get("setup_quality_filter_summary")
+                ),
+                "setup_quality_decision_mask_summary": self._as_dict(
+                    best_candidate.get("setup_quality_decision_mask_summary")
+                ),
+                "entry_path_quality_filter_enabled": best_candidate.get(
+                    "entry_path_quality_filter_enabled"
+                ),
+                "entry_path_quality_min_threshold": best_candidate.get(
+                    "entry_path_quality_min_threshold"
+                ),
+                "stop_pressure_max_risk_score": best_candidate.get(
+                    "stop_pressure_max_risk_score"
+                ),
+                "mae_pressure_max_risk_score": best_candidate.get(
+                    "mae_pressure_max_risk_score"
+                ),
+                "entry_path_quality_masked_row_count": best_candidate.get(
+                    "entry_path_quality_masked_row_count"
+                ),
+                "entry_path_quality_forced_no_trade_count": best_candidate.get(
+                    "entry_path_quality_forced_no_trade_count"
+                ),
+                "entry_path_quality_mask_trade_prediction_removed_count": best_candidate.get(
+                    "entry_path_quality_mask_trade_prediction_removed_count"
+                ),
+                "entry_path_quality_mask_false_positive_removed_count": best_candidate.get(
+                    "entry_path_quality_mask_false_positive_removed_count"
+                ),
+                "entry_path_quality_filter_summary": self._as_dict(
+                    best_candidate.get("entry_path_quality_filter_summary")
+                ),
+                "entry_path_quality_filter_diagnostics": self._as_dict(
+                    best_candidate.get("entry_path_quality_filter_diagnostics")
+                ),
+                "entry_path_prediction_filter_summary": self._as_dict(
+                    best_candidate.get("entry_path_prediction_filter_summary")
+                ),
+                "stop_pressure_effectiveness_audit": self._as_dict(
+                    best_candidate.get("stop_pressure_effectiveness_audit")
+                ),
+                "predicted_to_actual_trade_rate_ratio": best_candidate.get(
+                    "predicted_to_actual_trade_rate_ratio"
+                ),
+                "predicted_trade_rate": best_candidate.get("predicted_trade_rate"),
+                "raw_predicted_trade_rate": best_candidate.get("raw_predicted_trade_rate"),
+                "masked_predicted_trade_rate": best_candidate.get(
+                    "masked_predicted_trade_rate"
+                ),
+                "actual_trade_rate": best_candidate.get("actual_trade_rate"),
+                "opportunity_precision": best_candidate.get("opportunity_precision"),
+                "opportunity_recall": best_candidate.get("opportunity_recall"),
+                "opportunity_f1": best_candidate.get("opportunity_f1"),
+                "raw_opportunity_precision": best_candidate.get("raw_opportunity_precision"),
+                "raw_opportunity_recall": best_candidate.get("raw_opportunity_recall"),
+                "raw_opportunity_f1": best_candidate.get("raw_opportunity_f1"),
+                "opportunity_false_positive_rate": best_candidate.get(
+                    "opportunity_false_positive_rate"
+                ),
+                "two_stage_trade_diagnostics": self._as_dict(
+                    best_candidate.get("two_stage_trade_diagnostics")
+                ),
+                "trap_invalidation_feature_impact_audit": self._as_dict(
+                    self._as_dict(best_candidate.get("two_stage_trade_diagnostics")).get(
+                        "trap_invalidation_feature_impact_audit"
+                    )
+                    or best_candidate.get("trap_invalidation_feature_impact_audit")
+                ),
+                "approved_for_live_trading": False,
+                "approved_for_auto_activation": False,
+                "orders_enabled": False,
+                "traders_core_connected": False,
+            }
+        )
+        payload["directional_side_ablation_comparator"] = (
+            self._directional_side_ablation_comparator(payload)
+        )
+        payload["directional_side_walk_forward_stability"] = (
+            self._directional_side_walk_forward_stability(payload)
+        )
+        return payload
 
     def compact_summary_to_json(self, result: object, *, indent: int | None = 2) -> str:
         return json.dumps(
@@ -224,13 +922,17 @@ class FeatureRegimeExperimentReporter:
     def write_summary_json(self, result: object, output_path: str | Path) -> Path:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.result_to_json(result), encoding="utf-8")
+        payload = self.compact_summary_to_dict(result)
+        path.write_text(self._summary_json_text(payload), encoding="utf-8")
         return path
 
     def write_summary_markdown(self, result: object, output_path: str | Path) -> Path:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self._summary_markdown(self.result_to_dict(result)), encoding="utf-8")
+        path.write_text(
+            self._summary_markdown(self.compact_summary_to_dict(result)),
+            encoding="utf-8",
+        )
         return path
 
     def write_diagnostics_json(self, diagnostics: dict[str, Any], output_path: str | Path) -> Path:

@@ -664,7 +664,18 @@ class MultiSymbolFeatureRegimeAnalyzer:
         candidate: dict[str, Any],
     ) -> dict[str, Any]:
         walk_diag = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
-        board = cls._as_dict(walk_diag.get("walk_forward_validation_candidate_board"))
+        board = cls._as_dict(
+            candidate.get("walk_forward_validation_candidate_board")
+            or walk_diag.get("walk_forward_validation_candidate_board")
+        )
+        best_failed_total_r = cls._as_list(
+            candidate.get("best_failed_total_r_by_fold", board.get("best_failed_total_r_by_fold"))
+        )
+        board_rows = cls._as_list(
+            candidate.get("validation_candidate_board_rows", board.get("candidate_board_rows"))
+        )
+        board_row_preview = board_rows[:3]
+        best_failed_preview = best_failed_total_r[:3]
         return {
             "walk_forward_validation_candidate_board_status": (
                 candidate.get("walk_forward_validation_candidate_board_status")
@@ -693,12 +704,34 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "max_best_total_r_deficit": cls._float_or_none(
                 candidate.get("max_best_total_r_deficit", board.get("max_best_total_r_deficit"))
             ),
-            "best_failed_total_r_by_fold": cls._as_list(
-                candidate.get("best_failed_total_r_by_fold", board.get("best_failed_total_r_by_fold"))
+            "best_failed_total_r_by_fold_total_count": int(
+                candidate.get(
+                    "best_failed_total_r_by_fold_total_count",
+                    board.get("best_failed_total_r_by_fold_total_count", len(best_failed_total_r)),
+                )
+                or 0
             ),
-            "validation_candidate_board_rows": cls._as_list(
-                candidate.get("validation_candidate_board_rows", board.get("candidate_board_rows"))
+            "best_failed_total_r_by_fold_truncated": bool(
+                candidate.get(
+                    "best_failed_total_r_by_fold_truncated",
+                    board.get("best_failed_total_r_by_fold_truncated", len(best_failed_total_r) > len(best_failed_preview)),
+                )
             ),
+            "best_failed_total_r_by_fold": best_failed_preview,
+            "validation_candidate_board_rows_total_count": int(
+                candidate.get(
+                    "validation_candidate_board_rows_total_count",
+                    board.get("candidate_board_rows_total_count", len(board_rows)),
+                )
+                or 0
+            ),
+            "validation_candidate_board_rows_truncated": bool(
+                candidate.get(
+                    "validation_candidate_board_rows_truncated",
+                    board.get("candidate_board_rows_truncated", len(board_rows) > len(board_row_preview)),
+                )
+            ),
+            "validation_candidate_board_rows": board_row_preview,
         }
 
     @staticmethod

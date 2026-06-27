@@ -8,6 +8,8 @@ from typing import Any
 class GateSelector:
     diagnostic_name = "walk_forward_validation_gate_selection_diagnostics"
     diagnostic_version = "ml38.10.25"
+    MAX_DIAGNOSTIC_GATE_PROBES = 6
+    MAX_DIAGNOSTIC_PASSED_GATES = 6
 
     DEFAULT_MIN_SIGNAL_COUNT = 30
     DEFAULT_MIN_PROFIT_FACTOR = 1.0
@@ -65,6 +67,7 @@ class GateSelector:
                 "selected_gate": None,
                 "reject_reason": "no_validation_gate_passed",
                 "diagnostics": diagnostics,
+                "validation_gate_selection_diagnostics": diagnostics,
             }
 
         best = max(
@@ -80,6 +83,7 @@ class GateSelector:
             "selected_gate": best,
             "reject_reason": None,
             "diagnostics": diagnostics,
+            "validation_gate_selection_diagnostics": diagnostics,
         }
 
     def _selection_context(
@@ -241,6 +245,8 @@ class GateSelector:
         failed = [probe for probe in probes if not probe.get("passed")]
         best_failed_candidates = self._rank_failed_candidates(failed, limit=5)
         total_r_board = self._total_r_failure_board(failed=failed, context=context)
+        passed_preview = passed[: self.MAX_DIAGNOSTIC_PASSED_GATES]
+        probes_preview = probes[: self.MAX_DIAGNOSTIC_GATE_PROBES]
         return {
             "diagnostic_name": self.diagnostic_name,
             "diagnostic_version": self.diagnostic_version,
@@ -276,8 +282,12 @@ class GateSelector:
                 0,
             ),
             "total_r_repair_verdict": total_r_board.get("verdict"),
-            "passed_gates": passed,
-            "gate_probes": probes,
+            "passed_gates_total_count": len(passed),
+            "passed_gates_truncated": len(passed) > len(passed_preview),
+            "passed_gates": passed_preview,
+            "gate_probes_total_count": len(probes),
+            "gate_probes_truncated": len(probes) > len(probes_preview),
+            "gate_probes": probes_preview,
         }
 
     def _threshold_deficits(
