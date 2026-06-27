@@ -404,7 +404,12 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 if str(payload.get("symbol")) == symbol:
                     candidates.append(summary_path)
             if not candidates:
-                raise ValueError(f"No feature/regime experiment summaries found for symbol: {symbol}")
+                existing_summaries = sorted(root.rglob("feature_regime_experiment_summary.json"))
+                sample = [str(item) for item in existing_summaries[:10]]
+                raise ValueError(
+                    f"No feature/regime experiment summaries found for symbol: {symbol}. "
+                    f"root_dir={root}; summary_file_count={len(existing_summaries)}; sample={sample}"
+                )
             resolved_paths.append(max(candidates, key=lambda item: item.stat().st_mtime))
         return resolved_paths
 

@@ -1202,20 +1202,144 @@ class Fv3CachedTuningWrapper:
             stderr_path=str(stderr_path),
         )
 
+    def _resolve_symbol_output_dir(self, run: SymbolRunResult) -> Path:
+        """Resolve the real per-symbol experiment output directory.
+
+        ML38.10.26.1:
+        minimal stdout must still provide enough path metadata for wrapper staging.
+        Prefer summary_json_path because it points to the actual experiment directory.
+        Fall back to output_dir and then to per_symbol_stage_dir / experiment_id.
+        """
+
+        candidates: list[Path] = []
+
+        if run.summary_json_path:
+            summary_path = Path(run.summary_json_path)
+            candidates.append(summary_path.parent)
+
+        if run.output_dir:
+            candidates.append(Path(run.output_dir))
+
+        candidates.append(self.per_symbol_stage_dir / run.experiment_id)
+
+        seen: set[str] = set()
+        for candidate in candidates:
+            try:
+                resolved = candidate.resolve()
+            except OSError:
+                resolved = candidate
+
+            key = str(resolved).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+
+            summary_path = resolved / "feature_regime_experiment_summary.json"
+            if resolved.exists() and summary_path.exists():
+                return resolved
+
+        if run.output_dir:
+            return Path(run.output_dir)
+
+        return self.per_symbol_stage_dir / run.experiment_id
+
+    def _validate_staged_symbol_output(self, run: SymbolRunResult, directory: Path) -> None:
+        summary_json = directory / "feature_regime_experiment_summary.json"
+        summary_md = directory / "feature_regime_experiment_summary.md"
+        candidate_results_dir = directory / "candidate_results"
+
+        if not summary_json.exists():
+            raise WrapperError(
+                f"Staged summary missing for {run.symbol}: {summary_json}. "
+                f"experiment_id={run.experiment_id}; output_dir={run.output_dir}; "
+                f"summary_json_path={run.summary_json_path}"
+            )
+
+        try:
+            payload = self._read_json(summary_json)
+        except Exception as exc:
+            raise WrapperError(
+                f"Could not read staged summary for {run.symbol}: {summary_json}: {exc}"
+            ) from exc
+
+        payload_symbol = str(payload.get("symbol") or "").strip()
+        if payload_symbol and payload_symbol != run.symbol:
+            raise WrapperError(
+                f"Staged summary symbol mismatch for {run.symbol}: "
+                f"summary_symbol={payload_symbol}; summary_path={summary_json}"
+            )
+
+        if not summary_md.exists():
+            self._status(
+                "ARCHIVE",
+                f"Warning: staged markdown summary missing for {run.symbol}: {summary_md}",
+            )
+
+        if not candidate_results_dir.exists():
+            self._status(
+                "ARCHIVE",
+                f"Warning: candidate_results dir missing for {run.symbol}: {candidate_results_dir}",
+            )
+            return
+
+        candidate_json_count = sum(
+            1 for item in candidate_results_dir.glob("*.json") if item.is_file()
+        )
+        if candidate_json_count <= 0:
+            self._status(
+                "ARCHIVE",
+                f"Warning: no candidate result JSON files for {run.symbol}: {candidate_results_dir}",
+            )
+
     def _stage_selected_runs(self) -> None:
         self._status("ARCHIVE", "Staging per-symbol experiment outputs...")
 
         for run in self.run_results:
-            if not run.output_dir:
-                self._status("ARCHIVE", f"{run.symbol}: no output_dir in payload; skipping stage copy.")
-                continue
-
-            source = Path(run.output_dir)
+            source = self._resolve_symbol_output_dir(run)
             if not source.exists():
-                self._status("ARCHIVE", f"Warning: symbol output_dir does not exist and was not staged: {source}")
-                continue
+                raise WrapperError(
+                    f"Symbol output_dir does not exist and cannot be staged for {run.symbol}: "
+                    f"{source}; experiment_id={run.experiment_id}; output_dir={run.output_dir}; "
+                    f"summary_json_path={run.summary_json_path}"
+                )
 
             destination = self.per_symbol_stage_dir / source.name
+
+            try:
+                source_resolved = source.resolve()
+                destination_resolved = destination.resolve()
+            except OSError:
+                source_resolved = source
+                destination_resolved = destination
+
+            if source_resolved == destination_resolved:
+                self._validate_staged_symbol_output(run, source)
+                existing_file_count = sum(1 for item in source.rglob("*") if item.is_file())
+                self._status(
+                    "ARCHIVE",
+                    f"{run.symbol}: output already staged {source.name} "
+                    f"existing_files={existing_file_count} copied=0 skipped=0 profile={self.report_profile}",
+                )
+                continue
+
+            try:
+                destination_resolved.relative_to(source_resolved)
+                raise WrapperError(
+                    f"Unsafe staging path for {run.symbol}: destination is inside source. "
+                    f"source={source_resolved}; destination={destination_resolved}"
+                )
+            except ValueError:
+                pass
+
+            try:
+                source_resolved.relative_to(destination_resolved)
+                raise WrapperError(
+                    f"Unsafe staging path for {run.symbol}: source is inside destination. "
+                    f"source={source_resolved}; destination={destination_resolved}"
+                )
+            except ValueError:
+                pass
+
             if destination.exists():
                 shutil.rmtree(destination)
             destination.mkdir(parents=True, exist_ok=True)
@@ -1236,6 +1360,8 @@ class Fv3CachedTuningWrapper:
                     copied_count += 1
                 else:
                     skipped_count += 1
+
+            self._validate_staged_symbol_output(run, destination)
 
             self._status(
                 "ARCHIVE",

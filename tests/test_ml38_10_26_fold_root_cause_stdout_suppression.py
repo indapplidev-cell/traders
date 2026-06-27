@@ -14,12 +14,19 @@ from app.diagnostics.walk_forward_validation_candidate_board import (
 def test_ml38_10_26_minimal_stdout_payload_excludes_heavy_fields() -> None:
     payload = {
         "status": "ok",
+        "experiment_status": "completed",
         "experiment_id": "exp1",
         "symbol": "SOLUSDT",
+        "interval": "15m",
+        "start_date": "2026-04-01",
+        "end_date": "2026-06-15",
         "candidate_count": 21,
         "accepted_candidate_count": 0,
+        "rejected_candidate_count": 21,
         "failed_candidate_count": 0,
+        "output_dir": "reports/feature_regime_experiments/exp1",
         "summary_json_path": "reports/x/feature_regime_experiment_summary.json",
+        "summary_markdown_path": "reports/x/feature_regime_experiment_summary.md",
         "candidate_results": [
             {
                 "candidate_id": "c1",
@@ -30,8 +37,13 @@ def test_ml38_10_26_minimal_stdout_payload_excludes_heavy_fields() -> None:
                 "walk_forward_profit_diagnostics": {"folds": [{"huge": "x" * 1000}]},
             }
         ],
+        "candidate_ranking": [{"huge": "x" * 1000}],
         "ranking": [{"huge": "x" * 1000}],
         "configs_ranked": [{"huge": "x" * 1000}],
+        "prediction_rows": [{"huge": "x" * 1000}],
+        "raw_predictions": [{"huge": "x" * 1000}],
+        "gate_probes": [{"huge": "x" * 1000}],
+        "fold_rows": [{"huge": "x" * 1000}],
     }
 
     result = build_ml38_2_fv3_tuning_stdout_payload(
@@ -43,9 +55,17 @@ def test_ml38_10_26_minimal_stdout_payload_excludes_heavy_fields() -> None:
     assert result["stdout_payload_profile"] == "minimal"
     assert result["stdout_payload_suppressed_heavy_fields"] is True
     assert result["candidate_count"] == 21
+    assert result["output_dir"] == "reports/feature_regime_experiments/exp1"
+    assert result["summary_json_path"] == "reports/x/feature_regime_experiment_summary.json"
+    assert result["summary_markdown_path"] == "reports/x/feature_regime_experiment_summary.md"
     assert "candidate_results" not in result
+    assert "candidate_ranking" not in result
     assert "ranking" not in result
     assert "configs_ranked" not in result
+    assert "prediction_rows" not in result
+    assert "raw_predictions" not in result
+    assert "gate_probes" not in result
+    assert "fold_rows" not in result
     assert "walk_forward_profit_diagnostics" not in text
     assert len(text) < 10_000
 
