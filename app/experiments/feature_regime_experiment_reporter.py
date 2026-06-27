@@ -47,6 +47,7 @@ class FeatureRegimeExperimentReporter:
 
     def compact_summary_to_dict(self, result: object) -> dict[str, Any]:
         payload = self.result_to_dict(result)
+        walk_forward_diag = self._as_dict(payload.get("walk_forward_profit_diagnostics"))
         return {
             "status": payload.get("status"),
             "experiment_id": payload.get("experiment_id"),
@@ -99,6 +100,40 @@ class FeatureRegimeExperimentReporter:
             "primary_signal_loss_reason_counts": payload.get("primary_signal_loss_reason_counts"),
             "validation_gate_failure_reason_counts": payload.get("validation_gate_failure_reason_counts"),
             "side_aware_relaxed_fold_count": payload.get("side_aware_relaxed_fold_count"),
+            "walk_forward_validation_candidate_board_status": payload.get(
+                "walk_forward_validation_candidate_board_status",
+                walk_forward_diag.get("walk_forward_validation_candidate_board_status"),
+            ),
+            "walk_forward_validation_candidate_board_verdict": payload.get(
+                "walk_forward_validation_candidate_board_verdict",
+                walk_forward_diag.get("walk_forward_validation_candidate_board_verdict"),
+            ),
+            "recommended_validation_repair_profile": payload.get(
+                "recommended_validation_repair_profile",
+                walk_forward_diag.get("recommended_validation_repair_profile"),
+            ),
+            "total_r_below_min_fold_count": payload.get(
+                "total_r_below_min_fold_count",
+                walk_forward_diag.get("total_r_below_min_fold_count"),
+            ),
+            "total_r_repair_candidate_fold_count": payload.get(
+                "total_r_repair_candidate_fold_count",
+                walk_forward_diag.get("total_r_repair_candidate_fold_count"),
+            ),
+            "median_best_total_r_deficit": payload.get(
+                "median_best_total_r_deficit",
+                walk_forward_diag.get("median_best_total_r_deficit"),
+            ),
+            "max_best_total_r_deficit": payload.get(
+                "max_best_total_r_deficit",
+                walk_forward_diag.get("max_best_total_r_deficit"),
+            ),
+            "research_only_total_r_repair_enabled": payload.get(
+                "research_only_total_r_repair_enabled"
+            ),
+            "validation_total_r_repair_profile": payload.get(
+                "validation_total_r_repair_profile"
+            ),
             "profit_aware_diagnostics": payload.get("profit_aware_diagnostics"),
             "profit_aware_diagnostics_missing_reason": payload.get("profit_aware_diagnostics_missing_reason"),
             "directional_edge_bias_audit": payload.get("directional_edge_bias_audit"),
@@ -252,6 +287,7 @@ class FeatureRegimeExperimentReporter:
     def _summary_markdown(self, payload: dict[str, Any]) -> str:
         comparator = self._directional_side_ablation_comparator(payload)
         stability = self._directional_side_walk_forward_stability(payload)
+        walk_forward_diag = self._as_dict(payload.get("walk_forward_profit_diagnostics"))
         lines = [
             f"# Feature/Regime Experiment Summary - {payload.get('experiment_id')}",
             "",
@@ -306,22 +342,26 @@ class FeatureRegimeExperimentReporter:
             "",
             "## Candidate Ranking",
             "",
-            "| Rank | Candidate | Config | Score | Candidate Status | Failed Gates |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| Rank | Candidate | Config | Score | Candidate Status | Failed Gates | Repair Profile | Total-R Folds | Median Deficit | Research Only |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
         for row in self._as_list(payload.get("ranking")):
             lines.append(
-                "| `{rank}` | `{candidate_id}` | `{config_id}` | `{score}` | `{candidate_status}` | `{failed_gates}` |".format(
+                "| `{rank}` | `{candidate_id}` | `{config_id}` | `{score}` | `{candidate_status}` | `{failed_gates}` | `{repair}` | `{folds}` | `{median}` | `{research_only}` |".format(
                     rank=row.get("rank"),
                     candidate_id=row.get("candidate_id"),
                     config_id=row.get("config_id"),
                     score=row.get("score"),
                     candidate_status=row.get("candidate_status"),
                     failed_gates=",".join(self._as_list(row.get("failed_gates"))),
+                    repair=row.get("recommended_validation_repair_profile"),
+                    folds=row.get("total_r_below_min_fold_count"),
+                    median=row.get("median_best_total_r_deficit"),
+                    research_only=row.get("research_only_total_r_repair_enabled"),
                 )
             )
         if not self._as_list(payload.get("ranking")):
-            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` |")
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         lines.extend(
             [
                 "",
@@ -342,6 +382,15 @@ class FeatureRegimeExperimentReporter:
             f"- primary_signal_loss_reason_counts: `{payload.get('primary_signal_loss_reason_counts')}`",
             f"- validation_gate_failure_reason_counts: `{payload.get('validation_gate_failure_reason_counts')}`",
             f"- side_aware_relaxed_fold_count: `{payload.get('side_aware_relaxed_fold_count')}`",
+            f"- walk_forward_validation_candidate_board_status: `{payload.get('walk_forward_validation_candidate_board_status', walk_forward_diag.get('walk_forward_validation_candidate_board_status'))}`",
+            f"- walk_forward_validation_candidate_board_verdict: `{payload.get('walk_forward_validation_candidate_board_verdict', walk_forward_diag.get('walk_forward_validation_candidate_board_verdict'))}`",
+            f"- recommended_validation_repair_profile: `{payload.get('recommended_validation_repair_profile', walk_forward_diag.get('recommended_validation_repair_profile'))}`",
+            f"- total_r_below_min_fold_count: `{payload.get('total_r_below_min_fold_count', walk_forward_diag.get('total_r_below_min_fold_count'))}`",
+            f"- total_r_repair_candidate_fold_count: `{payload.get('total_r_repair_candidate_fold_count', walk_forward_diag.get('total_r_repair_candidate_fold_count'))}`",
+            f"- median_best_total_r_deficit: `{payload.get('median_best_total_r_deficit', walk_forward_diag.get('median_best_total_r_deficit'))}`",
+            f"- max_best_total_r_deficit: `{payload.get('max_best_total_r_deficit', walk_forward_diag.get('max_best_total_r_deficit'))}`",
+            f"- research_only_total_r_repair_enabled: `{payload.get('research_only_total_r_repair_enabled')}`",
+            f"- validation_total_r_repair_profile: `{payload.get('validation_total_r_repair_profile')}`",
             f"- profit_aware_diagnostics: `{payload.get('profit_aware_diagnostics')}`",
             f"- profit_exit_root_cause_audit: `{payload.get('profit_exit_root_cause_audit')}`",
             f"- walk_forward_profit_exit_root_cause_summary: `{payload.get('walk_forward_profit_exit_root_cause_summary')}`",
@@ -443,6 +492,7 @@ class FeatureRegimeExperimentReporter:
         forensic_audit = dict(payload.get("book_driven_forensic_audit", {}))
         robustness_board = dict(payload.get("schwager_robustness_decision_board", {}))
         class_margin_decision = dict(payload.get("class_margin_objective_decision", {}))
+        walk_forward_diag = dict(payload.get("walk_forward_profit_diagnostics", {}))
         trap_feature_audit = dict(
             dict(payload.get("two_stage_trade_diagnostics", {})).get(
                 "trap_invalidation_feature_impact_audit",
@@ -498,6 +548,15 @@ class FeatureRegimeExperimentReporter:
             f"- directional_side_signal_recovery_status: `{payload.get('directional_side_signal_recovery_status')}`",
             f"- directional_side_signal_recovery_verdict: `{payload.get('directional_side_signal_recovery_verdict')}`",
             f"- primary_signal_loss_reason_counts: `{payload.get('primary_signal_loss_reason_counts')}`",
+            f"- walk_forward_validation_candidate_board_status: `{payload.get('walk_forward_validation_candidate_board_status', walk_forward_diag.get('walk_forward_validation_candidate_board_status'))}`",
+            f"- walk_forward_validation_candidate_board_verdict: `{payload.get('walk_forward_validation_candidate_board_verdict', walk_forward_diag.get('walk_forward_validation_candidate_board_verdict'))}`",
+            f"- recommended_validation_repair_profile: `{payload.get('recommended_validation_repair_profile', walk_forward_diag.get('recommended_validation_repair_profile'))}`",
+            f"- total_r_below_min_fold_count: `{payload.get('total_r_below_min_fold_count', walk_forward_diag.get('total_r_below_min_fold_count'))}`",
+            f"- total_r_repair_candidate_fold_count: `{payload.get('total_r_repair_candidate_fold_count', walk_forward_diag.get('total_r_repair_candidate_fold_count'))}`",
+            f"- median_best_total_r_deficit: `{payload.get('median_best_total_r_deficit', walk_forward_diag.get('median_best_total_r_deficit'))}`",
+            f"- max_best_total_r_deficit: `{payload.get('max_best_total_r_deficit', walk_forward_diag.get('max_best_total_r_deficit'))}`",
+            f"- research_only_total_r_repair_enabled: `{payload.get('research_only_total_r_repair_enabled')}`",
+            f"- validation_total_r_repair_profile: `{payload.get('validation_total_r_repair_profile')}`",
             f"- two_stage_trade_diagnostics: `{payload.get('two_stage_trade_diagnostics')}`",
             f"- trap_invalidation_feature_impact_status: `{trap_feature_audit.get('feature_impact_status')}`",
             f"- trap_invalidation_recommendation: `{trap_feature_audit.get('recommendation')}`",

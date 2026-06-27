@@ -16,12 +16,19 @@ class DirectionalSideSignalRecoveryDiagnostics:
         side_profile: str | None = None,
     ) -> dict[str, Any]:
         """Return fold-level reasons for missing/low side-aware WF signals."""
+        from app.diagnostics.walk_forward_validation_candidate_board import (
+            WalkForwardValidationCandidateBoard,
+        )
+
         folds = [
             dict(item)
             for item in self._as_list(walk_forward_summary.get("folds"))
             if isinstance(item, dict)
         ]
         summary = self._as_dict(walk_forward_summary.get("summary"))
+        validation_candidate_board = WalkForwardValidationCandidateBoard().analyze(
+            walk_forward_summary=walk_forward_summary,
+        )
         profile = side_profile or str(
             walk_forward_summary.get("directional_side_filter_profile") or "both_directions"
         )
@@ -102,6 +109,31 @@ class DirectionalSideSignalRecoveryDiagnostics:
             "side_aware_relaxed_fold_count": sum(
                 int(row.get("side_aware_validation_relaxation_enabled", False))
                 for row in fold_rows
+            ),
+            "walk_forward_validation_candidate_board_status": validation_candidate_board.get(
+                "diagnostic_status"
+            ),
+            "walk_forward_validation_candidate_board_verdict": validation_candidate_board.get(
+                "verdict"
+            ),
+            "recommended_validation_repair_profile": validation_candidate_board.get(
+                "recommended_validation_repair_profile"
+            ),
+            "total_r_below_min_fold_count": validation_candidate_board.get(
+                "total_r_below_min_fold_count"
+            ),
+            "total_r_repair_candidate_fold_count": validation_candidate_board.get(
+                "total_r_repair_candidate_fold_count"
+            ),
+            "median_best_total_r_deficit": validation_candidate_board.get(
+                "median_best_total_r_deficit"
+            ),
+            "max_best_total_r_deficit": validation_candidate_board.get(
+                "max_best_total_r_deficit"
+            ),
+            "validation_candidate_board_rows": validation_candidate_board.get(
+                "candidate_board_rows",
+                [],
             ),
             "total_original_signal_count": total_original_signal_count,
             "total_filtered_signal_count": total_filtered_signal_count,

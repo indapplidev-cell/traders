@@ -50,7 +50,7 @@ def _candidate(
         "resolved_signal_count": 100,
         "walk_forward_profit_diagnostics": {
             "diagnostic_name": "walk_forward_profit_diagnostics",
-            "diagnostic_version": "ml38.10.24",
+            "diagnostic_version": "ml38.10.25",
             "walk_forward_profit_factor": wf_pf,
             "walk_forward_total_r": wf_total_r,
             "fold_count": fold_count,
@@ -109,7 +109,7 @@ def test_ml38_10_22_walk_forward_profit_diagnostics_exposes_fold_signal_stabilit
             ],
         },
     )
-    assert diagnostics["diagnostic_version"] == "ml38.10.24"
+    assert diagnostics["diagnostic_version"] == "ml38.10.25"
     assert diagnostics["fold_signal_summary"]["total_resolved_signal_count"] == 21
     assert diagnostics["low_signal_fold_count"] == 0
     assert diagnostics["walk_forward_stability_verdict"] == "CANDIDATE_FOR_NEXT_GRID_RESEARCH_ONLY"

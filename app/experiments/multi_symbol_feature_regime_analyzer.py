@@ -145,6 +145,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
         directional_side_signal_recovery_summary = self._directional_side_signal_recovery_summary(
             directional_side_candidate_payloads
         )
+        walk_forward_validation_candidate_board_summary = (
+            self._walk_forward_validation_candidate_board_summary(configs_ranked)
+        )
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -190,6 +193,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "directional_side_ablation_comparator": directional_side_ablation_comparator,
             "directional_side_walk_forward_stability": directional_side_walk_forward_stability,
             "directional_side_signal_recovery_summary": directional_side_signal_recovery_summary,
+            "walk_forward_validation_candidate_board_summary": (
+                walk_forward_validation_candidate_board_summary
+            ),
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -652,6 +658,49 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
         }
 
+    @classmethod
+    def _walk_forward_validation_candidate_board_payload(
+        cls,
+        candidate: dict[str, Any],
+    ) -> dict[str, Any]:
+        walk_diag = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
+        board = cls._as_dict(walk_diag.get("walk_forward_validation_candidate_board"))
+        return {
+            "walk_forward_validation_candidate_board_status": (
+                candidate.get("walk_forward_validation_candidate_board_status")
+                or board.get("diagnostic_status")
+            ),
+            "walk_forward_validation_candidate_board_verdict": (
+                candidate.get("walk_forward_validation_candidate_board_verdict")
+                or board.get("verdict")
+            ),
+            "recommended_validation_repair_profile": (
+                candidate.get("recommended_validation_repair_profile")
+                or board.get("recommended_validation_repair_profile")
+            ),
+            "total_r_below_min_fold_count": cls._int_or_zero(
+                candidate.get("total_r_below_min_fold_count", board.get("total_r_below_min_fold_count"))
+            ),
+            "total_r_repair_candidate_fold_count": cls._int_or_zero(
+                candidate.get(
+                    "total_r_repair_candidate_fold_count",
+                    board.get("total_r_repair_candidate_fold_count"),
+                )
+            ),
+            "median_best_total_r_deficit": cls._float_or_none(
+                candidate.get("median_best_total_r_deficit", board.get("median_best_total_r_deficit"))
+            ),
+            "max_best_total_r_deficit": cls._float_or_none(
+                candidate.get("max_best_total_r_deficit", board.get("max_best_total_r_deficit"))
+            ),
+            "best_failed_total_r_by_fold": cls._as_list(
+                candidate.get("best_failed_total_r_by_fold", board.get("best_failed_total_r_by_fold"))
+            ),
+            "validation_candidate_board_rows": cls._as_list(
+                candidate.get("validation_candidate_board_rows", board.get("candidate_board_rows"))
+            ),
+        }
+
     @staticmethod
     def _candidate_status(candidate: dict[str, Any]) -> str:
         return str(candidate.get("candidate_status") or "").upper()
@@ -728,6 +777,17 @@ class MultiSymbolFeatureRegimeAnalyzer:
         }
 
         entry_path_candidate_payload_keys = (
+            "profit_factor",
+            "profit_total_r",
+            "resolved_signal_count",
+            "signal_count",
+            "win_rate",
+            "gross_profit_r",
+            "gross_loss_r",
+            "walk_forward_profit_factor",
+            "walk_forward_total_r",
+            "walk_forward_global_total_r",
+            "walk_forward_fold_count",
             "entry_path_quality_filter_enabled",
             "entry_path_quality_min_threshold",
             "stop_pressure_max_risk_score",
@@ -741,6 +801,12 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "entry_path_prediction_filter_summary",
             "stop_pressure_effectiveness_audit",
             "walk_forward_profit_diagnostics",
+            "directional_side_filter_summary",
+            "directional_side_filter_profile",
+            "allowed_signal_directions",
+            "research_only_total_r_repair_enabled",
+            "validation_total_r_repair_profile",
+            "research_only_acceptance_block_reason",
         )
 
         configs_ranked: list[dict[str, Any]] = []
@@ -791,11 +857,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
             payload.update(cls._walk_forward_stability_payload(payload))
             payload.update(cls._directional_side_signal_recovery_payload(payload))
             payload.update(cls._directional_side_validation_gate_payload(payload))
+            payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
             configs_ranked.append(payload)
         best_entry_path_audit = cls._entry_path_audit_payload(best_candidate)
         best_directional_side_audit = cls._directional_side_audit_payload(best_candidate)
         best_signal_recovery = cls._directional_side_signal_recovery_payload(best_candidate)
         best_validation_gate_diagnostics = cls._directional_side_validation_gate_payload(
+            best_candidate
+        )
+        best_validation_candidate_board = cls._walk_forward_validation_candidate_board_payload(
             best_candidate
         )
         return {
@@ -927,6 +997,36 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "side_aware_min_validation_total_r": best_validation_gate_diagnostics.get("side_aware_min_validation_total_r"),
             "side_aware_min_validation_expectancy_r": best_validation_gate_diagnostics.get("side_aware_min_validation_expectancy_r"),
             "side_aware_allow_single_direction_validation": best_validation_gate_diagnostics.get("side_aware_allow_single_direction_validation"),
+            "walk_forward_validation_candidate_board_status": best_validation_candidate_board.get("walk_forward_validation_candidate_board_status"),
+            "walk_forward_validation_candidate_board_verdict": best_validation_candidate_board.get("walk_forward_validation_candidate_board_verdict"),
+            "recommended_validation_repair_profile": best_validation_candidate_board.get("recommended_validation_repair_profile"),
+            "total_r_below_min_fold_count": best_validation_candidate_board.get("total_r_below_min_fold_count"),
+            "total_r_repair_candidate_fold_count": best_validation_candidate_board.get("total_r_repair_candidate_fold_count"),
+            "median_best_total_r_deficit": best_validation_candidate_board.get("median_best_total_r_deficit"),
+            "max_best_total_r_deficit": best_validation_candidate_board.get("max_best_total_r_deficit"),
+            "best_failed_total_r_by_fold": best_validation_candidate_board.get("best_failed_total_r_by_fold"),
+            "validation_candidate_board_rows": best_validation_candidate_board.get("validation_candidate_board_rows"),
+            "research_only_total_r_repair_enabled": bool(
+                best_candidate.get(
+                    "research_only_total_r_repair_enabled",
+                    cls._as_dict(best_candidate.get("label_config")).get(
+                        "research_only_total_r_repair_enabled",
+                        False,
+                    ),
+                )
+            ),
+            "validation_total_r_repair_profile": (
+                best_candidate.get("validation_total_r_repair_profile")
+                or cls._as_dict(best_candidate.get("label_config")).get(
+                    "validation_total_r_repair_profile"
+                )
+            ),
+            "research_only_acceptance_block_reason": (
+                best_candidate.get("research_only_acceptance_block_reason")
+                or cls._as_dict(best_candidate.get("label_config")).get(
+                    "research_only_acceptance_block_reason"
+                )
+            ),
             "side_filter_removed_all_fold_count": best_signal_recovery.get("side_filter_removed_all_fold_count"),
             "raw_signal_available_but_filtered_out_count": best_signal_recovery.get("raw_signal_available_but_filtered_out_count"),
             "threshold_too_strict_fold_count": best_signal_recovery.get("threshold_too_strict_fold_count"),
@@ -1393,6 +1493,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._walk_forward_stability_payload(payload))
                 payload.update(cls._directional_side_signal_recovery_payload(payload))
                 payload.update(cls._directional_side_validation_gate_payload(payload))
+                payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)
@@ -1438,6 +1539,82 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "side_profile_counts": side_profiles,
         }
 
+    @classmethod
+    def _walk_forward_validation_candidate_board_summary(
+        cls,
+        candidates: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        verdict_counts: Counter[str] = Counter()
+        repair_profile_counts: Counter[str] = Counter()
+        repair_candidates: list[dict[str, Any]] = []
+        for candidate in candidates:
+            payload = cls._walk_forward_validation_candidate_board_payload(candidate)
+            verdict = str(payload.get("walk_forward_validation_candidate_board_verdict") or "UNKNOWN")
+            profile = str(payload.get("recommended_validation_repair_profile") or "UNKNOWN")
+            verdict_counts[verdict] += 1
+            repair_profile_counts[profile] += 1
+            if bool(
+                candidate.get(
+                    "research_only_total_r_repair_enabled",
+                    cls._as_dict(candidate.get("label_config")).get(
+                        "research_only_total_r_repair_enabled",
+                        False,
+                    ),
+                )
+            ):
+                repair_candidates.append(candidate)
+
+        best_total_r_repair_probe = None
+        if repair_candidates:
+            ranked = sorted(
+                repair_candidates,
+                key=lambda item: (
+                    -(
+                        cls._candidate_score(item)
+                        if cls._candidate_score(item) is not None
+                        else float("-inf")
+                    ),
+                    -(cls._float_or_none(item.get("profit_factor")) or float("-inf")),
+                    -(cls._float_or_none(item.get("profit_total_r")) or float("-inf")),
+                    str(item.get("symbol") or ""),
+                    str(item.get("config_id") or ""),
+                ),
+            )
+            best = ranked[0]
+            best_total_r_repair_probe = {
+                "symbol": best.get("symbol"),
+                "config_id": best.get("config_id"),
+                "candidate_status": best.get("candidate_status"),
+                "score": cls._candidate_score(best),
+                "profit_factor": cls._float_or_none(best.get("profit_factor")),
+                "profit_total_r": cls._float_or_none(best.get("profit_total_r")),
+                "walk_forward_profit_factor": cls._float_or_none(best.get("walk_forward_profit_factor")),
+                "walk_forward_total_r": cls._float_or_none(
+                    best.get("walk_forward_total_r", best.get("walk_forward_global_total_r"))
+                ),
+                "recommended_validation_repair_profile": (
+                    best.get("recommended_validation_repair_profile")
+                ),
+            }
+
+        warnings: list[str] = []
+        recommendations: list[str] = []
+        if repair_candidates:
+            warnings.append("research_only_total_r_repair_candidates_present")
+            recommendations.append("keep_total_r_repair_candidates_out_of_acceptance")
+
+        return {
+            "diagnostic_name": "walk_forward_validation_candidate_board_multi_symbol_summary",
+            "diagnostic_version": "ml38.10.25",
+            "candidate_count": len(candidates),
+            "verdict_counts": dict(verdict_counts),
+            "recommended_validation_repair_profile_counts": dict(repair_profile_counts),
+            "research_only_total_r_repair_candidate_count": len(repair_candidates),
+            "best_total_r_repair_probe": best_total_r_repair_probe,
+            "warnings": warnings,
+            "recommendations": recommendations,
+        }
+
     @staticmethod
     def _top_failed_gate(gate_failure_counts: dict[str, int]) -> str | None:
         if not gate_failure_counts:
@@ -1461,6 +1638,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
     @staticmethod
     def _float_or_none(value: Any) -> float | None:
         return None if value is None else float(value)
+
+    @staticmethod
+    def _int_or_zero(value: Any) -> int:
+        return int(value or 0)
 
     @staticmethod
     def _recommendations(

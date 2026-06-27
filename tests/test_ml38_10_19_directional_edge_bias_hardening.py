@@ -83,7 +83,7 @@ def test_ml38_10_19_grid_matrix_and_runtime_include_lv27_dirbias_configs() -> No
     matrix = ML382FV3TuningMatrix().build()
     assert matrix["directional_edge_bias_hardening_stage"] == "ML38.10.19"
     assert "lv27_h12_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias" in matrix["config_ids"]
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv29_")
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv29_")
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 9
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 19
+    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv30_")
+    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv30_")
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 10
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 21

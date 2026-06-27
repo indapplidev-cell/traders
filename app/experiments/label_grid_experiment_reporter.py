@@ -138,22 +138,30 @@ class LabelGridExperimentReporter:
             "",
             "## Candidate Ranking",
             "",
-            "| Rank | Config | Candidate | Quality | Score | Failed Gates |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| Rank | Config | Candidate | Quality | Score | Failed Gates | Research Only | Validation Repair | Recommended Repair |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
         for item in ranking:
             lines.append(
-                "| `{rank}` | `{config_id}` | `{candidate_status}` | `{quality_status}` | `{score}` | `{failed_gates}` |".format(
+                "| `{rank}` | `{config_id}` | `{candidate_status}` | `{quality_status}` | `{score}` | `{failed_gates}` | `{research_only}` | `{validation_profile}` | `{recommended_profile}` |".format(
                     rank=item.get("rank"),
                     config_id=item.get("config_id"),
                     candidate_status=item.get("candidate_status"),
                     quality_status=item.get("quality_status"),
                     score=item.get("score"),
                     failed_gates=",".join(item.get("failed_gates", [])),
+                    research_only=item.get("research_only_total_r_repair_enabled"),
+                    validation_profile=item.get("validation_total_r_repair_profile"),
+                    recommended_profile=(
+                        item.get("recommended_validation_repair_profile")
+                        or dict(item.get("walk_forward_profit_diagnostics", {})).get(
+                            "recommended_validation_repair_profile"
+                        )
+                    ),
                 )
             )
         if not ranking:
-            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` |")
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
 
         best_candidate_config_id = payload.get("best_candidate_config_id")
         accepted_count = int(payload.get("accepted_candidate_count") or 0)
@@ -230,6 +238,9 @@ class LabelGridExperimentReporter:
             f"- profit_factor: `{candidate.get('profit_factor')}`",
             f"- walk_forward_profit_factor: `{candidate.get('walk_forward_profit_factor')}`",
             f"- failed_gates: `{candidate.get('failed_gates')}`",
+            f"- research_only_total_r_repair_enabled: `{candidate.get('research_only_total_r_repair_enabled')}`",
+            f"- validation_total_r_repair_profile: `{candidate.get('validation_total_r_repair_profile')}`",
+            f"- recommended_validation_repair_profile: `{candidate.get('recommended_validation_repair_profile') or dict(candidate.get('walk_forward_profit_diagnostics', {})).get('recommended_validation_repair_profile')}`",
             f"- opportunity_probability_threshold: `{candidate.get('opportunity_probability_threshold')}`",
             f"- setup_quality_min_threshold: `{candidate.get('setup_quality_min_threshold')}`",
             f"- setup_quality_decision_mask_enabled: `{candidate.get('setup_quality_decision_mask_enabled')}`",

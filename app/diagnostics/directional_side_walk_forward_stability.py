@@ -9,7 +9,7 @@ from app.diagnostics.directional_side_ablation_comparator import (
 
 class DirectionalSideWalkForwardStabilityAnalyzer:
     diagnostic_name = "directional_side_walk_forward_stability"
-    diagnostic_version = "ml38.10.23"
+    diagnostic_version = "ml38.10.25"
     SIDE_PROFILES = DirectionalSideAblationComparator.SIDE_PROFILES
 
     def analyze(self, candidates: list[dict[str, Any]]) -> dict[str, Any]:
@@ -83,6 +83,7 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
         if best_research:
             recovery_status = str(best_research.get("directional_side_signal_recovery_status") or "")
             recovery_verdict = str(best_research.get("directional_side_signal_recovery_verdict") or "")
+            repair_profile = str(best_research.get("recommended_validation_repair_profile") or "")
             if recovery_status in {"SIDE_FILTER_REMOVED_SIGNAL_EVIDENCE", "THRESHOLD_TOO_STRICT_EVIDENCE"}:
                 warnings.append("best_research_side_profile_has_signal_recovery_problem")
             if recovery_verdict in {"CHECK_SIDE_FILTER_STRICTNESS", "CHECK_GATE_THRESHOLDS"}:
@@ -93,6 +94,17 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
                 )
             if self._int_or_zero(best_research.get("side_aware_relaxed_fold_count")) > 0:
                 warnings.append("side_aware_validation_relaxation_is_research_only")
+            if repair_profile.startswith("TOTAL_R_RELAX"):
+                warnings.append("best_research_side_profile_needs_total_r_repair_probe")
+                recommendations.append("run_total_r_repair_probe_only_as_research_not_acceptance")
+            if (
+                best_research.get("walk_forward_validation_candidate_board_verdict")
+                == "TOTAL_R_DEFICIT_TOO_LARGE_FEATURE_REPAIR_NEEDED"
+            ):
+                warnings.append("total_r_deficit_too_large_for_threshold_repair")
+                recommendations.append(
+                    "prefer_feature_or_exit_repair_over_more_threshold_relaxation"
+                )
         if (
             short_only
             and self._float_or_none(short_only.get("profit_total_r")) is not None
@@ -133,6 +145,9 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
         wf_profit_summary = self._as_dict(wf_diag.get("fold_profit_summary"))
         signal_recovery = self._as_dict(
             wf_diag.get("directional_side_signal_recovery_diagnostics")
+        )
+        validation_board = self._as_dict(
+            wf_diag.get("walk_forward_validation_candidate_board")
         )
         signal_loss_reason_counts = self._as_dict(
             signal_recovery.get("primary_signal_loss_reason_counts")
@@ -203,6 +218,33 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
             "directional_side_signal_recovery_diagnostics": signal_recovery,
             "directional_side_signal_recovery_status": signal_recovery.get("diagnostic_status"),
             "directional_side_signal_recovery_verdict": signal_recovery.get("verdict"),
+            "walk_forward_validation_candidate_board_status": validation_board.get(
+                "diagnostic_status"
+            ),
+            "walk_forward_validation_candidate_board_verdict": validation_board.get(
+                "verdict"
+            ),
+            "recommended_validation_repair_profile": validation_board.get(
+                "recommended_validation_repair_profile"
+            ),
+            "total_r_below_min_fold_count": self._int_or_zero(
+                validation_board.get("total_r_below_min_fold_count")
+            ),
+            "total_r_repair_candidate_fold_count": self._int_or_zero(
+                validation_board.get("total_r_repair_candidate_fold_count")
+            ),
+            "median_best_total_r_deficit": self._float_or_none(
+                validation_board.get("median_best_total_r_deficit")
+            ),
+            "max_best_total_r_deficit": self._float_or_none(
+                validation_board.get("max_best_total_r_deficit")
+            ),
+            "best_failed_total_r_by_fold": self._as_list(
+                validation_board.get("best_failed_total_r_by_fold")
+            ),
+            "validation_candidate_board_rows": self._as_list(
+                validation_board.get("candidate_board_rows")
+            ),
             "primary_signal_loss_reason_counts": signal_loss_reason_counts,
             "validation_gate_failure_reason_counts": self._as_dict(
                 signal_recovery.get("validation_gate_failure_reason_counts")

@@ -186,6 +186,7 @@ DEFAULT_EXPECTED_CANDIDATE_COUNT = _infer_default_expected_candidate_count()
 # - ML38.10.8 masked two-stage comparator via lv19_h08_tts_thr065_sqmask060
 # - ML38.10.9 two-stage acceptance/anti-undertrading gates through candidate reports
 FAST_DEBUG_CONFIGS = (
+    "lv30_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
     "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
     "lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
     "lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
@@ -203,6 +204,8 @@ FAST_DEBUG_END_DATE = DEFAULT_END_DATE
 # Intermediate quality: one symbol, short period, Prompt 4-6 smoke shortlist.
 # Keep this small: it is not final validation and must not replace full research review.
 QUICK_QUALITY_CONFIGS = (
+    "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
+    "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
     "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
     "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_relax",
     "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",

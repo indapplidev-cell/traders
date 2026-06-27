@@ -130,6 +130,9 @@ class TrainingPipelineConfig:
     side_aware_min_validation_total_r: float | None = None
     side_aware_min_validation_expectancy_r: float | None = None
     side_aware_allow_single_direction_validation: bool = False
+    research_only_total_r_repair_enabled: bool = False
+    validation_total_r_repair_profile: str | None = None
+    research_only_acceptance_block_reason: str | None = None
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1165,6 +1168,9 @@ class LongHistoryTrainingPipelineRunner:
                         "side_aware_min_validation_total_r": config.side_aware_min_validation_total_r,
                         "side_aware_min_validation_expectancy_r": config.side_aware_min_validation_expectancy_r,
                         "side_aware_allow_single_direction_validation": config.side_aware_allow_single_direction_validation,
+                        "research_only_total_r_repair_enabled": config.research_only_total_r_repair_enabled,
+                        "validation_total_r_repair_profile": config.validation_total_r_repair_profile,
+                        "research_only_acceptance_block_reason": config.research_only_acceptance_block_reason,
                         "config_id": label_version,
                         "training_objective": config.training_objective,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1238,6 +1244,9 @@ class LongHistoryTrainingPipelineRunner:
                 "side_aware_min_validation_total_r": config.side_aware_min_validation_total_r,
                 "side_aware_min_validation_expectancy_r": config.side_aware_min_validation_expectancy_r,
                 "side_aware_allow_single_direction_validation": config.side_aware_allow_single_direction_validation,
+                "research_only_total_r_repair_enabled": config.research_only_total_r_repair_enabled,
+                "validation_total_r_repair_profile": config.validation_total_r_repair_profile,
+                "research_only_acceptance_block_reason": config.research_only_acceptance_block_reason,
                 "config_id": label_version,
                 "training_objective": config.training_objective,
                 "decision_calibration_enabled": config.decision_calibration_enabled,

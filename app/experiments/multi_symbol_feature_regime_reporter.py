@@ -124,6 +124,9 @@ class MultiSymbolFeatureRegimeReporter:
             "directional_side_signal_recovery_summary": payload.get(
                 "directional_side_signal_recovery_summary"
             ),
+            "walk_forward_validation_candidate_board_summary": payload.get(
+                "walk_forward_validation_candidate_board_summary"
+            ),
             "validation_gate_failure_reason_counts": payload.get(
                 "validation_gate_failure_reason_counts"
             ),
@@ -455,6 +458,9 @@ class MultiSymbolFeatureRegimeReporter:
         if not self._as_list(stability.get("comparison_board")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         recovery_summary = self._as_dict(payload.get("directional_side_signal_recovery_summary"))
+        validation_board_summary = self._as_dict(
+            payload.get("walk_forward_validation_candidate_board_summary")
+        )
         lines.extend(
             [
                 "",
@@ -467,10 +473,37 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- validation gate failure reasons: `{payload.get('validation_gate_failure_reason_counts')}`",
                 f"- side-aware relaxed folds: `{payload.get('side_aware_relaxed_fold_count')}`",
                 "",
+                "## Walk-forward validation candidate board / total-R repair",
+                "",
+                f"- summary: `{validation_board_summary}`",
+                f"- repair profile counts: `{validation_board_summary.get('recommended_validation_repair_profile_counts')}`",
+                f"- best_total_r_repair_probe: `{validation_board_summary.get('best_total_r_repair_probe')}`",
+                "",
+                "| Symbol | Config | Side profile | PF | Total R | WF PF | WF R | Recommended repair | Total-R folds | Median deficit | Research-only blocked |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+                "",
                 "| Symbol | Config | Side recovery status | Side recovery verdict | Primary signal loss reason counts | Gate fail reasons | Relaxed folds |",
                 "| --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
+        for row in self._as_list(payload.get("configs_ranked"))[:10]:
+            lines.append(
+                "| `{symbol}` | `{config}` | `{side}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` | `{repair}` | `{folds}` | `{median}` | `{blocked}` |".format(
+                    symbol=row.get("symbol"),
+                    config=row.get("config_id"),
+                    side=row.get("directional_side_filter_profile"),
+                    pf=row.get("profit_factor"),
+                    total_r=row.get("profit_total_r"),
+                    wf_pf=row.get("walk_forward_profit_factor"),
+                    wf_r=row.get("walk_forward_total_r", row.get("walk_forward_global_total_r")),
+                    repair=row.get("recommended_validation_repair_profile"),
+                    folds=row.get("total_r_below_min_fold_count"),
+                    median=row.get("median_best_total_r_deficit"),
+                    blocked=row.get("research_only_total_r_repair_enabled"),
+                )
+            )
+        if not self._as_list(payload.get("configs_ranked")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         for row in self._as_list(payload.get("configs_ranked"))[:10]:
             lines.append(
                 "| `{symbol}` | `{config}` | `{status}` | `{verdict}` | `{reasons}` | `{gate_fail}` | `{relaxed}` |".format(

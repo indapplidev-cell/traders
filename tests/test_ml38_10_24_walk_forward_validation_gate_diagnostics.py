@@ -26,7 +26,7 @@ def test_ml38_10_24_gate_selector_reports_failure_reasons_when_no_gate_passes() 
     assert payload["selected_gate"] is None
     assert payload["reject_reason"] == "no_validation_gate_passed"
     diagnostics = payload["diagnostics"]
-    assert diagnostics["diagnostic_version"] == "ml38.10.24"
+    assert diagnostics["diagnostic_version"] == "ml38.10.25"
     assert diagnostics["diagnostic_status"] == "NO_GATE_PASSED"
     assert diagnostics["failure_reason_counts"]["signal_count_below_min"] == 1
     assert diagnostics["failure_reason_counts"]["profit_factor_below_min"] == 1
@@ -80,5 +80,5 @@ def test_ml38_10_24_grid_matrix_and_runtime_include_lv29_research_configs() -> N
         "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax"
         in matrix["config_ids"]
     )
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv29_")
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv29_")
+    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv30_")
+    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv30_")

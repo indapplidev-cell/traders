@@ -5,11 +5,14 @@ from typing import Any
 from app.diagnostics.directional_side_signal_recovery_diagnostics import (
     DirectionalSideSignalRecoveryDiagnostics,
 )
+from app.diagnostics.walk_forward_validation_candidate_board import (
+    WalkForwardValidationCandidateBoard,
+)
 
 
 class WalkForwardProfitDiagnostics:
     DIAGNOSTIC_NAME = "walk_forward_profit_diagnostics"
-    DIAGNOSTIC_VERSION = "ml38.10.24"
+    DIAGNOSTIC_VERSION = "ml38.10.25"
 
     def analyze(
         self,
@@ -119,6 +122,11 @@ class WalkForwardProfitDiagnostics:
                 side_profile=walk_forward_summary.get("directional_side_filter_profile"),
             )
         )
+        walk_forward_validation_candidate_board = (
+            WalkForwardValidationCandidateBoard().analyze(
+                walk_forward_summary=walk_forward_summary,
+            )
+        )
         recommendations = self._recommendations(
             walk_forward_profit_factor=self._safe_float(walk_summary.get("global_profit_factor")),
             walk_forward_total_r=self._safe_float(walk_summary.get("global_total_r")),
@@ -126,6 +134,13 @@ class WalkForwardProfitDiagnostics:
             profitable_fold_count=profitable_fold_count,
             low_signal_folds=low_signal_folds,
             profit_aware_diagnostics=profit_aware_diagnostics,
+        )
+        recommendations.extend(
+            [
+                "inspect_walk_forward_validation_candidate_board",
+                "if_total_r_repair_probe_is_used_keep_research_only",
+                "reject_total_r_repair_if_fold_drawdown_or_side_mismatch_remains_primary_blocker",
+            ]
         )
 
         return {
@@ -168,6 +183,27 @@ class WalkForwardProfitDiagnostics:
             "directional_side_signal_recovery_status": directional_side_signal_recovery_diagnostics.get("diagnostic_status"),
             "directional_side_signal_recovery_verdict": directional_side_signal_recovery_diagnostics.get("verdict"),
             "primary_signal_loss_reason_counts": directional_side_signal_recovery_diagnostics.get("primary_signal_loss_reason_counts"),
+            "walk_forward_validation_candidate_board": walk_forward_validation_candidate_board,
+            "walk_forward_validation_candidate_board_status": walk_forward_validation_candidate_board.get("diagnostic_status"),
+            "walk_forward_validation_candidate_board_verdict": walk_forward_validation_candidate_board.get("verdict"),
+            "recommended_validation_repair_profile": walk_forward_validation_candidate_board.get(
+                "recommended_validation_repair_profile"
+            ),
+            "total_r_below_min_fold_count": walk_forward_validation_candidate_board.get(
+                "total_r_below_min_fold_count"
+            ),
+            "total_r_repair_candidate_fold_count": walk_forward_validation_candidate_board.get(
+                "total_r_repair_candidate_fold_count"
+            ),
+            "median_best_total_r_deficit": walk_forward_validation_candidate_board.get(
+                "median_best_total_r_deficit"
+            ),
+            "max_best_total_r_deficit": walk_forward_validation_candidate_board.get(
+                "max_best_total_r_deficit"
+            ),
+            "best_failed_total_r_by_fold": walk_forward_validation_candidate_board.get(
+                "best_failed_total_r_by_fold"
+            ),
             "validation_gate_failure_reason_counts": directional_side_signal_recovery_diagnostics.get(
                 "validation_gate_failure_reason_counts"
             ),

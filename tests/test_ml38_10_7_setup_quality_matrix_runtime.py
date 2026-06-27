@@ -23,6 +23,7 @@ def test_ml38_10_7_setup_quality_configs_are_in_grid_and_runtime_shortlists() ->
         assert payload["setup_quality_min_threshold"] is not None
 
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
+        "lv30_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
         "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
         "lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
         "lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
@@ -35,6 +36,8 @@ def test_ml38_10_7_setup_quality_configs_are_in_grid_and_runtime_shortlists() ->
     )
 
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
+        "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
+        "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
         "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
         "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_relax",
         "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",

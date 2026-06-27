@@ -134,6 +134,9 @@ class LabelGridExperimentCandidateResult:
     side_aware_min_validation_total_r: float | None = None
     side_aware_min_validation_expectancy_r: float | None = None
     side_aware_allow_single_direction_validation: bool = False
+    research_only_total_r_repair_enabled: bool = False
+    validation_total_r_repair_profile: str | None = None
+    research_only_acceptance_block_reason: str | None = None
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -258,6 +261,9 @@ class LabelGridExperimentCandidateResult:
             "side_aware_min_validation_total_r": self.side_aware_min_validation_total_r,
             "side_aware_min_validation_expectancy_r": self.side_aware_min_validation_expectancy_r,
             "side_aware_allow_single_direction_validation": self.side_aware_allow_single_direction_validation,
+            "research_only_total_r_repair_enabled": self.research_only_total_r_repair_enabled,
+            "validation_total_r_repair_profile": self.validation_total_r_repair_profile,
+            "research_only_acceptance_block_reason": self.research_only_acceptance_block_reason,
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -681,7 +687,9 @@ class LabelGridExperimentRunner:
             best_candidate_status=self._normalize_final_candidate_status(
                 best_candidate.get("candidate_status"),
                 status="COMPLETED",
-            ),
+            )
+            if not bool(best_candidate.get("research_only_total_r_repair_enabled", False))
+            else "REJECTED",
             best_candidate_score=best_candidate.get("score"),
             feature_version_used=config.feature_version,
             output_dir=str(logger.paths.experiment_dir),
@@ -1102,6 +1110,9 @@ class LabelGridExperimentRunner:
                 side_aware_min_validation_total_r=label_config.side_aware_min_validation_total_r,
                 side_aware_min_validation_expectancy_r=label_config.side_aware_min_validation_expectancy_r,
                 side_aware_allow_single_direction_validation=label_config.side_aware_allow_single_direction_validation,
+                research_only_total_r_repair_enabled=label_config.research_only_total_r_repair_enabled,
+                validation_total_r_repair_profile=label_config.validation_total_r_repair_profile,
+                research_only_acceptance_block_reason=label_config.research_only_acceptance_block_reason,
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1217,6 +1228,18 @@ class LabelGridExperimentRunner:
             ),
             gap_quality=gap_quality,
         )
+        research_only_total_r_repair_enabled = bool(
+            getattr(label_config, "research_only_total_r_repair_enabled", False)
+        )
+        research_only_acceptance_block_reason = (
+            getattr(label_config, "research_only_acceptance_block_reason", None)
+            or "research_only_validation_total_r_repair_probe"
+        )
+        failed_gates, passed_gates = self._apply_research_only_total_r_repair_block(
+            failed_gates=failed_gates,
+            passed_gates=passed_gates,
+            research_only_total_r_repair_enabled=research_only_total_r_repair_enabled,
+        )
         final_candidate_status = self._normalize_final_candidate_status(
             raw_candidate_status,
             status="COMPLETED",
@@ -1228,18 +1251,30 @@ class LabelGridExperimentRunner:
             and final_candidate_status == "ACCEPTED"
         ):
             final_candidate_status = "REJECTED"
+        if research_only_total_r_repair_enabled and final_candidate_status == "ACCEPTED":
+            final_candidate_status = "REJECTED"
 
         warnings = tuple(
             dict.fromkeys(
                 self._string_list(quality_payload.get("warnings"))
                 + self._string_list(candidate_selection.get("warnings"))
                 + self._string_list(extra_warnings)
+                + (
+                    [research_only_acceptance_block_reason]
+                    if research_only_total_r_repair_enabled
+                    else []
+                )
             )
         )
         recommendations = tuple(
             dict.fromkeys(
                 self._string_list(quality_payload.get("reasons"))
                 + self._string_list(candidate_selection.get("recommendations"))
+                + (
+                    ["do_not_accept_total_r_repair_probe_without_manual_review"]
+                    if research_only_total_r_repair_enabled
+                    else []
+                )
             )
         )
         selected_policy_payload = {
@@ -1467,6 +1502,15 @@ class LabelGridExperimentRunner:
             side_aware_allow_single_direction_validation=bool(
                 label_config.side_aware_allow_single_direction_validation
             ),
+            research_only_total_r_repair_enabled=research_only_total_r_repair_enabled,
+            validation_total_r_repair_profile=getattr(
+                label_config, "validation_total_r_repair_profile", None
+            ),
+            research_only_acceptance_block_reason=(
+                research_only_acceptance_block_reason
+                if research_only_total_r_repair_enabled
+                else None
+            ),
             opportunity_probability_threshold=self._optional_float(
                 quality_payload.get("opportunity_probability_threshold")
             ),
@@ -1620,6 +1664,13 @@ class LabelGridExperimentRunner:
             else None
         )
         quality_status = str(model_quality_payload.get("quality_status") or "").upper()
+        research_only_total_r_repair_enabled = bool(
+            getattr(label_config, "research_only_total_r_repair_enabled", False)
+        )
+        research_only_acceptance_block_reason = (
+            getattr(label_config, "research_only_acceptance_block_reason", None)
+            or "research_only_validation_total_r_repair_probe"
+        )
 
         failed_gates_list, passed_gates_list = normalize_gap_quality_gate(
             gap_severity_for_training=gap_quality.get("gap_severity_for_training"),
@@ -1658,6 +1709,13 @@ class LabelGridExperimentRunner:
             passed_gates_list = list(
                 dict.fromkeys(list(passed_gates_list) + list(quality_passed_gates))
             )
+        failed_gates_tuple, passed_gates_tuple = self._apply_research_only_total_r_repair_block(
+            failed_gates=tuple(failed_gates_list),
+            passed_gates=tuple(passed_gates_list),
+            research_only_total_r_repair_enabled=research_only_total_r_repair_enabled,
+        )
+        failed_gates_list = list(failed_gates_tuple)
+        passed_gates_list = list(passed_gates_tuple)
 
         probability_diagnostics = self._as_dict(
             model_quality_payload.get("probability_diagnostics")
@@ -1712,6 +1770,8 @@ class LabelGridExperimentRunner:
             warning_items.append("short_side_suppression_not_live_ready")
         if label_config.directional_side_filter_profile == "short_only_research":
             side_filter_recommendations.append("inspect_short_side_feature_failure_modes")
+        if research_only_total_r_repair_enabled:
+            warning_items.append(research_only_acceptance_block_reason)
         selected_policy_payload = {
             "model_accuracy": self._optional_float(
                 model_quality_payload.get("model_accuracy", train_payload.get("model_accuracy"))
@@ -1794,6 +1854,11 @@ class LabelGridExperimentRunner:
                     dict.fromkeys(
                         [
                             "Reject candidate from available quality decision; pipeline failure did not mean candidate execution crash.",
+                            *(
+                                ["do_not_accept_total_r_repair_probe_without_manual_review"]
+                                if research_only_total_r_repair_enabled
+                                else []
+                            ),
                             *side_filter_recommendations,
                         ]
                     )
@@ -1898,6 +1963,15 @@ class LabelGridExperimentRunner:
             side_aware_allow_single_direction_validation=bool(
                 label_config.side_aware_allow_single_direction_validation
             ),
+            research_only_total_r_repair_enabled=research_only_total_r_repair_enabled,
+            validation_total_r_repair_profile=getattr(
+                label_config, "validation_total_r_repair_profile", None
+            ),
+            research_only_acceptance_block_reason=(
+                research_only_acceptance_block_reason
+                if research_only_total_r_repair_enabled
+                else None
+            ),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,
             approved_for_auto_activation=False,
@@ -1932,6 +2006,20 @@ class LabelGridExperimentRunner:
             passed_gates=LabelGridExperimentRunner._string_list(raw_passed_gates),
         )
         return tuple(failed), tuple(passed)
+
+    @staticmethod
+    def _apply_research_only_total_r_repair_block(
+        *,
+        failed_gates: tuple[str, ...],
+        passed_gates: tuple[str, ...],
+        research_only_total_r_repair_enabled: bool,
+    ) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        if not research_only_total_r_repair_enabled:
+            return failed_gates, passed_gates
+        blocked_gate = "research_only_validation_total_r_repair_gate"
+        failed = tuple(dict.fromkeys([*failed_gates, blocked_gate]))
+        passed = tuple(gate for gate in passed_gates if gate != blocked_gate)
+        return failed, passed
 
     @staticmethod
     def _normalize_final_candidate_status(
@@ -1973,6 +2061,8 @@ class LabelGridExperimentRunner:
                 row.get("candidate_status"),
                 status="COMPLETED",
             )
+            if bool(normalized.get("research_only_total_r_repair_enabled", False)):
+                normalized["candidate_status"] = "REJECTED"
             normalized_rows.append(normalized)
         return normalized_rows
 
