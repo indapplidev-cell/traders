@@ -100,7 +100,7 @@ def test_ml38_10_25_validation_candidate_board_summarizes_two_no_gate_folds() ->
         }
     )
 
-    assert board["diagnostic_version"] == "ml38.10.25"
+    assert board["diagnostic_version"] == "ml38.10.26"
     assert board["no_gate_fold_count"] == 2
     assert board["total_r_below_min_fold_count"] == 2
     assert board["candidate_board_rows"]
@@ -127,6 +127,7 @@ def test_ml38_10_25_walk_forward_profit_diagnostics_carries_candidate_board() ->
 
     board = diagnostics["walk_forward_validation_candidate_board"]
     assert board["diagnostic_name"] == "walk_forward_validation_candidate_board"
+    assert board["diagnostic_version"] == "ml38.10.26"
     assert diagnostics["walk_forward_validation_candidate_board_status"] is not None
     assert diagnostics["recommended_validation_repair_profile"] is not None
 

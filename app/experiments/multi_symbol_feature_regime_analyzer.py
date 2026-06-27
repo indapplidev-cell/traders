@@ -148,6 +148,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
         walk_forward_validation_candidate_board_summary = (
             self._walk_forward_validation_candidate_board_summary(configs_ranked)
         )
+        walk_forward_fold_root_cause_board = self._walk_forward_fold_root_cause_board(
+            configs_ranked
+        )
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -196,6 +199,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "walk_forward_validation_candidate_board_summary": (
                 walk_forward_validation_candidate_board_summary
             ),
+            "walk_forward_fold_root_cause_board": walk_forward_fold_root_cause_board,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -732,6 +736,24 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 )
             ),
             "validation_candidate_board_rows": board_row_preview,
+            "worst_fold_root_cause": cls._as_dict(
+                candidate.get("worst_fold_root_cause")
+                or board.get("worst_fold_root_cause")
+            ),
+            "primary_validation_root_cause_counts": cls._as_dict(
+                candidate.get("primary_validation_root_cause_counts")
+                or board.get("primary_root_cause_counts")
+            ),
+            "fold_root_cause_count": cls._int_or_zero(
+                candidate.get(
+                    "fold_root_cause_count",
+                    board.get("fold_root_cause_count"),
+                )
+            ),
+            "validation_fold_root_cause_summary": cls._as_dict(
+                candidate.get("validation_fold_root_cause_summary")
+                or walk_diag.get("validation_fold_root_cause_summary")
+            ),
         }
 
     @staticmethod
@@ -1039,6 +1061,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "max_best_total_r_deficit": best_validation_candidate_board.get("max_best_total_r_deficit"),
             "best_failed_total_r_by_fold": best_validation_candidate_board.get("best_failed_total_r_by_fold"),
             "validation_candidate_board_rows": best_validation_candidate_board.get("validation_candidate_board_rows"),
+            "worst_fold_root_cause": best_validation_candidate_board.get("worst_fold_root_cause"),
+            "primary_validation_root_cause_counts": best_validation_candidate_board.get("primary_validation_root_cause_counts"),
+            "fold_root_cause_count": best_validation_candidate_board.get("fold_root_cause_count"),
+            "validation_fold_root_cause_summary": best_validation_candidate_board.get("validation_fold_root_cause_summary"),
             "research_only_total_r_repair_enabled": bool(
                 best_candidate.get(
                     "research_only_total_r_repair_enabled",
@@ -1646,6 +1672,67 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_total_r_repair_probe": best_total_r_repair_probe,
             "warnings": warnings,
             "recommendations": recommendations,
+        }
+
+    @classmethod
+    def _walk_forward_fold_root_cause_board(
+        cls,
+        candidates: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        primary_counts: Counter[str] = Counter()
+        worst_candidates: list[dict[str, Any]] = []
+        candidate_count_with_root_cause = 0
+
+        for candidate in candidates:
+            worst = cls._as_dict(candidate.get("worst_fold_root_cause"))
+            if not worst:
+                continue
+            candidate_count_with_root_cause += 1
+            primary = str(worst.get("primary_root_cause") or "UNKNOWN")
+            primary_counts[primary] += 1
+            worst_candidates.append(
+                {
+                    "symbol": candidate.get("symbol"),
+                    "config_id": candidate.get("config_id"),
+                    "candidate_id": candidate.get("candidate_id"),
+                    "validation_total_r": cls._float_or_none(
+                        worst.get("validation_total_r")
+                    ),
+                    "primary_root_cause": worst.get("primary_root_cause"),
+                    "root_cause_flags": cls._as_list(worst.get("root_cause_flags")),
+                    "recommended_validation_repair_profile": candidate.get(
+                        "recommended_validation_repair_profile"
+                    ),
+                    "profit_factor": cls._float_or_none(candidate.get("profit_factor")),
+                    "profit_total_r": cls._float_or_none(candidate.get("profit_total_r")),
+                    "walk_forward_profit_factor": cls._float_or_none(
+                        candidate.get("walk_forward_profit_factor")
+                    ),
+                    "walk_forward_total_r": cls._float_or_none(
+                        candidate.get("walk_forward_total_r")
+                    ),
+                }
+            )
+
+        worst_candidates.sort(
+            key=lambda item: (
+                cls._float_or_none(item.get("validation_total_r")) or 0.0,
+                str(item.get("symbol") or ""),
+                str(item.get("config_id") or ""),
+            )
+        )
+        recommendations = ["inspect_worst_fold_root_cause_before_more_threshold_relaxation"]
+        if primary_counts.get("large_negative_validation_total_r", 0):
+            recommendations.append("do_not_fix_large_negative_fold_by_threshold_only")
+        if primary_counts.get("losses_concentrated_in_regime_bucket", 0):
+            recommendations.append("consider_regime_time_slice_repair_stage")
+        return {
+            "diagnostic_name": "walk_forward_fold_root_cause_board",
+            "diagnostic_version": "ml38.10.26",
+            "candidate_count_with_root_cause": candidate_count_with_root_cause,
+            "primary_root_cause_counts": dict(primary_counts),
+            "worst_candidates": worst_candidates[:10],
+            "recommendations": list(dict.fromkeys(recommendations)),
         }
 
     @staticmethod

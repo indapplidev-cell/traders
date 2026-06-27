@@ -224,6 +224,70 @@ class FeatureRegimeExperimentReporter:
             "recommendations": self._as_list(payload.get("recommendations")),
         }
 
+    def _compact_worst_fold_root_cause(self, value: Any) -> dict[str, Any]:
+        payload = self._as_dict(value)
+        if not payload:
+            return {}
+        return {
+            "diagnostic_name": payload.get("diagnostic_name"),
+            "diagnostic_version": payload.get("diagnostic_version"),
+            "diagnostic_status": payload.get("diagnostic_status"),
+            "fold_index": payload.get("fold_index"),
+            "train_start": payload.get("train_start"),
+            "train_end": payload.get("train_end"),
+            "validation_start": payload.get("validation_start"),
+            "validation_end": payload.get("validation_end"),
+            "test_start": payload.get("test_start"),
+            "test_end": payload.get("test_end"),
+            "gate_type": payload.get("gate_type"),
+            "threshold": payload.get("threshold"),
+            "validation_signal_count": payload.get("validation_signal_count"),
+            "validation_total_r": payload.get("validation_total_r"),
+            "validation_win_count": payload.get("validation_win_count"),
+            "validation_loss_count": payload.get("validation_loss_count"),
+            "validation_loss_rate": payload.get("validation_loss_rate"),
+            "outcome_counts": self._as_dict(payload.get("outcome_counts")),
+            "direction_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("direction_summary"))[:8]
+            ],
+            "outcome_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("outcome_summary"))[:8]
+            ],
+            "time_slice_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("time_slice_summary"))[:8]
+            ],
+            "regime_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("regime_summary"))[:8]
+            ],
+            "entry_path_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("entry_path_summary"))[:8]
+            ],
+            "setup_quality_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("setup_quality_summary"))[:8]
+            ],
+            "stop_pressure_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("stop_pressure_summary"))[:8]
+            ],
+            "mae_pressure_summary": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("mae_pressure_summary"))[:8]
+            ],
+            "root_cause_flags": self._as_list(payload.get("root_cause_flags")),
+            "primary_root_cause": payload.get("primary_root_cause"),
+            "sample_losing_trades": [
+                self._as_dict(item)
+                for item in self._as_list(payload.get("sample_losing_trades"))[:8]
+            ],
+            "recommendations": self._as_list(payload.get("recommendations")),
+        }
+
     def _compact_walk_forward_profit_diagnostics(self, value: Any) -> dict[str, Any]:
         payload = self._as_dict(value)
         if not payload:
@@ -282,6 +346,15 @@ class FeatureRegimeExperimentReporter:
             ),
             "walk_forward_validation_candidate_board_verdict": payload.get(
                 "walk_forward_validation_candidate_board_verdict"
+            ),
+            "validation_fold_root_cause_summary": self._as_dict(
+                payload.get("validation_fold_root_cause_summary")
+            ),
+            "worst_fold_root_cause": self._compact_worst_fold_root_cause(
+                payload.get("worst_fold_root_cause")
+            ),
+            "primary_validation_root_cause_counts": self._as_dict(
+                payload.get("primary_validation_root_cause_counts")
             ),
             "recommended_validation_repair_profile": payload.get(
                 "recommended_validation_repair_profile"
@@ -393,6 +466,27 @@ class FeatureRegimeExperimentReporter:
             walk_forward.get("validation_gate_failure_reason_counts")
             or candidate.get("validation_gate_failure_reason_counts")
         )
+        candidate["validation_fold_root_cause_summary"] = self._as_dict(
+            walk_forward.get("validation_fold_root_cause_summary")
+            or candidate.get("validation_fold_root_cause_summary")
+        )
+        candidate["worst_fold_root_cause"] = self._compact_worst_fold_root_cause(
+            walk_forward.get("worst_fold_root_cause")
+            or candidate.get("worst_fold_root_cause")
+        )
+        candidate["primary_validation_root_cause_counts"] = self._as_dict(
+            walk_forward.get("primary_validation_root_cause_counts")
+            or candidate.get("primary_validation_root_cause_counts")
+        )
+        candidate["fold_root_cause_count"] = (
+            walk_forward.get("walk_forward_validation_candidate_board", {}).get(
+                "fold_root_cause_count"
+            )
+            if self._as_dict(walk_forward.get("walk_forward_validation_candidate_board"))
+            else candidate.get("fold_root_cause_count")
+        )
+        if candidate["fold_root_cause_count"] is None:
+            candidate["fold_root_cause_count"] = candidate.get("fold_root_cause_count")
         candidate["walk_forward_validation_candidate_board_status"] = (
             walk_forward.get("walk_forward_validation_candidate_board_status")
             or candidate.get("walk_forward_validation_candidate_board_status")
@@ -467,6 +561,24 @@ class FeatureRegimeExperimentReporter:
             "walk_forward_validation_candidate_board_verdict": (
                 walk_forward.get("walk_forward_validation_candidate_board_verdict")
                 or row.get("walk_forward_validation_candidate_board_verdict")
+            ),
+            "validation_fold_root_cause_summary": self._as_dict(
+                walk_forward.get("validation_fold_root_cause_summary")
+                or row.get("validation_fold_root_cause_summary")
+            ),
+            "worst_fold_root_cause": self._compact_worst_fold_root_cause(
+                walk_forward.get("worst_fold_root_cause")
+                or row.get("worst_fold_root_cause")
+            ),
+            "primary_validation_root_cause_counts": self._as_dict(
+                walk_forward.get("primary_validation_root_cause_counts")
+                or row.get("primary_validation_root_cause_counts")
+            ),
+            "fold_root_cause_count": (
+                self._as_dict(walk_forward.get("walk_forward_validation_candidate_board")).get(
+                    "fold_root_cause_count"
+                )
+                or row.get("fold_root_cause_count")
             ),
             "recommended_validation_repair_profile": (
                 walk_forward.get("recommended_validation_repair_profile")
@@ -990,6 +1102,7 @@ class FeatureRegimeExperimentReporter:
         comparator = self._directional_side_ablation_comparator(payload)
         stability = self._directional_side_walk_forward_stability(payload)
         walk_forward_diag = self._as_dict(payload.get("walk_forward_profit_diagnostics"))
+        worst_fold_root_cause = self._as_dict(payload.get("worst_fold_root_cause"))
         lines = [
             f"# Feature/Regime Experiment Summary - {payload.get('experiment_id')}",
             "",
@@ -1115,6 +1228,39 @@ class FeatureRegimeExperimentReporter:
             f"- directional_edge_bias_audit: `{payload.get('directional_edge_bias_audit')}`",
             f"- entry_path_prediction_filter_summary: `{payload.get('entry_path_prediction_filter_summary')}`",
             f"- stop_pressure_effectiveness_audit: `{payload.get('stop_pressure_effectiveness_audit')}`",
+            "",
+            "## ML38.10.26 Validation fold root cause",
+            "",
+            (
+                f"- status: `{worst_fold_root_cause.get('diagnostic_status')}`"
+                if worst_fold_root_cause
+                else "No validation fold root-cause diagnostics available."
+            ),
+            (
+                f"- worst fold: `{worst_fold_root_cause.get('fold_index')}`"
+                if worst_fold_root_cause
+                else ""
+            ),
+            (
+                f"- validation_total_r: `{worst_fold_root_cause.get('validation_total_r')}`"
+                if worst_fold_root_cause
+                else ""
+            ),
+            (
+                f"- primary_root_cause: `{worst_fold_root_cause.get('primary_root_cause')}`"
+                if worst_fold_root_cause
+                else ""
+            ),
+            (
+                f"- root_cause_flags: `{worst_fold_root_cause.get('root_cause_flags')}`"
+                if worst_fold_root_cause
+                else ""
+            ),
+            (
+                f"- recommended repair: `{worst_fold_root_cause.get('recommendations')}`"
+                if worst_fold_root_cause
+                else ""
+            ),
             "",
             "## Directional Side Ablation Comparator",
             "",

@@ -12,7 +12,7 @@ from app.diagnostics.walk_forward_validation_candidate_board import (
 
 class WalkForwardProfitDiagnostics:
     DIAGNOSTIC_NAME = "walk_forward_profit_diagnostics"
-    DIAGNOSTIC_VERSION = "ml38.10.25"
+    DIAGNOSTIC_VERSION = "ml38.10.26"
 
     def analyze(
         self,
@@ -127,6 +127,11 @@ class WalkForwardProfitDiagnostics:
                 walk_forward_summary=walk_forward_summary,
             )
         )
+        validation_fold_root_cause_summary = self._normalize_mapping(
+            walk_summary.get("validation_fold_root_cause_summary")
+            or walk_forward_validation_candidate_board.get("worst_fold_root_cause")
+            or {}
+        )
         recommendations = self._recommendations(
             walk_forward_profit_factor=self._safe_float(walk_summary.get("global_profit_factor")),
             walk_forward_total_r=self._safe_float(walk_summary.get("global_total_r")),
@@ -140,6 +145,8 @@ class WalkForwardProfitDiagnostics:
                 "inspect_walk_forward_validation_candidate_board",
                 "if_total_r_repair_probe_is_used_keep_research_only",
                 "reject_total_r_repair_if_fold_drawdown_or_side_mismatch_remains_primary_blocker",
+                "if_fold_1_total_r_deficit_is_large_repair_features_not_threshold",
+                "inspect_regime_time_slice_entry_path_stop_pressure_for_worst_validation_fold",
             ]
         )
 
@@ -186,6 +193,15 @@ class WalkForwardProfitDiagnostics:
             "walk_forward_validation_candidate_board": walk_forward_validation_candidate_board,
             "walk_forward_validation_candidate_board_status": walk_forward_validation_candidate_board.get("diagnostic_status"),
             "walk_forward_validation_candidate_board_verdict": walk_forward_validation_candidate_board.get("verdict"),
+            "validation_fold_root_cause_summary": self._normalize_mapping(
+                walk_summary.get("validation_fold_root_cause_summary")
+            ),
+            "worst_fold_root_cause": walk_forward_validation_candidate_board.get(
+                "worst_fold_root_cause"
+            ),
+            "primary_validation_root_cause_counts": walk_forward_validation_candidate_board.get(
+                "primary_root_cause_counts"
+            ),
             "recommended_validation_repair_profile": walk_forward_validation_candidate_board.get(
                 "recommended_validation_repair_profile"
             ),

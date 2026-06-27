@@ -21,6 +21,8 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     command = wrapper._symbol_command("SOLUSDT", "quick_quality_experiment")
 
     assert "--skip-candle-load" in command
+    assert "--stdout-payload-profile" in command
+    assert command[command.index("--stdout-payload-profile") + 1] == "minimal"
     assert "--base-label-config-id" in command
     config_values = [
         command[index + 1]
@@ -77,6 +79,8 @@ def test_single_symbol_full_profile_uses_one_symbol_full_range_and_selected_conf
     command = wrapper._symbol_command("SOLUSDT", "single_symbol_full_experiment")
 
     assert "--skip-candle-load" in command
+    assert "--stdout-payload-profile" in command
+    assert command[command.index("--stdout-payload-profile") + 1] == "minimal"
     assert "--base-label-config-id" in command
     config_values = [
         command[index + 1]

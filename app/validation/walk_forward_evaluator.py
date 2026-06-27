@@ -7,6 +7,9 @@ from typing import Any
 
 from app.config.settings import PROJECT_ROOT
 from app.diagnostics.direction_bias_diagnostics import DirectionBiasDiagnostics
+from app.diagnostics.walk_forward_fold_root_cause_diagnostics import (
+    WalkForwardFoldRootCauseDiagnostics,
+)
 from app.evaluation.profit_aware_evaluator_v2 import ProfitAwareEvaluatorV2
 from app.validation.gate_selector import GateSelector
 from app.validation.walk_forward_splitter import WalkForwardConfig, WalkForwardSplitter
@@ -20,6 +23,7 @@ class WalkForwardEvaluator:
         gate_selector: GateSelector | None = None,
         profit_evaluator_v2: ProfitAwareEvaluatorV2 | None = None,
         direction_bias_diagnostics: DirectionBiasDiagnostics | None = None,
+        fold_root_cause_diagnostics: WalkForwardFoldRootCauseDiagnostics | None = None,
     ) -> None:
         self._reports_dir = reports_dir or (PROJECT_ROOT / "reports")
         self._reports_dir.mkdir(parents=True, exist_ok=True)
@@ -27,6 +31,9 @@ class WalkForwardEvaluator:
         self._gate_selector = gate_selector or GateSelector()
         self._profit_evaluator_v2 = profit_evaluator_v2 or ProfitAwareEvaluatorV2(reports_dir=self._reports_dir)
         self._direction_bias_diagnostics = direction_bias_diagnostics or DirectionBiasDiagnostics()
+        self._fold_root_cause_diagnostics = (
+            fold_root_cause_diagnostics or WalkForwardFoldRootCauseDiagnostics()
+        )
 
     def build_plan(self, dataset_rows: list[Any], config: WalkForwardConfig) -> dict[str, Any]:
         folds = self._walk_forward_splitter.build_plan(dataset_rows, config)
@@ -89,6 +96,25 @@ class WalkForwardEvaluator:
                 side_aware_allow_single_direction_validation=side_aware_allow_single_direction_validation,
             )
             selected_gate = selected_gate_payload["selected_gate"]
+            validation_fold_root_cause = None
+
+            if selected_gate is None:
+                validation_fold_root_cause = self._build_validation_fold_root_cause(
+                    fold=fold,
+                    validation_predictions=validation_predictions,
+                    selected_gate_payload=selected_gate_payload,
+                    take_profit_atr=take_profit_atr,
+                    stop_loss_atr=stop_loss_atr,
+                    fee_r=fee_r,
+                    slippage_r=slippage_r,
+                    same_candle_policy=same_candle_policy,
+                    exit_policy_profile=exit_policy_profile,
+                    exit_timeout_bars=exit_timeout_bars,
+                    exit_mitigation_loss_r=exit_mitigation_loss_r,
+                    exit_neutral_abs_r=exit_neutral_abs_r,
+                    directional_side_filter_profile=directional_side_filter_profile,
+                    allowed_signal_directions=allowed_signal_directions,
+                )
 
             test_result = None
             bias_report = None
@@ -122,6 +148,7 @@ class WalkForwardEvaluator:
                     "gate_reject_reason": selected_gate_payload["reject_reason"],
                     "validation_gate_results": validation_profit["gate_results"],
                     "validation_gate_selection_diagnostics": selected_gate_payload.get("diagnostics", {}),
+                    "validation_fold_root_cause": validation_fold_root_cause,
                     "test_result": test_result["summary"] if test_result is not None else None,
                     "direction_bias": bias_report,
                     "_test_outcomes": test_result["outcomes"] if test_result is not None else [],
@@ -159,6 +186,79 @@ class WalkForwardEvaluator:
         payload = dict(plan)
         payload["report_path"] = str(output_path)
         return payload
+
+    def _build_validation_fold_root_cause(
+        self,
+        *,
+        fold: dict[str, Any],
+        validation_predictions: list[dict[str, Any]],
+        selected_gate_payload: dict[str, Any],
+        take_profit_atr: float,
+        stop_loss_atr: float,
+        fee_r: float,
+        slippage_r: float,
+        same_candle_policy: str,
+        exit_policy_profile: str | None,
+        exit_timeout_bars: int | None,
+        exit_mitigation_loss_r: float | None,
+        exit_neutral_abs_r: float | None,
+        directional_side_filter_profile: str | None,
+        allowed_signal_directions: tuple[str, ...] | list[str] | None,
+    ) -> dict[str, Any] | None:
+        diagnostics = dict(
+            selected_gate_payload.get("diagnostics")
+            or selected_gate_payload.get("validation_gate_selection_diagnostics")
+            or {}
+        )
+        gate = (
+            diagnostics.get("best_failed_gate_by_distance_to_pass")
+            or diagnostics.get("best_failed_gate_by_total_r")
+            or diagnostics.get("best_failed_gate_by_profit_factor")
+            or diagnostics.get("best_failed_gate_by_signal_count")
+        )
+        if not isinstance(gate, dict):
+            return {
+                "diagnostic_name": "walk_forward_fold_total_r_root_cause",
+                "diagnostic_version": "ml38.10.26",
+                "diagnostic_status": "NO_BEST_FAILED_GATE",
+                "fold_index": fold.get("fold_index"),
+                "recommendations": ["inspect_gate_selector_diagnostics_payload"],
+            }
+
+        gate_type = gate.get("gate_type")
+        threshold = gate.get("threshold")
+        if gate_type is None or threshold is None:
+            return {
+                "diagnostic_name": "walk_forward_fold_total_r_root_cause",
+                "diagnostic_version": "ml38.10.26",
+                "diagnostic_status": "BEST_FAILED_GATE_INCOMPLETE",
+                "fold_index": fold.get("fold_index"),
+                "gate": gate,
+                "recommendations": ["inspect_best_failed_gate_payload"],
+            }
+
+        evaluated = self._profit_evaluator_v2.evaluate_single_gate(
+            predictions=validation_predictions,
+            gate_type=str(gate_type),
+            threshold=float(threshold),
+            take_profit_atr=take_profit_atr,
+            stop_loss_atr=stop_loss_atr,
+            fee_r=fee_r,
+            slippage_r=slippage_r,
+            same_candle_policy=same_candle_policy,
+            exit_policy_profile=exit_policy_profile,
+            exit_timeout_bars=exit_timeout_bars,
+            exit_mitigation_loss_r=exit_mitigation_loss_r,
+            exit_neutral_abs_r=exit_neutral_abs_r,
+            directional_side_filter_profile=directional_side_filter_profile,
+            allowed_signal_directions=allowed_signal_directions,
+        )
+        return self._fold_root_cause_diagnostics.analyze(
+            fold=fold,
+            gate=gate,
+            signal_rows=list(evaluated.get("signal_rows") or []),
+            outcomes=list(evaluated.get("outcomes") or []),
+        )
 
     @staticmethod
     def _summarize_folds(folds: list[dict[str, Any]]) -> dict[str, Any]:
@@ -216,6 +316,14 @@ class WalkForwardEvaluator:
                 validation_gate_failure_reason_counts[str(reason)] = (
                     validation_gate_failure_reason_counts.get(str(reason), 0) + int(count or 0)
                 )
+        validation_root_causes = [
+            dict(fold.get("validation_fold_root_cause") or {})
+            for fold in folds
+            if fold.get("validation_fold_root_cause") is not None
+        ]
+        validation_root_cause_summary = WalkForwardFoldRootCauseDiagnostics().summarize_many(
+            validation_root_causes
+        )
         total_test_signal_count = sum(int(row.get("signal_count", 0)) for row in test_results)
         total_test_r = sum(float(row.get("total_r", 0.0)) for row in test_results)
         global_profit_factor = None
@@ -232,6 +340,8 @@ class WalkForwardEvaluator:
             "validation_gate_probe_count": validation_gate_probe_count,
             "validation_gate_passed_probe_count": validation_gate_passed_probe_count,
             "validation_gate_failure_reason_counts": validation_gate_failure_reason_counts,
+            "validation_fold_root_cause_count": len(validation_root_causes),
+            "validation_fold_root_cause_summary": validation_root_cause_summary,
             "side_aware_relaxed_fold_count": side_aware_relaxed_fold_count,
             "folds_profitable_on_test": len(profitable_folds),
             "total_test_signal_count": total_test_signal_count,

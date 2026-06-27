@@ -20,6 +20,8 @@ def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -
     assert command[start_date_index] == "2026-04-01"
     assert command[end_date_index] == "2026-06-15"
     assert "--skip-candle-load" in command
+    assert "--stdout-payload-profile" in command
+    assert command[command.index("--stdout-payload-profile") + 1] == "minimal"
     assert "--base-label-config-id" in command
 
     config_values = [

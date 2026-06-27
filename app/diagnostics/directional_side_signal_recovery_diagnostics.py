@@ -5,7 +5,7 @@ from typing import Any
 
 class DirectionalSideSignalRecoveryDiagnostics:
     diagnostic_name = "directional_side_signal_recovery_diagnostics"
-    diagnostic_version = "ml38.10.23"
+    diagnostic_version = "ml38.10.26"
 
     LOW_SIGNAL_THRESHOLD = 5
 
@@ -130,6 +130,15 @@ class DirectionalSideSignalRecoveryDiagnostics:
             ),
             "max_best_total_r_deficit": validation_candidate_board.get(
                 "max_best_total_r_deficit"
+            ),
+            "worst_fold_root_cause": validation_candidate_board.get(
+                "worst_fold_root_cause"
+            ),
+            "primary_validation_root_cause_counts": validation_candidate_board.get(
+                "primary_root_cause_counts"
+            ),
+            "fold_root_cause_count": validation_candidate_board.get(
+                "fold_root_cause_count"
             ),
             "validation_candidate_board_rows": validation_candidate_board.get(
                 "candidate_board_rows",

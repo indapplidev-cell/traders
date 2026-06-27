@@ -991,6 +991,10 @@ class Fv3CachedTuningWrapper:
             self.end_date,
             "--experiment-id",
             experiment_id,
+            "--output-dir",
+            str(self.per_symbol_stage_dir),
+            "--stdout-payload-profile",
+            "minimal",
         ]
 
         if self.tuning_command == DEFAULT_TUNING_COMMAND:
@@ -1695,6 +1699,11 @@ class Fv3CachedTuningWrapper:
         payload = self._json_from_text(text)
         if payload is None:
             raise WrapperError(f"Expected JSON object in {path}")
+        if payload.get("stdout_payload_profile") == "minimal":
+            if "candidate_results" in payload:
+                raise WrapperError(
+                    f"Minimal stdout payload must not contain candidate_results: {path}"
+                )
 
         return payload
 

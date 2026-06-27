@@ -127,6 +127,9 @@ class MultiSymbolFeatureRegimeReporter:
             "walk_forward_validation_candidate_board_summary": payload.get(
                 "walk_forward_validation_candidate_board_summary"
             ),
+            "walk_forward_fold_root_cause_board": payload.get(
+                "walk_forward_fold_root_cause_board"
+            ),
             "validation_gate_failure_reason_counts": payload.get(
                 "validation_gate_failure_reason_counts"
             ),
@@ -518,4 +521,37 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not self._as_list(payload.get("configs_ranked")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        root_cause_board = self._as_dict(payload.get("walk_forward_fold_root_cause_board"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.26 Walk-forward fold root cause board",
+                "",
+                f"- candidate_count_with_root_cause: `{root_cause_board.get('candidate_count_with_root_cause')}`",
+                f"- primary_root_cause_counts: `{root_cause_board.get('primary_root_cause_counts')}`",
+                f"- worst fold: `{self._as_list(root_cause_board.get('worst_candidates'))[:1]}`",
+                f"- recommendation: `{root_cause_board.get('recommendations')}`",
+                "",
+                "| Symbol | Config | Candidate | Validation R | Primary root cause | Root cause flags | Repair profile | PF | Total R | WF PF | WF R |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in self._as_list(root_cause_board.get("worst_candidates"))[:10]:
+            lines.append(
+                "| `{symbol}` | `{config}` | `{candidate}` | `{validation_r}` | `{primary}` | `{flags}` | `{repair}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` |".format(
+                    symbol=row.get("symbol"),
+                    config=row.get("config_id"),
+                    candidate=row.get("candidate_id"),
+                    validation_r=row.get("validation_total_r"),
+                    primary=row.get("primary_root_cause"),
+                    flags=row.get("root_cause_flags"),
+                    repair=row.get("recommended_validation_repair_profile"),
+                    pf=row.get("profit_factor"),
+                    total_r=row.get("profit_total_r"),
+                    wf_pf=row.get("walk_forward_profit_factor"),
+                    wf_r=row.get("walk_forward_total_r"),
+                )
+            )
+        if not self._as_list(root_cause_board.get("worst_candidates")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)

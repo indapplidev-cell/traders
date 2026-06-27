@@ -97,7 +97,7 @@ def _candidate_payload(index: int) -> dict:
         "walk_forward_total_r": -0.5,
         "walk_forward_profit_diagnostics": {
             "diagnostic_name": "walk_forward_profit_diagnostics",
-            "diagnostic_version": "ml38.10.25",
+            "diagnostic_version": "ml38.10.26",
             "symbol": "SOLUSDT",
             "feature_version": "fv3_candle_ta_context",
             "model_version": "mv",
@@ -138,7 +138,7 @@ def _candidate_payload(index: int) -> dict:
             "passed_gates": [],
             "walk_forward_validation_candidate_board": {
                 "diagnostic_name": "walk_forward_validation_candidate_board",
-                "diagnostic_version": "ml38.10.25",
+                "diagnostic_version": "ml38.10.26",
                 "diagnostic_status": "NO_GATE_PASSED",
                 "fold_count": 50,
                 "folds_with_selected_gate": 0,
@@ -157,7 +157,7 @@ def _candidate_payload(index: int) -> dict:
             },
             "directional_side_signal_recovery_diagnostics": {
                 "diagnostic_name": "directional_side_signal_recovery_diagnostics",
-                "diagnostic_version": "ml38.10.23",
+                "diagnostic_version": "ml38.10.26",
                 "diagnostic_status": "COMPLETED",
                 "verdict": "SIDE_FILTER_TOO_STRICT_RESEARCH_ONLY",
                 "fold_count": 50,

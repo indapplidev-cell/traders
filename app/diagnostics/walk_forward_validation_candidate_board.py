@@ -6,7 +6,7 @@ from typing import Any
 
 class WalkForwardValidationCandidateBoard:
     diagnostic_name = "walk_forward_validation_candidate_board"
-    diagnostic_version = "ml38.10.25"
+    diagnostic_version = "ml38.10.26"
 
     def analyze(self, *, walk_forward_summary: dict[str, Any]) -> dict[str, Any]:
         walk_forward_summary = self._as_dict(walk_forward_summary)
@@ -61,6 +61,21 @@ class WalkForwardValidationCandidateBoard:
             )
             if deficit is not None
         ]
+        fold_root_causes = [
+            self._as_dict(row.get("validation_fold_root_cause"))
+            for row in candidate_board_rows
+            if self._as_dict(row.get("validation_fold_root_cause"))
+        ]
+        primary_root_cause_counts: dict[str, int] = {}
+        for item in fold_root_causes:
+            root = str(item.get("primary_root_cause") or "UNKNOWN")
+            primary_root_cause_counts[root] = primary_root_cause_counts.get(root, 0) + 1
+        worst_root_cause = None
+        if fold_root_causes:
+            worst_root_cause = min(
+                fold_root_causes,
+                key=lambda item: float(item.get("validation_total_r", 0.0) or 0.0),
+            )
 
         repair_profile_counts: dict[str, int] = {}
         for row in no_gate_rows:
@@ -117,6 +132,8 @@ class WalkForwardValidationCandidateBoard:
             recommendations.append(
                 "reject_total_r_repair_if_fold_drawdown_or_side_mismatch_remains_primary_blocker"
             )
+            if fold_root_causes:
+                recommendations.append("inspect_worst_fold_root_cause_before_more_threshold_relaxation")
 
         return {
             "diagnostic_name": self.diagnostic_name,
@@ -131,6 +148,9 @@ class WalkForwardValidationCandidateBoard:
             "total_r_below_min_fold_count": total_r_below_min_fold_count,
             "total_r_repair_candidate_fold_count": total_r_repair_candidate_fold_count,
             "best_failed_total_r_by_fold": best_failed_total_r_by_fold,
+            "fold_root_cause_count": len(fold_root_causes),
+            "primary_root_cause_counts": primary_root_cause_counts,
+            "worst_fold_root_cause": worst_root_cause,
             "median_best_total_r_deficit": (
                 median(best_total_r_deficits) if best_total_r_deficits else None
             ),
@@ -182,6 +202,9 @@ class WalkForwardValidationCandidateBoard:
                 diagnostics.get("best_failed_gate_candidates")
             ),
             "best_failed_gate_by_distance_to_pass": best_distance_gate,
+            "validation_fold_root_cause": self._as_dict(
+                fold.get("validation_fold_root_cause")
+            ),
             "recommended_validation_repair_profile": total_r_board.get(
                 "recommended_validation_repair_profile"
             ),

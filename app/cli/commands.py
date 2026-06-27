@@ -3628,6 +3628,114 @@ def run_ml38_2_fv3_tuning(
     )
 
 
+ML38_10_26_STDOUT_PAYLOAD_PROFILE_VALUES = {"minimal", "compact"}
+
+
+def build_ml38_2_fv3_tuning_stdout_payload(
+    payload: dict[str, object],
+    *,
+    stdout_payload_profile: str = "minimal",
+) -> dict[str, object]:
+    """Build small stdout payload for runtime wrappers.
+
+    ML38.10.25.1 fixed feature_regime_experiment_summary.json MemoryError,
+    but the CLI still printed a huge compact payload to stdout. The wrapper
+    only needs status/count/path fields, so stdout must stay tiny.
+    """
+
+    profile = str(stdout_payload_profile or "minimal").strip().lower()
+    if profile not in ML38_10_26_STDOUT_PAYLOAD_PROFILE_VALUES:
+        raise ValueError(
+            "Unknown stdout_payload_profile="
+            f"{stdout_payload_profile!r}; expected one of "
+            f"{sorted(ML38_10_26_STDOUT_PAYLOAD_PROFILE_VALUES)}"
+        )
+
+    if profile == "compact":
+        return dict(payload)
+
+    direct_keys = (
+        "status",
+        "stage",
+        "experiment_id",
+        "experiment_status",
+        "symbol",
+        "interval",
+        "start_date",
+        "end_date",
+        "feature_version",
+        "feature_version_used",
+        "candidate_count",
+        "expected_candidate_count",
+        "accepted_candidate_count",
+        "rejected_candidate_count",
+        "failed_candidate_count",
+        "best_candidate_id",
+        "best_candidate_config_id",
+        "best_candidate_score",
+        "best_candidate_status",
+        "quality_decision_allowed",
+        "model_accepted",
+        "summary_payload_mode",
+        "summary_payload_compacted",
+        "candidate_results_total_count",
+        "candidate_results_included_count",
+        "candidate_results_truncated",
+        "ranking_total_count",
+        "configs_ranked_total_count",
+        "summary_json_path",
+        "summary_markdown_path",
+        "output_dir",
+        "log_path",
+        "events_path",
+    )
+
+    result: dict[str, object] = {
+        key: payload.get(key)
+        for key in direct_keys
+        if key in payload
+    }
+
+    result["stdout_payload_profile"] = "minimal"
+    result["stdout_payload_mode"] = "minimal_ml38_10_26"
+    result["stdout_payload_suppressed_heavy_fields"] = True
+
+    best_preview_keys = (
+        "candidate_id",
+        "config_id",
+        "label_version",
+        "candidate_status",
+        "score",
+        "profit_factor",
+        "profit_total_r",
+        "walk_forward_profit_factor",
+        "walk_forward_total_r",
+        "walk_forward_validation_candidate_board_verdict",
+        "recommended_validation_repair_profile",
+        "directional_side_filter_profile",
+        "validation_total_r_repair_profile",
+        "research_only_total_r_repair_enabled",
+    )
+    candidates = payload.get("candidate_results")
+    if isinstance(candidates, list) and candidates:
+        best_candidate = None
+        best_config_id = payload.get("best_candidate_config_id")
+        for item in candidates:
+            if isinstance(item, dict) and item.get("config_id") == best_config_id:
+                best_candidate = item
+                break
+        if best_candidate is None and isinstance(candidates[0], dict):
+            best_candidate = candidates[0]
+        if isinstance(best_candidate, dict):
+            result["best_candidate_preview"] = {
+                key: best_candidate.get(key)
+                for key in best_preview_keys
+                if key in best_candidate
+            }
+
+    return result
+
+
 def build_model_candidate_selection_preview_payload() -> dict[str, object]:
     """Build a deterministic candidate-selection preview from the latest bad run profile."""
 
@@ -4676,6 +4784,15 @@ def ml38_2_fv3_tuning_run_command(
         Path("reports/feature_regime_experiments"),
         "--output-dir",
     ),
+    stdout_payload_profile: str = typer.Option(
+        "minimal",
+        "--stdout-payload-profile",
+        help=(
+            "Stdout payload profile for wrappers. "
+            "Use 'minimal' for runtime wrappers to avoid huge stdout JSON; "
+            "use 'compact' only for manual debugging."
+        ),
+    ),
 ) -> None:
     """Run the ML38.2 FV3 tuning matrix for one symbol."""
 
@@ -4692,9 +4809,13 @@ def ml38_2_fv3_tuning_run_command(
         skip_candle_load=skip_candle_load,
         output_dir=output_dir,
     )
+    stdout_payload = build_ml38_2_fv3_tuning_stdout_payload(
+        payload,
+        stdout_payload_profile=stdout_payload_profile,
+    )
     typer.echo(
         json.dumps(
-            payload,
+            stdout_payload,
             ensure_ascii=False,
             indent=2,
             sort_keys=True,

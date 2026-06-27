@@ -88,7 +88,7 @@ def test_ml38_10_23_signal_recovery_distinguishes_removed_all_vs_zero_resolved()
             _fold(fold_index=1, original=8, filtered=3, resolved=3),
         )
     )
-    assert removed_all_payload["diagnostic_version"] == "ml38.10.23"
+    assert removed_all_payload["diagnostic_version"] == "ml38.10.26"
     assert removed_all_payload["side_filter_removed_all_fold_count"] == 1
     assert removed_all_payload["low_signal_fold_count"] == 2
     assert (

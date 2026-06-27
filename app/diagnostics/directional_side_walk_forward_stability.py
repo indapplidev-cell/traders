@@ -9,7 +9,7 @@ from app.diagnostics.directional_side_ablation_comparator import (
 
 class DirectionalSideWalkForwardStabilityAnalyzer:
     diagnostic_name = "directional_side_walk_forward_stability"
-    diagnostic_version = "ml38.10.25"
+    diagnostic_version = "ml38.10.26"
     SIDE_PROFILES = DirectionalSideAblationComparator.SIDE_PROFILES
 
     def analyze(self, candidates: list[dict[str, Any]]) -> dict[str, Any]:
@@ -149,6 +149,11 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
         validation_board = self._as_dict(
             wf_diag.get("walk_forward_validation_candidate_board")
         )
+        worst_fold_root_cause = self._as_dict(
+            candidate.get("worst_fold_root_cause")
+            or wf_diag.get("worst_fold_root_cause")
+            or validation_board.get("worst_fold_root_cause")
+        )
         signal_loss_reason_counts = self._as_dict(
             signal_recovery.get("primary_signal_loss_reason_counts")
         )
@@ -244,6 +249,21 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
             ),
             "validation_candidate_board_rows": self._as_list(
                 validation_board.get("candidate_board_rows")
+            ),
+            "worst_fold_primary_root_cause": worst_fold_root_cause.get(
+                "primary_root_cause"
+            ),
+            "worst_fold_validation_total_r": self._float_or_none(
+                worst_fold_root_cause.get("validation_total_r")
+            ),
+            "worst_fold_time_slice_summary": self._as_list(
+                worst_fold_root_cause.get("time_slice_summary")
+            ),
+            "worst_fold_regime_summary": self._as_list(
+                worst_fold_root_cause.get("regime_summary")
+            ),
+            "worst_fold_entry_path_summary": self._as_list(
+                worst_fold_root_cause.get("entry_path_summary")
             ),
             "primary_signal_loss_reason_counts": signal_loss_reason_counts,
             "validation_gate_failure_reason_counts": self._as_dict(
