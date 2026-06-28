@@ -144,6 +144,13 @@ def _candidate_payload(index: int) -> dict:
                 "folds_with_selected_gate": 0,
                 "no_gate_fold_count": 50,
                 "candidate_board_rows": board_rows,
+                "fold_root_cause_count": 1,
+                "worst_fold_root_cause": {
+                    "diagnostic_status": "COMPLETED",
+                    "fold_index": 1,
+                    "validation_total_r": -5.9,
+                    "primary_root_cause": "large_negative_validation_total_r",
+                },
                 "total_r_below_min_fold_count": 50,
                 "total_r_repair_candidate_fold_count": 50,
                 "best_failed_total_r_by_fold": [{"fold_index": fold_index + 1} for fold_index in range(20)],
@@ -177,6 +184,27 @@ def _candidate_payload(index: int) -> dict:
                 "warnings": [],
                 "recommendations": [],
             },
+            "validation_fold_root_cause_summary": {
+                "diagnostic_name": "validation_fold_root_cause_summary",
+                "primary_root_cause_counts": {"large_negative_validation_total_r": 1},
+            },
+            "worst_fold_root_cause": {
+                "diagnostic_name": "walk_forward_fold_root_cause_diagnostics",
+                "diagnostic_version": "ml38.10.26",
+                "diagnostic_status": "COMPLETED",
+                "fold_index": 1,
+                "validation_total_r": -5.9,
+                "primary_root_cause": "large_negative_validation_total_r",
+                "root_cause_flags": ["large_negative_validation_total_r"],
+                "time_slice_summary": [{"time_slice": f"2026-05-{day:02d}"} for day in range(1, 20)],
+                "outcome_summary": [{"result": "SL", "count": day} for day in range(1, 20)],
+                "stop_pressure_summary": [{"bucket": day} for day in range(1, 10)],
+                "mae_pressure_summary": [{"bucket": day} for day in range(1, 10)],
+                "setup_quality_summary": [{"bucket": day} for day in range(1, 10)],
+                "direction_summary": [{"direction": "LONG", "count": day} for day in range(1, 10)],
+                "sample_losing_trades": [{"trade_id": day} for day in range(1, 10)],
+            },
+            "primary_validation_root_cause_counts": {"large_negative_validation_total_r": 1},
         },
         "research_only_total_r_repair_enabled": True,
         "validation_total_r_repair_profile": "TOTAL_R_RELAX_MINUS_1_25_RESEARCH_ONLY",
@@ -314,6 +342,22 @@ def test_ml38_10_25_1_summary_writer_uses_compact_payload_without_full_result_to
     assert (
         len(board["candidate_board_rows"])
         <= FeatureRegimeExperimentReporter.SUMMARY_VALIDATION_BOARD_ROW_LIMIT
+    )
+    candidate = payload["candidate_results"][0]
+    assert candidate["walk_forward_validation_candidate_board_status"] == "NO_GATE_PASSED"
+    assert candidate["walk_forward_validation_candidate_board_verdict"] == "TOTAL_R_REPAIR_PROBE_WORTH_TESTING"
+    assert candidate["recommended_validation_repair_profile"] == "TOTAL_R_RELAX_MINUS_1_25_RESEARCH_ONLY"
+    assert candidate["best_failed_total_r_by_fold_total_count"] == 20
+    assert candidate["validation_candidate_board_rows_total_count"] == 50
+    assert candidate["validation_candidate_board_rows_truncated"] is True
+    assert candidate["fold_root_cause_count"] == 1
+    assert candidate["worst_fold_root_cause"]["fold_index"] == 1
+    assert (
+        len(candidate["worst_fold_root_cause"].get("time_slice_summary", [])) <= 8
+    )
+    assert (
+        candidate["worst_fold_root_cause"].get("time_slice_summary_total_count", 0)
+        >= len(candidate["worst_fold_root_cause"].get("time_slice_summary", []))
     )
 
 

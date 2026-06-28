@@ -130,6 +130,9 @@ class MultiSymbolFeatureRegimeReporter:
             "walk_forward_fold_root_cause_board": payload.get(
                 "walk_forward_fold_root_cause_board"
             ),
+            "fold_1_repair_target_selection": payload.get(
+                "fold_1_repair_target_selection"
+            ),
             "validation_gate_failure_reason_counts": payload.get(
                 "validation_gate_failure_reason_counts"
             ),
@@ -554,4 +557,43 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not self._as_list(root_cause_board.get("worst_candidates")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        repair_selection = self._as_dict(payload.get("fold_1_repair_target_selection"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.26.3 Fold-1 repair target selection",
+                "",
+                f"- selected_target_count: `{repair_selection.get('selected_target_count')}`",
+                f"- primary_root_cause_counts: `{repair_selection.get('primary_root_cause_counts')}`",
+                f"- bad_time_slice_counts: `{repair_selection.get('bad_time_slice_counts')}`",
+                f"- outcome_counts: `{repair_selection.get('outcome_counts')}`",
+                f"- recommended_next_stage: `{repair_selection.get('recommended_next_stage')}`",
+                f"- warnings: `{repair_selection.get('warnings')}`",
+                f"- recommendations: `{repair_selection.get('recommendations')}`",
+                "",
+                "| Symbol | Config | Side profile | Fold | Validation R | Signals | Losses | Primary root cause | Bad time slices | Repair actions | PF | Total R | WF PF | WF R |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in self._as_list(repair_selection.get("selected_targets"))[:10]:
+            lines.append(
+                "| `{symbol}` | `{config}` | `{profile}` | `{fold}` | `{val_r}` | `{signals}` | `{losses}` | `{primary}` | `{bad_slices}` | `{actions}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` |".format(
+                    symbol=row.get("symbol"),
+                    config=row.get("config_id"),
+                    profile=row.get("side_profile"),
+                    fold=row.get("fold_index"),
+                    val_r=row.get("validation_total_r"),
+                    signals=row.get("validation_signal_count"),
+                    losses=row.get("validation_loss_count"),
+                    primary=row.get("primary_root_cause"),
+                    bad_slices=row.get("top_bad_time_slices"),
+                    actions=row.get("recommended_repair_actions"),
+                    pf=row.get("profit_factor"),
+                    total_r=row.get("profit_total_r"),
+                    wf_pf=row.get("walk_forward_profit_factor"),
+                    wf_r=row.get("walk_forward_total_r"),
+                )
+            )
+        if not self._as_list(repair_selection.get("selected_targets")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)

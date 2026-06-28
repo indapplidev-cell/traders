@@ -97,6 +97,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         walk_forward_failed_count = gate_failure_counts.get("walk_forward_gate", 0)
         profit_aware_failed_count = gate_failure_counts.get("profit_aware_gate", 0)
         configs_ranked = self._configs_ranked(symbol_results)
+        full_candidate_payloads = self._full_candidate_payloads(summaries)
         anti_collapse_summary = self._anti_collapse_summary(symbol_results)
         confidence_profitability_summary = self._confidence_profitability_summary(symbol_results)
         prediction_root_cause_summary = self._prediction_root_cause_summary(configs_ranked)
@@ -133,23 +134,26 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 )
             ],
         }
-        directional_side_candidate_payloads = self._directional_side_candidate_payloads(summaries)
         directional_side_ablation_comparator = self._directional_side_ablation_comparator.compare(
-            directional_side_candidate_payloads
+            full_candidate_payloads
         )
         directional_side_walk_forward_stability = (
             self._directional_side_walk_forward_stability_analyzer.analyze(
-                directional_side_candidate_payloads
+                full_candidate_payloads
             )
         )
         directional_side_signal_recovery_summary = self._directional_side_signal_recovery_summary(
-            directional_side_candidate_payloads
+            full_candidate_payloads
         )
         walk_forward_validation_candidate_board_summary = (
-            self._walk_forward_validation_candidate_board_summary(configs_ranked)
+            self._walk_forward_validation_candidate_board_summary(full_candidate_payloads)
         )
         walk_forward_fold_root_cause_board = self._walk_forward_fold_root_cause_board(
-            configs_ranked
+            full_candidate_payloads
+        )
+        fold_1_repair_target_selection = self._fold_repair_target_selection(
+            full_candidate_payloads,
+            target_fold_index=1,
         )
 
         return {
@@ -200,6 +204,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 walk_forward_validation_candidate_board_summary
             ),
             "walk_forward_fold_root_cause_board": walk_forward_fold_root_cause_board,
+            "fold_1_repair_target_selection": fold_1_repair_target_selection,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -867,6 +872,24 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "research_only_total_r_repair_enabled",
             "validation_total_r_repair_profile",
             "research_only_acceptance_block_reason",
+            "walk_forward_validation_candidate_board",
+            "walk_forward_validation_candidate_board_status",
+            "walk_forward_validation_candidate_board_verdict",
+            "recommended_validation_repair_profile",
+            "total_r_below_min_fold_count",
+            "total_r_repair_candidate_fold_count",
+            "median_best_total_r_deficit",
+            "max_best_total_r_deficit",
+            "best_failed_total_r_by_fold",
+            "best_failed_total_r_by_fold_total_count",
+            "best_failed_total_r_by_fold_truncated",
+            "validation_candidate_board_rows",
+            "validation_candidate_board_rows_total_count",
+            "validation_candidate_board_rows_truncated",
+            "worst_fold_root_cause",
+            "primary_validation_root_cause_counts",
+            "fold_root_cause_count",
+            "validation_fold_root_cause_summary",
         )
 
         configs_ranked: list[dict[str, Any]] = []
@@ -1222,24 +1245,42 @@ class MultiSymbolFeatureRegimeAnalyzer:
         }
 
     @classmethod
-    def _directional_side_candidate_payloads(
+    def _full_candidate_payloads(
         cls,
         summaries: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
+        """Return compact full candidate payloads from per-symbol summaries.
+
+        Source-of-truth for deep diagnostics is summary["candidate_results"].
+        configs_ranked/ranking may be compact and may not contain top-level
+        worst_fold_root_cause / validation candidate board details.
+        """
         payloads: list[dict[str, Any]] = []
         for summary in summaries:
             symbol = str(summary.get("symbol") or "")
-            source_items = cls._as_list(summary.get("candidate_results")) or cls._as_list(
-                summary.get("configs_ranked") or summary.get("ranking")
-            )
+            source_items = cls._as_list(summary.get("candidate_results"))
+            if not source_items:
+                source_items = cls._as_list(summary.get("configs_ranked") or summary.get("ranking"))
             for item in source_items:
                 if not isinstance(item, dict):
                     continue
                 payload = dict(item)
                 if symbol and payload.get("symbol") is None:
                     payload["symbol"] = symbol
+                payload.update(cls._directional_side_audit_payload(payload))
+                payload.update(cls._walk_forward_stability_payload(payload))
+                payload.update(cls._directional_side_signal_recovery_payload(payload))
+                payload.update(cls._directional_side_validation_gate_payload(payload))
+                payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
                 payloads.append(payload)
         return payloads
+
+    @classmethod
+    def _directional_side_candidate_payloads(
+        cls,
+        summaries: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return cls._full_candidate_payloads(summaries)
 
     @staticmethod
     def _prediction_root_cause_summary(candidates: list[dict[str, object]]) -> dict[str, object]:
@@ -1689,7 +1730,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
         candidate_count_with_root_cause = 0
 
         for candidate in candidates:
-            worst = cls._as_dict(candidate.get("worst_fold_root_cause"))
+            walk_diag = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
+            board = cls._as_dict(
+                candidate.get("walk_forward_validation_candidate_board")
+                or walk_diag.get("walk_forward_validation_candidate_board")
+            )
+            worst = cls._as_dict(
+                candidate.get("worst_fold_root_cause")
+                or board.get("worst_fold_root_cause")
+                or walk_diag.get("worst_fold_root_cause")
+            )
             if not worst:
                 continue
             candidate_count_with_root_cause += 1
@@ -1700,11 +1750,28 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     "symbol": candidate.get("symbol"),
                     "config_id": candidate.get("config_id"),
                     "candidate_id": candidate.get("candidate_id"),
+                    "fold_index": worst.get("fold_index"),
+                    "validation_start": worst.get("validation_start"),
+                    "validation_end": worst.get("validation_end"),
+                    "test_start": worst.get("test_start"),
+                    "test_end": worst.get("test_end"),
+                    "gate_type": worst.get("gate_type"),
+                    "threshold": cls._float_or_none(worst.get("threshold")),
+                    "validation_signal_count": cls._int_or_zero(worst.get("validation_signal_count")),
+                    "validation_loss_count": cls._int_or_zero(worst.get("validation_loss_count")),
+                    "validation_loss_rate": cls._float_or_none(worst.get("validation_loss_rate")),
+                    "outcome_counts": cls._as_dict(worst.get("outcome_counts")),
                     "validation_total_r": cls._float_or_none(
                         worst.get("validation_total_r")
                     ),
                     "primary_root_cause": worst.get("primary_root_cause"),
                     "root_cause_flags": cls._as_list(worst.get("root_cause_flags")),
+                    "top_bad_time_slices": cls._as_list(worst.get("time_slice_summary"))[:3],
+                    "outcome_summary": cls._as_list(worst.get("outcome_summary"))[:5],
+                    "stop_pressure_summary": cls._as_list(worst.get("stop_pressure_summary"))[:3],
+                    "mae_pressure_summary": cls._as_list(worst.get("mae_pressure_summary"))[:3],
+                    "setup_quality_summary": cls._as_list(worst.get("setup_quality_summary"))[:3],
+                    "direction_summary": cls._as_list(worst.get("direction_summary"))[:3],
                     "recommended_validation_repair_profile": candidate.get(
                         "recommended_validation_repair_profile"
                     ),
@@ -1721,7 +1788,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
 
         worst_candidates.sort(
             key=lambda item: (
-                cls._float_or_none(item.get("validation_total_r")) or 0.0,
+                cls._float_or_none(item.get("validation_total_r"))
+                if cls._float_or_none(item.get("validation_total_r")) is not None
+                else 999999.0,
                 str(item.get("symbol") or ""),
                 str(item.get("config_id") or ""),
             )
@@ -1733,10 +1802,143 @@ class MultiSymbolFeatureRegimeAnalyzer:
             recommendations.append("consider_regime_time_slice_repair_stage")
         return {
             "diagnostic_name": "walk_forward_fold_root_cause_board",
-            "diagnostic_version": "ml38.10.26",
+            "diagnostic_version": "ml38.10.26.3",
             "candidate_count_with_root_cause": candidate_count_with_root_cause,
             "primary_root_cause_counts": dict(primary_counts),
             "worst_candidates": worst_candidates[:10],
+            "recommendations": list(dict.fromkeys(recommendations)),
+        }
+
+    @classmethod
+    def _fold_repair_target_selection(
+        cls,
+        candidates: list[dict[str, Any]],
+        *,
+        target_fold_index: int,
+    ) -> dict[str, Any]:
+        targets: list[dict[str, Any]] = []
+        profile_counts: Counter[str] = Counter()
+        root_counts: Counter[str] = Counter()
+        bad_time_slice_counts: Counter[str] = Counter()
+        outcome_counts: Counter[str] = Counter()
+
+        for candidate in candidates:
+            config_id = str(candidate.get("config_id") or "")
+            side_profile = str(candidate.get("directional_side_filter_profile") or "")
+            if not any(token in config_id for token in ("lv28", "lv29", "lv30")):
+                continue
+            if side_profile not in {"long_only_research", "suppress_short_research"}:
+                continue
+
+            walk_diag = cls._as_dict(candidate.get("walk_forward_profit_diagnostics"))
+            board = cls._as_dict(
+                candidate.get("walk_forward_validation_candidate_board")
+                or walk_diag.get("walk_forward_validation_candidate_board")
+            )
+            worst = cls._as_dict(
+                candidate.get("worst_fold_root_cause")
+                or board.get("worst_fold_root_cause")
+                or walk_diag.get("worst_fold_root_cause")
+            )
+            if not worst:
+                continue
+            if int(worst.get("fold_index") or -1) != int(target_fold_index):
+                continue
+
+            primary = str(worst.get("primary_root_cause") or "UNKNOWN")
+            profile_counts[side_profile] += 1
+            root_counts[primary] += 1
+            for item in cls._as_list(worst.get("time_slice_summary"))[:3]:
+                if isinstance(item, dict):
+                    time_slice = str(item.get("time_slice") or "UNKNOWN")
+                    bad_time_slice_counts[time_slice] += 1
+            for key, value in cls._as_dict(worst.get("outcome_counts")).items():
+                outcome_counts[str(key)] += int(value or 0)
+
+            repair_actions: list[str] = []
+            flags = {str(item) for item in cls._as_list(worst.get("root_cause_flags"))}
+            if "large_negative_validation_total_r" in flags:
+                repair_actions.append("do_not_relax_threshold_only")
+            if "losses_concentrated_in_time_slice" in flags:
+                repair_actions.append("time_slice_blackout_or_event_cluster_probe")
+            if "stop_or_mitigation_loss_dominates" in flags:
+                repair_actions.append("exit_mitigation_or_stop_loss_repair_probe")
+            if "losses_concentrated_in_regime_bucket" in flags:
+                repair_actions.append("regime_aware_filter_probe")
+            if "losses_concentrated_in_entry_path_bucket" in flags:
+                repair_actions.append("entry_path_bucket_exclusion_probe")
+            if not repair_actions:
+                repair_actions.append("inspect_fold_manually_before_new_grid")
+
+            targets.append(
+                {
+                    "symbol": candidate.get("symbol"),
+                    "config_id": config_id,
+                    "candidate_status": candidate.get("candidate_status"),
+                    "side_profile": side_profile,
+                    "allowed_signal_directions": cls._as_list(candidate.get("allowed_signal_directions")),
+                    "profit_factor": cls._float_or_none(candidate.get("profit_factor")),
+                    "profit_total_r": cls._float_or_none(candidate.get("profit_total_r")),
+                    "walk_forward_profit_factor": cls._float_or_none(candidate.get("walk_forward_profit_factor")),
+                    "walk_forward_total_r": cls._float_or_none(
+                        candidate.get("walk_forward_total_r", candidate.get("walk_forward_global_total_r"))
+                    ),
+                    "fold_index": worst.get("fold_index"),
+                    "validation_start": worst.get("validation_start"),
+                    "validation_end": worst.get("validation_end"),
+                    "test_start": worst.get("test_start"),
+                    "test_end": worst.get("test_end"),
+                    "validation_total_r": cls._float_or_none(worst.get("validation_total_r")),
+                    "validation_signal_count": cls._int_or_zero(worst.get("validation_signal_count")),
+                    "validation_loss_count": cls._int_or_zero(worst.get("validation_loss_count")),
+                    "validation_loss_rate": cls._float_or_none(worst.get("validation_loss_rate")),
+                    "primary_root_cause": primary,
+                    "root_cause_flags": cls._as_list(worst.get("root_cause_flags")),
+                    "outcome_counts": cls._as_dict(worst.get("outcome_counts")),
+                    "top_bad_time_slices": cls._as_list(worst.get("time_slice_summary"))[:3],
+                    "outcome_summary": cls._as_list(worst.get("outcome_summary"))[:5],
+                    "stop_pressure_summary": cls._as_list(worst.get("stop_pressure_summary"))[:3],
+                    "mae_pressure_summary": cls._as_list(worst.get("mae_pressure_summary"))[:3],
+                    "setup_quality_summary": cls._as_list(worst.get("setup_quality_summary"))[:3],
+                    "recommended_repair_actions": repair_actions,
+                }
+            )
+
+        targets.sort(
+            key=lambda item: (
+                cls._float_or_none(item.get("validation_total_r"))
+                if cls._float_or_none(item.get("validation_total_r")) is not None
+                else 999999.0,
+                str(item.get("symbol") or ""),
+                str(item.get("config_id") or ""),
+            )
+        )
+
+        recommended_next_stage = "no_fold_repair_target_found"
+        if targets:
+            recommended_next_stage = "fold_1_time_slice_exit_mitigation_repair_probe"
+
+        warnings: list[str] = []
+        recommendations: list[str] = []
+        if targets:
+            warnings.append("research_only_fold_1_repair_targets_present")
+            recommendations.append("do_not_accept_side_only_candidate_before_fold_1_repair")
+            recommendations.append("do_not_use_threshold_relaxation_only_for_large_negative_total_r")
+            recommendations.append("test_time_slice_exit_mitigation_or_regime_filter_next")
+
+        return {
+            "diagnostic_name": "fold_1_repair_target_selection",
+            "diagnostic_version": "ml38.10.26.3",
+            "target_fold_index": int(target_fold_index),
+            "candidate_count": len(candidates),
+            "selected_target_count": len(targets),
+            "side_profile_counts": dict(profile_counts),
+            "primary_root_cause_counts": dict(root_counts),
+            "bad_time_slice_counts": dict(bad_time_slice_counts),
+            "outcome_counts": dict(outcome_counts),
+            "selected_targets": targets[:10],
+            "recommended_next_stage": recommended_next_stage,
+            "warnings": warnings,
             "recommendations": list(dict.fromkeys(recommendations)),
         }
 

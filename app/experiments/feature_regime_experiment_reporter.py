@@ -176,6 +176,10 @@ class FeatureRegimeExperimentReporter:
                 self._as_dict(item)
                 for item in best_failed[: self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT]
             ],
+            "fold_root_cause_count": board.get("fold_root_cause_count"),
+            "worst_fold_root_cause": self._compact_worst_fold_root_cause(
+                board.get("worst_fold_root_cause")
+            ),
             "median_best_total_r_deficit": board.get("median_best_total_r_deficit"),
             "max_best_total_r_deficit": board.get("max_best_total_r_deficit"),
             "recommended_validation_repair_profile": board.get(
@@ -228,65 +232,90 @@ class FeatureRegimeExperimentReporter:
         payload = self._as_dict(value)
         if not payload:
             return {}
-        return {
-            "diagnostic_name": payload.get("diagnostic_name"),
-            "diagnostic_version": payload.get("diagnostic_version"),
-            "diagnostic_status": payload.get("diagnostic_status"),
-            "fold_index": payload.get("fold_index"),
-            "train_start": payload.get("train_start"),
-            "train_end": payload.get("train_end"),
-            "validation_start": payload.get("validation_start"),
-            "validation_end": payload.get("validation_end"),
-            "test_start": payload.get("test_start"),
-            "test_end": payload.get("test_end"),
-            "gate_type": payload.get("gate_type"),
-            "threshold": payload.get("threshold"),
-            "validation_signal_count": payload.get("validation_signal_count"),
-            "validation_total_r": payload.get("validation_total_r"),
-            "validation_win_count": payload.get("validation_win_count"),
-            "validation_loss_count": payload.get("validation_loss_count"),
-            "validation_loss_rate": payload.get("validation_loss_rate"),
-            "outcome_counts": self._as_dict(payload.get("outcome_counts")),
-            "direction_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("direction_summary"))[:8]
-            ],
-            "outcome_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("outcome_summary"))[:8]
-            ],
-            "time_slice_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("time_slice_summary"))[:8]
-            ],
-            "regime_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("regime_summary"))[:8]
-            ],
-            "entry_path_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("entry_path_summary"))[:8]
-            ],
-            "setup_quality_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("setup_quality_summary"))[:8]
-            ],
-            "stop_pressure_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("stop_pressure_summary"))[:8]
-            ],
-            "mae_pressure_summary": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("mae_pressure_summary"))[:8]
-            ],
-            "root_cause_flags": self._as_list(payload.get("root_cause_flags")),
-            "primary_root_cause": payload.get("primary_root_cause"),
-            "sample_losing_trades": [
-                self._as_dict(item)
-                for item in self._as_list(payload.get("sample_losing_trades"))[:8]
-            ],
-            "recommendations": self._as_list(payload.get("recommendations")),
-        }
+        return self._cap_root_cause_payload(
+            {
+                "diagnostic_name": payload.get("diagnostic_name"),
+                "diagnostic_version": payload.get("diagnostic_version"),
+                "diagnostic_status": payload.get("diagnostic_status"),
+                "fold_index": payload.get("fold_index"),
+                "train_start": payload.get("train_start"),
+                "train_end": payload.get("train_end"),
+                "validation_start": payload.get("validation_start"),
+                "validation_end": payload.get("validation_end"),
+                "test_start": payload.get("test_start"),
+                "test_end": payload.get("test_end"),
+                "gate_type": payload.get("gate_type"),
+                "threshold": payload.get("threshold"),
+                "validation_signal_count": payload.get("validation_signal_count"),
+                "validation_total_r": payload.get("validation_total_r"),
+                "validation_win_count": payload.get("validation_win_count"),
+                "validation_loss_count": payload.get("validation_loss_count"),
+                "validation_loss_rate": payload.get("validation_loss_rate"),
+                "outcome_counts": self._as_dict(payload.get("outcome_counts")),
+                "direction_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("direction_summary"))
+                ],
+                "outcome_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("outcome_summary"))
+                ],
+                "time_slice_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("time_slice_summary"))
+                ],
+                "regime_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("regime_summary"))
+                ],
+                "entry_path_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("entry_path_summary"))
+                ],
+                "setup_quality_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("setup_quality_summary"))
+                ],
+                "stop_pressure_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("stop_pressure_summary"))
+                ],
+                "mae_pressure_summary": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("mae_pressure_summary"))
+                ],
+                "root_cause_flags": self._as_list(payload.get("root_cause_flags")),
+                "primary_root_cause": payload.get("primary_root_cause"),
+                "sample_losing_trades": [
+                    self._as_dict(item)
+                    for item in self._as_list(payload.get("sample_losing_trades"))
+                ],
+                "recommendations": self._as_list(payload.get("recommendations")),
+            }
+        )
+
+    @classmethod
+    def _cap_root_cause_payload(cls, payload: Any) -> dict[str, Any]:
+        root = cls._as_dict(payload)
+        if not root:
+            return {}
+        capped = dict(root)
+        for key, limit in {
+            "time_slice_summary": 8,
+            "outcome_summary": 8,
+            "stop_pressure_summary": 5,
+            "mae_pressure_summary": 5,
+            "setup_quality_summary": 5,
+            "direction_summary": 5,
+            "entry_path_summary": 5,
+            "regime_summary": 5,
+            "sample_losing_trades": 3,
+        }.items():
+            rows = cls._as_list(capped.get(key))
+            capped[f"{key}_total_count"] = len(rows)
+            capped[f"{key}_truncated"] = len(rows) > limit
+            capped[key] = rows[:limit]
+        return capped
 
     def _compact_walk_forward_profit_diagnostics(self, value: Any) -> dict[str, Any]:
         payload = self._as_dict(value)
@@ -297,6 +326,12 @@ class FeatureRegimeExperimentReporter:
         low_signal_folds_source = self._as_list(payload.get("low_signal_folds"))
         gate_probes_source = self._as_list(payload.get("gate_probes"))
         passed_gates_source = self._as_list(payload.get("passed_gates"))
+        best_failed_total_r_by_fold_source = self._as_list(
+            payload.get("best_failed_total_r_by_fold")
+        )
+        validation_board = self._compact_validation_candidate_board(
+            payload.get("walk_forward_validation_candidate_board")
+        )
 
         return {
             "diagnostic_name": payload.get("diagnostic_name"),
@@ -365,12 +400,29 @@ class FeatureRegimeExperimentReporter:
             ),
             "median_best_total_r_deficit": payload.get("median_best_total_r_deficit"),
             "max_best_total_r_deficit": payload.get("max_best_total_r_deficit"),
+            "best_failed_total_r_by_fold_total_count": (
+                len(best_failed_total_r_by_fold_source)
+                if best_failed_total_r_by_fold_source
+                else validation_board.get("best_failed_total_r_by_fold_total_count")
+            ),
+            "best_failed_total_r_by_fold_truncated": (
+                len(best_failed_total_r_by_fold_source) > self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT
+                if best_failed_total_r_by_fold_source
+                else validation_board.get("best_failed_total_r_by_fold_truncated")
+            ),
             "best_failed_total_r_by_fold": [
                 self._as_dict(item)
-                for item in self._as_list(payload.get("best_failed_total_r_by_fold"))[
+                for item in best_failed_total_r_by_fold_source[
                     : self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT
                 ]
-            ],
+            ] if best_failed_total_r_by_fold_source else self._as_list(
+                validation_board.get("best_failed_total_r_by_fold")
+            ),
+            "fold_root_cause_count": (
+                payload.get("fold_root_cause_count")
+                if payload.get("fold_root_cause_count") is not None
+                else validation_board.get("fold_root_cause_count")
+            ),
             "gate_probes_total_count": len(gate_probes_source),
             "gate_probes_truncated": len(gate_probes_source) > self.SUMMARY_GATE_PROBE_LIMIT,
             "gate_probes": [
@@ -383,9 +435,7 @@ class FeatureRegimeExperimentReporter:
                 self._compact_gate_probe(item)
                 for item in passed_gates_source[: self.SUMMARY_PASSED_GATE_LIMIT]
             ],
-            "walk_forward_validation_candidate_board": self._compact_validation_candidate_board(
-                payload.get("walk_forward_validation_candidate_board")
-            ),
+            "walk_forward_validation_candidate_board": validation_board,
             "directional_side_signal_recovery_diagnostics": (
                 self._compact_directional_side_signal_recovery(
                     payload.get("directional_side_signal_recovery_diagnostics")
@@ -523,6 +573,35 @@ class FeatureRegimeExperimentReporter:
             walk_forward.get("best_failed_total_r_by_fold")
             or candidate.get("best_failed_total_r_by_fold")
         )[: self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT]
+        candidate["best_failed_total_r_by_fold_total_count"] = (
+            walk_forward.get("best_failed_total_r_by_fold_total_count")
+            if walk_forward.get("best_failed_total_r_by_fold_total_count") is not None
+            else candidate.get("best_failed_total_r_by_fold_total_count")
+        )
+        candidate["best_failed_total_r_by_fold_truncated"] = (
+            walk_forward.get("best_failed_total_r_by_fold_truncated")
+            if walk_forward.get("best_failed_total_r_by_fold_truncated") is not None
+            else candidate.get("best_failed_total_r_by_fold_truncated")
+        )
+        validation_board = self._as_dict(
+            walk_forward.get("walk_forward_validation_candidate_board")
+            or candidate.get("walk_forward_validation_candidate_board")
+        )
+        candidate["walk_forward_validation_candidate_board"] = validation_board
+        candidate["validation_candidate_board_rows"] = self._as_list(
+            validation_board.get("candidate_board_rows")
+            or candidate.get("validation_candidate_board_rows")
+        )
+        candidate["validation_candidate_board_rows_total_count"] = (
+            validation_board.get("candidate_board_rows_total_count")
+            if validation_board.get("candidate_board_rows_total_count") is not None
+            else candidate.get("validation_candidate_board_rows_total_count")
+        )
+        candidate["validation_candidate_board_rows_truncated"] = (
+            validation_board.get("candidate_board_rows_truncated")
+            if validation_board.get("candidate_board_rows_truncated") is not None
+            else candidate.get("validation_candidate_board_rows_truncated")
+        )
         return candidate
 
     def _compact_ranked_result(self, value: Any) -> dict[str, Any]:
@@ -603,6 +682,53 @@ class FeatureRegimeExperimentReporter:
                 walk_forward.get("max_best_total_r_deficit")
                 if walk_forward.get("max_best_total_r_deficit") is not None
                 else row.get("max_best_total_r_deficit")
+            ),
+            "best_failed_total_r_by_fold": self._as_list(
+                walk_forward.get("best_failed_total_r_by_fold")
+                or row.get("best_failed_total_r_by_fold")
+            )[: self.SUMMARY_BEST_FAILED_TOTAL_R_FOLD_LIMIT],
+            "best_failed_total_r_by_fold_total_count": (
+                walk_forward.get("best_failed_total_r_by_fold_total_count")
+                if walk_forward.get("best_failed_total_r_by_fold_total_count") is not None
+                else row.get("best_failed_total_r_by_fold_total_count")
+            ),
+            "best_failed_total_r_by_fold_truncated": (
+                walk_forward.get("best_failed_total_r_by_fold_truncated")
+                if walk_forward.get("best_failed_total_r_by_fold_truncated") is not None
+                else row.get("best_failed_total_r_by_fold_truncated")
+            ),
+            "walk_forward_validation_candidate_board": self._as_dict(
+                walk_forward.get("walk_forward_validation_candidate_board")
+                or row.get("walk_forward_validation_candidate_board")
+            ),
+            "validation_candidate_board_rows": self._as_list(
+                self._as_dict(
+                    walk_forward.get("walk_forward_validation_candidate_board")
+                    or row.get("walk_forward_validation_candidate_board")
+                ).get("candidate_board_rows")
+                or row.get("validation_candidate_board_rows")
+            ),
+            "validation_candidate_board_rows_total_count": (
+                self._as_dict(
+                    walk_forward.get("walk_forward_validation_candidate_board")
+                    or row.get("walk_forward_validation_candidate_board")
+                ).get("candidate_board_rows_total_count")
+                if self._as_dict(
+                    walk_forward.get("walk_forward_validation_candidate_board")
+                    or row.get("walk_forward_validation_candidate_board")
+                ).get("candidate_board_rows_total_count") is not None
+                else row.get("validation_candidate_board_rows_total_count")
+            ),
+            "validation_candidate_board_rows_truncated": (
+                self._as_dict(
+                    walk_forward.get("walk_forward_validation_candidate_board")
+                    or row.get("walk_forward_validation_candidate_board")
+                ).get("candidate_board_rows_truncated")
+                if self._as_dict(
+                    walk_forward.get("walk_forward_validation_candidate_board")
+                    or row.get("walk_forward_validation_candidate_board")
+                ).get("candidate_board_rows_truncated") is not None
+                else row.get("validation_candidate_board_rows_truncated")
             ),
             "research_only_total_r_repair_enabled": row.get(
                 "research_only_total_r_repair_enabled"
