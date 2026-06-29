@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import app.experiments.feature_regime_experiment_reporter as feature_regime_experiment_reporter_module
 from app.experiments.feature_regime_experiment_reporter import (
     FeatureRegimeExperimentReporter,
 )
@@ -359,6 +360,30 @@ def test_ml38_10_25_1_summary_writer_uses_compact_payload_without_full_result_to
         candidate["worst_fold_root_cause"].get("time_slice_summary_total_count", 0)
         >= len(candidate["worst_fold_root_cause"].get("time_slice_summary", []))
     )
+
+
+def test_ml38_10_25_1_summary_writer_does_not_require_json_dumps(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    reporter = FeatureRegimeExperimentReporter()
+    result = _ExplodingFullResult()
+    output_path = tmp_path / "feature_regime_experiment_summary.json"
+
+    def _raise_memory_error(*args, **kwargs):
+        raise MemoryError("simulated json.dumps failure")
+
+    monkeypatch.setattr(
+        feature_regime_experiment_reporter_module.json,
+        "dumps",
+        _raise_memory_error,
+    )
+
+    reporter.write_summary_json(result, output_path)
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["summary_payload_compacted"] is True
+    assert payload["summary_payload_mode"] == "compact_capped_ml38_10_25_1"
 
 
 def test_ml38_10_25_1_gate_selector_caps_gate_probe_payload() -> None:

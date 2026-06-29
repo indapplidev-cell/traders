@@ -806,6 +806,18 @@ class FeatureRegimeExperimentReporter:
             return text
         return json.dumps(payload, ensure_ascii=False, indent=None, sort_keys=True)
 
+    def _write_json_payload(
+        self,
+        payload: dict[str, Any],
+        output_path: str | Path,
+        *,
+        indent: int | None,
+    ) -> None:
+        path = Path(output_path)
+        with path.open("w", encoding="utf-8", newline="\n") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=indent, sort_keys=True)
+            handle.write("\n")
+
     def result_to_json(self, result: object, *, indent: int | None = 2) -> str:
         return json.dumps(
             self.result_to_dict(result),
@@ -1197,7 +1209,9 @@ class FeatureRegimeExperimentReporter:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = self.compact_summary_to_dict(result)
-        path.write_text(self._summary_json_text(payload), encoding="utf-8")
+        self._write_json_payload(payload, path, indent=2)
+        if path.stat().st_size > self.SUMMARY_JSON_SOFT_MAX_BYTES:
+            self._write_json_payload(payload, path, indent=None)
         return path
 
     def write_summary_markdown(self, result: object, output_path: str | Path) -> Path:
