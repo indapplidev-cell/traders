@@ -411,6 +411,7 @@ class Fv3CachedTuningWrapper:
                 "This is not a final full multi-symbol quality decision.",
             )
         self._preflight()
+        self._validate_selected_config_ids_registered()
         self._ensure_stage_dirs()
 
         try:
@@ -573,6 +574,42 @@ class Fv3CachedTuningWrapper:
             )
 
         self._status("PREFLIGHT", "Git working tree is clean enough for wrapper start.")
+
+    def _validate_selected_config_ids_registered(self) -> None:
+        """Fail early when runtime shortlists drift from FV3 tuning matrix.
+
+        ML38.10.27.1 guard: the wrapper may pass --base-label-config-id values
+        to app.cli.commands ml38-2-fv3-tuning-run. Those ids must exist in
+        ML38_2_FV3_TUNING_CONFIG_IDS / ML382FV3TuningMatrix output, otherwise
+        the expensive runtime starts and fails only inside a per-symbol process.
+        """
+        if not self.selected_config_ids:
+            return
+
+        try:
+            from app.experiments.ml38_2_fv3_tuning_matrix import ML382FV3TuningMatrix
+        except Exception as exc:  # pragma: no cover - defensive runtime message
+            raise WrapperError(
+                f"Unable to import FV3 tuning matrix for config validation: {exc}"
+            ) from exc
+
+        matrix = ML382FV3TuningMatrix().build()
+        available_ids = {str(item) for item in matrix.get("config_ids", [])}
+        missing = [item for item in self.selected_config_ids if item not in available_ids]
+        matrix_missing = list(matrix.get("missing_configs") or [])
+
+        if missing or matrix_missing:
+            raise WrapperError(
+                "Runtime selected config ids are not registered in FV3 tuning matrix.\n"
+                "Fix app/experiments/ml38_2_fv3_tuning_matrix.py and LabelQualityGridPlanner before runtime.\n"
+                f"selected_missing={missing}\n"
+                f"matrix_missing_configs={matrix_missing}"
+            )
+
+        self._status(
+            "PREFLIGHT",
+            f"Runtime selected config ids registered: {len(self.selected_config_ids)} checked.",
+        )
 
     def _filter_git_status(self, raw_status: str) -> str:
         if not raw_status:

@@ -181,6 +181,16 @@ ML38_10_25_WALK_FORWARD_TOTAL_R_FAILURE_REPAIR_CONFIG_IDS = (
     "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
 )
 
+ML38_10_27_FOLD_TIME_SLICE_EXIT_REPAIR_CONFIG_IDS = (
+    "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+    "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit75_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_bad_dates_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
+)
+
 ML38_2_FV3_TUNING_CONFIG_IDS = (
     "lv2_h08_thr03_tp10_sl10",
     "lv2_h08_thr04_tp10_sl10",
@@ -218,6 +228,7 @@ ML38_2_FV3_TUNING_CONFIG_IDS = (
     *ML38_10_20_DIRECTIONAL_SIDE_ABLATION_CONFIG_IDS,
     *ML38_10_24_WALK_FORWARD_VALIDATION_GATE_DIAGNOSTICS_CONFIG_IDS,
     *ML38_10_25_WALK_FORWARD_TOTAL_R_FAILURE_REPAIR_CONFIG_IDS,
+    *ML38_10_27_FOLD_TIME_SLICE_EXIT_REPAIR_CONFIG_IDS,
 )
 ML38_2_REQUIRED_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 ML38_2_FEATURE_VERSION = "fv4_book_setup_context"
@@ -332,6 +343,13 @@ class ML382FV3TuningMatrix:
             ),
             "walk_forward_total_r_failure_repair_config_count": len(
                 ML38_10_25_WALK_FORWARD_TOTAL_R_FAILURE_REPAIR_CONFIG_IDS
+            ),
+            "fold_time_slice_exit_repair_probe_stage": "ML38.10.27",
+            "fold_time_slice_exit_repair_probe_config_ids": list(
+                ML38_10_27_FOLD_TIME_SLICE_EXIT_REPAIR_CONFIG_IDS
+            ),
+            "fold_time_slice_exit_repair_probe_config_count": len(
+                ML38_10_27_FOLD_TIME_SLICE_EXIT_REPAIR_CONFIG_IDS
             ),
             "confidence_profit_config_count": len(ML38_6_CONFIDENCE_PROFIT_CONFIG_IDS),
             "config_count": len(configs),
