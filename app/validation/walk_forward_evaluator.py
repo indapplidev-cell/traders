@@ -62,6 +62,9 @@ class WalkForwardEvaluator:
         fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
         fold_repair_time_slice_blackout_enabled: bool = False,
         fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_feature_filter_enabled: bool = False,
+        fold_repair_feature_filter_profile: str | None = None,
+        fold_repair_feature_filter_rules: dict[str, Any] | None = None,
         side_aware_validation_relaxation_enabled: bool = False,
         side_aware_min_validation_signal_count: int | None = None,
         side_aware_min_validation_profit_factor: float | None = None,
@@ -93,6 +96,9 @@ class WalkForwardEvaluator:
                 fold_repair_target_dates=fold_repair_target_dates,
                 fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
                 fold_repair_blackout_dates=fold_repair_blackout_dates,
+                fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+                fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+                fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
             )
             selected_gate_payload = self._gate_selector.select(
                 validation_profit["gate_results"],
@@ -129,6 +135,9 @@ class WalkForwardEvaluator:
                     fold_repair_target_dates=fold_repair_target_dates,
                     fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
                     fold_repair_blackout_dates=fold_repair_blackout_dates,
+                    fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+                    fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+                    fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
                 )
 
             test_result = None
@@ -150,6 +159,14 @@ class WalkForwardEvaluator:
                     exit_neutral_abs_r=exit_neutral_abs_r,
                     directional_side_filter_profile=directional_side_filter_profile,
                     allowed_signal_directions=allowed_signal_directions,
+                    research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
+                    fold_repair_probe_profile=fold_repair_probe_profile,
+                    fold_repair_target_dates=fold_repair_target_dates,
+                    fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
+                    fold_repair_blackout_dates=fold_repair_blackout_dates,
+                    fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+                    fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+                    fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
                 )
                 bias_report = self._direction_bias_diagnostics.build_report(
                     predictions=test_predictions,
@@ -186,6 +203,9 @@ class WalkForwardEvaluator:
             "fold_repair_target_dates": list(fold_repair_target_dates or []),
             "fold_repair_time_slice_blackout_enabled": fold_repair_time_slice_blackout_enabled,
             "fold_repair_blackout_dates": list(fold_repair_blackout_dates or []),
+            "fold_repair_feature_filter_enabled": fold_repair_feature_filter_enabled,
+            "fold_repair_feature_filter_profile": fold_repair_feature_filter_profile,
+            "fold_repair_feature_filter_rules": dict(fold_repair_feature_filter_rules or {}),
             "side_aware_validation_relaxation_enabled": side_aware_validation_relaxation_enabled,
             "side_aware_min_validation_signal_count": side_aware_min_validation_signal_count,
             "side_aware_min_validation_profit_factor": side_aware_min_validation_profit_factor,
@@ -229,6 +249,9 @@ class WalkForwardEvaluator:
         fold_repair_target_dates: tuple[str, ...] | list[str] | None,
         fold_repair_time_slice_blackout_enabled: bool,
         fold_repair_blackout_dates: tuple[str, ...] | list[str] | None,
+        fold_repair_feature_filter_enabled: bool,
+        fold_repair_feature_filter_profile: str | None,
+        fold_repair_feature_filter_rules: dict[str, Any] | None,
     ) -> dict[str, Any] | None:
         diagnostics = dict(
             selected_gate_payload.get("diagnostics")
@@ -282,6 +305,9 @@ class WalkForwardEvaluator:
             fold_repair_target_dates=fold_repair_target_dates,
             fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
             fold_repair_blackout_dates=fold_repair_blackout_dates,
+            fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+            fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+            fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
         )
         return self._fold_root_cause_diagnostics.analyze(
             fold=fold,

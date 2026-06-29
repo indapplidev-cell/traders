@@ -142,7 +142,11 @@ class LabelGridExperimentCandidateResult:
     fold_repair_target_dates: tuple[str, ...] = ()
     fold_repair_time_slice_blackout_enabled: bool = False
     fold_repair_blackout_dates: tuple[str, ...] = ()
+    fold_repair_feature_filter_enabled: bool = False
+    fold_repair_feature_filter_profile: str | None = None
+    fold_repair_feature_filter_rules: dict[str, Any] = field(default_factory=dict)
     fold_repair_probe_diagnostics: dict[str, Any] = field(default_factory=dict)
+    fold_feature_regime_filter_summary: dict[str, Any] = field(default_factory=dict)
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -275,7 +279,11 @@ class LabelGridExperimentCandidateResult:
             "fold_repair_target_dates": list(self.fold_repair_target_dates),
             "fold_repair_time_slice_blackout_enabled": self.fold_repair_time_slice_blackout_enabled,
             "fold_repair_blackout_dates": list(self.fold_repair_blackout_dates),
+            "fold_repair_feature_filter_enabled": self.fold_repair_feature_filter_enabled,
+            "fold_repair_feature_filter_profile": self.fold_repair_feature_filter_profile,
+            "fold_repair_feature_filter_rules": dict(self.fold_repair_feature_filter_rules),
             "fold_repair_probe_diagnostics": dict(self.fold_repair_probe_diagnostics),
+            "fold_feature_regime_filter_summary": dict(self.fold_feature_regime_filter_summary),
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -1133,6 +1141,9 @@ class LabelGridExperimentRunner:
                 fold_repair_target_dates=label_config.fold_repair_target_dates,
                 fold_repair_time_slice_blackout_enabled=label_config.fold_repair_time_slice_blackout_enabled,
                 fold_repair_blackout_dates=label_config.fold_repair_blackout_dates,
+                fold_repair_feature_filter_enabled=label_config.fold_repair_feature_filter_enabled,
+                fold_repair_feature_filter_profile=label_config.fold_repair_feature_filter_profile,
+                fold_repair_feature_filter_rules=dict(label_config.fold_repair_feature_filter_rules or {}),
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1368,6 +1379,12 @@ class LabelGridExperimentRunner:
             or profit_aware_summary.get("fold_time_slice_blackout_summary")
             or profit_aware_best_gate.get("fold_time_slice_blackout_summary")
         )
+        fold_feature_regime_filter_summary = self._as_dict(
+            quality_payload.get("fold_feature_regime_filter_summary")
+            or profit_aware_diagnostics_payload.get("fold_feature_regime_filter_summary")
+            or profit_aware_summary.get("fold_feature_regime_filter_summary")
+            or profit_aware_best_gate.get("fold_feature_regime_filter_summary")
+        )
         resolved_directional_side_filter_profile = (
             directional_side_filter_summary.get("profile")
             or label_config.directional_side_filter_profile
@@ -1575,7 +1592,17 @@ class LabelGridExperimentRunner:
             fold_repair_blackout_dates=tuple(
                 getattr(label_config, "fold_repair_blackout_dates", ()) or ()
             ),
+            fold_repair_feature_filter_enabled=bool(
+                getattr(label_config, "fold_repair_feature_filter_enabled", False)
+            ),
+            fold_repair_feature_filter_profile=getattr(
+                label_config, "fold_repair_feature_filter_profile", None
+            ),
+            fold_repair_feature_filter_rules=self._as_dict(
+                getattr(label_config, "fold_repair_feature_filter_rules", {})
+            ),
             fold_repair_probe_diagnostics=fold_repair_probe_diagnostics,
+            fold_feature_regime_filter_summary=fold_feature_regime_filter_summary,
             opportunity_probability_threshold=self._optional_float(
                 quality_payload.get("opportunity_probability_threshold")
             ),
@@ -2070,8 +2097,20 @@ class LabelGridExperimentRunner:
             fold_repair_blackout_dates=tuple(
                 getattr(label_config, "fold_repair_blackout_dates", ()) or ()
             ),
+            fold_repair_feature_filter_enabled=bool(
+                getattr(label_config, "fold_repair_feature_filter_enabled", False)
+            ),
+            fold_repair_feature_filter_profile=getattr(
+                label_config, "fold_repair_feature_filter_profile", None
+            ),
+            fold_repair_feature_filter_rules=self._as_dict(
+                getattr(label_config, "fold_repair_feature_filter_rules", {})
+            ),
             fold_repair_probe_diagnostics=self._as_dict(
                 profit_aware_diagnostics.get("fold_time_slice_blackout_summary", {})
+            ),
+            fold_feature_regime_filter_summary=self._as_dict(
+                profit_aware_diagnostics.get("fold_feature_regime_filter_summary", {})
             ),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,

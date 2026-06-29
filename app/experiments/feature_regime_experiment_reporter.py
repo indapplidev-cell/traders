@@ -806,6 +806,21 @@ class FeatureRegimeExperimentReporter:
                 "fold_repair_time_slice_blackout_enabled"
             ),
             "fold_repair_blackout_dates": self._as_list(row.get("fold_repair_blackout_dates")),
+            "fold_repair_feature_filter_enabled": row.get(
+                "fold_repair_feature_filter_enabled"
+            ),
+            "fold_repair_feature_filter_profile": row.get(
+                "fold_repair_feature_filter_profile"
+            ),
+            "fold_repair_feature_filter_rules": self._as_dict(
+                row.get("fold_repair_feature_filter_rules")
+            ),
+            "fold_feature_regime_filter_summary": self._as_dict(
+                row.get("fold_feature_regime_filter_summary")
+                or self._as_dict(row.get("profit_aware_diagnostics")).get(
+                    "fold_feature_regime_filter_summary"
+                )
+            ),
             "fold_time_slice_blackout_summary": self._as_dict(
                 row.get("fold_repair_probe_diagnostics")
                 or self._as_dict(row.get("profit_aware_diagnostics")).get(
@@ -847,6 +862,7 @@ class FeatureRegimeExperimentReporter:
             "mae_pressure_max_risk_score": row.get("mae_pressure_max_risk_score"),
         }
         for key in (
+            "fold_feature_regime_filter_summary",
             "fold_time_slice_blackout_summary",
             "prediction_root_cause_audit",
             "book_driven_forensic_audit",
@@ -1148,6 +1164,21 @@ class FeatureRegimeExperimentReporter:
                 ),
                 "fold_repair_blackout_dates": self._as_list(
                     best_candidate.get("fold_repair_blackout_dates")
+                ),
+                "fold_repair_feature_filter_enabled": best_candidate.get(
+                    "fold_repair_feature_filter_enabled"
+                ),
+                "fold_repair_feature_filter_profile": best_candidate.get(
+                    "fold_repair_feature_filter_profile"
+                ),
+                "fold_repair_feature_filter_rules": self._as_dict(
+                    best_candidate.get("fold_repair_feature_filter_rules")
+                ),
+                "fold_feature_regime_filter_summary": self._as_dict(
+                    best_candidate.get("fold_feature_regime_filter_summary")
+                    or self._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
+                        "fold_feature_regime_filter_summary"
+                    )
                 ),
                 "fold_time_slice_blackout_summary": self._as_dict(
                     best_candidate.get("fold_repair_probe_diagnostics")

@@ -146,8 +146,8 @@ def test_ml38_10_25_lv30_configs_exist_and_are_research_only_blocked() -> None:
 
 
 def test_ml38_10_25_runtime_shortlists_include_lv30_and_new_counts() -> None:
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 12
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 26
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 14
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 30
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv31_")
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv31_")
 

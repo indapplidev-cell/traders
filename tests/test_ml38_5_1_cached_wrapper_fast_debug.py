@@ -11,7 +11,7 @@ def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -
     assert "lv22_h08_tts_thr065_sqmask060_epq070_sp045" in wrapper.debug_config_ids
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 24
+    assert wrapper._expected_candidate_count() == 28
 
     command = wrapper._symbol_command("BTCUSDT", "debug_experiment")
 
@@ -29,20 +29,7 @@ def test_fast_debug_plan_uses_two_symbols_prompt_4_6_configs_and_short_range() -
         for index, value in enumerate(command)
         if value == "--base-label-config-id"
     ]
-    assert config_values == [
-        "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
-        "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
-        "lv30_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
-        "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
-        "lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
-        "lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
-        "lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard",
-        "lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit",
-        "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae",
-        "lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff",
-        "lv22_h08_tts_thr065_sqmask060_epq070_sp045",
-        "lv19_h08_tts_thr065_sqmask060",
-    ]
+    assert config_values == list(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS)
 
 
 def test_default_wrapper_expects_full_60_candidates() -> None:

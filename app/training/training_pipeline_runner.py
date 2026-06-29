@@ -138,6 +138,9 @@ class TrainingPipelineConfig:
     fold_repair_target_dates: tuple[str, ...] = ()
     fold_repair_time_slice_blackout_enabled: bool = False
     fold_repair_blackout_dates: tuple[str, ...] = ()
+    fold_repair_feature_filter_enabled: bool = False
+    fold_repair_feature_filter_profile: str | None = None
+    fold_repair_feature_filter_rules: dict[str, Any] = field(default_factory=dict)
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1181,6 +1184,9 @@ class LongHistoryTrainingPipelineRunner:
                         "fold_repair_target_dates": list(config.fold_repair_target_dates),
                         "fold_repair_time_slice_blackout_enabled": config.fold_repair_time_slice_blackout_enabled,
                         "fold_repair_blackout_dates": list(config.fold_repair_blackout_dates),
+                        "fold_repair_feature_filter_enabled": config.fold_repair_feature_filter_enabled,
+                        "fold_repair_feature_filter_profile": config.fold_repair_feature_filter_profile,
+                        "fold_repair_feature_filter_rules": dict(config.fold_repair_feature_filter_rules),
                         "config_id": label_version,
                         "training_objective": config.training_objective,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1262,6 +1268,9 @@ class LongHistoryTrainingPipelineRunner:
                 "fold_repair_target_dates": list(config.fold_repair_target_dates),
                 "fold_repair_time_slice_blackout_enabled": config.fold_repair_time_slice_blackout_enabled,
                 "fold_repair_blackout_dates": list(config.fold_repair_blackout_dates),
+                "fold_repair_feature_filter_enabled": config.fold_repair_feature_filter_enabled,
+                "fold_repair_feature_filter_profile": config.fold_repair_feature_filter_profile,
+                "fold_repair_feature_filter_rules": dict(config.fold_repair_feature_filter_rules),
                 "config_id": label_version,
                 "training_objective": config.training_objective,
                 "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1673,6 +1682,9 @@ class LongHistoryTrainingPipelineRunner:
                 fold_repair_target_dates=config.fold_repair_target_dates,
                 fold_repair_time_slice_blackout_enabled=config.fold_repair_time_slice_blackout_enabled,
                 fold_repair_blackout_dates=config.fold_repair_blackout_dates,
+                fold_repair_feature_filter_enabled=config.fold_repair_feature_filter_enabled,
+                fold_repair_feature_filter_profile=config.fold_repair_feature_filter_profile,
+                fold_repair_feature_filter_rules=config.fold_repair_feature_filter_rules,
             )
         )
         payload = dict(result)
@@ -1728,6 +1740,9 @@ class LongHistoryTrainingPipelineRunner:
                 fold_repair_target_dates=config.fold_repair_target_dates,
                 fold_repair_time_slice_blackout_enabled=config.fold_repair_time_slice_blackout_enabled,
                 fold_repair_blackout_dates=config.fold_repair_blackout_dates,
+                fold_repair_feature_filter_enabled=config.fold_repair_feature_filter_enabled,
+                fold_repair_feature_filter_profile=config.fold_repair_feature_filter_profile,
+                fold_repair_feature_filter_rules=config.fold_repair_feature_filter_rules,
                 side_aware_validation_relaxation_enabled=config.side_aware_validation_relaxation_enabled,
                 side_aware_min_validation_signal_count=config.side_aware_min_validation_signal_count,
                 side_aware_min_validation_profit_factor=config.side_aware_min_validation_profit_factor,

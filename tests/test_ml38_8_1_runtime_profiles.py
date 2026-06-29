@@ -14,7 +14,7 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in wrapper.selected_config_ids
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 26
+    assert wrapper._expected_candidate_count() == 30
     assert wrapper._full_quality_run() is False
     assert wrapper._quality_decision_allowed() is False
 
@@ -29,34 +29,7 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
         for index, value in enumerate(command)
         if value == "--base-label-config-id"
     ]
-    assert config_values == [
-        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
-        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit75_probe",
-        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
-        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_bad_dates_probe",
-        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
-        "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
-        "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
-        "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
-        "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_relax",
-        "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
-        "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
-        "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_short_only",
-        "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short",
-        "lv27_h12_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
-        "lv27_h12_tts_thr065_sqmask060_epq072_sp043_rguard_dirbias_strict",
-        "lv26_h12_tts_thr065_sqmask060_epq070_sp045_recovery_guard",
-        "lv26_h12_tts_thr065_sqmask060_epq072_sp043_recovery_guard_strict",
-        "lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit",
-        "lv25_h12_tts_thr065_sqmask060_epq072_sp043_exit_mit_strict",
-        "lv24_h12_tts_thr065_sqmask060_epq068_sp047_mae",
-        "lv24_h12_tts_thr065_sqmask060_epq070_sp045_mae_rr",
-        "lv23_h12_tts_thr065_sqmask060_epq065_sp050_eff",
-        "lv23_h12_tts_thr065_sqmask060_epq068_sp047_eff",
-        "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
-        "lv21_h12_tts_thr065_sqmask060_epq070",
-        "lv19_h12_tts_thr065_sqmask060",
-    ]
+    assert config_values == list(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS)
     assert command[command.index("--start-date") + 1] == "2026-04-01"
     assert command[command.index("--end-date") + 1] == "2026-06-15"
 

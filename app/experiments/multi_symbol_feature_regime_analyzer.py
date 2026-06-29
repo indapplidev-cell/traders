@@ -10,6 +10,9 @@ from app.diagnostics.directional_side_ablation_comparator import DirectionalSide
 from app.diagnostics.directional_side_walk_forward_stability import (
     DirectionalSideWalkForwardStabilityAnalyzer,
 )
+from app.diagnostics.fold_feature_regime_repair_probe import (
+    FoldFeatureRegimeRepairProbe,
+)
 from app.diagnostics.fold_time_slice_exit_repair_probe import (
     FoldTimeSliceExitRepairProbe,
 )
@@ -28,6 +31,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         directional_side_ablation_comparator: DirectionalSideAblationComparator | None = None,
         directional_side_walk_forward_stability_analyzer: DirectionalSideWalkForwardStabilityAnalyzer | None = None,
         fold_time_slice_exit_repair_probe: FoldTimeSliceExitRepairProbe | None = None,
+        fold_feature_regime_repair_probe: FoldFeatureRegimeRepairProbe | None = None,
     ) -> None:
         self._directional_side_ablation_comparator = (
             directional_side_ablation_comparator or DirectionalSideAblationComparator()
@@ -38,6 +42,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
         )
         self._fold_time_slice_exit_repair_probe = (
             fold_time_slice_exit_repair_probe or FoldTimeSliceExitRepairProbe()
+        )
+        self._fold_feature_regime_repair_probe = (
+            fold_feature_regime_repair_probe or FoldFeatureRegimeRepairProbe()
         )
 
     @staticmethod
@@ -165,6 +172,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
         fold_time_slice_exit_repair_probe = self._fold_time_slice_exit_repair_probe.analyze(
             full_candidate_payloads
         )
+        fold_feature_regime_repair_probe = self._fold_feature_regime_repair_probe.analyze(
+            full_candidate_payloads
+        )
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -216,6 +226,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "walk_forward_fold_root_cause_board": walk_forward_fold_root_cause_board,
             "fold_1_repair_target_selection": fold_1_repair_target_selection,
             "fold_time_slice_exit_repair_probe": fold_time_slice_exit_repair_probe,
+            "fold_feature_regime_repair_probe": fold_feature_regime_repair_probe,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -897,6 +908,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "validation_candidate_board_rows",
             "validation_candidate_board_rows_total_count",
             "validation_candidate_board_rows_truncated",
+            "fold_repair_feature_filter_enabled",
+            "fold_repair_feature_filter_profile",
+            "fold_repair_feature_filter_rules",
+            "fold_feature_regime_filter_summary",
+            "fold_time_slice_blackout_summary",
+            "fold_repair_probe_profile",
+            "fold_repair_target_dates",
+            "fold_repair_time_slice_blackout_enabled",
+            "fold_repair_blackout_dates",
+            "research_only_fold_repair_probe_enabled",
             "worst_fold_root_cause",
             "primary_validation_root_cause_counts",
             "fold_root_cause_count",
@@ -1283,6 +1304,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._directional_side_signal_recovery_payload(payload))
                 payload.update(cls._directional_side_validation_gate_payload(payload))
                 payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
+                profit_diag = cls._as_dict(payload.get("profit_aware_diagnostics"))
+                if not payload.get("fold_feature_regime_filter_summary"):
+                    payload["fold_feature_regime_filter_summary"] = cls._as_dict(
+                        profit_diag.get("fold_feature_regime_filter_summary")
+                    )
+                if not payload.get("fold_time_slice_blackout_summary"):
+                    payload["fold_time_slice_blackout_summary"] = cls._as_dict(
+                        profit_diag.get("fold_time_slice_blackout_summary")
+                    )
                 payloads.append(payload)
         return payloads
 
@@ -1610,6 +1640,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._directional_side_signal_recovery_payload(payload))
                 payload.update(cls._directional_side_validation_gate_payload(payload))
                 payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
+                profit_diag = cls._as_dict(payload.get("profit_aware_diagnostics"))
+                if not payload.get("fold_feature_regime_filter_summary"):
+                    payload["fold_feature_regime_filter_summary"] = cls._as_dict(
+                        profit_diag.get("fold_feature_regime_filter_summary")
+                    )
+                if not payload.get("fold_time_slice_blackout_summary"):
+                    payload["fold_time_slice_blackout_summary"] = cls._as_dict(
+                        profit_diag.get("fold_time_slice_blackout_summary")
+                    )
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)
                 rows.append(payload)

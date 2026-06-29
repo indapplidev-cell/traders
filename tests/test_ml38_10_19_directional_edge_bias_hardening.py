@@ -85,5 +85,5 @@ def test_ml38_10_19_grid_matrix_and_runtime_include_lv27_dirbias_configs() -> No
     assert "lv27_h12_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias" in matrix["config_ids"]
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv31_")
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv31_")
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 12
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 26
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 14
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 30

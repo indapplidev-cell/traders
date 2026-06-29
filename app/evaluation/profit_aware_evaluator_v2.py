@@ -25,6 +25,16 @@ class ProfitAwareEvaluatorV2:
             profit_exit_root_cause_audit or ProfitExitRootCauseAudit()
         )
 
+    @staticmethod
+    def _as_list(value: Any) -> list[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return list(value)
+        if isinstance(value, (tuple, set)):
+            return list(value)
+        return [value]
+
     def evaluate(
         self,
         model_version: str,
@@ -45,6 +55,9 @@ class ProfitAwareEvaluatorV2:
         fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
         fold_repair_time_slice_blackout_enabled: bool = False,
         fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_feature_filter_enabled: bool = False,
+        fold_repair_feature_filter_profile: str | None = None,
+        fold_repair_feature_filter_rules: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         evaluation = self.evaluate_predictions(
             predictions=predictions,
@@ -64,6 +77,9 @@ class ProfitAwareEvaluatorV2:
             fold_repair_target_dates=fold_repair_target_dates,
             fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
             fold_repair_blackout_dates=fold_repair_blackout_dates,
+            fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+            fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+            fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
         )
         gate_results = evaluation["gate_results"]
 
@@ -85,6 +101,9 @@ class ProfitAwareEvaluatorV2:
             "fold_repair_target_dates": list(fold_repair_target_dates or []),
             "fold_repair_time_slice_blackout_enabled": fold_repair_time_slice_blackout_enabled,
             "fold_repair_blackout_dates": list(fold_repair_blackout_dates or []),
+            "fold_repair_feature_filter_enabled": fold_repair_feature_filter_enabled,
+            "fold_repair_feature_filter_profile": fold_repair_feature_filter_profile,
+            "fold_repair_feature_filter_rules": dict(fold_repair_feature_filter_rules or {}),
             "gate_results": gate_results,
         }
         output_path = self._reports_dir / f"profit_eval_v2_{model_version}.json"
@@ -111,6 +130,9 @@ class ProfitAwareEvaluatorV2:
         fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
         fold_repair_time_slice_blackout_enabled: bool = False,
         fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_feature_filter_enabled: bool = False,
+        fold_repair_feature_filter_profile: str | None = None,
+        fold_repair_feature_filter_rules: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         gate_results: list[dict[str, Any]] = []
         for gate_type, thresholds in self._signal_gate_evaluator.GATE_THRESHOLDS.items():
@@ -135,6 +157,9 @@ class ProfitAwareEvaluatorV2:
                     fold_repair_target_dates=fold_repair_target_dates,
                     fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
                     fold_repair_blackout_dates=fold_repair_blackout_dates,
+                    fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+                    fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+                    fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
                 )
                 gate_results.append(single["summary"])
 
@@ -183,6 +208,9 @@ class ProfitAwareEvaluatorV2:
         fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
         fold_repair_time_slice_blackout_enabled: bool = False,
         fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_feature_filter_enabled: bool = False,
+        fold_repair_feature_filter_profile: str | None = None,
+        fold_repair_feature_filter_rules: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         original_selection = self._signal_gate_evaluator.select_signals(
             predictions,
@@ -208,6 +236,14 @@ class ProfitAwareEvaluatorV2:
             blackout_dates=fold_repair_blackout_dates,
             target_dates=fold_repair_target_dates,
             profile=fold_repair_probe_profile,
+        )
+        signal_rows, fold_feature_regime_filter_summary = self._apply_fold_feature_regime_filter(
+            signal_rows=signal_rows,
+            enabled=fold_repair_feature_filter_enabled,
+            profile=fold_repair_feature_filter_profile,
+            rules=fold_repair_feature_filter_rules,
+            target_dates=fold_repair_target_dates,
+            date_blackout_used=fold_repair_time_slice_blackout_enabled,
         )
         entry_path_filter_summary = self._entry_path_final_decision_filter_summary(
             predictions=predictions,
@@ -242,11 +278,15 @@ class ProfitAwareEvaluatorV2:
             summary["directional_side_filter_profile"] = directional_side_filter_summary.get("profile")
             summary["allowed_signal_directions"] = directional_side_filter_summary.get("allowed_signal_directions")
             summary["fold_time_slice_blackout_summary"] = fold_time_slice_blackout_summary
+            summary["fold_feature_regime_filter_summary"] = fold_feature_regime_filter_summary
             summary["research_only_fold_repair_probe_enabled"] = research_only_fold_repair_probe_enabled
             summary["fold_repair_probe_profile"] = fold_repair_probe_profile
             summary["fold_repair_target_dates"] = list(fold_repair_target_dates or [])
             summary["fold_repair_time_slice_blackout_enabled"] = fold_repair_time_slice_blackout_enabled
             summary["fold_repair_blackout_dates"] = list(fold_repair_blackout_dates or [])
+            summary["fold_repair_feature_filter_enabled"] = fold_repair_feature_filter_enabled
+            summary["fold_repair_feature_filter_profile"] = fold_repair_feature_filter_profile
+            summary["fold_repair_feature_filter_rules"] = dict(fold_repair_feature_filter_rules or {})
             return {"summary": summary, "signal_rows": [], "outcomes": []}
 
         outcomes = [
@@ -289,11 +329,15 @@ class ProfitAwareEvaluatorV2:
         summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
         summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
         summary["fold_time_slice_blackout_summary"] = fold_time_slice_blackout_summary
+        summary["fold_feature_regime_filter_summary"] = fold_feature_regime_filter_summary
         summary["research_only_fold_repair_probe_enabled"] = research_only_fold_repair_probe_enabled
         summary["fold_repair_probe_profile"] = fold_repair_probe_profile
         summary["fold_repair_target_dates"] = list(fold_repair_target_dates or [])
         summary["fold_repair_time_slice_blackout_enabled"] = fold_repair_time_slice_blackout_enabled
         summary["fold_repair_blackout_dates"] = list(fold_repair_blackout_dates or [])
+        summary["fold_repair_feature_filter_enabled"] = fold_repair_feature_filter_enabled
+        summary["fold_repair_feature_filter_profile"] = fold_repair_feature_filter_profile
+        summary["fold_repair_feature_filter_rules"] = dict(fold_repair_feature_filter_rules or {})
         return {
             "summary": summary,
             "signal_rows": signal_rows,
@@ -775,6 +819,181 @@ class ProfitAwareEvaluatorV2:
             "removed_signal_count": removed_signal_count,
             "removed_ratio": (removed_signal_count / len(signal_rows)) if signal_rows else None,
             "removed_counts_by_date": removed_counts_by_date,
+        }
+        return filtered_rows, summary
+
+    @staticmethod
+    def _float_or_none(value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _row_metric_float(cls, row: dict[str, Any], *keys: str) -> float | None:
+        for key in keys:
+            if key in row and row.get(key) is not None:
+                return cls._float_or_none(row.get(key))
+        return None
+
+    @staticmethod
+    def _row_regime_value(row: dict[str, Any]) -> str | None:
+        for key in ("market_regime", "regime_bucket", "feature_regime_bucket"):
+            value = row.get(key)
+            if value is None:
+                continue
+            text = str(value).strip()
+            if text:
+                return text
+        return None
+
+    def _apply_fold_feature_regime_filter(
+        self,
+        *,
+        signal_rows: list[dict[str, Any]],
+        enabled: bool,
+        profile: str | None,
+        rules: dict[str, Any] | None,
+        target_dates: tuple[str, ...] | list[str] | None,
+        date_blackout_used: bool,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        normalized_rules = dict(rules or {})
+        normalized_target_dates = [
+            str(item).strip() for item in (target_dates or []) if str(item).strip()
+        ]
+        blocked_regime_values = {
+            str(item).strip().lower()
+            for item in self._as_list(normalized_rules.get("blocked_regime_values"))
+            if str(item).strip()
+        }
+        missing_feature_policy = str(
+            normalized_rules.get("missing_feature_policy") or "pass_with_warning"
+        ).strip().lower()
+        if not enabled or not normalized_rules:
+            summary = {
+                "diagnostic_name": "fold_feature_regime_filter_summary",
+                "diagnostic_version": "ml38.10.28",
+                "enabled": False,
+                "profile": profile,
+                "rules": normalized_rules,
+                "target_dates": normalized_target_dates,
+                "date_blackout_used": bool(date_blackout_used),
+                "input_signal_count": len(signal_rows),
+                "output_signal_count": len(signal_rows),
+                "removed_signal_count": 0,
+                "removed_ratio": 0.0 if signal_rows else None,
+                "removed_counts_by_reason": {},
+                "missing_feature_counts": {},
+                "warnings": [],
+            }
+            return list(signal_rows), summary
+
+        filtered_rows: list[dict[str, Any]] = []
+        removed_counts_by_reason: dict[str, int] = {}
+        missing_feature_counts: dict[str, int] = {}
+
+        def record_missing(name: str) -> None:
+            missing_feature_counts[name] = missing_feature_counts.get(name, 0) + 1
+
+        def maybe_block(
+            *,
+            row: dict[str, Any],
+            metric_keys: tuple[str, ...],
+            threshold_value: Any,
+            reason: str,
+            comparator: str,
+            missing_name: str,
+        ) -> bool:
+            if threshold_value is None:
+                return False
+            row_value = self._row_metric_float(row, *metric_keys)
+            threshold = self._float_or_none(threshold_value)
+            if threshold is None:
+                return False
+            if row_value is None:
+                record_missing(missing_name)
+                return False
+            if comparator == "lt" and row_value < threshold:
+                removed_counts_by_reason[reason] = removed_counts_by_reason.get(reason, 0) + 1
+                return True
+            if comparator == "gt" and row_value > threshold:
+                removed_counts_by_reason[reason] = removed_counts_by_reason.get(reason, 0) + 1
+                return True
+            return False
+
+        for row in signal_rows:
+            if maybe_block(
+                row=row,
+                metric_keys=("entry_path_quality_score",),
+                threshold_value=normalized_rules.get("min_entry_path_quality_score"),
+                reason="low_entry_path_quality",
+                comparator="lt",
+                missing_name="entry_path_quality_score",
+            ):
+                continue
+            if maybe_block(
+                row=row,
+                metric_keys=("setup_quality_score",),
+                threshold_value=normalized_rules.get("min_setup_quality_score"),
+                reason="low_setup_quality",
+                comparator="lt",
+                missing_name="setup_quality_score",
+            ):
+                continue
+            if maybe_block(
+                row=row,
+                metric_keys=("stop_pressure_risk_score",),
+                threshold_value=normalized_rules.get("max_stop_pressure_risk_score"),
+                reason="high_stop_pressure",
+                comparator="gt",
+                missing_name="stop_pressure_risk_score",
+            ):
+                continue
+            if maybe_block(
+                row=row,
+                metric_keys=("mae_pressure_risk_score",),
+                threshold_value=normalized_rules.get("max_mae_pressure_risk_score"),
+                reason="high_mae_pressure",
+                comparator="gt",
+                missing_name="mae_pressure_risk_score",
+            ):
+                continue
+
+            regime_value = self._row_regime_value(row)
+            if regime_value is None:
+                record_missing("market_regime")
+            elif blocked_regime_values and regime_value.strip().lower() in blocked_regime_values:
+                removed_counts_by_reason["blocked_regime"] = (
+                    removed_counts_by_reason.get("blocked_regime", 0) + 1
+                )
+                continue
+
+            filtered_rows.append(row)
+
+        warnings: list[str] = []
+        if missing_feature_counts:
+            warnings.append("feature_filter_missing_features_passed_with_warning")
+        if missing_feature_policy != "pass_with_warning":
+            warnings.append("unsupported_missing_feature_policy_fell_back_to_pass_with_warning")
+
+        removed_signal_count = max(0, len(signal_rows) - len(filtered_rows))
+        summary = {
+            "diagnostic_name": "fold_feature_regime_filter_summary",
+            "diagnostic_version": "ml38.10.28",
+            "enabled": True,
+            "profile": profile,
+            "rules": normalized_rules,
+            "target_dates": normalized_target_dates,
+            "date_blackout_used": bool(date_blackout_used),
+            "input_signal_count": len(signal_rows),
+            "output_signal_count": len(filtered_rows),
+            "removed_signal_count": removed_signal_count,
+            "removed_ratio": (removed_signal_count / len(signal_rows)) if signal_rows else None,
+            "removed_counts_by_reason": removed_counts_by_reason,
+            "missing_feature_counts": missing_feature_counts,
+            "warnings": warnings,
         }
         return filtered_rows, summary
 

@@ -746,6 +746,9 @@ class DiagnosticsService:
         fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
         fold_repair_time_slice_blackout_enabled: bool = False,
         fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_feature_filter_enabled: bool = False,
+        fold_repair_feature_filter_profile: str | None = None,
+        fold_repair_feature_filter_rules: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         predictions = self._build_prediction_rows(
             model_version=model_version,
@@ -778,6 +781,9 @@ class DiagnosticsService:
             fold_repair_target_dates=fold_repair_target_dates,
             fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
             fold_repair_blackout_dates=fold_repair_blackout_dates,
+            fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+            fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+            fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
         )
 
     def walk_forward_plan(
@@ -844,6 +850,9 @@ class DiagnosticsService:
         fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
         fold_repair_time_slice_blackout_enabled: bool = False,
         fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_feature_filter_enabled: bool = False,
+        fold_repair_feature_filter_profile: str | None = None,
+        fold_repair_feature_filter_rules: dict[str, Any] | None = None,
         side_aware_validation_relaxation_enabled: bool = False,
         side_aware_min_validation_signal_count: int | None = None,
         side_aware_min_validation_profit_factor: float | None = None,
@@ -898,6 +907,9 @@ class DiagnosticsService:
             fold_repair_target_dates=fold_repair_target_dates,
             fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
             fold_repair_blackout_dates=fold_repair_blackout_dates,
+            fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+            fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+            fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
             side_aware_validation_relaxation_enabled=side_aware_validation_relaxation_enabled,
             side_aware_min_validation_signal_count=side_aware_min_validation_signal_count,
             side_aware_min_validation_profit_factor=side_aware_min_validation_profit_factor,

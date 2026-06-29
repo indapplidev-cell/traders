@@ -154,7 +154,11 @@ class FeatureRegimeCandidateResult:
     fold_repair_target_dates: tuple[str, ...] = ()
     fold_repair_time_slice_blackout_enabled: bool = False
     fold_repair_blackout_dates: tuple[str, ...] = ()
+    fold_repair_feature_filter_enabled: bool = False
+    fold_repair_feature_filter_profile: str | None = None
+    fold_repair_feature_filter_rules: dict[str, Any] = field(default_factory=dict)
     fold_repair_probe_diagnostics: dict[str, Any] = field(default_factory=dict)
+    fold_feature_regime_filter_summary: dict[str, Any] = field(default_factory=dict)
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -319,7 +323,11 @@ class FeatureRegimeCandidateResult:
             "fold_repair_target_dates": list(self.fold_repair_target_dates),
             "fold_repair_time_slice_blackout_enabled": self.fold_repair_time_slice_blackout_enabled,
             "fold_repair_blackout_dates": list(self.fold_repair_blackout_dates),
+            "fold_repair_feature_filter_enabled": self.fold_repair_feature_filter_enabled,
+            "fold_repair_feature_filter_profile": self.fold_repair_feature_filter_profile,
+            "fold_repair_feature_filter_rules": dict(self.fold_repair_feature_filter_rules),
             "fold_repair_probe_diagnostics": dict(self.fold_repair_probe_diagnostics),
+            "fold_feature_regime_filter_summary": dict(self.fold_feature_regime_filter_summary),
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -2119,8 +2127,31 @@ class FeatureRegimeExperimentRunner:
                         getattr(item, "label_config", {})
                     ).get("fold_repair_blackout_dates", [])
                 ),
+                fold_repair_feature_filter_enabled=bool(
+                    getattr(item, "fold_repair_feature_filter_enabled", False)
+                    or self._as_dict(getattr(item, "label_config", {})).get(
+                        "fold_repair_feature_filter_enabled",
+                        False,
+                    )
+                ),
+                fold_repair_feature_filter_profile=(
+                    getattr(item, "fold_repair_feature_filter_profile", None)
+                    or self._as_dict(getattr(item, "label_config", {})).get(
+                        "fold_repair_feature_filter_profile"
+                    )
+                ),
+                fold_repair_feature_filter_rules=self._as_dict(
+                    getattr(item, "fold_repair_feature_filter_rules", {})
+                    or self._as_dict(getattr(item, "label_config", {})).get(
+                        "fold_repair_feature_filter_rules",
+                        {},
+                    )
+                ),
                 fold_repair_probe_diagnostics=self._as_dict(
                     getattr(item, "fold_repair_probe_diagnostics", {})
+                ),
+                fold_feature_regime_filter_summary=self._as_dict(
+                    getattr(item, "fold_feature_regime_filter_summary", {})
                 ),
                 opportunity_probability_threshold=getattr(item, "opportunity_probability_threshold", None),
                 setup_quality_min_threshold=getattr(item, "setup_quality_min_threshold", None),
@@ -2432,10 +2463,36 @@ class FeatureRegimeExperimentRunner:
                     candidate.label_config
                 ).get("fold_repair_blackout_dates", [])
             )
+            fold_repair_feature_filter_enabled = bool(
+                getattr(candidate, "fold_repair_feature_filter_enabled", False)
+                or self._as_dict(candidate.label_config).get(
+                    "fold_repair_feature_filter_enabled",
+                    False,
+                )
+            )
+            fold_repair_feature_filter_profile = (
+                getattr(candidate, "fold_repair_feature_filter_profile", None)
+                or self._as_dict(candidate.label_config).get(
+                    "fold_repair_feature_filter_profile"
+                )
+            )
+            fold_repair_feature_filter_rules = self._as_dict(
+                getattr(candidate, "fold_repair_feature_filter_rules", {})
+                or self._as_dict(candidate.label_config).get(
+                    "fold_repair_feature_filter_rules",
+                    {},
+                )
+            )
             fold_repair_probe_diagnostics = self._as_dict(
                 getattr(candidate, "fold_repair_probe_diagnostics", {})
                 or self._as_dict(candidate_payload.get("profit_aware_diagnostics")).get(
                     "fold_time_slice_blackout_summary"
+                )
+            )
+            fold_feature_regime_filter_summary = self._as_dict(
+                getattr(candidate, "fold_feature_regime_filter_summary", {})
+                or self._as_dict(candidate_payload.get("profit_aware_diagnostics")).get(
+                    "fold_feature_regime_filter_summary"
                 )
             )
             if baseline_edge_diagnostics.baseline_edge_gate_failed and "baseline_edge_gate" not in failed_gates_list:
@@ -2524,7 +2581,11 @@ class FeatureRegimeExperimentRunner:
                     fold_repair_target_dates=fold_repair_target_dates,
                     fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
                     fold_repair_blackout_dates=fold_repair_blackout_dates,
+                    fold_repair_feature_filter_enabled=fold_repair_feature_filter_enabled,
+                    fold_repair_feature_filter_profile=fold_repair_feature_filter_profile,
+                    fold_repair_feature_filter_rules=fold_repair_feature_filter_rules,
                     fold_repair_probe_diagnostics=fold_repair_probe_diagnostics,
+                    fold_feature_regime_filter_summary=fold_feature_regime_filter_summary,
                     flat_bias_diagnostics=class_bias,
                     flat_bias_diagnostics_missing_reason=(
                         None if class_bias else "predicted_or_actual_distribution_not_available"

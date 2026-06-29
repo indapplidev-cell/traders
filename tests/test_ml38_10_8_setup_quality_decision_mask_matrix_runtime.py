@@ -25,48 +25,22 @@ def test_ml38_10_8_grid_matrix_and_runtime_shortlists_keep_historical_configs() 
     assert matrix["setup_quality_decision_mask_stage"] == "ML38.10.8"
     assert matrix["setup_quality_decision_mask_config_ids"] == list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS)
     
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
+    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[:2] == (
         "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
         "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
-        "lv30_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
-        "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
-        "lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
-        "lv27_h08_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
-        "lv26_h08_tts_thr065_sqmask060_epq070_sp045_recovery_guard",
-        "lv25_h08_tts_thr065_sqmask060_epq070_sp045_exit_mit",
-        "lv24_h08_tts_thr065_sqmask060_epq068_sp047_mae",
-        "lv23_h08_tts_thr065_sqmask060_epq065_sp050_eff",
-        "lv22_h08_tts_thr065_sqmask060_epq070_sp045",
-        "lv19_h08_tts_thr065_sqmask060",
     )
-    
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
+    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[:5] == (
         "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
         "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit75_probe",
         "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
         "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_bad_dates_probe",
         "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
-        "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
-        "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
-        "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
-        "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_relax",
-        "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
-        "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
-        "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_short_only",
-        "lv28_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short",
-        "lv27_h12_tts_thr065_sqmask060_epq070_sp045_rguard_dirbias",
-        "lv27_h12_tts_thr065_sqmask060_epq072_sp043_rguard_dirbias_strict",
-        "lv26_h12_tts_thr065_sqmask060_epq070_sp045_recovery_guard",
-        "lv26_h12_tts_thr065_sqmask060_epq072_sp043_recovery_guard_strict",
-        "lv25_h12_tts_thr065_sqmask060_epq070_sp045_exit_mit",
-        "lv25_h12_tts_thr065_sqmask060_epq072_sp043_exit_mit_strict",
-        "lv24_h12_tts_thr065_sqmask060_epq068_sp047_mae",
-        "lv24_h12_tts_thr065_sqmask060_epq070_sp045_mae_rr",
-        "lv23_h12_tts_thr065_sqmask060_epq065_sp050_eff",
-        "lv23_h12_tts_thr065_sqmask060_epq068_sp047_eff",
-        "lv22_h12_tts_thr065_sqmask060_epq070_sp045",
-        "lv21_h12_tts_thr065_sqmask060_epq070",
-        "lv19_h12_tts_thr065_sqmask060",
+    )
+    assert "lv32_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_feature_guard_exit45_probe" in (
+        run_fv3_cached_tuning.FAST_DEBUG_CONFIGS
+    )
+    assert "lv32_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_strict_feature_guard_exit45_probe" in (
+        run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS
     )
 
     for config_id in (

@@ -136,6 +136,9 @@ class MultiSymbolFeatureRegimeReporter:
             "fold_time_slice_exit_repair_probe": payload.get(
                 "fold_time_slice_exit_repair_probe"
             ),
+            "fold_feature_regime_repair_probe": payload.get(
+                "fold_feature_regime_repair_probe"
+            ),
             "validation_gate_failure_reason_counts": payload.get(
                 "validation_gate_failure_reason_counts"
             ),
@@ -633,4 +636,50 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not self._as_list(fold_repair_probe.get("best_by_walk_forward_total_r")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        fold_feature_probe = self._as_dict(payload.get("fold_feature_regime_repair_probe"))
+        best_feature_probe = self._as_dict(fold_feature_probe.get("best_feature_regime_probe"))
+        best_date_probe = self._as_dict(fold_feature_probe.get("best_date_blackout_probe"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.28 Feature/regime fold repair probe",
+                "",
+                f"- diagnostic_status: `{fold_feature_probe.get('diagnostic_status')}`",
+                f"- verdict: `{fold_feature_probe.get('verdict')}`",
+                f"- feature_regime_probe_candidate_count: `{fold_feature_probe.get('feature_regime_probe_candidate_count')}`",
+                f"- date_blackout_probe_candidate_count: `{fold_feature_probe.get('date_blackout_probe_candidate_count')}`",
+                f"- best_feature_regime_probe: `{best_feature_probe}`",
+                f"- best_date_blackout_probe: `{best_date_probe}`",
+                f"- warnings: `{fold_feature_probe.get('warnings')}`",
+                f"- recommended_next_stage: `{fold_feature_probe.get('recommended_next_stage')}`",
+                "",
+                "| Probe type | Config | PF | Total R | WF PF | WF R | Removed | Profile |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for probe_type, row in (
+            ("feature_regime", best_feature_probe),
+            ("date_blackout", best_date_probe),
+        ):
+            if not row:
+                continue
+            removed_summary = self._as_dict(
+                row.get("fold_feature_regime_filter_summary")
+                or row.get("fold_time_slice_blackout_summary")
+            )
+            lines.append(
+                "| `{probe}` | `{config}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` | `{removed}` | `{profile}` |".format(
+                    probe=probe_type,
+                    config=row.get("config_id"),
+                    pf=row.get("profit_factor"),
+                    total_r=row.get("profit_total_r"),
+                    wf_pf=row.get("walk_forward_profit_factor"),
+                    wf_r=row.get("walk_forward_total_r"),
+                    removed=removed_summary.get("removed_signal_count"),
+                    profile=row.get("fold_repair_feature_filter_profile")
+                    or row.get("fold_repair_probe_profile"),
+                )
+            )
+        if not best_feature_probe and not best_date_probe:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)
