@@ -14,7 +14,7 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in wrapper.selected_config_ids
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 21
+    assert wrapper._expected_candidate_count() == 26
     assert wrapper._full_quality_run() is False
     assert wrapper._quality_decision_allowed() is False
 
@@ -30,6 +30,11 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
         if value == "--base-label-config-id"
     ]
     assert config_values == [
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit75_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_bad_dates_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
         "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
         "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
         "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",

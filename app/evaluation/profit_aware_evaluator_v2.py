@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from datetime import date as date_type
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +40,11 @@ class ProfitAwareEvaluatorV2:
         exit_neutral_abs_r: float | None = None,
         directional_side_filter_profile: str | None = None,
         allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
+        research_only_fold_repair_probe_enabled: bool = False,
+        fold_repair_probe_profile: str | None = None,
+        fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_time_slice_blackout_enabled: bool = False,
+        fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         evaluation = self.evaluate_predictions(
             predictions=predictions,
@@ -52,6 +59,11 @@ class ProfitAwareEvaluatorV2:
             exit_neutral_abs_r=exit_neutral_abs_r,
             directional_side_filter_profile=directional_side_filter_profile,
             allowed_signal_directions=allowed_signal_directions,
+            research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
+            fold_repair_probe_profile=fold_repair_probe_profile,
+            fold_repair_target_dates=fold_repair_target_dates,
+            fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
+            fold_repair_blackout_dates=fold_repair_blackout_dates,
         )
         gate_results = evaluation["gate_results"]
 
@@ -68,6 +80,11 @@ class ProfitAwareEvaluatorV2:
             "exit_neutral_abs_r": exit_neutral_abs_r,
             "directional_side_filter_profile": directional_side_filter_profile,
             "allowed_signal_directions": list(allowed_signal_directions or []),
+            "research_only_fold_repair_probe_enabled": research_only_fold_repair_probe_enabled,
+            "fold_repair_probe_profile": fold_repair_probe_profile,
+            "fold_repair_target_dates": list(fold_repair_target_dates or []),
+            "fold_repair_time_slice_blackout_enabled": fold_repair_time_slice_blackout_enabled,
+            "fold_repair_blackout_dates": list(fold_repair_blackout_dates or []),
             "gate_results": gate_results,
         }
         output_path = self._reports_dir / f"profit_eval_v2_{model_version}.json"
@@ -89,6 +106,11 @@ class ProfitAwareEvaluatorV2:
         exit_neutral_abs_r: float | None = None,
         directional_side_filter_profile: str | None = None,
         allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
+        research_only_fold_repair_probe_enabled: bool = False,
+        fold_repair_probe_profile: str | None = None,
+        fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_time_slice_blackout_enabled: bool = False,
+        fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         gate_results: list[dict[str, Any]] = []
         for gate_type, thresholds in self._signal_gate_evaluator.GATE_THRESHOLDS.items():
@@ -108,6 +130,11 @@ class ProfitAwareEvaluatorV2:
                     exit_neutral_abs_r=exit_neutral_abs_r,
                     directional_side_filter_profile=directional_side_filter_profile,
                     allowed_signal_directions=allowed_signal_directions,
+                    research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
+                    fold_repair_probe_profile=fold_repair_probe_profile,
+                    fold_repair_target_dates=fold_repair_target_dates,
+                    fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
+                    fold_repair_blackout_dates=fold_repair_blackout_dates,
                 )
                 gate_results.append(single["summary"])
 
@@ -151,6 +178,11 @@ class ProfitAwareEvaluatorV2:
         exit_neutral_abs_r: float | None = None,
         directional_side_filter_profile: str | None = None,
         allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
+        research_only_fold_repair_probe_enabled: bool = False,
+        fold_repair_probe_profile: str | None = None,
+        fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_time_slice_blackout_enabled: bool = False,
+        fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         original_selection = self._signal_gate_evaluator.select_signals(
             predictions,
@@ -169,6 +201,13 @@ class ProfitAwareEvaluatorV2:
             signal_rows=original_side_signal_rows,
             directional_side_filter_profile=directional_side_filter_profile,
             allowed_signal_directions=allowed_signal_directions,
+        )
+        signal_rows, fold_time_slice_blackout_summary = self._apply_fold_time_slice_blackout_filter(
+            signal_rows=signal_rows,
+            enabled=fold_repair_time_slice_blackout_enabled,
+            blackout_dates=fold_repair_blackout_dates,
+            target_dates=fold_repair_target_dates,
+            profile=fold_repair_probe_profile,
         )
         entry_path_filter_summary = self._entry_path_final_decision_filter_summary(
             predictions=predictions,
@@ -202,6 +241,12 @@ class ProfitAwareEvaluatorV2:
             summary["directional_side_filter_summary"] = directional_side_filter_summary
             summary["directional_side_filter_profile"] = directional_side_filter_summary.get("profile")
             summary["allowed_signal_directions"] = directional_side_filter_summary.get("allowed_signal_directions")
+            summary["fold_time_slice_blackout_summary"] = fold_time_slice_blackout_summary
+            summary["research_only_fold_repair_probe_enabled"] = research_only_fold_repair_probe_enabled
+            summary["fold_repair_probe_profile"] = fold_repair_probe_profile
+            summary["fold_repair_target_dates"] = list(fold_repair_target_dates or [])
+            summary["fold_repair_time_slice_blackout_enabled"] = fold_repair_time_slice_blackout_enabled
+            summary["fold_repair_blackout_dates"] = list(fold_repair_blackout_dates or [])
             return {"summary": summary, "signal_rows": [], "outcomes": []}
 
         outcomes = [
@@ -243,6 +288,12 @@ class ProfitAwareEvaluatorV2:
         )
         summary["entry_path_prediction_filter_summary"] = entry_path_filter_summary
         summary["stop_pressure_effectiveness_audit"] = stop_pressure_effectiveness_audit
+        summary["fold_time_slice_blackout_summary"] = fold_time_slice_blackout_summary
+        summary["research_only_fold_repair_probe_enabled"] = research_only_fold_repair_probe_enabled
+        summary["fold_repair_probe_profile"] = fold_repair_probe_profile
+        summary["fold_repair_target_dates"] = list(fold_repair_target_dates or [])
+        summary["fold_repair_time_slice_blackout_enabled"] = fold_repair_time_slice_blackout_enabled
+        summary["fold_repair_blackout_dates"] = list(fold_repair_blackout_dates or [])
         return {
             "summary": summary,
             "signal_rows": signal_rows,
@@ -629,6 +680,102 @@ class ProfitAwareEvaluatorV2:
             directional_side_filter_profile=directional_side_filter_profile,
             allowed_signal_directions=allowed,
         )
+        return filtered_rows, summary
+
+    @staticmethod
+    def _extract_signal_date(row: dict[str, Any]) -> str | None:
+        for key in (
+            "signal_date",
+            "date",
+            "timestamp",
+            "datetime",
+            "open_time",
+            "time",
+            "candle_open_time",
+            "signal_time",
+            "entry_time",
+        ):
+            value = row.get(key)
+            if value is None:
+                continue
+            if isinstance(value, datetime):
+                return value.date().isoformat()
+            if isinstance(value, date_type):
+                return value.isoformat()
+            text = str(value).strip()
+            if not text:
+                continue
+            if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+                return text[:10]
+            try:
+                return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
+            except ValueError:
+                continue
+        return None
+
+    def _apply_fold_time_slice_blackout_filter(
+        self,
+        *,
+        signal_rows: list[dict[str, Any]],
+        enabled: bool,
+        blackout_dates: tuple[str, ...] | list[str] | None,
+        target_dates: tuple[str, ...] | list[str] | None,
+        profile: str | None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        normalized_blackout_dates = tuple(
+            dict.fromkeys(
+                date_text
+                for date_text in (str(item).strip() for item in (blackout_dates or []))
+                if date_text
+            )
+        )
+        normalized_target_dates = tuple(
+            dict.fromkeys(
+                date_text
+                for date_text in (str(item).strip() for item in (target_dates or []))
+                if date_text
+            )
+        )
+        if not enabled or not normalized_blackout_dates:
+            summary = {
+                "diagnostic_name": "fold_time_slice_blackout_summary",
+                "diagnostic_version": "ml38.10.27",
+                "enabled": False,
+                "profile": profile,
+                "target_dates": list(normalized_target_dates),
+                "blackout_dates": list(normalized_blackout_dates),
+                "input_signal_count": len(signal_rows),
+                "output_signal_count": len(signal_rows),
+                "removed_signal_count": 0,
+                "removed_ratio": 0.0 if signal_rows else None,
+                "removed_counts_by_date": {},
+            }
+            return list(signal_rows), summary
+
+        blackout_set = set(normalized_blackout_dates)
+        filtered_rows: list[dict[str, Any]] = []
+        removed_counts_by_date: dict[str, int] = {}
+        for row in signal_rows:
+            signal_date = self._extract_signal_date(row)
+            if signal_date is not None and signal_date in blackout_set:
+                removed_counts_by_date[signal_date] = removed_counts_by_date.get(signal_date, 0) + 1
+                continue
+            filtered_rows.append(row)
+
+        removed_signal_count = max(0, len(signal_rows) - len(filtered_rows))
+        summary = {
+            "diagnostic_name": "fold_time_slice_blackout_summary",
+            "diagnostic_version": "ml38.10.27",
+            "enabled": True,
+            "profile": profile,
+            "target_dates": list(normalized_target_dates),
+            "blackout_dates": list(normalized_blackout_dates),
+            "input_signal_count": len(signal_rows),
+            "output_signal_count": len(filtered_rows),
+            "removed_signal_count": removed_signal_count,
+            "removed_ratio": (removed_signal_count / len(signal_rows)) if signal_rows else None,
+            "removed_counts_by_date": removed_counts_by_date,
+        }
         return filtered_rows, summary
 
     @staticmethod

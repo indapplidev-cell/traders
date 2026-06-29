@@ -26,6 +26,8 @@ def test_ml38_10_8_grid_matrix_and_runtime_shortlists_keep_historical_configs() 
     assert matrix["setup_quality_decision_mask_config_ids"] == list(ML38_10_8_SETUP_QUALITY_DECISION_MASK_CONFIG_IDS)
     
     assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS == (
+        "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+        "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
         "lv30_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
         "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
         "lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
@@ -39,6 +41,11 @@ def test_ml38_10_8_grid_matrix_and_runtime_shortlists_keep_historical_configs() 
     )
     
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit75_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_bad_dates_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
         "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
         "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
         "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",

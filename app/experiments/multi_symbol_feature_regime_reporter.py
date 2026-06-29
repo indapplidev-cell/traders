@@ -133,6 +133,9 @@ class MultiSymbolFeatureRegimeReporter:
             "fold_1_repair_target_selection": payload.get(
                 "fold_1_repair_target_selection"
             ),
+            "fold_time_slice_exit_repair_probe": payload.get(
+                "fold_time_slice_exit_repair_probe"
+            ),
             "validation_gate_failure_reason_counts": payload.get(
                 "validation_gate_failure_reason_counts"
             ),
@@ -596,4 +599,38 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not self._as_list(repair_selection.get("selected_targets")):
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        fold_repair_probe = self._as_dict(payload.get("fold_time_slice_exit_repair_probe"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.27 Fold-1 Time-Slice / Exit-Mitigation Repair Probe",
+                "",
+                f"- verdict: `{fold_repair_probe.get('verdict')}`",
+                f"- probe_candidate_count: `{fold_repair_probe.get('probe_candidate_count')}`",
+                f"- profile_counts: `{fold_repair_probe.get('profile_counts')}`",
+                f"- target_date_counts: `{fold_repair_probe.get('target_date_counts')}`",
+                f"- warnings: `{fold_repair_probe.get('warnings')}`",
+                f"- recommendations: `{fold_repair_probe.get('recommendations')}`",
+                "",
+                "| Symbol | Config | Profile | PF | Total R | WF PF | WF R | Blackout | Removed | Root cause |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in self._as_list(fold_repair_probe.get("best_by_walk_forward_total_r"))[:10]:
+            lines.append(
+                "| `{symbol}` | `{config}` | `{profile}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` | `{blackout}` | `{removed}` | `{root}` |".format(
+                    symbol=row.get("symbol"),
+                    config=row.get("config_id"),
+                    profile=row.get("fold_repair_probe_profile"),
+                    pf=row.get("profit_factor"),
+                    total_r=row.get("profit_total_r"),
+                    wf_pf=row.get("walk_forward_profit_factor"),
+                    wf_r=row.get("walk_forward_total_r"),
+                    blackout=row.get("fold_repair_time_slice_blackout_enabled"),
+                    removed=row.get("removed_signal_count"),
+                    root=row.get("primary_root_cause"),
+                )
+            )
+        if not self._as_list(fold_repair_probe.get("best_by_walk_forward_total_r")):
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         return "\n".join(lines)

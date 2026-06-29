@@ -8,6 +8,8 @@ from app.experiments.ml38_2_fv3_tuning_matrix import ML38_10_8_SETUP_QUALITY_DEC
 
 
 EXPECTED_FAST_DEBUG_CONFIGS = (
+    "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+    "lv31_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
     "lv30_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
     "lv29_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
     "lv28_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_only",
@@ -21,6 +23,11 @@ EXPECTED_FAST_DEBUG_CONFIGS = (
 )
 
 EXPECTED_QUICK_QUALITY_CONFIGS = (
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit75_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_bad_dates_probe",
+    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
     "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
     "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
     "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",
@@ -58,7 +65,7 @@ def test_fast_debug_uses_prompt_4_6_smoke_shortlist() -> None:
     assert wrapper.runtime_profile == "fast_debug"
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
     assert wrapper.selected_config_ids == EXPECTED_FAST_DEBUG_CONFIGS
-    assert wrapper._expected_candidate_count() == 20
+    assert wrapper._expected_candidate_count() == 24
     assert "lv15_h08_setup_pure_ft" in ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS
     assert "lv19_h08_tts_thr065_sqmask060" in wrapper.selected_config_ids
 
@@ -74,7 +81,7 @@ def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
     assert wrapper.runtime_profile == "quick_quality"
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == EXPECTED_QUICK_QUALITY_CONFIGS
-    assert wrapper._expected_candidate_count() == 21
+    assert wrapper._expected_candidate_count() == 26
 
     setup_semantics_configs = [
         config_id

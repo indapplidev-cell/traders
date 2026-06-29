@@ -31,6 +31,11 @@ def test_ml38_10_6_threshold_configs_are_in_grid_and_matrix() -> None:
 
 def test_ml38_10_6_runtime_shortlists_use_current_configs() -> None:
     assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS == (
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit45_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_exit75_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_bad_dates_probe",
+        "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
         "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_totalr_probe",
         "lv30_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_wf_totalr_probe",
         "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax",

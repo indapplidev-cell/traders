@@ -736,6 +736,21 @@ class FeatureRegimeExperimentReporter:
             "validation_total_r_repair_profile": row.get(
                 "validation_total_r_repair_profile"
             ),
+            "research_only_fold_repair_probe_enabled": row.get(
+                "research_only_fold_repair_probe_enabled"
+            ),
+            "fold_repair_probe_profile": row.get("fold_repair_probe_profile"),
+            "fold_repair_target_dates": self._as_list(row.get("fold_repair_target_dates")),
+            "fold_repair_time_slice_blackout_enabled": row.get(
+                "fold_repair_time_slice_blackout_enabled"
+            ),
+            "fold_repair_blackout_dates": self._as_list(row.get("fold_repair_blackout_dates")),
+            "fold_time_slice_blackout_summary": self._as_dict(
+                row.get("fold_repair_probe_diagnostics")
+                or self._as_dict(row.get("profit_aware_diagnostics")).get(
+                    "fold_time_slice_blackout_summary"
+                )
+            ),
             "prediction_root_cause_audit": self._as_dict(
                 row.get("prediction_root_cause_audit")
             ),
@@ -1010,6 +1025,27 @@ class FeatureRegimeExperimentReporter:
                 ),
                 "validation_total_r_repair_profile": best_candidate.get(
                     "validation_total_r_repair_profile"
+                ),
+                "research_only_fold_repair_probe_enabled": best_candidate.get(
+                    "research_only_fold_repair_probe_enabled"
+                ),
+                "fold_repair_probe_profile": best_candidate.get(
+                    "fold_repair_probe_profile"
+                ),
+                "fold_repair_target_dates": self._as_list(
+                    best_candidate.get("fold_repair_target_dates")
+                ),
+                "fold_repair_time_slice_blackout_enabled": best_candidate.get(
+                    "fold_repair_time_slice_blackout_enabled"
+                ),
+                "fold_repair_blackout_dates": self._as_list(
+                    best_candidate.get("fold_repair_blackout_dates")
+                ),
+                "fold_time_slice_blackout_summary": self._as_dict(
+                    best_candidate.get("fold_repair_probe_diagnostics")
+                    or self._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
+                        "fold_time_slice_blackout_summary"
+                    )
                 ),
                 "directional_edge_bias_audit": self._as_dict(
                     best_candidate.get("directional_edge_bias_audit")

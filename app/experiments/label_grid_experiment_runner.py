@@ -137,6 +137,12 @@ class LabelGridExperimentCandidateResult:
     research_only_total_r_repair_enabled: bool = False
     validation_total_r_repair_profile: str | None = None
     research_only_acceptance_block_reason: str | None = None
+    research_only_fold_repair_probe_enabled: bool = False
+    fold_repair_probe_profile: str | None = None
+    fold_repair_target_dates: tuple[str, ...] = ()
+    fold_repair_time_slice_blackout_enabled: bool = False
+    fold_repair_blackout_dates: tuple[str, ...] = ()
+    fold_repair_probe_diagnostics: dict[str, Any] = field(default_factory=dict)
     opportunity_probability_threshold: float | None = None
     setup_quality_min_threshold: float | None = None
     setup_quality_decision_mask_enabled: bool = False
@@ -264,6 +270,12 @@ class LabelGridExperimentCandidateResult:
             "research_only_total_r_repair_enabled": self.research_only_total_r_repair_enabled,
             "validation_total_r_repair_profile": self.validation_total_r_repair_profile,
             "research_only_acceptance_block_reason": self.research_only_acceptance_block_reason,
+            "research_only_fold_repair_probe_enabled": self.research_only_fold_repair_probe_enabled,
+            "fold_repair_probe_profile": self.fold_repair_probe_profile,
+            "fold_repair_target_dates": list(self.fold_repair_target_dates),
+            "fold_repair_time_slice_blackout_enabled": self.fold_repair_time_slice_blackout_enabled,
+            "fold_repair_blackout_dates": list(self.fold_repair_blackout_dates),
+            "fold_repair_probe_diagnostics": dict(self.fold_repair_probe_diagnostics),
             "opportunity_probability_threshold": self.opportunity_probability_threshold,
             "setup_quality_min_threshold": self.setup_quality_min_threshold,
             "setup_quality_decision_mask_enabled": self.setup_quality_decision_mask_enabled,
@@ -688,7 +700,10 @@ class LabelGridExperimentRunner:
                 best_candidate.get("candidate_status"),
                 status="COMPLETED",
             )
-            if not bool(best_candidate.get("research_only_total_r_repair_enabled", False))
+            if not (
+                bool(best_candidate.get("research_only_total_r_repair_enabled", False))
+                or bool(best_candidate.get("research_only_fold_repair_probe_enabled", False))
+            )
             else "REJECTED",
             best_candidate_score=best_candidate.get("score"),
             feature_version_used=config.feature_version,
@@ -1113,6 +1128,11 @@ class LabelGridExperimentRunner:
                 research_only_total_r_repair_enabled=label_config.research_only_total_r_repair_enabled,
                 validation_total_r_repair_profile=label_config.validation_total_r_repair_profile,
                 research_only_acceptance_block_reason=label_config.research_only_acceptance_block_reason,
+                research_only_fold_repair_probe_enabled=label_config.research_only_fold_repair_probe_enabled,
+                fold_repair_probe_profile=label_config.fold_repair_probe_profile,
+                fold_repair_target_dates=label_config.fold_repair_target_dates,
+                fold_repair_time_slice_blackout_enabled=label_config.fold_repair_time_slice_blackout_enabled,
+                fold_repair_blackout_dates=label_config.fold_repair_blackout_dates,
                 class_margin_objective_enabled=bool(label_config.class_margin_objective_enabled),
                 true_class_margin_weight=(
                     0.0 if label_config.true_class_margin_weight is None else float(label_config.true_class_margin_weight)
@@ -1231,14 +1251,26 @@ class LabelGridExperimentRunner:
         research_only_total_r_repair_enabled = bool(
             getattr(label_config, "research_only_total_r_repair_enabled", False)
         )
+        research_only_fold_repair_probe_enabled = bool(
+            getattr(label_config, "research_only_fold_repair_probe_enabled", False)
+        )
         research_only_acceptance_block_reason = (
             getattr(label_config, "research_only_acceptance_block_reason", None)
-            or "research_only_validation_total_r_repair_probe"
+            or (
+                "research_only_fold_1_exit_time_slice_repair_probe"
+                if research_only_fold_repair_probe_enabled
+                else "research_only_validation_total_r_repair_probe"
+            )
         )
         failed_gates, passed_gates = self._apply_research_only_total_r_repair_block(
             failed_gates=failed_gates,
             passed_gates=passed_gates,
             research_only_total_r_repair_enabled=research_only_total_r_repair_enabled,
+        )
+        failed_gates, passed_gates = self._apply_research_only_fold_repair_probe_block(
+            failed_gates=failed_gates,
+            passed_gates=passed_gates,
+            research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
         )
         final_candidate_status = self._normalize_final_candidate_status(
             raw_candidate_status,
@@ -1253,6 +1285,8 @@ class LabelGridExperimentRunner:
             final_candidate_status = "REJECTED"
         if research_only_total_r_repair_enabled and final_candidate_status == "ACCEPTED":
             final_candidate_status = "REJECTED"
+        if research_only_fold_repair_probe_enabled and final_candidate_status == "ACCEPTED":
+            final_candidate_status = "REJECTED"
 
         warnings = tuple(
             dict.fromkeys(
@@ -1264,6 +1298,11 @@ class LabelGridExperimentRunner:
                     if research_only_total_r_repair_enabled
                     else []
                 )
+                + (
+                    ["research_only_fold_repair_probe_not_acceptance_eligible"]
+                    if research_only_fold_repair_probe_enabled
+                    else []
+                )
             )
         )
         recommendations = tuple(
@@ -1273,6 +1312,11 @@ class LabelGridExperimentRunner:
                 + (
                     ["do_not_accept_total_r_repair_probe_without_manual_review"]
                     if research_only_total_r_repair_enabled
+                    else []
+                )
+                + (
+                    ["inspect_fold_repair_probe_before_new_label_grid"]
+                    if research_only_fold_repair_probe_enabled
                     else []
                 )
             )
@@ -1317,6 +1361,12 @@ class LabelGridExperimentRunner:
             or profit_aware_diagnostics_payload.get("directional_side_filter_summary")
             or profit_aware_summary.get("directional_side_filter_summary")
             or profit_aware_best_gate.get("directional_side_filter_summary")
+        )
+        fold_repair_probe_diagnostics = self._as_dict(
+            quality_payload.get("fold_repair_probe_diagnostics")
+            or profit_aware_diagnostics_payload.get("fold_time_slice_blackout_summary")
+            or profit_aware_summary.get("fold_time_slice_blackout_summary")
+            or profit_aware_best_gate.get("fold_time_slice_blackout_summary")
         )
         resolved_directional_side_filter_profile = (
             directional_side_filter_summary.get("profile")
@@ -1508,9 +1558,24 @@ class LabelGridExperimentRunner:
             ),
             research_only_acceptance_block_reason=(
                 research_only_acceptance_block_reason
-                if research_only_total_r_repair_enabled
+                if (
+                    research_only_total_r_repair_enabled
+                    or research_only_fold_repair_probe_enabled
+                )
                 else None
             ),
+            research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
+            fold_repair_probe_profile=getattr(label_config, "fold_repair_probe_profile", None),
+            fold_repair_target_dates=tuple(
+                getattr(label_config, "fold_repair_target_dates", ()) or ()
+            ),
+            fold_repair_time_slice_blackout_enabled=bool(
+                getattr(label_config, "fold_repair_time_slice_blackout_enabled", False)
+            ),
+            fold_repair_blackout_dates=tuple(
+                getattr(label_config, "fold_repair_blackout_dates", ()) or ()
+            ),
+            fold_repair_probe_diagnostics=fold_repair_probe_diagnostics,
             opportunity_probability_threshold=self._optional_float(
                 quality_payload.get("opportunity_probability_threshold")
             ),
@@ -1667,9 +1732,16 @@ class LabelGridExperimentRunner:
         research_only_total_r_repair_enabled = bool(
             getattr(label_config, "research_only_total_r_repair_enabled", False)
         )
+        research_only_fold_repair_probe_enabled = bool(
+            getattr(label_config, "research_only_fold_repair_probe_enabled", False)
+        )
         research_only_acceptance_block_reason = (
             getattr(label_config, "research_only_acceptance_block_reason", None)
-            or "research_only_validation_total_r_repair_probe"
+            or (
+                "research_only_fold_1_exit_time_slice_repair_probe"
+                if research_only_fold_repair_probe_enabled
+                else "research_only_validation_total_r_repair_probe"
+            )
         )
 
         failed_gates_list, passed_gates_list = normalize_gap_quality_gate(
@@ -1713,6 +1785,11 @@ class LabelGridExperimentRunner:
             failed_gates=tuple(failed_gates_list),
             passed_gates=tuple(passed_gates_list),
             research_only_total_r_repair_enabled=research_only_total_r_repair_enabled,
+        )
+        failed_gates_tuple, passed_gates_tuple = self._apply_research_only_fold_repair_probe_block(
+            failed_gates=failed_gates_tuple,
+            passed_gates=passed_gates_tuple,
+            research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
         )
         failed_gates_list = list(failed_gates_tuple)
         passed_gates_list = list(passed_gates_tuple)
@@ -1772,6 +1849,8 @@ class LabelGridExperimentRunner:
             side_filter_recommendations.append("inspect_short_side_feature_failure_modes")
         if research_only_total_r_repair_enabled:
             warning_items.append(research_only_acceptance_block_reason)
+        if research_only_fold_repair_probe_enabled:
+            warning_items.append("research_only_fold_repair_probe_not_acceptance_eligible")
         selected_policy_payload = {
             "model_accuracy": self._optional_float(
                 model_quality_payload.get("model_accuracy", train_payload.get("model_accuracy"))
@@ -1857,6 +1936,11 @@ class LabelGridExperimentRunner:
                             *(
                                 ["do_not_accept_total_r_repair_probe_without_manual_review"]
                                 if research_only_total_r_repair_enabled
+                                else []
+                            ),
+                            *(
+                                ["inspect_fold_repair_probe_before_new_label_grid"]
+                                if research_only_fold_repair_probe_enabled
                                 else []
                             ),
                             *side_filter_recommendations,
@@ -1969,8 +2053,25 @@ class LabelGridExperimentRunner:
             ),
             research_only_acceptance_block_reason=(
                 research_only_acceptance_block_reason
-                if research_only_total_r_repair_enabled
+                if (
+                    research_only_total_r_repair_enabled
+                    or research_only_fold_repair_probe_enabled
+                )
                 else None
+            ),
+            research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
+            fold_repair_probe_profile=getattr(label_config, "fold_repair_probe_profile", None),
+            fold_repair_target_dates=tuple(
+                getattr(label_config, "fold_repair_target_dates", ()) or ()
+            ),
+            fold_repair_time_slice_blackout_enabled=bool(
+                getattr(label_config, "fold_repair_time_slice_blackout_enabled", False)
+            ),
+            fold_repair_blackout_dates=tuple(
+                getattr(label_config, "fold_repair_blackout_dates", ()) or ()
+            ),
+            fold_repair_probe_diagnostics=self._as_dict(
+                profit_aware_diagnostics.get("fold_time_slice_blackout_summary", {})
             ),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,
@@ -2022,6 +2123,20 @@ class LabelGridExperimentRunner:
         return failed, passed
 
     @staticmethod
+    def _apply_research_only_fold_repair_probe_block(
+        *,
+        failed_gates: tuple[str, ...],
+        passed_gates: tuple[str, ...],
+        research_only_fold_repair_probe_enabled: bool,
+    ) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        if not research_only_fold_repair_probe_enabled:
+            return failed_gates, passed_gates
+        blocked_gate = "research_only_fold_1_exit_time_slice_repair_probe_gate"
+        failed = tuple(dict.fromkeys([*failed_gates, blocked_gate]))
+        passed = tuple(gate for gate in passed_gates if gate != blocked_gate)
+        return failed, passed
+
+    @staticmethod
     def _normalize_final_candidate_status(
         raw_candidate_status: Any,
         *,
@@ -2061,7 +2176,9 @@ class LabelGridExperimentRunner:
                 row.get("candidate_status"),
                 status="COMPLETED",
             )
-            if bool(normalized.get("research_only_total_r_repair_enabled", False)):
+            if bool(normalized.get("research_only_total_r_repair_enabled", False)) or bool(
+                normalized.get("research_only_fold_repair_probe_enabled", False)
+            ):
                 normalized["candidate_status"] = "REJECTED"
             normalized_rows.append(normalized)
         return normalized_rows

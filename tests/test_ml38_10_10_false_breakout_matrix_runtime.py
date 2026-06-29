@@ -29,5 +29,5 @@ def test_ml38_10_10_runtime_shortlists_keep_lv19_comparator_and_move_current_smo
     assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in QUICK_QUALITY_CONFIGS
     assert "lv21_h12_tts_thr065_sqmask060_epq070" in QUICK_QUALITY_CONFIGS
     assert "lv19_h12_tts_thr065_sqmask060" in QUICK_QUALITY_CONFIGS
-    assert QUICK_QUALITY_CONFIGS[0].startswith("lv30_")
-    assert len(QUICK_QUALITY_CONFIGS) == 21
+    assert QUICK_QUALITY_CONFIGS[0].startswith("lv31_")
+    assert len(QUICK_QUALITY_CONFIGS) == 26

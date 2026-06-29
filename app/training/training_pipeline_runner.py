@@ -133,6 +133,11 @@ class TrainingPipelineConfig:
     research_only_total_r_repair_enabled: bool = False
     validation_total_r_repair_profile: str | None = None
     research_only_acceptance_block_reason: str | None = None
+    research_only_fold_repair_probe_enabled: bool = False
+    fold_repair_probe_profile: str | None = None
+    fold_repair_target_dates: tuple[str, ...] = ()
+    fold_repair_time_slice_blackout_enabled: bool = False
+    fold_repair_blackout_dates: tuple[str, ...] = ()
     class_margin_objective_enabled: bool = False
     true_class_margin_weight: float = 0.0
     true_class_margin_target: float = 0.06
@@ -1171,6 +1176,11 @@ class LongHistoryTrainingPipelineRunner:
                         "research_only_total_r_repair_enabled": config.research_only_total_r_repair_enabled,
                         "validation_total_r_repair_profile": config.validation_total_r_repair_profile,
                         "research_only_acceptance_block_reason": config.research_only_acceptance_block_reason,
+                        "research_only_fold_repair_probe_enabled": config.research_only_fold_repair_probe_enabled,
+                        "fold_repair_probe_profile": config.fold_repair_probe_profile,
+                        "fold_repair_target_dates": list(config.fold_repair_target_dates),
+                        "fold_repair_time_slice_blackout_enabled": config.fold_repair_time_slice_blackout_enabled,
+                        "fold_repair_blackout_dates": list(config.fold_repair_blackout_dates),
                         "config_id": label_version,
                         "training_objective": config.training_objective,
                         "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1247,6 +1257,11 @@ class LongHistoryTrainingPipelineRunner:
                 "research_only_total_r_repair_enabled": config.research_only_total_r_repair_enabled,
                 "validation_total_r_repair_profile": config.validation_total_r_repair_profile,
                 "research_only_acceptance_block_reason": config.research_only_acceptance_block_reason,
+                "research_only_fold_repair_probe_enabled": config.research_only_fold_repair_probe_enabled,
+                "fold_repair_probe_profile": config.fold_repair_probe_profile,
+                "fold_repair_target_dates": list(config.fold_repair_target_dates),
+                "fold_repair_time_slice_blackout_enabled": config.fold_repair_time_slice_blackout_enabled,
+                "fold_repair_blackout_dates": list(config.fold_repair_blackout_dates),
                 "config_id": label_version,
                 "training_objective": config.training_objective,
                 "decision_calibration_enabled": config.decision_calibration_enabled,
@@ -1653,6 +1668,11 @@ class LongHistoryTrainingPipelineRunner:
                 exit_neutral_abs_r=config.exit_neutral_abs_r,
                 directional_side_filter_profile=config.directional_side_filter_profile,
                 allowed_signal_directions=config.allowed_signal_directions,
+                research_only_fold_repair_probe_enabled=config.research_only_fold_repair_probe_enabled,
+                fold_repair_probe_profile=config.fold_repair_probe_profile,
+                fold_repair_target_dates=config.fold_repair_target_dates,
+                fold_repair_time_slice_blackout_enabled=config.fold_repair_time_slice_blackout_enabled,
+                fold_repair_blackout_dates=config.fold_repair_blackout_dates,
             )
         )
         payload = dict(result)
@@ -1703,6 +1723,11 @@ class LongHistoryTrainingPipelineRunner:
                 exit_neutral_abs_r=config.exit_neutral_abs_r,
                 directional_side_filter_profile=config.directional_side_filter_profile,
                 allowed_signal_directions=config.allowed_signal_directions,
+                research_only_fold_repair_probe_enabled=config.research_only_fold_repair_probe_enabled,
+                fold_repair_probe_profile=config.fold_repair_probe_profile,
+                fold_repair_target_dates=config.fold_repair_target_dates,
+                fold_repair_time_slice_blackout_enabled=config.fold_repair_time_slice_blackout_enabled,
+                fold_repair_blackout_dates=config.fold_repair_blackout_dates,
                 side_aware_validation_relaxation_enabled=config.side_aware_validation_relaxation_enabled,
                 side_aware_min_validation_signal_count=config.side_aware_min_validation_signal_count,
                 side_aware_min_validation_profit_factor=config.side_aware_min_validation_profit_factor,

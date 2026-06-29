@@ -10,6 +10,9 @@ from app.diagnostics.directional_side_ablation_comparator import DirectionalSide
 from app.diagnostics.directional_side_walk_forward_stability import (
     DirectionalSideWalkForwardStabilityAnalyzer,
 )
+from app.diagnostics.fold_time_slice_exit_repair_probe import (
+    FoldTimeSliceExitRepairProbe,
+)
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
@@ -24,6 +27,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         self,
         directional_side_ablation_comparator: DirectionalSideAblationComparator | None = None,
         directional_side_walk_forward_stability_analyzer: DirectionalSideWalkForwardStabilityAnalyzer | None = None,
+        fold_time_slice_exit_repair_probe: FoldTimeSliceExitRepairProbe | None = None,
     ) -> None:
         self._directional_side_ablation_comparator = (
             directional_side_ablation_comparator or DirectionalSideAblationComparator()
@@ -31,6 +35,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
         self._directional_side_walk_forward_stability_analyzer = (
             directional_side_walk_forward_stability_analyzer
             or DirectionalSideWalkForwardStabilityAnalyzer()
+        )
+        self._fold_time_slice_exit_repair_probe = (
+            fold_time_slice_exit_repair_probe or FoldTimeSliceExitRepairProbe()
         )
 
     @staticmethod
@@ -155,6 +162,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             full_candidate_payloads,
             target_fold_index=1,
         )
+        fold_time_slice_exit_repair_probe = self._fold_time_slice_exit_repair_probe.analyze(
+            full_candidate_payloads
+        )
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -205,6 +215,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
             "walk_forward_fold_root_cause_board": walk_forward_fold_root_cause_board,
             "fold_1_repair_target_selection": fold_1_repair_target_selection,
+            "fold_time_slice_exit_repair_probe": fold_time_slice_exit_repair_probe,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,

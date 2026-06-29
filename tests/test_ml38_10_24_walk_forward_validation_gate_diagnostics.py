@@ -80,5 +80,5 @@ def test_ml38_10_24_grid_matrix_and_runtime_include_lv29_research_configs() -> N
         "lv29_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_wf_relax"
         in matrix["config_ids"]
     )
-    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv30_")
-    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv30_")
+    assert run_fv3_cached_tuning.FAST_DEBUG_CONFIGS[0].startswith("lv31_")
+    assert run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS[0].startswith("lv31_")

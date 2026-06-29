@@ -741,6 +741,11 @@ class DiagnosticsService:
         exit_neutral_abs_r: float | None = None,
         directional_side_filter_profile: str | None = None,
         allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
+        research_only_fold_repair_probe_enabled: bool = False,
+        fold_repair_probe_profile: str | None = None,
+        fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_time_slice_blackout_enabled: bool = False,
+        fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
     ) -> dict[str, Any]:
         predictions = self._build_prediction_rows(
             model_version=model_version,
@@ -768,6 +773,11 @@ class DiagnosticsService:
             exit_neutral_abs_r=exit_neutral_abs_r,
             directional_side_filter_profile=directional_side_filter_profile,
             allowed_signal_directions=allowed_signal_directions,
+            research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
+            fold_repair_probe_profile=fold_repair_probe_profile,
+            fold_repair_target_dates=fold_repair_target_dates,
+            fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
+            fold_repair_blackout_dates=fold_repair_blackout_dates,
         )
 
     def walk_forward_plan(
@@ -829,6 +839,11 @@ class DiagnosticsService:
         exit_neutral_abs_r: float | None = None,
         directional_side_filter_profile: str | None = None,
         allowed_signal_directions: tuple[str, ...] | list[str] | None = None,
+        research_only_fold_repair_probe_enabled: bool = False,
+        fold_repair_probe_profile: str | None = None,
+        fold_repair_target_dates: tuple[str, ...] | list[str] | None = None,
+        fold_repair_time_slice_blackout_enabled: bool = False,
+        fold_repair_blackout_dates: tuple[str, ...] | list[str] | None = None,
         side_aware_validation_relaxation_enabled: bool = False,
         side_aware_min_validation_signal_count: int | None = None,
         side_aware_min_validation_profit_factor: float | None = None,
@@ -878,6 +893,11 @@ class DiagnosticsService:
             exit_neutral_abs_r=exit_neutral_abs_r,
             directional_side_filter_profile=directional_side_filter_profile,
             allowed_signal_directions=allowed_signal_directions,
+            research_only_fold_repair_probe_enabled=research_only_fold_repair_probe_enabled,
+            fold_repair_probe_profile=fold_repair_probe_profile,
+            fold_repair_target_dates=fold_repair_target_dates,
+            fold_repair_time_slice_blackout_enabled=fold_repair_time_slice_blackout_enabled,
+            fold_repair_blackout_dates=fold_repair_blackout_dates,
             side_aware_validation_relaxation_enabled=side_aware_validation_relaxation_enabled,
             side_aware_min_validation_signal_count=side_aware_min_validation_signal_count,
             side_aware_min_validation_profit_factor=side_aware_min_validation_profit_factor,
