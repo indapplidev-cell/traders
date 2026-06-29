@@ -61,6 +61,80 @@ class FeatureRegimeExperimentReporter:
             and not callable(getattr(value, name, None))
         }
 
+    @classmethod
+    def _compact_preview_value(
+        cls,
+        value: Any,
+        *,
+        depth: int = 0,
+        max_depth: int = 2,
+        max_dict_keys: int = 16,
+        max_list_items: int = 6,
+    ) -> Any:
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+
+        if isinstance(value, dict):
+            items = list(value.items())
+            preview: dict[str, Any] = {}
+            for key, item in items[:max_dict_keys]:
+                if depth + 1 >= max_depth and isinstance(item, (dict, list, tuple, set)):
+                    preview[key] = cls._collection_preview(item)
+                else:
+                    preview[key] = cls._compact_preview_value(
+                        item,
+                        depth=depth + 1,
+                        max_depth=max_depth,
+                        max_dict_keys=max_dict_keys,
+                        max_list_items=max_list_items,
+                    )
+            preview["_key_count"] = len(items)
+            preview["_keys_truncated"] = len(items) > max_dict_keys
+            return preview
+
+        if isinstance(value, (list, tuple, set)):
+            items = list(value)
+            if depth + 1 >= max_depth:
+                return cls._collection_preview(items)
+            preview = [
+                cls._compact_preview_value(
+                    item,
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                    max_dict_keys=max_dict_keys,
+                    max_list_items=max_list_items,
+                )
+                for item in items[:max_list_items]
+            ]
+            if len(items) > max_list_items:
+                preview.append(
+                    {
+                        "_item_count": len(items),
+                        "_items_truncated": True,
+                    }
+                )
+            return preview
+
+        return str(value)
+
+    @classmethod
+    def _collection_preview(cls, value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return {
+                "_type": "dict",
+                "_key_count": len(value),
+            }
+        items = cls._as_list(value)
+        return {
+            "_type": "list",
+            "_item_count": len(items),
+        }
+
+    @classmethod
+    def _compact_preview_dict(cls, value: Any) -> dict[str, Any]:
+        preview = cls._compact_preview_value(value)
+        return preview if isinstance(preview, dict) else {}
+
     def result_to_dict(self, result: object) -> dict[str, Any]:
         if isinstance(result, dict):
             return dict(result)
@@ -453,43 +527,24 @@ class FeatureRegimeExperimentReporter:
         candidate["passed_gates"] = self._as_list(candidate.get("passed_gates"))
         candidate["warnings"] = self._as_list(candidate.get("warnings"))
         candidate["recommendations"] = self._as_list(candidate.get("recommendations"))
-        candidate["prediction_root_cause_audit"] = self._as_dict(
-            candidate.get("prediction_root_cause_audit")
-        )
-        candidate["book_driven_forensic_audit"] = self._as_dict(
-            candidate.get("book_driven_forensic_audit")
-        )
-        candidate["label_mode_comparison_audit"] = self._as_dict(
-            candidate.get("label_mode_comparison_audit")
-        )
-        candidate["flat_subtype_audit"] = self._as_dict(candidate.get("flat_subtype_audit"))
-        candidate["setup_aware_label_diagnostics"] = self._as_dict(
-            candidate.get("setup_aware_label_diagnostics")
-        )
-        candidate["schwager_slice_robustness"] = self._as_dict(
-            candidate.get("schwager_slice_robustness")
-        )
-        candidate["schwager_robustness_decision_board"] = self._as_dict(
-            candidate.get("schwager_robustness_decision_board")
-        )
-        candidate["class_margin_objective_decision"] = self._as_dict(
-            candidate.get("class_margin_objective_decision")
-        )
-        candidate["directional_edge_bias_audit"] = self._as_dict(
-            candidate.get("directional_edge_bias_audit")
-        )
-        candidate["directional_side_filter_summary"] = self._as_dict(
-            candidate.get("directional_side_filter_summary")
-        )
-        candidate["profit_aware_diagnostics"] = self._as_dict(candidate.get("profit_aware_diagnostics"))
-        candidate["collapse_diagnostics_v2"] = self._as_dict(candidate.get("collapse_diagnostics_v2"))
-        candidate["real_feature_diagnostics"] = self._as_dict(candidate.get("real_feature_diagnostics"))
-        candidate["regime_label_builder_status"] = self._as_dict(
-            candidate.get("regime_label_builder_status")
-        )
-        candidate["two_stage_trade_diagnostics"] = self._as_dict(
-            candidate.get("two_stage_trade_diagnostics")
-        )
+        for key in (
+            "prediction_root_cause_audit",
+            "book_driven_forensic_audit",
+            "label_mode_comparison_audit",
+            "flat_subtype_audit",
+            "setup_aware_label_diagnostics",
+            "schwager_slice_robustness",
+            "schwager_robustness_decision_board",
+            "class_margin_objective_decision",
+            "directional_edge_bias_audit",
+            "directional_side_filter_summary",
+            "profit_aware_diagnostics",
+            "collapse_diagnostics_v2",
+            "real_feature_diagnostics",
+            "regime_label_builder_status",
+            "two_stage_trade_diagnostics",
+        ):
+            candidate[key] = self._compact_preview_dict(candidate.get(key))
 
         walk_forward = self._compact_walk_forward_profit_diagnostics(
             candidate.get("walk_forward_profit_diagnostics")
@@ -601,6 +656,12 @@ class FeatureRegimeExperimentReporter:
             validation_board.get("candidate_board_rows_truncated")
             if validation_board.get("candidate_board_rows_truncated") is not None
             else candidate.get("validation_candidate_board_rows_truncated")
+        )
+        candidate["fold_time_slice_blackout_summary"] = self._compact_preview_dict(
+            candidate.get("fold_repair_probe_diagnostics")
+            or self._as_dict(candidate.get("profit_aware_diagnostics")).get(
+                "fold_time_slice_blackout_summary"
+            )
         )
         return candidate
 
@@ -785,6 +846,18 @@ class FeatureRegimeExperimentReporter:
             "stop_pressure_max_risk_score": row.get("stop_pressure_max_risk_score"),
             "mae_pressure_max_risk_score": row.get("mae_pressure_max_risk_score"),
         }
+        for key in (
+            "fold_time_slice_blackout_summary",
+            "prediction_root_cause_audit",
+            "book_driven_forensic_audit",
+            "label_mode_comparison_audit",
+            "flat_subtype_audit",
+            "setup_aware_label_diagnostics",
+            "schwager_slice_robustness",
+            "schwager_robustness_decision_board",
+            "decision_policy_grid_diagnostics",
+        ):
+            payload[key] = self._compact_preview_dict(payload.get(key))
         return payload
 
     def _best_candidate_payload(
@@ -917,6 +990,29 @@ class FeatureRegimeExperimentReporter:
             key: self._result_value(result, key)
             for key in direct_keys
         }
+        for key in (
+            "baseline_reference",
+            "probability_diagnostics",
+            "feature_quality_summary",
+            "feature_group_quality_summary",
+            "regime_feature_summary",
+            "feature_leakage_summary",
+            "regime_experiment_plan_summary",
+            "real_feature_diagnostics",
+            "collapse_diagnostics_v2",
+            "regime_label_builder_status",
+            "profit_aware_diagnostics",
+            "flat_bias_summary",
+            "down_blindness_summary",
+            "baseline_edge_summary",
+            "label_mode_comparison_audit",
+            "flat_subtype_audit",
+            "setup_aware_label_diagnostics",
+            "schwager_slice_robustness",
+            "schwager_robustness_decision_board",
+            "class_margin_objective_decision",
+        ):
+            payload[key] = self._compact_preview_dict(payload.get(key))
 
         candidate_results_source = self._as_list(self._result_value(result, "candidate_results"))
         ranking_source = self._as_list(self._result_value(result, "ranking"))

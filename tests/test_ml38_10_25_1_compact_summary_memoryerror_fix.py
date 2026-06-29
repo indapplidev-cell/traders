@@ -386,6 +386,53 @@ def test_ml38_10_25_1_summary_writer_does_not_require_json_dumps(
     assert payload["summary_payload_mode"] == "compact_capped_ml38_10_25_1"
 
 
+def test_ml38_10_25_1_summary_writer_caps_large_auxiliary_diagnostics(
+    tmp_path: Path,
+) -> None:
+    reporter = FeatureRegimeExperimentReporter()
+    result = _ExplodingFullResult()
+    output_path = tmp_path / "feature_regime_experiment_summary.json"
+
+    huge_rows = [
+        {
+            "fold_index": index + 1,
+            "trade_ids": list(range(20)),
+            "scores": [float(index)] * 10,
+        }
+        for index in range(400)
+    ]
+    first_candidate = result.candidate_results[0]
+    first_candidate["prediction_root_cause_audit"] = {
+        "diagnostic_status": "COMPLETED",
+        "rows": huge_rows,
+    }
+    first_candidate["profit_aware_diagnostics"] = {
+        "diagnostic_status": "COMPLETED",
+        "fold_time_slice_blackout_summary": {
+            "rows": huge_rows,
+            "status": "RESEARCH_ONLY",
+        },
+    }
+    result.profit_aware_diagnostics = {
+        "diagnostic_status": "COMPLETED",
+        "rows": huge_rows,
+    }
+
+    reporter.write_summary_json(result, output_path)
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert output_path.stat().st_size < 15 * 1024 * 1024
+    assert (
+        payload["candidate_results"][0]["prediction_root_cause_audit"]["rows"]["_type"]
+        == "list"
+    )
+    assert (
+        payload["candidate_results"][0]["fold_time_slice_blackout_summary"]["rows"]["_type"]
+        == "list"
+    )
+    assert payload["profit_aware_diagnostics"]["rows"]["_type"] == "list"
+
+
 def test_ml38_10_25_1_gate_selector_caps_gate_probe_payload() -> None:
     rows = [
         {
