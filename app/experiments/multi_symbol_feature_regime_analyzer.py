@@ -913,6 +913,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "fold_repair_feature_filter_enabled",
             "fold_repair_feature_filter_profile",
             "fold_repair_feature_filter_rules",
+            "fold_repair_probe_diagnostics",
             "fold_feature_regime_filter_summary",
             "fold_time_slice_blackout_summary",
             "fold_repair_probe_profile",
@@ -1315,11 +1316,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
                         or profit_summary.get("fold_feature_regime_filter_summary")
                         or profit_best_gate.get("fold_feature_regime_filter_summary")
                     )
-                if not payload.get("fold_time_slice_blackout_summary"):
-                    payload["fold_time_slice_blackout_summary"] = cls._as_dict(
+                if not payload.get("fold_repair_probe_diagnostics"):
+                    payload["fold_repair_probe_diagnostics"] = cls._as_dict(
                         profit_diag.get("fold_time_slice_blackout_summary")
                         or profit_summary.get("fold_time_slice_blackout_summary")
                         or profit_best_gate.get("fold_time_slice_blackout_summary")
+                    )
+                if not payload.get("fold_time_slice_blackout_summary"):
+                    payload["fold_time_slice_blackout_summary"] = cls._as_dict(
+                        payload.get("fold_repair_probe_diagnostics")
                     )
                 payloads.append(payload)
         return payloads
@@ -1657,11 +1662,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
                         or profit_summary.get("fold_feature_regime_filter_summary")
                         or profit_best_gate.get("fold_feature_regime_filter_summary")
                     )
-                if not payload.get("fold_time_slice_blackout_summary"):
-                    payload["fold_time_slice_blackout_summary"] = cls._as_dict(
+                if not payload.get("fold_repair_probe_diagnostics"):
+                    payload["fold_repair_probe_diagnostics"] = cls._as_dict(
                         profit_diag.get("fold_time_slice_blackout_summary")
                         or profit_summary.get("fold_time_slice_blackout_summary")
                         or profit_best_gate.get("fold_time_slice_blackout_summary")
+                    )
+                if not payload.get("fold_time_slice_blackout_summary"):
+                    payload["fold_time_slice_blackout_summary"] = cls._as_dict(
+                        payload.get("fold_repair_probe_diagnostics")
                     )
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)

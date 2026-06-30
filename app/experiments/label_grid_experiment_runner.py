@@ -509,6 +509,22 @@ class LabelGridExperimentRunner:
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
 
+    @classmethod
+    def _profit_aware_nested_summary(
+        cls,
+        quality_payload: dict[str, Any],
+        key: str,
+    ) -> dict[str, Any]:
+        profit_diag = cls._as_dict(quality_payload.get("profit_aware_diagnostics"))
+        profit_summary = cls._as_dict(profit_diag.get("summary"))
+        profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
+        return cls._as_dict(
+            quality_payload.get(key)
+            or profit_diag.get(key)
+            or profit_summary.get(key)
+            or profit_best_gate.get(key)
+        )
+
     @staticmethod
     def _as_list(value: Any) -> list[Any]:
         if value is None:
@@ -1375,16 +1391,26 @@ class LabelGridExperimentRunner:
         )
         fold_repair_probe_diagnostics = self._as_dict(
             quality_payload.get("fold_repair_probe_diagnostics")
-            or profit_aware_diagnostics_payload.get("fold_time_slice_blackout_summary")
-            or profit_aware_summary.get("fold_time_slice_blackout_summary")
-            or profit_aware_best_gate.get("fold_time_slice_blackout_summary")
+            or self._profit_aware_nested_summary(
+                quality_payload,
+                "fold_time_slice_blackout_summary",
+            )
         )
-        fold_feature_regime_filter_summary = self._as_dict(
-            quality_payload.get("fold_feature_regime_filter_summary")
-            or profit_aware_diagnostics_payload.get("fold_feature_regime_filter_summary")
-            or profit_aware_summary.get("fold_feature_regime_filter_summary")
-            or profit_aware_best_gate.get("fold_feature_regime_filter_summary")
+        fold_feature_regime_filter_summary = self._profit_aware_nested_summary(
+            quality_payload,
+            "fold_feature_regime_filter_summary",
         )
+        if (
+            research_only_fold_repair_probe_enabled
+            and getattr(label_config, "fold_repair_feature_filter_enabled", False)
+            and not fold_feature_regime_filter_summary
+        ):
+            warnings = tuple(
+                dict.fromkeys(
+                    list(warnings)
+                    + ["fold_feature_regime_filter_summary_missing_after_quality_payload"]
+                )
+            )
         resolved_directional_side_filter_profile = (
             directional_side_filter_summary.get("profile")
             or label_config.directional_side_filter_profile

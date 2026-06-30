@@ -127,3 +127,20 @@ def test_ml38_10_29_fold_feature_regime_repair_probe_diagnostics_readiness() -> 
     assert result["diagnostic_version"] == "ml38.10.29"
     assert result["feature_filter_diagnostics"]["readiness"] == "DIAGNOSTICS_READY"
     assert result["feature_filter_diagnostics"]["aggregate_primary_removed_counts_by_reason"]
+
+    nested_candidate = dict(candidate)
+    nested_candidate.pop("fold_feature_regime_filter_summary")
+    nested_candidate["profit_aware_diagnostics"] = {
+        "best_gate": {
+            "fold_feature_regime_filter_summary": {
+                "removed_signal_count": 1,
+                "input_signal_count": 10,
+                "primary_removed_counts_by_reason": {"low_entry_path_quality": 1},
+            }
+        }
+    }
+    nested_result = FoldFeatureRegimeRepairProbe().analyze([nested_candidate])
+    assert nested_result["feature_filter_diagnostics"]["readiness"] == "DIAGNOSTICS_READY"
+    assert nested_result["feature_filter_diagnostics"][
+        "aggregate_primary_removed_counts_by_reason"
+    ] == {"low_entry_path_quality": 1}

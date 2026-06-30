@@ -95,8 +95,8 @@ class FoldFeatureRegimeRepairProbe:
             or profit_best_gate.get("fold_feature_regime_filter_summary")
         )
         blackout_summary = self._as_dict(
-            candidate.get("fold_time_slice_blackout_summary")
-            or candidate.get("fold_repair_probe_diagnostics")
+            candidate.get("fold_repair_probe_diagnostics")
+            or candidate.get("fold_time_slice_blackout_summary")
             or profit_diag.get("fold_time_slice_blackout_summary")
             or profit_summary.get("fold_time_slice_blackout_summary")
             or profit_best_gate.get("fold_time_slice_blackout_summary")

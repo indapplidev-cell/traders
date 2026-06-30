@@ -345,6 +345,130 @@ class LongHistoryTrainingPipelineRunner:
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _safe_float(value: Any) -> float | None:
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _extract_best_gate_repair_summaries(
+        self,
+        *,
+        profit_aware_summary: dict[str, Any],
+        profit_aware_diagnostics: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        profit_aware_summary_payload = self._as_dict(profit_aware_summary)
+        profit_aware_diagnostics_payload = self._as_dict(profit_aware_diagnostics)
+        summary = self._as_dict(profit_aware_summary_payload.get("summary"))
+        diagnostic_best_gate = self._as_dict(
+            profit_aware_diagnostics_payload.get("best_gate")
+        )
+
+        gate_results = [
+            self._as_dict(item)
+            for item in self._as_list(profit_aware_summary_payload.get("gate_results"))
+            if self._as_dict(item)
+        ]
+
+        selected_gate: dict[str, Any] = {}
+
+        diagnostic_gate_type = diagnostic_best_gate.get("gate_type")
+        diagnostic_threshold = self._safe_float(diagnostic_best_gate.get("threshold"))
+
+        if diagnostic_gate_type is not None and diagnostic_threshold is not None:
+            for gate in gate_results:
+                if gate.get("gate_type") != diagnostic_gate_type:
+                    continue
+                gate_threshold = self._safe_float(gate.get("threshold"))
+                if gate_threshold is not None and abs(gate_threshold - diagnostic_threshold) < 1e-12:
+                    selected_gate = gate
+                    break
+
+        if not selected_gate and gate_results:
+            selected_gate = max(
+                gate_results,
+                key=lambda row: (
+                    self._safe_float(row.get("total_r")) or 0.0,
+                    self._safe_float(row.get("profit_factor")) or 0.0,
+                    int(row.get("resolved_signal_count", 0) or 0),
+                ),
+            )
+
+        fold_time_slice_blackout_summary = self._as_dict(
+            profit_aware_summary_payload.get("fold_time_slice_blackout_summary")
+            or summary.get("fold_time_slice_blackout_summary")
+            or diagnostic_best_gate.get("fold_time_slice_blackout_summary")
+            or selected_gate.get("fold_time_slice_blackout_summary")
+        )
+        fold_feature_regime_filter_summary = self._as_dict(
+            profit_aware_summary_payload.get("fold_feature_regime_filter_summary")
+            or summary.get("fold_feature_regime_filter_summary")
+            or diagnostic_best_gate.get("fold_feature_regime_filter_summary")
+            or selected_gate.get("fold_feature_regime_filter_summary")
+        )
+
+        return {
+            "selected_gate_type": selected_gate.get("gate_type") or diagnostic_gate_type,
+            "selected_gate_threshold": (
+                self._safe_float(selected_gate.get("threshold"))
+                if selected_gate
+                else diagnostic_threshold
+            ),
+            "fold_time_slice_blackout_summary": fold_time_slice_blackout_summary,
+            "fold_feature_regime_filter_summary": fold_feature_regime_filter_summary,
+        }
+
+    def _attach_repair_summaries_to_quality_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        repair_summaries: dict[str, Any],
+    ) -> None:
+        if not isinstance(payload, dict):
+            return
+
+        fold_time_slice_blackout_summary = self._as_dict(
+            repair_summaries.get("fold_time_slice_blackout_summary")
+        )
+        fold_feature_regime_filter_summary = self._as_dict(
+            repair_summaries.get("fold_feature_regime_filter_summary")
+        )
+
+        if fold_time_slice_blackout_summary:
+            payload["fold_repair_probe_diagnostics"] = fold_time_slice_blackout_summary
+            payload["fold_time_slice_blackout_summary"] = fold_time_slice_blackout_summary
+
+        if fold_feature_regime_filter_summary:
+            payload["fold_feature_regime_filter_summary"] = fold_feature_regime_filter_summary
+
+        profit_aware_diagnostics = self._as_dict(payload.get("profit_aware_diagnostics"))
+        if profit_aware_diagnostics:
+            if fold_time_slice_blackout_summary:
+                profit_aware_diagnostics["fold_time_slice_blackout_summary"] = (
+                    fold_time_slice_blackout_summary
+                )
+            if fold_feature_regime_filter_summary:
+                profit_aware_diagnostics["fold_feature_regime_filter_summary"] = (
+                    fold_feature_regime_filter_summary
+                )
+
+            best_gate = self._as_dict(profit_aware_diagnostics.get("best_gate"))
+            if best_gate:
+                if fold_time_slice_blackout_summary:
+                    best_gate["fold_time_slice_blackout_summary"] = (
+                        fold_time_slice_blackout_summary
+                    )
+                if fold_feature_regime_filter_summary:
+                    best_gate["fold_feature_regime_filter_summary"] = (
+                        fold_feature_regime_filter_summary
+                    )
+                profit_aware_diagnostics["best_gate"] = best_gate
+
+            payload["profit_aware_diagnostics"] = profit_aware_diagnostics
     
     def _attach_profit_exit_root_cause_payload(
         self,
@@ -1925,6 +2049,9 @@ class LongHistoryTrainingPipelineRunner:
             profit_aware_summary=profit_aware_summary,
         )
 
+        profit_aware_diagnostics_summary = WalkForwardProfitDiagnostics().build_profit_aware_diagnostics(
+            profit_aware_summary=profit_aware_summary
+        )
         result = validate_model_quality(
             training_summary=training_summary,
             baseline_summary=baseline_summary,
@@ -1942,11 +2069,17 @@ class LongHistoryTrainingPipelineRunner:
                 label_config_summary.get("regime_label_builder_status", {})
             ),
             walk_forward_profit_diagnostics_summary=walk_forward_profit_diagnostics,
-            profit_aware_diagnostics_summary=WalkForwardProfitDiagnostics().build_profit_aware_diagnostics(
-                profit_aware_summary=profit_aware_summary
-            ),
+            profit_aware_diagnostics_summary=profit_aware_diagnostics_summary,
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        repair_summaries = self._extract_best_gate_repair_summaries(
+            profit_aware_summary=profit_aware_summary,
+            profit_aware_diagnostics=profit_aware_diagnostics_summary,
+        )
+        self._attach_repair_summaries_to_quality_payload(
+            payload,
+            repair_summaries=repair_summaries,
+        )
         payload = self._attach_profit_exit_root_cause_payload(
             payload,
             profit_aware_summary=profit_aware_summary,
@@ -2044,6 +2177,9 @@ class LongHistoryTrainingPipelineRunner:
             walk_forward_summary=walk_forward_summary,
             profit_aware_summary=profit_aware_summary,
         )
+        profit_aware_diagnostics_summary = walk_forward_profit_helper.build_profit_aware_diagnostics(
+            profit_aware_summary=profit_aware_summary
+        )
         result = validate_model_quality(
             training_summary=training_summary,
             baseline_summary=baseline_summary,
@@ -2061,11 +2197,17 @@ class LongHistoryTrainingPipelineRunner:
                 label_config_summary.get("regime_label_builder_status", {})
             ),
             walk_forward_profit_diagnostics_summary=walk_forward_profit_diagnostics,
-            profit_aware_diagnostics_summary=walk_forward_profit_helper.build_profit_aware_diagnostics(
-                profit_aware_summary=profit_aware_summary
-            ),
+            profit_aware_diagnostics_summary=profit_aware_diagnostics_summary,
         )
         payload = ModelQualityReporter().build_full_quality_report(result)
+        repair_summaries = self._extract_best_gate_repair_summaries(
+            profit_aware_summary=profit_aware_summary,
+            profit_aware_diagnostics=profit_aware_diagnostics_summary,
+        )
+        self._attach_repair_summaries_to_quality_payload(
+            payload,
+            repair_summaries=repair_summaries,
+        )
         payload = self._attach_profit_exit_root_cause_payload(
             payload,
             profit_aware_summary=profit_aware_summary,
@@ -2726,3 +2868,6 @@ class LongHistoryTrainingPipelineRunner:
             if isinstance(test_metrics, dict) and test_metrics.get("accuracy") is not None:
                 return float(test_metrics["accuracy"])
         return None
+
+
+TrainingPipelineRunner = LongHistoryTrainingPipelineRunner

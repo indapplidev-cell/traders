@@ -261,6 +261,14 @@ class WalkForwardProfitDiagnostics:
             or summary.get("stop_pressure_effectiveness_audit")
             or entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
         )
+        fold_time_slice_blackout_summary = self._normalize_mapping(
+            profit_aware_summary.get("fold_time_slice_blackout_summary")
+            or summary.get("fold_time_slice_blackout_summary")
+        )
+        fold_feature_regime_filter_summary = self._normalize_mapping(
+            profit_aware_summary.get("fold_feature_regime_filter_summary")
+            or summary.get("fold_feature_regime_filter_summary")
+        )
         if best_gate is not None:
             if profit_factor is None:
                 profit_factor = self._safe_float(best_gate.get("profit_factor"))
@@ -283,6 +291,14 @@ class WalkForwardProfitDiagnostics:
                     best_gate.get("stop_pressure_effectiveness_audit")
                     or entry_path_prediction_filter_summary.get("stop_pressure_effectiveness_audit")
                 )
+            if not fold_time_slice_blackout_summary:
+                fold_time_slice_blackout_summary = self._normalize_mapping(
+                    best_gate.get("fold_time_slice_blackout_summary")
+                )
+            if not fold_feature_regime_filter_summary:
+                fold_feature_regime_filter_summary = self._normalize_mapping(
+                    best_gate.get("fold_feature_regime_filter_summary")
+                )
         return {
             "profit_aware_profit_factor": profit_factor,
             "profit_aware_total_r": total_r,
@@ -292,6 +308,8 @@ class WalkForwardProfitDiagnostics:
             "profit_exit_root_cause_audit": profit_exit_root_cause_audit,
             "entry_path_prediction_filter_summary": entry_path_prediction_filter_summary,
             "stop_pressure_effectiveness_audit": stop_pressure_effectiveness_audit,
+            "fold_time_slice_blackout_summary": fold_time_slice_blackout_summary,
+            "fold_feature_regime_filter_summary": fold_feature_regime_filter_summary,
         }
 
     @staticmethod
@@ -422,13 +440,47 @@ class WalkForwardProfitDiagnostics:
     def _gate_snapshot(self, gate: dict[str, Any] | None) -> dict[str, Any] | None:
         if gate is None:
             return None
-        return {
+
+        fold_time_slice_blackout_summary = self._normalize_mapping(
+            gate.get("fold_time_slice_blackout_summary")
+        )
+        fold_feature_regime_filter_summary = self._normalize_mapping(
+            gate.get("fold_feature_regime_filter_summary")
+        )
+
+        payload = {
             "gate_type": gate.get("gate_type"),
             "threshold": self._safe_float(gate.get("threshold")),
             "resolved_signal_count": int(gate.get("resolved_signal_count", 0) or 0),
             "profit_factor": self._safe_float(gate.get("profit_factor")),
             "total_r": self._safe_float(gate.get("total_r")),
         }
+
+        if fold_time_slice_blackout_summary:
+            payload["fold_time_slice_blackout_summary"] = fold_time_slice_blackout_summary
+        if fold_feature_regime_filter_summary:
+            payload["fold_feature_regime_filter_summary"] = fold_feature_regime_filter_summary
+
+        for key in (
+            "research_only_fold_repair_probe_enabled",
+            "fold_repair_probe_profile",
+            "fold_repair_target_dates",
+            "fold_repair_time_slice_blackout_enabled",
+            "fold_repair_blackout_dates",
+            "fold_repair_feature_filter_enabled",
+            "fold_repair_feature_filter_profile",
+            "fold_repair_feature_filter_rules",
+        ):
+            value = gate.get(key)
+            if value is not None:
+                if isinstance(value, dict):
+                    payload[key] = dict(value)
+                elif isinstance(value, (list, tuple, set)):
+                    payload[key] = list(value)
+                else:
+                    payload[key] = value
+
+        return payload
 
     @staticmethod
     def _median_int(values: list[int]) -> int | None:

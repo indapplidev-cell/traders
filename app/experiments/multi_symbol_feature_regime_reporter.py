@@ -342,6 +342,9 @@ class MultiSymbolFeatureRegimeReporter:
         best_feature_probe = self._as_dict(
             adaptive_probe.get("best_feature_regime_probe")
         )
+        best_feature_summary = self._as_dict(
+            best_feature_probe.get("fold_feature_regime_filter_summary")
+        )
         best_date_probe = self._as_dict(
             adaptive_probe.get("best_date_blackout_probe")
         )
@@ -352,11 +355,16 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- verdict: `{adaptive_probe.get('verdict')}`",
                 f"- verdict_detail.reason: `{verdict_detail.get('reason')}`",
                 f"- feature_filter_diagnostics.readiness: `{adaptive_feature_diag.get('readiness')}`",
+                f"- active_filter_candidate_count: `{adaptive_feature_diag.get('active_filter_candidate_count')}`",
+                f"- zero_removal_candidate_count: `{adaptive_feature_diag.get('zero_removal_candidate_count')}`",
+                f"- missing_summary_candidate_count: `{adaptive_feature_diag.get('missing_summary_candidate_count')}`",
                 f"- best_feature_regime_probe.config_id: `{best_feature_probe.get('config_id')}`",
+                f"- best_feature_regime_probe.fold_feature_regime_filter_summary.removed_signal_count: `{best_feature_summary.get('removed_signal_count')}`",
                 f"- best_feature_regime_probe.walk_forward_total_r: `{best_feature_probe.get('walk_forward_total_r')}`",
                 f"- best_date_blackout_probe.config_id: `{best_date_probe.get('config_id')}`",
                 f"- best_date_blackout_probe.walk_forward_total_r: `{best_date_probe.get('walk_forward_total_r')}`",
                 f"- aggregate_primary_removed_counts_by_reason: `{self._top_n_items(adaptive_feature_diag.get('aggregate_primary_removed_counts_by_reason'))}`",
+                f"- aggregate_matched_removed_counts_by_reason: `{self._top_n_items(adaptive_feature_diag.get('aggregate_matched_removed_counts_by_reason'))}`",
                 f"- aggregate_removed_counts_by_date: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_date'))}`",
                 f"- aggregate_passed_counts_by_date: `{self._top_n_items(adaptive_feature_diag.get('aggregate_passed_counts_by_date'))}`",
                 f"- aggregate_removed_counts_by_regime: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_regime'))}`",

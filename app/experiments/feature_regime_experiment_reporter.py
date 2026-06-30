@@ -670,19 +670,19 @@ class FeatureRegimeExperimentReporter:
             if validation_board.get("candidate_board_rows_truncated") is not None
             else candidate.get("validation_candidate_board_rows_truncated")
         )
-        candidate["fold_time_slice_blackout_summary"] = self._compact_preview_dict(
+        profit_diag = self._as_dict(candidate.get("profit_aware_diagnostics"))
+        profit_best_gate = self._as_dict(profit_diag.get("best_gate"))
+        fold_repair_probe_diagnostics = self._compact_fold_feature_summary(
             candidate.get("fold_repair_probe_diagnostics")
-            or self._as_dict(candidate.get("profit_aware_diagnostics")).get(
-                "fold_time_slice_blackout_summary"
-            )
+            or profit_diag.get("fold_time_slice_blackout_summary")
+            or profit_best_gate.get("fold_time_slice_blackout_summary")
         )
+        candidate["fold_repair_probe_diagnostics"] = fold_repair_probe_diagnostics
+        candidate["fold_time_slice_blackout_summary"] = fold_repair_probe_diagnostics
         candidate["fold_feature_regime_filter_summary"] = self._compact_fold_feature_summary(
-            self._as_dict(
-                candidate.get("fold_feature_regime_filter_summary")
-                or self._as_dict(candidate.get("profit_aware_diagnostics")).get(
-                    "fold_feature_regime_filter_summary"
-                )
-            )
+            candidate.get("fold_feature_regime_filter_summary")
+            or profit_diag.get("fold_feature_regime_filter_summary")
+            or profit_best_gate.get("fold_feature_regime_filter_summary")
         )
         return candidate
 
@@ -841,12 +841,27 @@ class FeatureRegimeExperimentReporter:
                 or self._as_dict(row.get("profit_aware_diagnostics")).get(
                     "fold_feature_regime_filter_summary"
                 )
+                or self._as_dict(
+                    self._as_dict(row.get("profit_aware_diagnostics")).get("best_gate")
+                ).get("fold_feature_regime_filter_summary")
             ),
-            "fold_time_slice_blackout_summary": self._as_dict(
+            "fold_repair_probe_diagnostics": self._compact_fold_feature_summary(
                 row.get("fold_repair_probe_diagnostics")
                 or self._as_dict(row.get("profit_aware_diagnostics")).get(
                     "fold_time_slice_blackout_summary"
                 )
+                or self._as_dict(
+                    self._as_dict(row.get("profit_aware_diagnostics")).get("best_gate")
+                ).get("fold_time_slice_blackout_summary")
+            ),
+            "fold_time_slice_blackout_summary": self._compact_fold_feature_summary(
+                row.get("fold_repair_probe_diagnostics")
+                or self._as_dict(row.get("profit_aware_diagnostics")).get(
+                    "fold_time_slice_blackout_summary"
+                )
+                or self._as_dict(
+                    self._as_dict(row.get("profit_aware_diagnostics")).get("best_gate")
+                ).get("fold_time_slice_blackout_summary")
             ),
             "prediction_root_cause_audit": self._as_dict(
                 row.get("prediction_root_cause_audit")
