@@ -135,6 +135,19 @@ class FeatureRegimeExperimentReporter:
         preview = cls._compact_preview_value(value)
         return preview if isinstance(preview, dict) else {}
 
+    @classmethod
+    def _compact_fold_feature_summary(cls, summary: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(summary or {})
+        removed_examples = payload.get("removed_signal_examples")
+        if isinstance(removed_examples, list):
+            payload["removed_signal_examples"] = removed_examples[:5]
+            payload["removed_signal_examples_truncated"] = len(removed_examples) > 5
+        passed_examples = payload.get("passed_target_date_signal_examples")
+        if isinstance(passed_examples, list):
+            payload["passed_target_date_signal_examples"] = passed_examples[:5]
+            payload["passed_target_date_signal_examples_truncated"] = len(passed_examples) > 5
+        return cls._compact_preview_dict(payload)
+
     def result_to_dict(self, result: object) -> dict[str, Any]:
         if isinstance(result, dict):
             return dict(result)
@@ -663,6 +676,14 @@ class FeatureRegimeExperimentReporter:
                 "fold_time_slice_blackout_summary"
             )
         )
+        candidate["fold_feature_regime_filter_summary"] = self._compact_fold_feature_summary(
+            self._as_dict(
+                candidate.get("fold_feature_regime_filter_summary")
+                or self._as_dict(candidate.get("profit_aware_diagnostics")).get(
+                    "fold_feature_regime_filter_summary"
+                )
+            )
+        )
         return candidate
 
     def _compact_ranked_result(self, value: Any) -> dict[str, Any]:
@@ -815,7 +836,7 @@ class FeatureRegimeExperimentReporter:
             "fold_repair_feature_filter_rules": self._as_dict(
                 row.get("fold_repair_feature_filter_rules")
             ),
-            "fold_feature_regime_filter_summary": self._as_dict(
+            "fold_feature_regime_filter_summary": self._compact_fold_feature_summary(
                 row.get("fold_feature_regime_filter_summary")
                 or self._as_dict(row.get("profit_aware_diagnostics")).get(
                     "fold_feature_regime_filter_summary"
@@ -862,7 +883,6 @@ class FeatureRegimeExperimentReporter:
             "mae_pressure_max_risk_score": row.get("mae_pressure_max_risk_score"),
         }
         for key in (
-            "fold_feature_regime_filter_summary",
             "fold_time_slice_blackout_summary",
             "prediction_root_cause_audit",
             "book_driven_forensic_audit",
@@ -1174,7 +1194,7 @@ class FeatureRegimeExperimentReporter:
                 "fold_repair_feature_filter_rules": self._as_dict(
                     best_candidate.get("fold_repair_feature_filter_rules")
                 ),
-                "fold_feature_regime_filter_summary": self._as_dict(
+                "fold_feature_regime_filter_summary": self._compact_fold_feature_summary(
                     best_candidate.get("fold_feature_regime_filter_summary")
                     or self._as_dict(best_candidate.get("profit_aware_diagnostics")).get(
                         "fold_feature_regime_filter_summary"

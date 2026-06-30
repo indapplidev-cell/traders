@@ -22,6 +22,11 @@ class MultiSymbolFeatureRegimeReporter:
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
 
+    @staticmethod
+    def _top_n_items(value: Any, *, limit: int = 5) -> dict[str, Any]:
+        payload = dict(value) if isinstance(value, dict) else {}
+        return dict(list(payload.items())[:limit])
+
     def result_to_dict(self, result: object) -> dict[str, Any]:
         if isinstance(result, dict):
             return dict(result)
@@ -138,6 +143,9 @@ class MultiSymbolFeatureRegimeReporter:
             ),
             "fold_feature_regime_repair_probe": payload.get(
                 "fold_feature_regime_repair_probe"
+            ),
+            "fold_feature_regime_adaptive_repair_probe": payload.get(
+                "fold_feature_regime_adaptive_repair_probe"
             ),
             "validation_gate_failure_reason_counts": payload.get(
                 "validation_gate_failure_reason_counts"
@@ -319,6 +327,41 @@ class MultiSymbolFeatureRegimeReporter:
                 "## Schwager Robustness",
                 "",
                 f"- schwager_robustness_summary: `{payload.get('schwager_robustness_summary')}`",
+                "",
+                "## ML38.10.29 Feature/regime adaptive repair diagnostics",
+                "",
+            ]
+        )
+        adaptive_probe = self._as_dict(
+            payload.get("fold_feature_regime_adaptive_repair_probe")
+            or payload.get("fold_feature_regime_repair_probe")
+        )
+        adaptive_feature_diag = self._as_dict(
+            adaptive_probe.get("feature_filter_diagnostics")
+        )
+        best_feature_probe = self._as_dict(
+            adaptive_probe.get("best_feature_regime_probe")
+        )
+        best_date_probe = self._as_dict(
+            adaptive_probe.get("best_date_blackout_probe")
+        )
+        verdict_detail = self._as_dict(adaptive_probe.get("verdict_detail"))
+        lines.extend(
+            [
+                f"- diagnostic_status: `{adaptive_probe.get('diagnostic_status')}`",
+                f"- verdict: `{adaptive_probe.get('verdict')}`",
+                f"- verdict_detail.reason: `{verdict_detail.get('reason')}`",
+                f"- feature_filter_diagnostics.readiness: `{adaptive_feature_diag.get('readiness')}`",
+                f"- best_feature_regime_probe.config_id: `{best_feature_probe.get('config_id')}`",
+                f"- best_feature_regime_probe.walk_forward_total_r: `{best_feature_probe.get('walk_forward_total_r')}`",
+                f"- best_date_blackout_probe.config_id: `{best_date_probe.get('config_id')}`",
+                f"- best_date_blackout_probe.walk_forward_total_r: `{best_date_probe.get('walk_forward_total_r')}`",
+                f"- aggregate_primary_removed_counts_by_reason: `{self._top_n_items(adaptive_feature_diag.get('aggregate_primary_removed_counts_by_reason'))}`",
+                f"- aggregate_removed_counts_by_date: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_date'))}`",
+                f"- aggregate_passed_counts_by_date: `{self._top_n_items(adaptive_feature_diag.get('aggregate_passed_counts_by_date'))}`",
+                f"- aggregate_removed_counts_by_regime: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_regime'))}`",
+                f"- aggregate_missing_feature_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_missing_feature_counts'))}`",
+                f"- recommended_next_stage: `{adaptive_probe.get('recommended_next_stage')}`",
                 "",
                 "## Recommendations",
                 "",

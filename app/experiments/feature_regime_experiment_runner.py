@@ -736,6 +736,22 @@ class FeatureRegimeExperimentRunner:
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
 
+    @classmethod
+    def _profit_aware_nested_summary(
+        cls,
+        candidate_payload: dict[str, Any],
+        key: str,
+    ) -> dict[str, Any]:
+        profit_diag = cls._as_dict(candidate_payload.get("profit_aware_diagnostics"))
+        summary = cls._as_dict(profit_diag.get("summary"))
+        best_gate = cls._as_dict(profit_diag.get("best_gate"))
+        return cls._as_dict(
+            candidate_payload.get(key)
+            or profit_diag.get(key)
+            or summary.get(key)
+            or best_gate.get(key)
+        )
+
     @staticmethod
     def _as_list(value: Any) -> list[Any]:
         if value is None:
@@ -2485,14 +2501,16 @@ class FeatureRegimeExperimentRunner:
             )
             fold_repair_probe_diagnostics = self._as_dict(
                 getattr(candidate, "fold_repair_probe_diagnostics", {})
-                or self._as_dict(candidate_payload.get("profit_aware_diagnostics")).get(
-                    "fold_time_slice_blackout_summary"
+                or self._profit_aware_nested_summary(
+                    candidate_payload,
+                    "fold_time_slice_blackout_summary",
                 )
             )
             fold_feature_regime_filter_summary = self._as_dict(
                 getattr(candidate, "fold_feature_regime_filter_summary", {})
-                or self._as_dict(candidate_payload.get("profit_aware_diagnostics")).get(
-                    "fold_feature_regime_filter_summary"
+                or self._profit_aware_nested_summary(
+                    candidate_payload,
+                    "fold_feature_regime_filter_summary",
                 )
             )
             if baseline_edge_diagnostics.baseline_edge_gate_failed and "baseline_edge_gate" not in failed_gates_list:
@@ -2782,6 +2800,15 @@ class FeatureRegimeExperimentRunner:
                     "schwager_robustness_decision_board": dict(item.schwager_robustness_decision_board),
                     "class_margin_objective_decision": dict(item.class_margin_objective_decision),
                     "prediction_decision_source": item.prediction_decision_source,
+                    "fold_repair_probe_profile": item.fold_repair_probe_profile,
+                    "fold_repair_target_dates": list(item.fold_repair_target_dates),
+                    "fold_repair_time_slice_blackout_enabled": item.fold_repair_time_slice_blackout_enabled,
+                    "fold_repair_blackout_dates": list(item.fold_repair_blackout_dates),
+                    "fold_repair_feature_filter_enabled": item.fold_repair_feature_filter_enabled,
+                    "fold_repair_feature_filter_profile": item.fold_repair_feature_filter_profile,
+                    "fold_repair_feature_filter_rules": dict(item.fold_repair_feature_filter_rules),
+                    "fold_repair_probe_diagnostics": dict(item.fold_repair_probe_diagnostics),
+                    "fold_feature_regime_filter_summary": dict(item.fold_feature_regime_filter_summary),
                 }
             )
         return ranking

@@ -175,6 +175,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         fold_feature_regime_repair_probe = self._fold_feature_regime_repair_probe.analyze(
             full_candidate_payloads
         )
+        adaptive_probe_result = fold_feature_regime_repair_probe
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -227,6 +228,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "fold_1_repair_target_selection": fold_1_repair_target_selection,
             "fold_time_slice_exit_repair_probe": fold_time_slice_exit_repair_probe,
             "fold_feature_regime_repair_probe": fold_feature_regime_repair_probe,
+            "fold_feature_regime_adaptive_repair_probe": adaptive_probe_result,
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -1305,13 +1307,19 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._directional_side_validation_gate_payload(payload))
                 payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
                 profit_diag = cls._as_dict(payload.get("profit_aware_diagnostics"))
+                profit_summary = cls._as_dict(profit_diag.get("summary"))
+                profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
                 if not payload.get("fold_feature_regime_filter_summary"):
                     payload["fold_feature_regime_filter_summary"] = cls._as_dict(
                         profit_diag.get("fold_feature_regime_filter_summary")
+                        or profit_summary.get("fold_feature_regime_filter_summary")
+                        or profit_best_gate.get("fold_feature_regime_filter_summary")
                     )
                 if not payload.get("fold_time_slice_blackout_summary"):
                     payload["fold_time_slice_blackout_summary"] = cls._as_dict(
                         profit_diag.get("fold_time_slice_blackout_summary")
+                        or profit_summary.get("fold_time_slice_blackout_summary")
+                        or profit_best_gate.get("fold_time_slice_blackout_summary")
                     )
                 payloads.append(payload)
         return payloads
@@ -1641,13 +1649,19 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._directional_side_validation_gate_payload(payload))
                 payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
                 profit_diag = cls._as_dict(payload.get("profit_aware_diagnostics"))
+                profit_summary = cls._as_dict(profit_diag.get("summary"))
+                profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
                 if not payload.get("fold_feature_regime_filter_summary"):
                     payload["fold_feature_regime_filter_summary"] = cls._as_dict(
                         profit_diag.get("fold_feature_regime_filter_summary")
+                        or profit_summary.get("fold_feature_regime_filter_summary")
+                        or profit_best_gate.get("fold_feature_regime_filter_summary")
                     )
                 if not payload.get("fold_time_slice_blackout_summary"):
                     payload["fold_time_slice_blackout_summary"] = cls._as_dict(
                         profit_diag.get("fold_time_slice_blackout_summary")
+                        or profit_summary.get("fold_time_slice_blackout_summary")
+                        or profit_best_gate.get("fold_time_slice_blackout_summary")
                     )
                 payload["symbol"] = symbol_result["symbol"]
                 payload["excluded_from_best_selection"] = cls._is_failed_candidate(payload)

@@ -2107,10 +2107,24 @@ class LabelGridExperimentRunner:
                 getattr(label_config, "fold_repair_feature_filter_rules", {})
             ),
             fold_repair_probe_diagnostics=self._as_dict(
-                profit_aware_diagnostics.get("fold_time_slice_blackout_summary", {})
+                profit_aware_diagnostics.get("fold_time_slice_blackout_summary")
+                or self._as_dict(profit_aware_diagnostics.get("summary")).get(
+                    "fold_time_slice_blackout_summary"
+                )
+                or self._as_dict(profit_aware_diagnostics.get("best_gate")).get(
+                    "fold_time_slice_blackout_summary"
+                )
+                or {}
             ),
             fold_feature_regime_filter_summary=self._as_dict(
-                profit_aware_diagnostics.get("fold_feature_regime_filter_summary", {})
+                profit_aware_diagnostics.get("fold_feature_regime_filter_summary")
+                or self._as_dict(profit_aware_diagnostics.get("summary")).get(
+                    "fold_feature_regime_filter_summary"
+                )
+                or self._as_dict(profit_aware_diagnostics.get("best_gate")).get(
+                    "fold_feature_regime_filter_summary"
+                )
+                or {}
             ),
             approved_for_traders_core_integration=False,
             approved_for_live_trading=False,

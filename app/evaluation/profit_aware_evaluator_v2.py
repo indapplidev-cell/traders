@@ -727,7 +727,7 @@ class ProfitAwareEvaluatorV2:
         return filtered_rows, summary
 
     @staticmethod
-    def _extract_signal_date(row: dict[str, Any]) -> str | None:
+    def _extract_signal_date_static(row: dict[str, Any]) -> str | None:
         for key in (
             "signal_date",
             "date",
@@ -756,6 +756,10 @@ class ProfitAwareEvaluatorV2:
             except ValueError:
                 continue
         return None
+
+    @staticmethod
+    def _extract_signal_date(row: dict[str, Any]) -> str | None:
+        return ProfitAwareEvaluatorV2._extract_signal_date_static(row)
 
     def _apply_fold_time_slice_blackout_filter(
         self,
@@ -849,6 +853,74 @@ class ProfitAwareEvaluatorV2:
                 return text
         return None
 
+    @staticmethod
+    def _bucket_numeric(value: float | None) -> str:
+        if value is None:
+            return "missing"
+        if value < 0.40:
+            return "<0.40"
+        if value < 0.50:
+            return "0.40-0.49"
+        if value < 0.60:
+            return "0.50-0.59"
+        if value < 0.70:
+            return "0.60-0.69"
+        if value < 0.80:
+            return "0.70-0.79"
+        return ">=0.80"
+
+    @classmethod
+    def _feature_filter_bucket_snapshot(cls, row: dict[str, Any]) -> dict[str, Any]:
+        entry_quality = cls._row_metric_float(
+            row,
+            "entry_path_quality_score",
+            "entry_path_score",
+            "entry_quality_score",
+        )
+        setup_quality = cls._row_metric_float(
+            row,
+            "setup_quality_score",
+            "setup_quality",
+        )
+        stop_pressure = cls._row_metric_float(
+            row,
+            "stop_pressure_risk_score",
+            "stop_pressure_score",
+            "stop_pressure",
+        )
+        mae_pressure = cls._row_metric_float(
+            row,
+            "mae_pressure_risk_score",
+            "mae_pressure_score",
+            "mae_pressure",
+            "mae_adverse_excursion_score",
+        )
+        regime = cls._row_regime_value(row) or "missing"
+        return {
+            "signal_date": cls._extract_signal_date_static(row),
+            "signal_direction": str(row.get("signal_direction") or "").upper() or None,
+            "regime": regime,
+            "entry_path_quality_score": entry_quality,
+            "setup_quality_score": setup_quality,
+            "stop_pressure_risk_score": stop_pressure,
+            "mae_pressure_risk_score": mae_pressure,
+            "entry_path_quality_bucket": cls._bucket_numeric(entry_quality),
+            "setup_quality_bucket": cls._bucket_numeric(setup_quality),
+            "stop_pressure_bucket": cls._bucket_numeric(stop_pressure),
+            "mae_pressure_bucket": cls._bucket_numeric(mae_pressure),
+        }
+
+    @staticmethod
+    def _increment_count(target: dict[str, int], key: Any) -> None:
+        normalized_key = str(key).strip() if key is not None else ""
+        bucket = normalized_key or "missing"
+        target[bucket] = target.get(bucket, 0) + 1
+
+    @staticmethod
+    def _limited_append(target: list[dict[str, Any]], value: dict[str, Any], *, limit: int) -> None:
+        if len(target) < limit:
+            target.append(dict(value))
+
     def _apply_fold_feature_regime_filter(
         self,
         *,
@@ -863,6 +935,8 @@ class ProfitAwareEvaluatorV2:
         normalized_target_dates = [
             str(item).strip() for item in (target_dates or []) if str(item).strip()
         ]
+        target_date_set = set(normalized_target_dates)
+
         blocked_regime_values = {
             str(item).strip().lower()
             for item in self._as_list(normalized_rules.get("blocked_regime_values"))
@@ -871,106 +945,193 @@ class ProfitAwareEvaluatorV2:
         missing_feature_policy = str(
             normalized_rules.get("missing_feature_policy") or "pass_with_warning"
         ).strip().lower()
+        base_summary = {
+            "diagnostic_name": "fold_feature_regime_filter_summary",
+            "diagnostic_version": "ml38.10.29",
+            "enabled": bool(enabled),
+            "profile": profile,
+            "rules": normalized_rules,
+            "target_dates": normalized_target_dates,
+            "date_blackout_used": bool(date_blackout_used),
+            "input_signal_count": len(signal_rows),
+        }
+
         if not enabled or not normalized_rules:
             summary = {
-                "diagnostic_name": "fold_feature_regime_filter_summary",
-                "diagnostic_version": "ml38.10.28",
-                "enabled": False,
-                "profile": profile,
-                "rules": normalized_rules,
-                "target_dates": normalized_target_dates,
-                "date_blackout_used": bool(date_blackout_used),
-                "input_signal_count": len(signal_rows),
+                **base_summary,
                 "output_signal_count": len(signal_rows),
                 "removed_signal_count": 0,
                 "removed_ratio": 0.0 if signal_rows else None,
-                "removed_counts_by_reason": {},
+                "target_date_input_count": 0,
+                "target_date_removed_count": 0,
+                "target_date_passed_count": 0,
+                "primary_removed_counts_by_reason": {},
+                "matched_removed_counts_by_reason": {},
+                "removed_counts_by_date": {},
+                "passed_counts_by_date": {},
+                "removed_counts_by_regime": {},
+                "passed_counts_by_regime": {},
+                "removed_counts_by_entry_path_quality_bucket": {},
+                "removed_counts_by_setup_quality_bucket": {},
+                "removed_counts_by_stop_pressure_bucket": {},
+                "removed_counts_by_mae_pressure_bucket": {},
                 "missing_feature_counts": {},
+                "removed_signal_examples": [],
+                "passed_target_date_signal_examples": [],
                 "warnings": [],
             }
             return list(signal_rows), summary
 
         filtered_rows: list[dict[str, Any]] = []
-        removed_counts_by_reason: dict[str, int] = {}
+        primary_removed_counts_by_reason: dict[str, int] = {}
+        matched_removed_counts_by_reason: dict[str, int] = {}
+        removed_counts_by_date: dict[str, int] = {}
+        passed_counts_by_date: dict[str, int] = {}
+        removed_counts_by_regime: dict[str, int] = {}
+        passed_counts_by_regime: dict[str, int] = {}
+        removed_counts_by_entry_path_quality_bucket: dict[str, int] = {}
+        removed_counts_by_setup_quality_bucket: dict[str, int] = {}
+        removed_counts_by_stop_pressure_bucket: dict[str, int] = {}
+        removed_counts_by_mae_pressure_bucket: dict[str, int] = {}
         missing_feature_counts: dict[str, int] = {}
+        removed_signal_examples: list[dict[str, Any]] = []
+        passed_target_date_signal_examples: list[dict[str, Any]] = []
 
         def record_missing(name: str) -> None:
             missing_feature_counts[name] = missing_feature_counts.get(name, 0) + 1
 
-        def maybe_block(
-            *,
+        def metric_value(
             row: dict[str, Any],
-            metric_keys: tuple[str, ...],
-            threshold_value: Any,
-            reason: str,
-            comparator: str,
+            keys: tuple[str, ...],
             missing_name: str,
-        ) -> bool:
-            if threshold_value is None:
-                return False
-            row_value = self._row_metric_float(row, *metric_keys)
-            threshold = self._float_or_none(threshold_value)
-            if threshold is None:
-                return False
-            if row_value is None:
+        ) -> float | None:
+            value = self._row_metric_float(row, *keys)
+            if value is None:
                 record_missing(missing_name)
-                return False
-            if comparator == "lt" and row_value < threshold:
-                removed_counts_by_reason[reason] = removed_counts_by_reason.get(reason, 0) + 1
-                return True
-            if comparator == "gt" and row_value > threshold:
-                removed_counts_by_reason[reason] = removed_counts_by_reason.get(reason, 0) + 1
-                return True
-            return False
+            return value
 
-        for row in signal_rows:
-            if maybe_block(
-                row=row,
-                metric_keys=("entry_path_quality_score",),
-                threshold_value=normalized_rules.get("min_entry_path_quality_score"),
-                reason="low_entry_path_quality",
-                comparator="lt",
-                missing_name="entry_path_quality_score",
-            ):
-                continue
-            if maybe_block(
-                row=row,
-                metric_keys=("setup_quality_score",),
-                threshold_value=normalized_rules.get("min_setup_quality_score"),
-                reason="low_setup_quality",
-                comparator="lt",
-                missing_name="setup_quality_score",
-            ):
-                continue
-            if maybe_block(
-                row=row,
-                metric_keys=("stop_pressure_risk_score",),
-                threshold_value=normalized_rules.get("max_stop_pressure_risk_score"),
-                reason="high_stop_pressure",
-                comparator="gt",
-                missing_name="stop_pressure_risk_score",
-            ):
-                continue
-            if maybe_block(
-                row=row,
-                metric_keys=("mae_pressure_risk_score",),
-                threshold_value=normalized_rules.get("max_mae_pressure_risk_score"),
-                reason="high_mae_pressure",
-                comparator="gt",
-                missing_name="mae_pressure_risk_score",
-            ):
-                continue
+        def collect_block_reasons(row: dict[str, Any]) -> list[str]:
+            reasons: list[str] = []
+
+            entry_quality = metric_value(
+                row,
+                ("entry_path_quality_score", "entry_path_score", "entry_quality_score"),
+                "entry_path_quality_score",
+            )
+            min_entry_quality = self._float_or_none(
+                normalized_rules.get("min_entry_path_quality_score")
+            )
+            if min_entry_quality is not None and entry_quality is not None and entry_quality < min_entry_quality:
+                reasons.append("low_entry_path_quality")
+
+            setup_quality = metric_value(
+                row,
+                ("setup_quality_score", "setup_quality"),
+                "setup_quality_score",
+            )
+            min_setup_quality = self._float_or_none(
+                normalized_rules.get("min_setup_quality_score")
+            )
+            if min_setup_quality is not None and setup_quality is not None and setup_quality < min_setup_quality:
+                reasons.append("low_setup_quality")
+
+            stop_pressure = metric_value(
+                row,
+                ("stop_pressure_risk_score", "stop_pressure_score", "stop_pressure"),
+                "stop_pressure_risk_score",
+            )
+            max_stop_pressure = self._float_or_none(
+                normalized_rules.get("max_stop_pressure_risk_score")
+            )
+            if max_stop_pressure is not None and stop_pressure is not None and stop_pressure > max_stop_pressure:
+                reasons.append("high_stop_pressure")
+
+            mae_pressure = metric_value(
+                row,
+                (
+                    "mae_pressure_risk_score",
+                    "mae_pressure_score",
+                    "mae_pressure",
+                    "mae_adverse_excursion_score",
+                ),
+                "mae_pressure_risk_score",
+            )
+            max_mae_pressure = self._float_or_none(
+                normalized_rules.get("max_mae_pressure_risk_score")
+            )
+            if max_mae_pressure is not None and mae_pressure is not None and mae_pressure > max_mae_pressure:
+                reasons.append("high_mae_pressure")
 
             regime_value = self._row_regime_value(row)
             if regime_value is None:
                 record_missing("market_regime")
             elif blocked_regime_values and regime_value.strip().lower() in blocked_regime_values:
-                removed_counts_by_reason["blocked_regime"] = (
-                    removed_counts_by_reason.get("blocked_regime", 0) + 1
+                reasons.append("blocked_regime")
+
+            return list(dict.fromkeys(reasons))
+
+        target_date_input_count = 0
+        target_date_removed_count = 0
+        target_date_passed_count = 0
+
+        for row in signal_rows:
+            signal_date = self._extract_signal_date(row)
+            if signal_date in target_date_set:
+                target_date_input_count += 1
+
+            bucket_snapshot = self._feature_filter_bucket_snapshot(row)
+            block_reasons = collect_block_reasons(row)
+
+            if block_reasons:
+                primary_reason = block_reasons[0]
+                self._increment_count(primary_removed_counts_by_reason, primary_reason)
+                for reason in block_reasons:
+                    self._increment_count(matched_removed_counts_by_reason, reason)
+
+                self._increment_count(removed_counts_by_date, signal_date or "missing")
+                self._increment_count(removed_counts_by_regime, bucket_snapshot.get("regime"))
+                self._increment_count(
+                    removed_counts_by_entry_path_quality_bucket,
+                    bucket_snapshot.get("entry_path_quality_bucket"),
+                )
+                self._increment_count(
+                    removed_counts_by_setup_quality_bucket,
+                    bucket_snapshot.get("setup_quality_bucket"),
+                )
+                self._increment_count(
+                    removed_counts_by_stop_pressure_bucket,
+                    bucket_snapshot.get("stop_pressure_bucket"),
+                )
+                self._increment_count(
+                    removed_counts_by_mae_pressure_bucket,
+                    bucket_snapshot.get("mae_pressure_bucket"),
+                )
+
+                if signal_date in target_date_set:
+                    target_date_removed_count += 1
+
+                self._limited_append(
+                    removed_signal_examples,
+                    {
+                        **bucket_snapshot,
+                        "primary_reason": primary_reason,
+                        "matched_reasons": block_reasons,
+                    },
+                    limit=20,
                 )
                 continue
 
             filtered_rows.append(row)
+            self._increment_count(passed_counts_by_date, signal_date or "missing")
+            self._increment_count(passed_counts_by_regime, bucket_snapshot.get("regime"))
+
+            if signal_date in target_date_set:
+                target_date_passed_count += 1
+                self._limited_append(
+                    passed_target_date_signal_examples,
+                    bucket_snapshot,
+                    limit=20,
+                )
 
         warnings: list[str] = []
         if missing_feature_counts:
@@ -980,19 +1141,27 @@ class ProfitAwareEvaluatorV2:
 
         removed_signal_count = max(0, len(signal_rows) - len(filtered_rows))
         summary = {
-            "diagnostic_name": "fold_feature_regime_filter_summary",
-            "diagnostic_version": "ml38.10.28",
-            "enabled": True,
-            "profile": profile,
-            "rules": normalized_rules,
-            "target_dates": normalized_target_dates,
-            "date_blackout_used": bool(date_blackout_used),
-            "input_signal_count": len(signal_rows),
+            **base_summary,
             "output_signal_count": len(filtered_rows),
             "removed_signal_count": removed_signal_count,
             "removed_ratio": (removed_signal_count / len(signal_rows)) if signal_rows else None,
-            "removed_counts_by_reason": removed_counts_by_reason,
+            "target_date_input_count": target_date_input_count,
+            "target_date_removed_count": target_date_removed_count,
+            "target_date_passed_count": target_date_passed_count,
+            "primary_removed_counts_by_reason": primary_removed_counts_by_reason,
+            "matched_removed_counts_by_reason": matched_removed_counts_by_reason,
+            "removed_counts_by_reason": primary_removed_counts_by_reason,
+            "removed_counts_by_date": removed_counts_by_date,
+            "passed_counts_by_date": passed_counts_by_date,
+            "removed_counts_by_regime": removed_counts_by_regime,
+            "passed_counts_by_regime": passed_counts_by_regime,
+            "removed_counts_by_entry_path_quality_bucket": removed_counts_by_entry_path_quality_bucket,
+            "removed_counts_by_setup_quality_bucket": removed_counts_by_setup_quality_bucket,
+            "removed_counts_by_stop_pressure_bucket": removed_counts_by_stop_pressure_bucket,
+            "removed_counts_by_mae_pressure_bucket": removed_counts_by_mae_pressure_bucket,
             "missing_feature_counts": missing_feature_counts,
+            "removed_signal_examples": removed_signal_examples,
+            "passed_target_date_signal_examples": passed_target_date_signal_examples,
             "warnings": warnings,
         }
         return filtered_rows, summary

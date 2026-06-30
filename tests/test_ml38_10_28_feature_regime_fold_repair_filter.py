@@ -51,10 +51,10 @@ def test_ml38_10_28_runtime_counts() -> None:
         )
     )
 
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 14
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 30
-    assert fast_wrapper._expected_candidate_count() == 28
-    assert quick_wrapper._expected_candidate_count() == 30
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 16
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 34
+    assert fast_wrapper._expected_candidate_count() == 32
+    assert quick_wrapper._expected_candidate_count() == 34
 
 
 def _row(**overrides: object) -> dict[str, object]:

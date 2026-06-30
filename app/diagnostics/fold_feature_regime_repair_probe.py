@@ -5,7 +5,7 @@ from typing import Any
 
 class FoldFeatureRegimeRepairProbe:
     diagnostic_name = "fold_feature_regime_repair_probe"
-    diagnostic_version = "ml38.10.28"
+    diagnostic_version = "ml38.10.29"
 
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
@@ -36,7 +36,7 @@ class FoldFeatureRegimeRepairProbe:
             row
             for row in rows
             if row.get("fold_repair_feature_filter_enabled")
-            or str(row.get("config_id") or "").lower().startswith("lv32_")
+            or str(row.get("config_id") or "").lower().startswith(("lv32_", "lv33_"))
         ]
         date_rows = [
             row
@@ -49,6 +49,12 @@ class FoldFeatureRegimeRepairProbe:
         best_feature = feature_compact[0] if feature_compact else {}
         best_date = date_compact[0] if date_compact else {}
         verdict = self._verdict(best_feature=best_feature, best_date=best_date)
+        feature_filter_diagnostics = self._feature_filter_diagnostics(feature_rows)
+        verdict_detail = self._verdict_detail(
+            best_feature=best_feature,
+            best_date=best_date,
+            feature_filter_diagnostics=feature_filter_diagnostics,
+        )
 
         return {
             "diagnostic_name": self.diagnostic_name,
@@ -66,6 +72,8 @@ class FoldFeatureRegimeRepairProbe:
             "best_feature_regime_by_walk_forward_total_r": feature_compact,
             "best_date_blackout_by_walk_forward_total_r": date_compact,
             "verdict": verdict,
+            "verdict_detail": verdict_detail,
+            "feature_filter_diagnostics": feature_filter_diagnostics,
             "warnings": [
                 "research_only_probe_not_live_ready",
                 "do_not_accept_lv32",
@@ -78,15 +86,26 @@ class FoldFeatureRegimeRepairProbe:
 
     def _candidate_row(self, candidate: dict[str, Any]) -> dict[str, Any]:
         profit_diag = self._as_dict(candidate.get("profit_aware_diagnostics"))
+        profit_summary = self._as_dict(profit_diag.get("summary"))
+        profit_best_gate = self._as_dict(profit_diag.get("best_gate"))
         feature_summary = self._as_dict(
             candidate.get("fold_feature_regime_filter_summary")
             or profit_diag.get("fold_feature_regime_filter_summary")
+            or profit_summary.get("fold_feature_regime_filter_summary")
+            or profit_best_gate.get("fold_feature_regime_filter_summary")
         )
         blackout_summary = self._as_dict(
             candidate.get("fold_time_slice_blackout_summary")
             or candidate.get("fold_repair_probe_diagnostics")
             or profit_diag.get("fold_time_slice_blackout_summary")
+            or profit_summary.get("fold_time_slice_blackout_summary")
+            or profit_best_gate.get("fold_time_slice_blackout_summary")
         )
+        removed_count = self._float_or_none(feature_summary.get("removed_signal_count"))
+        input_count = self._float_or_none(feature_summary.get("input_signal_count"))
+        target_input_count = self._float_or_none(feature_summary.get("target_date_input_count"))
+        target_removed_count = self._float_or_none(feature_summary.get("target_date_removed_count"))
+        target_passed_count = self._float_or_none(feature_summary.get("target_date_passed_count"))
         return {
             "symbol": candidate.get("symbol"),
             "config_id": candidate.get("config_id"),
@@ -103,6 +122,37 @@ class FoldFeatureRegimeRepairProbe:
                 candidate.get("fold_repair_feature_filter_rules")
             ),
             "fold_feature_regime_filter_summary": feature_summary,
+            "feature_filter_removed_signal_count": removed_count,
+            "feature_filter_input_signal_count": input_count,
+            "feature_filter_removed_ratio": self._float_or_none(
+                feature_summary.get("removed_ratio")
+            ),
+            "target_date_input_count": target_input_count,
+            "target_date_removed_count": target_removed_count,
+            "target_date_passed_count": target_passed_count,
+            "primary_removed_counts_by_reason": self._as_dict(
+                feature_summary.get("primary_removed_counts_by_reason")
+                or feature_summary.get("removed_counts_by_reason")
+            ),
+            "matched_removed_counts_by_reason": self._as_dict(
+                feature_summary.get("matched_removed_counts_by_reason")
+            ),
+            "removed_counts_by_date": self._as_dict(
+                feature_summary.get("removed_counts_by_date")
+            ),
+            "passed_counts_by_date": self._as_dict(
+                feature_summary.get("passed_counts_by_date")
+            ),
+            "removed_counts_by_regime": self._as_dict(
+                feature_summary.get("removed_counts_by_regime")
+            ),
+            "passed_counts_by_regime": self._as_dict(
+                feature_summary.get("passed_counts_by_regime")
+            ),
+            "missing_feature_counts": self._as_dict(
+                feature_summary.get("missing_feature_counts")
+            ),
+            "feature_filter_warnings": self._as_list(feature_summary.get("warnings")),
             "fold_repair_time_slice_blackout_enabled": bool(
                 candidate.get("fold_repair_time_slice_blackout_enabled", False)
             ),
@@ -149,6 +199,33 @@ class FoldFeatureRegimeRepairProbe:
                     "fold_feature_regime_filter_summary": self._as_dict(
                         row.get("fold_feature_regime_filter_summary")
                     ),
+                    "feature_filter_removed_signal_count": row.get(
+                        "feature_filter_removed_signal_count"
+                    ),
+                    "feature_filter_removed_ratio": row.get("feature_filter_removed_ratio"),
+                    "target_date_input_count": row.get("target_date_input_count"),
+                    "target_date_removed_count": row.get("target_date_removed_count"),
+                    "target_date_passed_count": row.get("target_date_passed_count"),
+                    "primary_removed_counts_by_reason": self._as_dict(
+                        row.get("primary_removed_counts_by_reason")
+                    ),
+                    "matched_removed_counts_by_reason": self._as_dict(
+                        row.get("matched_removed_counts_by_reason")
+                    ),
+                    "removed_counts_by_date": self._as_dict(row.get("removed_counts_by_date")),
+                    "passed_counts_by_date": self._as_dict(row.get("passed_counts_by_date")),
+                    "removed_counts_by_regime": self._as_dict(
+                        row.get("removed_counts_by_regime")
+                    ),
+                    "passed_counts_by_regime": self._as_dict(
+                        row.get("passed_counts_by_regime")
+                    ),
+                    "missing_feature_counts": self._as_dict(
+                        row.get("missing_feature_counts")
+                    ),
+                    "feature_filter_warnings": self._as_list(
+                        row.get("feature_filter_warnings")
+                    ),
                     "fold_repair_time_slice_blackout_enabled": row.get(
                         "fold_repair_time_slice_blackout_enabled"
                     ),
@@ -163,6 +240,98 @@ class FoldFeatureRegimeRepairProbe:
                 }
             )
         return compact
+
+    def _feature_filter_diagnostics(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        aggregate_primary_reasons: dict[str, int] = {}
+        aggregate_matched_reasons: dict[str, int] = {}
+        aggregate_removed_by_date: dict[str, int] = {}
+        aggregate_passed_by_date: dict[str, int] = {}
+        aggregate_removed_by_regime: dict[str, int] = {}
+        aggregate_passed_by_regime: dict[str, int] = {}
+        aggregate_missing_features: dict[str, int] = {}
+
+        def merge_counts(target: dict[str, int], source: dict[str, Any]) -> None:
+            for key, value in source.items():
+                try:
+                    count = int(value)
+                except (TypeError, ValueError):
+                    continue
+                target[str(key)] = target.get(str(key), 0) + count
+
+        active_rows = []
+        zero_removal_rows = []
+        missing_summary_rows = []
+
+        for row in rows:
+            feature_summary = self._as_dict(row.get("fold_feature_regime_filter_summary"))
+            if not feature_summary:
+                missing_summary_rows.append(row.get("config_id"))
+                continue
+
+            removed = self._float_or_none(feature_summary.get("removed_signal_count")) or 0.0
+            if removed > 0:
+                active_rows.append(row.get("config_id"))
+            else:
+                zero_removal_rows.append(row.get("config_id"))
+
+            merge_counts(
+                aggregate_primary_reasons,
+                self._as_dict(
+                    feature_summary.get("primary_removed_counts_by_reason")
+                    or feature_summary.get("removed_counts_by_reason")
+                ),
+            )
+            merge_counts(
+                aggregate_matched_reasons,
+                self._as_dict(feature_summary.get("matched_removed_counts_by_reason")),
+            )
+            merge_counts(
+                aggregate_removed_by_date,
+                self._as_dict(feature_summary.get("removed_counts_by_date")),
+            )
+            merge_counts(
+                aggregate_passed_by_date,
+                self._as_dict(feature_summary.get("passed_counts_by_date")),
+            )
+            merge_counts(
+                aggregate_removed_by_regime,
+                self._as_dict(feature_summary.get("removed_counts_by_regime")),
+            )
+            merge_counts(
+                aggregate_passed_by_regime,
+                self._as_dict(feature_summary.get("passed_counts_by_regime")),
+            )
+            merge_counts(
+                aggregate_missing_features,
+                self._as_dict(feature_summary.get("missing_feature_counts")),
+            )
+
+        if missing_summary_rows:
+            readiness = "DIAGNOSTICS_INCOMPLETE"
+        elif not active_rows:
+            readiness = "FILTER_DID_NOT_REMOVE_SIGNALS"
+        else:
+            readiness = "DIAGNOSTICS_READY"
+
+        return {
+            "diagnostic_name": "fold_feature_regime_filter_diagnostics",
+            "diagnostic_version": self.diagnostic_version,
+            "readiness": readiness,
+            "feature_probe_count": len(rows),
+            "active_filter_candidate_count": len(active_rows),
+            "zero_removal_candidate_count": len(zero_removal_rows),
+            "missing_summary_candidate_count": len(missing_summary_rows),
+            "active_filter_config_ids": active_rows[:20],
+            "zero_removal_config_ids": zero_removal_rows[:20],
+            "missing_summary_config_ids": missing_summary_rows[:20],
+            "aggregate_primary_removed_counts_by_reason": aggregate_primary_reasons,
+            "aggregate_matched_removed_counts_by_reason": aggregate_matched_reasons,
+            "aggregate_removed_counts_by_date": aggregate_removed_by_date,
+            "aggregate_passed_counts_by_date": aggregate_passed_by_date,
+            "aggregate_removed_counts_by_regime": aggregate_removed_by_regime,
+            "aggregate_passed_counts_by_regime": aggregate_passed_by_regime,
+            "aggregate_missing_feature_counts": aggregate_missing_features,
+        }
 
     def _verdict(self, *, best_feature: dict[str, Any], best_date: dict[str, Any]) -> str:
         if not best_feature and not best_date:
@@ -179,3 +348,33 @@ class FoldFeatureRegimeRepairProbe:
         if feature_wf > 0.0:
             return "FEATURE_REGIME_FILTER_POSITIVE_BUT_BELOW_DATE_BLACKOUT"
         return "FEATURE_REGIME_FILTER_NOT_YET_A_REPLACEMENT"
+
+    def _verdict_detail(
+        self,
+        *,
+        best_feature: dict[str, Any],
+        best_date: dict[str, Any],
+        feature_filter_diagnostics: dict[str, Any],
+    ) -> dict[str, Any]:
+        feature_wf = self._float_or_none(best_feature.get("walk_forward_total_r"))
+        date_wf = self._float_or_none(best_date.get("walk_forward_total_r"))
+        if not best_feature:
+            reason = "no_feature_regime_probe"
+        elif feature_filter_diagnostics.get("readiness") == "DIAGNOSTICS_INCOMPLETE":
+            reason = "feature_filter_diagnostics_incomplete"
+        elif feature_filter_diagnostics.get("readiness") == "FILTER_DID_NOT_REMOVE_SIGNALS":
+            reason = "feature_filter_not_active_enough"
+        elif feature_wf is None or feature_wf <= 0:
+            reason = "feature_filter_failed_walk_forward"
+        elif date_wf is not None and feature_wf < date_wf:
+            reason = "feature_filter_positive_but_weaker_than_date_blackout"
+        else:
+            reason = "feature_filter_matches_or_beats_date_blackout"
+        return {
+            "reason": reason,
+            "feature_walk_forward_total_r": feature_wf,
+            "date_walk_forward_total_r": date_wf,
+            "wf_total_r_gap_vs_date_blackout": (
+                None if feature_wf is None or date_wf is None else feature_wf - date_wf
+            ),
+        }

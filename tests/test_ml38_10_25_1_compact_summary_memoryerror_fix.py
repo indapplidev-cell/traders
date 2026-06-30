@@ -469,7 +469,7 @@ def test_ml38_10_25_1_gate_selector_caps_gate_probe_payload() -> None:
 
 
 def test_ml38_10_25_1_runtime_counts_unchanged() -> None:
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 14
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 16
     assert len(run_fv3_cached_tuning.FAST_DEBUG_SYMBOLS) == 2
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 30
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 34
     assert run_fv3_cached_tuning.FAST_DEBUG_START_DATE == "2026-04-01"
