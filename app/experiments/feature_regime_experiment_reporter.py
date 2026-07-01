@@ -136,17 +136,141 @@ class FeatureRegimeExperimentReporter:
         return preview if isinstance(preview, dict) else {}
 
     @classmethod
+    def _compact_count_map(
+        cls,
+        value: Any,
+        *,
+        limit: int = 12,
+    ) -> dict[str, int]:
+        mapping = cls._as_dict(value)
+        cleaned: dict[str, int] = {}
+        for key, raw_count in mapping.items():
+            text_key = str(key)
+            if not text_key or text_key.startswith("_"):
+                continue
+            try:
+                count = int(raw_count)
+            except (TypeError, ValueError):
+                continue
+            cleaned[text_key] = count
+        return dict(
+            sorted(
+                cleaned.items(),
+                key=lambda item: (-item[1], item[0]),
+            )[:limit]
+        )
+
+    @classmethod
     def _compact_fold_feature_summary(cls, summary: dict[str, Any]) -> dict[str, Any]:
-        payload = dict(summary or {})
-        removed_examples = payload.get("removed_signal_examples")
-        if isinstance(removed_examples, list):
-            payload["removed_signal_examples"] = removed_examples[:5]
-            payload["removed_signal_examples_truncated"] = len(removed_examples) > 5
-        passed_examples = payload.get("passed_target_date_signal_examples")
-        if isinstance(passed_examples, list):
-            payload["passed_target_date_signal_examples"] = passed_examples[:5]
-            payload["passed_target_date_signal_examples_truncated"] = len(passed_examples) > 5
-        return cls._compact_preview_dict(payload)
+        payload = cls._as_dict(summary)
+        if not payload:
+            return {}
+        if not any(
+            key in payload
+            for key in (
+                "input_signal_count",
+                "output_signal_count",
+                "removed_signal_count",
+                "removed_ratio",
+                "primary_removed_counts_by_reason",
+                "removed_counts_by_date",
+                "removed_counts_by_regime",
+                "missing_feature_counts",
+            )
+        ):
+            return cls._compact_preview_dict(payload)
+
+        compact = {
+            "diagnostic_name": payload.get("diagnostic_name"),
+            "diagnostic_version": payload.get("diagnostic_version"),
+            "enabled": payload.get("enabled"),
+            "profile": payload.get("profile"),
+            "input_signal_count": payload.get("input_signal_count"),
+            "output_signal_count": payload.get("output_signal_count"),
+            "removed_signal_count": payload.get("removed_signal_count"),
+            "removed_ratio": payload.get("removed_ratio"),
+            "target_date_input_count": payload.get("target_date_input_count"),
+            "target_date_removed_count": payload.get("target_date_removed_count"),
+            "target_date_passed_count": payload.get("target_date_passed_count"),
+            "date_blackout_used": payload.get("date_blackout_used"),
+            "target_dates": cls._as_list(payload.get("target_dates"))[:10],
+            "primary_removed_counts_by_reason": cls._compact_count_map(
+                payload.get("primary_removed_counts_by_reason")
+                or payload.get("removed_counts_by_reason")
+            ),
+            "matched_removed_counts_by_reason": cls._compact_count_map(
+                payload.get("matched_removed_counts_by_reason")
+            ),
+            "removed_counts_by_date": cls._compact_count_map(
+                payload.get("removed_counts_by_date")
+            ),
+            "passed_counts_by_date": cls._compact_count_map(
+                payload.get("passed_counts_by_date")
+            ),
+            "removed_counts_by_regime": cls._compact_count_map(
+                payload.get("removed_counts_by_regime")
+            ),
+            "passed_counts_by_regime": cls._compact_count_map(
+                payload.get("passed_counts_by_regime")
+            ),
+            "removed_counts_by_entry_path_quality_bucket": cls._compact_count_map(
+                payload.get("removed_counts_by_entry_path_quality_bucket")
+            ),
+            "removed_counts_by_setup_quality_bucket": cls._compact_count_map(
+                payload.get("removed_counts_by_setup_quality_bucket")
+            ),
+            "removed_counts_by_stop_pressure_bucket": cls._compact_count_map(
+                payload.get("removed_counts_by_stop_pressure_bucket")
+            ),
+            "removed_counts_by_mae_pressure_bucket": cls._compact_count_map(
+                payload.get("removed_counts_by_mae_pressure_bucket")
+            ),
+            "missing_feature_counts": cls._compact_count_map(
+                payload.get("missing_feature_counts")
+            ),
+            "warnings": cls._as_list(payload.get("warnings"))[:10],
+        }
+
+        removed_examples = cls._as_list(payload.get("removed_signal_examples"))
+        if removed_examples:
+            compact["removed_signal_examples"] = removed_examples[:5]
+            compact["removed_signal_examples_truncated"] = len(removed_examples) > 5
+
+        passed_examples = cls._as_list(payload.get("passed_target_date_signal_examples"))
+        if passed_examples:
+            compact["passed_target_date_signal_examples"] = passed_examples[:5]
+            compact["passed_target_date_signal_examples_truncated"] = len(passed_examples) > 5
+
+        return {
+            key: value
+            for key, value in compact.items()
+            if value not in (None, {}, [], ())
+        }
+
+    @classmethod
+    def _fold_feature_summary_from_row(cls, row: dict[str, Any]) -> dict[str, Any]:
+        profit_diag = cls._as_dict(row.get("profit_aware_diagnostics"))
+        profit_summary = cls._as_dict(profit_diag.get("summary"))
+        profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
+        return cls._as_dict(
+            row.get("fold_feature_regime_filter_summary")
+            or profit_diag.get("fold_feature_regime_filter_summary")
+            or profit_summary.get("fold_feature_regime_filter_summary")
+            or profit_best_gate.get("fold_feature_regime_filter_summary")
+        )
+
+    @classmethod
+    def _fold_blackout_summary_from_row(cls, row: dict[str, Any]) -> dict[str, Any]:
+        profit_diag = cls._as_dict(row.get("profit_aware_diagnostics"))
+        profit_summary = cls._as_dict(profit_diag.get("summary"))
+        profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
+        return cls._as_dict(
+            row.get("fold_repair_probe_diagnostics")
+            or row.get("fold_time_slice_blackout_summary")
+            or profit_diag.get("fold_time_slice_blackout_summary")
+            or profit_summary.get("fold_time_slice_blackout_summary")
+            or profit_best_gate.get("fold_time_slice_blackout_summary")
+        )
 
     def result_to_dict(self, result: object) -> dict[str, Any]:
         if isinstance(result, dict):
@@ -670,19 +794,29 @@ class FeatureRegimeExperimentReporter:
             if validation_board.get("candidate_board_rows_truncated") is not None
             else candidate.get("validation_candidate_board_rows_truncated")
         )
-        profit_diag = self._as_dict(candidate.get("profit_aware_diagnostics"))
-        profit_best_gate = self._as_dict(profit_diag.get("best_gate"))
         fold_repair_probe_diagnostics = self._compact_fold_feature_summary(
-            candidate.get("fold_repair_probe_diagnostics")
-            or profit_diag.get("fold_time_slice_blackout_summary")
-            or profit_best_gate.get("fold_time_slice_blackout_summary")
+            self._fold_blackout_summary_from_row(candidate)
+        )
+        fold_feature_regime_filter_summary = self._compact_fold_feature_summary(
+            self._fold_feature_summary_from_row(candidate)
         )
         candidate["fold_repair_probe_diagnostics"] = fold_repair_probe_diagnostics
         candidate["fold_time_slice_blackout_summary"] = fold_repair_probe_diagnostics
-        candidate["fold_feature_regime_filter_summary"] = self._compact_fold_feature_summary(
-            candidate.get("fold_feature_regime_filter_summary")
-            or profit_diag.get("fold_feature_regime_filter_summary")
-            or profit_best_gate.get("fold_feature_regime_filter_summary")
+        candidate["fold_feature_regime_filter_summary"] = fold_feature_regime_filter_summary
+        candidate["feature_filter_removed_signal_count"] = (
+            fold_feature_regime_filter_summary.get("removed_signal_count")
+        )
+        candidate["feature_filter_removed_ratio"] = (
+            fold_feature_regime_filter_summary.get("removed_ratio")
+        )
+        candidate["target_date_input_count"] = (
+            fold_feature_regime_filter_summary.get("target_date_input_count")
+        )
+        candidate["target_date_removed_count"] = (
+            fold_feature_regime_filter_summary.get("target_date_removed_count")
+        )
+        candidate["target_date_passed_count"] = (
+            fold_feature_regime_filter_summary.get("target_date_passed_count")
         )
         return candidate
 
@@ -693,6 +827,12 @@ class FeatureRegimeExperimentReporter:
 
         walk_forward = self._compact_walk_forward_profit_diagnostics(
             row.get("walk_forward_profit_diagnostics")
+        )
+        fold_feature_regime_filter_summary = self._compact_fold_feature_summary(
+            self._fold_feature_summary_from_row(row)
+        )
+        fold_repair_probe_diagnostics = self._compact_fold_feature_summary(
+            self._fold_blackout_summary_from_row(row)
         )
         payload = {
             "rank": row.get("rank"),
@@ -836,32 +976,69 @@ class FeatureRegimeExperimentReporter:
             "fold_repair_feature_filter_rules": self._as_dict(
                 row.get("fold_repair_feature_filter_rules")
             ),
-            "fold_feature_regime_filter_summary": self._compact_fold_feature_summary(
-                row.get("fold_feature_regime_filter_summary")
-                or self._as_dict(row.get("profit_aware_diagnostics")).get(
-                    "fold_feature_regime_filter_summary"
-                )
-                or self._as_dict(
-                    self._as_dict(row.get("profit_aware_diagnostics")).get("best_gate")
-                ).get("fold_feature_regime_filter_summary")
+            "fold_feature_regime_filter_summary": fold_feature_regime_filter_summary,
+            "fold_repair_probe_diagnostics": fold_repair_probe_diagnostics,
+            "fold_time_slice_blackout_summary": fold_repair_probe_diagnostics,
+            "feature_filter_removed_signal_count": (
+                row.get("feature_filter_removed_signal_count")
+                if row.get("feature_filter_removed_signal_count") is not None
+                else fold_feature_regime_filter_summary.get("removed_signal_count")
             ),
-            "fold_repair_probe_diagnostics": self._compact_fold_feature_summary(
-                row.get("fold_repair_probe_diagnostics")
-                or self._as_dict(row.get("profit_aware_diagnostics")).get(
-                    "fold_time_slice_blackout_summary"
-                )
-                or self._as_dict(
-                    self._as_dict(row.get("profit_aware_diagnostics")).get("best_gate")
-                ).get("fold_time_slice_blackout_summary")
+            "feature_filter_removed_ratio": (
+                row.get("feature_filter_removed_ratio")
+                if row.get("feature_filter_removed_ratio") is not None
+                else fold_feature_regime_filter_summary.get("removed_ratio")
             ),
-            "fold_time_slice_blackout_summary": self._compact_fold_feature_summary(
-                row.get("fold_repair_probe_diagnostics")
-                or self._as_dict(row.get("profit_aware_diagnostics")).get(
-                    "fold_time_slice_blackout_summary"
-                )
+            "target_date_input_count": (
+                row.get("target_date_input_count")
+                if row.get("target_date_input_count") is not None
+                else fold_feature_regime_filter_summary.get("target_date_input_count")
+            ),
+            "target_date_removed_count": (
+                row.get("target_date_removed_count")
+                if row.get("target_date_removed_count") is not None
+                else fold_feature_regime_filter_summary.get("target_date_removed_count")
+            ),
+            "target_date_passed_count": (
+                row.get("target_date_passed_count")
+                if row.get("target_date_passed_count") is not None
+                else fold_feature_regime_filter_summary.get("target_date_passed_count")
+            ),
+            "primary_removed_counts_by_reason": (
+                self._as_dict(row.get("primary_removed_counts_by_reason"))
                 or self._as_dict(
-                    self._as_dict(row.get("profit_aware_diagnostics")).get("best_gate")
-                ).get("fold_time_slice_blackout_summary")
+                    fold_feature_regime_filter_summary.get(
+                        "primary_removed_counts_by_reason"
+                    )
+                )
+            ),
+            "matched_removed_counts_by_reason": (
+                self._as_dict(row.get("matched_removed_counts_by_reason"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "matched_removed_counts_by_reason"
+                    )
+                )
+            ),
+            "removed_counts_by_date": (
+                self._as_dict(row.get("removed_counts_by_date"))
+                or self._as_dict(fold_feature_regime_filter_summary.get("removed_counts_by_date"))
+            ),
+            "passed_counts_by_date": (
+                self._as_dict(row.get("passed_counts_by_date"))
+                or self._as_dict(fold_feature_regime_filter_summary.get("passed_counts_by_date"))
+            ),
+            "removed_counts_by_regime": (
+                self._as_dict(row.get("removed_counts_by_regime"))
+                or self._as_dict(fold_feature_regime_filter_summary.get("removed_counts_by_regime"))
+            ),
+            "passed_counts_by_regime": (
+                self._as_dict(row.get("passed_counts_by_regime"))
+                or self._as_dict(fold_feature_regime_filter_summary.get("passed_counts_by_regime"))
+            ),
+            "missing_feature_counts": (
+                self._as_dict(row.get("missing_feature_counts"))
+                or self._as_dict(fold_feature_regime_filter_summary.get("missing_feature_counts"))
             ),
             "prediction_root_cause_audit": self._as_dict(
                 row.get("prediction_root_cause_audit")

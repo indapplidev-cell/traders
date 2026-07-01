@@ -51,6 +51,46 @@ class MultiSymbolFeatureRegimeAnalyzer:
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
 
+    @classmethod
+    def _is_empty_or_compact_placeholder(cls, value: Any) -> bool:
+        if value is None or value == [] or value == ():
+            return True
+        if isinstance(value, dict):
+            if not value:
+                return True
+            meaningful_keys = [
+                str(key)
+                for key in value.keys()
+                if not str(key).startswith("_")
+            ]
+            return not meaningful_keys
+        return False
+
+    @classmethod
+    def _fold_feature_summary_from_payload(cls, payload: dict[str, Any]) -> dict[str, Any]:
+        profit_diag = cls._as_dict(payload.get("profit_aware_diagnostics"))
+        profit_summary = cls._as_dict(profit_diag.get("summary"))
+        profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
+        return cls._as_dict(
+            payload.get("fold_feature_regime_filter_summary")
+            or profit_diag.get("fold_feature_regime_filter_summary")
+            or profit_summary.get("fold_feature_regime_filter_summary")
+            or profit_best_gate.get("fold_feature_regime_filter_summary")
+        )
+
+    @classmethod
+    def _fold_blackout_summary_from_payload(cls, payload: dict[str, Any]) -> dict[str, Any]:
+        profit_diag = cls._as_dict(payload.get("profit_aware_diagnostics"))
+        profit_summary = cls._as_dict(profit_diag.get("summary"))
+        profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
+        return cls._as_dict(
+            payload.get("fold_repair_probe_diagnostics")
+            or payload.get("fold_time_slice_blackout_summary")
+            or profit_diag.get("fold_time_slice_blackout_summary")
+            or profit_summary.get("fold_time_slice_blackout_summary")
+            or profit_best_gate.get("fold_time_slice_blackout_summary")
+        )
+
     @staticmethod
     def _as_list(value: Any) -> list[Any]:
         if value is None:
@@ -938,8 +978,65 @@ class MultiSymbolFeatureRegimeAnalyzer:
                         continue
                     if isinstance(value, dict) and not value:
                         continue
-                    if key not in payload or payload.get(key) in (None, {}, []):
+                    if (
+                        key not in payload
+                        or cls._is_empty_or_compact_placeholder(payload.get(key))
+                    ):
                         payload[key] = value
+            fold_feature_summary = cls._fold_feature_summary_from_payload(payload)
+            if fold_feature_summary and cls._is_empty_or_compact_placeholder(
+                payload.get("fold_feature_regime_filter_summary")
+            ):
+                payload["fold_feature_regime_filter_summary"] = fold_feature_summary
+
+            fold_blackout_summary = cls._fold_blackout_summary_from_payload(payload)
+            if fold_blackout_summary and cls._is_empty_or_compact_placeholder(
+                payload.get("fold_repair_probe_diagnostics")
+            ):
+                payload["fold_repair_probe_diagnostics"] = fold_blackout_summary
+            if fold_blackout_summary and cls._is_empty_or_compact_placeholder(
+                payload.get("fold_time_slice_blackout_summary")
+            ):
+                payload["fold_time_slice_blackout_summary"] = fold_blackout_summary
+
+            if fold_feature_summary:
+                payload["feature_filter_removed_signal_count"] = (
+                    fold_feature_summary.get("removed_signal_count")
+                )
+                payload["feature_filter_removed_ratio"] = (
+                    fold_feature_summary.get("removed_ratio")
+                )
+                payload["target_date_input_count"] = (
+                    fold_feature_summary.get("target_date_input_count")
+                )
+                payload["target_date_removed_count"] = (
+                    fold_feature_summary.get("target_date_removed_count")
+                )
+                payload["target_date_passed_count"] = (
+                    fold_feature_summary.get("target_date_passed_count")
+                )
+                payload["primary_removed_counts_by_reason"] = cls._as_dict(
+                    fold_feature_summary.get("primary_removed_counts_by_reason")
+                    or fold_feature_summary.get("removed_counts_by_reason")
+                )
+                payload["matched_removed_counts_by_reason"] = cls._as_dict(
+                    fold_feature_summary.get("matched_removed_counts_by_reason")
+                )
+                payload["removed_counts_by_date"] = cls._as_dict(
+                    fold_feature_summary.get("removed_counts_by_date")
+                )
+                payload["passed_counts_by_date"] = cls._as_dict(
+                    fold_feature_summary.get("passed_counts_by_date")
+                )
+                payload["removed_counts_by_regime"] = cls._as_dict(
+                    fold_feature_summary.get("removed_counts_by_regime")
+                )
+                payload["passed_counts_by_regime"] = cls._as_dict(
+                    fold_feature_summary.get("passed_counts_by_regime")
+                )
+                payload["missing_feature_counts"] = cls._as_dict(
+                    fold_feature_summary.get("missing_feature_counts")
+                )
             apply_selected_decision_policy_metrics(payload)
             row_failed_gates, row_passed_gates = normalize_gap_quality_gate(
                 gap_severity_for_training=payload.get("gap_severity_for_training", gap_severity_for_training),
@@ -1307,24 +1404,59 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload.update(cls._directional_side_signal_recovery_payload(payload))
                 payload.update(cls._directional_side_validation_gate_payload(payload))
                 payload.update(cls._walk_forward_validation_candidate_board_payload(payload))
-                profit_diag = cls._as_dict(payload.get("profit_aware_diagnostics"))
-                profit_summary = cls._as_dict(profit_diag.get("summary"))
-                profit_best_gate = cls._as_dict(profit_diag.get("best_gate"))
-                if not payload.get("fold_feature_regime_filter_summary"):
-                    payload["fold_feature_regime_filter_summary"] = cls._as_dict(
-                        profit_diag.get("fold_feature_regime_filter_summary")
-                        or profit_summary.get("fold_feature_regime_filter_summary")
-                        or profit_best_gate.get("fold_feature_regime_filter_summary")
+                fold_feature_summary = cls._fold_feature_summary_from_payload(payload)
+                if fold_feature_summary and cls._is_empty_or_compact_placeholder(
+                    payload.get("fold_feature_regime_filter_summary")
+                ):
+                    payload["fold_feature_regime_filter_summary"] = fold_feature_summary
+
+                fold_blackout_summary = cls._fold_blackout_summary_from_payload(payload)
+                if fold_blackout_summary and cls._is_empty_or_compact_placeholder(
+                    payload.get("fold_repair_probe_diagnostics")
+                ):
+                    payload["fold_repair_probe_diagnostics"] = fold_blackout_summary
+                if fold_blackout_summary and cls._is_empty_or_compact_placeholder(
+                    payload.get("fold_time_slice_blackout_summary")
+                ):
+                    payload["fold_time_slice_blackout_summary"] = fold_blackout_summary
+
+                if fold_feature_summary:
+                    payload["feature_filter_removed_signal_count"] = (
+                        fold_feature_summary.get("removed_signal_count")
                     )
-                if not payload.get("fold_repair_probe_diagnostics"):
-                    payload["fold_repair_probe_diagnostics"] = cls._as_dict(
-                        profit_diag.get("fold_time_slice_blackout_summary")
-                        or profit_summary.get("fold_time_slice_blackout_summary")
-                        or profit_best_gate.get("fold_time_slice_blackout_summary")
+                    payload["feature_filter_removed_ratio"] = (
+                        fold_feature_summary.get("removed_ratio")
                     )
-                if not payload.get("fold_time_slice_blackout_summary"):
-                    payload["fold_time_slice_blackout_summary"] = cls._as_dict(
-                        payload.get("fold_repair_probe_diagnostics")
+                    payload["target_date_input_count"] = (
+                        fold_feature_summary.get("target_date_input_count")
+                    )
+                    payload["target_date_removed_count"] = (
+                        fold_feature_summary.get("target_date_removed_count")
+                    )
+                    payload["target_date_passed_count"] = (
+                        fold_feature_summary.get("target_date_passed_count")
+                    )
+                    payload["primary_removed_counts_by_reason"] = cls._as_dict(
+                        fold_feature_summary.get("primary_removed_counts_by_reason")
+                        or fold_feature_summary.get("removed_counts_by_reason")
+                    )
+                    payload["matched_removed_counts_by_reason"] = cls._as_dict(
+                        fold_feature_summary.get("matched_removed_counts_by_reason")
+                    )
+                    payload["removed_counts_by_date"] = cls._as_dict(
+                        fold_feature_summary.get("removed_counts_by_date")
+                    )
+                    payload["passed_counts_by_date"] = cls._as_dict(
+                        fold_feature_summary.get("passed_counts_by_date")
+                    )
+                    payload["removed_counts_by_regime"] = cls._as_dict(
+                        fold_feature_summary.get("removed_counts_by_regime")
+                    )
+                    payload["passed_counts_by_regime"] = cls._as_dict(
+                        fold_feature_summary.get("passed_counts_by_regime")
+                    )
+                    payload["missing_feature_counts"] = cls._as_dict(
+                        fold_feature_summary.get("missing_feature_counts")
                     )
                 payloads.append(payload)
         return payloads

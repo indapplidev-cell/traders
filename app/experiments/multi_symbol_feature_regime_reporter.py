@@ -370,6 +370,24 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- aggregate_removed_counts_by_regime: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_regime'))}`",
                 f"- aggregate_missing_feature_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_missing_feature_counts'))}`",
                 f"- recommended_next_stage: `{adaptive_probe.get('recommended_next_stage')}`",
+            ]
+        )
+        if (
+            adaptive_feature_diag.get("readiness") == "DIAGNOSTICS_READY"
+            and not self._as_dict(adaptive_feature_diag.get("aggregate_removed_counts_by_date"))
+        ):
+            lines.append(
+                "- warning: `feature_filter_aggregate_date_counts_missing`"
+            )
+        if (
+            adaptive_feature_diag.get("readiness") == "DIAGNOSTICS_READY"
+            and not self._as_dict(adaptive_feature_diag.get("aggregate_missing_feature_counts"))
+        ):
+            lines.append(
+                "- warning: `feature_filter_aggregate_missing_feature_counts_missing`"
+            )
+        lines.extend(
+            [
                 "",
                 "## Recommendations",
                 "",

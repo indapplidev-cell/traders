@@ -11,6 +11,38 @@ class FoldFeatureRegimeRepairProbe:
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
 
+    @classmethod
+    def _count_map(cls, value: Any) -> dict[str, int]:
+        mapping = cls._as_dict(value)
+        cleaned: dict[str, int] = {}
+        for key, raw_count in mapping.items():
+            text_key = str(key)
+            if not text_key or text_key.startswith("_"):
+                continue
+            try:
+                count = int(raw_count)
+            except (TypeError, ValueError):
+                continue
+            cleaned[text_key] = cleaned.get(text_key, 0) + count
+        return cleaned
+
+    @classmethod
+    def _summary_or_row_counts(
+        cls,
+        row: dict[str, Any],
+        summary: dict[str, Any],
+        *keys: str,
+    ) -> dict[str, int]:
+        for key in keys:
+            counts = cls._count_map(summary.get(key))
+            if counts:
+                return counts
+        for key in keys:
+            counts = cls._count_map(row.get(key))
+            if counts:
+                return counts
+        return {}
+
     @staticmethod
     def _as_list(value: Any) -> list[Any]:
         if value is None:
@@ -94,6 +126,28 @@ class FoldFeatureRegimeRepairProbe:
             or profit_summary.get("fold_feature_regime_filter_summary")
             or profit_best_gate.get("fold_feature_regime_filter_summary")
         )
+        primary_removed_counts = self._count_map(
+            feature_summary.get("primary_removed_counts_by_reason")
+            or feature_summary.get("removed_counts_by_reason")
+        )
+        matched_removed_counts = self._count_map(
+            feature_summary.get("matched_removed_counts_by_reason")
+        )
+        removed_counts_by_date = self._count_map(
+            feature_summary.get("removed_counts_by_date")
+        )
+        passed_counts_by_date = self._count_map(
+            feature_summary.get("passed_counts_by_date")
+        )
+        removed_counts_by_regime = self._count_map(
+            feature_summary.get("removed_counts_by_regime")
+        )
+        passed_counts_by_regime = self._count_map(
+            feature_summary.get("passed_counts_by_regime")
+        )
+        missing_feature_counts = self._count_map(
+            feature_summary.get("missing_feature_counts")
+        )
         blackout_summary = self._as_dict(
             candidate.get("fold_repair_probe_diagnostics")
             or candidate.get("fold_time_slice_blackout_summary")
@@ -130,28 +184,13 @@ class FoldFeatureRegimeRepairProbe:
             "target_date_input_count": target_input_count,
             "target_date_removed_count": target_removed_count,
             "target_date_passed_count": target_passed_count,
-            "primary_removed_counts_by_reason": self._as_dict(
-                feature_summary.get("primary_removed_counts_by_reason")
-                or feature_summary.get("removed_counts_by_reason")
-            ),
-            "matched_removed_counts_by_reason": self._as_dict(
-                feature_summary.get("matched_removed_counts_by_reason")
-            ),
-            "removed_counts_by_date": self._as_dict(
-                feature_summary.get("removed_counts_by_date")
-            ),
-            "passed_counts_by_date": self._as_dict(
-                feature_summary.get("passed_counts_by_date")
-            ),
-            "removed_counts_by_regime": self._as_dict(
-                feature_summary.get("removed_counts_by_regime")
-            ),
-            "passed_counts_by_regime": self._as_dict(
-                feature_summary.get("passed_counts_by_regime")
-            ),
-            "missing_feature_counts": self._as_dict(
-                feature_summary.get("missing_feature_counts")
-            ),
+            "primary_removed_counts_by_reason": primary_removed_counts,
+            "matched_removed_counts_by_reason": matched_removed_counts,
+            "removed_counts_by_date": removed_counts_by_date,
+            "passed_counts_by_date": passed_counts_by_date,
+            "removed_counts_by_regime": removed_counts_by_regime,
+            "passed_counts_by_regime": passed_counts_by_regime,
+            "missing_feature_counts": missing_feature_counts,
             "feature_filter_warnings": self._as_list(feature_summary.get("warnings")),
             "fold_repair_time_slice_blackout_enabled": bool(
                 candidate.get("fold_repair_time_slice_blackout_enabled", False)
@@ -251,12 +290,8 @@ class FoldFeatureRegimeRepairProbe:
         aggregate_missing_features: dict[str, int] = {}
 
         def merge_counts(target: dict[str, int], source: dict[str, Any]) -> None:
-            for key, value in source.items():
-                try:
-                    count = int(value)
-                except (TypeError, ValueError):
-                    continue
-                target[str(key)] = target.get(str(key), 0) + count
+            for key, count in self._count_map(source).items():
+                target[key] = target.get(key, 0) + count
 
         active_rows = []
         zero_removal_rows = []
@@ -276,34 +311,60 @@ class FoldFeatureRegimeRepairProbe:
 
             merge_counts(
                 aggregate_primary_reasons,
-                self._as_dict(
-                    feature_summary.get("primary_removed_counts_by_reason")
-                    or feature_summary.get("removed_counts_by_reason")
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "primary_removed_counts_by_reason",
+                    "removed_counts_by_reason",
                 ),
             )
             merge_counts(
                 aggregate_matched_reasons,
-                self._as_dict(feature_summary.get("matched_removed_counts_by_reason")),
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "matched_removed_counts_by_reason",
+                ),
             )
             merge_counts(
                 aggregate_removed_by_date,
-                self._as_dict(feature_summary.get("removed_counts_by_date")),
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "removed_counts_by_date",
+                ),
             )
             merge_counts(
                 aggregate_passed_by_date,
-                self._as_dict(feature_summary.get("passed_counts_by_date")),
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "passed_counts_by_date",
+                ),
             )
             merge_counts(
                 aggregate_removed_by_regime,
-                self._as_dict(feature_summary.get("removed_counts_by_regime")),
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "removed_counts_by_regime",
+                ),
             )
             merge_counts(
                 aggregate_passed_by_regime,
-                self._as_dict(feature_summary.get("passed_counts_by_regime")),
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "passed_counts_by_regime",
+                ),
             )
             merge_counts(
                 aggregate_missing_features,
-                self._as_dict(feature_summary.get("missing_feature_counts")),
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "missing_feature_counts",
+                ),
             )
 
         if missing_summary_rows:
