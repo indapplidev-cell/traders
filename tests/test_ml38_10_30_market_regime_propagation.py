@@ -131,5 +131,5 @@ def test_fold_feature_probe_reports_market_regime_propagated():
 
 
 def test_ml38_10_30_does_not_change_runtime_candidate_counts():
-    assert len(FAST_DEBUG_CONFIGS) == 16
-    assert len(QUICK_QUALITY_CONFIGS) == 34
+    assert len(FAST_DEBUG_CONFIGS) == 18
+    assert len(QUICK_QUALITY_CONFIGS) == 38

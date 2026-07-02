@@ -373,6 +373,10 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- aggregate_regime_source_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_regime_source_counts'))}`",
                 f"- aggregate_removed_counts_by_active_regime_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_active_regime_flag'))}`",
                 f"- aggregate_passed_counts_by_active_regime_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_passed_counts_by_active_regime_flag'))}`",
+                f"- conditional_regime_filter_status: `{adaptive_feature_diag.get('conditional_regime_filter_status')}`",
+                f"- aggregate_conditional_regime_rule_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts'))}`",
+                f"- aggregate_conditional_regime_rule_counts_by_primary_regime: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts_by_primary_regime'))}`",
+                f"- aggregate_conditional_regime_rule_counts_by_active_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts_by_active_flag'))}`",
                 f"- aggregate_missing_feature_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_missing_feature_counts'))}`",
                 f"- recommended_next_stage: `{adaptive_probe.get('recommended_next_stage')}`",
             ]
@@ -397,6 +401,10 @@ class MultiSymbolFeatureRegimeReporter:
             lines.append("- warning: `market_regime_partially_missing_after_ml38_10_30`")
         if adaptive_feature_diag.get("regime_propagation_status") == "MARKET_REGIME_PROPAGATED":
             lines.append("- market regime propagation: `MARKET_REGIME_PROPAGATED`")
+        if adaptive_feature_diag.get("conditional_regime_filter_status") == "CONDITIONAL_REGIME_FILTER_ACTIVE":
+            lines.append("- conditional regime filter: `ACTIVE`")
+        if adaptive_feature_diag.get("conditional_regime_filter_status") == "HARD_REGIME_FILTER_OR_NON_CONDITIONAL_ONLY":
+            lines.append("- warning: `conditional_regime_filter_not_active`")
         lines.extend(
             [
                 "",

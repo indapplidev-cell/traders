@@ -64,10 +64,10 @@ def test_ml38_10_27_1_runtime_counts_stay_expected_after_registration_fix() -> N
         )
     )
 
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 16
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 34
-    assert fast_wrapper._expected_candidate_count() == 32
-    assert quick_wrapper._expected_candidate_count() == 34
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 18
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 38
+    assert fast_wrapper._expected_candidate_count() == 36
+    assert quick_wrapper._expected_candidate_count() == 38
 
 
 def test_ml38_10_27_1_wrapper_preflight_config_validation_passes_for_runtime_shortlists() -> None:

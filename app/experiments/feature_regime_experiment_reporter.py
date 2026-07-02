@@ -224,6 +224,25 @@ class FeatureRegimeExperimentReporter:
             ),
             "market_regime_present_count": payload.get("market_regime_present_count"),
             "market_regime_missing_count": payload.get("market_regime_missing_count"),
+            "conditional_regime_filter_enabled": payload.get(
+                "conditional_regime_filter_enabled"
+            ),
+            "disable_unconditional_blocked_regime": payload.get(
+                "disable_unconditional_blocked_regime"
+            ),
+            "conditional_regime_rule_count": payload.get("conditional_regime_rule_count"),
+            "conditional_regime_rule_ids": cls._as_list(
+                payload.get("conditional_regime_rule_ids")
+            )[:20],
+            "conditional_regime_rule_counts": cls._compact_count_map(
+                payload.get("conditional_regime_rule_counts")
+            ),
+            "conditional_regime_rule_counts_by_primary_regime": cls._compact_count_map(
+                payload.get("conditional_regime_rule_counts_by_primary_regime")
+            ),
+            "conditional_regime_rule_counts_by_active_flag": cls._compact_count_map(
+                payload.get("conditional_regime_rule_counts_by_active_flag")
+            ),
             "removed_counts_by_entry_path_quality_bucket": cls._compact_count_map(
                 payload.get("removed_counts_by_entry_path_quality_bucket")
             ),
@@ -844,6 +863,19 @@ class FeatureRegimeExperimentReporter:
         candidate["market_regime_missing_count"] = fold_feature_regime_filter_summary.get(
             "market_regime_missing_count"
         )
+        candidate["conditional_regime_rule_counts"] = (
+            fold_feature_regime_filter_summary.get("conditional_regime_rule_counts")
+        )
+        candidate["conditional_regime_rule_counts_by_primary_regime"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_counts_by_primary_regime"
+            )
+        )
+        candidate["conditional_regime_rule_counts_by_active_flag"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_counts_by_active_flag"
+            )
+        )
         return candidate
 
     def _compact_ranked_result(self, value: Any) -> dict[str, Any]:
@@ -1091,6 +1123,30 @@ class FeatureRegimeExperimentReporter:
                 row.get("market_regime_missing_count")
                 if row.get("market_regime_missing_count") is not None
                 else fold_feature_regime_filter_summary.get("market_regime_missing_count")
+            ),
+            "conditional_regime_rule_counts": (
+                self._as_dict(row.get("conditional_regime_rule_counts"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_counts"
+                    )
+                )
+            ),
+            "conditional_regime_rule_counts_by_primary_regime": (
+                self._as_dict(row.get("conditional_regime_rule_counts_by_primary_regime"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_counts_by_primary_regime"
+                    )
+                )
+            ),
+            "conditional_regime_rule_counts_by_active_flag": (
+                self._as_dict(row.get("conditional_regime_rule_counts_by_active_flag"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_counts_by_active_flag"
+                    )
+                )
             ),
             "missing_feature_counts": (
                 self._as_dict(row.get("missing_feature_counts"))

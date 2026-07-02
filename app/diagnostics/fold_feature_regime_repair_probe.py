@@ -290,6 +290,9 @@ class FoldFeatureRegimeRepairProbe:
         aggregate_removed_by_active_regime_flag: dict[str, int] = {}
         aggregate_passed_by_active_regime_flag: dict[str, int] = {}
         aggregate_regime_source_counts: dict[str, int] = {}
+        aggregate_conditional_regime_rule_counts: dict[str, int] = {}
+        aggregate_conditional_regime_rule_counts_by_primary_regime: dict[str, int] = {}
+        aggregate_conditional_regime_rule_counts_by_active_flag: dict[str, int] = {}
         aggregate_missing_features: dict[str, int] = {}
 
         def merge_counts(target: dict[str, int], source: dict[str, Any]) -> None:
@@ -386,6 +389,30 @@ class FoldFeatureRegimeRepairProbe:
                 ),
             )
             merge_counts(
+                aggregate_conditional_regime_rule_counts,
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "conditional_regime_rule_counts",
+                ),
+            )
+            merge_counts(
+                aggregate_conditional_regime_rule_counts_by_primary_regime,
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "conditional_regime_rule_counts_by_primary_regime",
+                ),
+            )
+            merge_counts(
+                aggregate_conditional_regime_rule_counts_by_active_flag,
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "conditional_regime_rule_counts_by_active_flag",
+                ),
+            )
+            merge_counts(
                 aggregate_missing_features,
                 self._summary_or_row_counts(
                     row,
@@ -409,6 +436,13 @@ class FoldFeatureRegimeRepairProbe:
         else:
             regime_propagation_status = "MARKET_REGIME_MISSING"
 
+        if aggregate_conditional_regime_rule_counts:
+            conditional_regime_filter_status = "CONDITIONAL_REGIME_FILTER_ACTIVE"
+        elif aggregate_removed_by_regime:
+            conditional_regime_filter_status = "HARD_REGIME_FILTER_OR_NON_CONDITIONAL_ONLY"
+        else:
+            conditional_regime_filter_status = "NO_REGIME_FILTER_REMOVALS"
+
         return {
             "diagnostic_name": "fold_feature_regime_filter_diagnostics",
             "diagnostic_version": self.diagnostic_version,
@@ -429,9 +463,19 @@ class FoldFeatureRegimeRepairProbe:
             "aggregate_removed_counts_by_active_regime_flag": aggregate_removed_by_active_regime_flag,
             "aggregate_passed_counts_by_active_regime_flag": aggregate_passed_by_active_regime_flag,
             "aggregate_regime_source_counts": aggregate_regime_source_counts,
+            "aggregate_conditional_regime_rule_counts": (
+                aggregate_conditional_regime_rule_counts
+            ),
+            "aggregate_conditional_regime_rule_counts_by_primary_regime": (
+                aggregate_conditional_regime_rule_counts_by_primary_regime
+            ),
+            "aggregate_conditional_regime_rule_counts_by_active_flag": (
+                aggregate_conditional_regime_rule_counts_by_active_flag
+            ),
             "aggregate_missing_feature_counts": aggregate_missing_features,
             "regime_propagation_status": regime_propagation_status,
             "missing_market_regime_count": missing_market_regime_count,
+            "conditional_regime_filter_status": conditional_regime_filter_status,
         }
 
     def _verdict(self, *, best_feature: dict[str, Any], best_date: dict[str, Any]) -> str:

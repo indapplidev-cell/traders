@@ -276,6 +276,152 @@ class LabelQualityGridPlanner:
             "max_mae_pressure_risk_score": 0.49,
             "adaptive_profile": "target_fold_bad_slice_v2_exit45",
         }
+        ml38_10_31_regime_conditioned_rules_v1 = {
+            "disable_unconditional_blocked_regime": True,
+            "conditional_regime_rules": [
+                {
+                    "rule_id": "high_volatility_low_entry_quality",
+                    "active_regime_any": ["high_volatility"],
+                    "entry_path_quality_below": 0.74,
+                },
+                {
+                    "rule_id": "high_volatility_high_stop_pressure",
+                    "active_regime_any": ["high_volatility"],
+                    "stop_pressure_above": 0.42,
+                },
+                {
+                    "rule_id": "trend_down_weak_setup",
+                    "primary_regime_any": ["trend_down"],
+                    "setup_quality_below": 0.62,
+                },
+                {
+                    "rule_id": "volatility_expanding_high_mae",
+                    "active_regime_any": ["volatility_expanding"],
+                    "mae_pressure_above": 0.50,
+                },
+            ],
+            "missing_feature_policy": "pass_with_warning",
+            "conditional_profile": "regime_conditioned_v1",
+            "research_only": True,
+        }
+        ml38_10_31_regime_conditioned_rules_v1_exit45 = {
+            **ml38_10_31_regime_conditioned_rules_v1,
+            "conditional_profile": "regime_conditioned_v1_exit45",
+            "conditional_regime_rules": [
+                {
+                    "rule_id": "high_volatility_low_entry_quality",
+                    "active_regime_any": ["high_volatility"],
+                    "entry_path_quality_below": 0.73,
+                },
+                {
+                    "rule_id": "high_volatility_high_stop_pressure",
+                    "active_regime_any": ["high_volatility"],
+                    "stop_pressure_above": 0.43,
+                },
+                {
+                    "rule_id": "trend_down_weak_setup",
+                    "primary_regime_any": ["trend_down"],
+                    "setup_quality_below": 0.61,
+                },
+                {
+                    "rule_id": "volatility_expanding_high_mae",
+                    "active_regime_any": ["volatility_expanding"],
+                    "mae_pressure_above": 0.49,
+                },
+            ],
+        }
+
+        def ml38_10_31_regime_conditioned_config(
+            *,
+            config_id: str,
+            label_version: str,
+            horizon: int,
+            side_profile: str,
+            fold_profile: str,
+            rules: dict[str, Any],
+            feature_filter_profile: str,
+            exit45: bool = False,
+        ) -> LabelQualityGridConfig:
+            exit_timeout_bars = 6 if horizon == 8 else 9
+            return LabelQualityGridConfig(
+                config_id=config_id,
+                label_version=label_version,
+                horizon=horizon,
+                threshold=0.52,
+                take_profit_atr=1.20,
+                stop_loss_atr=1.50,
+                flat_threshold=0.52,
+                description=(
+                    "ML38.10.31 conditional regime-risk fold repair probe. "
+                    "Research-only. No calendar blackout and no hard regime blacklist."
+                ),
+                risk_note=(
+                    "Research-only conditional regime-risk probe. "
+                    "Must remain blocked from acceptance."
+                ),
+                anti_collapse_profile=f"trade_two_stage_rguard_conditional_regime_repair_h{horizon}_{side_profile}",
+                training_objective="trade_two_stage",
+                flat_bias_objective_enabled=False,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.35,
+                baseline_edge_margin_penalty=0.020,
+                baseline_edge_entropy_penalty=0.012,
+                decision_calibration_enabled=True,
+                decision_flat_if_max_prob_below=0.44,
+                decision_flat_if_margin_below=0.075,
+                decision_min_direction_prob=0.420,
+                decision_min_up_down_margin=0.050,
+                decision_down_boost=0.015,
+                decision_up_penalty=0.010,
+                decision_flat_boost=0.0,
+                decision_calibration_mode="bounded_calibration",
+                decision_fallback_to_raw=True,
+                decision_max_flat_ratio=0.88,
+                decision_min_down_ratio_when_actual_down_high=0.08,
+                decision_min_up_ratio_when_actual_up_high=0.08,
+                decision_max_dominant_class_ratio=0.82,
+                decision_require_non_worse_baseline_edge=True,
+                decision_baseline_edge_tolerance=0.0015,
+                decision_actual_class_high_threshold=0.05,
+                decision_policy_grid_enabled=True,
+                decision_policy_grid_stage="ML38.10.31",
+                opportunity_probability_threshold=0.70,
+                setup_quality_min_threshold=0.60,
+                setup_quality_decision_mask_enabled=True,
+                setup_quality_decision_mask_min_threshold=0.60,
+                entry_path_quality_filter_enabled=True,
+                entry_path_quality_min_threshold=0.71,
+                stop_pressure_max_risk_score=0.45,
+                mae_pressure_max_risk_score=0.51,
+                entry_path_quality_score_profile="mae_aware_rr_v3",
+                exit_policy_profile="stop_loss_mitigation_recovery_guard_v1",
+                exit_timeout_bars=exit_timeout_bars,
+                exit_mitigation_loss_r=0.45 if exit45 else 0.62,
+                exit_neutral_abs_r=0.15,
+                directional_side_filter_profile=side_profile,
+                allowed_signal_directions=("LONG",),
+                opportunity_threshold_sweep_enabled=True,
+                opportunity_threshold_candidates=DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
+                opportunity_min_precision=0.38,
+                opportunity_min_recall=0.23,
+                opportunity_max_predicted_trade_rate=0.08,
+                opportunity_max_predicted_to_actual_trade_rate_ratio=1.55,
+                opportunity_max_false_positive_rate=0.060,
+                research_only_fold_repair_probe_enabled=True,
+                fold_repair_probe_profile=fold_profile,
+                fold_repair_target_dates=("2026-05-25", "2026-05-26", "2026-05-28"),
+                fold_repair_time_slice_blackout_enabled=False,
+                fold_repair_blackout_dates=(),
+                fold_repair_feature_filter_enabled=True,
+                fold_repair_feature_filter_profile=feature_filter_profile,
+                fold_repair_feature_filter_rules=rules,
+                research_only_acceptance_block_reason=(
+                    "research_only_conditional_regime_fold_repair_probe"
+                ),
+                label_mode=LABEL_MODE_SETUP_PURE_FIRST_TOUCH,
+                experimental=True,
+            )
         configs = [
             LabelQualityGridConfig(
                 config_id="lv2_h08_thr03_tp10_sl10",
@@ -5589,10 +5735,83 @@ class LabelQualityGridPlanner:
                 experimental=True,
             ),
         ]
+        configs.extend(
+            [
+                ml38_10_31_regime_conditioned_config(
+                    config_id="lv34_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_probe",
+                    label_version="lv34_h08_cond_regime_long",
+                    horizon=8,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_CONDITIONAL_REGIME_GUARD_V1",
+                    rules=ml38_10_31_regime_conditioned_rules_v1,
+                    feature_filter_profile="CONDITIONAL_REGIME_GUARD_V1",
+                    exit45=False,
+                ),
+                ml38_10_31_regime_conditioned_config(
+                    config_id="lv34_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_exit45_probe",
+                    label_version="lv34_h08_cond_regime_long_exit45",
+                    horizon=8,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_CONDITIONAL_REGIME_GUARD_V1_EXIT45",
+                    rules=ml38_10_31_regime_conditioned_rules_v1_exit45,
+                    feature_filter_profile="CONDITIONAL_REGIME_GUARD_V1_EXIT45",
+                    exit45=True,
+                ),
+                ml38_10_31_regime_conditioned_config(
+                    config_id="lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_probe",
+                    label_version="lv34_h12_cond_regime_long",
+                    horizon=12,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_CONDITIONAL_REGIME_GUARD_V1",
+                    rules=ml38_10_31_regime_conditioned_rules_v1,
+                    feature_filter_profile="CONDITIONAL_REGIME_GUARD_V1",
+                    exit45=False,
+                ),
+                ml38_10_31_regime_conditioned_config(
+                    config_id="lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_exit45_probe",
+                    label_version="lv34_h12_cond_regime_long_exit45",
+                    horizon=12,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_CONDITIONAL_REGIME_GUARD_V1_EXIT45",
+                    rules=ml38_10_31_regime_conditioned_rules_v1_exit45,
+                    feature_filter_profile="CONDITIONAL_REGIME_GUARD_V1_EXIT45",
+                    exit45=True,
+                ),
+                ml38_10_31_regime_conditioned_config(
+                    config_id="lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_cond_regime_probe",
+                    label_version="lv34_h12_cond_regime_suppress_short",
+                    horizon=12,
+                    side_profile="suppress_short_research",
+                    fold_profile="SUPPRESS_SHORT_CONDITIONAL_REGIME_GUARD_V1",
+                    rules=ml38_10_31_regime_conditioned_rules_v1,
+                    feature_filter_profile="CONDITIONAL_REGIME_GUARD_V1",
+                    exit45=False,
+                ),
+                ml38_10_31_regime_conditioned_config(
+                    config_id="lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_cond_regime_exit45_probe",
+                    label_version="lv34_h12_cond_regime_suppress_short_exit45",
+                    horizon=12,
+                    side_profile="suppress_short_research",
+                    fold_profile="SUPPRESS_SHORT_CONDITIONAL_REGIME_GUARD_V1_EXIT45",
+                    rules=ml38_10_31_regime_conditioned_rules_v1_exit45,
+                    feature_filter_profile="CONDITIONAL_REGIME_GUARD_V1_EXIT45",
+                    exit45=True,
+                ),
+            ]
+        )
         return {
             "planner_name": self.PLANNER_NAME,
             "planner_version": self.PLANNER_VERSION,
             "config_count": len(configs),
+            "regime_conditioned_repair_stage": "ML38.10.31",
+            "regime_conditioned_repair_config_ids": [
+                "lv34_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_probe",
+                "lv34_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_exit45_probe",
+                "lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_probe",
+                "lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_exit45_probe",
+                "lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_cond_regime_probe",
+                "lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_cond_regime_exit45_probe",
+            ],
             "setup_quality_filter_stage": "ML38.10.7",
             "setup_quality_filter_config_ids": [
                 "lv18_h08_tts_thr065_sq060",

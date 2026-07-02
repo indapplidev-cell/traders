@@ -1049,6 +1049,19 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload["market_regime_missing_count"] = fold_feature_summary.get(
                     "market_regime_missing_count"
                 )
+                payload["conditional_regime_rule_counts"] = cls._as_dict(
+                    fold_feature_summary.get("conditional_regime_rule_counts")
+                )
+                payload["conditional_regime_rule_counts_by_primary_regime"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_counts_by_primary_regime"
+                    )
+                )
+                payload["conditional_regime_rule_counts_by_active_flag"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_counts_by_active_flag"
+                    )
+                )
                 payload["missing_feature_counts"] = cls._as_dict(
                     fold_feature_summary.get("missing_feature_counts")
                 )
@@ -1484,6 +1497,19 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     )
                     payload["market_regime_missing_count"] = fold_feature_summary.get(
                         "market_regime_missing_count"
+                    )
+                    payload["conditional_regime_rule_counts"] = cls._as_dict(
+                        fold_feature_summary.get("conditional_regime_rule_counts")
+                    )
+                    payload["conditional_regime_rule_counts_by_primary_regime"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_counts_by_primary_regime"
+                        )
+                    )
+                    payload["conditional_regime_rule_counts_by_active_flag"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_counts_by_active_flag"
+                        )
                     )
                     payload["missing_feature_counts"] = cls._as_dict(
                         fold_feature_summary.get("missing_feature_counts")

@@ -906,6 +906,40 @@ class ProfitAwareEvaluatorV2:
 
         return tuple(dict.fromkeys(values))
 
+    @classmethod
+    def _normalized_text_set(cls, value: Any) -> set[str]:
+        items = cls._as_list(value)
+        return {str(item).strip().lower() for item in items if str(item).strip()}
+
+    @classmethod
+    def _conditional_regime_rules(cls, rules: dict[str, Any]) -> list[dict[str, Any]]:
+        payload = rules.get("conditional_regime_rules") or []
+        normalized: list[dict[str, Any]] = []
+        for item in cls._as_list(payload):
+            if isinstance(item, dict):
+                rule = dict(item)
+                rule_id = str(rule.get("rule_id") or rule.get("name") or "").strip()
+                if rule_id:
+                    rule["rule_id"] = rule_id
+                    normalized.append(rule)
+        return normalized
+
+    @classmethod
+    def _metric_condition_failed(
+        cls,
+        *,
+        value: float | None,
+        below: Any = None,
+        above: Any = None,
+    ) -> bool:
+        below_value = cls._float_or_none(below)
+        above_value = cls._float_or_none(above)
+        if below_value is not None and value is not None and value < below_value:
+            return True
+        if above_value is not None and value is not None and value > above_value:
+            return True
+        return False
+
     @staticmethod
     def _bucket_numeric(value: float | None) -> str:
         if value is None:
@@ -1001,6 +1035,11 @@ class ProfitAwareEvaluatorV2:
             for item in self._as_list(normalized_rules.get("blocked_regime_values"))
             if str(item).strip()
         }
+        conditional_regime_rules = self._conditional_regime_rules(normalized_rules)
+        disable_unconditional_blocked_regime = bool(
+            normalized_rules.get("disable_unconditional_blocked_regime")
+        )
+        conditional_regime_filter_enabled = bool(conditional_regime_rules)
         missing_feature_policy = str(
             normalized_rules.get("missing_feature_policy") or "pass_with_warning"
         ).strip().lower()
@@ -1013,6 +1052,12 @@ class ProfitAwareEvaluatorV2:
             "target_dates": normalized_target_dates,
             "date_blackout_used": bool(date_blackout_used),
             "input_signal_count": len(signal_rows),
+            "conditional_regime_filter_enabled": conditional_regime_filter_enabled,
+            "disable_unconditional_blocked_regime": disable_unconditional_blocked_regime,
+            "conditional_regime_rule_count": len(conditional_regime_rules),
+            "conditional_regime_rule_ids": [
+                str(rule.get("rule_id")) for rule in conditional_regime_rules
+            ],
         }
 
         if not enabled or not normalized_rules:
@@ -1035,6 +1080,9 @@ class ProfitAwareEvaluatorV2:
                 "regime_source_counts": {},
                 "market_regime_present_count": len(signal_rows),
                 "market_regime_missing_count": 0,
+                "conditional_regime_rule_counts": {},
+                "conditional_regime_rule_counts_by_primary_regime": {},
+                "conditional_regime_rule_counts_by_active_flag": {},
                 "removed_counts_by_entry_path_quality_bucket": {},
                 "removed_counts_by_setup_quality_bucket": {},
                 "removed_counts_by_stop_pressure_bucket": {},
@@ -1056,6 +1104,9 @@ class ProfitAwareEvaluatorV2:
         removed_counts_by_active_regime_flag: dict[str, int] = {}
         passed_counts_by_active_regime_flag: dict[str, int] = {}
         regime_source_counts: dict[str, int] = {}
+        conditional_regime_rule_counts: dict[str, int] = {}
+        conditional_regime_rule_counts_by_primary_regime: dict[str, int] = {}
+        conditional_regime_rule_counts_by_active_flag: dict[str, int] = {}
         removed_counts_by_entry_path_quality_bucket: dict[str, int] = {}
         removed_counts_by_setup_quality_bucket: dict[str, int] = {}
         removed_counts_by_stop_pressure_bucket: dict[str, int] = {}
@@ -1088,7 +1139,11 @@ class ProfitAwareEvaluatorV2:
             min_entry_quality = self._float_or_none(
                 normalized_rules.get("min_entry_path_quality_score")
             )
-            if min_entry_quality is not None and entry_quality is not None and entry_quality < min_entry_quality:
+            if (
+                min_entry_quality is not None
+                and entry_quality is not None
+                and entry_quality < min_entry_quality
+            ):
                 reasons.append("low_entry_path_quality")
 
             setup_quality = metric_value(
@@ -1099,7 +1154,11 @@ class ProfitAwareEvaluatorV2:
             min_setup_quality = self._float_or_none(
                 normalized_rules.get("min_setup_quality_score")
             )
-            if min_setup_quality is not None and setup_quality is not None and setup_quality < min_setup_quality:
+            if (
+                min_setup_quality is not None
+                and setup_quality is not None
+                and setup_quality < min_setup_quality
+            ):
                 reasons.append("low_setup_quality")
 
             stop_pressure = metric_value(
@@ -1110,7 +1169,11 @@ class ProfitAwareEvaluatorV2:
             max_stop_pressure = self._float_or_none(
                 normalized_rules.get("max_stop_pressure_risk_score")
             )
-            if max_stop_pressure is not None and stop_pressure is not None and stop_pressure > max_stop_pressure:
+            if (
+                max_stop_pressure is not None
+                and stop_pressure is not None
+                and stop_pressure > max_stop_pressure
+            ):
                 reasons.append("high_stop_pressure")
 
             mae_pressure = metric_value(
@@ -1126,20 +1189,71 @@ class ProfitAwareEvaluatorV2:
             max_mae_pressure = self._float_or_none(
                 normalized_rules.get("max_mae_pressure_risk_score")
             )
-            if max_mae_pressure is not None and mae_pressure is not None and mae_pressure > max_mae_pressure:
+            if (
+                max_mae_pressure is not None
+                and mae_pressure is not None
+                and mae_pressure > max_mae_pressure
+            ):
                 reasons.append("high_mae_pressure")
 
             regime_values = self._row_regime_values(row)
+            primary_regime = (self._row_regime_value(row) or "").strip().lower()
+            normalized_regime_values = {
+                str(value).strip().lower()
+                for value in regime_values
+                if str(value).strip()
+            }
+
             if not regime_values:
                 record_missing("market_regime")
-            elif blocked_regime_values:
-                normalized_regime_values = {
-                    str(value).strip().lower()
-                    for value in regime_values
-                    if str(value).strip()
-                }
-                if normalized_regime_values.intersection(blocked_regime_values):
-                    reasons.append("blocked_regime")
+            elif (
+                blocked_regime_values
+                and not disable_unconditional_blocked_regime
+                and normalized_regime_values.intersection(blocked_regime_values)
+            ):
+                reasons.append("blocked_regime")
+
+            for rule in conditional_regime_rules:
+                rule_id = str(rule.get("rule_id") or "").strip()
+                if not rule_id:
+                    continue
+
+                primary_any = self._normalized_text_set(
+                    rule.get("primary_regime_any") or rule.get("regime_any")
+                )
+                active_any = self._normalized_text_set(rule.get("active_regime_any"))
+
+                if primary_any and primary_regime not in primary_any:
+                    continue
+                if active_any and not normalized_regime_values.intersection(active_any):
+                    continue
+                if not primary_any and not active_any:
+                    continue
+
+                metric_failed = False
+                metric_failed = metric_failed or self._metric_condition_failed(
+                    value=entry_quality,
+                    below=rule.get("entry_path_quality_below"),
+                    above=rule.get("entry_path_quality_above"),
+                )
+                metric_failed = metric_failed or self._metric_condition_failed(
+                    value=setup_quality,
+                    below=rule.get("setup_quality_below"),
+                    above=rule.get("setup_quality_above"),
+                )
+                metric_failed = metric_failed or self._metric_condition_failed(
+                    value=stop_pressure,
+                    below=rule.get("stop_pressure_below"),
+                    above=rule.get("stop_pressure_above"),
+                )
+                metric_failed = metric_failed or self._metric_condition_failed(
+                    value=mae_pressure,
+                    below=rule.get("mae_pressure_below"),
+                    above=rule.get("mae_pressure_above"),
+                )
+
+                if metric_failed:
+                    reasons.append(f"conditional_regime_rule:{rule_id}")
 
             return list(dict.fromkeys(reasons))
 
@@ -1165,6 +1279,18 @@ class ProfitAwareEvaluatorV2:
                 self._increment_count(primary_removed_counts_by_reason, primary_reason)
                 for reason in block_reasons:
                     self._increment_count(matched_removed_counts_by_reason, reason)
+                    if reason.startswith("conditional_regime_rule:"):
+                        rule_id = reason.split(":", 1)[1]
+                        self._increment_count(conditional_regime_rule_counts, rule_id)
+                        self._increment_count(
+                            conditional_regime_rule_counts_by_primary_regime,
+                            bucket_snapshot.get("regime"),
+                        )
+                        for flag in active_flags:
+                            self._increment_count(
+                                conditional_regime_rule_counts_by_active_flag,
+                                flag,
+                            )
 
                 self._increment_count(removed_counts_by_date, signal_date or "missing")
                 self._increment_count(removed_counts_by_regime, bucket_snapshot.get("regime"))
@@ -1240,6 +1366,13 @@ class ProfitAwareEvaluatorV2:
             "removed_counts_by_active_regime_flag": removed_counts_by_active_regime_flag,
             "passed_counts_by_active_regime_flag": passed_counts_by_active_regime_flag,
             "regime_source_counts": regime_source_counts,
+            "conditional_regime_rule_counts": conditional_regime_rule_counts,
+            "conditional_regime_rule_counts_by_primary_regime": (
+                conditional_regime_rule_counts_by_primary_regime
+            ),
+            "conditional_regime_rule_counts_by_active_flag": (
+                conditional_regime_rule_counts_by_active_flag
+            ),
             "market_regime_present_count": (
                 len(signal_rows) - missing_feature_counts.get("market_regime", 0)
             ),
