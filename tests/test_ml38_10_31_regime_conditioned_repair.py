@@ -55,6 +55,9 @@ def test_conditional_regime_rule_blocks_only_bad_high_volatility_entry():
     assert summary["conditional_regime_rule_counts"] == {
         "high_volatility_low_entry_quality": 1
     }
+    assert "conditional_regime_rule_eligible_counts" in summary
+    assert "conditional_regime_ablation_board" in summary
+    assert "per_regime_contribution_board" in summary
     assert summary["primary_removed_counts_by_reason"] == {
         "conditional_regime_rule:high_volatility_low_entry_quality": 1
     }
@@ -171,3 +174,5 @@ def test_fold_feature_probe_aggregates_conditional_regime_rules():
     assert diagnostics["aggregate_conditional_regime_rule_counts"] == {
         "high_volatility_low_entry_quality": 2
     }
+    assert "aggregate_conditional_regime_ablation_board" in diagnostics
+    assert "aggregate_per_regime_contribution_board" in diagnostics

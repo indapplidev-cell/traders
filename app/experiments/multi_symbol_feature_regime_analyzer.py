@@ -1052,6 +1052,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload["conditional_regime_rule_counts"] = cls._as_dict(
                     fold_feature_summary.get("conditional_regime_rule_counts")
                 )
+                payload["conditional_regime_rule_eligible_counts"] = cls._as_dict(
+                    fold_feature_summary.get("conditional_regime_rule_eligible_counts")
+                )
+                payload["conditional_regime_rule_passed_counts"] = cls._as_dict(
+                    fold_feature_summary.get("conditional_regime_rule_passed_counts")
+                )
+                payload["conditional_regime_rule_blocked_counts"] = cls._as_dict(
+                    fold_feature_summary.get("conditional_regime_rule_blocked_counts")
+                )
                 payload["conditional_regime_rule_counts_by_primary_regime"] = cls._as_dict(
                     fold_feature_summary.get(
                         "conditional_regime_rule_counts_by_primary_regime"
@@ -1061,6 +1070,42 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     fold_feature_summary.get(
                         "conditional_regime_rule_counts_by_active_flag"
                     )
+                )
+                payload["conditional_regime_rule_metric_failure_counts"] = cls._as_dict(
+                    fold_feature_summary.get("conditional_regime_rule_metric_failure_counts")
+                )
+                payload["conditional_regime_rule_metric_failure_counts_by_rule"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_metric_failure_counts_by_rule"
+                    )
+                )
+                payload["conditional_regime_rule_removed_outcome_by_rule"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_removed_outcome_by_rule"
+                    )
+                )
+                payload["conditional_regime_rule_passed_outcome_by_rule"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_passed_outcome_by_rule"
+                    )
+                )
+                payload["removed_outcome_by_primary_regime"] = cls._as_dict(
+                    fold_feature_summary.get("removed_outcome_by_primary_regime")
+                )
+                payload["passed_outcome_by_primary_regime"] = cls._as_dict(
+                    fold_feature_summary.get("passed_outcome_by_primary_regime")
+                )
+                payload["removed_outcome_by_active_regime_flag"] = cls._as_dict(
+                    fold_feature_summary.get("removed_outcome_by_active_regime_flag")
+                )
+                payload["passed_outcome_by_active_regime_flag"] = cls._as_dict(
+                    fold_feature_summary.get("passed_outcome_by_active_regime_flag")
+                )
+                payload["conditional_regime_ablation_board"] = cls._as_list(
+                    fold_feature_summary.get("conditional_regime_ablation_board")
+                )
+                payload["per_regime_contribution_board"] = cls._as_list(
+                    fold_feature_summary.get("per_regime_contribution_board")
                 )
                 payload["missing_feature_counts"] = cls._as_dict(
                     fold_feature_summary.get("missing_feature_counts")
@@ -1501,6 +1546,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     payload["conditional_regime_rule_counts"] = cls._as_dict(
                         fold_feature_summary.get("conditional_regime_rule_counts")
                     )
+                    payload["conditional_regime_rule_eligible_counts"] = cls._as_dict(
+                        fold_feature_summary.get("conditional_regime_rule_eligible_counts")
+                    )
+                    payload["conditional_regime_rule_passed_counts"] = cls._as_dict(
+                        fold_feature_summary.get("conditional_regime_rule_passed_counts")
+                    )
+                    payload["conditional_regime_rule_blocked_counts"] = cls._as_dict(
+                        fold_feature_summary.get("conditional_regime_rule_blocked_counts")
+                    )
                     payload["conditional_regime_rule_counts_by_primary_regime"] = cls._as_dict(
                         fold_feature_summary.get(
                             "conditional_regime_rule_counts_by_primary_regime"
@@ -1510,6 +1564,44 @@ class MultiSymbolFeatureRegimeAnalyzer:
                         fold_feature_summary.get(
                             "conditional_regime_rule_counts_by_active_flag"
                         )
+                    )
+                    payload["conditional_regime_rule_metric_failure_counts"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_metric_failure_counts"
+                        )
+                    )
+                    payload["conditional_regime_rule_metric_failure_counts_by_rule"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_metric_failure_counts_by_rule"
+                        )
+                    )
+                    payload["conditional_regime_rule_removed_outcome_by_rule"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_removed_outcome_by_rule"
+                        )
+                    )
+                    payload["conditional_regime_rule_passed_outcome_by_rule"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_passed_outcome_by_rule"
+                        )
+                    )
+                    payload["removed_outcome_by_primary_regime"] = cls._as_dict(
+                        fold_feature_summary.get("removed_outcome_by_primary_regime")
+                    )
+                    payload["passed_outcome_by_primary_regime"] = cls._as_dict(
+                        fold_feature_summary.get("passed_outcome_by_primary_regime")
+                    )
+                    payload["removed_outcome_by_active_regime_flag"] = cls._as_dict(
+                        fold_feature_summary.get("removed_outcome_by_active_regime_flag")
+                    )
+                    payload["passed_outcome_by_active_regime_flag"] = cls._as_dict(
+                        fold_feature_summary.get("passed_outcome_by_active_regime_flag")
+                    )
+                    payload["conditional_regime_ablation_board"] = cls._as_list(
+                        fold_feature_summary.get("conditional_regime_ablation_board")
+                    )
+                    payload["per_regime_contribution_board"] = cls._as_list(
+                        fold_feature_summary.get("per_regime_contribution_board")
                     )
                     payload["missing_feature_counts"] = cls._as_dict(
                         fold_feature_summary.get("missing_feature_counts")

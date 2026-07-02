@@ -161,6 +161,89 @@ class FeatureRegimeExperimentReporter:
         )
 
     @classmethod
+    def _compact_nested_count_map(
+        cls,
+        value: Any,
+        *,
+        outer_limit: int = 12,
+        inner_limit: int = 8,
+    ) -> dict[str, dict[str, int]]:
+        mapping = cls._as_dict(value)
+        compact: dict[str, dict[str, int]] = {}
+        for outer_key, raw_inner in sorted(mapping.items(), key=lambda item: str(item[0]))[
+            :outer_limit
+        ]:
+            nested = cls._compact_count_map(raw_inner, limit=inner_limit)
+            if nested:
+                compact[str(outer_key)] = nested
+        return compact
+
+    @classmethod
+    def _compact_contribution_stats(cls, value: Any) -> dict[str, Any]:
+        payload = cls._as_dict(value)
+        if not payload:
+            return {}
+        signal_count = int(payload.get("signal_count", 0) or 0)
+        total_r = float(payload.get("total_r", 0.0) or 0.0)
+        positive_r = float(payload.get("positive_r", 0.0) or 0.0)
+        negative_r = float(payload.get("negative_r", 0.0) or 0.0)
+        win_count = int(payload.get("win_count", 0) or 0)
+        loss_count = int(payload.get("loss_count", 0) or 0)
+        neutral_count = int(payload.get("neutral_count", 0) or 0)
+        return {
+            "signal_count": signal_count,
+            "total_r": total_r,
+            "positive_r": positive_r,
+            "negative_r": negative_r,
+            "win_count": win_count,
+            "loss_count": loss_count,
+            "neutral_count": neutral_count,
+            "avg_r": (total_r / signal_count) if signal_count else None,
+            "win_rate": (win_count / signal_count) if signal_count else None,
+        }
+
+    @classmethod
+    def _compact_contribution_stats_map(
+        cls,
+        value: Any,
+        *,
+        limit: int = 12,
+    ) -> dict[str, dict[str, Any]]:
+        mapping = cls._as_dict(value)
+        compact: dict[str, dict[str, Any]] = {}
+        for key, raw_stats in sorted(mapping.items(), key=lambda item: str(item[0]))[:limit]:
+            stats = cls._compact_contribution_stats(raw_stats)
+            if stats:
+                compact[str(key)] = stats
+        return compact
+
+    @classmethod
+    def _compact_board_rows(
+        cls,
+        value: Any,
+        *,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for item in cls._as_list(value)[:limit]:
+            if isinstance(item, dict):
+                row = dict(item)
+                if "removed_outcome" in row:
+                    row["removed_outcome"] = cls._compact_contribution_stats(
+                        row.get("removed_outcome")
+                    )
+                if "passed_outcome" in row:
+                    row["passed_outcome"] = cls._compact_contribution_stats(
+                        row.get("passed_outcome")
+                    )
+                if "metric_failure_counts" in row:
+                    row["metric_failure_counts"] = cls._compact_count_map(
+                        row.get("metric_failure_counts")
+                    )
+                rows.append(row)
+        return rows
+
+    @classmethod
     def _compact_fold_feature_summary(cls, summary: dict[str, Any]) -> dict[str, Any]:
         payload = cls._as_dict(summary)
         if not payload:
@@ -175,6 +258,12 @@ class FeatureRegimeExperimentReporter:
                 "primary_removed_counts_by_reason",
                 "removed_counts_by_date",
                 "removed_counts_by_regime",
+                "conditional_regime_rule_eligible_counts",
+                "conditional_regime_rule_passed_counts",
+                "conditional_regime_rule_metric_failure_counts",
+                "conditional_regime_rule_removed_outcome_by_rule",
+                "conditional_regime_ablation_board",
+                "per_regime_contribution_board",
                 "missing_feature_counts",
             )
         ):
@@ -237,11 +326,56 @@ class FeatureRegimeExperimentReporter:
             "conditional_regime_rule_counts": cls._compact_count_map(
                 payload.get("conditional_regime_rule_counts")
             ),
+            "conditional_regime_rule_eligible_counts": cls._compact_count_map(
+                payload.get("conditional_regime_rule_eligible_counts")
+            ),
+            "conditional_regime_rule_passed_counts": cls._compact_count_map(
+                payload.get("conditional_regime_rule_passed_counts")
+            ),
+            "conditional_regime_rule_blocked_counts": cls._compact_count_map(
+                payload.get("conditional_regime_rule_blocked_counts")
+            ),
             "conditional_regime_rule_counts_by_primary_regime": cls._compact_count_map(
                 payload.get("conditional_regime_rule_counts_by_primary_regime")
             ),
             "conditional_regime_rule_counts_by_active_flag": cls._compact_count_map(
                 payload.get("conditional_regime_rule_counts_by_active_flag")
+            ),
+            "conditional_regime_rule_metric_failure_counts": cls._compact_count_map(
+                payload.get("conditional_regime_rule_metric_failure_counts")
+            ),
+            "conditional_regime_rule_metric_failure_counts_by_rule": (
+                cls._compact_nested_count_map(
+                    payload.get("conditional_regime_rule_metric_failure_counts_by_rule")
+                )
+            ),
+            "conditional_regime_rule_removed_outcome_by_rule": (
+                cls._compact_contribution_stats_map(
+                    payload.get("conditional_regime_rule_removed_outcome_by_rule")
+                )
+            ),
+            "conditional_regime_rule_passed_outcome_by_rule": (
+                cls._compact_contribution_stats_map(
+                    payload.get("conditional_regime_rule_passed_outcome_by_rule")
+                )
+            ),
+            "removed_outcome_by_primary_regime": cls._compact_contribution_stats_map(
+                payload.get("removed_outcome_by_primary_regime")
+            ),
+            "passed_outcome_by_primary_regime": cls._compact_contribution_stats_map(
+                payload.get("passed_outcome_by_primary_regime")
+            ),
+            "removed_outcome_by_active_regime_flag": cls._compact_contribution_stats_map(
+                payload.get("removed_outcome_by_active_regime_flag")
+            ),
+            "passed_outcome_by_active_regime_flag": cls._compact_contribution_stats_map(
+                payload.get("passed_outcome_by_active_regime_flag")
+            ),
+            "conditional_regime_ablation_board": cls._compact_board_rows(
+                payload.get("conditional_regime_ablation_board")
+            ),
+            "per_regime_contribution_board": cls._compact_board_rows(
+                payload.get("per_regime_contribution_board")
             ),
             "removed_counts_by_entry_path_quality_bucket": cls._compact_count_map(
                 payload.get("removed_counts_by_entry_path_quality_bucket")
@@ -866,6 +1000,15 @@ class FeatureRegimeExperimentReporter:
         candidate["conditional_regime_rule_counts"] = (
             fold_feature_regime_filter_summary.get("conditional_regime_rule_counts")
         )
+        candidate["conditional_regime_rule_eligible_counts"] = (
+            fold_feature_regime_filter_summary.get("conditional_regime_rule_eligible_counts")
+        )
+        candidate["conditional_regime_rule_passed_counts"] = (
+            fold_feature_regime_filter_summary.get("conditional_regime_rule_passed_counts")
+        )
+        candidate["conditional_regime_rule_blocked_counts"] = (
+            fold_feature_regime_filter_summary.get("conditional_regime_rule_blocked_counts")
+        )
         candidate["conditional_regime_rule_counts_by_primary_regime"] = (
             fold_feature_regime_filter_summary.get(
                 "conditional_regime_rule_counts_by_primary_regime"
@@ -875,6 +1018,48 @@ class FeatureRegimeExperimentReporter:
             fold_feature_regime_filter_summary.get(
                 "conditional_regime_rule_counts_by_active_flag"
             )
+        )
+        candidate["conditional_regime_rule_metric_failure_counts"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_metric_failure_counts"
+            )
+        )
+        candidate["conditional_regime_rule_metric_failure_counts_by_rule"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_metric_failure_counts_by_rule"
+            )
+        )
+        candidate["conditional_regime_rule_removed_outcome_by_rule"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_removed_outcome_by_rule"
+            )
+        )
+        candidate["conditional_regime_rule_passed_outcome_by_rule"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_passed_outcome_by_rule"
+            )
+        )
+        candidate["removed_outcome_by_primary_regime"] = (
+            fold_feature_regime_filter_summary.get("removed_outcome_by_primary_regime")
+        )
+        candidate["passed_outcome_by_primary_regime"] = (
+            fold_feature_regime_filter_summary.get("passed_outcome_by_primary_regime")
+        )
+        candidate["removed_outcome_by_active_regime_flag"] = (
+            fold_feature_regime_filter_summary.get(
+                "removed_outcome_by_active_regime_flag"
+            )
+        )
+        candidate["passed_outcome_by_active_regime_flag"] = (
+            fold_feature_regime_filter_summary.get(
+                "passed_outcome_by_active_regime_flag"
+            )
+        )
+        candidate["conditional_regime_ablation_board"] = (
+            fold_feature_regime_filter_summary.get("conditional_regime_ablation_board")
+        )
+        candidate["per_regime_contribution_board"] = (
+            fold_feature_regime_filter_summary.get("per_regime_contribution_board")
         )
         return candidate
 
@@ -1132,6 +1317,30 @@ class FeatureRegimeExperimentReporter:
                     )
                 )
             ),
+            "conditional_regime_rule_eligible_counts": (
+                self._as_dict(row.get("conditional_regime_rule_eligible_counts"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_eligible_counts"
+                    )
+                )
+            ),
+            "conditional_regime_rule_passed_counts": (
+                self._as_dict(row.get("conditional_regime_rule_passed_counts"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_passed_counts"
+                    )
+                )
+            ),
+            "conditional_regime_rule_blocked_counts": (
+                self._as_dict(row.get("conditional_regime_rule_blocked_counts"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_blocked_counts"
+                    )
+                )
+            ),
             "conditional_regime_rule_counts_by_primary_regime": (
                 self._as_dict(row.get("conditional_regime_rule_counts_by_primary_regime"))
                 or self._as_dict(
@@ -1145,6 +1354,86 @@ class FeatureRegimeExperimentReporter:
                 or self._as_dict(
                     fold_feature_regime_filter_summary.get(
                         "conditional_regime_rule_counts_by_active_flag"
+                    )
+                )
+            ),
+            "conditional_regime_rule_metric_failure_counts": (
+                self._as_dict(row.get("conditional_regime_rule_metric_failure_counts"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_metric_failure_counts"
+                    )
+                )
+            ),
+            "conditional_regime_rule_metric_failure_counts_by_rule": (
+                self._as_dict(row.get("conditional_regime_rule_metric_failure_counts_by_rule"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_metric_failure_counts_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_removed_outcome_by_rule": (
+                self._as_dict(row.get("conditional_regime_rule_removed_outcome_by_rule"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_removed_outcome_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_passed_outcome_by_rule": (
+                self._as_dict(row.get("conditional_regime_rule_passed_outcome_by_rule"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_passed_outcome_by_rule"
+                    )
+                )
+            ),
+            "removed_outcome_by_primary_regime": (
+                self._as_dict(row.get("removed_outcome_by_primary_regime"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "removed_outcome_by_primary_regime"
+                    )
+                )
+            ),
+            "passed_outcome_by_primary_regime": (
+                self._as_dict(row.get("passed_outcome_by_primary_regime"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "passed_outcome_by_primary_regime"
+                    )
+                )
+            ),
+            "removed_outcome_by_active_regime_flag": (
+                self._as_dict(row.get("removed_outcome_by_active_regime_flag"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "removed_outcome_by_active_regime_flag"
+                    )
+                )
+            ),
+            "passed_outcome_by_active_regime_flag": (
+                self._as_dict(row.get("passed_outcome_by_active_regime_flag"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "passed_outcome_by_active_regime_flag"
+                    )
+                )
+            ),
+            "conditional_regime_ablation_board": (
+                self._as_list(row.get("conditional_regime_ablation_board"))
+                or self._as_list(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_ablation_board"
+                    )
+                )
+            ),
+            "per_regime_contribution_board": (
+                self._as_list(row.get("per_regime_contribution_board"))
+                or self._as_list(
+                    fold_feature_regime_filter_summary.get(
+                        "per_regime_contribution_board"
                     )
                 )
             ),

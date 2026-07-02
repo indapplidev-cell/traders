@@ -128,6 +128,8 @@ def test_fold_feature_probe_reports_market_regime_propagated():
     assert diagnostics["aggregate_regime_source_counts"] == {
         "features_json_regime_flags": 10
     }
+    assert "aggregate_conditional_regime_ablation_board" in diagnostics
+    assert "aggregate_per_regime_contribution_board" in diagnostics
 
 
 def test_ml38_10_30_does_not_change_runtime_candidate_counts():

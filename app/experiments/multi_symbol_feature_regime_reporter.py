@@ -375,8 +375,15 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- aggregate_passed_counts_by_active_regime_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_passed_counts_by_active_regime_flag'))}`",
                 f"- conditional_regime_filter_status: `{adaptive_feature_diag.get('conditional_regime_filter_status')}`",
                 f"- aggregate_conditional_regime_rule_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts'))}`",
+                f"- aggregate_conditional_regime_rule_eligible_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_eligible_counts'))}`",
+                f"- aggregate_conditional_regime_rule_passed_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_passed_counts'))}`",
                 f"- aggregate_conditional_regime_rule_counts_by_primary_regime: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts_by_primary_regime'))}`",
                 f"- aggregate_conditional_regime_rule_counts_by_active_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts_by_active_flag'))}`",
+                f"- aggregate_conditional_regime_rule_metric_failure_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_failure_counts'))}`",
+                f"- aggregate_conditional_regime_rule_removed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_removed_outcome_by_rule'))}`",
+                f"- aggregate_conditional_regime_rule_passed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_passed_outcome_by_rule'))}`",
+                f"- aggregate_conditional_regime_ablation_board: `{self._as_list(adaptive_feature_diag.get('aggregate_conditional_regime_ablation_board'))[:3]}`",
+                f"- aggregate_per_regime_contribution_board: `{self._as_list(adaptive_feature_diag.get('aggregate_per_regime_contribution_board'))[:3]}`",
                 f"- aggregate_missing_feature_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_missing_feature_counts'))}`",
                 f"- recommended_next_stage: `{adaptive_probe.get('recommended_next_stage')}`",
             ]
@@ -405,6 +412,65 @@ class MultiSymbolFeatureRegimeReporter:
             lines.append("- conditional regime filter: `ACTIVE`")
         if adaptive_feature_diag.get("conditional_regime_filter_status") == "HARD_REGIME_FILTER_OR_NON_CONDITIONAL_ONLY":
             lines.append("- warning: `conditional_regime_filter_not_active`")
+        lines.extend(
+            [
+                "",
+                "### ML38.10.32 Conditional regime ablation board",
+                "",
+                "| Rule id | Eligible | Removed | Passed | Removal rate | Removed total R | Passed total R | Effect | Metric failure counts |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+            ]
+        )
+        ablation_board = self._as_list(
+            adaptive_feature_diag.get("aggregate_conditional_regime_ablation_board")
+        )[:10]
+        for row in ablation_board:
+            board_row = self._as_dict(row)
+            removed_outcome = self._as_dict(board_row.get("removed_outcome"))
+            passed_outcome = self._as_dict(board_row.get("passed_outcome"))
+            lines.append(
+                "| `{rule_id}` | `{eligible}` | `{removed}` | `{passed}` | `{removal_rate}` | `{removed_total_r}` | `{passed_total_r}` | `{effect}` | `{metric_failures}` |".format(
+                    rule_id=board_row.get("rule_id"),
+                    eligible=board_row.get("eligible_count"),
+                    removed=board_row.get("removed_count"),
+                    passed=board_row.get("passed_count"),
+                    removal_rate=board_row.get("removal_rate"),
+                    removed_total_r=removed_outcome.get("total_r"),
+                    passed_total_r=passed_outcome.get("total_r"),
+                    effect=board_row.get("effect_label"),
+                    metric_failures=board_row.get("metric_failure_counts"),
+                )
+            )
+        if not ablation_board:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        lines.extend(
+            [
+                "",
+                "### ML38.10.32 Per-regime contribution board",
+                "",
+                "| Market regime | Removed signals | Removed total R | Passed signals | Passed total R | Effect |",
+                "| --- | ---: | ---: | ---: | ---: | --- |",
+            ]
+        )
+        contribution_board = self._as_list(
+            adaptive_feature_diag.get("aggregate_per_regime_contribution_board")
+        )[:10]
+        for row in contribution_board:
+            board_row = self._as_dict(row)
+            removed_outcome = self._as_dict(board_row.get("removed_outcome"))
+            passed_outcome = self._as_dict(board_row.get("passed_outcome"))
+            lines.append(
+                "| `{market_regime}` | `{removed_signal_count}` | `{removed_total_r}` | `{passed_signal_count}` | `{passed_total_r}` | `{effect}` |".format(
+                    market_regime=board_row.get("market_regime"),
+                    removed_signal_count=removed_outcome.get("signal_count"),
+                    removed_total_r=removed_outcome.get("total_r"),
+                    passed_signal_count=passed_outcome.get("signal_count"),
+                    passed_total_r=passed_outcome.get("total_r"),
+                    effect=board_row.get("effect_label"),
+                )
+            )
+        if not contribution_board:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` |")
         lines.extend(
             [
                 "",

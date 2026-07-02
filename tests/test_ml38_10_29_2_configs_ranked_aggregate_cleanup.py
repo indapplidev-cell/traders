@@ -29,6 +29,26 @@ def test_compact_fold_feature_summary_preserves_counts_and_filters_service_keys(
         "removed_counts_by_date": {"2026-06-09": 1},
         "removed_counts_by_regime": {"missing": 1},
         "missing_feature_counts": {"market_regime": 82},
+        "conditional_regime_rule_eligible_counts": {
+            "high_volatility_low_entry_quality": 2,
+        },
+        "conditional_regime_ablation_board": [
+            {
+                "rule_id": "high_volatility_low_entry_quality",
+                "eligible_count": 2,
+                "removed_count": 1,
+                "passed_count": 1,
+                "effect_label": "REMOVAL_HELPFUL",
+            }
+        ],
+        "per_regime_contribution_board": [
+            {
+                "market_regime": "missing",
+                "removed_total_r": -1.0,
+                "passed_total_r": 0.0,
+                "effect_label": "REMOVAL_HELPFUL",
+            }
+        ],
         "removed_signal_examples": [{"signal_date": "2026-06-09"} for _ in range(8)],
     }
 
@@ -39,6 +59,8 @@ def test_compact_fold_feature_summary_preserves_counts_and_filters_service_keys(
     assert compact["removed_counts_by_date"] == {"2026-06-09": 1}
     assert compact["removed_counts_by_regime"] == {"missing": 1}
     assert compact["missing_feature_counts"] == {"market_regime": 82}
+    assert "conditional_regime_ablation_board" in compact
+    assert "per_regime_contribution_board" in compact
     assert len(compact["removed_signal_examples"]) == 5
     assert compact["removed_signal_examples_truncated"] is True
     assert "_key_count" not in compact["primary_removed_counts_by_reason"]

@@ -244,6 +244,17 @@ class ProfitAwareEvaluatorV2:
             rules=fold_repair_feature_filter_rules,
             target_dates=fold_repair_target_dates,
             date_blackout_used=fold_repair_time_slice_blackout_enabled,
+            contribution_trade_params={
+                "take_profit_atr": take_profit_atr,
+                "stop_loss_atr": stop_loss_atr,
+                "fee_r": fee_r,
+                "slippage_r": slippage_r,
+                "same_candle_policy": same_candle_policy,
+                "exit_policy_profile": exit_policy_profile,
+                "exit_timeout_bars": exit_timeout_bars,
+                "exit_mitigation_loss_r": exit_mitigation_loss_r,
+                "exit_neutral_abs_r": exit_neutral_abs_r,
+            },
         )
         entry_path_filter_summary = self._entry_path_final_decision_filter_summary(
             predictions=predictions,
@@ -911,6 +922,118 @@ class ProfitAwareEvaluatorV2:
         items = cls._as_list(value)
         return {str(item).strip().lower() for item in items if str(item).strip()}
 
+    @staticmethod
+    def _empty_contribution_stats() -> dict[str, Any]:
+        return {
+            "signal_count": 0,
+            "total_r": 0.0,
+            "positive_r": 0.0,
+            "negative_r": 0.0,
+            "win_count": 0,
+            "loss_count": 0,
+            "neutral_count": 0,
+            "avg_r": None,
+            "win_rate": None,
+        }
+
+    @classmethod
+    def _update_contribution_stats(
+        cls,
+        stats: dict[str, Any],
+        outcome: dict[str, Any] | None,
+    ) -> None:
+        if not outcome:
+            return
+        try:
+            net_r = float(outcome.get("net_r", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            net_r = 0.0
+
+        stats["signal_count"] = int(stats.get("signal_count", 0) or 0) + 1
+        stats["total_r"] = float(stats.get("total_r", 0.0) or 0.0) + net_r
+        if net_r > 0:
+            stats["positive_r"] = float(stats.get("positive_r", 0.0) or 0.0) + net_r
+            stats["win_count"] = int(stats.get("win_count", 0) or 0) + 1
+        elif net_r < 0:
+            stats["negative_r"] = float(stats.get("negative_r", 0.0) or 0.0) + net_r
+            stats["loss_count"] = int(stats.get("loss_count", 0) or 0) + 1
+        else:
+            stats["neutral_count"] = int(stats.get("neutral_count", 0) or 0) + 1
+
+        signal_count = int(stats.get("signal_count", 0) or 0)
+        if signal_count:
+            stats["avg_r"] = float(stats["total_r"]) / signal_count
+            stats["win_rate"] = int(stats.get("win_count", 0) or 0) / signal_count
+
+    @classmethod
+    def _finalize_contribution_stats(cls, stats: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(stats or cls._empty_contribution_stats())
+        signal_count = int(payload.get("signal_count", 0) or 0)
+        payload["signal_count"] = signal_count
+        payload["total_r"] = float(payload.get("total_r", 0.0) or 0.0)
+        payload["positive_r"] = float(payload.get("positive_r", 0.0) or 0.0)
+        payload["negative_r"] = float(payload.get("negative_r", 0.0) or 0.0)
+        payload["win_count"] = int(payload.get("win_count", 0) or 0)
+        payload["loss_count"] = int(payload.get("loss_count", 0) or 0)
+        payload["neutral_count"] = int(payload.get("neutral_count", 0) or 0)
+        if signal_count:
+            payload["avg_r"] = payload["total_r"] / signal_count
+            payload["win_rate"] = int(payload.get("win_count", 0) or 0) / signal_count
+        else:
+            payload["avg_r"] = None
+            payload["win_rate"] = None
+        return payload
+
+    @classmethod
+    def _finalize_contribution_stats_map(
+        cls,
+        stats_by_key: dict[str, dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        return {
+            key: cls._finalize_contribution_stats(value)
+            for key, value in sorted(stats_by_key.items())
+            if int(value.get("signal_count", 0) or 0) > 0
+        }
+
+    def _simulate_contribution_outcome(
+        self,
+        row: dict[str, Any],
+        contribution_trade_params: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        if not contribution_trade_params:
+            return None
+        try:
+            return self._simulate_trade(
+                row=row,
+                take_profit_atr=float(contribution_trade_params["take_profit_atr"]),
+                stop_loss_atr=float(contribution_trade_params["stop_loss_atr"]),
+                fee_r=float(contribution_trade_params.get("fee_r", 0.0) or 0.0),
+                slippage_r=float(contribution_trade_params.get("slippage_r", 0.0) or 0.0),
+                same_candle_policy=str(
+                    contribution_trade_params.get("same_candle_policy") or "conservative"
+                ),
+                exit_policy_profile=contribution_trade_params.get("exit_policy_profile"),
+                exit_timeout_bars=contribution_trade_params.get("exit_timeout_bars"),
+                exit_mitigation_loss_r=contribution_trade_params.get(
+                    "exit_mitigation_loss_r"
+                ),
+                exit_neutral_abs_r=contribution_trade_params.get("exit_neutral_abs_r"),
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _increment_nested_count(
+        cls,
+        mapping: dict[str, dict[str, int]],
+        outer_key: Any,
+        inner_key: Any,
+    ) -> None:
+        outer = str(outer_key or "missing")
+        inner = str(inner_key or "missing")
+        mapping.setdefault(outer, {})
+        mapping[outer][inner] = mapping[outer].get(inner, 0) + 1
+
     @classmethod
     def _conditional_regime_rules(cls, rules: dict[str, Any]) -> list[dict[str, Any]]:
         payload = rules.get("conditional_regime_rules") or []
@@ -939,6 +1062,231 @@ class ProfitAwareEvaluatorV2:
         if above_value is not None and value is not None and value > above_value:
             return True
         return False
+
+    @classmethod
+    def _condition_metric_failures(
+        cls,
+        *,
+        rule: dict[str, Any],
+        entry_quality: float | None,
+        setup_quality: float | None,
+        stop_pressure: float | None,
+        mae_pressure: float | None,
+    ) -> list[str]:
+        failures: list[str] = []
+        checks = (
+            ("entry_path_quality_below", entry_quality, rule.get("entry_path_quality_below"), "below"),
+            ("entry_path_quality_above", entry_quality, rule.get("entry_path_quality_above"), "above"),
+            ("setup_quality_below", setup_quality, rule.get("setup_quality_below"), "below"),
+            ("setup_quality_above", setup_quality, rule.get("setup_quality_above"), "above"),
+            ("stop_pressure_below", stop_pressure, rule.get("stop_pressure_below"), "below"),
+            ("stop_pressure_above", stop_pressure, rule.get("stop_pressure_above"), "above"),
+            ("mae_pressure_below", mae_pressure, rule.get("mae_pressure_below"), "below"),
+            ("mae_pressure_above", mae_pressure, rule.get("mae_pressure_above"), "above"),
+        )
+        for metric_name, value, threshold, direction in checks:
+            threshold_value = cls._float_or_none(threshold)
+            if threshold_value is None or value is None:
+                continue
+            if direction == "below" and value < threshold_value:
+                failures.append(metric_name)
+            if direction == "above" and value > threshold_value:
+                failures.append(metric_name)
+        return failures
+
+    @classmethod
+    def _conditional_regime_rule_evaluations(
+        cls,
+        *,
+        conditional_regime_rules: list[dict[str, Any]],
+        primary_regime: str,
+        normalized_regime_values: set[str],
+        entry_quality: float | None,
+        setup_quality: float | None,
+        stop_pressure: float | None,
+        mae_pressure: float | None,
+    ) -> list[dict[str, Any]]:
+        evaluations: list[dict[str, Any]] = []
+        for rule in conditional_regime_rules:
+            rule_id = str(rule.get("rule_id") or "").strip()
+            if not rule_id:
+                continue
+
+            primary_any = cls._normalized_text_set(
+                rule.get("primary_regime_any") or rule.get("regime_any")
+            )
+            active_any = cls._normalized_text_set(rule.get("active_regime_any"))
+
+            primary_match = bool(primary_any and primary_regime in primary_any)
+            active_match = bool(
+                active_any and normalized_regime_values.intersection(active_any)
+            )
+            if primary_any and not primary_match:
+                regime_context_matched = False
+            elif active_any and not active_match:
+                regime_context_matched = False
+            elif not primary_any and not active_any:
+                regime_context_matched = False
+            else:
+                regime_context_matched = True
+
+            metric_failures = (
+                cls._condition_metric_failures(
+                    rule=rule,
+                    entry_quality=entry_quality,
+                    setup_quality=setup_quality,
+                    stop_pressure=stop_pressure,
+                    mae_pressure=mae_pressure,
+                )
+                if regime_context_matched
+                else []
+            )
+
+            evaluations.append(
+                {
+                    "rule_id": rule_id,
+                    "regime_context_matched": regime_context_matched,
+                    "metric_failed": bool(metric_failures),
+                    "metric_failures": metric_failures,
+                    "primary_regime": primary_regime or "missing",
+                    "active_regime_flags": sorted(normalized_regime_values),
+                }
+            )
+        return evaluations
+
+    @classmethod
+    def _contribution_effect_label(
+        cls,
+        removed_outcome: dict[str, Any],
+        passed_outcome: dict[str, Any],
+        *,
+        removed_count: int,
+    ) -> str:
+        if removed_count <= 0:
+            return "NO_REMOVALS"
+        if (
+            int(removed_outcome.get("signal_count", 0) or 0) <= 0
+            and int(passed_outcome.get("signal_count", 0) or 0) <= 0
+        ):
+            return "OUTCOME_UNAVAILABLE"
+        removed_total_r = float(removed_outcome.get("total_r", 0.0) or 0.0)
+        if removed_total_r < 0:
+            return "REMOVAL_HELPFUL"
+        if removed_total_r > 0:
+            return "REMOVAL_HARMFUL"
+        return "REMOVAL_NEUTRAL"
+
+    @classmethod
+    def _conditional_regime_ablation_board(
+        cls,
+        *,
+        eligible_counts: dict[str, int],
+        blocked_counts: dict[str, int],
+        passed_counts: dict[str, int],
+        metric_failure_counts_by_rule: dict[str, dict[str, int]],
+        removed_outcome_by_rule: dict[str, dict[str, Any]],
+        passed_outcome_by_rule: dict[str, dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        rule_ids = sorted(
+            set(eligible_counts)
+            | set(blocked_counts)
+            | set(passed_counts)
+            | set(metric_failure_counts_by_rule)
+            | set(removed_outcome_by_rule)
+            | set(passed_outcome_by_rule)
+        )
+        for rule_id in rule_ids:
+            eligible_count = int(eligible_counts.get(rule_id, 0) or 0)
+            removed_count = int(blocked_counts.get(rule_id, 0) or 0)
+            passed_count = int(passed_counts.get(rule_id, 0) or 0)
+            removed_outcome = cls._finalize_contribution_stats(
+                removed_outcome_by_rule.get(rule_id)
+            )
+            passed_outcome = cls._finalize_contribution_stats(
+                passed_outcome_by_rule.get(rule_id)
+            )
+            rows.append(
+                {
+                    "rule_id": rule_id,
+                    "eligible_count": eligible_count,
+                    "removed_count": removed_count,
+                    "passed_count": passed_count,
+                    "removal_rate": (
+                        removed_count / eligible_count if eligible_count > 0 else None
+                    ),
+                    "removed_outcome": removed_outcome,
+                    "passed_outcome": passed_outcome,
+                    "removed_total_r": removed_outcome.get("total_r"),
+                    "passed_total_r": passed_outcome.get("total_r"),
+                    "metric_failure_counts": dict(
+                        sorted(
+                            (
+                                metric_failure_counts_by_rule.get(rule_id)
+                                or {}
+                            ).items()
+                        )
+                    ),
+                    "effect_label": cls._contribution_effect_label(
+                        removed_outcome,
+                        passed_outcome,
+                        removed_count=removed_count,
+                    ),
+                }
+            )
+        return sorted(
+            rows,
+            key=lambda row: (
+                -int(row.get("removed_count", 0) or 0),
+                -int(row.get("eligible_count", 0) or 0),
+                str(row.get("rule_id") or ""),
+            ),
+        )
+
+    @classmethod
+    def _per_regime_contribution_board(
+        cls,
+        *,
+        removed_outcome_by_primary_regime: dict[str, dict[str, Any]],
+        passed_outcome_by_primary_regime: dict[str, dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        regime_keys = sorted(
+            set(removed_outcome_by_primary_regime) | set(passed_outcome_by_primary_regime)
+        )
+        for regime in regime_keys:
+            removed_outcome = cls._finalize_contribution_stats(
+                removed_outcome_by_primary_regime.get(regime)
+            )
+            passed_outcome = cls._finalize_contribution_stats(
+                passed_outcome_by_primary_regime.get(regime)
+            )
+            rows.append(
+                {
+                    "market_regime": regime,
+                    "removed_outcome": removed_outcome,
+                    "passed_outcome": passed_outcome,
+                    "removed_signal_count": removed_outcome.get("signal_count"),
+                    "removed_total_r": removed_outcome.get("total_r"),
+                    "passed_signal_count": passed_outcome.get("signal_count"),
+                    "passed_total_r": passed_outcome.get("total_r"),
+                    "effect_label": cls._contribution_effect_label(
+                        removed_outcome,
+                        passed_outcome,
+                        removed_count=int(removed_outcome.get("signal_count", 0) or 0),
+                    ),
+                }
+            )
+        return sorted(
+            rows,
+            key=lambda row: (
+                -(
+                    int(row.get("removed_signal_count", 0) or 0)
+                    + int(row.get("passed_signal_count", 0) or 0)
+                ),
+                str(row.get("market_regime") or ""),
+            ),
+        )
 
     @staticmethod
     def _bucket_numeric(value: float | None) -> str:
@@ -1023,6 +1371,7 @@ class ProfitAwareEvaluatorV2:
         rules: dict[str, Any] | None,
         target_dates: tuple[str, ...] | list[str] | None,
         date_blackout_used: bool,
+        contribution_trade_params: dict[str, Any] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         normalized_rules = dict(rules or {})
         normalized_target_dates = [
@@ -1081,6 +1430,19 @@ class ProfitAwareEvaluatorV2:
                 "market_regime_present_count": len(signal_rows),
                 "market_regime_missing_count": 0,
                 "conditional_regime_rule_counts": {},
+                "conditional_regime_rule_eligible_counts": {},
+                "conditional_regime_rule_passed_counts": {},
+                "conditional_regime_rule_blocked_counts": {},
+                "conditional_regime_rule_metric_failure_counts": {},
+                "conditional_regime_rule_metric_failure_counts_by_rule": {},
+                "conditional_regime_rule_removed_outcome_by_rule": {},
+                "conditional_regime_rule_passed_outcome_by_rule": {},
+                "removed_outcome_by_primary_regime": {},
+                "passed_outcome_by_primary_regime": {},
+                "removed_outcome_by_active_regime_flag": {},
+                "passed_outcome_by_active_regime_flag": {},
+                "conditional_regime_ablation_board": [],
+                "per_regime_contribution_board": [],
                 "conditional_regime_rule_counts_by_primary_regime": {},
                 "conditional_regime_rule_counts_by_active_flag": {},
                 "removed_counts_by_entry_path_quality_bucket": {},
@@ -1105,8 +1467,19 @@ class ProfitAwareEvaluatorV2:
         passed_counts_by_active_regime_flag: dict[str, int] = {}
         regime_source_counts: dict[str, int] = {}
         conditional_regime_rule_counts: dict[str, int] = {}
+        conditional_regime_rule_eligible_counts: dict[str, int] = {}
+        conditional_regime_rule_passed_counts: dict[str, int] = {}
+        conditional_regime_rule_blocked_counts: dict[str, int] = {}
         conditional_regime_rule_counts_by_primary_regime: dict[str, int] = {}
         conditional_regime_rule_counts_by_active_flag: dict[str, int] = {}
+        conditional_regime_rule_metric_failure_counts: dict[str, int] = {}
+        conditional_regime_rule_metric_failure_counts_by_rule: dict[str, dict[str, int]] = {}
+        conditional_regime_rule_removed_outcome_by_rule: dict[str, dict[str, Any]] = {}
+        conditional_regime_rule_passed_outcome_by_rule: dict[str, dict[str, Any]] = {}
+        removed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
+        passed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
+        removed_outcome_by_active_regime_flag: dict[str, dict[str, Any]] = {}
+        passed_outcome_by_active_regime_flag: dict[str, dict[str, Any]] = {}
         removed_counts_by_entry_path_quality_bucket: dict[str, int] = {}
         removed_counts_by_setup_quality_bucket: dict[str, int] = {}
         removed_counts_by_stop_pressure_bucket: dict[str, int] = {}
@@ -1128,14 +1501,13 @@ class ProfitAwareEvaluatorV2:
                 record_missing(missing_name)
             return value
 
-        def collect_block_reasons(row: dict[str, Any]) -> list[str]:
-            reasons: list[str] = []
-
+        def row_filter_context(row: dict[str, Any]) -> dict[str, Any]:
             entry_quality = metric_value(
                 row,
                 ("entry_path_quality_score", "entry_path_score", "entry_quality_score"),
                 "entry_path_quality_score",
             )
+            reasons: list[str] = []
             min_entry_quality = self._float_or_none(
                 normalized_rules.get("min_entry_path_quality_score")
             )
@@ -1213,49 +1585,19 @@ class ProfitAwareEvaluatorV2:
             ):
                 reasons.append("blocked_regime")
 
-            for rule in conditional_regime_rules:
-                rule_id = str(rule.get("rule_id") or "").strip()
-                if not rule_id:
-                    continue
-
-                primary_any = self._normalized_text_set(
-                    rule.get("primary_regime_any") or rule.get("regime_any")
-                )
-                active_any = self._normalized_text_set(rule.get("active_regime_any"))
-
-                if primary_any and primary_regime not in primary_any:
-                    continue
-                if active_any and not normalized_regime_values.intersection(active_any):
-                    continue
-                if not primary_any and not active_any:
-                    continue
-
-                metric_failed = False
-                metric_failed = metric_failed or self._metric_condition_failed(
-                    value=entry_quality,
-                    below=rule.get("entry_path_quality_below"),
-                    above=rule.get("entry_path_quality_above"),
-                )
-                metric_failed = metric_failed or self._metric_condition_failed(
-                    value=setup_quality,
-                    below=rule.get("setup_quality_below"),
-                    above=rule.get("setup_quality_above"),
-                )
-                metric_failed = metric_failed or self._metric_condition_failed(
-                    value=stop_pressure,
-                    below=rule.get("stop_pressure_below"),
-                    above=rule.get("stop_pressure_above"),
-                )
-                metric_failed = metric_failed or self._metric_condition_failed(
-                    value=mae_pressure,
-                    below=rule.get("mae_pressure_below"),
-                    above=rule.get("mae_pressure_above"),
-                )
-
-                if metric_failed:
-                    reasons.append(f"conditional_regime_rule:{rule_id}")
-
-            return list(dict.fromkeys(reasons))
+            conditional_rule_evaluations = self._conditional_regime_rule_evaluations(
+                conditional_regime_rules=conditional_regime_rules,
+                primary_regime=primary_regime,
+                normalized_regime_values=normalized_regime_values,
+                entry_quality=entry_quality,
+                setup_quality=setup_quality,
+                stop_pressure=stop_pressure,
+                mae_pressure=mae_pressure,
+            )
+            return {
+                "block_reasons": list(dict.fromkeys(reasons)),
+                "conditional_rule_evaluations": conditional_rule_evaluations,
+            }
 
         target_date_input_count = 0
         target_date_removed_count = 0
@@ -1267,30 +1609,115 @@ class ProfitAwareEvaluatorV2:
                 target_date_input_count += 1
 
             bucket_snapshot = self._feature_filter_bucket_snapshot(row)
-            block_reasons = collect_block_reasons(row)
+            row_context = row_filter_context(row)
+            block_reasons = list(row_context.get("block_reasons") or [])
             self._increment_count(
                 regime_source_counts,
                 bucket_snapshot.get("market_regime_source") or "missing",
             )
             active_flags = bucket_snapshot.get("active_regime_flags") or []
+            contribution_outcome: dict[str, Any] | None = None
+            eligible_for_any_conditional_rule = False
+            blocked_by_any_conditional_rule = False
+
+            for evaluation in row_context.get("conditional_rule_evaluations") or []:
+                if not evaluation.get("regime_context_matched"):
+                    continue
+
+                rule_id = str(evaluation.get("rule_id") or "").strip()
+                if not rule_id:
+                    continue
+
+                eligible_for_any_conditional_rule = True
+                self._increment_count(conditional_regime_rule_eligible_counts, rule_id)
+
+                metric_failures = [
+                    str(item).strip()
+                    for item in self._as_list(evaluation.get("metric_failures"))
+                    if str(item).strip()
+                ]
+                if metric_failures:
+                    blocked_by_any_conditional_rule = True
+                    self._increment_count(conditional_regime_rule_counts, rule_id)
+                    self._increment_count(conditional_regime_rule_blocked_counts, rule_id)
+                    self._increment_count(
+                        conditional_regime_rule_counts_by_primary_regime,
+                        bucket_snapshot.get("regime"),
+                    )
+                    for flag in active_flags:
+                        self._increment_count(
+                            conditional_regime_rule_counts_by_active_flag,
+                            flag,
+                        )
+                    for metric_name in metric_failures:
+                        self._increment_count(
+                            conditional_regime_rule_metric_failure_counts,
+                            metric_name,
+                        )
+                        self._increment_nested_count(
+                            conditional_regime_rule_metric_failure_counts_by_rule,
+                            rule_id,
+                            metric_name,
+                        )
+                    block_reason = f"conditional_regime_rule:{rule_id}"
+                    if block_reason not in block_reasons:
+                        block_reasons.append(block_reason)
+                    if contribution_outcome is None:
+                        contribution_outcome = self._simulate_contribution_outcome(
+                            row,
+                            contribution_trade_params,
+                        )
+                    stats = conditional_regime_rule_removed_outcome_by_rule.setdefault(
+                        rule_id,
+                        self._empty_contribution_stats(),
+                    )
+                    self._update_contribution_stats(stats, contribution_outcome)
+                else:
+                    self._increment_count(conditional_regime_rule_passed_counts, rule_id)
+                    if contribution_outcome is None:
+                        contribution_outcome = self._simulate_contribution_outcome(
+                            row,
+                            contribution_trade_params,
+                        )
+                    stats = conditional_regime_rule_passed_outcome_by_rule.setdefault(
+                        rule_id,
+                        self._empty_contribution_stats(),
+                    )
+                    self._update_contribution_stats(stats, contribution_outcome)
+
+            if eligible_for_any_conditional_rule:
+                if contribution_outcome is None:
+                    contribution_outcome = self._simulate_contribution_outcome(
+                        row,
+                        contribution_trade_params,
+                    )
+                target_primary_regime_map = (
+                    removed_outcome_by_primary_regime
+                    if blocked_by_any_conditional_rule
+                    else passed_outcome_by_primary_regime
+                )
+                target_active_flag_map = (
+                    removed_outcome_by_active_regime_flag
+                    if blocked_by_any_conditional_rule
+                    else passed_outcome_by_active_regime_flag
+                )
+                primary_regime_stats = target_primary_regime_map.setdefault(
+                    str(bucket_snapshot.get("regime") or "missing"),
+                    self._empty_contribution_stats(),
+                )
+                self._update_contribution_stats(primary_regime_stats, contribution_outcome)
+                for flag in active_flags:
+                    active_flag_stats = target_active_flag_map.setdefault(
+                        str(flag or "missing"),
+                        self._empty_contribution_stats(),
+                    )
+                    self._update_contribution_stats(active_flag_stats, contribution_outcome)
 
             if block_reasons:
                 primary_reason = block_reasons[0]
                 self._increment_count(primary_removed_counts_by_reason, primary_reason)
                 for reason in block_reasons:
                     self._increment_count(matched_removed_counts_by_reason, reason)
-                    if reason.startswith("conditional_regime_rule:"):
-                        rule_id = reason.split(":", 1)[1]
-                        self._increment_count(conditional_regime_rule_counts, rule_id)
-                        self._increment_count(
-                            conditional_regime_rule_counts_by_primary_regime,
-                            bucket_snapshot.get("regime"),
-                        )
-                        for flag in active_flags:
-                            self._increment_count(
-                                conditional_regime_rule_counts_by_active_flag,
-                                flag,
-                            )
 
                 self._increment_count(removed_counts_by_date, signal_date or "missing")
                 self._increment_count(removed_counts_by_regime, bucket_snapshot.get("regime"))
@@ -1348,6 +1775,36 @@ class ProfitAwareEvaluatorV2:
             warnings.append("unsupported_missing_feature_policy_fell_back_to_pass_with_warning")
 
         removed_signal_count = max(0, len(signal_rows) - len(filtered_rows))
+        finalized_removed_outcome_by_rule = self._finalize_contribution_stats_map(
+            conditional_regime_rule_removed_outcome_by_rule
+        )
+        finalized_passed_outcome_by_rule = self._finalize_contribution_stats_map(
+            conditional_regime_rule_passed_outcome_by_rule
+        )
+        finalized_removed_outcome_by_primary_regime = self._finalize_contribution_stats_map(
+            removed_outcome_by_primary_regime
+        )
+        finalized_passed_outcome_by_primary_regime = self._finalize_contribution_stats_map(
+            passed_outcome_by_primary_regime
+        )
+        finalized_removed_outcome_by_active_regime_flag = self._finalize_contribution_stats_map(
+            removed_outcome_by_active_regime_flag
+        )
+        finalized_passed_outcome_by_active_regime_flag = self._finalize_contribution_stats_map(
+            passed_outcome_by_active_regime_flag
+        )
+        conditional_regime_ablation_board = self._conditional_regime_ablation_board(
+            eligible_counts=conditional_regime_rule_eligible_counts,
+            blocked_counts=conditional_regime_rule_blocked_counts,
+            passed_counts=conditional_regime_rule_passed_counts,
+            metric_failure_counts_by_rule=conditional_regime_rule_metric_failure_counts_by_rule,
+            removed_outcome_by_rule=finalized_removed_outcome_by_rule,
+            passed_outcome_by_rule=finalized_passed_outcome_by_rule,
+        )
+        per_regime_contribution_board = self._per_regime_contribution_board(
+            removed_outcome_by_primary_regime=finalized_removed_outcome_by_primary_regime,
+            passed_outcome_by_primary_regime=finalized_passed_outcome_by_primary_regime,
+        )
         summary = {
             **base_summary,
             "output_signal_count": len(filtered_rows),
@@ -1367,12 +1824,41 @@ class ProfitAwareEvaluatorV2:
             "passed_counts_by_active_regime_flag": passed_counts_by_active_regime_flag,
             "regime_source_counts": regime_source_counts,
             "conditional_regime_rule_counts": conditional_regime_rule_counts,
+            "conditional_regime_rule_eligible_counts": conditional_regime_rule_eligible_counts,
+            "conditional_regime_rule_passed_counts": conditional_regime_rule_passed_counts,
+            "conditional_regime_rule_blocked_counts": conditional_regime_rule_blocked_counts,
             "conditional_regime_rule_counts_by_primary_regime": (
                 conditional_regime_rule_counts_by_primary_regime
             ),
             "conditional_regime_rule_counts_by_active_flag": (
                 conditional_regime_rule_counts_by_active_flag
             ),
+            "conditional_regime_rule_metric_failure_counts": (
+                conditional_regime_rule_metric_failure_counts
+            ),
+            "conditional_regime_rule_metric_failure_counts_by_rule": dict(
+                sorted(conditional_regime_rule_metric_failure_counts_by_rule.items())
+            ),
+            "conditional_regime_rule_removed_outcome_by_rule": (
+                finalized_removed_outcome_by_rule
+            ),
+            "conditional_regime_rule_passed_outcome_by_rule": (
+                finalized_passed_outcome_by_rule
+            ),
+            "removed_outcome_by_primary_regime": (
+                finalized_removed_outcome_by_primary_regime
+            ),
+            "passed_outcome_by_primary_regime": (
+                finalized_passed_outcome_by_primary_regime
+            ),
+            "removed_outcome_by_active_regime_flag": (
+                finalized_removed_outcome_by_active_regime_flag
+            ),
+            "passed_outcome_by_active_regime_flag": (
+                finalized_passed_outcome_by_active_regime_flag
+            ),
+            "conditional_regime_ablation_board": conditional_regime_ablation_board,
+            "per_regime_contribution_board": per_regime_contribution_board,
             "market_regime_present_count": (
                 len(signal_rows) - missing_feature_counts.get("market_regime", 0)
             ),
