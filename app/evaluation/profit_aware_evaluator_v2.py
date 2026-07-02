@@ -843,7 +843,14 @@ class ProfitAwareEvaluatorV2:
         return None
 
     @staticmethod
-    def _row_regime_value(row: dict[str, Any]) -> str | None:
+    def _feature_flag_active(features_json: dict[str, Any], key: str) -> bool:
+        try:
+            return float(features_json.get(key, 0.0) or 0.0) >= 0.5
+        except (TypeError, ValueError):
+            return False
+
+    @classmethod
+    def _row_regime_value(cls, row: dict[str, Any]) -> str | None:
         for key in ("market_regime", "regime_bucket", "feature_regime_bucket"):
             value = row.get(key)
             if value is None:
@@ -851,7 +858,53 @@ class ProfitAwareEvaluatorV2:
             text = str(value).strip()
             if text:
                 return text
+
+        features_json = row.get("features_json")
+        if isinstance(features_json, dict):
+            for feature_key, regime_name in (
+                ("regime_trend_up", "trend_up"),
+                ("regime_trend_down", "trend_down"),
+                ("regime_range", "range"),
+                ("regime_high_volatility", "high_volatility"),
+                ("regime_low_volatility", "low_volatility"),
+                ("regime_unknown", "unknown"),
+            ):
+                if cls._feature_flag_active(features_json, feature_key):
+                    return regime_name
+
         return None
+
+    @classmethod
+    def _row_regime_values(cls, row: dict[str, Any]) -> tuple[str, ...]:
+        values: list[str] = []
+        primary = cls._row_regime_value(row)
+        if primary:
+            values.append(primary)
+
+        raw_flags = row.get("active_regime_flags") or ()
+        if isinstance(raw_flags, str):
+            raw_flags = [raw_flags]
+        for item in raw_flags:
+            text = str(item).strip()
+            if text:
+                values.append(text)
+
+        features_json = row.get("features_json")
+        if isinstance(features_json, dict):
+            for feature_key, regime_name in (
+                ("regime_trend_up", "trend_up"),
+                ("regime_trend_down", "trend_down"),
+                ("regime_range", "range"),
+                ("regime_high_volatility", "high_volatility"),
+                ("regime_low_volatility", "low_volatility"),
+                ("regime_unknown", "unknown"),
+                ("regime_volatility_expanding", "volatility_expanding"),
+                ("regime_volatility_contracting", "volatility_contracting"),
+            ):
+                if cls._feature_flag_active(features_json, feature_key):
+                    values.append(regime_name)
+
+        return tuple(dict.fromkeys(values))
 
     @staticmethod
     def _bucket_numeric(value: float | None) -> str:
@@ -896,10 +949,16 @@ class ProfitAwareEvaluatorV2:
             "mae_adverse_excursion_score",
         )
         regime = cls._row_regime_value(row) or "missing"
+        active_regime_flags = list(cls._row_regime_values(row))
         return {
             "signal_date": cls._extract_signal_date_static(row),
             "signal_direction": str(row.get("signal_direction") or "").upper() or None,
             "regime": regime,
+            "market_regime": regime,
+            "regime_bucket": row.get("regime_bucket") or regime,
+            "feature_regime_bucket": row.get("feature_regime_bucket") or regime,
+            "market_regime_source": row.get("market_regime_source"),
+            "active_regime_flags": active_regime_flags,
             "entry_path_quality_score": entry_quality,
             "setup_quality_score": setup_quality,
             "stop_pressure_risk_score": stop_pressure,
@@ -971,6 +1030,11 @@ class ProfitAwareEvaluatorV2:
                 "passed_counts_by_date": {},
                 "removed_counts_by_regime": {},
                 "passed_counts_by_regime": {},
+                "removed_counts_by_active_regime_flag": {},
+                "passed_counts_by_active_regime_flag": {},
+                "regime_source_counts": {},
+                "market_regime_present_count": len(signal_rows),
+                "market_regime_missing_count": 0,
                 "removed_counts_by_entry_path_quality_bucket": {},
                 "removed_counts_by_setup_quality_bucket": {},
                 "removed_counts_by_stop_pressure_bucket": {},
@@ -989,6 +1053,9 @@ class ProfitAwareEvaluatorV2:
         passed_counts_by_date: dict[str, int] = {}
         removed_counts_by_regime: dict[str, int] = {}
         passed_counts_by_regime: dict[str, int] = {}
+        removed_counts_by_active_regime_flag: dict[str, int] = {}
+        passed_counts_by_active_regime_flag: dict[str, int] = {}
+        regime_source_counts: dict[str, int] = {}
         removed_counts_by_entry_path_quality_bucket: dict[str, int] = {}
         removed_counts_by_setup_quality_bucket: dict[str, int] = {}
         removed_counts_by_stop_pressure_bucket: dict[str, int] = {}
@@ -1062,11 +1129,17 @@ class ProfitAwareEvaluatorV2:
             if max_mae_pressure is not None and mae_pressure is not None and mae_pressure > max_mae_pressure:
                 reasons.append("high_mae_pressure")
 
-            regime_value = self._row_regime_value(row)
-            if regime_value is None:
+            regime_values = self._row_regime_values(row)
+            if not regime_values:
                 record_missing("market_regime")
-            elif blocked_regime_values and regime_value.strip().lower() in blocked_regime_values:
-                reasons.append("blocked_regime")
+            elif blocked_regime_values:
+                normalized_regime_values = {
+                    str(value).strip().lower()
+                    for value in regime_values
+                    if str(value).strip()
+                }
+                if normalized_regime_values.intersection(blocked_regime_values):
+                    reasons.append("blocked_regime")
 
             return list(dict.fromkeys(reasons))
 
@@ -1081,6 +1154,11 @@ class ProfitAwareEvaluatorV2:
 
             bucket_snapshot = self._feature_filter_bucket_snapshot(row)
             block_reasons = collect_block_reasons(row)
+            self._increment_count(
+                regime_source_counts,
+                bucket_snapshot.get("market_regime_source") or "missing",
+            )
+            active_flags = bucket_snapshot.get("active_regime_flags") or []
 
             if block_reasons:
                 primary_reason = block_reasons[0]
@@ -1090,6 +1168,8 @@ class ProfitAwareEvaluatorV2:
 
                 self._increment_count(removed_counts_by_date, signal_date or "missing")
                 self._increment_count(removed_counts_by_regime, bucket_snapshot.get("regime"))
+                for flag in active_flags:
+                    self._increment_count(removed_counts_by_active_regime_flag, flag)
                 self._increment_count(
                     removed_counts_by_entry_path_quality_bucket,
                     bucket_snapshot.get("entry_path_quality_bucket"),
@@ -1124,6 +1204,8 @@ class ProfitAwareEvaluatorV2:
             filtered_rows.append(row)
             self._increment_count(passed_counts_by_date, signal_date or "missing")
             self._increment_count(passed_counts_by_regime, bucket_snapshot.get("regime"))
+            for flag in active_flags:
+                self._increment_count(passed_counts_by_active_regime_flag, flag)
 
             if signal_date in target_date_set:
                 target_date_passed_count += 1
@@ -1155,6 +1237,13 @@ class ProfitAwareEvaluatorV2:
             "passed_counts_by_date": passed_counts_by_date,
             "removed_counts_by_regime": removed_counts_by_regime,
             "passed_counts_by_regime": passed_counts_by_regime,
+            "removed_counts_by_active_regime_flag": removed_counts_by_active_regime_flag,
+            "passed_counts_by_active_regime_flag": passed_counts_by_active_regime_flag,
+            "regime_source_counts": regime_source_counts,
+            "market_regime_present_count": (
+                len(signal_rows) - missing_feature_counts.get("market_regime", 0)
+            ),
+            "market_regime_missing_count": missing_feature_counts.get("market_regime", 0),
             "removed_counts_by_entry_path_quality_bucket": removed_counts_by_entry_path_quality_bucket,
             "removed_counts_by_setup_quality_bucket": removed_counts_by_setup_quality_bucket,
             "removed_counts_by_stop_pressure_bucket": removed_counts_by_stop_pressure_bucket,

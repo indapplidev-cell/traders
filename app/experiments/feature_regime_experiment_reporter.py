@@ -213,6 +213,17 @@ class FeatureRegimeExperimentReporter:
             "passed_counts_by_regime": cls._compact_count_map(
                 payload.get("passed_counts_by_regime")
             ),
+            "removed_counts_by_active_regime_flag": cls._compact_count_map(
+                payload.get("removed_counts_by_active_regime_flag")
+            ),
+            "passed_counts_by_active_regime_flag": cls._compact_count_map(
+                payload.get("passed_counts_by_active_regime_flag")
+            ),
+            "regime_source_counts": cls._compact_count_map(
+                payload.get("regime_source_counts")
+            ),
+            "market_regime_present_count": payload.get("market_regime_present_count"),
+            "market_regime_missing_count": payload.get("market_regime_missing_count"),
             "removed_counts_by_entry_path_quality_bucket": cls._compact_count_map(
                 payload.get("removed_counts_by_entry_path_quality_bucket")
             ),
@@ -818,6 +829,21 @@ class FeatureRegimeExperimentReporter:
         candidate["target_date_passed_count"] = (
             fold_feature_regime_filter_summary.get("target_date_passed_count")
         )
+        candidate["removed_counts_by_active_regime_flag"] = (
+            fold_feature_regime_filter_summary.get("removed_counts_by_active_regime_flag")
+        )
+        candidate["passed_counts_by_active_regime_flag"] = (
+            fold_feature_regime_filter_summary.get("passed_counts_by_active_regime_flag")
+        )
+        candidate["regime_source_counts"] = fold_feature_regime_filter_summary.get(
+            "regime_source_counts"
+        )
+        candidate["market_regime_present_count"] = fold_feature_regime_filter_summary.get(
+            "market_regime_present_count"
+        )
+        candidate["market_regime_missing_count"] = fold_feature_regime_filter_summary.get(
+            "market_regime_missing_count"
+        )
         return candidate
 
     def _compact_ranked_result(self, value: Any) -> dict[str, Any]:
@@ -1035,6 +1061,36 @@ class FeatureRegimeExperimentReporter:
             "passed_counts_by_regime": (
                 self._as_dict(row.get("passed_counts_by_regime"))
                 or self._as_dict(fold_feature_regime_filter_summary.get("passed_counts_by_regime"))
+            ),
+            "removed_counts_by_active_regime_flag": (
+                self._as_dict(row.get("removed_counts_by_active_regime_flag"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "removed_counts_by_active_regime_flag"
+                    )
+                )
+            ),
+            "passed_counts_by_active_regime_flag": (
+                self._as_dict(row.get("passed_counts_by_active_regime_flag"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "passed_counts_by_active_regime_flag"
+                    )
+                )
+            ),
+            "regime_source_counts": (
+                self._as_dict(row.get("regime_source_counts"))
+                or self._as_dict(fold_feature_regime_filter_summary.get("regime_source_counts"))
+            ),
+            "market_regime_present_count": (
+                row.get("market_regime_present_count")
+                if row.get("market_regime_present_count") is not None
+                else fold_feature_regime_filter_summary.get("market_regime_present_count")
+            ),
+            "market_regime_missing_count": (
+                row.get("market_regime_missing_count")
+                if row.get("market_regime_missing_count") is not None
+                else fold_feature_regime_filter_summary.get("market_regime_missing_count")
             ),
             "missing_feature_counts": (
                 self._as_dict(row.get("missing_feature_counts"))

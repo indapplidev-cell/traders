@@ -355,6 +355,8 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- verdict: `{adaptive_probe.get('verdict')}`",
                 f"- verdict_detail.reason: `{verdict_detail.get('reason')}`",
                 f"- feature_filter_diagnostics.readiness: `{adaptive_feature_diag.get('readiness')}`",
+                f"- regime_propagation_status: `{adaptive_feature_diag.get('regime_propagation_status')}`",
+                f"- missing_market_regime_count: `{adaptive_feature_diag.get('missing_market_regime_count')}`",
                 f"- active_filter_candidate_count: `{adaptive_feature_diag.get('active_filter_candidate_count')}`",
                 f"- zero_removal_candidate_count: `{adaptive_feature_diag.get('zero_removal_candidate_count')}`",
                 f"- missing_summary_candidate_count: `{adaptive_feature_diag.get('missing_summary_candidate_count')}`",
@@ -368,6 +370,9 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- aggregate_removed_counts_by_date: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_date'))}`",
                 f"- aggregate_passed_counts_by_date: `{self._top_n_items(adaptive_feature_diag.get('aggregate_passed_counts_by_date'))}`",
                 f"- aggregate_removed_counts_by_regime: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_regime'))}`",
+                f"- aggregate_regime_source_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_regime_source_counts'))}`",
+                f"- aggregate_removed_counts_by_active_regime_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_removed_counts_by_active_regime_flag'))}`",
+                f"- aggregate_passed_counts_by_active_regime_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_passed_counts_by_active_regime_flag'))}`",
                 f"- aggregate_missing_feature_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_missing_feature_counts'))}`",
                 f"- recommended_next_stage: `{adaptive_probe.get('recommended_next_stage')}`",
             ]
@@ -386,6 +391,12 @@ class MultiSymbolFeatureRegimeReporter:
             lines.append(
                 "- warning: `feature_filter_aggregate_missing_feature_counts_missing`"
             )
+        if adaptive_feature_diag.get("regime_propagation_status") == "MARKET_REGIME_MISSING":
+            lines.append("- warning: `market_regime_still_missing_after_ml38_10_30`")
+        if adaptive_feature_diag.get("missing_market_regime_count", 0) > 0:
+            lines.append("- warning: `market_regime_partially_missing_after_ml38_10_30`")
+        if adaptive_feature_diag.get("regime_propagation_status") == "MARKET_REGIME_PROPAGATED":
+            lines.append("- market regime propagation: `MARKET_REGIME_PROPAGATED`")
         lines.extend(
             [
                 "",

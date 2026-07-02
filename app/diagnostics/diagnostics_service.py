@@ -2309,6 +2309,94 @@ class DiagnosticsService:
     def _score_tuple(accuracy: float, brier_score: float) -> tuple[float, float]:
         return accuracy, -brier_score
 
+    @staticmethod
+    def _feature_flag_active(features_json: dict[str, Any], key: str) -> bool:
+        try:
+            return float(features_json.get(key, 0.0) or 0.0) >= 0.5
+        except (TypeError, ValueError):
+            return False
+
+    @classmethod
+    def _active_regime_flags_from_features(cls, features_json: dict[str, Any]) -> list[str]:
+        ordered_flags = (
+            ("regime_trend_up", "trend_up"),
+            ("regime_trend_down", "trend_down"),
+            ("regime_range", "range"),
+            ("regime_high_volatility", "high_volatility"),
+            ("regime_low_volatility", "low_volatility"),
+            ("regime_unknown", "unknown"),
+            ("regime_volatility_expanding", "volatility_expanding"),
+            ("regime_volatility_contracting", "volatility_contracting"),
+        )
+        active: list[str] = []
+        for feature_key, regime_name in ordered_flags:
+            if cls._feature_flag_active(features_json, feature_key):
+                active.append(regime_name)
+        return active
+
+    @classmethod
+    def _resolve_primary_market_regime(cls, features_json: dict[str, Any]) -> str:
+        # Priority must match RegimeLabelBuilder._resolve_regime enough for compatibility,
+        # but high/low volatility and unknown are still preserved in active_regime_flags.
+        ordered_primary_regimes = (
+            ("regime_trend_up", "trend_up"),
+            ("regime_trend_down", "trend_down"),
+            ("regime_range", "range"),
+            ("regime_high_volatility", "high_volatility"),
+            ("regime_low_volatility", "low_volatility"),
+            ("regime_unknown", "unknown"),
+        )
+        for feature_key, regime_name in ordered_primary_regimes:
+            if cls._feature_flag_active(features_json, feature_key):
+                return regime_name
+        return "unknown"
+
+    @classmethod
+    def _regime_payload_from_features(cls, features_json: dict[str, Any]) -> dict[str, Any]:
+        active_regime_flags = cls._active_regime_flags_from_features(features_json)
+        primary_regime = cls._resolve_primary_market_regime(features_json)
+        return {
+            "market_regime": primary_regime,
+            "regime_bucket": primary_regime,
+            "feature_regime_bucket": primary_regime,
+            "market_regime_source": "features_json_regime_flags",
+            "active_regime_flags": active_regime_flags,
+            "active_regime_flag_count": len(active_regime_flags),
+            "regime_trend_up_active": "trend_up" in active_regime_flags,
+            "regime_trend_down_active": "trend_down" in active_regime_flags,
+            "regime_range_active": "range" in active_regime_flags,
+            "regime_high_volatility_active": "high_volatility" in active_regime_flags,
+            "regime_low_volatility_active": "low_volatility" in active_regime_flags,
+            "regime_unknown_active": "unknown" in active_regime_flags,
+            "regime_volatility_expanding_active": "volatility_expanding" in active_regime_flags,
+            "regime_volatility_contracting_active": "volatility_contracting" in active_regime_flags,
+        }
+
+    @classmethod
+    def _regime_coverage_summary(cls, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        counts: dict[str, int] = {}
+        active_flag_counts: dict[str, int] = {}
+        missing_count = 0
+        for row in rows:
+            regime = str(row.get("market_regime") or "").strip()
+            if not regime:
+                missing_count += 1
+                regime = "missing"
+            counts[regime] = counts.get(regime, 0) + 1
+            for flag in row.get("active_regime_flags") or []:
+                text = str(flag).strip()
+                if text:
+                    active_flag_counts[text] = active_flag_counts.get(text, 0) + 1
+        return {
+            "diagnostic_name": "prediction_regime_coverage_summary",
+            "diagnostic_version": "ml38.10.30",
+            "row_count": len(rows),
+            "market_regime_missing_count": missing_count,
+            "market_regime_present_count": len(rows) - missing_count,
+            "market_regime_counts": counts,
+            "active_regime_flag_counts": active_flag_counts,
+        }
+
     def _build_prediction_rows(
         self,
         model_version: str,
@@ -2382,6 +2470,8 @@ class DiagnosticsService:
             candle = candles_by_open_time[row.candle_open_time]
             candle_index = index_by_open_time[row.candle_open_time]
             future_window = candle_rows[candle_index + 1 : candle_index + 1 + horizon_candles]
+            features_json = dict(row.features_json)
+            regime_payload = self._regime_payload_from_features(features_json)
             predictions.append(
                 {
                     "candle_open_time": row.candle_open_time.isoformat(),
@@ -2405,7 +2495,8 @@ class DiagnosticsService:
                         getattr(row, "setup_invalidation_distance_atr", 0.0) or 0.0
                     ),
                     "atr_14": float(row.features_json["atr_14"]),
-                    "features_json": dict(row.features_json),
+                    "features_json": features_json,
+                    **regime_payload,
                     "current_close": float(candle.close),
                     "future_candles": [
                         {

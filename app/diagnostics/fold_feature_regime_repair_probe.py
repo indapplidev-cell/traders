@@ -287,6 +287,9 @@ class FoldFeatureRegimeRepairProbe:
         aggregate_passed_by_date: dict[str, int] = {}
         aggregate_removed_by_regime: dict[str, int] = {}
         aggregate_passed_by_regime: dict[str, int] = {}
+        aggregate_removed_by_active_regime_flag: dict[str, int] = {}
+        aggregate_passed_by_active_regime_flag: dict[str, int] = {}
+        aggregate_regime_source_counts: dict[str, int] = {}
         aggregate_missing_features: dict[str, int] = {}
 
         def merge_counts(target: dict[str, int], source: dict[str, Any]) -> None:
@@ -359,6 +362,30 @@ class FoldFeatureRegimeRepairProbe:
                 ),
             )
             merge_counts(
+                aggregate_removed_by_active_regime_flag,
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "removed_counts_by_active_regime_flag",
+                ),
+            )
+            merge_counts(
+                aggregate_passed_by_active_regime_flag,
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "passed_counts_by_active_regime_flag",
+                ),
+            )
+            merge_counts(
+                aggregate_regime_source_counts,
+                self._summary_or_row_counts(
+                    row,
+                    feature_summary,
+                    "regime_source_counts",
+                ),
+            )
+            merge_counts(
                 aggregate_missing_features,
                 self._summary_or_row_counts(
                     row,
@@ -373,6 +400,14 @@ class FoldFeatureRegimeRepairProbe:
             readiness = "FILTER_DID_NOT_REMOVE_SIGNALS"
         else:
             readiness = "DIAGNOSTICS_READY"
+
+        missing_market_regime_count = aggregate_missing_features.get("market_regime", 0)
+        if aggregate_regime_source_counts and missing_market_regime_count == 0:
+            regime_propagation_status = "MARKET_REGIME_PROPAGATED"
+        elif aggregate_regime_source_counts and missing_market_regime_count > 0:
+            regime_propagation_status = "MARKET_REGIME_PARTIALLY_PROPAGATED"
+        else:
+            regime_propagation_status = "MARKET_REGIME_MISSING"
 
         return {
             "diagnostic_name": "fold_feature_regime_filter_diagnostics",
@@ -391,7 +426,12 @@ class FoldFeatureRegimeRepairProbe:
             "aggregate_passed_counts_by_date": aggregate_passed_by_date,
             "aggregate_removed_counts_by_regime": aggregate_removed_by_regime,
             "aggregate_passed_counts_by_regime": aggregate_passed_by_regime,
+            "aggregate_removed_counts_by_active_regime_flag": aggregate_removed_by_active_regime_flag,
+            "aggregate_passed_counts_by_active_regime_flag": aggregate_passed_by_active_regime_flag,
+            "aggregate_regime_source_counts": aggregate_regime_source_counts,
             "aggregate_missing_feature_counts": aggregate_missing_features,
+            "regime_propagation_status": regime_propagation_status,
+            "missing_market_regime_count": missing_market_regime_count,
         }
 
     def _verdict(self, *, best_feature: dict[str, Any], best_date: dict[str, Any]) -> str:

@@ -70,6 +70,7 @@ def test_ml38_10_29_evaluator_summary_is_enriched() -> None:
     assert summary["removed_counts_by_entry_path_quality_bucket"]
     assert summary["removed_counts_by_stop_pressure_bucket"]
     assert summary["removed_signal_examples"]
+    assert "market_regime" not in summary["missing_feature_counts"]
 
 
 def test_ml38_10_29_label_grid_has_lv33_configs_and_all_are_research_only() -> None:
