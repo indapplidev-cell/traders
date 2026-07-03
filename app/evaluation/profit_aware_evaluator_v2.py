@@ -1035,6 +1035,64 @@ class ProfitAwareEvaluatorV2:
                 finalized[outer_key] = cleaned
         return finalized
 
+    @staticmethod
+    def _count_map(value: Any) -> dict[str, int]:
+        mapping = dict(value) if isinstance(value, dict) else {}
+        cleaned: dict[str, int] = {}
+        for key, raw_count in mapping.items():
+            text_key = str(key)
+            if not text_key or text_key.startswith("_"):
+                continue
+            try:
+                count = int(raw_count)
+            except (TypeError, ValueError):
+                continue
+            cleaned[text_key] = cleaned.get(text_key, 0) + count
+        return cleaned
+
+    @classmethod
+    def _merge_finalized_contribution_outcomes(
+        cls,
+        *items: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        stats = cls._empty_contribution_stats()
+        for item in items:
+            payload = dict(item) if isinstance(item, dict) else {}
+            if not payload:
+                continue
+            stats["signal_count"] += int(payload.get("signal_count", 0) or 0)
+            stats["total_r"] += float(payload.get("total_r", 0.0) or 0.0)
+            stats["positive_r"] += float(payload.get("positive_r", 0.0) or 0.0)
+            stats["negative_r"] += float(payload.get("negative_r", 0.0) or 0.0)
+            stats["win_count"] += int(payload.get("win_count", 0) or 0)
+            stats["loss_count"] += int(payload.get("loss_count", 0) or 0)
+            stats["neutral_count"] += int(payload.get("neutral_count", 0) or 0)
+        return cls._finalize_contribution_stats(stats)
+
+    @classmethod
+    def _relaxation_effect_label(cls, outcome: dict[str, Any]) -> str:
+        signal_count = int(outcome.get("signal_count", 0) or 0)
+        if signal_count <= 0:
+            return "NO_RELAXATION_CANDIDATES"
+        total_r = float(outcome.get("total_r", 0.0) or 0.0)
+        win_rate = outcome.get("win_rate")
+        win_rate_value = None if win_rate is None else float(win_rate)
+        if total_r < 0 and (win_rate_value is None or win_rate_value <= 0.50):
+            return "RELAXATION_POTENTIALLY_HELPFUL"
+        if total_r > 0:
+            return "RELAXATION_HARMFUL"
+        return "RELAXATION_MIXED_OR_WEAK"
+
+    @classmethod
+    def _relaxation_recommended_action(cls, effect_label: str) -> str:
+        if effect_label == "NO_RELAXATION_CANDIDATES":
+            return "do_not_relax_no_candidates"
+        if effect_label == "RELAXATION_HARMFUL":
+            return "do_not_relax_hypothetical_removed_outcome_positive"
+        if effect_label == "RELAXATION_POTENTIALLY_HELPFUL":
+            return "review_as_research_only_probe_not_trading_rule"
+        return "keep_diagnostic_only_collect_more_evidence"
+
     def _simulate_contribution_outcome(
         self,
         row: dict[str, Any],
@@ -1467,6 +1525,140 @@ class ProfitAwareEvaluatorV2:
         )
 
     @classmethod
+    def _conditional_regime_rule_relaxation_probe_board(
+        cls,
+        *,
+        eligible_counts: dict[str, int],
+        blocked_counts: dict[str, int],
+        failure_count_distribution_by_rule: dict[str, dict[str, int]],
+        outcome_by_failure_count: dict[str, dict[str, dict[str, Any]]],
+        metric_logic_by_rule: dict[str, str] | None = None,
+        required_metric_failure_count_by_rule: dict[str, int] | None = None,
+        metric_condition_count_by_rule: dict[str, int] | None = None,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        rule_ids = sorted(
+            set(eligible_counts)
+            | set(blocked_counts)
+            | set(failure_count_distribution_by_rule)
+            | set(outcome_by_failure_count)
+        )
+
+        for rule_id in rule_ids:
+            eligible_count = int(eligible_counts.get(rule_id, 0) or 0)
+            actual_removed_count = int(blocked_counts.get(rule_id, 0) or 0)
+            distribution = {
+                str(key): int(value or 0)
+                for key, value in cls._count_map(
+                    failure_count_distribution_by_rule.get(rule_id)
+                ).items()
+            }
+            failed_0_count = int(distribution.get("failed_0", 0) or 0)
+            failed_1_count = int(distribution.get("failed_1", 0) or 0)
+            failed_2_plus_count = int(distribution.get("failed_2_plus", 0) or 0)
+
+            outcome_map = dict(
+                outcome_by_failure_count.get(rule_id)
+                if isinstance(outcome_by_failure_count.get(rule_id), dict)
+                else {}
+            )
+            failed_1_outcome = dict(
+                outcome_map.get("failed_1")
+                if isinstance(outcome_map.get("failed_1"), dict)
+                else {}
+            )
+            failed_2_plus_outcome = dict(
+                outcome_map.get("failed_2_plus")
+                if isinstance(outcome_map.get("failed_2_plus"), dict)
+                else {}
+            )
+            hypothetical_min_count_1_outcome = cls._merge_finalized_contribution_outcomes(
+                failed_1_outcome,
+                failed_2_plus_outcome,
+            )
+            hypothetical_count = int(
+                hypothetical_min_count_1_outcome.get("signal_count", 0) or 0
+            )
+            effect_label = cls._relaxation_effect_label(
+                hypothetical_min_count_1_outcome
+            )
+
+            rows.append(
+                {
+                    "rule_id": rule_id,
+                    "metric_logic": (metric_logic_by_rule or {}).get(rule_id),
+                    "eligible_count": eligible_count,
+                    "actual_removed_count": actual_removed_count,
+                    "actual_required_metric_failure_count": (
+                        required_metric_failure_count_by_rule or {}
+                    ).get(rule_id),
+                    "metric_condition_count": (
+                        metric_condition_count_by_rule or {}
+                    ).get(rule_id),
+                    "failed_0_count": failed_0_count,
+                    "failed_1_count": failed_1_count,
+                    "failed_2_plus_count": failed_2_plus_count,
+                    "hypothetical_min_count_1_removed_count": hypothetical_count,
+                    "hypothetical_min_count_1_removed_outcome": (
+                        hypothetical_min_count_1_outcome
+                    ),
+                    "hypothetical_min_count_1_total_r": (
+                        hypothetical_min_count_1_outcome.get("total_r")
+                    ),
+                    "hypothetical_min_count_1_win_rate": (
+                        hypothetical_min_count_1_outcome.get("win_rate")
+                    ),
+                    "relaxation_effect_label": effect_label,
+                    "recommended_action": cls._relaxation_recommended_action(
+                        effect_label
+                    ),
+                }
+            )
+
+        return sorted(
+            rows,
+            key=lambda row: (
+                str(row.get("relaxation_effect_label") or ""),
+                -int(row.get("hypothetical_min_count_1_removed_count", 0) or 0),
+                str(row.get("rule_id") or ""),
+            ),
+        )
+
+    @classmethod
+    def _conditional_regime_relaxation_probe_summary(
+        cls,
+        board: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        effect_counts: dict[str, int] = {}
+        recommended_action_counts: dict[str, int] = {}
+        helpful_rules: list[str] = []
+        harmful_rules: list[str] = []
+        for row in board:
+            payload = dict(row) if isinstance(row, dict) else {}
+            effect = str(payload.get("relaxation_effect_label") or "UNKNOWN")
+            action = str(payload.get("recommended_action") or "UNKNOWN")
+            effect_counts[effect] = effect_counts.get(effect, 0) + 1
+            recommended_action_counts[action] = (
+                recommended_action_counts.get(action, 0) + 1
+            )
+            if effect == "RELAXATION_POTENTIALLY_HELPFUL":
+                helpful_rules.append(str(payload.get("rule_id") or "missing"))
+            if effect == "RELAXATION_HARMFUL":
+                harmful_rules.append(str(payload.get("rule_id") or "missing"))
+        return {
+            "diagnostic_name": "conditional_regime_relaxation_probe_summary",
+            "diagnostic_version": "ml38.10.35",
+            "rule_count": len(board),
+            "effect_counts": dict(sorted(effect_counts.items())),
+            "recommended_action_counts": dict(
+                sorted(recommended_action_counts.items())
+            ),
+            "potentially_helpful_rule_ids": helpful_rules[:20],
+            "harmful_rule_ids": harmful_rules[:20],
+            "research_only_warning": "min_count_1_relaxation_is_diagnostic_only_not_a_trading_rule",
+        }
+
+    @classmethod
     def _per_regime_contribution_board(
         cls,
         *,
@@ -1673,6 +1865,17 @@ class ProfitAwareEvaluatorV2:
                 "passed_outcome_by_active_regime_flag": {},
                 "conditional_regime_ablation_board": [],
                 "conditional_regime_metric_overlap_board": [],
+                "conditional_regime_rule_relaxation_probe_board": [],
+                "conditional_regime_relaxation_probe_summary": {
+                    "diagnostic_name": "conditional_regime_relaxation_probe_summary",
+                    "diagnostic_version": "ml38.10.35",
+                    "rule_count": 0,
+                    "effect_counts": {},
+                    "recommended_action_counts": {},
+                    "potentially_helpful_rule_ids": [],
+                    "harmful_rule_ids": [],
+                    "research_only_warning": "min_count_1_relaxation_is_diagnostic_only_not_a_trading_rule",
+                },
                 "per_regime_contribution_board": [],
                 "conditional_regime_rule_counts_by_primary_regime": {},
                 "conditional_regime_rule_counts_by_active_flag": {},
@@ -2122,6 +2325,28 @@ class ProfitAwareEvaluatorV2:
             ),
             metric_condition_count_by_rule=conditional_regime_rule_metric_condition_count,
         )
+        conditional_regime_rule_relaxation_probe_board = (
+            self._conditional_regime_rule_relaxation_probe_board(
+                eligible_counts=conditional_regime_rule_eligible_counts,
+                blocked_counts=conditional_regime_rule_blocked_counts,
+                failure_count_distribution_by_rule=(
+                    conditional_regime_rule_metric_failure_count_distribution_by_rule
+                ),
+                outcome_by_failure_count=finalized_outcome_by_failure_count,
+                metric_logic_by_rule=conditional_regime_rule_metric_logic,
+                required_metric_failure_count_by_rule=(
+                    conditional_regime_rule_required_metric_failure_count
+                ),
+                metric_condition_count_by_rule=(
+                    conditional_regime_rule_metric_condition_count
+                ),
+            )
+        )
+        conditional_regime_relaxation_probe_summary = (
+            self._conditional_regime_relaxation_probe_summary(
+                conditional_regime_rule_relaxation_probe_board
+            )
+        )
         per_regime_contribution_board = self._per_regime_contribution_board(
             removed_outcome_by_primary_regime=finalized_removed_outcome_by_primary_regime,
             passed_outcome_by_primary_regime=finalized_passed_outcome_by_primary_regime,
@@ -2208,6 +2433,12 @@ class ProfitAwareEvaluatorV2:
             "conditional_regime_ablation_board": conditional_regime_ablation_board,
             "conditional_regime_metric_overlap_board": (
                 conditional_regime_metric_overlap_board
+            ),
+            "conditional_regime_rule_relaxation_probe_board": (
+                conditional_regime_rule_relaxation_probe_board
+            ),
+            "conditional_regime_relaxation_probe_summary": (
+                conditional_regime_relaxation_probe_summary
             ),
             "per_regime_contribution_board": per_regime_contribution_board,
             "market_regime_present_count": (

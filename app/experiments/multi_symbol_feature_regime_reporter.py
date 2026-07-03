@@ -339,6 +339,13 @@ class MultiSymbolFeatureRegimeReporter:
         adaptive_feature_diag = self._as_dict(
             adaptive_probe.get("feature_filter_diagnostics")
         )
+
+        def top_level_or_nested(key: str, default=None):
+            value = payload.get(key)
+            if value not in (None, {}, []):
+                return value
+            return adaptive_feature_diag.get(key, default)
+
         best_feature_probe = self._as_dict(
             adaptive_probe.get("best_feature_regime_probe")
         )
@@ -383,15 +390,17 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- aggregate_conditional_regime_rule_metric_logic: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_logic'))}`",
                 f"- aggregate_conditional_regime_rule_required_metric_failure_count: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_required_metric_failure_count'))}`",
                 f"- aggregate_conditional_regime_rule_metric_condition_count: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_condition_count'))}`",
-                f"- aggregate_conditional_regime_metric_overlap_board: `{self._as_list(adaptive_feature_diag.get('aggregate_conditional_regime_metric_overlap_board'))[:3]}`",
-                f"- aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule: `{adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule')}`",
-                f"- aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule: `{adaptive_feature_diag.get('aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule')}`",
-                f"- aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule: `{adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule')}`",
+                f"- aggregate_conditional_regime_metric_overlap_board: `{self._as_list(top_level_or_nested('aggregate_conditional_regime_metric_overlap_board'))[:3]}`",
+                f"- aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule: `{top_level_or_nested('aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule', {})}`",
+                f"- aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule: `{top_level_or_nested('aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule', {})}`",
+                f"- aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule: `{top_level_or_nested('aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule', {})}`",
+                f"- aggregate_conditional_regime_rule_outcome_by_failure_count: `{top_level_or_nested('aggregate_conditional_regime_rule_outcome_by_failure_count', {})}`",
                 f"- aggregate_conditional_regime_rule_removed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_removed_outcome_by_rule'))}`",
                 f"- aggregate_conditional_regime_rule_passed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_passed_outcome_by_rule'))}`",
                 f"- aggregate_conditional_regime_ablation_board: `{self._as_list(adaptive_feature_diag.get('aggregate_conditional_regime_ablation_board'))[:3]}`",
                 f"- aggregate_per_regime_contribution_board: `{self._as_list(adaptive_feature_diag.get('aggregate_per_regime_contribution_board'))[:3]}`",
                 f"- aggregate_missing_feature_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_missing_feature_counts'))}`",
+                f"- aggregate_conditional_regime_relaxation_probe_summary: `{top_level_or_nested('aggregate_conditional_regime_relaxation_probe_summary', {})}`",
                 f"- recommended_next_stage: `{adaptive_probe.get('recommended_next_stage')}`",
             ]
         )
@@ -467,7 +476,7 @@ class MultiSymbolFeatureRegimeReporter:
             ]
         )
         overlap_board = self._as_list(
-            adaptive_feature_diag.get("aggregate_conditional_regime_metric_overlap_board")
+            top_level_or_nested("aggregate_conditional_regime_metric_overlap_board")
         )[:10]
         for row in overlap_board:
             board_row = self._as_dict(row)
@@ -492,6 +501,36 @@ class MultiSymbolFeatureRegimeReporter:
             lines.append(
                 "| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |"
             )
+        lines.extend(
+            [
+                "",
+                "### ML38.10.35 Metric-relaxation diagnostic probe",
+                "",
+                "| Rule id | Eligible | Actual removed | failed_1 | failed_2_plus | Hypothetical min_count=1 removed | Hypothetical total R | Hypothetical win rate | Effect | Recommended action |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+            ]
+        )
+        relaxation_board = self._as_list(
+            top_level_or_nested("aggregate_conditional_regime_rule_relaxation_probe_board")
+        )[:10]
+        for row in relaxation_board:
+            board_row = self._as_dict(row)
+            lines.append(
+                "| `{rule_id}` | `{eligible}` | `{removed}` | `{failed_1}` | `{failed_2_plus}` | `{hyp_removed}` | `{hyp_total_r}` | `{hyp_win_rate}` | `{effect}` | `{action}` |".format(
+                    rule_id=board_row.get("rule_id"),
+                    eligible=board_row.get("eligible_count"),
+                    removed=board_row.get("actual_removed_count"),
+                    failed_1=board_row.get("failed_1_count"),
+                    failed_2_plus=board_row.get("failed_2_plus_count"),
+                    hyp_removed=board_row.get("hypothetical_min_count_1_removed_count"),
+                    hyp_total_r=board_row.get("hypothetical_min_count_1_total_r"),
+                    hyp_win_rate=board_row.get("hypothetical_min_count_1_win_rate"),
+                    effect=board_row.get("relaxation_effect_label"),
+                    action=board_row.get("recommended_action"),
+                )
+            )
+        if not relaxation_board:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         lines.extend(
             [
                 "",

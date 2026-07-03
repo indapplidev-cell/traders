@@ -184,8 +184,8 @@ def test_lv35_targeted_configs_registered_in_matrix_and_runtime_shortlists():
     for config_id in ML38_10_33_TARGETED_CONDITIONAL_REGIME_REPAIR_CONFIG_IDS:
         assert config_id in matrix_ids
 
-    assert len(FAST_DEBUG_CONFIGS) == 20
-    assert len(QUICK_QUALITY_CONFIGS) == 42
+    assert len(FAST_DEBUG_CONFIGS) == 22
+    assert len(QUICK_QUALITY_CONFIGS) == 46
 
     assert (
         "lv35_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_targeted_cond_regime_probe"
@@ -207,5 +207,5 @@ def test_ml38_10_33_future_expected_candidate_counts():
         )
     )
 
-    assert fast_wrapper._expected_candidate_count() == 40
-    assert quick_wrapper._expected_candidate_count() == 42
+    assert fast_wrapper._expected_candidate_count() == 44
+    assert quick_wrapper._expected_candidate_count() == 46

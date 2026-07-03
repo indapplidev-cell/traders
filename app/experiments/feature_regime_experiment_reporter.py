@@ -458,6 +458,12 @@ class FeatureRegimeExperimentReporter:
             "conditional_regime_metric_overlap_board": cls._compact_board_rows(
                 payload.get("conditional_regime_metric_overlap_board")
             ),
+            "conditional_regime_rule_relaxation_probe_board": cls._compact_board_rows(
+                payload.get("conditional_regime_rule_relaxation_probe_board")
+            ),
+            "conditional_regime_relaxation_probe_summary": cls._as_dict(
+                payload.get("conditional_regime_relaxation_probe_summary")
+            ),
             "per_regime_contribution_board": cls._compact_board_rows(
                 payload.get("per_regime_contribution_board")
             ),
@@ -1180,6 +1186,16 @@ class FeatureRegimeExperimentReporter:
                 "conditional_regime_metric_overlap_board"
             )
         )
+        candidate["conditional_regime_rule_relaxation_probe_board"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_relaxation_probe_board"
+            )
+        )
+        candidate["conditional_regime_relaxation_probe_summary"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_relaxation_probe_summary"
+            )
+        )
         candidate["per_regime_contribution_board"] = (
             fold_feature_regime_filter_summary.get("per_regime_contribution_board")
         )
@@ -1628,6 +1644,22 @@ class FeatureRegimeExperimentReporter:
                 or self._as_list(
                     fold_feature_regime_filter_summary.get(
                         "conditional_regime_metric_overlap_board"
+                    )
+                )
+            ),
+            "conditional_regime_rule_relaxation_probe_board": (
+                self._as_list(row.get("conditional_regime_rule_relaxation_probe_board"))
+                or self._as_list(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_relaxation_probe_board"
+                    )
+                )
+            ),
+            "conditional_regime_relaxation_probe_summary": (
+                self._as_dict(row.get("conditional_regime_relaxation_probe_summary"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_relaxation_probe_summary"
                     )
                 )
             ),

@@ -184,10 +184,10 @@ def test_ml38_10_27_runtime_counts_and_expected_candidates() -> None:
         )
     )
 
-    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 20
-    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 42
-    assert fast_wrapper._expected_candidate_count() == 40
-    assert quick_wrapper._expected_candidate_count() == 42
+    assert len(run_fv3_cached_tuning.FAST_DEBUG_CONFIGS) == 22
+    assert len(run_fv3_cached_tuning.QUICK_QUALITY_CONFIGS) == 46
+    assert fast_wrapper._expected_candidate_count() == 44
+    assert quick_wrapper._expected_candidate_count() == 46
 
 
 def test_ml38_10_27_research_only_fold_probe_forces_rejection_gate() -> None:

@@ -431,6 +431,49 @@ class LabelQualityGridPlanner:
                 },
             ],
         }
+        ml38_10_35_metric_relaxation_rules_v1 = {
+            **ml38_10_33_targeted_regime_rules_v1,
+            "conditional_profile": "targeted_regime_conditioned_min_count_1_relaxation_probe_v1",
+            "research_only": True,
+            "relaxation_probe_only": True,
+            "ml38_10_35_notes": [
+                "Diagnostic-only min_count=1 probe after ML38.10.34 showed lv35 two-metric overlap was mostly absent.",
+                "Do not treat min_count=1 as a trading rule.",
+                "Use outcome_by_failure_count and relaxation_probe_board before creating any future rule.",
+            ],
+            "conditional_regime_rules": [
+                {
+                    **rule,
+                    "metric_logic": "min_count",
+                    "min_metric_failure_count": 1,
+                    "relaxation_probe_only": True,
+                }
+                for rule in ml38_10_33_targeted_regime_rules_v1["conditional_regime_rules"]
+            ],
+            "missing_feature_policy": "pass_with_warning",
+        }
+
+        ml38_10_35_metric_relaxation_rules_v1_exit45 = {
+            **ml38_10_33_targeted_regime_rules_v1_exit45,
+            "conditional_profile": "targeted_regime_conditioned_min_count_1_relaxation_probe_v1_exit45",
+            "research_only": True,
+            "relaxation_probe_only": True,
+            "ml38_10_35_notes": [
+                "Diagnostic-only min_count=1 exit45 probe after ML38.10.34.",
+                "Do not treat min_count=1 as a trading rule.",
+                "Compare against lv31/lv34/lv35 and inspect removed outcome before next hypothesis.",
+            ],
+            "conditional_regime_rules": [
+                {
+                    **rule,
+                    "metric_logic": "min_count",
+                    "min_metric_failure_count": 1,
+                    "relaxation_probe_only": True,
+                }
+                for rule in ml38_10_33_targeted_regime_rules_v1_exit45["conditional_regime_rules"]
+            ],
+            "missing_feature_policy": "pass_with_warning",
+        }
 
         def ml38_10_31_regime_conditioned_config(
             *,
@@ -612,6 +655,98 @@ class LabelQualityGridPlanner:
                 fold_repair_feature_filter_rules=rules,
                 research_only_acceptance_block_reason=(
                     "research_only_lv35_targeted_conditional_regime_fold_repair_probe"
+                ),
+                label_mode=LABEL_MODE_SETUP_PURE_FIRST_TOUCH,
+                experimental=True,
+            )
+
+        def ml38_10_35_metric_relaxation_config(
+            *,
+            config_id: str,
+            label_version: str,
+            horizon: int,
+            side_profile: str,
+            fold_profile: str,
+            rules: dict[str, Any],
+            feature_filter_profile: str,
+            exit45: bool = False,
+        ) -> LabelQualityGridConfig:
+            exit_timeout_bars = 6 if horizon == 8 else 9
+            return LabelQualityGridConfig(
+                config_id=config_id,
+                label_version=label_version,
+                horizon=horizon,
+                threshold=0.52,
+                take_profit_atr=1.20,
+                stop_loss_atr=1.50,
+                flat_threshold=0.52,
+                description=(
+                    "ML38.10.35 metric-relaxation diagnostic probe. "
+                    "Research-only min_count=1 probe. Not a trading rule."
+                ),
+                risk_note=(
+                    "Research-only diagnostic relaxation probe after ML38.10.34. "
+                    "min_count=1 can remove profitable signals and must remain blocked."
+                ),
+                anti_collapse_profile=f"trade_two_stage_rguard_targeted_cond_regime_repair_h{horizon}_{side_profile}",
+                training_objective="trade_two_stage",
+                flat_bias_objective_enabled=False,
+                bias_aware_objective_enabled=True,
+                baseline_edge_objective_enabled=True,
+                baseline_edge_focal_gamma=1.35,
+                baseline_edge_margin_penalty=0.020,
+                baseline_edge_entropy_penalty=0.012,
+                decision_calibration_enabled=True,
+                decision_flat_if_max_prob_below=0.44,
+                decision_flat_if_margin_below=0.075,
+                decision_min_direction_prob=0.420,
+                decision_min_up_down_margin=0.050,
+                decision_down_boost=0.015,
+                decision_up_penalty=0.010,
+                decision_flat_boost=0.0,
+                decision_calibration_mode="bounded_calibration",
+                decision_fallback_to_raw=True,
+                decision_max_flat_ratio=0.88,
+                decision_min_down_ratio_when_actual_down_high=0.08,
+                decision_min_up_ratio_when_actual_up_high=0.08,
+                decision_max_dominant_class_ratio=0.82,
+                decision_require_non_worse_baseline_edge=True,
+                decision_baseline_edge_tolerance=0.0015,
+                decision_actual_class_high_threshold=0.05,
+                decision_policy_grid_enabled=True,
+                decision_policy_grid_stage="ML38.10.35",
+                opportunity_probability_threshold=0.70,
+                setup_quality_min_threshold=0.60,
+                setup_quality_decision_mask_enabled=True,
+                setup_quality_decision_mask_min_threshold=0.60,
+                entry_path_quality_filter_enabled=True,
+                entry_path_quality_min_threshold=0.71,
+                stop_pressure_max_risk_score=0.45,
+                mae_pressure_max_risk_score=0.51,
+                entry_path_quality_score_profile="mae_aware_rr_v3",
+                exit_policy_profile="stop_loss_mitigation_recovery_guard_v1",
+                exit_timeout_bars=exit_timeout_bars,
+                exit_mitigation_loss_r=0.45 if exit45 else 0.62,
+                exit_neutral_abs_r=0.15,
+                directional_side_filter_profile=side_profile,
+                allowed_signal_directions=("LONG",),
+                opportunity_threshold_sweep_enabled=True,
+                opportunity_threshold_candidates=DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES,
+                opportunity_min_precision=0.38,
+                opportunity_min_recall=0.23,
+                opportunity_max_predicted_trade_rate=0.08,
+                opportunity_max_predicted_to_actual_trade_rate_ratio=1.55,
+                opportunity_max_false_positive_rate=0.060,
+                research_only_fold_repair_probe_enabled=True,
+                fold_repair_probe_profile=fold_profile,
+                fold_repair_target_dates=("2026-05-25", "2026-05-26", "2026-05-28"),
+                fold_repair_time_slice_blackout_enabled=False,
+                fold_repair_blackout_dates=(),
+                fold_repair_feature_filter_enabled=True,
+                fold_repair_feature_filter_profile=feature_filter_profile,
+                fold_repair_feature_filter_rules=rules,
+                research_only_acceptance_block_reason=(
+                    "research_only_lv36_metric_relaxation_probe"
                 ),
                 label_mode=LABEL_MODE_SETUP_PURE_FIRST_TOUCH,
                 experimental=True,
@@ -6057,12 +6192,85 @@ class LabelQualityGridPlanner:
                 ),
             ]
         )
+        configs.extend(
+            [
+                ml38_10_35_metric_relaxation_config(
+                    config_id="lv36_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_probe",
+                    label_version="lv36_h08_metric_relax_long",
+                    horizon=8,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1",
+                    rules=ml38_10_35_metric_relaxation_rules_v1,
+                    feature_filter_profile="TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1",
+                    exit45=False,
+                ),
+                ml38_10_35_metric_relaxation_config(
+                    config_id="lv36_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_exit45_probe",
+                    label_version="lv36_h08_metric_relax_long_exit45",
+                    horizon=8,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1_EXIT45",
+                    rules=ml38_10_35_metric_relaxation_rules_v1_exit45,
+                    feature_filter_profile="TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1_EXIT45",
+                    exit45=True,
+                ),
+                ml38_10_35_metric_relaxation_config(
+                    config_id="lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_probe",
+                    label_version="lv36_h12_metric_relax_long",
+                    horizon=12,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1",
+                    rules=ml38_10_35_metric_relaxation_rules_v1,
+                    feature_filter_profile="TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1",
+                    exit45=False,
+                ),
+                ml38_10_35_metric_relaxation_config(
+                    config_id="lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_exit45_probe",
+                    label_version="lv36_h12_metric_relax_long_exit45",
+                    horizon=12,
+                    side_profile="long_only_research",
+                    fold_profile="LONG_ONLY_TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1_EXIT45",
+                    rules=ml38_10_35_metric_relaxation_rules_v1_exit45,
+                    feature_filter_profile="TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1_EXIT45",
+                    exit45=True,
+                ),
+                ml38_10_35_metric_relaxation_config(
+                    config_id="lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_metric_relax_probe",
+                    label_version="lv36_h12_metric_relax_suppress_short",
+                    horizon=12,
+                    side_profile="suppress_short_research",
+                    fold_profile="SUPPRESS_SHORT_TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1",
+                    rules=ml38_10_35_metric_relaxation_rules_v1,
+                    feature_filter_profile="TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1",
+                    exit45=False,
+                ),
+                ml38_10_35_metric_relaxation_config(
+                    config_id="lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_metric_relax_exit45_probe",
+                    label_version="lv36_h12_metric_relax_suppress_short_exit45",
+                    horizon=12,
+                    side_profile="suppress_short_research",
+                    fold_profile="SUPPRESS_SHORT_TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1_EXIT45",
+                    rules=ml38_10_35_metric_relaxation_rules_v1_exit45,
+                    feature_filter_profile="TARGETED_CONDITIONAL_REGIME_MIN1_RELAX_PROBE_V1_EXIT45",
+                    exit45=True,
+                ),
+            ]
+        )
         return {
             "planner_name": self.PLANNER_NAME,
             "planner_version": self.PLANNER_VERSION,
             "config_count": len(configs),
             "regime_conditioned_repair_stage": "ML38.10.31",
             "targeted_conditional_regime_repair_stage": "ML38.10.33",
+            "metric_relaxation_probe_stage": "ML38.10.35",
+            "metric_relaxation_probe_config_ids": [
+                "lv36_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_probe",
+                "lv36_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_exit45_probe",
+                "lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_probe",
+                "lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_metric_relax_exit45_probe",
+                "lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_metric_relax_probe",
+                "lv36_h12_tts_thr065_sqmask060_epq070_sp045_rguard_suppress_short_metric_relax_exit45_probe",
+            ],
             "targeted_conditional_regime_repair_config_ids": [
                 "lv35_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_targeted_cond_regime_probe",
                 "lv35_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_targeted_cond_regime_exit45_probe",

@@ -131,8 +131,8 @@ def test_lv34_regime_conditioned_configs_registered_and_research_only():
 
 
 def test_ml38_10_31_runtime_counts_include_lv34_configs():
-    assert len(FAST_DEBUG_CONFIGS) == 20
-    assert len(QUICK_QUALITY_CONFIGS) == 42
+    assert len(FAST_DEBUG_CONFIGS) == 22
+    assert len(QUICK_QUALITY_CONFIGS) == 46
     assert "lv34_h08_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_probe" in FAST_DEBUG_CONFIGS
     assert "lv34_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_cond_regime_probe" in QUICK_QUALITY_CONFIGS
 

@@ -216,6 +216,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
             full_candidate_payloads
         )
         adaptive_probe_result = fold_feature_regime_repair_probe
+        adaptive_feature_filter_diagnostics = self._as_dict(
+            adaptive_probe_result.get("feature_filter_diagnostics")
+        )
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -269,6 +272,44 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "fold_time_slice_exit_repair_probe": fold_time_slice_exit_repair_probe,
             "fold_feature_regime_repair_probe": fold_feature_regime_repair_probe,
             "fold_feature_regime_adaptive_repair_probe": adaptive_probe_result,
+            "feature_filter_diagnostics_top_level_source": (
+                "fold_feature_regime_adaptive_repair_probe.feature_filter_diagnostics"
+            ),
+            "aggregate_conditional_regime_metric_overlap_board": self._as_list(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_metric_overlap_board"
+                )
+            ),
+            "aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule": self._as_dict(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule"
+                )
+            ),
+            "aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule": self._as_dict(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule"
+                )
+            ),
+            "aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule": self._as_dict(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule"
+                )
+            ),
+            "aggregate_conditional_regime_rule_outcome_by_failure_count": self._as_dict(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_rule_outcome_by_failure_count"
+                )
+            ),
+            "aggregate_conditional_regime_rule_relaxation_probe_board": self._as_list(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_rule_relaxation_probe_board"
+                )
+            ),
+            "aggregate_conditional_regime_relaxation_probe_summary": self._as_dict(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_relaxation_probe_summary"
+                )
+            ),
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -1115,6 +1156,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 payload["conditional_regime_metric_overlap_board"] = cls._as_list(
                     fold_feature_summary.get("conditional_regime_metric_overlap_board")
                 )
+                payload["conditional_regime_rule_relaxation_probe_board"] = cls._as_list(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_relaxation_probe_board"
+                    )
+                )
+                payload["conditional_regime_relaxation_probe_summary"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_relaxation_probe_summary"
+                    )
+                )
                 payload["conditional_regime_rule_removed_outcome_by_rule"] = cls._as_dict(
                     fold_feature_summary.get(
                         "conditional_regime_rule_removed_outcome_by_rule"
@@ -1647,6 +1698,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     payload["conditional_regime_metric_overlap_board"] = cls._as_list(
                         fold_feature_summary.get(
                             "conditional_regime_metric_overlap_board"
+                        )
+                    )
+                    payload["conditional_regime_rule_relaxation_probe_board"] = cls._as_list(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_relaxation_probe_board"
+                        )
+                    )
+                    payload["conditional_regime_relaxation_probe_summary"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_relaxation_probe_summary"
                         )
                     )
                     payload["conditional_regime_rule_removed_outcome_by_rule"] = cls._as_dict(

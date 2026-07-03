@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Iterable
 
 
-ELAPSED_PRINT_INTERVAL_SECONDS = 60
+ELAPSED_PRINT_INTERVAL_SECONDS = 300
 
 
 COMMANDS: list[tuple[str, list[str]]] = [
@@ -78,6 +78,20 @@ def quote_cmd(parts: Iterable[str]) -> str:
         else:
             rendered.append(part)
     return " ".join(rendered)
+
+
+def build_child_env() -> dict[str, str]:
+    """Force child Python scripts to emit UTF-8 into subprocess pipes.
+
+    Without this, Windows child processes may write cp1251/cp866 bytes while this
+    runner decodes chunks as UTF-8, which produces replacement characters like ���
+    in terminal output and sequence_terminal.log.
+    """
+
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    return env
 
 
 class TerminalProgress:
@@ -140,7 +154,13 @@ def reader_thread(
             chunk = stream.read(4096)
             if not chunk:
                 break
-            output_queue.put((is_stderr, chunk.decode("utf-8", errors="replace")))
+
+            if isinstance(chunk, bytes):
+                text = chunk.decode("utf-8", errors="replace")
+            else:
+                text = str(chunk)
+
+            output_queue.put((is_stderr, text))
     finally:
         try:
             stream.close()
@@ -178,7 +198,11 @@ def run_command(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         stdin=subprocess.DEVNULL,
-        bufsize=0,
+        bufsize=1,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=build_child_env(),
     )
 
     output_queue: "queue.Queue[tuple[bool, str]]" = queue.Queue()
