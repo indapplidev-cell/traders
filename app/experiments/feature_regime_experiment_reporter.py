@@ -218,6 +218,31 @@ class FeatureRegimeExperimentReporter:
         return compact
 
     @classmethod
+    def _compact_nested_contribution_stats_map(
+        cls,
+        value: Any,
+        *,
+        outer_limit: int = 12,
+        inner_limit: int = 8,
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        mapping = cls._as_dict(value)
+        compact: dict[str, dict[str, dict[str, Any]]] = {}
+        for outer_key, raw_inner in sorted(mapping.items(), key=lambda item: str(item[0]))[
+            :outer_limit
+        ]:
+            cleaned_inner: dict[str, dict[str, Any]] = {}
+            for inner_key, raw_stats in sorted(
+                cls._as_dict(raw_inner).items(),
+                key=lambda item: str(item[0]),
+            )[:inner_limit]:
+                stats = cls._compact_contribution_stats(raw_stats)
+                if stats:
+                    cleaned_inner[str(inner_key)] = stats
+            if cleaned_inner:
+                compact[str(outer_key)] = cleaned_inner
+        return compact
+
+    @classmethod
     def _compact_board_rows(
         cls,
         value: Any,
@@ -240,6 +265,22 @@ class FeatureRegimeExperimentReporter:
                     row["metric_failure_counts"] = cls._compact_count_map(
                         row.get("metric_failure_counts")
                     )
+                if "failure_count_distribution" in row:
+                    row["failure_count_distribution"] = cls._compact_count_map(
+                        row.get("failure_count_distribution")
+                    )
+                if "observed_metric_failure_counts" in row:
+                    row["observed_metric_failure_counts"] = cls._compact_count_map(
+                        row.get("observed_metric_failure_counts")
+                    )
+                if "metric_pair_failure_counts" in row:
+                    row["metric_pair_failure_counts"] = cls._compact_count_map(
+                        row.get("metric_pair_failure_counts")
+                    )
+                if "outcome_by_failure_count" in row:
+                    row["outcome_by_failure_count"] = cls._compact_contribution_stats_map(
+                        row.get("outcome_by_failure_count")
+                    )
                 rows.append(row)
         return rows
 
@@ -261,8 +302,13 @@ class FeatureRegimeExperimentReporter:
                 "conditional_regime_rule_eligible_counts",
                 "conditional_regime_rule_passed_counts",
                 "conditional_regime_rule_metric_failure_counts",
+                "conditional_regime_rule_metric_failure_count_distribution_by_rule",
+                "conditional_regime_rule_observed_metric_failure_counts_by_rule",
+                "conditional_regime_rule_metric_pair_failure_counts_by_rule",
+                "conditional_regime_rule_outcome_by_failure_count",
                 "conditional_regime_rule_removed_outcome_by_rule",
                 "conditional_regime_ablation_board",
+                "conditional_regime_metric_overlap_board",
                 "per_regime_contribution_board",
                 "missing_feature_counts",
             )
@@ -358,6 +404,32 @@ class FeatureRegimeExperimentReporter:
             "conditional_regime_rule_metric_condition_count": cls._compact_count_map(
                 payload.get("conditional_regime_rule_metric_condition_count")
             ),
+            "conditional_regime_rule_metric_failure_count_distribution_by_rule": (
+                cls._compact_nested_count_map(
+                    payload.get(
+                        "conditional_regime_rule_metric_failure_count_distribution_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_observed_metric_failure_counts_by_rule": (
+                cls._compact_nested_count_map(
+                    payload.get(
+                        "conditional_regime_rule_observed_metric_failure_counts_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_metric_pair_failure_counts_by_rule": (
+                cls._compact_nested_count_map(
+                    payload.get(
+                        "conditional_regime_rule_metric_pair_failure_counts_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_outcome_by_failure_count": (
+                cls._compact_nested_contribution_stats_map(
+                    payload.get("conditional_regime_rule_outcome_by_failure_count")
+                )
+            ),
             "conditional_regime_rule_removed_outcome_by_rule": (
                 cls._compact_contribution_stats_map(
                     payload.get("conditional_regime_rule_removed_outcome_by_rule")
@@ -382,6 +454,9 @@ class FeatureRegimeExperimentReporter:
             ),
             "conditional_regime_ablation_board": cls._compact_board_rows(
                 payload.get("conditional_regime_ablation_board")
+            ),
+            "conditional_regime_metric_overlap_board": cls._compact_board_rows(
+                payload.get("conditional_regime_metric_overlap_board")
             ),
             "per_regime_contribution_board": cls._compact_board_rows(
                 payload.get("per_regime_contribution_board")
@@ -1051,6 +1126,26 @@ class FeatureRegimeExperimentReporter:
                 "conditional_regime_rule_metric_condition_count"
             )
         )
+        candidate["conditional_regime_rule_metric_failure_count_distribution_by_rule"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_metric_failure_count_distribution_by_rule"
+            )
+        )
+        candidate["conditional_regime_rule_observed_metric_failure_counts_by_rule"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_observed_metric_failure_counts_by_rule"
+            )
+        )
+        candidate["conditional_regime_rule_metric_pair_failure_counts_by_rule"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_metric_pair_failure_counts_by_rule"
+            )
+        )
+        candidate["conditional_regime_rule_outcome_by_failure_count"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_outcome_by_failure_count"
+            )
+        )
         candidate["conditional_regime_rule_removed_outcome_by_rule"] = (
             fold_feature_regime_filter_summary.get(
                 "conditional_regime_rule_removed_outcome_by_rule"
@@ -1079,6 +1174,11 @@ class FeatureRegimeExperimentReporter:
         )
         candidate["conditional_regime_ablation_board"] = (
             fold_feature_regime_filter_summary.get("conditional_regime_ablation_board")
+        )
+        candidate["conditional_regime_metric_overlap_board"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_metric_overlap_board"
+            )
         )
         candidate["per_regime_contribution_board"] = (
             fold_feature_regime_filter_summary.get("per_regime_contribution_board")
@@ -1421,6 +1521,52 @@ class FeatureRegimeExperimentReporter:
                     )
                 )
             ),
+            "conditional_regime_rule_metric_failure_count_distribution_by_rule": (
+                self._as_dict(
+                    row.get(
+                        "conditional_regime_rule_metric_failure_count_distribution_by_rule"
+                    )
+                )
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_metric_failure_count_distribution_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_observed_metric_failure_counts_by_rule": (
+                self._as_dict(
+                    row.get(
+                        "conditional_regime_rule_observed_metric_failure_counts_by_rule"
+                    )
+                )
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_observed_metric_failure_counts_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_metric_pair_failure_counts_by_rule": (
+                self._as_dict(
+                    row.get(
+                        "conditional_regime_rule_metric_pair_failure_counts_by_rule"
+                    )
+                )
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_metric_pair_failure_counts_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_outcome_by_failure_count": (
+                self._as_dict(
+                    row.get("conditional_regime_rule_outcome_by_failure_count")
+                )
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_outcome_by_failure_count"
+                    )
+                )
+            ),
             "conditional_regime_rule_removed_outcome_by_rule": (
                 self._as_dict(row.get("conditional_regime_rule_removed_outcome_by_rule"))
                 or self._as_dict(
@@ -1474,6 +1620,14 @@ class FeatureRegimeExperimentReporter:
                 or self._as_list(
                     fold_feature_regime_filter_summary.get(
                         "conditional_regime_ablation_board"
+                    )
+                )
+            ),
+            "conditional_regime_metric_overlap_board": (
+                self._as_list(row.get("conditional_regime_metric_overlap_board"))
+                or self._as_list(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_metric_overlap_board"
                     )
                 )
             ),

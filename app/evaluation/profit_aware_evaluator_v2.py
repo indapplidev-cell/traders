@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import date as date_type
 from datetime import datetime
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 
@@ -1004,6 +1005,36 @@ class ProfitAwareEvaluatorV2:
             if int(value.get("signal_count", 0) or 0) > 0
         }
 
+    @classmethod
+    def _update_nested_contribution_stats(
+        cls,
+        mapping: dict[str, dict[str, dict[str, Any]]],
+        outer_key: Any,
+        inner_key: Any,
+        outcome: dict[str, Any],
+    ) -> None:
+        outer = str(outer_key or "missing")
+        inner = str(inner_key or "missing")
+        slot = mapping.setdefault(outer, {}).setdefault(
+            inner,
+            cls._empty_contribution_stats(),
+        )
+        cls._update_contribution_stats(slot, outcome)
+
+    @classmethod
+    def _finalize_nested_contribution_stats_map(
+        cls,
+        mapping: dict[str, dict[str, dict[str, Any]]],
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        finalized: dict[str, dict[str, dict[str, Any]]] = {}
+        for outer_key, inner_map in sorted(mapping.items()):
+            cleaned: dict[str, dict[str, Any]] = {}
+            for inner_key, stats in sorted(inner_map.items()):
+                cleaned[inner_key] = cls._finalize_contribution_stats(stats)
+            if cleaned:
+                finalized[outer_key] = cleaned
+        return finalized
+
     def _simulate_contribution_outcome(
         self,
         row: dict[str, Any],
@@ -1120,6 +1151,14 @@ class ProfitAwareEvaluatorV2:
             if cls._float_or_none(rule.get(key)) is not None:
                 names.append(key)
         return names
+
+    @classmethod
+    def _metric_failure_count_bucket(cls, observed_count: int) -> str:
+        if observed_count <= 0:
+            return "failed_0"
+        if observed_count == 1:
+            return "failed_1"
+        return "failed_2_plus"
 
     @classmethod
     def _resolve_metric_rule_decision(
@@ -1334,6 +1373,100 @@ class ProfitAwareEvaluatorV2:
         )
 
     @classmethod
+    def _conditional_regime_metric_overlap_board(
+        cls,
+        *,
+        eligible_counts: dict[str, int],
+        blocked_counts: dict[str, int],
+        failure_count_distribution_by_rule: dict[str, dict[str, int]],
+        observed_metric_failure_counts_by_rule: dict[str, dict[str, int]],
+        metric_pair_failure_counts_by_rule: dict[str, dict[str, int]],
+        outcome_by_failure_count: dict[str, dict[str, dict[str, Any]]],
+        metric_logic_by_rule: dict[str, str] | None = None,
+        required_metric_failure_count_by_rule: dict[str, int] | None = None,
+        metric_condition_count_by_rule: dict[str, int] | None = None,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        rule_ids = sorted(
+            set(eligible_counts)
+            | set(blocked_counts)
+            | set(failure_count_distribution_by_rule)
+            | set(observed_metric_failure_counts_by_rule)
+            | set(metric_pair_failure_counts_by_rule)
+            | set(outcome_by_failure_count)
+        )
+
+        for rule_id in rule_ids:
+            eligible_count = int(eligible_counts.get(rule_id, 0) or 0)
+            actual_removed_count = int(blocked_counts.get(rule_id, 0) or 0)
+            distribution = {
+                str(key): int(value or 0)
+                for key, value in dict(
+                    failure_count_distribution_by_rule.get(rule_id, {})
+                ).items()
+            }
+            failed_0_count = int(distribution.get("failed_0", 0) or 0)
+            failed_1_count = int(distribution.get("failed_1", 0) or 0)
+            failed_2_plus_count = int(distribution.get("failed_2_plus", 0) or 0)
+            required = int(
+                (required_metric_failure_count_by_rule or {}).get(rule_id, 0) or 0
+            )
+            metric_condition_count = int(
+                (metric_condition_count_by_rule or {}).get(rule_id, 0) or 0
+            )
+            metric_logic = (metric_logic_by_rule or {}).get(rule_id)
+
+            if eligible_count <= 0:
+                overlap_status = "NO_ELIGIBLE_SIGNALS"
+                bottleneck_label = "regime_context_not_seen"
+            elif actual_removed_count > 0:
+                overlap_status = "REMOVALS_ACTIVE"
+                bottleneck_label = "rule_removed_signals"
+            elif failed_2_plus_count > 0:
+                overlap_status = "TWO_METRIC_OVERLAP_WITHOUT_REMOVAL"
+                bottleneck_label = "check_metric_logic_or_required_count"
+            elif failed_1_count > 0:
+                overlap_status = "ONLY_ONE_METRIC_FAILURES"
+                bottleneck_label = "conditions_too_strict_or_metrics_do_not_overlap"
+            else:
+                overlap_status = "NO_METRIC_FAILURES"
+                bottleneck_label = "thresholds_too_loose_or_features_do_not_cross_thresholds"
+
+            rows.append(
+                {
+                    "rule_id": rule_id,
+                    "eligible_count": eligible_count,
+                    "actual_removed_count": actual_removed_count,
+                    "metric_logic": metric_logic,
+                    "required_metric_failure_count": required,
+                    "metric_condition_count": metric_condition_count,
+                    "failed_0_count": failed_0_count,
+                    "failed_1_count": failed_1_count,
+                    "failed_2_plus_count": failed_2_plus_count,
+                    "failure_count_distribution": distribution,
+                    "observed_metric_failure_counts": dict(
+                        observed_metric_failure_counts_by_rule.get(rule_id, {})
+                    ),
+                    "metric_pair_failure_counts": dict(
+                        metric_pair_failure_counts_by_rule.get(rule_id, {})
+                    ),
+                    "outcome_by_failure_count": dict(
+                        outcome_by_failure_count.get(rule_id, {})
+                    ),
+                    "metric_overlap_status": overlap_status,
+                    "bottleneck_label": bottleneck_label,
+                }
+            )
+
+        return sorted(
+            rows,
+            key=lambda row: (
+                -int(row.get("eligible_count", 0) or 0),
+                str(row.get("rule_id") or ""),
+            ),
+        )
+
+    @classmethod
     def _per_regime_contribution_board(
         cls,
         *,
@@ -1528,6 +1661,10 @@ class ProfitAwareEvaluatorV2:
                 "conditional_regime_rule_metric_logic": {},
                 "conditional_regime_rule_required_metric_failure_count": {},
                 "conditional_regime_rule_metric_condition_count": {},
+                "conditional_regime_rule_metric_failure_count_distribution_by_rule": {},
+                "conditional_regime_rule_observed_metric_failure_counts_by_rule": {},
+                "conditional_regime_rule_metric_pair_failure_counts_by_rule": {},
+                "conditional_regime_rule_outcome_by_failure_count": {},
                 "conditional_regime_rule_removed_outcome_by_rule": {},
                 "conditional_regime_rule_passed_outcome_by_rule": {},
                 "removed_outcome_by_primary_regime": {},
@@ -1535,6 +1672,7 @@ class ProfitAwareEvaluatorV2:
                 "removed_outcome_by_active_regime_flag": {},
                 "passed_outcome_by_active_regime_flag": {},
                 "conditional_regime_ablation_board": [],
+                "conditional_regime_metric_overlap_board": [],
                 "per_regime_contribution_board": [],
                 "conditional_regime_rule_counts_by_primary_regime": {},
                 "conditional_regime_rule_counts_by_active_flag": {},
@@ -1570,6 +1708,10 @@ class ProfitAwareEvaluatorV2:
         conditional_regime_rule_metric_logic: dict[str, str] = {}
         conditional_regime_rule_required_metric_failure_count: dict[str, int] = {}
         conditional_regime_rule_metric_condition_count: dict[str, int] = {}
+        conditional_regime_rule_metric_failure_count_distribution_by_rule: dict[str, dict[str, int]] = {}
+        conditional_regime_rule_observed_metric_failure_counts_by_rule: dict[str, dict[str, int]] = {}
+        conditional_regime_rule_metric_pair_failure_counts_by_rule: dict[str, dict[str, int]] = {}
+        conditional_regime_rule_outcome_by_failure_count: dict[str, dict[str, dict[str, Any]]] = {}
         conditional_regime_rule_removed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         conditional_regime_rule_passed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         removed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
@@ -1752,6 +1894,42 @@ class ProfitAwareEvaluatorV2:
                     for item in self._as_list(evaluation.get("metric_failures"))
                     if str(item).strip()
                 ]
+                observed_metric_failure_count = self._int_or_none(
+                    evaluation.get("observed_metric_failure_count")
+                )
+                if observed_metric_failure_count is None:
+                    observed_metric_failure_count = len(metric_failures)
+                failure_count_bucket = self._metric_failure_count_bucket(
+                    observed_metric_failure_count
+                )
+                self._increment_nested_count(
+                    conditional_regime_rule_metric_failure_count_distribution_by_rule,
+                    rule_id,
+                    failure_count_bucket,
+                )
+                for metric_name in metric_failures:
+                    self._increment_nested_count(
+                        conditional_regime_rule_observed_metric_failure_counts_by_rule,
+                        rule_id,
+                        metric_name,
+                    )
+                for left, right in combinations(sorted(set(metric_failures)), 2):
+                    self._increment_nested_count(
+                        conditional_regime_rule_metric_pair_failure_counts_by_rule,
+                        rule_id,
+                        f"{left}+{right}",
+                    )
+                if contribution_outcome is None:
+                    contribution_outcome = self._simulate_contribution_outcome(
+                        row,
+                        contribution_trade_params,
+                    )
+                self._update_nested_contribution_stats(
+                    conditional_regime_rule_outcome_by_failure_count,
+                    rule_id,
+                    failure_count_bucket,
+                    contribution_outcome,
+                )
                 if evaluation.get("metric_failed"):
                     blocked_by_any_conditional_rule = True
                     self._increment_count(conditional_regime_rule_counts, rule_id)
@@ -1909,6 +2087,9 @@ class ProfitAwareEvaluatorV2:
         finalized_passed_outcome_by_active_regime_flag = self._finalize_contribution_stats_map(
             passed_outcome_by_active_regime_flag
         )
+        finalized_outcome_by_failure_count = self._finalize_nested_contribution_stats_map(
+            conditional_regime_rule_outcome_by_failure_count
+        )
         conditional_regime_ablation_board = self._conditional_regime_ablation_board(
             eligible_counts=conditional_regime_rule_eligible_counts,
             blocked_counts=conditional_regime_rule_blocked_counts,
@@ -1916,6 +2097,25 @@ class ProfitAwareEvaluatorV2:
             metric_failure_counts_by_rule=conditional_regime_rule_metric_failure_counts_by_rule,
             removed_outcome_by_rule=finalized_removed_outcome_by_rule,
             passed_outcome_by_rule=finalized_passed_outcome_by_rule,
+            metric_logic_by_rule=conditional_regime_rule_metric_logic,
+            required_metric_failure_count_by_rule=(
+                conditional_regime_rule_required_metric_failure_count
+            ),
+            metric_condition_count_by_rule=conditional_regime_rule_metric_condition_count,
+        )
+        conditional_regime_metric_overlap_board = self._conditional_regime_metric_overlap_board(
+            eligible_counts=conditional_regime_rule_eligible_counts,
+            blocked_counts=conditional_regime_rule_blocked_counts,
+            failure_count_distribution_by_rule=(
+                conditional_regime_rule_metric_failure_count_distribution_by_rule
+            ),
+            observed_metric_failure_counts_by_rule=(
+                conditional_regime_rule_observed_metric_failure_counts_by_rule
+            ),
+            metric_pair_failure_counts_by_rule=(
+                conditional_regime_rule_metric_pair_failure_counts_by_rule
+            ),
+            outcome_by_failure_count=finalized_outcome_by_failure_count,
             metric_logic_by_rule=conditional_regime_rule_metric_logic,
             required_metric_failure_count_by_rule=(
                 conditional_regime_rule_required_metric_failure_count
@@ -1969,6 +2169,24 @@ class ProfitAwareEvaluatorV2:
             "conditional_regime_rule_metric_condition_count": (
                 conditional_regime_rule_metric_condition_count
             ),
+            "conditional_regime_rule_metric_failure_count_distribution_by_rule": dict(
+                sorted(
+                    conditional_regime_rule_metric_failure_count_distribution_by_rule.items()
+                )
+            ),
+            "conditional_regime_rule_observed_metric_failure_counts_by_rule": dict(
+                sorted(
+                    conditional_regime_rule_observed_metric_failure_counts_by_rule.items()
+                )
+            ),
+            "conditional_regime_rule_metric_pair_failure_counts_by_rule": dict(
+                sorted(
+                    conditional_regime_rule_metric_pair_failure_counts_by_rule.items()
+                )
+            ),
+            "conditional_regime_rule_outcome_by_failure_count": (
+                finalized_outcome_by_failure_count
+            ),
             "conditional_regime_rule_removed_outcome_by_rule": (
                 finalized_removed_outcome_by_rule
             ),
@@ -1988,6 +2206,9 @@ class ProfitAwareEvaluatorV2:
                 finalized_passed_outcome_by_active_regime_flag
             ),
             "conditional_regime_ablation_board": conditional_regime_ablation_board,
+            "conditional_regime_metric_overlap_board": (
+                conditional_regime_metric_overlap_board
+            ),
             "per_regime_contribution_board": per_regime_contribution_board,
             "market_regime_present_count": (
                 len(signal_rows) - missing_feature_counts.get("market_regime", 0)

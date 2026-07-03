@@ -383,6 +383,10 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- aggregate_conditional_regime_rule_metric_logic: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_logic'))}`",
                 f"- aggregate_conditional_regime_rule_required_metric_failure_count: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_required_metric_failure_count'))}`",
                 f"- aggregate_conditional_regime_rule_metric_condition_count: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_condition_count'))}`",
+                f"- aggregate_conditional_regime_metric_overlap_board: `{self._as_list(adaptive_feature_diag.get('aggregate_conditional_regime_metric_overlap_board'))[:3]}`",
+                f"- aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule: `{adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule')}`",
+                f"- aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule: `{adaptive_feature_diag.get('aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule')}`",
+                f"- aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule: `{adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule')}`",
                 f"- aggregate_conditional_regime_rule_removed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_removed_outcome_by_rule'))}`",
                 f"- aggregate_conditional_regime_rule_passed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_passed_outcome_by_rule'))}`",
                 f"- aggregate_conditional_regime_ablation_board: `{self._as_list(adaptive_feature_diag.get('aggregate_conditional_regime_ablation_board'))[:3]}`",
@@ -452,6 +456,41 @@ class MultiSymbolFeatureRegimeReporter:
         if not ablation_board:
             lines.append(
                 "| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |"
+            )
+        lines.extend(
+            [
+                "",
+                "### ML38.10.34 Metric-overlap board",
+                "",
+                "| Rule id | Metric logic | Eligible | Actual removed | Required metric failures | Metric condition count | failed_0 | failed_1 | failed_2_plus | Status | Bottleneck |",
+                "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+            ]
+        )
+        overlap_board = self._as_list(
+            adaptive_feature_diag.get("aggregate_conditional_regime_metric_overlap_board")
+        )[:10]
+        for row in overlap_board:
+            board_row = self._as_dict(row)
+            lines.append(
+                "| `{rule_id}` | `{metric_logic}` | `{eligible}` | `{removed}` | `{required_metric_failure_count}` | `{metric_condition_count}` | `{failed_0}` | `{failed_1}` | `{failed_2_plus}` | `{status}` | `{bottleneck}` |".format(
+                    rule_id=board_row.get("rule_id"),
+                    metric_logic=board_row.get("metric_logic"),
+                    eligible=board_row.get("eligible_count"),
+                    removed=board_row.get("actual_removed_count"),
+                    required_metric_failure_count=board_row.get(
+                        "required_metric_failure_count"
+                    ),
+                    metric_condition_count=board_row.get("metric_condition_count"),
+                    failed_0=board_row.get("failed_0_count"),
+                    failed_1=board_row.get("failed_1_count"),
+                    failed_2_plus=board_row.get("failed_2_plus_count"),
+                    status=board_row.get("metric_overlap_status"),
+                    bottleneck=board_row.get("bottleneck_label"),
+                )
+            )
+        if not overlap_board:
+            lines.append(
+                "| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |"
             )
         lines.extend(
             [

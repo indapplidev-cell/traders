@@ -156,6 +156,45 @@ class FoldFeatureRegimeRepairProbe:
             target.setdefault(text_key, value)
 
     @classmethod
+    def _merge_nested_contribution_stats_map(
+        cls,
+        target: dict[str, dict[str, dict[str, Any]]],
+        source: Any,
+    ) -> None:
+        for outer_key, raw_inner in cls._as_dict(source).items():
+            text_outer = str(outer_key)
+            if not text_outer or text_outer.startswith("_"):
+                continue
+            slot = target.setdefault(text_outer, {})
+            for inner_key, raw_stats in cls._as_dict(raw_inner).items():
+                text_inner = str(inner_key)
+                if not text_inner or text_inner.startswith("_"):
+                    continue
+                normalized = cls._contribution_stats(raw_stats)
+                inner_slot = slot.setdefault(text_inner, cls._empty_contribution_stats())
+                inner_slot["signal_count"] = int(
+                    inner_slot.get("signal_count", 0) or 0
+                ) + int(normalized.get("signal_count", 0) or 0)
+                inner_slot["total_r"] = float(
+                    inner_slot.get("total_r", 0.0) or 0.0
+                ) + float(normalized.get("total_r", 0.0) or 0.0)
+                inner_slot["positive_r"] = float(
+                    inner_slot.get("positive_r", 0.0) or 0.0
+                ) + float(normalized.get("positive_r", 0.0) or 0.0)
+                inner_slot["negative_r"] = float(
+                    inner_slot.get("negative_r", 0.0) or 0.0
+                ) + float(normalized.get("negative_r", 0.0) or 0.0)
+                inner_slot["win_count"] = int(
+                    inner_slot.get("win_count", 0) or 0
+                ) + int(normalized.get("win_count", 0) or 0)
+                inner_slot["loss_count"] = int(
+                    inner_slot.get("loss_count", 0) or 0
+                ) + int(normalized.get("loss_count", 0) or 0)
+                inner_slot["neutral_count"] = int(
+                    inner_slot.get("neutral_count", 0) or 0
+                ) + int(normalized.get("neutral_count", 0) or 0)
+
+    @classmethod
     def _finalize_contribution_stats(cls, value: Any) -> dict[str, Any]:
         stats = cls._contribution_stats(value)
         if stats["signal_count"] <= 0:
@@ -173,6 +212,20 @@ class FoldFeatureRegimeRepairProbe:
             for key, value in sorted(mapping.items())
             if int(value.get("signal_count", 0) or 0) > 0
         }
+
+    @classmethod
+    def _finalize_nested_contribution_stats_map(
+        cls,
+        mapping: dict[str, dict[str, dict[str, Any]]],
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        finalized: dict[str, dict[str, dict[str, Any]]] = {}
+        for outer_key, inner_map in sorted(mapping.items()):
+            cleaned: dict[str, dict[str, Any]] = {}
+            for inner_key, stats in sorted(inner_map.items()):
+                cleaned[inner_key] = cls._finalize_contribution_stats(stats)
+            if cleaned:
+                finalized[outer_key] = cleaned
+        return finalized
 
     @classmethod
     def _contribution_effect_label(
@@ -263,6 +316,100 @@ class FoldFeatureRegimeRepairProbe:
             rows,
             key=lambda row: (
                 -int(row.get("removed_count", 0) or 0),
+                -int(row.get("eligible_count", 0) or 0),
+                str(row.get("rule_id") or ""),
+            ),
+        )
+
+    @classmethod
+    def _conditional_regime_metric_overlap_board(
+        cls,
+        *,
+        eligible_counts: dict[str, int],
+        blocked_counts: dict[str, int],
+        failure_count_distribution_by_rule: dict[str, dict[str, int]],
+        observed_metric_failure_counts_by_rule: dict[str, dict[str, int]],
+        metric_pair_failure_counts_by_rule: dict[str, dict[str, int]],
+        outcome_by_failure_count: dict[str, dict[str, dict[str, Any]]],
+        metric_logic_by_rule: dict[str, str] | None = None,
+        required_metric_failure_count_by_rule: dict[str, int] | None = None,
+        metric_condition_count_by_rule: dict[str, int] | None = None,
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        rule_ids = sorted(
+            set(eligible_counts)
+            | set(blocked_counts)
+            | set(failure_count_distribution_by_rule)
+            | set(observed_metric_failure_counts_by_rule)
+            | set(metric_pair_failure_counts_by_rule)
+            | set(outcome_by_failure_count)
+        )
+
+        for rule_id in rule_ids:
+            eligible_count = int(eligible_counts.get(rule_id, 0) or 0)
+            actual_removed_count = int(blocked_counts.get(rule_id, 0) or 0)
+            distribution = {
+                str(key): int(value or 0)
+                for key, value in cls._count_map(
+                    failure_count_distribution_by_rule.get(rule_id)
+                ).items()
+            }
+            failed_0_count = int(distribution.get("failed_0", 0) or 0)
+            failed_1_count = int(distribution.get("failed_1", 0) or 0)
+            failed_2_plus_count = int(distribution.get("failed_2_plus", 0) or 0)
+            required = int(
+                (required_metric_failure_count_by_rule or {}).get(rule_id, 0) or 0
+            )
+            metric_condition_count = int(
+                (metric_condition_count_by_rule or {}).get(rule_id, 0) or 0
+            )
+            metric_logic = (metric_logic_by_rule or {}).get(rule_id)
+
+            if eligible_count <= 0:
+                overlap_status = "NO_ELIGIBLE_SIGNALS"
+                bottleneck_label = "regime_context_not_seen"
+            elif actual_removed_count > 0:
+                overlap_status = "REMOVALS_ACTIVE"
+                bottleneck_label = "rule_removed_signals"
+            elif failed_2_plus_count > 0:
+                overlap_status = "TWO_METRIC_OVERLAP_WITHOUT_REMOVAL"
+                bottleneck_label = "check_metric_logic_or_required_count"
+            elif failed_1_count > 0:
+                overlap_status = "ONLY_ONE_METRIC_FAILURES"
+                bottleneck_label = "conditions_too_strict_or_metrics_do_not_overlap"
+            else:
+                overlap_status = "NO_METRIC_FAILURES"
+                bottleneck_label = "thresholds_too_loose_or_features_do_not_cross_thresholds"
+
+            rows.append(
+                {
+                    "rule_id": rule_id,
+                    "eligible_count": eligible_count,
+                    "actual_removed_count": actual_removed_count,
+                    "metric_logic": metric_logic,
+                    "required_metric_failure_count": required,
+                    "metric_condition_count": metric_condition_count,
+                    "failed_0_count": failed_0_count,
+                    "failed_1_count": failed_1_count,
+                    "failed_2_plus_count": failed_2_plus_count,
+                    "failure_count_distribution": distribution,
+                    "observed_metric_failure_counts": cls._count_map(
+                        observed_metric_failure_counts_by_rule.get(rule_id)
+                    ),
+                    "metric_pair_failure_counts": cls._count_map(
+                        metric_pair_failure_counts_by_rule.get(rule_id)
+                    ),
+                    "outcome_by_failure_count": cls._as_dict(
+                        outcome_by_failure_count.get(rule_id)
+                    ),
+                    "metric_overlap_status": overlap_status,
+                    "bottleneck_label": bottleneck_label,
+                }
+            )
+
+        return sorted(
+            rows,
+            key=lambda row: (
                 -int(row.get("eligible_count", 0) or 0),
                 str(row.get("rule_id") or ""),
             ),
@@ -552,6 +699,10 @@ class FoldFeatureRegimeRepairProbe:
         aggregate_conditional_regime_rule_metric_logic: dict[str, str] = {}
         aggregate_conditional_regime_rule_required_metric_failure_count: dict[str, int] = {}
         aggregate_conditional_regime_rule_metric_condition_count: dict[str, int] = {}
+        aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule: dict[str, dict[str, int]] = {}
+        aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule: dict[str, dict[str, int]] = {}
+        aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule: dict[str, dict[str, int]] = {}
+        aggregate_conditional_regime_rule_outcome_by_failure_count: dict[str, dict[str, dict[str, Any]]] = {}
         aggregate_removed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         aggregate_passed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         aggregate_removed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
@@ -715,6 +866,33 @@ class FoldFeatureRegimeRepairProbe:
                 aggregate_conditional_regime_rule_metric_failure_counts_by_rule,
                 feature_summary.get("conditional_regime_rule_metric_failure_counts_by_rule"),
             )
+            self._merge_nested_count_map(
+                aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule,
+                feature_summary.get(
+                    "conditional_regime_rule_metric_failure_count_distribution_by_rule"
+                )
+                or row.get(
+                    "conditional_regime_rule_metric_failure_count_distribution_by_rule"
+                ),
+            )
+            self._merge_nested_count_map(
+                aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule,
+                feature_summary.get(
+                    "conditional_regime_rule_observed_metric_failure_counts_by_rule"
+                )
+                or row.get(
+                    "conditional_regime_rule_observed_metric_failure_counts_by_rule"
+                ),
+            )
+            self._merge_nested_count_map(
+                aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule,
+                feature_summary.get(
+                    "conditional_regime_rule_metric_pair_failure_counts_by_rule"
+                )
+                or row.get(
+                    "conditional_regime_rule_metric_pair_failure_counts_by_rule"
+                ),
+            )
             self._merge_rule_metadata_map(
                 aggregate_conditional_regime_rule_metric_logic,
                 feature_summary.get("conditional_regime_rule_metric_logic")
@@ -739,6 +917,11 @@ class FoldFeatureRegimeRepairProbe:
             self._merge_contribution_stats(
                 aggregate_passed_outcome_by_rule,
                 feature_summary.get("conditional_regime_rule_passed_outcome_by_rule"),
+            )
+            self._merge_nested_contribution_stats_map(
+                aggregate_conditional_regime_rule_outcome_by_failure_count,
+                feature_summary.get("conditional_regime_rule_outcome_by_failure_count")
+                or row.get("conditional_regime_rule_outcome_by_failure_count"),
             )
             self._merge_contribution_stats(
                 aggregate_removed_outcome_by_primary_regime,
@@ -812,6 +995,29 @@ class FoldFeatureRegimeRepairProbe:
         aggregate_passed_outcome_by_active_regime_flag = self._finalize_contribution_stats_map(
             aggregate_passed_outcome_by_active_regime_flag
         )
+        aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule = {
+            key: dict(sorted(value.items()))
+            for key, value in sorted(
+                aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule.items()
+            )
+        }
+        aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule = {
+            key: dict(sorted(value.items()))
+            for key, value in sorted(
+                aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule.items()
+            )
+        }
+        aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule = {
+            key: dict(sorted(value.items()))
+            for key, value in sorted(
+                aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule.items()
+            )
+        }
+        aggregate_conditional_regime_rule_outcome_by_failure_count = (
+            self._finalize_nested_contribution_stats_map(
+                aggregate_conditional_regime_rule_outcome_by_failure_count
+            )
+        )
         aggregate_conditional_regime_ablation_board = self._conditional_regime_ablation_board(
             eligible_counts=aggregate_conditional_regime_rule_eligible_counts,
             blocked_counts=aggregate_conditional_regime_rule_blocked_counts,
@@ -826,6 +1032,31 @@ class FoldFeatureRegimeRepairProbe:
             metric_condition_count_by_rule=(
                 aggregate_conditional_regime_rule_metric_condition_count
             ),
+        )
+        aggregate_conditional_regime_metric_overlap_board = (
+            self._conditional_regime_metric_overlap_board(
+                eligible_counts=aggregate_conditional_regime_rule_eligible_counts,
+                blocked_counts=aggregate_conditional_regime_rule_blocked_counts,
+                failure_count_distribution_by_rule=(
+                    aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule
+                ),
+                observed_metric_failure_counts_by_rule=(
+                    aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule
+                ),
+                metric_pair_failure_counts_by_rule=(
+                    aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule
+                ),
+                outcome_by_failure_count=(
+                    aggregate_conditional_regime_rule_outcome_by_failure_count
+                ),
+                metric_logic_by_rule=aggregate_conditional_regime_rule_metric_logic,
+                required_metric_failure_count_by_rule=(
+                    aggregate_conditional_regime_rule_required_metric_failure_count
+                ),
+                metric_condition_count_by_rule=(
+                    aggregate_conditional_regime_rule_metric_condition_count
+                ),
+            )
         )
         aggregate_per_regime_contribution_board = self._per_regime_contribution_board(
             removed_outcome_by_primary_regime=aggregate_removed_outcome_by_primary_regime,
@@ -885,6 +1116,18 @@ class FoldFeatureRegimeRepairProbe:
             "aggregate_conditional_regime_rule_metric_condition_count": (
                 aggregate_conditional_regime_rule_metric_condition_count
             ),
+            "aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule": (
+                aggregate_conditional_regime_rule_metric_failure_count_distribution_by_rule
+            ),
+            "aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule": (
+                aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule
+            ),
+            "aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule": (
+                aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule
+            ),
+            "aggregate_conditional_regime_rule_outcome_by_failure_count": (
+                aggregate_conditional_regime_rule_outcome_by_failure_count
+            ),
             "aggregate_conditional_regime_rule_removed_outcome_by_rule": (
                 aggregate_removed_outcome_by_rule
             ),
@@ -905,6 +1148,9 @@ class FoldFeatureRegimeRepairProbe:
             ),
             "aggregate_conditional_regime_ablation_board": (
                 aggregate_conditional_regime_ablation_board
+            ),
+            "aggregate_conditional_regime_metric_overlap_board": (
+                aggregate_conditional_regime_metric_overlap_board
             ),
             "aggregate_per_regime_contribution_board": (
                 aggregate_per_regime_contribution_board
