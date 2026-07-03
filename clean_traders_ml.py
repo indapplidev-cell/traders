@@ -210,20 +210,38 @@ def _log_detail(message: str) -> None:
         file.write(message.rstrip() + "\n")
 
 
+class SingleLineProgress:
+    def __init__(self) -> None:
+        self._active = False
+        self._last_len = 0
+
+    def update(self, label: str, current: int, total: int) -> None:
+        safe_current = max(0, int(current))
+        safe_total = max(0, int(total))
+        percent = (safe_current / safe_total * 100.0) if safe_total else 100.0
+        text = f"{label}: {safe_current:>6}/{safe_total:<6} {percent:>7.2f}%"
+        padding = " " * max(0, self._last_len - len(text))
+        print("\r" + text + padding, end="", flush=True)
+        self._last_len = len(text)
+        self._active = True
+
+    def finish(self) -> None:
+        if self._active:
+            print()
+            self._active = False
+            self._last_len = 0
+
+
+_SINGLE_LINE_PROGRESS = SingleLineProgress()
+
+
 def _compact_progress(label: str, current: int, total: int) -> None:
     """Одна перерисовываемая строка прогресса в терминале."""
-    if total <= 0:
-        line = f"{label}: {0:>6}/{0:<6} {100.0:>7.2f}%"
-        print(line)
-        return
+    _SINGLE_LINE_PROGRESS.update(label, current, total)
 
-    percent = current / total * 100.0
-    line = f"{label}: {current:>6}/{total:<6} {percent:>7.2f}%"
-    sys.stdout.write("\r" + line)
-    sys.stdout.flush()
-    if current >= total:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+
+def _finish_compact_progress() -> None:
+    _SINGLE_LINE_PROGRESS.finish()
 
 
 def _emit_detail_group(label: str, lines: list[str]) -> None:
@@ -234,6 +252,7 @@ def _emit_detail_group(label: str, lines: list[str]) -> None:
     for index, line in enumerate(lines, start=1):
         _log_detail(f"{label}: {line}")
         _compact_progress(label, index, total)
+    _finish_compact_progress()
 
 
 
@@ -618,6 +637,7 @@ def _collect_runtime_cleanup_candidates(root: Path) -> list[Path]:
             candidates.append(path)
     else:
         _compact_progress("Prepare cleanup scan", 0, 0)
+    _finish_compact_progress()
 
     _emit_detail_group("SKIP protected cleanup path", protected_skips)
     _emit_detail_group("SKIP tracked cleanup path", tracked_skips)
@@ -676,6 +696,7 @@ def clean_untracked_runtime_files(*, root: Path, dry_run: bool) -> None:
         _log_detail(f"Removing: {display_path}")
         _compact_progress("Removing", index, len(candidates))
         _remove_runtime_cleanup_candidate(path)
+    _finish_compact_progress()
 
 
 def _safe_dir_size_bytes(path: Path) -> int:
@@ -1134,6 +1155,7 @@ def warn_if_changes_remain() -> None:
         print("Готово: значимых изменений до сборки архива не осталось.")
         _log_detail("No significant working-tree changes before archive build.")
         _compact_progress("Remaining changes", 0, 0)
+        _finish_compact_progress()
         return
 
     print()

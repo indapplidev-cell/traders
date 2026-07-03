@@ -34,3 +34,6 @@ reports/label_grid_experiments/
 # Local cleaner / packer runtime outputs
 reports/cleaner_logs/
 reports/project_archives/
+
+# Manual local runtime sequence logs
+reports/manual_sequence_runs/
