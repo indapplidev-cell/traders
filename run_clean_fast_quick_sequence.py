@@ -84,21 +84,43 @@ class TeeLogger:
     def __init__(self, log_path: Path) -> None:
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        self._file = self.log_path.open("a", encoding="utf-8", newline="\n")
+        self._file = self.log_path.open("a", encoding="utf-8", newline="")
+        self._stream_line_open = False
 
     def write(self, text: str = "") -> None:
+        if self._stream_line_open:
+            sys.stdout.write("\n")
+            self._file.write("\n")
+            self._stream_line_open = False
         print(text, flush=True)
         self._file.write(text + "\n")
         self._file.flush()
+
+    def write_stream_chunk(self, text: str, *, is_stderr: bool = False) -> None:
+        if not text:
+            return
+        target = sys.stderr if is_stderr else sys.stdout
+        target.write(text)
+        target.flush()
+        self._file.write(text)
+        self._file.flush()
+        self._stream_line_open = not text.endswith("\n")
 
     def close(self) -> None:
         self._file.close()
 
 
-def reader_thread(stream, output_queue: "queue.Queue[str]", prefix: str) -> None:
+def reader_thread(
+    stream,
+    output_queue: "queue.Queue[tuple[bool, str]]",
+    is_stderr: bool,
+) -> None:
     try:
-        for line in iter(stream.readline, ""):
-            output_queue.put(f"{prefix}{line.rstrip()}")
+        while True:
+            chunk = stream.read(4096)
+            if not chunk:
+                break
+            output_queue.put((is_stderr, chunk.decode("utf-8", errors="replace")))
     finally:
         try:
             stream.close()
@@ -135,23 +157,19 @@ def run_command(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         stdin=subprocess.DEVNULL,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=1,
-        universal_newlines=True,
+        bufsize=0,
     )
 
-    output_queue: "queue.Queue[str]" = queue.Queue()
+    output_queue: "queue.Queue[tuple[bool, str]]" = queue.Queue()
 
     stdout_thread = threading.Thread(
         target=reader_thread,
-        args=(process.stdout, output_queue, ""),
+        args=(process.stdout, output_queue, False),
         daemon=True,
     )
     stderr_thread = threading.Thread(
         target=reader_thread,
-        args=(process.stderr, output_queue, "[stderr] "),
+        args=(process.stderr, output_queue, True),
         daemon=True,
     )
     stdout_thread.start()
@@ -162,8 +180,8 @@ def run_command(
     try:
         while True:
             try:
-                line = output_queue.get(timeout=1.0)
-                logger.write(line)
+                is_stderr, chunk = output_queue.get(timeout=1.0)
+                logger.write_stream_chunk(chunk, is_stderr=is_stderr)
             except queue.Empty:
                 pass
 
@@ -179,8 +197,8 @@ def run_command(
             if return_code is not None:
                 while True:
                     try:
-                        line = output_queue.get_nowait()
-                        logger.write(line)
+                        is_stderr, chunk = output_queue.get_nowait()
+                        logger.write_stream_chunk(chunk, is_stderr=is_stderr)
                     except queue.Empty:
                         break
                 break

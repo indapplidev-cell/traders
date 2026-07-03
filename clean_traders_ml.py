@@ -146,6 +146,7 @@ COMMIT_ALLOWED_EXACT_FILES = {
     "docker-compose.yml",
     "docker-compose.yaml",
     "run_fv3_cached_tuning.py",
+    "run_clean_fast_quick_sequence.py",
     "clean_traders_ml_runtime.py",
     "clean_traders_ml.py",
 }
