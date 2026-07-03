@@ -380,6 +380,9 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- aggregate_conditional_regime_rule_counts_by_primary_regime: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts_by_primary_regime'))}`",
                 f"- aggregate_conditional_regime_rule_counts_by_active_flag: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_counts_by_active_flag'))}`",
                 f"- aggregate_conditional_regime_rule_metric_failure_counts: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_failure_counts'))}`",
+                f"- aggregate_conditional_regime_rule_metric_logic: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_logic'))}`",
+                f"- aggregate_conditional_regime_rule_required_metric_failure_count: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_required_metric_failure_count'))}`",
+                f"- aggregate_conditional_regime_rule_metric_condition_count: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_metric_condition_count'))}`",
                 f"- aggregate_conditional_regime_rule_removed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_removed_outcome_by_rule'))}`",
                 f"- aggregate_conditional_regime_rule_passed_outcome_by_rule: `{self._top_n_items(adaptive_feature_diag.get('aggregate_conditional_regime_rule_passed_outcome_by_rule'))}`",
                 f"- aggregate_conditional_regime_ablation_board: `{self._as_list(adaptive_feature_diag.get('aggregate_conditional_regime_ablation_board'))[:3]}`",
@@ -417,8 +420,8 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 "### ML38.10.32 Conditional regime ablation board",
                 "",
-                "| Rule id | Eligible | Removed | Passed | Removal rate | Removed total R | Passed total R | Effect | Metric failure counts |",
-                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+                "| Rule id | Metric logic | Eligible | Removed | Passed | Removal rate | Required metric failures | Metric condition count | Removed total R | Passed total R | Effect | Metric failure counts |",
+                "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
             ]
         )
         ablation_board = self._as_list(
@@ -429,12 +432,17 @@ class MultiSymbolFeatureRegimeReporter:
             removed_outcome = self._as_dict(board_row.get("removed_outcome"))
             passed_outcome = self._as_dict(board_row.get("passed_outcome"))
             lines.append(
-                "| `{rule_id}` | `{eligible}` | `{removed}` | `{passed}` | `{removal_rate}` | `{removed_total_r}` | `{passed_total_r}` | `{effect}` | `{metric_failures}` |".format(
+                "| `{rule_id}` | `{metric_logic}` | `{eligible}` | `{removed}` | `{passed}` | `{removal_rate}` | `{required_metric_failure_count}` | `{metric_condition_count}` | `{removed_total_r}` | `{passed_total_r}` | `{effect}` | `{metric_failures}` |".format(
                     rule_id=board_row.get("rule_id"),
+                    metric_logic=board_row.get("metric_logic"),
                     eligible=board_row.get("eligible_count"),
                     removed=board_row.get("removed_count"),
                     passed=board_row.get("passed_count"),
                     removal_rate=board_row.get("removal_rate"),
+                    required_metric_failure_count=board_row.get(
+                        "required_metric_failure_count"
+                    ),
+                    metric_condition_count=board_row.get("metric_condition_count"),
                     removed_total_r=removed_outcome.get("total_r"),
                     passed_total_r=passed_outcome.get("total_r"),
                     effect=board_row.get("effect_label"),
@@ -442,7 +450,9 @@ class MultiSymbolFeatureRegimeReporter:
                 )
             )
         if not ablation_board:
-            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+            lines.append(
+                "| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |"
+            )
         lines.extend(
             [
                 "",

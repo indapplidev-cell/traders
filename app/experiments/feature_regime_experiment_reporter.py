@@ -349,6 +349,15 @@ class FeatureRegimeExperimentReporter:
                     payload.get("conditional_regime_rule_metric_failure_counts_by_rule")
                 )
             ),
+            "conditional_regime_rule_metric_logic": cls._as_dict(
+                payload.get("conditional_regime_rule_metric_logic")
+            ),
+            "conditional_regime_rule_required_metric_failure_count": cls._compact_count_map(
+                payload.get("conditional_regime_rule_required_metric_failure_count")
+            ),
+            "conditional_regime_rule_metric_condition_count": cls._compact_count_map(
+                payload.get("conditional_regime_rule_metric_condition_count")
+            ),
             "conditional_regime_rule_removed_outcome_by_rule": (
                 cls._compact_contribution_stats_map(
                     payload.get("conditional_regime_rule_removed_outcome_by_rule")
@@ -1029,6 +1038,19 @@ class FeatureRegimeExperimentReporter:
                 "conditional_regime_rule_metric_failure_counts_by_rule"
             )
         )
+        candidate["conditional_regime_rule_metric_logic"] = (
+            fold_feature_regime_filter_summary.get("conditional_regime_rule_metric_logic")
+        )
+        candidate["conditional_regime_rule_required_metric_failure_count"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_required_metric_failure_count"
+            )
+        )
+        candidate["conditional_regime_rule_metric_condition_count"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_metric_condition_count"
+            )
+        )
         candidate["conditional_regime_rule_removed_outcome_by_rule"] = (
             fold_feature_regime_filter_summary.get(
                 "conditional_regime_rule_removed_outcome_by_rule"
@@ -1370,6 +1392,32 @@ class FeatureRegimeExperimentReporter:
                 or self._as_dict(
                     fold_feature_regime_filter_summary.get(
                         "conditional_regime_rule_metric_failure_counts_by_rule"
+                    )
+                )
+            ),
+            "conditional_regime_rule_metric_logic": (
+                self._as_dict(row.get("conditional_regime_rule_metric_logic"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_metric_logic"
+                    )
+                )
+            ),
+            "conditional_regime_rule_required_metric_failure_count": (
+                self._as_dict(
+                    row.get("conditional_regime_rule_required_metric_failure_count")
+                )
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_required_metric_failure_count"
+                    )
+                )
+            ),
+            "conditional_regime_rule_metric_condition_count": (
+                self._as_dict(row.get("conditional_regime_rule_metric_condition_count"))
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_metric_condition_count"
                     )
                 )
             ),

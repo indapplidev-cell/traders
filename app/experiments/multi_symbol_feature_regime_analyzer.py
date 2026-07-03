@@ -1079,6 +1079,19 @@ class MultiSymbolFeatureRegimeAnalyzer:
                         "conditional_regime_rule_metric_failure_counts_by_rule"
                     )
                 )
+                payload["conditional_regime_rule_metric_logic"] = cls._as_dict(
+                    fold_feature_summary.get("conditional_regime_rule_metric_logic")
+                )
+                payload["conditional_regime_rule_required_metric_failure_count"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_required_metric_failure_count"
+                    )
+                )
+                payload["conditional_regime_rule_metric_condition_count"] = cls._as_dict(
+                    fold_feature_summary.get(
+                        "conditional_regime_rule_metric_condition_count"
+                    )
+                )
                 payload["conditional_regime_rule_removed_outcome_by_rule"] = cls._as_dict(
                     fold_feature_summary.get(
                         "conditional_regime_rule_removed_outcome_by_rule"
@@ -1573,6 +1586,19 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     payload["conditional_regime_rule_metric_failure_counts_by_rule"] = cls._as_dict(
                         fold_feature_summary.get(
                             "conditional_regime_rule_metric_failure_counts_by_rule"
+                        )
+                    )
+                    payload["conditional_regime_rule_metric_logic"] = cls._as_dict(
+                        fold_feature_summary.get("conditional_regime_rule_metric_logic")
+                    )
+                    payload["conditional_regime_rule_required_metric_failure_count"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_required_metric_failure_count"
+                        )
+                    )
+                    payload["conditional_regime_rule_metric_condition_count"] = cls._as_dict(
+                        fold_feature_summary.get(
+                            "conditional_regime_rule_metric_condition_count"
                         )
                     )
                     payload["conditional_regime_rule_removed_outcome_by_rule"] = cls._as_dict(

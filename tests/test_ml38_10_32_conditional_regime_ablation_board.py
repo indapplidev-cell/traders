@@ -291,5 +291,5 @@ def test_reporter_compacts_conditional_ablation_board_without_losing_counts():
 
 
 def test_ml38_10_32_does_not_change_runtime_counts():
-    assert len(FAST_DEBUG_CONFIGS) == 18
-    assert len(QUICK_QUALITY_CONFIGS) == 38
+    assert len(FAST_DEBUG_CONFIGS) == 20
+    assert len(QUICK_QUALITY_CONFIGS) == 42

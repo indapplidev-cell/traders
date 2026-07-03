@@ -25,7 +25,7 @@ def test_fast_debug_uses_prompt_4_6_smoke_shortlist() -> None:
     assert wrapper.runtime_profile == "fast_debug"
     assert wrapper.symbols == ("BTCUSDT", "SOLUSDT")
     assert wrapper.selected_config_ids == EXPECTED_FAST_DEBUG_CONFIGS
-    assert wrapper._expected_candidate_count() == 36
+    assert wrapper._expected_candidate_count() == 40
     assert "lv15_h08_setup_pure_ft" in ML38_10_4_SETUP_SEMANTICS_CONFIG_IDS
     assert "lv19_h08_tts_thr065_sqmask060" in wrapper.selected_config_ids
 
@@ -41,7 +41,7 @@ def test_quick_quality_uses_prompt_4_6_smoke_shortlist() -> None:
     assert wrapper.runtime_profile == "quick_quality"
     assert wrapper.symbols == ("SOLUSDT",)
     assert wrapper.selected_config_ids == EXPECTED_QUICK_QUALITY_CONFIGS
-    assert wrapper._expected_candidate_count() == 38
+    assert wrapper._expected_candidate_count() == 42
 
     setup_semantics_configs = [
         config_id

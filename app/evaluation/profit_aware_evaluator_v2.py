@@ -846,6 +846,15 @@ class ProfitAwareEvaluatorV2:
         except (TypeError, ValueError):
             return None
 
+    @staticmethod
+    def _int_or_none(value: Any) -> int | None:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
     @classmethod
     def _row_metric_float(cls, row: dict[str, Any], *keys: str) -> float | None:
         for key in keys:
@@ -1095,6 +1104,61 @@ class ProfitAwareEvaluatorV2:
         return failures
 
     @classmethod
+    def _rule_metric_condition_names(cls, rule: dict[str, Any]) -> list[str]:
+        metric_keys = (
+            "entry_path_quality_below",
+            "entry_path_quality_above",
+            "setup_quality_below",
+            "setup_quality_above",
+            "stop_pressure_below",
+            "stop_pressure_above",
+            "mae_pressure_below",
+            "mae_pressure_above",
+        )
+        names: list[str] = []
+        for key in metric_keys:
+            if cls._float_or_none(rule.get(key)) is not None:
+                names.append(key)
+        return names
+
+    @classmethod
+    def _resolve_metric_rule_decision(
+        cls,
+        *,
+        rule: dict[str, Any],
+        metric_failures: list[str],
+    ) -> dict[str, Any]:
+        metric_logic = str(rule.get("metric_logic") or "any").strip().lower()
+        if metric_logic in {"and"}:
+            metric_logic = "all"
+        if metric_logic in {"at_least", "min"}:
+            metric_logic = "min_count"
+        if metric_logic not in {"any", "all", "min_count"}:
+            metric_logic = "any"
+
+        condition_names = cls._rule_metric_condition_names(rule)
+        explicit_min_count = cls._int_or_none(rule.get("min_metric_failure_count"))
+
+        if metric_logic == "all":
+            required_count = explicit_min_count or len(condition_names) or 1
+        elif metric_logic == "min_count":
+            required_count = explicit_min_count or 1
+        else:
+            required_count = explicit_min_count or 1
+
+        observed_count = len(metric_failures)
+        metric_failed = observed_count >= required_count
+
+        return {
+            "metric_logic": metric_logic,
+            "metric_condition_names": condition_names,
+            "metric_condition_count": len(condition_names),
+            "required_metric_failure_count": required_count,
+            "observed_metric_failure_count": observed_count,
+            "metric_failed": metric_failed,
+        }
+
+    @classmethod
     def _conditional_regime_rule_evaluations(
         cls,
         *,
@@ -1141,13 +1205,28 @@ class ProfitAwareEvaluatorV2:
                 if regime_context_matched
                 else []
             )
+            metric_decision = cls._resolve_metric_rule_decision(
+                rule=rule,
+                metric_failures=metric_failures,
+            )
 
             evaluations.append(
                 {
                     "rule_id": rule_id,
                     "regime_context_matched": regime_context_matched,
-                    "metric_failed": bool(metric_failures),
+                    "metric_failed": (
+                        regime_context_matched and bool(metric_decision["metric_failed"])
+                    ),
                     "metric_failures": metric_failures,
+                    "metric_logic": metric_decision["metric_logic"],
+                    "metric_condition_names": metric_decision["metric_condition_names"],
+                    "metric_condition_count": metric_decision["metric_condition_count"],
+                    "required_metric_failure_count": metric_decision[
+                        "required_metric_failure_count"
+                    ],
+                    "observed_metric_failure_count": metric_decision[
+                        "observed_metric_failure_count"
+                    ],
                     "primary_regime": primary_regime or "missing",
                     "active_regime_flags": sorted(normalized_regime_values),
                 }
@@ -1186,6 +1265,9 @@ class ProfitAwareEvaluatorV2:
         metric_failure_counts_by_rule: dict[str, dict[str, int]],
         removed_outcome_by_rule: dict[str, dict[str, Any]],
         passed_outcome_by_rule: dict[str, dict[str, Any]],
+        metric_logic_by_rule: dict[str, str] | None = None,
+        required_metric_failure_count_by_rule: dict[str, int] | None = None,
+        metric_condition_count_by_rule: dict[str, int] | None = None,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         rule_ids = sorted(
@@ -1206,15 +1288,23 @@ class ProfitAwareEvaluatorV2:
             passed_outcome = cls._finalize_contribution_stats(
                 passed_outcome_by_rule.get(rule_id)
             )
+            metric_logic = (metric_logic_by_rule or {}).get(rule_id)
+            required_metric_failure_count = (
+                required_metric_failure_count_by_rule or {}
+            ).get(rule_id)
+            metric_condition_count = (metric_condition_count_by_rule or {}).get(rule_id)
             rows.append(
                 {
                     "rule_id": rule_id,
+                    "metric_logic": metric_logic,
                     "eligible_count": eligible_count,
                     "removed_count": removed_count,
                     "passed_count": passed_count,
                     "removal_rate": (
                         removed_count / eligible_count if eligible_count > 0 else None
                     ),
+                    "required_metric_failure_count": required_metric_failure_count,
+                    "metric_condition_count": metric_condition_count,
                     "removed_outcome": removed_outcome,
                     "passed_outcome": passed_outcome,
                     "removed_total_r": removed_outcome.get("total_r"),
@@ -1435,6 +1525,9 @@ class ProfitAwareEvaluatorV2:
                 "conditional_regime_rule_blocked_counts": {},
                 "conditional_regime_rule_metric_failure_counts": {},
                 "conditional_regime_rule_metric_failure_counts_by_rule": {},
+                "conditional_regime_rule_metric_logic": {},
+                "conditional_regime_rule_required_metric_failure_count": {},
+                "conditional_regime_rule_metric_condition_count": {},
                 "conditional_regime_rule_removed_outcome_by_rule": {},
                 "conditional_regime_rule_passed_outcome_by_rule": {},
                 "removed_outcome_by_primary_regime": {},
@@ -1474,6 +1567,9 @@ class ProfitAwareEvaluatorV2:
         conditional_regime_rule_counts_by_active_flag: dict[str, int] = {}
         conditional_regime_rule_metric_failure_counts: dict[str, int] = {}
         conditional_regime_rule_metric_failure_counts_by_rule: dict[str, dict[str, int]] = {}
+        conditional_regime_rule_metric_logic: dict[str, str] = {}
+        conditional_regime_rule_required_metric_failure_count: dict[str, int] = {}
+        conditional_regime_rule_metric_condition_count: dict[str, int] = {}
         conditional_regime_rule_removed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         conditional_regime_rule_passed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         removed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
@@ -1630,13 +1726,33 @@ class ProfitAwareEvaluatorV2:
 
                 eligible_for_any_conditional_rule = True
                 self._increment_count(conditional_regime_rule_eligible_counts, rule_id)
+                metric_logic = str(evaluation.get("metric_logic") or "any")
+                conditional_regime_rule_metric_logic.setdefault(rule_id, metric_logic)
+
+                required_metric_failure_count = self._int_or_none(
+                    evaluation.get("required_metric_failure_count")
+                )
+                if required_metric_failure_count is not None:
+                    conditional_regime_rule_required_metric_failure_count.setdefault(
+                        rule_id,
+                        required_metric_failure_count,
+                    )
+
+                metric_condition_count = self._int_or_none(
+                    evaluation.get("metric_condition_count")
+                )
+                if metric_condition_count is not None:
+                    conditional_regime_rule_metric_condition_count.setdefault(
+                        rule_id,
+                        metric_condition_count,
+                    )
 
                 metric_failures = [
                     str(item).strip()
                     for item in self._as_list(evaluation.get("metric_failures"))
                     if str(item).strip()
                 ]
-                if metric_failures:
+                if evaluation.get("metric_failed"):
                     blocked_by_any_conditional_rule = True
                     self._increment_count(conditional_regime_rule_counts, rule_id)
                     self._increment_count(conditional_regime_rule_blocked_counts, rule_id)
@@ -1800,6 +1916,11 @@ class ProfitAwareEvaluatorV2:
             metric_failure_counts_by_rule=conditional_regime_rule_metric_failure_counts_by_rule,
             removed_outcome_by_rule=finalized_removed_outcome_by_rule,
             passed_outcome_by_rule=finalized_passed_outcome_by_rule,
+            metric_logic_by_rule=conditional_regime_rule_metric_logic,
+            required_metric_failure_count_by_rule=(
+                conditional_regime_rule_required_metric_failure_count
+            ),
+            metric_condition_count_by_rule=conditional_regime_rule_metric_condition_count,
         )
         per_regime_contribution_board = self._per_regime_contribution_board(
             removed_outcome_by_primary_regime=finalized_removed_outcome_by_primary_regime,
@@ -1838,6 +1959,15 @@ class ProfitAwareEvaluatorV2:
             ),
             "conditional_regime_rule_metric_failure_counts_by_rule": dict(
                 sorted(conditional_regime_rule_metric_failure_counts_by_rule.items())
+            ),
+            "conditional_regime_rule_metric_logic": (
+                conditional_regime_rule_metric_logic
+            ),
+            "conditional_regime_rule_required_metric_failure_count": (
+                conditional_regime_rule_required_metric_failure_count
+            ),
+            "conditional_regime_rule_metric_condition_count": (
+                conditional_regime_rule_metric_condition_count
             ),
             "conditional_regime_rule_removed_outcome_by_rule": (
                 finalized_removed_outcome_by_rule

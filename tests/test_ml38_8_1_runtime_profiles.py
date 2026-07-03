@@ -14,7 +14,7 @@ def test_quick_quality_profile_uses_one_symbol_short_range_and_selected_config()
     assert "lv22_h12_tts_thr065_sqmask060_epq070_sp045" in wrapper.selected_config_ids
     assert wrapper.start_date == "2026-04-01"
     assert wrapper.end_date == "2026-06-15"
-    assert wrapper._expected_candidate_count() == 38
+    assert wrapper._expected_candidate_count() == 42
     assert wrapper._full_quality_run() is False
     assert wrapper._quality_decision_allowed() is False
 

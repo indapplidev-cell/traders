@@ -144,6 +144,18 @@ class FoldFeatureRegimeRepairProbe:
                 slot[inner_key] = slot.get(inner_key, 0) + count
 
     @classmethod
+    def _merge_rule_metadata_map(
+        cls,
+        target: dict[str, Any],
+        source: Any,
+    ) -> None:
+        for key, value in cls._as_dict(source).items():
+            text_key = str(key)
+            if not text_key or text_key.startswith("_"):
+                continue
+            target.setdefault(text_key, value)
+
+    @classmethod
     def _finalize_contribution_stats(cls, value: Any) -> dict[str, Any]:
         stats = cls._contribution_stats(value)
         if stats["signal_count"] <= 0:
@@ -194,6 +206,9 @@ class FoldFeatureRegimeRepairProbe:
         metric_failure_counts_by_rule: dict[str, dict[str, int]],
         removed_outcome_by_rule: dict[str, dict[str, Any]],
         passed_outcome_by_rule: dict[str, dict[str, Any]],
+        metric_logic_by_rule: dict[str, str] | None = None,
+        required_metric_failure_count_by_rule: dict[str, int] | None = None,
+        metric_condition_count_by_rule: dict[str, int] | None = None,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         rule_ids = sorted(
@@ -217,12 +232,19 @@ class FoldFeatureRegimeRepairProbe:
             rows.append(
                 {
                     "rule_id": rule_id,
+                    "metric_logic": (metric_logic_by_rule or {}).get(rule_id),
                     "eligible_count": eligible_count,
                     "removed_count": removed_count,
                     "passed_count": passed_count,
                     "removal_rate": (
                         removed_count / eligible_count if eligible_count > 0 else None
                     ),
+                    "required_metric_failure_count": (
+                        required_metric_failure_count_by_rule or {}
+                    ).get(rule_id),
+                    "metric_condition_count": (
+                        metric_condition_count_by_rule or {}
+                    ).get(rule_id),
                     "removed_outcome": removed_outcome,
                     "passed_outcome": passed_outcome,
                     "removed_total_r": removed_outcome.get("total_r"),
@@ -527,6 +549,9 @@ class FoldFeatureRegimeRepairProbe:
         aggregate_conditional_regime_rule_counts_by_active_flag: dict[str, int] = {}
         aggregate_conditional_regime_rule_metric_failure_counts: dict[str, int] = {}
         aggregate_conditional_regime_rule_metric_failure_counts_by_rule: dict[str, dict[str, Any]] = {}
+        aggregate_conditional_regime_rule_metric_logic: dict[str, str] = {}
+        aggregate_conditional_regime_rule_required_metric_failure_count: dict[str, int] = {}
+        aggregate_conditional_regime_rule_metric_condition_count: dict[str, int] = {}
         aggregate_removed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         aggregate_passed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         aggregate_removed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
@@ -690,6 +715,23 @@ class FoldFeatureRegimeRepairProbe:
                 aggregate_conditional_regime_rule_metric_failure_counts_by_rule,
                 feature_summary.get("conditional_regime_rule_metric_failure_counts_by_rule"),
             )
+            self._merge_rule_metadata_map(
+                aggregate_conditional_regime_rule_metric_logic,
+                feature_summary.get("conditional_regime_rule_metric_logic")
+                or row.get("conditional_regime_rule_metric_logic"),
+            )
+            self._merge_rule_metadata_map(
+                aggregate_conditional_regime_rule_required_metric_failure_count,
+                feature_summary.get(
+                    "conditional_regime_rule_required_metric_failure_count"
+                )
+                or row.get("conditional_regime_rule_required_metric_failure_count"),
+            )
+            self._merge_rule_metadata_map(
+                aggregate_conditional_regime_rule_metric_condition_count,
+                feature_summary.get("conditional_regime_rule_metric_condition_count")
+                or row.get("conditional_regime_rule_metric_condition_count"),
+            )
             self._merge_contribution_stats(
                 aggregate_removed_outcome_by_rule,
                 feature_summary.get("conditional_regime_rule_removed_outcome_by_rule"),
@@ -777,6 +819,13 @@ class FoldFeatureRegimeRepairProbe:
             metric_failure_counts_by_rule=aggregate_conditional_regime_rule_metric_failure_counts_by_rule,
             removed_outcome_by_rule=aggregate_removed_outcome_by_rule,
             passed_outcome_by_rule=aggregate_passed_outcome_by_rule,
+            metric_logic_by_rule=aggregate_conditional_regime_rule_metric_logic,
+            required_metric_failure_count_by_rule=(
+                aggregate_conditional_regime_rule_required_metric_failure_count
+            ),
+            metric_condition_count_by_rule=(
+                aggregate_conditional_regime_rule_metric_condition_count
+            ),
         )
         aggregate_per_regime_contribution_board = self._per_regime_contribution_board(
             removed_outcome_by_primary_regime=aggregate_removed_outcome_by_primary_regime,
@@ -826,6 +875,15 @@ class FoldFeatureRegimeRepairProbe:
             ),
             "aggregate_conditional_regime_rule_metric_failure_counts_by_rule": (
                 aggregate_conditional_regime_rule_metric_failure_counts_by_rule
+            ),
+            "aggregate_conditional_regime_rule_metric_logic": (
+                aggregate_conditional_regime_rule_metric_logic
+            ),
+            "aggregate_conditional_regime_rule_required_metric_failure_count": (
+                aggregate_conditional_regime_rule_required_metric_failure_count
+            ),
+            "aggregate_conditional_regime_rule_metric_condition_count": (
+                aggregate_conditional_regime_rule_metric_condition_count
             ),
             "aggregate_conditional_regime_rule_removed_outcome_by_rule": (
                 aggregate_removed_outcome_by_rule
