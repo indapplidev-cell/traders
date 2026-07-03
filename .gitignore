@@ -37,3 +37,6 @@ reports/project_archives/
 
 # Manual local runtime sequence logs
 reports/manual_sequence_runs/
+
+# Local project planning
+planning/

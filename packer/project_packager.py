@@ -18,6 +18,7 @@ DEFAULT_EXCLUDED_DIR_PARTS = (
     "__pycache__/",
     ".pytest_cache/",
     "htmlcov/",
+    "planning/",
     "artifacts/",
     "reports/feature_regime_experiments/",
     "reports/label_grid_experiments/",

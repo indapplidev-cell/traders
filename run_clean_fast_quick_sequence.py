@@ -6,6 +6,7 @@ run_clean_fast_quick_sequence.py
 Запускать из корня traders-ml:
 
     python run_clean_fast_quick_sequence.py
+    python run_clean_fast_quick_sequence.py --elapsed-interval-seconds 1800
 
 Что делает:
 1. python clean_traders_ml.py --cleanup-commit-only
