@@ -159,6 +159,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         schwager_robustness_summary = self._schwager_robustness_summary(configs_ranked)
         label_mode_audit_summary = self._label_mode_audit_summary(symbol_results)
         flat_subtype_summary = self._flat_subtype_summary(symbol_results)
+        flat_bias_root_cause_audit = self._flat_bias_root_cause_audit(symbol_results)
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -310,6 +311,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
                     "aggregate_conditional_regime_relaxation_probe_summary"
                 )
             ),
+            "aggregate_conditional_regime_rule_threshold_sensitivity_board": self._as_list(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_rule_threshold_sensitivity_board"
+                )
+            ),
+            "aggregate_conditional_regime_threshold_sensitivity_summary": self._as_dict(
+                adaptive_feature_filter_diagnostics.get(
+                    "aggregate_conditional_regime_threshold_sensitivity_summary"
+                )
+            ),
             "anti_collapse_summary": anti_collapse_summary,
             "confidence_profitability_summary": confidence_profitability_summary,
             "prediction_root_cause_summary": prediction_root_cause_summary,
@@ -317,6 +328,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "schwager_robustness_summary": schwager_robustness_summary,
             "label_mode_audit_summary": label_mode_audit_summary,
             "flat_subtype_summary": flat_subtype_summary,
+            "flat_bias_root_cause_audit": flat_bias_root_cause_audit,
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,
@@ -1296,7 +1308,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "profit_factor": cls._float_or_none(best_candidate.get("profit_factor")),
             "profit_total_r": cls._float_or_none(best_candidate.get("profit_total_r")),
             "walk_forward_profit_factor": cls._float_or_none(best_candidate.get("walk_forward_profit_factor")),
-            "walk_forward_total_r": cls._float_or_none(best_candidate.get("walk_forward_global_total_r")),
+            "walk_forward_total_r": cls._first_float_or_none(
+                best_candidate.get("walk_forward_total_r"),
+                best_candidate.get("walk_forward_global_total_r"),
+                summary.get("walk_forward_total_r"),
+            ),
             "model_quality_validation_status": best_candidate.get(
                 "model_quality_validation_status",
                 summary.get("model_quality_validation_status"),
@@ -1890,6 +1906,171 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "flat_subtype_counts_by_symbol": counts_by_symbol,
         }
 
+    @classmethod
+    def _flat_bias_root_cause_audit(
+        cls,
+        symbol_results: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        by_symbol: dict[str, dict[str, Any]] = {}
+        root_cause_counts: Counter[str] = Counter()
+        bias_gate_symbols: list[str] = []
+        flat_underprediction_symbols: list[str] = []
+        severe_count = 0
+
+        distribution_keys = {
+            "actual": (
+                "actual_class_distribution",
+                "actual_distribution",
+                "actual_class_rates",
+                "actual_rate_by_class",
+            ),
+            "predicted": (
+                "predicted_class_distribution",
+                "prediction_class_distribution",
+                "predicted_distribution",
+                "predicted_class_rates",
+                "prediction_rate_by_class",
+            ),
+        }
+
+        def distribution_from_sources(
+            sources: list[dict[str, Any]], keys: tuple[str, ...]
+        ) -> dict[str, Any]:
+            for source in sources:
+                for key in keys:
+                    value = cls._as_dict(source.get(key))
+                    if value:
+                        return value
+            return {}
+
+        def flat_rate(distribution: dict[str, Any]) -> float | None:
+            return cls._first_float_or_none(
+                distribution.get("FLAT"), distribution.get("flat")
+            )
+
+        for symbol_result in symbol_results:
+            symbol = str(symbol_result.get("symbol") or "UNKNOWN")
+            sources = [
+                cls._as_dict(symbol_result.get("collapse_diagnostics_v2")),
+                cls._as_dict(symbol_result.get("flat_bias_diagnostics")),
+                cls._as_dict(symbol_result.get("collapse_tuning_summary")),
+                symbol_result,
+            ]
+            actual_distribution = distribution_from_sources(
+                sources, distribution_keys["actual"]
+            )
+            predicted_distribution = distribution_from_sources(
+                sources, distribution_keys["predicted"]
+            )
+            actual_flat_rate = flat_rate(actual_distribution)
+            predicted_flat_rate = flat_rate(predicted_distribution)
+            flat_rate_gap = (
+                None
+                if actual_flat_rate is None or predicted_flat_rate is None
+                else actual_flat_rate - predicted_flat_rate
+            )
+            failed_gates = {
+                str(item) for item in cls._as_list(symbol_result.get("failed_gates"))
+            }
+            rejection_reasons = {
+                str(item)
+                for item in cls._as_list(symbol_result.get("rejection_reasons"))
+            }
+            bias_gate_failed = bool(
+                "bias_gate" in failed_gates
+                or "bias_gate_failed" in rejection_reasons
+                or symbol_result.get("bias_gate_failed") is True
+            )
+            if bias_gate_failed:
+                bias_gate_symbols.append(symbol)
+
+            baseline_edge = cls._float_or_none(symbol_result.get("baseline_edge"))
+            negative_baseline_edge = baseline_edge is not None and baseline_edge < 0
+            severe = bool(
+                actual_flat_rate is not None
+                and predicted_flat_rate is not None
+                and flat_rate_gap is not None
+                and actual_flat_rate >= 0.60
+                and predicted_flat_rate <= 0.30
+                and flat_rate_gap >= 0.30
+            )
+            collapse_type = str(symbol_result.get("collapse_type") or "")
+            flat_underprediction = severe or collapse_type.upper() == "FLAT_UNDERPREDICTION"
+            if flat_underprediction:
+                flat_underprediction_symbols.append(symbol)
+            if severe:
+                severe_count += 1
+
+            if severe and negative_baseline_edge:
+                root_cause = "severe_flat_underprediction_with_negative_baseline_edge"
+                recommended_action = (
+                    "audit_label_distribution_and_decision_calibration_before_more_filters"
+                )
+            elif severe:
+                root_cause = "severe_flat_underprediction"
+                recommended_action = "audit_label_distribution_and_decision_calibration"
+            elif bias_gate_failed and (
+                actual_flat_rate is None or predicted_flat_rate is None
+            ):
+                root_cause = "bias_gate_failed_without_flat_distribution"
+                recommended_action = "restore_flat_distribution_diagnostics"
+            elif flat_underprediction and (
+                actual_flat_rate is None or predicted_flat_rate is None
+            ):
+                root_cause = "flat_underprediction_without_distribution_rates"
+                recommended_action = "restore_flat_distribution_diagnostics"
+            elif negative_baseline_edge:
+                root_cause = "negative_baseline_edge_without_flat_bias"
+                recommended_action = "audit_baseline_edge_before_more_filters"
+            else:
+                root_cause = "no_flat_bias_evidence"
+                recommended_action = "keep_diagnostic_only"
+            root_cause_counts[root_cause] += 1
+
+            dominant_class = None
+            for source in sources:
+                if source.get("dominant_class") is not None:
+                    dominant_class = source.get("dominant_class")
+                    break
+            by_symbol[symbol] = {
+                "best_config_id": symbol_result.get("best_candidate_config_id"),
+                "candidate_status": symbol_result.get("candidate_status"),
+                "collapse_type": symbol_result.get("collapse_type"),
+                "collapse_severity": symbol_result.get("collapse_severity"),
+                "actual_flat_rate": actual_flat_rate,
+                "predicted_flat_rate": predicted_flat_rate,
+                "flat_rate_gap": flat_rate_gap,
+                "dominant_class": dominant_class,
+                "baseline_edge": baseline_edge,
+                "bias_gate_failed": bias_gate_failed,
+                "walk_forward_total_r": symbol_result.get("walk_forward_total_r"),
+                "walk_forward_profit_factor": symbol_result.get(
+                    "walk_forward_profit_factor"
+                ),
+                "root_cause_label": root_cause,
+                "recommended_action": recommended_action,
+            }
+
+        return {
+            "diagnostic_name": "flat_bias_root_cause_audit",
+            "diagnostic_version": "ml38.10.36",
+            "symbol_count": len(symbol_results),
+            "severe_flat_underprediction_symbol_count": severe_count,
+            "symbols_with_bias_gate_failure": sorted(set(bias_gate_symbols)),
+            "symbols_with_flat_underprediction": sorted(
+                set(flat_underprediction_symbols)
+            ),
+            "flat_underprediction_by_symbol": by_symbol,
+            "root_cause_counts": dict(sorted(root_cause_counts.items())),
+            "recommendations": [
+                "do_not_add_more_regime_filters_until_flat_bias_is_explained",
+                "audit_label_distribution_vs_prediction_distribution",
+                "audit_decision_calibration_thresholds",
+                "keep_no_auto_activation",
+            ],
+            "research_only_warning": "flat_bias_audit_does_not_accept_or_activate_models",
+        }
+
     @staticmethod
     def _setup_aware_label_summary(symbol_results: list[dict[str, Any]]) -> dict[str, Any]:
         recommended_by_symbol: dict[str, Any] = {}
@@ -2453,6 +2634,18 @@ class MultiSymbolFeatureRegimeAnalyzer:
     @staticmethod
     def _float_or_none(value: Any) -> float | None:
         return None if value is None else float(value)
+
+    @classmethod
+    def _first_float_or_none(cls, *values: Any) -> float | None:
+        del cls
+        for value in values:
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                continue
+        return None
 
     @staticmethod
     def _int_or_zero(value: Any) -> int:

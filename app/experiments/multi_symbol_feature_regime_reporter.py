@@ -531,6 +531,71 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not relaxation_board:
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        threshold_summary = self._as_dict(
+            top_level_or_nested(
+                "aggregate_conditional_regime_threshold_sensitivity_summary", {}
+            )
+        )
+        flat_bias_audit = self._as_dict(payload.get("flat_bias_root_cause_audit"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.36 Threshold Sensitivity / Flat-Bias Audit",
+                "",
+                f"- aggregate_conditional_regime_threshold_sensitivity_summary: `{threshold_summary}`",
+                f"- flat_bias_root_cause_audit: `{flat_bias_audit}`",
+                "",
+                "| Rule | Condition | Threshold | Failed | Failed R | Near 0.05 | Near 0.05 R | Diagnosis |",
+                "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+            ]
+        )
+        threshold_board = self._as_list(
+            top_level_or_nested(
+                "aggregate_conditional_regime_rule_threshold_sensitivity_board"
+            )
+        )[:10]
+        for row in threshold_board:
+            board_row = self._as_dict(row)
+            lines.append(
+                "| `{rule}` | `{condition}` | `{threshold}` | `{failed}` | `{failed_r}` | `{near}` | `{near_r}` | `{diagnosis}` |".format(
+                    rule=board_row.get("rule_id"),
+                    condition=board_row.get("condition_name"),
+                    threshold=board_row.get("threshold"),
+                    failed=board_row.get("failed_count"),
+                    failed_r=board_row.get("failed_total_r"),
+                    near=board_row.get("near_0_05_count"),
+                    near_r=board_row.get("near_0_05_total_r"),
+                    diagnosis=board_row.get("threshold_diagnosis"),
+                )
+            )
+        if not threshold_board:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        lines.extend(
+            [
+                "",
+                "| Symbol | Config | Actual FLAT | Predicted FLAT | Gap | Baseline edge | Bias gate | Root cause |",
+                "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
+            ]
+        )
+        flat_bias_rows = self._as_dict(
+            flat_bias_audit.get("flat_underprediction_by_symbol")
+        )
+        for symbol, row in list(sorted(flat_bias_rows.items()))[:10]:
+            audit_row = self._as_dict(row)
+            lines.append(
+                "| `{symbol}` | `{config}` | `{actual}` | `{predicted}` | `{gap}` | `{edge}` | `{bias_gate}` | `{root_cause}` |".format(
+                    symbol=symbol,
+                    config=audit_row.get("best_config_id"),
+                    actual=audit_row.get("actual_flat_rate"),
+                    predicted=audit_row.get("predicted_flat_rate"),
+                    gap=audit_row.get("flat_rate_gap"),
+                    edge=audit_row.get("baseline_edge"),
+                    bias_gate=audit_row.get("bias_gate_failed"),
+                    root_cause=audit_row.get("root_cause_label"),
+                )
+            )
+        if not flat_bias_rows:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         lines.extend(
             [
                 "",

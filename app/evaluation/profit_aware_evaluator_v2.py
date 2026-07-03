@@ -1211,6 +1211,222 @@ class ProfitAwareEvaluatorV2:
         return names
 
     @classmethod
+    def _metric_condition_specs(cls, rule: dict[str, Any]) -> list[dict[str, Any]]:
+        specs: list[dict[str, Any]] = []
+        for condition_name, metric_key, direction in (
+            ("entry_path_quality_below", "entry_path_quality", "below"),
+            ("entry_path_quality_above", "entry_path_quality", "above"),
+            ("setup_quality_below", "setup_quality", "below"),
+            ("setup_quality_above", "setup_quality", "above"),
+            ("stop_pressure_below", "stop_pressure", "below"),
+            ("stop_pressure_above", "stop_pressure", "above"),
+            ("mae_pressure_below", "mae_pressure", "below"),
+            ("mae_pressure_above", "mae_pressure", "above"),
+        ):
+            threshold = cls._float_or_none(rule.get(condition_name))
+            if threshold is not None:
+                specs.append(
+                    {
+                        "condition_name": condition_name,
+                        "metric_key": metric_key,
+                        "direction": direction,
+                        "threshold": threshold,
+                    }
+                )
+        return specs
+
+    @staticmethod
+    def _metric_condition_value(
+        *,
+        condition_name: str,
+        entry_quality: float | None,
+        setup_quality: float | None,
+        stop_pressure: float | None,
+        mae_pressure: float | None,
+    ) -> float | None:
+        if condition_name.startswith("entry_path_quality_"):
+            return entry_quality
+        if condition_name.startswith("setup_quality_"):
+            return setup_quality
+        if condition_name.startswith("stop_pressure_"):
+            return stop_pressure
+        if condition_name.startswith("mae_pressure_"):
+            return mae_pressure
+        return None
+
+    @classmethod
+    def _condition_margin_to_failure(
+        cls,
+        *,
+        value: float | None,
+        threshold: float | None,
+        direction: str,
+    ) -> float | None:
+        del cls
+        if value is None or threshold is None:
+            return None
+        if direction == "below":
+            return value - threshold
+        if direction == "above":
+            return threshold - value
+        return None
+
+    @classmethod
+    def _threshold_near_miss_bucket(cls, margin_to_failure: float | None) -> str:
+        del cls
+        if margin_to_failure is None:
+            return "missing"
+        if margin_to_failure < 0:
+            return "failed"
+        if margin_to_failure <= 0.02:
+            return "near_0_02"
+        if margin_to_failure <= 0.05:
+            return "near_0_05"
+        if margin_to_failure <= 0.10:
+            return "near_0_10"
+        return "far"
+
+    @classmethod
+    def _threshold_failure_effect_label(cls, outcome: dict[str, Any]) -> str:
+        del cls
+        if int(outcome.get("signal_count", 0) or 0) <= 0:
+            return "NO_FAILURE_SAMPLES"
+        total_r = float(outcome.get("total_r", 0.0) or 0.0)
+        if total_r < 0:
+            return "THRESHOLD_FAILURES_POTENTIALLY_USEFUL"
+        if total_r > 0:
+            return "THRESHOLD_FAILURES_HARMFUL"
+        return "THRESHOLD_FAILURES_NEUTRAL"
+
+    @classmethod
+    def _threshold_near_miss_effect_label(cls, outcome: dict[str, Any]) -> str:
+        del cls
+        if int(outcome.get("signal_count", 0) or 0) <= 0:
+            return "NO_NEAR_MISS_SAMPLES"
+        total_r = float(outcome.get("total_r", 0.0) or 0.0)
+        if total_r < 0:
+            return "RELAXING_THRESHOLD_MAY_HELP"
+        if total_r > 0:
+            return "RELAXING_THRESHOLD_WOULD_HURT"
+        return "RELAXING_THRESHOLD_NEUTRAL"
+
+    @classmethod
+    def _conditional_regime_rule_threshold_sensitivity_board(
+        cls,
+        *,
+        eligible_counts: dict[str, int],
+        threshold_condition_stats: dict[str, dict[str, dict[str, Any]]],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for rule_id, condition_map in sorted(threshold_condition_stats.items()):
+            for condition_name, raw_stats in sorted(condition_map.items()):
+                stats = dict(raw_stats)
+                failed_outcome = cls._finalize_contribution_stats(
+                    stats.get("failed_outcome") or cls._empty_contribution_stats()
+                )
+                near_outcomes = {
+                    bucket: cls._finalize_contribution_stats(
+                        stats.get(f"{bucket}_outcome") or cls._empty_contribution_stats()
+                    )
+                    for bucket in ("near_0_02", "near_0_05", "near_0_10")
+                }
+                failure_effect = cls._threshold_failure_effect_label(failed_outcome)
+                near_effect = cls._threshold_near_miss_effect_label(
+                    near_outcomes["near_0_05"]
+                )
+                eligible_count = int(
+                    stats.get("eligible_count", eligible_counts.get(rule_id, 0)) or 0
+                )
+                if eligible_count <= 0:
+                    diagnosis = "NO_SAMPLES"
+                elif int(stats.get("value_present_count", 0) or 0) <= 0:
+                    diagnosis = "MISSING_VALUES"
+                elif failure_effect == "THRESHOLD_FAILURES_POTENTIALLY_USEFUL":
+                    diagnosis = "FAILED_GROUP_NEGATIVE_REVIEW_THRESHOLD"
+                elif failure_effect == "THRESHOLD_FAILURES_HARMFUL":
+                    diagnosis = "FAILED_GROUP_PROFITABLE_DO_NOT_FILTER"
+                elif near_effect == "RELAXING_THRESHOLD_MAY_HELP":
+                    diagnosis = "NEAR_MISS_NEGATIVE_REVIEW_RELAXATION"
+                elif near_effect == "RELAXING_THRESHOLD_WOULD_HURT":
+                    diagnosis = "NEAR_MISS_PROFITABLE_DO_NOT_RELAX"
+                else:
+                    diagnosis = "NO_EVIDENCE_FOR_THRESHOLD_CHANGE"
+                row = {
+                    "rule_id": rule_id,
+                    "condition_name": condition_name,
+                    "metric_key": stats.get("metric_key"),
+                    "direction": stats.get("direction"),
+                    "threshold": stats.get("threshold"),
+                    "eligible_count": eligible_count,
+                    "value_present_count": int(stats.get("value_present_count", 0) or 0),
+                    "value_missing_count": int(stats.get("value_missing_count", 0) or 0),
+                    "failed_count": int(stats.get("failed_count", 0) or 0),
+                    "passed_count": int(stats.get("passed_count", 0) or 0),
+                    "near_0_02_count": int(stats.get("near_0_02_count", 0) or 0),
+                    "near_0_05_count": int(stats.get("near_0_05_count", 0) or 0),
+                    "near_0_10_count": int(stats.get("near_0_10_count", 0) or 0),
+                    "far_count": int(stats.get("far_count", 0) or 0),
+                    "failed_outcome": failed_outcome,
+                    "near_0_02_outcome": near_outcomes["near_0_02"],
+                    "near_0_05_outcome": near_outcomes["near_0_05"],
+                    "near_0_10_outcome": near_outcomes["near_0_10"],
+                    "failed_total_r": failed_outcome.get("total_r"),
+                    "near_0_05_total_r": near_outcomes["near_0_05"].get("total_r"),
+                    "failure_effect_label": failure_effect,
+                    "near_miss_effect_label": near_effect,
+                    "threshold_diagnosis": diagnosis,
+                }
+                rows.append(row)
+        priority = {
+            "THRESHOLD_FAILURES_HARMFUL": 0,
+            "THRESHOLD_FAILURES_POTENTIALLY_USEFUL": 1,
+        }
+        return sorted(
+            rows,
+            key=lambda row: (
+                priority.get(str(row.get("failure_effect_label")), 2),
+                -int(row.get("eligible_count", 0) or 0),
+                str(row.get("rule_id") or ""),
+                str(row.get("condition_name") or ""),
+            ),
+        )
+
+    @classmethod
+    def _conditional_regime_threshold_sensitivity_summary(
+        cls,
+        board: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        effect_counts: dict[str, int] = {}
+        near_miss_effect_counts: dict[str, int] = {}
+        for row in board:
+            effect = str(row.get("failure_effect_label") or "UNKNOWN")
+            near_effect = str(row.get("near_miss_effect_label") or "UNKNOWN")
+            effect_counts[effect] = effect_counts.get(effect, 0) + 1
+            near_miss_effect_counts[near_effect] = near_miss_effect_counts.get(near_effect, 0) + 1
+        useful_count = effect_counts.get("THRESHOLD_FAILURES_POTENTIALLY_USEFUL", 0)
+        harmful_count = effect_counts.get("THRESHOLD_FAILURES_HARMFUL", 0)
+        if not board:
+            bottleneck = "no_conditions_available"
+        elif useful_count > 0:
+            bottleneck = "review_thresholds_but_do_not_create_rule_without_runtime_confirmation"
+        elif harmful_count > 0:
+            bottleneck = "failed_groups_are_profitable_or_missing_overlap"
+        else:
+            bottleneck = "no_threshold_change_evidence"
+        return {
+            "diagnostic_name": "conditional_regime_threshold_sensitivity_summary",
+            "diagnostic_version": "ml38.10.36",
+            "rule_count": len({str(row.get("rule_id")) for row in board}),
+            "condition_count": len(board),
+            "effect_counts": dict(sorted(effect_counts.items())),
+            "near_miss_effect_counts": dict(sorted(near_miss_effect_counts.items())),
+            "potentially_useful_condition_count": useful_count,
+            "harmful_condition_count": harmful_count,
+            "primary_bottleneck": bottleneck,
+            "research_only_warning": "threshold_sensitivity_is_diagnostic_only_not_a_trading_rule",
+        }
+
+    @classmethod
     def _metric_failure_count_bucket(cls, observed_count: int) -> str:
         if observed_count <= 0:
             return "failed_0"
@@ -1317,6 +1533,7 @@ class ProfitAwareEvaluatorV2:
                     "metric_failures": metric_failures,
                     "metric_logic": metric_decision["metric_logic"],
                     "metric_condition_names": metric_decision["metric_condition_names"],
+                    "metric_condition_specs": cls._metric_condition_specs(rule),
                     "metric_condition_count": metric_decision["metric_condition_count"],
                     "required_metric_failure_count": metric_decision[
                         "required_metric_failure_count"
@@ -1876,6 +2093,19 @@ class ProfitAwareEvaluatorV2:
                     "harmful_rule_ids": [],
                     "research_only_warning": "min_count_1_relaxation_is_diagnostic_only_not_a_trading_rule",
                 },
+                "conditional_regime_rule_threshold_sensitivity_board": [],
+                "conditional_regime_threshold_sensitivity_summary": {
+                    "diagnostic_name": "conditional_regime_threshold_sensitivity_summary",
+                    "diagnostic_version": "ml38.10.36",
+                    "rule_count": 0,
+                    "condition_count": 0,
+                    "effect_counts": {},
+                    "near_miss_effect_counts": {},
+                    "potentially_useful_condition_count": 0,
+                    "harmful_condition_count": 0,
+                    "primary_bottleneck": "NO_ACTIVE_FILTER",
+                    "research_only_warning": "threshold_sensitivity_is_diagnostic_only_not_a_trading_rule",
+                },
                 "per_regime_contribution_board": [],
                 "conditional_regime_rule_counts_by_primary_regime": {},
                 "conditional_regime_rule_counts_by_active_flag": {},
@@ -1915,6 +2145,9 @@ class ProfitAwareEvaluatorV2:
         conditional_regime_rule_observed_metric_failure_counts_by_rule: dict[str, dict[str, int]] = {}
         conditional_regime_rule_metric_pair_failure_counts_by_rule: dict[str, dict[str, int]] = {}
         conditional_regime_rule_outcome_by_failure_count: dict[str, dict[str, dict[str, Any]]] = {}
+        conditional_regime_rule_threshold_condition_stats: dict[
+            str, dict[str, dict[str, Any]]
+        ] = {}
         conditional_regime_rule_removed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         conditional_regime_rule_passed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         removed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
@@ -2038,6 +2271,10 @@ class ProfitAwareEvaluatorV2:
             return {
                 "block_reasons": list(dict.fromkeys(reasons)),
                 "conditional_rule_evaluations": conditional_rule_evaluations,
+                "entry_quality": entry_quality,
+                "setup_quality": setup_quality,
+                "stop_pressure": stop_pressure,
+                "mae_pressure": mae_pressure,
             }
 
         target_date_input_count = 0
@@ -2133,6 +2370,75 @@ class ProfitAwareEvaluatorV2:
                     failure_count_bucket,
                     contribution_outcome,
                 )
+                for condition_spec in self._as_list(
+                    evaluation.get("metric_condition_specs")
+                ):
+                    if not isinstance(condition_spec, dict):
+                        continue
+                    condition_name = str(
+                        condition_spec.get("condition_name") or ""
+                    ).strip()
+                    if not condition_name:
+                        continue
+                    threshold = self._float_or_none(condition_spec.get("threshold"))
+                    direction = str(condition_spec.get("direction") or "")
+                    value = self._metric_condition_value(
+                        condition_name=condition_name,
+                        entry_quality=self._float_or_none(row_context.get("entry_quality")),
+                        setup_quality=self._float_or_none(row_context.get("setup_quality")),
+                        stop_pressure=self._float_or_none(row_context.get("stop_pressure")),
+                        mae_pressure=self._float_or_none(row_context.get("mae_pressure")),
+                    )
+                    margin = self._condition_margin_to_failure(
+                        value=value,
+                        threshold=threshold,
+                        direction=direction,
+                    )
+                    bucket = self._threshold_near_miss_bucket(margin)
+                    stats = conditional_regime_rule_threshold_condition_stats.setdefault(
+                        rule_id, {}
+                    ).setdefault(
+                        condition_name,
+                        {
+                            "rule_id": rule_id,
+                            "condition_name": condition_name,
+                            "metric_key": condition_spec.get("metric_key"),
+                            "direction": direction,
+                            "threshold": threshold,
+                            "eligible_count": 0,
+                            "value_present_count": 0,
+                            "value_missing_count": 0,
+                            "failed_count": 0,
+                            "passed_count": 0,
+                            "near_0_02_count": 0,
+                            "near_0_05_count": 0,
+                            "near_0_10_count": 0,
+                            "far_count": 0,
+                            "failed_outcome": self._empty_contribution_stats(),
+                            "near_0_02_outcome": self._empty_contribution_stats(),
+                            "near_0_05_outcome": self._empty_contribution_stats(),
+                            "near_0_10_outcome": self._empty_contribution_stats(),
+                        },
+                    )
+                    stats["eligible_count"] += 1
+                    if bucket == "missing":
+                        stats["value_missing_count"] += 1
+                        continue
+                    stats["value_present_count"] += 1
+                    if bucket == "failed":
+                        stats["failed_count"] += 1
+                        self._update_contribution_stats(
+                            stats["failed_outcome"], contribution_outcome
+                        )
+                        continue
+                    stats["passed_count"] += 1
+                    if bucket in {"near_0_02", "near_0_05", "near_0_10"}:
+                        stats[f"{bucket}_count"] += 1
+                        self._update_contribution_stats(
+                            stats[f"{bucket}_outcome"], contribution_outcome
+                        )
+                    else:
+                        stats["far_count"] += 1
                 if evaluation.get("metric_failed"):
                     blocked_by_any_conditional_rule = True
                     self._increment_count(conditional_regime_rule_counts, rule_id)
@@ -2347,6 +2653,19 @@ class ProfitAwareEvaluatorV2:
                 conditional_regime_rule_relaxation_probe_board
             )
         )
+        conditional_regime_rule_threshold_sensitivity_board = (
+            self._conditional_regime_rule_threshold_sensitivity_board(
+                eligible_counts=conditional_regime_rule_eligible_counts,
+                threshold_condition_stats=(
+                    conditional_regime_rule_threshold_condition_stats
+                ),
+            )
+        )
+        conditional_regime_threshold_sensitivity_summary = (
+            self._conditional_regime_threshold_sensitivity_summary(
+                conditional_regime_rule_threshold_sensitivity_board
+            )
+        )
         per_regime_contribution_board = self._per_regime_contribution_board(
             removed_outcome_by_primary_regime=finalized_removed_outcome_by_primary_regime,
             passed_outcome_by_primary_regime=finalized_passed_outcome_by_primary_regime,
@@ -2439,6 +2758,12 @@ class ProfitAwareEvaluatorV2:
             ),
             "conditional_regime_relaxation_probe_summary": (
                 conditional_regime_relaxation_probe_summary
+            ),
+            "conditional_regime_rule_threshold_sensitivity_board": (
+                conditional_regime_rule_threshold_sensitivity_board
+            ),
+            "conditional_regime_threshold_sensitivity_summary": (
+                conditional_regime_threshold_sensitivity_summary
             ),
             "per_regime_contribution_board": per_regime_contribution_board,
             "market_regime_present_count": (

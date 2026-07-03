@@ -581,6 +581,180 @@ class FoldFeatureRegimeRepairProbe:
         }
 
     @classmethod
+    def _merge_threshold_sensitivity_rows(
+        cls,
+        target: dict[tuple[str, str], dict[str, Any]],
+        board: Any,
+    ) -> None:
+        count_keys = (
+            "eligible_count",
+            "value_present_count",
+            "value_missing_count",
+            "failed_count",
+            "passed_count",
+            "near_0_02_count",
+            "near_0_05_count",
+            "near_0_10_count",
+            "far_count",
+        )
+        outcome_keys = (
+            "failed_outcome",
+            "near_0_02_outcome",
+            "near_0_05_outcome",
+            "near_0_10_outcome",
+        )
+        for raw_row in cls._as_list(board):
+            row = cls._as_dict(raw_row)
+            rule_id = str(row.get("rule_id") or "").strip()
+            condition_name = str(row.get("condition_name") or "").strip()
+            if not rule_id or not condition_name:
+                continue
+            slot = target.setdefault(
+                (rule_id, condition_name),
+                {
+                    "rule_id": rule_id,
+                    "condition_name": condition_name,
+                    "metric_key": row.get("metric_key"),
+                    "direction": row.get("direction"),
+                    "threshold_values_seen": set(),
+                    **{key: 0 for key in count_keys},
+                    **{key: cls._empty_contribution_stats() for key in outcome_keys},
+                },
+            )
+            threshold = cls._float_or_none(row.get("threshold"))
+            if threshold is not None:
+                slot["threshold_values_seen"].add(threshold)
+            for key in count_keys:
+                slot[key] += int(row.get(key, 0) or 0)
+            for key in outcome_keys:
+                normalized = cls._contribution_stats(row.get(key))
+                outcome_slot = slot[key]
+                for stat_key in (
+                    "signal_count",
+                    "total_r",
+                    "positive_r",
+                    "negative_r",
+                    "win_count",
+                    "loss_count",
+                    "neutral_count",
+                ):
+                    outcome_slot[stat_key] += normalized[stat_key]
+
+    @classmethod
+    def _aggregate_threshold_sensitivity_board(
+        cls,
+        merged: dict[tuple[str, str], dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for _, raw in sorted(merged.items()):
+            row = dict(raw)
+            thresholds = sorted(row.pop("threshold_values_seen", set()))
+            row["threshold_values_seen"] = thresholds
+            row["threshold"] = thresholds[0] if thresholds else None
+            row["threshold_mixed"] = len(thresholds) > 1
+            for key in (
+                "failed_outcome",
+                "near_0_02_outcome",
+                "near_0_05_outcome",
+                "near_0_10_outcome",
+            ):
+                row[key] = cls._finalize_contribution_stats(row[key])
+            failed = row["failed_outcome"]
+            near = row["near_0_05_outcome"]
+            failed_count = int(failed.get("signal_count", 0) or 0)
+            failed_total_r = float(failed.get("total_r", 0.0) or 0.0)
+            near_count = int(near.get("signal_count", 0) or 0)
+            near_total_r = float(near.get("total_r", 0.0) or 0.0)
+            if failed_count <= 0:
+                failure_effect = "NO_FAILURE_SAMPLES"
+            elif failed_total_r < 0:
+                failure_effect = "THRESHOLD_FAILURES_POTENTIALLY_USEFUL"
+            elif failed_total_r > 0:
+                failure_effect = "THRESHOLD_FAILURES_HARMFUL"
+            else:
+                failure_effect = "THRESHOLD_FAILURES_NEUTRAL"
+            if near_count <= 0:
+                near_effect = "NO_NEAR_MISS_SAMPLES"
+            elif near_total_r < 0:
+                near_effect = "RELAXING_THRESHOLD_MAY_HELP"
+            elif near_total_r > 0:
+                near_effect = "RELAXING_THRESHOLD_WOULD_HURT"
+            else:
+                near_effect = "RELAXING_THRESHOLD_NEUTRAL"
+            if int(row.get("eligible_count", 0) or 0) <= 0:
+                diagnosis = "NO_SAMPLES"
+            elif int(row.get("value_present_count", 0) or 0) <= 0:
+                diagnosis = "MISSING_VALUES"
+            elif failure_effect == "THRESHOLD_FAILURES_POTENTIALLY_USEFUL":
+                diagnosis = "FAILED_GROUP_NEGATIVE_REVIEW_THRESHOLD"
+            elif failure_effect == "THRESHOLD_FAILURES_HARMFUL":
+                diagnosis = "FAILED_GROUP_PROFITABLE_DO_NOT_FILTER"
+            elif near_effect == "RELAXING_THRESHOLD_MAY_HELP":
+                diagnosis = "NEAR_MISS_NEGATIVE_REVIEW_RELAXATION"
+            elif near_effect == "RELAXING_THRESHOLD_WOULD_HURT":
+                diagnosis = "NEAR_MISS_PROFITABLE_DO_NOT_RELAX"
+            else:
+                diagnosis = "NO_EVIDENCE_FOR_THRESHOLD_CHANGE"
+            row.update(
+                {
+                    "failed_total_r": failed_total_r,
+                    "near_0_05_total_r": near_total_r,
+                    "failure_effect_label": failure_effect,
+                    "near_miss_effect_label": near_effect,
+                    "threshold_diagnosis": diagnosis,
+                }
+            )
+            rows.append(row)
+        priority = {
+            "THRESHOLD_FAILURES_HARMFUL": 0,
+            "THRESHOLD_FAILURES_POTENTIALLY_USEFUL": 1,
+        }
+        return sorted(
+            rows,
+            key=lambda row: (
+                priority.get(str(row.get("failure_effect_label")), 2),
+                -int(row.get("eligible_count", 0) or 0),
+                str(row.get("rule_id") or ""),
+                str(row.get("condition_name") or ""),
+            ),
+        )
+
+    @classmethod
+    def _aggregate_threshold_sensitivity_summary(
+        cls,
+        board: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        effect_counts: dict[str, int] = {}
+        near_counts: dict[str, int] = {}
+        for row in board:
+            effect = str(row.get("failure_effect_label") or "UNKNOWN")
+            near = str(row.get("near_miss_effect_label") or "UNKNOWN")
+            effect_counts[effect] = effect_counts.get(effect, 0) + 1
+            near_counts[near] = near_counts.get(near, 0) + 1
+        useful = effect_counts.get("THRESHOLD_FAILURES_POTENTIALLY_USEFUL", 0)
+        harmful = effect_counts.get("THRESHOLD_FAILURES_HARMFUL", 0)
+        if not board:
+            bottleneck = "NO_DATA"
+        elif useful > 0:
+            bottleneck = "review_thresholds_but_do_not_create_rule_without_runtime_confirmation"
+        elif harmful > 0:
+            bottleneck = "failed_groups_are_profitable_or_missing_overlap"
+        else:
+            bottleneck = "no_threshold_change_evidence"
+        return {
+            "diagnostic_name": "aggregate_conditional_regime_threshold_sensitivity_summary",
+            "diagnostic_version": "ml38.10.36",
+            "rule_count": len({str(row.get("rule_id")) for row in board}),
+            "condition_count": len(board),
+            "effect_counts": dict(sorted(effect_counts.items())),
+            "near_miss_effect_counts": dict(sorted(near_counts.items())),
+            "potentially_useful_condition_count": useful,
+            "harmful_condition_count": harmful,
+            "primary_bottleneck": bottleneck,
+            "research_only_warning": "threshold_sensitivity_is_diagnostic_only_not_a_trading_rule",
+        }
+
+    @classmethod
     def _per_regime_contribution_board(
         cls,
         *,
@@ -868,6 +1042,9 @@ class FoldFeatureRegimeRepairProbe:
         aggregate_conditional_regime_rule_observed_metric_failure_counts_by_rule: dict[str, dict[str, int]] = {}
         aggregate_conditional_regime_rule_metric_pair_failure_counts_by_rule: dict[str, dict[str, int]] = {}
         aggregate_conditional_regime_rule_outcome_by_failure_count: dict[str, dict[str, dict[str, Any]]] = {}
+        aggregate_threshold_sensitivity_rows: dict[
+            tuple[str, str], dict[str, Any]
+        ] = {}
         aggregate_removed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         aggregate_passed_outcome_by_rule: dict[str, dict[str, Any]] = {}
         aggregate_removed_outcome_by_primary_regime: dict[str, dict[str, Any]] = {}
@@ -1088,6 +1265,13 @@ class FoldFeatureRegimeRepairProbe:
                 feature_summary.get("conditional_regime_rule_outcome_by_failure_count")
                 or row.get("conditional_regime_rule_outcome_by_failure_count"),
             )
+            self._merge_threshold_sensitivity_rows(
+                aggregate_threshold_sensitivity_rows,
+                feature_summary.get(
+                    "conditional_regime_rule_threshold_sensitivity_board"
+                )
+                or row.get("conditional_regime_rule_threshold_sensitivity_board"),
+            )
             self._merge_contribution_stats(
                 aggregate_removed_outcome_by_primary_regime,
                 feature_summary.get("removed_outcome_by_primary_regime"),
@@ -1247,6 +1431,16 @@ class FoldFeatureRegimeRepairProbe:
                 aggregate_conditional_regime_rule_relaxation_probe_board
             )
         )
+        aggregate_conditional_regime_rule_threshold_sensitivity_board = (
+            self._aggregate_threshold_sensitivity_board(
+                aggregate_threshold_sensitivity_rows
+            )
+        )
+        aggregate_conditional_regime_threshold_sensitivity_summary = (
+            self._aggregate_threshold_sensitivity_summary(
+                aggregate_conditional_regime_rule_threshold_sensitivity_board
+            )
+        )
         aggregate_per_regime_contribution_board = self._per_regime_contribution_board(
             removed_outcome_by_primary_regime=aggregate_removed_outcome_by_primary_regime,
             passed_outcome_by_primary_regime=aggregate_passed_outcome_by_primary_regime,
@@ -1346,6 +1540,12 @@ class FoldFeatureRegimeRepairProbe:
             ),
             "aggregate_conditional_regime_relaxation_probe_summary": (
                 aggregate_conditional_regime_relaxation_probe_summary
+            ),
+            "aggregate_conditional_regime_rule_threshold_sensitivity_board": (
+                aggregate_conditional_regime_rule_threshold_sensitivity_board
+            ),
+            "aggregate_conditional_regime_threshold_sensitivity_summary": (
+                aggregate_conditional_regime_threshold_sensitivity_summary
             ),
             "aggregate_per_regime_contribution_board": (
                 aggregate_per_regime_contribution_board

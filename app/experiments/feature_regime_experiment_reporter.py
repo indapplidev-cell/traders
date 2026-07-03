@@ -309,6 +309,8 @@ class FeatureRegimeExperimentReporter:
                 "conditional_regime_rule_removed_outcome_by_rule",
                 "conditional_regime_ablation_board",
                 "conditional_regime_metric_overlap_board",
+                "conditional_regime_rule_threshold_sensitivity_board",
+                "conditional_regime_threshold_sensitivity_summary",
                 "per_regime_contribution_board",
                 "missing_feature_counts",
             )
@@ -463,6 +465,13 @@ class FeatureRegimeExperimentReporter:
             ),
             "conditional_regime_relaxation_probe_summary": cls._as_dict(
                 payload.get("conditional_regime_relaxation_probe_summary")
+            ),
+            "conditional_regime_rule_threshold_sensitivity_board": cls._compact_board_rows(
+                payload.get("conditional_regime_rule_threshold_sensitivity_board"),
+                limit=20,
+            ),
+            "conditional_regime_threshold_sensitivity_summary": cls._as_dict(
+                payload.get("conditional_regime_threshold_sensitivity_summary")
             ),
             "per_regime_contribution_board": cls._compact_board_rows(
                 payload.get("per_regime_contribution_board")
@@ -1196,6 +1205,16 @@ class FeatureRegimeExperimentReporter:
                 "conditional_regime_relaxation_probe_summary"
             )
         )
+        candidate["conditional_regime_rule_threshold_sensitivity_board"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_rule_threshold_sensitivity_board"
+            )
+        )
+        candidate["conditional_regime_threshold_sensitivity_summary"] = (
+            fold_feature_regime_filter_summary.get(
+                "conditional_regime_threshold_sensitivity_summary"
+            )
+        )
         candidate["per_regime_contribution_board"] = (
             fold_feature_regime_filter_summary.get("per_regime_contribution_board")
         )
@@ -1660,6 +1679,26 @@ class FeatureRegimeExperimentReporter:
                 or self._as_dict(
                     fold_feature_regime_filter_summary.get(
                         "conditional_regime_relaxation_probe_summary"
+                    )
+                )
+            ),
+            "conditional_regime_rule_threshold_sensitivity_board": (
+                self._as_list(
+                    row.get("conditional_regime_rule_threshold_sensitivity_board")
+                )
+                or self._as_list(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_rule_threshold_sensitivity_board"
+                    )
+                )
+            )[:20],
+            "conditional_regime_threshold_sensitivity_summary": (
+                self._as_dict(
+                    row.get("conditional_regime_threshold_sensitivity_summary")
+                )
+                or self._as_dict(
+                    fold_feature_regime_filter_summary.get(
+                        "conditional_regime_threshold_sensitivity_summary"
                     )
                 )
             ),
