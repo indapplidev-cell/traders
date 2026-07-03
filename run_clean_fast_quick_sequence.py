@@ -49,7 +49,7 @@ COMMANDS: list[tuple[str, list[str]]] = [
         ["run_fv3_cached_tuning.py", "--fast-debug"],
     ),
     (
-        "quick_quality_solusdt",
+        "quick_quality",
         ["run_fv3_cached_tuning.py", "--quick-quality", "--quick-quality-symbol", "SOLUSDT"],
     ),
 ]
@@ -78,6 +78,26 @@ def quote_cmd(parts: Iterable[str]) -> str:
         else:
             rendered.append(part)
     return " ".join(rendered)
+
+
+class TerminalProgress:
+    def __init__(self, *, enabled: bool = True) -> None:
+        self.enabled = enabled and sys.stdout.isatty()
+        self._last_len = 0
+
+    def update(self, message: str) -> None:
+        if not self.enabled:
+            return
+        clean = message[:180]
+        padding = " " * max(0, self._last_len - len(clean))
+        print("\r" + clean + padding, end="", flush=True)
+        self._last_len = len(clean)
+
+    def done(self) -> None:
+        if not self.enabled:
+            return
+        print("\r" + " " * self._last_len + "\r", end="", flush=True)
+        self._last_len = 0
 
 
 class TeeLogger:
@@ -139,6 +159,7 @@ def run_command(
 ) -> dict[str, object]:
     full_cmd = [python_executable, *script_args]
     display_cmd = ["python", *script_args]
+    progress = TerminalProgress()
 
     logger.write("")
     logger.write("=" * 100)
@@ -181,6 +202,7 @@ def run_command(
         while True:
             try:
                 is_stderr, chunk = output_queue.get(timeout=1.0)
+                progress.done()
                 logger.write_stream_chunk(chunk, is_stderr=is_stderr)
             except queue.Empty:
                 pass
@@ -188,8 +210,8 @@ def run_command(
             current = time.monotonic()
 
             if current - last_elapsed_print >= elapsed_interval_seconds:
-                logger.write(
-                    f"[{now_text()}] STILL RUNNING: {name} | elapsed {format_duration(current - start_monotonic)}"
+                progress.update(
+                    f"STILL RUNNING: {name} | elapsed {format_duration(current - start_monotonic)}"
                 )
                 last_elapsed_print = current
 
@@ -198,12 +220,14 @@ def run_command(
                 while True:
                     try:
                         is_stderr, chunk = output_queue.get_nowait()
+                        progress.done()
                         logger.write_stream_chunk(chunk, is_stderr=is_stderr)
                     except queue.Empty:
                         break
                 break
 
     except KeyboardInterrupt:
+        progress.done()
         logger.write("")
         logger.write(f"[{now_text()}] KeyboardInterrupt received. Terminating child process: {name}")
         process.terminate()
@@ -223,6 +247,7 @@ def run_command(
     duration_seconds = end_monotonic - start_monotonic
     return_code = int(process.returncode or 0)
 
+    progress.done()
     logger.write("-" * 100)
     logger.write(f"[{now_text()}] FINISH: {name}")
     logger.write(f"Return code: {return_code}")
