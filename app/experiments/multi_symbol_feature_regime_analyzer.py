@@ -20,7 +20,7 @@ from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gat
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.37"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.38"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -254,6 +254,12 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 configs_ranked,
             )
         )
+        label_threshold_horizon_sensitivity_audit = (
+            self._label_threshold_horizon_sensitivity_audit(
+                flat_majority_directional_recoverability_audit,
+                symbol_results,
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -467,6 +473,24 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "directional_recoverability_decision": (
                 flat_majority_directional_recoverability_audit.get(
                     "directional_recoverability_decision", []
+                )
+            ),
+            "label_threshold_horizon_sensitivity_audit": (
+                label_threshold_horizon_sensitivity_audit
+            ),
+            "label_recoverability_requirements": (
+                label_threshold_horizon_sensitivity_audit.get(
+                    "label_recoverability_requirements", {}
+                )
+            ),
+            "next_label_diagnostic_plan": (
+                label_threshold_horizon_sensitivity_audit.get(
+                    "next_label_diagnostic_plan", []
+                )
+            ),
+            "ml38_10_38_label_audit_decision": (
+                label_threshold_horizon_sensitivity_audit.get(
+                    "ml38_10_38_label_audit_decision", []
                 )
             ),
             "setup_aware_label_summary": setup_aware_label_summary,
@@ -2835,6 +2859,198 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "baseline_edge_gate_explanation": baseline_explanation,
             "top_candidate_gate_blocker_board": blocker_board,
             "directional_recoverability_decision": decisions,
+        }
+
+    @classmethod
+    def _label_threshold_horizon_sensitivity_audit(
+        cls,
+        recoverability_audit: dict[str, Any] | None,
+        symbol_results: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Describe label-grid sensitivity evidence without rebuilding labels."""
+
+        prior = cls._as_dict(recoverability_audit)
+        distribution = cls._as_dict(prior.get("label_distribution"))
+        sample = cls._as_dict(prior.get("directional_sample_audit"))
+
+        def pct(value: Any) -> float | None:
+            number = cls._float_or_none(value)
+            if number is None:
+                return None
+            return round(number * 100.0 if number <= 1.0 else number, 6)
+
+        def integer(value: Any) -> int | None:
+            number = cls._float_or_none(value)
+            return None if number is None else int(round(number))
+
+        up_pct = pct(distribution.get("up_pct"))
+        down_pct = pct(distribution.get("down_pct"))
+        flat_pct = pct(distribution.get("flat_pct"))
+        directional_pct = pct(distribution.get("directional_pct"))
+        directional_count = integer(sample.get("directional_count"))
+        up_count = integer(sample.get("up_count"))
+        down_count = integer(sample.get("down_count"))
+        ratio = cls._float_or_none(distribution.get("flat_to_directional_ratio"))
+        if ratio is None and flat_pct is not None and directional_pct and directional_pct > 0:
+            ratio = flat_pct / directional_pct
+        ratio = None if ratio is None else round(ratio, 6)
+
+        current_distribution = {
+            "up_pct": up_pct,
+            "down_pct": down_pct,
+            "flat_pct": flat_pct,
+            "directional_pct": directional_pct,
+            "directional_count": directional_count,
+            "up_count": up_count,
+            "down_count": down_count,
+            "flat_to_directional_ratio": ratio,
+        }
+        flat_pressure = (
+            "HIGH" if flat_pct is not None and flat_pct > 90.0
+            else "MEDIUM" if flat_pct is not None and flat_pct >= 75.0
+            else "LOW" if flat_pct is not None
+            else "UNKNOWN"
+        )
+        sample_pressure = (
+            "HIGH" if directional_count is not None and directional_count < 100
+            else "LOW" if directional_count is not None
+            else "UNKNOWN"
+        )
+        baseline_pressure = (
+            "HIGH" if flat_pct is not None and flat_pct > 90.0
+            else "MEDIUM" if flat_pct is not None and flat_pct >= 75.0
+            else "LOW" if flat_pct is not None
+            else "UNKNOWN"
+        )
+        sample_warning = (
+            "directional_sample_below_100"
+            if directional_count is not None and directional_count < 100
+            else "directional_sample_meets_quick_quality_minimum"
+            if directional_count is not None
+            else "directional_sample_count_unavailable"
+        )
+
+        provided_rows: list[dict[str, Any]] = []
+        for result in symbol_results or []:
+            provided_rows.extend(
+                row for row in cls._as_list(
+                    result.get("label_threshold_horizon_sensitivity_rows")
+                    or result.get("label_sensitivity_board")
+                ) if isinstance(row, dict)
+            )
+        board_fields = (
+            "horizon", "tp_threshold", "sl_threshold", "flat_boundary",
+            "atr_move_threshold", "up_pct", "down_pct", "flat_pct",
+            "directional_pct", "directional_count", "up_down_balance",
+            "flat_to_directional_ratio", "label_noise_risk",
+            "expected_baseline_pressure", "diagnostic_verdict",
+        )
+        complete_rows = [
+            {key: row.get(key) for key in board_fields}
+            for row in provided_rows
+            if all(row.get(key) is not None for key in (
+                "horizon", "up_pct", "down_pct", "flat_pct", "directional_count"
+            ))
+        ]
+        full_recompute_available = bool(complete_rows)
+        if full_recompute_available:
+            sensitivity_board = complete_rows
+            status = "COMPUTED_FROM_COMPACT_SENSITIVITY_ROWS"
+        else:
+            status = "INSUFFICIENT_COMPACT_FIELDS_FOR_FULL_RECOMPUTE"
+            sensitivity_board = [
+                {
+                    "status": status,
+                    "horizon": horizon,
+                    "tp_threshold": threshold,
+                    "sl_threshold": threshold,
+                    "flat_boundary": flat_boundary,
+                    "atr_move_threshold": None,
+                    "up_pct": None,
+                    "down_pct": None,
+                    "flat_pct": None,
+                    "directional_pct": None,
+                    "directional_count": None,
+                    "up_down_balance": None,
+                    "flat_to_directional_ratio": None,
+                    "label_noise_risk": "UNKNOWN",
+                    "expected_baseline_pressure": "UNKNOWN",
+                    "diagnostic_verdict": "INSUFFICIENT_DATA",
+                }
+                for horizon, threshold, flat_boundary in (
+                    (8, 0.8, 0.2), (12, 0.8, 0.2),
+                    (16, 0.8, 0.2), (24, 0.8, 0.2),
+                )
+            ]
+
+        decisions: list[str] = []
+        if flat_pct is not None and flat_pct > 90.0:
+            decisions.append("CURRENT_LABELS_TOO_FLAT_FOR_RELIABLE_DIRECTIONAL_EDGE")
+            decisions.append("NEEDS_READ_ONLY_LABEL_GRID_SENSITIVITY")
+        if directional_count is not None and directional_count < 100:
+            decisions.append("NEEDS_DIRECTIONAL_SAMPLE_EXPANSION")
+        decisions.extend(("DO_NOT_CHANGE_GATES", "DO_NOT_ACCEPT_RESEARCH_ONLY_CANDIDATE"))
+        if not full_recompute_available:
+            decisions.append("INSUFFICIENT_COMPACT_FIELDS_FOR_RECOMPUTE")
+
+        requirements = {
+            "minimum_directional_count_quick_quality": 100,
+            "preferred_up_count": "40-50_or_more",
+            "preferred_down_count": "40-50_or_more",
+            "flat_to_directional_ratio_target": (
+                f"below_current_{ratio}" if ratio is not None else "lower_than_current"
+            ),
+            "directional_pct_target": (
+                f"above_current_{directional_pct}_without_noise_inflation"
+                if directional_pct is not None else "increase_without_noise_inflation"
+            ),
+            "profit_requirements": "positive_profit_factor_and_total_r_on_full_and_walk_forward",
+            "candidate_exclusion": "research_only_bad_dates_or_time_slice_repair_is_not_accepted_or_tradable",
+            "diagnostic_only": True,
+        }
+        plan = [
+            {"action": "horizon_sensitivity", "values": [8, 12, 16, 24], "diagnostic_only": True},
+            {"action": "tp_sl_symmetry_sensitivity", "diagnostic_only": True},
+            {"action": "flat_boundary_audit", "diagnostic_only": True},
+            {"action": "atr_move_threshold_audit", "diagnostic_only": True},
+            {"action": "directional_only_shadow_evaluation", "diagnostic_only": True},
+            {"action": "per_regime_label_distribution_audit", "diagnostic_only": True},
+            {"action": "no_label_change_before_new_quick_quality_validation", "diagnostic_only": True},
+        ]
+        available_fields = [key for key, value in current_distribution.items() if value is not None]
+        return {
+            "diagnostic_name": "label_threshold_horizon_sensitivity_audit",
+            "diagnostic_version": "ml38.10.38",
+            "source": "compact_report_or_read_only_zip",
+            "status": status,
+            "current_label_distribution": current_distribution,
+            "current_parameter_pressure": {
+                "flat_majority_pressure": flat_pressure,
+                "directional_sample_pressure": sample_pressure,
+                "baseline_pressure": baseline_pressure,
+                "sample_warning": sample_warning,
+            },
+            "sensitivity_board": sensitivity_board,
+            "available_compact_fields": available_fields,
+            "required_fields_for_full_recompute": [
+                "timestamp", "forward_return_or_high_low_path", "atr_at_entry",
+                "horizon", "tp_threshold", "sl_threshold", "flat_boundary",
+                "atr_move_threshold", "resulting_label",
+            ],
+            "read_only_extractor_required": (
+                "extract candle path, ATR, current label parameters, and labels from the existing ZIP; "
+                "evaluate an in-memory diagnostic grid without writing runtime labels"
+            ),
+            "recommended_diagnostic_zones": sensitivity_board,
+            "rejected_actions": [
+                "do_not_soften_baseline_gate",
+                "do_not_accept_research_only_candidate",
+                "do_not_change_labels_without_runtime_validation",
+            ],
+            "decision": "DIAGNOSTIC_ONLY_NEEDS_LABEL_THRESHOLD_AUDIT",
+            "label_recoverability_requirements": requirements,
+            "next_label_diagnostic_plan": plan,
+            "ml38_10_38_label_audit_decision": decisions,
         }
 
     @staticmethod

@@ -90,6 +90,18 @@ class MultiSymbolFeatureRegimeReporter:
             "directional_recoverability_decision": payload.get(
                 "directional_recoverability_decision"
             ),
+            "label_threshold_horizon_sensitivity_audit": payload.get(
+                "label_threshold_horizon_sensitivity_audit"
+            ),
+            "label_recoverability_requirements": payload.get(
+                "label_recoverability_requirements"
+            ),
+            "next_label_diagnostic_plan": payload.get(
+                "next_label_diagnostic_plan"
+            ),
+            "ml38_10_38_label_audit_decision": payload.get(
+                "ml38_10_38_label_audit_decision"
+            ),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -665,6 +677,35 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not blocker_board:
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        label_sensitivity = self._as_dict(
+            payload.get("label_threshold_horizon_sensitivity_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.38 Label Threshold / Horizon Sensitivity Audit",
+                "",
+                f"- status: `{label_sensitivity.get('status')}`",
+                f"- current_label_distribution: `{label_sensitivity.get('current_label_distribution')}`",
+                f"- current_parameter_pressure: `{label_sensitivity.get('current_parameter_pressure')}`",
+                f"- label_recoverability_requirements: `{payload.get('label_recoverability_requirements') or label_sensitivity.get('label_recoverability_requirements')}`",
+                f"- next_label_diagnostic_plan: `{payload.get('next_label_diagnostic_plan') or label_sensitivity.get('next_label_diagnostic_plan')}`",
+                f"- ml38_10_38_label_audit_decision: `{payload.get('ml38_10_38_label_audit_decision') or label_sensitivity.get('ml38_10_38_label_audit_decision')}`",
+                f"- rejected_actions: `{label_sensitivity.get('rejected_actions')}`",
+                f"- decision: `{label_sensitivity.get('decision')}`",
+                "",
+                "### Sensitivity board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(label_sensitivity.get("sensitivity_board")),
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                ),
+                "```",
+            ]
+        )
         lines.extend(
             [
                 "",

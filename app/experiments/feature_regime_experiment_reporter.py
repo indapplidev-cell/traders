@@ -1887,6 +1887,8 @@ class FeatureRegimeExperimentReporter:
             "schwager_slice_robustness",
             "schwager_robustness_decision_board",
             "class_margin_objective_decision",
+            "label_threshold_horizon_sensitivity_rows",
+            "label_sensitivity_board",
         )
         payload = {
             key: self._result_value(result, key)

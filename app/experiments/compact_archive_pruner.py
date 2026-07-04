@@ -60,6 +60,10 @@ KEEP_SUMMARY_KEYS = {
     "candidate_result_summary",
     "rejection_summary",
     "flat_bias_root_cause_audit",
+    "label_threshold_horizon_sensitivity_audit",
+    "label_recoverability_requirements",
+    "next_label_diagnostic_plan",
+    "ml38_10_38_label_audit_decision",
     "conditional_regime_rule_threshold_sensitivity_board",
     "conditional_regime_threshold_sensitivity_summary",
     "aggregate_conditional_regime_rule_threshold_sensitivity_board",
@@ -96,6 +100,10 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "fold_feature_regime_adaptive_repair_probe",
     "walk_forward_summary",
     "flat_bias_root_cause_audit",
+    "label_threshold_horizon_sensitivity_audit",
+    "label_recoverability_requirements",
+    "next_label_diagnostic_plan",
+    "ml38_10_38_label_audit_decision",
 }
 
 # Scalar and bounded summaries required by the multi-symbol analyzer after the
