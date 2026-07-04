@@ -26,6 +26,9 @@
 Только очистка + restore runtime-отчётов + technical commit, без архивации:
     python clean_traders_ml.py --cleanup-commit-only
 
+Только очистка + restore runtime-отчётов + technical commit, без архивации, с сохранением лога:
+    python run_fv3_cached_tuning.py --quick-quality --quick-quality-symbol SOLUSDT 2>&1 | Tee-Object -FilePath reports/quick_quality_manual_solusdt_$(Get-Date -Format "yyyyMMdd_HHmmss").log
+
 Только сборка project archive, без очистки, restore и commit:
     python clean_traders_ml.py --archive-only
 
@@ -883,6 +886,30 @@ def get_status_entries() -> list[StatusEntry]:
     return entries
 
 
+def _is_stage_markdown_report(path: Path) -> bool:
+    """Return True for versioned stage report markdown files.
+
+    These reports are development documentation and should be committed with
+    the code/test changes that introduced the stage.
+
+    Do NOT broaden this to all reports/**. Runtime JSON/ZIP/log artifacts must
+    not be committed by cleanup-commit-only.
+    """
+    normalized = path.as_posix()
+    name = path.name
+
+    if not normalized.startswith("reports/"):
+        return False
+    if path.suffix.lower() != ".md":
+        return False
+
+    return name.startswith("stage_") and (
+        name.endswith("_report.md")
+        or "_report" in name
+        or name.startswith("stage_ml")
+    )
+
+
 def _is_commit_allowed_path(path: str, *, is_deletion: bool = False) -> bool:
     """Проверяет, можно ли путь включать в технический commit."""
     normalized = path.replace("\\", "/").rstrip("/")
@@ -891,6 +918,9 @@ def _is_commit_allowed_path(path: str, *, is_deletion: bool = False) -> bool:
         return True
 
     normalized_for_match = path.replace("\\", "/")
+
+    if _is_stage_markdown_report(Path(normalized)):
+        return True
 
     if _matches_any(normalized_for_match, NEVER_COMMIT_PATTERNS):
         return False
