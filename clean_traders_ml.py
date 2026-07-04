@@ -26,9 +26,6 @@
 Только очистка + restore runtime-отчётов + technical commit, без архивации:
     python clean_traders_ml.py --cleanup-commit-only
 
-Только очистка + restore runtime-отчётов + technical commit, без архивации, с сохранением лога:
-    python run_fv3_cached_tuning.py --quick-quality --quick-quality-symbol SOLUSDT 2>&1 | Tee-Object -FilePath "$logDir\quick_quality_manual_solusdt_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
-
 Только сборка project archive, без очистки, restore и commit:
     python clean_traders_ml.py --archive-only
 

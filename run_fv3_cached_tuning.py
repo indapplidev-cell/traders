@@ -85,6 +85,8 @@ START MODULE
         Если:
             accepted_candidate_count >= 1
         модель всё равно не активировать автоматически. Сначала прислать архив на анализ.
+    С сохранением лога:
+        python run_fv3_cached_tuning.py --quick-quality --quick-quality-symbol SOLUSDT 2>&1 | Tee-Object -FilePath "$logDir\quick_quality_manual_solusdt_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 
     3. python run_fv3_cached_tuning.py --single-symbol-full --single-symbol-full-symbol SOLUSDT
         Ожидание:
