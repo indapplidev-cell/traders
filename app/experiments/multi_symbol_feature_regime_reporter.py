@@ -102,6 +102,9 @@ class MultiSymbolFeatureRegimeReporter:
             "ml38_10_38_label_audit_decision": payload.get(
                 "ml38_10_38_label_audit_decision"
             ),
+            "read_only_label_grid_sensitivity_recompute": payload.get(
+                "read_only_label_grid_sensitivity_recompute"
+            ),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -704,6 +707,23 @@ class MultiSymbolFeatureRegimeReporter:
                     sort_keys=True,
                 ),
                 "```",
+            ]
+        )
+        label_grid_recompute = self._as_dict(
+            payload.get("read_only_label_grid_sensitivity_recompute")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.39 Read-only Label-grid Sensitivity Recompute",
+                "",
+                f"- execution_mode: `{label_grid_recompute.get('execution_mode')}`",
+                f"- date_range: `{label_grid_recompute.get('date_range')}`",
+                f"- parameter_grid: `{label_grid_recompute.get('parameter_grid')}`",
+                f"- too_flat_count: `{label_grid_recompute.get('too_flat_count')}`",
+                f"- too_noisy_count: `{label_grid_recompute.get('too_noisy_count')}`",
+                f"- promising_zone_count: `{label_grid_recompute.get('promising_zone_count')}`",
+                f"- decision: `{label_grid_recompute.get('decision')}`",
             ]
         )
         lines.extend(

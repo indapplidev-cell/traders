@@ -1889,6 +1889,7 @@ class FeatureRegimeExperimentReporter:
             "class_margin_objective_decision",
             "label_threshold_horizon_sensitivity_rows",
             "label_sensitivity_board",
+            "read_only_label_grid_sensitivity_recompute",
         )
         payload = {
             key: self._result_value(result, key)

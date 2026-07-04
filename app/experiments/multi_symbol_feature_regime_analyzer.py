@@ -20,7 +20,7 @@ from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gat
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.38"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.39"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -260,6 +260,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 symbol_results,
             )
         )
+        read_only_label_grid_sensitivity_recompute = (
+            self._read_only_label_grid_sensitivity_recompute(summaries)
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -492,6 +495,9 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 label_threshold_horizon_sensitivity_audit.get(
                     "ml38_10_38_label_audit_decision", []
                 )
+            ),
+            "read_only_label_grid_sensitivity_recompute": (
+                read_only_label_grid_sensitivity_recompute
             ),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
@@ -3051,6 +3057,29 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "label_recoverability_requirements": requirements,
             "next_label_diagnostic_plan": plan,
             "ml38_10_38_label_audit_decision": decisions,
+        }
+
+    @classmethod
+    def _read_only_label_grid_sensitivity_recompute(
+        cls, summaries: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        for summary in summaries:
+            block = cls._as_dict(summary.get("read_only_label_grid_sensitivity_recompute"))
+            if block:
+                return block
+        return {
+            "diagnostic_name": "read_only_label_grid_sensitivity_recompute",
+            "diagnostic_version": "ml38.10.39",
+            "execution_mode": "READ_ONLY_NO_TRAINING_NO_DB_WRITES",
+            "status": "NOT_RUN_READ_ONLY_CANDLES_REQUIRED",
+            "sensitivity_board": [],
+            "best_diagnostic_zones": [],
+            "decision": [
+                "NEEDS_RUNTIME_QUICK_QUALITY_VALIDATION",
+                "DO_NOT_CHANGE_LABELS_YET",
+                "DO_NOT_CHANGE_GATES",
+                "DO_NOT_ACCEPT_RESEARCH_ONLY_CANDIDATE",
+            ],
         }
 
     @staticmethod

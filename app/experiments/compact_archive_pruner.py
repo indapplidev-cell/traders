@@ -64,6 +64,7 @@ KEEP_SUMMARY_KEYS = {
     "label_recoverability_requirements",
     "next_label_diagnostic_plan",
     "ml38_10_38_label_audit_decision",
+    "read_only_label_grid_sensitivity_recompute",
     "conditional_regime_rule_threshold_sensitivity_board",
     "conditional_regime_threshold_sensitivity_summary",
     "aggregate_conditional_regime_rule_threshold_sensitivity_board",
@@ -104,6 +105,7 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "label_recoverability_requirements",
     "next_label_diagnostic_plan",
     "ml38_10_38_label_audit_decision",
+    "read_only_label_grid_sensitivity_recompute",
 }
 
 # Scalar and bounded summaries required by the multi-symbol analyzer after the
