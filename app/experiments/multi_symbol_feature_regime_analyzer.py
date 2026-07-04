@@ -20,7 +20,7 @@ from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gat
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.36.2"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.37"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -247,6 +247,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
         label_mode_audit_summary = self._label_mode_audit_summary(symbol_results)
         flat_subtype_summary = self._flat_subtype_summary(symbol_results)
         flat_bias_root_cause_audit = self._flat_bias_root_cause_audit(symbol_results)
+        flat_majority_directional_recoverability_audit = (
+            self._flat_majority_directional_recoverability_audit(
+                symbol_results,
+                full_candidate_payloads,
+                configs_ranked,
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -444,6 +451,24 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "label_mode_audit_summary": label_mode_audit_summary,
             "flat_subtype_summary": flat_subtype_summary,
             "flat_bias_root_cause_audit": flat_bias_root_cause_audit,
+            "flat_majority_directional_recoverability_audit": (
+                flat_majority_directional_recoverability_audit
+            ),
+            "baseline_edge_gate_explanation": (
+                flat_majority_directional_recoverability_audit.get(
+                    "baseline_edge_gate_explanation", {}
+                )
+            ),
+            "top_candidate_gate_blocker_board": (
+                flat_majority_directional_recoverability_audit.get(
+                    "top_candidate_gate_blocker_board", []
+                )
+            ),
+            "directional_recoverability_decision": (
+                flat_majority_directional_recoverability_audit.get(
+                    "directional_recoverability_decision", []
+                )
+            ),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,
@@ -2381,6 +2406,435 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 "keep_no_auto_activation",
             ],
             "research_only_warning": "flat_bias_audit_does_not_accept_or_activate_models",
+        }
+
+    @classmethod
+    def _flat_majority_directional_recoverability_audit(
+        cls,
+        symbol_results: list[dict[str, Any]],
+        candidate_payloads: list[dict[str, Any]] | None = None,
+        configs_ranked: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Explain directional recoverability without changing labels or gates."""
+
+        candidates = [dict(row) for row in (candidate_payloads or []) if isinstance(row, dict)]
+        ranked = [dict(row) for row in (configs_ranked or []) if isinstance(row, dict)]
+        if not ranked:
+            ranked = [
+                dict(row)
+                for symbol_result in symbol_results
+                for row in cls._as_list(symbol_result.get("configs_ranked"))
+                if isinstance(row, dict)
+            ]
+
+        def candidate_key(row: dict[str, Any]) -> tuple[str, str]:
+            return (str(row.get("symbol") or ""), str(row.get("config_id") or row.get("candidate_id") or ""))
+
+        full_by_key = {candidate_key(row): row for row in candidates}
+        merged_ranked: list[dict[str, Any]] = []
+        for row in ranked:
+            merged = dict(full_by_key.get(candidate_key(row), {}))
+            for key, value in row.items():
+                if cls._usable_source_value(value) or key not in merged:
+                    merged[key] = value
+            merged_ranked.append(merged)
+        if not merged_ranked:
+            merged_ranked = candidates
+        merged_ranked.sort(
+            key=lambda row: (
+                -float(cls._float_or_none(row.get("score")) or 0.0),
+                str(row.get("config_id") or row.get("candidate_id") or ""),
+            )
+        )
+
+        def class_map(value: Any) -> dict[str, float]:
+            payload = cls._as_dict(value)
+            result: dict[str, float] = {}
+            for name in ("UP", "DOWN", "FLAT"):
+                number = cls._first_float_or_none(payload.get(name), payload.get(name.lower()))
+                if number is not None and number >= 0:
+                    result[name] = number
+            return result
+
+        def distribution_evidence(row: dict[str, Any]) -> tuple[dict[str, float], dict[str, int]]:
+            probability = cls._as_dict(row.get("probability_diagnostics"))
+            counts_raw = class_map(
+                probability.get("actual_direction_counts")
+                or row.get("actual_class_counts")
+                or row.get("label_counts")
+            )
+            counts = {key: int(round(value)) for key, value in counts_raw.items()}
+            rates = class_map(
+                row.get("actual_class_distribution")
+                or probability.get("actual_direction_ratios")
+                or row.get("label_distribution")
+            )
+            if counts and sum(counts.values()) > 0:
+                total = sum(counts.values())
+                rates = {key: counts.get(key, 0) / total for key in ("UP", "DOWN", "FLAT")}
+            elif rates:
+                total = sum(rates.values())
+                if total > 1.5:
+                    rates = {key: value / total for key, value in rates.items()}
+                sample_count = cls._first_float_or_none(
+                    probability.get("total_rows"),
+                    cls._as_dict(row.get("prediction_root_cause_audit")).get("row_count"),
+                )
+                if sample_count is not None and sample_count > 0:
+                    counts = {
+                        key: int(round(rates.get(key, 0.0) * sample_count))
+                        for key in ("UP", "DOWN", "FLAT")
+                    }
+            return rates, counts
+
+        # One distribution per symbol prevents repeated candidate metrics from
+        # multiplying the same validation labels.
+        evidence_rows: list[dict[str, Any]] = []
+        symbols = [str(row.get("symbol") or "") for row in symbol_results]
+        for symbol in symbols or [""]:
+            source_rows = [
+                row for row in merged_ranked if str(row.get("symbol") or "") == symbol
+            ]
+            symbol_result = next(
+                (row for row in symbol_results if str(row.get("symbol") or "") == symbol),
+                {},
+            )
+            source_rows.append(symbol_result)
+            selected = next((row for row in source_rows if distribution_evidence(row)[0]), None)
+            if selected is not None:
+                evidence_rows.append(selected)
+        if not evidence_rows:
+            evidence_rows = [row for row in merged_ranked if distribution_evidence(row)[0]][:1]
+
+        rates_by_row: list[dict[str, float]] = []
+        counts_by_row: list[dict[str, int]] = []
+        for row in evidence_rows:
+            rates, counts = distribution_evidence(row)
+            if rates:
+                rates_by_row.append(rates)
+            if counts:
+                counts_by_row.append(counts)
+
+        if counts_by_row and len(counts_by_row) == len(rates_by_row):
+            aggregate_counts = {
+                key: sum(row.get(key, 0) for row in counts_by_row)
+                for key in ("UP", "DOWN", "FLAT")
+            }
+            aggregate_total = sum(aggregate_counts.values())
+            aggregate_rates = {
+                key: aggregate_counts[key] / aggregate_total
+                for key in ("UP", "DOWN", "FLAT")
+            } if aggregate_total else {}
+        else:
+            aggregate_counts = {}
+            aggregate_rates = {
+                key: sum(row.get(key, 0.0) for row in rates_by_row) / len(rates_by_row)
+                for key in ("UP", "DOWN", "FLAT")
+            } if rates_by_row else {}
+
+        up_rate = aggregate_rates.get("UP")
+        down_rate = aggregate_rates.get("DOWN")
+        flat_rate = aggregate_rates.get("FLAT")
+        directional_rate = (
+            None if up_rate is None or down_rate is None else up_rate + down_rate
+        )
+        flat_to_directional_ratio = (
+            None
+            if flat_rate is None or directional_rate is None or directional_rate <= 0
+            else flat_rate / directional_rate
+        )
+        up_count = aggregate_counts.get("UP")
+        down_count = aggregate_counts.get("DOWN")
+        directional_count = (
+            None if up_count is None or down_count is None else up_count + down_count
+        )
+        enough_directional_samples = bool(
+            directional_count is not None
+            and directional_count >= 100
+            and min(up_count or 0, down_count or 0) >= 20
+        )
+        if directional_count is None:
+            sample_warning = "directional_counts_unavailable_rates_only"
+        elif enough_directional_samples:
+            sample_warning = "directional_sample_meets_diagnostic_minimum"
+        else:
+            sample_warning = "directional_sample_below_100_or_one_side_below_20"
+
+        top_rows = merged_ranked[:10]
+
+        parameter_sources = [
+            cls._as_dict(row.get("label_config")) | row
+            for row in top_rows
+        ]
+        label_parameter_values = {
+            key: sorted(
+                {
+                    value
+                    for row in parameter_sources
+                    if (value := cls._first_float_or_none(row.get(key))) is not None
+                }
+            )
+            for key in (
+                "horizon_candles",
+                "horizon",
+                "direction_atr_threshold",
+                "threshold",
+                "flat_threshold",
+                "take_profit_atr",
+                "stop_loss_atr",
+            )
+        }
+
+        def failed_gate_names(row: dict[str, Any]) -> list[str]:
+            return [str(value) for value in cls._as_list(row.get("failed_gates")) if str(value)]
+
+        def nested_metric(row: dict[str, Any], *keys: str) -> float | None:
+            profit = cls._as_dict(row.get("profit_aware_diagnostics"))
+            summary = cls._as_dict(profit.get("summary"))
+            best_gate = cls._as_dict(profit.get("best_gate"))
+            for key in keys:
+                value = cls._first_float_or_none(
+                    row.get(key), summary.get(key), best_gate.get(key)
+                )
+                if value is not None:
+                    return value
+            return None
+
+        blocker_board: list[dict[str, Any]] = []
+        for row in top_rows:
+            failed = failed_gate_names(row)
+            failed_lower = [name.lower() for name in failed]
+            research_only = bool(
+                row.get("research_only_total_r_repair_enabled")
+                or row.get("research_only_fold_repair_probe_enabled")
+                or row.get("research_only_acceptance_block_reason")
+                or any("research_only" in name for name in failed_lower)
+            )
+            status = str(row.get("candidate_status") or row.get("status") or "UNKNOWN").upper()
+            reasons = [name for name in failed]
+            if research_only and not any("research_only" in name.lower() for name in reasons):
+                reasons.append("research_only_not_tradable")
+            blocker_board.append(
+                {
+                    "config_id": row.get("config_id") or row.get("candidate_id"),
+                    "candidate_status": status,
+                    "score": cls._float_or_none(row.get("score")),
+                    "profit_factor": nested_metric(row, "profit_factor"),
+                    "total_r": nested_metric(row, "profit_total_r", "total_r"),
+                    "profit_total_r": nested_metric(row, "profit_total_r", "total_r"),
+                    "walk_forward_pf": nested_metric(
+                        row, "walk_forward_profit_factor", "walk_forward_pf"
+                    ),
+                    "walk_forward_total_r": nested_metric(
+                        row, "walk_forward_total_r", "walk_forward_global_total_r"
+                    ),
+                    "failed_gates": failed,
+                    "compact_reason_summary": ", ".join(reasons) if reasons else "no_failed_gate_evidence",
+                    "rejected_because_research_only": research_only and status != "ACCEPTED",
+                    "rejected_because_baseline": "baseline_edge_gate" in failed_lower,
+                    "rejected_because_profit": "profit_aware_gate" in failed_lower,
+                    "rejected_because_walk_forward": "walk_forward_gate" in failed_lower,
+                    "rejected_because_bias": "bias_gate" in failed_lower,
+                    "tradable_edge": status == "ACCEPTED" and not failed and not research_only,
+                }
+            )
+
+        baseline_blocked = [row for row in blocker_board if row["rejected_because_baseline"]]
+        positive_profit_baseline_blocked = [
+            row for row in baseline_blocked
+            if (row["profit_factor"] is not None and row["profit_factor"] > 1.0)
+            or (row["profit_total_r"] is not None and row["profit_total_r"] > 0.0)
+        ]
+        positive_wf_rejected = [
+            row for row in blocker_board
+            if row["candidate_status"] != "ACCEPTED"
+            and ((row["walk_forward_pf"] is not None and row["walk_forward_pf"] > 1.0)
+                 or (row["walk_forward_total_r"] is not None and row["walk_forward_total_r"] > 0.0))
+        ]
+        research_only_rows = [row for row in blocker_board if row["rejected_because_research_only"]]
+
+        majority_class = (
+            max(aggregate_rates, key=aggregate_rates.get) if aggregate_rates else None
+        )
+        majority_pct = aggregate_rates.get(majority_class) if majority_class else None
+        if flat_rate is not None and flat_rate >= 0.90:
+            pressure = "HIGH_FLAT_MAJORITY_PRESSURE"
+        elif flat_rate is not None and flat_rate >= 0.75:
+            pressure = "ELEVATED_FLAT_MAJORITY_PRESSURE"
+        elif flat_rate is not None:
+            pressure = "LOW_FLAT_MAJORITY_PRESSURE"
+        else:
+            pressure = "INSUFFICIENT_LABEL_DISTRIBUTION"
+
+        precision_values = [
+            value for row in top_rows
+            if (value := cls._float_or_none(row.get("opportunity_precision"))) is not None
+        ]
+        recall_values = [
+            value for row in top_rows
+            if (value := cls._float_or_none(row.get("opportunity_recall"))) is not None
+        ]
+        best_precision = max(precision_values) if precision_values else None
+        best_recall = max(recall_values) if recall_values else None
+        model_edges = [
+            value for row in top_rows
+            if (value := cls._first_float_or_none(row.get("baseline_edge"), row.get("accuracy_edge"))) is not None
+        ]
+        probability_signal = (
+            "POOR_MODEL_VS_MAJORITY_SEPARATION"
+            if model_edges and max(model_edges) <= 0
+            else "POSITIVE_MODEL_VS_MAJORITY_SEPARATION"
+            if model_edges
+            else "NOT_AVAILABLE"
+        )
+        precision_signal = (
+            "NOT_AVAILABLE" if best_precision is None
+            else "WEAK" if best_precision < 0.50
+            else "MODERATE" if best_precision < 0.65
+            else "STRONG"
+        )
+        recall_signal = (
+            "NOT_AVAILABLE" if best_recall is None
+            else "WEAK" if best_recall < 0.50
+            else "MODERATE" if best_recall < 0.70
+            else "STRONG"
+        )
+
+        gate_names = {
+            name
+            for row in blocker_board
+            for name in row["failed_gates"]
+        }
+        gate_summary = {
+            gate: (
+                f"blocked_{sum(gate in row['failed_gates'] for row in blocker_board)}_of_{len(blocker_board)}_top_candidates"
+                if gate in gate_names else "no_failure_evidence_in_top_candidates"
+            )
+            for gate in (
+                "baseline_edge_gate", "bias_gate", "profit_aware_gate", "walk_forward_gate"
+            )
+        }
+        gate_summary["research_only_gate"] = (
+            f"blocked_{len(research_only_rows)}_of_{len(blocker_board)}_top_candidates"
+            if research_only_rows else "no_research_only_block_in_top_candidates"
+        )
+
+        if flat_rate is not None and flat_rate >= 0.90 and model_edges and max(model_edges) <= 0:
+            problem_balance = "LABEL_IMBALANCE_AND_MODEL_SEPARATION_PRIMARY_GATES_ENFORCE_EVIDENCE"
+        elif model_edges and max(model_edges) <= 0:
+            problem_balance = "MODEL_SEPARATION_PRIMARY_GATES_ENFORCE_EVIDENCE"
+        elif baseline_blocked:
+            problem_balance = "GATE_SIDE_EVIDENCE_REQUIRES_REVIEW"
+        elif aggregate_rates:
+            problem_balance = "LABEL_SIDE_DIAGNOSTIC_EVIDENCE_ONLY"
+        else:
+            problem_balance = "INSUFFICIENT_COMPACT_EVIDENCE"
+
+        baseline_explanation = {
+            "dominant_baseline": (
+                f"always_predict_{majority_class}" if majority_class else "not_available"
+            ),
+            "majority_class": majority_class,
+            "majority_class_pct": majority_pct,
+            "why_flat_majority_is_hard": (
+                "A directional model must exceed the accuracy of always predicting FLAT; "
+                "rare UP/DOWN labels provide limited evidence and directional false positives lose baseline edge."
+                if majority_class == "FLAT"
+                else "No FLAT-majority evidence is available."
+            ),
+            "positive_profit_candidates_blocked_by_baseline": [
+                row["config_id"] for row in positive_profit_baseline_blocked
+            ],
+            "positive_walk_forward_candidates_rejected": [
+                row["config_id"] for row in positive_wf_rejected
+            ],
+            "problem_balance": problem_balance,
+            "diagnostic_only": True,
+        }
+
+        decisions: list[str] = []
+        if aggregate_rates:
+            if directional_count is not None and not enough_directional_samples:
+                decisions.append("DIRECTIONAL_SAMPLE_TOO_SMALL")
+            if flat_rate is not None and flat_rate >= 0.90 and baseline_blocked:
+                decisions.append("FLAT_BASELINE_DOMINATES")
+            if positive_profit_baseline_blocked:
+                decisions.append("PROFIT_EDGE_EXISTS_BUT_UNSTABLE")
+            if positive_wf_rejected:
+                decisions.append("WALK_FORWARD_EDGE_EXISTS_BUT_GATE_BLOCKED")
+            if research_only_rows:
+                decisions.append("RESEARCH_ONLY_REPAIR_NOT_TRADABLE")
+            if flat_rate is not None and flat_rate >= 0.90:
+                decisions.append("NEEDS_LABEL_THRESHOLD_AUDIT")
+        elif blocker_board:
+            if positive_profit_baseline_blocked:
+                decisions.append("PROFIT_EDGE_EXISTS_BUT_UNSTABLE")
+            if positive_wf_rejected:
+                decisions.append("WALK_FORWARD_EDGE_EXISTS_BUT_GATE_BLOCKED")
+            if research_only_rows:
+                decisions.append("RESEARCH_ONLY_REPAIR_NOT_TRADABLE")
+        if not decisions:
+            decisions.append("UNKNOWN_INSUFFICIENT_COMPACT_FIELDS")
+
+        return {
+            "diagnostic_name": "flat_majority_directional_recoverability_audit",
+            "diagnostic_version": "ml38.10.37",
+            "label_distribution": {
+                "up_pct": up_rate,
+                "down_pct": down_rate,
+                "flat_pct": flat_rate,
+                "directional_pct": directional_rate,
+                "flat_to_directional_ratio": flat_to_directional_ratio,
+            },
+            "directional_sample_audit": {
+                "up_count": up_count,
+                "down_count": down_count,
+                "directional_count": directional_count,
+                "enough_directional_samples": enough_directional_samples,
+                "sample_warning": sample_warning,
+            },
+            "baseline_pressure_audit": {
+                "majority_class": majority_class,
+                "majority_class_pct": majority_pct,
+                "baseline_edge_gate_pressure": pressure,
+                "why_baseline_edge_is_hard": baseline_explanation["why_flat_majority_is_hard"],
+            },
+            "label_parameter_naturalness_audit": {
+                "observed_parameter_values": label_parameter_values,
+                "assessment": (
+                    "FLAT_MAJORITY_IS_CONSISTENT_WITH_CURRENT_BOUNDARIES_BUT_CAUSALITY_REQUIRES_SENSITIVITY_AUDIT"
+                    if flat_rate is not None and flat_rate >= 0.90
+                    else "NO_EXTREME_FLAT_MAJORITY_OBSERVED"
+                    if flat_rate is not None
+                    else "INSUFFICIENT_LABEL_DISTRIBUTION"
+                ),
+                "causal_claim": False,
+                "diagnostic_only": True,
+            },
+            "recoverability_audit": {
+                "directional_precision_signal": precision_signal,
+                "directional_recall_signal": recall_signal,
+                "probability_separation_signal": probability_signal,
+                "profit_recoverability_signal": (
+                    "POSITIVE_BUT_GATE_BLOCKED" if positive_profit_baseline_blocked
+                    else "NO_POSITIVE_PROFIT_EVIDENCE"
+                ),
+                "walk_forward_recoverability_signal": (
+                    "POSITIVE_BUT_REJECTED" if positive_wf_rejected
+                    else "NO_POSITIVE_WALK_FORWARD_EVIDENCE"
+                ),
+            },
+            "gate_blocker_summary": gate_summary,
+            "future_diagnostic_suggestions": [
+                "threshold sensitivity only",
+                "horizon sensitivity only",
+                "flat boundary audit",
+                "directional-only shadow evaluation",
+            ],
+            "decision": "DIAGNOSTIC_ONLY_NO_LABEL_CHANGE",
+            "baseline_edge_gate_explanation": baseline_explanation,
+            "top_candidate_gate_blocker_board": blocker_board,
+            "directional_recoverability_decision": decisions,
         }
 
     @staticmethod

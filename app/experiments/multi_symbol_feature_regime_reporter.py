@@ -78,6 +78,18 @@ class MultiSymbolFeatureRegimeReporter:
             "flat_bias_summary": payload.get("flat_bias_summary"),
             "down_blindness_summary": payload.get("down_blindness_summary"),
             "baseline_edge_summary": payload.get("baseline_edge_summary"),
+            "flat_majority_directional_recoverability_audit": payload.get(
+                "flat_majority_directional_recoverability_audit"
+            ),
+            "baseline_edge_gate_explanation": payload.get(
+                "baseline_edge_gate_explanation"
+            ),
+            "top_candidate_gate_blocker_board": payload.get(
+                "top_candidate_gate_blocker_board"
+            ),
+            "directional_recoverability_decision": payload.get(
+                "directional_recoverability_decision"
+            ),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -603,6 +615,56 @@ class MultiSymbolFeatureRegimeReporter:
             )
         if not flat_bias_rows:
             lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
+        recoverability_audit = self._as_dict(
+            payload.get("flat_majority_directional_recoverability_audit")
+        )
+        baseline_explanation = self._as_dict(
+            payload.get("baseline_edge_gate_explanation")
+            or recoverability_audit.get("baseline_edge_gate_explanation")
+        )
+        blocker_board = self._as_list(
+            payload.get("top_candidate_gate_blocker_board")
+            or recoverability_audit.get("top_candidate_gate_blocker_board")
+        )[:10]
+        lines.extend(
+            [
+                "",
+                "## ML38.10.37 FLAT-majority Directional Recoverability Audit",
+                "",
+                f"- label_distribution: `{recoverability_audit.get('label_distribution')}`",
+                f"- directional_sample_audit: `{recoverability_audit.get('directional_sample_audit')}`",
+                f"- baseline_pressure_audit: `{recoverability_audit.get('baseline_pressure_audit')}`",
+                f"- recoverability_audit: `{recoverability_audit.get('recoverability_audit')}`",
+                f"- gate_blocker_summary: `{recoverability_audit.get('gate_blocker_summary')}`",
+                f"- baseline_edge_gate_explanation: `{baseline_explanation}`",
+                f"- directional_recoverability_decision: `{payload.get('directional_recoverability_decision') or recoverability_audit.get('directional_recoverability_decision')}`",
+                f"- decision: `{recoverability_audit.get('decision')}`",
+                "",
+                "| Config | Status | Score | PF | Total R | WF PF | WF R | Failed gates | Research-only | Baseline | Profit | Walk-forward | Bias |",
+                "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for row in blocker_board:
+            board_row = self._as_dict(row)
+            lines.append(
+                "| `{config}` | `{status}` | `{score}` | `{pf}` | `{total_r}` | `{wf_pf}` | `{wf_r}` | `{failed}` | `{research}` | `{baseline}` | `{profit}` | `{wf}` | `{bias}` |".format(
+                    config=board_row.get("config_id"),
+                    status=board_row.get("candidate_status"),
+                    score=board_row.get("score"),
+                    pf=board_row.get("profit_factor"),
+                    total_r=board_row.get("profit_total_r", board_row.get("total_r")),
+                    wf_pf=board_row.get("walk_forward_pf"),
+                    wf_r=board_row.get("walk_forward_total_r"),
+                    failed=",".join(self._as_list(board_row.get("failed_gates"))),
+                    research=board_row.get("rejected_because_research_only"),
+                    baseline=board_row.get("rejected_because_baseline"),
+                    profit=board_row.get("rejected_because_profit"),
+                    wf=board_row.get("rejected_because_walk_forward"),
+                    bias=board_row.get("rejected_because_bias"),
+                )
+            )
+        if not blocker_board:
+            lines.append("| `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` | `-` |")
         lines.extend(
             [
                 "",
