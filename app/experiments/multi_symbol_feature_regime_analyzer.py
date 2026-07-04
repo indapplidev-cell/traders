@@ -20,7 +20,25 @@ from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gat
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml35"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.36.2"
+
+AGGREGATION_CONSISTENCY_FIELDS = (
+    "candidate_count",
+    "evaluated_candidate_count",
+    "failed_candidate_count",
+    "accepted_candidate_count",
+    "rejected_candidate_count",
+    "feature_version_used",
+    "real_feature_diagnostics_used",
+    "real_feature_diagnostics_row_count",
+    "effective_gap_count_for_training",
+    "gap_severity_for_training",
+    "gap_training_safe",
+    "regime_features_attached",
+    "regime_feature_count",
+    "regime_specific_training_applied",
+    "regime_label_builder_used_in_training",
+)
 
 
 class MultiSymbolFeatureRegimeAnalyzer:
@@ -50,6 +68,69 @@ class MultiSymbolFeatureRegimeAnalyzer:
     @staticmethod
     def _as_dict(value: Any) -> dict[str, Any]:
         return dict(value) if isinstance(value, dict) else {}
+
+    @classmethod
+    def _usable_source_value(cls, value: Any) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, str) and (not value.strip() or value.upper() == "UNKNOWN"):
+            return False
+        return not cls._is_empty_or_compact_placeholder(value)
+
+    @classmethod
+    def _nested_value(cls, payload: dict[str, Any], path: tuple[str, ...]) -> Any:
+        value: Any = payload
+        for key in path:
+            if not isinstance(value, dict) or key not in value:
+                return None
+            value = value[key]
+        return value
+
+    @classmethod
+    def _resolve_summary_field(
+        cls,
+        summary: dict[str, Any],
+        best_candidate: dict[str, Any],
+        key: str,
+        *,
+        nested_paths: tuple[tuple[str, ...], ...] = (),
+        candidate_keys: tuple[str, ...] = (),
+        legacy_keys: tuple[str, ...] = (),
+    ) -> tuple[Any, str | None]:
+        """Resolve compact aggregation data without treating false/zero as missing."""
+        compact_summary = cls._as_dict(summary.get("compact_summary"))
+        compact_value = compact_summary.get(key)
+        if cls._usable_source_value(compact_value):
+            return compact_value, f"compact_summary.{key}"
+
+        for path in nested_paths:
+            value = cls._nested_value(summary, path)
+            if cls._usable_source_value(value):
+                return value, ".".join(path)
+
+        candidate_compact = cls._as_dict(best_candidate.get("compact_summary"))
+        for candidate_key in (key, *candidate_keys):
+            value = candidate_compact.get(candidate_key)
+            if cls._usable_source_value(value):
+                return value, f"candidate.compact_summary.{candidate_key}"
+        for candidate_key in (key, *candidate_keys):
+            value = best_candidate.get(candidate_key)
+            if cls._usable_source_value(value):
+                return value, f"candidate.{candidate_key}"
+
+        for legacy_key in (key, *legacy_keys):
+            value = summary.get(legacy_key)
+            if cls._usable_source_value(value):
+                return value, f"legacy.{legacy_key}"
+        return None, None
+
+    @classmethod
+    def _compact_array_items(cls, value: Any) -> list[dict[str, Any]]:
+        if isinstance(value, list):
+            return [dict(item) for item in value if isinstance(item, dict)]
+        if isinstance(value, dict) and isinstance(value.get("sample"), list):
+            return [dict(item) for item in value["sample"] if isinstance(item, dict)]
+        return []
 
     @classmethod
     def _is_empty_or_compact_placeholder(cls, value: Any) -> bool:
@@ -97,6 +178,12 @@ class MultiSymbolFeatureRegimeAnalyzer:
             return []
         if isinstance(value, list):
             return list(value)
+        if (
+            isinstance(value, dict)
+            and value.get("_compact_pruned") is True
+            and isinstance(value.get("sample"), list)
+        ):
+            return list(value["sample"])
         if isinstance(value, (tuple, set)):
             return list(value)
         return [value]
@@ -220,6 +307,33 @@ class MultiSymbolFeatureRegimeAnalyzer:
         adaptive_feature_filter_diagnostics = self._as_dict(
             adaptive_probe_result.get("feature_filter_diagnostics")
         )
+        consistency_by_symbol = {
+            item["symbol"]: self._as_dict(
+                item.get("aggregate_report_source_consistency")
+            )
+            for item in symbol_results
+        }
+        consistency_warnings = [
+            f"{symbol}:{warning}"
+            for symbol, audit in consistency_by_symbol.items()
+            for warning in self._as_list(audit.get("warnings"))
+        ]
+        aggregate_report_source_consistency = {
+            "status": "CONSISTENT" if not consistency_warnings else "MISSING_FIELDS",
+            "compact_summary_source_used": {
+                symbol: bool(audit.get("compact_summary_source_used"))
+                for symbol, audit in consistency_by_symbol.items()
+            },
+            "missing_fields_after_fallback": {
+                symbol: self._as_list(audit.get("missing_fields_after_fallback"))
+                for symbol, audit in consistency_by_symbol.items()
+            },
+            "source_priority_used": {
+                symbol: self._as_dict(audit.get("source_priority_used"))
+                for symbol, audit in consistency_by_symbol.items()
+            },
+            "warnings": consistency_warnings,
+        }
 
         return {
             "analyzer_name": MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME,
@@ -262,6 +376,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "best_global_config": None if best_result is None else best_result["best_candidate_config_id"],
             "configs_ranked": configs_ranked,
             "symbol_results": symbol_results,
+            "aggregate_report_source_consistency": aggregate_report_source_consistency,
             "directional_side_ablation_comparator": directional_side_ablation_comparator,
             "directional_side_walk_forward_stability": directional_side_walk_forward_stability,
             "directional_side_signal_recovery_summary": directional_side_signal_recovery_summary,
@@ -904,11 +1019,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
 
     @classmethod
     def _best_candidate(cls, summary: dict[str, Any]) -> dict[str, Any]:
-        candidate_results = [
-            cls._as_dict(item)
-            for item in cls._as_list(summary.get("candidate_results"))
-            if isinstance(item, dict)
-        ]
+        candidate_results = cls._compact_array_items(summary.get("candidate_results"))
 
         eligible_candidates = [
             candidate
@@ -939,9 +1050,217 @@ class MultiSymbolFeatureRegimeAnalyzer:
         apply_selected_decision_policy_metrics(best_candidate)
         summary_warnings = [str(item) for item in cls._as_list(summary.get("warnings"))]
         candidate_warnings = [str(item) for item in cls._as_list(best_candidate.get("warnings"))]
-        summary_regime_status = cls._as_dict(summary.get("regime_label_builder_status"))
-        gap_severity_for_training = str(summary.get("gap_severity_for_training") or "UNKNOWN")
-        gap_training_safe = bool(summary.get("gap_training_safe", False))
+        source_priority_used: dict[str, str] = {}
+
+        def resolved(
+            key: str,
+            *,
+            nested_paths: tuple[tuple[str, ...], ...] = (),
+            candidate_keys: tuple[str, ...] = (),
+            legacy_keys: tuple[str, ...] = (),
+        ) -> Any:
+            value, source = cls._resolve_summary_field(
+                summary,
+                best_candidate,
+                key,
+                nested_paths=nested_paths,
+                candidate_keys=candidate_keys,
+                legacy_keys=legacy_keys,
+            )
+            if source is not None:
+                source_priority_used[key] = source
+            return value
+
+        count_paths = lambda key: (
+            ("candidate_summary", key),
+            ("experiment_summary", key),
+        )
+        resolved_values: dict[str, Any] = {
+            key: resolved(key, nested_paths=count_paths(key))
+            for key in (
+                "candidate_count",
+                "evaluated_candidate_count",
+                "failed_candidate_count",
+                "accepted_candidate_count",
+                "rejected_candidate_count",
+            )
+        }
+        resolved_values["feature_version_used"] = resolved(
+            "feature_version_used",
+            nested_paths=(
+                ("feature_quality_summary", "feature_version_used"),
+                ("regime_feature_summary", "feature_version_used"),
+            ),
+            candidate_keys=("feature_version",),
+            legacy_keys=("feature_version",),
+        )
+        resolved_values["real_feature_diagnostics_row_count"] = resolved(
+            "real_feature_diagnostics_row_count",
+            nested_paths=(
+                ("real_feature_diagnostics", "row_count"),
+                ("feature_quality_summary", "row_count"),
+            ),
+            candidate_keys=("feature_diagnostics_row_count",),
+        )
+        resolved_values["real_feature_diagnostics_used"] = resolved(
+            "real_feature_diagnostics_used",
+            nested_paths=(
+                ("real_feature_diagnostics", "used"),
+                ("feature_quality_summary", "real_feature_diagnostics_used"),
+            ),
+        )
+        resolved_values["real_feature_diagnostics_missing_reason"] = resolved(
+            "real_feature_diagnostics_missing_reason",
+            nested_paths=(("real_feature_diagnostics", "missing_reason"),),
+        )
+        for key in (
+            "effective_gap_count_for_training",
+            "gap_severity_for_training",
+            "gap_training_safe",
+        ):
+            resolved_values[key] = resolved(
+                key,
+                nested_paths=(
+                    ("gap_quality_summary", key),
+                    ("gap_training_summary", key),
+                    ("dataset_summary", key),
+                ),
+            )
+        for key in (
+            "regime_features_attached",
+            "regime_feature_count",
+            "regime_features_missing_reason",
+        ):
+            resolved_values[key] = resolved(
+                key,
+                nested_paths=(("regime_feature_summary", key),),
+            )
+        for key in (
+            "candle_ta_context_features_attached",
+            "candle_ta_context_feature_count",
+            "candle_ta_context_missing_reason",
+            "book_setup_context_features_attached",
+            "book_setup_context_feature_count",
+            "fv4_feature_count",
+            "nison_feature_count",
+            "altunina_feature_count",
+            "path_context_feature_count",
+            "htf_context_feature_count",
+            "missing_context_feature_count",
+        ):
+            resolved_values[key] = resolved(key)
+
+        summary_regime_status = cls._as_dict(
+            resolved(
+                "regime_label_builder_status",
+                nested_paths=(("regime_training_summary", "regime_label_builder_status"),),
+            )
+        )
+        resolved_values["regime_label_builder_used_in_training"] = resolved(
+            "regime_label_builder_used_in_training",
+            nested_paths=(
+                ("regime_label_builder_status", "regime_label_builder_used_in_training"),
+                ("regime_training_summary", "regime_label_builder_used_in_training"),
+            ),
+            legacy_keys=("regime_label_builder_used_in_training_any",),
+        )
+        resolved_values["regime_specific_training_applied"] = resolved(
+            "regime_specific_training_applied",
+            nested_paths=(
+                ("regime_label_builder_status", "regime_specific_training_applied"),
+                ("regime_training_summary", "regime_specific_training_applied"),
+            ),
+            legacy_keys=(
+                "regime_specific_training_applied_any",
+                "regime_training_applied",
+            ),
+        )
+        if resolved_values["regime_label_builder_used_in_training"] is None:
+            status_value = summary_regime_status.get(
+                "regime_label_builder_used_in_training"
+            )
+            if cls._usable_source_value(status_value):
+                resolved_values["regime_label_builder_used_in_training"] = status_value
+                source_priority_used["regime_label_builder_used_in_training"] = (
+                    "compact_or_nested.regime_label_builder_status."
+                    "regime_label_builder_used_in_training"
+                )
+        if resolved_values["regime_specific_training_applied"] is None:
+            status_value = summary_regime_status.get("regime_specific_training_applied")
+            if cls._usable_source_value(status_value):
+                resolved_values["regime_specific_training_applied"] = status_value
+                source_priority_used["regime_specific_training_applied"] = (
+                    "compact_or_nested.regime_label_builder_status."
+                    "regime_specific_training_applied"
+                )
+
+        if resolved_values["evaluated_candidate_count"] is None:
+            accepted = resolved_values["accepted_candidate_count"]
+            rejected = resolved_values["rejected_candidate_count"]
+            if accepted is not None and rejected is not None:
+                resolved_values["evaluated_candidate_count"] = int(accepted) + int(rejected)
+                source_priority_used["evaluated_candidate_count"] = "derived.accepted_plus_rejected"
+        if resolved_values["real_feature_diagnostics_used"] is None:
+            row_count = resolved_values["real_feature_diagnostics_row_count"]
+            if row_count is not None:
+                resolved_values["real_feature_diagnostics_used"] = int(row_count) > 0
+                source_priority_used["real_feature_diagnostics_used"] = "derived.diagnostics_row_count"
+        if resolved_values["regime_features_attached"] is None:
+            feature_count = resolved_values["regime_feature_count"]
+            if feature_count is not None:
+                resolved_values["regime_features_attached"] = int(feature_count) > 0
+                source_priority_used["regime_features_attached"] = "derived.regime_feature_count"
+        if resolved_values["feature_version_used"] is None:
+            if (
+                bool(resolved_values["book_setup_context_features_attached"])
+                or int(resolved_values["fv4_feature_count"] or 0) > 0
+            ):
+                resolved_values["feature_version_used"] = "fv4_book_setup_context"
+                source_priority_used["feature_version_used"] = "derived.fv4_book_context"
+            elif bool(resolved_values["candle_ta_context_features_attached"]):
+                resolved_values["feature_version_used"] = "fv3_candle_ta_context"
+                source_priority_used["feature_version_used"] = "derived.candle_ta_context"
+
+        gap_severity_value = resolved_values["gap_severity_for_training"]
+        gap_severity_for_training = (
+            str(gap_severity_value) if gap_severity_value is not None else "UNKNOWN"
+        )
+        gap_safe_value = resolved_values["gap_training_safe"]
+        gap_count_value = resolved_values["effective_gap_count_for_training"]
+        if (
+            gap_count_value is None
+            and gap_safe_value is True
+            and gap_severity_for_training in {"OK", "MINOR"}
+        ):
+            gap_count_value = 0
+            resolved_values["effective_gap_count_for_training"] = 0
+            source_priority_used["effective_gap_count_for_training"] = (
+                "derived.safe_gap_severity"
+            )
+        if gap_safe_value is None and gap_count_value is not None:
+            if int(gap_count_value) == 0 and gap_severity_for_training in {"OK", "MINOR"}:
+                gap_safe_value = True
+                source_priority_used["gap_training_safe"] = "derived.gap_count_and_severity"
+        gap_training_safe = bool(gap_safe_value) if gap_safe_value is not None else False
+        resolved_values["gap_training_safe"] = gap_safe_value
+
+        missing_fields_after_fallback = [
+            key
+            for key in AGGREGATION_CONSISTENCY_FIELDS
+            if resolved_values.get(key) is None
+        ]
+        source_consistency = {
+            "compact_summary_source_used": any(
+                source.startswith("compact_summary.")
+                for source in source_priority_used.values()
+            ),
+            "missing_fields_after_fallback": missing_fields_after_fallback,
+            "source_priority_used": source_priority_used,
+            "warnings": [
+                f"missing_after_all_fallbacks:{key}"
+                for key in missing_fields_after_fallback
+            ],
+        }
         failed_gates, passed_gates = normalize_gap_quality_gate(
             gap_severity_for_training=gap_severity_for_training,
             gap_training_safe=gap_training_safe,
@@ -950,11 +1269,7 @@ class MultiSymbolFeatureRegimeAnalyzer:
         )
         candidate_results_by_config_id = {
             str(candidate.get("config_id")): candidate
-            for candidate in [
-                cls._as_dict(item)
-                for item in cls._as_list(summary.get("candidate_results"))
-                if isinstance(item, dict)
-            ]
+            for candidate in cls._compact_array_items(summary.get("candidate_results"))
             if candidate.get("config_id") is not None
         }
 
@@ -1259,36 +1574,36 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "symbol": str(summary.get("symbol")),
             "experiment_id": summary.get("experiment_id"),
             "experiment_status": summary.get("experiment_status"),
-            "candidate_count": int(summary.get("candidate_count", 0) or 0),
-            "evaluated_candidate_count": int(summary.get("evaluated_candidate_count", 0) or 0),
-            "failed_candidate_count": int(summary.get("failed_candidate_count", 0) or 0),
-            "accepted_candidate_count": int(summary.get("accepted_candidate_count", 0) or 0),
-            "rejected_candidate_count": int(summary.get("rejected_candidate_count", 0) or 0),
+            "candidate_count": int(resolved_values["candidate_count"] or 0),
+            "evaluated_candidate_count": int(resolved_values["evaluated_candidate_count"] or 0),
+            "failed_candidate_count": int(resolved_values["failed_candidate_count"] or 0),
+            "accepted_candidate_count": int(resolved_values["accepted_candidate_count"] or 0),
+            "rejected_candidate_count": int(resolved_values["rejected_candidate_count"] or 0),
             "best_candidate_config_id": best_candidate.get("config_id"),
             "best_candidate_score": cls._candidate_score(best_candidate),
             "candidate_status": best_candidate.get("candidate_status"),
-            "feature_version_used": summary.get("feature_version_used"),
-            "candle_ta_context_features_attached": bool(summary.get("candle_ta_context_features_attached", False)),
-            "candle_ta_context_feature_count": int(summary.get("candle_ta_context_feature_count", 0) or 0),
-            "candle_ta_context_missing_reason": summary.get("candle_ta_context_missing_reason"),
+            "feature_version_used": resolved_values["feature_version_used"],
+            "candle_ta_context_features_attached": bool(resolved_values["candle_ta_context_features_attached"]),
+            "candle_ta_context_feature_count": int(resolved_values["candle_ta_context_feature_count"] or 0),
+            "candle_ta_context_missing_reason": resolved_values["candle_ta_context_missing_reason"],
             "book_setup_context_features_attached": bool(
-                summary.get("book_setup_context_features_attached", False)
+                resolved_values["book_setup_context_features_attached"]
             ),
             "book_setup_context_feature_count": int(
-                summary.get("book_setup_context_feature_count", 0) or 0
+                resolved_values["book_setup_context_feature_count"] or 0
             ),
-            "fv4_feature_count": int(summary.get("fv4_feature_count", 0) or 0),
-            "nison_feature_count": int(summary.get("nison_feature_count", 0) or 0),
-            "altunina_feature_count": int(summary.get("altunina_feature_count", 0) or 0),
-            "path_context_feature_count": int(summary.get("path_context_feature_count", 0) or 0),
-            "htf_context_feature_count": int(summary.get("htf_context_feature_count", 0) or 0),
+            "fv4_feature_count": int(resolved_values["fv4_feature_count"] or 0),
+            "nison_feature_count": int(resolved_values["nison_feature_count"] or 0),
+            "altunina_feature_count": int(resolved_values["altunina_feature_count"] or 0),
+            "path_context_feature_count": int(resolved_values["path_context_feature_count"] or 0),
+            "htf_context_feature_count": int(resolved_values["htf_context_feature_count"] or 0),
             "missing_context_feature_count": int(
-                summary.get("missing_context_feature_count", 0) or 0
+                resolved_values["missing_context_feature_count"] or 0
             ),
-            "real_feature_diagnostics_used": bool(summary.get("real_feature_diagnostics_used", False)),
-            "real_feature_diagnostics_row_count": int(summary.get("real_feature_diagnostics_row_count", 0) or 0),
-            "real_feature_diagnostics_missing_reason": summary.get("real_feature_diagnostics_missing_reason"),
-            "effective_gap_count_for_training": int(summary.get("effective_gap_count_for_training", 0) or 0),
+            "real_feature_diagnostics_used": bool(resolved_values["real_feature_diagnostics_used"]),
+            "real_feature_diagnostics_row_count": int(resolved_values["real_feature_diagnostics_row_count"] or 0),
+            "real_feature_diagnostics_missing_reason": resolved_values["real_feature_diagnostics_missing_reason"],
+            "effective_gap_count_for_training": int(resolved_values["effective_gap_count_for_training"] or 0),
             "gap_severity_for_training": gap_severity_for_training,
             "gap_training_safe": gap_training_safe,
             "baseline_edge": cls._float_or_none(
@@ -1487,25 +1802,20 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "entry_path_stream_consistency_ok": best_entry_path_audit["entry_path_stream_consistency_ok"],
             "failed_gates": failed_gates,
             "passed_gates": passed_gates,
-            "regime_features_attached": bool(summary.get("regime_features_attached", False)),
-            "regime_feature_count": int(summary.get("regime_feature_count", 0) or 0),
-            "regime_features_missing_reason": summary.get("regime_features_missing_reason"),
+            "regime_features_attached": bool(resolved_values["regime_features_attached"]),
+            "regime_feature_count": int(resolved_values["regime_feature_count"] or 0),
+            "regime_features_missing_reason": resolved_values["regime_features_missing_reason"],
             "regime_label_builder_used_in_training": bool(
-                summary.get(
-                    "regime_label_builder_used_in_training_any",
-                    summary_regime_status.get("regime_label_builder_used_in_training", False),
-                )
+                resolved_values["regime_label_builder_used_in_training"]
             ),
             "regime_specific_training_applied": bool(
-                summary.get(
-                    "regime_specific_training_applied_any",
-                    summary.get("regime_specific_training_applied", False),
-                )
+                resolved_values["regime_specific_training_applied"]
             ),
             "regime_label_builder_status": cls._as_dict(
-                summary.get("regime_label_builder_status")
+                summary_regime_status
                 or best_candidate.get("regime_label_builder_status")
             ),
+            "aggregate_report_source_consistency": source_consistency,
             "warnings": list(dict.fromkeys(summary_warnings + candidate_warnings)),
             "accuracy": cls._float_or_none(best_candidate.get("model_accuracy")),
             "best_baseline_accuracy": cls._float_or_none(best_candidate.get("baseline_accuracy")),
@@ -1566,9 +1876,11 @@ class MultiSymbolFeatureRegimeAnalyzer:
         payloads: list[dict[str, Any]] = []
         for summary in summaries:
             symbol = str(summary.get("symbol") or "")
-            source_items = cls._as_list(summary.get("candidate_results"))
+            source_items = cls._compact_array_items(summary.get("candidate_results"))
             if not source_items:
-                source_items = cls._as_list(summary.get("configs_ranked") or summary.get("ranking"))
+                source_items = cls._compact_array_items(
+                    summary.get("configs_ranked") or summary.get("ranking")
+                )
             for item in source_items:
                 if not isinstance(item, dict):
                     continue

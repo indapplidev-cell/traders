@@ -98,6 +98,54 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "flat_bias_root_cause_audit",
 }
 
+# Scalar and bounded summaries required by the multi-symbol analyzer after the
+# verbose feature/regime payload has been pruned.  This is deliberately small:
+# it preserves aggregation truth without restoring candidate rows or fold data.
+COMPACT_AGGREGATION_KEYS = (
+    "status",
+    "experiment_id",
+    "experiment_status",
+    "symbol",
+    "interval",
+    "candidate_count",
+    "evaluated_candidate_count",
+    "failed_candidate_count",
+    "accepted_candidate_count",
+    "rejected_candidate_count",
+    "feature_version_used",
+    "real_feature_diagnostics_used",
+    "real_feature_diagnostics_row_count",
+    "real_feature_diagnostics_missing_reason",
+    "effective_gap_count_for_training",
+    "gap_severity_for_training",
+    "gap_training_safe",
+    "regime_training_applied",
+    "regime_specific_training_applied",
+    "regime_specific_training_applied_any",
+    "regime_specific_training_applied_all",
+    "regime_label_builder_used_in_training_any",
+    "regime_label_builder_used_in_training_all",
+    "regime_features_attached",
+    "regime_feature_count",
+    "regime_features_missing_reason",
+    "candle_ta_context_features_attached",
+    "candle_ta_context_feature_count",
+    "candle_ta_context_missing_reason",
+    "book_setup_context_features_attached",
+    "book_setup_context_feature_count",
+    "book_setup_context_missing_reason",
+    "fv4_feature_count",
+    "missing_context_feature_count",
+)
+
+COMPACT_AGGREGATION_BOUNDED_KEYS = (
+    "regime_label_builder_status",
+    "feature_quality_summary",
+    "regime_feature_summary",
+    "gap_quality_summary",
+    "gap_training_summary",
+)
+
 FEATURE_CANDIDATE_ARRAY_KEYS = {
     "candidate_results",
     "configs_ranked",
@@ -269,6 +317,27 @@ def compact_feature_regime_summary_payload(payload: Any) -> dict[str, Any]:
     for key in payload:
         if key in KEEP_FEATURE_SUMMARY_KEYS or key in FEATURE_CANDIDATE_ARRAY_KEYS:
             compacted[key] = compact_json_value(payload[key])
+
+    existing_compact_summary = (
+        dict(payload.get("compact_summary"))
+        if isinstance(payload.get("compact_summary"), dict)
+        else {}
+    )
+    aggregation_summary = dict(existing_compact_summary)
+    for key in COMPACT_AGGREGATION_KEYS:
+        if key in payload:
+            aggregation_summary[key] = payload[key]
+    for key in COMPACT_AGGREGATION_BOUNDED_KEYS:
+        if key in payload:
+            aggregation_summary[key] = compact_json_value(
+                payload[key],
+                max_depth=4,
+                list_sample_size=1,
+                max_string_chars=2_000,
+            )
+    aggregation_summary["schema_version"] = "ml38.10.36.2"
+    aggregation_summary["source"] = "feature_regime_experiment_summary"
+    compacted["compact_summary"] = aggregation_summary
     compacted["compact_report"] = True
     compacted["compact_reason"] = "feature_regime_summary_hardening"
     return compacted

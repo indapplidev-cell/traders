@@ -169,6 +169,9 @@ class MultiSymbolFeatureRegimeReporter:
             "side_aware_allow_single_direction_validation": payload.get(
                 "side_aware_allow_single_direction_validation"
             ),
+            "aggregate_report_source_consistency": payload.get(
+                "aggregate_report_source_consistency"
+            ),
             "analysis_json_path": json_path,
             "analysis_markdown_path": markdown_path,
             "approved_for_live_trading": False,
@@ -287,6 +290,10 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- all_gap_training_safe: `{payload.get('all_gap_training_safe')}`",
                 f"- gap_severity_by_symbol: `{self._as_dict(payload.get('gap_training_safety_summary')).get('gap_severity_by_symbol')}`",
                 f"- effective_gap_count_by_symbol: `{self._as_dict(payload.get('gap_training_safety_summary')).get('effective_gap_count_by_symbol')}`",
+                "",
+                "## Compact Report Source Consistency",
+                "",
+                f"- aggregate_report_source_consistency: `{payload.get('aggregate_report_source_consistency')}`",
                 "",
                 "## Real Feature Diagnostics Check",
                 "",
