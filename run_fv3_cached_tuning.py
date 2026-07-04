@@ -134,6 +134,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from app.experiments.compact_archive_pruner import compact_staged_symbol_output
 from app.reporting.compact_report import (
     COMPACT_REPORT_PROFILE,
     DEBUG_REPORT_PROFILE,
@@ -155,6 +156,8 @@ DEFAULT_END_DATE = "2026-06-15"
 DEFAULT_INTERVAL = "15m"
 DEFAULT_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
 DEFAULT_TUNING_COMMAND = "ml38-2-fv3-tuning-run"
+# Keep compact per-symbol cap strict.
+# ML38.10.36.1 hardens nested report pruning instead of raising this cap.
 COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB = 350.0
 COMPACT_TOTAL_STAGE_MAX_SIZE_MB = 900.0
 COMPACT_RUNTIME_ARCHIVE_SIZE_GUARD_STAGE = "ml38.10.26.2"
@@ -1421,14 +1424,61 @@ class Fv3CachedTuningWrapper:
 
         self._validate_staged_symbol_output(run, directory)
 
-        after_mb = float(summary.get("after_size_mb") or 0.0)
+        before_hardening_mb = float(summary.get("after_size_mb") or 0.0)
+        extra_compact_result = compact_staged_symbol_output(directory)
+        self._status(
+            "ARCHIVE",
+            (
+                f"{run.symbol}: compact archive hardening "
+                f"training_reports_seen={extra_compact_result.training_pipeline_reports_seen} "
+                f"training_reports_compacted={extra_compact_result.training_pipeline_reports_compacted} "
+                f"feature_summaries_compacted={extra_compact_result.feature_summaries_compacted} "
+                f"saved_mb={extra_compact_result.saved_size_bytes / 1024 / 1024:.2f}"
+            ),
+        )
+        staged_files = [item for item in directory.rglob("*") if item.is_file()]
+        after_size_bytes = sum(item.stat().st_size for item in staged_files)
+        after_mb = after_size_bytes / (1024 * 1024)
+        largest = sorted(
+            (
+                {
+                    "path": item.relative_to(directory).as_posix(),
+                    "size_bytes": item.stat().st_size,
+                    "size_mb": round(item.stat().st_size / (1024 * 1024), 6),
+                }
+                for item in staged_files
+            ),
+            key=lambda item: (-int(item["size_bytes"]), str(item["path"])),
+        )[:20]
+        compact_archive_pruning = {
+            "schema_version": "ml38.10.36.1",
+            "training_pipeline_reports_seen": (
+                extra_compact_result.training_pipeline_reports_seen
+            ),
+            "training_pipeline_reports_compacted": (
+                extra_compact_result.training_pipeline_reports_compacted
+            ),
+            "feature_summaries_seen": extra_compact_result.feature_summaries_seen,
+            "feature_summaries_compacted": (
+                extra_compact_result.feature_summaries_compacted
+            ),
+            "saved_size_bytes": extra_compact_result.saved_size_bytes,
+        }
+        summary["compact_archive_pruning"] = compact_archive_pruning
+        summary["before_hardening_size_mb"] = round(before_hardening_mb, 6)
+        summary["after_size_bytes"] = int(after_size_bytes)
+        summary["after_size_mb"] = round(after_mb, 6)
+        summary["largest_files"] = largest
         if after_mb > COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB:
-            largest = summary.get("largest_files", [])[:10]
             raise WrapperError(
-                "COMPACT_PER_SYMBOL_STAGE_SIZE_CAP_EXCEEDED: "
+                "COMPACT_PER_SYMBOL_STAGE_SIZE_CAP_EXCEEDED_AFTER_HARDENING: "
                 f"symbol={run.symbol} experiment_id={run.experiment_id} "
-                f"after_size_mb={after_mb:.2f} cap_mb={COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB:.2f}. "
-                f"largest_files={largest}"
+                f"before_hardening_size_mb={before_hardening_mb:.2f} "
+                f"after_hardening_size_mb={after_mb:.2f} "
+                f"cap_mb={COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB:.2f} "
+                f"hardening_saved_mb={extra_compact_result.saved_size_bytes / 1024 / 1024:.2f} "
+                f"training_reports_compacted={extra_compact_result.training_pipeline_reports_compacted}. "
+                f"largest_files={largest[:10]}"
             )
 
         self._status(
