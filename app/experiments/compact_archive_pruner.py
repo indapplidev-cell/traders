@@ -115,6 +115,13 @@ KEEP_SUMMARY_KEYS = {
     "test_only_cascade_readiness",
     "full_dataset_guardrail",
     "ml38_10_46_test_only_reproduction_decision",
+    "read_only_test_only_mask_cascade_counts_audit",
+    "test_only_mask_input_summary",
+    "test_only_mask_cascade_board",
+    "test_only_mask_removed_breakdown",
+    "test_only_distribution_before_after",
+    "test_only_final_mask_summary",
+    "ml38_10_47_test_only_mask_cascade_decision",
     "conditional_regime_rule_threshold_sensitivity_board",
     "conditional_regime_threshold_sensitivity_summary",
     "aggregate_conditional_regime_rule_threshold_sensitivity_board",
@@ -206,6 +213,13 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "test_only_cascade_readiness",
     "full_dataset_guardrail",
     "ml38_10_46_test_only_reproduction_decision",
+    "read_only_test_only_mask_cascade_counts_audit",
+    "test_only_mask_input_summary",
+    "test_only_mask_cascade_board",
+    "test_only_mask_removed_breakdown",
+    "test_only_distribution_before_after",
+    "test_only_final_mask_summary",
+    "ml38_10_47_test_only_mask_cascade_decision",
 }
 
 # Scalar and bounded summaries required by the multi-symbol analyzer after the

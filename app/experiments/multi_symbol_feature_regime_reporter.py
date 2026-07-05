@@ -171,6 +171,17 @@ class MultiSymbolFeatureRegimeReporter:
             "test_only_cascade_readiness": payload.get("test_only_cascade_readiness"),
             "full_dataset_guardrail": payload.get("full_dataset_guardrail"),
             "ml38_10_46_test_only_reproduction_decision": payload.get("ml38_10_46_test_only_reproduction_decision"),
+            "read_only_test_only_mask_cascade_counts_audit": payload.get(
+                "read_only_test_only_mask_cascade_counts_audit"
+            ),
+            "test_only_mask_input_summary": payload.get("test_only_mask_input_summary"),
+            "test_only_mask_cascade_board": payload.get("test_only_mask_cascade_board"),
+            "test_only_mask_removed_breakdown": payload.get("test_only_mask_removed_breakdown"),
+            "test_only_distribution_before_after": payload.get("test_only_distribution_before_after"),
+            "test_only_final_mask_summary": payload.get("test_only_final_mask_summary"),
+            "ml38_10_47_test_only_mask_cascade_decision": payload.get(
+                "ml38_10_47_test_only_mask_cascade_decision"
+            ),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -386,6 +397,32 @@ class MultiSymbolFeatureRegimeReporter:
                 "```json",
                 json.dumps(
                     self._as_list(payload.get("test_only_payload_reproduction_board") or test_only_audit.get("test_only_payload_reproduction_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
+                ),
+                "```",
+            ]
+        )
+        cascade_audit = self._as_dict(
+            payload.get("read_only_test_only_mask_cascade_counts_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.47 Read-only Test-only Mask Cascade Counts Audit",
+                "",
+                f"- execution_mode: `{cascade_audit.get('execution_mode')}`",
+                f"- denominator_scope: `{cascade_audit.get('denominator_scope')}`",
+                f"- test_only_mask_input_summary: `{payload.get('test_only_mask_input_summary') or cascade_audit.get('test_only_mask_input_summary')}`",
+                f"- test_only_mask_removed_breakdown: `{payload.get('test_only_mask_removed_breakdown') or cascade_audit.get('test_only_mask_removed_breakdown')}`",
+                f"- test_only_final_mask_summary: `{payload.get('test_only_final_mask_summary') or cascade_audit.get('test_only_final_mask_summary')}`",
+                f"- full_dataset_guardrail: `{cascade_audit.get('full_dataset_guardrail')}`",
+                f"- ml38_10_47_test_only_mask_cascade_decision: `{payload.get('ml38_10_47_test_only_mask_cascade_decision') or cascade_audit.get('ml38_10_47_test_only_mask_cascade_decision')}`",
+                "",
+                "### Test-only mask cascade board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("test_only_mask_cascade_board") or cascade_audit.get("test_only_mask_cascade_board")),
                     ensure_ascii=False, indent=2, sort_keys=True,
                 ),
                 "```",

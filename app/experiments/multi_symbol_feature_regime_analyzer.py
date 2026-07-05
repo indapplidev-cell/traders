@@ -29,11 +29,14 @@ from app.diagnostics.predicted_label_payload_trace import (
 from app.diagnostics.test_only_evaluator_payload_reproduction import (
     build_read_only_test_only_evaluator_payload_reproduction_audit,
 )
+from app.diagnostics.test_only_mask_cascade_counts import (
+    build_read_only_test_only_mask_cascade_counts_audit,
+)
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.46"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.47"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -412,6 +415,27 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 selected_horizon_candles=int(extractor_config.get("horizon_candles") or 12),
             )
         )
+        read_only_test_only_mask_cascade_counts_audit = (
+            build_read_only_test_only_mask_cascade_counts_audit(
+                probability_payload={} if best_result is None else best_result,
+                candidate_config=extractor_config,
+                source_counts=read_only_production_mask_value_extractor_audit.get(
+                    "source_counts", {}
+                ),
+                reference_config_id=(
+                    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe"
+                    if best_result is None else best_result.get("best_candidate_config_id")
+                ),
+                selected_feature_version=(
+                    "fv3_candle_ta_context"
+                    if best_result is None else best_result.get("feature_version_used")
+                ),
+                selected_label_version=str(
+                    extractor_config.get("label_version") or "lv31_h12_dates_exit45_long"
+                ),
+                selected_horizon_candles=int(extractor_config.get("horizon_candles") or 12),
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -708,6 +732,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "test_only_cascade_readiness": read_only_test_only_evaluator_payload_reproduction_audit.get("test_only_cascade_readiness", {}),
             "full_dataset_guardrail": read_only_test_only_evaluator_payload_reproduction_audit.get("full_dataset_guardrail", {}),
             "ml38_10_46_test_only_reproduction_decision": read_only_test_only_evaluator_payload_reproduction_audit.get("ml38_10_46_test_only_reproduction_decision", []),
+            "read_only_test_only_mask_cascade_counts_audit": read_only_test_only_mask_cascade_counts_audit,
+            "test_only_mask_input_summary": read_only_test_only_mask_cascade_counts_audit.get("test_only_mask_input_summary", {}),
+            "test_only_mask_cascade_board": read_only_test_only_mask_cascade_counts_audit.get("test_only_mask_cascade_board", []),
+            "test_only_mask_removed_breakdown": read_only_test_only_mask_cascade_counts_audit.get("test_only_mask_removed_breakdown", {}),
+            "test_only_distribution_before_after": read_only_test_only_mask_cascade_counts_audit.get("test_only_distribution_before_after", {}),
+            "test_only_final_mask_summary": read_only_test_only_mask_cascade_counts_audit.get("test_only_final_mask_summary", {}),
+            "ml38_10_47_test_only_mask_cascade_decision": read_only_test_only_mask_cascade_counts_audit.get("ml38_10_47_test_only_mask_cascade_decision", []),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,

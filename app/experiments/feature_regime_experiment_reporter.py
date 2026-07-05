@@ -1940,6 +1940,13 @@ class FeatureRegimeExperimentReporter:
             "test_only_cascade_readiness",
             "full_dataset_guardrail",
             "ml38_10_46_test_only_reproduction_decision",
+            "read_only_test_only_mask_cascade_counts_audit",
+            "test_only_mask_input_summary",
+            "test_only_mask_cascade_board",
+            "test_only_mask_removed_breakdown",
+            "test_only_distribution_before_after",
+            "test_only_final_mask_summary",
+            "ml38_10_47_test_only_mask_cascade_decision",
         )
         payload = {
             key: self._result_value(result, key)
