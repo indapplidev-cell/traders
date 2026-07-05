@@ -1947,6 +1947,16 @@ class FeatureRegimeExperimentReporter:
             "test_only_distribution_before_after",
             "test_only_final_mask_summary",
             "ml38_10_47_test_only_mask_cascade_decision",
+            "read_only_test_only_mask_outcome_audit",
+            "test_only_outcome_input_summary",
+            "final_pass_label_prediction_distribution",
+            "final_pass_confusion_matrix",
+            "final_pass_directional_precision_board",
+            "final_pass_probability_confidence_summary",
+            "final_pass_profit_outcome_summary",
+            "final_pass_sample_rows",
+            "test_only_outcome_interpretation",
+            "ml38_10_48_test_only_outcome_decision",
         )
         payload = {
             key: self._result_value(result, key)

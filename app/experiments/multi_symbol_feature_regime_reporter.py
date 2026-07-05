@@ -182,6 +182,30 @@ class MultiSymbolFeatureRegimeReporter:
             "ml38_10_47_test_only_mask_cascade_decision": payload.get(
                 "ml38_10_47_test_only_mask_cascade_decision"
             ),
+            "read_only_test_only_mask_outcome_audit": payload.get(
+                "read_only_test_only_mask_outcome_audit"
+            ),
+            "test_only_outcome_input_summary": payload.get("test_only_outcome_input_summary"),
+            "final_pass_label_prediction_distribution": payload.get(
+                "final_pass_label_prediction_distribution"
+            ),
+            "final_pass_confusion_matrix": payload.get("final_pass_confusion_matrix"),
+            "final_pass_directional_precision_board": payload.get(
+                "final_pass_directional_precision_board"
+            ),
+            "final_pass_probability_confidence_summary": payload.get(
+                "final_pass_probability_confidence_summary"
+            ),
+            "final_pass_profit_outcome_summary": payload.get(
+                "final_pass_profit_outcome_summary"
+            ),
+            "final_pass_sample_rows": payload.get("final_pass_sample_rows"),
+            "test_only_outcome_interpretation": payload.get(
+                "test_only_outcome_interpretation"
+            ),
+            "ml38_10_48_test_only_outcome_decision": payload.get(
+                "ml38_10_48_test_only_outcome_decision"
+            ),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -423,6 +447,35 @@ class MultiSymbolFeatureRegimeReporter:
                 "```json",
                 json.dumps(
                     self._as_list(payload.get("test_only_mask_cascade_board") or cascade_audit.get("test_only_mask_cascade_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
+                ),
+                "```",
+            ]
+        )
+        outcome_audit = self._as_dict(
+            payload.get("read_only_test_only_mask_outcome_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.48 Read-only Test-only Mask Outcome Audit",
+                "",
+                f"- execution_mode: `{outcome_audit.get('execution_mode')}`",
+                f"- denominator_scope: `{outcome_audit.get('denominator_scope')}`",
+                f"- test_only_outcome_input_summary: `{payload.get('test_only_outcome_input_summary') or outcome_audit.get('test_only_outcome_input_summary')}`",
+                f"- final_pass_label_prediction_distribution: `{payload.get('final_pass_label_prediction_distribution') or outcome_audit.get('final_pass_label_prediction_distribution')}`",
+                f"- final_pass_confusion_matrix: `{payload.get('final_pass_confusion_matrix') or outcome_audit.get('final_pass_confusion_matrix')}`",
+                f"- final_pass_probability_confidence_summary: `{payload.get('final_pass_probability_confidence_summary') or outcome_audit.get('final_pass_probability_confidence_summary')}`",
+                f"- final_pass_profit_outcome_summary: `{payload.get('final_pass_profit_outcome_summary') or outcome_audit.get('final_pass_profit_outcome_summary')}`",
+                f"- test_only_outcome_interpretation: `{payload.get('test_only_outcome_interpretation') or outcome_audit.get('test_only_outcome_interpretation')}`",
+                f"- full_dataset_guardrail: `{outcome_audit.get('full_dataset_guardrail')}`",
+                f"- ml38_10_48_test_only_outcome_decision: `{payload.get('ml38_10_48_test_only_outcome_decision') or outcome_audit.get('ml38_10_48_test_only_outcome_decision')}`",
+                "",
+                "### Final-pass directional precision board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("final_pass_directional_precision_board") or outcome_audit.get("final_pass_directional_precision_board")),
                     ensure_ascii=False, indent=2, sort_keys=True,
                 ),
                 "```",
