@@ -1914,6 +1914,15 @@ class FeatureRegimeExperimentReporter:
             "extractor_blockers",
             "next_join_plan",
             "ml38_10_43_extractor_decision",
+            "read_only_evaluator_payload_reproduction_audit",
+            "evaluator_payload_source_audit",
+            "payload_reproduction_board",
+            "timestamp_payload_join_board",
+            "reproduced_mask_value_summary",
+            "cascade_readiness_after_reproduction",
+            "reproduction_blockers",
+            "next_step_plan",
+            "ml38_10_44_reproduction_decision",
         )
         payload = {
             key: self._result_value(result, key)

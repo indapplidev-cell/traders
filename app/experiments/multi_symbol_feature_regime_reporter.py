@@ -139,6 +139,17 @@ class MultiSymbolFeatureRegimeReporter:
             "extractor_blockers": payload.get("extractor_blockers"),
             "next_join_plan": payload.get("next_join_plan"),
             "ml38_10_43_extractor_decision": payload.get("ml38_10_43_extractor_decision"),
+            "read_only_evaluator_payload_reproduction_audit": payload.get(
+                "read_only_evaluator_payload_reproduction_audit"
+            ),
+            "evaluator_payload_source_audit": payload.get("evaluator_payload_source_audit"),
+            "payload_reproduction_board": payload.get("payload_reproduction_board"),
+            "timestamp_payload_join_board": payload.get("timestamp_payload_join_board"),
+            "reproduced_mask_value_summary": payload.get("reproduced_mask_value_summary"),
+            "cascade_readiness_after_reproduction": payload.get("cascade_readiness_after_reproduction"),
+            "reproduction_blockers": payload.get("reproduction_blockers"),
+            "next_step_plan": payload.get("next_step_plan"),
+            "ml38_10_44_reproduction_decision": payload.get("ml38_10_44_reproduction_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -331,6 +342,31 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 "## Gate Failures By Symbol",
                 "",
+            ]
+        )
+        reproduction_audit = self._as_dict(
+            payload.get("read_only_evaluator_payload_reproduction_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.44 Read-only Evaluator Payload Reproduction Audit",
+                "",
+                f"- execution_mode: `{reproduction_audit.get('execution_mode')}`",
+                f"- reproduced_mask_value_summary: `{payload.get('reproduced_mask_value_summary') or reproduction_audit.get('reproduced_mask_value_summary')}`",
+                f"- cascade_readiness_after_reproduction: `{payload.get('cascade_readiness_after_reproduction') or reproduction_audit.get('cascade_readiness_after_reproduction')}`",
+                f"- reproduction_blockers: `{payload.get('reproduction_blockers') or reproduction_audit.get('reproduction_blockers')}`",
+                f"- next_step_plan: `{payload.get('next_step_plan') or reproduction_audit.get('next_step_plan')}`",
+                f"- ml38_10_44_reproduction_decision: `{payload.get('ml38_10_44_reproduction_decision') or reproduction_audit.get('ml38_10_44_reproduction_decision')}`",
+                "",
+                "### Payload reproduction board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("payload_reproduction_board") or reproduction_audit.get("payload_reproduction_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
+                ),
+                "```",
             ]
         )
         for item in self._as_list(payload.get("symbol_results")):

@@ -1164,3 +1164,18 @@ from app.diagnostics.production_mask_value_extractor import (  # noqa: E402,F401
     extract_feature_rows_read_only,
     extract_production_label_rows_read_only,
 )
+
+# ML38.10.44 read-only evaluator-payload adapters.  Keeping these exports here
+# preserves the existing stable diagnostics import surface.
+from app.diagnostics.evaluator_payload_reproduction import (  # noqa: E402,F401
+    build_cascade_readiness_after_reproduction,
+    build_evaluator_payload_source_audit,
+    build_payload_reproduction_board,
+    build_read_only_evaluator_payload_reproduction_audit,
+    build_reproduced_mask_value_summary,
+    build_timestamp_payload_join_board,
+    classify_evaluator_payload_reproduction_decision,
+    reproduce_entry_path_quality_score_read_only,
+    reproduce_recovery_guard_decision_read_only,
+    reproduce_stop_pressure_risk_score_read_only,
+)
