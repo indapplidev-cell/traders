@@ -1932,6 +1932,14 @@ class FeatureRegimeExperimentReporter:
             "trace_blockers",
             "next_reproduction_plan",
             "ml38_10_45_predicted_label_trace_decision",
+            "read_only_test_only_evaluator_payload_reproduction_audit",
+            "test_prediction_payload_source",
+            "test_prediction_join_board",
+            "test_only_payload_reproduction_board",
+            "test_only_reproduced_mask_summary",
+            "test_only_cascade_readiness",
+            "full_dataset_guardrail",
+            "ml38_10_46_test_only_reproduction_decision",
         )
         payload = {
             key: self._result_value(result, key)

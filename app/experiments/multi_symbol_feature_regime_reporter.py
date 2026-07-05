@@ -161,6 +161,16 @@ class MultiSymbolFeatureRegimeReporter:
             "trace_blockers": payload.get("trace_blockers"),
             "next_reproduction_plan": payload.get("next_reproduction_plan"),
             "ml38_10_45_predicted_label_trace_decision": payload.get("ml38_10_45_predicted_label_trace_decision"),
+            "read_only_test_only_evaluator_payload_reproduction_audit": payload.get(
+                "read_only_test_only_evaluator_payload_reproduction_audit"
+            ),
+            "test_prediction_payload_source": payload.get("test_prediction_payload_source"),
+            "test_prediction_join_board": payload.get("test_prediction_join_board"),
+            "test_only_payload_reproduction_board": payload.get("test_only_payload_reproduction_board"),
+            "test_only_reproduced_mask_summary": payload.get("test_only_reproduced_mask_summary"),
+            "test_only_cascade_readiness": payload.get("test_only_cascade_readiness"),
+            "full_dataset_guardrail": payload.get("full_dataset_guardrail"),
+            "ml38_10_46_test_only_reproduction_decision": payload.get("ml38_10_46_test_only_reproduction_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -353,6 +363,32 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 "## Gate Failures By Symbol",
                 "",
+            ]
+        )
+        test_only_audit = self._as_dict(
+            payload.get("read_only_test_only_evaluator_payload_reproduction_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.46 Read-only Test-only Evaluator Payload Reproduction Audit",
+                "",
+                f"- execution_mode: `{test_only_audit.get('execution_mode')}`",
+                f"- denominator_scope: `{test_only_audit.get('denominator_scope')}`",
+                f"- test_prediction_payload_source: `{payload.get('test_prediction_payload_source') or test_only_audit.get('test_prediction_payload_source')}`",
+                f"- test_only_reproduced_mask_summary: `{payload.get('test_only_reproduced_mask_summary') or test_only_audit.get('test_only_reproduced_mask_summary')}`",
+                f"- test_only_cascade_readiness: `{payload.get('test_only_cascade_readiness') or test_only_audit.get('test_only_cascade_readiness')}`",
+                f"- full_dataset_guardrail: `{payload.get('full_dataset_guardrail') or test_only_audit.get('full_dataset_guardrail')}`",
+                f"- ml38_10_46_test_only_reproduction_decision: `{payload.get('ml38_10_46_test_only_reproduction_decision') or test_only_audit.get('ml38_10_46_test_only_reproduction_decision')}`",
+                "",
+                "### Test-only payload reproduction board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("test_only_payload_reproduction_board") or test_only_audit.get("test_only_payload_reproduction_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
+                ),
+                "```",
             ]
         )
         reproduction_audit = self._as_dict(
