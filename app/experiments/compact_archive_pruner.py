@@ -69,6 +69,11 @@ KEEP_SUMMARY_KEYS = {
     "label_recompute_semantics_gap_board",
     "current_config_mapping_audit",
     "ml38_10_40_parity_decision",
+    "production_denominator_mask_alignment_audit",
+    "mask_cascade_board",
+    "denominator_gap_board",
+    "production_like_recompute_prerequisite_checklist",
+    "ml38_10_41_alignment_decision",
     "conditional_regime_rule_threshold_sensitivity_board",
     "conditional_regime_threshold_sensitivity_summary",
     "aggregate_conditional_regime_rule_threshold_sensitivity_board",
@@ -114,6 +119,11 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "label_recompute_semantics_gap_board",
     "current_config_mapping_audit",
     "ml38_10_40_parity_decision",
+    "production_denominator_mask_alignment_audit",
+    "mask_cascade_board",
+    "denominator_gap_board",
+    "production_like_recompute_prerequisite_checklist",
+    "ml38_10_41_alignment_decision",
 }
 
 # Scalar and bounded summaries required by the multi-symbol analyzer after the

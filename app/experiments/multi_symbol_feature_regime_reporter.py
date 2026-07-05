@@ -113,6 +113,15 @@ class MultiSymbolFeatureRegimeReporter:
             ),
             "current_config_mapping_audit": payload.get("current_config_mapping_audit"),
             "ml38_10_40_parity_decision": payload.get("ml38_10_40_parity_decision"),
+            "production_denominator_mask_alignment_audit": payload.get(
+                "production_denominator_mask_alignment_audit"
+            ),
+            "mask_cascade_board": payload.get("mask_cascade_board"),
+            "denominator_gap_board": payload.get("denominator_gap_board"),
+            "production_like_recompute_prerequisite_checklist": payload.get(
+                "production_like_recompute_prerequisite_checklist"
+            ),
+            "ml38_10_41_alignment_decision": payload.get("ml38_10_41_alignment_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -746,6 +755,42 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- sensitivity_board_actionability: `{parity_audit.get('sensitivity_board_actionability')}`",
                 f"- current_config_mapping_audit: `{payload.get('current_config_mapping_audit') or parity_audit.get('current_config_mapping_audit')}`",
                 f"- ml38_10_40_parity_decision: `{payload.get('ml38_10_40_parity_decision') or parity_audit.get('ml38_10_40_parity_decision')}`",
+            ]
+        )
+        alignment_audit = self._as_dict(
+            payload.get("production_denominator_mask_alignment_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.41 Production Denominator and Mask Alignment Audit",
+                "",
+                f"- source_counts: `{alignment_audit.get('source_counts')}`",
+                f"- config_mapping_status: `{alignment_audit.get('config_mapping_status')}`",
+                f"- production_like_recompute_prerequisite_checklist: `{payload.get('production_like_recompute_prerequisite_checklist') or alignment_audit.get('production_like_recompute_prerequisite_checklist')}`",
+                f"- ml38_10_41_alignment_decision: `{payload.get('ml38_10_41_alignment_decision') or alignment_audit.get('ml38_10_41_alignment_decision')}`",
+                "",
+                "### Mask cascade board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("mask_cascade_board") or alignment_audit.get("mask_cascade_board")),
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                ),
+                "```",
+                "",
+                "### Denominator gap board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("denominator_gap_board") or alignment_audit.get("denominator_gap_board")),
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                ),
+                "```",
             ]
         )
         lines.extend(

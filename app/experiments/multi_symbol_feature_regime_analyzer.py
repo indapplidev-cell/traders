@@ -17,13 +17,14 @@ from app.diagnostics.fold_time_slice_exit_repair_probe import (
     FoldTimeSliceExitRepairProbe,
 )
 from app.diagnostics.label_grid_sensitivity_recompute import (
+    build_production_denominator_mask_alignment_audit,
     build_production_label_semantics_parity_audit,
 )
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.40"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.41"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -284,6 +285,32 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 current_config_payload={} if best_result is None else self._as_dict(best_result.get("label_config")),
             )
         )
+        alignment_source_counts = {
+            "candle_count": read_only_label_grid_sensitivity_recompute.get("candle_count"),
+            "feature_row_count": None if best_result is None else best_result.get("real_feature_diagnostics_row_count"),
+            "candidate_training_rows": read_only_label_grid_sensitivity_recompute.get("candidate_training_rows"),
+            "candidate_validation_rows": read_only_label_grid_sensitivity_recompute.get("candidate_validation_rows"),
+            "candidate_test_rows": read_only_label_grid_sensitivity_recompute.get("candidate_test_rows"),
+            "label_row_count": read_only_label_grid_sensitivity_recompute.get("label_row_count"),
+        }
+        production_denominator_mask_alignment_audit = (
+            build_production_denominator_mask_alignment_audit(
+                source_counts=alignment_source_counts,
+                config_id=None if best_result is None else best_result.get("best_candidate_config_id"),
+                config_payload={} if best_result is None else self._as_dict(best_result.get("label_config")),
+                production_reference=self._as_dict(
+                    label_threshold_horizon_sensitivity_audit.get("current_label_distribution")
+                ),
+                recompute_evidence={
+                    "directional_count": read_only_label_grid_sensitivity_recompute.get("directional_count"),
+                    "sensitivity_board_actionable": (
+                        production_label_semantics_parity_audit.get("sensitivity_board_actionability")
+                        != "NOT_ACTIONABLE_PARITY_NOT_PROVEN"
+                    ),
+                    "timeout_flat_semantics_aligned": False,
+                },
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -529,6 +556,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
             "ml38_10_40_parity_decision": production_label_semantics_parity_audit.get(
                 "ml38_10_40_parity_decision", []
+            ),
+            "production_denominator_mask_alignment_audit": production_denominator_mask_alignment_audit,
+            "mask_cascade_board": production_denominator_mask_alignment_audit.get("mask_cascade_board", []),
+            "denominator_gap_board": production_denominator_mask_alignment_audit.get("denominator_gap_board", []),
+            "production_like_recompute_prerequisite_checklist": production_denominator_mask_alignment_audit.get(
+                "production_like_recompute_prerequisite_checklist", []
+            ),
+            "ml38_10_41_alignment_decision": production_denominator_mask_alignment_audit.get(
+                "ml38_10_41_alignment_decision", []
             ),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,

@@ -472,3 +472,302 @@ def build_production_label_semantics_parity_audit(
         "current_config_mapping_audit": mapping,
         "ml38_10_40_parity_decision": decisions,
     }
+
+
+def build_mask_cascade_board(
+    *,
+    source_counts: dict[str, Any] | None = None,
+    config_mapping: dict[str, Any] | None = None,
+    mask_evidence: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Describe the production row-selection cascade without applying it."""
+
+    counts = dict(source_counts or {})
+    mapping = dict(config_mapping or {})
+    evidence_by_mask = dict(mask_evidence or {})
+    split_keys = ("candidate_training_rows", "candidate_validation_rows", "candidate_test_rows")
+    split_count = (
+        sum(int(counts[key]) for key in split_keys)
+        if all(counts.get(key) is not None for key in split_keys)
+        else None
+    )
+    specs = (
+        ("raw_candles", None, None, "candles.open_time/OHLCV", "starting denominator", counts.get("candle_count")),
+        ("feature_rows_after_feature_builder", None, None, "feature rows joined by candle timestamp", "remove warm-up or otherwise unavailable feature rows", counts.get("feature_row_count")),
+        ("atr_valid_rows", "thr065", mapping.get("direction_atr_threshold"), "ATR at label entry", "remove rows without a positive ATR and enforce production threshold units", None),
+        ("setup_quality_mask_sqmask060", "sqmask060", mapping.get("setup_quality_mask"), "setup_quality_score", "retain rows eligible under the setup-quality decision mask", None),
+        ("entry_path_quality_epq070_or_071", "epq070/observed candidate value", mapping.get("entry_path_quality"), "entry_path_quality_score", "retain rows meeting the effective entry-path threshold", None),
+        ("stop_pressure_sp045", "sp045", mapping.get("stop_pressure"), "stop_pressure_risk_score", "remove rows above the maximum stop-pressure risk", None),
+        ("regime_specific_behavior", None, mapping.get("regime_specific_behavior"), "regime flags and regime-specific label config", "apply the production regime context before parity comparison", None),
+        ("recovery_guard_rguard", "rguard", mapping.get("recovery_guard"), "recovery guard inputs and decision", "remove or alter eligibility according to the configured recovery guard", None),
+        ("bad_dates_time_slice_repair_probe", "long_bad_dates_exit45_probe", None, "timestamp/bad-date probe metadata", "exclude research-only repair-probe behavior from tradable parity", None),
+        ("production_label_rows", None, mapping.get("direction_atr_threshold"), "production label row identity and selected label", "establish the exact production label denominator", counts.get("label_row_count")),
+        ("train_val_test_split_rows", None, None, "training/validation/test split membership", "verify that splitting preserves the feature-row denominator", split_count),
+    )
+    rows: list[dict[str, Any]] = []
+    for step_order, (name, token, threshold, source, impact, default_remaining) in enumerate(specs, 1):
+        evidence = dict(evidence_by_mask.get(name) or {})
+        per_row = bool(evidence.get("per_row_values_available", False))
+        compact = bool(evidence.get("source_available_in_compact", False))
+        read_only_db = bool(evidence.get("source_available_read_only_db", False))
+        remaining = evidence.get("known_remaining_count", default_remaining)
+        removed = evidence.get("known_removed_count")
+        if name == "feature_rows_after_feature_builder" and removed is None:
+            candle_count = counts.get("candle_count")
+            feature_count = counts.get("feature_row_count")
+            if candle_count is not None and feature_count is not None:
+                removed = int(candle_count) - int(feature_count)
+        if name == "raw_candles":
+            status = "SOURCE_COUNT_KNOWN" if remaining is not None else "SOURCE_COUNT_MISSING"
+        elif name == "train_val_test_split_rows":
+            status = (
+                "SPLIT_PARITY_OK"
+                if split_count is not None and counts.get("feature_row_count") == split_count
+                else "SPLIT_PARITY_NOT_PROVEN"
+            )
+        elif name == "bad_dates_time_slice_repair_probe":
+            status = "RESEARCH_ONLY_EXCLUDE_FROM_TRADABLE_PARITY"
+        elif name == "production_label_rows":
+            status = "COUNT_KNOWN" if remaining is not None else "NEEDS_PRODUCTION_LABEL_ROW_COUNT"
+        elif per_row:
+            status = evidence.get("parity_status", "PER_ROW_VALUES_AVAILABLE_REVIEW_REQUIRED")
+        else:
+            status = evidence.get("parity_status", "PER_ROW_VALUES_NOT_AVAILABLE")
+        rows.append({
+            "step_order": step_order,
+            "mask_name": name,
+            "config_token": token,
+            "mapped_threshold": evidence.get("mapped_threshold", threshold),
+            "source_field_or_feature": evidence.get("source_field_or_feature", source),
+            "source_available_in_compact": compact,
+            "source_available_read_only_db": read_only_db,
+            "per_row_values_available": per_row,
+            "expected_impact": impact,
+            "known_removed_count": removed,
+            "known_remaining_count": remaining,
+            "evidence": evidence.get("evidence", "no per-row evidence supplied"),
+            "parity_status": status,
+            "requires_db_write": False,
+            "requires_label_builder_change": False,
+        })
+    return rows
+
+
+def build_denominator_gap_board(
+    *,
+    source_counts: dict[str, Any] | None = None,
+    production_directional_count: int | None = None,
+    recompute_directional_count: int | None = None,
+    mask_cascade_board: Sequence[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    counts = dict(source_counts or {})
+    split_values = [counts.get(key) for key in (
+        "candidate_training_rows", "candidate_validation_rows", "candidate_test_rows"
+    )]
+    split_total = sum(int(value) for value in split_values) if all(value is not None for value in split_values) else None
+    feature_count = counts.get("feature_row_count")
+    candle_count = counts.get("candle_count")
+    label_count = counts.get("label_row_count")
+    mask_rows = list(mask_cascade_board or [])
+    mask_counts_known = all(
+        row.get("known_removed_count") is not None
+        for row in mask_rows
+        if row.get("mask_name") in {
+            "setup_quality_mask_sqmask060", "entry_path_quality_epq070_or_071", "stop_pressure_sp045"
+        }
+    )
+    common = {"requires_db_write": False}
+    return [
+        {
+            "gap_name": "candles_to_features_gap",
+            "known_left_count": candle_count,
+            "known_right_count": feature_count,
+            "missing_count": int(candle_count) - int(feature_count) if candle_count is not None and feature_count is not None else None,
+            "evidence": "candle_count versus feature_row_count",
+            "likely_cause": "feature-builder warm-up and rows lacking required feature inputs",
+            "how_to_close_read_only": "join candles to feature rows by timestamp and classify every missing row",
+            "priority": "P0",
+            **common,
+        },
+        {
+            "gap_name": "features_to_training_dataset_gap",
+            "known_left_count": feature_count,
+            "known_right_count": split_total,
+            "missing_count": int(feature_count) - split_total if feature_count is not None and split_total is not None else None,
+            "evidence": "SPLIT_PARITY_OK" if feature_count is not None and feature_count == split_total else "SPLIT_PARITY_NOT_PROVEN",
+            "likely_cause": "no gap when train, validation, and test counts sum to feature rows",
+            "how_to_close_read_only": "compare split membership row identities against feature rows",
+            "priority": "P0",
+            **common,
+        },
+        {
+            "gap_name": "production_label_count_missing",
+            "known_left_count": feature_count,
+            "known_right_count": label_count,
+            "missing_count": int(feature_count) - int(label_count) if feature_count is not None and label_count is not None else None,
+            "evidence": "NEEDS_PRODUCTION_LABEL_ROW_COUNT" if label_count is None else "PRODUCTION_LABEL_ROW_COUNT_AVAILABLE",
+            "likely_cause": "compact evidence does not expose the production label denominator",
+            "how_to_close_read_only": "count and identify production label rows without writing ml_labels",
+            "priority": "P0",
+            **common,
+        },
+        {
+            "gap_name": "production_directional_count_vs_recompute_directional_count",
+            "known_left_count": production_directional_count,
+            "known_right_count": recompute_directional_count,
+            "missing_count": (
+                int(recompute_directional_count) - int(production_directional_count)
+                if production_directional_count is not None and recompute_directional_count is not None else None
+            ),
+            "evidence": "directional counts use different unresolved denominators/mask semantics",
+            "likely_cause": "recompute accepts ATR-valid rows before the production mask cascade",
+            "how_to_close_read_only": "compare labels only after identical row identities and masks are joined",
+            "priority": "P0",
+            **common,
+        },
+        {
+            "gap_name": "mask_removed_count_unknown",
+            "known_left_count": feature_count,
+            "known_right_count": None,
+            "missing_count": None,
+            "evidence": "MASK_REMOVED_COUNTS_KNOWN" if mask_counts_known else "PER_ROW_MASKS_NOT_FULLY_JOINED",
+            "likely_cause": "setup-quality, entry-path-quality, and stop-pressure row values are incomplete",
+            "how_to_close_read_only": "read-only join mask scores by row and record removed/remaining counts at every step",
+            "priority": "P0",
+            **common,
+        },
+    ]
+
+
+def build_production_like_recompute_prerequisite_checklist(
+    *,
+    config_mapping_status: dict[str, Any],
+    mask_cascade_board: Sequence[dict[str, Any]],
+    denominator_gap_board: Sequence[dict[str, Any]],
+    timeout_flat_semantics_aligned: bool = False,
+) -> list[str]:
+    required: list[str] = []
+    if config_mapping_status.get("status") != "CURRENT_CONFIG_MAPPING_COMPLETE":
+        required.append("FULL_CONFIG_OBJECT_REQUIRED")
+    by_name = {row.get("mask_name"): row for row in mask_cascade_board}
+    for name, decision in (
+        ("setup_quality_mask_sqmask060", "PER_ROW_SETUP_QUALITY_REQUIRED"),
+        ("entry_path_quality_epq070_or_071", "PER_ROW_ENTRY_PATH_QUALITY_REQUIRED"),
+        ("stop_pressure_sp045", "PER_ROW_STOP_PRESSURE_REQUIRED"),
+        ("regime_specific_behavior", "REGIME_SPECIFIC_LABEL_CONTEXT_REQUIRED"),
+    ):
+        if not by_name.get(name, {}).get("per_row_values_available"):
+            required.append(decision)
+    gaps = {row.get("gap_name"): row for row in denominator_gap_board}
+    if gaps.get("production_label_count_missing", {}).get("known_right_count") is None:
+        required.append("PRODUCTION_LABEL_DENOMINATOR_REQUIRED")
+    if not timeout_flat_semantics_aligned:
+        required.append("TIMEOUT_FLAT_SEMANTICS_REQUIRED")
+    if by_name.get("bad_dates_time_slice_repair_probe"):
+        required.append("BAD_DATE_PROBE_EXCLUDED_FROM_TRADABLE_PARITY")
+    required.append("NO_LABEL_CHANGE_ALLOWED_YET")
+    return required
+
+
+def classify_alignment_decision(
+    *,
+    config_mapping_status: dict[str, Any],
+    mask_cascade_board: Sequence[dict[str, Any]],
+    denominator_gap_board: Sequence[dict[str, Any]],
+    sensitivity_board_actionable: bool = False,
+    timeout_flat_semantics_aligned: bool = False,
+) -> list[str]:
+    gaps = {row.get("gap_name"): row for row in denominator_gap_board}
+    missing_label_count = gaps.get("production_label_count_missing", {}).get("known_right_count") is None
+    required_masks = {
+        "setup_quality_mask_sqmask060", "entry_path_quality_epq070_or_071", "stop_pressure_sp045"
+    }
+    missing_masks = any(
+        row.get("mask_name") in required_masks and not row.get("per_row_values_available")
+        for row in mask_cascade_board
+    )
+    denominator_incomplete = missing_label_count or any(
+        row.get("missing_count") is None
+        for row in denominator_gap_board
+        if row.get("gap_name") in {"candles_to_features_gap", "features_to_training_dataset_gap"}
+    )
+    decisions: list[str] = []
+    if denominator_incomplete:
+        decisions.append("DENOMINATOR_ALIGNMENT_NOT_COMPLETE")
+    if missing_masks:
+        decisions.extend(("MASK_CASCADE_NOT_FULLY_RECONSTRUCTED", "NEEDS_PER_ROW_MASK_JOIN"))
+    if missing_label_count:
+        decisions.append("NEEDS_PRODUCTION_LABEL_ROW_COUNT")
+    if (
+        denominator_incomplete or missing_masks
+        or config_mapping_status.get("status") != "CURRENT_CONFIG_MAPPING_COMPLETE"
+        or not timeout_flat_semantics_aligned
+    ):
+        decisions.append("PRODUCTION_LIKE_RECOMPUTE_NOT_READY")
+    if not sensitivity_board_actionable:
+        decisions.append("SENSITIVITY_BOARD_REMAINS_NOT_ACTIONABLE")
+    decisions.extend(("DO_NOT_CHANGE_LABELS_YET", "DO_NOT_CHANGE_GATES", "DO_NOT_RUN_TRAINING"))
+    return decisions
+
+
+def build_production_denominator_mask_alignment_audit(
+    *,
+    source_counts: dict[str, Any] | None = None,
+    config_id: str | None = None,
+    config_payload: dict[str, Any] | None = None,
+    mask_evidence: dict[str, Any] | None = None,
+    production_reference: dict[str, Any] | None = None,
+    recompute_evidence: dict[str, Any] | None = None,
+    symbol: str = "SOLUSDT",
+    interval: str = "15m",
+    start_date: str = "2026-04-01",
+    end_date: str = "2026-06-15",
+) -> dict[str, Any]:
+    counts = dict(source_counts or {})
+    production = dict(production_reference or {})
+    recompute = dict(recompute_evidence or {})
+    mapping_status = build_current_config_mapping_audit(config_id, config_payload)
+    mapping = dict(mapping_status.get("mapping") or {})
+    cascade = build_mask_cascade_board(
+        source_counts=counts, config_mapping=mapping, mask_evidence=mask_evidence
+    )
+    gaps = build_denominator_gap_board(
+        source_counts=counts,
+        production_directional_count=production.get("directional_count"),
+        recompute_directional_count=recompute.get("directional_count"),
+        mask_cascade_board=cascade,
+    )
+    timeout_aligned = bool(recompute.get("timeout_flat_semantics_aligned", False))
+    actionable = bool(recompute.get("sensitivity_board_actionable", False))
+    checklist = build_production_like_recompute_prerequisite_checklist(
+        config_mapping_status=mapping_status,
+        mask_cascade_board=cascade,
+        denominator_gap_board=gaps,
+        timeout_flat_semantics_aligned=timeout_aligned,
+    )
+    decisions = classify_alignment_decision(
+        config_mapping_status=mapping_status,
+        mask_cascade_board=cascade,
+        denominator_gap_board=gaps,
+        sensitivity_board_actionable=actionable,
+        timeout_flat_semantics_aligned=timeout_aligned,
+    )
+    return {
+        "diagnostic_name": "production_denominator_mask_alignment_audit",
+        "diagnostic_version": "ml38.10.41",
+        "execution_mode": "DIAGNOSTIC_ONLY_NO_TRAINING_NO_DB_WRITES",
+        "symbol": symbol,
+        "interval": interval,
+        "date_range": f"{start_date} -> {end_date}",
+        "reference_config_id": config_id,
+        "source_counts": counts,
+        "mask_cascade_board": cascade,
+        "denominator_gap_board": gaps,
+        "config_mapping_status": mapping_status,
+        "production_parity_prerequisites": checklist,
+        "production_like_recompute_prerequisite_checklist": checklist,
+        "decision": decisions,
+        "ml38_10_41_alignment_decision": decisions,
+        "db_writes_performed": False,
+        "training_or_runtime_execution": False,
+    }
