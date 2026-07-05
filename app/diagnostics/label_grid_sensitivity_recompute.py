@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -335,4 +336,139 @@ def build_read_only_label_grid_sensitivity_recompute(
         "decision": decisions,
         "db_writes_performed": False,
         "training_or_runtime_execution": False,
+    }
+
+
+def build_current_config_mapping_audit(
+    config_id: str | None,
+    config_payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = dict(config_payload or {})
+    text = str(config_id or "")
+
+    def encoded(pattern: str, scale: float = 1.0) -> float | int | None:
+        match = re.search(pattern, text)
+        if not match:
+            return None
+        value = int(match.group(1))
+        return value if scale == 1.0 else value / scale
+
+    mapping = {
+        "config_id": config_id,
+        "horizon": payload.get("horizon", payload.get("horizon_candles", encoded(r"_h(\d+)"))),
+        "label_mode": payload.get("label_mode", "first_touch_tp_sl" if "_tts_" in text else None),
+        "direction_atr_threshold": payload.get("direction_atr_threshold", encoded(r"_thr(\d+)", 100.0)),
+        "tp_threshold": payload.get("take_profit_atr"),
+        "sl_threshold": payload.get("stop_loss_atr"),
+        "flat_boundary": payload.get("flat_boundary"),
+        "setup_quality_mask": payload.get(
+            "setup_quality_decision_mask_min_threshold", encoded(r"_sqmask(\d+)", 100.0)
+        ),
+        "entry_path_quality": payload.get("entry_path_quality_min_threshold", encoded(r"_epq(\d+)", 100.0)),
+        "stop_pressure": payload.get("stop_pressure_max_risk_score", encoded(r"_sp(\d+)", 100.0)),
+        "recovery_guard": payload.get("recovery_guard_enabled", "rguard" in text),
+        "regime_specific_behavior": payload.get("regime_specific_label_configs"),
+    }
+    required = (
+        "horizon", "label_mode", "direction_atr_threshold", "tp_threshold",
+        "sl_threshold", "setup_quality_mask", "entry_path_quality",
+        "stop_pressure", "regime_specific_behavior",
+    )
+    missing = [key for key in required if mapping.get(key) is None]
+    return {
+        "status": "CURRENT_CONFIG_MAPPING_INCOMPLETE" if missing else "CURRENT_CONFIG_MAPPING_COMPLETE",
+        "mapping": mapping,
+        "missing_mapping_fields": missing,
+        "sensitivity_board_actionable": not missing,
+        "diagnostic_only": True,
+    }
+
+
+def build_label_recompute_semantics_gap_board(
+    *,
+    production_reference: dict[str, Any] | None = None,
+    recompute_board: Sequence[dict[str, Any]] | None = None,
+    denominator_evidence: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    production = dict(production_reference or {})
+    board = list(recompute_board or [])
+    denominators = dict(denominator_evidence or {})
+    flat_values = [float(row["flat_pct"]) for row in board if row.get("flat_pct") is not None]
+    common = {"requires_code_change_to_label_builder": False, "requires_db_write": False}
+    specs = (
+        ("denominator_mismatch", {"production_directional_count": production.get("directional_count"), **denominators}, "HIGH", "compare candle, feature, label, split, regime and quality-mask row counts", "P0"),
+        ("missing_setup_quality_mask", "recompute accepts every ATR-valid candle; production configs encode sqmask", "HIGH", "apply the existing setup-quality decision mask in memory and compare distributions", "P0"),
+        ("missing_entry_path_quality_mask", "recompute has no epq eligibility field", "HIGH", "join existing feature rows read-only and shadow-filter by entry-path quality", "P0"),
+        ("missing_regime_specific_label_builder", "production supports per-regime threshold overrides", "HIGH", "run RegimeLabelBuilder-compatible logic in memory with existing regime features", "P0"),
+        ("threshold_unit_mismatch", "production thr065 is direction_atr_threshold; recompute grid treats TP/SL touches as direction", "HIGH", "compare production future-close ATR threshold against recompute thresholds on identical rows", "P0"),
+        ("forward_path_tie_or_tp_sl_ordering_mismatch", "production FirstTouchDirectionLabelBuilder evaluates side TP and SL ordering", "MEDIUM", "compare per-row first-touch reason and tie handling", "P1"),
+        ("timeout_flat_semantics_mismatch", "recompute terminal movement can turn a no-touch timeout into UP/DOWN", "HIGH", "compare no-touch rows with production selected_direction_label", "P0"),
+        ("flat_boundary_not_equivalent_to_production_thr065", {"production_flat_pct": production.get("flat_pct"), "recompute_flat_pct_range": [min(flat_values), max(flat_values)] if flat_values else None}, "HIGH", "treat thr065 as production direction ATR threshold, not a generic neutral boundary", "P0"),
+        ("current_config_mapping_missing", "config id does not encode every label, mask and regime parameter", "HIGH", "resolve the full config object read-only before parity recompute", "P0"),
+    )
+    return [
+        {"gap_name": name, "evidence": evidence, "likely_impact": impact,
+         "how_to_test_read_only": test, "priority": priority, **common}
+        for name, evidence, impact, test, priority in specs
+    ]
+
+
+def build_production_label_semantics_parity_audit(
+    *,
+    production_reference: dict[str, Any] | None,
+    recompute_board: Sequence[dict[str, Any]] | None,
+    denominator_evidence: dict[str, Any] | None = None,
+    current_config_id: str | None = None,
+    current_config_payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    production = dict(production_reference or {})
+    board = list(recompute_board or [])
+    flat_values = [float(row["flat_pct"]) for row in board if row.get("flat_pct") is not None]
+    directional_values = [float(row["directional_pct"]) for row in board if row.get("directional_pct") is not None]
+    production_flat = production.get("flat_pct")
+    mismatch = bool(
+        production_flat is not None and flat_values
+        and min(abs(float(production_flat) - value) for value in flat_values) > 10.0
+    )
+    all_too_noisy = bool(board) and all(row.get("diagnostic_verdict") == "TOO_NOISY" for row in board)
+    mapping = build_current_config_mapping_audit(current_config_id, current_config_payload)
+    gap_board = build_label_recompute_semantics_gap_board(
+        production_reference=production, recompute_board=board,
+        denominator_evidence=denominator_evidence,
+    )
+    denominators = dict(denominator_evidence or {})
+    denominator_fields = ("candle_count", "feature_row_count", "label_row_count", "candidate_training_rows")
+    denominator_complete = all(denominators.get(key) is not None for key in denominator_fields)
+    decisions = ["PRODUCTION_LABEL_PARITY_NOT_PROVEN"]
+    if mismatch:
+        decisions.append("READ_ONLY_RECOMPUTE_SEMANTICS_MISMATCH")
+    if all_too_noisy and mismatch:
+        decisions.append("CURRENT_SENSITIVITY_BOARD_TOO_NOISY_NOT_ACTIONABLE")
+    if mapping["status"] == "CURRENT_CONFIG_MAPPING_INCOMPLETE":
+        decisions.append("NEEDS_CURRENT_CONFIG_MAPPING")
+    if not denominator_complete:
+        decisions.append("NEEDS_DENOMINATOR_ALIGNMENT")
+    decisions.extend(("DO_NOT_CHANGE_LABELS_YET", "DO_NOT_CHANGE_GATES", "DO_NOT_RUN_TRAINING"))
+    return {
+        "diagnostic_name": "production_label_semantics_parity_audit",
+        "diagnostic_version": "ml38.10.40",
+        "execution_mode": "DIAGNOSTIC_ONLY_NO_TRAINING_NO_DB_WRITES",
+        "production_reference": {"source": "latest_quick_quality_compact_report", **production},
+        "read_only_recompute_current": {
+            "source": "ML38.10.39 current read-only recompute",
+            "flat_pct_range": [min(flat_values), max(flat_values)] if flat_values else None,
+            "directional_pct_range": [min(directional_values), max(directional_values)] if directional_values else None,
+            "verdict": "SEMANTICS_MISMATCH" if mismatch else "PARITY_NOT_PROVEN",
+        },
+        "denominator_parity_audit": {
+            **{key: denominators.get(key) for key in denominator_fields},
+            "parity_status": "DENOMINATOR_EVIDENCE_COMPLETE" if denominator_complete else "DENOMINATOR_ALIGNMENT_INCOMPLETE",
+        },
+        "semantics_gap_hypotheses": [row["gap_name"] for row in gap_board],
+        "required_alignment_steps": [row["how_to_test_read_only"] for row in gap_board if row["priority"] == "P0"],
+        "sensitivity_board_actionability": "NOT_ACTIONABLE_PARITY_NOT_PROVEN" if mismatch or not board else "REVIEW_REQUIRED",
+        "decision": decisions,
+        "label_recompute_semantics_gap_board": gap_board,
+        "current_config_mapping_audit": mapping,
+        "ml38_10_40_parity_decision": decisions,
     }

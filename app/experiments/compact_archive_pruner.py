@@ -65,6 +65,10 @@ KEEP_SUMMARY_KEYS = {
     "next_label_diagnostic_plan",
     "ml38_10_38_label_audit_decision",
     "read_only_label_grid_sensitivity_recompute",
+    "production_label_semantics_parity_audit",
+    "label_recompute_semantics_gap_board",
+    "current_config_mapping_audit",
+    "ml38_10_40_parity_decision",
     "conditional_regime_rule_threshold_sensitivity_board",
     "conditional_regime_threshold_sensitivity_summary",
     "aggregate_conditional_regime_rule_threshold_sensitivity_board",
@@ -106,6 +110,10 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "next_label_diagnostic_plan",
     "ml38_10_38_label_audit_decision",
     "read_only_label_grid_sensitivity_recompute",
+    "production_label_semantics_parity_audit",
+    "label_recompute_semantics_gap_board",
+    "current_config_mapping_audit",
+    "ml38_10_40_parity_decision",
 }
 
 # Scalar and bounded summaries required by the multi-symbol analyzer after the

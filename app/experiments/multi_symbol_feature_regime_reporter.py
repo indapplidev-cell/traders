@@ -105,6 +105,14 @@ class MultiSymbolFeatureRegimeReporter:
             "read_only_label_grid_sensitivity_recompute": payload.get(
                 "read_only_label_grid_sensitivity_recompute"
             ),
+            "production_label_semantics_parity_audit": payload.get(
+                "production_label_semantics_parity_audit"
+            ),
+            "label_recompute_semantics_gap_board": payload.get(
+                "label_recompute_semantics_gap_board"
+            ),
+            "current_config_mapping_audit": payload.get("current_config_mapping_audit"),
+            "ml38_10_40_parity_decision": payload.get("ml38_10_40_parity_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -724,6 +732,20 @@ class MultiSymbolFeatureRegimeReporter:
                 f"- too_noisy_count: `{label_grid_recompute.get('too_noisy_count')}`",
                 f"- promising_zone_count: `{label_grid_recompute.get('promising_zone_count')}`",
                 f"- decision: `{label_grid_recompute.get('decision')}`",
+            ]
+        )
+        parity_audit = self._as_dict(payload.get("production_label_semantics_parity_audit"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.40 Production Label Semantics Parity Audit",
+                "",
+                f"- production_reference: `{parity_audit.get('production_reference')}`",
+                f"- read_only_recompute_current: `{parity_audit.get('read_only_recompute_current')}`",
+                f"- denominator_parity_audit: `{parity_audit.get('denominator_parity_audit')}`",
+                f"- sensitivity_board_actionability: `{parity_audit.get('sensitivity_board_actionability')}`",
+                f"- current_config_mapping_audit: `{payload.get('current_config_mapping_audit') or parity_audit.get('current_config_mapping_audit')}`",
+                f"- ml38_10_40_parity_decision: `{payload.get('ml38_10_40_parity_decision') or parity_audit.get('ml38_10_40_parity_decision')}`",
             ]
         )
         lines.extend(

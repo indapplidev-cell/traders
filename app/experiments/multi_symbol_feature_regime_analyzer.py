@@ -16,11 +16,14 @@ from app.diagnostics.fold_feature_regime_repair_probe import (
 from app.diagnostics.fold_time_slice_exit_repair_probe import (
     FoldTimeSliceExitRepairProbe,
 )
+from app.diagnostics.label_grid_sensitivity_recompute import (
+    build_production_label_semantics_parity_audit,
+)
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.39"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.40"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -263,6 +266,24 @@ class MultiSymbolFeatureRegimeAnalyzer:
         read_only_label_grid_sensitivity_recompute = (
             self._read_only_label_grid_sensitivity_recompute(summaries)
         )
+        production_label_semantics_parity_audit = (
+            build_production_label_semantics_parity_audit(
+                production_reference=self._as_dict(
+                    label_threshold_horizon_sensitivity_audit.get("current_label_distribution")
+                ),
+                recompute_board=self._as_list(
+                    read_only_label_grid_sensitivity_recompute.get("sensitivity_board")
+                ),
+                denominator_evidence={
+                    "candle_count": read_only_label_grid_sensitivity_recompute.get("candle_count"),
+                    "feature_row_count": None if best_result is None else best_result.get("real_feature_diagnostics_row_count"),
+                    "label_row_count": read_only_label_grid_sensitivity_recompute.get("label_row_count"),
+                    "candidate_training_rows": read_only_label_grid_sensitivity_recompute.get("candidate_training_rows"),
+                },
+                current_config_id=None if best_result is None else best_result.get("best_candidate_config_id"),
+                current_config_payload={} if best_result is None else self._as_dict(best_result.get("label_config")),
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -498,6 +519,16 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
             "read_only_label_grid_sensitivity_recompute": (
                 read_only_label_grid_sensitivity_recompute
+            ),
+            "production_label_semantics_parity_audit": production_label_semantics_parity_audit,
+            "label_recompute_semantics_gap_board": production_label_semantics_parity_audit.get(
+                "label_recompute_semantics_gap_board", []
+            ),
+            "current_config_mapping_audit": production_label_semantics_parity_audit.get(
+                "current_config_mapping_audit", {}
+            ),
+            "ml38_10_40_parity_decision": production_label_semantics_parity_audit.get(
+                "ml38_10_40_parity_decision", []
             ),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,

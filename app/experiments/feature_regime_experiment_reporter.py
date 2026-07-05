@@ -1890,6 +1890,10 @@ class FeatureRegimeExperimentReporter:
             "label_threshold_horizon_sensitivity_rows",
             "label_sensitivity_board",
             "read_only_label_grid_sensitivity_recompute",
+            "production_label_semantics_parity_audit",
+            "label_recompute_semantics_gap_board",
+            "current_config_mapping_audit",
+            "ml38_10_40_parity_decision",
         )
         payload = {
             key: self._result_value(result, key)
