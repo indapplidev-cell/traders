@@ -122,6 +122,13 @@ class MultiSymbolFeatureRegimeReporter:
                 "production_like_recompute_prerequisite_checklist"
             ),
             "ml38_10_41_alignment_decision": payload.get("ml38_10_41_alignment_decision"),
+            "per_row_production_mask_join_audit": payload.get("per_row_production_mask_join_audit"),
+            "mask_source_discovery_board": payload.get("mask_source_discovery_board"),
+            "per_row_mask_join_board": payload.get("per_row_mask_join_board"),
+            "mask_cascade_count_board": payload.get("mask_cascade_count_board"),
+            "missing_per_row_sources": payload.get("missing_per_row_sources"),
+            "next_extractor_requirements": payload.get("next_extractor_requirements"),
+            "production_mask_join_decision": payload.get("production_mask_join_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -722,6 +729,28 @@ class MultiSymbolFeatureRegimeReporter:
                     ensure_ascii=False,
                     indent=2,
                     sort_keys=True,
+                ),
+                "```",
+            ]
+        )
+        mask_join_audit = self._as_dict(payload.get("per_row_production_mask_join_audit"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.42 Per-row Production Mask Join Audit",
+                "",
+                f"- execution_mode: `{mask_join_audit.get('execution_mode')}`",
+                f"- source_counts: `{mask_join_audit.get('source_counts')}`",
+                f"- missing_per_row_sources: `{payload.get('missing_per_row_sources') or mask_join_audit.get('missing_per_row_sources')}`",
+                f"- next_extractor_requirements: `{payload.get('next_extractor_requirements') or mask_join_audit.get('next_extractor_requirements')}`",
+                f"- production_mask_join_decision: `{payload.get('production_mask_join_decision') or mask_join_audit.get('production_mask_join_decision')}`",
+                "",
+                "### Per-row mask join board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("per_row_mask_join_board") or mask_join_audit.get("per_row_mask_join_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
                 ),
                 "```",
             ]

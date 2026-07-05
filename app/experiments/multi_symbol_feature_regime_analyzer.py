@@ -17,6 +17,7 @@ from app.diagnostics.fold_time_slice_exit_repair_probe import (
     FoldTimeSliceExitRepairProbe,
 )
 from app.diagnostics.label_grid_sensitivity_recompute import (
+    build_per_row_production_mask_join_audit,
     build_production_denominator_mask_alignment_audit,
     build_production_label_semantics_parity_audit,
 )
@@ -24,7 +25,7 @@ from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gat
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.41"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.42"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -311,6 +312,25 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 },
             )
         )
+        production_reference = self._as_dict(
+            label_threshold_horizon_sensitivity_audit.get("current_label_distribution")
+        )
+        per_row_production_mask_join_audit = build_per_row_production_mask_join_audit(
+            source_counts={
+                **alignment_source_counts,
+                "split_total_rows": sum(
+                    int(alignment_source_counts.get(key) or 0)
+                    for key in ("candidate_training_rows", "candidate_validation_rows", "candidate_test_rows")
+                ) or None,
+                "production_directional_count": production_reference.get("directional_count"),
+                "production_label_row_count": alignment_source_counts.get("label_row_count"),
+            },
+            reference_config_id=(
+                "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe"
+                if best_result is None else best_result.get("best_candidate_config_id")
+            ),
+            config_payload={} if best_result is None else self._as_dict(best_result.get("label_config")),
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -566,6 +586,13 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "ml38_10_41_alignment_decision": production_denominator_mask_alignment_audit.get(
                 "ml38_10_41_alignment_decision", []
             ),
+            "per_row_production_mask_join_audit": per_row_production_mask_join_audit,
+            "mask_source_discovery_board": per_row_production_mask_join_audit.get("mask_source_discovery_board", []),
+            "per_row_mask_join_board": per_row_production_mask_join_audit.get("per_row_mask_join_board", []),
+            "mask_cascade_count_board": per_row_production_mask_join_audit.get("mask_cascade_count_board", []),
+            "missing_per_row_sources": per_row_production_mask_join_audit.get("missing_per_row_sources", []),
+            "next_extractor_requirements": per_row_production_mask_join_audit.get("next_extractor_requirements", []),
+            "production_mask_join_decision": per_row_production_mask_join_audit.get("production_mask_join_decision", []),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,

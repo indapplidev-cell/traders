@@ -1899,6 +1899,13 @@ class FeatureRegimeExperimentReporter:
             "denominator_gap_board",
             "production_like_recompute_prerequisite_checklist",
             "ml38_10_41_alignment_decision",
+            "per_row_production_mask_join_audit",
+            "mask_source_discovery_board",
+            "per_row_mask_join_board",
+            "mask_cascade_count_board",
+            "missing_per_row_sources",
+            "next_extractor_requirements",
+            "production_mask_join_decision",
         )
         payload = {
             key: self._result_value(result, key)

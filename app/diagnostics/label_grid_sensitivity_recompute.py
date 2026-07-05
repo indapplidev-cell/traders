@@ -771,3 +771,381 @@ def build_production_denominator_mask_alignment_audit(
         "db_writes_performed": False,
         "training_or_runtime_execution": False,
     }
+
+
+_REGIME_FIELDS = (
+    "regime_trend_up", "regime_trend_down", "regime_range",
+    "regime_high_volatility", "regime_low_volatility", "regime_unknown",
+    "regime_volatility_expanding", "regime_volatility_contracting",
+)
+
+
+def _audit_row_value(row: Any, field: str) -> Any:
+    value = _value(row, field)
+    if value is not None:
+        return value
+    features = _value(row, "features_json", {})
+    return features.get(field) if isinstance(features, dict) else None
+
+
+def _materialize_per_row_values(per_row_values: Any) -> list[dict[str, Any]]:
+    if per_row_values is None:
+        return []
+    if isinstance(per_row_values, Sequence) and not isinstance(per_row_values, (str, bytes, dict)):
+        return [dict(row) if isinstance(row, dict) else row for row in per_row_values]
+    if not isinstance(per_row_values, dict):
+        return []
+    row_keys = (
+        "setup_quality_score", "entry_path_quality_score", "stop_pressure_risk_score",
+        "regime_context_eligible", "recovery_guard_decision", "production_selected_label",
+    )
+    lengths = [len(value) for key, value in per_row_values.items() if key in row_keys and isinstance(value, Sequence)]
+    if not lengths:
+        return []
+    rows: list[dict[str, Any]] = []
+    for index in range(max(lengths)):
+        row: dict[str, Any] = {"row_index": index}
+        for key, values in per_row_values.items():
+            if isinstance(values, Sequence) and not isinstance(values, (str, bytes)) and index < len(values):
+                row[key] = values[index]
+        rows.append(row)
+    return rows
+
+
+def _join_identity(row: Any) -> tuple[Any, ...] | None:
+    timestamp = (
+        _audit_row_value(row, "candle_open_time")
+        or _audit_row_value(row, "open_time")
+        or _audit_row_value(row, "timestamp")
+    )
+    if timestamp is None:
+        return None
+    return (
+        _audit_row_value(row, "symbol"),
+        _audit_row_value(row, "interval"),
+        timestamp.isoformat() if isinstance(timestamp, datetime) else str(timestamp),
+    )
+
+
+def discover_mask_sources(
+    *,
+    feature_rows: Sequence[Any] | None = None,
+    production_label_rows: Sequence[Any] | None = None,
+    per_row_values: Any = None,
+    compact_payload: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Document code/storage evidence and concrete per-row availability without writes."""
+
+    rows = list(feature_rows or []) or _materialize_per_row_values(per_row_values)
+    labels = list(production_label_rows or [])
+    compact = dict(compact_payload or {})
+
+    def complete(field: str, source_rows: Sequence[Any] = rows) -> bool:
+        return bool(source_rows) and all(_audit_row_value(row, field) is not None for row in source_rows)
+
+    regime_complete = bool(rows) and all(
+        any(_audit_row_value(row, field) is not None for field in _REGIME_FIELDS)
+        or _audit_row_value(row, "market_regime") is not None
+        for row in rows
+    )
+    specs = [
+        ("setup_quality_score", "sqmask060", 0.60, True, "READ_ONLY_DB_COLUMN",
+         "ml_labels.setup_quality_score / DatasetRow.setup_quality_score", complete("setup_quality_score") or complete("setup_quality_score", labels),
+         "app/db/models.py:MlLabels and app/dataset/dataset_builder.py", "P0"),
+        ("entry_path_quality_score", "epq070_or_071", 0.70, True, "IN_MEMORY_EVALUATOR_VALUE",
+         "profit-aware/training evaluator row payload", complete("entry_path_quality_score"),
+         "app/evaluation/profit_aware_evaluator_v2.py and app/training/metrics.py; not persisted on ml_features/ml_labels", "P0"),
+        ("stop_pressure_risk_score", "sp045", 0.45, True, "IN_MEMORY_EVALUATOR_VALUE",
+         "profit-aware/training evaluator row payload", complete("stop_pressure_risk_score"),
+         "app/evaluation/profit_aware_evaluator_v2.py and app/training/metrics.py; not persisted on ml_features/ml_labels", "P0"),
+        ("regime_flags_or_context", None, None, True, "FEATURE_JSON_FIELDS",
+         "ml_features.features_json.regime_* / market_regime", regime_complete,
+         "app/features/feature_models.py defines per-row regime flags", "P0"),
+        ("recovery_guard_decision", "rguard", None, True, "IN_MEMORY_EVALUATOR_DECISION",
+         "exit mitigation audit/recovery guard decision", complete("recovery_guard_decision") or complete("recovery_guard_eligible"),
+         "app/evaluation/profit_aware_evaluator_v2.py computes recovery behavior; no DB column found", "P0"),
+        ("production_selected_label", None, None, True, "READ_ONLY_DB_COLUMN",
+         "ml_labels.direction_label", complete("production_selected_label") or complete("direction_label", labels),
+         "app/db/models.py:MlLabels.direction_label", "P0"),
+        ("production_label_row_identity", None, None, True, "COMPOSITE_DB_IDENTITY",
+         "symbol+interval+candle_open_time+horizon_candles+label_version", bool(labels) and all(_join_identity(row) is not None for row in labels),
+         "MlLabels unique constraint provides timestamp-based row identity", "P0"),
+        ("bad_dates_time_slice_probe_metadata", "bad_dates_probe", None, bool(compact),
+         "AGGREGATE_ONLY_COMPACT_SOURCE" if compact else "RESEARCH_ONLY_CONFIG_METADATA",
+         "fold_time_slice_exit_repair_probe / config token", False,
+         "research-only probe metadata is not a production tradable mask", "P1"),
+    ]
+    searched = [
+        "app/features/*", "app/labels/*", "app/db/models.py", "app/db/repositories/*",
+        "app/evaluation/profit_aware_evaluator_v2.py", "app/training/metrics.py",
+        "app/experiments/*", "run_fv3_cached_tuning.py",
+    ]
+    return [{
+        "mask_name": name,
+        "config_token": token,
+        "threshold": threshold,
+        "searched_locations": searched,
+        "source_found": source_found,
+        "source_type": source_type,
+        "source_path_or_field": path,
+        "per_row_values_available": available,
+        "join_key_candidates": ["symbol+interval+candle_open_time", "timestamp/open_time", "row_index", "dataset row identity"],
+        "evidence": evidence,
+        "priority": priority,
+    } for name, token, threshold, source_found, source_type, path, available, evidence, priority in specs]
+
+
+def build_per_row_mask_join_board(
+    *,
+    feature_rows: Sequence[Any] | None = None,
+    production_label_rows: Sequence[Any] | None = None,
+    per_row_values: Any = None,
+    mask_source_discovery_board: Sequence[dict[str, Any]] | None = None,
+    entry_path_threshold: float = 0.70,
+) -> list[dict[str, Any]]:
+    base_rows = list(feature_rows or []) or _materialize_per_row_values(per_row_values)
+    labels = list(production_label_rows or [])
+    discovery = list(mask_source_discovery_board or discover_mask_sources(
+        feature_rows=base_rows, production_label_rows=labels, per_row_values=per_row_values
+    ))
+    by_name = {row["mask_name"]: row for row in discovery}
+    base_count = len(base_rows)
+    label_keys = {_join_identity(row) for row in labels if _join_identity(row) is not None}
+    base_keys = [_join_identity(row) for row in base_rows]
+    label_joined = sum(key in label_keys for key in base_keys) if label_keys and all(base_keys) else 0
+    definitions = [
+        ("setup_quality_score", "setup_quality_score", 0.60, lambda value: float(value) >= 0.60),
+        ("entry_path_quality_score", "entry_path_quality_score", entry_path_threshold, lambda value: float(value) >= entry_path_threshold),
+        ("stop_pressure_risk_score", "stop_pressure_risk_score", 0.45, lambda value: float(value) <= 0.45),
+        ("regime_flags_or_context", None, None, None),
+        ("recovery_guard_decision", "recovery_guard_decision", None, None),
+        ("production_selected_label", None, None, None),
+        ("production_label_row_identity", None, None, None),
+        ("bad_dates_time_slice_probe_metadata", None, None, None),
+    ]
+    result: list[dict[str, Any]] = []
+    for name, field, threshold, predicate in definitions:
+        source = by_name.get(name, {})
+        available = bool(source.get("per_row_values_available"))
+        values = [_audit_row_value(row, field) for row in base_rows] if field else []
+        if name == "regime_flags_or_context":
+            values = [
+                _audit_row_value(row, "regime_context_eligible")
+                if _audit_row_value(row, "regime_context_eligible") is not None
+                else _audit_row_value(row, "regime_eligible")
+                for row in base_rows
+            ]
+        elif name == "recovery_guard_decision":
+            values = [
+                _audit_row_value(row, "recovery_guard_eligible")
+                if _audit_row_value(row, "recovery_guard_eligible") is not None
+                else _audit_row_value(row, "recovery_guard_decision")
+                for row in base_rows
+            ]
+        joined = base_count if available else 0
+        join_key = "existing feature/dataset row fields"
+        if name in {"production_selected_label", "production_label_row_identity"}:
+            joined = label_joined
+            available = available and joined == base_count and base_count > 0
+            join_key = "symbol+interval+candle_open_time"
+        countable = (
+            available and predicate is not None and len(values) == base_count
+            and all(value is not None for value in values)
+        )
+        if countable:
+            remaining = sum(bool(predicate(value)) for value in values)
+            status = "JOINED_AND_COUNTED"
+        elif name == "bad_dates_time_slice_probe_metadata":
+            remaining = None
+            status = "RESEARCH_ONLY_EXCLUDED" if not source.get("source_type") == "AGGREGATE_ONLY_COMPACT_SOURCE" else "AGGREGATE_ONLY_COMPACT_SOURCE"
+        elif available:
+            remaining = None
+            status = "SOURCE_FOUND_JOIN_NOT_IMPLEMENTED"
+        elif source.get("source_type") == "AGGREGATE_ONLY_COMPACT_SOURCE":
+            remaining = None
+            status = "AGGREGATE_ONLY_COMPACT_SOURCE"
+        else:
+            remaining = None
+            status = "SOURCE_NOT_FOUND"
+        result.append({
+            "mask_name": name,
+            "join_attempted": bool(base_rows),
+            "join_key": join_key if base_rows else None,
+            "base_row_count": base_count,
+            "joined_row_count": joined,
+            "missing_join_count": base_count - joined,
+            "per_row_values_available": available,
+            "threshold_applied": threshold,
+            "removed_count": base_count - remaining if remaining is not None else None,
+            "remaining_count": remaining,
+            "status": status,
+            "evidence": source.get("evidence", "MISSING_PER_ROW_SOURCE"),
+            "requires_db_write": False,
+            "requires_label_builder_change": False,
+        })
+    return result
+
+
+def build_mask_cascade_count_board(
+    *,
+    feature_rows: Sequence[Any] | None = None,
+    per_row_values: Any = None,
+    production_label_rows: Sequence[Any] | None = None,
+    feature_row_count: int | None = None,
+    entry_path_threshold: float = 0.70,
+) -> list[dict[str, Any]]:
+    rows = list(feature_rows or []) or _materialize_per_row_values(per_row_values)
+    start_count = len(rows) if rows else feature_row_count
+    active: list[Any] | None = list(rows) if rows else None
+    board = [{
+        "step_order": 1, "mask_name": "feature_rows_start", "threshold": None,
+        "removed_count": 0 if start_count is not None else None, "remaining_count": start_count,
+        "status": "COUNTED" if start_count is not None else "CANNOT_COUNT_WITHOUT_PER_ROW_VALUES",
+    }]
+    steps = [
+        ("after_setup_quality_score_gte_0_60", "setup_quality_score", ">= 0.60", lambda value: float(value) >= 0.60),
+        (f"after_entry_path_quality_score_gte_{entry_path_threshold:.2f}", "entry_path_quality_score", f">= {entry_path_threshold:.2f}", lambda value: float(value) >= entry_path_threshold),
+        ("after_stop_pressure_risk_score_lte_0_45", "stop_pressure_risk_score", "<= 0.45", lambda value: float(value) <= 0.45),
+        ("after_regime_context", "regime_context_eligible", "production regime context", lambda value: bool(value)),
+        ("after_recovery_guard", "recovery_guard_eligible", "production recovery guard", lambda value: bool(value)),
+    ]
+    for order, (name, field, threshold, predicate) in enumerate(steps, 2):
+        before = len(active) if active is not None else None
+        if active is not None:
+            values = [_audit_row_value(row, field) for row in active]
+            if field == "regime_context_eligible" and any(value is None for value in values):
+                values = [_audit_row_value(row, "regime_eligible") for row in active]
+            if field == "recovery_guard_eligible" and any(value is None for value in values):
+                values = [_audit_row_value(row, "recovery_guard_decision") for row in active]
+            if any(value is None for value in values):
+                active = None
+            else:
+                active = [row for row, value in zip(active, values) if predicate(value)]
+        remaining = len(active) if active is not None else None
+        board.append({
+            "step_order": order, "mask_name": name, "threshold": threshold,
+            "removed_count": before - remaining if before is not None and remaining is not None else None,
+            "remaining_count": remaining,
+            "status": "COUNTED" if remaining is not None else "CANNOT_COUNT_WITHOUT_PER_ROW_VALUES",
+        })
+    prior = len(active) if active is not None else None
+    board.append({
+        "step_order": 7, "mask_name": "after_excluding_research_only_bad_dates_probe", "threshold": None,
+        "removed_count": 0 if prior is not None else None, "remaining_count": prior,
+        "status": "RESEARCH_ONLY_EXCLUDED" if prior is not None else "CANNOT_COUNT_WITHOUT_PER_ROW_VALUES",
+    })
+    label_count = len(production_label_rows) if production_label_rows is not None else None
+    board.append({
+        "step_order": 8, "mask_name": "production_label_row_count", "threshold": None,
+        "removed_count": prior - label_count if prior is not None and label_count is not None else None,
+        "remaining_count": label_count,
+        "status": "COUNTED" if label_count is not None else "CANNOT_COUNT_WITHOUT_PER_ROW_VALUES",
+    })
+    return board
+
+
+def classify_production_mask_join_decision(
+    per_row_mask_join_board: Sequence[dict[str, Any]],
+) -> list[str]:
+    by_name = {row.get("mask_name"): row for row in per_row_mask_join_board}
+    missing_map = {
+        "setup_quality_score": "SETUP_QUALITY_SOURCE_MISSING",
+        "entry_path_quality_score": "ENTRY_PATH_QUALITY_SOURCE_MISSING",
+        "stop_pressure_risk_score": "STOP_PRESSURE_SOURCE_MISSING",
+        "regime_flags_or_context": "REGIME_CONTEXT_SOURCE_MISSING",
+        "production_label_row_identity": "PRODUCTION_LABEL_ROW_IDENTITY_MISSING",
+    }
+    missing = [decision for name, decision in missing_map.items() if not by_name.get(name, {}).get("per_row_values_available")]
+    decisions: list[str] = []
+    if missing:
+        decisions.append("PER_ROW_MASK_JOIN_NOT_COMPLETE")
+        decisions.extend(missing)
+        if any(row.get("per_row_values_available") for row in per_row_mask_join_board):
+            decisions.extend(("PARTIAL_PER_ROW_MASK_JOIN_AVAILABLE", "NEEDS_REMAINING_MASK_SOURCES"))
+        decisions.extend((
+            "MASK_CASCADE_COUNTS_NOT_READY", "NEEDS_READ_ONLY_MASK_VALUE_EXTRACTOR",
+            "PRODUCTION_LIKE_RECOMPUTE_NOT_READY", "SENSITIVITY_BOARD_REMAINS_NOT_ACTIONABLE",
+        ))
+    decisions.extend(("DO_NOT_CHANGE_LABELS_YET", "DO_NOT_CHANGE_GATES", "DO_NOT_RUN_TRAINING"))
+    return list(dict.fromkeys(decisions))
+
+
+def build_next_extractor_requirements(
+    per_row_mask_join_board: Sequence[dict[str, Any]],
+) -> list[str]:
+    extractors = {
+        "setup_quality_score": "extract_setup_quality_score_by_timestamp",
+        "entry_path_quality_score": "extract_entry_path_quality_score_by_timestamp",
+        "stop_pressure_risk_score": "extract_stop_pressure_risk_score_by_timestamp",
+        "regime_flags_or_context": "extract_regime_context_by_timestamp",
+        "recovery_guard_decision": "extract_recovery_guard_decision_by_timestamp",
+        "production_selected_label": "extract_production_selected_label_by_timestamp",
+        "production_label_row_identity": "extract_production_label_row_identity",
+    }
+    return [
+        extractor for name, extractor in extractors.items()
+        if not next((row.get("per_row_values_available") for row in per_row_mask_join_board if row.get("mask_name") == name), False)
+    ]
+
+
+def build_per_row_production_mask_join_audit(
+    *,
+    source_counts: dict[str, Any] | None = None,
+    feature_rows: Sequence[Any] | None = None,
+    production_label_rows: Sequence[Any] | None = None,
+    per_row_values: Any = None,
+    compact_payload: dict[str, Any] | None = None,
+    config_payload: dict[str, Any] | None = None,
+    reference_config_id: str = "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe",
+    symbol: str = "SOLUSDT",
+    interval: str = "15m",
+    start_date: str = "2026-04-01",
+    end_date: str = "2026-06-15",
+) -> dict[str, Any]:
+    counts = dict(source_counts or {})
+    counts.setdefault("split_total_rows", sum(
+        int(counts.get(key) or 0) for key in ("candidate_training_rows", "candidate_validation_rows", "candidate_test_rows")
+    ) or None)
+    counts.setdefault("production_label_row_count", counts.get("label_row_count"))
+    threshold = float((config_payload or {}).get("entry_path_quality_min_threshold", 0.70) or 0.70)
+    discovery = discover_mask_sources(
+        feature_rows=feature_rows, production_label_rows=production_label_rows,
+        per_row_values=per_row_values, compact_payload=compact_payload,
+    )
+    joins = build_per_row_mask_join_board(
+        feature_rows=feature_rows, production_label_rows=production_label_rows,
+        per_row_values=per_row_values, mask_source_discovery_board=discovery,
+        entry_path_threshold=threshold,
+    )
+    cascade = build_mask_cascade_count_board(
+        feature_rows=feature_rows, per_row_values=per_row_values,
+        production_label_rows=production_label_rows,
+        feature_row_count=counts.get("feature_row_count"), entry_path_threshold=threshold,
+    )
+    missing = [
+        {"mask_name": row["mask_name"], "status": "MISSING_PER_ROW_SOURCE", "missing_fields": [row["mask_name"]]}
+        for row in joins
+        if row["status"] in {"SOURCE_NOT_FOUND", "JOIN_KEY_MISSING", "AGGREGATE_ONLY_COMPACT_SOURCE"}
+        and row["mask_name"] != "bad_dates_time_slice_probe_metadata"
+    ]
+    decisions = classify_production_mask_join_decision(joins)
+    extractors = build_next_extractor_requirements(joins)
+    return {
+        "diagnostic_name": "per_row_production_mask_join_audit",
+        "diagnostic_version": "ml38.10.42",
+        "execution_mode": "DIAGNOSTIC_ONLY_NO_TRAINING_NO_DB_WRITES",
+        "symbol": symbol,
+        "interval": interval,
+        "date_range": f"{start_date} -> {end_date}",
+        "reference_config_id": reference_config_id,
+        "source_counts": counts,
+        "mask_source_discovery_board": discovery,
+        "per_row_mask_join_board": joins,
+        "mask_cascade_count_board": cascade,
+        "missing_per_row_sources": missing,
+        "next_extractor_requirements": extractors,
+        "production_mask_join_decision": decisions,
+        "decision": decisions,
+        "db_writes_performed": False,
+        "training_or_runtime_execution": False,
+    }
