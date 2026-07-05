@@ -1149,3 +1149,18 @@ def build_per_row_production_mask_join_audit(
         "db_writes_performed": False,
         "training_or_runtime_execution": False,
     }
+
+
+# ML38.10.43 lives in a focused module; these imports retain this module as the
+# stable diagnostics entry point without coupling the extractor to recompute code.
+from app.diagnostics.production_mask_value_extractor import (  # noqa: E402,F401
+    build_mask_value_availability_summary,
+    build_mask_value_extraction_board,
+    build_next_join_plan,
+    build_production_label_extraction_summary,
+    build_read_only_production_mask_value_extractor_audit,
+    build_timestamp_join_key_audit,
+    classify_mask_value_extractor_decision,
+    extract_feature_rows_read_only,
+    extract_production_label_rows_read_only,
+)

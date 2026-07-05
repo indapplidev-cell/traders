@@ -1906,6 +1906,14 @@ class FeatureRegimeExperimentReporter:
             "missing_per_row_sources",
             "next_extractor_requirements",
             "production_mask_join_decision",
+            "read_only_production_mask_value_extractor_audit",
+            "timestamp_join_key_audit",
+            "mask_value_extraction_board",
+            "mask_value_availability_summary",
+            "production_label_extraction_summary",
+            "extractor_blockers",
+            "next_join_plan",
+            "ml38_10_43_extractor_decision",
         )
         payload = {
             key: self._result_value(result, key)

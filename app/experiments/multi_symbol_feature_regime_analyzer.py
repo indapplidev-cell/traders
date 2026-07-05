@@ -20,12 +20,13 @@ from app.diagnostics.label_grid_sensitivity_recompute import (
     build_per_row_production_mask_join_audit,
     build_production_denominator_mask_alignment_audit,
     build_production_label_semantics_parity_audit,
+    build_read_only_production_mask_value_extractor_audit,
 )
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.42"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.43"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -331,6 +332,18 @@ class MultiSymbolFeatureRegimeAnalyzer:
             ),
             config_payload={} if best_result is None else self._as_dict(best_result.get("label_config")),
         )
+        extractor_config = {} if best_result is None else self._as_dict(best_result.get("label_config"))
+        read_only_production_mask_value_extractor_audit = (
+            build_read_only_production_mask_value_extractor_audit(
+                source_counts=per_row_production_mask_join_audit.get("source_counts", {}),
+                label_version=extractor_config.get("label_version"),
+                horizon_candles=extractor_config.get("horizon_candles"),
+                reference_config_id=(
+                    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe"
+                    if best_result is None else best_result.get("best_candidate_config_id")
+                ),
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -593,6 +606,14 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "missing_per_row_sources": per_row_production_mask_join_audit.get("missing_per_row_sources", []),
             "next_extractor_requirements": per_row_production_mask_join_audit.get("next_extractor_requirements", []),
             "production_mask_join_decision": per_row_production_mask_join_audit.get("production_mask_join_decision", []),
+            "read_only_production_mask_value_extractor_audit": read_only_production_mask_value_extractor_audit,
+            "timestamp_join_key_audit": read_only_production_mask_value_extractor_audit.get("timestamp_join_key_audit", {}),
+            "mask_value_extraction_board": read_only_production_mask_value_extractor_audit.get("mask_value_extraction_board", []),
+            "mask_value_availability_summary": read_only_production_mask_value_extractor_audit.get("mask_value_availability_summary", {}),
+            "production_label_extraction_summary": read_only_production_mask_value_extractor_audit.get("production_label_extraction_summary", {}),
+            "extractor_blockers": read_only_production_mask_value_extractor_audit.get("extractor_blockers", []),
+            "next_join_plan": read_only_production_mask_value_extractor_audit.get("next_join_plan", []),
+            "ml38_10_43_extractor_decision": read_only_production_mask_value_extractor_audit.get("ml38_10_43_extractor_decision", []),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,

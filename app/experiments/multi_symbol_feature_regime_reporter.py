@@ -129,6 +129,16 @@ class MultiSymbolFeatureRegimeReporter:
             "missing_per_row_sources": payload.get("missing_per_row_sources"),
             "next_extractor_requirements": payload.get("next_extractor_requirements"),
             "production_mask_join_decision": payload.get("production_mask_join_decision"),
+            "read_only_production_mask_value_extractor_audit": payload.get(
+                "read_only_production_mask_value_extractor_audit"
+            ),
+            "timestamp_join_key_audit": payload.get("timestamp_join_key_audit"),
+            "mask_value_extraction_board": payload.get("mask_value_extraction_board"),
+            "mask_value_availability_summary": payload.get("mask_value_availability_summary"),
+            "production_label_extraction_summary": payload.get("production_label_extraction_summary"),
+            "extractor_blockers": payload.get("extractor_blockers"),
+            "next_join_plan": payload.get("next_join_plan"),
+            "ml38_10_43_extractor_decision": payload.get("ml38_10_43_extractor_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -750,6 +760,32 @@ class MultiSymbolFeatureRegimeReporter:
                 "```json",
                 json.dumps(
                     self._as_list(payload.get("per_row_mask_join_board") or mask_join_audit.get("per_row_mask_join_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
+                ),
+                "```",
+            ]
+        )
+        extractor_audit = self._as_dict(
+            payload.get("read_only_production_mask_value_extractor_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.43 Read-only Production Mask Value Extractor Audit",
+                "",
+                f"- execution_mode: `{extractor_audit.get('execution_mode')}`",
+                f"- timestamp_join_key_audit: `{payload.get('timestamp_join_key_audit') or extractor_audit.get('timestamp_join_key_audit')}`",
+                f"- mask_value_availability_summary: `{payload.get('mask_value_availability_summary') or extractor_audit.get('mask_value_availability_summary')}`",
+                f"- production_label_extraction_summary: `{payload.get('production_label_extraction_summary') or extractor_audit.get('production_label_extraction_summary')}`",
+                f"- extractor_blockers: `{payload.get('extractor_blockers') or extractor_audit.get('extractor_blockers')}`",
+                f"- next_join_plan: `{payload.get('next_join_plan') or extractor_audit.get('next_join_plan')}`",
+                f"- ml38_10_43_extractor_decision: `{payload.get('ml38_10_43_extractor_decision') or extractor_audit.get('ml38_10_43_extractor_decision')}`",
+                "",
+                "### Mask value extraction board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("mask_value_extraction_board") or extractor_audit.get("mask_value_extraction_board")),
                     ensure_ascii=False, indent=2, sort_keys=True,
                 ),
                 "```",
