@@ -150,6 +150,17 @@ class MultiSymbolFeatureRegimeReporter:
             "reproduction_blockers": payload.get("reproduction_blockers"),
             "next_step_plan": payload.get("next_step_plan"),
             "ml38_10_44_reproduction_decision": payload.get("ml38_10_44_reproduction_decision"),
+            "read_only_predicted_label_payload_trace_audit": payload.get(
+                "read_only_predicted_label_payload_trace_audit"
+            ),
+            "predicted_label_source_discovery_board": payload.get("predicted_label_source_discovery_board"),
+            "candidate_payload_omission_audit": payload.get("candidate_payload_omission_audit"),
+            "prediction_row_locator_board": payload.get("prediction_row_locator_board"),
+            "timestamp_prediction_join_readiness": payload.get("timestamp_prediction_join_readiness"),
+            "actual_vs_predicted_guardrail": payload.get("actual_vs_predicted_guardrail"),
+            "trace_blockers": payload.get("trace_blockers"),
+            "next_reproduction_plan": payload.get("next_reproduction_plan"),
+            "ml38_10_45_predicted_label_trace_decision": payload.get("ml38_10_45_predicted_label_trace_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -364,6 +375,30 @@ class MultiSymbolFeatureRegimeReporter:
                 "```json",
                 json.dumps(
                     self._as_list(payload.get("payload_reproduction_board") or reproduction_audit.get("payload_reproduction_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
+                ),
+                "```",
+            ]
+        )
+        trace_audit = self._as_dict(
+            payload.get("read_only_predicted_label_payload_trace_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.45 Read-only Predicted Label Payload Trace Audit",
+                "",
+                f"- execution_mode: `{trace_audit.get('execution_mode')}`",
+                f"- timestamp_prediction_join_readiness: `{payload.get('timestamp_prediction_join_readiness') or trace_audit.get('timestamp_prediction_join_readiness')}`",
+                f"- trace_blockers: `{payload.get('trace_blockers') or trace_audit.get('trace_blockers')}`",
+                f"- next_reproduction_plan: `{payload.get('next_reproduction_plan') or trace_audit.get('next_reproduction_plan')}`",
+                f"- ml38_10_45_predicted_label_trace_decision: `{payload.get('ml38_10_45_predicted_label_trace_decision') or trace_audit.get('ml38_10_45_predicted_label_trace_decision')}`",
+                "",
+                "### Prediction row locator board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("prediction_row_locator_board") or trace_audit.get("prediction_row_locator_board")),
                     ensure_ascii=False, indent=2, sort_keys=True,
                 ),
                 "```",

@@ -23,11 +23,14 @@ from app.diagnostics.label_grid_sensitivity_recompute import (
     build_read_only_evaluator_payload_reproduction_audit,
     build_read_only_production_mask_value_extractor_audit,
 )
+from app.diagnostics.predicted_label_payload_trace import (
+    build_read_only_predicted_label_payload_trace_audit,
+)
 from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gate
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.44"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.45"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -365,6 +368,26 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 selected_horizon_candles=int(extractor_config.get("horizon_candles") or 12),
             )
         )
+        read_only_predicted_label_payload_trace_audit = (
+            build_read_only_predicted_label_payload_trace_audit(
+                candidate_result={} if best_result is None else best_result,
+                source_counts=read_only_production_mask_value_extractor_audit.get(
+                    "source_counts", {}
+                ),
+                reference_config_id=(
+                    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe"
+                    if best_result is None else best_result.get("best_candidate_config_id")
+                ),
+                selected_feature_version=(
+                    "fv3_candle_ta_context"
+                    if best_result is None else best_result.get("feature_version_used")
+                ),
+                selected_label_version=str(
+                    extractor_config.get("label_version") or "lv31_h12_dates_exit45_long"
+                ),
+                selected_horizon_candles=int(extractor_config.get("horizon_candles") or 12),
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -644,6 +667,15 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "reproduction_blockers": read_only_evaluator_payload_reproduction_audit.get("reproduction_blockers", []),
             "next_step_plan": read_only_evaluator_payload_reproduction_audit.get("next_step_plan", []),
             "ml38_10_44_reproduction_decision": read_only_evaluator_payload_reproduction_audit.get("ml38_10_44_reproduction_decision", []),
+            "read_only_predicted_label_payload_trace_audit": read_only_predicted_label_payload_trace_audit,
+            "predicted_label_source_discovery_board": read_only_predicted_label_payload_trace_audit.get("predicted_label_source_discovery_board", []),
+            "candidate_payload_omission_audit": read_only_predicted_label_payload_trace_audit.get("candidate_payload_omission_audit", {}),
+            "prediction_row_locator_board": read_only_predicted_label_payload_trace_audit.get("prediction_row_locator_board", []),
+            "timestamp_prediction_join_readiness": read_only_predicted_label_payload_trace_audit.get("timestamp_prediction_join_readiness", {}),
+            "actual_vs_predicted_guardrail": read_only_predicted_label_payload_trace_audit.get("actual_vs_predicted_guardrail", {}),
+            "trace_blockers": read_only_predicted_label_payload_trace_audit.get("trace_blockers", []),
+            "next_reproduction_plan": read_only_predicted_label_payload_trace_audit.get("next_reproduction_plan", []),
+            "ml38_10_45_predicted_label_trace_decision": read_only_predicted_label_payload_trace_audit.get("ml38_10_45_predicted_label_trace_decision", []),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,

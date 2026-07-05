@@ -1923,6 +1923,15 @@ class FeatureRegimeExperimentReporter:
             "reproduction_blockers",
             "next_step_plan",
             "ml38_10_44_reproduction_decision",
+            "read_only_predicted_label_payload_trace_audit",
+            "predicted_label_source_discovery_board",
+            "candidate_payload_omission_audit",
+            "prediction_row_locator_board",
+            "timestamp_prediction_join_readiness",
+            "actual_vs_predicted_guardrail",
+            "trace_blockers",
+            "next_reproduction_plan",
+            "ml38_10_45_predicted_label_trace_decision",
         )
         payload = {
             key: self._result_value(result, key)
