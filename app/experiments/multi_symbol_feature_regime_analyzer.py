@@ -26,6 +26,9 @@ from app.diagnostics.label_grid_sensitivity_recompute import (
 from app.diagnostics.predicted_label_payload_trace import (
     build_read_only_predicted_label_payload_trace_audit,
 )
+from app.diagnostics.full_dataset_prediction_payload_capture_design import (
+    build_read_only_full_dataset_prediction_payload_capture_design_audit,
+)
 from app.diagnostics.test_only_evaluator_payload_reproduction import (
     build_read_only_test_only_evaluator_payload_reproduction_audit,
 )
@@ -39,7 +42,7 @@ from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gat
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.48"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.49"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -460,6 +463,25 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 selected_horizon_candles=int(extractor_config.get("horizon_candles") or 12),
             )
         )
+        read_only_full_dataset_prediction_payload_capture_design_audit = (
+            build_read_only_full_dataset_prediction_payload_capture_design_audit(
+                source_counts=read_only_test_only_mask_outcome_audit.get(
+                    "source_counts", {}
+                ),
+                reference_config_id=(
+                    "lv31_h12_tts_thr065_sqmask060_epq070_sp045_rguard_long_bad_dates_exit45_probe"
+                    if best_result is None else best_result.get("best_candidate_config_id")
+                ),
+                selected_feature_version=(
+                    "fv3_candle_ta_context"
+                    if best_result is None else best_result.get("feature_version_used")
+                ),
+                selected_label_version=str(
+                    extractor_config.get("label_version") or "lv31_h12_dates_exit45_long"
+                ),
+                selected_horizon_candles=int(extractor_config.get("horizon_candles") or 12),
+            )
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -773,6 +795,17 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "final_pass_sample_rows": read_only_test_only_mask_outcome_audit.get("final_pass_sample_rows", []),
             "test_only_outcome_interpretation": read_only_test_only_mask_outcome_audit.get("test_only_outcome_interpretation", {}),
             "ml38_10_48_test_only_outcome_decision": read_only_test_only_mask_outcome_audit.get("ml38_10_48_test_only_outcome_decision", []),
+            "read_only_full_dataset_prediction_payload_capture_design_audit": read_only_full_dataset_prediction_payload_capture_design_audit,
+            "current_prediction_payload_inventory": read_only_full_dataset_prediction_payload_capture_design_audit.get("current_prediction_payload_inventory", {}),
+            "prediction_generation_path_trace": read_only_full_dataset_prediction_payload_capture_design_audit.get("prediction_generation_path_trace", {}),
+            "current_artifact_gap_board": read_only_full_dataset_prediction_payload_capture_design_audit.get("current_artifact_gap_board", []),
+            "required_full_dataset_prediction_stream_contract": read_only_full_dataset_prediction_payload_capture_design_audit.get("required_full_dataset_prediction_stream_contract", {}),
+            "capture_point_options_board": read_only_full_dataset_prediction_payload_capture_design_audit.get("capture_point_options_board", []),
+            "compact_profile_whitelist_design": read_only_full_dataset_prediction_payload_capture_design_audit.get("compact_profile_whitelist_design", {}),
+            "leakage_and_guardrail_contract": read_only_full_dataset_prediction_payload_capture_design_audit.get("leakage_and_guardrail_contract", {}),
+            "implementation_plan": read_only_full_dataset_prediction_payload_capture_design_audit.get("implementation_plan", {}),
+            "full_dataset_guardrail": read_only_full_dataset_prediction_payload_capture_design_audit.get("full_dataset_guardrail", {}),
+            "ml38_10_49_payload_capture_design_decision": read_only_full_dataset_prediction_payload_capture_design_audit.get("ml38_10_49_payload_capture_design_decision", []),
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,

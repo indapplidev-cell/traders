@@ -206,6 +206,18 @@ class MultiSymbolFeatureRegimeReporter:
             "ml38_10_48_test_only_outcome_decision": payload.get(
                 "ml38_10_48_test_only_outcome_decision"
             ),
+            "read_only_full_dataset_prediction_payload_capture_design_audit": payload.get(
+                "read_only_full_dataset_prediction_payload_capture_design_audit"
+            ),
+            "current_prediction_payload_inventory": payload.get("current_prediction_payload_inventory"),
+            "prediction_generation_path_trace": payload.get("prediction_generation_path_trace"),
+            "current_artifact_gap_board": payload.get("current_artifact_gap_board"),
+            "required_full_dataset_prediction_stream_contract": payload.get("required_full_dataset_prediction_stream_contract"),
+            "capture_point_options_board": payload.get("capture_point_options_board"),
+            "compact_profile_whitelist_design": payload.get("compact_profile_whitelist_design"),
+            "leakage_and_guardrail_contract": payload.get("leakage_and_guardrail_contract"),
+            "implementation_plan": payload.get("implementation_plan"),
+            "ml38_10_49_payload_capture_design_decision": payload.get("ml38_10_49_payload_capture_design_decision"),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -476,6 +488,30 @@ class MultiSymbolFeatureRegimeReporter:
                 "```json",
                 json.dumps(
                     self._as_list(payload.get("final_pass_directional_precision_board") or outcome_audit.get("final_pass_directional_precision_board")),
+                    ensure_ascii=False, indent=2, sort_keys=True,
+                ),
+                "```",
+            ]
+        )
+        capture_design = self._as_dict(
+            payload.get("read_only_full_dataset_prediction_payload_capture_design_audit")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.49 Read-only Full-dataset Prediction Payload Capture Design Audit",
+                "",
+                f"- execution_mode: `{capture_design.get('execution_mode')}`",
+                f"- current_prediction_payload_inventory: `{payload.get('current_prediction_payload_inventory') or capture_design.get('current_prediction_payload_inventory')}`",
+                f"- required_full_dataset_prediction_stream_contract: `{payload.get('required_full_dataset_prediction_stream_contract') or capture_design.get('required_full_dataset_prediction_stream_contract')}`",
+                f"- full_dataset_guardrail: `{capture_design.get('full_dataset_guardrail')}`",
+                f"- ml38_10_49_payload_capture_design_decision: `{payload.get('ml38_10_49_payload_capture_design_decision') or capture_design.get('ml38_10_49_payload_capture_design_decision')}`",
+                "",
+                "### Capture point options board",
+                "",
+                "```json",
+                json.dumps(
+                    self._as_list(payload.get("capture_point_options_board") or capture_design.get("capture_point_options_board")),
                     ensure_ascii=False, indent=2, sort_keys=True,
                 ),
                 "```",

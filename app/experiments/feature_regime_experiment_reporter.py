@@ -1957,6 +1957,16 @@ class FeatureRegimeExperimentReporter:
             "final_pass_sample_rows",
             "test_only_outcome_interpretation",
             "ml38_10_48_test_only_outcome_decision",
+            "read_only_full_dataset_prediction_payload_capture_design_audit",
+            "current_prediction_payload_inventory",
+            "prediction_generation_path_trace",
+            "current_artifact_gap_board",
+            "required_full_dataset_prediction_stream_contract",
+            "capture_point_options_board",
+            "compact_profile_whitelist_design",
+            "leakage_and_guardrail_contract",
+            "implementation_plan",
+            "ml38_10_49_payload_capture_design_decision",
         )
         payload = {
             key: self._result_value(result, key)
