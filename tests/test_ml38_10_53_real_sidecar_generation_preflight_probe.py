@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.diagnostics.real_sidecar_generation_preflight_probe import (
+    _detect_prediction_sidecar_writer_contract,
     build_read_only_real_sidecar_generation_preflight_probe,
     read_only_real_sidecar_generation_preflight_probe,
 )
@@ -43,6 +44,29 @@ def test_sidecar_wiring_is_nonblank_and_blocks_real_generation() -> None:
     assert probe["preflight_decision_gate"]["preflight_probe_status"] == (
         "NOT_READY_SIDEСAR_WIRING_NOT_CONFIRMED"
     )
+
+
+def test_current_exact_byte_writer_contract_is_detected_without_legacy_marker() -> None:
+    board = read_only_real_sidecar_generation_preflight_probe["sidecar_wiring_probe_board"]
+    writer = next(row for row in board if row["component"] == "validation before/after write")
+    assert writer["writer_mode"] == "EXACT_BYTE_WRITE"
+    assert writer["writer_contract_status"] == "WRITER_CONTRACT_CONFIRMED"
+    assert writer["exact_byte_contract_present"] is True
+    assert writer["legacy_write_text_present"] is False
+    assert writer["write_bytes_present"] is True
+    assert writer["write_text_position"] is None
+
+
+def test_writer_contract_detector_supports_legacy_and_fails_closed_unknown() -> None:
+    legacy = _detect_prediction_sidecar_writer_contract("stream_path.write_text(payload)")
+    assert legacy["writer_mode"] == "LEGACY_TEXT_WRITE"
+    assert legacy["writer_contract_status"] == "LEGACY_WRITER_CONTRACT_DETECTED"
+    assert legacy["legacy_write_text_present"] is True
+
+    unknown = _detect_prediction_sidecar_writer_contract("def unrelated(): pass")
+    assert unknown["writer_mode"] == "UNKNOWN"
+    assert unknown["writer_contract_status"] == "WRITER_CONTRACT_NOT_CONFIRMED"
+    assert unknown["write_text_position"] is None
 
 
 def test_full_dataset_boundary_is_not_claimed_proven() -> None:
@@ -125,4 +149,3 @@ def test_builder_is_read_only_and_does_not_create_report_sidecars() -> None:
     after = {path.resolve() for path in reports.rglob("*") if path.name in sidecar_names}
     assert rebuilt["real_stream_guardrail"]["real_stream_row_count"] == 0
     assert after == before
-

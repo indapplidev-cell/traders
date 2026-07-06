@@ -21,6 +21,53 @@ def _source(relative_path: str) -> str:
     return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
 
 
+def _find_optional_marker(source: str, marker: str) -> int | None:
+    marker_index = source.find(marker)
+    return marker_index if marker_index >= 0 else None
+
+
+def _detect_prediction_sidecar_writer_contract(exporter_source: str) -> dict[str, Any]:
+    """Detect legacy/current writer source contracts without raising on absent markers."""
+    legacy_write_text_index = _find_optional_marker(exporter_source, ".write_text(")
+    write_bytes_index = _find_optional_marker(exporter_source, ".write_bytes(")
+    binary_write_indexes = [
+        _find_optional_marker(exporter_source, marker)
+        for marker in ('"wb"', "'wb'")
+    ]
+    binary_write_index = next((value for value in binary_write_indexes if value is not None), None)
+    exact_hash_marker_index = _find_optional_marker(exporter_source, "EXACT_BYTES_AFTER_WRITE")
+    exact_size_marker_index = _find_optional_marker(exporter_source, "byte_size_contract")
+    exact_writer_present = write_bytes_index is not None or binary_write_index is not None
+    exact_semantics_present = exact_hash_marker_index is not None and exact_size_marker_index is not None
+    exact_byte_contract_present = exact_writer_present and exact_semantics_present
+
+    if exact_byte_contract_present:
+        writer_mode = "EXACT_BYTE_WRITE"
+        status = "WRITER_CONTRACT_CONFIRMED"
+    elif legacy_write_text_index is not None:
+        writer_mode = "LEGACY_TEXT_WRITE"
+        status = "LEGACY_WRITER_CONTRACT_DETECTED"
+    else:
+        writer_mode = "UNKNOWN"
+        status = "WRITER_CONTRACT_NOT_CONFIRMED"
+
+    return {
+        "writer_mode": writer_mode,
+        "status": status,
+        "writer_contract_status": status,
+        "legacy_write_text_present": legacy_write_text_index is not None,
+        "write_bytes_present": write_bytes_index is not None,
+        "binary_write_present": binary_write_index is not None,
+        "exact_byte_contract_present": exact_byte_contract_present,
+        "legacy_write_text_index": legacy_write_text_index,
+        "write_text_position": legacy_write_text_index,
+        "write_bytes_index": write_bytes_index,
+        "binary_write_index": binary_write_index,
+        "exact_hash_marker_index": exact_hash_marker_index,
+        "exact_size_marker_index": exact_size_marker_index,
+    }
+
+
 def _entrypoint_probe_board() -> list[dict[str, Any]]:
     path = REPO_ROOT / "run_fv3_cached_tuning.py"
     source = _source("run_fv3_cached_tuning.py")
@@ -103,6 +150,36 @@ def _sidecar_wiring_probe_board() -> list[dict[str, Any]]:
     multi_reporter = _source("app/experiments/multi_symbol_feature_regime_reporter.py")
     training = _source("app/training/training_service.py")
     metrics = _source("app/training/metrics.py")
+    writer_contract = _detect_prediction_sidecar_writer_contract(exporter)
+    writer_function_index = _find_optional_marker(exporter, "def write_prediction_sidecar_artifacts")
+    validation_index = (
+        exporter.find("validate_prediction_sidecar_rows(", writer_function_index)
+        if writer_function_index is not None
+        else -1
+    )
+    validation_position = validation_index if validation_index >= 0 else None
+    write_positions = [
+        position
+        for position in (
+            writer_contract["legacy_write_text_index"],
+            writer_contract["write_bytes_index"],
+            writer_contract["binary_write_index"],
+        )
+        if position is not None
+    ]
+    first_write_position = min(write_positions) if write_positions else None
+    validation_precedes_write = (
+        validation_position is not None
+        and first_write_position is not None
+        and validation_position < first_write_position
+    )
+    validation_writer_status = (
+        "WIRED"
+        if validation_precedes_write and writer_contract["exact_byte_contract_present"]
+        else "PARTIAL"
+        if validation_precedes_write and writer_contract["legacy_write_text_present"]
+        else "NOT_WIRED"
+    )
 
     return [
         {
@@ -176,9 +253,29 @@ def _sidecar_wiring_probe_board() -> list[dict[str, Any]]:
         {
             "component": "validation before/after write",
             "expected_wiring": "fail-closed validation runs before artifacts are written",
-            "observed_wiring": "validate_prediction_sidecar_rows runs before mkdir/write_text and raises on invalid status; no post-write reread validation",
-            "status": "PARTIAL" if exporter.index("validate_prediction_sidecar_rows(", exporter.index("def write_prediction_sidecar_artifacts")) < exporter.index(".write_text(") else "NOT_WIRED",
-            "evidence": "Exporter validates before writes, but the quick-quality path does not invoke it and no post-write byte reread occurs.",
+            "observed_wiring": (
+                "pre-write row validation and exact-byte post-write verification detected"
+                if validation_writer_status == "WIRED"
+                else "pre-write validation detected with legacy text writer"
+                if validation_writer_status == "PARTIAL"
+                else "writer contract or validation ordering is not confirmed"
+            ),
+            "status": validation_writer_status,
+            "evidence": (
+                "ML38.10.58 uses binary LF bytes, rereads exact file bytes, and validates exact hash/size."
+                if writer_contract["exact_byte_contract_present"]
+                else "Legacy text writer detected; platform newline conversion remains possible."
+                if writer_contract["legacy_write_text_present"]
+                else "Neither an exact-byte nor legacy text writer contract was detected."
+            ),
+            "writer_mode": writer_contract["writer_mode"],
+            "writer_contract_status": writer_contract["writer_contract_status"],
+            "exact_byte_contract_present": writer_contract["exact_byte_contract_present"],
+            "legacy_write_text_present": writer_contract["legacy_write_text_present"],
+            "write_bytes_present": writer_contract["write_bytes_present"],
+            "validation_position": validation_position,
+            "write_text_position": writer_contract["write_text_position"],
+            "write_bytes_position": writer_contract["write_bytes_index"],
             "required_fix_if_not_wired": "retain pre-write validation and add post-write/manifest verification in the wired path",
         },
         {

@@ -9,7 +9,11 @@ from pathlib import Path
 from typing import Any
 
 
-SIDECAR_SCHEMA_VERSION = "ml38.10.50"
+SIDECAR_SCHEMA_VERSION = "ml38.10.58"
+WRITER_CONTRACT_VERSION = "ml38.10.58"
+HASH_CONTRACT = "EXACT_BYTES_AFTER_WRITE"
+LINE_ENDING_CONTRACT = "LF"
+BYTE_SIZE_CONTRACT = "EXACT_BYTES_AFTER_WRITE"
 FULL_DATASET_DENOMINATOR_SCOPE = "FULL_DATASET_6481"
 FULL_DATASET_ROW_COUNT = 6481
 PREDICTION_LABELS = ("UP", "DOWN", "FLAT")
@@ -319,10 +323,16 @@ def validate_prediction_sidecar_rows(
 
 
 def build_prediction_sidecar_summary(
-    rows: Iterable[Mapping[str, Any]], validation: Mapping[str, Any], metadata: Mapping[str, Any]
+    rows: Iterable[Mapping[str, Any]],
+    validation: Mapping[str, Any],
+    metadata: Mapping[str, Any],
+    *,
+    exact_file_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     normalized_rows = [normalize_prediction_sidecar_row(row) for row in rows]
-    encoded = _canonical_jsonl(normalized_rows).encode("utf-8")
+    encoded = exact_file_bytes
+    if encoded is None:
+        encoded = _canonical_jsonl(normalized_rows).encode("utf-8")
     return {
         "schema_version": SIDECAR_SCHEMA_VERSION,
         "relative_path": "prediction_payloads/full_dataset_prediction_stream.jsonl",
@@ -333,6 +343,10 @@ def build_prediction_sidecar_summary(
         "predicted_label_distribution": dict(validation.get("predicted_label_distribution") or {}),
         "sha256": sha256(encoded).hexdigest(),
         "size_bytes": len(encoded),
+        "hash_contract": HASH_CONTRACT,
+        "line_ending_contract": LINE_ENDING_CONTRACT,
+        "byte_size_contract": BYTE_SIZE_CONTRACT,
+        "writer_contract_version": WRITER_CONTRACT_VERSION,
         "validation_status": validation.get("status"),
         "config_consistency": validation.get("config_consistency"),
         "metadata": dict(metadata),
@@ -368,6 +382,86 @@ def build_prediction_payload_schema() -> dict[str, Any]:
             "ml_labels.direction_label is forbidden as prediction source",
             "source/config/model/feature/label mismatches fail closed",
         ],
+        "summary_contract": {
+            "hash_contract": HASH_CONTRACT,
+            "line_ending_contract": LINE_ENDING_CONTRACT,
+            "byte_size_contract": BYTE_SIZE_CONTRACT,
+            "writer_contract_version": WRITER_CONTRACT_VERSION,
+            "sha256_field_semantics": "sha256 of exact JSONL file bytes after write",
+            "size_bytes_field_semantics": "exact JSONL file size after write",
+        },
+    }
+
+
+def build_archive_status_metadata(*, archive_expected: bool | None = None) -> dict[str, Any]:
+    """Describe archive state at sidecar-write time without claiming later packaging facts."""
+    if archive_expected is False:
+        status = "NOT_REQUESTED"
+        created: bool | None = False
+        contains: bool | str | None = False
+    elif archive_expected is True:
+        status = "MISSING"
+        created = False
+        contains = "unknown"
+    else:
+        status = "UNKNOWN"
+        created = None
+        contains = "unknown"
+    return {
+        "archive_expected": archive_expected,
+        "archive_created": created,
+        "archive_path": None,
+        "archive_contains_sidecars": contains,
+        "archive_status": status,
+        "sidecar_retention_confirmed": False,
+    }
+
+
+def build_timeout_exit_code_metadata() -> dict[str, Any]:
+    """Represent completion facts unavailable inside the sidecar writer explicitly."""
+    return {
+        "controlling_shell_exit_code": None,
+        "python_exit_code": None,
+        "timeout_detected": None,
+        "child_completed_later": None,
+        "completion_marker_written": False,
+        "run_exit_code_status": "UNKNOWN_OR_EXTERNAL",
+    }
+
+
+def validate_prediction_sidecar_file_contract(
+    stream_path: str | Path, summary: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Validate exact bytes without rewriting legacy or current artifacts."""
+    path = Path(stream_path)
+    exact = path.read_bytes()
+    exact_hash = sha256(exact).hexdigest()
+    expected_hash = str(summary.get("sha256") or "")
+    expected_size = summary.get("size_bytes")
+    normalized = exact.replace(b"\r\n", b"\n")
+    normalized_only = (
+        expected_hash == sha256(normalized).hexdigest()
+        and expected_hash != exact_hash
+    )
+    errors: list[str] = []
+    if expected_hash != exact_hash:
+        errors.append(
+            "SUMMARY_HASH_MATCHES_LF_NORMALIZED_NOT_EXACT_BYTES"
+            if normalized_only
+            else "SUMMARY_HASH_DOES_NOT_MATCH_EXACT_BYTES"
+        )
+    if expected_size != len(exact):
+        errors.append("SUMMARY_SIZE_DOES_NOT_MATCH_EXACT_BYTES")
+    declared_contract = summary.get("hash_contract")
+    if declared_contract not in (None, HASH_CONTRACT):
+        errors.append("UNSUPPORTED_HASH_CONTRACT")
+    return {
+        "status": "PREDICTION_SIDECAR_EXACT_BYTES_INVALID" if errors else "PREDICTION_SIDECAR_EXACT_BYTES_VALID",
+        "exact_file_sha256": exact_hash,
+        "exact_file_size_bytes": len(exact),
+        "summary_matches_exact_bytes": not errors,
+        "summary_matches_lf_normalized_not_exact_bytes": normalized_only,
+        "errors": errors,
     }
 
 
@@ -440,7 +534,6 @@ def write_prediction_sidecar_artifacts(
     if validation["status"] != "PREDICTION_SIDECAR_VALID":
         raise ValueError("prediction sidecar validation failed: " + "; ".join(validation["errors"][:5]))
 
-    summary = build_prediction_sidecar_summary(normalized_rows, validation, metadata)
     schema = build_prediction_payload_schema()
     payload_dir = Path(output_dir) / "prediction_payloads"
     paths = {
@@ -456,9 +549,54 @@ def write_prediction_sidecar_artifacts(
         )
     if not dry_run:
         payload_dir.mkdir(parents=True, exist_ok=True)
-        paths["stream_path"].write_text(_canonical_jsonl(normalized_rows), encoding="utf-8")
-        paths["summary_path"].write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        paths["schema_path"].write_text(json.dumps(schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        stream_bytes = _canonical_jsonl(normalized_rows).encode("utf-8")
+        paths["stream_path"].write_bytes(stream_bytes)
+        exact_file_bytes = paths["stream_path"].read_bytes()
+        runtime_metadata = dict(metadata)
+        runtime_metadata["sidecar_runtime_truth"] = {
+            "runtime_execution_status": "EXECUTED",
+            "export_requested": True,
+            "export_completed": True,
+            "real_quick_quality_run_executed": metadata.get("real_quick_quality_run_executed"),
+            "real_full_dataset_stream_created": True,
+            "sidecar_validation_status": validation.get("status"),
+            "hash_contract": HASH_CONTRACT,
+            "archive": build_archive_status_metadata(
+                archive_expected=metadata.get("archive_expected")
+            ),
+            "completion": build_timeout_exit_code_metadata(),
+        }
+        summary = build_prediction_sidecar_summary(
+            normalized_rows,
+            validation,
+            runtime_metadata,
+            exact_file_bytes=exact_file_bytes,
+        )
+        file_contract = validate_prediction_sidecar_file_contract(paths["stream_path"], summary)
+        if file_contract["status"] != "PREDICTION_SIDECAR_EXACT_BYTES_VALID":
+            raise ValueError("prediction sidecar exact-byte validation failed")
+        paths["summary_path"].write_bytes(
+            (json.dumps(summary, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        )
+        paths["schema_path"].write_bytes(
+            (json.dumps(schema, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        )
+    else:
+        preview_metadata = dict(metadata)
+        preview_metadata["sidecar_runtime_truth"] = {
+            "runtime_execution_status": "NOT_EXECUTED_DRY_RUN",
+            "export_requested": True,
+            "export_completed": False,
+            "real_quick_quality_run_executed": metadata.get("real_quick_quality_run_executed"),
+            "real_full_dataset_stream_created": False,
+            "sidecar_validation_status": validation.get("status"),
+            "hash_contract": HASH_CONTRACT,
+            "archive": build_archive_status_metadata(
+                archive_expected=metadata.get("archive_expected")
+            ),
+            "completion": build_timeout_exit_code_metadata(),
+        }
+        summary = build_prediction_sidecar_summary(normalized_rows, validation, preview_metadata)
     return {
         "status": "DRY_RUN_VALID" if dry_run else "PREDICTION_SIDECAR_ARTIFACTS_WRITTEN",
         "dry_run": dry_run,

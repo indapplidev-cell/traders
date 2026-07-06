@@ -157,6 +157,8 @@ def write_full_dataset_prediction_sidecar_for_candidate(
     expected_row_count: int = FULL_DATASET_ROW_COUNT,
     denominator_scope: str = FULL_DATASET_DENOMINATOR_SCOPE,
     allow_overwrite: bool = False,
+    real_quick_quality_run_executed: bool | None = None,
+    archive_expected: bool | None = None,
     **identity: Any,
 ) -> dict[str, Any]:
     validation = validate_full_dataset_prediction_sidecar_ready(
@@ -174,6 +176,8 @@ def write_full_dataset_prediction_sidecar_for_candidate(
     metadata.update(
         denominator_scope=denominator_scope,
         prediction_source_stage=PREDICTION_SOURCE_STAGE,
+        real_quick_quality_run_executed=real_quick_quality_run_executed,
+        archive_expected=archive_expected,
         full_dataset_prediction_sidecar_wiring=build_sidecar_wiring_metadata(),
     )
     return write_prediction_sidecar_artifacts(
