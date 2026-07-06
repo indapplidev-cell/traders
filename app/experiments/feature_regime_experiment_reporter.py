@@ -1967,6 +1967,8 @@ class FeatureRegimeExperimentReporter:
             "leakage_and_guardrail_contract",
             "implementation_plan",
             "ml38_10_49_payload_capture_design_decision",
+            "full_dataset_prediction_sidecar_export_implementation",
+            "ml38_10_50_sidecar_export_implementation_decision",
         )
         payload = {
             key: self._result_value(result, key)

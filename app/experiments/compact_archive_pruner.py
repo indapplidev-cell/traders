@@ -14,6 +14,28 @@ DEFAULT_MAX_STRING_CHARS = 20_000
 
 COMPACT_SCHEMA_VERSION = "ml38.10.36.1"
 
+PREDICTION_SIDECAR_WHITELIST_PATHS = frozenset(
+    {
+        "prediction_payloads/full_dataset_prediction_stream.jsonl",
+        "prediction_payloads/full_dataset_prediction_stream_summary.json",
+        "prediction_payloads/prediction_payload_schema.json",
+        "prediction_payloads/test_prediction_stream.jsonl",
+    }
+)
+
+
+def is_prediction_sidecar_artifact_path(path: str) -> bool:
+    normalized = str(path).replace("\\", "/").lstrip("./")
+    return any(
+        normalized == allowed or normalized.endswith("/" + allowed)
+        for allowed in PREDICTION_SIDECAR_WHITELIST_PATHS
+    )
+
+
+def should_preserve_prediction_sidecar_artifact(path: str) -> bool:
+    """Return true only for bounded, schema-backed prediction sidecars."""
+    return is_prediction_sidecar_artifact_path(path)
+
 KEEP_TOP_LEVEL_KEYS = {
     "status",
     "stage",
@@ -142,6 +164,8 @@ KEEP_SUMMARY_KEYS = {
     "leakage_and_guardrail_contract",
     "implementation_plan",
     "ml38_10_49_payload_capture_design_decision",
+    "full_dataset_prediction_sidecar_export_implementation",
+    "ml38_10_50_sidecar_export_implementation_decision",
     "conditional_regime_rule_threshold_sensitivity_board",
     "conditional_regime_threshold_sensitivity_summary",
     "aggregate_conditional_regime_rule_threshold_sensitivity_board",
@@ -260,6 +284,8 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "leakage_and_guardrail_contract",
     "implementation_plan",
     "ml38_10_49_payload_capture_design_decision",
+    "full_dataset_prediction_sidecar_export_implementation",
+    "ml38_10_50_sidecar_export_implementation_decision",
 }
 
 # Scalar and bounded summaries required by the multi-symbol analyzer after the
@@ -516,6 +542,15 @@ def compact_json_file(
 ) -> CompactFileResult:
     path = Path(path)
     original_size = path.stat().st_size
+    if should_preserve_prediction_sidecar_artifact(str(path)):
+        return CompactFileResult(
+            path=str(path),
+            compacted=False,
+            original_size_bytes=original_size,
+            final_size_bytes=original_size,
+            saved_size_bytes=0,
+            reason="prediction_sidecar_whitelist_byte_preserved",
+        )
     if original_size <= max_target_bytes:
         return CompactFileResult(
             path=str(path),

@@ -218,6 +218,12 @@ class MultiSymbolFeatureRegimeReporter:
             "leakage_and_guardrail_contract": payload.get("leakage_and_guardrail_contract"),
             "implementation_plan": payload.get("implementation_plan"),
             "ml38_10_49_payload_capture_design_decision": payload.get("ml38_10_49_payload_capture_design_decision"),
+            "full_dataset_prediction_sidecar_export_implementation": payload.get(
+                "full_dataset_prediction_sidecar_export_implementation"
+            ),
+            "ml38_10_50_sidecar_export_implementation_decision": payload.get(
+                "ml38_10_50_sidecar_export_implementation_decision"
+            ),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -515,6 +521,20 @@ class MultiSymbolFeatureRegimeReporter:
                     ensure_ascii=False, indent=2, sort_keys=True,
                 ),
                 "```",
+            ]
+        )
+        sidecar_implementation = self._as_dict(
+            payload.get("full_dataset_prediction_sidecar_export_implementation")
+        )
+        lines.extend(
+            [
+                "",
+                "## ML38.10.50 Full-dataset Prediction Sidecar Export Implementation",
+                "",
+                f"- implementation_status: `{sidecar_implementation.get('implementation_status')}`",
+                f"- real_full_dataset_stream_created: `{sidecar_implementation.get('real_full_dataset_stream_created')}`",
+                f"- requires_separate_approval_for_generation: `{sidecar_implementation.get('requires_separate_approval_for_generation')}`",
+                f"- ml38_10_50_sidecar_export_implementation_decision: `{payload.get('ml38_10_50_sidecar_export_implementation_decision')}`",
             ]
         )
         reproduction_audit = self._as_dict(

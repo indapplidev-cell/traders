@@ -29,6 +29,10 @@ from app.diagnostics.predicted_label_payload_trace import (
 from app.diagnostics.full_dataset_prediction_payload_capture_design import (
     build_read_only_full_dataset_prediction_payload_capture_design_audit,
 )
+from app.experiments.prediction_sidecar_exporter import (
+    build_ml38_10_50_sidecar_export_implementation_decision,
+    build_sidecar_export_implementation_metadata,
+)
 from app.diagnostics.test_only_evaluator_payload_reproduction import (
     build_read_only_test_only_evaluator_payload_reproduction_audit,
 )
@@ -42,7 +46,7 @@ from app.evaluation.gap_quality_gate_normalizer import normalize_gap_quality_gat
 
 
 MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_NAME = "multi_symbol_feature_regime_analyzer"
-MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.49"
+MULTI_SYMBOL_FEATURE_REGIME_ANALYZER_VERSION = "ml38.10.50"
 
 AGGREGATION_CONSISTENCY_FIELDS = (
     "candidate_count",
@@ -482,6 +486,12 @@ class MultiSymbolFeatureRegimeAnalyzer:
                 selected_horizon_candles=int(extractor_config.get("horizon_candles") or 12),
             )
         )
+        full_dataset_prediction_sidecar_export_implementation = (
+            build_sidecar_export_implementation_metadata()
+        )
+        ml38_10_50_sidecar_export_implementation_decision = (
+            build_ml38_10_50_sidecar_export_implementation_decision()
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -806,6 +816,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "implementation_plan": read_only_full_dataset_prediction_payload_capture_design_audit.get("implementation_plan", {}),
             "full_dataset_guardrail": read_only_full_dataset_prediction_payload_capture_design_audit.get("full_dataset_guardrail", {}),
             "ml38_10_49_payload_capture_design_decision": read_only_full_dataset_prediction_payload_capture_design_audit.get("ml38_10_49_payload_capture_design_decision", []),
+            "full_dataset_prediction_sidecar_export_implementation": full_dataset_prediction_sidecar_export_implementation,
+            "ml38_10_50_sidecar_export_implementation_decision": ml38_10_50_sidecar_export_implementation_decision,
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,
