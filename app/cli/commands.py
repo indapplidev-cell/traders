@@ -3419,6 +3419,7 @@ def run_feature_regime_experiment(
     ranking_strategy: str = "default",
     skip_candle_load: bool = False,
     output_dir: Path = Path("reports/feature_regime_experiments"),
+    export_full_dataset_prediction_sidecar: bool = False,
 ) -> dict[str, object]:
     """Run the ML33 feature/regime-aware experiment flow."""
 
@@ -3442,6 +3443,7 @@ def run_feature_regime_experiment(
         ranking_strategy=ranking_strategy,
         skip_candle_load=skip_candle_load,
         output_dir=output_dir,
+        export_full_dataset_prediction_sidecar=export_full_dataset_prediction_sidecar,
     )
     result = FeatureRegimeExperimentRunner().run(config)
     return FeatureRegimeExperimentReporter().compact_summary_to_dict(result)
@@ -3595,6 +3597,7 @@ def run_ml38_2_fv3_tuning(
     sample_mode: bool = False,
     skip_candle_load: bool = True,
     output_dir: Path = Path("reports/feature_regime_experiments"),
+    export_full_dataset_prediction_sidecar: bool = False,
 ) -> dict[str, object]:
     matrix = ML382FV3TuningMatrix().build()
     if matrix["missing_configs"]:
@@ -3625,6 +3628,7 @@ def run_ml38_2_fv3_tuning(
         skip_candle_load=skip_candle_load,
         ranking_strategy="ml38_2",
         output_dir=output_dir,
+        export_full_dataset_prediction_sidecar=export_full_dataset_prediction_sidecar,
     )
 
 
@@ -4793,6 +4797,11 @@ def ml38_2_fv3_tuning_run_command(
             "use 'compact' only for manual debugging."
         ),
     ),
+    export_full_dataset_prediction_sidecar: bool = typer.Option(
+        False,
+        "--export-full-dataset-prediction-sidecar/--no-export-full-dataset-prediction-sidecar",
+        help="Export fail-closed train/val/test model predictions for an approved candidate run.",
+    ),
 ) -> None:
     """Run the ML38.2 FV3 tuning matrix for one symbol."""
 
@@ -4808,6 +4817,7 @@ def ml38_2_fv3_tuning_run_command(
         sample_mode=sample_mode,
         skip_candle_load=skip_candle_load,
         output_dir=output_dir,
+        export_full_dataset_prediction_sidecar=export_full_dataset_prediction_sidecar,
     )
     stdout_payload = build_ml38_2_fv3_tuning_stdout_payload(
         payload,

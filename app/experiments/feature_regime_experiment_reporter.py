@@ -1969,6 +1969,8 @@ class FeatureRegimeExperimentReporter:
             "ml38_10_49_payload_capture_design_decision",
             "full_dataset_prediction_sidecar_export_implementation",
             "ml38_10_50_sidecar_export_implementation_decision",
+            "full_dataset_prediction_sidecar_wiring",
+            "ml38_10_54_sidecar_quick_quality_wiring_decision",
         )
         payload = {
             key: self._result_value(result, key)

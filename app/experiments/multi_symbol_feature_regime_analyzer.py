@@ -33,6 +33,10 @@ from app.experiments.prediction_sidecar_exporter import (
     build_ml38_10_50_sidecar_export_implementation_decision,
     build_sidecar_export_implementation_metadata,
 )
+from app.experiments.prediction_sidecar_wiring import (
+    build_ml38_10_54_sidecar_wiring_decision,
+    build_sidecar_wiring_metadata,
+)
 from app.diagnostics.test_only_evaluator_payload_reproduction import (
     build_read_only_test_only_evaluator_payload_reproduction_audit,
 )
@@ -492,6 +496,10 @@ class MultiSymbolFeatureRegimeAnalyzer:
         ml38_10_50_sidecar_export_implementation_decision = (
             build_ml38_10_50_sidecar_export_implementation_decision()
         )
+        full_dataset_prediction_sidecar_wiring = build_sidecar_wiring_metadata()
+        ml38_10_54_sidecar_quick_quality_wiring_decision = (
+            build_ml38_10_54_sidecar_wiring_decision()
+        )
         setup_aware_label_summary = self._setup_aware_label_summary(symbol_results)
         decision_policy_summary = {
             "candidates_with_decision_policy": sum(
@@ -818,6 +826,8 @@ class MultiSymbolFeatureRegimeAnalyzer:
             "ml38_10_49_payload_capture_design_decision": read_only_full_dataset_prediction_payload_capture_design_audit.get("ml38_10_49_payload_capture_design_decision", []),
             "full_dataset_prediction_sidecar_export_implementation": full_dataset_prediction_sidecar_export_implementation,
             "ml38_10_50_sidecar_export_implementation_decision": ml38_10_50_sidecar_export_implementation_decision,
+            "full_dataset_prediction_sidecar_wiring": full_dataset_prediction_sidecar_wiring,
+            "ml38_10_54_sidecar_quick_quality_wiring_decision": ml38_10_54_sidecar_quick_quality_wiring_decision,
             "setup_aware_label_summary": setup_aware_label_summary,
             "decision_policy_summary": decision_policy_summary,
             "gate_failure_counts": gate_failure_counts,

@@ -1083,6 +1083,8 @@ class Fv3CachedTuningWrapper:
 
         if self.tuning_command == DEFAULT_TUNING_COMMAND:
             command.append("--skip-candle-load")
+            if self.quick_quality:
+                command.append("--export-full-dataset-prediction-sidecar")
 
         for config_id in self.selected_config_ids:
             command.extend(["--base-label-config-id", config_id])

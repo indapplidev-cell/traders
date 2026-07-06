@@ -224,6 +224,12 @@ class MultiSymbolFeatureRegimeReporter:
             "ml38_10_50_sidecar_export_implementation_decision": payload.get(
                 "ml38_10_50_sidecar_export_implementation_decision"
             ),
+            "full_dataset_prediction_sidecar_wiring": payload.get(
+                "full_dataset_prediction_sidecar_wiring"
+            ),
+            "ml38_10_54_sidecar_quick_quality_wiring_decision": payload.get(
+                "ml38_10_54_sidecar_quick_quality_wiring_decision"
+            ),
             "label_mode_audit_summary": payload.get("label_mode_audit_summary"),
             "flat_subtype_summary": payload.get("flat_subtype_summary"),
             "setup_aware_label_summary": payload.get("setup_aware_label_summary"),
@@ -416,6 +422,19 @@ class MultiSymbolFeatureRegimeReporter:
                 "",
                 "## Gate Failures By Symbol",
                 "",
+            ]
+        )
+        sidecar_wiring = self._as_dict(payload.get("full_dataset_prediction_sidecar_wiring"))
+        lines.extend(
+            [
+                "",
+                "## ML38.10.54 Sidecar Quick-quality Wiring",
+                "",
+                f"- implementation_status: `{sidecar_wiring.get('implementation_status')}`",
+                f"- exporter_invocation_wired: `{sidecar_wiring.get('exporter_invocation_wired')}`",
+                f"- real_quick_quality_run_executed: `{sidecar_wiring.get('real_quick_quality_run_executed')}`",
+                f"- real_full_dataset_stream_created: `{sidecar_wiring.get('real_full_dataset_stream_created')}`",
+                f"- ml38_10_54_sidecar_quick_quality_wiring_decision: `{payload.get('ml38_10_54_sidecar_quick_quality_wiring_decision')}`",
             ]
         )
         test_only_audit = self._as_dict(

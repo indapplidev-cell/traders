@@ -166,6 +166,8 @@ KEEP_SUMMARY_KEYS = {
     "ml38_10_49_payload_capture_design_decision",
     "full_dataset_prediction_sidecar_export_implementation",
     "ml38_10_50_sidecar_export_implementation_decision",
+    "full_dataset_prediction_sidecar_wiring",
+    "ml38_10_54_sidecar_quick_quality_wiring_decision",
     "conditional_regime_rule_threshold_sensitivity_board",
     "conditional_regime_threshold_sensitivity_summary",
     "aggregate_conditional_regime_rule_threshold_sensitivity_board",
@@ -286,6 +288,8 @@ KEEP_FEATURE_SUMMARY_KEYS = {
     "ml38_10_49_payload_capture_design_decision",
     "full_dataset_prediction_sidecar_export_implementation",
     "ml38_10_50_sidecar_export_implementation_decision",
+    "full_dataset_prediction_sidecar_wiring",
+    "ml38_10_54_sidecar_quick_quality_wiring_decision",
 }
 
 # Scalar and bounded summaries required by the multi-symbol analyzer after the

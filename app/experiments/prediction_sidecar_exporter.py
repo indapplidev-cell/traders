@@ -182,6 +182,11 @@ def validate_prediction_sidecar_rows(
     expected_model_version: str | None = None,
     expected_feature_version: str | None = None,
     expected_label_version: str | None = None,
+    expected_candidate_id: str | None = None,
+    expected_run_id: str | None = None,
+    expected_symbol: str | None = None,
+    expected_interval: str | None = None,
+    expected_horizon_candles: int | None = None,
 ) -> dict[str, Any]:
     materialized = list(rows)
     normalized_rows = [normalize_prediction_sidecar_row(row) for row in materialized]
@@ -197,6 +202,8 @@ def validate_prediction_sidecar_rows(
         errors.append("FULL_DATASET_6481 requires expected_row_count=6481")
     if expected_row_count is not None and len(normalized_rows) != expected_row_count:
         errors.append(f"row_count {len(normalized_rows)} does not equal expected_row_count {expected_row_count}")
+    if not normalized_rows:
+        errors.append("prediction row stream is missing or empty")
 
     for index, (original, row) in enumerate(zip(materialized, normalized_rows)):
         current_errors = validate_prediction_sidecar_row(original)
@@ -227,6 +234,12 @@ def validate_prediction_sidecar_rows(
     split_counts.pop("", None)
     if sum(split_counts.values()) != len(normalized_rows):
         errors.append("split_counts do not sum to row_count")
+    if denominator_scope == FULL_DATASET_DENOMINATOR_SCOPE:
+        if set(split_counts) == {"test"}:
+            errors.append("test-only rows cannot satisfy FULL_DATASET_6481")
+        missing_splits = sorted(set(SPLIT_NAMES) - set(split_counts))
+        if missing_splits:
+            errors.append(f"FULL_DATASET_6481 requires train/val/test splits; missing: {missing_splits!r}")
     for split_name, split_count in split_counts.items():
         declared_totals = {
             row.get("split_total_rows")
@@ -245,9 +258,14 @@ def validate_prediction_sidecar_rows(
         "model_version": expected_model_version,
         "feature_version": expected_feature_version,
         "label_version": expected_label_version,
+        "candidate_id": expected_candidate_id,
+        "run_id": expected_run_id,
+        "symbol": expected_symbol,
+        "interval": expected_interval,
+        "horizon_candles": expected_horizon_candles,
     }
     consistency: dict[str, Any] = {}
-    for field in (*consistency_expected, "model_name", "candidate_id", "run_id"):
+    for field in (*consistency_expected, "model_name"):
         expected = consistency_expected.get(field)
         observed = sorted({str(row.get(field)) for row in normalized_rows if _is_present(row.get(field))})
         mixed = len(observed) > 1
@@ -259,6 +277,17 @@ def validate_prediction_sidecar_rows(
             else:
                 errors.append(f"{field} mismatch: expected {expected!r}, observed {observed!r}")
 
+    row_identities = [
+        ("dataset_row_index", row.get("dataset_row_index"))
+        if _is_present(row.get("dataset_row_index"))
+        else ("row_id", row.get("row_id"))
+        for row in normalized_rows
+    ]
+    identity_counts = Counter(row_identities)
+    duplicate_row_identity_count = sum(count - 1 for count in identity_counts.values() if count > 1)
+    if duplicate_row_identity_count:
+        errors.append(f"duplicate dataset row identities: {duplicate_row_identity_count}")
+
     forbidden_errors = [error for error in errors if "forbidden prediction source" in error or "substitution" in error]
     return {
         "status": "PREDICTION_SIDECAR_INVALID" if errors else "PREDICTION_SIDECAR_VALID",
@@ -267,6 +296,7 @@ def validate_prediction_sidecar_rows(
         "denominator_scope": denominator_scope,
         "unique_join_key_count": len(join_key_counts),
         "duplicate_join_key_count": duplicate_join_key_count,
+        "duplicate_row_identity_count": duplicate_row_identity_count,
         "split_counts": dict(sorted(split_counts.items())),
         "predicted_label_distribution": dict(sorted(label_distribution.items())),
         "probability_validation": {
@@ -389,6 +419,7 @@ def write_prediction_sidecar_artifacts(
     expected_row_count: int | None,
     denominator_scope: str,
     dry_run: bool = False,
+    allow_overwrite: bool = False,
 ) -> dict[str, Any]:
     materialized = list(rows)
     normalized_rows = [normalize_prediction_sidecar_row(row) for row in materialized]
@@ -400,6 +431,11 @@ def write_prediction_sidecar_artifacts(
         expected_model_version=metadata.get("model_version"),
         expected_feature_version=metadata.get("feature_version"),
         expected_label_version=metadata.get("label_version"),
+        expected_candidate_id=metadata.get("candidate_id"),
+        expected_run_id=metadata.get("run_id"),
+        expected_symbol=metadata.get("symbol"),
+        expected_interval=metadata.get("interval"),
+        expected_horizon_candles=metadata.get("horizon_candles"),
     )
     if validation["status"] != "PREDICTION_SIDECAR_VALID":
         raise ValueError("prediction sidecar validation failed: " + "; ".join(validation["errors"][:5]))
@@ -412,6 +448,12 @@ def write_prediction_sidecar_artifacts(
         "summary_path": payload_dir / "full_dataset_prediction_stream_summary.json",
         "schema_path": payload_dir / "prediction_payload_schema.json",
     }
+    existing = [path for path in paths.values() if path.exists()]
+    if existing and not allow_overwrite:
+        raise FileExistsError(
+            "prediction sidecar overwrite is disabled; existing targets: "
+            + ", ".join(str(path) for path in existing)
+        )
     if not dry_run:
         payload_dir.mkdir(parents=True, exist_ok=True)
         paths["stream_path"].write_text(_canonical_jsonl(normalized_rows), encoding="utf-8")

@@ -76,6 +76,9 @@ class TrainingPipelineConfig:
     run_gate_policy_replay: bool = True
     export_report: bool = True
     output_dir: Path = Path("reports/training_pipeline_runs")
+    export_full_dataset_prediction_sidecar: bool = False
+    prediction_sidecar_candidate_id: str | None = None
+    prediction_sidecar_expected_row_count: int = 6481
     skip_candle_load: bool = False
     training_objective: str = "direction_global"
     baseline_edge_objective_enabled: bool = False
@@ -1577,6 +1580,13 @@ class LongHistoryTrainingPipelineRunner:
                 entry_path_quality_min_threshold=config.entry_path_quality_min_threshold,
                 stop_pressure_max_risk_score=config.stop_pressure_max_risk_score,
                 mae_pressure_max_risk_score=config.mae_pressure_max_risk_score,
+                export_full_dataset_prediction_sidecar=config.export_full_dataset_prediction_sidecar,
+                prediction_sidecar_output_dir=str(
+                    Path(config.output_dir) / config.resolved_run_id()
+                ),
+                prediction_sidecar_config_id=config.prediction_sidecar_candidate_id,
+                prediction_sidecar_candidate_id=config.prediction_sidecar_candidate_id,
+                prediction_sidecar_expected_row_count=config.prediction_sidecar_expected_row_count,
             )
         test_metrics = dict(result.get("test_metrics", {}))
         return {

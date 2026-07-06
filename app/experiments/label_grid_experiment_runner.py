@@ -14,6 +14,7 @@ from app.evaluation.anti_collapse_validator import AntiCollapseValidator
 from app.evaluation.model_quality_validator import validate_model_quality
 from app.experiments.label_grid_candidate_ranker import LabelGridCandidateRanker
 from app.experiments.label_grid_experiment_reporter import LabelGridExperimentReporter
+from app.experiments.prediction_sidecar_wiring import build_sidecar_wiring_metadata
 from app.features.feature_models import feature_names_for_version
 from app.labels.label_quality_grid import LabelQualityGridConfig, LabelQualityGridPlanner
 from app.training.training_pipeline_runner import (
@@ -44,6 +45,8 @@ class LabelGridExperimentConfig:
     run_gate_policy_replay: bool = True
     output_dir: Path = Path("reports/label_grid_experiments")
     skip_candle_load: bool = False
+    export_full_dataset_prediction_sidecar: bool = False
+    prediction_sidecar_expected_row_count: int = 6481
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -195,6 +198,9 @@ class LabelGridExperimentCandidateResult:
     orders_enabled: bool = False
     traders_core_connected: bool = False
     model_quality_validation_status: str | None = None
+    full_dataset_prediction_sidecar_wiring: dict[str, Any] = field(
+        default_factory=build_sidecar_wiring_metadata
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -332,6 +338,9 @@ class LabelGridExperimentCandidateResult:
             "orders_enabled": self.orders_enabled,
             "traders_core_connected": self.traders_core_connected,
             "model_quality_validation_status": self.model_quality_validation_status,
+            "full_dataset_prediction_sidecar_wiring": dict(
+                self.full_dataset_prediction_sidecar_wiring
+            ),
         }
 
 
@@ -1020,6 +1029,9 @@ class LabelGridExperimentRunner:
                 export_report=True,
                 output_dir=candidate_runtime_dir,
                 skip_candle_load=config.skip_candle_load,
+                export_full_dataset_prediction_sidecar=config.export_full_dataset_prediction_sidecar,
+                prediction_sidecar_candidate_id=label_config.config_id,
+                prediction_sidecar_expected_row_count=config.prediction_sidecar_expected_row_count,
                 training_objective=label_config.training_objective,
                 baseline_edge_objective_enabled=label_config.baseline_edge_objective_enabled,
                 baseline_edge_focal_gamma=(

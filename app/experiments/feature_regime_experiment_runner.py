@@ -30,6 +30,7 @@ from app.labels.label_builder import LabelBuilder
 from app.labels.label_config import LabelConfig
 from app.labels.regime_label_builder import RegimeLabelBuilder
 from app.experiments.feature_regime_experiment_reporter import FeatureRegimeExperimentReporter
+from app.experiments.prediction_sidecar_wiring import build_sidecar_wiring_metadata
 from app.experiments.label_grid_experiment_runner import (
     LabelGridExperimentConfig,
     LabelGridExperimentRunner,
@@ -76,6 +77,8 @@ class FeatureRegimeExperimentConfig:
     ranking_strategy: str = "default"
     output_dir: Path = Path("reports/feature_regime_experiments")
     skip_candle_load: bool = False
+    export_full_dataset_prediction_sidecar: bool = False
+    prediction_sidecar_expected_row_count: int = 6481
 
     def resolved_end_date(self) -> str:
         if self.end_date is not None:
@@ -101,6 +104,9 @@ class FeatureRegimeCandidateResult:
     score: float | None
     symbol: str | None = None
     interval: str | None = None
+    full_dataset_prediction_sidecar_wiring: dict[str, Any] = field(
+        default_factory=build_sidecar_wiring_metadata
+    )
     failed_gates: tuple[str, ...] = ()
     passed_gates: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
@@ -260,6 +266,9 @@ class FeatureRegimeCandidateResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "full_dataset_prediction_sidecar_wiring": dict(
+                self.full_dataset_prediction_sidecar_wiring
+            ),
             "symbol": self.symbol,
             "interval": self.interval,
             "candidate_id": self.candidate_id,
@@ -1859,6 +1868,8 @@ class FeatureRegimeExperimentRunner:
                 run_gate_policy_replay=True,
                 output_dir=runtime_dir,
                 skip_candle_load=config.skip_candle_load,
+                export_full_dataset_prediction_sidecar=config.export_full_dataset_prediction_sidecar,
+                prediction_sidecar_expected_row_count=config.prediction_sidecar_expected_row_count,
             )
         )
         ranking_map = {

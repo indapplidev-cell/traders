@@ -28,6 +28,7 @@ from app.training.loss import MultiTaskLoss
 from app.training.loss import baseline_edge_aware_direction_loss
 from app.training.probability_calibration import DEFAULT_TEMPERATURE_GRID
 from app.training.probability_calibration import fit_direction_temperature_for_model
+from app.training.probability_calibration import softmax_with_temperature
 from app.training.model_version_builder import build_unique_model_version
 from app.training.two_stage_thresholds import DEFAULT_OPPORTUNITY_THRESHOLD_CANDIDATES
 from app.training.training_objectives import TRAINING_OBJECTIVE_TRADE_TWO_STAGE
@@ -244,6 +245,11 @@ class TrainingService:
         entry_path_quality_min_threshold: float | None = None,
         stop_pressure_max_risk_score: float | None = None,
         mae_pressure_max_risk_score: float | None = None,
+        export_full_dataset_prediction_sidecar: bool = False,
+        prediction_sidecar_output_dir: str | None = None,
+        prediction_sidecar_config_id: str | None = None,
+        prediction_sidecar_candidate_id: str | None = None,
+        prediction_sidecar_expected_row_count: int = 6481,
     ) -> dict[str, Any]:
         model_version = self._build_model_version(
             model_name=model_name,
@@ -751,6 +757,68 @@ class TrainingService:
                     "feature_separability_rating": config.class_margin_feature_separability_rating,
                 },
             }
+            prediction_sidecar_export = None
+            if export_full_dataset_prediction_sidecar:
+                from app.experiments.prediction_sidecar_wiring import (
+                    build_full_dataset_prediction_sidecar_rows,
+                    write_full_dataset_prediction_sidecar_for_candidate,
+                )
+
+                if not prediction_sidecar_output_dir:
+                    raise ValueError("prediction_sidecar_output_dir is required when sidecar export is enabled")
+                if not prediction_sidecar_config_id or not prediction_sidecar_candidate_id:
+                    raise ValueError("sidecar config_id and candidate_id are required when export is enabled")
+                sidecar_datasets = {
+                    "train": train_dataset,
+                    "validation": validation_dataset,
+                    "test": test_dataset,
+                }
+                split_probabilities: dict[str, list[list[float]]] = {}
+                model.eval()
+                with torch.no_grad():
+                    for split_name, split_dataset in sidecar_datasets.items():
+                        features = split_dataset["features"]
+                        if int(features.shape[0]) == 0:
+                            split_probabilities[split_name] = []
+                            continue
+                        raw_outputs = model(features)
+                        direction_logits = (
+                            raw_outputs["direction_logits"]
+                            if isinstance(raw_outputs, dict)
+                            else raw_outputs
+                        )
+                        split_probabilities[split_name] = softmax_with_temperature(
+                            direction_logits,
+                            temperature=direction_temperature,
+                        ).cpu().tolist()
+                sidecar_rows = build_full_dataset_prediction_sidecar_rows(
+                    split_rows=split_rows,
+                    split_probabilities=split_probabilities,
+                    symbol=symbol,
+                    interval=interval,
+                    feature_version=feature_version,
+                    label_version=label_version,
+                    horizon_candles=horizon_candles,
+                    config_id=prediction_sidecar_config_id,
+                    model_name=model_name,
+                    model_version=model_version,
+                    run_id=run_id,
+                    candidate_id=prediction_sidecar_candidate_id,
+                )
+                prediction_sidecar_export = write_full_dataset_prediction_sidecar_for_candidate(
+                    prediction_sidecar_output_dir,
+                    sidecar_rows,
+                    expected_row_count=prediction_sidecar_expected_row_count,
+                    config_id=prediction_sidecar_config_id,
+                    candidate_id=prediction_sidecar_candidate_id,
+                    run_id=run_id,
+                    model_version=model_version,
+                    feature_version=feature_version,
+                    label_version=label_version,
+                    horizon_candles=horizon_candles,
+                    symbol=symbol,
+                    interval=interval,
+                )
             artifact_path = self._artifact_storage.save(
                 model_version=model_version,
                 model=model,
@@ -853,6 +921,7 @@ class TrainingService:
                 "opportunity_diagnostics": opportunity_diagnostics,
                 "class_margin_objective_decision": combined_metrics["class_margin_objective_decision"],
                 "model_output_contract": self.model_output_contract(config.training_objective),
+                "full_dataset_prediction_sidecar_export": prediction_sidecar_export,
             }
         except Exception as exc:
             finished_at = datetime.now(tz=timezone.utc)
