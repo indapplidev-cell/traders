@@ -1,10 +1,48 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from app.diagnostics.directional_side_ablation_comparator import (
     DirectionalSideAblationComparator,
 )
+
+
+def _normalize_walk_forward_warning_sample(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        for key in ("sample", "warning", "reason", "message", "type", "status", "code"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate
+        try:
+            return json.dumps(
+                value,
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                default=str,
+            )
+        except (TypeError, ValueError):
+            return repr(value)
+    if isinstance(value, set):
+        normalized_items = sorted(
+            _normalize_walk_forward_warning_sample(item) for item in value
+        )
+        return json.dumps(normalized_items, ensure_ascii=False, separators=(",", ":"))
+    if isinstance(value, (list, tuple)):
+        try:
+            return json.dumps(
+                value,
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                default=str,
+            )
+        except (TypeError, ValueError):
+            return repr(value)
+    return str(value)
 
 
 class DirectionalSideWalkForwardStabilityAnalyzer:
@@ -207,6 +245,13 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
             zero_signal_fold_count=zero_signal_fold_count,
             profitable_fold_rate=profitable_fold_rate,
         )
+        normalized_warnings = [
+            _normalize_walk_forward_warning_sample(item)
+            for item in (
+                self._as_list(wf_diag.get("walk_forward_stability_warnings"))
+                + verdict_payload["warnings"]
+            )
+        ]
         return {
             **comparator_row,
             "fold_count": fold_count,
@@ -295,12 +340,7 @@ class DirectionalSideWalkForwardStabilityAnalyzer:
             or verdict_payload["status"],
             "walk_forward_stability_verdict": wf_diag.get("walk_forward_stability_verdict")
             or verdict_payload["verdict"],
-            "walk_forward_stability_warnings": list(
-                dict.fromkeys(
-                    self._as_list(wf_diag.get("walk_forward_stability_warnings"))
-                    + verdict_payload["warnings"]
-                )
-            ),
+            "walk_forward_stability_warnings": list(dict.fromkeys(normalized_warnings)),
         }
 
     @staticmethod
