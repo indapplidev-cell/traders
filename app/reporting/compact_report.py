@@ -9,6 +9,10 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
+from app.experiments.compact_archive_pruner import (
+    is_prediction_sidecar_stream_omitted_from_compact_archive,
+)
+
 
 COMPACT_REPORT_PROFILE = "compact"
 STANDARD_REPORT_PROFILE = "standard"
@@ -647,6 +651,11 @@ def report_file_exclusion_reason(
         return "model_artifact"
 
     if normalized_profile == COMPACT_REPORT_PROFILE:
+        if is_prediction_sidecar_stream_omitted_from_compact_archive(
+            path,
+            archive_root=archive_root,
+        ):
+            return "compact_archive_manifest_only_large_sidecar_stream"
         if _is_strict_compact_pruned_path(relative_path):
             return STRICT_COMPACT_EXCLUSION_REASON
 

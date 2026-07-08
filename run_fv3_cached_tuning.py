@@ -136,7 +136,10 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from app.experiments.compact_archive_pruner import compact_staged_symbol_output
+from app.experiments.compact_archive_pruner import (
+    CompactArchivePrunerError,
+    compact_staged_symbol_output,
+)
 from app.reporting.compact_report import (
     COMPACT_REPORT_PROFILE,
     DEBUG_REPORT_PROFILE,
@@ -1429,7 +1432,16 @@ class Fv3CachedTuningWrapper:
         self._validate_staged_symbol_output(run, directory)
 
         before_hardening_mb = float(summary.get("after_size_mb") or 0.0)
-        extra_compact_result = compact_staged_symbol_output(directory)
+        try:
+            extra_compact_result = compact_staged_symbol_output(
+                directory,
+                max_archive_stage_bytes=int(
+                    COMPACT_PER_SYMBOL_STAGE_MAX_SIZE_MB * 1024 * 1024
+                ),
+                archive_root=self.archive_stage_dir,
+            )
+        except CompactArchivePrunerError as exc:
+            raise WrapperError(str(exc)) from exc
         self._status(
             "ARCHIVE",
             (
@@ -1440,7 +1452,16 @@ class Fv3CachedTuningWrapper:
                 f"saved_mb={extra_compact_result.saved_size_bytes / 1024 / 1024:.2f}"
             ),
         )
-        staged_files = [item for item in directory.rglob("*") if item.is_file()]
+        staged_files = [
+            item
+            for item in directory.rglob("*")
+            if item.is_file()
+            and should_include_report_file(
+                item,
+                archive_root=self.archive_stage_dir,
+                report_profile=self.report_profile,
+            )
+        ]
         after_size_bytes = sum(item.stat().st_size for item in staged_files)
         after_mb = after_size_bytes / (1024 * 1024)
         largest = sorted(
@@ -1455,7 +1476,8 @@ class Fv3CachedTuningWrapper:
             key=lambda item: (-int(item["size_bytes"]), str(item["path"])),
         )[:20]
         compact_archive_pruning = {
-            "schema_version": "ml38.10.36.1",
+            "schema_version": "ml38.10.72",
+            "sidecar_manifest_only_policy_version": "ml38.10.72",
             "training_pipeline_reports_seen": (
                 extra_compact_result.training_pipeline_reports_seen
             ),
@@ -1466,7 +1488,12 @@ class Fv3CachedTuningWrapper:
             "feature_summaries_compacted": (
                 extra_compact_result.feature_summaries_compacted
             ),
+            "sidecar_streams_seen": extra_compact_result.sidecar_streams_seen,
+            "sidecar_streams_manifest_only": (
+                extra_compact_result.sidecar_streams_manifest_only
+            ),
             "saved_size_bytes": extra_compact_result.saved_size_bytes,
+            "final_archive_size_bytes": extra_compact_result.final_archive_size_bytes,
         }
         summary["compact_archive_pruning"] = compact_archive_pruning
         summary["before_hardening_size_mb"] = round(before_hardening_mb, 6)
