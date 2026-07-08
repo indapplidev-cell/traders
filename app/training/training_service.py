@@ -774,12 +774,14 @@ class TrainingService:
                     "test": test_dataset,
                 }
                 split_probabilities: dict[str, list[list[float]]] = {}
+                split_direction_logits: dict[str, list[list[float]]] = {}
                 model.eval()
                 with torch.no_grad():
                     for split_name, split_dataset in sidecar_datasets.items():
                         features = split_dataset["features"]
                         if int(features.shape[0]) == 0:
                             split_probabilities[split_name] = []
+                            split_direction_logits[split_name] = []
                             continue
                         raw_outputs = model(features)
                         direction_logits = (
@@ -791,9 +793,11 @@ class TrainingService:
                             direction_logits,
                             temperature=direction_temperature,
                         ).cpu().tolist()
+                        split_direction_logits[split_name] = direction_logits.cpu().tolist()
                 sidecar_rows = build_full_dataset_prediction_sidecar_rows(
                     split_rows=split_rows,
                     split_probabilities=split_probabilities,
+                    split_direction_logits=split_direction_logits,
                     symbol=symbol,
                     interval=interval,
                     feature_version=feature_version,

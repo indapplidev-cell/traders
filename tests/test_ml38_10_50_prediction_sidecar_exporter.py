@@ -10,6 +10,7 @@ from app.experiments.compact_archive_pruner import (
 from app.experiments.feature_regime_experiment_reporter import FeatureRegimeExperimentReporter
 from app.experiments.multi_symbol_feature_regime_reporter import MultiSymbolFeatureRegimeReporter
 from app.experiments.prediction_sidecar_exporter import (
+    build_prediction_row_alignment_key,
     build_ml38_10_50_sidecar_export_implementation_decision,
     build_sidecar_export_implementation_metadata,
     validate_prediction_sidecar_row,
@@ -31,27 +32,69 @@ def _row(index: int, *, total: int = 6481) -> dict:
     split_start = 0 if split_name == "train" else train_end if split_name == "val" else val_end
     split_total = train_end if split_name == "train" else val_end - train_end if split_name == "val" else total - val_end
     label = ("UP", "DOWN", "FLAT")[index % 3]
+    probabilities = {
+        "DOWN": 0.7 if label == "DOWN" else 0.15,
+        "FLAT": 0.7 if label == "FLAT" else 0.15,
+        "UP": 0.7 if label == "UP" else 0.15,
+    }
     return {
+        "sidecar_schema_version": "ml38.10.69",
+        "sidecar_writer_version": "ml38.10.69",
+        "prediction_field_contract_version": "ml38.10.69",
         "symbol": "SYNTHUSDT",
         "interval": "5m",
         "candle_open_time": f"2026-01-{1 + index // 1440:02d}T{index % 1440 // 60:02d}:{index % 60:02d}:00Z",
+        "timestamp": f"2026-01-{1 + index // 1440:02d}T{index % 1440 // 60:02d}:{index % 60:02d}:00Z",
         "dataset_row_index": index,
+        "row_index_global": index,
         "split_name": split_name,
+        "split": split_name,
         "split_row_index": index - split_start,
+        "row_index_split": index - split_start,
         "split_total_rows": split_total,
         "feature_version": FEATURE_VERSION,
         "label_version": LABEL_VERSION,
         "horizon_candles": 12,
+        "horizon": 12,
         "config_id": CONFIG_ID,
         "model_name": "synthetic_classifier",
         "model_version": MODEL_VERSION,
         "candidate_id": "synthetic_candidate",
+        "row_alignment_key": build_prediction_row_alignment_key(
+            candidate_id="synthetic_candidate", symbol="SYNTHUSDT", interval="5m",
+            horizon=12, split=split_name, row_index_global=index,
+            row_index_split=index - split_start,
+            timestamp=f"2026-01-{1 + index // 1440:02d}T{index % 1440 // 60:02d}:{index % 60:02d}:00Z",
+        ),
+        "actual_label": label,
         "predicted_label": label,
+        "current_predicted_label": label,
+        "sidecar_argmax_label": label,
+        "sidecar_argmax_layer": "calibrated_model_softmax",
+        "predicted_label_semantics": "backward-compatible alias of sidecar calibrated argmax",
+        "prediction_layer_name": "sidecar_selected",
+        "prediction_layer_source": "synthetic_model_inference",
         "prediction_source_stage": "synthetic_model_inference",
         "prob_up": 0.7 if label == "UP" else 0.15,
         "prob_down": 0.7 if label == "DOWN" else 0.15,
         "prob_flat": 0.7 if label == "FLAT" else 0.15,
         "confidence": 0.7,
+        "raw_prob_up": probabilities["UP"],
+        "raw_prob_down": probabilities["DOWN"],
+        "raw_prob_flat": probabilities["FLAT"],
+        "raw_probabilities": probabilities,
+        "calibrated_prob_up": probabilities["UP"],
+        "calibrated_prob_down": probabilities["DOWN"],
+        "calibrated_prob_flat": probabilities["FLAT"],
+        "calibrated_probabilities": probabilities,
+        "prediction_layers": {
+            "raw_model_softmax_temperature_1": {"probabilities": probabilities, "argmax_label": label},
+            "calibrated_model_softmax": {"probabilities": probabilities, "argmax_label": label},
+            "sidecar_selected": {"label": label, "source": "synthetic_model_inference"},
+        },
+        "downstream_policy_output_available_in_writer": False,
+        "downstream_policy_output_reason": "not available at sidecar writer stage",
+        "downstream_policy_output_must_not_be_conflated_with_sidecar_argmax": True,
     }
 
 

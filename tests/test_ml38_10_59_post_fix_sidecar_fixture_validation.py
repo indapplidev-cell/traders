@@ -41,10 +41,10 @@ def test_lf_only_exact_byte_integrity_and_summary_fields(tmp_path: Path) -> None
         "hash_contract": "EXACT_BYTES_AFTER_WRITE",
         "line_ending_contract": "LF",
         "byte_size_contract": "EXACT_BYTES_AFTER_WRITE",
-        "writer_contract_version": "ml38.10.58",
+        "writer_contract_version": "ml38.10.69",
         "fields_valid": True,
     }
-    assert diagnostic["schema_contract_validation"]["schema_version"] == "ml38.10.58"
+    assert diagnostic["schema_contract_validation"]["schema_version"] == "ml38.10.69"
 
 
 def test_runtime_archive_and_completion_truth(tmp_path: Path) -> None:

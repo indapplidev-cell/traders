@@ -12,6 +12,7 @@ from app.diagnostics.real_quick_quality_sidecar_validation_audit import (
     validate_sidecar_summary_contract,
 )
 from app.experiments.prediction_sidecar_exporter import (
+    build_prediction_row_alignment_key,
     build_archive_status_metadata,
     build_timeout_exit_code_metadata,
     validate_prediction_sidecar_file_contract,
@@ -21,15 +22,41 @@ from app.experiments.prediction_sidecar_exporter import (
 
 def _row(index: int, total: int = 3) -> dict:
     splits = ("train", "val", "test")
+    probabilities = {"DOWN": 0.1, "FLAT": 0.1, "UP": 0.8}
     return {
+        "sidecar_schema_version": "ml38.10.69", "sidecar_writer_version": "ml38.10.69",
+        "prediction_field_contract_version": "ml38.10.69",
         "symbol": "SYNTHUSDT", "interval": "15m", "candle_open_time": f"2026-01-01T00:{index:02d}:00+00:00",
+        "timestamp": f"2026-01-01T00:{index:02d}:00+00:00",
         "dataset_row_index": index, "split_name": splits[index], "split_row_index": 0,
+        "row_index_global": index, "split": splits[index], "row_index_split": 0,
         "split_total_rows": 1, "feature_version": "fv-test", "label_version": "lv-test",
-        "horizon_candles": 12, "config_id": "cfg-test", "model_name": "synthetic",
+        "horizon_candles": 12, "horizon": 12, "config_id": "cfg-test", "model_name": "synthetic",
         "model_version": "model-test", "run_id": "run-test", "candidate_id": "candidate-test",
+        "row_alignment_key": build_prediction_row_alignment_key(
+            candidate_id="candidate-test", symbol="SYNTHUSDT", interval="15m",
+            horizon=12, split=splits[index], row_index_global=index, row_index_split=0,
+            timestamp=f"2026-01-01T00:{index:02d}:00+00:00",
+        ), "actual_label": "DOWN",
         "predicted_label": "UP", "prediction_source_stage": "synthetic_model_probability_argmax",
+        "current_predicted_label": "UP", "sidecar_argmax_label": "UP",
+        "sidecar_argmax_layer": "calibrated_model_softmax",
+        "predicted_label_semantics": "backward-compatible alias of sidecar calibrated argmax",
+        "prediction_layer_name": "sidecar_selected", "prediction_layer_source": "synthetic_model_probability_argmax",
         "predicted_label_source": "model_probability_argmax", "prob_up": 0.8,
         "prob_down": 0.1, "prob_flat": 0.1, "confidence": 0.8,
+        "raw_prob_up": 0.8, "raw_prob_down": 0.1, "raw_prob_flat": 0.1,
+        "raw_probabilities": probabilities,
+        "calibrated_prob_up": 0.8, "calibrated_prob_down": 0.1, "calibrated_prob_flat": 0.1,
+        "calibrated_probabilities": probabilities,
+        "prediction_layers": {
+            "raw_model_softmax_temperature_1": {"probabilities": probabilities, "argmax_label": "UP"},
+            "calibrated_model_softmax": {"probabilities": probabilities, "argmax_label": "UP"},
+            "sidecar_selected": {"label": "UP", "source": "synthetic_model_probability_argmax"},
+        },
+        "downstream_policy_output_available_in_writer": False,
+        "downstream_policy_output_reason": "not available at sidecar writer stage",
+        "downstream_policy_output_must_not_be_conflated_with_sidecar_argmax": True,
     }
 
 
@@ -52,8 +79,8 @@ def test_future_writer_uses_lf_exact_bytes_and_summary_contract(tmp_path: Path) 
     assert summary["hash_contract"] == "EXACT_BYTES_AFTER_WRITE"
     assert summary["line_ending_contract"] == "LF"
     assert summary["byte_size_contract"] == "EXACT_BYTES_AFTER_WRITE"
-    assert summary["writer_contract_version"] == "ml38.10.58"
-    assert result["schema"]["schema_version"] == "ml38.10.58"
+    assert summary["writer_contract_version"] == "ml38.10.69"
+    assert result["schema"]["schema_version"] == "ml38.10.69"
     assert result["schema"]["summary_contract"]["hash_contract"] == "EXACT_BYTES_AFTER_WRITE"
 
 

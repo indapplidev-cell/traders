@@ -89,6 +89,7 @@ def create_tmp_sidecar_fixture(output_dir: str | Path) -> dict[str, Any]:
         },
         expected_row_count=len(rows),
         denominator_scope="SYNTHETIC_FIXTURE_ROWS_3",
+        require_field_contract=False,
     )
 
 

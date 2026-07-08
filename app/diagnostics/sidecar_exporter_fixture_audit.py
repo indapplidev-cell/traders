@@ -334,6 +334,7 @@ def build_read_only_sidecar_exporter_fixture_audit(
         },
         expected_row_count=len(rows),
         denominator_scope=DENOMINATOR_SCOPE,
+        require_field_contract=False,
     )
     artifact_board = build_fixture_sidecar_artifact_board(export["paths"])
     validator_board = build_fixture_validator_result_board(rows)

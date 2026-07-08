@@ -147,22 +147,72 @@ def _row_construction_probe() -> dict[str, Any]:
     wiring = _source("app/experiments/prediction_sidecar_wiring.py")
     exporter = _source("app/experiments/prediction_sidecar_exporter.py")
     required_fields = set(prediction_sidecar_exporter.REQUIRED_FIELDS)
+    field_contract_required_fields = set(
+        prediction_sidecar_exporter.FIELD_CONTRACT_REQUIRED_FIELDS
+    )
+    prediction_labels_use_argmax = _has_all(
+        wiring,
+        "sidecar_argmax_label = PREDICTION_LABELS[predicted_index]",
+        '"predicted_label": sidecar_argmax_label',
+        '"current_predicted_label": sidecar_argmax_label',
+        '"sidecar_argmax_label": sidecar_argmax_label',
+        '"sidecar_selected": {',
+        '"label": sidecar_argmax_label',
+    )
+    actual_label_exported = _has_all(
+        wiring,
+        'actual_label = str(actual_label_value or "").strip().upper()',
+        '"actual_label": actual_label',
+        '"actual_label_source": "source_row.direction_label"',
+    )
+    actual_label_used_for_prediction = not prediction_labels_use_argmax
+    actual_label_export_allowed = (
+        "actual_label" in field_contract_required_fields
+        and prediction_sidecar_exporter.PREDICTION_FIELD_CONTRACT_VERSION
+        == "ml38.10.69"
+    )
+    actual_label_export_only = (
+        actual_label_exported
+        and actual_label_export_allowed
+        and not actual_label_used_for_prediction
+    )
     checks = {
         "uses_model_probabilities": _has_all(wiring, "split_probabilities", "probability_value", "prob_up, prob_down, prob_flat"),
-        "predicted_label_from_probability_argmax": _has_all(wiring, "predicted_index = max(range(3)", '"predicted_label_source": "model_probability_argmax"'),
-        "actual_label_target_only": "actual_label" not in wiring,
+        "predicted_label_from_probability_argmax": _has_all(wiring, "predicted_index = max(range(3)", '"predicted_label_source": "model_probability_argmax"') and prediction_labels_use_argmax,
+        "actual_label_target_only": actual_label_export_only,
+        "actual_label_export_allowed_by_field_contract": actual_label_export_allowed,
+        "actual_label_export_only_no_label_substitution": actual_label_export_only,
+        "actual_label_used_for_prediction": actual_label_used_for_prediction,
+        "label_substitution_detected": actual_label_used_for_prediction,
+        "sidecar_contract_version_supports_actual_label_export": actual_label_export_allowed,
+        "legacy_probe_semantics_updated_for_ml38_10_69": True,
         "split_name_required": "split_name" in required_fields,
         "candle_open_time_required": "candle_open_time" in required_fields,
         "train_val_test_supported": '(("train", "train"), ("validation", "val"), ("val", "val"), ("test", "test"))' in wiring,
         "required_fields_present": all(field in wiring or field in exporter for field in required_fields),
         "forbidden_label_source_checks_present": _has_all(exporter, "FORBIDDEN_PREDICTION_SOURCES", '"ml_labels.direction_label"', '"actual_label"', '"target_label"', '"direction_label"'),
     }
-    confirmed = all(checks.values())
+    negative_checks = {
+        "actual_label_used_for_prediction",
+        "label_substitution_detected",
+    }
+    confirmed = (
+        all(value for name, value in checks.items() if name not in negative_checks)
+        and not checks["actual_label_used_for_prediction"]
+        and not checks["label_substitution_detected"]
+    )
+    blockers = [
+        name
+        for name, value in checks.items()
+        if (name in negative_checks and value)
+        or (name not in negative_checks and not value)
+    ]
     return {
         **checks,
+        "prediction_label_source": "probability_argmax" if prediction_labels_use_argmax else "unconfirmed",
         "row_contract_status": "ROW_CONSTRUCTION_CONTRACT_CONFIRMED" if confirmed else "ROW_CONSTRUCTION_CONTRACT_PARTIAL",
-        "evidence": "Rows zip original split rows to model probability triplets; predicted_label is PREDICTION_LABELS[argmax(probabilities)].",
-        "blockers": [] if confirmed else [name for name, value in checks.items() if not value],
+        "evidence": "actual_label is exported as the required outcome target; predicted_label, current_predicted_label, sidecar_argmax_label, and sidecar_selected.label all use PREDICTION_LABELS[argmax(calibrated probabilities)].",
+        "blockers": [] if confirmed else blockers,
     }
 
 

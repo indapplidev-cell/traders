@@ -53,6 +53,11 @@ def _rows() -> list[dict]:
             "validation": [[0.1, 0.1, 0.8]],
             "test": [[0.7, 0.2, 0.1]],
         },
+        split_direction_logits={
+            "train": [[2.0, 0.0, -1.0], [0.0, 2.0, -1.0]],
+            "validation": [[0.0, -1.0, 2.0]],
+            "test": [[2.0, 0.0, -1.0]],
+        },
         model_name="synthetic_classifier",
         **IDENTITY,
     )
@@ -221,6 +226,7 @@ def test_builder_rejects_missing_model_probabilities_instead_of_using_labels() -
         build_full_dataset_prediction_sidecar_rows(
             split_rows={"train": [_source_row(0)], "validation": [], "test": []},
             split_probabilities={"train": [], "validation": [], "test": []},
+            split_direction_logits={"train": [[1.0, 0.0, -1.0]], "validation": [], "test": []},
             model_name="synthetic_classifier",
             **IDENTITY,
         )

@@ -150,12 +150,13 @@ def validate_sidecar_summary_contract(
     distribution_sum = sum(distribution.values()) if isinstance(distribution, dict) and all(isinstance(v, int) for v in distribution.values()) else None
     sha = summary.get("stream_sha256") or summary.get("sha256")
     schema_version = summary.get("schema_version")
+    exact_byte_version = schema_version in {"ml38.10.58", "ml38.10.69"}
     schema_version_valid = schema_version == "ml38.10.50" or (
-        schema_version == "ml38.10.58"
+        exact_byte_version
         and summary.get("hash_contract") == "EXACT_BYTES_AFTER_WRITE"
         and summary.get("line_ending_contract") == "LF"
         and summary.get("byte_size_contract") == "EXACT_BYTES_AFTER_WRITE"
-        and summary.get("writer_contract_version") == "ml38.10.58"
+        and summary.get("writer_contract_version") == schema_version
     )
     checks = {
         "validation_status_valid": summary.get("validation_status") == "PREDICTION_SIDECAR_VALID",

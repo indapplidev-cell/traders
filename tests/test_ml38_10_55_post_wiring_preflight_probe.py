@@ -52,6 +52,13 @@ def test_row_construction_uses_probability_argmax_without_label_substitution() -
     assert probe["uses_model_probabilities"] is True
     assert probe["predicted_label_from_probability_argmax"] is True
     assert probe["actual_label_target_only"] is True
+    assert probe["actual_label_export_allowed_by_field_contract"] is True
+    assert probe["actual_label_export_only_no_label_substitution"] is True
+    assert probe["prediction_label_source"] == "probability_argmax"
+    assert probe["actual_label_used_for_prediction"] is False
+    assert probe["label_substitution_detected"] is False
+    assert probe["sidecar_contract_version_supports_actual_label_export"] is True
+    assert probe["legacy_probe_semantics_updated_for_ml38_10_69"] is True
     assert probe["forbidden_label_source_checks_present"] is True
     assert probe["row_contract_status"] == "ROW_CONSTRUCTION_CONTRACT_CONFIRMED"
     assert probe["blockers"] == []
