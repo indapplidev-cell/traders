@@ -1,4 +1,10 @@
-﻿from app.market_reader.candle_morphology import (
+﻿from app.market_reader.breakout_retest import (
+    BreakoutDirection,
+    BreakoutRetestAnalyzer,
+    BreakoutRetestClassification,
+    BreakoutRetestResult,
+)
+from app.market_reader.candle_morphology import (
     CandleDirection,
     CandleMorphology,
     CandleMorphologyAnalyzer,
@@ -25,6 +31,10 @@ from app.market_reader.trend_structure import (
 )
 
 __all__ = [
+    "BreakoutDirection",
+    "BreakoutRetestAnalyzer",
+    "BreakoutRetestClassification",
+    "BreakoutRetestResult",
     "CandleBar",
     "CandleDirection",
     "CandleMorphology",
