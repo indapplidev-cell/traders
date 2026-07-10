@@ -47,6 +47,11 @@ from app.market_reader.market_reader import (
     MarketReaderPipelineResult,
     TechnicalContextComposerInput,
 )
+from app.market_reader.cli_preview import (
+    MarketReaderPreview,
+    MarketReaderPreviewBuilder,
+    build_market_reader_preview_payload,
+)
 
 __all__ = [
     "BreakoutDirection",
@@ -85,4 +90,7 @@ __all__ = [
     "MarketReaderOrchestrator",
     "MarketReaderPipelineResult",
     "TechnicalContextComposerInput",
+    "MarketReaderPreview",
+    "MarketReaderPreviewBuilder",
+    "build_market_reader_preview_payload",
 ]

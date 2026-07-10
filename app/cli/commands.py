@@ -153,6 +153,32 @@ def health_command() -> None:
     typer.echo(json.dumps(build_health_payload()))
 
 
+@cli.command("book-l1-preview")
+def book_l1_preview_command(
+    symbol: str = typer.Option("BTCUSDT", "--symbol", help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option("15m", "--interval", help="Candle interval, for example 15m."),
+    limit: int = typer.Option(200, "--limit", help="Number of latest candles to read from DB."),
+    min_candles: int = typer.Option(50, "--min-candles", help="Minimum candles required for preview."),
+) -> None:
+    """Run BOOK-L1 Market Reader preview from stored candles."""
+    import json
+
+    from app.db.repositories.candle_repository import CandleRepository
+    from app.db.session import SessionLocal
+    from app.market_reader.cli_preview import build_market_reader_preview_payload
+
+    with get_session() as session:
+        payload = build_market_reader_preview_payload(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+            min_candles=min_candles,
+            candle_repository=CandleRepository(session),
+        )
+
+    typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
 @cli.command("db-check")
 def db_check_command() -> None:
     with get_session() as session:
