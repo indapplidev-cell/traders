@@ -36,6 +36,11 @@ from app.market_reader.technical_context import (
     TechnicalContextResult,
     VolatilityContext,
 )
+from app.market_reader.market_regime_composer import (
+    MarketRegimeComponentSnapshot,
+    MarketRegimeCompositionConfig,
+    MarketRegimeComposer,
+)
 
 __all__ = [
     "BreakoutDirection",
@@ -67,4 +72,7 @@ __all__ = [
     "TechnicalContextAnalyzer",
     "TechnicalContextResult",
     "VolatilityContext",
+    "MarketRegimeComponentSnapshot",
+    "MarketRegimeCompositionConfig",
+    "MarketRegimeComposer",
 ]
