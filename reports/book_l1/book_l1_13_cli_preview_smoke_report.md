@@ -61,6 +61,8 @@
 ```text
 trade_signal = NOT_EVALUATED
 safe_for_runtime_trading = false
-Conclusion
+```
+
+## Conclusion
 
 BOOK-L1 CLI preview successfully reads real stored candles from DB and returns a market-reading result only. It does not produce a trading signal and does not approve runtime trading.
