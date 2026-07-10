@@ -1,4 +1,9 @@
-﻿from app.market_reader.candle_window import CandleBar, CandleWindow
+﻿from app.market_reader.candle_morphology import (
+    CandleDirection,
+    CandleMorphology,
+    CandleMorphologyAnalyzer,
+)
+from app.market_reader.candle_window import CandleBar, CandleWindow
 from app.market_reader.schemas import (
     DirectionalBias,
     MarketAnalysisResult,
@@ -9,6 +14,9 @@ from app.market_reader.schemas import (
 
 __all__ = [
     "CandleBar",
+    "CandleDirection",
+    "CandleMorphology",
+    "CandleMorphologyAnalyzer",
     "CandleWindow",
     "DirectionalBias",
     "MarketAnalysisResult",
