@@ -1,4 +1,5 @@
-﻿from app.market_reader.candle_morphology import (
+from app.market_reader.swing_detector import SwingDetector, SwingPoint, SwingPointType
+from app.market_reader.candle_morphology import (
     CandleDirection,
     CandleMorphology,
     CandleMorphologyAnalyzer,
@@ -23,4 +24,7 @@ __all__ = [
     "MarketRegime",
     "TradeSignal",
     "TrendStrength",
+    "SwingDetector",
+    "SwingPoint",
+    "SwingPointType",
 ]
