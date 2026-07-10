@@ -12,6 +12,12 @@ from app.market_reader.schemas import (
     TradeSignal,
     TrendStrength,
 )
+from app.market_reader.trend_structure import (
+    TrendStructureAnalyzer,
+    TrendStructureDirection,
+    TrendStructureResult,
+    TrendSwingPoint,
+)
 
 __all__ = [
     "CandleBar",
@@ -27,4 +33,8 @@ __all__ = [
     "SwingDetector",
     "SwingPoint",
     "SwingPointType",
+    "TrendStructureAnalyzer",
+    "TrendStructureDirection",
+    "TrendStructureResult",
+    "TrendSwingPoint",
 ]
