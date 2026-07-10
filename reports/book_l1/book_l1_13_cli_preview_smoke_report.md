@@ -30,7 +30,7 @@
 - Confidence: `0.9406046268096556`
 - Trend strength: `NONE`
 - Trade signal: `NOT_EVALUATED`
-- Safe for runtime trading: `False`
+- Safe for runtime trading: `false`
 
 ## Reason codes
 
