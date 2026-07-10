@@ -54,7 +54,7 @@
 
 ## Safety notes
 
-- Safety-инварианты соблюдены.
+- Safety invariants are satisfied.
 
 ## Expected safety contract
 
