@@ -163,8 +163,6 @@ def book_l1_preview_command(
     """Run BOOK-L1 Market Reader preview from stored candles."""
     import json
 
-    from app.db.repositories.candle_repository import CandleRepository
-    from app.db.session import SessionLocal
     from app.market_reader.cli_preview import build_market_reader_preview_payload
 
     with get_session() as session:
