@@ -38,5 +38,12 @@ reports/project_archives/
 # Manual local runtime sequence logs
 reports/manual_sequence_runs/
 
-# Local project planning
-planning/
+# Local planning backups / temporary planning artifacts
+planning/tmp/
+planning/backup/
+planning/snapshots/
+planning/**/*.zip
+
+# Keep planning/*.md visible to git.
+# Books are local reference materials; keep them out of git unless explicitly approved.
+planning/books/*.pdf
