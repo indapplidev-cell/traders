@@ -1,28 +1,31 @@
 # Current Task
 
-## BOOK-L1-19 - Market Regime History Snapshot / Compare Current vs Previous Window
+## BOOK-L1-20 - Market Regime Timeline Preview / Multi-Window History Table
 
 Status: `DONE`
 
 Goal:
 
-Add a current-vs-previous market regime comparison launch mode:
+Add a multi-window market regime timeline launch mode:
 
 ```powershell
-python -m app.cli.commands book-l1-history-preview
+python -m app.cli.commands book-l1-timeline-preview
 ```
 
 Scope completed:
 
-- added `app.market_reader.history_snapshot`;
-- added `app.market_reader.history_interactive`;
-- added previous/current window split with `limit * 2` candle reads;
-- added transition classification such as `FLAT_TO_UP`, `DOWN_TO_FLAT`, `NO_CHANGE`, and `TO_UNKNOWN`;
-- added default Enter behavior for terminal prompts;
-- added non-interactive CLI mode for tests and automation;
-- added compact comparison table with previous regime, current regime, transition, confidence, trend, and locked safety;
+- added `app.market_reader.timeline_preview`;
+- added `app.market_reader.timeline_interactive`;
+- added multi-window candle reads where `required_candles = window_size * window_count`;
+- added non-overlapping chronological windows labeled `W-N ... Current`;
+- reused `classify_regime_transition()` for adjacent-window transitions;
+- added `last_transition` for `W-1 -> Current`;
+- added timeline stability classification: `STABLE`, `CHANGING`, `UNSTABLE`, `ERROR`;
+- added compact timeline table with current confidence, trend, last change, stability, and locked safety;
 - added per-symbol `INSUFFICIENT_DATA` / `ERROR` isolation so one bad symbol does not break the run;
-- added optional per-symbol previous/current reason-code details;
+- added optional per-window reason-code details;
+- added interactive mode with Enter defaults;
+- added non-interactive CLI mode for tests and automation;
 - preserved the BOOK-L1 read-only safety contract.
 
 Out of scope:
@@ -39,15 +42,17 @@ Out of scope:
 
 Completion criteria:
 
-- `python -m app.cli.commands book-l1-history-preview` starts the terminal dialog;
+- `python -m app.cli.commands book-l1-timeline-preview` starts the terminal dialog;
 - Enter chooses defaults;
-- several symbols can be compared in one run;
-- current window is compared against the immediately previous non-overlapping window;
-- each symbol reads `limit * 2` candles;
+- one or more symbols can be analyzed in one run;
+- `window_count` is constrained to 2 through 6;
+- each symbol reads `window_size * window_count` candles;
+- candles are split into non-overlapping chronological windows;
+- each window is analyzed through `MarketReaderOrchestrator`;
 - `--non-interactive` prints the table without prompts;
-- `--show-details` prints reason codes for previous/current windows;
+- `--show-details` prints reason codes for each timeline window;
 - safety remains explicit: `trade_signal = NOT_EVALUATED`, `safe_for_runtime_trading = false`, `orders_enabled = false`;
-- tests cover transition classification, config defaults, window split, insufficient data, error isolation, formatter, summary, safety, non-interactive CLI, details, and prompt defaults.
+- tests cover config defaults, validation, labels, stability, window split, insufficient data, error isolation, formatter, summary, safety, non-interactive CLI, details, and prompt defaults.
 
 Next possible stage:
 

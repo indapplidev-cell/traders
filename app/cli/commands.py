@@ -362,6 +362,81 @@ def book_l1_history_preview_command(
         typer.echo(formatter.format_details(selected_rows))
 
 
+@cli.command("book-l1-timeline-preview")
+def book_l1_timeline_preview_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Candle interval, for example 15m."),
+    window_size: int = typer.Option(300, "--window-size", min=1, help="Candles per timeline window."),
+    window_count: int = typer.Option(4, "--window-count", min=2, max=6, help="Timeline window count from 2 to 6."),
+    min_candles: int = typer.Option(50, "--min-candles", min=1, help="Minimum candles required per window."),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Run without terminal prompts.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print reason_codes and window details for each selected symbol.",
+    ),
+) -> None:
+    """Show BOOK-L1 multi-window market regime timeline preview."""
+    from app.market_reader.timeline_interactive import (
+        prompt_timeline_config,
+        prompt_timeline_details_choice,
+    )
+    from app.market_reader.timeline_preview import (
+        TimelinePreviewConfig,
+        TimelinePreviewRunner,
+        TimelinePreviewTableFormatter,
+        parse_symbols,
+    )
+
+    if non_interactive:
+        selected_symbols = _resolve_timeline_preview_symbols(
+            symbols=tuple(parse_symbols(symbols)) if symbols else (),
+            symbol_options=tuple(symbol or ()),
+        )
+        config = TimelinePreviewConfig(
+            symbols=selected_symbols,
+            interval=interval,
+            window_size=window_size,
+            window_count=window_count,
+            min_candles=min_candles,
+        )
+    else:
+        prompted_config = prompt_timeline_config()
+        if prompted_config is None:
+            return
+        config = prompted_config
+
+    with get_session() as session:
+        result = TimelinePreviewRunner(
+            candle_repository=CandleRepository(session),
+        ).run(config)
+
+    formatter = TimelinePreviewTableFormatter()
+    typer.echo(formatter.format_result(result, show_details=show_details if non_interactive else False))
+
+    if non_interactive:
+        return
+
+    detail_symbols = prompt_timeline_details_choice(tuple(row.symbol for row in result.rows))
+    if detail_symbols:
+        selected_rows = tuple(row for row in result.rows if row.symbol in set(detail_symbols))
+        typer.echo("")
+        typer.echo(formatter.format_details(selected_rows))
+
+
 def _resolve_multi_preview_symbols(
     *,
     symbols: tuple[str, ...],
@@ -380,6 +455,18 @@ def _resolve_history_preview_symbols(
     symbol_options: tuple[str, ...],
 ) -> tuple[str, ...]:
     from app.market_reader.history_snapshot import DEFAULT_MULTI_SYMBOLS, normalize_symbols
+
+    if symbols or symbol_options:
+        return normalize_symbols((*symbols, *symbol_options))
+    return DEFAULT_MULTI_SYMBOLS
+
+
+def _resolve_timeline_preview_symbols(
+    *,
+    symbols: tuple[str, ...],
+    symbol_options: tuple[str, ...],
+) -> tuple[str, ...]:
+    from app.market_reader.timeline_preview import DEFAULT_MULTI_SYMBOLS, normalize_symbols
 
     if symbols or symbol_options:
         return normalize_symbols((*symbols, *symbol_options))

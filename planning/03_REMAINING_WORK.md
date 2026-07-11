@@ -21,6 +21,7 @@ The following BOOK-L1 items are already completed:
 - interactive terminal preview / human table report;
 - multi-symbol interactive preview / comparison table.
 - market regime history snapshot / previous vs current window comparison.
+- market regime timeline preview / multi-window history table.
 
 ## Remaining BOOK-L1 work
 
@@ -61,3 +62,4 @@ The following items are no longer remaining work:
 - `book-l1-interactive-preview` human terminal report.
 - `book-l1-multi-preview` multi-symbol comparison table.
 - `book-l1-history-preview` current-vs-previous regime history snapshot.
+- `book-l1-timeline-preview` multi-window market regime timeline preview.
