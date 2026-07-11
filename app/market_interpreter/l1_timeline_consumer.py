@@ -5,6 +5,14 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.market_interpreter.context_rules import (
+    MarketContextState,
+    SymbolBucket,
+    SymbolBucketDecision,
+    classify_overall_market_context as classify_overall_context_state,
+    classify_symbol_bucket,
+)
+
 
 BOOK_L1_SERVICE = "BOOK_L1_MARKET_READER"
 BOOK_L1_REPORT_TYPE = "timeline_preview"
@@ -76,6 +84,12 @@ class L1TimelineSymbolContext:
     current_trend_strength: str
     context_label: str
     observe_reason: str
+    bucket: str = "UNKNOWN"
+    skip_candidate: bool = False
+    context_reason_codes: tuple[str, ...] = field(default_factory=tuple)
+    trade_signal: str = "NOT_EVALUATED"
+    safe_for_runtime_trading: bool = False
+    regimes: tuple[str, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -92,6 +106,13 @@ class L1TimelineMarketContext:
     down_count: int
     flat_count: int
     unknown_count: int
+    overall_state: str = "UNKNOWN"
+    bucket_counts: dict[str, int] = field(default_factory=dict)
+    skip_candidate_count: int = 0
+    clean_symbols: tuple[str, ...] = field(default_factory=tuple)
+    flat_symbols: tuple[str, ...] = field(default_factory=tuple)
+    unstable_symbols: tuple[str, ...] = field(default_factory=tuple)
+    unknown_symbols: tuple[str, ...] = field(default_factory=tuple)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -190,8 +211,7 @@ class L2TimelineTableFormatter:
         lines = [
             "BOOK-L2 Timeline Context",
             "",
-            "Input:",
-            input_path.as_posix(),
+            f"Input: {input_path.as_posix()}",
             "",
             "Source:",
             f"service: {BOOK_L1_SERVICE}",
@@ -201,6 +221,7 @@ class L2TimelineTableFormatter:
             _format_symbol_table(result.symbols),
             "",
             "Market context:",
+            f"Overall state: {result.market_context.overall_state}",
             f"overall_context: {result.market_context.overall_context}",
             f"symbols: {result.market_context.symbol_count}",
             f"ok: {result.market_context.ok_count}",
@@ -209,7 +230,11 @@ class L2TimelineTableFormatter:
             f"changing: {result.market_context.changing_count}",
             f"unstable: {result.market_context.unstable_count}",
             "",
+            "Bucket summary:",
+            *_format_bucket_summary(result.market_context),
+            "",
             "Safety:",
+            "mode: OBSERVE_ONLY / LOCKED",
             f"trade_signal: {result.safety.trade_signal}",
             f"safe_for_runtime_trading: {_format_bool(result.safety.safe_for_runtime_trading)}",
             f"orders_enabled: {_format_bool(result.safety.orders_enabled)}",
@@ -237,6 +262,9 @@ class L2TimelineTableFormatter:
                     "",
                     f"{symbol.symbol}:",
                     f"- context_label: {symbol.context_label}",
+                    f"- bucket: {symbol.bucket}",
+                    f"- skip_candidate: {_format_yes_no(symbol.skip_candidate)}",
+                    f"- context_reason_codes: {', '.join(symbol.context_reason_codes) or 'NONE'}",
                     f"- observe_reason: {symbol.observe_reason}",
                     f"- current_regime: {symbol.current_regime}",
                     f"- stability: {symbol.stability}",
@@ -296,21 +324,14 @@ def classify_overall_market_context(symbols: tuple[L1TimelineSymbolContext, ...]
     flat_count = sum(1 for symbol in ok_symbols if symbol.current_regime == "FLAT")
     unknown_count = sum(1 for symbol in ok_symbols if symbol.current_regime == "UNKNOWN")
 
-    if ok_count == 0:
+    decisions = tuple(_symbol_to_bucket_decision(symbol) for symbol in symbols)
+    overall_state = classify_overall_context_state(decisions)
+    if not symbols:
         overall_context = "NO_VALID_SYMBOLS"
-    elif unknown_count == ok_count:
-        overall_context = "UNKNOWN"
-    elif unstable_count >= _half_or_more(ok_count):
-        overall_context = "UNSTABLE"
-    elif flat_count == ok_count:
-        overall_context = "ALL_FLAT"
-    elif up_count > down_count and up_count >= _half_or_more(ok_count):
-        overall_context = "BROAD_UP"
-    elif down_count > up_count and down_count >= _half_or_more(ok_count):
-        overall_context = "BROAD_DOWN"
     else:
-        overall_context = "MIXED"
-
+        overall_context = _overall_state_to_legacy_context(overall_state, up_count=up_count, down_count=down_count)
+    bucket_counts = _build_bucket_counts(decisions)
+    skip_candidate_count = sum(1 for decision in decisions if decision.skip_candidate)
     notes = ("observe-only context; runtime trading is not approved.",)
     return L1TimelineMarketContext(
         overall_context=overall_context,
@@ -324,6 +345,13 @@ def classify_overall_market_context(symbols: tuple[L1TimelineSymbolContext, ...]
         down_count=down_count,
         flat_count=flat_count,
         unknown_count=unknown_count,
+        overall_state=overall_state.value,
+        bucket_counts=bucket_counts,
+        skip_candidate_count=skip_candidate_count,
+        clean_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.CLEAN_TREND.value),
+        flat_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.STABLE_FLAT.value),
+        unstable_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.UNSTABLE.value),
+        unknown_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.UNKNOWN.value),
         notes=notes,
     )
 
@@ -442,13 +470,20 @@ def _row_to_symbol_context(row: dict[str, Any]) -> L1TimelineSymbolContext:
     last_transition = _normalize_token(row.get("last_transition"), "UNKNOWN")
     current_confidence = _read_float(row.get("current_confidence"), 0.0)
     current_trend_strength = _normalize_token(row.get("current_trend_strength"), "UNKNOWN")
-    context_label = classify_symbol_context(
-        status=status,
-        current_regime=current_regime,
-        stability=stability,
-        last_transition=last_transition,
-    )
     warnings = tuple(_read_row_warnings(row))
+    regimes = _extract_regimes(row, current_regime=current_regime)
+    decision = classify_symbol_bucket(
+        {
+            "symbol": symbol,
+            "status": status,
+            "current_regime": current_regime,
+            "stability": stability,
+            "last_transition": last_transition,
+            "current_confidence": current_confidence,
+            "regimes": regimes,
+            "warnings": warnings,
+        }
+    )
     return L1TimelineSymbolContext(
         symbol=symbol,
         status=status,
@@ -457,8 +492,14 @@ def _row_to_symbol_context(row: dict[str, Any]) -> L1TimelineSymbolContext:
         last_transition=last_transition,
         current_confidence=current_confidence,
         current_trend_strength=current_trend_strength,
-        context_label=context_label,
-        observe_reason=_build_observe_reason(symbol=symbol, context_label=context_label),
+        context_label=decision.bucket.value,
+        observe_reason=_build_observe_reason(symbol=symbol, context_label=decision.bucket.value),
+        bucket=decision.bucket.value,
+        skip_candidate=decision.skip_candidate,
+        context_reason_codes=decision.reason_codes,
+        trade_signal=decision.trade_signal,
+        safe_for_runtime_trading=decision.safe_for_runtime_trading,
+        regimes=regimes,
         warnings=warnings,
     )
 
@@ -488,18 +529,35 @@ def _extract_current_regime(row: dict[str, Any]) -> str:
     return "UNKNOWN"
 
 
+def _extract_regimes(row: dict[str, Any], *, current_regime: str) -> tuple[str, ...]:
+    regimes = row.get("regimes")
+    if isinstance(regimes, list):
+        normalized = tuple(_normalize_token(regime, "UNKNOWN") for regime in regimes)
+        return normalized or (current_regime,)
+
+    windows = row.get("windows")
+    if isinstance(windows, list):
+        extracted: list[str] = []
+        for window in windows:
+            if isinstance(window, dict):
+                regime = window.get("market_regime") or window.get("current_regime")
+                if regime is not None:
+                    extracted.append(_normalize_token(regime, "UNKNOWN"))
+        if extracted:
+            return tuple(extracted)
+
+    return (current_regime,)
+
+
 def _build_observe_reason(*, symbol: str, context_label: str) -> str:
     prefix = {
         "STABLE_FLAT": "stable flat context from BOOK-L1 timeline",
-        "STABLE_UP": "stable upward context from BOOK-L1 timeline",
-        "STABLE_DOWN": "stable downward context from BOOK-L1 timeline",
-        "EMERGING_UP": "emerging upward context detected from BOOK-L1 timeline",
-        "EMERGING_DOWN": "emerging downward context detected from BOOK-L1 timeline",
-        "CHANGING": "changing context detected from BOOK-L1 timeline",
+        "CLEAN_TREND": "clean trend context from BOOK-L1 timeline",
+        "TRANSITIONING": "transitioning context detected from BOOK-L1 timeline",
         "UNSTABLE": "unstable context detected from BOOK-L1 timeline",
         "UNKNOWN": "unknown context from BOOK-L1 timeline",
-        "SKIP_INSUFFICIENT_DATA": "insufficient data in BOOK-L1 timeline",
-        "SKIP_ERROR": "BOOK-L1 timeline row was not OK",
+        "INSUFFICIENT_DATA": "insufficient data in BOOK-L1 timeline",
+        "ERROR": "BOOK-L1 timeline row was not OK",
     }.get(context_label, "unknown context from BOOK-L1 timeline")
     return f"{prefix}; observe only; no trading signal; not approved for runtime trading."
 
@@ -523,6 +581,9 @@ def _failed_result(
         down_count=0,
         flat_count=0,
         unknown_count=0,
+        overall_state=MarketContextState.ERROR.value,
+        bucket_counts={},
+        skip_candidate_count=0,
         notes=("no valid BOOK-L1 timeline rows were available.",),
     )
     return L2TimelineInterpretationResult(
@@ -538,7 +599,7 @@ def _failed_result(
 
 
 def _format_symbol_table(symbols: tuple[L1TimelineSymbolContext, ...]) -> str:
-    headers = ("Symbol", "Status", "Current", "Stability", "Last Change", "L2 Context", "Conf", "Safety")
+    headers = ("Symbol", "Status", "Current Regime", "Stability", "Last Change", "Bucket", "Skip", "Conf", "Safety")
     rows = tuple(
         (
             symbol.symbol,
@@ -546,9 +607,10 @@ def _format_symbol_table(symbols: tuple[L1TimelineSymbolContext, ...]) -> str:
             symbol.current_regime,
             symbol.stability,
             symbol.last_transition,
-            symbol.context_label,
+            symbol.bucket,
+            _format_yes_no(symbol.skip_candidate),
             f"{symbol.current_confidence:.2f}",
-            "OBSERVE_ONLY",
+            "LOCKED",
         )
         for symbol in symbols
     )
@@ -564,6 +626,12 @@ def _format_symbol_table(symbols: tuple[L1TimelineSymbolContext, ...]) -> str:
     return "\n".join(lines)
 
 
+def _format_bucket_summary(context: L1TimelineMarketContext) -> list[str]:
+    lines = [f"{bucket}: {count}" for bucket, count in sorted(context.bucket_counts.items())]
+    lines.append(f"SKIP_CANDIDATES: {context.skip_candidate_count}")
+    return lines
+
+
 def _format_table_row(values: tuple[str, ...], widths: list[int]) -> str:
     return "|" + "|".join(f" {value:<{widths[index]}} " for index, value in enumerate(values)) + "|"
 
@@ -575,8 +643,14 @@ def _symbol_to_dict(symbol: L1TimelineSymbolContext) -> dict[str, object]:
         "current_regime": symbol.current_regime,
         "stability": symbol.stability,
         "last_transition": symbol.last_transition,
+        "confidence": symbol.current_confidence,
         "current_confidence": symbol.current_confidence,
         "current_trend_strength": symbol.current_trend_strength,
+        "bucket": symbol.bucket,
+        "skip_candidate": symbol.skip_candidate,
+        "context_reason_codes": list(symbol.context_reason_codes),
+        "trade_signal": symbol.trade_signal,
+        "safe_for_runtime_trading": symbol.safe_for_runtime_trading,
         "context_label": symbol.context_label,
         "observe_reason": symbol.observe_reason,
         "warnings": list(symbol.warnings),
@@ -586,7 +660,48 @@ def _symbol_to_dict(symbol: L1TimelineSymbolContext) -> dict[str, object]:
 def _market_context_to_dict(context: L1TimelineMarketContext) -> dict[str, object]:
     payload = asdict(context)
     payload["notes"] = list(context.notes)
+    payload["clean_symbols"] = list(context.clean_symbols)
+    payload["flat_symbols"] = list(context.flat_symbols)
+    payload["unstable_symbols"] = list(context.unstable_symbols)
+    payload["unknown_symbols"] = list(context.unknown_symbols)
     return payload
+
+
+def _symbol_to_bucket_decision(symbol: L1TimelineSymbolContext) -> SymbolBucketDecision:
+    return SymbolBucketDecision(
+        symbol=symbol.symbol,
+        bucket=SymbolBucket(symbol.bucket),
+        regime=symbol.current_regime,
+        stability=symbol.stability,
+        last_transition=symbol.last_transition,
+        confidence=symbol.current_confidence,
+        reason_codes=symbol.context_reason_codes,
+        warnings=symbol.warnings,
+        skip_candidate=symbol.skip_candidate,
+        safe_for_runtime_trading=symbol.safe_for_runtime_trading,
+        trade_signal=symbol.trade_signal,
+    )
+
+
+def _overall_state_to_legacy_context(state: MarketContextState, *, up_count: int, down_count: int) -> str:
+    if state == MarketContextState.ERROR:
+        return "ERROR"
+    if state == MarketContextState.RANGING:
+        return "ALL_FLAT"
+    if state == MarketContextState.TRENDING:
+        if up_count > down_count:
+            return "BROAD_UP"
+        if down_count > up_count:
+            return "BROAD_DOWN"
+        return "TRENDING"
+    return state.value
+
+
+def _build_bucket_counts(decisions: tuple[SymbolBucketDecision, ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for decision in decisions:
+        counts[decision.bucket.value] = counts.get(decision.bucket.value, 0) + 1
+    return counts
 
 
 def _nested_value(payload: dict[str, Any], *keys: str) -> Any:
@@ -649,11 +764,11 @@ def _format_bool(value: bool) -> str:
     return str(value).lower()
 
 
+def _format_yes_no(value: bool) -> str:
+    return "yes" if value else "no"
+
+
 def _format_bool_or_value(value: object) -> str:
     if isinstance(value, bool):
         return _format_bool(value)
     return str(value)
-
-
-def _half_or_more(value: int) -> float:
-    return value / 2

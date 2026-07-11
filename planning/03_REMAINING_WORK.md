@@ -28,6 +28,7 @@ The following BOOK-L1 items are already completed:
 - runtime JSON consumer / API reader smoke for stable BOOK-L1 JSON export files.
 - API readiness final review / Layer 1 freeze candidate.
 - BOOK-L2-00 start layer 2 / consume BOOK-L1 timeline JSON.
+- BOOK-L2-01 market context classification rules / symbol buckets.
 
 ## Remaining BOOK-L1 work
 
@@ -48,8 +49,8 @@ Possible next stage:
 
 BOOK-L2 has started. Possible next stage:
 
-- `BOOK-L2-01 - Market Context Rules / Symbol Buckets`;
-- derive observe-only buckets such as clean, unstable, flat, emerging, and skipped symbols;
+- `BOOK-L2-02 - Context Explanation Layer / Human-Readable Market Notes`;
+- add short human-readable explanations for symbol buckets and overall context;
 - keep consuming only BOOK-L1 JSON output;
 - keep fail-closed safety;
 - keep trading signals and execution out of scope.
@@ -80,6 +81,7 @@ The following items are no longer remaining work:
 - `book-l1-json-consumer-smoke` runtime JSON consumer / API reader smoke.
 - `book-l1-api-readiness-review` API readiness final review / Layer 1 freeze candidate.
 - `book-l2-timeline-context` observe-only BOOK-L2 timeline context consumer.
+- BOOK-L2 explicit symbol bucket classification and skip candidate labeling.
 
 ## BOOK-L1-22 export rule
 
@@ -162,3 +164,25 @@ reports/book_l2/timeline_context.json
 ```
 
 BOOK-L2 does not read candles, does not import `CandleRepository`, does not import `MarketReaderOrchestrator`, does not recalculate BOOK-L1 indicators, does not change BOOK-L1, and does not generate trading signals.
+
+## BOOK-L2-01 rule
+
+BOOK-L2-01 added explicit context classification rules:
+
+```text
+app/market_interpreter/context_rules.py
+```
+
+The L2 command still reads only:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+The L2 stable output remains:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+The output includes symbol buckets, skip candidate labels, context reason codes, overall state, and bucket counts. These fields are observe-only context labels and are not trading signals.

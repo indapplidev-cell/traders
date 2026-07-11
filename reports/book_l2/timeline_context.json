@@ -17,10 +17,19 @@
         "current_regime": "FLAT",
         "stability": "CHANGING",
         "last_transition": "NO_CHANGE",
+        "confidence": 0.9406046268096556,
         "current_confidence": 0.9406046268096556,
         "current_trend_strength": "NONE",
-        "context_label": "CHANGING",
-        "observe_reason": "changing context detected from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
+        "bucket": "UNKNOWN",
+        "skip_candidate": true,
+        "context_reason_codes": [
+          "CONTEXT_RULE_UNMATCHED",
+          "SKIP_CANDIDATE_CONTEXT"
+        ],
+        "trade_signal": "NOT_EVALUATED",
+        "safe_for_runtime_trading": false,
+        "context_label": "UNKNOWN",
+        "observe_reason": "unknown context from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
         "warnings": []
       },
       {
@@ -29,10 +38,19 @@
         "current_regime": "FLAT",
         "stability": "CHANGING",
         "last_transition": "NO_CHANGE",
+        "confidence": 0.8732067292955117,
         "current_confidence": 0.8732067292955117,
         "current_trend_strength": "NONE",
-        "context_label": "CHANGING",
-        "observe_reason": "changing context detected from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
+        "bucket": "UNKNOWN",
+        "skip_candidate": true,
+        "context_reason_codes": [
+          "CONTEXT_RULE_UNMATCHED",
+          "SKIP_CANDIDATE_CONTEXT"
+        ],
+        "trade_signal": "NOT_EVALUATED",
+        "safe_for_runtime_trading": false,
+        "context_label": "UNKNOWN",
+        "observe_reason": "unknown context from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
         "warnings": []
       },
       {
@@ -41,15 +59,24 @@
         "current_regime": "UNKNOWN",
         "stability": "UNSTABLE",
         "last_transition": "TO_UNKNOWN",
+        "confidence": 0.0,
         "current_confidence": 0.0,
         "current_trend_strength": "UNKNOWN",
+        "bucket": "UNKNOWN",
+        "skip_candidate": true,
+        "context_reason_codes": [
+          "CURRENT_REGIME_UNKNOWN",
+          "SKIP_CANDIDATE_CONTEXT"
+        ],
+        "trade_signal": "NOT_EVALUATED",
+        "safe_for_runtime_trading": false,
         "context_label": "UNKNOWN",
         "observe_reason": "unknown context from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
         "warnings": []
       }
     ],
     "market_context": {
-      "overall_context": "MIXED",
+      "overall_context": "UNKNOWN",
       "symbol_count": 3,
       "ok_count": 3,
       "skipped_count": 0,
@@ -60,6 +87,19 @@
       "down_count": 0,
       "flat_count": 2,
       "unknown_count": 1,
+      "overall_state": "UNKNOWN",
+      "bucket_counts": {
+        "UNKNOWN": 3
+      },
+      "skip_candidate_count": 3,
+      "clean_symbols": [],
+      "flat_symbols": [],
+      "unstable_symbols": [],
+      "unknown_symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT"
+      ],
       "notes": [
         "observe-only context; runtime trading is not approved."
       ]

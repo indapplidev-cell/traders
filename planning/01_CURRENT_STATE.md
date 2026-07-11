@@ -169,7 +169,7 @@ BOOK-L2-00 consumes the existing BOOK-L1 runtime JSON file:
 reports/book_l1/timeline_preview.json
 ```
 
-BOOK-L2 reads the BOOK-L1 timeline export, validates the envelope and fail-closed safety contract, extracts symbol timeline rows, classifies symbol context labels, and builds an overall market context.
+BOOK-L2 reads the BOOK-L1 timeline export, validates the envelope and fail-closed safety contract, extracts symbol timeline rows, classifies symbol context labels, classifies explicit symbol buckets, and builds an overall market context.
 
 Current BOOK-L2 boundary:
 
@@ -204,3 +204,31 @@ Current BOOK-L2 stable JSON export:
 ```text
 reports/book_l2/timeline_context.json
 ```
+
+BOOK-L2-01 added explicit market context classification rules and symbol buckets:
+
+```text
+CLEAN_TREND
+STABLE_FLAT
+TRANSITIONING
+UNSTABLE
+UNKNOWN
+INSUFFICIENT_DATA
+ERROR
+```
+
+The export now includes `bucket`, `skip_candidate`, `context_reason_codes`, `overall_state`, bucket counts, and fail-closed safety. `skip_candidate` is an observe-only context quality label for UNKNOWN / UNSTABLE / INSUFFICIENT_DATA / ERROR buckets.
+
+BOOK-L2 still consumes only:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+BOOK-L2 still writes the stable API-oriented output:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+BOOK-L2 does not read candles and does not produce trading signals.

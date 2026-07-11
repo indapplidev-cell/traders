@@ -1,12 +1,12 @@
 # Current Task
 
-## BOOK-L2-00 - Start Layer 2 / Consume BOOK-L1 Timeline JSON
+## BOOK-L2-01 - Market Context Classification Rules / Symbol Buckets
 
 Status: `DONE`
 
 Goal:
 
-Start BOOK-L2 as a safe read-only market context interpreter above the frozen BOOK-L1 Market Reader.
+Add explicit, testable, and extensible BOOK-L2 classification rules for symbol context buckets using the BOOK-L1 timeline JSON export.
 
 Primary input:
 
@@ -14,25 +14,32 @@ Primary input:
 reports/book_l1/timeline_preview.json
 ```
 
+Primary output:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
 Implemented:
 
-- added `app/market_interpreter/`;
-- added `app/market_interpreter/l1_timeline_consumer.py`;
-- added BOOK-L2 fail-closed safety state;
-- added BOOK-L1 timeline JSON contract validation;
-- added fail-closed input safety validation;
-- added symbol-level context labels;
-- added overall market context classification;
-- added terminal table formatter;
-- added optional stable JSON export to `reports/book_l2/timeline_context.json`;
-- added CLI command `book-l2-timeline-context`;
-- added focused BOOK-L2 tests;
-- added BOOK-L2 stage report.
+- added `app/market_interpreter/context_rules.py`;
+- added `SymbolBucket`, `MarketContextState`, and `SymbolBucketDecision`;
+- added `classify_symbol_bucket`;
+- added `classify_overall_market_context` for bucket decisions;
+- added skip candidate labeling;
+- updated the L2 timeline consumer with bucket fields;
+- updated terminal output with Bucket and Skip columns;
+- updated details output with `context_reason_codes`;
+- updated stable JSON export with `bucket`, `skip_candidate`, `context_reason_codes`, `overall_state`, and bucket summary fields;
+- preserved fail-closed observe-only safety;
+- added focused BOOK-L2 context rules tests;
+- updated existing BOOK-L2 timeline context tests;
+- added BOOK-L2-01 stage report.
 
 BOOK-L2 boundary:
 
 ```text
-BOOK-L1 timeline JSON -> market context interpretation
+BOOK-L1 timeline JSON -> observe-only market context interpretation
 ```
 
 Out of scope preserved:
@@ -48,7 +55,7 @@ Out of scope preserved:
 - no traders-core connection;
 - no live trading connection;
 - no order creation;
-- no trading signal generation.
+- no LONG / SHORT / BUY / SELL decision generation.
 
 Safety validation:
 
@@ -81,14 +88,15 @@ python -m app.cli.commands book-l2-timeline-context --export-json
 Completion checks:
 
 - compile check passed;
-- BOOK-L2 tests passed;
-- L1 runtime JSON consumer smoke passed;
-- L2 CLI smoke passed;
-- L2 strict/details/export smoke passed;
-- full BOOK-L1 pack still passed.
+- BOOK-L2 context rules tests passed;
+- existing BOOK-L2 tests passed;
+- fresh BOOK-L1 timeline JSON export passed;
+- L1 runtime JSON consumer strict smoke passed;
+- L2 default / strict / details / export smoke passed;
+- full BOOK-L1 + BOOK-L2 pack passed.
 
 Next possible stage:
 
 ```text
-BOOK-L2-01 - Market Context Rules / Symbol Buckets
+BOOK-L2-02 - Context Explanation Layer / Human-Readable Market Notes
 ```

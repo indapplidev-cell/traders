@@ -33,7 +33,8 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | Stage | Name | Status | Main artifact |
 | --- | --- | --- | --- |
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py` |
-| BOOK-L2-01 | Market Context Rules / Symbol Buckets | PLANNED | observe-only bucket model |
+| BOOK-L2-01 | Market Context Rules / Symbol Buckets | DONE | `app/market_interpreter/context_rules.py` |
+| BOOK-L2-02 | Context Explanation Layer / Human-Readable Market Notes | PLANNED | observe-only explanations |
 
 ## BOOK-L2-00
 
@@ -73,13 +74,26 @@ python -m app.cli.commands book-l2-timeline-context
 
 ## Planned direction
 
-BOOK-L2-01 can deepen observe-only classification:
+BOOK-L2-01 deepened observe-only classification:
 
-- clean symbols;
+- clean trend symbols;
+- stable flat symbols;
+- transitioning symbols;
 - unstable symbols;
-- flat symbols;
-- emerging symbols;
-- skipped symbols;
-- broad market context.
+- unknown symbols;
+- insufficient data symbols;
+- error symbols;
+- skip candidate labels;
+- overall market context state.
+
+BOOK-L2-01 keeps the same input and output:
+
+```text
+reports/book_l1/timeline_preview.json -> reports/book_l2/timeline_context.json
+```
+
+BOOK-L2-01 does not read candles and does not create trading signals.
 
 The next stages must keep the same boundary: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
+
+BOOK-L2-02 can add short human-readable explanations for symbol buckets and overall context while remaining observe-only.

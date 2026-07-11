@@ -125,7 +125,7 @@ def test_consumer_extracts_symbols_correctly(tmp_path: Path) -> None:
 
     assert [symbol.symbol for symbol in result.symbols] == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
     assert result.symbols[0].current_regime == "FLAT"
-    assert result.symbols[1].context_label == "EMERGING_UP"
+    assert result.symbols[1].context_label == "CLEAN_TREND"
     assert result.symbols[2].context_label == "UNKNOWN"
 
 
@@ -134,10 +134,11 @@ def test_table_formatter_includes_required_columns_and_observe_only(tmp_path: Pa
     output = L2TimelineTableFormatter().format(result, input_path=tmp_path / "timeline_preview.json")
 
     assert "Symbol" in output
-    assert "Current" in output
+    assert "Current Regime" in output
     assert "Stability" in output
     assert "Last Change" in output
-    assert "L2 Context" in output
+    assert "Bucket" in output
+    assert "Skip" in output
     assert "OBSERVE_ONLY" in output
 
 
@@ -234,6 +235,18 @@ def _classify(
 
 
 def _symbol(symbol: str, current_regime: str, *, stability: str = "STABLE") -> L1TimelineSymbolContext:
+    if stability == "UNSTABLE":
+        bucket = "UNSTABLE"
+        skip_candidate = True
+    elif current_regime == "FLAT":
+        bucket = "STABLE_FLAT"
+        skip_candidate = False
+    elif current_regime in {"UP", "DOWN"}:
+        bucket = "CLEAN_TREND"
+        skip_candidate = False
+    else:
+        bucket = "UNKNOWN"
+        skip_candidate = True
     return L1TimelineSymbolContext(
         symbol=symbol,
         status="OK",
@@ -242,8 +255,10 @@ def _symbol(symbol: str, current_regime: str, *, stability: str = "STABLE") -> L
         last_transition="NO_CHANGE",
         current_confidence=0.8,
         current_trend_strength="NONE",
-        context_label="UNKNOWN",
+        context_label=bucket,
         observe_reason="observe only",
+        bucket=bucket,
+        skip_candidate=skip_candidate,
     )
 
 
