@@ -47,14 +47,14 @@ safe_for_runtime_trading = false
 | BOOK-L1-16 | Repository Cleanup / Final BOOK-L1 Review | DONE | `reports/book_l1/book_l1_16_final_review.md` |
 | BOOK-L1-17 | Interactive Terminal Preview / Human Table Report | DONE | `book-l1-interactive-preview` |
 | BOOK-L1-18 | Multi-Symbol Interactive Preview / Compare Market Regimes | DONE | `book-l1-multi-preview` |
-| BOOK-L1-19 | Market Regime History Snapshot / Compare Current vs Previous Window | POSSIBLE_NEXT | TBD |
+| BOOK-L1-19 | Market Regime History Snapshot / Compare Current vs Previous Window | DONE | `book-l1-history-preview` |
 
 ## Current implementation boundary
 
-BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, and a multi-symbol comparison terminal preview.
+BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, and a previous-vs-current market regime history snapshot.
 
 The response contract can be consumed by a future external layer, but it remains read-only and fail-closed.
-The terminal previews are presentation layers over the same fail-closed market-reader payloads.
+The terminal previews are presentation layers over the same fail-closed market-reader payloads. The history snapshot compares two non-overlapping local candle windows and remains read-only.
 
 Current API preview safety block:
 

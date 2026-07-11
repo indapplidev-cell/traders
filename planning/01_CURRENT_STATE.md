@@ -2,7 +2,7 @@
 
 ## BOOK-L1 Market Reader status
 
-Status: `READ_ONLY_MULTI_SYMBOL_PREVIEW_READY`
+Status: `READ_ONLY_HISTORY_SNAPSHOT_READY`
 
 BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
 
@@ -22,6 +22,7 @@ It currently supports:
 - API/service response contract through `book-l1-api-preview`;
 - human-readable terminal table report through `book-l1-interactive-preview`.
 - multi-symbol terminal comparison table through `book-l1-multi-preview`.
+- current-vs-previous window regime history snapshot through `book-l1-history-preview`.
 
 Current safety contract:
 
@@ -50,6 +51,7 @@ Latest completed implementation stages:
 | BOOK-L1-16 | DONE | Final repository review completed. |
 | BOOK-L1-17 | DONE | Interactive terminal preview / human table report added. |
 | BOOK-L1-18 | DONE | Multi-symbol interactive preview / comparison table added. |
+| BOOK-L1-19 | DONE | Market regime history snapshot / previous vs current window added. |
 
 Latest relevant artifacts:
 
@@ -59,3 +61,4 @@ Latest relevant artifacts:
 - `reports/book_l1/book_l1_16_final_review.md`
 - `reports/book_l1/book_l1_17_interactive_preview_report.md`
 - `reports/book_l1/book_l1_18_multi_symbol_preview_report.md`
+- `reports/book_l1/book_l1_19_history_snapshot_report.md`

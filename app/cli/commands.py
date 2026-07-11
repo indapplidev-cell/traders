@@ -289,12 +289,97 @@ def book_l1_multi_preview_command(
         typer.echo(formatter.format_details(selected_rows))
 
 
+@cli.command("book-l1-history-preview")
+def book_l1_history_preview_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Candle interval, for example 15m."),
+    limit: int = typer.Option(300, "--limit", help="Candles per previous/current window."),
+    min_candles: int = typer.Option(50, "--min-candles", help="Minimum candles required per window."),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Run without terminal prompts.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print reason_codes and window details for each selected symbol.",
+    ),
+) -> None:
+    """Show BOOK-L1 current-vs-previous market regime history snapshot."""
+    from app.market_reader.history_interactive import (
+        prompt_history_config,
+        prompt_history_details_choice,
+    )
+    from app.market_reader.history_snapshot import (
+        HistorySnapshotConfig,
+        HistorySnapshotRunner,
+        HistorySnapshotTableFormatter,
+        parse_symbols,
+    )
+
+    if non_interactive:
+        selected_symbols = _resolve_history_preview_symbols(
+            symbols=tuple(parse_symbols(symbols)) if symbols else (),
+            symbol_options=tuple(symbol or ()),
+        )
+        config = HistorySnapshotConfig(
+            symbols=selected_symbols,
+            interval=interval,
+            limit=limit,
+            min_candles=min_candles,
+        )
+    else:
+        prompted_config = prompt_history_config()
+        if prompted_config is None:
+            return
+        config = prompted_config
+
+    with get_session() as session:
+        result = HistorySnapshotRunner(
+            candle_repository=CandleRepository(session),
+        ).run(config)
+
+    formatter = HistorySnapshotTableFormatter()
+    typer.echo(formatter.format_result(result, show_details=show_details if non_interactive else False))
+
+    if non_interactive:
+        return
+
+    detail_symbols = prompt_history_details_choice(tuple(row.symbol for row in result.rows))
+    if detail_symbols:
+        selected_rows = tuple(row for row in result.rows if row.symbol in set(detail_symbols))
+        typer.echo("")
+        typer.echo(formatter.format_details(selected_rows))
+
+
 def _resolve_multi_preview_symbols(
     *,
     symbols: tuple[str, ...],
     symbol_options: tuple[str, ...],
 ) -> tuple[str, ...]:
     from app.market_reader.multi_symbol_preview import DEFAULT_MULTI_SYMBOLS, normalize_symbols
+
+    if symbols or symbol_options:
+        return normalize_symbols((*symbols, *symbol_options))
+    return DEFAULT_MULTI_SYMBOLS
+
+
+def _resolve_history_preview_symbols(
+    *,
+    symbols: tuple[str, ...],
+    symbol_options: tuple[str, ...],
+) -> tuple[str, ...]:
+    from app.market_reader.history_snapshot import DEFAULT_MULTI_SYMBOLS, normalize_symbols
 
     if symbols or symbol_options:
         return normalize_symbols((*symbols, *symbol_options))

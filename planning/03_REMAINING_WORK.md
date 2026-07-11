@@ -20,20 +20,11 @@ The following BOOK-L1 items are already completed:
 - repository cleanup / final review;
 - interactive terminal preview / human table report;
 - multi-symbol interactive preview / comparison table.
+- market regime history snapshot / previous vs current window comparison.
 
 ## Remaining BOOK-L1 work
 
-### 1. BOOK-L1-19 - Market Regime History Snapshot
-
-Possible next stage:
-
-- compare the current market regime against the previous local candle window;
-- show transitions such as `previous FLAT -> current UP`;
-- keep the feature read-only;
-- keep `trade_signal = NOT_EVALUATED`;
-- keep `safe_for_runtime_trading = false`.
-
-### 2. Optional FastAPI integration layer
+### 1. Optional FastAPI integration layer
 
 Only if needed later:
 
@@ -42,7 +33,7 @@ Only if needed later:
 - keep `trade_signal = NOT_EVALUATED`;
 - keep `safe_for_runtime_trading = false`.
 
-### 3. Runtime integration planning
+### 2. Runtime integration planning
 
 Only as a future planning step:
 
@@ -50,7 +41,7 @@ Only as a future planning step:
 - define fail-closed behavior;
 - do not allow BOOK-L1 to create entries or orders.
 
-### 4. Calibration / rule tuning
+### 3. Calibration / rule tuning
 
 Optional future work:
 
@@ -69,3 +60,4 @@ The following items are no longer remaining work:
 - API/service response contract v1;
 - `book-l1-interactive-preview` human terminal report.
 - `book-l1-multi-preview` multi-symbol comparison table.
+- `book-l1-history-preview` current-vs-previous regime history snapshot.

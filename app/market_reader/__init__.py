@@ -78,6 +78,16 @@ from app.market_reader.multi_symbol_preview import (
     normalize_symbols,
     parse_symbols,
 )
+from app.market_reader.history_snapshot import (
+    HistorySnapshotConfig,
+    HistorySnapshotResult,
+    HistorySnapshotRunner,
+    HistorySnapshotTableFormatter,
+    RegimeTransitionRow,
+    RegimeWindowSnapshot,
+    classify_regime_transition,
+    summarize_history_result,
+)
 
 __all__ = [
     "BreakoutDirection",
@@ -139,4 +149,12 @@ __all__ = [
     "normalize_symbol",
     "normalize_symbols",
     "parse_symbols",
+    "HistorySnapshotConfig",
+    "RegimeWindowSnapshot",
+    "RegimeTransitionRow",
+    "HistorySnapshotResult",
+    "HistorySnapshotRunner",
+    "HistorySnapshotTableFormatter",
+    "classify_regime_transition",
+    "summarize_history_result",
 ]
