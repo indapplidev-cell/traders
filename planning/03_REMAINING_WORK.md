@@ -24,12 +24,23 @@ The following BOOK-L1 items are already completed:
 - market regime timeline preview / multi-window history table.
 - stable timeline preview JSON + Markdown export.
 - unified JSON export contract / API output files for current, multi-symbol, history, and timeline previews.
+- unified terminal command guide and terminal UX cleanup.
 
 ## Remaining BOOK-L1 work
 
-### 1. API reader contract / load JSON exports for external service
+### 1. Terminal output normalization / consistent tables
 
 Logical next stage:
+
+- normalize current, multi, history, and timeline terminal table style;
+- align column names and safety display;
+- keep terminal output human-readable;
+- keep JSON export as the API output path;
+- avoid changing market analysis logic.
+
+### 2. API reader contract / load JSON exports for external service
+
+Optional future stage:
 
 - add a read-only module that loads the stable JSON output files;
 - validate `contract_version = book_l1_json_export_v1`;
@@ -37,7 +48,7 @@ Logical next stage:
 - keep fail-closed behavior when a file is missing or invalid;
 - avoid re-running analysis when the future API/service layer only needs the latest export snapshot.
 
-### 2. Market regime decision notes / human explanation layer
+### 3. Market regime decision notes / human explanation layer
 
 Optional next stage:
 
@@ -47,7 +58,7 @@ Optional next stage:
 - keep `trade_signal = NOT_EVALUATED`;
 - keep `safe_for_runtime_trading = false`.
 
-### 3. Optional FastAPI integration layer
+### 4. Optional FastAPI integration layer
 
 Only if needed later:
 
@@ -56,7 +67,7 @@ Only if needed later:
 - keep `trade_signal = NOT_EVALUATED`;
 - keep `safe_for_runtime_trading = false`.
 
-### 4. Runtime integration planning
+### 5. Runtime integration planning
 
 Only as a future planning step:
 
@@ -64,7 +75,7 @@ Only as a future planning step:
 - define fail-closed behavior;
 - do not allow BOOK-L1 to create entries or orders.
 
-### 5. Calibration / rule tuning
+### 6. Calibration / rule tuning
 
 Optional future work:
 
@@ -87,6 +98,7 @@ The following items are no longer remaining work:
 - `book-l1-timeline-preview` multi-window market regime timeline preview.
 - `book-l1-timeline-preview --export` stable JSON + Markdown export.
 - `--export-json` unified stable JSON API output for all main BOOK-L1 preview modes.
+- `book-l1-guide` unified terminal command guide.
 
 ## BOOK-L1-22 export rule
 
@@ -99,4 +111,22 @@ reports/book_l1/history_preview.json
 reports/book_l1/timeline_preview.json
 ```
 
-The files are overwritten on each `--export-json` run. The names do not contain date, time, version, symbol, interval, stage number, UUID, or hash suffix. Runtime Markdown export is not used as API output. The module remains read-only and the safety contract is preserved.
+The files are overwritten on each `--export-json` run. The names do not contain date, time, version, symbol, interval, stage number, UUID, or hash suffix.
+
+## BOOK-L1-23 terminal UX rule
+
+BOOK-L1-23 added:
+
+```powershell
+python -m app.cli.commands book-l1-guide
+```
+
+Working UX:
+
+```text
+Terminal output: for humans
+JSON export: for API
+Runtime Markdown export: not used as working output
+```
+
+The module remains read-only and the safety contract is preserved.

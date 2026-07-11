@@ -121,6 +121,11 @@ from app.market_reader.json_export import (
     resolve_export_path,
     write_book_l1_json_export,
 )
+from app.market_reader.terminal_guide import (
+    TerminalCommandExample,
+    build_book_l1_terminal_guide,
+    get_book_l1_terminal_command_examples,
+)
 
 __all__ = [
     "BreakoutDirection",
@@ -217,4 +222,7 @@ __all__ = [
     "build_multi_preview_export_payload",
     "build_history_preview_export_payload",
     "build_timeline_preview_export_payload",
+    "TerminalCommandExample",
+    "build_book_l1_terminal_guide",
+    "get_book_l1_terminal_command_examples",
 ]

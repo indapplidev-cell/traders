@@ -1,34 +1,38 @@
 # Current Task
 
-## BOOK-L1-22 - Unified JSON Export Contract / API Output Files
+## BOOK-L1-23 - Terminal UX Cleanup / Unified Command Guide
 
 Status: `DONE`
 
 Goal:
 
-Make stable API-oriented JSON output available for all main BOOK-L1 preview modes:
+Make terminal work with BOOK-L1 clear and unified without changing market-reader analysis logic.
 
-```text
-current preview
-multi-symbol preview
-history snapshot
-timeline preview
+Main command:
+
+```powershell
+python -m app.cli.commands book-l1-guide
 ```
 
 Scope completed:
 
-- added `app.market_reader.json_export`;
-- added unified envelope with `status`, `service`, `report_type`, `contract_version`, `request`, `result`, `summary`, `safety`, `warnings`, and `errors`;
-- added `contract_version = book_l1_json_export_v1`;
-- added `service = BOOK_L1_MARKET_READER`;
-- added fail-closed `BookL1JsonExportSafety`;
-- added stable JSON writer with overwrite behavior;
-- added `--export-json` and `--output-dir` to `book-l1-preview`;
-- added `--export-json` and `--output-dir` to `book-l1-multi-preview`;
-- added `--export-json` and `--output-dir` to `book-l1-history-preview`;
-- added `--export-json` to `book-l1-timeline-preview`;
-- kept legacy timeline `--export` / `--export-format` compatibility;
-- kept runtime Markdown export out of the new API output path.
+- added `app.market_reader.terminal_guide`;
+- added `book-l1-guide`;
+- documented current, API preview, multi-symbol, history, and timeline workflows;
+- documented `--export-json` as the recommended API export path;
+- documented stable JSON output filenames;
+- documented overwrite behavior for runtime JSON export;
+- documented that runtime Markdown export is not used as working output;
+- kept legacy timeline export compatibility untouched;
+- kept fail-closed safety contract unchanged.
+
+Working UX:
+
+```text
+Terminal output: for humans
+JSON export: for API
+Runtime Markdown export: not used
+```
 
 Stable runtime JSON files:
 
@@ -50,7 +54,6 @@ Out of scope:
 - no traders-core connection;
 - no live trading integration;
 - no trading signal generation;
-- no LONG / SHORT / BUY / SELL;
 - no order placement;
 - no label, class-weight, or training-objective changes;
 - no claim that a trading edge was found.
@@ -58,14 +61,13 @@ Out of scope:
 Completion checks:
 
 - compile check passed;
-- `tests/test_book_l1_json_export.py` passed;
+- `tests/test_book_l1_terminal_guide.py` passed;
 - full BOOK-L1 test pack passed;
 - CLI help checks passed;
-- manual smoke JSON exports passed;
-- repeated export overwrote the same runtime JSON file;
-- JSON contract validation passed;
-- JSON safety validation passed.
+- guide smoke passed;
+- no runtime JSON export smoke required for this stage;
+- safety validation passed.
 
 Next possible stage:
 
-BOOK-L1-23 - API Reader Contract / Load JSON Exports for External Service.
+BOOK-L1-24 - Terminal Output Normalization / Consistent Tables.

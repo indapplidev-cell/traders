@@ -51,10 +51,11 @@ safe_for_runtime_trading = false
 | BOOK-L1-20 | Market Regime Timeline Preview / Multi-Window History Table | DONE | `book-l1-timeline-preview` |
 | BOOK-L1-21 | Market Regime Timeline Export / JSON + Markdown Report | DONE | `reports/book_l1/timeline_preview.*` |
 | BOOK-L1-22 | Unified JSON Export Contract / API Output Files | DONE | `app/market_reader/json_export.py` |
+| BOOK-L1-23 | Terminal UX Cleanup / Unified Command Guide | DONE | `app/market_reader/terminal_guide.py`, `book-l1-guide` |
 
 ## Current implementation boundary
 
-BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, a multi-window market regime timeline preview, and stable unified JSON API output files for all main preview modes.
+BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, a multi-window market regime timeline preview, stable unified JSON API output files for all main preview modes, and a unified terminal command guide.
 
 The response contract can be consumed by a future external layer, but it remains read-only and fail-closed.
 The terminal previews are presentation layers over the same fail-closed market-reader payloads. The history snapshot compares two non-overlapping local candle windows. The timeline preview compares several non-overlapping historical windows, reports stability and last transition, and remains read-only. The unified JSON export writes only fixed runtime filenames and overwrites them on each `--export-json` run:
@@ -66,7 +67,21 @@ reports/book_l1/history_preview.json
 reports/book_l1/timeline_preview.json
 ```
 
-Export filenames do not include date, time, version, symbol, interval, stage number, UUID, or hash suffix. Runtime Markdown export is not used as API output. The export safety contract is explicit in every JSON envelope.
+Export filenames do not include date, time, version, symbol, interval, stage number, UUID, or hash suffix. Runtime Markdown export is not used as working output. The export safety contract is explicit in every JSON envelope.
+
+Terminal command guide:
+
+```powershell
+python -m app.cli.commands book-l1-guide
+```
+
+Working UX:
+
+```text
+Terminal output: for humans
+JSON export: for API
+Runtime Markdown export: not used
+```
 
 Unified JSON export contract:
 

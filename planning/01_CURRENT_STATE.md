@@ -2,7 +2,7 @@
 
 ## BOOK-L1 Market Reader status
 
-Status: `READ_ONLY_UNIFIED_JSON_EXPORT_READY`
+Status: `READ_ONLY_TERMINAL_GUIDE_READY`
 
 BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
 
@@ -26,6 +26,7 @@ It currently supports:
 - multi-window market regime timeline preview through `book-l1-timeline-preview`.
 - stable JSON and Markdown timeline export through `book-l1-timeline-preview --export`.
 - unified API-oriented JSON export through `--export-json` for current, multi-symbol, history, and timeline preview modes.
+- unified terminal command guide through `book-l1-guide`.
 
 Current safety contract:
 
@@ -58,6 +59,7 @@ Latest completed implementation stages:
 | BOOK-L1-20 | DONE | Market regime timeline preview / multi-window history table added. |
 | BOOK-L1-21 | DONE | Stable timeline preview export / JSON + Markdown report added. |
 | BOOK-L1-22 | DONE | Unified JSON export contract / API output files added. |
+| BOOK-L1-23 | DONE | Terminal UX cleanup / unified command guide added. |
 
 Latest relevant artifacts:
 
@@ -71,6 +73,7 @@ Latest relevant artifacts:
 - `reports/book_l1/book_l1_20_timeline_preview_report.md`
 - `reports/book_l1/book_l1_21_timeline_export_report.md`
 - `reports/book_l1/book_l1_22_unified_json_export_report.md`
+- `reports/book_l1/book_l1_23_terminal_ux_cleanup_report.md`
 - `reports/book_l1/current_preview.json`
 - `reports/book_l1/multi_preview.json`
 - `reports/book_l1/history_preview.json`
@@ -93,4 +96,20 @@ reports/book_l1/history_preview.json
 reports/book_l1/timeline_preview.json
 ```
 
-These files are overwritten on each `--export-json` run. Their names do not include date, time, version, symbol, interval, stage number, or hash suffix. Runtime Markdown export is not used as API output. BOOK-L1 remains read-only and the safety contract is preserved.
+These files are overwritten on each `--export-json` run. Their names do not include date, time, version, symbol, interval, stage number, or hash suffix.
+
+BOOK-L1-23 added the unified terminal command guide:
+
+```powershell
+python -m app.cli.commands book-l1-guide
+```
+
+Working UX:
+
+```text
+Terminal output: for humans
+JSON export: for API
+Runtime Markdown export: not used as working output
+```
+
+BOOK-L1 remains read-only and the safety contract is preserved.

@@ -136,7 +136,12 @@ from app.gates.gate_policy_prediction_runtime_adapter_contract_reporter import (
 from app.audit.final_readiness_reporter import FinalReadinessReporter
 
 
-cli = typer.Typer(help="traders-ml service CLI.")
+cli = typer.Typer(
+    help=(
+        "traders-ml service CLI.\n\n"
+        "Use `python -m app.cli.commands book-l1-guide` for BOOK-L1 command examples."
+    )
+)
 
 
 def build_health_payload() -> dict[str, str]:
@@ -162,7 +167,7 @@ def book_l1_preview_command(
     export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed current preview JSON export file."),
     output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
-    """Run BOOK-L1 Market Reader preview from stored candles."""
+    """Current single-symbol JSON preview."""
     import json
 
     from app.market_reader.cli_preview import build_market_reader_preview_payload
@@ -203,7 +208,7 @@ def book_l1_api_preview_command(
     limit: int = typer.Option(300, "--limit", help="Number of latest candles to read from DB."),
     min_candles: int = typer.Option(50, "--min-candles", help="Minimum candles required for preview."),
 ) -> None:
-    """Show BOOK-L1 Market Reader API/service response preview JSON."""
+    """Current single-symbol API response preview."""
     from app.market_reader.api_response import build_book_l1_api_response_payload
 
     with get_session() as session:
@@ -225,7 +230,7 @@ def book_l1_interactive_preview_command(
     limit: int = typer.Option(300, "--limit", help="Number of latest candles to read from DB."),
     min_candles: int = typer.Option(50, "--min-candles", help="Minimum candles required for preview."),
 ) -> None:
-    """Show BOOK-L1 Market Reader preview as human-readable terminal tables."""
+    """Current single-symbol terminal preview."""
     from app.market_reader.interactive_preview import build_book_l1_interactive_preview_report
 
     with get_session() as session:
@@ -263,7 +268,7 @@ def book_l1_multi_preview_command(
     export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed multi preview JSON export file."),
     output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
-    """Show BOOK-L1 multi-symbol market regime comparison from stored candles."""
+    """Multi-symbol current terminal preview."""
     from app.market_reader.multi_symbol_interactive import (
         prompt_details_choice,
         prompt_multi_symbol_config,
@@ -356,7 +361,7 @@ def book_l1_history_preview_command(
     export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed history preview JSON export file."),
     output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
-    """Show BOOK-L1 current-vs-previous market regime history snapshot."""
+    """Previous/current regime comparison."""
     from app.market_reader.history_interactive import (
         prompt_history_config,
         prompt_history_details_choice,
@@ -453,7 +458,7 @@ def book_l1_timeline_preview_command(
     export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed timeline preview JSON export file."),
     output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
-    """Show BOOK-L1 multi-window market regime timeline preview."""
+    """Multi-window regime timeline."""
     from app.market_reader.timeline_export import (
         TimelineExportConfig,
         TimelinePreviewExporter,
@@ -551,6 +556,14 @@ def book_l1_timeline_preview_command(
         selected_rows = tuple(row for row in result.rows if row.symbol in set(detail_symbols))
         typer.echo("")
         typer.echo(formatter.format_details(selected_rows))
+
+
+@cli.command("book-l1-guide")
+def book_l1_guide_command() -> None:
+    """Show BOOK-L1 terminal command guide."""
+    from app.market_reader.terminal_guide import build_book_l1_terminal_guide
+
+    typer.echo(build_book_l1_terminal_guide())
 
 
 def _resolve_multi_preview_symbols(
