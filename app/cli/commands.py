@@ -631,6 +631,7 @@ def book_l2_timeline_context_command(
     ),
     export_json: bool = typer.Option(
         False,
+        "--export",
         "--export-json",
         help="Overwrite fixed BOOK-L2 timeline context JSON export file.",
     ),
@@ -640,7 +641,7 @@ def book_l2_timeline_context_command(
         help="Directory for fixed BOOK-L2 export filenames.",
     ),
 ) -> None:
-    """Read BOOK-L1 timeline JSON and produce BOOK-L2 observe-only market context."""
+    """Read BOOK-L1 timeline JSON and display BOOK-L2 observe-only market context with symbol buckets and context quality ranking."""
     from app.market_interpreter import (
         L1TimelineConsumer,
         L1TimelineConsumerConfig,
@@ -654,7 +655,7 @@ def book_l2_timeline_context_command(
         output_dir=output_dir,
     )
     result = L1TimelineConsumer().run(config)
-    typer.echo(L2TimelineTableFormatter().format(result, input_path=input_path, show_details=show_details))
+    typer.echo(L2TimelineTableFormatter().format(result, input_path=input_path, show_details=show_details, strict=strict))
     if strict and result.status != "OK":
         raise typer.Exit(1)
 

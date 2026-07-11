@@ -1,12 +1,12 @@
 # Current Task
 
-## BOOK-L2-01 - Market Context Classification Rules / Symbol Buckets
+## BOOK-L2-02 - Context Quality Score / Symbol Ranking
 
 Status: `DONE`
 
 Goal:
 
-Add explicit, testable, and extensible BOOK-L2 classification rules for symbol context buckets using the BOOK-L1 timeline JSON export.
+Add observe-only context quality scoring and deterministic symbol ranking to BOOK-L2 using only the BOOK-L1 timeline JSON export.
 
 Primary input:
 
@@ -22,24 +22,22 @@ reports/book_l2/timeline_context.json
 
 Implemented:
 
-- added `app/market_interpreter/context_rules.py`;
-- added `SymbolBucket`, `MarketContextState`, and `SymbolBucketDecision`;
-- added `classify_symbol_bucket`;
-- added `classify_overall_market_context` for bucket decisions;
-- added skip candidate labeling;
-- updated the L2 timeline consumer with bucket fields;
-- updated terminal output with Bucket and Skip columns;
-- updated details output with `context_reason_codes`;
-- updated stable JSON export with `bucket`, `skip_candidate`, `context_reason_codes`, `overall_state`, and bucket summary fields;
-- preserved fail-closed observe-only safety;
-- added focused BOOK-L2 context rules tests;
-- updated existing BOOK-L2 timeline context tests;
-- added BOOK-L2-01 stage report.
+- added `app/market_interpreter/context_quality.py`;
+- added `ContextQualityGrade`, `ContextQualityConfig`, `ContextQualityScore`, and `ContextQualityScorer`;
+- added deterministic `rank_symbol_contexts`;
+- added `summarize_quality_distribution`;
+- added per-symbol `context_quality_score`, `context_quality_grade`, `context_rank`, and `context_quality_reason_codes`;
+- added `quality_summary` and `top_ranked_symbols`;
+- updated terminal output with Quality, Score, and Rank;
+- updated details output with quality reason codes;
+- updated strict validation for score, grade, rank, and fail-closed safety;
+- updated stable BOOK-L2 export at `reports/book_l2/timeline_context.json`;
+- preserved observe-only / fail-closed safety.
 
 BOOK-L2 boundary:
 
 ```text
-BOOK-L1 timeline JSON -> observe-only market context interpretation
+BOOK-L1 timeline JSON -> observe-only market context interpretation and context quality ranking
 ```
 
 Out of scope preserved:
@@ -47,15 +45,15 @@ Out of scope preserved:
 - no candle reads;
 - no `CandleRepository` import in BOOK-L2;
 - no `MarketReaderOrchestrator` import in BOOK-L2;
-- no EMA / ATR / swing / range recalculation;
-- no BOOK-L1 JSON semantics changes;
-- no BOOK-L1 market analysis changes;
-- no model training;
+- no DB access;
 - no Binance download;
+- no BOOK-L1 market analysis changes;
+- no BOOK-L1 JSON semantics changes;
+- no model training;
 - no traders-core connection;
 - no live trading connection;
 - no order creation;
-- no LONG / SHORT / BUY / SELL decision generation.
+- no trading decisions.
 
 Safety validation:
 
@@ -82,21 +80,23 @@ Useful modes:
 ```powershell
 python -m app.cli.commands book-l2-timeline-context --strict
 python -m app.cli.commands book-l2-timeline-context --show-details
-python -m app.cli.commands book-l2-timeline-context --export-json
+python -m app.cli.commands book-l2-timeline-context --export
 ```
 
 Completion checks:
 
 - compile check passed;
+- BOOK-L2 context quality tests passed;
 - BOOK-L2 context rules tests passed;
-- existing BOOK-L2 tests passed;
+- BOOK-L2 timeline context tests passed;
 - fresh BOOK-L1 timeline JSON export passed;
 - L1 runtime JSON consumer strict smoke passed;
 - L2 default / strict / details / export smoke passed;
-- full BOOK-L1 + BOOK-L2 pack passed.
+- full BOOK-L1 + BOOK-L2 pack passed;
+- forbidden import check passed.
 
 Next possible stage:
 
 ```text
-BOOK-L2-02 - Context Explanation Layer / Human-Readable Market Notes
+BOOK-L2-03 - Observation Notes / Human Market Context Summary
 ```

@@ -219,6 +219,16 @@ ERROR
 
 The export now includes `bucket`, `skip_candidate`, `context_reason_codes`, `overall_state`, bucket counts, and fail-closed safety. `skip_candidate` is an observe-only context quality label for UNKNOWN / UNSTABLE / INSUFFICIENT_DATA / ERROR buckets.
 
+BOOK-L2-02 added context quality score and deterministic symbol ranking:
+
+```text
+context_quality_score = 0.0..1.0
+context_quality_grade = HIGH / MEDIUM / LOW / SKIP / ERROR
+context_rank = deterministic observation rank for OK non-skip rows
+```
+
+The stable export now includes per-symbol quality fields, `quality_summary`, and `top_ranked_symbols` for observation.
+
 BOOK-L2 still consumes only:
 
 ```text
@@ -232,3 +242,5 @@ reports/book_l2/timeline_context.json
 ```
 
 BOOK-L2 does not read candles and does not produce trading signals.
+
+BOOK-L2 still consumes only `reports/book_l1/timeline_preview.json`, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not make trading decisions.

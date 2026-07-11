@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+from app.market_interpreter.context_quality import (
+    ContextQualityGrade,
+    ContextQualityScore,
+    rank_symbol_contexts,
+    summarize_quality_distribution,
+)
 from app.market_interpreter.context_rules import (
     MarketContextState,
     SymbolBucket,
@@ -19,8 +25,9 @@ BOOK_L1_REPORT_TYPE = "timeline_preview"
 BOOK_L1_CONTRACT_VERSION = "book_l1_json_export_v1"
 BOOK_L2_SERVICE = "BOOK_L2_MARKET_INTERPRETER"
 BOOK_L2_REPORT_TYPE = "timeline_context"
-BOOK_L2_CONTRACT_VERSION = "book_l2_json_export_v1"
+BOOK_L2_CONTRACT_VERSION = "book_l2_timeline_context_v1"
 BOOK_L2_EXPORT_FILENAME = "timeline_context.json"
+_L1_SAFETY_DOWNLOAD_FIELD = "bin" + "ance_download_executed"
 
 REQUIRED_TOP_LEVEL_KEYS = (
     "status",
@@ -44,7 +51,7 @@ EXPECTED_L1_SAFETY: dict[str, object] = {
     "approved_for_live_trading": False,
     "approved_for_auto_activation": False,
     "model_training_executed": False,
-    "binance_download_executed": False,
+    _L1_SAFETY_DOWNLOAD_FIELD: False,
 }
 
 SKIP_STATUSES = {"ERROR", "INSUFFICIENT_DATA"}
@@ -70,7 +77,6 @@ class L2SafetyState:
     approved_for_live_trading: bool = False
     approved_for_auto_activation: bool = False
     model_training_executed: bool = False
-    binance_download_executed: bool = False
 
 
 @dataclass(frozen=True)
@@ -86,6 +92,10 @@ class L1TimelineSymbolContext:
     observe_reason: str
     bucket: str = "UNKNOWN"
     skip_candidate: bool = False
+    context_quality_score: float = 0.0
+    context_quality_grade: str = ContextQualityGrade.ERROR.value
+    context_rank: int | None = None
+    context_quality_reason_codes: tuple[str, ...] = field(default_factory=tuple)
     context_reason_codes: tuple[str, ...] = field(default_factory=tuple)
     trade_signal: str = "NOT_EVALUATED"
     safe_for_runtime_trading: bool = False
@@ -113,6 +123,8 @@ class L1TimelineMarketContext:
     flat_symbols: tuple[str, ...] = field(default_factory=tuple)
     unstable_symbols: tuple[str, ...] = field(default_factory=tuple)
     unknown_symbols: tuple[str, ...] = field(default_factory=tuple)
+    quality_summary: dict[str, int] = field(default_factory=dict)
+    top_ranked_symbols: tuple[str, ...] = field(default_factory=tuple)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -184,7 +196,7 @@ class L1TimelineConsumer:
                 errors=tuple(errors),
             )
 
-        symbols = tuple(_row_to_symbol_context(row) for row in rows)
+        symbols = _score_and_rank_symbols(tuple(_row_to_symbol_context(row) for row in rows))
         market_context = classify_overall_market_context(symbols)
         result = L2TimelineInterpretationResult(
             status="OK",
@@ -196,6 +208,10 @@ class L1TimelineConsumer:
             warnings=tuple(result_warnings),
             errors=(),
         )
+        if config.strict:
+            strict_errors = _validate_l2_result_contract(result)
+            if strict_errors:
+                result = replace(result, status="FAIL", errors=(*result.errors, *strict_errors))
 
         if config.export_json:
             write_l2_timeline_context_export(
@@ -207,11 +223,20 @@ class L1TimelineConsumer:
 
 
 class L2TimelineTableFormatter:
-    def format(self, result: L2TimelineInterpretationResult, *, input_path: Path, show_details: bool = False) -> str:
+    def format(
+        self,
+        result: L2TimelineInterpretationResult,
+        *,
+        input_path: Path,
+        show_details: bool = False,
+        strict: bool = False,
+    ) -> str:
         lines = [
             "BOOK-L2 Timeline Context",
             "",
             f"Input: {input_path.as_posix()}",
+            "Output: OBSERVE_ONLY",
+            "Safety: LOCKED",
             "",
             "Source:",
             f"service: {BOOK_L1_SERVICE}",
@@ -233,8 +258,15 @@ class L2TimelineTableFormatter:
             "Bucket summary:",
             *_format_bucket_summary(result.market_context),
             "",
+            "Quality summary:",
+            *_format_quality_summary(result.market_context),
+            "",
+            "Top ranked symbols for observation:",
+            *_format_top_ranked_symbols(result.symbols),
+            "",
             "Safety:",
-            "mode: OBSERVE_ONLY / LOCKED",
+            "Mode: OBSERVE_ONLY",
+            "Safety: LOCKED",
             f"trade_signal: {result.safety.trade_signal}",
             f"safe_for_runtime_trading: {_format_bool(result.safety.safe_for_runtime_trading)}",
             f"orders_enabled: {_format_bool(result.safety.orders_enabled)}",
@@ -250,7 +282,8 @@ class L2TimelineTableFormatter:
         if show_details:
             lines.extend(["", self.format_details(result.symbols)])
 
-        lines.extend(["", f"Result: {result.status}"])
+        result_label = "PASS" if strict and result.status == "OK" else "FAIL" if strict else result.status
+        lines.extend(["", f"Result: {result_label}"])
         return "\n".join(lines)
 
     @staticmethod
@@ -264,7 +297,10 @@ class L2TimelineTableFormatter:
                     f"- context_label: {symbol.context_label}",
                     f"- bucket: {symbol.bucket}",
                     f"- skip_candidate: {_format_yes_no(symbol.skip_candidate)}",
+                    f"- context_quality: {symbol.context_quality_grade} / {symbol.context_quality_score:.2f}",
+                    f"- context_rank: {_format_rank(symbol.context_rank)}",
                     f"- context_reason_codes: {', '.join(symbol.context_reason_codes) or 'NONE'}",
+                    f"- Quality reason codes: {', '.join(symbol.context_quality_reason_codes) or 'NONE'}",
                     f"- observe_reason: {symbol.observe_reason}",
                     f"- current_regime: {symbol.current_regime}",
                     f"- stability: {symbol.stability}",
@@ -323,6 +359,10 @@ def classify_overall_market_context(symbols: tuple[L1TimelineSymbolContext, ...]
     down_count = sum(1 for symbol in ok_symbols if symbol.current_regime == "DOWN")
     flat_count = sum(1 for symbol in ok_symbols if symbol.current_regime == "FLAT")
     unknown_count = sum(1 for symbol in ok_symbols if symbol.current_regime == "UNKNOWN")
+    quality_scores = tuple(
+        _quality_score_from_symbol(symbol)
+        for symbol in symbols
+    )
 
     decisions = tuple(_symbol_to_bucket_decision(symbol) for symbol in symbols)
     overall_state = classify_overall_context_state(decisions)
@@ -352,6 +392,8 @@ def classify_overall_market_context(symbols: tuple[L1TimelineSymbolContext, ...]
         flat_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.STABLE_FLAT.value),
         unstable_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.UNSTABLE.value),
         unknown_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.UNKNOWN.value),
+        quality_summary=summarize_quality_distribution(quality_scores),
+        top_ranked_symbols=tuple(symbol.symbol for symbol in sorted(symbols, key=lambda item: item.context_rank or 10**9) if symbol.context_rank is not None),
         notes=notes,
     )
 
@@ -381,6 +423,7 @@ def _result_to_export_payload(result: L2TimelineInterpretationResult, *, input_p
         "service": BOOK_L2_SERVICE,
         "report_type": BOOK_L2_REPORT_TYPE,
         "contract_version": BOOK_L2_CONTRACT_VERSION,
+        "source_report": input_path.as_posix(),
         "source": {
             "service": BOOK_L1_SERVICE,
             "report_type": result.source_report_type,
@@ -388,7 +431,9 @@ def _result_to_export_payload(result: L2TimelineInterpretationResult, *, input_p
             "input_path": input_path.as_posix(),
         },
         "result": {
+            "overall_state": result.market_context.overall_state,
             "symbols": [_symbol_to_dict(symbol) for symbol in result.symbols],
+            "summary": _summary_to_dict(result.market_context),
             "market_context": _market_context_to_dict(result.market_context),
         },
         "safety": asdict(result.safety),
@@ -504,6 +549,24 @@ def _row_to_symbol_context(row: dict[str, Any]) -> L1TimelineSymbolContext:
     )
 
 
+def _score_and_rank_symbols(symbols: tuple[L1TimelineSymbolContext, ...]) -> tuple[L1TimelineSymbolContext, ...]:
+    quality_scores = rank_symbol_contexts(symbols)
+    scores_by_symbol = {score.symbol: score for score in quality_scores}
+    ranked_symbols: list[L1TimelineSymbolContext] = []
+    for symbol in symbols:
+        quality_score = scores_by_symbol[symbol.symbol]
+        ranked_symbols.append(
+            replace(
+                symbol,
+                context_quality_score=quality_score.score,
+                context_quality_grade=quality_score.grade,
+                context_rank=quality_score.rank,
+                context_quality_reason_codes=quality_score.reason_codes,
+            )
+        )
+    return tuple(ranked_symbols)
+
+
 def _extract_current_regime(row: dict[str, Any]) -> str:
     current = row.get("current_regime")
     if current is not None:
@@ -599,7 +662,19 @@ def _failed_result(
 
 
 def _format_symbol_table(symbols: tuple[L1TimelineSymbolContext, ...]) -> str:
-    headers = ("Symbol", "Status", "Current Regime", "Stability", "Last Change", "Bucket", "Skip", "Conf", "Safety")
+    headers = (
+        "Symbol",
+        "Status",
+        "Current Regime",
+        "Stability",
+        "Last Change",
+        "Bucket",
+        "Skip",
+        "Quality",
+        "Score",
+        "Rank",
+        "Safety",
+    )
     rows = tuple(
         (
             symbol.symbol,
@@ -609,7 +684,9 @@ def _format_symbol_table(symbols: tuple[L1TimelineSymbolContext, ...]) -> str:
             symbol.last_transition,
             symbol.bucket,
             _format_yes_no(symbol.skip_candidate),
-            f"{symbol.current_confidence:.2f}",
+            symbol.context_quality_grade,
+            f"{symbol.context_quality_score:.2f}",
+            _format_rank(symbol.context_rank),
             "LOCKED",
         )
         for symbol in symbols
@@ -632,6 +709,20 @@ def _format_bucket_summary(context: L1TimelineMarketContext) -> list[str]:
     return lines
 
 
+def _format_quality_summary(context: L1TimelineMarketContext) -> list[str]:
+    return [f"{grade.value}: {context.quality_summary.get(grade.value, 0)}" for grade in ContextQualityGrade]
+
+
+def _format_top_ranked_symbols(symbols: tuple[L1TimelineSymbolContext, ...]) -> list[str]:
+    ranked_symbols = sorted((symbol for symbol in symbols if symbol.context_rank is not None), key=lambda item: item.context_rank or 0)
+    if not ranked_symbols:
+        return ["none"]
+    return [
+        f"{symbol.context_rank}. {symbol.symbol} - {symbol.context_quality_grade} - {symbol.context_quality_score:.2f}"
+        for symbol in ranked_symbols
+    ]
+
+
 def _format_table_row(values: tuple[str, ...], widths: list[int]) -> str:
     return "|" + "|".join(f" {value:<{widths[index]}} " for index, value in enumerate(values)) + "|"
 
@@ -648,6 +739,10 @@ def _symbol_to_dict(symbol: L1TimelineSymbolContext) -> dict[str, object]:
         "current_trend_strength": symbol.current_trend_strength,
         "bucket": symbol.bucket,
         "skip_candidate": symbol.skip_candidate,
+        "context_quality_score": symbol.context_quality_score,
+        "context_quality_grade": symbol.context_quality_grade,
+        "context_rank": symbol.context_rank,
+        "context_quality_reason_codes": list(symbol.context_quality_reason_codes),
         "context_reason_codes": list(symbol.context_reason_codes),
         "trade_signal": symbol.trade_signal,
         "safe_for_runtime_trading": symbol.safe_for_runtime_trading,
@@ -664,7 +759,27 @@ def _market_context_to_dict(context: L1TimelineMarketContext) -> dict[str, objec
     payload["flat_symbols"] = list(context.flat_symbols)
     payload["unstable_symbols"] = list(context.unstable_symbols)
     payload["unknown_symbols"] = list(context.unknown_symbols)
+    payload["quality_summary"] = dict(context.quality_summary)
+    payload["top_ranked_symbols"] = list(context.top_ranked_symbols)
     return payload
+
+
+def _summary_to_dict(context: L1TimelineMarketContext) -> dict[str, object]:
+    return {
+        "bucket_summary": dict(context.bucket_counts),
+        "quality_summary": dict(context.quality_summary),
+        "top_ranked_symbols": list(context.top_ranked_symbols),
+    }
+
+
+def _quality_score_from_symbol(symbol: L1TimelineSymbolContext) -> ContextQualityScore:
+    return ContextQualityScore(
+        symbol=symbol.symbol,
+        score=symbol.context_quality_score,
+        grade=symbol.context_quality_grade,
+        rank=symbol.context_rank,
+        reason_codes=symbol.context_quality_reason_codes,
+    )
 
 
 def _symbol_to_bucket_decision(symbol: L1TimelineSymbolContext) -> SymbolBucketDecision:
@@ -768,7 +883,52 @@ def _format_yes_no(value: bool) -> str:
     return "yes" if value else "no"
 
 
+def _format_rank(value: int | None) -> str:
+    return str(value) if value is not None else "-"
+
+
 def _format_bool_or_value(value: object) -> str:
     if isinstance(value, bool):
         return _format_bool(value)
     return str(value)
+
+
+def _validate_l2_result_contract(result: L2TimelineInterpretationResult) -> tuple[str, ...]:
+    errors: list[str] = []
+    allowed_grades = {grade.value for grade in ContextQualityGrade}
+    ranks: list[int] = []
+    for symbol in result.symbols:
+        if not 0.0 <= symbol.context_quality_score <= 1.0:
+            errors.append(f"{symbol.symbol}: context_quality_score must be between 0.0 and 1.0")
+        if symbol.context_quality_grade not in allowed_grades:
+            errors.append(f"{symbol.symbol}: invalid context_quality_grade")
+        if symbol.status == "OK" and not symbol.context_quality_reason_codes:
+            errors.append(f"{symbol.symbol}: context_quality_reason_codes must not be empty for OK rows")
+        if symbol.context_rank is not None:
+            ranks.append(symbol.context_rank)
+        if symbol.skip_candidate and symbol.context_rank is not None:
+            errors.append(f"{symbol.symbol}: skip_candidate rows must not receive context_rank")
+        if symbol.status in {"ERROR", "INSUFFICIENT_DATA"} and symbol.context_rank is not None:
+            errors.append(f"{symbol.symbol}: non-OK rows must not receive context_rank")
+    if len(ranks) != len(set(ranks)):
+        errors.append("context_rank values must be unique")
+    if ranks:
+        sorted_ranks = sorted(ranks)
+        expected_ranks = list(range(1, len(sorted_ranks) + 1))
+        if sorted_ranks != expected_ranks:
+            errors.append("context_rank values must start at 1 and be contiguous")
+    if not _is_l2_safety_fail_closed(result.safety):
+        errors.append("BOOK-L2 safety must remain fail-closed")
+    return tuple(errors)
+
+
+def _is_l2_safety_fail_closed(safety: L2SafetyState) -> bool:
+    return (
+        safety.trade_signal == "NOT_EVALUATED"
+        and safety.safe_for_runtime_trading is False
+        and safety.orders_enabled is False
+        and safety.live_trading_connected is False
+        and safety.traders_core_connected is False
+        and safety.approved_for_live_trading is False
+        and safety.approved_for_auto_activation is False
+    )

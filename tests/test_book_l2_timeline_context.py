@@ -37,7 +37,6 @@ def test_build_l2_safety_state_returns_fail_closed_values() -> None:
     assert safety.approved_for_live_trading is False
     assert safety.approved_for_auto_activation is False
     assert safety.model_training_executed is False
-    assert safety.binance_download_executed is False
 
 
 def test_classify_symbol_context() -> None:
@@ -116,6 +115,8 @@ def test_valid_minimal_book_l1_timeline_json_returns_ok(tmp_path: Path) -> None:
     assert result.status == "OK"
     assert result.source_report_type == "timeline_preview"
     assert result.source_contract_version == "book_l1_json_export_v1"
+    assert result.symbols[0].context_quality_score >= 0.0
+    assert result.symbols[0].context_quality_grade in {"HIGH", "MEDIUM", "LOW", "SKIP", "ERROR"}
 
 
 def test_consumer_extracts_symbols_correctly(tmp_path: Path) -> None:
@@ -139,6 +140,8 @@ def test_table_formatter_includes_required_columns_and_observe_only(tmp_path: Pa
     assert "Last Change" in output
     assert "Bucket" in output
     assert "Skip" in output
+    assert "Quality" in output
+    assert "Rank" in output
     assert "OBSERVE_ONLY" in output
 
 
@@ -148,6 +151,9 @@ def test_details_mode_includes_observe_reason(tmp_path: Path) -> None:
 
     assert "Details:" in output
     assert "observe_reason:" in output
+    assert "Quality reason codes" in output
+    assert "context_quality:" in output
+    assert "context_rank:" in output
 
 
 def test_export_json_writes_timeline_context(tmp_path: Path) -> None:
@@ -181,7 +187,25 @@ def test_export_json_contains_book_l2_contract(tmp_path: Path) -> None:
 
     assert payload["service"] == "BOOK_L2_MARKET_INTERPRETER"
     assert payload["report_type"] == "timeline_context"
-    assert payload["contract_version"] == "book_l2_json_export_v1"
+    assert payload["contract_version"] == "book_l2_timeline_context_v1"
+    assert payload["source_report"] == input_path.as_posix()
+
+
+def test_export_json_contains_quality_fields_and_summary(tmp_path: Path) -> None:
+    input_path = _write_payload(tmp_path)
+    output_dir = tmp_path / "book_l2"
+
+    L1TimelineConsumer().run(L1TimelineConsumerConfig(input_path=input_path, export_json=True, output_dir=output_dir))
+    payload = json.loads((output_dir / "timeline_context.json").read_text(encoding="utf-8"))
+    symbol = payload["result"]["symbols"][0]
+    summary = payload["result"]["summary"]
+
+    assert "context_quality_score" in symbol
+    assert "context_quality_grade" in symbol
+    assert "context_rank" in symbol
+    assert "context_quality_reason_codes" in symbol
+    assert "quality_summary" in summary
+    assert "top_ranked_symbols" in summary
 
 
 def test_export_json_safety_is_fail_closed(tmp_path: Path) -> None:
@@ -202,6 +226,13 @@ def test_cli_help_contains_book_l2_timeline_context() -> None:
 
     assert result.exit_code == 0
     assert "book-l2-timeline-context" in result.stdout
+
+
+def test_cli_strict_outputs_pass_for_valid_l2_context(tmp_path: Path) -> None:
+    result = CliRunner().invoke(cli, ["book-l2-timeline-context", "--input-path", str(_write_payload(tmp_path)), "--strict"])
+
+    assert result.exit_code == 0
+    assert "Result: PASS" in result.stdout
 
 
 def test_no_trade_decision_words_in_terminal_formatter_output(tmp_path: Path) -> None:

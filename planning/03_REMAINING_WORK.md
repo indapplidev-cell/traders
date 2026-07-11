@@ -29,6 +29,7 @@ The following BOOK-L1 items are already completed:
 - API readiness final review / Layer 1 freeze candidate.
 - BOOK-L2-00 start layer 2 / consume BOOK-L1 timeline JSON.
 - BOOK-L2-01 market context classification rules / symbol buckets.
+- BOOK-L2-02 context quality score / deterministic symbol ranking.
 
 ## Remaining BOOK-L1 work
 
@@ -49,8 +50,8 @@ Possible next stage:
 
 BOOK-L2 has started. Possible next stage:
 
-- `BOOK-L2-02 - Context Explanation Layer / Human-Readable Market Notes`;
-- add short human-readable explanations for symbol buckets and overall context;
+- `BOOK-L2-03 - Observation Notes / Human Market Context Summary`;
+- add short human-readable observation notes for overall state and top-ranked symbols;
 - keep consuming only BOOK-L1 JSON output;
 - keep fail-closed safety;
 - keep trading signals and execution out of scope.
@@ -82,6 +83,7 @@ The following items are no longer remaining work:
 - `book-l1-api-readiness-review` API readiness final review / Layer 1 freeze candidate.
 - `book-l2-timeline-context` observe-only BOOK-L2 timeline context consumer.
 - BOOK-L2 explicit symbol bucket classification and skip candidate labeling.
+- BOOK-L2 context quality score and deterministic symbol ranking.
 
 ## BOOK-L1-22 export rule
 
@@ -186,3 +188,29 @@ reports/book_l2/timeline_context.json
 ```
 
 The output includes symbol buckets, skip candidate labels, context reason codes, overall state, and bucket counts. These fields are observe-only context labels and are not trading signals.
+
+## BOOK-L2-02 rule
+
+BOOK-L2-02 added:
+
+```text
+app/market_interpreter/context_quality.py
+```
+
+The L2 command still reads only:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+The L2 stable output remains:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+The output includes `context_quality_score`, `context_quality_grade`, `context_rank`, `context_quality_reason_codes`, `quality_summary`, and `top_ranked_symbols`.
+
+Ranks are deterministic and assigned only to OK non-skip symbols. Skip and error rows are not ranked.
+
+These fields rank context readability for observation only. BOOK-L2 still does not read candles, does not connect to the database, does not download Binance data, and does not produce trading decisions.

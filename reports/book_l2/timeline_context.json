@@ -2,7 +2,8 @@
   "status": "ok",
   "service": "BOOK_L2_MARKET_INTERPRETER",
   "report_type": "timeline_context",
-  "contract_version": "book_l2_json_export_v1",
+  "contract_version": "book_l2_timeline_context_v1",
+  "source_report": "reports/book_l1/timeline_preview.json",
   "source": {
     "service": "BOOK_L1_MARKET_READER",
     "report_type": "timeline_preview",
@@ -10,6 +11,7 @@
     "input_path": "reports/book_l1/timeline_preview.json"
   },
   "result": {
+    "overall_state": "UNKNOWN",
     "symbols": [
       {
         "symbol": "BTCUSDT",
@@ -22,6 +24,18 @@
         "current_trend_strength": "NONE",
         "bucket": "UNKNOWN",
         "skip_candidate": true,
+        "context_quality_score": 0.2,
+        "context_quality_grade": "SKIP",
+        "context_rank": null,
+        "context_quality_reason_codes": [
+          "CONTEXT_QUALITY_SCORED",
+          "QUALITY_CHANGING_CONTEXT_READABLE",
+          "QUALITY_CURRENT_CONFIDENCE_HIGH",
+          "QUALITY_LAST_TRANSITION_NO_CHANGE",
+          "QUALITY_SKIP_CANDIDATE_PENALTY",
+          "QUALITY_BUCKET_UNKNOWN",
+          "QUALITY_GRADE_SKIP"
+        ],
         "context_reason_codes": [
           "CONTEXT_RULE_UNMATCHED",
           "SKIP_CANDIDATE_CONTEXT"
@@ -43,6 +57,18 @@
         "current_trend_strength": "NONE",
         "bucket": "UNKNOWN",
         "skip_candidate": true,
+        "context_quality_score": 0.2,
+        "context_quality_grade": "SKIP",
+        "context_rank": null,
+        "context_quality_reason_codes": [
+          "CONTEXT_QUALITY_SCORED",
+          "QUALITY_CHANGING_CONTEXT_READABLE",
+          "QUALITY_CURRENT_CONFIDENCE_HIGH",
+          "QUALITY_LAST_TRANSITION_NO_CHANGE",
+          "QUALITY_SKIP_CANDIDATE_PENALTY",
+          "QUALITY_BUCKET_UNKNOWN",
+          "QUALITY_GRADE_SKIP"
+        ],
         "context_reason_codes": [
           "CONTEXT_RULE_UNMATCHED",
           "SKIP_CANDIDATE_CONTEXT"
@@ -64,6 +90,19 @@
         "current_trend_strength": "UNKNOWN",
         "bucket": "UNKNOWN",
         "skip_candidate": true,
+        "context_quality_score": 0.0,
+        "context_quality_grade": "SKIP",
+        "context_rank": null,
+        "context_quality_reason_codes": [
+          "CONTEXT_QUALITY_SCORED",
+          "QUALITY_SKIP_CANDIDATE_PENALTY",
+          "QUALITY_BUCKET_UNKNOWN",
+          "QUALITY_CURRENT_REGIME_UNKNOWN",
+          "QUALITY_UNSTABLE_CONTEXT",
+          "QUALITY_TRANSITION_TO_UNKNOWN",
+          "QUALITY_LOW_CONFIDENCE",
+          "QUALITY_GRADE_SKIP"
+        ],
         "context_reason_codes": [
           "CURRENT_REGIME_UNKNOWN",
           "SKIP_CANDIDATE_CONTEXT"
@@ -75,6 +114,19 @@
         "warnings": []
       }
     ],
+    "summary": {
+      "bucket_summary": {
+        "UNKNOWN": 3
+      },
+      "quality_summary": {
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "SKIP": 3,
+        "ERROR": 0
+      },
+      "top_ranked_symbols": []
+    },
     "market_context": {
       "overall_context": "UNKNOWN",
       "symbol_count": 3,
@@ -100,6 +152,14 @@
         "ETHUSDT",
         "SOLUSDT"
       ],
+      "quality_summary": {
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "SKIP": 3,
+        "ERROR": 0
+      },
+      "top_ranked_symbols": [],
       "notes": [
         "observe-only context; runtime trading is not approved."
       ]
@@ -113,8 +173,7 @@
     "traders_core_connected": false,
     "approved_for_live_trading": false,
     "approved_for_auto_activation": false,
-    "model_training_executed": false,
-    "binance_download_executed": false
+    "model_training_executed": false
   },
   "warnings": [],
   "errors": []

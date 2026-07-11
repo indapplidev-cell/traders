@@ -34,7 +34,8 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | --- | --- | --- | --- |
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py` |
 | BOOK-L2-01 | Market Context Rules / Symbol Buckets | DONE | `app/market_interpreter/context_rules.py` |
-| BOOK-L2-02 | Context Explanation Layer / Human-Readable Market Notes | PLANNED | observe-only explanations |
+| BOOK-L2-02 | Context Quality Score / Symbol Ranking | DONE | `app/market_interpreter/context_quality.py` |
+| BOOK-L2-03 | Observation Notes / Human Market Context Summary | PLANNED | observe-only explanations |
 
 ## BOOK-L2-00
 
@@ -72,7 +73,7 @@ Command:
 python -m app.cli.commands book-l2-timeline-context
 ```
 
-## Planned direction
+## BOOK-L2-01
 
 BOOK-L2-01 deepened observe-only classification:
 
@@ -94,6 +95,42 @@ reports/book_l1/timeline_preview.json -> reports/book_l2/timeline_context.json
 
 BOOK-L2-01 does not read candles and does not create trading signals.
 
+## BOOK-L2-02
+
+BOOK-L2-02 added context quality scoring and deterministic symbol ranking.
+
+Per-symbol output includes:
+
+```text
+context_quality_score
+context_quality_grade
+context_rank
+context_quality_reason_codes
+```
+
+Summary output includes:
+
+```text
+quality_summary
+top_ranked_symbols
+```
+
+BOOK-L2-02 still consumes only:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+BOOK-L2-02 still writes:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+BOOK-L2-02 does not read candles, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not produce trading decisions.
+
+## Planned direction
+
 The next stages must keep the same boundary: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
-BOOK-L2-02 can add short human-readable explanations for symbol buckets and overall context while remaining observe-only.
+BOOK-L2-03 can add short human-readable observation notes for overall state and top-ranked symbols while remaining observe-only.

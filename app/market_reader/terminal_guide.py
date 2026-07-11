@@ -102,6 +102,8 @@ _TIMELINE_EXPORT_COMMAND = """python -m app.cli.commands book-l1-timeline-previe
 
 _JSON_CONSUMER_SMOKE_COMMAND = "python -m app.cli.commands book-l1-json-consumer-smoke --strict"
 
+_L2_CONTEXT_COMMAND = "python -m app.cli.commands book-l2-timeline-context --strict --show-details --export"
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -124,6 +126,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _HISTORY_EXPORT_COMMAND,
         _TIMELINE_EXPORT_COMMAND,
         _JSON_CONSUMER_SMOKE_COMMAND,
+        _L2_CONTEXT_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -257,6 +260,15 @@ def build_book_l1_terminal_guide() -> str:
             _HISTORY_EXPORT_COMMAND,
             _TIMELINE_EXPORT_COMMAND,
             _JSON_CONSUMER_SMOKE_COMMAND,
+            "",
+            "BOOK-L2 observation workflow:",
+            "1. Export BOOK-L1 timeline JSON:",
+            _TIMELINE_EXPORT_COMMAND,
+            "2. Validate BOOK-L1 JSON:",
+            _JSON_CONSUMER_SMOKE_COMMAND,
+            "3. Read BOOK-L2 context:",
+            _L2_CONTEXT_COMMAND,
+            "BOOK-L2 is observe-only and does not produce trading signals.",
             "",
             "9. API readiness / freeze review",
             "Checks that BOOK-L1 is ready as read-only Layer 1 for terminal use and API JSON consumers.",

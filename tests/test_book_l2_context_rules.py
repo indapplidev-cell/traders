@@ -158,6 +158,8 @@ def test_terminal_formatter_includes_bucket_and_skip_columns(tmp_path: Path) -> 
 
     assert "Bucket" in output
     assert "Skip" in output
+    assert "Quality" in output
+    assert "Rank" in output
     assert "Overall state" in output
     assert "Safety" in output
 
@@ -167,6 +169,7 @@ def test_details_mode_includes_context_reason_codes(tmp_path: Path) -> None:
     output = L2TimelineTableFormatter().format(result, input_path=tmp_path / "timeline_preview.json", show_details=True)
 
     assert "context_reason_codes" in output
+    assert "Quality reason codes" in output
     assert "ACCEPTABLE_CONFIDENCE" in output
     assert "SKIP_CANDIDATE_CONTEXT" in output
 
@@ -183,9 +186,15 @@ def test_json_export_includes_bucket_fields(tmp_path: Path) -> None:
     assert first_symbol["bucket"] == "CLEAN_TREND"
     assert first_symbol["skip_candidate"] is False
     assert "context_reason_codes" in first_symbol
+    assert "context_quality_score" in first_symbol
+    assert "context_quality_grade" in first_symbol
+    assert "context_rank" in first_symbol
+    assert "context_quality_reason_codes" in first_symbol
     assert market_context["overall_state"] == "MIXED"
     assert market_context["bucket_counts"]["CLEAN_TREND"] == 1
     assert market_context["skip_candidate_count"] == 1
+    assert payload["result"]["summary"]["quality_summary"]["HIGH"] >= 1
+    assert "top_ranked_symbols" in payload["result"]["summary"]
 
 
 def test_json_export_includes_fail_closed_safety(tmp_path: Path) -> None:
@@ -208,11 +217,11 @@ def test_forbidden_imports_are_absent_in_market_interpreter() -> None:
     forbidden = (
         "CandleRepository",
         "MarketReaderOrchestrator",
-        "MarketCandles",
-        "CandleWindow",
-        "get_session",
-        "sqlalchemy",
+        "app.market_reader.market_reader",
+        "app.storage",
+        "app.data",
         "binance",
+        "ccxt",
     )
     import_lines: list[str] = []
     for path in Path("app/market_interpreter").glob("*.py"):
