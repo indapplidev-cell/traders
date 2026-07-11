@@ -1,41 +1,47 @@
 # Current Task
 
-## BOOK-L1-21 - Market Regime Timeline Export / JSON + Markdown Report
+## BOOK-L1-22 - Unified JSON Export Contract / API Output Files
 
 Status: `DONE`
 
 Goal:
 
-Add stable file export to the existing timeline preview command:
+Make stable API-oriented JSON output available for all main BOOK-L1 preview modes:
 
-```powershell
-python -m app.cli.commands book-l1-timeline-preview --export
+```text
+current preview
+multi-symbol preview
+history snapshot
+timeline preview
 ```
 
 Scope completed:
 
-- added `app.market_reader.timeline_export`;
-- added fixed JSON export path: `reports/book_l1/timeline_preview.json`;
-- added fixed Markdown export path: `reports/book_l1/timeline_preview.md`;
-- added overwrite-only write behavior for runtime export files;
-- added CLI `--export`;
-- added CLI `--export-format` with `all`, `json`, and `md`;
-- added CLI `--output-dir` while keeping filenames fixed;
-- added interactive export choice: none, all, json, or markdown;
-- added JSON contract fields: `service`, `export_type`, `contract_version`, `config`, `summary`, `rows`, `warnings`, `safety`;
-- added compact Markdown report with config, timeline table, summary, warnings, safety, and conclusion;
-- preserved the BOOK-L1 read-only safety contract.
+- added `app.market_reader.json_export`;
+- added unified envelope with `status`, `service`, `report_type`, `contract_version`, `request`, `result`, `summary`, `safety`, `warnings`, and `errors`;
+- added `contract_version = book_l1_json_export_v1`;
+- added `service = BOOK_L1_MARKET_READER`;
+- added fail-closed `BookL1JsonExportSafety`;
+- added stable JSON writer with overwrite behavior;
+- added `--export-json` and `--output-dir` to `book-l1-preview`;
+- added `--export-json` and `--output-dir` to `book-l1-multi-preview`;
+- added `--export-json` and `--output-dir` to `book-l1-history-preview`;
+- added `--export-json` to `book-l1-timeline-preview`;
+- kept legacy timeline `--export` / `--export-format` compatibility;
+- kept runtime Markdown export out of the new API output path.
 
-Stable runtime export files:
+Stable runtime JSON files:
 
 ```text
+reports/book_l1/current_preview.json
+reports/book_l1/multi_preview.json
+reports/book_l1/history_preview.json
 reports/book_l1/timeline_preview.json
-reports/book_l1/timeline_preview.md
 ```
 
 Overwrite rule:
 
-Runtime export files are overwritten on each export run. Export filenames do not include date, time, version, symbol, interval, stage number, or hash suffix.
+Runtime JSON export files are overwritten on each `--export-json` run. Export filenames do not include date, time, version, symbol, interval, stage number, UUID, or hash suffix.
 
 Out of scope:
 
@@ -49,22 +55,17 @@ Out of scope:
 - no label, class-weight, or training-objective changes;
 - no claim that a trading edge was found.
 
-Completion criteria:
+Completion checks:
 
-- `book-l1-timeline-preview --export` writes JSON and Markdown;
-- `--export-format json` writes only `timeline_preview.json`;
-- `--export-format md` writes only `timeline_preview.md`;
-- `--output-dir` changes only the directory, not filenames;
-- repeated exports overwrite the same files;
-- JSON is valid UTF-8 and machine-readable;
-- Markdown is compact and human-readable;
-- safety is explicit in both files;
-- interactive mode can choose export or no export;
-- unit tests pass;
-- full BOOK-L1 test pack passes;
-- CLI help shows the new options;
-- smoke and overwrite checks pass.
+- compile check passed;
+- `tests/test_book_l1_json_export.py` passed;
+- full BOOK-L1 test pack passed;
+- CLI help checks passed;
+- manual smoke JSON exports passed;
+- repeated export overwrote the same runtime JSON file;
+- JSON contract validation passed;
+- JSON safety validation passed.
 
 Next possible stage:
 
-BOOK-L1-22 - Market Regime Decision Notes / Human Explanation Layer. This should remain explanatory and must not produce trading decisions or live-trading approval.
+BOOK-L1-23 - API Reader Contract / Load JSON Exports for External Service.

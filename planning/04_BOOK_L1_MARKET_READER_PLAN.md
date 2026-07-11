@@ -50,20 +50,30 @@ safe_for_runtime_trading = false
 | BOOK-L1-19 | Market Regime History Snapshot / Compare Current vs Previous Window | DONE | `book-l1-history-preview` |
 | BOOK-L1-20 | Market Regime Timeline Preview / Multi-Window History Table | DONE | `book-l1-timeline-preview` |
 | BOOK-L1-21 | Market Regime Timeline Export / JSON + Markdown Report | DONE | `reports/book_l1/timeline_preview.*` |
+| BOOK-L1-22 | Unified JSON Export Contract / API Output Files | DONE | `app/market_reader/json_export.py` |
 
 ## Current implementation boundary
 
-BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, a multi-window market regime timeline preview, and a stable JSON + Markdown timeline export.
+BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, a multi-window market regime timeline preview, and stable unified JSON API output files for all main preview modes.
 
 The response contract can be consumed by a future external layer, but it remains read-only and fail-closed.
-The terminal previews are presentation layers over the same fail-closed market-reader payloads. The history snapshot compares two non-overlapping local candle windows. The timeline preview compares several non-overlapping historical windows, reports stability and last transition, and remains read-only. The timeline export writes only fixed runtime filenames and overwrites them on each export run:
+The terminal previews are presentation layers over the same fail-closed market-reader payloads. The history snapshot compares two non-overlapping local candle windows. The timeline preview compares several non-overlapping historical windows, reports stability and last transition, and remains read-only. The unified JSON export writes only fixed runtime filenames and overwrites them on each `--export-json` run:
 
 ```text
+reports/book_l1/current_preview.json
+reports/book_l1/multi_preview.json
+reports/book_l1/history_preview.json
 reports/book_l1/timeline_preview.json
-reports/book_l1/timeline_preview.md
 ```
 
-Export filenames do not include date, time, version, symbol, interval, stage number, or hash suffix. The export safety contract is explicit in both JSON and Markdown.
+Export filenames do not include date, time, version, symbol, interval, stage number, UUID, or hash suffix. Runtime Markdown export is not used as API output. The export safety contract is explicit in every JSON envelope.
+
+Unified JSON export contract:
+
+```text
+contract_version = book_l1_json_export_v1
+service = BOOK_L1_MARKET_READER
+```
 
 Current API preview safety block:
 

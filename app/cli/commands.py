@@ -159,11 +159,17 @@ def book_l1_preview_command(
     interval: str = typer.Option("15m", "--interval", help="Candle interval, for example 15m."),
     limit: int = typer.Option(200, "--limit", help="Number of latest candles to read from DB."),
     min_candles: int = typer.Option(50, "--min-candles", help="Minimum candles required for preview."),
+    export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed current preview JSON export file."),
+    output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
     """Run BOOK-L1 Market Reader preview from stored candles."""
     import json
 
     from app.market_reader.cli_preview import build_market_reader_preview_payload
+    from app.market_reader.json_export import (
+        build_current_preview_export_payload,
+        write_book_l1_json_export,
+    )
 
     with get_session() as session:
         payload = build_market_reader_preview_payload(
@@ -175,6 +181,19 @@ def book_l1_preview_command(
         )
 
     typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+
+    if export_json:
+        envelope = build_current_preview_export_payload(
+            request={
+                "symbol": symbol,
+                "interval": interval,
+                "limit": limit,
+                "min_candles": min_candles,
+            },
+            preview_payload=payload,
+        )
+        path = write_book_l1_json_export(envelope, output_dir=output_dir)
+        typer.echo(f"JSON export written: {path.as_posix()}")
 
 
 @cli.command("book-l1-api-preview")
@@ -241,6 +260,8 @@ def book_l1_multi_preview_command(
         "--non-interactive",
         help="Run without terminal prompts.",
     ),
+    export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed multi preview JSON export file."),
+    output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
     """Show BOOK-L1 multi-symbol market regime comparison from stored candles."""
     from app.market_reader.multi_symbol_interactive import (
@@ -252,6 +273,10 @@ def book_l1_multi_preview_command(
         MultiSymbolPreviewRunner,
         MultiSymbolTableFormatter,
         parse_symbols,
+    )
+    from app.market_reader.json_export import (
+        build_multi_preview_export_payload,
+        write_book_l1_json_export,
     )
 
     if non_interactive:
@@ -278,6 +303,20 @@ def book_l1_multi_preview_command(
 
     formatter = MultiSymbolTableFormatter()
     typer.echo(formatter.format_result(result))
+
+    if export_json:
+        envelope = build_multi_preview_export_payload(
+            request={
+                "symbols": list(config.symbols),
+                "interval": config.interval,
+                "limit": config.limit,
+                "min_candles": config.min_candles,
+                "non_interactive": non_interactive,
+            },
+            result=result,
+        )
+        path = write_book_l1_json_export(envelope, output_dir=output_dir)
+        typer.echo(f"JSON export written: {path.as_posix()}")
 
     if non_interactive:
         return
@@ -314,6 +353,8 @@ def book_l1_history_preview_command(
         "--show-details",
         help="Print reason_codes and window details for each selected symbol.",
     ),
+    export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed history preview JSON export file."),
+    output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
     """Show BOOK-L1 current-vs-previous market regime history snapshot."""
     from app.market_reader.history_interactive import (
@@ -325,6 +366,10 @@ def book_l1_history_preview_command(
         HistorySnapshotRunner,
         HistorySnapshotTableFormatter,
         parse_symbols,
+    )
+    from app.market_reader.json_export import (
+        build_history_preview_export_payload,
+        write_book_l1_json_export,
     )
 
     if non_interactive:
@@ -351,6 +396,21 @@ def book_l1_history_preview_command(
 
     formatter = HistorySnapshotTableFormatter()
     typer.echo(formatter.format_result(result, show_details=show_details if non_interactive else False))
+
+    if export_json:
+        envelope = build_history_preview_export_payload(
+            request={
+                "symbols": list(config.symbols),
+                "interval": config.interval,
+                "limit": config.limit,
+                "min_candles": config.min_candles,
+                "non_interactive": non_interactive,
+                "show_details": show_details,
+            },
+            result=result,
+        )
+        path = write_book_l1_json_export(envelope, output_dir=output_dir)
+        typer.echo(f"JSON export written: {path.as_posix()}")
 
     if non_interactive:
         return
@@ -390,6 +450,7 @@ def book_l1_timeline_preview_command(
     ),
     export: bool = typer.Option(False, "--export", help="Overwrite fixed timeline preview export files."),
     export_format: str = typer.Option("all", "--export-format", help="Export format: all, json, or md."),
+    export_json: bool = typer.Option(False, "--export-json", help="Overwrite fixed timeline preview JSON export file."),
     output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
     """Show BOOK-L1 multi-window market regime timeline preview."""
@@ -407,6 +468,10 @@ def book_l1_timeline_preview_command(
         TimelinePreviewRunner,
         TimelinePreviewTableFormatter,
         parse_symbols,
+    )
+    from app.market_reader.json_export import (
+        build_timeline_preview_export_payload,
+        write_book_l1_json_export,
     )
 
     export_format = _normalize_timeline_export_format(export_format)
@@ -453,6 +518,23 @@ def book_l1_timeline_preview_command(
 
     formatter = TimelinePreviewTableFormatter()
     typer.echo(formatter.format_result(result, show_details=show_details if non_interactive else False))
+
+    if export_json:
+        envelope = build_timeline_preview_export_payload(
+            request={
+                "symbols": list(config.symbols),
+                "interval": config.interval,
+                "window_size": config.window_size,
+                "window_count": config.window_count,
+                "min_candles": config.min_candles,
+                "non_interactive": non_interactive,
+                "show_details": show_details,
+            },
+            result=result,
+        )
+        path = write_book_l1_json_export(envelope, output_dir=output_dir)
+        typer.echo("")
+        typer.echo(f"JSON export written: {path.as_posix()}")
 
     if export_config is not None:
         export_result = TimelinePreviewExporter().export(result, export_config)

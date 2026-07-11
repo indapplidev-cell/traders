@@ -23,10 +23,21 @@ The following BOOK-L1 items are already completed:
 - market regime history snapshot / previous vs current window comparison.
 - market regime timeline preview / multi-window history table.
 - stable timeline preview JSON + Markdown export.
+- unified JSON export contract / API output files for current, multi-symbol, history, and timeline previews.
 
 ## Remaining BOOK-L1 work
 
-### 1. Market regime decision notes / human explanation layer
+### 1. API reader contract / load JSON exports for external service
+
+Logical next stage:
+
+- add a read-only module that loads the stable JSON output files;
+- validate `contract_version = book_l1_json_export_v1`;
+- validate `service = BOOK_L1_MARKET_READER`;
+- keep fail-closed behavior when a file is missing or invalid;
+- avoid re-running analysis when the future API/service layer only needs the latest export snapshot.
+
+### 2. Market regime decision notes / human explanation layer
 
 Optional next stage:
 
@@ -36,7 +47,7 @@ Optional next stage:
 - keep `trade_signal = NOT_EVALUATED`;
 - keep `safe_for_runtime_trading = false`.
 
-### 2. Optional FastAPI integration layer
+### 3. Optional FastAPI integration layer
 
 Only if needed later:
 
@@ -45,7 +56,7 @@ Only if needed later:
 - keep `trade_signal = NOT_EVALUATED`;
 - keep `safe_for_runtime_trading = false`.
 
-### 3. Runtime integration planning
+### 4. Runtime integration planning
 
 Only as a future planning step:
 
@@ -53,7 +64,7 @@ Only as a future planning step:
 - define fail-closed behavior;
 - do not allow BOOK-L1 to create entries or orders.
 
-### 4. Calibration / rule tuning
+### 5. Calibration / rule tuning
 
 Optional future work:
 
@@ -75,14 +86,17 @@ The following items are no longer remaining work:
 - `book-l1-history-preview` current-vs-previous regime history snapshot.
 - `book-l1-timeline-preview` multi-window market regime timeline preview.
 - `book-l1-timeline-preview --export` stable JSON + Markdown export.
+- `--export-json` unified stable JSON API output for all main BOOK-L1 preview modes.
 
-## BOOK-L1-21 export rule
+## BOOK-L1-22 export rule
 
-BOOK-L1-21 added stable runtime export files:
+BOOK-L1-22 added stable runtime API JSON output files:
 
 ```text
+reports/book_l1/current_preview.json
+reports/book_l1/multi_preview.json
+reports/book_l1/history_preview.json
 reports/book_l1/timeline_preview.json
-reports/book_l1/timeline_preview.md
 ```
 
-The files are overwritten on each export run. The names do not contain date, time, version, symbol, interval, stage number, or hash suffix. The module remains read-only and the safety contract is preserved.
+The files are overwritten on each `--export-json` run. The names do not contain date, time, version, symbol, interval, stage number, UUID, or hash suffix. Runtime Markdown export is not used as API output. The module remains read-only and the safety contract is preserved.

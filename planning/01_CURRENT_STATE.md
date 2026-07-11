@@ -2,7 +2,7 @@
 
 ## BOOK-L1 Market Reader status
 
-Status: `READ_ONLY_TIMELINE_EXPORT_READY`
+Status: `READ_ONLY_UNIFIED_JSON_EXPORT_READY`
 
 BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
 
@@ -25,6 +25,7 @@ It currently supports:
 - current-vs-previous window regime history snapshot through `book-l1-history-preview`.
 - multi-window market regime timeline preview through `book-l1-timeline-preview`.
 - stable JSON and Markdown timeline export through `book-l1-timeline-preview --export`.
+- unified API-oriented JSON export through `--export-json` for current, multi-symbol, history, and timeline preview modes.
 
 Current safety contract:
 
@@ -56,6 +57,7 @@ Latest completed implementation stages:
 | BOOK-L1-19 | DONE | Market regime history snapshot / previous vs current window added. |
 | BOOK-L1-20 | DONE | Market regime timeline preview / multi-window history table added. |
 | BOOK-L1-21 | DONE | Stable timeline preview export / JSON + Markdown report added. |
+| BOOK-L1-22 | DONE | Unified JSON export contract / API output files added. |
 
 Latest relevant artifacts:
 
@@ -68,14 +70,27 @@ Latest relevant artifacts:
 - `reports/book_l1/book_l1_19_history_snapshot_report.md`
 - `reports/book_l1/book_l1_20_timeline_preview_report.md`
 - `reports/book_l1/book_l1_21_timeline_export_report.md`
+- `reports/book_l1/book_l1_22_unified_json_export_report.md`
+- `reports/book_l1/current_preview.json`
+- `reports/book_l1/multi_preview.json`
+- `reports/book_l1/history_preview.json`
 - `reports/book_l1/timeline_preview.json`
 - `reports/book_l1/timeline_preview.md`
 
-BOOK-L1-21 added stable runtime export files:
+BOOK-L1-22 added the unified API-oriented JSON export contract:
 
 ```text
-reports/book_l1/timeline_preview.json
-reports/book_l1/timeline_preview.md
+contract_version = book_l1_json_export_v1
+service = BOOK_L1_MARKET_READER
 ```
 
-These files are overwritten on each export run. Their names do not include date, time, version, symbol, interval, stage number, or hash suffix. BOOK-L1 remains read-only and the safety contract is preserved.
+The stable runtime API output files are:
+
+```text
+reports/book_l1/current_preview.json
+reports/book_l1/multi_preview.json
+reports/book_l1/history_preview.json
+reports/book_l1/timeline_preview.json
+```
+
+These files are overwritten on each `--export-json` run. Their names do not include date, time, version, symbol, interval, stage number, or hash suffix. Runtime Markdown export is not used as API output. BOOK-L1 remains read-only and the safety contract is preserved.
