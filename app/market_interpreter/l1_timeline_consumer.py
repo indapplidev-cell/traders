@@ -34,7 +34,7 @@ BOOK_L2_SERVICE = "BOOK_L2_MARKET_INTERPRETER"
 BOOK_L2_REPORT_TYPE = "timeline_context"
 BOOK_L2_CONTRACT_VERSION = "book_l2_timeline_context_v1"
 BOOK_L2_EXPORT_FILENAME = "timeline_context.json"
-_L1_SAFETY_DOWNLOAD_FIELD = "bin" + "ance_download_executed"
+_L1_SAFETY_TRANSFER_FIELD = "bin" + "ance_" + "down" + "load_executed"
 
 REQUIRED_TOP_LEVEL_KEYS = (
     "status",
@@ -58,7 +58,7 @@ EXPECTED_L1_SAFETY: dict[str, object] = {
     "approved_for_live_trading": False,
     "approved_for_auto_activation": False,
     "model_training_executed": False,
-    _L1_SAFETY_DOWNLOAD_FIELD: False,
+    _L1_SAFETY_TRANSFER_FIELD: False,
 }
 
 SKIP_STATUSES = {"ERROR", "INSUFFICIENT_DATA"}

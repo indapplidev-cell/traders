@@ -120,7 +120,7 @@ def test_safety_note_is_present_and_observe_only() -> None:
     brief = build_market_brief((_brief("BTCUSDT"),), overall_state="MIXED")
 
     assert "Observe-only" in brief.safety_note
-    assert "Not a trading signal" in brief.safety_note
+    assert "Runtime action is not approved" in brief.safety_note
 
 
 def test_human_brief_text_does_not_contain_forbidden_trade_terms() -> None:

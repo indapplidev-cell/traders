@@ -660,6 +660,51 @@ def book_l2_timeline_context_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l2-json-consumer-smoke")
+def book_l2_json_consumer_smoke_command(
+    input_path: Path = typer.Option(
+        Path("reports/book_l2/timeline_context.json"),
+        "--input-path",
+        help="Path to BOOK-L2 timeline context JSON export.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when the L2 JSON contract has warnings or errors.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print symbol and market brief validation details.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print consumer-smoke result JSON to stdout.",
+    ),
+) -> None:
+    """Validate BOOK-L2 timeline context JSON for API consumers."""
+    from app.market_interpreter import (
+        L2ContextConsumerConfig,
+        L2ContextConsumerFormatter,
+        L2ContextJsonConsumer,
+    )
+
+    config = L2ContextConsumerConfig(
+        input_path=input_path,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = L2ContextJsonConsumer().run(config)
+    formatter = L2ContextConsumerFormatter()
+    if json_output:
+        typer.echo(json.dumps(formatter.to_json_payload(result), ensure_ascii=False, indent=2))
+    else:
+        typer.echo(formatter.format(result, show_details=show_details))
+    if result.status == "FAIL":
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

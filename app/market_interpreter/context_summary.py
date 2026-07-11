@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
@@ -10,14 +11,17 @@ FORBIDDEN_BRIEF_TERMS = (
     "BUY",
     "SELL",
     "ENTRY",
-    "ENTER",
     "EXIT",
-    "TAKE_PROFIT",
-    "STOP_LOSS",
+    "TAKE PROFIT",
+    "STOP LOSS",
+    "TP",
+    "SL",
     "LEVERAGE",
-    "POSITION_SIZE",
+    "POSITION SIZE",
     "ORDER",
-    "TRADE_SIGNAL",
+    "SIGNAL",
+    "TRADE CANDIDATE",
+    "ENTRY CANDIDATE",
 )
 
 
@@ -48,7 +52,7 @@ class MarketBrief:
     skip_candidates: tuple[SymbolBrief, ...]
     key_points: tuple[str, ...]
     warnings: tuple[str, ...] = field(default_factory=tuple)
-    safety_note: str = "Observe-only context. Not a trading signal."
+    safety_note: str = "Observe-only context. Runtime action is not approved."
 
 
 class ContextSummaryBuilder:
@@ -261,7 +265,7 @@ def _build_key_points(
     elif brief_state == "UNKNOWN_CONTEXT":
         points.append("Market context is unknown-heavy.")
 
-    points.append("Safety remains fail-closed: no trading signal.")
+    points.append("Safety remains fail-closed: runtime action is not approved.")
     return tuple(points[:5])
 
 
@@ -358,8 +362,13 @@ def _join_symbols(symbols: tuple[SymbolBrief, ...]) -> str:
 
 
 def _forbidden_terms_in_text(text: str) -> tuple[str, ...]:
-    upper_text = text.upper()
-    return tuple(term for term in FORBIDDEN_BRIEF_TERMS if term in upper_text)
+    upper_text = text.replace("_", " ").upper()
+    matches: list[str] = []
+    for term in FORBIDDEN_BRIEF_TERMS:
+        pattern = r"(?<![A-Z0-9])" + re.escape(term).replace(r"\ ", r"[\s_]+") + r"(?![A-Z0-9])"
+        if re.search(pattern, upper_text):
+            matches.append(term)
+    return tuple(matches)
 
 
 def _read_field(row: object, field_name: str, default: Any = None) -> Any:

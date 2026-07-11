@@ -36,7 +36,8 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-01 | Market Context Rules / Symbol Buckets | DONE | `app/market_interpreter/context_rules.py` |
 | BOOK-L2-02 | Context Quality Score / Symbol Ranking | DONE | `app/market_interpreter/context_quality.py` |
 | BOOK-L2-03 | Context Summary / Human Market Brief | DONE | `app/market_interpreter/context_summary.py` |
-| BOOK-L2-04 | Market Context API Export Contract / L2 JSON Consumer | PLANNED | L2 JSON consumer contract |
+| BOOK-L2-04 | L2 JSON Consumer / Context Contract Smoke | DONE | `app/market_interpreter/json_consumer.py` |
+| BOOK-L2-05 | API Readiness Review / Layer 2 Freeze Candidate | PLANNED | L2 readiness review |
 
 ## BOOK-L2-00
 
@@ -161,8 +162,38 @@ reports/book_l2/timeline_context.json
 
 The summary uses observation candidates, not trade candidates. It does not add trading signals or trading decisions.
 
+## BOOK-L2-04
+
+BOOK-L2-04 added a consumer-smoke for the stable BOOK-L2 JSON output:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l2-json-consumer-smoke --strict
+```
+
+The consumer validates:
+
+- L2 service and contract version;
+- source metadata pointing to BOOK-L1 timeline JSON;
+- `overall_state`;
+- symbols, buckets, skip flags, quality score/grade/rank, and reason codes;
+- deterministic ranking consistency for rankable symbols;
+- `market_brief`;
+- forbidden human brief terms;
+- fail-closed safety;
+- warnings/errors handling in default and strict modes.
+
+BOOK-L2 output can now be validated for external/API consumption.
+
+BOOK-L2-04 remains consume-only. It does not read candles, does not connect to DB or live services, does not recalculate BOOK-L1 analysis, and does not create trading decisions.
+
 ## Planned direction
 
 The next stages must keep the same boundary: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
-BOOK-L2-04 can add a stable L2 JSON consumer/API contract check for `reports/book_l2/timeline_context.json`.
+BOOK-L2-05 can perform an API readiness review and freeze-candidate check for Layer 2.

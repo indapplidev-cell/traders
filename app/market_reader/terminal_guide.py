@@ -104,6 +104,8 @@ _JSON_CONSUMER_SMOKE_COMMAND = "python -m app.cli.commands book-l1-json-consumer
 
 _L2_CONTEXT_COMMAND = "python -m app.cli.commands book-l2-timeline-context --strict --show-details --export"
 
+_L2_JSON_CONSUMER_SMOKE_COMMAND = "python -m app.cli.commands book-l2-json-consumer-smoke --strict"
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -127,6 +129,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _TIMELINE_EXPORT_COMMAND,
         _JSON_CONSUMER_SMOKE_COMMAND,
         _L2_CONTEXT_COMMAND,
+        _L2_JSON_CONSUMER_SMOKE_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -268,6 +271,20 @@ def build_book_l1_terminal_guide() -> str:
             _JSON_CONSUMER_SMOKE_COMMAND,
             "3. Read BOOK-L2 context:",
             _L2_CONTEXT_COMMAND,
+            "4. Validate BOOK-L2 JSON for API consumers:",
+            _L2_JSON_CONSUMER_SMOKE_COMMAND,
+            "",
+            "BOOK-L2 JSON consumer smoke:",
+            "Validates reports/book_l2/timeline_context.json without reading candles, DB, or live services.",
+            "",
+            "Command:",
+            _L2_JSON_CONSUMER_SMOKE_COMMAND,
+            "",
+            "Full BOOK-L2 JSON workflow:",
+            _TIMELINE_EXPORT_COMMAND,
+            _JSON_CONSUMER_SMOKE_COMMAND,
+            _L2_CONTEXT_COMMAND,
+            _L2_JSON_CONSUMER_SMOKE_COMMAND,
             "BOOK-L2 is observe-only and does not produce trading signals.",
             "BOOK-L2 market brief:",
             "- L2 summary is observe-only.",

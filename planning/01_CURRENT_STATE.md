@@ -255,4 +255,22 @@ reports/book_l2/timeline_context.json
 
 BOOK-L2 does not read candles and does not produce trading signals.
 
+BOOK-L2-04 added the L2 JSON consumer smoke:
+
+```powershell
+python -m app.cli.commands book-l2-json-consumer-smoke --strict
+```
+
+The consumer validates:
+
+- stable input file `reports/book_l2/timeline_context.json`;
+- L2 `service` and `contract_version`;
+- source metadata pointing to `reports/book_l1/timeline_preview.json`;
+- `overall_state`, symbols, buckets, quality fields, and deterministic ranks;
+- `market_brief` shape and forbidden human brief terms;
+- fail-closed safety fields;
+- warnings/errors behavior in default and strict modes.
+
+BOOK-L2 output can now be validated for external/API consumption.
+
 BOOK-L2 still consumes only `reports/book_l1/timeline_preview.json`, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not make trading decisions.

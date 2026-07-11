@@ -202,12 +202,12 @@
         "No clean observation candidates found.",
         "Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT.",
         "Most symbols are skip candidates.",
-        "Safety remains fail-closed: no trading signal."
+        "Safety remains fail-closed: runtime action is not approved."
       ],
       "warnings": [
         "All symbols are marked as skip candidates for clean observation."
       ],
-      "safety_note": "Observe-only context. Not a trading signal."
+      "safety_note": "Observe-only context. Runtime action is not approved."
     }
   },
   "safety": {

@@ -31,6 +31,7 @@ The following BOOK-L1 items are already completed:
 - BOOK-L2-01 market context classification rules / symbol buckets.
 - BOOK-L2-02 context quality score / deterministic symbol ranking.
 - BOOK-L2-03 context summary / human market brief.
+- BOOK-L2-04 L2 JSON consumer / context contract smoke.
 
 ## Remaining BOOK-L1 work
 
@@ -49,10 +50,10 @@ Possible next stage:
 
 ### 2. BOOK-L2 follow-up
 
-BOOK-L2 has started. Possible next stage:
+BOOK-L2 has a stable context export and consumer smoke. Possible next stage:
 
-- `BOOK-L2-04 - Market Context API Export Contract / L2 JSON Consumer`;
-- validate that external API layers can read the stable L2 JSON contract;
+- `BOOK-L2-05 - API Readiness Review / Layer 2 Freeze Candidate`;
+- confirm that external API layers can read the stable L2 JSON contract;
 - keep consuming only BOOK-L1 JSON output;
 - keep fail-closed safety;
 - keep trading signals and execution out of scope.
@@ -86,6 +87,7 @@ The following items are no longer remaining work:
 - BOOK-L2 explicit symbol bucket classification and skip candidate labeling.
 - BOOK-L2 context quality score and deterministic symbol ranking.
 - BOOK-L2 context summary / human market brief.
+- BOOK-L2 JSON consumer smoke for stable `reports/book_l2/timeline_context.json`.
 
 ## BOOK-L1-22 export rule
 
@@ -240,3 +242,29 @@ reports/book_l2/timeline_context.json
 The output includes `market_brief`, `brief_state`, `observation_candidates`, `skip_candidates`, `key_points`, and `safety_note`.
 
 The summary is observe-only. It gives observation candidates, not trade candidates. BOOK-L2 still does not read candles, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not produce trading decisions.
+
+## BOOK-L2-04 rule
+
+BOOK-L2-04 added:
+
+```text
+app/market_interpreter/json_consumer.py
+```
+
+The command reads:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l2-json-consumer-smoke --strict
+```
+
+The consumer validates L2 service identity, contract version, L1 timeline source metadata, `overall_state`, symbols, buckets, quality score/grade/rank, deterministic ranking consistency, `market_brief`, forbidden human brief terms, fail-closed safety, and warnings/errors behavior.
+
+BOOK-L2 output can now be validated for external/API consumption.
+
+BOOK-L2 remains consume-only, observe-only, and fail-closed.
