@@ -163,6 +163,51 @@
       "notes": [
         "observe-only context; runtime trading is not approved."
       ]
+    },
+    "market_brief": {
+      "overall_state": "UNKNOWN",
+      "brief_state": "UNKNOWN_CONTEXT",
+      "observation_candidates": [],
+      "skip_candidates": [
+        {
+          "symbol": "SOLUSDT",
+          "bucket": "UNKNOWN",
+          "context_quality_score": 0.0,
+          "quality_grade": "SKIP",
+          "context_rank": null,
+          "skip_candidate": true,
+          "main_reason": "Unknown current regime."
+        },
+        {
+          "symbol": "BTCUSDT",
+          "bucket": "UNKNOWN",
+          "context_quality_score": 0.2,
+          "quality_grade": "SKIP",
+          "context_rank": null,
+          "skip_candidate": true,
+          "main_reason": "Unknown current regime."
+        },
+        {
+          "symbol": "ETHUSDT",
+          "bucket": "UNKNOWN",
+          "context_quality_score": 0.2,
+          "quality_grade": "SKIP",
+          "context_rank": null,
+          "skip_candidate": true,
+          "main_reason": "Unknown current regime."
+        }
+      ],
+      "key_points": [
+        "Overall context is UNKNOWN.",
+        "No clean observation candidates found.",
+        "Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT.",
+        "Most symbols are skip candidates.",
+        "Safety remains fail-closed: no trading signal."
+      ],
+      "warnings": [
+        "All symbols are marked as skip candidates for clean observation."
+      ],
+      "safety_note": "Observe-only context. Not a trading signal."
     }
   },
   "safety": {

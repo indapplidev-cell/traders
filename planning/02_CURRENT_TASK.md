@@ -1,12 +1,12 @@
 # Current Task
 
-## BOOK-L2-02 - Context Quality Score / Symbol Ranking
+## BOOK-L2-03 - Context Summary / Human Market Brief
 
 Status: `DONE`
 
 Goal:
 
-Add observe-only context quality scoring and deterministic symbol ranking to BOOK-L2 using only the BOOK-L1 timeline JSON export.
+Add a short human-readable market context summary to BOOK-L2 using only the BOOK-L1 timeline JSON export.
 
 Primary input:
 
@@ -22,22 +22,21 @@ reports/book_l2/timeline_context.json
 
 Implemented:
 
-- added `app/market_interpreter/context_quality.py`;
-- added `ContextQualityGrade`, `ContextQualityConfig`, `ContextQualityScore`, and `ContextQualityScorer`;
-- added deterministic `rank_symbol_contexts`;
-- added `summarize_quality_distribution`;
-- added per-symbol `context_quality_score`, `context_quality_grade`, `context_rank`, and `context_quality_reason_codes`;
-- added `quality_summary` and `top_ranked_symbols`;
-- updated terminal output with Quality, Score, and Rank;
-- updated details output with quality reason codes;
-- updated strict validation for score, grade, rank, and fail-closed safety;
-- updated stable BOOK-L2 export at `reports/book_l2/timeline_context.json`;
+- added `app/market_interpreter/context_summary.py`;
+- added `MarketBriefConfig`, `SymbolBrief`, `MarketBrief`, and `ContextSummaryBuilder`;
+- added deterministic `observation_candidates`;
+- added deterministic `skip_candidates`;
+- added `brief_state`, `key_points`, `warnings`, and `safety_note`;
+- added `market_brief` to stable BOOK-L2 export;
+- updated terminal output with a human market brief;
+- updated details output with `main_reason` and market brief membership;
+- updated strict validation for `market_brief`;
 - preserved observe-only / fail-closed safety.
 
 BOOK-L2 boundary:
 
 ```text
-BOOK-L1 timeline JSON -> observe-only market context interpretation and context quality ranking
+BOOK-L1 timeline JSON -> observe-only market context interpretation and human market brief
 ```
 
 Out of scope preserved:
@@ -81,12 +80,13 @@ Useful modes:
 python -m app.cli.commands book-l2-timeline-context --strict
 python -m app.cli.commands book-l2-timeline-context --show-details
 python -m app.cli.commands book-l2-timeline-context --export
+python -m app.cli.commands book-l2-timeline-context --show-details --export
 ```
 
 Completion checks:
 
 - compile check passed;
-- BOOK-L2 context quality tests passed;
+- BOOK-L2 context summary tests passed;
 - BOOK-L2 context rules tests passed;
 - BOOK-L2 timeline context tests passed;
 - fresh BOOK-L1 timeline JSON export passed;
@@ -98,5 +98,5 @@ Completion checks:
 Next possible stage:
 
 ```text
-BOOK-L2-03 - Observation Notes / Human Market Context Summary
+BOOK-L2-04 - Market Context API Export Contract / L2 JSON Consumer
 ```

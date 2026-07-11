@@ -18,6 +18,13 @@ from app.market_interpreter.context_rules import (
     classify_overall_market_context as classify_overall_context_state,
     classify_symbol_bucket,
 )
+from app.market_interpreter.context_summary import (
+    MarketBrief,
+    build_market_brief,
+    build_market_brief_lines,
+    market_brief_to_dict,
+    validate_market_brief_safety,
+)
 
 
 BOOK_L1_SERVICE = "BOOK_L1_MARKET_READER"
@@ -135,6 +142,7 @@ class L2TimelineInterpretationResult:
     source_contract_version: str
     symbols: tuple[L1TimelineSymbolContext, ...]
     market_context: L1TimelineMarketContext
+    market_brief: MarketBrief
     safety: L2SafetyState
     warnings: tuple[str, ...] = field(default_factory=tuple)
     errors: tuple[str, ...] = field(default_factory=tuple)
@@ -198,12 +206,14 @@ class L1TimelineConsumer:
 
         symbols = _score_and_rank_symbols(tuple(_row_to_symbol_context(row) for row in rows))
         market_context = classify_overall_market_context(symbols)
+        market_brief = build_market_brief(symbols, overall_state=market_context.overall_state)
         result = L2TimelineInterpretationResult(
             status="OK",
             source_report_type=_string_or_unknown(payload.get("report_type")),
             source_contract_version=_string_or_unknown(payload.get("contract_version")),
             symbols=symbols,
             market_context=market_context,
+            market_brief=market_brief,
             safety=build_l2_safety_state(),
             warnings=tuple(result_warnings),
             errors=(),
@@ -264,6 +274,8 @@ class L2TimelineTableFormatter:
             "Top ranked symbols for observation:",
             *_format_top_ranked_symbols(result.symbols),
             "",
+            *build_market_brief_lines(result.market_brief),
+            "",
             "Safety:",
             "Mode: OBSERVE_ONLY",
             "Safety: LOCKED",
@@ -280,16 +292,29 @@ class L2TimelineTableFormatter:
             lines.extend(["", "Errors:"])
             lines.extend(f"- {error}" for error in result.errors)
         if show_details:
-            lines.extend(["", self.format_details(result.symbols)])
+            lines.extend(["", self.format_details(result.symbols, market_brief=result.market_brief)])
 
         result_label = "PASS" if strict and result.status == "OK" else "FAIL" if strict else result.status
         lines.extend(["", f"Result: {result_label}"])
         return "\n".join(lines)
 
     @staticmethod
-    def format_details(symbols: tuple[L1TimelineSymbolContext, ...]) -> str:
-        lines = ["Details:"]
+    def format_details(
+        symbols: tuple[L1TimelineSymbolContext, ...],
+        *,
+        market_brief: MarketBrief | None = None,
+    ) -> str:
+        observation_symbols = {
+            candidate.symbol: candidate
+            for candidate in (market_brief.observation_candidates if market_brief else ())
+        }
+        skip_symbols = {
+            candidate.symbol: candidate
+            for candidate in (market_brief.skip_candidates if market_brief else ())
+        }
+        lines = ["Details:", "", "Market brief details:"]
         for symbol in symbols:
+            brief = observation_symbols.get(symbol.symbol) or skip_symbols.get(symbol.symbol)
             lines.extend(
                 [
                     "",
@@ -299,6 +324,8 @@ class L2TimelineTableFormatter:
                     f"- skip_candidate: {_format_yes_no(symbol.skip_candidate)}",
                     f"- context_quality: {symbol.context_quality_grade} / {symbol.context_quality_score:.2f}",
                     f"- context_rank: {_format_rank(symbol.context_rank)}",
+                    f"- market_brief_membership: {_format_market_brief_membership(symbol.symbol, observation_symbols, skip_symbols)}",
+                    f"- main_reason: {brief.main_reason if brief else _build_symbol_detail_reason(symbol)}",
                     f"- context_reason_codes: {', '.join(symbol.context_reason_codes) or 'NONE'}",
                     f"- Quality reason codes: {', '.join(symbol.context_quality_reason_codes) or 'NONE'}",
                     f"- observe_reason: {symbol.observe_reason}",
@@ -435,6 +462,7 @@ def _result_to_export_payload(result: L2TimelineInterpretationResult, *, input_p
             "symbols": [_symbol_to_dict(symbol) for symbol in result.symbols],
             "summary": _summary_to_dict(result.market_context),
             "market_context": _market_context_to_dict(result.market_context),
+            "market_brief": market_brief_to_dict(result.market_brief),
         },
         "safety": asdict(result.safety),
         "warnings": list(result.warnings),
@@ -655,6 +683,7 @@ def _failed_result(
         source_contract_version=source_contract_version,
         symbols=(),
         market_context=market_context,
+        market_brief=build_market_brief((), overall_state=market_context.overall_state),
         safety=build_l2_safety_state(),
         warnings=warnings,
         errors=errors,
@@ -721,6 +750,27 @@ def _format_top_ranked_symbols(symbols: tuple[L1TimelineSymbolContext, ...]) -> 
         f"{symbol.context_rank}. {symbol.symbol} - {symbol.context_quality_grade} - {symbol.context_quality_score:.2f}"
         for symbol in ranked_symbols
     ]
+
+
+def _format_market_brief_membership(
+    symbol: str,
+    observation_symbols: dict[str, object],
+    skip_symbols: dict[str, object],
+) -> str:
+    memberships: list[str] = []
+    if symbol in observation_symbols:
+        memberships.append("observation_candidates")
+    if symbol in skip_symbols:
+        memberships.append("skip_candidates")
+    return ", ".join(memberships) or "none"
+
+
+def _build_symbol_detail_reason(symbol: L1TimelineSymbolContext) -> str:
+    brief = build_market_brief((symbol,), overall_state="UNKNOWN")
+    candidates = (*brief.observation_candidates, *brief.skip_candidates)
+    if candidates:
+        return candidates[0].main_reason
+    return "Context requires observation."
 
 
 def _format_table_row(values: tuple[str, ...], widths: list[int]) -> str:
@@ -919,6 +969,7 @@ def _validate_l2_result_contract(result: L2TimelineInterpretationResult) -> tupl
             errors.append("context_rank values must start at 1 and be contiguous")
     if not _is_l2_safety_fail_closed(result.safety):
         errors.append("BOOK-L2 safety must remain fail-closed")
+    errors.extend(validate_market_brief_safety(result.market_brief))
     return tuple(errors)
 
 

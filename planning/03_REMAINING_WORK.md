@@ -30,6 +30,7 @@ The following BOOK-L1 items are already completed:
 - BOOK-L2-00 start layer 2 / consume BOOK-L1 timeline JSON.
 - BOOK-L2-01 market context classification rules / symbol buckets.
 - BOOK-L2-02 context quality score / deterministic symbol ranking.
+- BOOK-L2-03 context summary / human market brief.
 
 ## Remaining BOOK-L1 work
 
@@ -50,8 +51,8 @@ Possible next stage:
 
 BOOK-L2 has started. Possible next stage:
 
-- `BOOK-L2-03 - Observation Notes / Human Market Context Summary`;
-- add short human-readable observation notes for overall state and top-ranked symbols;
+- `BOOK-L2-04 - Market Context API Export Contract / L2 JSON Consumer`;
+- validate that external API layers can read the stable L2 JSON contract;
 - keep consuming only BOOK-L1 JSON output;
 - keep fail-closed safety;
 - keep trading signals and execution out of scope.
@@ -84,6 +85,7 @@ The following items are no longer remaining work:
 - `book-l2-timeline-context` observe-only BOOK-L2 timeline context consumer.
 - BOOK-L2 explicit symbol bucket classification and skip candidate labeling.
 - BOOK-L2 context quality score and deterministic symbol ranking.
+- BOOK-L2 context summary / human market brief.
 
 ## BOOK-L1-22 export rule
 
@@ -214,3 +216,27 @@ The output includes `context_quality_score`, `context_quality_grade`, `context_r
 Ranks are deterministic and assigned only to OK non-skip symbols. Skip and error rows are not ranked.
 
 These fields rank context readability for observation only. BOOK-L2 still does not read candles, does not connect to the database, does not download Binance data, and does not produce trading decisions.
+
+## BOOK-L2-03 rule
+
+BOOK-L2-03 added:
+
+```text
+app/market_interpreter/context_summary.py
+```
+
+The L2 command still reads only:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+The L2 stable output remains:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+The output includes `market_brief`, `brief_state`, `observation_candidates`, `skip_candidates`, `key_points`, and `safety_note`.
+
+The summary is observe-only. It gives observation candidates, not trade candidates. BOOK-L2 still does not read candles, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not produce trading decisions.

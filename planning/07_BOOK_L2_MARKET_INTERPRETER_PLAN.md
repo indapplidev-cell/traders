@@ -35,7 +35,8 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py` |
 | BOOK-L2-01 | Market Context Rules / Symbol Buckets | DONE | `app/market_interpreter/context_rules.py` |
 | BOOK-L2-02 | Context Quality Score / Symbol Ranking | DONE | `app/market_interpreter/context_quality.py` |
-| BOOK-L2-03 | Observation Notes / Human Market Context Summary | PLANNED | observe-only explanations |
+| BOOK-L2-03 | Context Summary / Human Market Brief | DONE | `app/market_interpreter/context_summary.py` |
+| BOOK-L2-04 | Market Context API Export Contract / L2 JSON Consumer | PLANNED | L2 JSON consumer contract |
 
 ## BOOK-L2-00
 
@@ -129,8 +130,39 @@ reports/book_l2/timeline_context.json
 
 BOOK-L2-02 does not read candles, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not produce trading decisions.
 
+## BOOK-L2-03
+
+BOOK-L2-03 added a short human-readable market context brief.
+
+The stable export now includes:
+
+```text
+market_brief
+brief_state
+observation_candidates
+skip_candidates
+key_points
+safety_note
+```
+
+The terminal command prints the brief after the context table, and details mode includes each symbol's `main_reason` and membership in observation or skip lists.
+
+BOOK-L2-03 still consumes only:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+BOOK-L2-03 still writes:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+The summary uses observation candidates, not trade candidates. It does not add trading signals or trading decisions.
+
 ## Planned direction
 
 The next stages must keep the same boundary: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
-BOOK-L2-03 can add short human-readable observation notes for overall state and top-ranked symbols while remaining observe-only.
+BOOK-L2-04 can add a stable L2 JSON consumer/API contract check for `reports/book_l2/timeline_context.json`.

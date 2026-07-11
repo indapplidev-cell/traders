@@ -229,6 +229,18 @@ context_rank = deterministic observation rank for OK non-skip rows
 
 The stable export now includes per-symbol quality fields, `quality_summary`, and `top_ranked_symbols` for observation.
 
+BOOK-L2-03 added Context Summary / Human Market Brief:
+
+```text
+market_brief
+observation_candidates
+skip_candidates
+key_points
+safety_note
+```
+
+The summary is observe-only. It explains which symbols look cleaner for observation, which symbols are skip candidates, and why the overall context looks the way it does. It uses `observation_candidates`, not trade candidates, and it does not create trading signals.
+
 BOOK-L2 still consumes only:
 
 ```text

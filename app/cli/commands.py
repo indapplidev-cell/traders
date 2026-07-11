@@ -641,7 +641,7 @@ def book_l2_timeline_context_command(
         help="Directory for fixed BOOK-L2 export filenames.",
     ),
 ) -> None:
-    """Read BOOK-L1 timeline JSON and display BOOK-L2 observe-only market context with symbol buckets and context quality ranking."""
+    """Read BOOK-L1 timeline JSON and display BOOK-L2 observe-only market context with a human market brief."""
     from app.market_interpreter import (
         L1TimelineConsumer,
         L1TimelineConsumerConfig,
