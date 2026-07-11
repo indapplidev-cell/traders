@@ -388,11 +388,19 @@ def book_l1_timeline_preview_command(
         "--show-details",
         help="Print reason_codes and window details for each selected symbol.",
     ),
+    export: bool = typer.Option(False, "--export", help="Overwrite fixed timeline preview export files."),
+    export_format: str = typer.Option("all", "--export-format", help="Export format: all, json, or md."),
+    output_dir: str = typer.Option("reports/book_l1", "--output-dir", help="Directory for fixed export filenames."),
 ) -> None:
     """Show BOOK-L1 multi-window market regime timeline preview."""
+    from app.market_reader.timeline_export import (
+        TimelineExportConfig,
+        TimelinePreviewExporter,
+    )
     from app.market_reader.timeline_interactive import (
         prompt_timeline_config,
         prompt_timeline_details_choice,
+        prompt_timeline_export_choice,
     )
     from app.market_reader.timeline_preview import (
         TimelinePreviewConfig,
@@ -400,6 +408,9 @@ def book_l1_timeline_preview_command(
         TimelinePreviewTableFormatter,
         parse_symbols,
     )
+
+    export_format = _normalize_timeline_export_format(export_format)
+    export_config: TimelineExportConfig | None = None
 
     if non_interactive:
         selected_symbols = _resolve_timeline_preview_symbols(
@@ -413,11 +424,27 @@ def book_l1_timeline_preview_command(
             window_count=window_count,
             min_candles=min_candles,
         )
+        export_choice = export_format if export else "none"
     else:
         prompted_config = prompt_timeline_config()
         if prompted_config is None:
             return
         config = prompted_config
+        export_choice = export_format if export else prompt_timeline_export_choice()
+
+    if export_choice != "none":
+        export_config = TimelineExportConfig(
+            output_dir=Path(output_dir),
+            export_format=export_choice,
+        )
+        if not non_interactive:
+            paths = _timeline_export_paths_for_message(export_config)
+            typer.echo("")
+            typer.echo("Export files:")
+            for path in paths:
+                typer.echo(f"- {path.as_posix()}")
+            typer.echo("")
+            typer.echo("Existing files will be overwritten.")
 
     with get_session() as session:
         result = TimelinePreviewRunner(
@@ -426,6 +453,13 @@ def book_l1_timeline_preview_command(
 
     formatter = TimelinePreviewTableFormatter()
     typer.echo(formatter.format_result(result, show_details=show_details if non_interactive else False))
+
+    if export_config is not None:
+        export_result = TimelinePreviewExporter().export(result, export_config)
+        typer.echo("")
+        typer.echo("Exported:")
+        for path in export_result.written_files:
+            typer.echo(f"- {path.as_posix()}")
 
     if non_interactive:
         return
@@ -471,6 +505,24 @@ def _resolve_timeline_preview_symbols(
     if symbols or symbol_options:
         return normalize_symbols((*symbols, *symbol_options))
     return DEFAULT_MULTI_SYMBOLS
+
+
+def _normalize_timeline_export_format(export_format: str) -> str:
+    value = str(export_format).strip().lower()
+    if value not in {"all", "json", "md"}:
+        raise typer.BadParameter("export-format must be one of: all, json, md", param_hint="--export-format")
+    return value
+
+
+def _timeline_export_paths_for_message(config: object) -> tuple[Path, ...]:
+    paths: list[Path] = []
+    output_dir = Path(getattr(config, "output_dir"))
+    export_format = str(getattr(config, "export_format"))
+    if export_format in {"all", "json"}:
+        paths.append(output_dir / "timeline_preview.json")
+    if export_format in {"all", "md"}:
+        paths.append(output_dir / "timeline_preview.md")
+    return tuple(paths)
 
 
 @cli.command("db-check")

@@ -291,6 +291,42 @@ def prompt_timeline_details_choice(
         output_func("Invalid input. Try again.")
 
 
+def prompt_timeline_export_choice(
+    *,
+    input_func: InputFunc = input,
+    output_func: OutputFunc = print,
+) -> str:
+    choices = {
+        "": "none",
+        "1": "none",
+        "2": "all",
+        "3": "json",
+        "4": "md",
+    }
+    while True:
+        answer = _ask(
+            input_func,
+            output_func,
+            "\n".join(
+                [
+                    "Save result to files?",
+                    "",
+                    "1) No  [default]",
+                    "2) Yes, JSON + Markdown",
+                    "3) JSON only",
+                    "4) Markdown only",
+                    "",
+                    "Enter option number and press Enter.",
+                    "Enter without input = option 1:",
+                    "> ",
+                ]
+            ),
+        )
+        if answer in choices:
+            return choices[answer]
+        output_func("Invalid input. Try again.")
+
+
 def _prompt_manual_symbols(
     *,
     input_func: InputFunc,

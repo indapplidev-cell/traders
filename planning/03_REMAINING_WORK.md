@@ -22,10 +22,21 @@ The following BOOK-L1 items are already completed:
 - multi-symbol interactive preview / comparison table.
 - market regime history snapshot / previous vs current window comparison.
 - market regime timeline preview / multi-window history table.
+- stable timeline preview JSON + Markdown export.
 
 ## Remaining BOOK-L1 work
 
-### 1. Optional FastAPI integration layer
+### 1. Market regime decision notes / human explanation layer
+
+Optional next stage:
+
+- explain why a regime is UP / DOWN / FLAT / UNKNOWN;
+- list the main factors behind the regime classification;
+- state clearly that the explanation is not a trading signal;
+- keep `trade_signal = NOT_EVALUATED`;
+- keep `safe_for_runtime_trading = false`.
+
+### 2. Optional FastAPI integration layer
 
 Only if needed later:
 
@@ -34,7 +45,7 @@ Only if needed later:
 - keep `trade_signal = NOT_EVALUATED`;
 - keep `safe_for_runtime_trading = false`.
 
-### 2. Runtime integration planning
+### 3. Runtime integration planning
 
 Only as a future planning step:
 
@@ -42,7 +53,7 @@ Only as a future planning step:
 - define fail-closed behavior;
 - do not allow BOOK-L1 to create entries or orders.
 
-### 3. Calibration / rule tuning
+### 4. Calibration / rule tuning
 
 Optional future work:
 
@@ -63,3 +74,15 @@ The following items are no longer remaining work:
 - `book-l1-multi-preview` multi-symbol comparison table.
 - `book-l1-history-preview` current-vs-previous regime history snapshot.
 - `book-l1-timeline-preview` multi-window market regime timeline preview.
+- `book-l1-timeline-preview --export` stable JSON + Markdown export.
+
+## BOOK-L1-21 export rule
+
+BOOK-L1-21 added stable runtime export files:
+
+```text
+reports/book_l1/timeline_preview.json
+reports/book_l1/timeline_preview.md
+```
+
+The files are overwritten on each export run. The names do not contain date, time, version, symbol, interval, stage number, or hash suffix. The module remains read-only and the safety contract is preserved.

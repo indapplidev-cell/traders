@@ -1,32 +1,41 @@
 # Current Task
 
-## BOOK-L1-20 - Market Regime Timeline Preview / Multi-Window History Table
+## BOOK-L1-21 - Market Regime Timeline Export / JSON + Markdown Report
 
 Status: `DONE`
 
 Goal:
 
-Add a multi-window market regime timeline launch mode:
+Add stable file export to the existing timeline preview command:
 
 ```powershell
-python -m app.cli.commands book-l1-timeline-preview
+python -m app.cli.commands book-l1-timeline-preview --export
 ```
 
 Scope completed:
 
-- added `app.market_reader.timeline_preview`;
-- added `app.market_reader.timeline_interactive`;
-- added multi-window candle reads where `required_candles = window_size * window_count`;
-- added non-overlapping chronological windows labeled `W-N ... Current`;
-- reused `classify_regime_transition()` for adjacent-window transitions;
-- added `last_transition` for `W-1 -> Current`;
-- added timeline stability classification: `STABLE`, `CHANGING`, `UNSTABLE`, `ERROR`;
-- added compact timeline table with current confidence, trend, last change, stability, and locked safety;
-- added per-symbol `INSUFFICIENT_DATA` / `ERROR` isolation so one bad symbol does not break the run;
-- added optional per-window reason-code details;
-- added interactive mode with Enter defaults;
-- added non-interactive CLI mode for tests and automation;
+- added `app.market_reader.timeline_export`;
+- added fixed JSON export path: `reports/book_l1/timeline_preview.json`;
+- added fixed Markdown export path: `reports/book_l1/timeline_preview.md`;
+- added overwrite-only write behavior for runtime export files;
+- added CLI `--export`;
+- added CLI `--export-format` with `all`, `json`, and `md`;
+- added CLI `--output-dir` while keeping filenames fixed;
+- added interactive export choice: none, all, json, or markdown;
+- added JSON contract fields: `service`, `export_type`, `contract_version`, `config`, `summary`, `rows`, `warnings`, `safety`;
+- added compact Markdown report with config, timeline table, summary, warnings, safety, and conclusion;
 - preserved the BOOK-L1 read-only safety contract.
+
+Stable runtime export files:
+
+```text
+reports/book_l1/timeline_preview.json
+reports/book_l1/timeline_preview.md
+```
+
+Overwrite rule:
+
+Runtime export files are overwritten on each export run. Export filenames do not include date, time, version, symbol, interval, stage number, or hash suffix.
 
 Out of scope:
 
@@ -42,18 +51,20 @@ Out of scope:
 
 Completion criteria:
 
-- `python -m app.cli.commands book-l1-timeline-preview` starts the terminal dialog;
-- Enter chooses defaults;
-- one or more symbols can be analyzed in one run;
-- `window_count` is constrained to 2 through 6;
-- each symbol reads `window_size * window_count` candles;
-- candles are split into non-overlapping chronological windows;
-- each window is analyzed through `MarketReaderOrchestrator`;
-- `--non-interactive` prints the table without prompts;
-- `--show-details` prints reason codes for each timeline window;
-- safety remains explicit: `trade_signal = NOT_EVALUATED`, `safe_for_runtime_trading = false`, `orders_enabled = false`;
-- tests cover config defaults, validation, labels, stability, window split, insufficient data, error isolation, formatter, summary, safety, non-interactive CLI, details, and prompt defaults.
+- `book-l1-timeline-preview --export` writes JSON and Markdown;
+- `--export-format json` writes only `timeline_preview.json`;
+- `--export-format md` writes only `timeline_preview.md`;
+- `--output-dir` changes only the directory, not filenames;
+- repeated exports overwrite the same files;
+- JSON is valid UTF-8 and machine-readable;
+- Markdown is compact and human-readable;
+- safety is explicit in both files;
+- interactive mode can choose export or no export;
+- unit tests pass;
+- full BOOK-L1 test pack passes;
+- CLI help shows the new options;
+- smoke and overwrite checks pass.
 
 Next possible stage:
 
-Optional FastAPI integration layer or future runtime consumption planning. BOOK-L1 remains read-only.
+BOOK-L1-22 - Market Regime Decision Notes / Human Explanation Layer. This should remain explanatory and must not produce trading decisions or live-trading approval.

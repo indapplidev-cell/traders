@@ -2,7 +2,7 @@
 
 ## BOOK-L1 Market Reader status
 
-Status: `READ_ONLY_TIMELINE_PREVIEW_READY`
+Status: `READ_ONLY_TIMELINE_EXPORT_READY`
 
 BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
 
@@ -24,6 +24,7 @@ It currently supports:
 - multi-symbol terminal comparison table through `book-l1-multi-preview`.
 - current-vs-previous window regime history snapshot through `book-l1-history-preview`.
 - multi-window market regime timeline preview through `book-l1-timeline-preview`.
+- stable JSON and Markdown timeline export through `book-l1-timeline-preview --export`.
 
 Current safety contract:
 
@@ -54,6 +55,7 @@ Latest completed implementation stages:
 | BOOK-L1-18 | DONE | Multi-symbol interactive preview / comparison table added. |
 | BOOK-L1-19 | DONE | Market regime history snapshot / previous vs current window added. |
 | BOOK-L1-20 | DONE | Market regime timeline preview / multi-window history table added. |
+| BOOK-L1-21 | DONE | Stable timeline preview export / JSON + Markdown report added. |
 
 Latest relevant artifacts:
 
@@ -65,3 +67,15 @@ Latest relevant artifacts:
 - `reports/book_l1/book_l1_18_multi_symbol_preview_report.md`
 - `reports/book_l1/book_l1_19_history_snapshot_report.md`
 - `reports/book_l1/book_l1_20_timeline_preview_report.md`
+- `reports/book_l1/book_l1_21_timeline_export_report.md`
+- `reports/book_l1/timeline_preview.json`
+- `reports/book_l1/timeline_preview.md`
+
+BOOK-L1-21 added stable runtime export files:
+
+```text
+reports/book_l1/timeline_preview.json
+reports/book_l1/timeline_preview.md
+```
+
+These files are overwritten on each export run. Their names do not include date, time, version, symbol, interval, stage number, or hash suffix. BOOK-L1 remains read-only and the safety contract is preserved.

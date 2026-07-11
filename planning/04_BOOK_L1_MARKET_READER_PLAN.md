@@ -49,13 +49,21 @@ safe_for_runtime_trading = false
 | BOOK-L1-18 | Multi-Symbol Interactive Preview / Compare Market Regimes | DONE | `book-l1-multi-preview` |
 | BOOK-L1-19 | Market Regime History Snapshot / Compare Current vs Previous Window | DONE | `book-l1-history-preview` |
 | BOOK-L1-20 | Market Regime Timeline Preview / Multi-Window History Table | DONE | `book-l1-timeline-preview` |
+| BOOK-L1-21 | Market Regime Timeline Export / JSON + Markdown Report | DONE | `reports/book_l1/timeline_preview.*` |
 
 ## Current implementation boundary
 
-BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, and a multi-window market regime timeline preview.
+BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, a multi-window market regime timeline preview, and a stable JSON + Markdown timeline export.
 
 The response contract can be consumed by a future external layer, but it remains read-only and fail-closed.
-The terminal previews are presentation layers over the same fail-closed market-reader payloads. The history snapshot compares two non-overlapping local candle windows. The timeline preview compares several non-overlapping historical windows, reports stability and last transition, and remains read-only.
+The terminal previews are presentation layers over the same fail-closed market-reader payloads. The history snapshot compares two non-overlapping local candle windows. The timeline preview compares several non-overlapping historical windows, reports stability and last transition, and remains read-only. The timeline export writes only fixed runtime filenames and overwrites them on each export run:
+
+```text
+reports/book_l1/timeline_preview.json
+reports/book_l1/timeline_preview.md
+```
+
+Export filenames do not include date, time, version, symbol, interval, stage number, or hash suffix. The export safety contract is explicit in both JSON and Markdown.
 
 Current API preview safety block:
 

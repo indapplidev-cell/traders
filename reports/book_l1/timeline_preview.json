@@ -1,0 +1,146 @@
+{
+  "service": "BOOK_L1_MARKET_READER",
+  "export_type": "timeline_preview",
+  "contract_version": "book_l1_timeline_export_v1",
+  "config": {
+    "symbols": [
+      "BTCUSDT"
+    ],
+    "interval": "15m",
+    "window_size": 100,
+    "window_count": 3,
+    "required_candles": 300,
+    "min_candles": 50,
+    "reference_mode": "latest"
+  },
+  "summary": {
+    "symbols": 1,
+    "ok": 1,
+    "errors": 0,
+    "insufficient_data": 0,
+    "current_up": 0,
+    "current_down": 0,
+    "current_flat": 1,
+    "current_unknown": 0
+  },
+  "rows": [
+    {
+      "symbol": "BTCUSDT",
+      "status": "OK",
+      "regimes": [
+        "FLAT",
+        "FLAT",
+        "FLAT"
+      ],
+      "transitions": [
+        "NO_CHANGE",
+        "NO_CHANGE"
+      ],
+      "last_transition": "NO_CHANGE",
+      "stability": "STABLE",
+      "current_confidence": 0.9406046268096556,
+      "current_trend_strength": "NONE",
+      "trade_signal": "NOT_EVALUATED",
+      "safe_for_runtime_trading": false,
+      "windows": [
+        {
+          "label": "W-2",
+          "market_regime": "FLAT",
+          "directional_bias": "NEUTRAL",
+          "confidence": 0.8489612571255833,
+          "trend_strength": "NONE",
+          "first_open_time": "2026-06-12T17:15:00+00:00",
+          "last_open_time": "2026-06-13T18:00:00+00:00",
+          "reason_codes": [
+            "MARKET_READER_ORCHESTRATED",
+            "MARKET_REGIME_COMPOSED",
+            "COMPOSER_FLAT_RANGE_DOMINANT",
+            "UP_TREND_STRUCTURE",
+            "HIGHER_HIGHS",
+            "HIGHER_LOWS",
+            "RANGE_STRUCTURE_DETECTED",
+            "RANGE_WIDTH_ACCEPTABLE",
+            "LOW_CLOSE_DRIFT_INSIDE_RANGE",
+            "SUPPORT_TOUCHES_DETECTED",
+            "RESISTANCE_TOUCHES_DETECTED",
+            "NO_CLOSE_BREAKOUT",
+            "PRICE_INSIDE_RANGE",
+            "EMA_TREND_FLAT",
+            "FAST_EMA_BELOW_SLOW_EMA",
+            "PRICE_AROUND_EMA",
+            "ATR_LOW_VOLATILITY"
+          ]
+        },
+        {
+          "label": "W-1",
+          "market_regime": "FLAT",
+          "directional_bias": "NEUTRAL",
+          "confidence": 0.7864885801710978,
+          "trend_strength": "NONE",
+          "first_open_time": "2026-06-13T18:15:00+00:00",
+          "last_open_time": "2026-06-14T19:00:00+00:00",
+          "reason_codes": [
+            "MARKET_READER_ORCHESTRATED",
+            "MARKET_REGIME_COMPOSED",
+            "COMPOSER_FLAT_RANGE_DOMINANT",
+            "DOWN_TREND_STRUCTURE",
+            "LOWER_HIGHS",
+            "LOWER_LOWS",
+            "RANGE_STRUCTURE_DETECTED",
+            "RANGE_WIDTH_ACCEPTABLE",
+            "LOW_CLOSE_DRIFT_INSIDE_RANGE",
+            "SUPPORT_TOUCHES_DETECTED",
+            "RESISTANCE_TOUCHES_DETECTED",
+            "NO_CLOSE_BREAKOUT",
+            "PRICE_INSIDE_RANGE",
+            "EMA_TREND_DOWN",
+            "FAST_EMA_BELOW_SLOW_EMA",
+            "PRICE_AROUND_EMA",
+            "ATR_LOW_VOLATILITY"
+          ]
+        },
+        {
+          "label": "Current",
+          "market_regime": "FLAT",
+          "directional_bias": "NEUTRAL",
+          "confidence": 0.9406046268096556,
+          "trend_strength": "NONE",
+          "first_open_time": "2026-06-14T19:15:00+00:00",
+          "last_open_time": "2026-06-15T20:00:00+00:00",
+          "reason_codes": [
+            "MARKET_READER_ORCHESTRATED",
+            "MARKET_REGIME_COMPOSED",
+            "COMPOSER_FLAT_RANGE_DOMINANT",
+            "UP_TREND_STRUCTURE",
+            "HIGHER_HIGHS",
+            "HIGHER_LOWS",
+            "RANGE_STRUCTURE_DETECTED",
+            "RANGE_WIDTH_ACCEPTABLE",
+            "LOW_CLOSE_DRIFT_INSIDE_RANGE",
+            "SUPPORT_TOUCHES_DETECTED",
+            "RESISTANCE_TOUCHES_DETECTED",
+            "NO_CLOSE_BREAKOUT",
+            "PRICE_INSIDE_RANGE",
+            "EMA_TREND_MIXED",
+            "FAST_EMA_BELOW_SLOW_EMA",
+            "PRICE_BELOW_EMAS",
+            "ATR_NORMAL_VOLATILITY"
+          ]
+        }
+      ],
+      "warning": null
+    }
+  ],
+  "warnings": [],
+  "safety": {
+    "trade_signal": "NOT_EVALUATED",
+    "safe_for_runtime_trading": false,
+    "orders_enabled": false,
+    "live_trading_connected": false,
+    "traders_core_connected": false,
+    "approved_for_live_trading": false,
+    "approved_for_auto_activation": false,
+    "model_training_executed": false,
+    "binance_download_executed": false
+  }
+}
