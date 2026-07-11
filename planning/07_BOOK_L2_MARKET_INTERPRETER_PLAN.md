@@ -37,7 +37,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-02 | Context Quality Score / Symbol Ranking | DONE | `app/market_interpreter/context_quality.py` |
 | BOOK-L2-03 | Context Summary / Human Market Brief | DONE | `app/market_interpreter/context_summary.py` |
 | BOOK-L2-04 | L2 JSON Consumer / Context Contract Smoke | DONE | `app/market_interpreter/json_consumer.py` |
-| BOOK-L2-05 | API Readiness Review / Layer 2 Freeze Candidate | PLANNED | L2 readiness review |
+| BOOK-L2-05 | API Readiness Review / Layer 2 Freeze Candidate | DONE | `app/market_interpreter/api_readiness_review.py` |
 
 ## BOOK-L2-00
 
@@ -194,6 +194,45 @@ BOOK-L2-04 remains consume-only. It does not read candles, does not connect to D
 
 ## Planned direction
 
-The next stages must keep the same boundary: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
+BOOK-L2-05 completed API readiness final review.
 
-BOOK-L2-05 can perform an API readiness review and freeze-candidate check for Layer 2.
+BOOK-L2 is now Layer 2 Freeze Candidate.
+
+BOOK-L2 remains consume-only / observe-only / fail-closed.
+
+The next stages must keep the same boundary unless an explicit separate decision changes it: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
+
+Next possible layer: BOOK-L3, but only after explicit approval.
+
+## BOOK-L2-05
+
+BOOK-L2-05 added the final readiness reviewer:
+
+```text
+app/market_interpreter/api_readiness_review.py
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l2-api-readiness-review --strict
+```
+
+The reviewer validates:
+
+- required BOOK-L2 modules;
+- required BOOK-L2 tests;
+- CLI commands;
+- L1 timeline input `reports/book_l1/timeline_preview.json`;
+- L2 stable output `reports/book_l2/timeline_context.json`;
+- strict L2 JSON consumer result;
+- contract/version/service/source fields;
+- fail-closed safety;
+- observe-only runtime human fields;
+- forbidden L2 source references;
+- stable output filename policy;
+- terminal guide workflow;
+- planning markers;
+- BOOK-L2 stage reports.
+
+It does not change bucket rules, scoring rules, ranking rules, market brief rules, L1 JSON semantics, or L2 JSON export semantics.

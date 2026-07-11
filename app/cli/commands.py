@@ -705,6 +705,51 @@ def book_l2_json_consumer_smoke_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l2-api-readiness-review")
+def book_l2_api_readiness_review_command(
+    project_root: Path = typer.Option(
+        Path("."),
+        "--project-root",
+        help="Project root used for read-only BOOK-L2 readiness checks.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when the review has warnings or errors.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print module, JSON, safety, and source-scan details.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Print readiness result JSON to stdout.",
+    ),
+) -> None:
+    """Run BOOK-L2 API readiness review and freeze-candidate checks."""
+    from app.market_interpreter import (
+        L2ApiReadinessConfig,
+        L2ApiReadinessFormatter,
+        L2ApiReadinessReviewer,
+    )
+
+    config = L2ApiReadinessConfig(
+        project_root=project_root,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = L2ApiReadinessReviewer().run(config)
+    formatter = L2ApiReadinessFormatter()
+    if json_output:
+        typer.echo(json.dumps(formatter.to_json_payload(result), ensure_ascii=False, indent=2))
+    else:
+        typer.echo(formatter.format(result, show_details=show_details))
+    if result.status == "FAIL" or (strict and result.status != "PASS"):
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

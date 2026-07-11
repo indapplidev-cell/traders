@@ -1,14 +1,20 @@
 # Current Task
 
-## BOOK-L2-04 - L2 JSON Consumer / Context Contract Smoke
+## BOOK-L2-05 - API Readiness Review / Layer 2 Freeze Candidate
 
 Status: `DONE`
 
 Goal:
 
-Add a consumer-smoke command for the stable BOOK-L2 context JSON export.
+Run the final BOOK-L2 API readiness review before treating Layer 2 as a freeze candidate.
 
 Primary input:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+Primary output:
 
 ```text
 reports/book_l2/timeline_context.json
@@ -16,30 +22,32 @@ reports/book_l2/timeline_context.json
 
 Implemented:
 
-- added `app/market_interpreter/json_consumer.py`;
-- added `L2ContextConsumerConfig`;
-- added `L2ContextConsumerCheck`;
-- added `L2ContextConsumerResult`;
-- added `L2ContextJsonConsumer`;
-- added `L2ContextConsumerFormatter`;
-- added CLI command `book-l2-json-consumer-smoke`;
-- added default input path `reports/book_l2/timeline_context.json`;
-- added `--input-path`;
+- added `app/market_interpreter/api_readiness_review.py`;
+- added `L2ApiReadinessConfig`;
+- added `L2ApiReadinessCheck`;
+- added `L2ApiReadinessResult`;
+- added `L2ApiReadinessReviewer`;
+- added `L2ApiReadinessFormatter`;
+- added CLI command `book-l2-api-readiness-review`;
 - added `--strict`;
 - added `--show-details`;
 - added `--json` stdout mode;
-- validated L2 contract version and service/layer identity;
-- validated L1 timeline source metadata;
-- validated `overall_state`, symbols, buckets, quality score/grade/rank, and ranking consistency;
-- validated `market_brief`;
-- validated forbidden market brief terms;
-- validated fail-closed safety;
-- added focused unit tests for the consumer and CLI parser.
+- added validation for L2 module presence;
+- added validation for required L2 test files;
+- added validation for L1 timeline input and stable L2 context export;
+- reused the strict L2 JSON consumer contract validation;
+- added contract/version/service/source checks;
+- added fail-closed safety checks;
+- added observe-only runtime human field checks;
+- added forbidden source reference checks for BOOK-L2 modules;
+- added stable output filename policy checks;
+- added terminal guide, planning, and stage-report checks;
+- added focused unit tests for readiness behavior and CLI parser.
 
 BOOK-L2 boundary:
 
 ```text
-BOOK-L1 JSON -> BOOK-L2 context interpretation -> BOOK-L2 JSON -> consumer validation
+BOOK-L1 JSON -> BOOK-L2 context interpretation -> BOOK-L2 JSON -> readiness review
 ```
 
 Out of scope preserved:
@@ -52,6 +60,7 @@ Out of scope preserved:
 - no BOOK-L1 market analysis changes;
 - no BOOK-L1 JSON semantics changes;
 - no scoring/ranking rule changes;
+- no market brief rule changes;
 - no model training;
 - no traders-core connection;
 - no live trading connection;
@@ -73,32 +82,36 @@ approved_for_auto_activation = false
 Command:
 
 ```powershell
-python -m app.cli.commands book-l2-json-consumer-smoke
+python -m app.cli.commands book-l2-api-readiness-review
 ```
 
 Useful modes:
 
 ```powershell
-python -m app.cli.commands book-l2-json-consumer-smoke --strict
-python -m app.cli.commands book-l2-json-consumer-smoke --show-details
-python -m app.cli.commands book-l2-json-consumer-smoke --json
-python -m app.cli.commands book-l2-json-consumer-smoke --input-path reports/book_l2/timeline_context.json
+python -m app.cli.commands book-l2-api-readiness-review --strict
+python -m app.cli.commands book-l2-api-readiness-review --show-details
+python -m app.cli.commands book-l2-api-readiness-review --json
 ```
 
 Completion checks:
 
 - compile check passed;
-- BOOK-L2 JSON consumer tests passed;
+- BOOK-L2 API readiness tests passed;
 - BOOK-L2 targeted pack passed;
 - fresh BOOK-L1 timeline JSON export passed;
 - L1 runtime JSON consumer strict smoke passed;
 - L2 context export passed;
-- L2 JSON consumer default / strict / details / JSON stdout smoke passed;
+- L2 JSON consumer strict smoke passed;
+- L2 API readiness default / strict / details / JSON stdout smoke passed;
 - full BOOK-L1 + BOOK-L2 pack passed;
 - forbidden import check passed.
 
-Next possible stage:
+Freeze status:
 
 ```text
-BOOK-L2-05 - API Readiness Review / Layer 2 Freeze Candidate
+BOOK-L2-05 completed API readiness final review.
+BOOK-L2 is now Layer 2 Freeze Candidate.
+BOOK-L2 remains consume-only / observe-only / fail-closed.
 ```
+
+Next possible layer: BOOK-L3, but only after explicit approval.

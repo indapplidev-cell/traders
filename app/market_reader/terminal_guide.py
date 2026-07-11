@@ -106,6 +106,8 @@ _L2_CONTEXT_COMMAND = "python -m app.cli.commands book-l2-timeline-context --str
 
 _L2_JSON_CONSUMER_SMOKE_COMMAND = "python -m app.cli.commands book-l2-json-consumer-smoke --strict"
 
+_L2_API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l2-api-readiness-review --strict"
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -130,6 +132,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _JSON_CONSUMER_SMOKE_COMMAND,
         _L2_CONTEXT_COMMAND,
         _L2_JSON_CONSUMER_SMOKE_COMMAND,
+        _L2_API_READINESS_REVIEW_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -290,6 +293,14 @@ def build_book_l1_terminal_guide() -> str:
             "- L2 summary is observe-only.",
             "- It gives observation candidates, not trade candidates.",
             "- JSON export remains reports/book_l2/timeline_context.json.",
+            "",
+            "BOOK-L2 freeze candidate review",
+            "Run the fixed output, consumer smoke, and readiness review before treating BOOK-L2 as frozen.",
+            "",
+            "Commands:",
+            "python -m app.cli.commands book-l2-timeline-context --export --strict",
+            "python -m app.cli.commands book-l2-json-consumer-smoke --strict",
+            "python -m app.cli.commands book-l2-api-readiness-review --strict",
             "",
             "9. API readiness / freeze review",
             "Checks that BOOK-L1 is ready as read-only Layer 1 for terminal use and API JSON consumers.",

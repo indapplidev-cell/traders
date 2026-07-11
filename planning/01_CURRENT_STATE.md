@@ -159,7 +159,7 @@ BOOK-L1 is now a Layer 1 Freeze Candidate. It remains a read-only market reader 
 
 ## BOOK-L2 Market Interpreter status
 
-Status: `STARTED`
+Status: `LAYER_2_FREEZE_CANDIDATE`
 
 BOOK-L2 has started as an observe-only layer above BOOK-L1.
 
@@ -274,3 +274,28 @@ The consumer validates:
 BOOK-L2 output can now be validated for external/API consumption.
 
 BOOK-L2 still consumes only `reports/book_l1/timeline_preview.json`, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not make trading decisions.
+
+BOOK-L2-05 completed API readiness final review.
+
+BOOK-L2 is now Layer 2 Freeze Candidate.
+
+BOOK-L2 remains consume-only / observe-only / fail-closed.
+
+BOOK-L2-05 added the final API readiness review:
+
+```powershell
+python -m app.cli.commands book-l2-api-readiness-review
+```
+
+The review checks required L2 modules, required L2 tests, CLI command registration, L1 timeline input, stable L2 context export, strict L2 JSON consumer validation, contract/version/service/source fields, fail-closed safety, observe-only runtime human fields, forbidden L2 source references, stable output filename policy, terminal guide coverage, planning markers, and BOOK-L2 stage reports.
+
+Current Layer 2 boundary:
+
+```text
+Input: reports/book_l1/timeline_preview.json
+Output: reports/book_l2/timeline_context.json
+Mode: consume-only / observe-only / fail-closed
+Trading execution: prohibited
+```
+
+Next possible layer is BOOK-L3, but only after explicit approval and a separate responsibility decision.

@@ -32,6 +32,7 @@ The following BOOK-L1 items are already completed:
 - BOOK-L2-02 context quality score / deterministic symbol ranking.
 - BOOK-L2-03 context summary / human market brief.
 - BOOK-L2-04 L2 JSON consumer / context contract smoke.
+- BOOK-L2-05 API readiness review / Layer 2 freeze candidate.
 
 ## Remaining BOOK-L1 work
 
@@ -48,17 +49,29 @@ Possible next stage:
 - confirm fail-closed safety remains mandatory;
 - confirm trading execution is prohibited.
 
-### 2. BOOK-L2 follow-up
+### 2. BOOK-L2 status
 
-BOOK-L2 has a stable context export and consumer smoke. Possible next stage:
+BOOK-L2-05 completed API readiness final review.
 
-- `BOOK-L2-05 - API Readiness Review / Layer 2 Freeze Candidate`;
-- confirm that external API layers can read the stable L2 JSON contract;
-- keep consuming only BOOK-L1 JSON output;
-- keep fail-closed safety;
-- keep trading signals and execution out of scope.
+BOOK-L2 is now Layer 2 Freeze Candidate.
 
-### 3. Optional future maintenance only
+BOOK-L2 remains consume-only / observe-only / fail-closed.
+
+Do not expand BOOK-L2 without a separate decision.
+
+### 3. Possible BOOK-L3 discussion only
+
+Next possible layer: BOOK-L3, but only after explicit approval.
+
+Before any BOOK-L3 implementation, decide whether the next layer is:
+
+- another observe-only layer;
+- a risk/context gate;
+- a policy layer;
+- a preparation layer before trading logic;
+- or whether trading logic remains prohibited.
+
+### 4. Optional future maintenance only
 
 - bug fixes found by review can be logged as follow-up;
 - documentation can be clarified;
@@ -88,6 +101,7 @@ The following items are no longer remaining work:
 - BOOK-L2 context quality score and deterministic symbol ranking.
 - BOOK-L2 context summary / human market brief.
 - BOOK-L2 JSON consumer smoke for stable `reports/book_l2/timeline_context.json`.
+- BOOK-L2 API readiness review / Layer 2 freeze candidate.
 
 ## BOOK-L1-22 export rule
 
@@ -268,3 +282,23 @@ The consumer validates L2 service identity, contract version, L1 timeline source
 BOOK-L2 output can now be validated for external/API consumption.
 
 BOOK-L2 remains consume-only, observe-only, and fail-closed.
+
+## BOOK-L2-05 rule
+
+BOOK-L2-05 added:
+
+```text
+app/market_interpreter/api_readiness_review.py
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l2-api-readiness-review --strict
+```
+
+The command checks L2 module/test coverage, CLI registration, stable L1 input, stable L2 output, strict L2 JSON consumer validation, contract/version/service/source fields, fail-closed safety, observe-only runtime human fields, forbidden L2 source references, stable output filename policy, terminal guide coverage, planning markers, and stage reports.
+
+BOOK-L2 is now Layer 2 Freeze Candidate.
+
+BOOK-L2 remains consume-only / observe-only / fail-closed.
