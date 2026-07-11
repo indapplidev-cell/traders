@@ -39,6 +39,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-04 | L2 JSON Consumer / Context Contract Smoke | DONE | `app/market_interpreter/json_consumer.py` |
 | BOOK-L2-05 | API Readiness Review / Layer 2 Freeze Candidate | DONE | `app/market_interpreter/api_readiness_review.py` |
 | BOOK-L2-06 | L1-L2 Interval Answer Smoke / Evidence Markdown | DONE | `app/integration/l1_l2_interval_answer_smoke.py` |
+| BOOK-L2-07 | Multi-Interval Answer Smoke | DONE | `app/integration/l1_l2_multi_interval_answer_smoke.py` |
 
 ## BOOK-L2-00
 
@@ -195,15 +196,15 @@ BOOK-L2-04 remains consume-only. It does not read candles, does not connect to D
 
 ## Planned direction
 
-BOOK-L2-06 verified the actual L1-L2 interval report answer smoke.
+BOOK-L2-07 added multi-interval L1-L2 answer smoke.
 
 BOOK-L2 is now Layer 2 Freeze Candidate.
 
 BOOK-L2 remains consume-only / observe-only / fail-closed.
 
-The system can now run L1 timeline export, consume it through L2, and produce a human-readable Markdown evidence report for a requested interval.
+The system can now produce a human-readable evidence report for multiple intervals, showing per-interval L2 state, observation candidates, skip candidates, safety, and cross-interval observations.
 
-This evidence report is not runtime API output; API output remains JSON.
+The report is evidence Markdown, not runtime API output. Runtime API output remains JSON.
 
 The next stages must keep the same boundary unless an explicit separate decision changes it: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
@@ -286,3 +287,51 @@ This Markdown file is evidence for human smoke review, not runtime API output. T
 ```text
 reports/book_l2/timeline_context.json
 ```
+
+## BOOK-L2-07
+
+BOOK-L2-07 added a multi-interval integration smoke:
+
+```text
+app/integration/l1_l2_multi_interval_answer_smoke.py
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l1-l2-multi-interval-answer-smoke `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details
+```
+
+The command verifies multiple intervals through the existing single-interval smoke runner:
+
+- fresh L1 timeline export per interval;
+- strict L1 JSON consumer per interval;
+- fresh L2 context export per interval;
+- strict L2 JSON consumer per interval;
+- strict L2 API readiness review per interval;
+- actual L2 answer extraction per interval;
+- cross-interval observation summary;
+- fail-closed safety per interval.
+
+Aggregate evidence output:
+
+```text
+reports/book_l2/l1_l2_multi_interval_answer.md
+```
+
+Per-interval evidence output:
+
+```text
+reports/book_l2/interval_answers/
+```
+
+BOOK-L2-07 does not change BOOK-L1 logic, BOOK-L1 JSON semantics, BOOK-L2 bucket rules, BOOK-L2 quality score rules, BOOK-L2 market brief rules, BOOK-L2 JSON semantics, or API readiness logic.
+
+The report is evidence Markdown, not runtime API output. Runtime API output remains JSON.

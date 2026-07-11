@@ -342,3 +342,42 @@ The Markdown file is human evidence for smoke review. It is not runtime API outp
 ```text
 reports/book_l2/timeline_context.json
 ```
+
+## BOOK-L2-07 rule
+
+BOOK-L2-07 added:
+
+```text
+app/integration/l1_l2_multi_interval_answer_smoke.py
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l1-l2-multi-interval-answer-smoke `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details
+```
+
+The command reuses the single-interval L1-L2 answer smoke for each requested interval, writes per-interval evidence files under:
+
+```text
+reports/book_l2/interval_answers/
+```
+
+and writes the aggregate human evidence report:
+
+```text
+reports/book_l2/l1_l2_multi_interval_answer.md
+```
+
+BOOK-L2-07 added multi-interval L1-L2 answer smoke.
+
+The system can now produce a human-readable evidence report for multiple intervals, showing per-interval L2 state, observation candidates, skip candidates, safety, and cross-interval observations.
+
+The report is evidence Markdown, not runtime API output. Runtime API output remains JSON.

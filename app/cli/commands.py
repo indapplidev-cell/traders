@@ -807,6 +807,75 @@ def book_l1_l2_interval_answer_smoke_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l1-l2-multi-interval-answer-smoke")
+def book_l1_l2_multi_interval_answer_smoke_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    intervals: str | None = typer.Option(
+        None,
+        "--intervals",
+        help="Comma-separated candle intervals, for example 15m,1h,4h.",
+    ),
+    window_size: int = typer.Option(300, "--window-size", min=1, help="Candles per timeline window."),
+    window_count: int = typer.Option(4, "--window-count", min=2, max=6, help="Timeline window count from 2 to 6."),
+    min_candles: int = typer.Option(50, "--min-candles", min=1, help="Minimum candles required per window."),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when any interval fails.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print per-interval state and candidate details.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_l2/l1_l2_multi_interval_answer.md"),
+        "--output-md",
+        help="Path for the multi-interval human evidence Markdown answer.",
+    ),
+    continue_on_fail: bool = typer.Option(
+        True,
+        "--continue-on-fail/--stop-on-fail",
+        help="Continue processing remaining intervals after one interval fails.",
+    ),
+) -> None:
+    """Run L1 -> L2 answer smoke across multiple intervals and write evidence Markdown."""
+    from app.integration.l1_l2_interval_answer_smoke import parse_smoke_symbols
+    from app.integration.l1_l2_multi_interval_answer_smoke import (
+        L1L2MultiIntervalAnswerSmokeConfig,
+        L1L2MultiIntervalAnswerSmokeFormatter,
+        L1L2MultiIntervalAnswerSmokeRunner,
+        parse_smoke_intervals,
+    )
+
+    selected_symbols = parse_smoke_symbols(symbols, tuple(symbol or ()))
+    selected_intervals = parse_smoke_intervals(intervals)
+    config = L1L2MultiIntervalAnswerSmokeConfig(
+        symbols=selected_symbols,
+        intervals=selected_intervals,
+        window_size=window_size,
+        window_count=window_count,
+        min_candles=min_candles,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+        continue_on_fail=continue_on_fail,
+    )
+    result = L1L2MultiIntervalAnswerSmokeRunner().run(config)
+    typer.echo(L1L2MultiIntervalAnswerSmokeFormatter().format(result, config=config))
+    if strict and not result.passed:
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

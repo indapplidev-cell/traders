@@ -117,6 +117,15 @@ _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND = """python -m app.cli.commands book-l1-l2-
   --strict `
   --show-details"""
 
+_L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND = """python -m app.cli.commands book-l1-l2-multi-interval-answer-smoke `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details"""
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -143,6 +152,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _L2_JSON_CONSUMER_SMOKE_COMMAND,
         _L2_API_READINESS_REVIEW_COMMAND,
         _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND,
+        _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -288,6 +298,8 @@ def build_book_l1_terminal_guide() -> str:
             _L2_JSON_CONSUMER_SMOKE_COMMAND,
             "5. Write L1-L2 interval answer evidence:",
             _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND,
+            "6. Write L1-L2 multi-interval answer evidence:",
+            _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND,
             "",
             "BOOK-L2 JSON consumer smoke:",
             "Validates reports/book_l2/timeline_context.json without reading candles, DB, or live services.",
@@ -314,6 +326,15 @@ def build_book_l1_terminal_guide() -> str:
             "",
             "Answer file:",
             "reports/book_l2/l1_l2_interval_answer.md",
+            "",
+            "L1-L2 multi-interval answer smoke",
+            "Runs the full L1 timeline to L2 context chain for several intervals and writes a human evidence report.",
+            "",
+            "Command:",
+            _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND,
+            "",
+            "Answer file:",
+            "reports/book_l2/l1_l2_multi_interval_answer.md",
             "",
             "Evidence rule:",
             "- This Markdown file is for human smoke review.",

@@ -1,99 +1,62 @@
 # Current Task
 
-## BOOK-L2-06 - L1-L2 Interval Report Answer Smoke
+## BOOK-L2-07 - Multi-Interval Answer Smoke
 
 Status: `DONE`
 
 Goal:
 
-Verify that the BOOK-L1 -> BOOK-L2 chain produces an actual human-readable market context answer for a requested interval, not only green tests.
+Verify that the BOOK-L1 -> BOOK-L2 chain produces actual human-readable market context evidence across multiple intervals, not only one selected interval.
 
-Primary input:
+Primary runtime inputs and outputs:
 
 ```text
 reports/book_l1/timeline_preview.json
-```
-
-Primary output:
-
-```text
 reports/book_l2/timeline_context.json
 ```
 
 Evidence output:
 
 ```text
-reports/book_l2/l1_l2_interval_answer.md
+reports/book_l2/l1_l2_multi_interval_answer.md
 ```
 
 Implemented:
 
-- added `app/integration/l1_l2_interval_answer_smoke.py`;
-- added `app/integration/__init__.py`;
-- added `L1L2IntervalAnswerSmokeConfig`;
-- added `L1L2IntervalAnswerSmokeStep`;
-- added `L1L2IntervalAnswerSmokeResult`;
-- added `L1L2IntervalAnswerSmokeRunner`;
-- added `L1L2IntervalAnswerSmokeFormatter`;
-- added CLI command `book-l1-l2-interval-answer-smoke`;
+- added `app/integration/l1_l2_multi_interval_answer_smoke.py`;
+- added `L1L2MultiIntervalAnswerSmokeConfig`;
+- added `L1L2IntervalAnswerSummary`;
+- added `L1L2MultiIntervalAnswerSmokeResult`;
+- added `L1L2MultiIntervalAnswerSmokeRunner`;
+- added `L1L2MultiIntervalAnswerSmokeFormatter`;
+- added cross-interval aggregation;
+- added forbidden human answer term validation;
+- added fail-closed safety validation per interval;
+- added CLI command `book-l1-l2-multi-interval-answer-smoke`;
 - added `--symbols`;
 - added `--symbol`;
-- added `--interval`;
+- added `--intervals`;
 - added `--window-size`;
 - added `--window-count`;
 - added `--min-candles`;
 - added `--strict`;
 - added `--show-details`;
 - added `--output-md`;
-- added pipeline coordination for L1 timeline export, L1 JSON consumer strict, L2 context export, L2 JSON consumer strict, and L2 API readiness strict;
-- added symbol propagation validation from L1 output to L2 output;
-- added source lineage validation back to `reports/book_l1/timeline_preview.json`;
-- added fail-closed safety validation;
-- added forbidden human answer term validation;
-- added evidence Markdown writer with actual L2 overall state, brief, candidates, key points, per-symbol context, safety, and lineage;
-- added focused unit tests for config defaults, Markdown, validations, formatter, and CLI option coverage.
+- added `--continue-on-fail`;
+- added focused unit tests for defaults, formatter, Markdown, aggregation, strict/non-strict behavior, safety, forbidden terms, and CLI option coverage.
 
-BOOK-L2 boundary:
+BOOK-L2-07 added multi-interval L1-L2 answer smoke.
 
-```text
-BOOK-L1 JSON -> BOOK-L2 context interpretation -> BOOK-L2 JSON -> evidence Markdown
-```
+The system can now produce a human-readable evidence report for multiple intervals, showing per-interval L2 state, observation candidates, skip candidates, safety, and cross-interval observations.
 
-Out of scope preserved:
-
-- no candle reads;
-- no `CandleRepository` import in BOOK-L2;
-- no `MarketReaderOrchestrator` import in BOOK-L2;
-- no DB access;
-- no external exchange access;
-- no BOOK-L1 market analysis changes;
-- no BOOK-L1 JSON semantics changes;
-- no scoring/ranking rule changes;
-- no market brief rule changes;
-- no model training;
-- no traders-core connection;
-- no live trading connection;
-- no order creation;
-- no trading decisions.
-
-Safety validation:
-
-```text
-trade_signal = NOT_EVALUATED
-safe_for_runtime_trading = false
-orders_enabled = false
-live_trading_connected = false
-traders_core_connected = false
-approved_for_live_trading = false
-approved_for_auto_activation = false
-```
+The report is evidence Markdown, not runtime API output. Runtime API output remains JSON.
 
 Command:
 
 ```powershell
-python -m app.cli.commands book-l1-l2-interval-answer-smoke `
+python -m app.cli.commands book-l1-l2-multi-interval-answer-smoke `
   --symbols BTCUSDT,ETHUSDT,SOLUSDT `
-  --interval 15m `
+  --intervals 15m,1h,4h `
   --window-size 300 `
   --window-count 4 `
   --min-candles 50 `
@@ -101,30 +64,24 @@ python -m app.cli.commands book-l1-l2-interval-answer-smoke `
   --show-details
 ```
 
-Completion checks:
+Out of scope preserved:
 
-- compile check passed;
-- fresh BOOK-L1 timeline JSON export passed;
-- L1 runtime JSON consumer strict smoke passed;
-- L2 context export passed;
-- L2 JSON consumer strict smoke passed;
-- L2 API readiness strict smoke passed;
-- symbol propagation passed;
-- source lineage passed;
-- fail-closed safety passed;
-- evidence Markdown was written;
-- targeted integration smoke tests passed;
-- full BOOK-L1 + BOOK-L2 pack passed;
-- forbidden import check passed.
+- no candle reads inside BOOK-L2;
+- no DB access from BOOK-L2;
+- no Binance access;
+- no BOOK-L1 market analysis changes;
+- no BOOK-L1 JSON semantics changes;
+- no BOOK-L2 bucket rule changes;
+- no BOOK-L2 quality score changes;
+- no BOOK-L2 market brief rule changes;
+- no BOOK-L2 JSON export semantics changes;
+- no API readiness logic changes;
+- no live trading connection.
 
 Freeze status:
 
 ```text
-BOOK-L2-06 verified the actual L1-L2 interval report answer smoke.
-BOOK-L2 is now Layer 2 Freeze Candidate.
+BOOK-L2-07 verified the actual L1-L2 multi-interval answer smoke.
+BOOK-L2 remains Layer 2 Freeze Candidate.
 BOOK-L2 remains consume-only / observe-only / fail-closed.
 ```
-
-This evidence report is not runtime API output; API output remains JSON.
-
-Next possible layer: BOOK-L3, but only after explicit approval.

@@ -289,6 +289,14 @@ The system can now run L1 timeline export, consume it through L2, and produce a 
 reports/book_l2/l1_l2_interval_answer.md
 ```
 
+BOOK-L2-07 added multi-interval L1-L2 answer smoke.
+
+The system can now produce a human-readable evidence report for multiple intervals, showing per-interval L2 state, observation candidates, skip candidates, safety, and cross-interval observations:
+
+```text
+reports/book_l2/l1_l2_multi_interval_answer.md
+```
+
 This evidence report is not runtime API output; API output remains JSON.
 
 BOOK-L2-05 added the final API readiness review:
@@ -305,6 +313,7 @@ Current Layer 2 boundary:
 Input: reports/book_l1/timeline_preview.json
 Output: reports/book_l2/timeline_context.json
 Evidence: reports/book_l2/l1_l2_interval_answer.md
+Multi-interval evidence: reports/book_l2/l1_l2_multi_interval_answer.md
 Mode: consume-only / observe-only / fail-closed
 Trading execution: prohibited
 ```
