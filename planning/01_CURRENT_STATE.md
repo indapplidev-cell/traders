@@ -156,3 +156,51 @@ Trading execution = prohibited
 ```
 
 BOOK-L1 is now a Layer 1 Freeze Candidate. It remains a read-only market reader and must not be expanded without a separate decision.
+
+## BOOK-L2 Market Interpreter status
+
+Status: `STARTED`
+
+BOOK-L2 has started as an observe-only layer above BOOK-L1.
+
+BOOK-L2-00 consumes the existing BOOK-L1 runtime JSON file:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+BOOK-L2 reads the BOOK-L1 timeline export, validates the envelope and fail-closed safety contract, extracts symbol timeline rows, classifies symbol context labels, and builds an overall market context.
+
+Current BOOK-L2 boundary:
+
+```text
+BOOK-L1 timeline JSON -> observe-only market context interpretation
+```
+
+BOOK-L2 does not read candles, does not import `CandleRepository`, does not use `MarketReaderOrchestrator`, does not recalculate indicators, and does not change BOOK-L1 market analysis logic or JSON export semantics.
+
+BOOK-L2 safety remains fail-closed:
+
+```text
+trade_signal = NOT_EVALUATED
+safe_for_runtime_trading = false
+orders_enabled = false
+live_trading_connected = false
+traders_core_connected = false
+approved_for_live_trading = false
+approved_for_auto_activation = false
+model_training_executed = false
+binance_download_executed = false
+```
+
+Current BOOK-L2 command:
+
+```powershell
+python -m app.cli.commands book-l2-timeline-context
+```
+
+Current BOOK-L2 stable JSON export:
+
+```text
+reports/book_l2/timeline_context.json
+```

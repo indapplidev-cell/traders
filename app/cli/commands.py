@@ -612,6 +612,53 @@ def book_l1_json_consumer_smoke_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l2-timeline-context")
+def book_l2_timeline_context_command(
+    input_path: Path = typer.Option(
+        Path("reports/book_l1/timeline_preview.json"),
+        "--input-path",
+        help="Path to BOOK-L1 timeline JSON export.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when the BOOK-L1 JSON contract is invalid.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print per-symbol observe-only reasons and warnings.",
+    ),
+    export_json: bool = typer.Option(
+        False,
+        "--export-json",
+        help="Overwrite fixed BOOK-L2 timeline context JSON export file.",
+    ),
+    output_dir: Path = typer.Option(
+        Path("reports/book_l2"),
+        "--output-dir",
+        help="Directory for fixed BOOK-L2 export filenames.",
+    ),
+) -> None:
+    """Read BOOK-L1 timeline JSON and produce BOOK-L2 observe-only market context."""
+    from app.market_interpreter import (
+        L1TimelineConsumer,
+        L1TimelineConsumerConfig,
+        L2TimelineTableFormatter,
+    )
+
+    config = L1TimelineConsumerConfig(
+        input_path=input_path,
+        strict=strict,
+        export_json=export_json,
+        output_dir=output_dir,
+    )
+    result = L1TimelineConsumer().run(config)
+    typer.echo(L2TimelineTableFormatter().format(result, input_path=input_path, show_details=show_details))
+    if strict and result.status != "OK":
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

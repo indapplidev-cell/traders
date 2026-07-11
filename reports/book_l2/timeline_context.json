@@ -1,0 +1,81 @@
+{
+  "status": "ok",
+  "service": "BOOK_L2_MARKET_INTERPRETER",
+  "report_type": "timeline_context",
+  "contract_version": "book_l2_json_export_v1",
+  "source": {
+    "service": "BOOK_L1_MARKET_READER",
+    "report_type": "timeline_preview",
+    "contract_version": "book_l1_json_export_v1",
+    "input_path": "reports/book_l1/timeline_preview.json"
+  },
+  "result": {
+    "symbols": [
+      {
+        "symbol": "BTCUSDT",
+        "status": "OK",
+        "current_regime": "FLAT",
+        "stability": "CHANGING",
+        "last_transition": "NO_CHANGE",
+        "current_confidence": 0.9406046268096556,
+        "current_trend_strength": "NONE",
+        "context_label": "CHANGING",
+        "observe_reason": "changing context detected from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
+        "warnings": []
+      },
+      {
+        "symbol": "ETHUSDT",
+        "status": "OK",
+        "current_regime": "FLAT",
+        "stability": "CHANGING",
+        "last_transition": "NO_CHANGE",
+        "current_confidence": 0.8732067292955117,
+        "current_trend_strength": "NONE",
+        "context_label": "CHANGING",
+        "observe_reason": "changing context detected from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
+        "warnings": []
+      },
+      {
+        "symbol": "SOLUSDT",
+        "status": "OK",
+        "current_regime": "UNKNOWN",
+        "stability": "UNSTABLE",
+        "last_transition": "TO_UNKNOWN",
+        "current_confidence": 0.0,
+        "current_trend_strength": "UNKNOWN",
+        "context_label": "UNKNOWN",
+        "observe_reason": "unknown context from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
+        "warnings": []
+      }
+    ],
+    "market_context": {
+      "overall_context": "MIXED",
+      "symbol_count": 3,
+      "ok_count": 3,
+      "skipped_count": 0,
+      "stable_count": 0,
+      "changing_count": 2,
+      "unstable_count": 1,
+      "up_count": 0,
+      "down_count": 0,
+      "flat_count": 2,
+      "unknown_count": 1,
+      "notes": [
+        "observe-only context; runtime trading is not approved."
+      ]
+    }
+  },
+  "safety": {
+    "trade_signal": "NOT_EVALUATED",
+    "safe_for_runtime_trading": false,
+    "orders_enabled": false,
+    "live_trading_connected": false,
+    "traders_core_connected": false,
+    "approved_for_live_trading": false,
+    "approved_for_auto_activation": false,
+    "model_training_executed": false,
+    "binance_download_executed": false
+  },
+  "warnings": [],
+  "errors": []
+}

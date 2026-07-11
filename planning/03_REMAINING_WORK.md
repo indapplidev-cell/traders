@@ -27,6 +27,7 @@ The following BOOK-L1 items are already completed:
 - unified terminal command guide and terminal UX cleanup.
 - runtime JSON consumer / API reader smoke for stable BOOK-L1 JSON export files.
 - API readiness final review / Layer 1 freeze candidate.
+- BOOK-L2-00 start layer 2 / consume BOOK-L1 timeline JSON.
 
 ## Remaining BOOK-L1 work
 
@@ -43,14 +44,15 @@ Possible next stage:
 - confirm fail-closed safety remains mandatory;
 - confirm trading execution is prohibited.
 
-### 2. BOOK-L2 planning
+### 2. BOOK-L2 follow-up
 
-Possible next layer:
+BOOK-L2 has started. Possible next stage:
 
-- plan the layer above the read-only market reader;
-- consume BOOK-L1 JSON state as an input;
-- define new layer responsibilities outside BOOK-L1;
-- do not let BOOK-L1 produce trade signals or execute orders.
+- `BOOK-L2-01 - Market Context Rules / Symbol Buckets`;
+- derive observe-only buckets such as clean, unstable, flat, emerging, and skipped symbols;
+- keep consuming only BOOK-L1 JSON output;
+- keep fail-closed safety;
+- keep trading signals and execution out of scope.
 
 ### 3. Optional future maintenance only
 
@@ -77,6 +79,7 @@ The following items are no longer remaining work:
 - `book-l1-guide` unified terminal command guide.
 - `book-l1-json-consumer-smoke` runtime JSON consumer / API reader smoke.
 - `book-l1-api-readiness-review` API readiness final review / Layer 1 freeze candidate.
+- `book-l2-timeline-context` observe-only BOOK-L2 timeline context consumer.
 
 ## BOOK-L1-22 export rule
 
@@ -137,3 +140,25 @@ JSON export: for API
 Runtime Markdown export: not used as working output
 Trading execution: prohibited
 ```
+
+## BOOK-L2-00 rule
+
+BOOK-L2-00 added:
+
+```powershell
+python -m app.cli.commands book-l2-timeline-context
+```
+
+The command reads:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+It validates the BOOK-L1 JSON envelope and fail-closed safety, extracts timeline rows, classifies observe-only symbol contexts, builds overall market context, and can export:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+BOOK-L2 does not read candles, does not import `CandleRepository`, does not import `MarketReaderOrchestrator`, does not recalculate BOOK-L1 indicators, does not change BOOK-L1, and does not generate trading signals.

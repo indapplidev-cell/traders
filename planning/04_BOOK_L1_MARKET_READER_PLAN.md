@@ -54,6 +54,7 @@ safe_for_runtime_trading = false
 | BOOK-L1-23 | Terminal UX Cleanup / Unified Command Guide | DONE | `app/market_reader/terminal_guide.py`, `book-l1-guide` |
 | BOOK-L1-24 | Runtime JSON Consumer / API Reader Smoke | DONE | `app/market_reader/json_consumer.py`, `book-l1-json-consumer-smoke` |
 | BOOK-L1-25 | API Readiness Final Review / Layer 1 Freeze Candidate | DONE | `app/market_reader/api_readiness_review.py`, `book-l1-api-readiness-review` |
+| BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py`, `book-l2-timeline-context` |
 
 ## Current implementation boundary
 
@@ -110,6 +111,26 @@ BOOK-L1-25 checks required modules, tests, planning files, CLI command registrat
 
 BOOK-L1 is now a Layer 1 Freeze Candidate.
 
+BOOK-L2 has started as a separate layer above BOOK-L1. BOOK-L2-00 consumes the stable BOOK-L1 timeline JSON export:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+BOOK-L2 does not read candles, does not import `CandleRepository`, does not import `MarketReaderOrchestrator`, does not recalculate technical context, and does not change BOOK-L1 market analysis or JSON export semantics.
+
+Current BOOK-L2 command:
+
+```powershell
+python -m app.cli.commands book-l2-timeline-context
+```
+
+Current BOOK-L2 export:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
 Layer boundary:
 
 ```text
@@ -119,7 +140,7 @@ Runtime Markdown = not a working output
 Trading execution = prohibited
 ```
 
-Do not expand BOOK-L1 without a separate decision. The next valid directions are `BOOK-L1-FREEZE` or `BOOK-L2-00` planning above the read-only market reader.
+Do not expand BOOK-L1 without a separate decision. The next valid direction is follow-up work in BOOK-L2 while preserving the BOOK-L1 freeze boundary.
 
 Current API preview safety block:
 
