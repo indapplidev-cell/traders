@@ -2,7 +2,7 @@
 
 ## BOOK-L1 Market Reader status
 
-Status: `RUNTIME_JSON_CONSUMER_READY`
+Status: `LAYER_1_FREEZE_CANDIDATE`
 
 BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
 
@@ -28,6 +28,7 @@ It currently supports:
 - unified API-oriented JSON export through `--export-json` for current, multi-symbol, history, and timeline preview modes.
 - unified terminal command guide through `book-l1-guide`.
 - read-only runtime JSON consumer smoke through `book-l1-json-consumer-smoke`.
+- API readiness final review through `book-l1-api-readiness-review`.
 
 Current safety contract:
 
@@ -62,6 +63,7 @@ Latest completed implementation stages:
 | BOOK-L1-22 | DONE | Unified JSON export contract / API output files added. |
 | BOOK-L1-23 | DONE | Terminal UX cleanup / unified command guide added. |
 | BOOK-L1-24 | DONE | Runtime JSON consumer / API reader smoke added. |
+| BOOK-L1-25 | DONE | API readiness final review / Layer 1 freeze candidate added. |
 
 Latest relevant artifacts:
 
@@ -76,6 +78,8 @@ Latest relevant artifacts:
 - `reports/book_l1/book_l1_21_timeline_export_report.md`
 - `reports/book_l1/book_l1_22_unified_json_export_report.md`
 - `reports/book_l1/book_l1_23_terminal_ux_cleanup_report.md`
+- `reports/book_l1/book_l1_24_runtime_json_consumer_report.md`
+- `reports/book_l1/book_l1_25_api_readiness_final_review.md`
 - `reports/book_l1/current_preview.json`
 - `reports/book_l1/multi_preview.json`
 - `reports/book_l1/history_preview.json`
@@ -133,3 +137,22 @@ The consumer validates stable JSON export files before an external API layer rea
 - fail-closed safety fields.
 
 BOOK-L1-24 did not change market analysis logic, did not change JSON export semantics, did not use runtime Markdown as API output, did not connect live trading, and preserved fail-closed safety.
+
+BOOK-L1-25 added the final API readiness review:
+
+```powershell
+python -m app.cli.commands book-l1-api-readiness-review
+```
+
+The review checks required modules, tests, planning files, CLI command registration, stable JSON files when present, JSON contract shape, and fail-closed safety. Missing runtime JSON files are WARN after a clean checkout because export may not have run yet; invalid JSON, wrong `service`, wrong `contract_version`, missing safety, or unsafe safety values are FAIL.
+
+Current Layer 1 boundary:
+
+```text
+Terminal = for humans
+JSON = for API/runtime consumers
+Runtime Markdown = not a working output
+Trading execution = prohibited
+```
+
+BOOK-L1 is now a Layer 1 Freeze Candidate. It remains a read-only market reader and must not be expanded without a separate decision.

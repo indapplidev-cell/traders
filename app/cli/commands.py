@@ -612,6 +612,36 @@ def book_l1_json_consumer_smoke_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l1-api-readiness-review")
+def book_l1_api_readiness_review_command(
+    project_root: Path = typer.Option(
+        Path("."),
+        "--project-root",
+        help="Project root used for read-only readiness checks.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when the review has WARN or FAIL status.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print warnings, errors, and per-check details.",
+    ),
+) -> None:
+    """Run BOOK-L1 API readiness final review."""
+    from app.market_reader.api_readiness_review import (
+        ApiReadinessReviewFormatter,
+        ApiReadinessReviewer,
+    )
+
+    result = ApiReadinessReviewer(project_root=project_root).run()
+    typer.echo(ApiReadinessReviewFormatter().format(result, strict=strict, show_details=show_details))
+    if result.status == "FAIL" or (strict and result.status == "WARN"):
+        raise typer.Exit(1)
+
+
 def _parse_book_l1_json_consumer_report_types(
     report_types: str,
     *,

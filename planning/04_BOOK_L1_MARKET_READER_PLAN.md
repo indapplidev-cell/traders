@@ -53,10 +53,11 @@ safe_for_runtime_trading = false
 | BOOK-L1-22 | Unified JSON Export Contract / API Output Files | DONE | `app/market_reader/json_export.py` |
 | BOOK-L1-23 | Terminal UX Cleanup / Unified Command Guide | DONE | `app/market_reader/terminal_guide.py`, `book-l1-guide` |
 | BOOK-L1-24 | Runtime JSON Consumer / API Reader Smoke | DONE | `app/market_reader/json_consumer.py`, `book-l1-json-consumer-smoke` |
+| BOOK-L1-25 | API Readiness Final Review / Layer 1 Freeze Candidate | DONE | `app/market_reader/api_readiness_review.py`, `book-l1-api-readiness-review` |
 
 ## Current implementation boundary
 
-BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, a multi-window market regime timeline preview, stable unified JSON API output files for all main preview modes, a unified terminal command guide, and a read-only runtime JSON consumer smoke command.
+BOOK-L1 currently includes a safe API/service response contract, a human-readable single-symbol terminal preview, a multi-symbol comparison terminal preview, a previous-vs-current market regime history snapshot, a multi-window market regime timeline preview, stable unified JSON API output files for all main preview modes, a unified terminal command guide, a read-only runtime JSON consumer smoke command, and a final API readiness review command.
 
 The response contract can be consumed by a future external layer, but it remains read-only and fail-closed.
 The terminal previews are presentation layers over the same fail-closed market-reader payloads. The history snapshot compares two non-overlapping local candle windows. The timeline preview compares several non-overlapping historical windows, reports stability and last transition, and remains read-only. The unified JSON export writes only fixed runtime filenames and overwrites them on each `--export-json` run:
@@ -98,6 +99,27 @@ python -m app.cli.commands book-l1-json-consumer-smoke --strict
 ```
 
 BOOK-L1-24 validates stable JSON export files before external API consumption. It checks envelope keys, `contract_version`, `service`, expected `report_type`, list-shaped warnings/errors, object-shaped request/summary/safety, and fail-closed safety fields. It does not change market analysis logic, does not change JSON export semantics, does not use runtime Markdown as API output, and does not connect live trading.
+
+API readiness final review:
+
+```powershell
+python -m app.cli.commands book-l1-api-readiness-review
+```
+
+BOOK-L1-25 checks required modules, tests, planning files, CLI command registration, stable JSON files, JSON contract, and fail-closed safety. Missing runtime JSON files are WARN after a clean checkout because export may not have run yet. Invalid JSON, wrong `service`, wrong `contract_version`, missing safety, or unsafe safety values are FAIL.
+
+BOOK-L1 is now a Layer 1 Freeze Candidate.
+
+Layer boundary:
+
+```text
+Terminal = for humans
+JSON = for API/runtime consumers
+Runtime Markdown = not a working output
+Trading execution = prohibited
+```
+
+Do not expand BOOK-L1 without a separate decision. The next valid directions are `BOOK-L1-FREEZE` or `BOOK-L2-00` planning above the read-only market reader.
 
 Current API preview safety block:
 

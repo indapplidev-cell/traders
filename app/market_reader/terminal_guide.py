@@ -102,6 +102,8 @@ _TIMELINE_EXPORT_COMMAND = """python -m app.cli.commands book-l1-timeline-previe
 
 _JSON_CONSUMER_SMOKE_COMMAND = "python -m app.cli.commands book-l1-json-consumer-smoke --strict"
 
+_API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
+
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
 
 
@@ -122,6 +124,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _HISTORY_EXPORT_COMMAND,
         _TIMELINE_EXPORT_COMMAND,
         _JSON_CONSUMER_SMOKE_COMMAND,
+        _API_READINESS_REVIEW_COMMAND,
     )
 
 
@@ -187,7 +190,8 @@ def build_book_l1_terminal_guide() -> str:
         "6. Multi-window timeline preview",
         "7. JSON export files",
         "8. Runtime JSON consumer smoke",
-        "9. Safety contract",
+        "9. API readiness / freeze review",
+        "10. Safety contract",
         "",
     ]
 
@@ -254,7 +258,16 @@ def build_book_l1_terminal_guide() -> str:
             _TIMELINE_EXPORT_COMMAND,
             _JSON_CONSUMER_SMOKE_COMMAND,
             "",
-            "9. Safety contract",
+            "9. API readiness / freeze review",
+            "Checks that BOOK-L1 is ready as read-only Layer 1 for terminal use and API JSON consumers.",
+            "",
+            "Command:",
+            _API_READINESS_REVIEW_COMMAND,
+            "",
+            "Expected output:",
+            "PASS/WARN/FAIL readiness table and Layer 1 freeze candidate YES/NO.",
+            "",
+            "10. Safety contract",
             "trade_signal = NOT_EVALUATED",
             "safe_for_runtime_trading = false",
             "orders_enabled = false",

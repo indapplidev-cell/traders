@@ -26,64 +26,38 @@ The following BOOK-L1 items are already completed:
 - unified JSON export contract / API output files for current, multi-symbol, history, and timeline previews.
 - unified terminal command guide and terminal UX cleanup.
 - runtime JSON consumer / API reader smoke for stable BOOK-L1 JSON export files.
+- API readiness final review / Layer 1 freeze candidate.
 
 ## Remaining BOOK-L1 work
 
-### 1. Local API facade / read-only JSON endpoint prototype
+BOOK-L1 is now a Layer 1 Freeze Candidate. Do not expand BOOK-L1 without a separate decision.
 
-Logical next stage:
+### 1. Official BOOK-L1 freeze
 
-- expose already validated BOOK-L1 JSON export files through a local read-only facade;
-- do not re-run market analysis for facade reads;
-- keep fail-closed behavior when a JSON file is missing or invalid;
-- keep `trade_signal = NOT_EVALUATED`;
-- keep `safe_for_runtime_trading = false`;
-- do not connect live trading.
+Possible next stage:
 
-### 2. Terminal output normalization / consistent tables
+- formally freeze Layer 1 boundaries;
+- confirm terminal output is for humans;
+- confirm JSON is for API/runtime consumers;
+- confirm runtime Markdown is not a working output;
+- confirm fail-closed safety remains mandatory;
+- confirm trading execution is prohibited.
 
-Optional future stage:
+### 2. BOOK-L2 planning
 
-- normalize current, multi, history, and timeline terminal table style;
-- align column names and safety display;
-- keep terminal output human-readable;
-- keep JSON export as the API output path;
-- avoid changing market analysis logic.
+Possible next layer:
 
-### 3. Market regime decision notes / human explanation layer
+- plan the layer above the read-only market reader;
+- consume BOOK-L1 JSON state as an input;
+- define new layer responsibilities outside BOOK-L1;
+- do not let BOOK-L1 produce trade signals or execute orders.
 
-Optional next stage:
+### 3. Optional future maintenance only
 
-- explain why a regime is UP / DOWN / FLAT / UNKNOWN;
-- list the main factors behind the regime classification;
-- state clearly that the explanation is not a trading signal;
-- keep `trade_signal = NOT_EVALUATED`;
-- keep `safe_for_runtime_trading = false`.
-
-### 4. Optional FastAPI integration layer
-
-Only if needed later:
-
-- expose the BOOK-L1 response contract through an actual HTTP route;
-- keep route read-only;
-- keep `trade_signal = NOT_EVALUATED`;
-- keep `safe_for_runtime_trading = false`.
-
-### 5. Runtime integration planning
-
-Only as a future planning step:
-
-- decide how traders-core may consume BOOK-L1 market state;
-- define fail-closed behavior;
-- do not allow BOOK-L1 to create entries or orders.
-
-### 6. Calibration / rule tuning
-
-Optional future work:
-
-- compare BOOK-L1 market regimes against historical chart samples;
-- tune thresholds for range/trend/breakout classification;
-- keep this separate from model training and live trading.
+- bug fixes found by review can be logged as follow-up;
+- documentation can be clarified;
+- command help can be cleaned up;
+- market analysis logic should not change during freeze handling.
 
 ## Not remaining anymore
 
@@ -102,6 +76,7 @@ The following items are no longer remaining work:
 - `--export-json` unified stable JSON API output for all main BOOK-L1 preview modes.
 - `book-l1-guide` unified terminal command guide.
 - `book-l1-json-consumer-smoke` runtime JSON consumer / API reader smoke.
+- `book-l1-api-readiness-review` API readiness final review / Layer 1 freeze candidate.
 
 ## BOOK-L1-22 export rule
 
@@ -143,3 +118,22 @@ python -m app.cli.commands book-l1-json-consumer-smoke --strict
 ```
 
 The command reads stable JSON export files, validates the envelope and fail-closed safety contract, and prints an API-reader smoke table. It does not run market analysis, does not change JSON export semantics, does not use runtime Markdown as API output, and does not connect live trading.
+
+## BOOK-L1-25 API readiness final review rule
+
+BOOK-L1-25 added:
+
+```powershell
+python -m app.cli.commands book-l1-api-readiness-review
+```
+
+The command checks modules, tests, planning files, command registration, stable JSON files, JSON contract, and fail-closed safety. Missing runtime JSON files are WARN after a clean checkout because exports may not have run yet. Invalid JSON, wrong contract, missing safety, or unsafe safety are FAIL.
+
+Layer boundary:
+
+```text
+Terminal output: for humans
+JSON export: for API
+Runtime Markdown export: not used as working output
+Trading execution: prohibited
+```
