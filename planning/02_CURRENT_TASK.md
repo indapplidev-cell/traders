@@ -1,12 +1,12 @@
 # Current Task
 
-## BOOK-L2-05 - API Readiness Review / Layer 2 Freeze Candidate
+## BOOK-L2-06 - L1-L2 Interval Report Answer Smoke
 
 Status: `DONE`
 
 Goal:
 
-Run the final BOOK-L2 API readiness review before treating Layer 2 as a freeze candidate.
+Verify that the BOOK-L1 -> BOOK-L2 chain produces an actual human-readable market context answer for a requested interval, not only green tests.
 
 Primary input:
 
@@ -20,34 +20,43 @@ Primary output:
 reports/book_l2/timeline_context.json
 ```
 
+Evidence output:
+
+```text
+reports/book_l2/l1_l2_interval_answer.md
+```
+
 Implemented:
 
-- added `app/market_interpreter/api_readiness_review.py`;
-- added `L2ApiReadinessConfig`;
-- added `L2ApiReadinessCheck`;
-- added `L2ApiReadinessResult`;
-- added `L2ApiReadinessReviewer`;
-- added `L2ApiReadinessFormatter`;
-- added CLI command `book-l2-api-readiness-review`;
+- added `app/integration/l1_l2_interval_answer_smoke.py`;
+- added `app/integration/__init__.py`;
+- added `L1L2IntervalAnswerSmokeConfig`;
+- added `L1L2IntervalAnswerSmokeStep`;
+- added `L1L2IntervalAnswerSmokeResult`;
+- added `L1L2IntervalAnswerSmokeRunner`;
+- added `L1L2IntervalAnswerSmokeFormatter`;
+- added CLI command `book-l1-l2-interval-answer-smoke`;
+- added `--symbols`;
+- added `--symbol`;
+- added `--interval`;
+- added `--window-size`;
+- added `--window-count`;
+- added `--min-candles`;
 - added `--strict`;
 - added `--show-details`;
-- added `--json` stdout mode;
-- added validation for L2 module presence;
-- added validation for required L2 test files;
-- added validation for L1 timeline input and stable L2 context export;
-- reused the strict L2 JSON consumer contract validation;
-- added contract/version/service/source checks;
-- added fail-closed safety checks;
-- added observe-only runtime human field checks;
-- added forbidden source reference checks for BOOK-L2 modules;
-- added stable output filename policy checks;
-- added terminal guide, planning, and stage-report checks;
-- added focused unit tests for readiness behavior and CLI parser.
+- added `--output-md`;
+- added pipeline coordination for L1 timeline export, L1 JSON consumer strict, L2 context export, L2 JSON consumer strict, and L2 API readiness strict;
+- added symbol propagation validation from L1 output to L2 output;
+- added source lineage validation back to `reports/book_l1/timeline_preview.json`;
+- added fail-closed safety validation;
+- added forbidden human answer term validation;
+- added evidence Markdown writer with actual L2 overall state, brief, candidates, key points, per-symbol context, safety, and lineage;
+- added focused unit tests for config defaults, Markdown, validations, formatter, and CLI option coverage.
 
 BOOK-L2 boundary:
 
 ```text
-BOOK-L1 JSON -> BOOK-L2 context interpretation -> BOOK-L2 JSON -> readiness review
+BOOK-L1 JSON -> BOOK-L2 context interpretation -> BOOK-L2 JSON -> evidence Markdown
 ```
 
 Out of scope preserved:
@@ -82,36 +91,40 @@ approved_for_auto_activation = false
 Command:
 
 ```powershell
-python -m app.cli.commands book-l2-api-readiness-review
-```
-
-Useful modes:
-
-```powershell
-python -m app.cli.commands book-l2-api-readiness-review --strict
-python -m app.cli.commands book-l2-api-readiness-review --show-details
-python -m app.cli.commands book-l2-api-readiness-review --json
+python -m app.cli.commands book-l1-l2-interval-answer-smoke `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details
 ```
 
 Completion checks:
 
 - compile check passed;
-- BOOK-L2 API readiness tests passed;
-- BOOK-L2 targeted pack passed;
 - fresh BOOK-L1 timeline JSON export passed;
 - L1 runtime JSON consumer strict smoke passed;
 - L2 context export passed;
 - L2 JSON consumer strict smoke passed;
-- L2 API readiness default / strict / details / JSON stdout smoke passed;
+- L2 API readiness strict smoke passed;
+- symbol propagation passed;
+- source lineage passed;
+- fail-closed safety passed;
+- evidence Markdown was written;
+- targeted integration smoke tests passed;
 - full BOOK-L1 + BOOK-L2 pack passed;
 - forbidden import check passed.
 
 Freeze status:
 
 ```text
-BOOK-L2-05 completed API readiness final review.
+BOOK-L2-06 verified the actual L1-L2 interval report answer smoke.
 BOOK-L2 is now Layer 2 Freeze Candidate.
 BOOK-L2 remains consume-only / observe-only / fail-closed.
 ```
+
+This evidence report is not runtime API output; API output remains JSON.
 
 Next possible layer: BOOK-L3, but only after explicit approval.

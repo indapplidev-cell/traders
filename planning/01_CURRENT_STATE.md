@@ -281,6 +281,16 @@ BOOK-L2 is now Layer 2 Freeze Candidate.
 
 BOOK-L2 remains consume-only / observe-only / fail-closed.
 
+BOOK-L2-06 verified the actual L1-L2 interval report answer smoke.
+
+The system can now run L1 timeline export, consume it through L2, and produce a human-readable Markdown evidence report for a requested interval:
+
+```text
+reports/book_l2/l1_l2_interval_answer.md
+```
+
+This evidence report is not runtime API output; API output remains JSON.
+
 BOOK-L2-05 added the final API readiness review:
 
 ```powershell
@@ -294,6 +304,7 @@ Current Layer 2 boundary:
 ```text
 Input: reports/book_l1/timeline_preview.json
 Output: reports/book_l2/timeline_context.json
+Evidence: reports/book_l2/l1_l2_interval_answer.md
 Mode: consume-only / observe-only / fail-closed
 Trading execution: prohibited
 ```

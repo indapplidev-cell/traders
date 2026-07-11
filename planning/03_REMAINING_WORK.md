@@ -33,6 +33,7 @@ The following BOOK-L1 items are already completed:
 - BOOK-L2-03 context summary / human market brief.
 - BOOK-L2-04 L2 JSON consumer / context contract smoke.
 - BOOK-L2-05 API readiness review / Layer 2 freeze candidate.
+- BOOK-L2-06 L1-L2 interval answer smoke / evidence Markdown.
 
 ## Remaining BOOK-L1 work
 
@@ -58,6 +59,12 @@ BOOK-L2 is now Layer 2 Freeze Candidate.
 BOOK-L2 remains consume-only / observe-only / fail-closed.
 
 Do not expand BOOK-L2 without a separate decision.
+
+BOOK-L2-06 verified the actual L1-L2 interval report answer smoke.
+
+The system can now run L1 timeline export, consume it through L2, and produce a human-readable Markdown evidence report for a requested interval.
+
+This evidence report is not runtime API output; API output remains JSON.
 
 ### 3. Possible BOOK-L3 discussion only
 
@@ -102,6 +109,7 @@ The following items are no longer remaining work:
 - BOOK-L2 context summary / human market brief.
 - BOOK-L2 JSON consumer smoke for stable `reports/book_l2/timeline_context.json`.
 - BOOK-L2 API readiness review / Layer 2 freeze candidate.
+- BOOK-L2 L1-L2 interval answer smoke / evidence Markdown.
 
 ## BOOK-L1-22 export rule
 
@@ -302,3 +310,35 @@ The command checks L2 module/test coverage, CLI registration, stable L1 input, s
 BOOK-L2 is now Layer 2 Freeze Candidate.
 
 BOOK-L2 remains consume-only / observe-only / fail-closed.
+
+## BOOK-L2-06 rule
+
+BOOK-L2-06 added:
+
+```text
+app/integration/l1_l2_interval_answer_smoke.py
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l1-l2-interval-answer-smoke --strict --show-details
+```
+
+The command coordinates the existing L1 and L2 pipeline:
+
+```text
+L1 timeline export -> L1 JSON consumer strict -> L2 context export -> L2 JSON consumer strict -> L2 API readiness strict -> evidence Markdown
+```
+
+It writes:
+
+```text
+reports/book_l2/l1_l2_interval_answer.md
+```
+
+The Markdown file is human evidence for smoke review. It is not runtime API output. API output remains JSON:
+
+```text
+reports/book_l2/timeline_context.json
+```

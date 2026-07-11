@@ -38,6 +38,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-03 | Context Summary / Human Market Brief | DONE | `app/market_interpreter/context_summary.py` |
 | BOOK-L2-04 | L2 JSON Consumer / Context Contract Smoke | DONE | `app/market_interpreter/json_consumer.py` |
 | BOOK-L2-05 | API Readiness Review / Layer 2 Freeze Candidate | DONE | `app/market_interpreter/api_readiness_review.py` |
+| BOOK-L2-06 | L1-L2 Interval Answer Smoke / Evidence Markdown | DONE | `app/integration/l1_l2_interval_answer_smoke.py` |
 
 ## BOOK-L2-00
 
@@ -194,11 +195,15 @@ BOOK-L2-04 remains consume-only. It does not read candles, does not connect to D
 
 ## Planned direction
 
-BOOK-L2-05 completed API readiness final review.
+BOOK-L2-06 verified the actual L1-L2 interval report answer smoke.
 
 BOOK-L2 is now Layer 2 Freeze Candidate.
 
 BOOK-L2 remains consume-only / observe-only / fail-closed.
+
+The system can now run L1 timeline export, consume it through L2, and produce a human-readable Markdown evidence report for a requested interval.
+
+This evidence report is not runtime API output; API output remains JSON.
 
 The next stages must keep the same boundary unless an explicit separate decision changes it: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
@@ -236,3 +241,48 @@ The reviewer validates:
 - BOOK-L2 stage reports.
 
 It does not change bucket rules, scoring rules, ranking rules, market brief rules, L1 JSON semantics, or L2 JSON export semantics.
+
+## BOOK-L2-06
+
+BOOK-L2-06 added an integration smoke:
+
+```text
+app/integration/l1_l2_interval_answer_smoke.py
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l1-l2-interval-answer-smoke `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details
+```
+
+The command verifies:
+
+- fresh L1 timeline export;
+- strict L1 JSON consumer;
+- fresh L2 context export;
+- strict L2 JSON consumer;
+- strict L2 API readiness review;
+- symbol propagation from L1 to L2;
+- L2 source lineage back to `reports/book_l1/timeline_preview.json`;
+- fail-closed safety;
+- actual human-readable evidence Markdown.
+
+Evidence output:
+
+```text
+reports/book_l2/l1_l2_interval_answer.md
+```
+
+This Markdown file is evidence for human smoke review, not runtime API output. The stable runtime/API output remains:
+
+```text
+reports/book_l2/timeline_context.json
+```

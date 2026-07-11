@@ -750,6 +750,63 @@ def book_l2_api_readiness_review_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l1-l2-interval-answer-smoke")
+def book_l1_l2_interval_answer_smoke_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Candle interval, for example 15m."),
+    window_size: int = typer.Option(300, "--window-size", min=1, help="Candles per timeline window."),
+    window_count: int = typer.Option(4, "--window-count", min=2, max=6, help="Timeline window count from 2 to 6."),
+    min_candles: int = typer.Option(50, "--min-candles", min=1, help="Minimum candles required per window."),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when any L1-L2 smoke check fails.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print actual L2 overall state, brief, and candidate lists.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_l2/l1_l2_interval_answer.md"),
+        "--output-md",
+        help="Path for the human evidence Markdown answer.",
+    ),
+) -> None:
+    """Run L1 -> L2 interval answer smoke and write a human evidence Markdown report."""
+    from app.integration.l1_l2_interval_answer_smoke import (
+        L1L2IntervalAnswerSmokeConfig,
+        L1L2IntervalAnswerSmokeFormatter,
+        L1L2IntervalAnswerSmokeRunner,
+        parse_smoke_symbols,
+    )
+
+    selected_symbols = parse_smoke_symbols(symbols, tuple(symbol or ()))
+    config = L1L2IntervalAnswerSmokeConfig(
+        symbols=selected_symbols,
+        interval=interval,
+        window_size=window_size,
+        window_count=window_count,
+        min_candles=min_candles,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = L1L2IntervalAnswerSmokeRunner().run(config)
+    typer.echo(L1L2IntervalAnswerSmokeFormatter().format(result, config=config))
+    if strict and not result.passed:
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

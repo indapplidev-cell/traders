@@ -108,6 +108,15 @@ _L2_JSON_CONSUMER_SMOKE_COMMAND = "python -m app.cli.commands book-l2-json-consu
 
 _L2_API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l2-api-readiness-review --strict"
 
+_L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND = """python -m app.cli.commands book-l1-l2-interval-answer-smoke `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details"""
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -133,6 +142,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _L2_CONTEXT_COMMAND,
         _L2_JSON_CONSUMER_SMOKE_COMMAND,
         _L2_API_READINESS_REVIEW_COMMAND,
+        _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -276,6 +286,8 @@ def build_book_l1_terminal_guide() -> str:
             _L2_CONTEXT_COMMAND,
             "4. Validate BOOK-L2 JSON for API consumers:",
             _L2_JSON_CONSUMER_SMOKE_COMMAND,
+            "5. Write L1-L2 interval answer evidence:",
+            _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND,
             "",
             "BOOK-L2 JSON consumer smoke:",
             "Validates reports/book_l2/timeline_context.json without reading candles, DB, or live services.",
@@ -293,6 +305,20 @@ def build_book_l1_terminal_guide() -> str:
             "- L2 summary is observe-only.",
             "- It gives observation candidates, not trade candidates.",
             "- JSON export remains reports/book_l2/timeline_context.json.",
+            "",
+            "L1-L2 interval answer smoke",
+            "Runs the full L1 timeline to L2 context chain and writes a human evidence report.",
+            "",
+            "Command:",
+            _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND,
+            "",
+            "Answer file:",
+            "reports/book_l2/l1_l2_interval_answer.md",
+            "",
+            "Evidence rule:",
+            "- This Markdown file is for human smoke review.",
+            "- It is not runtime API output.",
+            "- Runtime/API output remains JSON.",
             "",
             "BOOK-L2 freeze candidate review",
             "Run the fixed output, consumer smoke, and readiness review before treating BOOK-L2 as frozen.",
