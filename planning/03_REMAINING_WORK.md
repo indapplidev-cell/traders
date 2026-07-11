@@ -16,16 +16,13 @@ The following BOOK-L1 items are already completed:
 - market reader orchestrator;
 - CLI preview command;
 - real DB CLI preview smoke report;
-- API/service response contract.
+- API/service response contract;
+- repository cleanup / final review;
+- interactive terminal preview / human table report.
 
 ## Remaining BOOK-L1 work
 
-### 1. Documentation finalization
-
-- keep planning files synchronized with implementation state;
-- keep smoke/API reports under `reports/book_l1/` as evidence artifacts.
-
-### 2. Optional FastAPI integration layer
+### 1. Optional FastAPI integration layer
 
 Only if needed later:
 
@@ -34,7 +31,7 @@ Only if needed later:
 - keep `trade_signal = NOT_EVALUATED`;
 - keep `safe_for_runtime_trading = false`.
 
-### 3. Runtime integration planning
+### 2. Runtime integration planning
 
 Only as a future planning step:
 
@@ -42,7 +39,7 @@ Only as a future planning step:
 - define fail-closed behavior;
 - do not allow BOOK-L1 to create entries or orders.
 
-### 4. Calibration / rule tuning
+### 3. Calibration / rule tuning
 
 Optional future work:
 
@@ -58,4 +55,5 @@ The following items are no longer remaining work:
 - real DB smoke preview JSON;
 - real DB smoke Markdown report;
 - `book-l1-api-preview` command;
-- API/service response contract v1.
+- API/service response contract v1;
+- `book-l1-interactive-preview` human terminal report.

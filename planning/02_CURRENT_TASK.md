@@ -1,20 +1,25 @@
-﻿# Current Task
+# Current Task
 
-## BOOK-L1-15 — Planning Status Update / Documentation Sync
+## BOOK-L1-17 - Interactive Terminal Preview / Human Table Report
 
-Status: `IN_PROGRESS`
+Status: `DONE`
 
 Goal:
 
-Update planning documentation after completion of the read-only BOOK-L1 Market Reader pipeline, CLI preview, real DB smoke report, and API/service response contract.
+Add a human-oriented terminal launch mode:
 
-Scope:
+```powershell
+python -m app.cli.commands book-l1-interactive-preview
+```
 
-- update `planning/01_CURRENT_STATE.md`;
-- update `planning/02_CURRENT_TASK.md`;
-- update `planning/03_REMAINING_WORK.md`;
-- update `planning/04_BOOK_L1_MARKET_READER_PLAN.md`;
-- keep all BOOK-L1 safety guarantees explicit.
+Scope completed:
+
+- added `app.market_reader.interactive_preview`;
+- added deterministic ASCII terminal tables for response, request, candle window, market analysis, safety, reason codes, warnings, and errors;
+- added `book-l1-interactive-preview` CLI command;
+- reused the existing BOOK-L1 API preview payload and safety contract;
+- added tests for formatter and CLI wiring;
+- verified the command against local BTCUSDT 15m stored candles.
 
 Out of scope:
 
@@ -26,7 +31,6 @@ Out of scope:
 
 Completion criteria:
 
-- planning docs reflect BOOK-L1-12, BOOK-L1-13, BOOK-L1-14 as completed;
-- remaining work starts after API/service response contract;
-- safety contract is written explicitly;
-- documentation-only commit is created.
+- `python -m app.cli.commands book-l1-interactive-preview` prints a human-readable table report;
+- safety remains explicit: `trade_signal = NOT_EVALUATED`, `safe_for_runtime_trading = false`, `orders_enabled = false`;
+- tests cover the formatter and CLI command.

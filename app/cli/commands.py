@@ -199,6 +199,28 @@ def book_l1_api_preview_command(
     typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
+@cli.command("book-l1-interactive-preview")
+def book_l1_interactive_preview_command(
+    symbol: str = typer.Option("BTCUSDT", "--symbol", help="Trading symbol, for example BTCUSDT."),
+    interval: str = typer.Option("15m", "--interval", help="Candle interval, for example 15m."),
+    limit: int = typer.Option(300, "--limit", help="Number of latest candles to read from DB."),
+    min_candles: int = typer.Option(50, "--min-candles", help="Minimum candles required for preview."),
+) -> None:
+    """Show BOOK-L1 Market Reader preview as human-readable terminal tables."""
+    from app.market_reader.interactive_preview import build_book_l1_interactive_preview_report
+
+    with get_session() as session:
+        report = build_book_l1_interactive_preview_report(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+            min_candles=min_candles,
+            candle_repository=CandleRepository(session),
+        )
+
+    typer.echo(report)
+
+
 @cli.command("db-check")
 def db_check_command() -> None:
     with get_session() as session:

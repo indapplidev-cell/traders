@@ -63,6 +63,10 @@ from app.market_reader.api_response import (
     build_book_l1_api_response_payload,
     validate_book_l1_preview_safety,
 )
+from app.market_reader.interactive_preview import (
+    build_book_l1_interactive_preview_report,
+    format_book_l1_interactive_preview_report,
+)
 
 __all__ = [
     "BreakoutDirection",
@@ -113,4 +117,6 @@ __all__ = [
     "BookL1ApiSafetyBlock",
     "build_book_l1_api_response_payload",
     "validate_book_l1_preview_safety",
+    "build_book_l1_interactive_preview_report",
+    "format_book_l1_interactive_preview_report",
 ]

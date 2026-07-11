@@ -43,13 +43,16 @@ safe_for_runtime_trading = false
 | BOOK-L1-12 | CLI Preview Command | DONE | `book-l1-preview` |
 | BOOK-L1-13 | Real DB CLI Smoke Report | DONE | `reports/book_l1/book_l1_13_*` |
 | BOOK-L1-14 | API Preview / Service Response Contract | DONE | `app/market_reader/api_response.py`, `book-l1-api-preview` |
-| BOOK-L1-15 | Planning Status Update / Documentation Sync | IN_PROGRESS | `planning/*.md` |
+| BOOK-L1-15 | Planning Status Update / Documentation Sync | DONE | `planning/*.md` |
+| BOOK-L1-16 | Repository Cleanup / Final BOOK-L1 Review | DONE | `reports/book_l1/book_l1_16_final_review.md` |
+| BOOK-L1-17 | Interactive Terminal Preview / Human Table Report | DONE | `book-l1-interactive-preview` |
 
 ## Current implementation boundary
 
-BOOK-L1 currently ends at a safe API/service response contract.
+BOOK-L1 currently includes a safe API/service response contract and a human-readable terminal preview.
 
 The response contract can be consumed by a future external layer, but it remains read-only and fail-closed.
+The terminal preview is a presentation layer over the same fail-closed payload.
 
 Current API preview safety block:
 
