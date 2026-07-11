@@ -1,149 +1,69 @@
 # BOOK-L1 Market Reader Plan
 
-## Короткое название
+## Layer definition
 
-BOOK-L1 Market Reader
-
-## Русское название
-
-Слой 1 — Чтение рынка
-
-## Главная цель
-
-Построить первый слой графико-технического анализа рынка.
-
-Слой должен читать историю свечей и определять:
-
-- рынок восходящий;
-- рынок нисходящий;
-- рынок боковой;
-- структура неясная.
-
-## Входные данные
-
-История свечей:
-
-- symbol;
-- interval;
-- timestamp;
-- open;
-- high;
-- low;
-- close;
-- volume.
-
-## Основной pipeline
+BOOK-L1 is the first market-reading layer:
 
 ```text
-Candles
-  ↓
-CandleWindow
-  ↓
-CandleMorphology
-  ↓
-SwingHighSwingLowDetector
-  ↓
-TrendStructureAnalyzer
-  ↓
-RangeStructureAnalyzer
-  ↓
-BreakoutRetestAnalyzer
-  ↓
-BookDrivenMarketAnalyzer
-  ↓
-MarketAnalysisResult
+candles -> chart/technical context -> market regime -> UP / DOWN / FLAT / UNKNOWN
 ```
 
-## Что должен определить слой
+BOOK-L1 is not a trading system.
 
-### UP
+It must not produce:
 
-Признаки:
+- LONG / SHORT signal;
+- order intent;
+- entry approval;
+- runtime trading approval.
 
-- higher highs;
-- higher lows;
-- цена чаще закрывается выше средней;
-- откаты не ломают структуру;
-- после пробоев есть продолжение;
-- бычьи свечи сильнее медвежьих.
+Safety output must remain:
 
-### DOWN
+```text
+trade_signal = NOT_EVALUATED
+safe_for_runtime_trading = false
+```
 
-Признаки:
+## Stage checklist
 
-- lower highs;
-- lower lows;
-- цена чаще закрывается ниже средней;
-- отскоки слабые;
-- после пробоев вниз есть продолжение;
-- медвежьи свечи сильнее бычьих.
+| Stage | Name | Status | Main artifact |
+| --- | --- | --- | --- |
+| BOOK-L1-00 | Planning baseline | DONE | `planning/*.md` |
+| BOOK-L1-01 | Read-only audit | DONE | audit decisions / architecture direction |
+| BOOK-L1-02 | Market reader schemas | DONE | `app/market_reader/schemas.py` |
+| BOOK-L1-03 | Candle Window | DONE | `app/market_reader/candle_window.py` |
+| BOOK-L1-04 | Candle Morphology | DONE | `app/market_reader/candle_morphology.py` |
+| BOOK-L1-05 | Swing Detector | DONE | `app/market_reader/swing_detector.py` |
+| BOOK-L1-06 | Trend Structure Analyzer | DONE | `app/market_reader/trend_structure.py` |
+| BOOK-L1-07 | Range Structure Analyzer | DONE | `app/market_reader/range_structure.py` |
+| BOOK-L1-08 | Breakout / Retest Analyzer | DONE | `app/market_reader/breakout_retest.py` |
+| BOOK-L1-09 | Technical Context Analyzer | DONE | `app/market_reader/technical_context.py` |
+| BOOK-L1-10 | Market Regime Composer | DONE | `app/market_reader/market_regime_composer.py` |
+| BOOK-L1-11 | Market Reader Orchestrator | DONE | `app/market_reader/market_reader.py` |
+| BOOK-L1-12 | CLI Preview Command | DONE | `book-l1-preview` |
+| BOOK-L1-13 | Real DB CLI Smoke Report | DONE | `reports/book_l1/book_l1_13_*` |
+| BOOK-L1-14 | API Preview / Service Response Contract | DONE | `app/market_reader/api_response.py`, `book-l1-api-preview` |
+| BOOK-L1-15 | Planning Status Update / Documentation Sync | IN_PROGRESS | `planning/*.md` |
 
-### FLAT
+## Current implementation boundary
 
-Признаки:
+BOOK-L1 currently ends at a safe API/service response contract.
 
-- нет устойчивых higher highs / lower lows;
-- цена ходит между верхней и нижней границей;
-- много перекрывающихся свечей;
-- пробои часто возвращаются обратно;
-- EMA почти горизонтальная;
-- движение без продолжения.
+The response contract can be consumed by a future external layer, but it remains read-only and fail-closed.
 
-### UNKNOWN
-
-Используется, если данных мало или признаки конфликтуют.
-
-## Важное ограничение
-
-BOOK-L1 Market Reader не должен давать торговый сигнал.
-
-Он не говорит:
-
-- buy;
-- sell;
-- long;
-- short;
-- enter;
-- exit.
-
-Он говорит только:
-
-- структура рынка;
-- режим рынка;
-- объяснение.
-
-## Целевой результат
+Current API preview safety block:
 
 ```json
 {
-  "market_regime": "UP",
-  "directional_bias": "BULLISH",
-  "confidence": 0.71,
-  "trend_strength": "MODERATE",
+  "api_preview_only": true,
   "trade_signal": "NOT_EVALUATED",
   "safe_for_runtime_trading": false,
-  "reason_codes": [
-    "HIGHER_HIGHS_HIGHER_LOWS",
-    "PRICE_ABOVE_EMA",
-    "EMA_SLOPE_UP",
-    "SHALLOW_PULLBACK",
-    "BULLISH_FOLLOW_THROUGH"
-  ]
+  "orders_enabled": false,
+  "live_trading_connected": false,
+  "traders_core_connected": false,
+  "approved_for_live_trading": false,
+  "approved_for_auto_activation": false,
+  "model_training_executed": false,
+  "binance_download_executed": false
 }
 ```
-
-## Почему это первый слой
-
-Потому что невозможно честно проверять торговый edge, пока система не умеет стабильно читать рынок.
-
-Сначала:
-
-> что происходит на рынке?
-
-Потом:
-
-> есть ли setup?
-
-И только потом:
-
-> есть ли edge?

@@ -1,128 +1,61 @@
 ﻿# Remaining Work
 
-## Новый порядок работ
+## Completed before this remaining-work snapshot
 
-### BOOK-L1-00 — Stop Growth and Confirm New Priority
+The following BOOK-L1 items are already completed:
 
-Зафиксировать новый курс проекта и остановить разрастание старой ML38.10 diagnostic-ветки.
+- market reader schemas;
+- candle window;
+- candle morphology;
+- swing detector;
+- trend structure analyzer;
+- range structure analyzer;
+- breakout / retest analyzer;
+- technical context analyzer;
+- market regime composer;
+- market reader orchestrator;
+- CLI preview command;
+- real DB CLI preview smoke report;
+- API/service response contract.
 
-Статус: current.
+## Remaining BOOK-L1 work
 
-### BOOK-L1-01 — Planning Cleanup and Project Control
+### 1. Documentation finalization
 
-Привести `planning/` к чистой структуре:
+- keep planning files synchronized with implementation state;
+- keep smoke/API reports under `reports/book_l1/` as evidence artifacts.
 
-- общий план;
-- текущий статус;
-- текущая задача;
-- оставшаяся работа;
-- книги;
-- ручной workflow.
+### 2. Optional FastAPI integration layer
 
-### BOOK-L1-02 — Market Analysis Schemas
+Only if needed later:
 
-Создать базовые схемы результата анализа рынка:
+- expose the BOOK-L1 response contract through an actual HTTP route;
+- keep route read-only;
+- keep `trade_signal = NOT_EVALUATED`;
+- keep `safe_for_runtime_trading = false`.
 
-- `MarketRegime`;
-- `DirectionalBias`;
-- `TrendStrength`;
-- `MarketAnalysisResult`;
-- `reason_codes`;
-- `trade_signal = NOT_EVALUATED`.
+### 3. Runtime integration planning
 
-### BOOK-L1-03 — Candle Window
+Only as a future planning step:
 
-Создать слой работы с окном свечей:
+- decide how traders-core may consume BOOK-L1 market state;
+- define fail-closed behavior;
+- do not allow BOOK-L1 to create entries or orders.
 
-- последние N свечей;
-- open/high/low/close/volume;
-- защита от пустых данных;
-- защита от lookahead.
+### 4. Calibration / rule tuning
 
-### BOOK-L1-04 — Candle Morphology
+Optional future work:
 
-Добавить признаки свечей:
+- compare BOOK-L1 market regimes against historical chart samples;
+- tune thresholds for range/trend/breakout classification;
+- keep this separate from model training and live trading.
 
-- тело свечи;
-- верхняя тень;
-- нижняя тень;
-- диапазон;
-- bullish/bearish candle;
-- doji-like candle;
-- strong body candle.
+## Not remaining anymore
 
-### BOOK-L1-05 — Swing High / Swing Low Detector
+The following items are no longer remaining work:
 
-Научить систему находить локальные максимумы и минимумы.
-
-Это основа для построения тренда.
-
-### BOOK-L1-06 — Trend Structure Analyzer
-
-Определять:
-
-- higher highs;
-- higher lows;
-- lower highs;
-- lower lows;
-- восходящую структуру;
-- нисходящую структуру;
-- сломанную структуру.
-
-### BOOK-L1-07 — Range Structure Analyzer
-
-Определять боковой рынок:
-
-- диапазон;
-- верхняя граница;
-- нижняя граница;
-- частые возвраты внутрь диапазона;
-- слабое продолжение после пробоев.
-
-### BOOK-L1-08 — Breakout / Retest Analyzer
-
-Определять:
-
-- пробой;
-- ретест;
-- ложный пробой;
-- возврат в диапазон;
-- follow-through после пробоя.
-
-### BOOK-L1-09 — BookDrivenMarketAnalyzer V1
-
-Объединить анализаторы в первый рабочий слой.
-
-Выход:
-
-- `UP`;
-- `DOWN`;
-- `FLAT`;
-- `UNKNOWN`;
-- `confidence`;
-- `trend_strength`;
-- `reason_codes`.
-
-
-### BOOK-L1-10 — CLI Preview
-
-Сделать команду предпросмотра анализа рынка по символу и таймфрейму.
-
-Пример будущего результата:
-
-```json
-{
-  "symbol": "SOLUSDT",
-  "interval": "15m",
-  "market_regime": "UP",
-  "directional_bias": "BULLISH",
-  "trend_strength": "MODERATE",
-  "trade_signal": "NOT_EVALUATED",
-  "safe_for_runtime_trading": false,
-  "reason_codes": [
-    "HIGHER_HIGHS_HIGHER_LOWS",
-    "PRICE_ABOVE_EMA",
-    "BULLISH_FOLLOW_THROUGH"
-  ]
-}
-```
+- `book-l1-preview` CLI command;
+- real DB smoke preview JSON;
+- real DB smoke Markdown report;
+- `book-l1-api-preview` command;
+- API/service response contract v1.

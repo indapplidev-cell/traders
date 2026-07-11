@@ -1,65 +1,54 @@
 ﻿# Current State
 
-## Статус на сейчас
+## BOOK-L1 Market Reader status
 
-Проект `traders-ml` был слишком сильно уведён в цепочку ML38.10 diagnostics.
+Status: `READ_ONLY_API_CONTRACT_READY`
 
-Последние диагностические этапы показали, что текущая ML/calibration/sidecar ветка не дала практического доказательства торгового преимущества.
+BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
 
-## Важные выводы старой ветки
+It currently supports:
 
-ML38.10.75:
+- candle window normalization and validation;
+- candle morphology analysis;
+- swing high / swing low detection;
+- trend structure analysis;
+- range structure analysis;
+- breakout / retest context;
+- EMA / ATR technical context;
+- market regime composition;
+- full orchestration through `MarketReaderOrchestrator`;
+- CLI preview from stored candles through `book-l1-preview`;
+- real DB smoke report for BTCUSDT 15m;
+- API/service response contract through `book-l1-api-preview`.
 
-- найдено сильное доминирование FLAT-класса;
-- решение: не менять policy;
-- использовать выводы только как диагностическую информацию.
+Current safety contract:
 
-ML38.10.76:
+```text
+trade_signal = NOT_EVALUATED
+safe_for_runtime_trading = false
+orders_enabled = false
+live_trading_connected = false
+approved_for_live_trading = false
+approved_for_auto_activation = false
+```
 
-- найдены directional windows;
-- часть окон sparse;
-- решение: не менять policy.
+BOOK-L1 does not train models, does not download candles during preview, does not connect to runtime trading, and does not approve entries.
 
-ML38.10.77:
+Latest completed implementation stages:
 
-- проведён directional case context audit;
-- directional cases существуют;
-- это всё ещё не доказывает trading edge;
-- решение: не менять policy.
+| Stage | Status | Result |
+| --- | --- | --- |
+| BOOK-L1-12 | DONE | CLI preview command added. |
+| BOOK-L1-13 | DONE | Manual real DB smoke report added. |
+| BOOK-L1-14 | DONE | API/service response contract added. |
 
-## Коррекция курса
+Latest relevant artifacts:
 
-Старая ветка ML38.10 diagnostics заморожена как второстепенная.
+- `reports/book_l1/book_l1_13_BTCUSDT_15m_preview.json`
+- `reports/book_l1/book_l1_13_cli_preview_smoke_report.md`
+- `reports/book_l1/book_l1_14_BTCUSDT_15m_api_preview.json`
 
-Новый главный курс:
+Latest relevant commit:
 
-> BOOK-L1 Market Reader
-
-То есть первый слой проекта должен заниматься не торговым сигналом, а чтением рынка:
-
-- построить тренд;
-- определить структуру;
-- определить режим рынка: UP / DOWN / FLAT / UNKNOWN;
-- определить режим рынка;
-- объяснить решение через reason codes.
-
-## Состояние planning/
-
-Папка `planning/` очищена от нецелевых файлов.
-
-В `planning/` должны оставаться только планировочные `.md`-файлы и локальная папка `books/`.
-
-Python-скрипты, snapshot-файлы и старые handoff-файлы вынесены в backup и не должны возвращаться в `planning/`.
-
-## Текущий рабочий режим
-
-Работа выполняется вручную.
-
-Codex не используется как основной исполнитель.
-
-Перед каждым изменением нужно понимать:
-
-- какой файл меняется;
-- зачем он меняется;
-- какие команды проверки запускаются;
-- какие данные нужно прислать на анализ.
+```text
+80c781e feat: add BOOK-L1 API response contract

@@ -22,3 +22,5 @@
 - большие диагностические выгрузки.
 
 PDF-книги лежат локально в `planning/books/` и не добавляются в Git.
+
+- BOOK-L1 Market Reader: read-only pipeline, CLI preview, real DB smoke report, and API/service response contract are completed through BOOK-L1-14.

@@ -1,42 +1,32 @@
 ﻿# Current Task
 
-## Этап
+## BOOK-L1-15 — Planning Status Update / Documentation Sync
 
-BOOK-L1-00 — Stop Growth and Confirm New Priority
+Status: `IN_PROGRESS`
 
-## Цель этапа
+Goal:
 
-Остановить разрастание старой ML38.10 diagnostic-ветки и зафиксировать новый главный приоритет проекта:
+Update planning documentation after completion of the read-only BOOK-L1 Market Reader pipeline, CLI preview, real DB smoke report, and API/service response contract.
 
-> BOOK-L1 Market Reader
+Scope:
 
-## Что нужно подтвердить
+- update `planning/01_CURRENT_STATE.md`;
+- update `planning/02_CURRENT_TASK.md`;
+- update `planning/03_REMAINING_WORK.md`;
+- update `planning/04_BOOK_L1_MARKET_READER_PLAN.md`;
+- keep all BOOK-L1 safety guarantees explicit.
 
-Первый слой проекта должен делать:
+Out of scope:
 
-- графико-технический анализ свечей;
-- построение тренда;
-- определение структуры рынка;
-- определение структуры рынка;
-- классификацию режима рынка: `UP / DOWN / FLAT / UNKNOWN`;
-- объяснение результата через `reason_codes`.
+- no new analyzer logic;
+- no model training;
+- no Binance download;
+- no runtime trading integration;
+- no strategy / risk / executor changes.
 
-## Что запрещено в этом этапе
+Completion criteria:
 
-На этом этапе нельзя:
-
-- запускать quick-quality;
-- запускать heavy wrappers;
-- создавать новые ML38.10 diagnostics;
-- менять label policy;
-- менять class weights;
-- менять training objective;
-- утверждать наличие tradable edge;
-- добавлять торговые сигналы LONG/SHORT;
-- подключать результат к runtime execution.
-
-## Ожидаемый результат этапа
-
-После BOOK-L1-00 в проекте должен быть зафиксирован новый курс:
-
-> сначала Market Reader, потом setup evaluation, потом edge validation.
+- planning docs reflect BOOK-L1-12, BOOK-L1-13, BOOK-L1-14 as completed;
+- remaining work starts after API/service response contract;
+- safety contract is written explicitly;
+- documentation-only commit is created.
