@@ -25,28 +25,30 @@ The following BOOK-L1 items are already completed:
 - stable timeline preview JSON + Markdown export.
 - unified JSON export contract / API output files for current, multi-symbol, history, and timeline previews.
 - unified terminal command guide and terminal UX cleanup.
+- runtime JSON consumer / API reader smoke for stable BOOK-L1 JSON export files.
 
 ## Remaining BOOK-L1 work
 
-### 1. Terminal output normalization / consistent tables
+### 1. Local API facade / read-only JSON endpoint prototype
 
 Logical next stage:
+
+- expose already validated BOOK-L1 JSON export files through a local read-only facade;
+- do not re-run market analysis for facade reads;
+- keep fail-closed behavior when a JSON file is missing or invalid;
+- keep `trade_signal = NOT_EVALUATED`;
+- keep `safe_for_runtime_trading = false`;
+- do not connect live trading.
+
+### 2. Terminal output normalization / consistent tables
+
+Optional future stage:
 
 - normalize current, multi, history, and timeline terminal table style;
 - align column names and safety display;
 - keep terminal output human-readable;
 - keep JSON export as the API output path;
 - avoid changing market analysis logic.
-
-### 2. API reader contract / load JSON exports for external service
-
-Optional future stage:
-
-- add a read-only module that loads the stable JSON output files;
-- validate `contract_version = book_l1_json_export_v1`;
-- validate `service = BOOK_L1_MARKET_READER`;
-- keep fail-closed behavior when a file is missing or invalid;
-- avoid re-running analysis when the future API/service layer only needs the latest export snapshot.
 
 ### 3. Market regime decision notes / human explanation layer
 
@@ -99,6 +101,7 @@ The following items are no longer remaining work:
 - `book-l1-timeline-preview --export` stable JSON + Markdown export.
 - `--export-json` unified stable JSON API output for all main BOOK-L1 preview modes.
 - `book-l1-guide` unified terminal command guide.
+- `book-l1-json-consumer-smoke` runtime JSON consumer / API reader smoke.
 
 ## BOOK-L1-22 export rule
 
@@ -130,3 +133,13 @@ Runtime Markdown export: not used as working output
 ```
 
 The module remains read-only and the safety contract is preserved.
+
+## BOOK-L1-24 runtime JSON consumer rule
+
+BOOK-L1-24 added:
+
+```powershell
+python -m app.cli.commands book-l1-json-consumer-smoke --strict
+```
+
+The command reads stable JSON export files, validates the envelope and fail-closed safety contract, and prints an API-reader smoke table. It does not run market analysis, does not change JSON export semantics, does not use runtime Markdown as API output, and does not connect live trading.

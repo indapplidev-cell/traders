@@ -121,6 +121,17 @@ from app.market_reader.json_export import (
     resolve_export_path,
     write_book_l1_json_export,
 )
+from app.market_reader.json_consumer import (
+    EXPECTED_CONTRACT_VERSION,
+    EXPECTED_SERVICE,
+    REPORT_TYPE_TO_FILENAME,
+    REPORT_TYPE_TO_JSON_REPORT_TYPE,
+    RuntimeJsonConsumer,
+    RuntimeJsonConsumerConfig,
+    RuntimeJsonConsumerFormatter,
+    RuntimeJsonConsumerResult,
+    RuntimeJsonReportCheck,
+)
 from app.market_reader.terminal_guide import (
     TerminalCommandExample,
     build_book_l1_terminal_guide,
@@ -222,6 +233,15 @@ __all__ = [
     "build_multi_preview_export_payload",
     "build_history_preview_export_payload",
     "build_timeline_preview_export_payload",
+    "EXPECTED_SERVICE",
+    "EXPECTED_CONTRACT_VERSION",
+    "REPORT_TYPE_TO_FILENAME",
+    "REPORT_TYPE_TO_JSON_REPORT_TYPE",
+    "RuntimeJsonConsumerConfig",
+    "RuntimeJsonReportCheck",
+    "RuntimeJsonConsumerResult",
+    "RuntimeJsonConsumer",
+    "RuntimeJsonConsumerFormatter",
     "TerminalCommandExample",
     "build_book_l1_terminal_guide",
     "get_book_l1_terminal_command_examples",

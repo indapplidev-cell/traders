@@ -100,6 +100,8 @@ _TIMELINE_EXPORT_COMMAND = """python -m app.cli.commands book-l1-timeline-previe
   --non-interactive `
   --export-json"""
 
+_JSON_CONSUMER_SMOKE_COMMAND = "python -m app.cli.commands book-l1-json-consumer-smoke --strict"
+
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
 
 
@@ -119,6 +121,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _MULTI_EXPORT_COMMAND,
         _HISTORY_EXPORT_COMMAND,
         _TIMELINE_EXPORT_COMMAND,
+        _JSON_CONSUMER_SMOKE_COMMAND,
     )
 
 
@@ -172,6 +175,7 @@ def build_book_l1_terminal_guide() -> str:
         "Working model:",
         "- Terminal output is for humans.",
         "- JSON export is for API.",
+        "- JSON consumer smoke validates stable JSON files before API consumption.",
         "- Runtime Markdown export is not used.",
         "",
         "Modes:",
@@ -182,7 +186,8 @@ def build_book_l1_terminal_guide() -> str:
         "5. Previous/current history snapshot",
         "6. Multi-window timeline preview",
         "7. JSON export files",
-        "8. Safety contract",
+        "8. Runtime JSON consumer smoke",
+        "9. Safety contract",
         "",
     ]
 
@@ -239,7 +244,17 @@ def build_book_l1_terminal_guide() -> str:
             "- No timestamp/version/symbol/interval/hash is added to filename.",
             "- Runtime Markdown export is not used.",
             "",
-            "8. Safety contract",
+            "8. Runtime JSON consumer smoke",
+            "Validate stable JSON export files before API consumption.",
+            "",
+            "Recommended API-readiness workflow:",
+            _CURRENT_EXPORT_COMMAND,
+            _MULTI_EXPORT_COMMAND,
+            _HISTORY_EXPORT_COMMAND,
+            _TIMELINE_EXPORT_COMMAND,
+            _JSON_CONSUMER_SMOKE_COMMAND,
+            "",
+            "9. Safety contract",
             "trade_signal = NOT_EVALUATED",
             "safe_for_runtime_trading = false",
             "orders_enabled = false",

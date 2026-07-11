@@ -2,7 +2,7 @@
 
 ## BOOK-L1 Market Reader status
 
-Status: `READ_ONLY_TERMINAL_GUIDE_READY`
+Status: `RUNTIME_JSON_CONSUMER_READY`
 
 BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
 
@@ -27,6 +27,7 @@ It currently supports:
 - stable JSON and Markdown timeline export through `book-l1-timeline-preview --export`.
 - unified API-oriented JSON export through `--export-json` for current, multi-symbol, history, and timeline preview modes.
 - unified terminal command guide through `book-l1-guide`.
+- read-only runtime JSON consumer smoke through `book-l1-json-consumer-smoke`.
 
 Current safety contract:
 
@@ -60,6 +61,7 @@ Latest completed implementation stages:
 | BOOK-L1-21 | DONE | Stable timeline preview export / JSON + Markdown report added. |
 | BOOK-L1-22 | DONE | Unified JSON export contract / API output files added. |
 | BOOK-L1-23 | DONE | Terminal UX cleanup / unified command guide added. |
+| BOOK-L1-24 | DONE | Runtime JSON consumer / API reader smoke added. |
 
 Latest relevant artifacts:
 
@@ -113,3 +115,21 @@ Runtime Markdown export: not used as working output
 ```
 
 BOOK-L1 remains read-only and the safety contract is preserved.
+
+BOOK-L1-24 added the read-only runtime JSON consumer smoke:
+
+```powershell
+python -m app.cli.commands book-l1-json-consumer-smoke --strict
+```
+
+The consumer validates stable JSON export files before an external API layer reads them:
+
+- `service = BOOK_L1_MARKET_READER`;
+- `contract_version = book_l1_json_export_v1`;
+- expected `report_type` per fixed filename;
+- required top-level envelope keys;
+- `request`, `summary`, and `safety` object shape;
+- `warnings` and `errors` list shape;
+- fail-closed safety fields.
+
+BOOK-L1-24 did not change market analysis logic, did not change JSON export semantics, did not use runtime Markdown as API output, did not connect live trading, and preserved fail-closed safety.

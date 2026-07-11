@@ -566,6 +566,70 @@ def book_l1_guide_command() -> None:
     typer.echo(build_book_l1_terminal_guide())
 
 
+@cli.command("book-l1-json-consumer-smoke")
+def book_l1_json_consumer_smoke_command(
+    input_dir: Path = typer.Option(
+        Path("reports/book_l1"),
+        "--input-dir",
+        help="Directory containing fixed BOOK-L1 JSON export files.",
+    ),
+    report_types: str = typer.Option(
+        "current,multi,history,timeline",
+        "--report-types",
+        help="Comma-separated report types: current,multi,history,timeline.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when any JSON file is not API-readable.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print validation details for each JSON file.",
+    ),
+) -> None:
+    """Validate BOOK-L1 runtime JSON export files for API consumption."""
+    from app.market_reader.json_consumer import (
+        REPORT_TYPE_TO_FILENAME,
+        RuntimeJsonConsumer,
+        RuntimeJsonConsumerConfig,
+        RuntimeJsonConsumerFormatter,
+    )
+
+    selected_report_types = _parse_book_l1_json_consumer_report_types(
+        report_types,
+        supported_report_types=tuple(REPORT_TYPE_TO_FILENAME),
+    )
+    config = RuntimeJsonConsumerConfig(
+        input_dir=input_dir,
+        report_types=selected_report_types,
+        strict=strict,
+    )
+    result = RuntimeJsonConsumer().run(config)
+    typer.echo(RuntimeJsonConsumerFormatter().format(result, show_details=show_details))
+    if strict and result.result_status != "PASS":
+        raise typer.Exit(1)
+
+
+def _parse_book_l1_json_consumer_report_types(
+    report_types: str,
+    *,
+    supported_report_types: tuple[str, ...],
+) -> tuple[str, ...]:
+    values = tuple(item.strip().lower() for item in report_types.split(",") if item.strip())
+    if not values:
+        raise typer.BadParameter("report-types must not be empty", param_hint="--report-types")
+    unsupported = tuple(value for value in values if value not in supported_report_types)
+    if unsupported:
+        supported = ",".join(supported_report_types)
+        raise typer.BadParameter(
+            f"unsupported report type(s): {','.join(unsupported)}. Supported: {supported}",
+            param_hint="--report-types",
+        )
+    return values
+
+
 def _resolve_multi_preview_symbols(
     *,
     symbols: tuple[str, ...],
