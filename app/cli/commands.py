@@ -221,6 +221,86 @@ def book_l1_interactive_preview_command(
     typer.echo(report)
 
 
+@cli.command("book-l1-multi-preview")
+def book_l1_multi_preview_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Candle interval, for example 15m."),
+    limit: int = typer.Option(300, "--limit", help="Number of latest candles to read from DB."),
+    min_candles: int = typer.Option(50, "--min-candles", help="Minimum candles required for preview."),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Run without terminal prompts.",
+    ),
+) -> None:
+    """Show BOOK-L1 multi-symbol market regime comparison from stored candles."""
+    from app.market_reader.multi_symbol_interactive import (
+        prompt_details_choice,
+        prompt_multi_symbol_config,
+    )
+    from app.market_reader.multi_symbol_preview import (
+        MultiSymbolPreviewConfig,
+        MultiSymbolPreviewRunner,
+        MultiSymbolTableFormatter,
+        parse_symbols,
+    )
+
+    if non_interactive:
+        selected_symbols = _resolve_multi_preview_symbols(
+            symbols=tuple(parse_symbols(symbols)) if symbols else (),
+            symbol_options=tuple(symbol or ()),
+        )
+        config = MultiSymbolPreviewConfig(
+            symbols=selected_symbols,
+            interval=interval,
+            limit=limit,
+            min_candles=min_candles,
+        )
+    else:
+        prompted_config = prompt_multi_symbol_config()
+        if prompted_config is None:
+            return
+        config = prompted_config
+
+    with get_session() as session:
+        result = MultiSymbolPreviewRunner(
+            candle_repository=CandleRepository(session),
+        ).run(config)
+
+    formatter = MultiSymbolTableFormatter()
+    typer.echo(formatter.format_result(result))
+
+    if non_interactive:
+        return
+
+    detail_symbols = prompt_details_choice(tuple(row.symbol for row in result.rows))
+    if detail_symbols:
+        selected_rows = tuple(row for row in result.rows if row.symbol in set(detail_symbols))
+        typer.echo("")
+        typer.echo(formatter.format_details(selected_rows))
+
+
+def _resolve_multi_preview_symbols(
+    *,
+    symbols: tuple[str, ...],
+    symbol_options: tuple[str, ...],
+) -> tuple[str, ...]:
+    from app.market_reader.multi_symbol_preview import DEFAULT_MULTI_SYMBOLS, normalize_symbols
+
+    if symbols or symbol_options:
+        return normalize_symbols((*symbols, *symbol_options))
+    return DEFAULT_MULTI_SYMBOLS
+
+
 @cli.command("db-check")
 def db_check_command() -> None:
     with get_session() as session:
