@@ -84,12 +84,6 @@ binance_download_executed = false
 
 Full BOOK-L1 test pack passed.
 
-Expected latest observed result:
-
-```text
-224 passed
-```
-
 ## Repository cleanup status
 
 - Working tree checked with `git status --short`.
