@@ -99,6 +99,18 @@ from app.market_reader.engine_trend.regime_composer import (
     compose_regime_from_matrix,
     score_regime_candidates,
 )
+from app.market_reader.engine_trend.engine import (
+    EngineTrendFacadeOutput,
+    normalize_candle_row,
+    normalize_candles,
+    run_engine_trend,
+    run_engine_trend_from_rows,
+)
+from app.market_reader.engine_trend.json_export import (
+    build_engine_trend_json_payload,
+    build_engine_trend_preview,
+    save_engine_trend_json,
+)
 
 __all__ = [
     "BookEvidence",
@@ -178,4 +190,12 @@ __all__ = [
     "compose_engine_trend_result",
     "compose_regime_from_matrix",
     "score_regime_candidates",
+    "EngineTrendFacadeOutput",
+    "normalize_candle_row",
+    "normalize_candles",
+    "run_engine_trend",
+    "run_engine_trend_from_rows",
+    "build_engine_trend_json_payload",
+    "build_engine_trend_preview",
+    "save_engine_trend_json",
 ]
