@@ -57,6 +57,7 @@ safe_for_runtime_trading = false
 | BOOK-L1-26 | 15m Market Reader Quality Review | DONE | `app/market_reader/quality_review.py`, `book-l1-15m-quality-review` |
 | BOOK-L1-27 | L1-L2 Regime Alignment Review | DONE | `app/market_reader/regime_alignment_review.py`, `book-l1-l2-regime-alignment-review` |
 | BOOK-L1-28 | FLAT Context Alignment Diagnostic | DONE | `app/market_reader/flat_context_alignment.py`, `book-l1-flat-context-alignment-diagnostic` |
+| BOOK-L2-08 | FLAT Context Handling Proposal | DONE | `app/market_interpreter/flat_context_proposal.py`, `book-l2-flat-context-handling-proposal` |
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py`, `book-l2-timeline-context` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py`, `book-data-candle-availability-audit` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py`, `book-data-interval-preparation-decision` |
@@ -241,13 +242,48 @@ High-confidence FLAT should not become UNKNOWN.
 It may remain non-observation / skip, but L2 should preserve and explain it as FLAT context.
 ```
 
-Recommended next stage:
+Completed follow-up stage:
 
 ```text
 BOOK-L2-08 - FLAT Context Handling Proposal
 ```
 
 BOOK-L1-28 did not change BOOK-L1 analysis logic, composer scoring, thresholds, BOOK-L2 rules, quality scoring, brief rules, bucket/skip behavior, or JSON semantics.
+
+BOOK-L2-08 added a read-only FLAT context handling proposal:
+
+```powershell
+python -m app.cli.commands book-l2-flat-context-handling-proposal --strict --show-details
+```
+
+Stable proposal outputs:
+
+```text
+reports/book_l2/flat_context_handling_proposal.json
+reports/book_l2/flat_context_handling_proposal.md
+reports/book_l2/book_l2_08_flat_context_handling_proposal_report.md
+```
+
+Current problem:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Proposal:
+
+```text
+High-confidence L1 FLAT should be preserved as L2 FLAT_CONTEXT.
+It should remain non-observation / skip by default and must not become a trading signal.
+```
+
+Recommended next stage:
+
+```text
+BOOK-L2-09 — Implement FLAT Context Handling
+```
+
+BOOK-L2-08 did not change BOOK-L1 analysis logic, composer scoring, thresholds, BOOK-L2 runtime rules, quality scoring, brief rules, bucket/skip behavior, or JSON semantics.
 
 BOOK-L2 has started as a separate layer above BOOK-L1. BOOK-L2-00 consumes the stable BOOK-L1 timeline JSON export:
 

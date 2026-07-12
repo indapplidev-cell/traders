@@ -1317,6 +1317,93 @@ def book_l1_flat_context_alignment_diagnostic_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l2-flat-context-handling-proposal")
+def book_l2_flat_context_handling_proposal_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Only 15m is allowed for BOOK-L2-08."),
+    high_confidence_threshold: float = typer.Option(
+        0.80,
+        "--high-confidence-threshold",
+        help="Proposal-only threshold for classifying high-confidence FLAT.",
+    ),
+    flat_diagnostic_json: Path = typer.Option(
+        Path("reports/book_l1/flat_context_alignment_diagnostic.json"),
+        "--flat-diagnostic-json",
+        help="Input BOOK-L1-28 FLAT diagnostic JSON path.",
+    ),
+    alignment_review_json: Path = typer.Option(
+        Path("reports/book_l1/l1_l2_regime_alignment_review.json"),
+        "--alignment-review-json",
+        help="Input BOOK-L1-27 alignment review JSON path.",
+    ),
+    l1_timeline_json: Path = typer.Option(
+        Path("reports/book_l1/timeline_preview.json"),
+        "--l1-timeline-json",
+        help="Input BOOK-L1 timeline JSON path.",
+    ),
+    l2_context_json: Path = typer.Option(
+        Path("reports/book_l2/timeline_context.json"),
+        "--l2-context-json",
+        help="Input BOOK-L2 context JSON path.",
+    ),
+    output_json: Path = typer.Option(
+        Path("reports/book_l2/flat_context_handling_proposal.json"),
+        "--output-json",
+        help="Stable JSON FLAT context handling proposal output path.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_l2/flat_context_handling_proposal.md"),
+        "--output-md",
+        help="Stable Markdown FLAT context handling proposal output path.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code only when the proposal fails.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print per-symbol proposal findings.",
+    ),
+) -> None:
+    """Run BOOK-L2-08 FLAT context handling proposal without runtime rule changes."""
+    from app.market_interpreter.flat_context_proposal import (
+        FlatContextHandlingProposalConfig,
+        FlatContextHandlingProposalFormatter,
+        FlatContextHandlingProposalRunner,
+        parse_flat_context_proposal_symbols,
+    )
+
+    selected_symbols = parse_flat_context_proposal_symbols(symbols, tuple(symbol or ()))
+    proposal_config = FlatContextHandlingProposalConfig(
+        symbols=selected_symbols,
+        interval=interval,
+        high_confidence_threshold=high_confidence_threshold,
+        flat_diagnostic_json=flat_diagnostic_json,
+        alignment_review_json=alignment_review_json,
+        l1_timeline_json=l1_timeline_json,
+        l2_context_json=l2_context_json,
+        output_json=output_json,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = FlatContextHandlingProposalRunner().run(proposal_config)
+    typer.echo(FlatContextHandlingProposalFormatter().format(result, config=proposal_config))
+    if strict and not result.passed:
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

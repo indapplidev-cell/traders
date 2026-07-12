@@ -32,6 +32,7 @@ It currently supports:
 - 15m Market Reader quality review through `book-l1-15m-quality-review`.
 - L1-L2 regime alignment review through `book-l1-l2-regime-alignment-review`.
 - FLAT context alignment diagnostic through `book-l1-flat-context-alignment-diagnostic`.
+- FLAT context handling proposal through `book-l2-flat-context-handling-proposal`.
 
 Current safety contract:
 
@@ -70,6 +71,7 @@ Latest completed implementation stages:
 | BOOK-L1-26 | DONE | 15m Market Reader quality review / weak context evidence added. |
 | BOOK-L1-27 | DONE | L1-L2 regime alignment review / FLAT interpretation evidence added. |
 | BOOK-L1-28 | DONE | FLAT context alignment diagnostic / L2 handling proposal evidence added. |
+| BOOK-L2-08 | DONE | FLAT context handling proposal / safe L2 contract recommendation added. |
 
 Latest relevant artifacts:
 
@@ -95,6 +97,9 @@ Latest relevant artifacts:
 - `reports/book_l1/flat_context_alignment_diagnostic.json`
 - `reports/book_l1/flat_context_alignment_diagnostic.md`
 - `reports/book_l1/book_l1_28_flat_context_alignment_diagnostic_report.md`
+- `reports/book_l2/flat_context_handling_proposal.json`
+- `reports/book_l2/flat_context_handling_proposal.md`
+- `reports/book_l2/book_l2_08_flat_context_handling_proposal_report.md`
 - `reports/book_l1/current_preview.json`
 - `reports/book_l1/multi_preview.json`
 - `reports/book_l1/history_preview.json`
@@ -222,10 +227,35 @@ High-confidence FLAT should not become UNKNOWN.
 It may remain non-observation / skip, but L2 should preserve and explain it as FLAT context.
 ```
 
-Next proposed stage:
+Completed follow-up stage:
 
 ```text
 BOOK-L2-08 - FLAT Context Handling Proposal
+```
+
+BOOK-L2-08 proposed safe FLAT context handling on the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l2-flat-context-handling-proposal --strict --show-details
+```
+
+Current problem:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Proposal:
+
+```text
+High-confidence L1 FLAT should be preserved as L2 FLAT_CONTEXT.
+It should remain non-observation / skip by default and must not become a trading signal.
+```
+
+Next proposed stage:
+
+```text
+BOOK-L2-09 — Implement FLAT Context Handling
 ```
 
 ## BOOK-L2 Market Interpreter status
@@ -369,6 +399,8 @@ reports/book_l2/l1_l2_multi_interval_answer.md
 ```
 
 This evidence report is not runtime API output; API output remains JSON.
+
+BOOK-L2-08 added a FLAT context handling proposal. It does not change runtime L2 rules, quality scoring, brief behavior, bucket decisions, or JSON export semantics. It recommends preserving high-confidence L1 `FLAT` as `FLAT_CONTEXT` in a later controlled implementation stage while keeping default non-observation / skip behavior.
 
 ## BOOK-DATA Market Reader data availability status
 

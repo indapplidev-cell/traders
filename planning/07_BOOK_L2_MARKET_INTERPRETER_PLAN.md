@@ -40,6 +40,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-05 | API Readiness Review / Layer 2 Freeze Candidate | DONE | `app/market_interpreter/api_readiness_review.py` |
 | BOOK-L2-06 | L1-L2 Interval Answer Smoke / Evidence Markdown | DONE | `app/integration/l1_l2_interval_answer_smoke.py` |
 | BOOK-L2-07 | Multi-Interval Answer Smoke | DONE | `app/integration/l1_l2_multi_interval_answer_smoke.py` |
+| BOOK-L2-08 | FLAT Context Handling Proposal | DONE | `app/market_interpreter/flat_context_proposal.py` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py` |
 | BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py` |
@@ -214,9 +215,24 @@ The report is evidence Markdown, not runtime API output. Runtime API output rema
 
 The next stages must keep the same boundary unless an explicit separate decision changes it: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
-The next safe L2 stage is `BOOK-L2-08 - FLAT Context Handling Proposal`.
+BOOK-L2-08 added a proposal-only FLAT context handling stage.
 
-Do not start BOOK-L3 before the high-confidence FLAT handling proposal is prepared and reviewed.
+Current problem:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Proposal:
+
+```text
+High-confidence L1 FLAT should be preserved as L2 FLAT_CONTEXT.
+It should remain non-observation / skip by default and must not become a trading signal.
+```
+
+The next safe L2 stage is `BOOK-L2-09 — Implement FLAT Context Handling`.
+
+Do not start BOOK-L3 before the high-confidence FLAT handling boundary is implemented and reviewed.
 
 BOOK-DATA-01 documented the data condition behind multi-interval failures:
 
@@ -289,13 +305,50 @@ High-confidence FLAT should not become UNKNOWN.
 It may remain non-observation / skip, but L2 should preserve and explain it as FLAT context.
 ```
 
-Recommended next stage:
+Completed follow-up stage:
 
 ```text
 BOOK-L2-08 - FLAT Context Handling Proposal
 ```
 
 BOOK-L1-28 does not change BOOK-L2 rules. It provides evidence for a later L2 handling proposal.
+
+## BOOK-L2-08
+
+BOOK-L2-08 added:
+
+```text
+app/market_interpreter/flat_context_proposal.py
+```
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l2-flat-context-handling-proposal `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --high-confidence-threshold 0.80 `
+  --strict `
+  --show-details
+```
+
+Stable proposal outputs:
+
+```text
+reports/book_l2/flat_context_handling_proposal.json
+reports/book_l2/flat_context_handling_proposal.md
+reports/book_l2/book_l2_08_flat_context_handling_proposal_report.md
+```
+
+Recommended option:
+
+```text
+OPTION_C_FLAT_CONTEXT_NOT_OBSERVATION_CANDIDATE
+```
+
+BOOK-L2-08 reads the FLAT diagnostic, L1-L2 alignment review, L1 timeline JSON, and L2 context JSON. It proposes preserving high-confidence L1 `FLAT` as `FLAT_CONTEXT`, keeping observation_candidate false and skip_candidate true by default.
+
+BOOK-L2-08 does not change context rules, quality scoring, market brief behavior, JSON export semantics, or runtime bucket decisions.
 
 ## BOOK-L2-05
 

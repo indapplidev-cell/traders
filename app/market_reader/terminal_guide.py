@@ -177,6 +177,13 @@ _L1_FLAT_CONTEXT_ALIGNMENT_DIAGNOSTIC_COMMAND = """python -m app.cli.commands bo
   --strict `
   --show-details"""
 
+_L2_FLAT_CONTEXT_HANDLING_PROPOSAL_COMMAND = """python -m app.cli.commands book-l2-flat-context-handling-proposal `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --high-confidence-threshold 0.80 `
+  --strict `
+  --show-details"""
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -212,6 +219,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _L1_15M_QUALITY_REVIEW_COMMAND,
         _L1_L2_REGIME_ALIGNMENT_REVIEW_COMMAND,
         _L1_FLAT_CONTEXT_ALIGNMENT_DIAGNOSTIC_COMMAND,
+        _L2_FLAT_CONTEXT_HANDLING_PROPOSAL_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -477,6 +485,17 @@ def build_book_l1_terminal_guide() -> str:
             "Files:",
             "reports/book_l1/flat_context_alignment_diagnostic.json",
             "reports/book_l1/flat_context_alignment_diagnostic.md",
+            "",
+            "FLAT context handling proposal",
+            "Proposes safe BOOK-L2 handling for high-confidence L1 FLAT without changing runtime rules.",
+            "",
+            "Recommended workflow:",
+            _L1_FLAT_CONTEXT_ALIGNMENT_DIAGNOSTIC_COMMAND,
+            _L2_FLAT_CONTEXT_HANDLING_PROPOSAL_COMMAND,
+            "",
+            "Files:",
+            "reports/book_l2/flat_context_handling_proposal.json",
+            "reports/book_l2/flat_context_handling_proposal.md",
             "",
             "Boundary:",
             "- `15m` is the active interval for current BOOK-L1/BOOK-L2 development.",
