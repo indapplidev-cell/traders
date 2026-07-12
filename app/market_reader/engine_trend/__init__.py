@@ -58,8 +58,10 @@ from app.market_reader.engine_trend.altunina_trend_context import (
 )
 from app.market_reader.engine_trend.schwager_range_context import (
     BreakoutConfirmationStatus,
+    BreakoutConfirmationMethod,
     BreakoutContext,
     BreakoutDirection,
+    FalseBreakoutConfirmationStatus,
     PolarityFlipContext,
     PolarityFlipStatus,
     SchwagerRangeContext,
@@ -115,8 +117,10 @@ __all__ = [
     "detect_swing_points",
     "normalize_swing_points",
     "BreakoutConfirmationStatus",
+    "BreakoutConfirmationMethod",
     "BreakoutContext",
     "BreakoutDirection",
+    "FalseBreakoutConfirmationStatus",
     "PolarityFlipContext",
     "PolarityFlipStatus",
     "SchwagerRangeContext",

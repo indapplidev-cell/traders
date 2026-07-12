@@ -29,6 +29,24 @@ This stage implements the third book-based evidence block for the clean `engine_
 - retest and polarity-flip context
 - Schwager evidence, reason codes, summaries, and dictionary export
 
+## Book-alignment hardening
+
+The implementation was audited against chapters 5 and 11 of the local Russian edition of Jack Schwager's `Technical Analysis: The Complete Course`.
+
+The follow-up hardening adds:
+
+- causal `formed_at_index` boundaries so movement before range formation is ignored
+- mixed relative-high and relative-low clustering into shared price areas
+- significant previous extrema even when only one major touch is present
+- range duration and boundary-alternation requirements
+- independent confirmation by close count, movement depth, or both
+- explicit pending-attempt state when future observations are incomplete
+- return-depth and reversal-speed measurements
+- initial, strong, and time-based false-breakout confirmation
+- post-breakout extreme tracking and false-breakout invalidation
+- confirmed departure before a separate polarity test
+- original/current zone roles and role-change index
+
 ## Reason codes added
 
 - `SCHWAGER_SUPPORT_ZONE_IDENTIFIED`
@@ -57,6 +75,16 @@ This stage implements the third book-based evidence block for the clean `engine_
 - `SCHWAGER_FALSE_BREAKOUT_UP`
 - `SCHWAGER_FALSE_BREAKOUT_DOWN`
 - `SCHWAGER_PRICE_RETURNED_TO_RANGE`
+- `SCHWAGER_PREVIOUS_EXTREME_ZONE_IDENTIFIED`
+- `SCHWAGER_RANGE_DURATION_CONFIRMED`
+- `SCHWAGER_RANGE_BOUNDARY_ALTERNATION_CONFIRMED`
+- `SCHWAGER_BREAKOUT_CONFIRMED_BY_CLOSE_COUNT`
+- `SCHWAGER_BREAKOUT_CONFIRMED_BY_DISTANCE`
+- `SCHWAGER_FALSE_BREAKOUT_INITIAL_CONFIRMATION`
+- `SCHWAGER_FALSE_BREAKOUT_STRONG_CONFIRMATION`
+- `SCHWAGER_FALSE_BREAKOUT_TIME_CONFIRMATION`
+- `SCHWAGER_FALSE_BREAKOUT_INVALIDATED`
+- `SCHWAGER_POLARITY_RETEST_AWAITING_DEPARTURE`
 
 ## What this stage does not do
 
