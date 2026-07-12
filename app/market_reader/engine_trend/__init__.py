@@ -88,6 +88,17 @@ from app.market_reader.engine_trend.book_evidence_matrix import (
     build_confluence_conflict_summary,
     build_directional_evidence_balance,
 )
+from app.market_reader.engine_trend.regime_composer import (
+    RegimeCandidateScores,
+    RegimeComposerOutput,
+    RegimeComposerStatus,
+    RegimeConfidenceLevel,
+    RegimeDecisionSource,
+    RegimeDecisionTrace,
+    compose_engine_trend_result,
+    compose_regime_from_matrix,
+    score_regime_candidates,
+)
 
 __all__ = [
     "BookEvidence",
@@ -158,4 +169,13 @@ __all__ = [
     "build_book_evidence_bucket",
     "build_confluence_conflict_summary",
     "build_directional_evidence_balance",
+    "RegimeCandidateScores",
+    "RegimeComposerOutput",
+    "RegimeComposerStatus",
+    "RegimeConfidenceLevel",
+    "RegimeDecisionSource",
+    "RegimeDecisionTrace",
+    "compose_engine_trend_result",
+    "compose_regime_from_matrix",
+    "score_regime_candidates",
 ]
