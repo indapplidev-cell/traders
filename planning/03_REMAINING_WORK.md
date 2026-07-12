@@ -40,10 +40,11 @@ The following BOOK-L1 items are already completed:
 - BOOK-DATA-03C 15m-only Market Reader workflow stabilization.
 - BOOK-L1-26 15m Market Reader quality review.
 - BOOK-L1-27 L1-L2 regime alignment review.
+- BOOK-L1-28 FLAT context alignment diagnostic.
 
 ## Remaining BOOK-L1 work
 
-BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow, and BOOK-L1-27 reviewed L1-L2 regime alignment on the same stabilized evidence. Do not expand BOOK-L1 without a separate decision.
+BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow, BOOK-L1-27 reviewed L1-L2 regime alignment on the same stabilized evidence, and BOOK-L1-28 diagnosed the FLAT context semantic gap. Do not expand BOOK-L1 without a separate decision.
 
 ### 1. BOOK-L1 quality/explainability on 15m
 
@@ -63,9 +64,16 @@ BOOK-L1-27 confirmed:
 - L2 marks both high-confidence FLAT symbols as skip candidates;
 - the next issue is FLAT context handling and L1-to-L2 contract interpretation.
 
+BOOK-L1-28 confirmed:
+
+- high-confidence L1 `FLAT` is received by L2;
+- L2 currently maps those symbols to `UNKNOWN/SKIP`;
+- high-confidence `FLAT` should not become `UNKNOWN`;
+- it may remain non-observation / skip, but L2 should preserve and explain it as `FLAT` context.
+
 Next safe stages:
 
-- `BOOK-L1-28` - FLAT Context Alignment Diagnostic;
+- `BOOK-L2-08` - FLAT Context Handling Proposal;
 - `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic;
 - `BOOK-L1-30` - Market Structure Explainability Improvement.
 
@@ -133,8 +141,8 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-L1-27` - 15m Reason Codes Improvement;
-- `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic.
+- `BOOK-L2-08` - FLAT Context Handling Proposal;
+- `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic.
 
 Do not download, generate, or aggregate candles as part of BOOK-DATA-03C.
 
@@ -169,6 +177,7 @@ The following items are no longer remaining work:
 - BOOK-DATA 15m-only Market Reader stabilization.
 - BOOK-L1 15m Market Reader quality review.
 - BOOK-L1 L1-L2 regime alignment review.
+- BOOK-L1 FLAT context alignment diagnostic.
 
 ## BOOK-L1-22 export rule
 

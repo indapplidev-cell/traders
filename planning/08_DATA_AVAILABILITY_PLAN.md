@@ -2,7 +2,7 @@
 
 ## Current status
 
-BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, BOOK-L1-26, and BOOK-L1-27 are complete.
+BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, BOOK-L1-26, BOOK-L1-27, and BOOK-L1-28 are complete.
 
 BOOK-DATA-01 added a read-only candle availability audit for Market Reader:
 
@@ -96,6 +96,24 @@ reports/book_l1/l1_l2_regime_alignment_review.md
 reports/book_l1/book_l1_27_l1_l2_regime_alignment_review_report.md
 ```
 
+BOOK-L1-28 diagnosed FLAT context alignment on the stabilized `15m` evidence:
+
+```powershell
+python -m app.cli.commands book-l1-flat-context-alignment-diagnostic `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --strict `
+  --show-details
+```
+
+Stable diagnostic outputs:
+
+```text
+reports/book_l1/flat_context_alignment_diagnostic.json
+reports/book_l1/flat_context_alignment_diagnostic.md
+reports/book_l1/book_l1_28_flat_context_alignment_diagnostic_report.md
+```
+
 ## Finding
 
 The current blocker for multi-interval L1-L2 reports is data availability, not the L1-L2 pipeline.
@@ -106,6 +124,19 @@ The current blocker for useful 15m interpretation is Market Reader quality/expla
 - observation candidates are `none`;
 - all tested symbols are skip candidates.
 - BTCUSDT and ETHUSDT are L1 `FLAT` with high confidence, but L2 reports `UNKNOWN/SKIP`.
+
+BOOK-L1-28 finding:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Recommended interpretation:
+
+```text
+High-confidence FLAT should not become UNKNOWN.
+It may remain non-observation / skip, but L2 should preserve and explain it as FLAT context.
+```
 
 Current audited condition:
 
@@ -133,6 +164,7 @@ Immediate action:
 - treat `1h` and `4h` as optional/missing;
 - do not block current BOOK-L1/BOOK-L2 work on missing `1h`/`4h`.
 - improve Market Reader quality on `15m` before expanding intervals, unless explicitly decided otherwise.
+- prepare `BOOK-L2-08 - FLAT Context Handling Proposal` before changing L2 behavior.
 
 ## Boundary
 
@@ -160,7 +192,7 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-L1-28` - FLAT Context Alignment Diagnostic;
+- `BOOK-L2-08` - FLAT Context Handling Proposal;
 - `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic.
 
 Do not start 1h/4h expansion before the 15m quality findings are addressed or explicitly accepted.

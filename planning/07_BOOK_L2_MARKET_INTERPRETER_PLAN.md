@@ -45,6 +45,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py` |
 | BOOK-L1-26 | 15m Market Reader Quality Review | DONE | `app/market_reader/quality_review.py` |
 | BOOK-L1-27 | L1-L2 Regime Alignment Review | DONE | `app/market_reader/regime_alignment_review.py` |
+| BOOK-L1-28 | FLAT Context Alignment Diagnostic | DONE | `app/market_reader/flat_context_alignment.py` |
 
 ## BOOK-L2-00
 
@@ -213,7 +214,9 @@ The report is evidence Markdown, not runtime API output. Runtime API output rema
 
 The next stages must keep the same boundary unless an explicit separate decision changes it: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
-Next possible layer: BOOK-L3, but only after explicit approval.
+The next safe L2 stage is `BOOK-L2-08 - FLAT Context Handling Proposal`.
+
+Do not start BOOK-L3 before the high-confidence FLAT handling proposal is prepared and reviewed.
 
 BOOK-DATA-01 documented the data condition behind multi-interval failures:
 
@@ -270,6 +273,29 @@ BTCUSDT and ETHUSDT are L1 FLAT with high confidence, but L2 reports UNKNOWN/SKI
 ```
 
 This does not change BOOK-L2 rules. It identifies FLAT context handling and L1-to-L2 contract mapping as the next diagnostic focus before any new layer or runtime integration.
+
+BOOK-L1-28 diagnosed the FLAT context semantic gap from the L1/L2 boundary.
+
+Current finding:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Recommended interpretation:
+
+```text
+High-confidence FLAT should not become UNKNOWN.
+It may remain non-observation / skip, but L2 should preserve and explain it as FLAT context.
+```
+
+Recommended next stage:
+
+```text
+BOOK-L2-08 - FLAT Context Handling Proposal
+```
+
+BOOK-L1-28 does not change BOOK-L2 rules. It provides evidence for a later L2 handling proposal.
 
 ## BOOK-L2-05
 

@@ -31,6 +31,7 @@ It currently supports:
 - API readiness final review through `book-l1-api-readiness-review`.
 - 15m Market Reader quality review through `book-l1-15m-quality-review`.
 - L1-L2 regime alignment review through `book-l1-l2-regime-alignment-review`.
+- FLAT context alignment diagnostic through `book-l1-flat-context-alignment-diagnostic`.
 
 Current safety contract:
 
@@ -68,6 +69,7 @@ Latest completed implementation stages:
 | BOOK-L1-25 | DONE | API readiness final review / Layer 1 freeze candidate added. |
 | BOOK-L1-26 | DONE | 15m Market Reader quality review / weak context evidence added. |
 | BOOK-L1-27 | DONE | L1-L2 regime alignment review / FLAT interpretation evidence added. |
+| BOOK-L1-28 | DONE | FLAT context alignment diagnostic / L2 handling proposal evidence added. |
 
 Latest relevant artifacts:
 
@@ -90,6 +92,9 @@ Latest relevant artifacts:
 - `reports/book_l1/l1_l2_regime_alignment_review.json`
 - `reports/book_l1/l1_l2_regime_alignment_review.md`
 - `reports/book_l1/book_l1_27_l1_l2_regime_alignment_review_report.md`
+- `reports/book_l1/flat_context_alignment_diagnostic.json`
+- `reports/book_l1/flat_context_alignment_diagnostic.md`
+- `reports/book_l1/book_l1_28_flat_context_alignment_diagnostic_report.md`
 - `reports/book_l1/current_preview.json`
 - `reports/book_l1/multi_preview.json`
 - `reports/book_l1/history_preview.json`
@@ -197,6 +202,31 @@ SOLUSDT is L1 UNKNOWN and propagates to L2 SKIP.
 ```
 
 This points to FLAT context handling and L1-to-L2 contract mapping as the next safe focus before changing core Market Reader logic.
+
+BOOK-L1-28 diagnosed FLAT context alignment on the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l1-flat-context-alignment-diagnostic --strict --show-details
+```
+
+Current finding:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Recommended interpretation:
+
+```text
+High-confidence FLAT should not become UNKNOWN.
+It may remain non-observation / skip, but L2 should preserve and explain it as FLAT context.
+```
+
+Next proposed stage:
+
+```text
+BOOK-L2-08 - FLAT Context Handling Proposal
+```
 
 ## BOOK-L2 Market Interpreter status
 
