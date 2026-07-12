@@ -34,6 +34,8 @@ from app.market_reader.engine_trend.nison_pattern_catalog import (
     analyze_nison_pattern_catalog,
 )
 from app.market_reader.engine_trend.altunina_trend_context import (
+    ALTUNINA_CORRECTION_LIMIT,
+    FIBONACCI_PULLBACK_LEVELS,
     AltuninaStructureDirection,
     AltuninaTrendContext,
     ImpulseCorrectionSummary,
@@ -41,11 +43,18 @@ from app.market_reader.engine_trend.altunina_trend_context import (
     PriceLegDirection,
     SwingPoint,
     SwingPointType,
+    TrendDurationClass,
+    TrendDurationSummary,
+    TrendHierarchyRole,
+    TrendLineSummary,
     analyze_altunina_trend_context,
     analyze_impulse_correction,
+    build_trend_line,
     build_price_legs,
+    classify_trend_duration,
     classify_structure_direction,
     detect_swing_points,
+    normalize_swing_points,
 )
 
 __all__ = [
@@ -68,6 +77,8 @@ __all__ = [
     "analyze_nison_window_context",
     "CATALOG_DESCRIPTIONS",
     "analyze_nison_pattern_catalog",
+    "ALTUNINA_CORRECTION_LIMIT",
+    "FIBONACCI_PULLBACK_LEVELS",
     "AltuninaStructureDirection",
     "AltuninaTrendContext",
     "ImpulseCorrectionSummary",
@@ -75,9 +86,16 @@ __all__ = [
     "PriceLegDirection",
     "SwingPoint",
     "SwingPointType",
+    "TrendDurationClass",
+    "TrendDurationSummary",
+    "TrendHierarchyRole",
+    "TrendLineSummary",
     "analyze_altunina_trend_context",
     "analyze_impulse_correction",
+    "build_trend_line",
     "build_price_legs",
+    "classify_trend_duration",
     "classify_structure_direction",
     "detect_swing_points",
+    "normalize_swing_points",
 ]
