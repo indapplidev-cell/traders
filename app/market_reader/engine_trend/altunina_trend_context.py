@@ -264,7 +264,9 @@ def detect_swing_points(
     points: list[SwingPoint] = []
     for index in range(lookback, len(candles) - lookback):
         candle = candles[index]
-        neighbors = candles[index - lookback:index] + candles[index + 1:index + lookback + 1]
+        left_neighbors = tuple(candles[index - lookback:index])
+        right_neighbors = tuple(candles[index + 1:index + lookback + 1])
+        neighbors = left_neighbors + right_neighbors
         if all(candle.low < item.low for item in neighbors):
             points.append(SwingPoint(index, candle.timestamp, candle.low, SwingPointType.LOW))
         if all(candle.high > item.high for item in neighbors):
