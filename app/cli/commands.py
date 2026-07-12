@@ -1485,6 +1485,99 @@ def book_l2_flat_context_handling_implementation_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l2-flat-context-integration-review")
+def book_l2_flat_context_integration_review_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Only 15m is allowed for BOOK-L2-10."),
+    high_confidence_threshold: float = typer.Option(
+        0.80,
+        "--high-confidence-threshold",
+        help="Review threshold for high-confidence FLAT.",
+    ),
+    l1_timeline_json: Path = typer.Option(
+        Path("reports/book_l1/timeline_preview.json"),
+        "--l1-timeline-json",
+        help="Input BOOK-L1 timeline JSON path.",
+    ),
+    l2_context_json: Path = typer.Option(
+        Path("reports/book_l2/timeline_context.json"),
+        "--l2-context-json",
+        help="Input BOOK-L2 context JSON path.",
+    ),
+    implementation_json: Path = typer.Option(
+        Path("reports/book_l2/flat_context_handling_implementation.json"),
+        "--implementation-json",
+        help="Input BOOK-L2-09 FLAT context implementation JSON path.",
+    ),
+    interval_answer_md: Path = typer.Option(
+        Path("reports/book_l2/l1_l2_interval_answer.md"),
+        "--interval-answer-md",
+        help="Input 15m interval answer smoke Markdown path.",
+    ),
+    multi_interval_answer_md: Path = typer.Option(
+        Path("reports/book_l2/l1_l2_multi_interval_answer.md"),
+        "--multi-interval-answer-md",
+        help="Input multi-interval answer smoke Markdown path.",
+    ),
+    output_json: Path = typer.Option(
+        Path("reports/book_l2/flat_context_integration_review.json"),
+        "--output-json",
+        help="Stable JSON FLAT context integration review output path.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_l2/flat_context_integration_review.md"),
+        "--output-md",
+        help="Stable Markdown FLAT context integration review output path.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when the integration review fails.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print per-symbol integration findings.",
+    ),
+) -> None:
+    """Run BOOK-L2-10 post-FLAT context integration review."""
+    from app.market_interpreter.flat_context_integration_review import (
+        FlatContextIntegrationReviewConfig,
+        FlatContextIntegrationReviewFormatter,
+        FlatContextIntegrationReviewRunner,
+        parse_flat_context_integration_symbols,
+    )
+
+    selected_symbols = parse_flat_context_integration_symbols(symbols, tuple(symbol or ()))
+    review_config = FlatContextIntegrationReviewConfig(
+        symbols=selected_symbols,
+        interval=interval,
+        high_confidence_threshold=high_confidence_threshold,
+        l1_timeline_json=l1_timeline_json,
+        l2_context_json=l2_context_json,
+        implementation_json=implementation_json,
+        interval_answer_md=interval_answer_md,
+        multi_interval_answer_md=multi_interval_answer_md,
+        output_json=output_json,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = FlatContextIntegrationReviewRunner().run(review_config)
+    typer.echo(FlatContextIntegrationReviewFormatter().format(result, config=review_config))
+    if strict and not result.passed:
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

@@ -42,6 +42,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-07 | Multi-Interval Answer Smoke | DONE | `app/integration/l1_l2_multi_interval_answer_smoke.py` |
 | BOOK-L2-08 | FLAT Context Handling Proposal | DONE | `app/market_interpreter/flat_context_proposal.py` |
 | BOOK-L2-09 | Implement FLAT Context Handling | DONE | `app/market_interpreter/flat_context_handling.py` |
+| BOOK-L2-10 | Post-FLAT Context Integration Review | DONE | `app/market_interpreter/flat_context_integration_review.py` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py` |
 | BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py` |
@@ -373,7 +374,47 @@ Current 15m evidence:
 
 BOOK-L2-09 does not change BOOK-L1 logic, candle analysis, data availability, training, labels, edge validation, runtime execution, or BOOK-L3 scope.
 
-Next safe stage is `BOOK-L2-10 - Post-FLAT Context Integration Review`.
+Completed follow-up stage: `BOOK-L2-10 - Post-FLAT Context Integration Review`.
+
+## BOOK-L2-10
+
+BOOK-L2-10 reviews post-FLAT context integration.
+
+Command:
+
+```powershell
+python -m app.cli.commands book-l2-flat-context-integration-review `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --high-confidence-threshold 0.80 `
+  --strict `
+  --show-details
+```
+
+Stable outputs:
+
+```text
+reports/book_l2/flat_context_integration_review.json
+reports/book_l2/flat_context_integration_review.md
+reports/book_l2/book_l2_10_flat_context_integration_review_report.md
+```
+
+Review result:
+
+```text
+PASS
+```
+
+Verified integration:
+
+- `FLAT_CONTEXT` passes through L2 timeline context, JSON consumer, API readiness, and interval answer smoke;
+- high-confidence L1 `FLAT` remains distinct from `UNKNOWN`;
+- `FLAT_CONTEXT` remains observe-only, non-observation by default, skip by default, and not safe for runtime trading;
+- multi-interval smoke has `15m` PASS while `1h` and `4h` remain documented missing-data FAIL.
+
+BOOK-L2-10 is review/evidence only. It does not change runtime behavior, L2 context rules, quality scoring, market brief behavior, JSON/API contracts, BOOK-L1 logic, data availability, training, labels, or trading scope.
+
+Next safe work should remain explainability-focused, for example `BOOK-L2-11 - Market Brief Explainability Review` or `BOOK-L1-29 - 15m Reason Codes Inspection`.
 
 ## BOOK-L2-05
 

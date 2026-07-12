@@ -43,10 +43,11 @@ The following BOOK-L1 items are already completed:
 - BOOK-L1-28 FLAT context alignment diagnostic.
 - BOOK-L2-08 FLAT context handling proposal.
 - BOOK-L2-09 implement FLAT context handling.
+- BOOK-L2-10 post-FLAT context integration review.
 
 ## Remaining BOOK-L1 work
 
-BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow, BOOK-L1-27 reviewed L1-L2 regime alignment on the same stabilized evidence, BOOK-L1-28 diagnosed the FLAT context semantic gap, BOOK-L2-08 proposed safe L2 handling, and BOOK-L2-09 implemented it in BOOK-L2. Do not expand BOOK-L1 without a separate decision.
+BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow, BOOK-L1-27 reviewed L1-L2 regime alignment on the same stabilized evidence, BOOK-L1-28 diagnosed the FLAT context semantic gap, BOOK-L2-08 proposed safe L2 handling, BOOK-L2-09 implemented it in BOOK-L2, and BOOK-L2-10 reviewed downstream integration. Do not expand BOOK-L1 without a separate decision.
 
 ### 1. BOOK-L1 quality/explainability on 15m
 
@@ -87,9 +88,16 @@ BOOK-L2-09 implemented:
 - `FLAT_CONTEXT` is not a trading signal and remains unsafe for runtime trading;
 - `UNKNOWN` remains distinct from `FLAT`.
 
+BOOK-L2-10 confirmed:
+
+- `FLAT_CONTEXT` passes through L2 timeline context, JSON consumer, API readiness, and interval answer smoke;
+- high-confidence L1 `FLAT` remains distinct from `UNKNOWN`;
+- `FLAT_CONTEXT` remains observe-only, non-observation by default, skip by default, and not safe for runtime trading;
+- multi-interval smoke keeps `15m` PASS while `1h` and `4h` remain documented missing-data FAIL.
+
 Next safe stages:
 
-- `BOOK-L2-10` - Post-FLAT Context Integration Review;
+- `BOOK-L2-11` - Market Brief Explainability Review;
 - `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic;
 - `BOOK-L1-30` - Market Structure Explainability Improvement.
 
@@ -157,8 +165,7 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-L2-08` - FLAT Context Handling Proposal;
-- `BOOK-L2-09` - Implement FLAT Context Handling;
+- `BOOK-L2-11` - Market Brief Explainability Review;
 - `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic.
 
 Do not download, generate, or aggregate candles as part of BOOK-DATA-03C.
@@ -196,6 +203,8 @@ The following items are no longer remaining work:
 - BOOK-L1 L1-L2 regime alignment review.
 - BOOK-L1 FLAT context alignment diagnostic.
 - BOOK-L2 FLAT context handling proposal.
+- BOOK-L2 implement FLAT context handling.
+- BOOK-L2 post-FLAT context integration review.
 
 ## BOOK-L1-22 export rule
 

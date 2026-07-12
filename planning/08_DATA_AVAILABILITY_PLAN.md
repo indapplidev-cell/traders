@@ -2,7 +2,7 @@
 
 ## Current status
 
-BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, BOOK-L1-26, BOOK-L1-27, BOOK-L1-28, BOOK-L2-08, and BOOK-L2-09 are complete.
+BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, BOOK-L1-26, BOOK-L1-27, BOOK-L1-28, BOOK-L2-08, BOOK-L2-09, and BOOK-L2-10 are complete.
 
 BOOK-DATA-01 added a read-only candle availability audit for Market Reader:
 
@@ -156,6 +156,16 @@ UNKNOWN remains distinct from FLAT.
 No data was downloaded, written, or aggregated.
 ```
 
+BOOK-L2-10 integration review:
+
+```text
+FLAT_CONTEXT passes through L2 timeline context, JSON consumer, API readiness, and interval answer smoke.
+High-confidence L1 FLAT remains distinct from UNKNOWN.
+FLAT_CONTEXT remains observe-only, skip by default, and not safe for runtime trading.
+1h and 4h failures remain documented missing-data FAIL.
+No data was downloaded, written, or aggregated.
+```
+
 Current audited condition:
 
 - `15m` is ready for BTCUSDT, ETHUSDT, and SOLUSDT;
@@ -182,7 +192,7 @@ Immediate action:
 - treat `1h` and `4h` as optional/missing;
 - do not block current BOOK-L1/BOOK-L2 work on missing `1h`/`4h`.
 - improve Market Reader quality on `15m` before expanding intervals, unless explicitly decided otherwise.
-- run `BOOK-L2-10 - Post-FLAT Context Integration Review` before expanding into broader interpretation work.
+- keep post-FLAT follow-up explainability-focused before expanding into broader interpretation work.
 
 ## Boundary
 
@@ -210,8 +220,7 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-L2-08` - FLAT Context Handling Proposal;
-- `BOOK-L2-09` - Implement FLAT Context Handling;
+- `BOOK-L2-11` - Market Brief Explainability Review;
 - `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic.
 
 Do not start 1h/4h expansion before the 15m quality findings are addressed or explicitly accepted.

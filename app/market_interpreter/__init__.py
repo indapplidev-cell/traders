@@ -62,6 +62,14 @@ from app.market_interpreter.flat_context_handling import (
     FlatContextHandlingImplementationResult,
     FlatContextHandlingImplementationRunner,
 )
+from app.market_interpreter.flat_context_integration_review import (
+    FlatContextIntegrationReviewConfig,
+    FlatContextIntegrationReviewFormatter,
+    FlatContextIntegrationReviewResult,
+    FlatContextIntegrationReviewRunner,
+    IntegrationCheck,
+    SymbolIntegrationReview,
+)
 
 __all__ = [
     "L1TimelineConsumerConfig",
@@ -91,6 +99,12 @@ __all__ = [
     "FlatContextHandlingImplementationResult",
     "FlatContextHandlingImplementationRunner",
     "FlatContextHandlingImplementationFormatter",
+    "FlatContextIntegrationReviewConfig",
+    "FlatContextIntegrationReviewResult",
+    "FlatContextIntegrationReviewRunner",
+    "FlatContextIntegrationReviewFormatter",
+    "IntegrationCheck",
+    "SymbolIntegrationReview",
     "SymbolBucket",
     "SymbolBucketDecision",
     "MarketContextState",

@@ -191,6 +191,13 @@ _L2_FLAT_CONTEXT_HANDLING_IMPLEMENTATION_COMMAND = """python -m app.cli.commands
   --strict `
   --show-details"""
 
+_L2_FLAT_CONTEXT_INTEGRATION_REVIEW_COMMAND = """python -m app.cli.commands book-l2-flat-context-integration-review `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --high-confidence-threshold 0.80 `
+  --strict `
+  --show-details"""
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -228,6 +235,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _L1_FLAT_CONTEXT_ALIGNMENT_DIAGNOSTIC_COMMAND,
         _L2_FLAT_CONTEXT_HANDLING_PROPOSAL_COMMAND,
         _L2_FLAT_CONTEXT_HANDLING_IMPLEMENTATION_COMMAND,
+        _L2_FLAT_CONTEXT_INTEGRATION_REVIEW_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -517,6 +525,17 @@ def build_book_l1_terminal_guide() -> str:
             "reports/book_l2/timeline_context.json",
             "reports/book_l2/flat_context_handling_implementation.json",
             "reports/book_l2/flat_context_handling_implementation.md",
+            "",
+            "Post-FLAT context integration review",
+            "Reviews downstream FLAT_CONTEXT integration after BOOK-L2-09 without changing runtime behavior.",
+            "",
+            "Recommended workflow:",
+            _L2_FLAT_CONTEXT_HANDLING_IMPLEMENTATION_COMMAND,
+            _L2_FLAT_CONTEXT_INTEGRATION_REVIEW_COMMAND,
+            "",
+            "Files:",
+            "reports/book_l2/flat_context_integration_review.json",
+            "reports/book_l2/flat_context_integration_review.md",
             "",
             "Boundary:",
             "- `15m` is the active interval for current BOOK-L1/BOOK-L2 development.",
