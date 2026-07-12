@@ -78,6 +78,24 @@ class CandleRepository:
         )
         return self._session.scalar(statement)
 
+    def count_by_symbol_interval(self, symbol: str, interval: str) -> int:
+        statement = (
+            select(func.count())
+            .select_from(MarketCandles)
+            .where(MarketCandles.symbol == symbol)
+            .where(MarketCandles.interval == interval)
+        )
+        return int(self._session.scalar(statement) or 0)
+
+    def get_open_time_bounds(self, symbol: str, interval: str) -> tuple[datetime | None, datetime | None]:
+        statement = (
+            select(func.min(MarketCandles.open_time), func.max(MarketCandles.open_time))
+            .where(MarketCandles.symbol == symbol)
+            .where(MarketCandles.interval == interval)
+        )
+        row = self._session.execute(statement).one()
+        return row[0], row[1]
+
     def get_all(self, symbol: str, interval: str) -> list[MarketCandles]:
         statement = (
             select(MarketCandles)

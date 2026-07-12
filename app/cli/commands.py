@@ -876,6 +876,80 @@ def book_l1_l2_multi_interval_answer_smoke_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-data-candle-availability-audit")
+def book_data_candle_availability_audit_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    intervals: str | None = typer.Option(
+        None,
+        "--intervals",
+        help="Comma-separated candle intervals, for example 15m,1h,4h.",
+    ),
+    window_size: int = typer.Option(300, "--window-size", min=1, help="Candles per timeline window."),
+    window_count: int = typer.Option(4, "--window-count", min=1, help="Timeline window count."),
+    required_candles: int | None = typer.Option(
+        None,
+        "--required-candles",
+        help="Explicit required candles override. Defaults to window-size * window-count.",
+    ),
+    output_json: Path = typer.Option(
+        Path("reports/book_data/candle_availability_audit.json"),
+        "--output-json",
+        help="Stable JSON evidence output path.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_data/candle_availability_audit.md"),
+        "--output-md",
+        help="Stable Markdown evidence output path.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return FAIL when any requested symbol/interval is not READY.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print row-level coverage notes.",
+    ),
+) -> None:
+    """Audit local candle availability for BOOK-L1/BOOK-L2 reports without modifying data."""
+    from app.data_audit.candle_availability import (
+        CandleAvailabilityAuditConfig,
+        CandleAvailabilityAuditFormatter,
+        CandleAvailabilityAuditor,
+        parse_audit_intervals,
+        parse_audit_symbols,
+    )
+
+    selected_symbols = parse_audit_symbols(symbols, tuple(symbol or ()))
+    selected_intervals = parse_audit_intervals(intervals)
+    config = CandleAvailabilityAuditConfig(
+        symbols=selected_symbols,
+        intervals=selected_intervals,
+        window_size=window_size,
+        window_count=window_count,
+        required_candles=required_candles,
+        output_json=output_json,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    with get_session() as session:
+        result = CandleAvailabilityAuditor(CandleRepository(session)).run(config)
+    typer.echo(CandleAvailabilityAuditFormatter().format(result, config=config))
+    if result.status == "FAIL":
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

@@ -40,6 +40,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-05 | API Readiness Review / Layer 2 Freeze Candidate | DONE | `app/market_interpreter/api_readiness_review.py` |
 | BOOK-L2-06 | L1-L2 Interval Answer Smoke / Evidence Markdown | DONE | `app/integration/l1_l2_interval_answer_smoke.py` |
 | BOOK-L2-07 | Multi-Interval Answer Smoke | DONE | `app/integration/l1_l2_multi_interval_answer_smoke.py` |
+| BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py` |
 
 ## BOOK-L2-00
 
@@ -209,6 +210,17 @@ The report is evidence Markdown, not runtime API output. Runtime API output rema
 The next stages must keep the same boundary unless an explicit separate decision changes it: consume BOOK-L1 JSON, preserve fail-closed safety, and avoid trading signals.
 
 Next possible layer: BOOK-L3, but only after explicit approval.
+
+BOOK-DATA-01 documented the data condition behind multi-interval failures:
+
+```text
+15m is ready for BTCUSDT, ETHUSDT, and SOLUSDT.
+1h and 4h are missing in the local database for the tested symbols.
+```
+
+This means the current blocker for multi-interval L1-L2 reports is candle availability, not BOOK-L1 or BOOK-L2 pipeline logic.
+
+BOOK-DATA-01 is read-only and does not change BOOK-L2 consume-only behavior.
 
 ## BOOK-L2-05
 

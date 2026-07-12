@@ -126,6 +126,21 @@ _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND = """python -m app.cli.commands book-
   --strict `
   --show-details"""
 
+_DATA_AVAILABILITY_AUDIT_COMMAND = """python -m app.cli.commands book-data-candle-availability-audit `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --show-details"""
+
+_DATA_AVAILABILITY_AUDIT_STRICT_COMMAND = """python -m app.cli.commands book-data-candle-availability-audit `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --strict `
+  --show-details"""
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -153,6 +168,8 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _L2_API_READINESS_REVIEW_COMMAND,
         _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND,
         _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND,
+        _DATA_AVAILABILITY_AUDIT_COMMAND,
+        _DATA_AVAILABILITY_AUDIT_STRICT_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -300,6 +317,8 @@ def build_book_l1_terminal_guide() -> str:
             _L1_L2_INTERVAL_ANSWER_SMOKE_COMMAND,
             "6. Write L1-L2 multi-interval answer evidence:",
             _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND,
+            "7. Audit local candle availability before multi-interval reports:",
+            _DATA_AVAILABILITY_AUDIT_COMMAND,
             "",
             "BOOK-L2 JSON consumer smoke:",
             "Validates reports/book_l2/timeline_context.json without reading candles, DB, or live services.",
@@ -335,6 +354,24 @@ def build_book_l1_terminal_guide() -> str:
             "",
             "Answer file:",
             "reports/book_l2/l1_l2_multi_interval_answer.md",
+            "",
+            "Data availability audit",
+            "Audits local candle counts for BOOK-L1/BOOK-L2 reports without downloading or modifying data.",
+            "",
+            "Command:",
+            _DATA_AVAILABILITY_AUDIT_COMMAND,
+            "",
+            "Strict command:",
+            _DATA_AVAILABILITY_AUDIT_STRICT_COMMAND,
+            "",
+            "Evidence files:",
+            "reports/book_data/candle_availability_audit.json",
+            "reports/book_data/candle_availability_audit.md",
+            "",
+            "Status meaning:",
+            "- PASS means every requested symbol/interval is READY.",
+            "- PASS_WITH_DATA_GAPS means the audit succeeded but some rows are MISSING or INSUFFICIENT_DATA.",
+            "- FAIL in strict mode means one or more rows are not READY.",
             "",
             "Evidence rule:",
             "- This Markdown file is for human smoke review.",

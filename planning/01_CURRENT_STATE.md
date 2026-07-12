@@ -299,6 +299,46 @@ reports/book_l2/l1_l2_multi_interval_answer.md
 
 This evidence report is not runtime API output; API output remains JSON.
 
+## BOOK-DATA Market Reader data availability status
+
+Status: `DATA_GAPS_DOCUMENTED`
+
+BOOK-DATA-01 adds a read-only local candle availability audit for Market Reader:
+
+```powershell
+python -m app.cli.commands book-data-candle-availability-audit `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --show-details
+```
+
+The audit answers which `symbol/interval` combinations have enough local candles for the current L1 timeline requirement:
+
+```text
+required_candles = window_size * window_count = 1200
+```
+
+Stable evidence outputs:
+
+```text
+reports/book_data/candle_availability_audit.json
+reports/book_data/candle_availability_audit.md
+reports/book_data/book_data_01_candle_availability_audit_report.md
+```
+
+Current data finding:
+
+```text
+15m is ready for BTCUSDT, ETHUSDT, and SOLUSDT.
+1h and 4h are missing in the local database for the tested symbols.
+```
+
+The current blocker for multi-interval L1-L2 reports is data availability, not the L1-L2 pipeline.
+
+BOOK-DATA-01 does not download candles, does not write DB rows, does not aggregate intervals, does not change BOOK-L1 analysis logic, and does not produce trading signals.
+
 BOOK-L2-05 added the final API readiness review:
 
 ```powershell

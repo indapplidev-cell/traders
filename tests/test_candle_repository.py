@@ -37,6 +37,13 @@ def test_candle_repository_upsert_and_range_queries() -> None:
         )
 
         assert repository.count_range("BTCUSDT", "15m", first_open, datetime(2025, 1, 1, 0, 30, tzinfo=timezone.utc)) == 2
+        assert repository.count_by_symbol_interval("BTCUSDT", "15m") == 2
+        assert repository.count_by_symbol_interval("BTCUSDT", "1h") == 0
+        first_bound, last_bound = repository.get_open_time_bounds("BTCUSDT", "15m")
+        assert first_bound is not None
+        assert last_bound is not None
+        assert first_bound.isoformat().startswith("2025-01-01T00:00:00")
+        assert last_bound.isoformat().startswith("2025-01-01T00:15:00")
         assert len(stored) == 2
         assert str(stored[0].close) == "102.00000000"
         assert repository.get_last_open_time("BTCUSDT", "15m").isoformat().startswith("2025-01-01T00:15:00")

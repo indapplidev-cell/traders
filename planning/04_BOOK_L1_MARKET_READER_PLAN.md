@@ -55,6 +55,7 @@ safe_for_runtime_trading = false
 | BOOK-L1-24 | Runtime JSON Consumer / API Reader Smoke | DONE | `app/market_reader/json_consumer.py`, `book-l1-json-consumer-smoke` |
 | BOOK-L1-25 | API Readiness Final Review / Layer 1 Freeze Candidate | DONE | `app/market_reader/api_readiness_review.py`, `book-l1-api-readiness-review` |
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py`, `book-l2-timeline-context` |
+| BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py`, `book-data-candle-availability-audit` |
 
 ## Current implementation boundary
 
@@ -110,6 +111,28 @@ python -m app.cli.commands book-l1-api-readiness-review
 BOOK-L1-25 checks required modules, tests, planning files, CLI command registration, stable JSON files, JSON contract, and fail-closed safety. Missing runtime JSON files are WARN after a clean checkout because export may not have run yet. Invalid JSON, wrong `service`, wrong `contract_version`, missing safety, or unsafe safety values are FAIL.
 
 BOOK-L1 is now a Layer 1 Freeze Candidate.
+
+BOOK-DATA-01 adds a separate read-only audit for local candle availability:
+
+```powershell
+python -m app.cli.commands book-data-candle-availability-audit `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --show-details
+```
+
+The audit explains whether each `symbol/interval` has enough candles for the L1 timeline requirement. It is not BOOK-L1 analysis logic and does not change market regime composition.
+
+Current data condition:
+
+```text
+15m is ready for the tested symbols.
+1h and 4h are missing in the local database.
+```
+
+No trading logic is introduced.
 
 BOOK-L2 has started as a separate layer above BOOK-L1. BOOK-L2-00 consumes the stable BOOK-L1 timeline JSON export:
 

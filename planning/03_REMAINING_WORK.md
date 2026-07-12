@@ -34,6 +34,8 @@ The following BOOK-L1 items are already completed:
 - BOOK-L2-04 L2 JSON consumer / context contract smoke.
 - BOOK-L2-05 API readiness review / Layer 2 freeze candidate.
 - BOOK-L2-06 L1-L2 interval answer smoke / evidence Markdown.
+- BOOK-L2-07 multi-interval answer smoke / evidence Markdown.
+- BOOK-DATA-01 candle data availability audit for Market Reader.
 
 ## Remaining BOOK-L1 work
 
@@ -85,6 +87,18 @@ Before any BOOK-L3 implementation, decide whether the next layer is:
 - command help can be cleaned up;
 - market analysis logic should not change during freeze handling.
 
+### 5. Data preparation decision
+
+BOOK-DATA-01 documented that the current multi-interval blocker is local candle availability, not the L1-L2 pipeline.
+
+Current audited condition:
+
+- `15m` is ready for BTCUSDT, ETHUSDT, and SOLUSDT if enough candles exist locally;
+- `1h` and `4h` are missing in the local database for the tested symbols;
+- future data loading or interval construction must be handled as a separate data preparation stage.
+
+Do not download, generate, or aggregate candles as part of BOOK-DATA-01.
+
 ## Not remaining anymore
 
 The following items are no longer remaining work:
@@ -110,6 +124,8 @@ The following items are no longer remaining work:
 - BOOK-L2 JSON consumer smoke for stable `reports/book_l2/timeline_context.json`.
 - BOOK-L2 API readiness review / Layer 2 freeze candidate.
 - BOOK-L2 L1-L2 interval answer smoke / evidence Markdown.
+- BOOK-L2 multi-interval answer smoke / evidence Markdown.
+- BOOK-DATA candle availability audit / data gap evidence.
 
 ## BOOK-L1-22 export rule
 
