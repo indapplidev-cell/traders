@@ -12,7 +12,9 @@ This stage implements the first book-based evidence block for the clean `engine_
 
 - `app/market_reader/engine_trend/candle_morphology.py`
 - `app/market_reader/engine_trend/nison_candlestick_context.py`
+- `app/market_reader/engine_trend/nison_pattern_catalog.py`
 - `tests/test_engine_trend_02_nison_candle_context.py`
+- `tests/test_engine_trend_02_nison_full_catalog.py`
 
 ## Updated files
 
@@ -49,6 +51,36 @@ The following quantitative window aggregations are project heuristics and use
 - `LOW_DIRECTIONAL_PROGRESS`
 - `BULLISH_BODY_DOMINANCE`
 - `BEARISH_BODY_DOMINANCE`
+
+## Full Nison candlestick catalog
+
+The named candlestick patterns from book chapters 4 through 8 are represented.
+The catalog adds conservative OHLC-only candidates for:
+
+- morning star, evening star, and their doji variants
+- inverted hammer and hanging-man shapes
+- harami and harami cross
+- tweezer tops and bottoms
+- bullish and bearish belt-hold shapes
+- upside-gap two crows and three black crows
+- bullish and bearish counterattack lines
+- three mountains, three rivers, and the three-Buddha variants
+- dumpling tops, fry-pan bottoms, tower tops, and tower bottoms
+- upward and downward windows
+- upward and downward gap tasuki
+- high-price and low-price gapping plays
+- upward and downward gapping side-by-side bodies
+- rising and falling three methods
+- three advancing white soldiers
+- bullish and bearish separating lines
+- doji after a long bullish body and doji-top context
+- long-legged doji, rickshaw man, gravestone doji, and dragonfly doji
+- tri-star
+
+Patterns requiring a preceding trend, a chart level, or a later confirmation are
+returned with zero contribution and explicit metadata stating that trend context
+and follow-through were not evaluated. Chapters 10 through 20 combine candles
+with other technical methods and remain outside this candle-only stage.
 
 ## Reason codes added
 

@@ -29,6 +29,10 @@ from app.market_reader.engine_trend.nison_candlestick_context import (
     analyze_nison_candle_context,
     analyze_nison_window_context,
 )
+from app.market_reader.engine_trend.nison_pattern_catalog import (
+    CATALOG_DESCRIPTIONS,
+    analyze_nison_pattern_catalog,
+)
 
 __all__ = [
     "BookEvidence",
@@ -48,4 +52,6 @@ __all__ = [
     "analyze_candle_window_morphology",
     "analyze_nison_candle_context",
     "analyze_nison_window_context",
+    "CATALOG_DESCRIPTIONS",
+    "analyze_nison_pattern_catalog",
 ]
