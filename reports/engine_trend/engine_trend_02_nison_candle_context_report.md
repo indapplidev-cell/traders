@@ -34,6 +34,21 @@ This stage implements the first book-based evidence block for the clean `engine_
 - hammer-like and shooting-star-like geometry with a minimum 2:1 shadow/body ratio
 - classic piercing and dark-cloud gaps beyond the preceding candle extremum
 - explicit metadata marking trend context and follow-through as not evaluated in this stage
+- window clusters and body dominance classified as `ENGINE_TREND` heuristics, not Nison patterns
+
+## Evidence attribution
+
+Canonical candle morphology and pattern relationships implemented from the book use
+`BookSource.NISON`.
+
+The following quantitative window aggregations are project heuristics and use
+`BookSource.ENGINE_TREND` with `book_attribution = false`:
+
+- `DOJI_CLUSTER_FLAT_CONTEXT`
+- `SMALL_BODY_CLUSTER`
+- `LOW_DIRECTIONAL_PROGRESS`
+- `BULLISH_BODY_DOMINANCE`
+- `BEARISH_BODY_DOMINANCE`
 
 ## Reason codes added
 

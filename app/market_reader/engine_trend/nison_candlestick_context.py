@@ -56,6 +56,24 @@ def _evidence(code: str, **metadata: Any) -> EngineTrendEvidence:
     return EngineTrendEvidence(BookSource.NISON, code, description, contribution, metadata)
 
 
+def _engine_heuristic_evidence(code: str, **metadata: Any) -> EngineTrendEvidence:
+    """Create derived window evidence without attributing it to Nison."""
+
+    description, contribution = _EVIDENCE[code]
+    heuristic_metadata = {
+        "evidence_origin": "ENGINE_TREND_HEURISTIC",
+        "book_attribution": False,
+        **metadata,
+    }
+    return EngineTrendEvidence(
+        BookSource.ENGINE_TREND,
+        code,
+        description,
+        contribution,
+        heuristic_metadata,
+    )
+
+
 def _unique_codes(items: tuple[EngineTrendEvidence, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(item.code for item in items))
 
@@ -228,16 +246,38 @@ def analyze_nison_window_context(
     for index in range(1, count):
         window_items.extend(_pair_evidence(morphologies[index - 1], morphologies[index]))
     if doji_count >= 2 and doji_ratio >= 0.25:
-        window_items.append(_evidence("DOJI_CLUSTER_FLAT_CONTEXT", count=doji_count, ratio=doji_ratio))
+        window_items.append(
+            _engine_heuristic_evidence(
+                "DOJI_CLUSTER_FLAT_CONTEXT", count=doji_count, ratio=doji_ratio
+            )
+        )
     if small_body_count >= 2 and small_body_ratio >= 0.35:
         window_items.extend((
-            _evidence("SMALL_BODY_CLUSTER", count=small_body_count, ratio=small_body_ratio),
-            _evidence("LOW_DIRECTIONAL_PROGRESS", count=small_body_count, ratio=small_body_ratio),
+            _engine_heuristic_evidence(
+                "SMALL_BODY_CLUSTER", count=small_body_count, ratio=small_body_ratio
+            ),
+            _engine_heuristic_evidence(
+                "LOW_DIRECTIONAL_PROGRESS",
+                count=small_body_count,
+                ratio=small_body_ratio,
+            ),
         ))
     if bullish_body_total > 0.0 and bullish_body_total >= bearish_body_total * 1.5:
-        window_items.append(_evidence("BULLISH_BODY_DOMINANCE", bullish_total=bullish_body_total, bearish_total=bearish_body_total))
+        window_items.append(
+            _engine_heuristic_evidence(
+                "BULLISH_BODY_DOMINANCE",
+                bullish_total=bullish_body_total,
+                bearish_total=bearish_body_total,
+            )
+        )
     elif bearish_body_total > 0.0 and bearish_body_total >= bullish_body_total * 1.5:
-        window_items.append(_evidence("BEARISH_BODY_DOMINANCE", bullish_total=bullish_body_total, bearish_total=bearish_body_total))
+        window_items.append(
+            _engine_heuristic_evidence(
+                "BEARISH_BODY_DOMINANCE",
+                bullish_total=bullish_body_total,
+                bearish_total=bearish_body_total,
+            )
+        )
 
     window_evidence = tuple(window_items)
     candle_evidence = tuple(item for context in candle_contexts for item in context.evidence)

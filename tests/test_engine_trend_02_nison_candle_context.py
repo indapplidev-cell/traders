@@ -143,7 +143,21 @@ def test_window_clusters_body_dominance_and_evidence_collection() -> None:
     )
     result = analyze_nison_window_context(candles)
     assert {"DOJI_CLUSTER_FLAT_CONTEXT", "SMALL_BODY_CLUSTER", "LOW_DIRECTIONAL_PROGRESS", "BULLISH_BODY_DOMINANCE"} <= codes(result)
-    assert all(item.source is BookSource.NISON for item in result.all_evidence)
+    heuristic_codes = {
+        "DOJI_CLUSTER_FLAT_CONTEXT",
+        "SMALL_BODY_CLUSTER",
+        "LOW_DIRECTIONAL_PROGRESS",
+        "BULLISH_BODY_DOMINANCE",
+    }
+    heuristics = [item for item in result.window_evidence if item.code in heuristic_codes]
+    assert all(item.source is BookSource.ENGINE_TREND for item in heuristics)
+    assert all(item.metadata["evidence_origin"] == "ENGINE_TREND_HEURISTIC" for item in heuristics)
+    assert all(item.metadata["book_attribution"] is False for item in heuristics)
+    assert all(
+        item.source is BookSource.NISON
+        for item in result.all_evidence
+        if item.code not in heuristic_codes
+    )
     assert set(result.reason_codes) == {item.code for item in result.all_evidence}
     assert {"candle_count", "summary", "reason_codes", "window_evidence", "candle_contexts"} <= result.to_dict().keys()
 
@@ -151,6 +165,11 @@ def test_window_clusters_body_dominance_and_evidence_collection() -> None:
 def test_bearish_body_dominance_and_empty_window() -> None:
     result = analyze_nison_window_context((candle(10, 11, 4, 5, "1"), candle(5, 6, 1, 2, "2")))
     assert "BEARISH_BODY_DOMINANCE" in codes(result)
+    dominance = next(
+        item for item in result.window_evidence if item.code == "BEARISH_BODY_DOMINANCE"
+    )
+    assert dominance.source is BookSource.ENGINE_TREND
+    assert dominance.metadata["book_attribution"] is False
     empty = analyze_nison_window_context(())
     assert empty.candle_count == 0 and empty.all_evidence == ()
 
