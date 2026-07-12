@@ -61,13 +61,28 @@ An explicit range with no rows follows the existing boundary: it yields `EMPTY` 
 
 ## Manual DB CLI smoke result
 
-Status: `MANUAL_DB_CLI_SMOKE_SKIPPED_DB_CONFIG_MISSING`.
+Status: `SUCCESSFUL_DB_CLI_SMOKE`.
 
-None of the supported DB URL environment variables was present in the current shell. Availability and per-symbol runs were therefore not executed. No mock data, prior report JSON, reconstructed credential, candle counts, regimes, confidence values, or safety results were substituted.
+`TRADERS_ML_DATABASE_URL` was set only in the smoke command's current PowerShell process from the running `traders-ml-postgres-1` configuration. Its value was neither printed nor persisted. Availability returned:
+
+| Symbol | Interval | Candle count | Minimum `open_time` | Maximum `open_time` |
+|---|---:|---:|---|---|
+| BTCUSDT | 15m | 50,961 | 2025-01-01 00:00:00+00:00 | 2026-06-15 20:00:00+00:00 |
+| ETHUSDT | 15m | 50,962 | 2025-01-01 00:00:00+00:00 | 2026-06-15 20:15:00+00:00 |
+| SOLUSDT | 15m | 50,962 | 2025-01-01 00:00:00+00:00 | 2026-06-15 20:15:00+00:00 |
+
+All three per-symbol runs completed with boundary status `READY`, 96 loaded candles, `market_regime=UNKNOWN`, confidence `0.3`, zero boundary warnings, and zero boundary errors. For each run, `trade_signal=NOT_EVALUATED`, `safe_for_runtime_trading=false`, and `live_trading_connected=false`.
 
 ## Saved artifacts
 
-No manual result or preview JSON was created because DB configuration was missing. The empty destination is retained by `reports/engine_trend/db_cli_preview/.gitkeep`.
+- `reports/engine_trend/db_cli_preview/btcusdt_15m_result.json`
+- `reports/engine_trend/db_cli_preview/btcusdt_15m_preview.json`
+- `reports/engine_trend/db_cli_preview/ethusdt_15m_result.json`
+- `reports/engine_trend/db_cli_preview/ethusdt_15m_preview.json`
+- `reports/engine_trend/db_cli_preview/solusdt_15m_result.json`
+- `reports/engine_trend/db_cli_preview/solusdt_15m_preview.json`
+
+Artifact validation confirmed the expected wrapper/preview structures, 96 candles per symbol, `READY` status, safety fields, and masked DB URLs. No real DSN is stored.
 
 ## Safety contract verification
 
@@ -90,7 +105,6 @@ The CLI validates before output that `trade_signal` is `NOT_EVALUATED`, `safe_fo
 
 ## Known limitations
 
-- Manual DB behavior was not re-observed because the shell had no configured DB URL.
 - Only the confirmed `15m` interval and three confirmed symbols are accepted.
 - The CLI is an analytical preview and makes no trading claim.
 - PostgreSQL freshness and ingestion are outside this stage.
