@@ -4,25 +4,109 @@
   "report_type": "candle_availability_audit",
   "request": {
     "intervals": [
-      "15m"
+      "15m",
+      "1h",
+      "4h"
     ],
     "required_candles": 1200,
     "symbols": [
-      "BTCUSDT"
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
     ],
     "window_count": 4,
     "window_size": 300
   },
   "rows": [
     {
-      "available_candles": 1200,
-      "first_open_time": "2026-01-01T00:00:00+00:00",
+      "available_candles": 50961,
+      "first_open_time": "2025-01-01T00:00:00+00:00",
       "interval": "15m",
-      "last_open_time": "2026-01-02T00:00:00+00:00",
+      "last_open_time": "2026-06-15T20:00:00+00:00",
       "message": "ready for L1-L2 report",
       "required_candles": 1200,
       "status": "READY",
       "symbol": "BTCUSDT"
+    },
+    {
+      "available_candles": 0,
+      "first_open_time": null,
+      "interval": "1h",
+      "last_open_time": null,
+      "message": "no candles found",
+      "required_candles": 1200,
+      "status": "MISSING",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "available_candles": 0,
+      "first_open_time": null,
+      "interval": "4h",
+      "last_open_time": null,
+      "message": "no candles found",
+      "required_candles": 1200,
+      "status": "MISSING",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "available_candles": 50962,
+      "first_open_time": "2025-01-01T00:00:00+00:00",
+      "interval": "15m",
+      "last_open_time": "2026-06-15T20:15:00+00:00",
+      "message": "ready for L1-L2 report",
+      "required_candles": 1200,
+      "status": "READY",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "available_candles": 0,
+      "first_open_time": null,
+      "interval": "1h",
+      "last_open_time": null,
+      "message": "no candles found",
+      "required_candles": 1200,
+      "status": "MISSING",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "available_candles": 0,
+      "first_open_time": null,
+      "interval": "4h",
+      "last_open_time": null,
+      "message": "no candles found",
+      "required_candles": 1200,
+      "status": "MISSING",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "available_candles": 50962,
+      "first_open_time": "2025-01-01T00:00:00+00:00",
+      "interval": "15m",
+      "last_open_time": "2026-06-15T20:15:00+00:00",
+      "message": "ready for L1-L2 report",
+      "required_candles": 1200,
+      "status": "READY",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "available_candles": 0,
+      "first_open_time": null,
+      "interval": "1h",
+      "last_open_time": null,
+      "message": "no candles found",
+      "required_candles": 1200,
+      "status": "MISSING",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "available_candles": 0,
+      "first_open_time": null,
+      "interval": "4h",
+      "last_open_time": null,
+      "message": "no candles found",
+      "required_candles": 1200,
+      "status": "MISSING",
+      "symbol": "SOLUSDT"
     }
   ],
   "safety": {
@@ -34,12 +118,12 @@
     "trading_signal": "NOT_EVALUATED"
   },
   "service": "BOOK_DATA_AUDIT",
-  "status": "PASS",
+  "status": "PASS_WITH_DATA_GAPS",
   "summary": {
     "ERROR": 0,
     "INSUFFICIENT_DATA": 0,
-    "MISSING": 0,
-    "READY": 1
+    "MISSING": 6,
+    "READY": 3
   },
   "warnings": []
 }

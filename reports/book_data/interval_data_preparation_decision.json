@@ -1,0 +1,144 @@
+{
+  "audit_finding": [
+    {
+      "availability": "READY",
+      "interval": "15m",
+      "meaning": "Can be used now for BOOK-L1 Market Reader",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT"
+      ]
+    },
+    {
+      "availability": "MISSING",
+      "interval": "1h",
+      "meaning": "Not available in local DB",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT"
+      ]
+    },
+    {
+      "availability": "MISSING",
+      "interval": "4h",
+      "meaning": "Not available in local DB",
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT"
+      ]
+    }
+  ],
+  "contract_version": "book_data_interval_preparation_decision_v1",
+  "decision": {
+    "active_intervals": [
+      "15m"
+    ],
+    "decision_id": "ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING",
+    "missing_intervals": [
+      "1h",
+      "4h"
+    ],
+    "next_stage": "BOOK-DATA-03",
+    "not_approved": [
+      "binance_download",
+      "db_write",
+      "interval_aggregation",
+      "trading_logic",
+      "long_short_recommendations",
+      "edge_validation"
+    ],
+    "optional_intervals": [
+      "1h",
+      "4h"
+    ],
+    "recommended_option": "OPTION_D_HYBRID_LATER",
+    "required_intervals_for_current_market_reader": [
+      "15m"
+    ]
+  },
+  "errors": [],
+  "options": [
+    {
+      "cons": [
+        "no multi-timeframe picture",
+        "cannot compare 15m/1h/4h",
+        "L2 multi-interval evidence will show gaps"
+      ],
+      "option_id": "OPTION_A_15M_ONLY_NOW",
+      "pros": [
+        "already has data",
+        "L1-L2 pipeline already works",
+        "can continue improving market reading",
+        "no DB corruption risk",
+        "no incorrect aggregation risk"
+      ],
+      "recommendation": "safe immediate path",
+      "status": "AVAILABLE_NOW",
+      "title": "Use 15m only for now"
+    },
+    {
+      "cons": [
+        "requires separate data loading stage",
+        "may require Binance/source integration",
+        "cannot be done in BOOK-DATA-02"
+      ],
+      "option_id": "OPTION_B_NATIVE_1H_4H_LOADING_LATER",
+      "pros": [
+        "clean native intervals",
+        "simpler coverage checks",
+        "does not depend on resampling quality"
+      ],
+      "recommendation": "not approved in BOOK-DATA-02",
+      "status": "FUTURE_STAGE_REQUIRED",
+      "title": "Load native 1h/4h later"
+    },
+    {
+      "cons": [
+        "requires strict resampling contract",
+        "must verify open/high/low/close/volume",
+        "must verify time boundaries",
+        "needs tests for incomplete candles",
+        "cannot be done in BOOK-DATA-02"
+      ],
+      "option_id": "OPTION_C_AGGREGATE_FROM_15M_LATER",
+      "pros": [
+        "does not require downloading additional intervals",
+        "can derive multi-interval data from existing 15m"
+      ],
+      "recommendation": "requires separate resampling contract",
+      "status": "FUTURE_STAGE_REQUIRED",
+      "title": "Build 1h/4h from 15m later"
+    },
+    {
+      "cons": [
+        "decision for 1h/4h is deferred",
+        "requires next data preparation plan"
+      ],
+      "option_id": "OPTION_D_HYBRID_LATER",
+      "pros": [
+        "does not block current progress",
+        "preserves safe architecture",
+        "defers technical risk"
+      ],
+      "recommendation": "recommended for current project state",
+      "status": "RECOMMENDED",
+      "title": "Use 15m now, decide 1h/4h preparation later"
+    }
+  ],
+  "report_type": "interval_data_preparation_decision",
+  "safety": {
+    "aggregation_approved": false,
+    "db_write_approved": false,
+    "download_approved": false,
+    "read_only": true,
+    "safe_for_runtime_trading": false,
+    "trading_signal": "NOT_EVALUATED"
+  },
+  "service": "BOOK_DATA_DECISION",
+  "source_audit": "reports/book_data/candle_availability_audit.json",
+  "status": "PASS_WITH_DATA_GAPS",
+  "warnings": []
+}

@@ -950,6 +950,54 @@ def book_data_candle_availability_audit_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-data-interval-preparation-decision")
+def book_data_interval_preparation_decision_command(
+    audit_json: Path = typer.Option(
+        Path("reports/book_data/candle_availability_audit.json"),
+        "--audit-json",
+        help="BOOK-DATA-01 candle availability audit JSON artifact.",
+    ),
+    output_json: Path = typer.Option(
+        Path("reports/book_data/interval_data_preparation_decision.json"),
+        "--output-json",
+        help="Stable JSON decision output path.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_data/interval_data_preparation_decision.md"),
+        "--output-md",
+        help="Stable Markdown decision output path.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return FAIL when any audited requested interval is not READY.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print options considered and detailed decision context.",
+    ),
+) -> None:
+    """Decide how Market Reader should treat missing 1h/4h candle intervals."""
+    from app.data_audit.interval_preparation_decision import (
+        IntervalPreparationDecisionBuilder,
+        IntervalPreparationDecisionConfig,
+        IntervalPreparationDecisionFormatter,
+    )
+
+    config = IntervalPreparationDecisionConfig(
+        audit_json_path=audit_json,
+        output_json=output_json,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = IntervalPreparationDecisionBuilder().run(config)
+    typer.echo(IntervalPreparationDecisionFormatter().format(result, config=config))
+    if result.status == "FAIL":
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

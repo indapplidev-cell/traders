@@ -36,6 +36,7 @@ The following BOOK-L1 items are already completed:
 - BOOK-L2-06 L1-L2 interval answer smoke / evidence Markdown.
 - BOOK-L2-07 multi-interval answer smoke / evidence Markdown.
 - BOOK-DATA-01 candle data availability audit for Market Reader.
+- BOOK-DATA-02 interval data preparation decision.
 
 ## Remaining BOOK-L1 work
 
@@ -87,17 +88,25 @@ Before any BOOK-L3 implementation, decide whether the next layer is:
 - command help can be cleaned up;
 - market analysis logic should not change during freeze handling.
 
-### 5. Data preparation decision
+### 5. Future data preparation stages
 
-BOOK-DATA-01 documented that the current multi-interval blocker is local candle availability, not the L1-L2 pipeline.
+BOOK-DATA-02 fixed the current interval preparation decision.
 
-Current audited condition:
+Current decision:
 
-- `15m` is ready for BTCUSDT, ETHUSDT, and SOLUSDT if enough candles exist locally;
-- `1h` and `4h` are missing in the local database for the tested symbols;
-- future data loading or interval construction must be handled as a separate data preparation stage.
+- `15m` is the active working interval for the current Market Reader workflow;
+- `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work;
+- no download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved.
 
-Do not download, generate, or aggregate candles as part of BOOK-DATA-01.
+Next data work requires a separate explicit BOOK-DATA stage.
+
+Possible future stages:
+
+- `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
+- `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
+- `BOOK-DATA-03C` - 15m-Only Market Reader Stabilization.
+
+Do not download, generate, or aggregate candles as part of BOOK-DATA-02.
 
 ## Not remaining anymore
 
@@ -126,6 +135,7 @@ The following items are no longer remaining work:
 - BOOK-L2 L1-L2 interval answer smoke / evidence Markdown.
 - BOOK-L2 multi-interval answer smoke / evidence Markdown.
 - BOOK-DATA candle availability audit / data gap evidence.
+- BOOK-DATA interval data preparation decision.
 
 ## BOOK-L1-22 export rule
 

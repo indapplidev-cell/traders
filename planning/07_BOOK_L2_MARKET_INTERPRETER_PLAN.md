@@ -41,6 +41,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-06 | L1-L2 Interval Answer Smoke / Evidence Markdown | DONE | `app/integration/l1_l2_interval_answer_smoke.py` |
 | BOOK-L2-07 | Multi-Interval Answer Smoke | DONE | `app/integration/l1_l2_multi_interval_answer_smoke.py` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py` |
+| BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py` |
 
 ## BOOK-L2-00
 
@@ -221,6 +222,16 @@ BOOK-DATA-01 documented the data condition behind multi-interval failures:
 This means the current blocker for multi-interval L1-L2 reports is candle availability, not BOOK-L1 or BOOK-L2 pipeline logic.
 
 BOOK-DATA-01 is read-only and does not change BOOK-L2 consume-only behavior.
+
+BOOK-DATA-02 fixed the current interval preparation decision:
+
+```text
+ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
+```
+
+`15m` is the active working interval for the current Market Reader workflow. `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work.
+
+BOOK-DATA-02 does not approve download, DB write, interval aggregation, trading logic, edge validation, or runtime integration. Next data work requires a separate explicit BOOK-DATA stage.
 
 ## BOOK-L2-05
 

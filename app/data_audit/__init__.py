@@ -1,1 +1,1 @@
-"""Read-only data availability audits."""
+"""Read-only BOOK-DATA audits and planning decisions."""

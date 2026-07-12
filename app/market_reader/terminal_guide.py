@@ -141,6 +141,12 @@ _DATA_AVAILABILITY_AUDIT_STRICT_COMMAND = """python -m app.cli.commands book-dat
   --strict `
   --show-details"""
 
+_DATA_PREPARATION_DECISION_COMMAND = "python -m app.cli.commands book-data-interval-preparation-decision --show-details"
+
+_DATA_PREPARATION_DECISION_STRICT_COMMAND = (
+    "python -m app.cli.commands book-data-interval-preparation-decision --strict --show-details"
+)
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -170,6 +176,8 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND,
         _DATA_AVAILABILITY_AUDIT_COMMAND,
         _DATA_AVAILABILITY_AUDIT_STRICT_COMMAND,
+        _DATA_PREPARATION_DECISION_COMMAND,
+        _DATA_PREPARATION_DECISION_STRICT_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -319,6 +327,8 @@ def build_book_l1_terminal_guide() -> str:
             _L1_L2_MULTI_INTERVAL_ANSWER_SMOKE_COMMAND,
             "7. Audit local candle availability before multi-interval reports:",
             _DATA_AVAILABILITY_AUDIT_COMMAND,
+            "8. Fix interval data preparation decision:",
+            _DATA_PREPARATION_DECISION_COMMAND,
             "",
             "BOOK-L2 JSON consumer smoke:",
             "Validates reports/book_l2/timeline_context.json without reading candles, DB, or live services.",
@@ -372,6 +382,24 @@ def build_book_l1_terminal_guide() -> str:
             "- PASS means every requested symbol/interval is READY.",
             "- PASS_WITH_DATA_GAPS means the audit succeeded but some rows are MISSING or INSUFFICIENT_DATA.",
             "- FAIL in strict mode means one or more rows are not READY.",
+            "",
+            "Data preparation decision",
+            "Reads the BOOK-DATA-01 audit artifact and fixes the active interval decision without downloading, writing DB rows, or aggregating candles.",
+            "",
+            "Recommended workflow:",
+            _DATA_AVAILABILITY_AUDIT_COMMAND,
+            _DATA_PREPARATION_DECISION_COMMAND,
+            "",
+            "Strict decision check:",
+            _DATA_PREPARATION_DECISION_STRICT_COMMAND,
+            "",
+            "Decision files:",
+            "reports/book_data/interval_data_preparation_decision.json",
+            "reports/book_data/interval_data_preparation_decision.md",
+            "",
+            "Current expected decision:",
+            "15m is the active working interval.",
+            "1h and 4h are optional/missing and require a separate explicit BOOK-DATA stage.",
             "",
             "Evidence rule:",
             "- This Markdown file is for human smoke review.",

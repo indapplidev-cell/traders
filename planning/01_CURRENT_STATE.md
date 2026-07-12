@@ -339,6 +339,30 @@ The current blocker for multi-interval L1-L2 reports is data availability, not t
 
 BOOK-DATA-01 does not download candles, does not write DB rows, does not aggregate intervals, does not change BOOK-L1 analysis logic, and does not produce trading signals.
 
+BOOK-DATA-02 fixed the interval preparation decision after the BOOK-DATA-01 audit:
+
+```powershell
+python -m app.cli.commands book-data-interval-preparation-decision --show-details
+```
+
+Stable decision outputs:
+
+```text
+reports/book_data/interval_data_preparation_decision.json
+reports/book_data/interval_data_preparation_decision.md
+reports/book_data/book_data_02_interval_data_preparation_decision_report.md
+```
+
+Decision:
+
+```text
+ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
+```
+
+`15m` is the active working interval for the current Market Reader workflow. `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work.
+
+No download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved by BOOK-DATA-02. Next data work requires a separate explicit BOOK-DATA stage.
+
 BOOK-L2-05 added the final API readiness review:
 
 ```powershell

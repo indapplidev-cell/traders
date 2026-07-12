@@ -155,8 +155,8 @@ def test_markdown_contains_availability_table() -> None:
     assert "| Symbol | Interval | Available | Required | Status |" in markdown
 
 
-def test_formatter_prints_result() -> None:
-    config = CandleAvailabilityAuditConfig(symbols=("BTCUSDT",), intervals=("15m",))
+def test_formatter_prints_result(tmp_path: Path) -> None:
+    config = _config(tmp_path, symbols=("BTCUSDT",), intervals=("15m",))
     result = CandleAvailabilityAuditor(_FakeRepository({("BTCUSDT", "15m"): 1200})).run(config)
 
     output = CandleAvailabilityAuditFormatter().format(result, config=config)

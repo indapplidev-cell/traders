@@ -1,54 +1,53 @@
 # Current Task
 
-## BOOK-DATA-01 - Candle Data Availability Audit for Market Reader
+## BOOK-DATA-02 - Interval Data Preparation Decision
 
 Status: `DONE`
 
 Goal:
 
-Audit local candle availability for BOOK-L1 Market Reader and explain which `symbol/interval` combinations can support L1-L2 reports.
+Fix the technical decision for missing `1h` and `4h` candle intervals after BOOK-DATA-01 showed that `15m` is ready while `1h` and `4h` are missing from the local database.
 
 Command:
 
 ```powershell
-python -m app.cli.commands book-data-candle-availability-audit `
-  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
-  --intervals 15m,1h,4h `
-  --window-size 300 `
-  --window-count 4 `
-  --show-details
+python -m app.cli.commands book-data-interval-preparation-decision --show-details
 ```
 
 Strict command:
 
 ```powershell
-python -m app.cli.commands book-data-candle-availability-audit `
-  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
-  --intervals 15m,1h,4h `
-  --window-size 300 `
-  --window-count 4 `
-  --strict `
-  --show-details
+python -m app.cli.commands book-data-interval-preparation-decision --strict --show-details
 ```
 
 Evidence outputs:
 
 ```text
-reports/book_data/candle_availability_audit.json
-reports/book_data/candle_availability_audit.md
-reports/book_data/book_data_01_candle_availability_audit_report.md
+reports/book_data/interval_data_preparation_decision.json
+reports/book_data/interval_data_preparation_decision.md
+reports/book_data/book_data_02_interval_data_preparation_decision_report.md
 ```
 
 Implemented:
 
-- added `app/data_audit/candle_availability.py`;
-- added CLI command `book-data-candle-availability-audit`;
-- added `--symbols`, `--symbol`, `--intervals`, `--window-size`, `--window-count`;
-- added `--required-candles`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
-- added read-only candle repository count and open-time bounds methods;
-- added focused unit tests with fake repository;
-- added stable JSON and Markdown evidence files;
+- added `app/data_audit/interval_preparation_decision.py`;
+- added CLI command `book-data-interval-preparation-decision`;
+- added `--audit-json`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
+- added focused unit tests with fake audit JSON;
+- added stable JSON and Markdown decision files;
 - updated terminal guide and planning.
+
+Current decision:
+
+```text
+ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
+```
+
+Recommended option:
+
+```text
+OPTION_D_HYBRID_LATER
+```
 
 Current finding:
 
@@ -58,17 +57,25 @@ Current finding:
 4h: MISSING for BTCUSDT, ETHUSDT, SOLUSDT
 ```
 
-The current blocker for multi-interval L1-L2 reports is data availability, not the L1-L2 pipeline.
+Current workflow decision:
+
+- `15m` is the active working interval for the current Market Reader workflow;
+- `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work;
+- BOOK-L1/L2 multi-interval smoke may continue to include `1h`/`4h` only as documented missing intervals.
 
 Out of scope preserved:
 
 - no Binance download;
 - no DB writes;
 - no candle creation;
-- no 15m to 1h/4h aggregation;
+- no `15m` to `1h`/`4h` aggregation;
 - no BOOK-L1 analysis changes;
 - no BOOK-L2 context changes;
 - no JSON export semantic changes for BOOK-L1/BOOK-L2;
 - no training;
 - no label changes;
-- no trading signals.
+- no trading signals;
+- no edge validation;
+- no runtime trading integration.
+
+Next data work requires a separate explicit BOOK-DATA stage.
