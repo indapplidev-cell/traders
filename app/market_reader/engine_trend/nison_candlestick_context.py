@@ -19,6 +19,10 @@ from app.market_reader.engine_trend.schemas import (
 
 _UPPER_SHADOW_CODE = "L" "ONG_UPPER_SHADOW_REJECTION"
 _LOWER_SHADOW_CODE = "L" "ONG_LOWER_SHADOW_REJECTION"
+SHADOW_TO_BODY_SHAPE_MIN = 2.0
+OPPOSITE_SHADOW_TO_RANGE_MAX = 0.10
+HAMMER_BODY_POSITION_MIN = 0.60
+STAR_BODY_POSITION_MAX = 0.40
 
 _EVIDENCE: dict[str, tuple[str, float]] = {
     "STRONG_BULLISH_CANDLE_BODY": ("Strong bullish real body", 0.10),
@@ -40,7 +44,7 @@ _EVIDENCE: dict[str, tuple[str, float]] = {
     "CANDLE_PATTERN_NEEDS_TREND_CONTEXT": ("Candle shape cannot determine state without trend context", 0.0),
     "BULLISH_ENGULFING_CONTEXT": ("Bullish body engulfs the preceding bearish body", 0.10),
     "BEARISH_ENGULFING_CONTEXT": ("Bearish body engulfs the preceding bullish body", -0.10),
-    "ENGULFING_WITHOUT_FOLLOW_THROUGH": ("Engulfing evidence has no established follow-through", 0.0),
+    "ENGULFING_WITHOUT_FOLLOW_THROUGH": ("Engulfing follow-through is not evaluated at this stage", 0.0),
     "DARK_CLOUD_BEARISH_CONTEXT": ("Dark-cloud body relationship provides bearish context", -0.08),
     "PIERCING_BULLISH_CONTEXT": ("Piercing body relationship provides bullish context", 0.08),
     "REVERSAL_PATTERN_NEEDS_FOLLOW_THROUGH": ("Reversal-like relationship requires follow-through", 0.0),
@@ -114,16 +118,22 @@ def _single_candle_evidence(morphology: CandleMorphology) -> tuple[EngineTrendEv
         codes.append("SPINNING_TOP_INDECISION")
 
     hammer_like = (
-        morphology.lower_shadow_to_range_ratio >= 0.55
+        morphology.real_body_size > 0.0
+        and morphology.lower_shadow_size
+        >= morphology.real_body_size * SHADOW_TO_BODY_SHAPE_MIN
         and morphology.body_to_range_ratio <= 0.30
-        and max(morphology.close_position_in_range, morphology.open_position_in_range) >= 0.55
-        and morphology.upper_shadow_to_range_ratio <= 0.20
+        and min(morphology.close_position_in_range, morphology.open_position_in_range)
+        >= HAMMER_BODY_POSITION_MIN
+        and morphology.upper_shadow_to_range_ratio <= OPPOSITE_SHADOW_TO_RANGE_MAX
     )
     shooting_star_like = (
-        morphology.upper_shadow_to_range_ratio >= 0.55
+        morphology.real_body_size > 0.0
+        and morphology.upper_shadow_size
+        >= morphology.real_body_size * SHADOW_TO_BODY_SHAPE_MIN
         and morphology.body_to_range_ratio <= 0.30
-        and min(morphology.close_position_in_range, morphology.open_position_in_range) <= 0.45
-        and morphology.lower_shadow_to_range_ratio <= 0.20
+        and max(morphology.close_position_in_range, morphology.open_position_in_range)
+        <= STAR_BODY_POSITION_MAX
+        and morphology.lower_shadow_to_range_ratio <= OPPOSITE_SHADOW_TO_RANGE_MAX
     )
     if hammer_like:
         codes.extend(("HAMMER_LIKE_SHAPE_CONTEXT_REQUIRED", "CANDLE_PATTERN_NEEDS_TREND_CONTEXT"))
@@ -151,24 +161,45 @@ def _pair_evidence(previous: CandleMorphology, current: CandleMorphology) -> tup
     )
     midpoint = (previous.open + previous.close) / 2.0
     piercing = (
-        previous.is_bearish and current.is_bullish
-        and current.open < previous.close
+        previous.is_bearish and previous.is_long_body and current.is_bullish
+        and current.open < previous.low
         and midpoint < current.close < previous.open
     )
     dark_cloud = (
-        previous.is_bullish and current.is_bearish
-        and current.open > previous.close
+        previous.is_bullish and previous.is_long_body and current.is_bearish
+        and current.open > previous.high
         and previous.open < current.close < midpoint
     )
     if bullish_engulfing:
-        codes.extend(("BULLISH_ENGULFING_CONTEXT", "ENGULFING_WITHOUT_FOLLOW_THROUGH"))
+        codes.extend((
+            "BULLISH_ENGULFING_CONTEXT",
+            "ENGULFING_WITHOUT_FOLLOW_THROUGH",
+            "CANDLE_PATTERN_NEEDS_TREND_CONTEXT",
+        ))
     if bearish_engulfing:
-        codes.extend(("BEARISH_ENGULFING_CONTEXT", "ENGULFING_WITHOUT_FOLLOW_THROUGH"))
+        codes.extend((
+            "BEARISH_ENGULFING_CONTEXT",
+            "ENGULFING_WITHOUT_FOLLOW_THROUGH",
+            "CANDLE_PATTERN_NEEDS_TREND_CONTEXT",
+        ))
     if piercing:
-        codes.extend(("PIERCING_BULLISH_CONTEXT", "REVERSAL_PATTERN_NEEDS_FOLLOW_THROUGH"))
+        codes.extend((
+            "PIERCING_BULLISH_CONTEXT",
+            "REVERSAL_PATTERN_NEEDS_FOLLOW_THROUGH",
+            "CANDLE_PATTERN_NEEDS_TREND_CONTEXT",
+        ))
     if dark_cloud:
-        codes.extend(("DARK_CLOUD_BEARISH_CONTEXT", "REVERSAL_PATTERN_NEEDS_FOLLOW_THROUGH"))
-    metadata = {"previous_timestamp": previous.timestamp, "timestamp": current.timestamp}
+        codes.extend((
+            "DARK_CLOUD_BEARISH_CONTEXT",
+            "REVERSAL_PATTERN_NEEDS_FOLLOW_THROUGH",
+            "CANDLE_PATTERN_NEEDS_TREND_CONTEXT",
+        ))
+    metadata = {
+        "previous_timestamp": previous.timestamp,
+        "timestamp": current.timestamp,
+        "trend_context_evaluated": False,
+        "follow_through_evaluated": False,
+    }
     return tuple(_evidence(code, **metadata) for code in dict.fromkeys(codes))
 
 

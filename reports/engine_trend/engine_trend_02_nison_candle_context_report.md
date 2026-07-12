@@ -30,6 +30,10 @@ This stage implements the first book-based evidence block for the clean `engine_
 - doji and small-body window clusters
 - bullish and bearish body dominance
 - Nison evidence, cautious contributions, reason codes, summaries, and dictionary export
+- book-aligned spinning-top classification based on a small real body, independent of shadow size
+- hammer-like and shooting-star-like geometry with a minimum 2:1 shadow/body ratio
+- classic piercing and dark-cloud gaps beyond the preceding candle extremum
+- explicit metadata marking trend context and follow-through as not evaluated in this stage
 
 ## Reason codes added
 

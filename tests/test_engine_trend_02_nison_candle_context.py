@@ -45,12 +45,20 @@ def test_zero_range_is_safe_and_serializable() -> None:
     assert result.to_dict()["direction"] == "NEUTRAL"
 
 
-def test_doji_spinning_top_and_small_body() -> None:
-    result = analyze_candle_morphology(candle(10, 15, 5, 10.5))
-    assert result.is_doji and result.is_spinning_top and result.is_small_body
-    assert {"DOJI_INDECISION", "SPINNING_TOP_INDECISION", "SMALL_BODY_INDECISION"} <= codes(
-        analyze_nison_candle_context(candle(10, 15, 5, 10.5))
+def test_doji_and_spinning_top_are_distinct_small_body_shapes() -> None:
+    doji = analyze_candle_morphology(candle(10, 15, 5, 10.5))
+    spinning_top = analyze_candle_morphology(candle(10, 12, 9.5, 10.5))
+    assert doji.is_doji and not doji.is_spinning_top and doji.is_small_body
+    assert not spinning_top.is_doji and spinning_top.is_spinning_top
+    assert "DOJI_INDECISION" in codes(analyze_nison_candle_context(candle(10, 15, 5, 10.5)))
+    assert "SPINNING_TOP_INDECISION" in codes(
+        analyze_nison_candle_context(candle(10, 12, 9.5, 10.5))
     )
+
+
+def test_spinning_top_does_not_require_two_large_shadows() -> None:
+    result = analyze_candle_morphology(candle(10, 12, 10, 10.4))
+    assert result.is_spinning_top
 
 
 def test_strong_bodies_and_close_location_reasons() -> None:
@@ -70,6 +78,13 @@ def test_shadow_rejection_and_context_required_shapes() -> None:
     assert "CANDLE_PATTERN_NEEDS_TREND_CONTEXT" in codes(hammer) & codes(star)
 
 
+def test_shape_requires_shadow_twice_body_and_body_at_range_edge() -> None:
+    weak_lower_shadow = analyze_nison_candle_context(candle(7, 10, 5, 9))
+    middle_body = analyze_nison_candle_context(candle(5, 7, 0, 6))
+    assert "HAMMER_LIKE_SHAPE_CONTEXT_REQUIRED" not in codes(weak_lower_shadow)
+    assert "HAMMER_LIKE_SHAPE_CONTEXT_REQUIRED" not in codes(middle_body)
+
+
 @pytest.mark.parametrize(
     ("candles", "expected"),
     [
@@ -86,14 +101,37 @@ def test_engulfing_context_and_warning(candles: tuple[EngineTrendCandle, ...], e
 @pytest.mark.parametrize(
     ("candles", "expected"),
     [
-        ((candle(10, 11, 5, 6, "1"), candle(5, 9, 4, 8.5, "2")), "PIERCING_BULLISH_CONTEXT"),
-        ((candle(6, 11, 5, 10, "1"), candle(11, 12, 7, 7.5, "2")), "DARK_CLOUD_BEARISH_CONTEXT"),
+        ((candle(10, 11, 5, 6, "1"), candle(4, 9, 3, 8.5, "2")), "PIERCING_BULLISH_CONTEXT"),
+        ((candle(6, 11, 5, 10, "1"), candle(12, 13, 7, 7.5, "2")), "DARK_CLOUD_BEARISH_CONTEXT"),
     ],
 )
 def test_piercing_and_dark_cloud_need_follow_through(candles: tuple[EngineTrendCandle, ...], expected: str) -> None:
     result = analyze_nison_window_context(candles)
     assert expected in codes(result)
     assert "REVERSAL_PATTERN_NEEDS_FOLLOW_THROUGH" in codes(result)
+    assert "CANDLE_PATTERN_NEEDS_TREND_CONTEXT" in codes(result)
+
+
+def test_piercing_and_dark_cloud_require_classic_gap_beyond_shadow() -> None:
+    weak_piercing_gap = analyze_nison_window_context(
+        (candle(10, 11, 5, 6, "1"), candle(5.5, 9, 5, 8.5, "2"))
+    )
+    weak_dark_cloud_gap = analyze_nison_window_context(
+        (candle(6, 11, 5, 10, "1"), candle(10.5, 12, 7, 7.5, "2"))
+    )
+    assert "PIERCING_BULLISH_CONTEXT" not in codes(weak_piercing_gap)
+    assert "DARK_CLOUD_BEARISH_CONTEXT" not in codes(weak_dark_cloud_gap)
+
+
+def test_pair_evidence_marks_unavailable_context_as_not_evaluated() -> None:
+    result = analyze_nison_window_context(
+        (candle(9, 10, 5, 6, "1"), candle(5, 11, 4, 10, "2"))
+    )
+    engulfing = next(
+        item for item in result.window_evidence if item.code == "BULLISH_ENGULFING_CONTEXT"
+    )
+    assert engulfing.metadata["trend_context_evaluated"] is False
+    assert engulfing.metadata["follow_through_evaluated"] is False
 
 
 def test_window_clusters_body_dominance_and_evidence_collection() -> None:

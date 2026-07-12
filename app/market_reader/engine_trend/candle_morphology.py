@@ -121,10 +121,10 @@ def analyze_candle_morphology(candle: EngineTrendCandle) -> CandleMorphology:
         is_bearish=is_bearish,
         is_neutral=direction is CandleDirection.NEUTRAL,
         is_doji=body_ratio <= DOJI_BODY_TO_RANGE_MAX,
+        # Nison defines a spinning top by its small real body; shadow size is
+        # not a defining condition.  Doji remains a distinct morphology.
         is_spinning_top=(
-            body_ratio <= SPINNING_TOP_BODY_TO_RANGE_MAX
-            and upper_ratio > 0.20
-            and lower_ratio > 0.20
+            DOJI_BODY_TO_RANGE_MAX < body_ratio <= SPINNING_TOP_BODY_TO_RANGE_MAX
         ),
         is_small_body=body_ratio <= SMALL_BODY_TO_RANGE_MAX,
         is_long_body=body_ratio >= LARGE_BODY_TO_RANGE_MIN,
