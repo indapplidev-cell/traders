@@ -33,6 +33,20 @@ from app.market_reader.engine_trend.nison_pattern_catalog import (
     CATALOG_DESCRIPTIONS,
     analyze_nison_pattern_catalog,
 )
+from app.market_reader.engine_trend.altunina_trend_context import (
+    AltuninaStructureDirection,
+    AltuninaTrendContext,
+    ImpulseCorrectionSummary,
+    PriceLeg,
+    PriceLegDirection,
+    SwingPoint,
+    SwingPointType,
+    analyze_altunina_trend_context,
+    analyze_impulse_correction,
+    build_price_legs,
+    classify_structure_direction,
+    detect_swing_points,
+)
 
 __all__ = [
     "BookEvidence",
@@ -54,4 +68,16 @@ __all__ = [
     "analyze_nison_window_context",
     "CATALOG_DESCRIPTIONS",
     "analyze_nison_pattern_catalog",
+    "AltuninaStructureDirection",
+    "AltuninaTrendContext",
+    "ImpulseCorrectionSummary",
+    "PriceLeg",
+    "PriceLegDirection",
+    "SwingPoint",
+    "SwingPointType",
+    "analyze_altunina_trend_context",
+    "analyze_impulse_correction",
+    "build_price_legs",
+    "classify_structure_direction",
+    "detect_swing_points",
 ]
