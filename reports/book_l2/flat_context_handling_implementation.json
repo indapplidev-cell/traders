@@ -1,0 +1,101 @@
+{
+  "cases": [
+    {
+      "actual_l2_bucket": "FLAT_CONTEXT",
+      "actual_observation_candidate": false,
+      "actual_safe_for_runtime_trading": false,
+      "actual_skip_candidate": true,
+      "expected_l2_bucket": "FLAT_CONTEXT",
+      "expected_observation_candidate": false,
+      "expected_skip_candidate": true,
+      "findings": [
+        "FLAT_CONTEXT_IMPLEMENTED",
+        "FLAT_CONTEXT_PRESERVED",
+        "NON_DIRECTIONAL_CONTEXT",
+        "FLAT_CONTEXT_SKIP_CANDIDATE",
+        "NOT_TRADING_SIGNAL"
+      ],
+      "l1_confidence": 0.9406046268096556,
+      "l1_market_regime": "FLAT",
+      "passed": true,
+      "symbol": "BTCUSDT"
+    },
+    {
+      "actual_l2_bucket": "FLAT_CONTEXT",
+      "actual_observation_candidate": false,
+      "actual_safe_for_runtime_trading": false,
+      "actual_skip_candidate": true,
+      "expected_l2_bucket": "FLAT_CONTEXT",
+      "expected_observation_candidate": false,
+      "expected_skip_candidate": true,
+      "findings": [
+        "FLAT_CONTEXT_IMPLEMENTED",
+        "FLAT_CONTEXT_PRESERVED",
+        "NON_DIRECTIONAL_CONTEXT",
+        "FLAT_CONTEXT_SKIP_CANDIDATE",
+        "NOT_TRADING_SIGNAL"
+      ],
+      "l1_confidence": 0.8732067292955117,
+      "l1_market_regime": "FLAT",
+      "passed": true,
+      "symbol": "ETHUSDT"
+    },
+    {
+      "actual_l2_bucket": "UNKNOWN",
+      "actual_observation_candidate": false,
+      "actual_safe_for_runtime_trading": false,
+      "actual_skip_candidate": true,
+      "expected_l2_bucket": "UNKNOWN",
+      "expected_observation_candidate": false,
+      "expected_skip_candidate": true,
+      "findings": [
+        "UNKNOWN_REMAINS_DISTINCT_FROM_FLAT"
+      ],
+      "l1_confidence": 0.0,
+      "l1_market_regime": "UNKNOWN",
+      "passed": true,
+      "symbol": "SOLUSDT"
+    }
+  ],
+  "contract_version": "book_l2_flat_context_handling_implementation_v1",
+  "errors": [],
+  "global_findings": [
+    "HIGH_CONFIDENCE_FLAT_MAPS_TO_FLAT_CONTEXT",
+    "UNKNOWN_REMAINS_DISTINCT_FROM_FLAT",
+    "FLAT_CONTEXT_NOT_OBSERVATION_CANDIDATE",
+    "FLAT_CONTEXT_NOT_TRADING_SIGNAL"
+  ],
+  "implemented_behavior": {
+    "high_confidence_flat_maps_to": "FLAT_CONTEXT",
+    "observation_candidate_default": false,
+    "safe_for_runtime_trading": false,
+    "skip_candidate_default": true,
+    "unknown_remains_unknown": true
+  },
+  "report_type": "flat_context_handling_implementation",
+  "request": {
+    "high_confidence_threshold": 0.8,
+    "interval": "15m",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ]
+  },
+  "safety": {
+    "l1_logic_changed": false,
+    "l2_flat_context_rule_changed": true,
+    "live_trading_connected": false,
+    "runtime_behavior_changed": true,
+    "safe_for_runtime_trading": false,
+    "trading_signal": "NOT_EVALUATED"
+  },
+  "service": "BOOK_L2_MARKET_INTERPRETER",
+  "source_artifacts": {
+    "l1_timeline_json": "reports/book_l1/timeline_preview.json",
+    "l2_context_json": "reports/book_l2/timeline_context.json",
+    "proposal_json": "reports/book_l2/flat_context_handling_proposal.json"
+  },
+  "status": "PASS",
+  "warnings": []
+}

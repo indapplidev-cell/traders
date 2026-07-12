@@ -58,6 +58,12 @@ def test_select_skip_candidates_includes_skip_candidates() -> None:
     assert [candidate.symbol for candidate in candidates] == ["SOLUSDT"]
 
 
+def test_select_skip_candidates_includes_flat_context() -> None:
+    candidates = select_skip_candidates((_brief("BTCUSDT", bucket="FLAT_CONTEXT", grade="LOW", score=0.40),))
+
+    assert [candidate.symbol for candidate in candidates] == ["BTCUSDT"]
+
+
 def test_build_brief_state_clean_context_available() -> None:
     brief = build_market_brief((_brief("BTCUSDT", bucket="CLEAN_TREND", grade="HIGH", score=0.91),), overall_state="MIXED")
 
@@ -67,7 +73,7 @@ def test_build_brief_state_clean_context_available() -> None:
 def test_build_brief_state_flat_heavy() -> None:
     brief = build_market_brief(
         (
-            _brief("BTCUSDT", bucket="STABLE_FLAT", grade="LOW", score=0.40),
+            _brief("BTCUSDT", bucket="FLAT_CONTEXT", grade="LOW", score=0.40, skip_candidate=True),
             _brief("ETHUSDT", bucket="STABLE_FLAT", grade="LOW", score=0.39),
             _brief("SOLUSDT", bucket="TRANSITIONING", grade="LOW", score=0.37),
         ),
@@ -75,6 +81,7 @@ def test_build_brief_state_flat_heavy() -> None:
     )
 
     assert brief.brief_state == "FLAT_HEAVY_CONTEXT"
+    assert any("FLAT_CONTEXT" in point for point in brief.key_points)
 
 
 def test_build_brief_state_unstable_context() -> None:

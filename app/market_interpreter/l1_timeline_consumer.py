@@ -416,7 +416,11 @@ def classify_overall_market_context(symbols: tuple[L1TimelineSymbolContext, ...]
         bucket_counts=bucket_counts,
         skip_candidate_count=skip_candidate_count,
         clean_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.CLEAN_TREND.value),
-        flat_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.STABLE_FLAT.value),
+        flat_symbols=tuple(
+            symbol.symbol
+            for symbol in symbols
+            if symbol.bucket in {SymbolBucket.STABLE_FLAT.value, SymbolBucket.FLAT_CONTEXT.value}
+        ),
         unstable_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.UNSTABLE.value),
         unknown_symbols=tuple(symbol.symbol for symbol in symbols if symbol.bucket == SymbolBucket.UNKNOWN.value),
         quality_summary=summarize_quality_distribution(quality_scores),
@@ -642,6 +646,7 @@ def _extract_regimes(row: dict[str, Any], *, current_regime: str) -> tuple[str, 
 
 def _build_observe_reason(*, symbol: str, context_label: str) -> str:
     prefix = {
+        "FLAT_CONTEXT": "high-confidence flat context preserved from BOOK-L1 timeline",
         "STABLE_FLAT": "stable flat context from BOOK-L1 timeline",
         "CLEAN_TREND": "clean trend context from BOOK-L1 timeline",
         "TRANSITIONING": "transitioning context detected from BOOK-L1 timeline",

@@ -2,7 +2,7 @@
 
 ## Current status
 
-BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, BOOK-L1-26, BOOK-L1-27, BOOK-L1-28, and BOOK-L2-08 are complete.
+BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, BOOK-L1-26, BOOK-L1-27, BOOK-L1-28, BOOK-L2-08, and BOOK-L2-09 are complete.
 
 BOOK-DATA-01 added a read-only candle availability audit for Market Reader:
 
@@ -145,6 +145,17 @@ High-confidence L1 FLAT should be preserved as L2 FLAT_CONTEXT.
 It should remain non-observation / skip by default and must not become a trading signal.
 ```
 
+BOOK-L2-09 implementation:
+
+```text
+High-confidence L1 FLAT now maps to L2 FLAT_CONTEXT instead of UNKNOWN.
+FLAT_CONTEXT remains non-observation / skip by default.
+FLAT_CONTEXT is not a trading signal.
+safe_for_runtime_trading remains false.
+UNKNOWN remains distinct from FLAT.
+No data was downloaded, written, or aggregated.
+```
+
 Current audited condition:
 
 - `15m` is ready for BTCUSDT, ETHUSDT, and SOLUSDT;
@@ -171,7 +182,7 @@ Immediate action:
 - treat `1h` and `4h` as optional/missing;
 - do not block current BOOK-L1/BOOK-L2 work on missing `1h`/`4h`.
 - improve Market Reader quality on `15m` before expanding intervals, unless explicitly decided otherwise.
-- implement `BOOK-L2-09 — Implement FLAT Context Handling` before expanding into broader interpretation work.
+- run `BOOK-L2-10 - Post-FLAT Context Integration Review` before expanding into broader interpretation work.
 
 ## Boundary
 

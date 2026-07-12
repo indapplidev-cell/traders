@@ -1404,6 +1404,87 @@ def book_l2_flat_context_handling_proposal_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l2-flat-context-handling-implementation")
+def book_l2_flat_context_handling_implementation_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Only 15m is allowed for BOOK-L2-09."),
+    high_confidence_threshold: float = typer.Option(
+        0.80,
+        "--high-confidence-threshold",
+        help="Implementation threshold for classifying high-confidence FLAT.",
+    ),
+    proposal_json: Path = typer.Option(
+        Path("reports/book_l2/flat_context_handling_proposal.json"),
+        "--proposal-json",
+        help="Input BOOK-L2-08 FLAT context handling proposal JSON path.",
+    ),
+    l1_timeline_json: Path = typer.Option(
+        Path("reports/book_l1/timeline_preview.json"),
+        "--l1-timeline-json",
+        help="Input BOOK-L1 timeline JSON path.",
+    ),
+    l2_context_json: Path = typer.Option(
+        Path("reports/book_l2/timeline_context.json"),
+        "--l2-context-json",
+        help="Input BOOK-L2 context JSON path after implementation.",
+    ),
+    output_json: Path = typer.Option(
+        Path("reports/book_l2/flat_context_handling_implementation.json"),
+        "--output-json",
+        help="Stable JSON FLAT context handling implementation output path.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_l2/flat_context_handling_implementation.md"),
+        "--output-md",
+        help="Stable Markdown FLAT context handling implementation output path.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when the implementation smoke fails.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print per-symbol implementation findings.",
+    ),
+) -> None:
+    """Run BOOK-L2-09 FLAT context handling implementation smoke."""
+    from app.market_interpreter.flat_context_handling import (
+        FlatContextHandlingImplementationConfig,
+        FlatContextHandlingImplementationFormatter,
+        FlatContextHandlingImplementationRunner,
+        parse_flat_context_implementation_symbols,
+    )
+
+    selected_symbols = parse_flat_context_implementation_symbols(symbols, tuple(symbol or ()))
+    implementation_config = FlatContextHandlingImplementationConfig(
+        symbols=selected_symbols,
+        interval=interval,
+        high_confidence_threshold=high_confidence_threshold,
+        proposal_json=proposal_json,
+        l1_timeline_json=l1_timeline_json,
+        l2_context_json=l2_context_json,
+        output_json=output_json,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = FlatContextHandlingImplementationRunner().run(implementation_config)
+    typer.echo(FlatContextHandlingImplementationFormatter().format(result, config=implementation_config))
+    if strict and not result.passed:
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

@@ -223,14 +223,14 @@ def _classify_brief_state(
     if upper_overall_state in {"UNKNOWN", "UNKNOWN_HEAVY"} or unknown_count > len(rows) / 2:
         return "UNKNOWN_CONTEXT"
 
-    unstable_or_skip_count = sum(1 for row in rows if row.skip_candidate or row.bucket in {"UNSTABLE", "SKIP_CANDIDATE"})
-    if unstable_or_skip_count > len(rows) / 2:
-        return "UNSTABLE_CONTEXT"
-
-    flat_count = sum(1 for row in rows if row.bucket == "STABLE_FLAT")
+    flat_count = sum(1 for row in rows if row.bucket in {"STABLE_FLAT", "FLAT_CONTEXT"})
     clean_or_transitioning_count = sum(1 for row in rows if row.bucket in {"CLEAN_TREND", "CLEAN", "TRANSITIONING"})
     if flat_count > len(rows) / 2 and clean_or_transitioning_count <= len(rows) / 2:
         return "FLAT_HEAVY_CONTEXT"
+
+    unstable_or_skip_count = sum(1 for row in rows if row.skip_candidate or row.bucket in {"UNSTABLE", "SKIP_CANDIDATE"})
+    if unstable_or_skip_count > len(rows) / 2:
+        return "UNSTABLE_CONTEXT"
 
     if observation_candidates:
         return "CLEAN_CONTEXT_AVAILABLE"
@@ -256,10 +256,12 @@ def _build_key_points(
     if skip_candidates:
         points.append(f"Skip candidates: {_join_symbols(skip_candidates)}.")
 
-    if rows and len(skip_candidates) > len(rows) / 2:
-        points.append("Most symbols are skip candidates.")
-    elif brief_state == "FLAT_HEAVY_CONTEXT":
+    if brief_state == "FLAT_HEAVY_CONTEXT":
         points.append("Market context is flat-heavy.")
+        if any(row.bucket == "FLAT_CONTEXT" for row in rows):
+            points.append("High-confidence L1 FLAT is preserved as FLAT_CONTEXT.")
+    elif rows and len(skip_candidates) > len(rows) / 2:
+        points.append("Most symbols are skip candidates.")
     elif brief_state == "UNSTABLE_CONTEXT":
         points.append("Market context is unstable.")
     elif brief_state == "UNKNOWN_CONTEXT":
@@ -309,6 +311,8 @@ def _build_main_reason(symbol: object) -> str:
         return "No valid context available."
     if bucket == "UNKNOWN":
         return "Unknown current regime."
+    if bucket == "FLAT_CONTEXT":
+        return "High-confidence L1 FLAT preserved as non-directional observe-only context."
     if skip_candidate or bucket in {"UNSTABLE", "SKIP_CANDIDATE"}:
         return "Unstable context; skip candidate."
     if grade == "SKIP" or score < 0.25:
@@ -328,7 +332,7 @@ def _is_skip_brief(brief: SymbolBrief) -> bool:
     return (
         brief.skip_candidate
         or brief.quality_grade == "SKIP"
-        or brief.bucket in {"UNKNOWN", "UNSTABLE", "SKIP_CANDIDATE", "INSUFFICIENT_DATA", "ERROR"}
+        or brief.bucket in {"FLAT_CONTEXT", "UNKNOWN", "UNSTABLE", "SKIP_CANDIDATE", "INSUFFICIENT_DATA", "ERROR"}
     )
 
 

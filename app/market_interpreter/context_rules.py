@@ -6,10 +6,12 @@ from typing import Any
 
 
 DEFAULT_CLEAN_TREND_CONFIDENCE_THRESHOLD = 0.60
+DEFAULT_HIGH_CONFIDENCE_FLAT_THRESHOLD = 0.80
 
 
 class SymbolBucket(StrEnum):
     CLEAN_TREND = "CLEAN_TREND"
+    FLAT_CONTEXT = "FLAT_CONTEXT"
     STABLE_FLAT = "STABLE_FLAT"
     TRANSITIONING = "TRANSITIONING"
     UNSTABLE = "UNSTABLE"
@@ -52,6 +54,7 @@ CLEAN_TREND_TRANSITIONS = {
     "UNKNOWN_TO_DOWN",
 }
 SKIP_CANDIDATE_BUCKETS = {
+    SymbolBucket.FLAT_CONTEXT,
     SymbolBucket.UNKNOWN,
     SymbolBucket.UNSTABLE,
     SymbolBucket.INSUFFICIENT_DATA,
@@ -123,6 +126,23 @@ def classify_symbol_bucket(row: object) -> SymbolBucketDecision:
             last_transition=last_transition,
             confidence=confidence,
             reason_codes=("CURRENT_REGIME_UNKNOWN",),
+            warnings=warnings,
+        )
+
+    if regime == "FLAT" and confidence >= DEFAULT_HIGH_CONFIDENCE_FLAT_THRESHOLD:
+        return _decision(
+            symbol=symbol,
+            bucket=SymbolBucket.FLAT_CONTEXT,
+            regime=regime,
+            stability=stability,
+            last_transition=last_transition,
+            confidence=confidence,
+            reason_codes=(
+                "L1_FLAT_HIGH_CONFIDENCE",
+                "FLAT_CONTEXT_PRESERVED",
+                "NON_DIRECTIONAL_CONTEXT",
+                "NOT_TRADING_SIGNAL",
+            ),
             warnings=warnings,
         )
 
@@ -209,7 +229,9 @@ def classify_overall_market_context(decisions: tuple[SymbolBucketDecision, ...])
     if not evaluable:
         return MarketContextState.UNKNOWN
 
-    stable_flat_count = sum(1 for decision in evaluable if decision.bucket == SymbolBucket.STABLE_FLAT)
+    stable_flat_count = sum(
+        1 for decision in evaluable if decision.bucket in {SymbolBucket.STABLE_FLAT, SymbolBucket.FLAT_CONTEXT}
+    )
     if stable_flat_count > len(evaluable) / 2:
         return MarketContextState.RANGING
 

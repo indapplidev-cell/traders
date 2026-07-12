@@ -42,10 +42,11 @@ The following BOOK-L1 items are already completed:
 - BOOK-L1-27 L1-L2 regime alignment review.
 - BOOK-L1-28 FLAT context alignment diagnostic.
 - BOOK-L2-08 FLAT context handling proposal.
+- BOOK-L2-09 implement FLAT context handling.
 
 ## Remaining BOOK-L1 work
 
-BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow, BOOK-L1-27 reviewed L1-L2 regime alignment on the same stabilized evidence, BOOK-L1-28 diagnosed the FLAT context semantic gap, and BOOK-L2-08 proposed safe L2 handling. Do not expand BOOK-L1 without a separate decision.
+BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow, BOOK-L1-27 reviewed L1-L2 regime alignment on the same stabilized evidence, BOOK-L1-28 diagnosed the FLAT context semantic gap, BOOK-L2-08 proposed safe L2 handling, and BOOK-L2-09 implemented it in BOOK-L2. Do not expand BOOK-L1 without a separate decision.
 
 ### 1. BOOK-L1 quality/explainability on 15m
 
@@ -79,9 +80,16 @@ BOOK-L2-08 proposed:
 - it must not become a trading signal;
 - implementation belongs in a separate controlled stage.
 
+BOOK-L2-09 implemented:
+
+- high-confidence L1 `FLAT` now maps to L2 `FLAT_CONTEXT` instead of `UNKNOWN`;
+- `FLAT_CONTEXT` remains non-observation / skip by default;
+- `FLAT_CONTEXT` is not a trading signal and remains unsafe for runtime trading;
+- `UNKNOWN` remains distinct from `FLAT`.
+
 Next safe stages:
 
-- `BOOK-L2-09` - Implement FLAT Context Handling;
+- `BOOK-L2-10` - Post-FLAT Context Integration Review;
 - `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic;
 - `BOOK-L1-30` - Market Structure Explainability Improvement.
 

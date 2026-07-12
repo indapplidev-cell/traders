@@ -1,17 +1,17 @@
 # Current Task
 
-## BOOK-L2-08 - FLAT Context Handling Proposal
+## BOOK-L2-09 - Implement FLAT Context Handling
 
 Status: `DONE`
 
 Goal:
 
-Prepare a safe proposal for how BOOK-L2 should handle high-confidence L1 `FLAT` on the stabilized `15m` workflow without changing L1 or L2 runtime rules.
+Implement safe BOOK-L2 runtime handling for high-confidence L1 `FLAT` on the stabilized `15m` workflow.
 
 Command:
 
 ```powershell
-python -m app.cli.commands book-l2-flat-context-handling-proposal `
+python -m app.cli.commands book-l2-flat-context-handling-implementation `
   --symbols BTCUSDT,ETHUSDT,SOLUSDT `
   --interval 15m `
   --high-confidence-threshold 0.80 `
@@ -22,44 +22,27 @@ python -m app.cli.commands book-l2-flat-context-handling-proposal `
 Evidence outputs:
 
 ```text
-reports/book_l2/flat_context_handling_proposal.json
-reports/book_l2/flat_context_handling_proposal.md
-reports/book_l2/book_l2_08_flat_context_handling_proposal_report.md
+reports/book_l2/flat_context_handling_implementation.json
+reports/book_l2/flat_context_handling_implementation.md
+reports/book_l2/book_l2_09_flat_context_handling_implementation_report.md
 ```
 
 Implemented:
 
-- added `app/market_interpreter/flat_context_proposal.py`;
-- added CLI command `book-l2-flat-context-handling-proposal`;
-- added `--symbols`, `--symbol`, `--interval`, `--high-confidence-threshold`, `--flat-diagnostic-json`, `--alignment-review-json`, `--l1-timeline-json`, `--l2-context-json`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
-- added focused unit tests with fake JSON under `tests/test_book_l2_flat_context_handling_proposal.py`;
-- added stable JSON and Markdown proposal evidence files;
-- added stage report;
-- updated terminal guide and planning.
+- high-confidence L1 `FLAT` maps to L2 `FLAT_CONTEXT`;
+- `FLAT_CONTEXT` remains non-observation / skip by default;
+- `FLAT_CONTEXT` keeps `safe_for_runtime_trading = false`;
+- `FLAT_CONTEXT` keeps `trade_signal = NOT_EVALUATED`;
+- `UNKNOWN` remains distinct from `FLAT`;
+- L2 JSON consumer and API readiness accept `FLAT_CONTEXT`;
+- terminal guide and planning now include the implementation smoke.
 
-Current problem:
-
-```text
-High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
-```
-
-Proposal:
+Current real cases:
 
 ```text
-High-confidence L1 FLAT should be preserved as L2 FLAT_CONTEXT.
-It should remain non-observation / skip by default and must not become a trading signal.
-```
-
-Recommended option:
-
-```text
-OPTION_C_FLAT_CONTEXT_NOT_OBSERVATION_CANDIDATE
-```
-
-Recommended next stage:
-
-```text
-BOOK-L2-09 — Implement FLAT Context Handling
+BTCUSDT: L1 FLAT 0.94 -> L2 FLAT_CONTEXT, observation=false, skip=true
+ETHUSDT: L1 FLAT 0.87 -> L2 FLAT_CONTEXT, observation=false, skip=true
+SOLUSDT: L1 UNKNOWN 0.00 -> L2 UNKNOWN, observation=false, skip=true
 ```
 
 Out of scope preserved:
@@ -67,17 +50,18 @@ Out of scope preserved:
 - no BOOK-L1 analysis changes;
 - no BOOK-L1 composer scoring changes;
 - no BOOK-L1 threshold changes;
-- no BOOK-L2 context rule runtime changes;
-- no BOOK-L2 quality score runtime changes;
-- no BOOK-L2 brief runtime changes;
-- no JSON export semantic changes;
-- no production bucket or skip decision changes;
-- no Binance download;
+- no candle analysis changes;
+- no data download;
 - no DB writes;
-- no candle creation;
 - no `15m` to `1h`/`4h` aggregation;
 - no training;
 - no label changes;
 - no edge validation;
 - no runtime execution;
 - no BOOK-L3 start.
+
+Next safe stage:
+
+```text
+BOOK-L2-10 - Post-FLAT Context Integration Review
+```

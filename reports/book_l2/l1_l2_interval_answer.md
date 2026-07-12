@@ -33,8 +33,8 @@
 
 ### Overall
 
-- Overall state: `UNKNOWN`
-- Brief: UNKNOWN_CONTEXT
+- Overall state: `RANGING`
+- Brief: FLAT_HEAVY_CONTEXT
 
 ### Observation candidates
 
@@ -48,18 +48,18 @@
 
 ### Key points
 
-- Overall context is UNKNOWN.
+- Overall context is RANGING.
 - No clean observation candidates found.
 - Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT.
-- Most symbols are skip candidates.
-- Safety remains fail-closed: runtime action is not approved.
+- Market context is flat-heavy.
+- High-confidence L1 FLAT is preserved as FLAT_CONTEXT.
 
 ## Per-symbol Context
 
 | Rank | Symbol | Bucket | Quality | Score | Skip | Current regime | Stability | Last transition | Main reason |
 |---:|---|---|---|---:|---|---|---|---|---|
-|  | BTCUSDT | UNKNOWN | SKIP | 0.20 | true | FLAT | CHANGING | NO_CHANGE | Unknown current regime. |
-|  | ETHUSDT | UNKNOWN | SKIP | 0.20 | true | FLAT | CHANGING | NO_CHANGE | Unknown current regime. |
+|  | BTCUSDT | FLAT_CONTEXT | MEDIUM | 0.50 | true | FLAT | CHANGING | NO_CHANGE | High-confidence L1 FLAT preserved as non-directional observe-only context. |
+|  | ETHUSDT | FLAT_CONTEXT | MEDIUM | 0.50 | true | FLAT | CHANGING | NO_CHANGE | High-confidence L1 FLAT preserved as non-directional observe-only context. |
 |  | SOLUSDT | UNKNOWN | SKIP | 0.00 | true | UNKNOWN | UNSTABLE | TO_UNKNOWN | Unknown current regime. |
 
 ## Source Lineage

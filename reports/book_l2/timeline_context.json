@@ -11,7 +11,7 @@
     "input_path": "reports/book_l1/timeline_preview.json"
   },
   "result": {
-    "overall_state": "UNKNOWN",
+    "overall_state": "RANGING",
     "symbols": [
       {
         "symbol": "BTCUSDT",
@@ -22,28 +22,31 @@
         "confidence": 0.9406046268096556,
         "current_confidence": 0.9406046268096556,
         "current_trend_strength": "NONE",
-        "bucket": "UNKNOWN",
+        "bucket": "FLAT_CONTEXT",
         "skip_candidate": true,
-        "context_quality_score": 0.2,
-        "context_quality_grade": "SKIP",
+        "context_quality_score": 0.5,
+        "context_quality_grade": "MEDIUM",
         "context_rank": null,
         "context_quality_reason_codes": [
           "CONTEXT_QUALITY_SCORED",
           "QUALITY_CHANGING_CONTEXT_READABLE",
           "QUALITY_CURRENT_CONFIDENCE_HIGH",
+          "QUALITY_FLAT_CONTEXT_PRESERVED",
           "QUALITY_LAST_TRANSITION_NO_CHANGE",
           "QUALITY_SKIP_CANDIDATE_PENALTY",
-          "QUALITY_BUCKET_UNKNOWN",
-          "QUALITY_GRADE_SKIP"
+          "QUALITY_GRADE_MEDIUM"
         ],
         "context_reason_codes": [
-          "CONTEXT_RULE_UNMATCHED",
+          "L1_FLAT_HIGH_CONFIDENCE",
+          "FLAT_CONTEXT_PRESERVED",
+          "NON_DIRECTIONAL_CONTEXT",
+          "NOT_TRADING_SIGNAL",
           "SKIP_CANDIDATE_CONTEXT"
         ],
         "trade_signal": "NOT_EVALUATED",
         "safe_for_runtime_trading": false,
-        "context_label": "UNKNOWN",
-        "observe_reason": "unknown context from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
+        "context_label": "FLAT_CONTEXT",
+        "observe_reason": "high-confidence flat context preserved from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
         "warnings": []
       },
       {
@@ -55,28 +58,31 @@
         "confidence": 0.8732067292955117,
         "current_confidence": 0.8732067292955117,
         "current_trend_strength": "NONE",
-        "bucket": "UNKNOWN",
+        "bucket": "FLAT_CONTEXT",
         "skip_candidate": true,
-        "context_quality_score": 0.2,
-        "context_quality_grade": "SKIP",
+        "context_quality_score": 0.5,
+        "context_quality_grade": "MEDIUM",
         "context_rank": null,
         "context_quality_reason_codes": [
           "CONTEXT_QUALITY_SCORED",
           "QUALITY_CHANGING_CONTEXT_READABLE",
           "QUALITY_CURRENT_CONFIDENCE_HIGH",
+          "QUALITY_FLAT_CONTEXT_PRESERVED",
           "QUALITY_LAST_TRANSITION_NO_CHANGE",
           "QUALITY_SKIP_CANDIDATE_PENALTY",
-          "QUALITY_BUCKET_UNKNOWN",
-          "QUALITY_GRADE_SKIP"
+          "QUALITY_GRADE_MEDIUM"
         ],
         "context_reason_codes": [
-          "CONTEXT_RULE_UNMATCHED",
+          "L1_FLAT_HIGH_CONFIDENCE",
+          "FLAT_CONTEXT_PRESERVED",
+          "NON_DIRECTIONAL_CONTEXT",
+          "NOT_TRADING_SIGNAL",
           "SKIP_CANDIDATE_CONTEXT"
         ],
         "trade_signal": "NOT_EVALUATED",
         "safe_for_runtime_trading": false,
-        "context_label": "UNKNOWN",
-        "observe_reason": "unknown context from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
+        "context_label": "FLAT_CONTEXT",
+        "observe_reason": "high-confidence flat context preserved from BOOK-L1 timeline; observe only; no trading signal; not approved for runtime trading.",
         "warnings": []
       },
       {
@@ -116,19 +122,20 @@
     ],
     "summary": {
       "bucket_summary": {
-        "UNKNOWN": 3
+        "FLAT_CONTEXT": 2,
+        "UNKNOWN": 1
       },
       "quality_summary": {
         "HIGH": 0,
-        "MEDIUM": 0,
+        "MEDIUM": 2,
         "LOW": 0,
-        "SKIP": 3,
+        "SKIP": 1,
         "ERROR": 0
       },
       "top_ranked_symbols": []
     },
     "market_context": {
-      "overall_context": "UNKNOWN",
+      "overall_context": "ALL_FLAT",
       "symbol_count": 3,
       "ok_count": 3,
       "skipped_count": 0,
@@ -139,24 +146,26 @@
       "down_count": 0,
       "flat_count": 2,
       "unknown_count": 1,
-      "overall_state": "UNKNOWN",
+      "overall_state": "RANGING",
       "bucket_counts": {
-        "UNKNOWN": 3
+        "FLAT_CONTEXT": 2,
+        "UNKNOWN": 1
       },
       "skip_candidate_count": 3,
       "clean_symbols": [],
-      "flat_symbols": [],
+      "flat_symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
       "unstable_symbols": [],
       "unknown_symbols": [
-        "BTCUSDT",
-        "ETHUSDT",
         "SOLUSDT"
       ],
       "quality_summary": {
         "HIGH": 0,
-        "MEDIUM": 0,
+        "MEDIUM": 2,
         "LOW": 0,
-        "SKIP": 3,
+        "SKIP": 1,
         "ERROR": 0
       },
       "top_ranked_symbols": [],
@@ -165,8 +174,8 @@
       ]
     },
     "market_brief": {
-      "overall_state": "UNKNOWN",
-      "brief_state": "UNKNOWN_CONTEXT",
+      "overall_state": "RANGING",
+      "brief_state": "FLAT_HEAVY_CONTEXT",
       "observation_candidates": [],
       "skip_candidates": [
         {
@@ -180,29 +189,29 @@
         },
         {
           "symbol": "BTCUSDT",
-          "bucket": "UNKNOWN",
-          "context_quality_score": 0.2,
-          "quality_grade": "SKIP",
+          "bucket": "FLAT_CONTEXT",
+          "context_quality_score": 0.5,
+          "quality_grade": "MEDIUM",
           "context_rank": null,
           "skip_candidate": true,
-          "main_reason": "Unknown current regime."
+          "main_reason": "High-confidence L1 FLAT preserved as non-directional observe-only context."
         },
         {
           "symbol": "ETHUSDT",
-          "bucket": "UNKNOWN",
-          "context_quality_score": 0.2,
-          "quality_grade": "SKIP",
+          "bucket": "FLAT_CONTEXT",
+          "context_quality_score": 0.5,
+          "quality_grade": "MEDIUM",
           "context_rank": null,
           "skip_candidate": true,
-          "main_reason": "Unknown current regime."
+          "main_reason": "High-confidence L1 FLAT preserved as non-directional observe-only context."
         }
       ],
       "key_points": [
-        "Overall context is UNKNOWN.",
+        "Overall context is RANGING.",
         "No clean observation candidates found.",
         "Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT.",
-        "Most symbols are skip candidates.",
-        "Safety remains fail-closed: runtime action is not approved."
+        "Market context is flat-heavy.",
+        "High-confidence L1 FLAT is preserved as FLAT_CONTEXT."
       ],
       "warnings": [
         "All symbols are marked as skip candidates for clean observation."

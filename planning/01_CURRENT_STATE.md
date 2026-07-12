@@ -72,6 +72,7 @@ Latest completed implementation stages:
 | BOOK-L1-27 | DONE | L1-L2 regime alignment review / FLAT interpretation evidence added. |
 | BOOK-L1-28 | DONE | FLAT context alignment diagnostic / L2 handling proposal evidence added. |
 | BOOK-L2-08 | DONE | FLAT context handling proposal / safe L2 contract recommendation added. |
+| BOOK-L2-09 | DONE | FLAT context handling implemented: high-confidence L1 FLAT maps to L2 FLAT_CONTEXT. |
 
 Latest relevant artifacts:
 
@@ -401,6 +402,24 @@ reports/book_l2/l1_l2_multi_interval_answer.md
 This evidence report is not runtime API output; API output remains JSON.
 
 BOOK-L2-08 added a FLAT context handling proposal. It does not change runtime L2 rules, quality scoring, brief behavior, bucket decisions, or JSON export semantics. It recommends preserving high-confidence L1 `FLAT` as `FLAT_CONTEXT` in a later controlled implementation stage while keeping default non-observation / skip behavior.
+
+BOOK-L2-09 implemented safe FLAT context handling on the stabilized `15m` workflow.
+
+Current behavior:
+
+- high-confidence L1 `FLAT` maps to L2 `FLAT_CONTEXT` instead of `UNKNOWN`;
+- `FLAT_CONTEXT` remains non-observation / skip by default;
+- `FLAT_CONTEXT` is not a trading signal;
+- `safe_for_runtime_trading` remains `false`;
+- `UNKNOWN` remains distinct from `FLAT`.
+
+Current real cases:
+
+- BTCUSDT: L1 `FLAT` 0.94 -> L2 `FLAT_CONTEXT`;
+- ETHUSDT: L1 `FLAT` 0.87 -> L2 `FLAT_CONTEXT`;
+- SOLUSDT: L1 `UNKNOWN` 0.00 -> L2 `UNKNOWN`.
+
+BOOK-L2-09 did not change BOOK-L1 logic, candle analysis, data availability, training, labels, runtime execution, or BOOK-L3 scope.
 
 ## BOOK-DATA Market Reader data availability status
 

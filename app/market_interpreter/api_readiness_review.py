@@ -23,6 +23,7 @@ REQUIRED_L2_MODULES = (
     "app/market_interpreter/context_rules.py",
     "app/market_interpreter/context_quality.py",
     "app/market_interpreter/context_summary.py",
+    "app/market_interpreter/flat_context_handling.py",
     "app/market_interpreter/json_consumer.py",
     "app/market_interpreter/l1_timeline_consumer.py",
 )
@@ -32,18 +33,21 @@ REQUIRED_L2_TESTS = (
     "tests/test_book_l2_context_rules.py",
     "tests/test_book_l2_context_quality.py",
     "tests/test_book_l2_context_summary.py",
+    "tests/test_book_l2_flat_context_handling.py",
     "tests/test_book_l2_json_consumer.py",
     "tests/test_book_l2_api_readiness_review.py",
 )
 
 REQUIRED_CLI_COMMANDS = (
     "book-l2-timeline-context",
+    "book-l2-flat-context-handling-implementation",
     "book-l2-json-consumer-smoke",
     "book-l2-api-readiness-review",
 )
 
 REQUIRED_GUIDE_COMMANDS = (
     "book-l2-timeline-context",
+    "book-l2-flat-context-handling-implementation",
     "book-l2-json-consumer-smoke",
     "book-l2-api-readiness-review",
 )

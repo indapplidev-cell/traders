@@ -41,6 +41,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-06 | L1-L2 Interval Answer Smoke / Evidence Markdown | DONE | `app/integration/l1_l2_interval_answer_smoke.py` |
 | BOOK-L2-07 | Multi-Interval Answer Smoke | DONE | `app/integration/l1_l2_multi_interval_answer_smoke.py` |
 | BOOK-L2-08 | FLAT Context Handling Proposal | DONE | `app/market_interpreter/flat_context_proposal.py` |
+| BOOK-L2-09 | Implement FLAT Context Handling | DONE | `app/market_interpreter/flat_context_handling.py` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py` |
 | BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py` |
@@ -349,6 +350,30 @@ OPTION_C_FLAT_CONTEXT_NOT_OBSERVATION_CANDIDATE
 BOOK-L2-08 reads the FLAT diagnostic, L1-L2 alignment review, L1 timeline JSON, and L2 context JSON. It proposes preserving high-confidence L1 `FLAT` as `FLAT_CONTEXT`, keeping observation_candidate false and skip_candidate true by default.
 
 BOOK-L2-08 does not change context rules, quality scoring, market brief behavior, JSON export semantics, or runtime bucket decisions.
+
+## BOOK-L2-09
+
+BOOK-L2-09 implements safe FLAT context handling.
+
+High-confidence L1 `FLAT` now maps to L2 `FLAT_CONTEXT` instead of `UNKNOWN`.
+
+Runtime behavior:
+
+- `market_regime = FLAT` and confidence `>= 0.80` maps to `FLAT_CONTEXT`;
+- `FLAT_CONTEXT` remains non-observation / skip by default;
+- `safe_for_runtime_trading` remains `false`;
+- `trade_signal` remains `NOT_EVALUATED`;
+- `UNKNOWN` remains distinct from `FLAT`.
+
+Current 15m evidence:
+
+- BTCUSDT: L1 `FLAT` 0.94 -> L2 `FLAT_CONTEXT`;
+- ETHUSDT: L1 `FLAT` 0.87 -> L2 `FLAT_CONTEXT`;
+- SOLUSDT: L1 `UNKNOWN` 0.00 -> L2 `UNKNOWN`.
+
+BOOK-L2-09 does not change BOOK-L1 logic, candle analysis, data availability, training, labels, edge validation, runtime execution, or BOOK-L3 scope.
+
+Next safe stage is `BOOK-L2-10 - Post-FLAT Context Integration Review`.
 
 ## BOOK-L2-05
 

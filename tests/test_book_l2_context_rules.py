@@ -37,11 +37,22 @@ def test_classify_symbol_bucket_unknown_is_skip_candidate() -> None:
 
 
 def test_classify_symbol_bucket_stable_flat() -> None:
-    decision = classify_symbol_bucket(_row(current_regime="FLAT", stability="STABLE", last_transition="NO_CHANGE"))
+    decision = classify_symbol_bucket(_row(current_regime="FLAT", stability="STABLE", last_transition="NO_CHANGE", confidence=0.79))
 
     assert decision.bucket == SymbolBucket.STABLE_FLAT
     assert decision.skip_candidate is False
     assert decision.reason_codes == ("STABLE_FLAT_CONTEXT",)
+
+
+def test_classify_symbol_bucket_high_confidence_flat_context() -> None:
+    decision = classify_symbol_bucket(_row(current_regime="FLAT", stability="CHANGING", last_transition="NO_CHANGE", confidence=0.94))
+
+    assert decision.bucket == SymbolBucket.FLAT_CONTEXT
+    assert decision.skip_candidate is True
+    assert "L1_FLAT_HIGH_CONFIDENCE" in decision.reason_codes
+    assert "FLAT_CONTEXT_PRESERVED" in decision.reason_codes
+    assert "NON_DIRECTIONAL_CONTEXT" in decision.reason_codes
+    assert "NOT_TRADING_SIGNAL" in decision.reason_codes
 
 
 def test_classify_symbol_bucket_up_clean_trend() -> None:
@@ -69,7 +80,7 @@ def test_classify_symbol_bucket_low_confidence_transition() -> None:
 
 
 def test_classify_symbol_bucket_unstable_is_skip_candidate() -> None:
-    decision = classify_symbol_bucket(_row(current_regime="FLAT", stability="UNSTABLE"))
+    decision = classify_symbol_bucket(_row(current_regime="FLAT", stability="UNSTABLE", confidence=0.79))
 
     assert decision.bucket == SymbolBucket.UNSTABLE
     assert decision.skip_candidate is True
@@ -86,7 +97,7 @@ def test_skip_candidate_truth_table() -> None:
     }
     keep_buckets = {
         classify_symbol_bucket(_row(current_regime="UP")).bucket,
-        classify_symbol_bucket(_row(current_regime="FLAT", stability="STABLE")).bucket,
+        classify_symbol_bucket(_row(current_regime="FLAT", stability="STABLE", confidence=0.79)).bucket,
         classify_symbol_bucket(_row(current_regime="UP", last_transition="FLAT_TO_UP", confidence=0.2)).bucket,
     }
 
@@ -192,7 +203,8 @@ def test_json_export_includes_bucket_fields(tmp_path: Path) -> None:
     assert "context_quality_reason_codes" in first_symbol
     assert market_context["overall_state"] == "MIXED"
     assert market_context["bucket_counts"]["CLEAN_TREND"] == 1
-    assert market_context["skip_candidate_count"] == 1
+    assert market_context["bucket_counts"]["FLAT_CONTEXT"] == 1
+    assert market_context["skip_candidate_count"] == 2
     assert payload["result"]["summary"]["quality_summary"]["HIGH"] >= 1
     assert "top_ranked_symbols" in payload["result"]["summary"]
 

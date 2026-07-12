@@ -58,6 +58,7 @@ safe_for_runtime_trading = false
 | BOOK-L1-27 | L1-L2 Regime Alignment Review | DONE | `app/market_reader/regime_alignment_review.py`, `book-l1-l2-regime-alignment-review` |
 | BOOK-L1-28 | FLAT Context Alignment Diagnostic | DONE | `app/market_reader/flat_context_alignment.py`, `book-l1-flat-context-alignment-diagnostic` |
 | BOOK-L2-08 | FLAT Context Handling Proposal | DONE | `app/market_interpreter/flat_context_proposal.py`, `book-l2-flat-context-handling-proposal` |
+| BOOK-L2-09 | Implement FLAT Context Handling | DONE | `app/market_interpreter/flat_context_handling.py`, `book-l2-flat-context-handling-implementation` |
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py`, `book-l2-timeline-context` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py`, `book-data-candle-availability-audit` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py`, `book-data-interval-preparation-decision` |
@@ -277,13 +278,27 @@ High-confidence L1 FLAT should be preserved as L2 FLAT_CONTEXT.
 It should remain non-observation / skip by default and must not become a trading signal.
 ```
 
-Recommended next stage:
+Completed implementation stage:
 
 ```text
-BOOK-L2-09 — Implement FLAT Context Handling
+BOOK-L2-09 - Implement FLAT Context Handling
 ```
 
-BOOK-L2-08 did not change BOOK-L1 analysis logic, composer scoring, thresholds, BOOK-L2 runtime rules, quality scoring, brief rules, bucket/skip behavior, or JSON semantics.
+BOOK-L2-09 implemented the proposed BOOK-L2 interpretation boundary:
+
+- high-confidence L1 `FLAT` maps to L2 `FLAT_CONTEXT` instead of `UNKNOWN`;
+- `FLAT_CONTEXT` remains non-observation / skip by default;
+- `FLAT_CONTEXT` is not a trading signal;
+- `safe_for_runtime_trading` remains `false`;
+- `UNKNOWN` remains distinct from `FLAT`.
+
+BOOK-L2-09 did not change BOOK-L1 analysis logic, composer scoring, thresholds, candle analysis, or BOOK-L1 JSON export semantics.
+
+Next safe stage:
+
+```text
+BOOK-L2-10 - Post-FLAT Context Integration Review
+```
 
 BOOK-L2 has started as a separate layer above BOOK-L1. BOOK-L2-00 consumes the stable BOOK-L1 timeline JSON export:
 

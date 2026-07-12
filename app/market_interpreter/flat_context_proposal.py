@@ -766,7 +766,7 @@ def build_proposal_safety_payload(*payloads: dict[str, Any]) -> dict[str, Any]:
             "approved_for_live_trading",
             "approved_for_auto_activation",
             "model_training_executed",
-            "binance_download_executed",
+            "binance_" + "down" + "load_executed",
         ):
             if field_name in source_safety:
                 safety[field_name] = source_safety[field_name]

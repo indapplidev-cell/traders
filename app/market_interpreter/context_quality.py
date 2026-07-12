@@ -84,6 +84,9 @@ class ContextQualityScorer:
         if current_regime == "FLAT" and stability == "STABLE":
             score += 0.05
             reason_codes.append("QUALITY_STABLE_FLAT_REGIME")
+        if bucket == "FLAT_CONTEXT" and current_regime == "FLAT":
+            score += 0.05
+            reason_codes.append("QUALITY_FLAT_CONTEXT_PRESERVED")
         if last_transition == "NO_CHANGE":
             score += 0.05
             reason_codes.append("QUALITY_LAST_TRANSITION_NO_CHANGE")
