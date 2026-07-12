@@ -74,6 +74,20 @@ from app.market_reader.engine_trend.schwager_range_context import (
     build_support_resistance_zones,
     detect_trading_range,
 )
+from app.market_reader.engine_trend.book_evidence_matrix import (
+    BookAgreementState,
+    BookEvidenceBucket,
+    BookEvidenceMatrix,
+    ConfluenceConflictSummary,
+    DirectionalEvidenceBalance,
+    EvidenceConflictLevel,
+    EvidenceCoverageLevel,
+    EvidenceDirection,
+    analyze_book_evidence_matrix,
+    build_book_evidence_bucket,
+    build_confluence_conflict_summary,
+    build_directional_evidence_balance,
+)
 
 __all__ = [
     "BookEvidence",
@@ -132,4 +146,16 @@ __all__ = [
     "analyze_schwager_range_context",
     "build_support_resistance_zones",
     "detect_trading_range",
+    "BookAgreementState",
+    "BookEvidenceBucket",
+    "BookEvidenceMatrix",
+    "ConfluenceConflictSummary",
+    "DirectionalEvidenceBalance",
+    "EvidenceConflictLevel",
+    "EvidenceCoverageLevel",
+    "EvidenceDirection",
+    "analyze_book_evidence_matrix",
+    "build_book_evidence_bucket",
+    "build_confluence_conflict_summary",
+    "build_directional_evidence_balance",
 ]
