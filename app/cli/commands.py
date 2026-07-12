@@ -1155,6 +1155,81 @@ def book_l1_15m_quality_review_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-l1-l2-regime-alignment-review")
+def book_l1_l2_regime_alignment_review_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Only 15m is allowed for BOOK-L1-27."),
+    quality_review_json: Path = typer.Option(
+        Path("reports/book_l1/market_reader_15m_quality_review.json"),
+        "--quality-review-json",
+        help="Input BOOK-L1-26 quality review JSON path.",
+    ),
+    l1_timeline_json: Path = typer.Option(
+        Path("reports/book_l1/timeline_preview.json"),
+        "--l1-timeline-json",
+        help="Input BOOK-L1 timeline JSON path.",
+    ),
+    l2_context_json: Path = typer.Option(
+        Path("reports/book_l2/timeline_context.json"),
+        "--l2-context-json",
+        help="Input BOOK-L2 context JSON path.",
+    ),
+    output_json: Path = typer.Option(
+        Path("reports/book_l1/l1_l2_regime_alignment_review.json"),
+        "--output-json",
+        help="Stable JSON alignment review evidence output path.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_l1/l1_l2_regime_alignment_review.md"),
+        "--output-md",
+        help="Stable Markdown alignment review evidence output path.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code only when the alignment review fails.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print per-symbol alignment details.",
+    ),
+) -> None:
+    """Run BOOK-L1-27 L1-L2 regime alignment review."""
+    from app.market_reader.regime_alignment_review import (
+        RegimeAlignmentReviewConfig,
+        RegimeAlignmentReviewFormatter,
+        RegimeAlignmentReviewRunner,
+        parse_regime_alignment_symbols,
+    )
+
+    selected_symbols = parse_regime_alignment_symbols(symbols, tuple(symbol or ()))
+    review_config = RegimeAlignmentReviewConfig(
+        symbols=selected_symbols,
+        interval=interval,
+        quality_review_json=quality_review_json,
+        l1_timeline_json=l1_timeline_json,
+        l2_context_json=l2_context_json,
+        output_json=output_json,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    result = RegimeAlignmentReviewRunner().run(review_config)
+    typer.echo(RegimeAlignmentReviewFormatter().format(result, config=review_config))
+    if strict and not result.passed:
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

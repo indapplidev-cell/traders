@@ -44,6 +44,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py` |
 | BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py` |
 | BOOK-L1-26 | 15m Market Reader Quality Review | DONE | `app/market_reader/quality_review.py` |
+| BOOK-L1-27 | L1-L2 Regime Alignment Review | DONE | `app/market_reader/regime_alignment_review.py` |
 
 ## BOOK-L2-00
 
@@ -259,6 +260,16 @@ skip_candidates = SOLUSDT, BTCUSDT, ETHUSDT
 ```
 
 The L2 consume path is stable, but the current context is weak: every tested symbol is in the L2 `UNKNOWN` bucket and marked `SKIP`. This points the next work back to BOOK-L1 quality/explainability, not to L2 rule changes or a new layer.
+
+BOOK-L1-27 reviewed the interpretation boundary between L1 regimes and L2 buckets.
+
+Current finding:
+
+```text
+BTCUSDT and ETHUSDT are L1 FLAT with high confidence, but L2 reports UNKNOWN/SKIP.
+```
+
+This does not change BOOK-L2 rules. It identifies FLAT context handling and L1-to-L2 contract mapping as the next diagnostic focus before any new layer or runtime integration.
 
 ## BOOK-L2-05
 

@@ -1,22 +1,19 @@
 # Current Task
 
-## BOOK-L1-26 - 15m Market Reader Quality Review
+## BOOK-L1-27 - L1-L2 Regime Alignment Review
 
 Status: `DONE`
 
 Goal:
 
-Review the quality of the stabilized `15m` Market Reader workflow and explain why the current L2 answer remains cautious.
+Review why high-confidence L1 `FLAT` regimes become L2 `UNKNOWN/SKIP` on the stabilized `15m` workflow.
 
 Command:
 
 ```powershell
-python -m app.cli.commands book-l1-15m-quality-review `
+python -m app.cli.commands book-l1-l2-regime-alignment-review `
   --symbols BTCUSDT,ETHUSDT,SOLUSDT `
   --interval 15m `
-  --window-size 300 `
-  --window-count 4 `
-  --min-candles 50 `
   --strict `
   --show-details
 ```
@@ -24,43 +21,30 @@ python -m app.cli.commands book-l1-15m-quality-review `
 Evidence outputs:
 
 ```text
-reports/book_l1/market_reader_15m_quality_review.json
-reports/book_l1/market_reader_15m_quality_review.md
-reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md
+reports/book_l1/l1_l2_regime_alignment_review.json
+reports/book_l1/l1_l2_regime_alignment_review.md
+reports/book_l1/book_l1_27_l1_l2_regime_alignment_review_report.md
 ```
 
 Implemented:
 
-- added `app/market_reader/quality_review.py`;
-- added CLI command `book-l1-15m-quality-review`;
-- added `--symbols`, `--symbol`, `--interval`, `--window-size`, `--window-count`, `--min-candles`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
-- added focused unit tests with fake JSON under `tests/test_book_l1_15m_quality_review.py`;
-- added stable JSON and Markdown quality review evidence files;
+- added `app/market_reader/regime_alignment_review.py`;
+- added CLI command `book-l1-l2-regime-alignment-review`;
+- added `--symbols`, `--symbol`, `--interval`, `--quality-review-json`, `--l1-timeline-json`, `--l2-context-json`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
+- added focused unit tests with fake JSON under `tests/test_book_l1_l2_regime_alignment_review.py`;
+- added stable JSON and Markdown alignment evidence files;
 - updated terminal guide and planning.
 
-Current 15m answer:
+Current 15m alignment finding:
 
 ```text
-Overall state: UNKNOWN
-Observation candidates: none
-Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT
+BTCUSDT and ETHUSDT are L1 FLAT with high confidence, but L2 reports UNKNOWN/SKIP.
+SOLUSDT is L1 UNKNOWN and propagates to L2 SKIP.
 ```
-
-Main quality findings:
-
-- `ALL_SYMBOLS_SKIPPED`;
-- `NO_OBSERVATION_CANDIDATES`;
-- `STABLE_PIPELINE_BUT_WEAK_CONTEXT`.
-
-Per-symbol summary:
-
-- BTCUSDT: L1 current regime `FLAT`, confidence `0.94`, L2 bucket `UNKNOWN`, L2 grade `SKIP`;
-- ETHUSDT: L1 current regime `FLAT`, confidence `0.87`, L2 bucket `UNKNOWN`, L2 grade `SKIP`;
-- SOLUSDT: L1 current regime `UNKNOWN`, confidence `0.00`, L2 bucket `UNKNOWN`, L2 grade `SKIP`.
 
 Interpretation:
 
-BOOK-L1-26 confirms that the current 15m pipeline is stable, but the readable market context is still weak. The issue is quality/explainability, not pipeline execution.
+The pipeline is technically stable. The next issue is alignment between L1 regime output and L2 context/skip interpretation, especially FLAT context handling and L1-to-L2 contract mapping.
 
 Out of scope preserved:
 
@@ -76,4 +60,4 @@ Out of scope preserved:
 - no edge validation;
 - no runtime execution.
 
-The next work should remain in BOOK-L1 quality/explainability on `15m`, especially reason-code inspection and UNKNOWN/FLAT reduction diagnostics.
+The next safe stage should be `BOOK-L1-28 - FLAT Context Alignment Diagnostic`.

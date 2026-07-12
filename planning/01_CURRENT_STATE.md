@@ -30,6 +30,7 @@ It currently supports:
 - read-only runtime JSON consumer smoke through `book-l1-json-consumer-smoke`.
 - API readiness final review through `book-l1-api-readiness-review`.
 - 15m Market Reader quality review through `book-l1-15m-quality-review`.
+- L1-L2 regime alignment review through `book-l1-l2-regime-alignment-review`.
 
 Current safety contract:
 
@@ -66,6 +67,7 @@ Latest completed implementation stages:
 | BOOK-L1-24 | DONE | Runtime JSON consumer / API reader smoke added. |
 | BOOK-L1-25 | DONE | API readiness final review / Layer 1 freeze candidate added. |
 | BOOK-L1-26 | DONE | 15m Market Reader quality review / weak context evidence added. |
+| BOOK-L1-27 | DONE | L1-L2 regime alignment review / FLAT interpretation evidence added. |
 
 Latest relevant artifacts:
 
@@ -85,6 +87,9 @@ Latest relevant artifacts:
 - `reports/book_l1/market_reader_15m_quality_review.json`
 - `reports/book_l1/market_reader_15m_quality_review.md`
 - `reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md`
+- `reports/book_l1/l1_l2_regime_alignment_review.json`
+- `reports/book_l1/l1_l2_regime_alignment_review.md`
+- `reports/book_l1/book_l1_27_l1_l2_regime_alignment_review_report.md`
 - `reports/book_l1/current_preview.json`
 - `reports/book_l1/multi_preview.json`
 - `reports/book_l1/history_preview.json`
@@ -177,6 +182,21 @@ Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT
 ```
 
 The pipeline is stable, but the readable market context is weak. BTCUSDT and ETHUSDT are currently `FLAT` in L1 with high confidence while L2 still marks them `UNKNOWN` / `SKIP`; SOLUSDT is `UNKNOWN` with low confidence. The next work should remain in BOOK-L1 reason-code inspection and UNKNOWN/FLAT reduction diagnostics.
+
+BOOK-L1-27 reviewed L1-L2 regime alignment on the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l1-l2-regime-alignment-review --strict --show-details
+```
+
+Current finding:
+
+```text
+BTCUSDT and ETHUSDT are L1 FLAT with high confidence, but L2 reports UNKNOWN/SKIP.
+SOLUSDT is L1 UNKNOWN and propagates to L2 SKIP.
+```
+
+This points to FLAT context handling and L1-to-L2 contract mapping as the next safe focus before changing core Market Reader logic.
 
 ## BOOK-L2 Market Interpreter status
 

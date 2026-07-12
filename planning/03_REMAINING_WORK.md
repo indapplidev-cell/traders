@@ -39,10 +39,11 @@ The following BOOK-L1 items are already completed:
 - BOOK-DATA-02 interval data preparation decision.
 - BOOK-DATA-03C 15m-only Market Reader workflow stabilization.
 - BOOK-L1-26 15m Market Reader quality review.
+- BOOK-L1-27 L1-L2 regime alignment review.
 
 ## Remaining BOOK-L1 work
 
-BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow. Do not expand BOOK-L1 without a separate decision.
+BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow, and BOOK-L1-27 reviewed L1-L2 regime alignment on the same stabilized evidence. Do not expand BOOK-L1 without a separate decision.
 
 ### 1. BOOK-L1 quality/explainability on 15m
 
@@ -55,11 +56,18 @@ BOOK-L1-26 confirmed:
 - BTCUSDT and ETHUSDT are L1 `FLAT` with high confidence but L2 `UNKNOWN` / `SKIP`;
 - SOLUSDT is L1 `UNKNOWN` with low confidence.
 
+BOOK-L1-27 confirmed:
+
+- L2 receives `FLAT` for BTCUSDT and ETHUSDT;
+- L2 bucket still becomes `UNKNOWN`;
+- L2 marks both high-confidence FLAT symbols as skip candidates;
+- the next issue is FLAT context handling and L1-to-L2 contract interpretation.
+
 Next safe stages:
 
-- `BOOK-L1-27` - 15m Reason Codes Inspection;
-- `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic;
-- `BOOK-L1-29` - Market Structure Explainability Improvement.
+- `BOOK-L1-28` - FLAT Context Alignment Diagnostic;
+- `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic;
+- `BOOK-L1-30` - Market Structure Explainability Improvement.
 
 ### 2. Official BOOK-L1 freeze
 
@@ -160,6 +168,7 @@ The following items are no longer remaining work:
 - BOOK-DATA interval data preparation decision.
 - BOOK-DATA 15m-only Market Reader stabilization.
 - BOOK-L1 15m Market Reader quality review.
+- BOOK-L1 L1-L2 regime alignment review.
 
 ## BOOK-L1-22 export rule
 

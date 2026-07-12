@@ -2,7 +2,7 @@
 
 ## Current status
 
-BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, and BOOK-L1-26 are complete.
+BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, BOOK-L1-26, and BOOK-L1-27 are complete.
 
 BOOK-DATA-01 added a read-only candle availability audit for Market Reader:
 
@@ -78,6 +78,24 @@ reports/book_l1/market_reader_15m_quality_review.md
 reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md
 ```
 
+BOOK-L1-27 reviewed L1-L2 regime alignment on the stabilized `15m` evidence:
+
+```powershell
+python -m app.cli.commands book-l1-l2-regime-alignment-review `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --strict `
+  --show-details
+```
+
+Stable alignment outputs:
+
+```text
+reports/book_l1/l1_l2_regime_alignment_review.json
+reports/book_l1/l1_l2_regime_alignment_review.md
+reports/book_l1/book_l1_27_l1_l2_regime_alignment_review_report.md
+```
+
 ## Finding
 
 The current blocker for multi-interval L1-L2 reports is data availability, not the L1-L2 pipeline.
@@ -87,6 +105,7 @@ The current blocker for useful 15m interpretation is Market Reader quality/expla
 - L2 overall state is `UNKNOWN`;
 - observation candidates are `none`;
 - all tested symbols are skip candidates.
+- BTCUSDT and ETHUSDT are L1 `FLAT` with high confidence, but L2 reports `UNKNOWN/SKIP`.
 
 Current audited condition:
 
@@ -141,7 +160,7 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-L1-27` - 15m Reason Codes Improvement;
-- `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic.
+- `BOOK-L1-28` - FLAT Context Alignment Diagnostic;
+- `BOOK-L1-29` - 15m UNKNOWN/FLAT Reduction Diagnostic.
 
 Do not start 1h/4h expansion before the 15m quality findings are addressed or explicitly accepted.

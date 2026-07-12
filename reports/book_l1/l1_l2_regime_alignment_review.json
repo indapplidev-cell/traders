@@ -1,0 +1,232 @@
+{
+  "contract_version": "book_l1_l2_regime_alignment_review_v1",
+  "errors": [],
+  "overall": {
+    "global_findings": [
+      "L2_OVERALL_UNKNOWN_DESPITE_L1_FLAT_SYMBOLS",
+      "L2_SKIPS_FLAT_CONTEXT",
+      "ALL_SYMBOLS_SKIPPED",
+      "NO_OBSERVATION_CANDIDATES",
+      "CONTRACT_ALIGNMENT_NEEDS_REVIEW"
+    ],
+    "l2_overall_state": "UNKNOWN"
+  },
+  "recommended_next_stage": "BOOK-L1-28 - FLAT Context Alignment Diagnostic",
+  "report_type": "l1_l2_regime_alignment_review",
+  "request": {
+    "interval": "15m",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ]
+  },
+  "safety": {
+    "approved_for_auto_activation": false,
+    "approved_for_live_trading": false,
+    "binance_download_executed": false,
+    "l2_rules_changed": false,
+    "live_trading_connected": false,
+    "market_logic_changed": false,
+    "model_training_executed": false,
+    "orders_enabled": false,
+    "read_only": true,
+    "safe_for_runtime_trading": false,
+    "trade_signal": "NOT_EVALUATED",
+    "traders_core_connected": false,
+    "trading_signal": "NOT_EVALUATED"
+  },
+  "service": "BOOK_L1_MARKET_READER",
+  "source_artifacts": {
+    "l1_timeline_json": "reports/book_l1/timeline_preview.json",
+    "l2_context_json": "reports/book_l2/timeline_context.json",
+    "quality_review_json": "reports/book_l1/market_reader_15m_quality_review.json"
+  },
+  "status": "PASS_WITH_ALIGNMENT_WARNINGS",
+  "symbols": [
+    {
+      "alignment_status": "WARNING",
+      "findings": [
+        "L1_FLAT_HIGH_CONFIDENCE_BUT_L2_UNKNOWN_SKIP",
+        "L2_SKIPS_FLAT_CONTEXT",
+        "L2_FLAT_CONTEXT_NOT_OBSERVABLE",
+        "CONTRACT_ALIGNMENT_NEEDS_REVIEW",
+        "L2_QUALITY_LOW_DESPITE_L1_CONFIDENCE"
+      ],
+      "interpretation": "L1 classifies the symbol as high-confidence FLAT, but L2 keeps the symbol in UNKNOWN/SKIP context.",
+      "l1_confidence": 0.9406046268096556,
+      "l1_directional_bias": "NEUTRAL",
+      "l1_last_transition": "NO_CHANGE",
+      "l1_reason_codes": [
+        "MARKET_READER_ORCHESTRATED",
+        "MARKET_REGIME_COMPOSED",
+        "COMPOSER_FLAT_RANGE_DOMINANT",
+        "UP_TREND_STRUCTURE",
+        "HIGHER_HIGHS",
+        "HIGHER_LOWS",
+        "RANGE_STRUCTURE_DETECTED",
+        "RANGE_WIDTH_ACCEPTABLE",
+        "LOW_CLOSE_DRIFT_INSIDE_RANGE",
+        "SUPPORT_TOUCHES_DETECTED",
+        "RESISTANCE_TOUCHES_DETECTED",
+        "NO_CLOSE_BREAKOUT",
+        "PRICE_INSIDE_RANGE",
+        "EMA_TREND_MIXED",
+        "FAST_EMA_BELOW_SLOW_EMA",
+        "PRICE_BELOW_EMAS",
+        "ATR_NORMAL_VOLATILITY"
+      ],
+      "l1_regime": "FLAT",
+      "l1_timeline_stability": "CHANGING",
+      "l1_trend_strength": "NONE",
+      "l2_bucket": "UNKNOWN",
+      "l2_context_quality_reason_codes": [
+        "CONTEXT_QUALITY_SCORED",
+        "QUALITY_CHANGING_CONTEXT_READABLE",
+        "QUALITY_CURRENT_CONFIDENCE_HIGH",
+        "QUALITY_LAST_TRANSITION_NO_CHANGE",
+        "QUALITY_SKIP_CANDIDATE_PENALTY",
+        "QUALITY_BUCKET_UNKNOWN",
+        "QUALITY_GRADE_SKIP"
+      ],
+      "l2_context_reason_codes": [
+        "CONTEXT_RULE_UNMATCHED",
+        "SKIP_CANDIDATE_CONTEXT"
+      ],
+      "l2_main_reason": "Unknown current regime.",
+      "l2_overall_state": "UNKNOWN",
+      "l2_quality_grade": "SKIP",
+      "l2_quality_score": 0.2,
+      "l2_received_confidence": 0.9406046268096556,
+      "l2_received_regime": "FLAT",
+      "l2_skip_candidate": true,
+      "recommended_next_focus": [
+        "inspect L2 flat-context handling",
+        "decide whether high-confidence FLAT can be observe-only context",
+        "inspect L1-to-L2 contract mapping for market_regime/confidence",
+        "inspect L2 quality scoring for high-confidence FLAT"
+      ],
+      "symbol": "BTCUSDT"
+    },
+    {
+      "alignment_status": "WARNING",
+      "findings": [
+        "L1_FLAT_HIGH_CONFIDENCE_BUT_L2_UNKNOWN_SKIP",
+        "L2_SKIPS_FLAT_CONTEXT",
+        "L2_FLAT_CONTEXT_NOT_OBSERVABLE",
+        "CONTRACT_ALIGNMENT_NEEDS_REVIEW",
+        "L2_QUALITY_LOW_DESPITE_L1_CONFIDENCE"
+      ],
+      "interpretation": "L1 classifies the symbol as high-confidence FLAT, but L2 keeps the symbol in UNKNOWN/SKIP context.",
+      "l1_confidence": 0.8732067292955117,
+      "l1_directional_bias": "NEUTRAL",
+      "l1_last_transition": "NO_CHANGE",
+      "l1_reason_codes": [
+        "MARKET_READER_ORCHESTRATED",
+        "MARKET_REGIME_COMPOSED",
+        "COMPOSER_FLAT_RANGE_DOMINANT",
+        "UP_TREND_STRUCTURE",
+        "HIGHER_HIGHS",
+        "HIGHER_LOWS",
+        "RANGE_STRUCTURE_DETECTED",
+        "RANGE_WIDTH_ACCEPTABLE",
+        "LOW_CLOSE_DRIFT_INSIDE_RANGE",
+        "SUPPORT_TOUCHES_DETECTED",
+        "RESISTANCE_TOUCHES_DETECTED",
+        "NO_CLOSE_BREAKOUT",
+        "PRICE_INSIDE_RANGE",
+        "EMA_TREND_MIXED",
+        "FAST_EMA_ABOVE_SLOW_EMA",
+        "PRICE_AROUND_EMA",
+        "ATR_NORMAL_VOLATILITY"
+      ],
+      "l1_regime": "FLAT",
+      "l1_timeline_stability": "CHANGING",
+      "l1_trend_strength": "NONE",
+      "l2_bucket": "UNKNOWN",
+      "l2_context_quality_reason_codes": [
+        "CONTEXT_QUALITY_SCORED",
+        "QUALITY_CHANGING_CONTEXT_READABLE",
+        "QUALITY_CURRENT_CONFIDENCE_HIGH",
+        "QUALITY_LAST_TRANSITION_NO_CHANGE",
+        "QUALITY_SKIP_CANDIDATE_PENALTY",
+        "QUALITY_BUCKET_UNKNOWN",
+        "QUALITY_GRADE_SKIP"
+      ],
+      "l2_context_reason_codes": [
+        "CONTEXT_RULE_UNMATCHED",
+        "SKIP_CANDIDATE_CONTEXT"
+      ],
+      "l2_main_reason": "Unknown current regime.",
+      "l2_overall_state": "UNKNOWN",
+      "l2_quality_grade": "SKIP",
+      "l2_quality_score": 0.2,
+      "l2_received_confidence": 0.8732067292955117,
+      "l2_received_regime": "FLAT",
+      "l2_skip_candidate": true,
+      "recommended_next_focus": [
+        "inspect L2 flat-context handling",
+        "decide whether high-confidence FLAT can be observe-only context",
+        "inspect L1-to-L2 contract mapping for market_regime/confidence",
+        "inspect L2 quality scoring for high-confidence FLAT"
+      ],
+      "symbol": "ETHUSDT"
+    },
+    {
+      "alignment_status": "WARNING",
+      "findings": [
+        "L1_UNKNOWN_PROPAGATED_TO_L2_SKIP"
+      ],
+      "interpretation": "L1 UNKNOWN is propagated to L2 skip context.",
+      "l1_confidence": 0.0,
+      "l1_directional_bias": "UNKNOWN",
+      "l1_last_transition": "TO_UNKNOWN",
+      "l1_reason_codes": [
+        "MARKET_READER_ORCHESTRATED",
+        "MARKET_REGIME_COMPOSED",
+        "COMPOSER_MIXED_OR_WEAK_CONTEXT",
+        "UP_TREND_STRUCTURE",
+        "HIGHER_HIGHS",
+        "HIGHER_LOWS",
+        "NOT_RANGE_STRUCTURE",
+        "WEAK_BOUNDARY_TOUCHES",
+        "NO_CLOSE_BREAKOUT",
+        "PRICE_INSIDE_RANGE",
+        "EMA_TREND_MIXED",
+        "FAST_EMA_ABOVE_SLOW_EMA",
+        "PRICE_AROUND_EMA",
+        "ATR_NORMAL_VOLATILITY"
+      ],
+      "l1_regime": "UNKNOWN",
+      "l1_timeline_stability": "UNSTABLE",
+      "l1_trend_strength": "UNKNOWN",
+      "l2_bucket": "UNKNOWN",
+      "l2_context_quality_reason_codes": [
+        "CONTEXT_QUALITY_SCORED",
+        "QUALITY_SKIP_CANDIDATE_PENALTY",
+        "QUALITY_BUCKET_UNKNOWN",
+        "QUALITY_CURRENT_REGIME_UNKNOWN",
+        "QUALITY_UNSTABLE_CONTEXT",
+        "QUALITY_TRANSITION_TO_UNKNOWN",
+        "QUALITY_LOW_CONFIDENCE",
+        "QUALITY_GRADE_SKIP"
+      ],
+      "l2_context_reason_codes": [
+        "CURRENT_REGIME_UNKNOWN",
+        "SKIP_CANDIDATE_CONTEXT"
+      ],
+      "l2_main_reason": "Unknown current regime.",
+      "l2_overall_state": "UNKNOWN",
+      "l2_quality_grade": "SKIP",
+      "l2_quality_score": 0.0,
+      "l2_received_confidence": 0.0,
+      "l2_received_regime": "UNKNOWN",
+      "l2_skip_candidate": true,
+      "recommended_next_focus": [
+        "confirm UNKNOWN propagation remains expected"
+      ],
+      "symbol": "SOLUSDT"
+    }
+  ],
+  "warnings": []
+}
