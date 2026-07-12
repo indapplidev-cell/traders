@@ -1,0 +1,49 @@
+{
+  "stage": "ENGINE-TREND-14",
+  "status": "DECISION_RECORDED",
+  "baseline": {
+    "latest_commit_before_stage": "d264d57",
+    "postgres_source_confirmed": true,
+    "db_cli_preview_confirmed": true,
+    "acceptance_pack_confirmed": true
+  },
+  "current_acceptance_result": {
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    "interval": "15m",
+    "candles_per_symbol": 96,
+    "boundary_status": "READY",
+    "market_regime": "UNKNOWN",
+    "confidence": 0.3,
+    "warnings_count": 0,
+    "errors_count": 0
+  },
+  "known_limitations": [
+    "only_latest_96_candle_windows_checked",
+    "only_btcusdt_ethusdt_solusdt_checked",
+    "only_15m_checked",
+    "1h_and_4h_absent_in_latest_audit",
+    "all_acceptance_results_unknown_0_3",
+    "no_labeled_historical_windows",
+    "no_visual_or_manual_benchmark",
+    "no_cross_regime_validation_matrix",
+    "no_false_classification_statistics",
+    "no_window_length_comparison",
+    "no_historical_regime_coverage",
+    "no_confidence_stability_evaluation",
+    "no_market_reading_quality_validation_yet",
+    "acceptance_pack_validates_pipeline_not_accuracy",
+    "safety_contract_is_not_trading_readiness",
+    "no_trading_edge_claimed"
+  ],
+  "decision_options": {
+    "A": "stop_core_development_keep_cli_baseline",
+    "B": "tune_core_immediately_due_to_unknown",
+    "C": "build_historical_validation_pack_before_core_changes",
+    "D": "expand_symbols_intervals_before_validation"
+  },
+  "selected_decision": "C",
+  "next_stage": "ENGINE-TREND-15 — Historical Market Reading Validation Pack",
+  "core_changes_allowed_before_validation": false,
+  "trading_claims_allowed": false,
+  "runtime_trading_allowed": false
+}
