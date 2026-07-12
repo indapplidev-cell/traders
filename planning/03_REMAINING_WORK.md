@@ -38,12 +38,30 @@ The following BOOK-L1 items are already completed:
 - BOOK-DATA-01 candle data availability audit for Market Reader.
 - BOOK-DATA-02 interval data preparation decision.
 - BOOK-DATA-03C 15m-only Market Reader workflow stabilization.
+- BOOK-L1-26 15m Market Reader quality review.
 
 ## Remaining BOOK-L1 work
 
-BOOK-L1 is now a Layer 1 Freeze Candidate. Do not expand BOOK-L1 without a separate decision.
+BOOK-L1 is now a Layer 1 Freeze Candidate. BOOK-L1-26 added a read-only quality review for the active `15m` workflow. Do not expand BOOK-L1 without a separate decision.
 
-### 1. Official BOOK-L1 freeze
+### 1. BOOK-L1 quality/explainability on 15m
+
+BOOK-L1-26 confirmed:
+
+- the current 15m pipeline is stable;
+- L2 overall state is `UNKNOWN`;
+- observation candidates are `none`;
+- all tested symbols are skip candidates;
+- BTCUSDT and ETHUSDT are L1 `FLAT` with high confidence but L2 `UNKNOWN` / `SKIP`;
+- SOLUSDT is L1 `UNKNOWN` with low confidence.
+
+Next safe stages:
+
+- `BOOK-L1-27` - 15m Reason Codes Inspection;
+- `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic;
+- `BOOK-L1-29` - Market Structure Explainability Improvement.
+
+### 2. Official BOOK-L1 freeze
 
 Possible next stage:
 
@@ -54,7 +72,7 @@ Possible next stage:
 - confirm fail-closed safety remains mandatory;
 - confirm trading execution is prohibited.
 
-### 2. BOOK-L2 status
+### 3. BOOK-L2 status
 
 BOOK-L2-05 completed API readiness final review.
 
@@ -70,7 +88,7 @@ The system can now run L1 timeline export, consume it through L2, and produce a 
 
 This evidence report is not runtime API output; API output remains JSON.
 
-### 3. Possible BOOK-L3 discussion only
+### 4. Possible BOOK-L3 discussion only
 
 Next possible layer: BOOK-L3, but only after explicit approval.
 
@@ -82,14 +100,16 @@ Before any BOOK-L3 implementation, decide whether the next layer is:
 - a preparation layer before trading logic;
 - or whether trading logic remains prohibited.
 
-### 4. Optional future maintenance only
+BOOK-L3 should not start before the 15m Market Reader quality/explainability findings are addressed or explicitly accepted.
+
+### 5. Optional future maintenance only
 
 - bug fixes found by review can be logged as follow-up;
 - documentation can be clarified;
 - command help can be cleaned up;
 - market analysis logic should not change during freeze handling.
 
-### 5. Future data preparation stages
+### 6. Future data preparation stages
 
 BOOK-DATA-03C stabilized the current 15m-only Market Reader workflow.
 
@@ -105,7 +125,6 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-L1-26` - 15m Market Reader Quality Review;
 - `BOOK-L1-27` - 15m Reason Codes Improvement;
 - `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic.
 
@@ -140,6 +159,7 @@ The following items are no longer remaining work:
 - BOOK-DATA candle availability audit / data gap evidence.
 - BOOK-DATA interval data preparation decision.
 - BOOK-DATA 15m-only Market Reader stabilization.
+- BOOK-L1 15m Market Reader quality review.
 
 ## BOOK-L1-22 export rule
 

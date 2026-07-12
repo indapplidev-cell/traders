@@ -1,17 +1,17 @@
 # Current Task
 
-## BOOK-DATA-03C - 15m-Only Market Reader Stabilization
+## BOOK-L1-26 - 15m Market Reader Quality Review
 
 Status: `DONE`
 
 Goal:
 
-Stabilize the current 15m-only Market Reader workflow after BOOK-DATA-02 fixed `15m` as the active interval.
+Review the quality of the stabilized `15m` Market Reader workflow and explain why the current L2 answer remains cautious.
 
 Command:
 
 ```powershell
-python -m app.cli.commands book-data-15m-stabilization `
+python -m app.cli.commands book-l1-15m-quality-review `
   --symbols BTCUSDT,ETHUSDT,SOLUSDT `
   --interval 15m `
   --window-size 300 `
@@ -24,59 +24,43 @@ python -m app.cli.commands book-data-15m-stabilization `
 Evidence outputs:
 
 ```text
-reports/book_data/market_reader_15m_stabilization.json
-reports/book_data/market_reader_15m_stabilization.md
-reports/book_data/book_data_03c_15m_only_market_reader_stabilization_report.md
+reports/book_l1/market_reader_15m_quality_review.json
+reports/book_l1/market_reader_15m_quality_review.md
+reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md
 ```
 
 Implemented:
 
-- added `app/data_audit/market_reader_15m_stabilization.py`;
-- added CLI command `book-data-15m-stabilization`;
+- added `app/market_reader/quality_review.py`;
+- added CLI command `book-l1-15m-quality-review`;
 - added `--symbols`, `--symbol`, `--interval`, `--window-size`, `--window-count`, `--min-candles`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
-- added focused unit tests with fake services and fake JSON;
-- added stable JSON and Markdown stabilization files;
+- added focused unit tests with fake JSON under `tests/test_book_l1_15m_quality_review.py`;
+- added stable JSON and Markdown quality review evidence files;
 - updated terminal guide and planning.
 
-Current decision:
+Current 15m answer:
 
 ```text
-ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
+Overall state: UNKNOWN
+Observation candidates: none
+Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT
 ```
 
-Recommended option:
+Main quality findings:
 
-```text
-OPTION_D_HYBRID_LATER
-```
+- `ALL_SYMBOLS_SKIPPED`;
+- `NO_OBSERVATION_CANDIDATES`;
+- `STABLE_PIPELINE_BUT_WEAK_CONTEXT`.
 
-Current finding:
+Per-symbol summary:
 
-```text
-15m: READY for BTCUSDT, ETHUSDT, SOLUSDT
-1h: MISSING for BTCUSDT, ETHUSDT, SOLUSDT
-4h: MISSING for BTCUSDT, ETHUSDT, SOLUSDT
-```
+- BTCUSDT: L1 current regime `FLAT`, confidence `0.94`, L2 bucket `UNKNOWN`, L2 grade `SKIP`;
+- ETHUSDT: L1 current regime `FLAT`, confidence `0.87`, L2 bucket `UNKNOWN`, L2 grade `SKIP`;
+- SOLUSDT: L1 current regime `UNKNOWN`, confidence `0.00`, L2 bucket `UNKNOWN`, L2 grade `SKIP`.
 
-Current workflow decision:
+Interpretation:
 
-- `15m` is the active working interval for the current Market Reader workflow;
-- `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work;
-- BOOK-DATA-03C stabilized the current DATA -> BOOK-L1 -> BOOK-L2 path on `15m`.
-
-Stabilized checks:
-
-- interval policy 15m only;
-- candle availability on 15m;
-- interval preparation decision;
-- L1 timeline export on 15m;
-- L1 JSON consumer strict;
-- L2 context export on 15m;
-- L2 JSON consumer strict;
-- L2 API readiness strict;
-- L1-L2 interval answer smoke on 15m;
-- safety fail-closed;
-- evidence writing.
+BOOK-L1-26 confirms that the current 15m pipeline is stable, but the readable market context is still weak. The issue is quality/explainability, not pipeline execution.
 
 Out of scope preserved:
 
@@ -89,8 +73,7 @@ Out of scope preserved:
 - no JSON export semantic changes for BOOK-L1/BOOK-L2;
 - no training;
 - no label changes;
-- no trading signals;
 - no edge validation;
-- no runtime trading integration.
+- no runtime execution.
 
-The next work should improve Market Reader quality on 15m before expanding intervals, unless explicitly decided otherwise.
+The next work should remain in BOOK-L1 quality/explainability on `15m`, especially reason-code inspection and UNKNOWN/FLAT reduction diagnostics.

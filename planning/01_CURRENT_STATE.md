@@ -29,6 +29,7 @@ It currently supports:
 - unified terminal command guide through `book-l1-guide`.
 - read-only runtime JSON consumer smoke through `book-l1-json-consumer-smoke`.
 - API readiness final review through `book-l1-api-readiness-review`.
+- 15m Market Reader quality review through `book-l1-15m-quality-review`.
 
 Current safety contract:
 
@@ -64,6 +65,7 @@ Latest completed implementation stages:
 | BOOK-L1-23 | DONE | Terminal UX cleanup / unified command guide added. |
 | BOOK-L1-24 | DONE | Runtime JSON consumer / API reader smoke added. |
 | BOOK-L1-25 | DONE | API readiness final review / Layer 1 freeze candidate added. |
+| BOOK-L1-26 | DONE | 15m Market Reader quality review / weak context evidence added. |
 
 Latest relevant artifacts:
 
@@ -80,6 +82,9 @@ Latest relevant artifacts:
 - `reports/book_l1/book_l1_23_terminal_ux_cleanup_report.md`
 - `reports/book_l1/book_l1_24_runtime_json_consumer_report.md`
 - `reports/book_l1/book_l1_25_api_readiness_final_review.md`
+- `reports/book_l1/market_reader_15m_quality_review.json`
+- `reports/book_l1/market_reader_15m_quality_review.md`
+- `reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md`
 - `reports/book_l1/current_preview.json`
 - `reports/book_l1/multi_preview.json`
 - `reports/book_l1/history_preview.json`
@@ -156,6 +161,22 @@ Trading execution = prohibited
 ```
 
 BOOK-L1 is now a Layer 1 Freeze Candidate. It remains a read-only market reader and must not be expanded without a separate decision.
+
+BOOK-L1-26 reviewed the quality of the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l1-15m-quality-review --strict --show-details
+```
+
+Current 15m result:
+
+```text
+Overall state: UNKNOWN
+Observation candidates: none
+Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT
+```
+
+The pipeline is stable, but the readable market context is weak. BTCUSDT and ETHUSDT are currently `FLAT` in L1 with high confidence while L2 still marks them `UNKNOWN` / `SKIP`; SOLUSDT is `UNKNOWN` with low confidence. The next work should remain in BOOK-L1 reason-code inspection and UNKNOWN/FLAT reduction diagnostics.
 
 ## BOOK-L2 Market Interpreter status
 
@@ -402,4 +423,4 @@ Mode: consume-only / observe-only / fail-closed
 Trading execution: prohibited
 ```
 
-Next possible layer is BOOK-L3, but only after explicit approval and a separate responsibility decision.
+Next possible layer is BOOK-L3, but only after explicit approval and a separate responsibility decision. BOOK-L1 quality/explainability work on `15m` should come first.

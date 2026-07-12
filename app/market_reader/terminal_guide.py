@@ -156,6 +156,15 @@ _DATA_15M_STABILIZATION_COMMAND = """python -m app.cli.commands book-data-15m-st
   --strict `
   --show-details"""
 
+_L1_15M_QUALITY_REVIEW_COMMAND = """python -m app.cli.commands book-l1-15m-quality-review `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details"""
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -188,6 +197,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _DATA_PREPARATION_DECISION_COMMAND,
         _DATA_PREPARATION_DECISION_STRICT_COMMAND,
         _DATA_15M_STABILIZATION_COMMAND,
+        _L1_15M_QUALITY_REVIEW_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -420,6 +430,17 @@ def build_book_l1_terminal_guide() -> str:
             "Files:",
             "reports/book_data/market_reader_15m_stabilization.json",
             "reports/book_data/market_reader_15m_stabilization.md",
+            "",
+            "15m Market Reader quality review",
+            "Reviews the current stabilized 15m L1/L2 evidence and explains weak or unclear market context without changing market logic.",
+            "",
+            "Recommended workflow:",
+            _DATA_15M_STABILIZATION_COMMAND,
+            _L1_15M_QUALITY_REVIEW_COMMAND,
+            "",
+            "Files:",
+            "reports/book_l1/market_reader_15m_quality_review.json",
+            "reports/book_l1/market_reader_15m_quality_review.md",
             "",
             "Boundary:",
             "- `15m` is the active interval for current BOOK-L1/BOOK-L2 development.",

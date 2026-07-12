@@ -43,6 +43,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py` |
 | BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py` |
+| BOOK-L1-26 | 15m Market Reader Quality Review | DONE | `app/market_reader/quality_review.py` |
 
 ## BOOK-L2-00
 
@@ -245,6 +246,19 @@ The command confirms `15m` availability, the active interval decision, L1 timeli
 `15m` is the active interval for current BOOK-L1/BOOK-L2 development. `1h` and `4h` remain optional/missing and are not blockers.
 
 BOOK-DATA-03C does not approve download, DB write, interval aggregation, trading logic, edge validation, or runtime integration.
+
+BOOK-L1-26 reviewed the quality of the stabilized `15m` L1/L2 workflow.
+
+Current review result:
+
+```text
+status = PASS_WITH_QUALITY_WARNINGS
+overall_state = UNKNOWN
+observation_candidates = none
+skip_candidates = SOLUSDT, BTCUSDT, ETHUSDT
+```
+
+The L2 consume path is stable, but the current context is weak: every tested symbol is in the L2 `UNKNOWN` bucket and marked `SKIP`. This points the next work back to BOOK-L1 quality/explainability, not to L2 rule changes or a new layer.
 
 ## BOOK-L2-05
 

@@ -2,7 +2,7 @@
 
 ## Current status
 
-BOOK-DATA-01, BOOK-DATA-02, and BOOK-DATA-03C are complete.
+BOOK-DATA-01, BOOK-DATA-02, BOOK-DATA-03C, and BOOK-L1-26 are complete.
 
 BOOK-DATA-01 added a read-only candle availability audit for Market Reader:
 
@@ -57,9 +57,36 @@ reports/book_data/market_reader_15m_stabilization.md
 reports/book_data/book_data_03c_15m_only_market_reader_stabilization_report.md
 ```
 
+BOOK-L1-26 reviewed the quality of the stabilized `15m` Market Reader workflow:
+
+```powershell
+python -m app.cli.commands book-l1-15m-quality-review `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details
+```
+
+Stable review outputs:
+
+```text
+reports/book_l1/market_reader_15m_quality_review.json
+reports/book_l1/market_reader_15m_quality_review.md
+reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md
+```
+
 ## Finding
 
 The current blocker for multi-interval L1-L2 reports is data availability, not the L1-L2 pipeline.
+
+The current blocker for useful 15m interpretation is Market Reader quality/explainability:
+
+- L2 overall state is `UNKNOWN`;
+- observation candidates are `none`;
+- all tested symbols are skip candidates.
 
 Current audited condition:
 
@@ -114,6 +141,7 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-L1-26` - 15m Market Reader Quality Review;
 - `BOOK-L1-27` - 15m Reason Codes Improvement;
 - `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic.
+
+Do not start 1h/4h expansion before the 15m quality findings are addressed or explicitly accepted.

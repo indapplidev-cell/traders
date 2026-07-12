@@ -54,6 +54,7 @@ safe_for_runtime_trading = false
 | BOOK-L1-23 | Terminal UX Cleanup / Unified Command Guide | DONE | `app/market_reader/terminal_guide.py`, `book-l1-guide` |
 | BOOK-L1-24 | Runtime JSON Consumer / API Reader Smoke | DONE | `app/market_reader/json_consumer.py`, `book-l1-json-consumer-smoke` |
 | BOOK-L1-25 | API Readiness Final Review / Layer 1 Freeze Candidate | DONE | `app/market_reader/api_readiness_review.py`, `book-l1-api-readiness-review` |
+| BOOK-L1-26 | 15m Market Reader Quality Review | DONE | `app/market_reader/quality_review.py`, `book-l1-15m-quality-review` |
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py`, `book-l2-timeline-context` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py`, `book-data-candle-availability-audit` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py`, `book-data-interval-preparation-decision` |
@@ -164,6 +165,31 @@ The stage verifies DATA availability/decision, BOOK-L1 timeline export, BOOK-L1 
 
 No download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved by BOOK-DATA-03C.
 
+BOOK-L1-26 added a read-only quality review for the stabilized `15m` workflow:
+
+```powershell
+python -m app.cli.commands book-l1-15m-quality-review --strict --show-details
+```
+
+Stable quality review outputs:
+
+```text
+reports/book_l1/market_reader_15m_quality_review.json
+reports/book_l1/market_reader_15m_quality_review.md
+reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md
+```
+
+Current quality result:
+
+```text
+status = PASS_WITH_QUALITY_WARNINGS
+overall_state = UNKNOWN
+observation_candidates = none
+skip_candidates = SOLUSDT, BTCUSDT, ETHUSDT
+```
+
+BOOK-L1-26 did not change market analysis logic, composer scoring, thresholds, BOOK-L2 rules, or JSON semantics. The next work should stay in `15m` reason-code inspection and UNKNOWN/FLAT reduction diagnostics.
+
 BOOK-L2 has started as a separate layer above BOOK-L1. BOOK-L2-00 consumes the stable BOOK-L1 timeline JSON export:
 
 ```text
@@ -193,7 +219,7 @@ Runtime Markdown = not a working output
 Trading execution = prohibited
 ```
 
-Do not expand BOOK-L1 without a separate decision. The next valid direction is follow-up work in BOOK-L2 while preserving the BOOK-L1 freeze boundary.
+Do not expand BOOK-L1 without a separate decision. The next valid direction is BOOK-L1 quality/explainability on `15m`, while preserving the BOOK-L1 freeze boundary.
 
 Current API preview safety block:
 
