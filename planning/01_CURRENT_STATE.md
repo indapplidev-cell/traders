@@ -363,6 +363,26 @@ ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
 
 No download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved by BOOK-DATA-02. Next data work requires a separate explicit BOOK-DATA stage.
 
+BOOK-DATA-03C stabilized the current 15m-only Market Reader workflow:
+
+```powershell
+python -m app.cli.commands book-data-15m-stabilization --strict --show-details
+```
+
+Stable stabilization outputs:
+
+```text
+reports/book_data/market_reader_15m_stabilization.json
+reports/book_data/market_reader_15m_stabilization.md
+reports/book_data/book_data_03c_15m_only_market_reader_stabilization_report.md
+```
+
+BOOK-DATA-03C verifies the current DATA -> BOOK-L1 -> BOOK-L2 path on `15m`: candle availability, interval decision, L1 timeline export, L1 JSON consumer, L2 context export, L2 JSON consumer, L2 API readiness, L1-L2 interval answer evidence, and fail-closed safety.
+
+`15m` remains the active interval for current BOOK-L1/BOOK-L2 development. `1h` and `4h` remain optional/missing and are not blockers.
+
+No download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved by BOOK-DATA-03C.
+
 BOOK-L2-05 added the final API readiness review:
 
 ```powershell

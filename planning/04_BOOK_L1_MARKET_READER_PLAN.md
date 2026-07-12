@@ -57,6 +57,7 @@ safe_for_runtime_trading = false
 | BOOK-L2-00 | Start Layer 2 / Consume BOOK-L1 Timeline JSON | DONE | `app/market_interpreter/l1_timeline_consumer.py`, `book-l2-timeline-context` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py`, `book-data-candle-availability-audit` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py`, `book-data-interval-preparation-decision` |
+| BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py`, `book-data-15m-stabilization` |
 
 ## Current implementation boundary
 
@@ -150,6 +151,18 @@ ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
 `15m` is the active working interval for the current Market Reader workflow. `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work.
 
 BOOK-DATA-02 does not approve download, DB write, interval aggregation, trading logic, edge validation, or runtime integration. Next data work requires a separate explicit BOOK-DATA stage.
+
+BOOK-DATA-03C stabilized the current 15m-only workflow:
+
+```powershell
+python -m app.cli.commands book-data-15m-stabilization --strict --show-details
+```
+
+The stage verifies DATA availability/decision, BOOK-L1 timeline export, BOOK-L1 JSON consumer, BOOK-L2 context export, BOOK-L2 JSON consumer, BOOK-L2 API readiness, L1-L2 answer evidence, and fail-closed safety on `15m`.
+
+`15m` is the active interval for current BOOK-L1/BOOK-L2 development. `1h` and `4h` remain optional/missing and are not blockers.
+
+No download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved by BOOK-DATA-03C.
 
 BOOK-L2 has started as a separate layer above BOOK-L1. BOOK-L2-00 consumes the stable BOOK-L1 timeline JSON export:
 

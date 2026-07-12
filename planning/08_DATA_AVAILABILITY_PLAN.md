@@ -2,7 +2,7 @@
 
 ## Current status
 
-BOOK-DATA-01 and BOOK-DATA-02 are complete.
+BOOK-DATA-01, BOOK-DATA-02, and BOOK-DATA-03C are complete.
 
 BOOK-DATA-01 added a read-only candle availability audit for Market Reader:
 
@@ -36,6 +36,27 @@ reports/book_data/interval_data_preparation_decision.md
 reports/book_data/book_data_02_interval_data_preparation_decision_report.md
 ```
 
+BOOK-DATA-03C stabilized the active 15m-only Market Reader workflow:
+
+```powershell
+python -m app.cli.commands book-data-15m-stabilization `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details
+```
+
+Stable stabilization outputs:
+
+```text
+reports/book_data/market_reader_15m_stabilization.json
+reports/book_data/market_reader_15m_stabilization.md
+reports/book_data/book_data_03c_15m_only_market_reader_stabilization_report.md
+```
+
 ## Finding
 
 The current blocker for multi-interval L1-L2 reports is data availability, not the L1-L2 pipeline.
@@ -65,10 +86,11 @@ Immediate action:
 - use `15m` as the active working interval for the current Market Reader workflow;
 - treat `1h` and `4h` as optional/missing;
 - do not block current BOOK-L1/BOOK-L2 work on missing `1h`/`4h`.
+- improve Market Reader quality on `15m` before expanding intervals, unless explicitly decided otherwise.
 
 ## Boundary
 
-BOOK-DATA-02 is decision-only.
+BOOK-DATA-03C is stabilization-only.
 
 It does not approve:
 
@@ -82,6 +104,8 @@ It does not approve:
 - validate edge;
 - integrate runtime trading.
 
+BOOK-DATA-03C also does not change BOOK-L1 analysis logic, BOOK-L2 context logic, or existing L1/L2 JSON export semantics.
+
 ## Future decisions
 
 Next data work requires a separate explicit BOOK-DATA stage.
@@ -90,4 +114,6 @@ Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-DATA-03C` - 15m-Only Market Reader Stabilization.
+- `BOOK-L1-26` - 15m Market Reader Quality Review;
+- `BOOK-L1-27` - 15m Reason Codes Improvement;
+- `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic.

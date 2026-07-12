@@ -1,0 +1,161 @@
+{
+  "contract_version": "book_data_market_reader_15m_stabilization_v1",
+  "decision": {
+    "active_interval": "15m",
+    "active_intervals": [
+      "15m"
+    ],
+    "decision_id": "ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING",
+    "optional_missing_intervals": [
+      "1h",
+      "4h"
+    ],
+    "recommended_option": "OPTION_D_HYBRID_LATER",
+    "source": "reports/book_data/interval_data_preparation_decision.json"
+  },
+  "errors": [],
+  "l2_answer": {
+    "brief": "UNKNOWN_CONTEXT",
+    "evidence_path": "reports/book_l2/l1_l2_interval_answer.md",
+    "key_points": [
+      "Overall context is UNKNOWN.",
+      "No clean observation candidates found.",
+      "Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT.",
+      "Most symbols are skip candidates.",
+      "Safety remains fail-closed: runtime action is not approved."
+    ],
+    "observation_candidates": [],
+    "overall_state": "UNKNOWN",
+    "skip_candidates": [
+      "SOLUSDT",
+      "BTCUSDT",
+      "ETHUSDT"
+    ],
+    "symbols": [
+      {
+        "bucket": "UNKNOWN",
+        "context_quality_grade": "SKIP",
+        "context_quality_score": 0.2,
+        "context_rank": null,
+        "skip_candidate": true,
+        "symbol": "BTCUSDT"
+      },
+      {
+        "bucket": "UNKNOWN",
+        "context_quality_grade": "SKIP",
+        "context_quality_score": 0.2,
+        "context_rank": null,
+        "skip_candidate": true,
+        "symbol": "ETHUSDT"
+      },
+      {
+        "bucket": "UNKNOWN",
+        "context_quality_grade": "SKIP",
+        "context_quality_score": 0.0,
+        "context_rank": null,
+        "skip_candidate": true,
+        "symbol": "SOLUSDT"
+      }
+    ]
+  },
+  "report_type": "market_reader_15m_stabilization",
+  "request": {
+    "interval": "15m",
+    "min_candles": 50,
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "window_count": 4,
+    "window_size": 300
+  },
+  "safety": {
+    "aggregation_approved": false,
+    "aggregation_executed": false,
+    "approved_for_auto_activation": false,
+    "approved_for_live_trading": false,
+    "db_write_approved": false,
+    "db_write_executed": false,
+    "download_approved": false,
+    "download_executed": false,
+    "live_trading_connected": false,
+    "orders_enabled": false,
+    "read_only": true,
+    "safe_for_runtime_trading": false,
+    "trade_signal": "NOT_EVALUATED",
+    "traders_core_connected": false,
+    "trading_signal": "NOT_EVALUATED"
+  },
+  "service": "BOOK_DATA_STABILIZATION",
+  "status": "PASS",
+  "steps": [
+    {
+      "evidence_path": null,
+      "message": "BOOK-DATA-03C is restricted to 15m.",
+      "name": "interval_policy_15m_only",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": "reports/book_data/candle_availability_audit.json",
+      "message": "15m candles are READY for requested symbols.",
+      "name": "candle_availability_15m",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": "reports/book_data/interval_data_preparation_decision.json",
+      "message": "Decision artifact confirms 15m active interval.",
+      "name": "interval_preparation_decision",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": "reports/book_l1/timeline_preview.json",
+      "message": "Written: reports/book_l1/timeline_preview.json",
+      "name": "l1_timeline_export_15m",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": null,
+      "message": "BOOK-L1 timeline JSON strict validation passed.",
+      "name": "l1_json_consumer_strict",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": "reports/book_l2/timeline_context.json",
+      "message": "Written: reports/book_l2/timeline_context.json",
+      "name": "l2_context_export_15m",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": "reports/book_l2/timeline_context.json",
+      "message": "BOOK-L2 context JSON strict validation passed.",
+      "name": "l2_json_consumer_strict",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": null,
+      "message": "BOOK-L2 API readiness strict review passed.",
+      "name": "l2_api_readiness_strict",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": "reports/book_l2/l1_l2_interval_answer.md",
+      "message": "L1-L2 interval answer smoke passed.",
+      "name": "l1_l2_interval_answer_15m",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": null,
+      "message": "Safety is fail-closed.",
+      "name": "safety_fail_closed",
+      "status": "PASS"
+    },
+    {
+      "evidence_path": "reports/book_data/market_reader_15m_stabilization.json",
+      "message": "Stabilization evidence files written.",
+      "name": "evidence_written",
+      "status": "PASS"
+    }
+  ],
+  "warnings": []
+}

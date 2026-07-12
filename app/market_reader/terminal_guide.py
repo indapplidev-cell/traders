@@ -147,6 +147,15 @@ _DATA_PREPARATION_DECISION_STRICT_COMMAND = (
     "python -m app.cli.commands book-data-interval-preparation-decision --strict --show-details"
 )
 
+_DATA_15M_STABILIZATION_COMMAND = """python -m app.cli.commands book-data-15m-stabilization `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details"""
+
 _API_READINESS_REVIEW_COMMAND = "python -m app.cli.commands book-l1-api-readiness-review"
 
 _GUIDE_COMMAND = "python -m app.cli.commands book-l1-guide"
@@ -178,6 +187,7 @@ def get_book_l1_terminal_command_examples() -> tuple[str, ...]:
         _DATA_AVAILABILITY_AUDIT_STRICT_COMMAND,
         _DATA_PREPARATION_DECISION_COMMAND,
         _DATA_PREPARATION_DECISION_STRICT_COMMAND,
+        _DATA_15M_STABILIZATION_COMMAND,
         _API_READINESS_REVIEW_COMMAND,
     )
 
@@ -400,6 +410,21 @@ def build_book_l1_terminal_guide() -> str:
             "Current expected decision:",
             "15m is the active working interval.",
             "1h and 4h are optional/missing and require a separate explicit BOOK-DATA stage.",
+            "",
+            "15m-only Market Reader stabilization",
+            "Runs the current 15m-only workflow from DATA availability through L1 timeline, L2 context, strict consumers, readiness, and interval answer evidence.",
+            "",
+            "Command:",
+            _DATA_15M_STABILIZATION_COMMAND,
+            "",
+            "Files:",
+            "reports/book_data/market_reader_15m_stabilization.json",
+            "reports/book_data/market_reader_15m_stabilization.md",
+            "",
+            "Boundary:",
+            "- `15m` is the active interval for current BOOK-L1/BOOK-L2 development.",
+            "- `1h` and `4h` remain optional/missing and are not blockers.",
+            "- This command does not download data, write DB rows, aggregate intervals, train models, or connect runtime trading.",
             "",
             "Evidence rule:",
             "- This Markdown file is for human smoke review.",

@@ -42,6 +42,7 @@ BOOK-L2 does not generate trading signals, does not create orders, does not conn
 | BOOK-L2-07 | Multi-Interval Answer Smoke | DONE | `app/integration/l1_l2_multi_interval_answer_smoke.py` |
 | BOOK-DATA-01 | Candle Data Availability Audit for Market Reader | DONE | `app/data_audit/candle_availability.py` |
 | BOOK-DATA-02 | Interval Data Preparation Decision | DONE | `app/data_audit/interval_preparation_decision.py` |
+| BOOK-DATA-03C | 15m-Only Market Reader Stabilization | DONE | `app/data_audit/market_reader_15m_stabilization.py` |
 
 ## BOOK-L2-00
 
@@ -232,6 +233,18 @@ ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
 `15m` is the active working interval for the current Market Reader workflow. `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work.
 
 BOOK-DATA-02 does not approve download, DB write, interval aggregation, trading logic, edge validation, or runtime integration. Next data work requires a separate explicit BOOK-DATA stage.
+
+BOOK-DATA-03C stabilized the current BOOK-DATA -> BOOK-L1 -> BOOK-L2 path on `15m`:
+
+```powershell
+python -m app.cli.commands book-data-15m-stabilization --strict --show-details
+```
+
+The command confirms `15m` availability, the active interval decision, L1 timeline export, strict L1 JSON consumption, L2 context export, strict L2 JSON consumption, strict L2 API readiness, the L1-L2 interval answer, and fail-closed safety.
+
+`15m` is the active interval for current BOOK-L1/BOOK-L2 development. `1h` and `4h` remain optional/missing and are not blockers.
+
+BOOK-DATA-03C does not approve download, DB write, interval aggregation, trading logic, edge validation, or runtime integration.
 
 ## BOOK-L2-05
 

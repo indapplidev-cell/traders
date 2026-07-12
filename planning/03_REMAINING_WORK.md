@@ -37,6 +37,7 @@ The following BOOK-L1 items are already completed:
 - BOOK-L2-07 multi-interval answer smoke / evidence Markdown.
 - BOOK-DATA-01 candle data availability audit for Market Reader.
 - BOOK-DATA-02 interval data preparation decision.
+- BOOK-DATA-03C 15m-only Market Reader workflow stabilization.
 
 ## Remaining BOOK-L1 work
 
@@ -90,7 +91,7 @@ Before any BOOK-L3 implementation, decide whether the next layer is:
 
 ### 5. Future data preparation stages
 
-BOOK-DATA-02 fixed the current interval preparation decision.
+BOOK-DATA-03C stabilized the current 15m-only Market Reader workflow.
 
 Current decision:
 
@@ -98,15 +99,17 @@ Current decision:
 - `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work;
 - no download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved.
 
-Next data work requires a separate explicit BOOK-DATA stage.
+The next work should improve Market Reader quality on 15m before expanding intervals, unless explicitly decided otherwise.
 
 Possible future stages:
 
 - `BOOK-DATA-03A` - Native 1h/4h Data Loading Plan;
 - `BOOK-DATA-03B` - 15m to 1h/4h Aggregation Contract;
-- `BOOK-DATA-03C` - 15m-Only Market Reader Stabilization.
+- `BOOK-L1-26` - 15m Market Reader Quality Review;
+- `BOOK-L1-27` - 15m Reason Codes Improvement;
+- `BOOK-L1-28` - 15m UNKNOWN/FLAT Reduction Diagnostic.
 
-Do not download, generate, or aggregate candles as part of BOOK-DATA-02.
+Do not download, generate, or aggregate candles as part of BOOK-DATA-03C.
 
 ## Not remaining anymore
 
@@ -136,6 +139,7 @@ The following items are no longer remaining work:
 - BOOK-L2 multi-interval answer smoke / evidence Markdown.
 - BOOK-DATA candle availability audit / data gap evidence.
 - BOOK-DATA interval data preparation decision.
+- BOOK-DATA 15m-only Market Reader stabilization.
 
 ## BOOK-L1-22 export rule
 

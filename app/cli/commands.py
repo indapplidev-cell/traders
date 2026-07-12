@@ -998,6 +998,73 @@ def book_data_interval_preparation_decision_command(
         raise typer.Exit(1)
 
 
+@cli.command("book-data-15m-stabilization")
+def book_data_15m_stabilization_command(
+    symbols: str | None = typer.Option(
+        None,
+        "--symbols",
+        help="Comma-separated trading symbols, for example BTCUSDT,ETHUSDT,SOLUSDT.",
+    ),
+    symbol: list[str] | None = typer.Option(
+        None,
+        "--symbol",
+        help="Trading symbol. Can be passed multiple times.",
+    ),
+    interval: str = typer.Option("15m", "--interval", help="Only 15m is allowed for BOOK-DATA-03C."),
+    window_size: int = typer.Option(300, "--window-size", min=1, help="Candles per timeline window."),
+    window_count: int = typer.Option(4, "--window-count", min=2, max=6, help="Timeline window count from 2 to 6."),
+    min_candles: int = typer.Option(50, "--min-candles", min=1, help="Minimum candles required per window."),
+    output_json: Path = typer.Option(
+        Path("reports/book_data/market_reader_15m_stabilization.json"),
+        "--output-json",
+        help="Stable JSON stabilization evidence output path.",
+    ),
+    output_md: Path = typer.Option(
+        Path("reports/book_data/market_reader_15m_stabilization.md"),
+        "--output-md",
+        help="Stable Markdown stabilization evidence output path.",
+    ),
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Return non-zero exit code when stabilization does not pass.",
+    ),
+    show_details: bool = typer.Option(
+        False,
+        "--show-details",
+        help="Print step messages and current L2 answer details.",
+    ),
+) -> None:
+    """Run BOOK-DATA-03C 15m-only Market Reader stabilization smoke."""
+    from app.data_audit.market_reader_15m_stabilization import (
+        DefaultMarketReader15mStabilizationServices,
+        MarketReader15mStabilizationConfig,
+        MarketReader15mStabilizationFormatter,
+        MarketReader15mStabilizationRunner,
+        parse_stabilization_symbols,
+    )
+
+    selected_symbols = parse_stabilization_symbols(symbols, tuple(symbol or ()))
+    config = MarketReader15mStabilizationConfig(
+        symbols=selected_symbols,
+        interval=interval,
+        window_size=window_size,
+        window_count=window_count,
+        min_candles=min_candles,
+        output_json=output_json,
+        output_md=output_md,
+        strict=strict,
+        show_details=show_details,
+    )
+    with get_session() as session:
+        result = MarketReader15mStabilizationRunner(
+            DefaultMarketReader15mStabilizationServices(CandleRepository(session))
+        ).run(config)
+    typer.echo(MarketReader15mStabilizationFormatter().format(result, config=config))
+    if strict and not result.passed:
+        raise typer.Exit(1)
+
+
 @cli.command("book-l1-api-readiness-review")
 def book_l1_api_readiness_review_command(
     project_root: Path = typer.Option(

@@ -1,40 +1,41 @@
 # Current Task
 
-## BOOK-DATA-02 - Interval Data Preparation Decision
+## BOOK-DATA-03C - 15m-Only Market Reader Stabilization
 
 Status: `DONE`
 
 Goal:
 
-Fix the technical decision for missing `1h` and `4h` candle intervals after BOOK-DATA-01 showed that `15m` is ready while `1h` and `4h` are missing from the local database.
+Stabilize the current 15m-only Market Reader workflow after BOOK-DATA-02 fixed `15m` as the active interval.
 
 Command:
 
 ```powershell
-python -m app.cli.commands book-data-interval-preparation-decision --show-details
-```
-
-Strict command:
-
-```powershell
-python -m app.cli.commands book-data-interval-preparation-decision --strict --show-details
+python -m app.cli.commands book-data-15m-stabilization `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --interval 15m `
+  --window-size 300 `
+  --window-count 4 `
+  --min-candles 50 `
+  --strict `
+  --show-details
 ```
 
 Evidence outputs:
 
 ```text
-reports/book_data/interval_data_preparation_decision.json
-reports/book_data/interval_data_preparation_decision.md
-reports/book_data/book_data_02_interval_data_preparation_decision_report.md
+reports/book_data/market_reader_15m_stabilization.json
+reports/book_data/market_reader_15m_stabilization.md
+reports/book_data/book_data_03c_15m_only_market_reader_stabilization_report.md
 ```
 
 Implemented:
 
-- added `app/data_audit/interval_preparation_decision.py`;
-- added CLI command `book-data-interval-preparation-decision`;
-- added `--audit-json`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
-- added focused unit tests with fake audit JSON;
-- added stable JSON and Markdown decision files;
+- added `app/data_audit/market_reader_15m_stabilization.py`;
+- added CLI command `book-data-15m-stabilization`;
+- added `--symbols`, `--symbol`, `--interval`, `--window-size`, `--window-count`, `--min-candles`, `--output-json`, `--output-md`, `--strict`, `--show-details`;
+- added focused unit tests with fake services and fake JSON;
+- added stable JSON and Markdown stabilization files;
 - updated terminal guide and planning.
 
 Current decision:
@@ -61,7 +62,21 @@ Current workflow decision:
 
 - `15m` is the active working interval for the current Market Reader workflow;
 - `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work;
-- BOOK-L1/L2 multi-interval smoke may continue to include `1h`/`4h` only as documented missing intervals.
+- BOOK-DATA-03C stabilized the current DATA -> BOOK-L1 -> BOOK-L2 path on `15m`.
+
+Stabilized checks:
+
+- interval policy 15m only;
+- candle availability on 15m;
+- interval preparation decision;
+- L1 timeline export on 15m;
+- L1 JSON consumer strict;
+- L2 context export on 15m;
+- L2 JSON consumer strict;
+- L2 API readiness strict;
+- L1-L2 interval answer smoke on 15m;
+- safety fail-closed;
+- evidence writing.
 
 Out of scope preserved:
 
@@ -78,4 +93,4 @@ Out of scope preserved:
 - no edge validation;
 - no runtime trading integration.
 
-Next data work requires a separate explicit BOOK-DATA stage.
+The next work should improve Market Reader quality on 15m before expanding intervals, unless explicitly decided otherwise.

@@ -1,1 +1,1 @@
-"""Read-only BOOK-DATA audits and planning decisions."""
+"""Read-only BOOK-DATA audits, planning decisions, and stabilization checks."""
