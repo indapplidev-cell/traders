@@ -1,0 +1,545 @@
+# Current State
+
+## BOOK-L1 Market Reader status
+
+Status: `LAYER_1_FREEZE_CANDIDATE`
+
+BOOK-L1 Market Reader is implemented as a read-only market-reading layer.
+
+It currently supports:
+
+- candle window normalization and validation;
+- candle morphology analysis;
+- swing high / swing low detection;
+- trend structure analysis;
+- range structure analysis;
+- breakout / retest context;
+- EMA / ATR technical context;
+- market regime composition;
+- full orchestration through `MarketReaderOrchestrator`;
+- CLI preview from stored candles through `book-l1-preview`;
+- real DB smoke report for BTCUSDT 15m;
+- API/service response contract through `book-l1-api-preview`;
+- human-readable terminal table report through `book-l1-interactive-preview`.
+- multi-symbol terminal comparison table through `book-l1-multi-preview`.
+- current-vs-previous window regime history snapshot through `book-l1-history-preview`.
+- multi-window market regime timeline preview through `book-l1-timeline-preview`.
+- stable JSON and Markdown timeline export through `book-l1-timeline-preview --export`.
+- unified API-oriented JSON export through `--export-json` for current, multi-symbol, history, and timeline preview modes.
+- unified terminal command guide through `book-l1-guide`.
+- read-only runtime JSON consumer smoke through `book-l1-json-consumer-smoke`.
+- API readiness final review through `book-l1-api-readiness-review`.
+- 15m Market Reader quality review through `book-l1-15m-quality-review`.
+- L1-L2 regime alignment review through `book-l1-l2-regime-alignment-review`.
+- FLAT context alignment diagnostic through `book-l1-flat-context-alignment-diagnostic`.
+- FLAT context handling proposal through `book-l2-flat-context-handling-proposal`.
+
+Current safety contract:
+
+```text
+trade_signal = NOT_EVALUATED
+safe_for_runtime_trading = false
+orders_enabled = false
+live_trading_connected = false
+traders_core_connected = false
+approved_for_live_trading = false
+approved_for_auto_activation = false
+model_training_executed = false
+binance_download_executed = false
+```
+
+BOOK-L1 does not train models, does not download candles during preview, does not connect to runtime trading, and does not approve entries.
+
+Latest completed implementation stages:
+
+| Stage | Status | Result |
+| --- | --- | --- |
+| BOOK-L1-12 | DONE | CLI preview command added. |
+| BOOK-L1-13 | DONE | Manual real DB smoke report added. |
+| BOOK-L1-14 | DONE | API/service response contract added. |
+| BOOK-L1-15 | DONE | Planning status synchronized. |
+| BOOK-L1-16 | DONE | Final repository review completed. |
+| BOOK-L1-17 | DONE | Interactive terminal preview / human table report added. |
+| BOOK-L1-18 | DONE | Multi-symbol interactive preview / comparison table added. |
+| BOOK-L1-19 | DONE | Market regime history snapshot / previous vs current window added. |
+| BOOK-L1-20 | DONE | Market regime timeline preview / multi-window history table added. |
+| BOOK-L1-21 | DONE | Stable timeline preview export / JSON + Markdown report added. |
+| BOOK-L1-22 | DONE | Unified JSON export contract / API output files added. |
+| BOOK-L1-23 | DONE | Terminal UX cleanup / unified command guide added. |
+| BOOK-L1-24 | DONE | Runtime JSON consumer / API reader smoke added. |
+| BOOK-L1-25 | DONE | API readiness final review / Layer 1 freeze candidate added. |
+| BOOK-L1-26 | DONE | 15m Market Reader quality review / weak context evidence added. |
+| BOOK-L1-27 | DONE | L1-L2 regime alignment review / FLAT interpretation evidence added. |
+| BOOK-L1-28 | DONE | FLAT context alignment diagnostic / L2 handling proposal evidence added. |
+| BOOK-L2-08 | DONE | FLAT context handling proposal / safe L2 contract recommendation added. |
+| BOOK-L2-09 | DONE | FLAT context handling implemented: high-confidence L1 FLAT maps to L2 FLAT_CONTEXT. |
+| BOOK-L2-10 | DONE | Post-FLAT context integration reviewed across L2 downstream outputs. |
+
+Latest relevant artifacts:
+
+- `reports/book_l1/book_l1_13_BTCUSDT_15m_preview.json`
+- `reports/book_l1/book_l1_13_cli_preview_smoke_report.md`
+- `reports/book_l1/book_l1_14_BTCUSDT_15m_api_preview.json`
+- `reports/book_l1/book_l1_16_final_review.md`
+- `reports/book_l1/book_l1_17_interactive_preview_report.md`
+- `reports/book_l1/book_l1_18_multi_symbol_preview_report.md`
+- `reports/book_l1/book_l1_19_history_snapshot_report.md`
+- `reports/book_l1/book_l1_20_timeline_preview_report.md`
+- `reports/book_l1/book_l1_21_timeline_export_report.md`
+- `reports/book_l1/book_l1_22_unified_json_export_report.md`
+- `reports/book_l1/book_l1_23_terminal_ux_cleanup_report.md`
+- `reports/book_l1/book_l1_24_runtime_json_consumer_report.md`
+- `reports/book_l1/book_l1_25_api_readiness_final_review.md`
+- `reports/book_l1/market_reader_15m_quality_review.json`
+- `reports/book_l1/market_reader_15m_quality_review.md`
+- `reports/book_l1/book_l1_26_15m_market_reader_quality_review_report.md`
+- `reports/book_l1/l1_l2_regime_alignment_review.json`
+- `reports/book_l1/l1_l2_regime_alignment_review.md`
+- `reports/book_l1/book_l1_27_l1_l2_regime_alignment_review_report.md`
+- `reports/book_l1/flat_context_alignment_diagnostic.json`
+- `reports/book_l1/flat_context_alignment_diagnostic.md`
+- `reports/book_l1/book_l1_28_flat_context_alignment_diagnostic_report.md`
+- `reports/book_l2/flat_context_handling_proposal.json`
+- `reports/book_l2/flat_context_handling_proposal.md`
+- `reports/book_l2/book_l2_08_flat_context_handling_proposal_report.md`
+- `reports/book_l1/current_preview.json`
+- `reports/book_l1/multi_preview.json`
+- `reports/book_l1/history_preview.json`
+- `reports/book_l1/timeline_preview.json`
+- `reports/book_l1/timeline_preview.md`
+
+BOOK-L1-22 added the unified API-oriented JSON export contract:
+
+```text
+contract_version = book_l1_json_export_v1
+service = BOOK_L1_MARKET_READER
+```
+
+The stable runtime API output files are:
+
+```text
+reports/book_l1/current_preview.json
+reports/book_l1/multi_preview.json
+reports/book_l1/history_preview.json
+reports/book_l1/timeline_preview.json
+```
+
+These files are overwritten on each `--export-json` run. Their names do not include date, time, version, symbol, interval, stage number, or hash suffix.
+
+BOOK-L1-23 added the unified terminal command guide:
+
+```powershell
+python -m app.cli.commands book-l1-guide
+```
+
+Working UX:
+
+```text
+Terminal output: for humans
+JSON export: for API
+Runtime Markdown export: not used as working output
+```
+
+BOOK-L1 remains read-only and the safety contract is preserved.
+
+BOOK-L1-24 added the read-only runtime JSON consumer smoke:
+
+```powershell
+python -m app.cli.commands book-l1-json-consumer-smoke --strict
+```
+
+The consumer validates stable JSON export files before an external API layer reads them:
+
+- `service = BOOK_L1_MARKET_READER`;
+- `contract_version = book_l1_json_export_v1`;
+- expected `report_type` per fixed filename;
+- required top-level envelope keys;
+- `request`, `summary`, and `safety` object shape;
+- `warnings` and `errors` list shape;
+- fail-closed safety fields.
+
+BOOK-L1-24 did not change market analysis logic, did not change JSON export semantics, did not use runtime Markdown as API output, did not connect live trading, and preserved fail-closed safety.
+
+BOOK-L1-25 added the final API readiness review:
+
+```powershell
+python -m app.cli.commands book-l1-api-readiness-review
+```
+
+The review checks required modules, tests, planning files, CLI command registration, stable JSON files when present, JSON contract shape, and fail-closed safety. Missing runtime JSON files are WARN after a clean checkout because export may not have run yet; invalid JSON, wrong `service`, wrong `contract_version`, missing safety, or unsafe safety values are FAIL.
+
+Current Layer 1 boundary:
+
+```text
+Terminal = for humans
+JSON = for API/runtime consumers
+Runtime Markdown = not a working output
+Trading execution = prohibited
+```
+
+BOOK-L1 is now a Layer 1 Freeze Candidate. It remains a read-only market reader and must not be expanded without a separate decision.
+
+BOOK-L1-26 reviewed the quality of the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l1-15m-quality-review --strict --show-details
+```
+
+Current 15m result:
+
+```text
+Overall state: UNKNOWN
+Observation candidates: none
+Skip candidates: SOLUSDT, BTCUSDT, ETHUSDT
+```
+
+The pipeline is stable, but the readable market context is weak. BTCUSDT and ETHUSDT are currently `FLAT` in L1 with high confidence while L2 still marks them `UNKNOWN` / `SKIP`; SOLUSDT is `UNKNOWN` with low confidence. The next work should remain in BOOK-L1 reason-code inspection and UNKNOWN/FLAT reduction diagnostics.
+
+BOOK-L1-27 reviewed L1-L2 regime alignment on the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l1-l2-regime-alignment-review --strict --show-details
+```
+
+Current finding:
+
+```text
+BTCUSDT and ETHUSDT are L1 FLAT with high confidence, but L2 reports UNKNOWN/SKIP.
+SOLUSDT is L1 UNKNOWN and propagates to L2 SKIP.
+```
+
+This points to FLAT context handling and L1-to-L2 contract mapping as the next safe focus before changing core Market Reader logic.
+
+BOOK-L1-28 diagnosed FLAT context alignment on the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l1-flat-context-alignment-diagnostic --strict --show-details
+```
+
+Current finding:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Recommended interpretation:
+
+```text
+High-confidence FLAT should not become UNKNOWN.
+It may remain non-observation / skip, but L2 should preserve and explain it as FLAT context.
+```
+
+Completed follow-up stage:
+
+```text
+BOOK-L2-08 - FLAT Context Handling Proposal
+```
+
+BOOK-L2-08 proposed safe FLAT context handling on the stabilized 15m workflow:
+
+```powershell
+python -m app.cli.commands book-l2-flat-context-handling-proposal --strict --show-details
+```
+
+Current problem:
+
+```text
+High-confidence L1 FLAT is received by L2 but mapped to UNKNOWN/SKIP.
+```
+
+Proposal:
+
+```text
+High-confidence L1 FLAT should be preserved as L2 FLAT_CONTEXT.
+It should remain non-observation / skip by default and must not become a trading signal.
+```
+
+Next proposed stage:
+
+```text
+BOOK-L2-09 — Implement FLAT Context Handling
+```
+
+## BOOK-L2 Market Interpreter status
+
+Status: `LAYER_2_FREEZE_CANDIDATE`
+
+BOOK-L2 has started as an observe-only layer above BOOK-L1.
+
+BOOK-L2-00 consumes the existing BOOK-L1 runtime JSON file:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+BOOK-L2 reads the BOOK-L1 timeline export, validates the envelope and fail-closed safety contract, extracts symbol timeline rows, classifies symbol context labels, classifies explicit symbol buckets, and builds an overall market context.
+
+Current BOOK-L2 boundary:
+
+```text
+BOOK-L1 timeline JSON -> observe-only market context interpretation
+```
+
+BOOK-L2 does not read candles, does not import `CandleRepository`, does not use `MarketReaderOrchestrator`, does not recalculate indicators, and does not change BOOK-L1 market analysis logic or JSON export semantics.
+
+BOOK-L2 safety remains fail-closed:
+
+```text
+trade_signal = NOT_EVALUATED
+safe_for_runtime_trading = false
+orders_enabled = false
+live_trading_connected = false
+traders_core_connected = false
+approved_for_live_trading = false
+approved_for_auto_activation = false
+model_training_executed = false
+binance_download_executed = false
+```
+
+Current BOOK-L2 command:
+
+```powershell
+python -m app.cli.commands book-l2-timeline-context
+```
+
+Current BOOK-L2 stable JSON export:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+BOOK-L2-01 added explicit market context classification rules and symbol buckets:
+
+```text
+CLEAN_TREND
+STABLE_FLAT
+TRANSITIONING
+UNSTABLE
+UNKNOWN
+INSUFFICIENT_DATA
+ERROR
+```
+
+The export now includes `bucket`, `skip_candidate`, `context_reason_codes`, `overall_state`, bucket counts, and fail-closed safety. `skip_candidate` is an observe-only context quality label for UNKNOWN / UNSTABLE / INSUFFICIENT_DATA / ERROR buckets.
+
+BOOK-L2-02 added context quality score and deterministic symbol ranking:
+
+```text
+context_quality_score = 0.0..1.0
+context_quality_grade = HIGH / MEDIUM / LOW / SKIP / ERROR
+context_rank = deterministic observation rank for OK non-skip rows
+```
+
+The stable export now includes per-symbol quality fields, `quality_summary`, and `top_ranked_symbols` for observation.
+
+BOOK-L2-03 added Context Summary / Human Market Brief:
+
+```text
+market_brief
+observation_candidates
+skip_candidates
+key_points
+safety_note
+```
+
+The summary is observe-only. It explains which symbols look cleaner for observation, which symbols are skip candidates, and why the overall context looks the way it does. It uses `observation_candidates`, not trade candidates, and it does not create trading signals.
+
+BOOK-L2 still consumes only:
+
+```text
+reports/book_l1/timeline_preview.json
+```
+
+BOOK-L2 still writes the stable API-oriented output:
+
+```text
+reports/book_l2/timeline_context.json
+```
+
+BOOK-L2 does not read candles and does not produce trading signals.
+
+BOOK-L2-04 added the L2 JSON consumer smoke:
+
+```powershell
+python -m app.cli.commands book-l2-json-consumer-smoke --strict
+```
+
+The consumer validates:
+
+- stable input file `reports/book_l2/timeline_context.json`;
+- L2 `service` and `contract_version`;
+- source metadata pointing to `reports/book_l1/timeline_preview.json`;
+- `overall_state`, symbols, buckets, quality fields, and deterministic ranks;
+- `market_brief` shape and forbidden human brief terms;
+- fail-closed safety fields;
+- warnings/errors behavior in default and strict modes.
+
+BOOK-L2 output can now be validated for external/API consumption.
+
+BOOK-L2 still consumes only `reports/book_l1/timeline_preview.json`, does not connect to DB or Binance, does not use `CandleRepository` or `MarketReaderOrchestrator`, and does not make trading decisions.
+
+BOOK-L2-05 completed API readiness final review.
+
+BOOK-L2 is now Layer 2 Freeze Candidate.
+
+BOOK-L2 remains consume-only / observe-only / fail-closed.
+
+BOOK-L2-06 verified the actual L1-L2 interval report answer smoke.
+
+The system can now run L1 timeline export, consume it through L2, and produce a human-readable Markdown evidence report for a requested interval:
+
+```text
+reports/book_l2/l1_l2_interval_answer.md
+```
+
+BOOK-L2-07 added multi-interval L1-L2 answer smoke.
+
+The system can now produce a human-readable evidence report for multiple intervals, showing per-interval L2 state, observation candidates, skip candidates, safety, and cross-interval observations:
+
+```text
+reports/book_l2/l1_l2_multi_interval_answer.md
+```
+
+This evidence report is not runtime API output; API output remains JSON.
+
+BOOK-L2-08 added a FLAT context handling proposal. It does not change runtime L2 rules, quality scoring, brief behavior, bucket decisions, or JSON export semantics. It recommends preserving high-confidence L1 `FLAT` as `FLAT_CONTEXT` in a later controlled implementation stage while keeping default non-observation / skip behavior.
+
+BOOK-L2-09 implemented safe FLAT context handling on the stabilized `15m` workflow.
+
+Current behavior:
+
+- high-confidence L1 `FLAT` maps to L2 `FLAT_CONTEXT` instead of `UNKNOWN`;
+- `FLAT_CONTEXT` remains non-observation / skip by default;
+- `FLAT_CONTEXT` is not a trading signal;
+- `safe_for_runtime_trading` remains `false`;
+- `UNKNOWN` remains distinct from `FLAT`.
+
+Current real cases:
+
+- BTCUSDT: L1 `FLAT` 0.94 -> L2 `FLAT_CONTEXT`;
+- ETHUSDT: L1 `FLAT` 0.87 -> L2 `FLAT_CONTEXT`;
+- SOLUSDT: L1 `UNKNOWN` 0.00 -> L2 `UNKNOWN`.
+
+BOOK-L2-09 did not change BOOK-L1 logic, candle analysis, data availability, training, labels, runtime execution, or BOOK-L3 scope.
+
+BOOK-L2-10 reviewed post-FLAT context integration on the stabilized `15m` workflow.
+
+Current integration result:
+
+```text
+status = PASS
+```
+
+Verified downstream behavior:
+
+- `FLAT_CONTEXT` passes through L2 timeline context, JSON consumer, API readiness, and interval answer smoke;
+- high-confidence L1 `FLAT` remains distinct from `UNKNOWN`;
+- `FLAT_CONTEXT` remains observe-only, non-observation by default, skip by default, and not safe for runtime trading;
+- multi-interval evidence keeps `15m` PASS and documents expected missing-data FAIL for `1h` and `4h`.
+
+BOOK-L2-10 did not change runtime behavior, BOOK-L1 logic, L2 context rules, quality scoring, summary behavior, JSON/API contracts, data availability, training, labels, or trading scope.
+
+## BOOK-DATA Market Reader data availability status
+
+Status: `DATA_GAPS_DOCUMENTED`
+
+BOOK-DATA-01 adds a read-only local candle availability audit for Market Reader:
+
+```powershell
+python -m app.cli.commands book-data-candle-availability-audit `
+  --symbols BTCUSDT,ETHUSDT,SOLUSDT `
+  --intervals 15m,1h,4h `
+  --window-size 300 `
+  --window-count 4 `
+  --show-details
+```
+
+The audit answers which `symbol/interval` combinations have enough local candles for the current L1 timeline requirement:
+
+```text
+required_candles = window_size * window_count = 1200
+```
+
+Stable evidence outputs:
+
+```text
+reports/book_data/candle_availability_audit.json
+reports/book_data/candle_availability_audit.md
+reports/book_data/book_data_01_candle_availability_audit_report.md
+```
+
+Current data finding:
+
+```text
+15m is ready for BTCUSDT, ETHUSDT, and SOLUSDT.
+1h and 4h are missing in the local database for the tested symbols.
+```
+
+The current blocker for multi-interval L1-L2 reports is data availability, not the L1-L2 pipeline.
+
+BOOK-DATA-01 does not download candles, does not write DB rows, does not aggregate intervals, does not change BOOK-L1 analysis logic, and does not produce trading signals.
+
+BOOK-DATA-02 fixed the interval preparation decision after the BOOK-DATA-01 audit:
+
+```powershell
+python -m app.cli.commands book-data-interval-preparation-decision --show-details
+```
+
+Stable decision outputs:
+
+```text
+reports/book_data/interval_data_preparation_decision.json
+reports/book_data/interval_data_preparation_decision.md
+reports/book_data/book_data_02_interval_data_preparation_decision_report.md
+```
+
+Decision:
+
+```text
+ACTIVE_INTERVAL_15M_ONLY_WITH_1H_4H_MISSING
+```
+
+`15m` is the active working interval for the current Market Reader workflow. `1h` and `4h` are optional/missing and should not block current BOOK-L1/BOOK-L2 work.
+
+No download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved by BOOK-DATA-02. Next data work requires a separate explicit BOOK-DATA stage.
+
+BOOK-DATA-03C stabilized the current 15m-only Market Reader workflow:
+
+```powershell
+python -m app.cli.commands book-data-15m-stabilization --strict --show-details
+```
+
+Stable stabilization outputs:
+
+```text
+reports/book_data/market_reader_15m_stabilization.json
+reports/book_data/market_reader_15m_stabilization.md
+reports/book_data/book_data_03c_15m_only_market_reader_stabilization_report.md
+```
+
+BOOK-DATA-03C verifies the current DATA -> BOOK-L1 -> BOOK-L2 path on `15m`: candle availability, interval decision, L1 timeline export, L1 JSON consumer, L2 context export, L2 JSON consumer, L2 API readiness, L1-L2 interval answer evidence, and fail-closed safety.
+
+`15m` remains the active interval for current BOOK-L1/BOOK-L2 development. `1h` and `4h` remain optional/missing and are not blockers.
+
+No download, DB write, interval aggregation, trading logic, edge validation, or runtime integration is approved by BOOK-DATA-03C.
+
+BOOK-L2-05 added the final API readiness review:
+
+```powershell
+python -m app.cli.commands book-l2-api-readiness-review
+```
+
+The review checks required L2 modules, required L2 tests, CLI command registration, L1 timeline input, stable L2 context export, strict L2 JSON consumer validation, contract/version/service/source fields, fail-closed safety, observe-only runtime human fields, forbidden L2 source references, stable output filename policy, terminal guide coverage, planning markers, and BOOK-L2 stage reports.
+
+Current Layer 2 boundary:
+
+```text
+Input: reports/book_l1/timeline_preview.json
+Output: reports/book_l2/timeline_context.json
+Evidence: reports/book_l2/l1_l2_interval_answer.md
+Multi-interval evidence: reports/book_l2/l1_l2_multi_interval_answer.md
+Mode: consume-only / observe-only / fail-closed
+Trading execution: prohibited
+```
+
+Next possible layer is BOOK-L3, but only after explicit approval and a separate responsibility decision. BOOK-L1 quality/explainability work on `15m` should come first.
