@@ -56,6 +56,22 @@ from app.market_reader.engine_trend.altunina_trend_context import (
     detect_swing_points,
     normalize_swing_points,
 )
+from app.market_reader.engine_trend.schwager_range_context import (
+    BreakoutConfirmationStatus,
+    BreakoutContext,
+    BreakoutDirection,
+    PolarityFlipContext,
+    PolarityFlipStatus,
+    SchwagerRangeContext,
+    SupportResistanceZone,
+    TradingRange,
+    ZoneType,
+    analyze_breakout_context,
+    analyze_polarity_flip_context,
+    analyze_schwager_range_context,
+    build_support_resistance_zones,
+    detect_trading_range,
+)
 
 __all__ = [
     "BookEvidence",
@@ -98,4 +114,18 @@ __all__ = [
     "classify_structure_direction",
     "detect_swing_points",
     "normalize_swing_points",
+    "BreakoutConfirmationStatus",
+    "BreakoutContext",
+    "BreakoutDirection",
+    "PolarityFlipContext",
+    "PolarityFlipStatus",
+    "SchwagerRangeContext",
+    "SupportResistanceZone",
+    "TradingRange",
+    "ZoneType",
+    "analyze_breakout_context",
+    "analyze_polarity_flip_context",
+    "analyze_schwager_range_context",
+    "build_support_resistance_zones",
+    "detect_trading_range",
 ]
