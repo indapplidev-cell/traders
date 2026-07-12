@@ -111,6 +111,18 @@ from app.market_reader.engine_trend.json_export import (
     build_engine_trend_preview,
     save_engine_trend_json,
 )
+from app.market_reader.engine_trend.data_source_boundary import (
+    CandleDataBatch,
+    CandleDataBoundaryResult,
+    CandleDataBoundaryStatus,
+    CandleDataProvider,
+    CandleDataQualityFlag,
+    CandleDataRequest,
+    build_candle_data_batch,
+    run_engine_trend_from_batch,
+    run_engine_trend_from_provider,
+    validate_candle_data_request,
+)
 
 __all__ = [
     "BookEvidence",
@@ -198,4 +210,14 @@ __all__ = [
     "build_engine_trend_json_payload",
     "build_engine_trend_preview",
     "save_engine_trend_json",
+    "CandleDataBatch",
+    "CandleDataBoundaryResult",
+    "CandleDataBoundaryStatus",
+    "CandleDataProvider",
+    "CandleDataQualityFlag",
+    "CandleDataRequest",
+    "build_candle_data_batch",
+    "run_engine_trend_from_batch",
+    "run_engine_trend_from_provider",
+    "validate_candle_data_request",
 ]
