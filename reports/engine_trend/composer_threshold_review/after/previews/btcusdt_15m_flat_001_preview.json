@@ -1,0 +1,56 @@
+{
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "period_start": "2025-09-27 00:00:00+00:00",
+  "period_end": "2025-09-27 23:45:00+00:00",
+  "candle_count": 96,
+  "market_regime": "DOWN",
+  "confidence": 1.0,
+  "confidence_level": "HIGH",
+  "status": "COMPOSED",
+  "reason_codes_top": [
+    "CLOSE_NEAR_LOW",
+    "LONG_LOWER_SHADOW_REJECTION",
+    "SMALL_BODY_INDECISION",
+    "DOJI_INDECISION",
+    "STRONG_BEARISH_CANDLE_BODY",
+    "CLOSE_NEAR_LOW",
+    "STRONG_BULLISH_CANDLE_BODY",
+    "CLOSE_NEAR_HIGH",
+    "STRONG_BEARISH_CANDLE_BODY",
+    "CLOSE_NEAR_LOW"
+  ],
+  "safety": {
+    "trade_signal": "NOT_EVALUATED",
+    "safe_for_runtime_trading": false,
+    "live_trading_connected": false
+  },
+  "summary": {
+    "matrix_summary": {
+      "active_source_count": 3,
+      "total_evidence_count": 428,
+      "dominant_direction": "BEARISH",
+      "agreement_state": "ALIGNED_BEARISH",
+      "conflict_level": "NONE",
+      "coverage_level": "HIGH",
+      "confluence_score": 0.6666666666666666,
+      "conflict_score": 0.0,
+      "coverage_score": 1.0,
+      "ready_for_composer": true
+    },
+    "candidate_scores": {
+      "up_score": 1.0,
+      "down_score": 1.0,
+      "flat_score": 0.6000000000000001,
+      "unknown_score": 0.0,
+      "selected_regime": "DOWN",
+      "confidence": 1.0,
+      "confidence_level": "HIGH",
+      "reason_codes": [
+        "COMPOSER_SIDEWAYS_STRUCTURE_FLAT_CONTEXT",
+        "COMPOSER_RANGE_FLAT_CONTEXT",
+        "COMPOSER_DOWN_REGIME_SELECTED"
+      ]
+    }
+  }
+}

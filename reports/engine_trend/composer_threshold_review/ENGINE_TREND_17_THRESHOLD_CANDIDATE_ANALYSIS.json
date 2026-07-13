@@ -1,0 +1,27 @@
+{
+  "stage": "ENGINE-TREND-17",
+  "windows_analyzed": 60,
+  "observations": {
+    "up_down_both_clamped_to_1_count": 60,
+    "zero_top2_gap_count": 60,
+    "coverage_levels": {
+      "HIGH": 60
+    },
+    "conflict_levels": {
+      "NONE": 48,
+      "MEDIUM": 10,
+      "LOW": 2
+    }
+  },
+  "selected_adjustment_family": "PRESERVE_RAW_ADDITIVE_SCORES_UNTIL_RANKING",
+  "candidate_count": 1,
+  "rationale": "Pre-ranking clamp saturates both directional candidates and manufactures a zero margin. Rank raw additive evidence, then clamp only exported scores/confidence.",
+  "unchanged_guards": [
+    "MIN_REGIME_SCORE",
+    "MIN_SCORE_MARGIN",
+    "EMPTY_OR_LOW_COVERAGE_UNKNOWN",
+    "HIGH_CONFLICT_UNKNOWN",
+    "UNKNOWN_CONFIDENCE_CAP"
+  ],
+  "uses_future_outcomes_or_profitability": false
+}
