@@ -1,0 +1,262 @@
+{
+  "stage": "ENGINE-TREND-15",
+  "source": "postgresql.public.market_candles",
+  "selection_without_engine_output": true,
+  "windows": [
+    {
+      "window_id": "btc_15m_expected_up_001",
+      "symbol": "BTCUSDT",
+      "interval": "15m",
+      "period_start": "2026-02-06T00:00:00+00:00",
+      "period_end": "2026-02-06T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_UP",
+      "reference_label": "EXPECTED_UP",
+      "selection_reason": "deterministic expected_up OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 12.192665475226688,
+        "high_low_range_pct": 18.67962849072809,
+        "directional_efficiency": 0.6527252659911679,
+        "close_range_position": 0.9003457480982998
+      }
+    },
+    {
+      "window_id": "btc_15m_expected_down_001",
+      "symbol": "BTCUSDT",
+      "interval": "15m",
+      "period_start": "2026-02-05T00:00:00+00:00",
+      "period_end": "2026-02-05T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_DOWN",
+      "reference_label": "EXPECTED_DOWN",
+      "selection_reason": "deterministic expected_down OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": -14.017443112796895,
+        "high_low_range_pct": 15.029117413262794,
+        "directional_efficiency": 0.932685714493579,
+        "close_range_position": 0.05136874805614322
+      }
+    },
+    {
+      "window_id": "btc_15m_expected_flat_001",
+      "symbol": "BTCUSDT",
+      "interval": "15m",
+      "period_start": "2025-09-27T00:00:00+00:00",
+      "period_end": "2025-09-27T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_FLAT",
+      "reference_label": "EXPECTED_FLAT",
+      "selection_reason": "deterministic expected_flat OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": -0.006940678449950942,
+        "high_low_range_pct": 0.6197451266131234,
+        "directional_efficiency": 0.011199246515872435,
+        "close_range_position": 0.840973642772003
+      }
+    },
+    {
+      "window_id": "btc_15m_expected_unknown_or_mixed_001",
+      "symbol": "BTCUSDT",
+      "interval": "15m",
+      "period_start": "2025-01-20T00:00:00+00:00",
+      "period_end": "2025-01-20T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_UNKNOWN_OR_MIXED",
+      "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+      "selection_reason": "deterministic expected_unknown_or_mixed OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 0.9162396279856195,
+        "high_low_range_pct": 9.906093431691623,
+        "directional_efficiency": 0.09249252839210877,
+        "close_range_position": 0.26997509464036606
+      }
+    },
+    {
+      "window_id": "btc_15m_recent_baseline_001",
+      "symbol": "BTCUSDT",
+      "interval": "15m",
+      "period_start": "2026-06-14T20:15:00+00:00",
+      "period_end": "2026-06-15T20:00:00+00:00",
+      "window_length": 96,
+      "window_type": "RECENT_BASELINE",
+      "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+      "selection_reason": "latest 96 candles; provisional neutral reference, not selected from engine output",
+      "descriptive_metrics": {
+        "close_return_pct": 4.3466385692110325,
+        "high_low_range_pct": 5.447177963889281,
+        "directional_efficiency": 0.7979615496365269,
+        "close_range_position": 0.7979615496365269
+      }
+    },
+    {
+      "window_id": "eth_15m_expected_up_001",
+      "symbol": "ETHUSDT",
+      "interval": "15m",
+      "period_start": "2025-05-08T00:00:00+00:00",
+      "period_end": "2025-05-08T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_UP",
+      "reference_label": "EXPECTED_UP",
+      "selection_reason": "deterministic expected_up OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 21.880504221168234,
+        "high_low_range_pct": 23.040566282556004,
+        "directional_efficiency": 0.9496513216228523,
+        "close_range_position": 0.955402717534568
+      }
+    },
+    {
+      "window_id": "eth_15m_expected_down_001",
+      "symbol": "ETHUSDT",
+      "interval": "15m",
+      "period_start": "2026-02-05T00:00:00+00:00",
+      "period_end": "2026-02-05T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_DOWN",
+      "reference_label": "EXPECTED_DOWN",
+      "selection_reason": "deterministic expected_down OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": -14.961945769812642,
+        "high_low_range_pct": 16.552542767368784,
+        "directional_efficiency": 0.9039061840884168,
+        "close_range_position": 0.024325768441181884
+      }
+    },
+    {
+      "window_id": "eth_15m_expected_flat_001",
+      "symbol": "ETHUSDT",
+      "interval": "15m",
+      "period_start": "2025-09-08T00:00:00+00:00",
+      "period_end": "2025-09-08T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_FLAT",
+      "reference_label": "EXPECTED_FLAT",
+      "selection_reason": "deterministic expected_flat OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 0.004180029213766486,
+        "high_low_range_pct": 2.4397437177644368,
+        "directional_efficiency": 0.0017133066818988232,
+        "close_range_position": 0.26051779935274877
+      }
+    },
+    {
+      "window_id": "eth_15m_expected_unknown_or_mixed_001",
+      "symbol": "ETHUSDT",
+      "interval": "15m",
+      "period_start": "2025-02-03T00:00:00+00:00",
+      "period_end": "2025-02-03T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_UNKNOWN_OR_MIXED",
+      "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+      "selection_reason": "deterministic expected_unknown_or_mixed OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 0.3561372696607376,
+        "high_low_range_pct": 27.737935937107967,
+        "directional_efficiency": 0.012839357278358091,
+        "close_range_position": 0.9483661855048431
+      }
+    },
+    {
+      "window_id": "eth_15m_recent_baseline_001",
+      "symbol": "ETHUSDT",
+      "interval": "15m",
+      "period_start": "2026-06-14T20:30:00+00:00",
+      "period_end": "2026-06-15T20:15:00+00:00",
+      "window_length": 96,
+      "window_type": "RECENT_BASELINE",
+      "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+      "selection_reason": "latest 96 candles; provisional neutral reference, not selected from engine output",
+      "descriptive_metrics": {
+        "close_return_pct": 9.261203116658761,
+        "high_low_range_pct": 10.938896453271104,
+        "directional_efficiency": 0.8466304765038107,
+        "close_range_position": 0.8466304765038107
+      }
+    },
+    {
+      "window_id": "sol_15m_expected_up_001",
+      "symbol": "SOLUSDT",
+      "interval": "15m",
+      "period_start": "2025-03-02T00:00:00+00:00",
+      "period_end": "2025-03-02T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_UP",
+      "reference_label": "EXPECTED_UP",
+      "selection_reason": "deterministic expected_up OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 24.397883892524025,
+        "high_low_range_pct": 27.711262703605737,
+        "directional_efficiency": 0.8804320522481791,
+        "close_range_position": 0.9713639788997742
+      }
+    },
+    {
+      "window_id": "sol_15m_expected_down_001",
+      "symbol": "SOLUSDT",
+      "interval": "15m",
+      "period_start": "2025-03-03T00:00:00+00:00",
+      "period_end": "2025-03-03T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_DOWN",
+      "reference_label": "EXPECTED_DOWN",
+      "selection_reason": "deterministic expected_down OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": -20.456580125335723,
+        "high_low_range_pct": 22.52685765443151,
+        "directional_efficiency": 0.9080973671137608,
+        "close_range_position": 0.07327372081470415
+      }
+    },
+    {
+      "window_id": "sol_15m_expected_flat_001",
+      "symbol": "SOLUSDT",
+      "interval": "15m",
+      "period_start": "2026-04-25T00:00:00+00:00",
+      "period_end": "2026-04-25T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_FLAT",
+      "reference_label": "EXPECTED_FLAT",
+      "selection_reason": "deterministic expected_flat OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 0.0,
+        "high_low_range_pct": 1.473659781851933,
+        "directional_efficiency": 0.0,
+        "close_range_position": 0.5118110236220533
+      }
+    },
+    {
+      "window_id": "sol_15m_expected_unknown_or_mixed_001",
+      "symbol": "SOLUSDT",
+      "interval": "15m",
+      "period_start": "2025-01-24T00:00:00+00:00",
+      "period_end": "2025-01-24T23:45:00+00:00",
+      "window_length": 96,
+      "window_type": "EXPECTED_UNKNOWN_OR_MIXED",
+      "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+      "selection_reason": "deterministic expected_unknown_or_mixed OHLC rule",
+      "descriptive_metrics": {
+        "close_return_pct": 0.09876738305941844,
+        "high_low_range_pct": 9.086599241466498,
+        "directional_efficiency": 0.010869565217391304,
+        "close_range_position": 0.2691304347826086
+      }
+    },
+    {
+      "window_id": "sol_15m_recent_baseline_001",
+      "symbol": "SOLUSDT",
+      "interval": "15m",
+      "period_start": "2026-06-14T20:30:00+00:00",
+      "period_end": "2026-06-15T20:15:00+00:00",
+      "window_length": 96,
+      "window_type": "RECENT_BASELINE",
+      "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+      "selection_reason": "latest 96 candles; provisional neutral reference, not selected from engine output",
+      "descriptive_metrics": {
+        "close_return_pct": 10.746973723058757,
+        "high_low_range_pct": 12.341304989666371,
+        "directional_efficiency": 0.8708133971291868,
+        "close_range_position": 0.8720095693779896
+      }
+    }
+  ]
+}

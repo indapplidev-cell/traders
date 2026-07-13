@@ -1,0 +1,72 @@
+{
+  "stage": "ENGINE-TREND-15",
+  "window_id": "eth_15m_recent_baseline_001",
+  "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+  "selection_metrics": {
+    "close_return_pct": 9.261203116658761,
+    "high_low_range_pct": 10.938896453271104,
+    "directional_efficiency": 0.8466304765038107,
+    "close_range_position": 0.8466304765038107
+  },
+  "boundary_status": "READY",
+  "warnings": [],
+  "errors": [],
+  "engine_preview": {
+    "symbol": "ETHUSDT",
+    "interval": "15m",
+    "period_start": "2026-06-14 20:30:00+00:00",
+    "period_end": "2026-06-15 20:15:00+00:00",
+    "candle_count": 96,
+    "market_regime": "UNKNOWN",
+    "confidence": 0.3,
+    "confidence_level": "LOW",
+    "status": "FALLBACK_UNKNOWN",
+    "reason_codes_top": [
+      "CLOSE_NEAR_LOW",
+      "STRONG_BULLISH_CANDLE_BODY",
+      "CLOSE_NEAR_HIGH",
+      "LONG_UPPER_SHADOW_REJECTION",
+      "SMALL_BODY_INDECISION",
+      "CLOSE_NEAR_LOW",
+      "SPINNING_TOP_INDECISION",
+      "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+      "CANDLE_PATTERN_NEEDS_TREND_CONTEXT",
+      "SMALL_BODY_INDECISION"
+    ],
+    "safety": {
+      "trade_signal": "NOT_EVALUATED",
+      "safe_for_runtime_trading": false,
+      "live_trading_connected": false
+    },
+    "summary": {
+      "matrix_summary": {
+        "active_source_count": 3,
+        "total_evidence_count": 420,
+        "dominant_direction": "BULLISH",
+        "agreement_state": "ALIGNED_BULLISH",
+        "conflict_level": "NONE",
+        "coverage_level": "HIGH",
+        "confluence_score": 0.6666666666666666,
+        "conflict_score": 0.0,
+        "coverage_score": 1.0,
+        "ready_for_composer": true
+      },
+      "candidate_scores": {
+        "up_score": 1.0,
+        "down_score": 1.0,
+        "flat_score": 0.5957446808510638,
+        "unknown_score": 0.0,
+        "selected_regime": "UNKNOWN",
+        "confidence": 0.3,
+        "confidence_level": "LOW",
+        "reason_codes": [
+          "COMPOSER_SIDEWAYS_STRUCTURE_FLAT_CONTEXT",
+          "COMPOSER_RANGE_FLAT_CONTEXT",
+          "COMPOSER_BREAKOUT_WITH_CONFIRMATION_CONTEXT",
+          "COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN",
+          "COMPOSER_UNKNOWN_REGIME_SELECTED"
+        ]
+      }
+    }
+  }
+}
