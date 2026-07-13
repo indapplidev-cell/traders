@@ -1,0 +1,71 @@
+{
+  "stage": "ENGINE-TREND-15B",
+  "window_id": "ethusdt_15m_mixed_003",
+  "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+  "selection_metrics": {
+    "close_return_pct": -0.7089659123460392,
+    "high_low_range_pct": 8.752665584518923,
+    "directional_efficiency": 0.08100000000000074,
+    "close_position_in_window_range": 0.8282272727272729
+  },
+  "boundary_status": "READY",
+  "warnings": [],
+  "errors": [],
+  "engine_preview": {
+    "symbol": "ETHUSDT",
+    "interval": "15m",
+    "period_start": "2025-02-25 00:00:00+00:00",
+    "period_end": "2025-02-25 23:45:00+00:00",
+    "candle_count": 96,
+    "market_regime": "UNKNOWN",
+    "confidence": 0.3,
+    "confidence_level": "LOW",
+    "status": "FALLBACK_UNKNOWN",
+    "reason_codes_top": [
+      "CLOSE_NEAR_LOW",
+      "CLOSE_NEAR_LOW",
+      "SMALL_BODY_INDECISION",
+      "LONG_LOWER_SHADOW_REJECTION",
+      "SMALL_BODY_INDECISION",
+      "CLOSE_NEAR_HIGH",
+      "SPINNING_TOP_INDECISION",
+      "HAMMER_LIKE_SHAPE_CONTEXT_REQUIRED",
+      "CANDLE_PATTERN_NEEDS_TREND_CONTEXT",
+      "SMALL_BODY_INDECISION"
+    ],
+    "safety": {
+      "trade_signal": "NOT_EVALUATED",
+      "safe_for_runtime_trading": false,
+      "live_trading_connected": false
+    },
+    "summary": {
+      "matrix_summary": {
+        "active_source_count": 3,
+        "total_evidence_count": 426,
+        "dominant_direction": "BEARISH",
+        "agreement_state": "ALIGNED_BEARISH",
+        "conflict_level": "NONE",
+        "coverage_level": "HIGH",
+        "confluence_score": 0.6666666666666666,
+        "conflict_score": 0.0,
+        "coverage_score": 1.0,
+        "ready_for_composer": true
+      },
+      "candidate_scores": {
+        "up_score": 1.0,
+        "down_score": 1.0,
+        "flat_score": 0.6428571428571429,
+        "unknown_score": 0.0,
+        "selected_regime": "UNKNOWN",
+        "confidence": 0.3,
+        "confidence_level": "LOW",
+        "reason_codes": [
+          "COMPOSER_SIDEWAYS_STRUCTURE_FLAT_CONTEXT",
+          "COMPOSER_RANGE_FLAT_CONTEXT",
+          "COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN",
+          "COMPOSER_UNKNOWN_REGIME_SELECTED"
+        ]
+      }
+    }
+  }
+}

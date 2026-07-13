@@ -1,0 +1,72 @@
+{
+  "stage": "ENGINE-TREND-15B",
+  "window_id": "btcusdt_15m_up_004",
+  "reference_label": "EXPECTED_UP",
+  "selection_metrics": {
+    "close_return_pct": 6.772196056913797,
+    "high_low_range_pct": 7.783665702197834,
+    "directional_efficiency": 0.8700522756265813,
+    "close_position_in_window_range": 0.9346723488212669
+  },
+  "boundary_status": "READY",
+  "warnings": [],
+  "errors": [],
+  "engine_preview": {
+    "symbol": "BTCUSDT",
+    "interval": "15m",
+    "period_start": "2025-04-22 00:00:00+00:00",
+    "period_end": "2025-04-22 23:45:00+00:00",
+    "candle_count": 96,
+    "market_regime": "UNKNOWN",
+    "confidence": 0.3,
+    "confidence_level": "LOW",
+    "status": "FALLBACK_UNKNOWN",
+    "reason_codes_top": [
+      "LONG_UPPER_SHADOW_REJECTION",
+      "SMALL_BODY_INDECISION",
+      "CLOSE_NEAR_LOW",
+      "DOJI_INDECISION",
+      "LONG_LOWER_SHADOW_REJECTION",
+      "CLOSE_NEAR_HIGH",
+      "LONG_LOWER_SHADOW_REJECTION",
+      "SMALL_BODY_INDECISION",
+      "CLOSE_NEAR_HIGH",
+      "SPINNING_TOP_INDECISION"
+    ],
+    "safety": {
+      "trade_signal": "NOT_EVALUATED",
+      "safe_for_runtime_trading": false,
+      "live_trading_connected": false
+    },
+    "summary": {
+      "matrix_summary": {
+        "active_source_count": 3,
+        "total_evidence_count": 406,
+        "dominant_direction": "BULLISH",
+        "agreement_state": "ALIGNED_BULLISH",
+        "conflict_level": "NONE",
+        "coverage_level": "HIGH",
+        "confluence_score": 0.6666666666666666,
+        "conflict_score": 0.0,
+        "coverage_score": 1.0,
+        "ready_for_composer": true
+      },
+      "candidate_scores": {
+        "up_score": 1.0,
+        "down_score": 1.0,
+        "flat_score": 0.5538461538461539,
+        "unknown_score": 0.0,
+        "selected_regime": "UNKNOWN",
+        "confidence": 0.3,
+        "confidence_level": "LOW",
+        "reason_codes": [
+          "COMPOSER_SIDEWAYS_STRUCTURE_FLAT_CONTEXT",
+          "COMPOSER_RANGE_FLAT_CONTEXT",
+          "COMPOSER_BREAKOUT_WITH_CONFIRMATION_CONTEXT",
+          "COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN",
+          "COMPOSER_UNKNOWN_REGIME_SELECTED"
+        ]
+      }
+    }
+  }
+}

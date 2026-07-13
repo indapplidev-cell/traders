@@ -1,0 +1,72 @@
+{
+  "stage": "ENGINE-TREND-15B",
+  "window_id": "solusdt_15m_mixed_002",
+  "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+  "selection_metrics": {
+    "close_return_pct": -0.8891523414344993,
+    "high_low_range_pct": 8.547717842323662,
+    "directional_efficiency": 0.10402219140083206,
+    "close_position_in_window_range": 0.2649098474341185
+  },
+  "boundary_status": "READY",
+  "warnings": [],
+  "errors": [],
+  "engine_preview": {
+    "symbol": "SOLUSDT",
+    "interval": "15m",
+    "period_start": "2026-03-01 00:00:00+00:00",
+    "period_end": "2026-03-01 23:45:00+00:00",
+    "candle_count": 96,
+    "market_regime": "UNKNOWN",
+    "confidence": 0.3,
+    "confidence_level": "LOW",
+    "status": "FALLBACK_UNKNOWN",
+    "reason_codes_top": [
+      "STRONG_BULLISH_CANDLE_BODY",
+      "CLOSE_NEAR_HIGH",
+      "CLOSE_NEAR_LOW",
+      "SMALL_BODY_INDECISION",
+      "SPINNING_TOP_INDECISION",
+      "CLOSE_NEAR_HIGH",
+      "STRONG_BULLISH_CANDLE_BODY",
+      "CLOSE_NEAR_HIGH",
+      "SMALL_BODY_INDECISION",
+      "DOJI_INDECISION"
+    ],
+    "safety": {
+      "trade_signal": "NOT_EVALUATED",
+      "safe_for_runtime_trading": false,
+      "live_trading_connected": false
+    },
+    "summary": {
+      "matrix_summary": {
+        "active_source_count": 3,
+        "total_evidence_count": 329,
+        "dominant_direction": "BEARISH",
+        "agreement_state": "ALIGNED_BEARISH",
+        "conflict_level": "NONE",
+        "coverage_level": "HIGH",
+        "confluence_score": 0.6666666666666666,
+        "conflict_score": 0.0,
+        "coverage_score": 1.0,
+        "ready_for_composer": true
+      },
+      "candidate_scores": {
+        "up_score": 1.0,
+        "down_score": 1.0,
+        "flat_score": 0.5361111111111112,
+        "unknown_score": 0.0,
+        "selected_regime": "UNKNOWN",
+        "confidence": 0.3,
+        "confidence_level": "LOW",
+        "reason_codes": [
+          "COMPOSER_SIDEWAYS_STRUCTURE_FLAT_CONTEXT",
+          "COMPOSER_RANGE_FLAT_CONTEXT",
+          "COMPOSER_BREAKOUT_WITH_CONFIRMATION_CONTEXT",
+          "COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN",
+          "COMPOSER_UNKNOWN_REGIME_SELECTED"
+        ]
+      }
+    }
+  }
+}
