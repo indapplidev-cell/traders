@@ -1,0 +1,37 @@
+{
+  "stage": "ENGINE-TREND-16",
+  "status": "DECISION_RECORDED",
+  "baseline": {
+    "engine_trend_15_commit": "1fb4e5f",
+    "engine_trend_15b_commit": "2b98eea",
+    "engine_core_changed": false,
+    "adapter_changed": false,
+    "db_cli_changed": false
+  },
+  "validation_review": {
+    "windows_reviewed": 60,
+    "unknown_count": 60,
+    "confidence_0_3_count": 60,
+    "questionable_unknown_count": 39,
+    "mismatch_count": 0,
+    "safety_violations": 0
+  },
+  "diagnosis": {
+    "primary_hypothesis": "CONSERVATIVE_EVIDENCE_COMPOSER_DECISION_PATH",
+    "secondary_hypotheses": [
+      "CONTEXT_LENGTH_96_MAY_BE_TOO_SHORT"
+    ],
+    "trace_sufficient": true,
+    "cause_counts": {
+      "SMALL_SCORE_GAP": 60,
+      "COMPOSER_CONSERVATIVE_FALLBACK": 60,
+      "CONFIDENCE_FLOOR_OR_CLAMP": 58,
+      "DATA_WINDOW_TOO_SHORT_POSSIBLE": 60
+    }
+  },
+  "selected_decision": "Option A — Tune composer thresholds in a separate stage.",
+  "next_stage": "ENGINE-TREND-17 — Conservative Composer Threshold Review",
+  "core_changes_allowed_in_next_stage": false,
+  "runtime_trading_allowed": false,
+  "trading_claims_allowed": false
+}
