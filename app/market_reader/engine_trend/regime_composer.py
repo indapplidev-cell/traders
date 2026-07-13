@@ -85,18 +85,39 @@ class RegimeCandidateScores:
     confidence: float
     confidence_level: RegimeConfidenceLevel
     reason_codes: tuple[str, ...]
+    raw_scores: tuple[float, float, float, float] | None = None
+    ranking_before_clamp: tuple[tuple[str, float], ...] = ()
+    ranking_after_clamp: tuple[tuple[str, float], ...] = ()
+    selected_regime_before_fallback: str | None = None
+    fallback_triggered: bool = False
+    fallback_reason: str | None = None
+    confidence_path: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if any(not 0.0 <= value <= 1.0 for value in (self.up_score, self.down_score, self.flat_score, self.unknown_score, self.confidence)):
             raise ValueError("scores and confidence must be within [0.0, 1.0]")
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        value = {
             "up_score": self.up_score, "down_score": self.down_score,
             "flat_score": self.flat_score, "unknown_score": self.unknown_score,
             "selected_regime": self.selected_regime.value, "confidence": self.confidence,
             "confidence_level": self.confidence_level.value, "reason_codes": list(self.reason_codes),
         }
+        if self.raw_scores is not None:
+            value["composer_trace"] = {
+                "raw_scores": dict(zip(("UP", "DOWN", "FLAT", "UNKNOWN"), self.raw_scores)),
+                "clamped_scores": {"UP": self.up_score, "DOWN": self.down_score, "FLAT": self.flat_score, "UNKNOWN": self.unknown_score},
+                "ranking_before_clamp": [{"regime": regime, "score": score} for regime, score in self.ranking_before_clamp],
+                "ranking_after_clamp": [{"regime": regime, "score": score} for regime, score in self.ranking_after_clamp],
+                "selected_regime_before_fallback": self.selected_regime_before_fallback,
+                "selected_regime_after_fallback": self.selected_regime.value,
+                "fallback_triggered": self.fallback_triggered,
+                "fallback_reason": self.fallback_reason,
+                "confidence_path": list(self.confidence_path),
+                "confidence_final": self.confidence,
+            }
+        return value
 
 
 @dataclass(frozen=True)
@@ -195,40 +216,63 @@ def score_regime_candidates(matrix: BookEvidenceMatrix, ohlc_integrity: OHLCInte
     if "BEARISH_BODY_DOMINANCE" in nison_codes:
         down += 0.05
 
-    up, down, flat, unknown = map(_clamp, (up, down, flat, unknown))
+    raw_scores = (up, down, flat, unknown)
+    raw_ranked = sorted(((EngineTrendRegime.UP, up), (EngineTrendRegime.DOWN, down), (EngineTrendRegime.FLAT, flat), (EngineTrendRegime.UNKNOWN, unknown)), key=lambda item: item[1], reverse=True)
+    up, down, flat, unknown = map(_clamp, raw_scores)
     invalid = ohlc_integrity is not None and not ohlc_integrity.is_valid
     candidates = ((EngineTrendRegime.UP, up), (EngineTrendRegime.DOWN, down), (EngineTrendRegime.FLAT, flat))
     ranked = sorted(candidates, key=lambda item: item[1], reverse=True)
     selected, winning = ranked[0]
+    selected_before_fallback = selected
+    fallback_reason: str | None = None
+    confidence_path: list[str] = [f"CLAMPED_WINNER:{selected.value}:{winning}"]
     clear_range = trading_range.is_detected and flat >= max(up, down) and (breakout.returned_to_range or breakout.status is BreakoutConfirmationStatus.FALSE_BREAKOUT)
     if invalid:
         selected, confidence = EngineTrendRegime.UNKNOWN, 0.0
         codes.append("COMPOSER_OHLC_FAIL")
+        fallback_reason = "COMPOSER_OHLC_FAIL"
     elif summary.coverage_level is EvidenceCoverageLevel.EMPTY:
         selected, confidence = EngineTrendRegime.UNKNOWN, 0.0
         codes.append("COMPOSER_LOW_COVERAGE_UNKNOWN")
+        fallback_reason = "COMPOSER_LOW_COVERAGE_UNKNOWN"
     elif summary.coverage_level is EvidenceCoverageLevel.LOW:
         selected, confidence = EngineTrendRegime.UNKNOWN, min(0.25, unknown)
         codes.append("COMPOSER_LOW_COVERAGE_UNKNOWN")
+        fallback_reason = "COMPOSER_LOW_COVERAGE_UNKNOWN"
     elif summary.conflict_level is EvidenceConflictLevel.HIGH and not clear_range:
         selected, confidence = EngineTrendRegime.UNKNOWN, min(0.35, unknown)
         codes.append("COMPOSER_HIGH_CONFLICT_UNKNOWN")
+        fallback_reason = "COMPOSER_HIGH_CONFLICT_UNKNOWN"
     elif winning < MIN_REGIME_SCORE or (winning - ranked[1][1] < MIN_SCORE_MARGIN and not (selected is EngineTrendRegime.FLAT and trading_range.is_detected)):
         selected, confidence = EngineTrendRegime.UNKNOWN, min(0.30, max(unknown, winning))
         codes.append("COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN")
+        fallback_reason = "COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN"
     else:
         confidence = winning * (0.50 + 0.50 * summary.coverage_score) + min(0.15, summary.confluence_score * 0.15) - min(0.35, summary.conflict_score * 0.35)
         if ohlc_integrity and ohlc_integrity.warnings:
             confidence -= 0.20
         confidence = _clamp(confidence)
+        confidence_path.append(f"WEIGHTED_CONFIDENCE:{confidence}")
         if summary.conflict_level is EvidenceConflictLevel.HIGH:
             confidence = min(confidence, 0.45 if selected is EngineTrendRegime.FLAT else 0.35)
         elif summary.conflict_level is EvidenceConflictLevel.MEDIUM:
             confidence = min(confidence, 0.60)
     if selected is EngineTrendRegime.UNKNOWN:
         confidence = min(confidence, 0.35)
+        confidence_path.append(f"UNKNOWN_CAP:{confidence}")
     codes.append(f"COMPOSER_{selected.value}_REGIME_SELECTED")
-    return RegimeCandidateScores(up, down, flat, unknown, selected, _clamp(confidence), _level(_clamp(confidence)), tuple(dict.fromkeys(codes)))
+    final_confidence = _clamp(confidence)
+    confidence_path.append(f"FINAL:{final_confidence}")
+    return RegimeCandidateScores(
+        up, down, flat, unknown, selected, final_confidence, _level(final_confidence), tuple(dict.fromkeys(codes)),
+        raw_scores,
+        tuple((regime.value, score) for regime, score in raw_ranked),
+        tuple((regime.value, score) for regime, score in sorted(((EngineTrendRegime.UP, up), (EngineTrendRegime.DOWN, down), (EngineTrendRegime.FLAT, flat), (EngineTrendRegime.UNKNOWN, unknown)), key=lambda item: item[1], reverse=True)),
+        selected_before_fallback.value,
+        selected is EngineTrendRegime.UNKNOWN and selected_before_fallback is not EngineTrendRegime.UNKNOWN,
+        fallback_reason,
+        tuple(confidence_path),
+    )
 
 
 def _composer_status(scores: RegimeCandidateScores, matrix: BookEvidenceMatrix, integrity: OHLCIntegrityResult) -> tuple[RegimeComposerStatus, RegimeDecisionSource]:
