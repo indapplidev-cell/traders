@@ -7,11 +7,9 @@ from enum import Enum
 
 from app.market_reader.engine_trend.altunina_trend_context import (
     AltuninaTrendContext,
-    analyze_altunina_trend_context,
 )
 from app.market_reader.engine_trend.nison_candlestick_context import (
     NisonWindowContext,
-    analyze_nison_window_context,
 )
 from app.market_reader.engine_trend.schemas import (
     BookSource,
@@ -20,8 +18,16 @@ from app.market_reader.engine_trend.schemas import (
 )
 from app.market_reader.engine_trend.schwager_range_context import (
     SchwagerRangeContext,
-    analyze_schwager_range_context,
 )
+from app.market_reader.engine_trend.market_hypothesis import (
+    MarketHypothesisResult,
+    analyze_market_hypotheses,
+)
+from app.market_reader.engine_trend.unified_market_context import (
+    UnifiedMarketContext,
+    build_unified_market_context,
+)
+from app.market_reader.engine_trend.analysis_contract import AnalysisWindowConfig
 
 
 DIRECTION_MATERIALITY_THRESHOLD = 0.05
@@ -149,6 +155,8 @@ class ConfluenceConflictSummary:
 @dataclass(frozen=True)
 class BookEvidenceMatrix:
     candle_count: int
+    unified_context: UnifiedMarketContext
+    hypothesis_result: MarketHypothesisResult
     nison_context: NisonWindowContext
     altunina_context: AltuninaTrendContext
     schwager_context: SchwagerRangeContext
@@ -162,6 +170,8 @@ class BookEvidenceMatrix:
     def to_dict(self) -> dict[str, object]:
         return {
             "candle_count": self.candle_count,
+            "unified_context": self.unified_context.to_dict(),
+            "hypothesis_result": self.hypothesis_result.to_dict(),
             "buckets": [item.to_dict() for item in self.buckets],
             "directional_balance": self.directional_balance.to_dict(),
             "confluence_conflict": self.confluence_conflict.to_dict(),
@@ -301,21 +311,35 @@ def _matrix_evidence(summary: ConfluenceConflictSummary) -> tuple[EngineTrendEvi
 
 def analyze_book_evidence_matrix(
     candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle],
+    config: AnalysisWindowConfig | None = None,
 ) -> BookEvidenceMatrix:
     items = tuple(candles)
-    nison = analyze_nison_window_context(items)
-    altunina = analyze_altunina_trend_context(items)
-    schwager = analyze_schwager_range_context(items)
+    unified = build_unified_market_context(items, config)
+    nison = unified.nison_context
+    altunina = unified.altunina_context
+    schwager = unified.schwager_context
+    hypotheses = analyze_market_hypotheses(unified)
     buckets = (
-        build_book_evidence_bucket(BookSource.NISON, nison.all_evidence),
+        build_book_evidence_bucket(
+            BookSource.NISON,
+            tuple(item for item in nison.all_evidence if item.source is BookSource.NISON),
+        ),
         build_book_evidence_bucket(BookSource.ALTUNINA, altunina.evidence),
         build_book_evidence_bucket(BookSource.SCHWAGER, schwager.evidence),
     )
     book_evidence = tuple(item for bucket in buckets for item in bucket.evidence)
+    nison_engine_evidence = tuple(
+        item for item in nison.all_evidence if item.source is BookSource.ENGINE_TREND
+    )
     balance = build_directional_evidence_balance(book_evidence)
     confluence = build_confluence_conflict_summary(buckets, balance)
     matrix_evidence = _matrix_evidence(confluence)
-    all_evidence = book_evidence + matrix_evidence
+    all_evidence = (
+        book_evidence
+        + nison_engine_evidence
+        + hypotheses.evidence
+        + matrix_evidence
+    )
     reason_codes = tuple(dict.fromkeys(item.code for item in all_evidence))
     summary = {
         "active_source_count": len(BOOK_SOURCES) - len(confluence.missing_sources),
@@ -327,9 +351,17 @@ def analyze_book_evidence_matrix(
         "confluence_score": confluence.confluence_score,
         "conflict_score": confluence.conflict_score,
         "coverage_score": confluence.coverage_score,
+        "legacy_bullish_score": balance.bullish_score,
+        "legacy_bearish_score": balance.bearish_score,
         "ready_for_composer": confluence.coverage_level in (EvidenceCoverageLevel.MEDIUM, EvidenceCoverageLevel.HIGH),
+        "hypothesis_summary": dict(hypotheses.summary),
+        "shared_raw_swing_count": len(unified.raw_swing_points),
+        "shared_structural_swing_count": len(unified.structural_swing_points),
+        "analysis_readiness": unified.analysis_window.readiness.value,
+        "analysis_window": unified.analysis_window.to_dict(),
+        "indicator_direction": unified.indicator_context.direction.value,
     }
     return BookEvidenceMatrix(
-        len(items), nison, altunina, schwager, buckets, balance,
+        len(items), unified, hypotheses, nison, altunina, schwager, buckets, balance,
         confluence, all_evidence, reason_codes, summary,
     )

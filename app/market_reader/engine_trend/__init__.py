@@ -17,6 +17,15 @@ from app.market_reader.engine_trend.schemas import (
     EngineTrendSafety,
     TradeSignal,
 )
+from app.market_reader.engine_trend.analysis_contract import (
+    MIN_FULL_ANALYSIS_CANDLES,
+    RECOMMENDED_CONTEXT_CANDLES,
+    AnalysisReadiness,
+    AnalysisWindowConfig,
+    analysis_readiness,
+    interval_duration,
+    parse_market_timestamp,
+)
 from app.market_reader.engine_trend.candle_morphology import (
     CandleDirection,
     CandleMorphology,
@@ -54,6 +63,7 @@ from app.market_reader.engine_trend.altunina_trend_context import (
     classify_trend_duration,
     classify_structure_direction,
     detect_swing_points,
+    detect_volatility_aware_swing_points,
     normalize_swing_points,
 )
 from app.market_reader.engine_trend.schwager_range_context import (
@@ -73,6 +83,29 @@ from app.market_reader.engine_trend.schwager_range_context import (
     analyze_schwager_range_context,
     build_support_resistance_zones,
     detect_trading_range,
+)
+from app.market_reader.engine_trend.unified_market_context import (
+    UnifiedMarketContext,
+    VolumeContext,
+    build_unified_market_context,
+)
+from app.market_reader.engine_trend.technical_indicator_context import (
+    IndicatorDirection,
+    TechnicalIndicatorContext,
+    analyze_technical_indicators,
+)
+from app.market_reader.engine_trend.market_hypothesis import (
+    ContextualEventStatus,
+    ContextualPatternEvent,
+    FollowThroughStatus,
+    HypothesisDirection,
+    HypothesisStatus,
+    HypothesisType,
+    MarketHypothesis,
+    MarketHypothesisResult,
+    PatternDirection,
+    PatternRole,
+    analyze_market_hypotheses,
 )
 from app.market_reader.engine_trend.book_evidence_matrix import (
     BookAgreementState,
@@ -123,8 +156,27 @@ from app.market_reader.engine_trend.data_source_boundary import (
     run_engine_trend_from_provider,
     validate_candle_data_request,
 )
+from app.market_reader.engine_trend.multi_timeframe import (
+    MultiTimeframeResult,
+    TimeframeAlignment,
+    run_multi_timeframe_engine_trend,
+)
+from app.market_reader.engine_trend.oos_validation import (
+    OOSValidationResult,
+    ValidationLabelSource,
+    build_manual_annotation_template,
+    deduplicate_validation_items,
+    run_balanced_oos_validation,
+)
 
 __all__ = [
+    "MIN_FULL_ANALYSIS_CANDLES",
+    "RECOMMENDED_CONTEXT_CANDLES",
+    "AnalysisReadiness",
+    "AnalysisWindowConfig",
+    "analysis_readiness",
+    "interval_duration",
+    "parse_market_timestamp",
     "BookEvidence",
     "BookSource",
     "ConfidenceDecomposition",
@@ -164,6 +216,7 @@ __all__ = [
     "classify_trend_duration",
     "classify_structure_direction",
     "detect_swing_points",
+    "detect_volatility_aware_swing_points",
     "normalize_swing_points",
     "BreakoutConfirmationStatus",
     "BreakoutConfirmationMethod",
@@ -181,6 +234,23 @@ __all__ = [
     "analyze_schwager_range_context",
     "build_support_resistance_zones",
     "detect_trading_range",
+    "UnifiedMarketContext",
+    "VolumeContext",
+    "build_unified_market_context",
+    "IndicatorDirection",
+    "TechnicalIndicatorContext",
+    "analyze_technical_indicators",
+    "ContextualEventStatus",
+    "ContextualPatternEvent",
+    "FollowThroughStatus",
+    "HypothesisDirection",
+    "HypothesisStatus",
+    "HypothesisType",
+    "MarketHypothesis",
+    "MarketHypothesisResult",
+    "PatternDirection",
+    "PatternRole",
+    "analyze_market_hypotheses",
     "BookAgreementState",
     "BookEvidenceBucket",
     "BookEvidenceMatrix",
@@ -220,4 +290,12 @@ __all__ = [
     "run_engine_trend_from_batch",
     "run_engine_trend_from_provider",
     "validate_candle_data_request",
+    "MultiTimeframeResult",
+    "TimeframeAlignment",
+    "run_multi_timeframe_engine_trend",
+    "OOSValidationResult",
+    "ValidationLabelSource",
+    "build_manual_annotation_template",
+    "deduplicate_validation_items",
+    "run_balanced_oos_validation",
 ]

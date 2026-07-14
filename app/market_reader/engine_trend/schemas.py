@@ -247,4 +247,14 @@ class EngineTrendResult:
             "warnings": list(self.warnings),
             "errors": list(self.errors),
             "safety": self.safety.to_dict(),
+            "final_answer": {
+                "regime": self.market_regime.value,
+                "is_conclusive": self.market_regime is not EngineTrendRegime.UNKNOWN,
+                "is_abstention": self.market_regime is EngineTrendRegime.UNKNOWN,
+                "meaning": (
+                    "CONFIRMED_MARKET_HYPOTHESIS"
+                    if self.market_regime is not EngineTrendRegime.UNKNOWN
+                    else "NO_UNAMBIGUOUS_CONFIRMED_HYPOTHESIS"
+                ),
+            },
         }

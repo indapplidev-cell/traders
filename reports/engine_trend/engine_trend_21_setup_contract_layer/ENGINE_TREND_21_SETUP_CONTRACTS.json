@@ -1,0 +1,120 @@
+{
+  "document_id": "ENGINE-TREND-21",
+  "version": "1.0.0-design",
+  "scope": "design_only",
+  "runtime_enabled": false,
+  "defaults": {
+    "proposed_min_reward_risk": 1.5,
+    "proposed_expires_after_candles": 8,
+    "note": "Design defaults only; they do not alter any ENGINE-TREND-19/20 runtime threshold and require later validation/configuration."
+  },
+  "global_invariants": [
+    "REGIME_IS_CONTEXT_NOT_A_TRADE",
+    "UNKNOWN_ALWAYS_NO_TRADE",
+    "INDICATORS_CANNOT_ORIGINATE_A_SETUP",
+    "SETUP_REQUIRES_CAUSAL_STRUCTURE_AND_PRICE_EVENT",
+    "TRADE_CANDIDATE_REQUIRES_ENTRY_INVALIDATION_STOP_TARGET_AND_ACCEPTABLE_RR",
+    "CONFIRMED_OPPOSING_RANGE_TRAP_OR_REVERSAL_BLOCKS_THE_SETUP",
+    "NO_EXECUTION_SIDE_EFFECTS"
+  ],
+  "contracts": [
+    {
+      "setup_type": "SHORT_DOWN_CONTINUATION_RETEST",
+      "maturity": "DESIGN_READY_FOR_FUTURE_VALIDATION",
+      "required_market_regime": ["DOWN"],
+      "required_hypothesis": ["DOWN_CONTINUATION"],
+      "hypothesis_requirement": "DOWN regime or confirmed DOWN_CONTINUATION, with causal bearish structure required in both cases",
+      "allowed_context": ["LL_LH_BEARISH_STRUCTURE", "BROKEN_SUPPORT_RETEST", "RESISTANCE_RETEST", "EMA_OR_VWAP_CONFLUENCE_ZONE", "FAILED_REBOUND", "BEARISH_REJECTION"],
+      "forbidden_context": ["UNKNOWN_REGIME", "CONFIRMED_BULLISH_REVERSAL", "CONFIRMED_RANGE_DOMINATES", "CONFIRMED_BEAR_TRAP", "UNRESOLVED_DIRECTIONAL_CONFLICT", "DATA_QUALITY_FAILURE"],
+      "entry_trigger": "After a closed bearish confirmation candle rejects the causal retest/reclaim zone; confirmation must occur after the retest and use only information available as_of.",
+      "invalidation_rule": "A close/reclaim above the rejection high or upper edge of the reclaimed zone invalidates the bearish premise.",
+      "stop_rule": "Place beyond the structural invalidation level plus a future-validated market-noise buffer; never derive stop from desired position size or RR.",
+      "target_rule": "Choose an unbreached causal objective below entry: previous low, measured-move objective, or support zone. Record all eligible targets and why each existed as_of.",
+      "reward_risk_rule": "For each target, RR=(entry-target)/(stop-entry). At least one reachable target must have RR >= min_reward_risk; otherwise NO_TRADE.",
+      "expiration_rule": "Expire after expires_after_candles from confirmation, or earlier on invalidation, opposing confirmation, regime/hypothesis staleness, or material zone change.",
+      "conflict_handling": "Confirmed bullish reversal/range/trap => NO_TRADE or INVALIDATED if already confirmed. Pending but unresolved conflict => WAIT_CONFIRMATION; expiration turns it into NO_TRADE.",
+      "status_rules": {
+        "TRADE_CANDIDATE": "All gates pass and numeric entry, invalidation, stop, target and RR are present.",
+        "WAIT_CONFIRMATION": "Causal retest exists and levels can be defined, but the post-retest confirmation candle is not closed.",
+        "NO_TRADE": "Any hard gate fails before activation.",
+        "INVALIDATED": "A previously valid/pending premise is causally breached."
+      },
+      "example": {
+        "schema_version": "1.0.0-design", "as_of": "2026-07-01T12:00:00Z", "symbol": "EXAMPLEUSDT", "timeframe": "15m", "setup_id": "example-short-retest-001", "setup_type": "SHORT_DOWN_CONTINUATION_RETEST", "status": "TRADE_CANDIDATE", "direction": "SHORT", "source_regime": "DOWN", "source_hypothesis": "DOWN_CONTINUATION", "entry": {"type": "confirmation_close", "price": 99.0, "condition": "bearish close after failed reclaim of 100.0 resistance", "confirmation_candle_time": "2026-07-01T12:00:00Z"}, "invalidation": {"price": 101.0, "reason": "close above rejection high/reclaim zone"}, "stop": {"price": 101.2, "distance_pct": 2.2222222222, "reason": "beyond structural invalidation; buffer is illustrative only"}, "targets": [{"price": 95.0, "reason": "previous confirmed swing low", "rr": 1.8181818182}], "selected_target_index": 0, "min_reward_risk": 1.5, "expires_after_candles": 8, "candles_remaining": 8, "confidence": null, "risk_flags": ["DESIGN_ONLY"], "no_trade_reasons": [], "evidence_refs": ["broken_support", "failed_rebound", "confirmation_candle"], "design_only": true
+      }
+    },
+    {
+      "setup_type": "SHORT_TREND_ONLY_CONTINUATION_CANDIDATE",
+      "maturity": "DRAFT_BLOCKED_ENGINE_TREND_20B",
+      "activation_gate": "MUST_NOT_ACTIVATE before separate ENGINE-TREND-20B validation and explicit runtime authorization",
+      "required_market_regime": ["DOWN"],
+      "required_hypothesis": ["FUTURE_VALIDATED_TREND_ONLY_DOWN_CONTINUATION"],
+      "allowed_context": ["LL_LH_BEARISH_STRUCTURE", "BEARISH_TECHNICAL_CONFIRMATION_AS_SUPPORTING_EVIDENCE", "FAILED_REBOUND", "NO_STRONGER_CONFIRMED_RANGE"],
+      "forbidden_context": ["UNKNOWN_REGIME", "ENGINE_TREND_20B_NOT_VALIDATED", "CONFIRMED_RANGE", "CONFIRMED_BULLISH_REVERSAL", "CONFIRMED_BEAR_TRAP", "DATA_QUALITY_FAILURE"],
+      "entry_trigger": "Draft only: bearish confirmation close after a causally identified failed rebound/lower high.",
+      "invalidation_rule": "Draft only: reclaim above failed-rebound high or bearish structural pivot.",
+      "stop_rule": "Draft only: beyond invalidation plus validated buffer; unavailable until 20B defines level provenance.",
+      "target_rule": "Draft only: prior low, measured move, or support with causal provenance.",
+      "reward_risk_rule": "Same directional RR formula as short retest; failure or missing values => NO_TRADE.",
+      "expiration_rule": "Draft proposal: 8 candles after confirmation; 20B must validate.",
+      "conflict_handling": "Any stronger confirmed range or bullish reversal blocks; while 20B is absent every evaluation resolves to NO_TRADE with CONTRACT_NOT_VALIDATED_ENGINE_TREND_20B.",
+      "example": {
+        "schema_version": "1.0.0-design", "as_of": "2026-07-13T16:00:00Z", "symbol": "BTCUSDT", "timeframe": "15m", "setup_id": "concept-btc-20260713-1600", "setup_type": "NO_TRADE_CONTRACT", "status": "NO_TRADE", "direction": "NONE", "source_regime": "UNKNOWN", "source_hypothesis": null, "entry": {"type": "none", "price": null, "condition": "trend-only counterfactual is diagnostic and cannot activate", "confirmation_candle_time": null}, "invalidation": {"price": null, "reason": "no authorized setup premise"}, "stop": {"price": null, "distance_pct": null, "reason": "not applicable"}, "targets": [], "selected_target_index": null, "min_reward_risk": 1.5, "expires_after_candles": 8, "candles_remaining": null, "confidence": null, "risk_flags": ["ENGINE_TREND_20B_REQUIRED", "DESIGN_ONLY"], "no_trade_reasons": ["UNKNOWN_REGIME", "CONTRACT_NOT_VALIDATED_ENGINE_TREND_20B"], "evidence_refs": ["ENGINE_TREND_20_COUNTERFACTUAL_ONLY"], "design_only": true
+      }
+    },
+    {
+      "setup_type": "LONG_UP_CONTINUATION_RETEST",
+      "maturity": "DESIGN_READY_FOR_FUTURE_VALIDATION",
+      "required_market_regime": ["UP"],
+      "required_hypothesis": ["UP_CONTINUATION_OR_EQUIVALENT_CONFIRMED_BULLISH_CONTINUATION"],
+      "allowed_context": ["HH_HL_BULLISH_STRUCTURE", "BROKEN_RESISTANCE_RETEST", "SUPPORT_RETEST", "EMA_OR_VWAP_CONFLUENCE_ZONE", "FAILED_BREAKDOWN", "BULLISH_REJECTION"],
+      "forbidden_context": ["UNKNOWN_REGIME", "CONFIRMED_BEARISH_REVERSAL", "CONFIRMED_RANGE_DOMINATES", "CONFIRMED_BULL_TRAP", "UNRESOLVED_DIRECTIONAL_CONFLICT", "DATA_QUALITY_FAILURE"],
+      "entry_trigger": "After a closed bullish confirmation candle holds/reclaims the causal breakout/retest zone following a failed breakdown.",
+      "invalidation_rule": "A close below the retest low or lower edge of the failed reclaim invalidates the bullish premise.",
+      "stop_rule": "Place beyond structural invalidation minus a future-validated market-noise buffer.",
+      "target_rule": "Choose an unbreached objective above entry: previous high, measured-move objective, or resistance zone.",
+      "reward_risk_rule": "For each target, RR=(target-entry)/(entry-stop). At least one reachable target must have RR >= min_reward_risk; otherwise NO_TRADE.",
+      "expiration_rule": "Expire after expires_after_candles from confirmation, or earlier on invalidation, opposing confirmation, regime/hypothesis staleness, or material zone change.",
+      "conflict_handling": "Confirmed bearish reversal/range/trap => NO_TRADE or INVALIDATED. Pending unresolved conflict => WAIT_CONFIRMATION.",
+      "example": {
+        "schema_version": "1.0.0-design", "as_of": "2026-07-01T12:00:00Z", "symbol": "EXAMPLEUSDT", "timeframe": "15m", "setup_id": "example-long-retest-001", "setup_type": "LONG_UP_CONTINUATION_RETEST", "status": "WAIT_CONFIRMATION", "direction": "LONG", "source_regime": "UP", "source_hypothesis": "UP_CONTINUATION", "entry": {"type": "confirmation_close", "price": null, "condition": "await bullish close after failed breakdown at 100.0 reclaim zone", "confirmation_candle_time": null}, "invalidation": {"price": 98.8, "reason": "close below retest low"}, "stop": {"price": 98.6, "distance_pct": null, "reason": "numeric distance waits for entry"}, "targets": [{"price": 104.0, "reason": "previous high", "rr": null}], "selected_target_index": null, "min_reward_risk": 1.5, "expires_after_candles": 8, "candles_remaining": 8, "confidence": null, "risk_flags": ["ENTRY_CONFIRMATION_PENDING", "DESIGN_ONLY"], "no_trade_reasons": [], "evidence_refs": ["breakout_retest", "failed_breakdown"], "design_only": true
+      }
+    },
+    {
+      "setup_type": "RANGE_MEAN_REVERSION_CANDIDATE",
+      "maturity": "DRAFT_DESIGN_ONLY",
+      "required_market_regime": ["FLAT"],
+      "required_hypothesis": ["CONFIRMED_RANGE"],
+      "allowed_context": ["PRICE_AT_CONFIRMED_SUPPORT_BOUNDARY", "PRICE_AT_CONFIRMED_RESISTANCE_BOUNDARY", "BOUNDARY_REJECTION", "RANGE_BOUNDARIES_HELD"],
+      "forbidden_context": ["UNKNOWN_REGIME", "CONFIRMED_BREAKOUT", "CONFIRMED_BREAKDOWN", "CONFIRMED_TRAP_AGAINST_DIRECTION", "DIRECTIONAL_HYPOTHESIS_DOMINATES", "DATA_QUALITY_FAILURE"],
+      "entry_trigger": "After a closed inward rejection candle at a confirmed range boundary; long from support rejection or short from resistance rejection. FLAT alone is insufficient.",
+      "invalidation_rule": "Acceptance/close beyond the tested range boundary invalidates mean reversion.",
+      "stop_rule": "Beyond the tested range boundary and structural invalidation, with a future-validated buffer.",
+      "target_rule": "First target is range midline; opposite boundary may be an additional target only if still causal and reachable.",
+      "reward_risk_rule": "Use the long or short formula by direction. If the midline and all other valid targets are below min_reward_risk, return NO_TRADE.",
+      "expiration_rule": "Expire after 8 candles from boundary rejection or immediately on confirmed breakout/breakdown, range redefinition, or invalidation.",
+      "conflict_handling": "Possible boundary break without confirmation => WAIT_CONFIRMATION. Confirmed breakout/breakdown => NO_TRADE; after a pending/candidate setup existed => INVALIDATED.",
+      "example": {
+        "schema_version": "1.0.0-design", "as_of": "2026-07-08T23:45:00Z", "symbol": "SOLUSDT", "timeframe": "15m", "setup_id": "concept-sol-20260708-2345", "setup_type": "RANGE_MEAN_REVERSION_CANDIDATE", "status": "WAIT_CONFIRMATION", "direction": "SHORT", "source_regime": "FLAT", "source_hypothesis": "CONFIRMED_RANGE", "entry": {"type": "confirmation_close", "price": null, "condition": "await inward rejection or confirmed breakout resolution at upper boundary", "confirmation_candle_time": null}, "invalidation": {"price": 77.8, "reason": "acceptance above audited upper range boundary; exact buffered level is not designed"}, "stop": {"price": null, "distance_pct": null, "reason": "set only after rejection entry and validated buffer"}, "targets": [{"price": 77.22, "reason": "audited range midline", "rr": null}], "selected_target_index": null, "min_reward_risk": 1.5, "expires_after_candles": 8, "candles_remaining": 8, "confidence": null, "risk_flags": ["BOUNDARY_BREAK_UNRESOLVED", "DESIGN_ONLY"], "no_trade_reasons": [], "evidence_refs": ["ENGINE_TREND_19_CONFIRMED_RANGE", "upper_boundary:77.8", "decision_close:77.83"], "design_only": true
+      }
+    },
+    {
+      "setup_type": "NO_TRADE_CONTRACT",
+      "maturity": "DESIGN_REQUIRED_DEFAULT",
+      "required_market_regime": ["UP", "DOWN", "FLAT", "UNKNOWN"],
+      "required_hypothesis": [],
+      "allowed_context": ["ANY_HARD_BLOCKER"],
+      "forbidden_context": [],
+      "entry_trigger": "none",
+      "invalidation_rule": "not applicable; records why no valid premise exists or why a prior premise failed",
+      "stop_rule": "null",
+      "target_rule": "empty",
+      "reward_risk_rule": "missing/uncomputable RR or RR below minimum is itself a NO_TRADE reason",
+      "expiration_rule": "Terminal for the evaluated as_of snapshot; a later candle requires a new setup_id/evaluation.",
+      "conflict_handling": "UNKNOWN, unresolved hard conflict, stale setup, missing levels, insufficient RR, range/trend conflict, or bad data resolves here.",
+      "example": {
+        "schema_version": "1.0.0-design", "as_of": "2026-07-08T18:30:00Z", "symbol": "SOLUSDT", "timeframe": "15m", "setup_id": "concept-sol-20260708-1830", "setup_type": "NO_TRADE_CONTRACT", "status": "NO_TRADE", "direction": "NONE", "source_regime": "UNKNOWN", "source_hypothesis": null, "entry": {"type": "none", "price": null, "condition": "no entry while confirmed hypotheses conflict", "confirmation_candle_time": null}, "invalidation": {"price": null, "reason": "no unique causal premise"}, "stop": {"price": null, "distance_pct": null, "reason": "not applicable"}, "targets": [], "selected_target_index": null, "min_reward_risk": 1.5, "expires_after_candles": 8, "candles_remaining": null, "confidence": null, "risk_flags": ["UNRESOLVED_CONFIRMED_HYPOTHESIS_CONFLICT", "DESIGN_ONLY"], "no_trade_reasons": ["UNKNOWN_REGIME", "UNRESOLVED_CONFLICT"], "evidence_refs": ["COMPOSER_UNRESOLVED_CONFIRMED_HYPOTHESIS_CONFLICT"], "design_only": true
+      }
+    }
+  ]
+}

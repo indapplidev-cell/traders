@@ -1,0 +1,3307 @@
+{
+  "audit_id": "ENGINE-TREND-20",
+  "cases": [
+    {
+      "case_id": "BTCUSDT_15m_2026_07_13_16_00",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": []
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_07_08_06_00",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.7865629390763558,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_STRUCTURE_ALIGNED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.7865629390763558,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.7865629390763558,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bullish_reversal:94",
+          "hypothesis_type": "BULLISH_REVERSAL",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.35,
+          "trigger_index": 94,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:93:94:BULLISH_HARAMI_CONTEXT"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "confidence": 0.35,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+              "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+              "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:93:94:BULLISH_HARAMI_CONTEXT",
+                "pattern_code": "BULLISH_HARAMI_CONTEXT",
+                "direction": "BULLISH",
+                "role": "REVERSAL",
+                "start_index": 93,
+                "end_index": 94,
+                "prior_structure": "BEARISH_STRUCTURE",
+                "zone_relation": "AT_SUPPORT",
+                "related_zone_mid": 78.285,
+                "follow_through": "PENDING",
+                "status": "AWAITING_CONFIRMATION",
+                "reason_codes": [
+                  "BULLISH_HARAMI_CONTEXT",
+                  "PATTERN_PRIOR_BEARISH_STRUCTURE",
+                  "AT_SUPPORT",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_AWAITING_FOLLOW_THROUGH"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_07_08_11_30",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "INVALIDATED",
+          "score": 0.8945359634916941,
+          "trigger_index": 82,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:81:82:BEARISH_SEPARATING_LINES_CONTEXT"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CANDLE_CONTINUATION_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+          ],
+          "confidence": 0.8945359634916941,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_CANDLE_CONTINUATION_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+              "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:81:82:BEARISH_SEPARATING_LINES_CONTEXT",
+                "pattern_code": "BEARISH_SEPARATING_LINES_CONTEXT",
+                "direction": "BEARISH",
+                "role": "CONTINUATION",
+                "start_index": 81,
+                "end_index": 82,
+                "prior_structure": "BEARISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 78.325,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "BEARISH_SEPARATING_LINES_CONTEXT",
+                  "PATTERN_PRIOR_BEARISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [],
+          "rejection_reason": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CANDLE_CONTINUATION_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+          ],
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bullish_reversal:90",
+          "hypothesis_type": "BULLISH_REVERSAL",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.35,
+          "trigger_index": 90,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:89:90:BULLISH_ENGULFING_CONTEXT"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "confidence": 0.35,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+              "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+              "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:89:90:BULLISH_ENGULFING_CONTEXT",
+                "pattern_code": "BULLISH_ENGULFING_CONTEXT",
+                "direction": "BULLISH",
+                "role": "REVERSAL",
+                "start_index": 89,
+                "end_index": 90,
+                "prior_structure": "BEARISH_STRUCTURE",
+                "zone_relation": "AT_SUPPORT",
+                "related_zone_mid": 76.92,
+                "follow_through": "PENDING",
+                "status": "AWAITING_CONFIRMATION",
+                "reason_codes": [
+                  "BULLISH_ENGULFING_CONTEXT",
+                  "PATTERN_PRIOR_BEARISH_STRUCTURE",
+                  "AT_SUPPORT",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_AWAITING_FOLLOW_THROUGH"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_07_08_18_30",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.5911349142704395,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+          ],
+          "confidence": 0.5911349142704395,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.5931818181818183,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5931818181818183,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_07_08_23_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.6230769230769231,
+        "trigger_index": 92,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.6230769230769231,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6230769230769231,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2025_01_07_15_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.5,
+        "trigger_index": 75,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.5,
+          "trigger_index": 75,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.5,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.6456896551724138,
+          "trigger_index": 67,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6456896551724138,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_02_06_17_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_03_10_17_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": 74,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": 74,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.615686274509804,
+          "trigger_index": 65,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.615686274509804,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_04_30_13_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_07_01_21_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.65,
+          "trigger_index": 21,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.65,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_08_30_01_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": 79,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.7591836734693879,
+          "trigger_index": 76,
+          "confirmation_index": 79,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+          ],
+          "confidence": 0.7591836734693879,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bull_trap",
+          "hypothesis_type": "BULL_TRAP",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.7,
+          "trigger_index": 78,
+          "confirmation_index": 79,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+            "HYPOTHESIS_TIME_CONFIRMATION"
+          ],
+          "confidence": 0.7,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+              "HYPOTHESIS_TIME_CONFIRMATION"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2025_10_29_13_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.7880952380952381,
+        "trigger_index": 90,
+        "confirmation_index": 94,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.7880952380952381,
+          "trigger_index": 90,
+          "confirmation_index": 94,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+          ],
+          "confidence": 0.7880952380952381,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bull_trap",
+          "hypothesis_type": "BULL_TRAP",
+          "direction": "BEARISH",
+          "status": "PENDING",
+          "score": 0.35,
+          "trigger_index": 93,
+          "confirmation_index": 94,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+            "HYPOTHESIS_RETURNED_INSIDE"
+          ],
+          "confidence": 0.35,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+              "HYPOTHESIS_RETURNED_INSIDE"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+            "HYPOTHESIS_RETURNED_INSIDE"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2025_12_01_15_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.65,
+          "trigger_index": 21,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.65,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2026_02_01_09_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": []
+    },
+    {
+      "case_id": "BTCUSDT_15m_2026_02_28_07_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.55,
+        "trigger_index": 89,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.55,
+          "trigger_index": 89,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+          ],
+          "confidence": 0.55,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.6052238805970149,
+          "trigger_index": 85,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6052238805970149,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_04_23_17_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.6000000000000001,
+          "trigger_index": 54,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6000000000000001,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2025_01_01_23_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.7302325581395349,
+        "trigger_index": 88,
+        "confirmation_index": 93,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.7302325581395349,
+          "trigger_index": 88,
+          "confirmation_index": 93,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+          ],
+          "confidence": 0.7302325581395349,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bull_trap",
+          "hypothesis_type": "BULL_TRAP",
+          "direction": "BEARISH",
+          "status": "PENDING",
+          "score": 0.35,
+          "trigger_index": 90,
+          "confirmation_index": 93,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+            "HYPOTHESIS_RETURNED_INSIDE"
+          ],
+          "confidence": 0.35,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+              "HYPOTHESIS_RETURNED_INSIDE"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+            "HYPOTHESIS_RETURNED_INSIDE"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_03_09_11_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.2,
+          "trigger_index": 77,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "confidence": 0.2,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.5666666666666667,
+          "trigger_index": 73,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5666666666666667,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_04_27_11_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": []
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_06_08_03_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:bearish_reversal:90",
+        "hypothesis_type": "BEARISH_REVERSAL",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.65,
+        "trigger_index": 90,
+        "confirmation_index": null,
+        "supporting_event_ids": [
+          "pattern:89:90:TWEEZERS_TOP_CONTEXT_REQUIRED"
+        ],
+        "reason_codes": [
+          "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+          "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "INVALIDATED",
+          "score": 0.4524935553994007,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+          ],
+          "confidence": 0.4524935553994007,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+          ],
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bearish_reversal:90",
+          "hypothesis_type": "BEARISH_REVERSAL",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.65,
+          "trigger_index": 90,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:89:90:TWEEZERS_TOP_CONTEXT_REQUIRED"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+          ],
+          "confidence": 0.65,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+              "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:89:90:TWEEZERS_TOP_CONTEXT_REQUIRED",
+                "pattern_code": "TWEEZERS_TOP_CONTEXT_REQUIRED",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 89,
+                "end_index": 90,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 2523.141428571428,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "TWEEZERS_TOP_CONTEXT_REQUIRED",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "PENDING",
+          "score": 0.6161016949152542,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6161016949152542,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2025_07_14_23_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": []
+    },
+    {
+      "case_id": "BTCUSDT_15m_2025_08_28_21_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "PENDING",
+          "score": 0.6196969696969697,
+          "trigger_index": 93,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6196969696969697,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_09_30_09_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_11_28_11_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "PENDING",
+          "score": 0.5513157894736842,
+          "trigger_index": 93,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5513157894736842,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2026_01_01_03_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.6115384615384616,
+        "trigger_index": 93,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.6115384615384616,
+          "trigger_index": 93,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6115384615384616,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2026_02_15_09_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.2,
+          "trigger_index": 91,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "confidence": 0.2,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.5642857142857143,
+          "trigger_index": 90,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5642857142857143,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2026_04_10_03_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2026_05_12_09_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": []
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_01_02_03_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.635576923076923,
+          "trigger_index": 53,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.635576923076923,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_02_28_23_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.6000000000000001,
+          "trigger_index": 58,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6000000000000001,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_04_26_01_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.35000000000000003,
+        "trigger_index": 94,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.35000000000000003,
+          "trigger_index": 94,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+          ],
+          "confidence": 0.35000000000000003,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.5580882352941177,
+          "trigger_index": 87,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5580882352941177,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_07_08_13_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.55,
+        "trigger_index": 76,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.55,
+          "trigger_index": 76,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+          ],
+          "confidence": 0.55,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.6161016949152542,
+          "trigger_index": 67,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6161016949152542,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_09_26_01_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_12_02_01_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_02_27_07_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_01_05_19_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.625609756097561,
+        "trigger_index": 89,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.625609756097561,
+          "trigger_index": 89,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.625609756097561,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_03_12_03_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.55,
+        "trigger_index": 94,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.55,
+          "trigger_index": 94,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+          ],
+          "confidence": 0.55,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.571875,
+          "trigger_index": 90,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.571875,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_05_23_11_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.6127980490170784,
+        "trigger_index": 76,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_STRUCTURE_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.6127980490170784,
+          "trigger_index": 76,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_CONFIRMED"
+          ],
+          "confidence": 0.6127980490170784,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.5535714285714286,
+          "trigger_index": 75,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5535714285714286,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_08_15_21_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": []
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_11_07_09_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.6205882352941177,
+        "trigger_index": 88,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.6205882352941177,
+          "trigger_index": 88,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6205882352941177,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_01_14_11_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.4390851559747407,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "confidence": 0.4390851559747407,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2026_03_14_07_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": []
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_01_01_23_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.35000000000000003,
+        "trigger_index": 89,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.35000000000000003,
+          "trigger_index": 89,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+          ],
+          "confidence": 0.35000000000000003,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.6073170731707317,
+          "trigger_index": 88,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6073170731707317,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_03_03_07_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.30000000000000004,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.30000000000000004,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "SOLUSDT_15m_2025_05_02_03_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.71015625,
+        "trigger_index": 90,
+        "confirmation_index": 95,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.71015625,
+          "trigger_index": 90,
+          "confirmation_index": 95,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+          ],
+          "confidence": 0.71015625,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bear_trap",
+          "hypothesis_type": "BEAR_TRAP",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.35,
+          "trigger_index": 93,
+          "confirmation_index": 95,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+            "HYPOTHESIS_RETURNED_INSIDE"
+          ],
+          "confidence": 0.35,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+              "HYPOTHESIS_RETURNED_INSIDE"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_FALSE_BREAKOUT_RETURNED_TO_RANGE",
+            "HYPOTHESIS_RETURNED_INSIDE"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_06_26_01_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.55,
+        "trigger_index": 93,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.55,
+          "trigger_index": 93,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+          ],
+          "confidence": 0.55,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.5666666666666667,
+          "trigger_index": 84,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5666666666666667,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_08_14_05_45",
+      "baseline_regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:bearish_reversal:92",
+        "hypothesis_type": "BEARISH_REVERSAL",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.65,
+        "trigger_index": 92,
+        "confirmation_index": null,
+        "supporting_event_ids": [
+          "pattern:89:89:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+          "pattern:93:93:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+          "pattern:91:92:BEARISH_ENGULFING_CONTEXT",
+          "pattern:91:91:HANGING_MAN_LIKE_CONTEXT_REQUIRED",
+          "pattern:83:92:THREE_BUDDHA_TOP_CONTEXT_REQUIRED"
+        ],
+        "reason_codes": [
+          "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+          "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.46401111749441626,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "confidence": 0.46401111749441626,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bearish_reversal:92",
+          "hypothesis_type": "BEARISH_REVERSAL",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.65,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:89:89:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+            "pattern:93:93:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+            "pattern:91:92:BEARISH_ENGULFING_CONTEXT",
+            "pattern:91:91:HANGING_MAN_LIKE_CONTEXT_REQUIRED",
+            "pattern:83:92:THREE_BUDDHA_TOP_CONTEXT_REQUIRED"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+          ],
+          "confidence": 0.65,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+              "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:89:89:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                "pattern_code": "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 89,
+                "end_index": 89,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 4781.796666666666,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              },
+              {
+                "event_id": "pattern:93:93:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                "pattern_code": "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 93,
+                "end_index": 93,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 4742.59,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              },
+              {
+                "event_id": "pattern:91:92:BEARISH_ENGULFING_CONTEXT",
+                "pattern_code": "BEARISH_ENGULFING_CONTEXT",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 91,
+                "end_index": 92,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 4742.59,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "BEARISH_ENGULFING_CONTEXT",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              },
+              {
+                "event_id": "pattern:91:91:HANGING_MAN_LIKE_CONTEXT_REQUIRED",
+                "pattern_code": "HANGING_MAN_LIKE_CONTEXT_REQUIRED",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 91,
+                "end_index": 91,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 4742.59,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "HANGING_MAN_LIKE_CONTEXT_REQUIRED",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              },
+              {
+                "event_id": "pattern:83:92:THREE_BUDDHA_TOP_CONTEXT_REQUIRED",
+                "pattern_code": "THREE_BUDDHA_TOP_CONTEXT_REQUIRED",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 83,
+                "end_index": 92,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 4742.59,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "THREE_BUDDHA_TOP_CONTEXT_REQUIRED",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "ETHUSDT_15m_2025_10_02_09_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.5830576049614657,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_STRUCTURE_ALIGNED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.5830576049614657,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+          ],
+          "confidence": 0.5830576049614657,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "PENDING",
+          "score": 0.595945945945946,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.595945945945946,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_PENDING",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2025_11_28_09_45",
+      "baseline_regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.6243589743589744,
+        "trigger_index": 92,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.6243589743589744,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6243589743589744,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2026_01_12_03_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.5,
+        "trigger_index": 87,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.5,
+          "trigger_index": 87,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.5,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.6286585365853659,
+          "trigger_index": 86,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6286585365853659,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2026_03_15_19_45",
+      "baseline_regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.46762616077797864,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "confidence": 0.46762616077797864,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CROSS_METHOD_CONFIRMATION_PENDING"
+          ],
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bearish_reversal:90",
+          "hypothesis_type": "BEARISH_REVERSAL",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.65,
+          "trigger_index": 90,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:90:90:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+            "pattern:80:81:BEARISH_ENGULFING_CONTEXT",
+            "pattern:89:90:BEARISH_ENGULFING_CONTEXT"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED"
+          ],
+          "confidence": 0.65,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+              "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_CONFIRMED"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:90:90:SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                "pattern_code": "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 90,
+                "end_index": 90,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 71663.91888888889,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              },
+              {
+                "event_id": "pattern:80:81:BEARISH_ENGULFING_CONTEXT",
+                "pattern_code": "BEARISH_ENGULFING_CONTEXT",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 80,
+                "end_index": 81,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 71663.91888888889,
+                "follow_through": "PENDING",
+                "status": "AWAITING_CONFIRMATION",
+                "reason_codes": [
+                  "BEARISH_ENGULFING_CONTEXT",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_AWAITING_FOLLOW_THROUGH"
+                ]
+              },
+              {
+                "event_id": "pattern:89:90:BEARISH_ENGULFING_CONTEXT",
+                "pattern_code": "BEARISH_ENGULFING_CONTEXT",
+                "direction": "BEARISH",
+                "role": "REVERSAL",
+                "start_index": 89,
+                "end_index": 90,
+                "prior_structure": "BULLISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 71663.91888888889,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "BEARISH_ENGULFING_CONTEXT",
+                  "PATTERN_PRIOR_BULLISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.5980519480519481,
+          "trigger_index": 91,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5980519480519481,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "case_id": "BTCUSDT_15m_2026_04_29_03_45",
+      "baseline_regime": "UP",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:up_continuation",
+        "hypothesis_type": "UP_CONTINUATION",
+        "direction": "BULLISH",
+        "status": "CONFIRMED",
+        "score": 0.35000000000000003,
+        "trigger_index": 93,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_BREAKOUT_CONFIRMED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:up_continuation",
+          "hypothesis_type": "UP_CONTINUATION",
+          "direction": "BULLISH",
+          "status": "CONFIRMED",
+          "score": 0.35000000000000003,
+          "trigger_index": 93,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_BREAKOUT_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+          ],
+          "confidence": 0.35000000000000003,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_BREAKOUT_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_BREAKOUT_VOLUME_CONFIRMED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFLICTED",
+          "score": 0.5923076923076923,
+          "trigger_index": 90,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5923076923076923,
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ]
+        }
+      ]
+    }
+  ]
+}

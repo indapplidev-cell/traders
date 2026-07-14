@@ -1,0 +1,56 @@
+{
+  "document_id": "ENGINE-TREND-21",
+  "artifact_set": "setup_contract_layer_design",
+  "scope": "design_audit_only",
+  "generated_on": "2026-07-13",
+  "artifact_count_excluding_manifest": 6,
+  "artifacts": [
+    {
+      "path": "reports/engine_trend/engine_trend_21_setup_contract_layer/ENGINE_TREND_21_SETUP_CONTRACT_LAYER_DESIGN.md",
+      "purpose": "Primary architecture, contract semantics, RR rules, and conceptual live-case audit",
+      "bytes": 10923,
+      "sha256": "fb2080506114a3b57914cca784015ea92fa70fb474ed6382e9879d5a9fe058cd"
+    },
+    {
+      "path": "reports/engine_trend/engine_trend_21_setup_contract_layer/ENGINE_TREND_21_SETUP_CONTRACTS.json",
+      "purpose": "Formal design definitions and examples for all setup contracts",
+      "bytes": 14059,
+      "sha256": "10b05c61cc9eceb58f65732ad8fb255c49918f5d731cdbb328a8d5029aafe03a"
+    },
+    {
+      "path": "reports/engine_trend/engine_trend_21_setup_contract_layer/ENGINE_TREND_21_SETUP_OUTPUT_SCHEMA.json",
+      "purpose": "JSON Schema for versioned setup output",
+      "bytes": 4918,
+      "sha256": "0b4ce617bfdc8f49ebfd08bc9e2cb7e026f9e9a1dd3353bb7c130184c8c81d88"
+    },
+    {
+      "path": "reports/engine_trend/engine_trend_21_setup_contract_layer/ENGINE_TREND_21_SETUP_DECISION_TABLE.csv",
+      "purpose": "Regime/hypothesis/context setup decision matrix",
+      "bytes": 2678,
+      "sha256": "a67ae6182f60fdd672f35ae82446a5a3573a75157b7459966a6530036954c98b"
+    },
+    {
+      "path": "reports/engine_trend/engine_trend_21_setup_contract_layer/ENGINE_TREND_21_NO_TRADE_RULES.md",
+      "purpose": "Canonical NO_TRADE reason-code catalog",
+      "bytes": 4358,
+      "sha256": "9abfd4f03c7f4aee9ac47e233c39d031527e97ec8679e9826f39724cb375b995"
+    },
+    {
+      "path": "reports/engine_trend/engine_trend_21_setup_contract_layer/ENGINE_TREND_21_INTEGRATION_PLAN.md",
+      "purpose": "Future isolated integration plan without composer changes",
+      "bytes": 4268,
+      "sha256": "daca3873376cbf902ddb6fcb9377c9300ed56df54cefdfc9e4ac26687a04edaf"
+    }
+  ],
+  "attestation": {
+    "runtime_code_changed": false,
+    "market_hypothesis_runtime_changed": false,
+    "trading_runtime_changed": false,
+    "thresholds_changed": false,
+    "composer_changed": false,
+    "technical_indicator_context_changed": false,
+    "execution_added": false,
+    "backtest_or_pnl_added": false,
+    "commit_created": false
+  }
+}

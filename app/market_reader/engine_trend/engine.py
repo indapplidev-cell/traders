@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 from app.market_reader.engine_trend.json_export import (
     build_engine_trend_json_payload,
@@ -13,6 +14,7 @@ from app.market_reader.engine_trend.regime_composer import (
     compose_engine_trend_result,
 )
 from app.market_reader.engine_trend.schemas import EngineTrendCandle
+from app.market_reader.engine_trend.analysis_contract import AnalysisWindowConfig
 
 
 @dataclass(frozen=True)
@@ -50,7 +52,7 @@ def normalize_candle_row(row: dict[str, object]) -> EngineTrendCandle:
     if timestamp is None or str(timestamp) == "":
         raise ValueError("timestamp must not be empty")
     try:
-        return EngineTrendCandle(
+        candle = EngineTrendCandle(
             timestamp=str(timestamp),
             open=float(_value(row, "open", "o")),
             high=float(_value(row, "high", "h")),
@@ -58,6 +60,15 @@ def normalize_candle_row(row: dict[str, object]) -> EngineTrendCandle:
             close=float(_value(row, "close", "c")),
             volume=float(row.get("volume", row.get("v", 0.0))),
         )
+        # Real market rows must use a positive price scale. Low-level pattern
+        # tests may still instantiate EngineTrendCandle directly with a
+        # normalized zero baseline.
+        values = (candle.open, candle.high, candle.low, candle.close, candle.volume)
+        if not all(isfinite(value) for value in values):
+            raise ValueError("market OHLCV values must be finite")
+        if min(candle.open, candle.high, candle.low, candle.close) <= 0.0:
+            raise ValueError("market prices must be positive")
+        return candle
     except (TypeError, ValueError) as exc:
         raise ValueError(f"invalid candle row: {exc}") from exc
 
@@ -73,9 +84,19 @@ def run_engine_trend(
     symbol: str,
     interval: str,
     candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle],
+    *,
+    config: AnalysisWindowConfig | None = None,
+    strict_market_series: bool = True,
 ) -> EngineTrendFacadeOutput:
     """Run the composer and build its two presentation forms."""
-    composer_output = compose_engine_trend_result(symbol, interval, candles)
+    contract = config or AnalysisWindowConfig()
+    composer_output = compose_engine_trend_result(
+        symbol,
+        interval,
+        candles,
+        config=contract,
+        strict_timestamps=strict_market_series,
+    )
     return EngineTrendFacadeOutput(
         symbol=composer_output.result.symbol,
         interval=composer_output.result.interval,
@@ -89,6 +110,14 @@ def run_engine_trend_from_rows(
     symbol: str,
     interval: str,
     rows: tuple[dict[str, object], ...] | list[dict[str, object]],
+    *,
+    config: AnalysisWindowConfig | None = None,
 ) -> EngineTrendFacadeOutput:
     """Normalize mapping rows and run the engine facade."""
-    return run_engine_trend(symbol, interval, normalize_candles(rows))
+    return run_engine_trend(
+        symbol,
+        interval,
+        normalize_candles(rows),
+        config=config,
+        strict_market_series=True,
+    )

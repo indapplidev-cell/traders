@@ -603,8 +603,13 @@ def analyze_polarity_flip_context(
 
 def analyze_schwager_range_context(
     candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle],
+    swing_points: tuple[SwingPoint, ...] | list[SwingPoint] | None = None,
 ) -> SchwagerRangeContext:
-    swings = detect_swing_points(candles)
+    swings = (
+        detect_swing_points(candles)
+        if swing_points is None
+        else tuple(swing_points)
+    )
     zones = build_support_resistance_zones(candles, swings)
     trading_range = detect_trading_range(candles, zones)
     breakout = analyze_breakout_context(candles, trading_range)

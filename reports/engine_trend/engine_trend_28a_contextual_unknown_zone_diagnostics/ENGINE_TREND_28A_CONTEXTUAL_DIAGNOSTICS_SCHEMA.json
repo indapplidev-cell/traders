@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "engine_trend_28a_contextual_diagnostics_v1",
+  "title": "ENGINE-TREND-28A contextual diagnostic output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "symbol", "timeframe", "as_of", "source_regime", "source_confidence",
+    "action", "contextual_state", "diagnostic_tags", "price_position",
+    "nearest_support", "nearest_resistance", "technical_pressure",
+    "multi_timeframe", "confirmation_needed", "no_trade_reasons",
+    "human_summary", "safety"
+  ],
+  "properties": {
+    "symbol": {"type": "string", "minLength": 1},
+    "timeframe": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "minLength": 1},
+    "source_regime": {"enum": ["UP", "DOWN", "FLAT", "UNKNOWN"]},
+    "source_confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "action": {"const": "NO_ACTION"},
+    "contextual_state": {"enum": ["WAIT_FOR_CONFIRMATION", "CONTEXT_ONLY"]},
+    "diagnostic_tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "LOCAL_RANGE_UNCONFIRMED", "CONFIRMED_RANGE_CONTEXT",
+          "NEAR_RESISTANCE", "NEAR_SUPPORT", "BREAKOUT_NOT_CONFIRMED",
+          "BREAKDOWN_NOT_CONFIRMED", "NEAR_UPPER_RANGE_BOUNDARY",
+          "NEAR_LOWER_RANGE_BOUNDARY", "INSIDE_RANGE",
+          "INDICATOR_PRESSURE_WITHOUT_CAUSAL_TRIGGER", "LOW_TREND_STRENGTH",
+          "MTF_CONFLICT", "HIGHER_TF_BEARISH_RISK", "HIGHER_TF_BULLISH_RISK",
+          "BEARISH_STRUCTURE_WITHOUT_CONFIRMED_HYPOTHESIS",
+          "BULLISH_STRUCTURE_WITHOUT_CONFIRMED_HYPOTHESIS",
+          "UNRESOLVED_HYPOTHESIS_CONFLICT", "RANGE_TREND_CONFLICT",
+          "NO_CAUSAL_HYPOTHESIS", "WAIT_FOR_CONFIRMATION", "NO_ACTION"
+        ]
+      }
+    },
+    "price_position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["last_close", "day_high", "day_low", "position_in_day_range"],
+      "properties": {
+        "last_close": {"type": "number", "exclusiveMinimum": 0},
+        "day_high": {"type": ["number", "null"]},
+        "day_low": {"type": ["number", "null"]},
+        "position_in_day_range": {"type": ["number", "null"]}
+      }
+    },
+    "nearest_support": {"$ref": "#/$defs/nullableZone"},
+    "nearest_resistance": {"$ref": "#/$defs/nullableZone"},
+    "technical_pressure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direction", "strength", "reason", "bullish_votes", "bearish_votes", "adx"],
+      "properties": {
+        "direction": {"enum": ["BULLISH", "BEARISH", "NEUTRAL", "UNAVAILABLE"]},
+        "strength": {"type": "string"},
+        "reason": {"type": "string"},
+        "bullish_votes": {"type": "integer", "minimum": 0},
+        "bearish_votes": {"type": "integer", "minimum": 0},
+        "adx": {"type": ["number", "null"]}
+      }
+    },
+    "multi_timeframe": {"type": "object", "required": ["summary"]},
+    "confirmation_needed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bullish", "bearish"],
+      "properties": {
+        "bullish": {"type": "array", "items": {"type": "string"}},
+        "bearish": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "no_trade_reasons": {"type": "array", "items": {"type": "string"}},
+    "human_summary": {"type": "string", "minLength": 20},
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_regime_preserved", "setup_created", "trade_signal_created", "diagnostics_only"],
+      "properties": {
+        "source_regime_preserved": {"const": true},
+        "setup_created": {"const": false},
+        "trade_signal_created": {"const": false},
+        "diagnostics_only": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "zone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["zone_low", "zone_high", "distance_pct", "distance_atr", "source"],
+      "properties": {
+        "zone_low": {"type": "number"},
+        "zone_high": {"type": "number"},
+        "distance_pct": {"type": "number", "minimum": 0},
+        "distance_atr": {"type": ["number", "null"], "minimum": 0},
+        "source": {"type": "string", "minLength": 1},
+        "touch_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "nullableZone": {"oneOf": [{"$ref": "#/$defs/zone"}, {"type": "null"}]}
+  }
+}

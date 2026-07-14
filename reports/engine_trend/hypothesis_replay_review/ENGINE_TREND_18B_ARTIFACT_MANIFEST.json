@@ -1,0 +1,16 @@
+{
+  "stage": "ENGINE-TREND-18B",
+  "input_root": "reports\\engine_trend\\hypothesis_replay",
+  "artifacts": [
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_REVIEW_SUMMARY.json",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_REVIEW_MATRIX.json",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_REVIEW_MATRIX.csv",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_EDGE_CASE_AUDIT.md",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_DOWN_CONFIRMATION_AUDIT.md",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_TRAP_RANGE_PRIORITY_AUDIT.md",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_STATUS_CONTRACT_DECISION.md",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_DECISION_RECORD.json",
+    "reports\\engine_trend\\hypothesis_replay_review\\ENGINE_TREND_18B_ARTIFACT_MANIFEST.json",
+    "reports\\engine_trend\\engine_trend_18b_hypothesis_replay_review_report.md"
+  ]
+}

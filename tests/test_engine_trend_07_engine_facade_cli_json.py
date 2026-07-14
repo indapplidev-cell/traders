@@ -34,14 +34,14 @@ def sample_rows() -> list[dict[str, object]]:
 def test_normalize_candle_row_canonical_alias_and_default() -> None:
     canonical = normalize_candle_row(sample_rows()[0])
     aliased = normalize_candle_row(
-        {"time": "t", "o": 1, "h": 3, "l": 0, "c": 2, "v": 4}
+        {"time": "t", "o": 1, "h": 3, "l": 0.5, "c": 2, "v": 4}
     )
     defaulted = normalize_candle_row(
-        {"open_time": "t", "open": 1, "high": 2, "low": 0, "close": 1.5}
+        {"open_time": "t", "open": 1, "high": 2, "low": 0.5, "close": 1.5}
     )
     assert canonical.open == 100.0
     assert aliased.to_dict() == {
-        "timestamp": "t", "open": 1.0, "high": 3.0, "low": 0.0,
+        "timestamp": "t", "open": 1.0, "high": 3.0, "low": 0.5,
         "close": 2.0, "volume": 4.0,
     }
     assert defaulted.volume == 0.0
@@ -87,9 +87,11 @@ def test_json_payload_preview_and_file_round_trip(tmp_path) -> None:
     output = run_engine_trend_from_rows("TESTUSDT", "15m", sample_rows()).composer_output
     payload = build_engine_trend_json_payload(output)
     assert payload["service"] == "ENGINE_TREND"
-    assert payload["contract_version"] == "engine_trend_preview_v1"
+    assert payload["contract_version"] == "engine_trend_preview_v2"
     for key in ("result", "decision_trace", "ohlc_integrity", "safety"):
         assert key in payload
+    assert "technical_indicators" in payload["analysis_context"]
+    assert "hypotheses" in payload["analysis_context"]
     preview = build_engine_trend_preview(output)
     for key in ("symbol", "interval", "market_regime", "confidence", "status"):
         assert key in preview

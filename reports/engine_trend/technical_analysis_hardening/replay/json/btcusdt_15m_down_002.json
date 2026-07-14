@@ -1,0 +1,802 @@
+{
+  "stage": "ENGINE-TREND-19",
+  "source_stage": "ENGINE-TREND-15B",
+  "window": {
+    "window_id": "btcusdt_15m_down_002",
+    "symbol": "BTCUSDT",
+    "interval": "15m",
+    "period_start": "2025-03-03T00:00:00+00:00",
+    "period_end": "2025-03-03T23:45:00+00:00",
+    "window_length": 96,
+    "reference_label": "EXPECTED_DOWN",
+    "selection_reason": "ranked deterministic DOWN OHLC candidate"
+  },
+  "unified_market_context": {
+    "trend_structure": "SIDEWAYS_STRUCTURE",
+    "shared_swing_points": [
+      {
+        "index": 5,
+        "timestamp": "2025-03-03T01:15:00+00:00",
+        "price": 92649.58,
+        "point_type": "LOW"
+      },
+      {
+        "index": 7,
+        "timestamp": "2025-03-03T01:45:00+00:00",
+        "price": 93212.96,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 9,
+        "timestamp": "2025-03-03T02:15:00+00:00",
+        "price": 92433.5,
+        "point_type": "LOW"
+      },
+      {
+        "index": 11,
+        "timestamp": "2025-03-03T02:45:00+00:00",
+        "price": 93442.83,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 13,
+        "timestamp": "2025-03-03T03:15:00+00:00",
+        "price": 92450.0,
+        "point_type": "LOW"
+      },
+      {
+        "index": 23,
+        "timestamp": "2025-03-03T05:45:00+00:00",
+        "price": 93361.46,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 28,
+        "timestamp": "2025-03-03T07:00:00+00:00",
+        "price": 91181.0,
+        "point_type": "LOW"
+      },
+      {
+        "index": 31,
+        "timestamp": "2025-03-03T07:45:00+00:00",
+        "price": 92564.3,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 35,
+        "timestamp": "2025-03-03T08:45:00+00:00",
+        "price": 91142.0,
+        "point_type": "LOW"
+      },
+      {
+        "index": 38,
+        "timestamp": "2025-03-03T09:30:00+00:00",
+        "price": 92082.75,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 40,
+        "timestamp": "2025-03-03T10:00:00+00:00",
+        "price": 91546.71,
+        "point_type": "LOW"
+      },
+      {
+        "index": 48,
+        "timestamp": "2025-03-03T12:00:00+00:00",
+        "price": 93255.58,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 50,
+        "timestamp": "2025-03-03T12:30:00+00:00",
+        "price": 92663.19,
+        "point_type": "LOW"
+      },
+      {
+        "index": 56,
+        "timestamp": "2025-03-03T14:00:00+00:00",
+        "price": 93721.37,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 60,
+        "timestamp": "2025-03-03T15:00:00+00:00",
+        "price": 89117.0,
+        "point_type": "LOW"
+      },
+      {
+        "index": 70,
+        "timestamp": "2025-03-03T17:30:00+00:00",
+        "price": 91000.0,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 82,
+        "timestamp": "2025-03-03T20:30:00+00:00",
+        "price": 85200.01,
+        "point_type": "LOW"
+      },
+      {
+        "index": 85,
+        "timestamp": "2025-03-03T21:15:00+00:00",
+        "price": 86582.12,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 87,
+        "timestamp": "2025-03-03T21:45:00+00:00",
+        "price": 85117.11,
+        "point_type": "LOW"
+      },
+      {
+        "index": 91,
+        "timestamp": "2025-03-03T22:45:00+00:00",
+        "price": 87038.46,
+        "point_type": "HIGH"
+      },
+      {
+        "index": 92,
+        "timestamp": "2025-03-03T23:00:00+00:00",
+        "price": 86000.0,
+        "point_type": "LOW"
+      }
+    ],
+    "range": {
+      "support_zone": {
+        "zone_type": "SUPPORT",
+        "lower_price": 92433.5,
+        "upper_price": 92663.19,
+        "mid_price": 92552.114,
+        "touch_count": 5,
+        "source_indexes": [
+          5,
+          9,
+          13,
+          31,
+          50
+        ],
+        "zone_width": 229.69000000000233,
+        "zone_width_ratio": 0.0024817369379591084,
+        "formed_at_index": 50,
+        "first_touch_index": 5,
+        "last_touch_index": 50,
+        "source_point_types": [
+          "LOW",
+          "LOW",
+          "LOW",
+          "HIGH",
+          "LOW"
+        ],
+        "original_zone_type": "SUPPORT",
+        "current_zone_type": "SUPPORT",
+        "role_changed_at_index": null,
+        "is_significant_single_extreme": false,
+        "positional_zone_type": "RESISTANCE"
+      },
+      "resistance_zone": {
+        "zone_type": "RESISTANCE",
+        "lower_price": 93212.96,
+        "upper_price": 93442.83,
+        "mid_price": 93318.2075,
+        "touch_count": 4,
+        "source_indexes": [
+          7,
+          11,
+          23,
+          48
+        ],
+        "zone_width": 229.86999999999534,
+        "zone_width_ratio": 0.002463292064412996,
+        "formed_at_index": 48,
+        "first_touch_index": 7,
+        "last_touch_index": 48,
+        "source_point_types": [
+          "HIGH",
+          "HIGH",
+          "HIGH",
+          "HIGH"
+        ],
+        "original_zone_type": "RESISTANCE",
+        "current_zone_type": "RESISTANCE",
+        "role_changed_at_index": null,
+        "is_significant_single_extreme": false,
+        "positional_zone_type": "RESISTANCE"
+      },
+      "is_detected": true,
+      "lower_boundary": 92433.5,
+      "upper_boundary": 93442.83,
+      "midline": 92938.16500000001,
+      "width": 1009.3300000000017,
+      "width_ratio": 0.010860231638961257,
+      "touch_count": 9,
+      "inside_close_ratio": 0.6304347826086957,
+      "formed_at_index": 50,
+      "first_touch_index": 5,
+      "duration_candles": 46,
+      "boundary_alternation_count": 8
+    },
+    "active_support_resistance_zones": [
+      {
+        "zone_type": "SUPPORT",
+        "lower_price": 85117.11,
+        "upper_price": 85200.01,
+        "mid_price": 85158.56,
+        "touch_count": 2,
+        "source_indexes": [
+          82,
+          87
+        ],
+        "zone_width": 82.89999999999418,
+        "zone_width_ratio": 0.0009734781799973388,
+        "formed_at_index": 87,
+        "first_touch_index": 82,
+        "last_touch_index": 87,
+        "source_point_types": [
+          "LOW",
+          "LOW"
+        ],
+        "original_zone_type": "SUPPORT",
+        "current_zone_type": "SUPPORT",
+        "role_changed_at_index": null,
+        "is_significant_single_extreme": false,
+        "positional_zone_type": "SUPPORT"
+      },
+      {
+        "zone_type": "SUPPORT",
+        "lower_price": 91000.0,
+        "upper_price": 91181.0,
+        "mid_price": 91107.66666666667,
+        "touch_count": 3,
+        "source_indexes": [
+          28,
+          35,
+          70
+        ],
+        "zone_width": 181.0,
+        "zone_width_ratio": 0.0019866604713105005,
+        "formed_at_index": 70,
+        "first_touch_index": 28,
+        "last_touch_index": 70,
+        "source_point_types": [
+          "LOW",
+          "LOW",
+          "HIGH"
+        ],
+        "original_zone_type": "SUPPORT",
+        "current_zone_type": "SUPPORT",
+        "role_changed_at_index": null,
+        "is_significant_single_extreme": false,
+        "positional_zone_type": "RESISTANCE"
+      },
+      {
+        "zone_type": "SUPPORT",
+        "lower_price": 92433.5,
+        "upper_price": 92663.19,
+        "mid_price": 92552.114,
+        "touch_count": 5,
+        "source_indexes": [
+          5,
+          9,
+          13,
+          31,
+          50
+        ],
+        "zone_width": 229.69000000000233,
+        "zone_width_ratio": 0.0024817369379591084,
+        "formed_at_index": 50,
+        "first_touch_index": 5,
+        "last_touch_index": 50,
+        "source_point_types": [
+          "LOW",
+          "LOW",
+          "LOW",
+          "HIGH",
+          "LOW"
+        ],
+        "original_zone_type": "SUPPORT",
+        "current_zone_type": "SUPPORT",
+        "role_changed_at_index": null,
+        "is_significant_single_extreme": false,
+        "positional_zone_type": "RESISTANCE"
+      },
+      {
+        "zone_type": "RESISTANCE",
+        "lower_price": 93212.96,
+        "upper_price": 93442.83,
+        "mid_price": 93318.2075,
+        "touch_count": 4,
+        "source_indexes": [
+          7,
+          11,
+          23,
+          48
+        ],
+        "zone_width": 229.86999999999534,
+        "zone_width_ratio": 0.002463292064412996,
+        "formed_at_index": 48,
+        "first_touch_index": 7,
+        "last_touch_index": 48,
+        "source_point_types": [
+          "HIGH",
+          "HIGH",
+          "HIGH",
+          "HIGH"
+        ],
+        "original_zone_type": "RESISTANCE",
+        "current_zone_type": "RESISTANCE",
+        "role_changed_at_index": null,
+        "is_significant_single_extreme": false,
+        "positional_zone_type": "RESISTANCE"
+      }
+    ],
+    "breakout_state": {
+      "direction": "UPWARD",
+      "status": "FALSE_BREAKOUT",
+      "breakout_index": 54,
+      "boundary_price": 93442.83,
+      "breakout_close": 93642.06,
+      "distance_ratio": 0.002132105802018153,
+      "returned_to_range": true,
+      "follow_through_count": 2,
+      "evidence": [
+        {
+          "source": "SCHWAGER",
+          "code": "SCHWAGER_BULLISH_RANGE_BREAKOUT_CONTEXT",
+          "description": "Closing price moved above the range boundary",
+          "contribution": 0.12,
+          "metadata": {
+            "breakout_index": 54
+          }
+        },
+        {
+          "source": "SCHWAGER",
+          "code": "SCHWAGER_BREAKOUT_REQUIRES_CONFIRMATION",
+          "description": "Boundary movement requires confirmation",
+          "contribution": 0.0,
+          "metadata": {}
+        },
+        {
+          "source": "SCHWAGER",
+          "code": "SCHWAGER_PRICE_RETURNED_TO_RANGE",
+          "description": "Closing price returned inside the range",
+          "contribution": 0.0,
+          "metadata": {
+            "return_index": 57,
+            "return_depth_ratio": 0.259697026740506
+          }
+        },
+        {
+          "source": "SCHWAGER",
+          "code": "SCHWAGER_FALSE_BREAKOUT_UP",
+          "description": "Upward boundary movement returned to the range",
+          "contribution": 0.0,
+          "metadata": {}
+        },
+        {
+          "source": "SCHWAGER",
+          "code": "SCHWAGER_FALSE_BREAKOUT_TIME_CONFIRMATION",
+          "description": "Price did not revisit the post-breakout extreme",
+          "contribution": 0.0,
+          "metadata": {}
+        }
+      ],
+      "analysis_start_index": 51,
+      "confirmation_method": "CLOSE_COUNT",
+      "confirmation_close_count": 3,
+      "extreme_index": 56,
+      "extreme_price": 93721.37,
+      "maximum_distance_ratio": 0.002980860061708251,
+      "return_index": 57,
+      "return_depth_ratio": 0.259697026740506,
+      "reversal_candle_count": 3,
+      "false_breakout_confirmation": "TIME_CONFIRMATION",
+      "false_breakout_invalidated": false
+    },
+    "technical_indicators": {
+      "available": true,
+      "sma_20": 86249.2125,
+      "ema_12": 86413.81146138601,
+      "ema_26": 87132.89204112759,
+      "rsi_14": 39.84083872993066,
+      "macd": -719.0805797415815,
+      "macd_signal": -952.2916652464686,
+      "atr_14": 663.6771428571426,
+      "atr_ratio": 0.007697430380707613,
+      "adx_14": 41.97313618047765,
+      "bollinger_mid": 86249.2125,
+      "bollinger_upper": 87202.48845899351,
+      "bollinger_lower": 85295.93654100648,
+      "vwap": 89899.75857909599,
+      "direction": "BEARISH",
+      "bullish_votes": 1,
+      "bearish_votes": 4,
+      "reason_codes": [
+        "INDICATOR_EMA_BEARISH",
+        "INDICATOR_MACD_BULLISH",
+        "INDICATOR_RSI_BEARISH",
+        "INDICATOR_PRICE_BELOW_SMA20",
+        "INDICATOR_PRICE_BELOW_VWAP",
+        "INDICATOR_ADX_TRENDING"
+      ]
+    },
+    "analysis_window": {
+      "candle_count": 96,
+      "context_start_index": 0,
+      "decision_start_index": 72,
+      "decision_end_index": 95,
+      "confirmation_lookahead": 3,
+      "readiness": "FULL"
+    }
+  },
+  "contextual_events": [
+    {
+      "candle_event": "SHOOTING_STAR_LIKE_SHAPE_CONTEXT_REQUIRED",
+      "event_indexes": [
+        81,
+        81
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "CONFIRMED",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BEARISH_ENGULFING_CONTEXT",
+      "event_indexes": [
+        81,
+        82
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "PENDING",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BULLISH_ENGULFING_CONTEXT",
+      "event_indexes": [
+        82,
+        83
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "CONFIRMED",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BEARISH_ENGULFING_CONTEXT",
+      "event_indexes": [
+        84,
+        85
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "CONFIRMED",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BEARISH_ENGULFING_CONTEXT",
+      "event_indexes": [
+        86,
+        87
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "PENDING",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BULLISH_ENGULFING_CONTEXT",
+      "event_indexes": [
+        90,
+        91
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "PENDING",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BEARISH_ENGULFING_CONTEXT",
+      "event_indexes": [
+        91,
+        92
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "PENDING",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BEARISH_ENGULFING_CONTEXT",
+      "event_indexes": [
+        94,
+        95
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "NOT_AVAILABLE",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "INVERTED_HAMMER_LIKE_CONTEXT_REQUIRED",
+      "event_indexes": [
+        81,
+        81
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "INVALIDATED",
+      "invalidation": {
+        "invalidated": true,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "GRAVESTONE_DOJI_CONTEXT",
+      "event_indexes": [
+        81,
+        81
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "CONFIRMED",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "BULLISH_HARAMI_CONTEXT",
+      "event_indexes": [
+        79,
+        80
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "PENDING",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+      "event_indexes": [
+        85,
+        86
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "INVALIDATED",
+      "invalidation": {
+        "invalidated": true,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "THREE_BLACK_CROWS_CONTEXT",
+      "event_indexes": [
+        71,
+        73
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": true,
+      "causal_zone_relation": "AT_SUPPORT",
+      "causal_zone_mid": 91107.66666666667,
+      "follow_through": "CONFIRMED",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    },
+    {
+      "candle_event": "THREE_BUDDHA_TOP_CONTEXT_REQUIRED",
+      "event_indexes": [
+        89,
+        93
+      ],
+      "trend_context_before_event": "SIDEWAYS_STRUCTURE",
+      "causal_zone_available_at_event": false,
+      "causal_zone_relation": "NO_CAUSAL_ZONE",
+      "causal_zone_mid": null,
+      "follow_through": "PENDING",
+      "invalidation": {
+        "invalidated": false,
+        "event_status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    }
+  ],
+  "hypotheses": {
+    "CONFIRMED": [
+      {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.30000000000000004,
+        "trigger_index": 72,
+        "confirmation_index": 57,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.707608695652174,
+        "trigger_index": 50,
+        "confirmation_index": 57,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+        ]
+      }
+    ],
+    "PENDING": [],
+    "INVALIDATED": [],
+    "CANCELLED": [],
+    "CONFLICTED": [],
+    "cancelled_contract_note": "HypothesisStatus.CANCELLED is not implemented; CONFLICTED is reported separately."
+  },
+  "composer": {
+    "selected_hypothesis": {
+      "hypothesis_id": "hypothesis:confirmed_range",
+      "hypothesis_type": "CONFIRMED_RANGE",
+      "direction": "FLAT",
+      "status": "CONFIRMED",
+      "score": 0.707608695652174,
+      "trigger_index": 50,
+      "confirmation_index": 57,
+      "supporting_event_ids": [],
+      "reason_codes": [
+        "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+        "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+        "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+      ]
+    },
+    "engine_dominant_hypothesis": {
+      "hypothesis_id": "hypothesis:confirmed_range",
+      "hypothesis_type": "CONFIRMED_RANGE",
+      "direction": "FLAT",
+      "status": "CONFIRMED",
+      "score": 0.707608695652174,
+      "trigger_index": 50,
+      "confirmation_index": 57,
+      "supporting_event_ids": [],
+      "reason_codes": [
+        "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+        "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+        "HYPOTHESIS_RANGE_BREAKOUT_RETURNED"
+      ]
+    },
+    "regime": "FLAT",
+    "confidence": 0.457608695652174,
+    "reason": {
+      "status": "COMPOSED",
+      "decision_source": "RANGE_CONTEXT",
+      "fallback_reason": null,
+      "reason_codes": [
+        "COMPOSER_MATRIX_READY",
+        "COMPOSER_INPUT_VALID",
+        "COMPOSER_CONTEXT_LINKED_HYPOTHESES_READY",
+        "COMPOSER_DOMINANT_CONFIRMED_RANGE",
+        "COMPOSER_FLAT_REGIME_SELECTED",
+        "COMPOSER_NO_TRADING_ACTION"
+      ]
+    }
+  },
+  "comparison": {
+    "old_regime": "UNKNOWN",
+    "old_confidence": 0.3,
+    "new_regime": "FLAT",
+    "new_confidence": 0.457608695652174,
+    "regime_changed": true,
+    "match_status": "NEEDS_REVIEW"
+  },
+  "safety": {
+    "trade_signal": "NOT_EVALUATED",
+    "safe_for_runtime_trading": false,
+    "live_trading_connected": false
+  },
+  "boundary": {
+    "status": "READY",
+    "warnings": [],
+    "errors": []
+  }
+}

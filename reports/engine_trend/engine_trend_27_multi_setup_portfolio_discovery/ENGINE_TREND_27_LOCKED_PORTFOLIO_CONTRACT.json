@@ -1,0 +1,75 @@
+{
+  "version": "ENGINE_TREND_27_MULTI_SETUP_PORTFOLIO_V1_LOCKED",
+  "locked_before_outcome_read": true,
+  "audit_only": true,
+  "runtime_changed": false,
+  "paper_enabled": false,
+  "old_scores_loaded": false,
+  "short_v2_status": "RESEARCH_ONLY_FAILED_FORWARD_CONTRACT_CLOSED",
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT"
+  ],
+  "timeframe": "15m",
+  "held_out_window": {
+    "start": "2025-01-04T00:00:00Z",
+    "last_confirmation": "2025-06-29T23:45:00Z",
+    "horizon_bars": 96,
+    "relationship_to_prior_research": "pre-ENGINE-23 universe; disjoint from ENGINE-26 forward window",
+    "limitation": "backward-held-out historical evidence, not a live chronological forward"
+  },
+  "common": {
+    "causal_pivots": "2-bar wings; pivot known only after right wing closes",
+    "costs_round_trip_bps": 24.0,
+    "outcome_horizon_bars": 96,
+    "same_bar_policy": "close-entry outcomes begin on the next candle; simultaneous future-candle TP/SL is excluded from clean metrics",
+    "deduplication": "first candidate per symbol/family, then 8 closed bars cooldown",
+    "portfolio_risk_model": "chronological clean trades, fixed 1% equity risk per trade; simultaneous candidates remain separate research observations"
+  },
+  "families": {
+    "SHORT_CONTINUATION_PRACTICAL_TARGET": {
+      "context": "confirmed LH/LL, EMA20 < EMA50, close breaks latest confirmed swing low",
+      "trigger": "bearish close, body >=0.35 ATR, close in lower 35%, volume ratio >=1.0",
+      "entry": "confirmation close",
+      "stop": "max prior six highs + 0.10 ATR",
+      "target": "nearest causal support when 1.5R..2R; otherwise fixed 2R only for strong momentum, else fixed 1.5R"
+    },
+    "SHORT_FAILED_REBOUND": {
+      "context": "LH/LL, EMA20 < EMA50, 1.25 ATR downswing followed by 2..6 bar rebound not exceeding prior confirmed high",
+      "trigger": "bearish failure close below previous low near EMA20/rebound high; volume ratio >=0.9",
+      "entry": "confirmation close",
+      "stop": "rebound high + 0.10 ATR",
+      "target": "closer of prior impulse low and fixed 1.25R, requiring at least 1R room"
+    },
+    "RANGE_BOUNDARY_REJECTION": {
+      "context": "48-bar confirmed range, >=2 causal pivot touches each side, width 2..8 ATR, EMA spread <=0.6 ATR, ADX <=25",
+      "trigger": "boundary touch and rejection close back inside; volume ratio >=0.8",
+      "entry": "confirmation close",
+      "stop": "beyond candle/boundary by 0.15 ATR",
+      "target": "range midline; minimum 1R"
+    },
+    "TRAP_REVERSAL": {
+      "context": "same confirmed range geometry (ADX <=30)",
+      "trigger": "false break by >=0.05 ATR and close back inside with volume ratio >=1.0",
+      "entry": "return-to-range confirmation close",
+      "stop": "beyond trap extreme by 0.15 ATR",
+      "target": "range midline; minimum 1R"
+    },
+    "MOMENTUM_BREAKDOWN_PULLBACK": {
+      "context": "EMA20 < EMA50 and a 1..3 bar-old support breakdown with body >=0.55 ATR, lower-third close, volume ratio >=1.2",
+      "trigger": "short pullback stays within 0.75 ATR of broken support, then bearish continuation below previous low; volume ratio >=0.9",
+      "entry": "continuation close",
+      "stop": "pullback high + 0.12 ATR",
+      "target": "fixed 1.5R"
+    }
+  },
+  "minimum_gate_per_family": {
+    "clean_trades_min": 30,
+    "profit_factor_min": 1.05,
+    "expectancy_net_r_gt": 0,
+    "max_drawdown_pct_lt": 15,
+    "positive_symbols_min": 2,
+    "single_trade_profit_share_max": 0.5
+  }
+}

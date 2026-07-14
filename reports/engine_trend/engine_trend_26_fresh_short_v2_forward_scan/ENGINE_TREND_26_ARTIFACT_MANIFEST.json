@@ -1,0 +1,68 @@
+{
+  "created_files": [
+    "ENGINE_TREND_26_LOCKED_SCANNER_CONTRACT.json",
+    "ENGINE_TREND_26_DATA_COVERAGE.json",
+    "ENGINE_TREND_26_PRE_ENTRY_PLANS.json",
+    "ENGINE_TREND_26_CANDIDATES.csv",
+    "ENGINE_TREND_26_OUTCOMES.csv",
+    "ENGINE_TREND_26_SCAN_FUNNEL.csv",
+    "ENGINE_TREND_26_FORWARD_METRICS.json",
+    "ENGINE_TREND_26_LEAKAGE_AUDIT.md",
+    "ENGINE_TREND_26_FRESH_SCAN_REPORT.md",
+    "ENGINE_TREND_26_DECISION_RECORD.json",
+    "ENGINE_TREND_26_ARTIFACT_MANIFEST.json"
+  ],
+  "artifacts": [
+    {
+      "file": "ENGINE_TREND_26_LOCKED_SCANNER_CONTRACT.json",
+      "bytes": 2989,
+      "sha256": "ffc3aab3a3c9f149389b17f76ddf58fe6213904f7fcdcc5a32c2264243e4eba8"
+    },
+    {
+      "file": "ENGINE_TREND_26_DATA_COVERAGE.json",
+      "bytes": 903,
+      "sha256": "96d1439dfce74006de47a945d8ea17de51c898b62268074591880661fc026ee1"
+    },
+    {
+      "file": "ENGINE_TREND_26_PRE_ENTRY_PLANS.json",
+      "bytes": 3131,
+      "sha256": "8596067f8ed165355c6953b0ef709b6c85a79838c975466443ec7ef368e62b0f"
+    },
+    {
+      "file": "ENGINE_TREND_26_CANDIDATES.csv",
+      "bytes": 445,
+      "sha256": "fb31040fb0759bc11bf76cfafb86e41ea523a117af22a687fdcf1fd19d41ca03"
+    },
+    {
+      "file": "ENGINE_TREND_26_OUTCOMES.csv",
+      "bytes": 188,
+      "sha256": "24227bbe14af779755d20b9242ae20d432a44ef7158af859799752131748f6be"
+    },
+    {
+      "file": "ENGINE_TREND_26_SCAN_FUNNEL.csv",
+      "bytes": 728,
+      "sha256": "a71f19c7340f2c86698081340b576652473f8fe9be395c1be4e8c32f624ab30f"
+    },
+    {
+      "file": "ENGINE_TREND_26_FORWARD_METRICS.json",
+      "bytes": 4887,
+      "sha256": "12de936c2f8b83631e0961061f563c3ba19250c5287f91dcb294395270d5b339"
+    },
+    {
+      "file": "ENGINE_TREND_26_LEAKAGE_AUDIT.md",
+      "bytes": 1105,
+      "sha256": "c0e449bbbf16c94b68255fc94c4301edd64dba5f1c4a76d70edda5633d513f8d"
+    },
+    {
+      "file": "ENGINE_TREND_26_FRESH_SCAN_REPORT.md",
+      "bytes": 1526,
+      "sha256": "a695aca8c88c785bc4a90895a34b37111239d2b2e96372038e88b3f9c5ca52e4"
+    },
+    {
+      "file": "ENGINE_TREND_26_DECISION_RECORD.json",
+      "bytes": 1365,
+      "sha256": "8050ce5a14b761c89c93e4684c6f2b467fb4e20ae7f8526c1959fd4f90d9fbf8"
+    }
+  ],
+  "manifest_self_excluded_from_hashes": true
+}

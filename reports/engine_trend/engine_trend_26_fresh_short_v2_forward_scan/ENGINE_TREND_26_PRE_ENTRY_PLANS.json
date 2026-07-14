@@ -1,0 +1,106 @@
+{
+  "plans": [
+    {
+      "candidate_id": "ET26-SV2-0001",
+      "symbol": "ETHUSDT",
+      "timeframe": "15m",
+      "setup_type": "SHORT_DOWN_CONTINUATION_RETEST_V2",
+      "stage_trace": [
+        "SETUP_READY",
+        "ENTRY_ARMED",
+        "TRADE_CANDIDATE"
+      ],
+      "confirmation_time": "2026-06-04T08:00:00Z",
+      "entry_time": "2026-06-04T08:15:00Z",
+      "entry_age_bars": 1,
+      "entry_price": 1767.46,
+      "stop_price": 1789.330070228092,
+      "target_price": 1717.28,
+      "target_kind": "NEAREST_STRONG_CONFIRMED_SUPPORT",
+      "invalidation_price": 1787.3,
+      "atr14": 13.53380152061363,
+      "stop_distance_atr": 1.6159591371855946,
+      "target_distance_atr": 3.707753503224486,
+      "planned_rr": 2.2944599389326306,
+      "structure": {
+        "classification": "LH/LL",
+        "pivot_highs": [
+          [
+            16385,
+            1818.0
+          ],
+          [
+            16393,
+            1802.06
+          ]
+        ],
+        "pivot_lows": [
+          [
+            16390,
+            1780.59
+          ],
+          [
+            16397,
+            1773.52
+          ]
+        ],
+        "impulse_time": "2026-06-04T07:15:00Z",
+        "impulse_down_atr": 3.2865858075612793,
+        "correction_bars": 3,
+        "retest_depth_atr": 1.0181913765331456
+      },
+      "causal_zone": {
+        "kind": "EMA20",
+        "price": 1788.0608485525534,
+        "distance_atr": 0.05621839151361373
+      },
+      "confirmation_candle": {
+        "open": 1777.44,
+        "high": 1783.27,
+        "low": 1767.46,
+        "close": 1767.73,
+        "body_atr": 0.7174628640157402,
+        "body_fraction": 0.6141682479443434,
+        "upper_wick_fraction": 0.3687539531941776,
+        "lower_wick_fraction": 0.017077798861478984,
+        "close_location": 0.017077798861478984
+      },
+      "technical": {
+        "ema20": 1788.0608485525534,
+        "ema50": 1800.612475543857,
+        "ema200": 1862.960320282398,
+        "sma20": 1793.6570000000058,
+        "rsi14": 38.72274558513032,
+        "macd": -5.908994134493469,
+        "macd_signal": -4.036503919786702,
+        "atr14": 13.53380152061363,
+        "adx14": 28.567246414696587,
+        "vwap96": 1810.4965158713387,
+        "bollinger_upper": 1818.5962991882348,
+        "bollinger_lower": 1768.717700811777,
+        "volume_ratio_20": 0.9766465445168178
+      },
+      "engine_hypothesis": {
+        "market_regime": "DOWN",
+        "selected_hypothesis": "DOWN_CONTINUATION",
+        "selected_hypothesis_status": "CONFIRMED",
+        "conflict_level": "NONE",
+        "data_quality_status": "PASS",
+        "indicator_direction": "BEARISH",
+        "agreement_state": "ALIGNED_BEARISH",
+        "reason_codes": [
+          "COMPOSER_MATRIX_READY",
+          "COMPOSER_INPUT_VALID",
+          "COMPOSER_CONTEXT_LINKED_HYPOTHESES_READY",
+          "COMPOSER_DOMINANT_DOWN_CONTINUATION",
+          "COMPOSER_DOWN_REGIME_SELECTED",
+          "COMPOSER_NO_TRADING_ACTION"
+        ]
+      },
+      "warnings": [
+        "TARGET_DISTANCE_ATR_ABOVE_3_0"
+      ],
+      "generation_used_post_fill_outcome": false
+    }
+  ]
+}

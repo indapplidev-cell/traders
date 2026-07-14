@@ -274,6 +274,35 @@ def detect_swing_points(
     return tuple(points)
 
 
+def detect_volatility_aware_swing_points(
+    candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle],
+) -> tuple[SwingPoint, ...]:
+    """Detect material pivots with scale derived from history and volatility."""
+
+    items = tuple(candles)
+    if len(items) < 3:
+        return ()
+    lookback = 1 if len(items) < 32 else 2
+    true_ranges = []
+    for index, candle in enumerate(items):
+        previous_close = items[index - 1].close if index else candle.close
+        true_ranges.append(
+            max(
+                candle.high - candle.low,
+                abs(candle.high - previous_close),
+                abs(candle.low - previous_close),
+            )
+        )
+    recent_ranges = sorted(true_ranges[-min(20, len(true_ranges)):])
+    median_range = recent_ranges[len(recent_ranges) // 2]
+    reference_price = max(abs(items[-1].close), 1.0)
+    if median_range / reference_price >= 0.02 and len(items) >= 64:
+        lookback += 1
+    # The fractal radius itself is the noise filter. A second absolute
+    # prominence gate removed legitimate crypto levels on low-volatility days.
+    return normalize_swing_points(detect_swing_points(items, lookback=lookback))
+
+
 def normalize_swing_points(
     swing_points: tuple[SwingPoint, ...] | list[SwingPoint],
 ) -> tuple[SwingPoint, ...]:
@@ -351,9 +380,14 @@ def _material_change(first: float, last: float) -> int:
 
 def _sequence_direction(values: list[float]) -> int:
     changes = [_material_change(first, last) for first, last in zip(values, values[1:])]
-    if changes and all(change == 1 for change in changes):
+    material = [change for change in changes if change != 0]
+    if not material:
+        return 0
+    # Real charts rarely produce a perfectly monotonic pivot sequence. Require
+    # a robust two-thirds majority while the opposite pivot sequence must agree.
+    if sum(change == 1 for change in material) / len(material) >= 2.0 / 3.0:
         return 1
-    if changes and all(change == -1 for change in changes):
+    if sum(change == -1 for change in material) / len(material) >= 2.0 / 3.0:
         return -1
     return 0
 
@@ -466,6 +500,7 @@ def analyze_impulse_correction(
                 bullish_impulse += leg.absolute_change
                 previous_impulse = leg.absolute_change
                 previous_pivot = leg.start.price
+                pivot_breached = False
             elif leg.direction is PriceLegDirection.DOWN:
                 bullish_correction += leg.absolute_change
                 depth = leg.absolute_change / previous_impulse if previous_impulse else 0.0
@@ -479,6 +514,7 @@ def analyze_impulse_correction(
                 bearish_impulse += leg.absolute_change
                 previous_impulse = leg.absolute_change
                 previous_pivot = leg.start.price
+                pivot_breached = False
             elif leg.direction is PriceLegDirection.UP:
                 bearish_correction += leg.absolute_change
                 depth = leg.absolute_change / previous_impulse if previous_impulse else 0.0
@@ -505,8 +541,13 @@ def analyze_impulse_correction(
 
 def analyze_altunina_trend_context(
     candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle],
+    swing_points: tuple[SwingPoint, ...] | list[SwingPoint] | None = None,
 ) -> AltuninaTrendContext:
-    raw_swings = detect_swing_points(candles)
+    raw_swings = (
+        detect_swing_points(candles)
+        if swing_points is None
+        else tuple(swing_points)
+    )
     swings = normalize_swing_points(raw_swings)
     legs = build_price_legs(swings)
     structure = classify_structure_direction(swings)

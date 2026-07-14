@@ -1,0 +1,84 @@
+{
+  "artifact_count_excluding_manifest": 12,
+  "artifacts": [
+    {
+      "bytes": 15777,
+      "file": "ENGINE_TREND_23_PERFORMANCE_AUDIT_REPORT.md",
+      "sha256": "602e61296079d7f2b802a449af84292d6682e20bfa295e9c2e8a4eaad4b2787e"
+    },
+    {
+      "bytes": 255971,
+      "file": "ENGINE_TREND_23_PERFORMANCE_AUDIT_SUMMARY.json",
+      "sha256": "9b3d7b1127676073f3f75334f2bc148171488556c21b310bf9067243022d3f77"
+    },
+    {
+      "bytes": 22806,
+      "file": "ENGINE_TREND_23_PERFORMANCE_BY_SYMBOL.csv",
+      "sha256": "0ccaebc5221b00c8a73573cf294d9d08110fc7c7c11987afdc96235151384369"
+    },
+    {
+      "bytes": 22640,
+      "file": "ENGINE_TREND_23_PERFORMANCE_BY_SETUP_TYPE.csv",
+      "sha256": "587748b2a07e05318dd6a315448578c9bd53ae13be126fa1ad68c6c9cbaa7061"
+    },
+    {
+      "bytes": 15471,
+      "file": "ENGINE_TREND_23_PERFORMANCE_BY_DIRECTION.csv",
+      "sha256": "10c23be9babe324e74969e1f3c95a744874e5bd8414dcafe70fcbec728736caf"
+    },
+    {
+      "bytes": 7661,
+      "file": "ENGINE_TREND_23_QUALITY_SCORE_AUDIT.csv",
+      "sha256": "160e293195da1a63ebfafbfe083e3deb6aaff11231ec07f9c305cb2ed6d2a120"
+    },
+    {
+      "bytes": 2400,
+      "file": "ENGINE_TREND_23_RR_AUDIT.csv",
+      "sha256": "3d8efa635d4781050b0e17ee409f6a9d8cdf69fbae56b8ec4da5b1a7910604f4"
+    },
+    {
+      "bytes": 2868,
+      "file": "ENGINE_TREND_23_FAILURE_BUCKETS.csv",
+      "sha256": "4c379f3052a291ca279f9e06eaacd17fadb80fa357ba478bc4e2dbc3b2625fbd"
+    },
+    {
+      "bytes": 4888,
+      "file": "ENGINE_TREND_23_TOP_CANDIDATES_POSTMORTEM.md",
+      "sha256": "1355bf96049d13610d6f4595904fde5ff359431b4ad05f4413ac72b7649973b7"
+    },
+    {
+      "bytes": 2249,
+      "file": "ENGINE_TREND_23_DIAGNOSTIC_FILTER_HYPOTHESES.md",
+      "sha256": "e33fa3a9b13b89d6ba3105b0e5c61bc82cbd44834d2997e726ecd9d3eed7ec66"
+    },
+    {
+      "bytes": 2201,
+      "file": "ENGINE_TREND_23_ML_READINESS.md",
+      "sha256": "2145e8ee2e9e1dc40c561f0b82c1cbba55629c91a93c8ee1b34c5b0cd79076e5"
+    },
+    {
+      "bytes": 657,
+      "file": "ENGINE_TREND_23_DECISION_RECORD.json",
+      "sha256": "ebd1d5fdf50b3b4a920cc30ab73c7c7b597c8b5bd08041c6ac6a82056783a7ec"
+    }
+  ],
+  "created_files": [
+    "ENGINE_TREND_23_PERFORMANCE_AUDIT_REPORT.md",
+    "ENGINE_TREND_23_PERFORMANCE_AUDIT_SUMMARY.json",
+    "ENGINE_TREND_23_PERFORMANCE_BY_SYMBOL.csv",
+    "ENGINE_TREND_23_PERFORMANCE_BY_SETUP_TYPE.csv",
+    "ENGINE_TREND_23_PERFORMANCE_BY_DIRECTION.csv",
+    "ENGINE_TREND_23_QUALITY_SCORE_AUDIT.csv",
+    "ENGINE_TREND_23_RR_AUDIT.csv",
+    "ENGINE_TREND_23_FAILURE_BUCKETS.csv",
+    "ENGINE_TREND_23_TOP_CANDIDATES_POSTMORTEM.md",
+    "ENGINE_TREND_23_DIAGNOSTIC_FILTER_HYPOTHESES.md",
+    "ENGINE_TREND_23_ML_READINESS.md",
+    "ENGINE_TREND_23_DECISION_RECORD.json",
+    "ENGINE_TREND_23_ARTIFACT_MANIFEST.json"
+  ],
+  "engine_trend_stage": "ENGINE-TREND-23",
+  "runtime_changed": false,
+  "source_artifacts_read_only": true,
+  "source_directory": "reports/engine_trend/engine_trend_historical_entry_discovery_2025_07_03_2025_12_17"
+}

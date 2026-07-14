@@ -1,0 +1,48 @@
+{
+  "document_id": "ENGINE-TREND-22",
+  "scope": "CONCEPTUAL_CHECK_AGAINST_ENGINE_TREND_21",
+  "trade_candidate_examples_found": 0,
+  "real_market_profitability_validation_status": "BLOCKED_NO_TRADE_CANDIDATES",
+  "cases": [
+    {
+      "case_id": "BTCUSDT_15m_2026_07_13_16_00",
+      "symbol": "BTCUSDT",
+      "timeframe": "15m",
+      "as_of": "2026-07-13T16:00:00Z",
+      "setup_status": "NO_TRADE",
+      "label_status": "NO_TRADE_SKIPPED",
+      "reason": "ENGINE-TREND-21 kept UNKNOWN and the unvalidated trend-only counterfactual out of the setup layer.",
+      "profitability_metrics_counted": false
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_07_08_06_00",
+      "symbol": "SOLUSDT",
+      "timeframe": "15m",
+      "as_of": "2026-07-08T06:00:00Z",
+      "setup_status": "NO_TRADE",
+      "label_status": "NO_TRADE_SKIPPED",
+      "reason": "ENGINE-TREND-21 found eligible direction context but no complete causal entry/stop/target setup plan.",
+      "profitability_metrics_counted": false
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_07_08_18_30",
+      "symbol": "SOLUSDT",
+      "timeframe": "15m",
+      "as_of": "2026-07-08T18:30:00Z",
+      "setup_status": "NO_TRADE",
+      "label_status": "NO_TRADE_SKIPPED",
+      "reason": "ENGINE-TREND-21 kept the UNKNOWN unresolved-conflict snapshot out of trade candidates.",
+      "profitability_metrics_counted": false
+    },
+    {
+      "case_id": "SOLUSDT_15m_2026_07_08_23_45",
+      "symbol": "SOLUSDT",
+      "timeframe": "15m",
+      "as_of": "2026-07-08T23:45:00Z",
+      "setup_status": "WAIT_CONFIRMATION",
+      "label_status": "NO_TRADE_SKIPPED",
+      "reason": "No closed inward rejection and therefore no known entry existed at the audited range boundary.",
+      "profitability_metrics_counted": false
+    }
+  ]
+}

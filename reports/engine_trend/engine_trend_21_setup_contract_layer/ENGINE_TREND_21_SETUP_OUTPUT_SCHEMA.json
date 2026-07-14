@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:traders-ml:engine-trend-21:setup-output",
+  "title": "ENGINE-TREND-21 Setup Contract Output",
+  "description": "Design-only output of a causal setup evaluator. It is not an order, position, or execution instruction.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "as_of",
+    "symbol",
+    "timeframe",
+    "setup_id",
+    "setup_type",
+    "status",
+    "direction",
+    "source_regime",
+    "source_hypothesis",
+    "entry",
+    "invalidation",
+    "stop",
+    "targets",
+    "min_reward_risk",
+    "expires_after_candles",
+    "confidence",
+    "risk_flags",
+    "no_trade_reasons"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0-design" },
+    "as_of": { "type": "string", "format": "date-time" },
+    "symbol": { "type": "string", "minLength": 1 },
+    "timeframe": { "type": "string", "minLength": 1 },
+    "setup_id": { "type": "string", "minLength": 1 },
+    "setup_type": {
+      "enum": [
+        "SHORT_DOWN_CONTINUATION_RETEST",
+        "SHORT_TREND_ONLY_CONTINUATION_CANDIDATE",
+        "LONG_UP_CONTINUATION_RETEST",
+        "RANGE_MEAN_REVERSION_CANDIDATE",
+        "NO_TRADE_CONTRACT"
+      ]
+    },
+    "status": { "enum": ["TRADE_CANDIDATE", "WAIT_CONFIRMATION", "NO_TRADE", "INVALIDATED"] },
+    "direction": { "enum": ["LONG", "SHORT", "NONE"] },
+    "source_regime": { "enum": ["UP", "DOWN", "FLAT", "UNKNOWN"] },
+    "source_hypothesis": { "type": ["string", "null"] },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "price", "condition", "confirmation_candle_time"],
+      "properties": {
+        "type": { "enum": ["confirmation_close", "limit_retest", "breakout_stop", "none"] },
+        "price": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "condition": { "type": "string" },
+        "confirmation_candle_time": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "invalidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["price", "reason"],
+      "properties": {
+        "price": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "reason": { "type": "string" }
+      }
+    },
+    "stop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["price", "distance_pct", "reason"],
+      "properties": {
+        "price": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "distance_pct": { "type": ["number", "null"], "minimum": 0 },
+        "reason": { "type": "string" }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["price", "reason", "rr"],
+        "properties": {
+          "price": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+          "reason": { "type": "string" },
+          "rr": { "type": ["number", "null"], "minimum": 0 }
+        }
+      }
+    },
+    "selected_target_index": { "type": ["integer", "null"], "minimum": 0 },
+    "min_reward_risk": { "type": "number", "exclusiveMinimum": 0 },
+    "expires_after_candles": { "type": "integer", "minimum": 1 },
+    "candles_remaining": { "type": ["integer", "null"], "minimum": 0 },
+    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "risk_flags": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+    "no_trade_reasons": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+    "evidence_refs": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+    "design_only": { "const": true }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "TRADE_CANDIDATE" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "direction": { "enum": ["LONG", "SHORT"] },
+          "entry": { "properties": { "price": { "type": "number" } } },
+          "invalidation": { "properties": { "price": { "type": "number" } } },
+          "stop": { "properties": { "price": { "type": "number" }, "distance_pct": { "type": "number" } } },
+          "targets": { "minItems": 1, "contains": { "properties": { "price": { "type": "number" }, "rr": { "type": "number" } }, "required": ["price", "rr"] } },
+          "no_trade_reasons": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "NO_TRADE" } }, "required": ["status"] },
+      "then": { "properties": { "direction": { "const": "NONE" }, "no_trade_reasons": { "minItems": 1 } } }
+    },
+    {
+      "if": { "properties": { "source_regime": { "const": "UNKNOWN" } }, "required": ["source_regime"] },
+      "then": { "properties": { "setup_type": { "const": "NO_TRADE_CONTRACT" }, "status": { "const": "NO_TRADE" }, "direction": { "const": "NONE" } } }
+    }
+  ]
+}

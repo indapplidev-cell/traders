@@ -1,0 +1,1991 @@
+{
+  "locked_default_variant": "break_confirmation_low__atr_0_15__nearest_support",
+  "comparison": {
+    "full": {
+      "old_short_all": {
+        "universe": 196,
+        "trade_candidates": 196,
+        "clean_trades": 194,
+        "wins": 62,
+        "losses": 132,
+        "ambiguous": 0,
+        "expired": 2,
+        "winrate_pct": 31.95876288659794,
+        "profit_factor": 0.5330949288029391,
+        "expectancy_pct": -0.2061385091053874,
+        "total_net_return_pct_naive": -39.990870766445155
+      },
+      "old_engine_24_pass_short": {
+        "universe": 36,
+        "trade_candidates": 36,
+        "clean_trades": 35,
+        "wins": 10,
+        "losses": 25,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 28.571428571428573,
+        "profit_factor": 0.6257264378579779,
+        "expectancy_pct": -0.1913703343096569,
+        "total_net_return_pct_naive": -6.6979617008379915
+      }
+    },
+    "validation": {
+      "old_short_all": {
+        "universe": 51,
+        "trade_candidates": 51,
+        "clean_trades": 51,
+        "wins": 18,
+        "losses": 33,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 35.294117647058826,
+        "profit_factor": 0.7603472795173016,
+        "expectancy_pct": -0.09618411199348449,
+        "total_net_return_pct_naive": -4.905389711667709
+      },
+      "old_engine_24_pass_short": {
+        "universe": 12,
+        "trade_candidates": 12,
+        "clean_trades": 12,
+        "wins": 5,
+        "losses": 7,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 41.666666666666664,
+        "profit_factor": 1.270581750124523,
+        "expectancy_pct": 0.12841809453176514,
+        "total_net_return_pct_naive": 1.5410171343811818
+      }
+    },
+    "short_v2_locked_default_full": {
+      "universe": 449,
+      "trade_candidates": 5,
+      "clean_trades": 5,
+      "wins": 3,
+      "losses": 2,
+      "ambiguous": 0,
+      "expired": 0,
+      "winrate_pct": 60.0,
+      "profit_factor": 5.319455937414223,
+      "expectancy_pct": 0.9027397836515456,
+      "total_net_return_pct_naive": 4.513698918257728
+    },
+    "short_v2_locked_default_validation": {
+      "universe": 122,
+      "trade_candidates": 2,
+      "clean_trades": 2,
+      "wins": 1,
+      "losses": 1,
+      "ambiguous": 0,
+      "expired": 0,
+      "winrate_pct": 50.0,
+      "profit_factor": 7.828284216036,
+      "expectancy_pct": 1.9170291379139641,
+      "total_net_return_pct_naive": 3.8340582758279282
+    }
+  },
+  "mode_comparison": {
+    "entry_modes_at_atr_0_15_previous_low": {
+      "confirmation_close": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 31,
+          "clean_trades": 30,
+          "wins": 8,
+          "losses": 22,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 26.666666666666668,
+          "profit_factor": 0.45381579638593644,
+          "expectancy_pct": -0.2711057490667581,
+          "total_net_return_pct_naive": -8.133172472002743
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 13,
+          "clean_trades": 13,
+          "wins": 6,
+          "losses": 7,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 46.15384615384615,
+          "profit_factor": 1.3941785917615714,
+          "expectancy_pct": 0.17268660336788116,
+          "total_net_return_pct_naive": 2.2449258437824553
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 44,
+          "clean_trades": 43,
+          "wins": 14,
+          "losses": 29,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 32.55813953488372,
+          "profit_factor": 0.7139697335608671,
+          "expectancy_pct": -0.1369359680981462,
+          "total_net_return_pct_naive": -5.888246628220287
+        }
+      },
+      "break_confirmation_low": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 22,
+          "clean_trades": 21,
+          "wins": 6,
+          "losses": 15,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 28.571428571428573,
+          "profit_factor": 0.3623838915805527,
+          "expectancy_pct": -0.3251459025462016,
+          "total_net_return_pct_naive": -6.828063953470234
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 8,
+          "clean_trades": 8,
+          "wins": 4,
+          "losses": 4,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 50.0,
+          "profit_factor": 2.104412840584868,
+          "expectancy_pct": 0.449938579285041,
+          "total_net_return_pct_naive": 3.599508634280328
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 30,
+          "clean_trades": 29,
+          "wins": 10,
+          "losses": 19,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 34.48275862068966,
+          "profit_factor": 0.768859658301105,
+          "expectancy_pct": -0.1113294937651692,
+          "total_net_return_pct_naive": -3.2285553191899066
+        }
+      },
+      "limit_rejection_body": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 13,
+          "clean_trades": 12,
+          "wins": 3,
+          "losses": 9,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 25.0,
+          "profit_factor": 0.4403136755537348,
+          "expectancy_pct": -0.2793204370581302,
+          "total_net_return_pct_naive": -3.3518452446975626
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 4,
+          "clean_trades": 4,
+          "wins": 2,
+          "losses": 2,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 50.0,
+          "profit_factor": 1.2315111016504472,
+          "expectancy_pct": 0.10526879840240544,
+          "total_net_return_pct_naive": 0.42107519360962176
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 17,
+          "clean_trades": 16,
+          "wins": 5,
+          "losses": 11,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 31.25,
+          "profit_factor": 0.6246262186764898,
+          "expectancy_pct": -0.18317312819299636,
+          "total_net_return_pct_naive": -2.9307700510879418
+        }
+      }
+    },
+    "target_modes_at_break_atr_0_15": {
+      "previous_low": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 22,
+          "clean_trades": 21,
+          "wins": 6,
+          "losses": 15,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 28.571428571428573,
+          "profit_factor": 0.3623838915805527,
+          "expectancy_pct": -0.3251459025462016,
+          "total_net_return_pct_naive": -6.828063953470234
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 8,
+          "clean_trades": 8,
+          "wins": 4,
+          "losses": 4,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 50.0,
+          "profit_factor": 2.104412840584868,
+          "expectancy_pct": 0.449938579285041,
+          "total_net_return_pct_naive": 3.599508634280328
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 30,
+          "clean_trades": 29,
+          "wins": 10,
+          "losses": 19,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 34.48275862068966,
+          "profit_factor": 0.768859658301105,
+          "expectancy_pct": -0.1113294937651692,
+          "total_net_return_pct_naive": -3.2285553191899066
+        }
+      },
+      "nearest_support": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 3,
+          "clean_trades": 3,
+          "wins": 2,
+          "losses": 1,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 66.66666666666667,
+          "profit_factor": 2.4057476248721654,
+          "expectancy_pct": 0.22654688080993335,
+          "total_net_return_pct_naive": 0.6796406424298
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 2,
+          "clean_trades": 2,
+          "wins": 1,
+          "losses": 1,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 50.0,
+          "profit_factor": 7.828284216036,
+          "expectancy_pct": 1.9170291379139641,
+          "total_net_return_pct_naive": 3.8340582758279282
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 5,
+          "clean_trades": 5,
+          "wins": 3,
+          "losses": 2,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 60.0,
+          "profit_factor": 5.319455937414223,
+          "expectancy_pct": 0.9027397836515456,
+          "total_net_return_pct_naive": 4.513698918257728
+        }
+      },
+      "fixed_1_5r": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 4,
+          "clean_trades": 4,
+          "wins": 3,
+          "losses": 1,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 75.0,
+          "profit_factor": 0.5145101243787036,
+          "expectancy_pct": -0.14963846981681977,
+          "total_net_return_pct_naive": -0.5985538792672791
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 1,
+          "clean_trades": 1,
+          "wins": 1,
+          "losses": 0,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 100.0,
+          "profit_factor": null,
+          "expectancy_pct": 1.575186706499826,
+          "total_net_return_pct_naive": 1.575186706499826
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 5,
+          "clean_trades": 5,
+          "wins": 4,
+          "losses": 1,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 80.0,
+          "profit_factor": 1.792151494200038,
+          "expectancy_pct": 0.19532656544650936,
+          "total_net_return_pct_naive": 0.9766328272325469
+        }
+      },
+      "fixed_2r": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 2,
+          "clean_trades": 2,
+          "wins": 2,
+          "losses": 0,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 100.0,
+          "profit_factor": null,
+          "expectancy_pct": 0.36620380321241686,
+          "total_net_return_pct_naive": 0.7324076064248337
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 2,
+          "clean_trades": 2,
+          "wins": 1,
+          "losses": 1,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 50.0,
+          "profit_factor": 3.882924662763875,
+          "expectancy_pct": 0.8093761779789395,
+          "total_net_return_pct_naive": 1.618752355957879
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 4,
+          "clean_trades": 4,
+          "wins": 3,
+          "losses": 1,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 75.0,
+          "profit_factor": 5.187309452683497,
+          "expectancy_pct": 0.5877899905956782,
+          "total_net_return_pct_naive": 2.3511599623827126
+        }
+      }
+    },
+    "stop_modes_at_break_previous_low": {
+      "atr_0_15": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 22,
+          "clean_trades": 21,
+          "wins": 6,
+          "losses": 15,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 28.571428571428573,
+          "profit_factor": 0.3623838915805527,
+          "expectancy_pct": -0.3251459025462016,
+          "total_net_return_pct_naive": -6.828063953470234
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 8,
+          "clean_trades": 8,
+          "wins": 4,
+          "losses": 4,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 50.0,
+          "profit_factor": 2.104412840584868,
+          "expectancy_pct": 0.449938579285041,
+          "total_net_return_pct_naive": 3.599508634280328
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 30,
+          "clean_trades": 29,
+          "wins": 10,
+          "losses": 19,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 34.48275862068966,
+          "profit_factor": 0.768859658301105,
+          "expectancy_pct": -0.1113294937651692,
+          "total_net_return_pct_naive": -3.2285553191899066
+        }
+      },
+      "atr_0_25": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 24,
+          "clean_trades": 23,
+          "wins": 8,
+          "losses": 15,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 34.78260869565217,
+          "profit_factor": 0.528721986573895,
+          "expectancy_pct": -0.20949290366502646,
+          "total_net_return_pct_naive": -4.818336784295608
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 7,
+          "clean_trades": 7,
+          "wins": 4,
+          "losses": 3,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 57.142857142857146,
+          "profit_factor": 2.6235673482869997,
+          "expectancy_pct": 0.6063491410983683,
+          "total_net_return_pct_naive": 4.2444439876885784
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 31,
+          "clean_trades": 30,
+          "wins": 12,
+          "losses": 18,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 40.0,
+          "profit_factor": 0.9552982065577118,
+          "expectancy_pct": -0.01912975988690107,
+          "total_net_return_pct_naive": -0.5738927966070321
+        }
+      },
+      "structural_high_only": {
+        "TRAIN_DESIGN": {
+          "universe": 327,
+          "trade_candidates": 21,
+          "clean_trades": 20,
+          "wins": 4,
+          "losses": 16,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 20.0,
+          "profit_factor": 0.322555346606071,
+          "expectancy_pct": -0.35531087137959283,
+          "total_net_return_pct_naive": -7.106217427591856
+        },
+        "OUT_OF_TIME_VALIDATION": {
+          "universe": 122,
+          "trade_candidates": 10,
+          "clean_trades": 10,
+          "wins": 5,
+          "losses": 5,
+          "ambiguous": 0,
+          "expired": 0,
+          "winrate_pct": 50.0,
+          "profit_factor": 2.0981950061361925,
+          "expectancy_pct": 0.3825199698225895,
+          "total_net_return_pct_naive": 3.8251996982258953
+        },
+        "FULL_DIAGNOSTIC": {
+          "universe": 449,
+          "trade_candidates": 31,
+          "clean_trades": 30,
+          "wins": 9,
+          "losses": 21,
+          "ambiguous": 0,
+          "expired": 1,
+          "winrate_pct": 30.0,
+          "profit_factor": 0.7651872038578863,
+          "expectancy_pct": -0.109367257645532,
+          "total_net_return_pct_naive": -3.28101772936596
+        }
+      }
+    }
+  },
+  "variant_metrics": {
+    "break_confirmation_low__atr_0_15__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 3,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 75.0,
+        "profit_factor": 0.5145101243787036,
+        "expectancy_pct": -0.14963846981681977,
+        "total_net_return_pct_naive": -0.5985538792672791
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 1,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 1.575186706499826,
+        "total_net_return_pct_naive": 1.575186706499826
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 5,
+        "clean_trades": 5,
+        "wins": 4,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 80.0,
+        "profit_factor": 1.792151494200038,
+        "expectancy_pct": 0.19532656544650936,
+        "total_net_return_pct_naive": 0.9766328272325469
+      }
+    },
+    "break_confirmation_low__atr_0_15__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 2,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 0.36620380321241686,
+        "total_net_return_pct_naive": 0.7324076064248337
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 3.882924662763875,
+        "expectancy_pct": 0.8093761779789395,
+        "total_net_return_pct_naive": 1.618752355957879
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 3,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 75.0,
+        "profit_factor": 5.187309452683497,
+        "expectancy_pct": 0.5877899905956782,
+        "total_net_return_pct_naive": 2.3511599623827126
+      }
+    },
+    "break_confirmation_low__atr_0_15__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 2,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 66.66666666666667,
+        "profit_factor": 2.4057476248721654,
+        "expectancy_pct": 0.22654688080993335,
+        "total_net_return_pct_naive": 0.6796406424298
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 7.828284216036,
+        "expectancy_pct": 1.9170291379139641,
+        "total_net_return_pct_naive": 3.8340582758279282
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 5,
+        "clean_trades": 5,
+        "wins": 3,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 60.0,
+        "profit_factor": 5.319455937414223,
+        "expectancy_pct": 0.9027397836515456,
+        "total_net_return_pct_naive": 4.513698918257728
+      }
+    },
+    "break_confirmation_low__atr_0_15__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 22,
+        "clean_trades": 21,
+        "wins": 6,
+        "losses": 15,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 28.571428571428573,
+        "profit_factor": 0.3623838915805527,
+        "expectancy_pct": -0.3251459025462016,
+        "total_net_return_pct_naive": -6.828063953470234
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 8,
+        "clean_trades": 8,
+        "wins": 4,
+        "losses": 4,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 2.104412840584868,
+        "expectancy_pct": 0.449938579285041,
+        "total_net_return_pct_naive": 3.599508634280328
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 30,
+        "clean_trades": 29,
+        "wins": 10,
+        "losses": 19,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 34.48275862068966,
+        "profit_factor": 0.768859658301105,
+        "expectancy_pct": -0.1113294937651692,
+        "total_net_return_pct_naive": -3.2285553191899066
+      }
+    },
+    "break_confirmation_low__atr_0_25__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 4,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 0.3332549764346642,
+        "total_net_return_pct_naive": 1.3330199057386567
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 2.9871244974141242,
+        "expectancy_pct": 0.58639743264785,
+        "total_net_return_pct_naive": 1.1727948652957
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 6,
+        "clean_trades": 6,
+        "wins": 5,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 83.33333333333333,
+        "profit_factor": 5.245726226170912,
+        "expectancy_pct": 0.41763579517239285,
+        "total_net_return_pct_naive": 2.5058147710343572
+      }
+    },
+    "break_confirmation_low__atr_0_25__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 2,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 0.4333815423302317,
+        "total_net_return_pct_naive": 0.8667630846604634
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 1,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 2.4306557857011724,
+        "total_net_return_pct_naive": 2.4306557857011724
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 3,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 1.0991396234538786,
+        "total_net_return_pct_naive": 3.2974188703616356
+      }
+    },
+    "break_confirmation_low__atr_0_25__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 3,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 75.0,
+        "profit_factor": 3.3701011276095163,
+        "expectancy_pct": 0.3025556611384762,
+        "total_net_return_pct_naive": 1.2102226445539048
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 7.447606571458694,
+        "expectancy_pct": 1.902678943944819,
+        "total_net_return_pct_naive": 3.805357887889638
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 6,
+        "clean_trades": 6,
+        "wins": 4,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 66.66666666666667,
+        "profit_factor": 5.556231927893459,
+        "expectancy_pct": 0.8359300887405904,
+        "total_net_return_pct_naive": 5.0155805324435425
+      }
+    },
+    "break_confirmation_low__atr_0_25__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 24,
+        "clean_trades": 23,
+        "wins": 8,
+        "losses": 15,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 34.78260869565217,
+        "profit_factor": 0.528721986573895,
+        "expectancy_pct": -0.20949290366502646,
+        "total_net_return_pct_naive": -4.818336784295608
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 4,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 57.142857142857146,
+        "profit_factor": 2.6235673482869997,
+        "expectancy_pct": 0.6063491410983683,
+        "total_net_return_pct_naive": 4.2444439876885784
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 31,
+        "clean_trades": 30,
+        "wins": 12,
+        "losses": 18,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 40.0,
+        "profit_factor": 0.9552982065577118,
+        "expectancy_pct": -0.01912975988690107,
+        "total_net_return_pct_naive": -0.5738927966070321
+      }
+    },
+    "break_confirmation_low__structural_high_only__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 1,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 33.333333333333336,
+        "profit_factor": 0.1969395359045375,
+        "expectancy_pct": -0.29091617996542873,
+        "total_net_return_pct_naive": -0.8727485398962862
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 1,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 1.2934790073357294,
+        "total_net_return_pct_naive": 1.2934790073357294
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 1.3871355711247269,
+        "expectancy_pct": 0.1051826168598608,
+        "total_net_return_pct_naive": 0.4207304674394432
+      }
+    },
+    "break_confirmation_low__structural_high_only__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 0.7433736975551566,
+        "expectancy_pct": -0.06306670758657273,
+        "total_net_return_pct_naive": -0.12613341517314547
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 3.4808613858649724,
+        "expectancy_pct": 0.6430963361565888,
+        "total_net_return_pct_naive": 1.2861926723131776
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 2.1486278938074754,
+        "expectancy_pct": 0.290014814285008,
+        "total_net_return_pct_naive": 1.160059257140032
+      }
+    },
+    "break_confirmation_low__structural_high_only__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 5,
+        "clean_trades": 5,
+        "wins": 1,
+        "losses": 4,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 20.0,
+        "profit_factor": 0.3293884488668065,
+        "expectancy_pct": -0.37101319378264225,
+        "total_net_return_pct_naive": -1.8550659689132112
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 8.47832720633682,
+        "expectancy_pct": 1.9385544288676777,
+        "total_net_return_pct_naive": 3.8771088577353554
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 2,
+        "losses": 5,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 28.571428571428573,
+        "profit_factor": 1.6155988362451361,
+        "expectancy_pct": 0.28886326983173494,
+        "total_net_return_pct_naive": 2.0220428888221447
+      }
+    },
+    "break_confirmation_low__structural_high_only__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 21,
+        "clean_trades": 20,
+        "wins": 4,
+        "losses": 16,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 20.0,
+        "profit_factor": 0.322555346606071,
+        "expectancy_pct": -0.35531087137959283,
+        "total_net_return_pct_naive": -7.106217427591856
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 10,
+        "clean_trades": 10,
+        "wins": 5,
+        "losses": 5,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 2.0981950061361925,
+        "expectancy_pct": 0.3825199698225895,
+        "total_net_return_pct_naive": 3.8251996982258953
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 31,
+        "clean_trades": 30,
+        "wins": 9,
+        "losses": 21,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 30.0,
+        "profit_factor": 0.7651872038578863,
+        "expectancy_pct": -0.109367257645532,
+        "total_net_return_pct_naive": -3.28101772936596
+      }
+    },
+    "confirmation_close__atr_0_15__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 6,
+        "clean_trades": 6,
+        "wins": 3,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 0.3299283369999183,
+        "expectancy_pct": -0.24443385014933025,
+        "total_net_return_pct_naive": -1.4666031008959814
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 1,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 1.5041343570272026,
+        "total_net_return_pct_naive": 1.5041343570272026
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 4,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 57.142857142857146,
+        "profit_factor": 1.0171475371864176,
+        "expectancy_pct": 0.0053616080187458715,
+        "total_net_return_pct_naive": 0.0375312561312211
+      }
+    },
+    "confirmation_close__atr_0_15__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 2,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 0.4321303974533901,
+        "total_net_return_pct_naive": 0.8642607949067802
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 4.0463483387189045,
+        "expectancy_pct": 0.7850532053750586,
+        "total_net_return_pct_naive": 1.5701064107501173
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 3,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 75.0,
+        "profit_factor": 5.72320247978716,
+        "expectancy_pct": 0.6085918014142244,
+        "total_net_return_pct_naive": 2.4343672056568977
+      }
+    },
+    "confirmation_close__atr_0_15__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 3,
+        "losses": 4,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 42.857142857142854,
+        "profit_factor": 0.5628898993394803,
+        "expectancy_pct": -0.17769213112819093,
+        "total_net_return_pct_naive": -1.2438449178973365
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 8.614930064944243,
+        "expectancy_pct": 1.9623905711010683,
+        "total_net_return_pct_naive": 3.9247811422021366
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 9,
+        "clean_trades": 9,
+        "wins": 4,
+        "losses": 5,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 44.44444444444444,
+        "profit_factor": 1.797656450098676,
+        "expectancy_pct": 0.29788180270053327,
+        "total_net_return_pct_naive": 2.6809362243047996
+      }
+    },
+    "confirmation_close__atr_0_15__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 31,
+        "clean_trades": 30,
+        "wins": 8,
+        "losses": 22,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 26.666666666666668,
+        "profit_factor": 0.45381579638593644,
+        "expectancy_pct": -0.2711057490667581,
+        "total_net_return_pct_naive": -8.133172472002743
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 13,
+        "clean_trades": 13,
+        "wins": 6,
+        "losses": 7,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 46.15384615384615,
+        "profit_factor": 1.3941785917615714,
+        "expectancy_pct": 0.17268660336788116,
+        "total_net_return_pct_naive": 2.2449258437824553
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 44,
+        "clean_trades": 43,
+        "wins": 14,
+        "losses": 29,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 32.55813953488372,
+        "profit_factor": 0.7139697335608671,
+        "expectancy_pct": -0.1369359680981462,
+        "total_net_return_pct_naive": -5.888246628220287
+      }
+    },
+    "confirmation_close__atr_0_25__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 4,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 57.142857142857146,
+        "profit_factor": 0.5523136449267176,
+        "expectancy_pct": -0.11398291632143606,
+        "total_net_return_pct_naive": -0.7978804142500524
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 3.1094881974733304,
+        "expectancy_pct": 0.5738791630136459,
+        "total_net_return_pct_naive": 1.1477583260272919
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 9,
+        "clean_trades": 9,
+        "wins": 5,
+        "losses": 4,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 55.55555555555556,
+        "profit_factor": 1.1503994716368868,
+        "expectancy_pct": 0.038875323530804376,
+        "total_net_return_pct_naive": 0.34987791177723937
+      }
+    },
+    "confirmation_close__atr_0_25__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 2,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 0.34673465967182515,
+        "total_net_return_pct_naive": 0.6934693193436503
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 4.293017878276624,
+        "expectancy_pct": 0.8958544285945231,
+        "total_net_return_pct_naive": 1.7917088571890463
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 3,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 75.0,
+        "profit_factor": 5.567559139526869,
+        "expectancy_pct": 0.6212945441331742,
+        "total_net_return_pct_naive": 2.485178176532697
+      }
+    },
+    "confirmation_close__atr_0_25__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 5,
+        "clean_trades": 5,
+        "wins": 3,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 60.0,
+        "profit_factor": 0.9455738685819413,
+        "expectancy_pct": -0.018439147966966017,
+        "total_net_return_pct_naive": -0.09219573983483009
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 8.160709703748113,
+        "expectancy_pct": 1.9480469700151584,
+        "total_net_return_pct_naive": 3.8960939400303167
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 4,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 57.142857142857146,
+        "profit_factor": 2.6996452613652235,
+        "expectancy_pct": 0.5434140285993553,
+        "total_net_return_pct_naive": 3.803898200195487
+      }
+    },
+    "confirmation_close__atr_0_25__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 36,
+        "clean_trades": 35,
+        "wins": 9,
+        "losses": 26,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 25.714285714285715,
+        "profit_factor": 0.4597162115860855,
+        "expectancy_pct": -0.2729541142818962,
+        "total_net_return_pct_naive": -9.553393999866367
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 13,
+        "clean_trades": 13,
+        "wins": 5,
+        "losses": 8,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 38.46153846153846,
+        "profit_factor": 1.3358732548306609,
+        "expectancy_pct": 0.14388844678315957,
+        "total_net_return_pct_naive": 1.8705498081810745
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 49,
+        "clean_trades": 48,
+        "wins": 14,
+        "losses": 34,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 29.166666666666668,
+        "profit_factor": 0.6695748588009638,
+        "expectancy_pct": -0.1600592539934436,
+        "total_net_return_pct_naive": -7.682844191685293
+      }
+    },
+    "confirmation_close__structural_high_only__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 0,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.5751988331057948,
+        "total_net_return_pct_naive": -1.7255964993173845
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 1,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 1.2225585023400938,
+        "total_net_return_pct_naive": 1.2225585023400938
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 1,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 25.0,
+        "profit_factor": 0.7084845749418919,
+        "expectancy_pct": -0.12575949924432267,
+        "total_net_return_pct_naive": -0.5030379969772907
+      }
+    },
+    "confirmation_close__structural_high_only__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 0,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.6913497432280405,
+        "total_net_return_pct_naive": -2.0740492296841215
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 3.620168413936121,
+        "expectancy_pct": 0.6188513705458469,
+        "total_net_return_pct_naive": 1.2377027410916939
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 5,
+        "clean_trades": 5,
+        "wins": 1,
+        "losses": 4,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 20.0,
+        "profit_factor": 0.6715604600433458,
+        "expectancy_pct": -0.16726929771848553,
+        "total_net_return_pct_naive": -0.8363464885924277
+      }
+    },
+    "confirmation_close__structural_high_only__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 5,
+        "clean_trades": 5,
+        "wins": 0,
+        "losses": 5,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.6529435054193135,
+        "total_net_return_pct_naive": -3.2647175270965674
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 9.399703084411405,
+        "expectancy_pct": 1.9839059727299289,
+        "total_net_return_pct_naive": 3.9678119454598577
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 1,
+        "losses": 6,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 14.285714285714286,
+        "profit_factor": 1.1881394062275648,
+        "expectancy_pct": 0.10044205976618437,
+        "total_net_return_pct_naive": 0.7030944183632906
+      }
+    },
+    "confirmation_close__structural_high_only__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 21,
+        "clean_trades": 20,
+        "wins": 2,
+        "losses": 18,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 10.0,
+        "profit_factor": 0.1684413142520034,
+        "expectancy_pct": -0.492884137240942,
+        "total_net_return_pct_naive": -9.85768274481884
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 10,
+        "clean_trades": 10,
+        "wins": 5,
+        "losses": 5,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 1.773380739365063,
+        "expectancy_pct": 0.3244520135591196,
+        "total_net_return_pct_naive": 3.244520135591196
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 31,
+        "clean_trades": 30,
+        "wins": 7,
+        "losses": 23,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 23.333333333333332,
+        "profit_factor": 0.5879574319552313,
+        "expectancy_pct": -0.22043875364092147,
+        "total_net_return_pct_naive": -6.613162609227644
+      }
+    },
+    "limit_rejection_body__atr_0_15__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 2,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 66.66666666666667,
+        "profit_factor": 1.1622158636034945,
+        "expectancy_pct": 0.050657326554058635,
+        "total_net_return_pct_naive": 0.1519719796621759
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.47565409667704905,
+        "total_net_return_pct_naive": -0.47565409667704905
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 0.7708452313960675,
+        "expectancy_pct": -0.08092052925371826,
+        "total_net_return_pct_naive": -0.32368211701487304
+      }
+    },
+    "limit_rejection_body__atr_0_15__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 1,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 33.333333333333336,
+        "profit_factor": 0.16565274469965283,
+        "expectancy_pct": -0.40501771875567444,
+        "total_net_return_pct_naive": -1.2150531562670233
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.47565409667704905,
+        "total_net_return_pct_naive": -0.47565409667704905
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 1,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 25.0,
+        "profit_factor": 0.12486826808603063,
+        "expectancy_pct": -0.4226768132360181,
+        "total_net_return_pct_naive": -1.6907072529440723
+      }
+    },
+    "limit_rejection_body__atr_0_15__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 1,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 33.333333333333336,
+        "profit_factor": 0.2112031397049823,
+        "expectancy_pct": -0.38290616153980356,
+        "total_net_return_pct_naive": -1.1487184846194107
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 1,
+        "clean_trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.47565409667704905,
+        "total_net_return_pct_naive": -0.47565409667704905
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 1,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 25.0,
+        "profit_factor": 0.15920394387131687,
+        "expectancy_pct": -0.40609314532411495,
+        "total_net_return_pct_naive": -1.6243725812964598
+      }
+    },
+    "limit_rejection_body__atr_0_15__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 13,
+        "clean_trades": 12,
+        "wins": 3,
+        "losses": 9,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 25.0,
+        "profit_factor": 0.4403136755537348,
+        "expectancy_pct": -0.2793204370581302,
+        "total_net_return_pct_naive": -3.3518452446975626
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 1.2315111016504472,
+        "expectancy_pct": 0.10526879840240544,
+        "total_net_return_pct_naive": 0.42107519360962176
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 17,
+        "clean_trades": 16,
+        "wins": 5,
+        "losses": 11,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 31.25,
+        "profit_factor": 0.6246262186764898,
+        "expectancy_pct": -0.18317312819299636,
+        "total_net_return_pct_naive": -2.9307700510879418
+      }
+    },
+    "limit_rejection_body__atr_0_25__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 3,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 100.0,
+        "profit_factor": null,
+        "expectancy_pct": 0.42988917193479886,
+        "total_net_return_pct_naive": 1.2896675158043966
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 2.3785183919203283,
+        "expectancy_pct": 0.37040053237054715,
+        "total_net_return_pct_naive": 0.7408010647410943
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 5,
+        "clean_trades": 5,
+        "wins": 4,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 80.0,
+        "profit_factor": 4.778393978789123,
+        "expectancy_pct": 0.40609371610909817,
+        "total_net_return_pct_naive": 2.0304685805454907
+      }
+    },
+    "limit_rejection_body__atr_0_25__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 0.42532108162247173,
+        "expectancy_pct": -0.22381827102205534,
+        "total_net_return_pct_naive": -0.8952730840882214
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 3.537870263411819,
+        "expectancy_pct": 0.6399619616323602,
+        "total_net_return_pct_naive": 1.2799239232647204
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 6,
+        "clean_trades": 6,
+        "wins": 3,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 1.1865248229390872,
+        "expectancy_pct": 0.06410847319608319,
+        "total_net_return_pct_naive": 0.3846508391764991
+      }
+    },
+    "limit_rejection_body__atr_0_25__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 0.846890090787097,
+        "expectancy_pct": -0.05963120285171719,
+        "total_net_return_pct_naive": -0.23852481140686876
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 9.318725556128188,
+        "expectancy_pct": 2.097691123904852,
+        "total_net_return_pct_naive": 4.195382247809704
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 6,
+        "clean_trades": 6,
+        "wins": 3,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 2.9187586703316413,
+        "expectancy_pct": 0.6594762394004726,
+        "total_net_return_pct_naive": 3.9568574364028355
+      }
+    },
+    "limit_rejection_body__atr_0_25__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 16,
+        "clean_trades": 15,
+        "wins": 5,
+        "losses": 10,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 33.333333333333336,
+        "profit_factor": 0.7629044923561581,
+        "expectancy_pct": -0.10928757764300179,
+        "total_net_return_pct_naive": -1.6393136646450268
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 11,
+        "clean_trades": 11,
+        "wins": 5,
+        "losses": 6,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 45.45454545454545,
+        "profit_factor": 1.7970223840297688,
+        "expectancy_pct": 0.31246406186834097,
+        "total_net_return_pct_naive": 3.4371046805517507
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 27,
+        "clean_trades": 26,
+        "wins": 10,
+        "losses": 16,
+        "ambiguous": 0,
+        "expired": 1,
+        "winrate_pct": 38.46153846153846,
+        "profit_factor": 1.160137004160306,
+        "expectancy_pct": 0.06914580830410476,
+        "total_net_return_pct_naive": 1.7977910159067236
+      }
+    },
+    "limit_rejection_body__structural_high_only__fixed_1_5r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 0.5431263393917911,
+        "expectancy_pct": -0.1955011887461628,
+        "total_net_return_pct_naive": -0.7820047549846512
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 0,
+        "clean_trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": null,
+        "profit_factor": null,
+        "expectancy_pct": null,
+        "total_net_return_pct_naive": 0
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 50.0,
+        "profit_factor": 0.5431263393917911,
+        "expectancy_pct": -0.1955011887461628,
+        "total_net_return_pct_naive": -0.7820047549846512
+      }
+    },
+    "limit_rejection_body__structural_high_only__fixed_2r": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 0,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.6519649460594944,
+        "total_net_return_pct_naive": -1.3039298921189888
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 0,
+        "clean_trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": null,
+        "profit_factor": null,
+        "expectancy_pct": null,
+        "total_net_return_pct_naive": 0
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 2,
+        "clean_trades": 2,
+        "wins": 0,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 0.0,
+        "profit_factor": 0.0,
+        "expectancy_pct": -0.6519649460594944,
+        "total_net_return_pct_naive": -1.3039298921189888
+      }
+    },
+    "limit_rejection_body__structural_high_only__nearest_support": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 1,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 33.333333333333336,
+        "profit_factor": 0.7145502045607636,
+        "expectancy_pct": -0.12406884032415699,
+        "total_net_return_pct_naive": -0.372206520972471
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 0,
+        "clean_trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": null,
+        "profit_factor": null,
+        "expectancy_pct": null,
+        "total_net_return_pct_naive": 0
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 1,
+        "losses": 2,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 33.333333333333336,
+        "profit_factor": 0.7145502045607636,
+        "expectancy_pct": -0.12406884032415699,
+        "total_net_return_pct_naive": -0.372206520972471
+      }
+    },
+    "limit_rejection_body__structural_high_only__previous_low": {
+      "TRAIN_DESIGN": {
+        "universe": 327,
+        "trade_candidates": 4,
+        "clean_trades": 4,
+        "wins": 1,
+        "losses": 3,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 25.0,
+        "profit_factor": 0.8888856844576394,
+        "expectancy_pct": -0.06072869239481235,
+        "total_net_return_pct_naive": -0.2429147695792494
+      },
+      "OUT_OF_TIME_VALIDATION": {
+        "universe": 122,
+        "trade_candidates": 3,
+        "clean_trades": 3,
+        "wins": 2,
+        "losses": 1,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 66.66666666666667,
+        "profit_factor": 1.867240261560241,
+        "expectancy_pct": 0.3467720936927383,
+        "total_net_return_pct_naive": 1.040316281078215
+      },
+      "FULL_DIAGNOSTIC": {
+        "universe": 449,
+        "trade_candidates": 7,
+        "clean_trades": 7,
+        "wins": 3,
+        "losses": 4,
+        "ambiguous": 0,
+        "expired": 0,
+        "winrate_pct": 42.857142857142854,
+        "profit_factor": 1.2355175829406617,
+        "expectancy_pct": 0.11391450164270936,
+        "total_net_return_pct_naive": 0.7974015114989655
+      }
+    }
+  },
+  "rejected_in_sample_only_variants": [
+    "break_confirmation_low__atr_0_15__fixed_2r",
+    "break_confirmation_low__atr_0_25__fixed_1_5r",
+    "break_confirmation_low__atr_0_25__nearest_support",
+    "confirmation_close__atr_0_15__fixed_2r",
+    "confirmation_close__atr_0_25__fixed_2r",
+    "limit_rejection_body__atr_0_25__fixed_1_5r"
+  ]
+}

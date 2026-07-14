@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from app.market_reader.engine_trend.altunina_trend_context import AltuninaStructureDirection
 from app.market_reader.engine_trend.book_evidence_matrix import (
     BookAgreementState,
     BookEvidenceMatrix,
@@ -14,7 +13,17 @@ from app.market_reader.engine_trend.book_evidence_matrix import (
     analyze_book_evidence_matrix,
 )
 from app.market_reader.engine_trend.input_period import EngineTrendInputPeriod
+from app.market_reader.engine_trend.market_hypothesis import (
+    ContextualEventStatus,
+    HypothesisDirection,
+    HypothesisStatus,
+    HypothesisType,
+)
 from app.market_reader.engine_trend.ohlc_integrity import OHLCIntegrityResult, validate_ohlc_integrity
+from app.market_reader.engine_trend.analysis_contract import (
+    AnalysisReadiness,
+    AnalysisWindowConfig,
+)
 from app.market_reader.engine_trend.schemas import (
     BookEvidence,
     BookSource,
@@ -24,11 +33,6 @@ from app.market_reader.engine_trend.schemas import (
     EngineTrendRegime,
     EngineTrendResult,
     EngineTrendSafety,
-)
-from app.market_reader.engine_trend.schwager_range_context import (
-    BreakoutConfirmationStatus,
-    BreakoutDirection,
-    PolarityFlipStatus,
 )
 
 
@@ -130,6 +134,7 @@ class RegimeDecisionTrace:
     warnings: tuple[str, ...]
     errors: tuple[str, ...]
     reason_codes: tuple[str, ...]
+    selected_hypothesis: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -137,6 +142,7 @@ class RegimeDecisionTrace:
             "candidate_scores": self.candidate_scores.to_dict(), "matrix_summary": dict(self.matrix_summary),
             "data_quality_status": self.data_quality_status, "warnings": list(self.warnings),
             "errors": list(self.errors), "reason_codes": list(self.reason_codes),
+            "selected_hypothesis": self.selected_hypothesis,
         }
 
 
@@ -158,63 +164,83 @@ class RegimeComposerOutput:
 
 
 def score_regime_candidates(matrix: BookEvidenceMatrix, ohlc_integrity: OHLCIntegrityResult | None = None) -> RegimeCandidateScores:
-    """Score and conservatively select one market state."""
-    balance, summary = matrix.directional_balance, matrix.confluence_conflict
-    up, down, flat, unknown = balance.bullish_score, balance.bearish_score, 0.0, 0.0
+    """Select a regime from context-linked, confirmed market hypotheses."""
+    summary = matrix.confluence_conflict
+    hypothesis_result = matrix.hypothesis_result
+    confirmed = tuple(
+        item
+        for item in hypothesis_result.hypotheses
+        if item.status is HypothesisStatus.CONFIRMED
+    )
+    confirmed_directions = {item.direction for item in confirmed}
+    unresolved_hypothesis_conflict = (
+        len(confirmed_directions) >= 2
+        and hypothesis_result.dominant_hypothesis is None
+    )
+
+    def directional_score(direction: HypothesisDirection) -> float:
+        values = sorted(
+            (item.score for item in confirmed if item.direction is direction),
+            reverse=True,
+        )
+        if not values:
+            return 0.0
+        # The strongest causal hypothesis drives the regime. Additional
+        # hypotheses provide bounded confluence instead of independent votes.
+        return values[0] + min(0.15, sum(values[1:]) * 0.20)
+
+    up = directional_score(HypothesisDirection.BULLISH)
+    down = directional_score(HypothesisDirection.BEARISH)
+    flat = directional_score(HypothesisDirection.FLAT)
+    pending_count = sum(
+        item.status is HypothesisStatus.PENDING
+        for item in hypothesis_result.hypotheses
+    )
+    unknown = min(0.30, pending_count * 0.10)
     codes: list[str] = []
-    bonuses = {
-        BookAgreementState.ALIGNED_BULLISH: (0.20, 0.0, 0.0, 0.0),
-        BookAgreementState.ALIGNED_BEARISH: (0.0, 0.20, 0.0, 0.0),
-        BookAgreementState.ALIGNED_NEUTRAL: (0.0, 0.0, 0.20, 0.0),
-        BookAgreementState.MIXED_WITH_CONFLICT: (0.0, 0.0, 0.0, 0.25),
-        BookAgreementState.MIXED_LOW_CONFLICT: (0.0, 0.0, 0.0, 0.10),
-    }
-    delta = bonuses.get(summary.agreement_state, (0.0, 0.0, 0.0, 0.0))
-    up, down, flat, unknown = up + delta[0], down + delta[1], flat + delta[2], unknown + delta[3]
-
-    alt = matrix.altunina_context
-    trend_weight = 0.20 * alt.trend_strength_score + 0.10 * alt.trend_consistency_score + 0.10 * alt.trend_progress_score
-    if alt.structure_direction is AltuninaStructureDirection.BULLISH_STRUCTURE:
-        up += trend_weight
-    elif alt.structure_direction is AltuninaStructureDirection.BEARISH_STRUCTURE:
-        down += trend_weight
-    elif alt.structure_direction is AltuninaStructureDirection.SIDEWAYS_STRUCTURE:
-        flat += 0.20
-        codes.append("COMPOSER_SIDEWAYS_STRUCTURE_FLAT_CONTEXT")
+    # Compatibility path for callers that explicitly replace legacy matrix
+    # aggregates or contexts. The normal engine pipeline never enters it;
+    # production composition is hypothesis-driven.
+    legacy_overridden = (
+        matrix.altunina_context != matrix.unified_context.altunina_context
+        or matrix.directional_balance.bullish_score
+        != matrix.summary.get("legacy_bullish_score")
+        or matrix.directional_balance.bearish_score
+        != matrix.summary.get("legacy_bearish_score")
+    )
+    if legacy_overridden:
+        up = matrix.directional_balance.bullish_score
+        down = matrix.directional_balance.bearish_score
+        flat = 0.0
+        unknown = 0.0
+        if matrix.confluence_conflict.agreement_state is BookAgreementState.ALIGNED_BULLISH:
+            up += 0.20
+        elif matrix.confluence_conflict.agreement_state is BookAgreementState.ALIGNED_BEARISH:
+            down += 0.20
+        elif matrix.confluence_conflict.agreement_state is BookAgreementState.ALIGNED_NEUTRAL:
+            flat += 0.20
+        elif matrix.confluence_conflict.agreement_state is BookAgreementState.MIXED_WITH_CONFLICT:
+            unknown += 0.25
+        elif matrix.confluence_conflict.agreement_state is BookAgreementState.MIXED_LOW_CONFLICT:
+            unknown += 0.10
+        if (
+            matrix.altunina_context.structure_direction
+            is matrix.altunina_context.structure_direction.SIDEWAYS_STRUCTURE
+        ):
+            flat += 0.20
+        codes.append("COMPOSER_LEGACY_PRECOMPUTED_MATRIX_COMPATIBILITY")
+    if confirmed:
+        codes.append("COMPOSER_CONTEXT_LINKED_HYPOTHESES_READY")
     else:
-        unknown += 0.10
-
-    schwager = matrix.schwager_context
-    trading_range, breakout, polarity = schwager.trading_range, schwager.breakout_context, schwager.polarity_flip_context
-    if trading_range.is_detected:
-        flat += 0.20 + min(0.20, trading_range.inside_close_ratio * 0.20)
-        codes.append("COMPOSER_RANGE_FLAT_CONTEXT")
-    if breakout.status is BreakoutConfirmationStatus.CONFIRMED:
-        if breakout.direction is BreakoutDirection.UPWARD:
-            up += 0.15
-        elif breakout.direction is BreakoutDirection.DOWNWARD:
-            down += 0.15
-        codes.append("COMPOSER_BREAKOUT_WITH_CONFIRMATION_CONTEXT")
-    if breakout.status is BreakoutConfirmationStatus.NO_FOLLOW_THROUGH:
-        flat, unknown = flat + 0.15, unknown + 0.05
-    if breakout.status is BreakoutConfirmationStatus.FALSE_BREAKOUT:
-        flat, unknown = flat + 0.20, unknown + 0.05
-        codes.append("COMPOSER_FALSE_BREAKOUT_FLAT_CONTEXT")
-    if breakout.returned_to_range:
-        flat += 0.15
-    if polarity.held:
-        if polarity.status is PolarityFlipStatus.RESISTANCE_TO_SUPPORT:
-            up += 0.10
-        elif polarity.status is PolarityFlipStatus.SUPPORT_TO_RESISTANCE:
-            down += 0.10
-
-    nison_codes = set(matrix.nison_context.reason_codes)
-    if nison_codes & {"DOJI_CLUSTER_FLAT_CONTEXT", "SMALL_BODY_CLUSTER", "LOW_DIRECTIONAL_PROGRESS"}:
-        flat += 0.10
-    if "BULLISH_BODY_DOMINANCE" in nison_codes:
-        up += 0.05
-    if "BEARISH_BODY_DOMINANCE" in nison_codes:
-        down += 0.05
+        unknown = max(unknown, 0.25)
+        codes.append("COMPOSER_NO_CONFIRMED_HYPOTHESIS")
+    dominant = hypothesis_result.dominant_hypothesis
+    if dominant is not None:
+        codes.append(f"COMPOSER_DOMINANT_{dominant.hypothesis_type.value}")
+    if any(item.hypothesis_type is HypothesisType.BULL_TRAP for item in confirmed):
+        codes.append("COMPOSER_CONFIRMED_BULL_TRAP")
+    if any(item.hypothesis_type is HypothesisType.BEAR_TRAP for item in confirmed):
+        codes.append("COMPOSER_CONFIRMED_BEAR_TRAP")
 
     raw_scores = (up, down, flat, unknown)
     raw_ranked = sorted(((EngineTrendRegime.UP, up), (EngineTrendRegime.DOWN, down), (EngineTrendRegime.FLAT, flat), (EngineTrendRegime.UNKNOWN, unknown)), key=lambda item: item[1], reverse=True)
@@ -226,11 +252,22 @@ def score_regime_candidates(matrix: BookEvidenceMatrix, ohlc_integrity: OHLCInte
     selected_before_fallback = selected
     fallback_reason: str | None = None
     confidence_path: list[str] = [f"CLAMPED_WINNER:{selected.value}:{winning}"]
-    clear_range = trading_range.is_detected and flat >= max(up, down) and (breakout.returned_to_range or breakout.status is BreakoutConfirmationStatus.FALSE_BREAKOUT)
+    clear_range = any(
+        item.hypothesis_type is HypothesisType.CONFIRMED_RANGE
+        and item.status is HypothesisStatus.CONFIRMED
+        for item in hypothesis_result.hypotheses
+    )
     if invalid:
         selected, confidence = EngineTrendRegime.UNKNOWN, 0.0
         codes.append("COMPOSER_OHLC_FAIL")
         fallback_reason = "COMPOSER_OHLC_FAIL"
+    elif (
+        ohlc_integrity is not None
+        and ohlc_integrity.readiness is AnalysisReadiness.PARTIAL
+    ):
+        selected, confidence = EngineTrendRegime.UNKNOWN, min(0.25, unknown)
+        codes.append("COMPOSER_PARTIAL_ANALYSIS_UNKNOWN")
+        fallback_reason = "COMPOSER_PARTIAL_ANALYSIS_UNKNOWN"
     elif summary.coverage_level is EvidenceCoverageLevel.EMPTY:
         selected, confidence = EngineTrendRegime.UNKNOWN, 0.0
         codes.append("COMPOSER_LOW_COVERAGE_UNKNOWN")
@@ -239,16 +276,20 @@ def score_regime_candidates(matrix: BookEvidenceMatrix, ohlc_integrity: OHLCInte
         selected, confidence = EngineTrendRegime.UNKNOWN, min(0.25, unknown)
         codes.append("COMPOSER_LOW_COVERAGE_UNKNOWN")
         fallback_reason = "COMPOSER_LOW_COVERAGE_UNKNOWN"
+    elif unresolved_hypothesis_conflict:
+        selected, confidence = EngineTrendRegime.UNKNOWN, min(0.35, max(unknown, winning))
+        codes.append("COMPOSER_UNRESOLVED_CONFIRMED_HYPOTHESIS_CONFLICT")
+        fallback_reason = "COMPOSER_UNRESOLVED_CONFIRMED_HYPOTHESIS_CONFLICT"
     elif summary.conflict_level is EvidenceConflictLevel.HIGH and not clear_range:
         selected, confidence = EngineTrendRegime.UNKNOWN, min(0.35, unknown)
         codes.append("COMPOSER_HIGH_CONFLICT_UNKNOWN")
         fallback_reason = "COMPOSER_HIGH_CONFLICT_UNKNOWN"
-    elif winning < MIN_REGIME_SCORE or (winning - ranked[1][1] < MIN_SCORE_MARGIN and not (selected is EngineTrendRegime.FLAT and trading_range.is_detected)):
+    elif winning < MIN_REGIME_SCORE or (winning - ranked[1][1] < MIN_SCORE_MARGIN and not (selected is EngineTrendRegime.FLAT and clear_range)):
         selected, confidence = EngineTrendRegime.UNKNOWN, min(0.30, max(unknown, winning))
         codes.append("COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN")
         fallback_reason = "COMPOSER_CONSERVATIVE_FALLBACK_UNKNOWN"
     else:
-        confidence = winning * (0.50 + 0.50 * summary.coverage_score) + min(0.15, summary.confluence_score * 0.15) - min(0.35, summary.conflict_score * 0.35)
+        confidence = winning * (0.60 + 0.40 * summary.coverage_score) + min(0.10, summary.confluence_score * 0.10) - min(0.25, summary.conflict_score * 0.25)
         if ohlc_integrity and ohlc_integrity.warnings:
             confidence -= 0.20
         confidence = _clamp(confidence)
@@ -290,25 +331,58 @@ def _composer_status(scores: RegimeCandidateScores, matrix: BookEvidenceMatrix, 
 
 
 def _decomposition(matrix: BookEvidenceMatrix, integrity: OHLCIntegrityResult) -> ConfidenceDecomposition:
-    alt, schwager, summary = matrix.altunina_context, matrix.schwager_context, matrix.confluence_conflict
-    breakout = schwager.breakout_context
+    hypotheses = matrix.hypothesis_result.hypotheses
+    events = matrix.hypothesis_result.contextual_events
+    summary = matrix.confluence_conflict
+    confirmed = tuple(item for item in hypotheses if item.status is HypothesisStatus.CONFIRMED)
+    trend_score = max(
+        (
+            item.score
+            for item in confirmed
+            if item.hypothesis_type
+            in {HypothesisType.UP_CONTINUATION, HypothesisType.DOWN_CONTINUATION}
+        ),
+        default=0.0,
+    )
+    range_score = max(
+        (
+            item.score
+            for item in confirmed
+            if item.hypothesis_type is HypothesisType.CONFIRMED_RANGE
+        ),
+        default=0.0,
+    )
+    confirmed_pattern_count = sum(
+        item.status is ContextualEventStatus.CONFIRMED for item in events
+    )
+    level_context_count = sum(
+        item.zone_relation in {"AT_SUPPORT", "AT_RESISTANCE"} for item in events
+    )
+    breakout_confirmed = any(
+        "HYPOTHESIS_BREAKOUT_CONFIRMED" in item.reason_codes for item in confirmed
+    )
     return ConfidenceDecomposition(
-        trend_score=0.20 * alt.trend_strength_score + 0.10 * alt.trend_consistency_score + 0.10 * alt.trend_progress_score,
-        range_score=(0.20 + min(0.20, schwager.trading_range.inside_close_ratio * 0.20)) if schwager.trading_range.is_detected else 0.0,
-        candlestick_score=0.10 if set(matrix.nison_context.reason_codes) & {"DOJI_CLUSTER_FLAT_CONTEXT", "SMALL_BODY_CLUSTER", "LOW_DIRECTIONAL_PROGRESS"} else 0.05,
-        level_score=min(0.10, len(schwager.zones) * 0.02),
-        breakout_score=0.15 if breakout.status is BreakoutConfirmationStatus.CONFIRMED else 0.0,
-        false_breakout_penalty=-0.10 if breakout.status in (BreakoutConfirmationStatus.FALSE_BREAKOUT, BreakoutConfirmationStatus.NO_FOLLOW_THROUGH) else 0.0,
+        trend_score=min(0.40, trend_score * 0.40),
+        range_score=min(0.40, range_score * 0.40),
+        candlestick_score=min(0.15, confirmed_pattern_count * 0.05),
+        level_score=min(0.10, level_context_count * 0.02),
+        breakout_score=0.15 if breakout_confirmed else 0.0,
+        false_breakout_penalty=0.0,
         confluence_score=min(0.15, summary.confluence_score * 0.15),
         conflict_penalty=-min(0.35, summary.conflict_score * 0.35),
         data_quality_penalty=-0.20 if integrity.warnings or integrity.errors else 0.0,
     )
 
 
-def compose_regime_from_matrix(symbol: str, interval: str, candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle], matrix: BookEvidenceMatrix, ohlc_integrity: OHLCIntegrityResult | None = None) -> RegimeComposerOutput:
+def compose_regime_from_matrix(symbol: str, interval: str, candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle], matrix: BookEvidenceMatrix, ohlc_integrity: OHLCIntegrityResult | None = None, *, config: AnalysisWindowConfig | None = None, strict_timestamps: bool = False) -> RegimeComposerOutput:
     """Build the final result from a precomputed matrix."""
     items = tuple(candles)
-    integrity = ohlc_integrity or validate_ohlc_integrity(items)
+    integrity = ohlc_integrity or validate_ohlc_integrity(
+        items,
+        interval=interval,
+        config=config,
+        strict_timestamps=strict_timestamps,
+    )
     try:
         period = EngineTrendInputPeriod(symbol, interval, items)
         input_errors: tuple[str, ...] = ()
@@ -322,10 +396,43 @@ def compose_regime_from_matrix(symbol: str, interval: str, candles: tuple[Engine
         composer_codes.append("COMPOSER_OHLC_WARNING")
     composer_evidence = tuple(EngineTrendEvidence(BookSource.ENGINE_TREND, code, "Regime composer market-reading context") for code in dict.fromkeys(composer_codes))
     matrix_engine = tuple(item for item in matrix.all_evidence if item.source is BookSource.ENGINE_TREND)
-    evidence = BookEvidence(matrix.nison_context.all_evidence, matrix.altunina_context.evidence, matrix.schwager_context.evidence, matrix_engine + composer_evidence)
+    evidence = BookEvidence(
+        tuple(
+            item
+            for item in matrix.nison_context.all_evidence
+            if item.source is BookSource.NISON
+        ),
+        matrix.altunina_context.evidence,
+        matrix.schwager_context.evidence,
+        matrix_engine + composer_evidence,
+    )
     warnings, errors = integrity.warnings, tuple(dict.fromkeys(integrity.errors + input_errors))
     result = EngineTrendResult(symbol or "UNKNOWN_SYMBOL", interval or "UNKNOWN_INTERVAL", items[0].timestamp if items else None, items[-1].timestamp if items else None, len(items), scores.selected_regime, scores.confidence, evidence, _decomposition(matrix, integrity), warnings, errors, EngineTrendSafety())
-    trace = RegimeDecisionTrace(status, source, scores, matrix.summary, integrity.status, warnings, errors, tuple(dict.fromkeys(composer_codes)))
+    selected_direction = {
+        EngineTrendRegime.UP: HypothesisDirection.BULLISH,
+        EngineTrendRegime.DOWN: HypothesisDirection.BEARISH,
+        EngineTrendRegime.FLAT: HypothesisDirection.FLAT,
+    }.get(scores.selected_regime)
+    eligible = [
+        item
+        for item in matrix.hypothesis_result.hypotheses
+        if item.status is HypothesisStatus.CONFIRMED
+        and item.direction is selected_direction
+    ]
+    selected_hypothesis = (
+        max(eligible, key=lambda item: item.score).to_dict() if eligible else None
+    )
+    trace = RegimeDecisionTrace(
+        status,
+        source,
+        scores,
+        matrix.summary,
+        integrity.status,
+        warnings,
+        errors,
+        tuple(dict.fromkeys(composer_codes)),
+        selected_hypothesis,
+    )
     return RegimeComposerOutput(period, integrity, matrix, trace, result)
 
 
@@ -340,11 +447,16 @@ def _invalid_output(symbol: str, interval: str, candles: tuple[EngineTrendCandle
     return RegimeComposerOutput(None, integrity, None, trace, result)
 
 
-def compose_engine_trend_result(symbol: str, interval: str, candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle]) -> RegimeComposerOutput:
+def compose_engine_trend_result(symbol: str, interval: str, candles: tuple[EngineTrendCandle, ...] | list[EngineTrendCandle], *, config: AnalysisWindowConfig | None = None, strict_timestamps: bool = False) -> RegimeComposerOutput:
     """Validate input, build the book matrix, and compose its market state."""
     try:
         items = tuple(candles)
-        integrity = validate_ohlc_integrity(items)
+        integrity = validate_ohlc_integrity(
+            items,
+            interval=interval,
+            config=config,
+            strict_timestamps=strict_timestamps,
+        )
     except (TypeError, ValueError, AttributeError) as exc:
         return _invalid_output(symbol, interval, (), OHLCIntegrityResult(False), f"INPUT_PERIOD_INVALID:{exc}")
     if not integrity.is_valid:
@@ -353,4 +465,12 @@ def compose_engine_trend_result(symbol: str, interval: str, candles: tuple[Engin
         EngineTrendInputPeriod(symbol, interval, items)
     except (TypeError, ValueError) as exc:
         return _invalid_output(symbol, interval, items, integrity, f"INPUT_PERIOD_INVALID:{exc}")
-    return compose_regime_from_matrix(symbol, interval, items, analyze_book_evidence_matrix(items), integrity)
+    return compose_regime_from_matrix(
+        symbol,
+        interval,
+        items,
+        analyze_book_evidence_matrix(items, config),
+        integrity,
+        config=config,
+        strict_timestamps=strict_timestamps,
+    )

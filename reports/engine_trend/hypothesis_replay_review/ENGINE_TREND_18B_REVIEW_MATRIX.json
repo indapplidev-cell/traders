@@ -1,0 +1,807 @@
+{
+  "stage": "ENGINE-TREND-18B",
+  "rows": [
+    {
+      "window_id": "btcusdt_15m_down_001",
+      "aliases": [
+        "btc_15m_expected_down_001",
+        "btcusdt_15m_down_001"
+      ],
+      "fingerprint": "BTCUSDT|15m|2026-02-05T00:00:00+00:00|2026-02-05T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2026-02-05T00:00:00+00:00",
+      "period_end": "2026-02-05T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "top deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "DOWNWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "DOWN_CONTINUATION:PENDING:0.200;CONFIRMED_RANGE:CONFLICTED:0.577",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 51,
+        "CANDIDATE": 5,
+        "INVALIDATED": 3
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "btcusdt_15m_down_002",
+      "aliases": [
+        "btcusdt_15m_down_002"
+      ],
+      "fingerprint": "BTCUSDT|15m|2025-03-03T00:00:00+00:00|2025-03-03T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2025-03-03T00:00:00+00:00",
+      "period_end": "2025-03-03T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic DOWN OHLC candidate",
+      "regime": "FLAT",
+      "match_status": "NEEDS_REVIEW",
+      "review_groups": [
+        "NEEDS_REVIEW",
+        "TRAP_VS_RANGE"
+      ],
+      "unknown_cause": null,
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "FALSE_BREAKOUT",
+      "breakout_direction": "UPWARD",
+      "returned_to_range": true,
+      "false_breakout_confirmation": "TIME_CONFIRMATION",
+      "hypotheses": "CONFIRMED_RANGE:CONFIRMED:0.711;BULL_TRAP:CONFIRMED:0.700",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 51
+      },
+      "missing_confirmations": [],
+      "trap_range_score_delta": 0.01145833333333346,
+      "verdict": "PRIORITY_ISSUE",
+      "rationale": "Confirmed trap and confirmed range differ by less than the dominance margin; post-return continuation is not represented."
+    },
+    {
+      "window_id": "btcusdt_15m_down_003",
+      "aliases": [
+        "btcusdt_15m_down_003"
+      ],
+      "fingerprint": "BTCUSDT|15m|2026-01-31T00:00:00+00:00|2026-01-31T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2026-01-31T00:00:00+00:00",
+      "period_end": "2026-01-31T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "DOWNWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "DOWN_CONTINUATION:PENDING:0.250;CONFIRMED_RANGE:CONFLICTED:0.626",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 50
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "btcusdt_15m_flat_001",
+      "aliases": [
+        "btc_15m_expected_flat_001",
+        "btcusdt_15m_flat_001"
+      ],
+      "fingerprint": "BTCUSDT|15m|2025-09-27T00:00:00+00:00|2025-09-27T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2025-09-27T00:00:00+00:00",
+      "period_end": "2025-09-27T23:45:00+00:00",
+      "reference_label": "EXPECTED_FLAT",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "top deterministic FLAT OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_FLAT_UNKNOWN"
+      ],
+      "unknown_cause": "NO_HYPOTHESES",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 62
+      },
+      "missing_confirmations": [
+        "NO_CAUSAL_SCENARIO_FORMED"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "INSUFFICIENT_CONTEXT",
+      "rationale": "The 96-candle input formed no continuation, reversal, range, or trap hypothesis; the label alone cannot authorize a regime."
+    },
+    {
+      "window_id": "btcusdt_15m_flat_002",
+      "aliases": [
+        "btcusdt_15m_flat_002"
+      ],
+      "fingerprint": "BTCUSDT|15m|2025-06-10T00:00:00+00:00|2025-06-10T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2025-06-10T00:00:00+00:00",
+      "period_end": "2025-06-10T23:45:00+00:00",
+      "reference_label": "EXPECTED_FLAT",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic FLAT OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_FLAT_UNKNOWN"
+      ],
+      "unknown_cause": "ONLY_PENDING_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "ATTEMPT",
+      "breakout_direction": "UPWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "CONFIRMED_RANGE:PENDING:0.622",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 54,
+        "INVALIDATED": 2,
+        "CANDIDATE": 2
+      },
+      "missing_confirmations": [
+        "RANGE_BREAKOUT_ATTEMPT_RESOLUTION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "btcusdt_15m_mixed_003",
+      "aliases": [
+        "btcusdt_15m_mixed_003"
+      ],
+      "fingerprint": "BTCUSDT|15m|2025-02-28T00:00:00+00:00|2025-02-28T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2025-02-28T00:00:00+00:00",
+      "period_end": "2025-02-28T23:45:00+00:00",
+      "reference_label": "EXPECTED_UNKNOWN_OR_MIXED",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic MIXED OHLC candidate",
+      "regime": "UP",
+      "match_status": "NEEDS_REVIEW",
+      "review_groups": [
+        "NEEDS_REVIEW"
+      ],
+      "unknown_cause": null,
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "BULLISH_REVERSAL:CONFIRMED:0.600",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 67,
+        "CANDIDATE": 5,
+        "INVALIDATED": 2,
+        "CONFIRMED": 1
+      },
+      "missing_confirmations": [],
+      "trap_range_score_delta": null,
+      "verdict": "LABEL_ISSUE",
+      "rationale": "A confirmed causal hypothesis supports the engine result while the reference is descriptive or deterministic, not ground truth."
+    },
+    {
+      "window_id": "btcusdt_15m_up_001",
+      "aliases": [
+        "btc_15m_expected_up_001",
+        "btcusdt_15m_up_001"
+      ],
+      "fingerprint": "BTCUSDT|15m|2026-02-06T00:00:00+00:00|2026-02-06T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2026-02-06T00:00:00+00:00",
+      "period_end": "2026-02-06T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "top deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "NO_HYPOTHESES",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 47
+      },
+      "missing_confirmations": [
+        "NO_CAUSAL_SCENARIO_FORMED"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "INSUFFICIENT_CONTEXT",
+      "rationale": "The 96-candle input formed no continuation, reversal, range, or trap hypothesis; the label alone cannot authorize a regime."
+    },
+    {
+      "window_id": "btcusdt_15m_up_002",
+      "aliases": [
+        "btcusdt_15m_up_002"
+      ],
+      "fingerprint": "BTCUSDT|15m|2025-03-02T00:00:00+00:00|2025-03-02T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2025-03-02T00:00:00+00:00",
+      "period_end": "2025-03-02T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic UP OHLC candidate",
+      "regime": "FLAT",
+      "match_status": "NEEDS_REVIEW",
+      "review_groups": [
+        "NEEDS_REVIEW"
+      ],
+      "unknown_cause": null,
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "NO_FOLLOW_THROUGH",
+      "breakout_direction": "DOWNWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "CONFIRMED_RANGE:CONFIRMED:0.641",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 58
+      },
+      "missing_confirmations": [],
+      "trap_range_score_delta": null,
+      "verdict": "LABEL_ISSUE",
+      "rationale": "A confirmed causal hypothesis supports the engine result while the reference is descriptive or deterministic, not ground truth."
+    },
+    {
+      "window_id": "btcusdt_15m_up_003",
+      "aliases": [
+        "btcusdt_15m_up_003"
+      ],
+      "fingerprint": "BTCUSDT|15m|2025-04-09T00:00:00+00:00|2025-04-09T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2025-04-09T00:00:00+00:00",
+      "period_end": "2025-04-09T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "UPWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "UP_CONTINUATION:PENDING:0.350;CONFIRMED_RANGE:CONFLICTED:0.558",
+      "contextual_event_status_counts": {
+        "CANDIDATE": 2,
+        "CONTEXT_REJECTED": 52
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "btcusdt_15m_up_004",
+      "aliases": [
+        "btcusdt_15m_up_004"
+      ],
+      "fingerprint": "BTCUSDT|15m|2025-04-22T00:00:00+00:00|2025-04-22T23:45:00+00:00",
+      "symbol": "BTCUSDT",
+      "period_start": "2025-04-22T00:00:00+00:00",
+      "period_end": "2025-04-22T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "UPWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "UP_CONTINUATION:PENDING:0.250;CONFIRMED_RANGE:CONFLICTED:0.592",
+      "contextual_event_status_counts": {
+        "CANDIDATE": 2,
+        "CONTEXT_REJECTED": 65
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "ethusdt_15m_down_001",
+      "aliases": [
+        "eth_15m_expected_down_001",
+        "ethusdt_15m_down_001"
+      ],
+      "fingerprint": "ETHUSDT|15m|2026-02-05T00:00:00+00:00|2026-02-05T23:45:00+00:00",
+      "symbol": "ETHUSDT",
+      "period_start": "2026-02-05T00:00:00+00:00",
+      "period_end": "2026-02-05T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "top deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "NO_HYPOTHESES",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 43,
+        "CANDIDATE": 4
+      },
+      "missing_confirmations": [
+        "NO_CAUSAL_SCENARIO_FORMED"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "INSUFFICIENT_CONTEXT",
+      "rationale": "The 96-candle input formed no continuation, reversal, range, or trap hypothesis; the label alone cannot authorize a regime."
+    },
+    {
+      "window_id": "ethusdt_15m_down_002",
+      "aliases": [
+        "ethusdt_15m_down_002"
+      ],
+      "fingerprint": "ETHUSDT|15m|2025-03-03T00:00:00+00:00|2025-03-03T23:45:00+00:00",
+      "symbol": "ETHUSDT",
+      "period_start": "2025-03-03T00:00:00+00:00",
+      "period_end": "2025-03-03T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "NO_HYPOTHESES",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 55,
+        "INVALIDATED": 2
+      },
+      "missing_confirmations": [
+        "NO_CAUSAL_SCENARIO_FORMED"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "INSUFFICIENT_CONTEXT",
+      "rationale": "The 96-candle input formed no continuation, reversal, range, or trap hypothesis; the label alone cannot authorize a regime."
+    },
+    {
+      "window_id": "ethusdt_15m_down_003",
+      "aliases": [
+        "ethusdt_15m_down_003"
+      ],
+      "fingerprint": "ETHUSDT|15m|2025-04-06T00:00:00+00:00|2025-04-06T23:45:00+00:00",
+      "symbol": "ETHUSDT",
+      "period_start": "2025-04-06T00:00:00+00:00",
+      "period_end": "2025-04-06T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "DOWNWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "DOWN_CONTINUATION:PENDING:0.250;CONFIRMED_RANGE:CONFLICTED:0.608",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 54
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "ethusdt_15m_up_001",
+      "aliases": [
+        "eth_15m_expected_up_001",
+        "ethusdt_15m_up_001"
+      ],
+      "fingerprint": "ETHUSDT|15m|2025-05-08T00:00:00+00:00|2025-05-08T23:45:00+00:00",
+      "symbol": "ETHUSDT",
+      "period_start": "2025-05-08T00:00:00+00:00",
+      "period_end": "2025-05-08T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "top deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "NO_HYPOTHESES",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "",
+      "contextual_event_status_counts": {
+        "INVALIDATED": 3,
+        "CANDIDATE": 1,
+        "CONTEXT_REJECTED": 54
+      },
+      "missing_confirmations": [
+        "NO_CAUSAL_SCENARIO_FORMED"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "INSUFFICIENT_CONTEXT",
+      "rationale": "The 96-candle input formed no continuation, reversal, range, or trap hypothesis; the label alone cannot authorize a regime."
+    },
+    {
+      "window_id": "ethusdt_15m_up_002",
+      "aliases": [
+        "ethusdt_15m_up_002"
+      ],
+      "fingerprint": "ETHUSDT|15m|2025-08-22T00:00:00+00:00|2025-08-22T23:45:00+00:00",
+      "symbol": "ETHUSDT",
+      "period_start": "2025-08-22T00:00:00+00:00",
+      "period_end": "2025-08-22T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic UP OHLC candidate",
+      "regime": "FLAT",
+      "match_status": "NEEDS_REVIEW",
+      "review_groups": [
+        "NEEDS_REVIEW",
+        "TRAP_VS_RANGE"
+      ],
+      "unknown_cause": null,
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "FALSE_BREAKOUT",
+      "breakout_direction": "DOWNWARD",
+      "returned_to_range": true,
+      "false_breakout_confirmation": "TIME_CONFIRMATION",
+      "hypotheses": "CONFIRMED_RANGE:CONFIRMED:0.715;BEAR_TRAP:CONFIRMED:0.700",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 57,
+        "CANDIDATE": 2
+      },
+      "missing_confirmations": [],
+      "trap_range_score_delta": 0.015000000000000124,
+      "verdict": "PRIORITY_ISSUE",
+      "rationale": "Confirmed trap and confirmed range differ by less than the dominance margin; post-return continuation is not represented."
+    },
+    {
+      "window_id": "ethusdt_15m_up_003",
+      "aliases": [
+        "ethusdt_15m_up_003"
+      ],
+      "fingerprint": "ETHUSDT|15m|2025-03-02T00:00:00+00:00|2025-03-02T23:45:00+00:00",
+      "symbol": "ETHUSDT",
+      "period_start": "2025-03-02T00:00:00+00:00",
+      "period_end": "2025-03-02T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "UPWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "UP_CONTINUATION:PENDING:0.250;CONFIRMED_RANGE:CONFLICTED:0.554",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 50
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "ethusdt_15m_up_004",
+      "aliases": [
+        "ethusdt_15m_up_004"
+      ],
+      "fingerprint": "ETHUSDT|15m|2025-04-09T00:00:00+00:00|2025-04-09T23:45:00+00:00",
+      "symbol": "ETHUSDT",
+      "period_start": "2025-04-09T00:00:00+00:00",
+      "period_end": "2025-04-09T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "NO_HYPOTHESES",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 50
+      },
+      "missing_confirmations": [
+        "NO_CAUSAL_SCENARIO_FORMED"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "INSUFFICIENT_CONTEXT",
+      "rationale": "The 96-candle input formed no continuation, reversal, range, or trap hypothesis; the label alone cannot authorize a regime."
+    },
+    {
+      "window_id": "solusdt_15m_down_001",
+      "aliases": [
+        "sol_15m_expected_down_001",
+        "solusdt_15m_down_001"
+      ],
+      "fingerprint": "SOLUSDT|15m|2025-03-03T00:00:00+00:00|2025-03-03T23:45:00+00:00",
+      "symbol": "SOLUSDT",
+      "period_start": "2025-03-03T00:00:00+00:00",
+      "period_end": "2025-03-03T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "top deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "ONLY_PENDING_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "BULLISH_REVERSAL:PENDING:0.350",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 60,
+        "INVALIDATED": 4,
+        "CANDIDATE": 3,
+        "AWAITING_CONFIRMATION": 1
+      },
+      "missing_confirmations": [
+        "PATTERN_FOLLOW_THROUGH"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "solusdt_15m_down_002",
+      "aliases": [
+        "solusdt_15m_down_002"
+      ],
+      "fingerprint": "SOLUSDT|15m|2025-02-24T00:00:00+00:00|2025-02-24T23:45:00+00:00",
+      "symbol": "SOLUSDT",
+      "period_start": "2025-02-24T00:00:00+00:00",
+      "period_end": "2025-02-24T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "NO_HYPOTHESES",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": false,
+      "breakout_status": "NO_BREAKOUT",
+      "breakout_direction": "NONE",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 53,
+        "INVALIDATED": 3,
+        "CANDIDATE": 2
+      },
+      "missing_confirmations": [
+        "NO_CAUSAL_SCENARIO_FORMED"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "INSUFFICIENT_CONTEXT",
+      "rationale": "The 96-candle input formed no continuation, reversal, range, or trap hypothesis; the label alone cannot authorize a regime."
+    },
+    {
+      "window_id": "solusdt_15m_down_003",
+      "aliases": [
+        "solusdt_15m_down_003"
+      ],
+      "fingerprint": "SOLUSDT|15m|2026-02-05T00:00:00+00:00|2026-02-05T23:45:00+00:00",
+      "symbol": "SOLUSDT",
+      "period_start": "2026-02-05T00:00:00+00:00",
+      "period_end": "2026-02-05T23:45:00+00:00",
+      "reference_label": "EXPECTED_DOWN",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic DOWN OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_DOWN_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "DOWNWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "DOWN_CONTINUATION:PENDING:0.350;CONFIRMED_RANGE:CONFLICTED:0.602",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 44,
+        "CANDIDATE": 1
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "solusdt_15m_up_001",
+      "aliases": [
+        "sol_15m_expected_up_001",
+        "solusdt_15m_up_001"
+      ],
+      "fingerprint": "SOLUSDT|15m|2025-03-02T00:00:00+00:00|2025-03-02T23:45:00+00:00",
+      "symbol": "SOLUSDT",
+      "period_start": "2025-03-02T00:00:00+00:00",
+      "period_end": "2025-03-02T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "top deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "DOWNWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "DOWN_CONTINUATION:PENDING:0.200;CONFIRMED_RANGE:CONFLICTED:0.601",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 54
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    },
+    {
+      "window_id": "solusdt_15m_up_004",
+      "aliases": [
+        "solusdt_15m_up_004"
+      ],
+      "fingerprint": "SOLUSDT|15m|2025-05-08T00:00:00+00:00|2025-05-08T23:45:00+00:00",
+      "symbol": "SOLUSDT",
+      "period_start": "2025-05-08T00:00:00+00:00",
+      "period_end": "2025-05-08T23:45:00+00:00",
+      "reference_label": "EXPECTED_UP",
+      "label_quality": "DETERMINISTIC_OHLC_PROXY",
+      "selection_reason": "ranked deterministic UP OHLC candidate",
+      "regime": "UNKNOWN",
+      "match_status": "QUESTIONABLE_UNKNOWN",
+      "review_groups": [
+        "EXPECTED_UP_UNKNOWN"
+      ],
+      "unknown_cause": "PENDING_PLUS_CONFLICTED_NO_CONFIRMED",
+      "trend_structure": "SIDEWAYS_STRUCTURE",
+      "range_detected": true,
+      "breakout_status": "CONFIRMED",
+      "breakout_direction": "UPWARD",
+      "returned_to_range": false,
+      "false_breakout_confirmation": "NONE",
+      "hypotheses": "UP_CONTINUATION:PENDING:0.200;CONFIRMED_RANGE:CONFLICTED:0.556",
+      "contextual_event_status_counts": {
+        "CONTEXT_REJECTED": 45,
+        "CANDIDATE": 10,
+        "INVALIDATED": 7
+      },
+      "missing_confirmations": [
+        "ALIGNED_STRUCTURE_OR_CONFIRMED_CONTINUATION_EVENT",
+        "CONFIRMED_BREAKOUT_PREVENTS_RANGE_CONFIRMATION"
+      ],
+      "trap_range_score_delta": null,
+      "verdict": "EXPECTED_CAUTION",
+      "rationale": "The available scenario remains pending or conflicted and therefore correctly cannot select a regime under the current contract."
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "generated_at": "2026-07-14T05:13:15.712180Z",
+  "audit_only": true,
+  "script": "scripts/engine_trend_24_scoring_redesign_setup_viability_filter.py",
+  "created_files": [
+    "ENGINE_TREND_24_SCORING_REDESIGN_REPORT.md",
+    "ENGINE_TREND_24_SCORE_V2_CONFIG.json",
+    "ENGINE_TREND_24_SCORE_V2_RESULTS.csv",
+    "ENGINE_TREND_24_VALIDATION_METRICS.json",
+    "ENGINE_TREND_24_SCORE_DECILES.csv",
+    "ENGINE_TREND_24_FILTER_DIAGNOSTICS.csv",
+    "ENGINE_TREND_24_REJECTED_WINNERS_AUDIT.md",
+    "ENGINE_TREND_24_PASSED_LOSERS_AUDIT.md",
+    "ENGINE_TREND_24_MAIN_ENTRY_POSTMORTEM.md",
+    "ENGINE_TREND_24_SETUP_TYPE_VIABILITY.md",
+    "ENGINE_TREND_24_SYMBOL_VIABILITY.md",
+    "ENGINE_TREND_24_SENSITIVITY_ANALYSIS.csv",
+    "ENGINE_TREND_24_LEAKAGE_AUDIT.md",
+    "ENGINE_TREND_24_DECISION_RECORD.json",
+    "ENGINE_TREND_24_ARTIFACT_MANIFEST.json"
+  ],
+  "input_artifacts": {
+    "HISTORICAL_ENTRY_DISCOVERY_CANDIDATES.csv": "PRESENT",
+    "HISTORICAL_ENTRY_DISCOVERY_RESULTS.json": "PRESENT",
+    "MAIN_SELECTED_ENTRY_TRACE.json": "PRESENT",
+    "HISTORICAL_ENTRY_DISCOVERY_DATA_COVERAGE.json": "PRESENT",
+    "HISTORICAL_ENTRY_DISCOVERY_ARTIFACT_MANIFEST.json": "PRESENT"
+  },
+  "engine_trend_23_artifacts": {
+    "ENGINE_TREND_23_PERFORMANCE_AUDIT_SUMMARY.json": "PRESENT",
+    "ENGINE_TREND_23_PERFORMANCE_BY_SYMBOL.csv": "PRESENT",
+    "ENGINE_TREND_23_PERFORMANCE_BY_SETUP_TYPE.csv": "PRESENT",
+    "ENGINE_TREND_23_PERFORMANCE_BY_DIRECTION.csv": "PRESENT",
+    "ENGINE_TREND_23_QUALITY_SCORE_AUDIT.csv": "PRESENT",
+    "ENGINE_TREND_23_RR_AUDIT.csv": "PRESENT",
+    "ENGINE_TREND_23_FAILURE_BUCKETS.csv": "PRESENT",
+    "ENGINE_TREND_23_DIAGNOSTIC_FILTER_HYPOTHESES.md": "PRESENT",
+    "ENGINE_TREND_23_ML_READINESS.md": "PRESENT"
+  },
+  "artifacts": [
+    {
+      "file": "ENGINE_TREND_24_SCORING_REDESIGN_REPORT.md",
+      "sha256": "8b5428e1f3bb2e72b7b43ae9e9774a1b9b6518a723d87636dbfd55e731fc4f12",
+      "bytes": 3051
+    },
+    {
+      "file": "ENGINE_TREND_24_SCORE_V2_CONFIG.json",
+      "sha256": "23ca0b3d7eff751b659d7e3c2bd3af3d8e2a1d855c3b518669a641b8c4eb0358",
+      "bytes": 2642
+    },
+    {
+      "file": "ENGINE_TREND_24_SCORE_V2_RESULTS.csv",
+      "sha256": "3cc8656384304f557e5c15106d99455c082d39f9817353cc51615f8e1a521dba",
+      "bytes": 98151
+    },
+    {
+      "file": "ENGINE_TREND_24_VALIDATION_METRICS.json",
+      "sha256": "ef0272677f057de3bd7931d52edf21b6974c72df18e3aef996616a1c50ec7099",
+      "bytes": 54825
+    },
+    {
+      "file": "ENGINE_TREND_24_SCORE_DECILES.csv",
+      "sha256": "b7f6d9c29ea20e48b86e889b1d291cb7bc363f85ff17da48071c04c7517c4387",
+      "bytes": 3550
+    },
+    {
+      "file": "ENGINE_TREND_24_FILTER_DIAGNOSTICS.csv",
+      "sha256": "3573bc7803ef72389a54260ee50293c82366f1825871d89a93a659961e8085de",
+      "bytes": 1732
+    },
+    {
+      "file": "ENGINE_TREND_24_REJECTED_WINNERS_AUDIT.md",
+      "sha256": "1b77fe7feca8d328ac8d95470edb31d72925a72c6bd6c6a55193b36ec16c9fa5",
+      "bytes": 13254
+    },
+    {
+      "file": "ENGINE_TREND_24_PASSED_LOSERS_AUDIT.md",
+      "sha256": "294ee5e729e1e3d1e6bcadc4607f00931eb4823448732d22667e20cfabecbf85",
+      "bytes": 9770
+    },
+    {
+      "file": "ENGINE_TREND_24_MAIN_ENTRY_POSTMORTEM.md",
+      "sha256": "0ec0d590f54b673f67fd9adc6f9ec85a3dadb7cd7ac4d209e01f5641bfeef5e3",
+      "bytes": 543
+    },
+    {
+      "file": "ENGINE_TREND_24_SETUP_TYPE_VIABILITY.md",
+      "sha256": "4bfe48bca4fe4a8de8a1038eaa50bf1b988a07091f93e5e5c557d3b711343b1e",
+      "bytes": 651
+    },
+    {
+      "file": "ENGINE_TREND_24_SYMBOL_VIABILITY.md",
+      "sha256": "fbef272eccbd7d5af1745a49af2901692ba48a9bf82129418536d3b799d2e8b2",
+      "bytes": 535
+    },
+    {
+      "file": "ENGINE_TREND_24_SENSITIVITY_ANALYSIS.csv",
+      "sha256": "c6e02782abb38395447a04f78e550189679dccd82a70fb39952e0297e97b693e",
+      "bytes": 2823
+    },
+    {
+      "file": "ENGINE_TREND_24_LEAKAGE_AUDIT.md",
+      "sha256": "f879e1eb87252be72090bae34212dd8e0b8adfafacc5620ce750cb56bee2ec28",
+      "bytes": 1486
+    },
+    {
+      "file": "ENGINE_TREND_24_DECISION_RECORD.json",
+      "sha256": "24fce04219bd02a9f9e7b3617e505d444ebb34bcfcd0bd1ee1f48dd02d4ff839",
+      "bytes": 533
+    }
+  ],
+  "self_hash_omitted": "A manifest cannot contain a stable hash of itself."
+}

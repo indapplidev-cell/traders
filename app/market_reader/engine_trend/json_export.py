@@ -27,6 +27,7 @@ def build_engine_trend_preview(output: RegimeComposerOutput) -> dict[str, object
         "summary": {
             "matrix_summary": dict(output.matrix.summary) if output.matrix else {},
             "candidate_scores": scores.to_dict(),
+            "selected_hypothesis": output.decision_trace.selected_hypothesis,
         },
     }
 
@@ -37,11 +38,21 @@ def build_engine_trend_json_payload(
     """Build the standalone preview JSON contract."""
     return {
         "service": "ENGINE_TREND",
-        "contract_version": "engine_trend_preview_v1",
+        "contract_version": "engine_trend_preview_v2",
         "result": output.result.to_dict(),
         "decision_trace": output.decision_trace.to_dict(),
         "ohlc_integrity": output.ohlc_integrity.to_dict(),
         "matrix_summary": dict(output.matrix.summary) if output.matrix else {},
+        "analysis_context": (
+            {
+                "analysis_window": output.matrix.unified_context.analysis_window.to_dict(),
+                "technical_indicators": output.matrix.unified_context.indicator_context.to_dict(),
+                "hypotheses": output.matrix.hypothesis_result.to_dict(),
+                "selected_hypothesis": output.decision_trace.selected_hypothesis,
+            }
+            if output.matrix
+            else {}
+        ),
         "safety": output.result.safety.to_dict(),
         "warnings": list(output.result.warnings),
         "errors": list(output.result.errors),

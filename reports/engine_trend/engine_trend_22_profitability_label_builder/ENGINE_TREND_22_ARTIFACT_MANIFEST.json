@@ -1,0 +1,17 @@
+{
+  "document_id": "ENGINE-TREND-22",
+  "scope": "OFFLINE_AUDIT_ONLY",
+  "files": [
+    {"path": "app/market_reader/engine_trend/profitability_labels.py", "purpose": "Detached offline label-builder implementation"},
+    {"path": "tests/test_engine_trend_22_profitability_labels.py", "purpose": "Synthetic, causality, metrics, artifact, and schema tests"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_PROFITABILITY_LABEL_BUILDER_REPORT.md", "purpose": "Main report"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_PROFITABILITY_LABEL_SCHEMA.json", "purpose": "Output JSON Schema"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_SETUP_PLAN_INPUT_SCHEMA.json", "purpose": "Input setup-plan JSON Schema"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_AUDIT_COST_CONFIG.json", "purpose": "Deterministic fee/slippage audit assumptions"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_SYNTHETIC_FIXTURES.json", "purpose": "Twelve synthetic cases and manual real-fixture format"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_SYNTHETIC_LABEL_RESULTS.json", "purpose": "Deterministic generated synthetic labels"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_LIVE_CASE_LABEL_CHECKS.json", "purpose": "Four conservative live-case skip checks"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_DECISION_RECORD.json", "purpose": "Scope locks, validation gate, and next stage"},
+    {"path": "reports/engine_trend/engine_trend_22_profitability_label_builder/ENGINE_TREND_22_ARTIFACT_MANIFEST.json", "purpose": "Artifact inventory"}
+  ]
+}

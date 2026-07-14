@@ -11,6 +11,11 @@ from app.market_reader.engine_trend.engine import (
     normalize_candles,
     run_engine_trend,
 )
+from app.market_reader.engine_trend.analysis_contract import (
+    MIN_FULL_ANALYSIS_CANDLES,
+    AnalysisWindowConfig,
+)
+from app.market_reader.engine_trend.ohlc_integrity import validate_ohlc_integrity
 from app.market_reader.engine_trend.schemas import EngineTrendCandle
 
 
@@ -30,6 +35,11 @@ class CandleDataQualityFlag(str, Enum):
     DUPLICATE_TIMESTAMPS = "DUPLICATE_TIMESTAMPS"
     CANDLE_NORMALIZATION_FAILED = "CANDLE_NORMALIZATION_FAILED"
     MIN_CANDLE_COUNT_NOT_MET = "MIN_CANDLE_COUNT_NOT_MET"
+    INVALID_TIMESTAMP = "INVALID_TIMESTAMP"
+    IRREGULAR_CADENCE = "IRREGULAR_CADENCE"
+    MISSING_CANDLES = "MISSING_CANDLES"
+    NON_FINITE_VALUE = "NON_FINITE_VALUE"
+    NON_POSITIVE_PRICE = "NON_POSITIVE_PRICE"
 
 
 @dataclass(frozen=True)
@@ -138,6 +148,7 @@ def build_candle_data_batch(
     rows: tuple[dict[str, object], ...] | list[dict[str, object]],
     *,
     min_candle_count: int = 1,
+    strict_market_series: bool = True,
 ) -> CandleDataBatch:
     raw_rows = tuple(rows)
     request_errors = validate_candle_data_request(request)
@@ -185,6 +196,29 @@ def build_candle_data_batch(
             flags.append(CandleDataQualityFlag.SYMBOL_MISMATCH)
             warnings.append("SYMBOL_MISMATCH")
             break
+
+    integrity = validate_ohlc_integrity(
+        candles,
+        interval=request.interval,
+        config=AnalysisWindowConfig(
+            minimum_candles=max(8, min_candle_count),
+            context_candles=max(96, max(8, min_candle_count)),
+        ),
+        strict_timestamps=strict_market_series,
+    )
+    for error in integrity.errors:
+        if error.startswith("TIMESTAMP_PARSE_ERROR"):
+            flags.append(CandleDataQualityFlag.INVALID_TIMESTAMP)
+        elif error.startswith("CANDLE_GAP"):
+            flags.append(CandleDataQualityFlag.MISSING_CANDLES)
+        elif error.startswith("IRREGULAR_CADENCE"):
+            flags.append(CandleDataQualityFlag.IRREGULAR_CADENCE)
+        elif error.startswith("NON_FINITE"):
+            flags.append(CandleDataQualityFlag.NON_FINITE_VALUE)
+        elif error.startswith("NON_POSITIVE"):
+            flags.append(CandleDataQualityFlag.NON_POSITIVE_PRICE)
+    if integrity.errors:
+        warnings.extend(integrity.errors)
     for row in raw_rows:
         row_interval = row.get("interval")
         if row_interval is not None and str(row_interval) != request.interval:
@@ -197,12 +231,15 @@ def build_candle_data_batch(
         rows=raw_rows,
         candles=candles,
         status=(
-            CandleDataBoundaryStatus.READY
-            if candles
-            else CandleDataBoundaryStatus.EMPTY
+            CandleDataBoundaryStatus.EMPTY
+            if not candles
+            else CandleDataBoundaryStatus.VALIDATION_FAILED
+            if strict_market_series and integrity.errors
+            else CandleDataBoundaryStatus.READY
         ),
         quality_flags=tuple(flags),
         warnings=tuple(warnings),
+        errors=integrity.errors if strict_market_series else (),
         metadata=_metadata(request, raw_rows, candles, min_candle_count),
     )
 
@@ -231,7 +268,7 @@ def run_engine_trend_from_provider(
     provider: CandleDataProvider,
     request: CandleDataRequest,
     *,
-    min_candle_count: int = 1,
+    min_candle_count: int = MIN_FULL_ANALYSIS_CANDLES,
 ) -> CandleDataBoundaryResult:
     try:
         rows = provider.load_rows(request)

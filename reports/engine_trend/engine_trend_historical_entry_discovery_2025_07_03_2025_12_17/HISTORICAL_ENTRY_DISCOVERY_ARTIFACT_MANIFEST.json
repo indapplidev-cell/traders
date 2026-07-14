@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-07-13T19:07:44.881885Z",
+  "audit_only": true,
+  "script": "scripts/engine_trend_historical_entry_discovery_2025_07_03_2025_12_17.py",
+  "artifacts": [
+    {
+      "path": "HISTORICAL_ENTRY_DISCOVERY_REPORT.md",
+      "sha256": "212e04ac899f2da728667888ce41b818b75e943d7ff894f61bcd1c2db7d8fddb",
+      "bytes": 4335
+    },
+    {
+      "path": "HISTORICAL_ENTRY_DISCOVERY_RESULTS.json",
+      "sha256": "2b36538bbcd0b2084bfbcd8ecc3779b1867bcc9c4b3144579bd3a8d61cd9c171",
+      "bytes": 2906105
+    },
+    {
+      "path": "HISTORICAL_ENTRY_DISCOVERY_CANDIDATES.csv",
+      "sha256": "f724b6e5adf2b0e881547160192394711ae27be543fceb2d641037e58c368716",
+      "bytes": 147442
+    },
+    {
+      "path": "HISTORICAL_ENTRY_DISCOVERY_DATA_COVERAGE.md",
+      "sha256": "ad642964be59e458469935190d328c0b16b28f821cfef91d37eb3e1a1ddd3b20",
+      "bytes": 978
+    },
+    {
+      "path": "HISTORICAL_ENTRY_DISCOVERY_DATA_COVERAGE.json",
+      "sha256": "be3a1c5b124aa9c57e62c72cd2b4d45ffec625c0006dc3c7882500a2ea782cae",
+      "bytes": 2232
+    },
+    {
+      "path": "MAIN_SELECTED_ENTRY_TRACE.json",
+      "sha256": "10372166626e76127d4d8aefc176c97ffd9054087fb7ec988e5ef6f5ae257a8e",
+      "bytes": 9134
+    },
+    {
+      "path": "MAIN_SELECTED_ENTRY_EXPLANATION.md",
+      "sha256": "6b1ea3dc190e8bed8a12d916d29d2269c698ab3e768e5f72becc4cbf955722b7",
+      "bytes": 6984
+    }
+  ]
+}

@@ -73,10 +73,11 @@ def test_quality_flags_preserve_usable_candles() -> None:
     rows.reverse()
     rows.append(dict(rows[-1]))
     batch = build_candle_data_batch(request(), rows, min_candle_count=4)
-    assert batch.status is CandleDataBoundaryStatus.READY
+    assert batch.status is CandleDataBoundaryStatus.VALIDATION_FAILED
     assert CandleDataQualityFlag.MIN_CANDLE_COUNT_NOT_MET in batch.quality_flags
     assert CandleDataQualityFlag.UNSORTED_TIMESTAMPS in batch.quality_flags
     assert CandleDataQualityFlag.DUPLICATE_TIMESTAMPS in batch.quality_flags
+    assert batch.errors
 
 
 class FakeProvider:

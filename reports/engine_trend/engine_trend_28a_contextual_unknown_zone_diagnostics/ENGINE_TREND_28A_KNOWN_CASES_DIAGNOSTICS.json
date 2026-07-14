@@ -1,0 +1,49 @@
+[
+  {
+    "case_id": "BTCUSDT_15m_2026_07_13_16_00",
+    "source_regime": "UNKNOWN",
+    "source_reason": "DOWN_RECALL_GAP_TREND_ONLY_CONTINUATION_MISSING",
+    "action": "NO_ACTION",
+    "contextual_state": "WAIT_FOR_CONFIRMATION",
+    "diagnostic_tags": [
+      "INDICATOR_PRESSURE_WITHOUT_CAUSAL_TRIGGER",
+      "BEARISH_STRUCTURE_WITHOUT_CONFIRMED_HYPOTHESIS",
+      "NO_CAUSAL_HYPOTHESIS",
+      "WAIT_FOR_CONFIRMATION",
+      "NO_ACTION"
+    ],
+    "human_summary": "Bearish structure и техническое давление присутствуют, но DOWN continuation не подтверждён. До causal trigger действие отсутствует.",
+    "safety": {"setup_created": false, "trade_signal_created": false}
+  },
+  {
+    "case_id": "SOLUSDT_15m_2026_07_08_18_30",
+    "source_regime": "UNKNOWN",
+    "source_reason": "DOWN_CONTINUATION vs CONFIRMED_RANGE conflict",
+    "action": "NO_ACTION",
+    "contextual_state": "WAIT_FOR_CONFIRMATION",
+    "diagnostic_tags": [
+      "CONFIRMED_RANGE_CONTEXT",
+      "INSIDE_RANGE",
+      "UNRESOLVED_HYPOTHESIS_CONFLICT",
+      "RANGE_TREND_CONFLICT",
+      "WAIT_FOR_CONFIRMATION",
+      "NO_ACTION"
+    ],
+    "human_summary": "Подтверждённый диапазон конфликтует с DOWN continuation. До разрешения hypothesis conflict действие отсутствует.",
+    "safety": {"setup_created": false, "trade_signal_created": false}
+  },
+  {
+    "case_id": "SOLUSDT_15m_2026_07_08_23_45",
+    "source_regime": "FLAT",
+    "source_reason": "CONFIRMED_RANGE",
+    "action": "NO_ACTION",
+    "contextual_state": "CONTEXT_ONLY",
+    "diagnostic_tags": [
+      "CONFIRMED_RANGE_CONTEXT",
+      "INSIDE_RANGE",
+      "LOW_TREND_STRENGTH"
+    ],
+    "human_summary": "Подтверждён контекст диапазона; diagnostic layer не меняет FLAT и не создаёт setup.",
+    "safety": {"setup_created": false, "trade_signal_created": false}
+  }
+]

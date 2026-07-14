@@ -1,0 +1,13 @@
+{
+  "stage": "ENGINE-TREND-28A",
+  "final_status": "ENGINE_TREND_28A_COMPLETED_CONTEXTUAL_DIAGNOSTICS",
+  "runtime_changed": false,
+  "trading_runtime_changed": false,
+  "thresholds_changed": false,
+  "composer_changed": false,
+  "setup_contracts_changed": false,
+  "source_regimes_changed": false,
+  "diagnostics_only": true,
+  "trade_signal_created": false,
+  "next_stage": "OPTIONAL_API_UI_READ_MODEL_INTEGRATION_REVIEW"
+}

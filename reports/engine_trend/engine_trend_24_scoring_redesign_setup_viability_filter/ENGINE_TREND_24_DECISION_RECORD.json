@@ -1,0 +1,15 @@
+{
+  "final_status": "ENGINE_TREND_24_COMPLETED_V2_FILTER_NEGATIVE",
+  "validation_pf": 0.9088008056592679,
+  "validation_expectancy": -0.03757941776708955,
+  "validation_pass_count": 37,
+  "ready_for_paper_trading_design": false,
+  "profitable_system_validated": false,
+  "runtime_changed": false,
+  "trading_runtime_changed": false,
+  "thresholds_changed": false,
+  "composer_changed": false,
+  "setup_contracts_changed": false,
+  "leakage_status": "PASS",
+  "next_stage": "ENGINE-TREND-25 setup contract redesign"
+}

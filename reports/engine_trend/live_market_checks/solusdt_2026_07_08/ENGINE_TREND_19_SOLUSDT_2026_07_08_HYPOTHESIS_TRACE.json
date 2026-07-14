@@ -1,0 +1,579 @@
+{
+  "generated_at": "2026-07-13T17:30:04.359085Z",
+  "main_period": {
+    "window_id": "SOLUSDT_15m_2026_07_08",
+    "hypotheses": [
+      {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.6230769230769231,
+        "trigger_index": 92,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+        ],
+        "confidence": 0.6230769230769231,
+        "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+        "evidence": {
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "supporting_events": []
+        },
+        "missing_evidence": [],
+        "rejection_reason": null,
+        "pending_reason": null,
+        "conflict_reason": null
+      }
+    ],
+    "contextual_events": [
+      {
+        "event_id": "pattern:72:73:BEARISH_ENGULFING_CONTEXT",
+        "pattern_code": "BEARISH_ENGULFING_CONTEXT",
+        "direction": "BEARISH",
+        "role": "REVERSAL",
+        "start_index": 72,
+        "end_index": 73,
+        "prior_structure": "BEARISH_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "CONFIRMED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "BEARISH_ENGULFING_CONTEXT",
+          "PATTERN_PRIOR_BEARISH_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      },
+      {
+        "event_id": "pattern:74:75:BULLISH_ENGULFING_CONTEXT",
+        "pattern_code": "BULLISH_ENGULFING_CONTEXT",
+        "direction": "BULLISH",
+        "role": "REVERSAL",
+        "start_index": 74,
+        "end_index": 75,
+        "prior_structure": "BEARISH_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "CONFIRMED",
+        "status": "CANDIDATE",
+        "reason_codes": [
+          "BULLISH_ENGULFING_CONTEXT",
+          "PATTERN_PRIOR_BEARISH_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_LEVEL_CONTEXT_MISSING"
+        ]
+      },
+      {
+        "event_id": "pattern:80:81:BEARISH_ENGULFING_CONTEXT",
+        "pattern_code": "BEARISH_ENGULFING_CONTEXT",
+        "direction": "BEARISH",
+        "role": "REVERSAL",
+        "start_index": 80,
+        "end_index": 81,
+        "prior_structure": "SIDEWAYS_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "CONFIRMED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "BEARISH_ENGULFING_CONTEXT",
+          "PATTERN_PRIOR_SIDEWAYS_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      },
+      {
+        "event_id": "pattern:83:84:BEARISH_ENGULFING_CONTEXT",
+        "pattern_code": "BEARISH_ENGULFING_CONTEXT",
+        "direction": "BEARISH",
+        "role": "REVERSAL",
+        "start_index": 83,
+        "end_index": 84,
+        "prior_structure": "SIDEWAYS_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "INVALIDATED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "BEARISH_ENGULFING_CONTEXT",
+          "PATTERN_PRIOR_SIDEWAYS_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      },
+      {
+        "event_id": "pattern:72:73:TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+        "pattern_code": "TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+        "direction": "BULLISH",
+        "role": "REVERSAL",
+        "start_index": 72,
+        "end_index": 73,
+        "prior_structure": "BEARISH_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "INVALIDATED",
+        "status": "INVALIDATED",
+        "reason_codes": [
+          "TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+          "PATTERN_PRIOR_BEARISH_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_FOLLOW_THROUGH_INVALIDATED"
+        ]
+      },
+      {
+        "event_id": "pattern:80:81:TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+        "pattern_code": "TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+        "direction": "BULLISH",
+        "role": "REVERSAL",
+        "start_index": 80,
+        "end_index": 81,
+        "prior_structure": "SIDEWAYS_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "INVALIDATED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+          "PATTERN_PRIOR_SIDEWAYS_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      },
+      {
+        "event_id": "pattern:82:83:BULLISH_HARAMI_CONTEXT",
+        "pattern_code": "BULLISH_HARAMI_CONTEXT",
+        "direction": "BULLISH",
+        "role": "REVERSAL",
+        "start_index": 82,
+        "end_index": 83,
+        "prior_structure": "SIDEWAYS_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "INVALIDATED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "BULLISH_HARAMI_CONTEXT",
+          "PATTERN_PRIOR_SIDEWAYS_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      },
+      {
+        "event_id": "pattern:92:93:TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+        "pattern_code": "TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+        "direction": "BULLISH",
+        "role": "REVERSAL",
+        "start_index": 92,
+        "end_index": 93,
+        "prior_structure": "SIDEWAYS_STRUCTURE",
+        "zone_relation": "AT_RESISTANCE",
+        "related_zone_mid": 77.60999999999999,
+        "follow_through": "CONFIRMED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "TWEEZERS_BOTTOM_CONTEXT_REQUIRED",
+          "PATTERN_PRIOR_SIDEWAYS_STRUCTURE",
+          "AT_RESISTANCE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      },
+      {
+        "event_id": "pattern:93:94:TWEEZERS_TOP_CONTEXT_REQUIRED",
+        "pattern_code": "TWEEZERS_TOP_CONTEXT_REQUIRED",
+        "direction": "BEARISH",
+        "role": "REVERSAL",
+        "start_index": 93,
+        "end_index": 94,
+        "prior_structure": "SIDEWAYS_STRUCTURE",
+        "zone_relation": "AT_RESISTANCE",
+        "related_zone_mid": 77.60999999999999,
+        "follow_through": "INVALIDATED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "TWEEZERS_TOP_CONTEXT_REQUIRED",
+          "PATTERN_PRIOR_SIDEWAYS_STRUCTURE",
+          "AT_RESISTANCE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      },
+      {
+        "event_id": "pattern:80:92:THREE_MOUNTAINS_CONTEXT_REQUIRED",
+        "pattern_code": "THREE_MOUNTAINS_CONTEXT_REQUIRED",
+        "direction": "BEARISH",
+        "role": "REVERSAL",
+        "start_index": 80,
+        "end_index": 92,
+        "prior_structure": "SIDEWAYS_STRUCTURE",
+        "zone_relation": "NO_CAUSAL_ZONE",
+        "related_zone_mid": null,
+        "follow_through": "INVALIDATED",
+        "status": "CONTEXT_REJECTED",
+        "reason_codes": [
+          "THREE_MOUNTAINS_CONTEXT_REQUIRED",
+          "PATTERN_PRIOR_SIDEWAYS_STRUCTURE",
+          "NO_CAUSAL_ZONE",
+          "PATTERN_TREND_CONTEXT_REJECTED"
+        ]
+      }
+    ]
+  },
+  "windows": [
+    {
+      "window_id": "SOLUSDT_2026_07_08_06_00",
+      "regime": "DOWN",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:down_continuation",
+        "hypothesis_type": "DOWN_CONTINUATION",
+        "direction": "BEARISH",
+        "status": "CONFIRMED",
+        "score": 0.7865629390763558,
+        "trigger_index": 72,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_STRUCTURE_ALIGNED",
+          "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+          "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.7865629390763558,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+          ],
+          "confidence": 0.7865629390763558,
+          "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bullish_reversal:94",
+          "hypothesis_type": "BULLISH_REVERSAL",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.35,
+          "trigger_index": 94,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:93:94:BULLISH_HARAMI_CONTEXT"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "confidence": 0.35,
+          "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+              "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+              "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:93:94:BULLISH_HARAMI_CONTEXT",
+                "pattern_code": "BULLISH_HARAMI_CONTEXT",
+                "direction": "BULLISH",
+                "role": "REVERSAL",
+                "start_index": 93,
+                "end_index": 94,
+                "prior_structure": "BEARISH_STRUCTURE",
+                "zone_relation": "AT_SUPPORT",
+                "related_zone_mid": 78.285,
+                "follow_through": "PENDING",
+                "status": "AWAITING_CONFIRMATION",
+                "reason_codes": [
+                  "BULLISH_HARAMI_CONTEXT",
+                  "PATTERN_PRIOR_BEARISH_STRUCTURE",
+                  "AT_SUPPORT",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_AWAITING_FOLLOW_THROUGH"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "window_id": "SOLUSDT_2026_07_08_11_30",
+      "regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "INVALIDATED",
+          "score": 0.8945359634916941,
+          "trigger_index": 82,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:81:82:BEARISH_SEPARATING_LINES_CONTEXT"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CANDLE_CONTINUATION_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+          ],
+          "confidence": 0.8945359634916941,
+          "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_CANDLE_CONTINUATION_CONFIRMED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+              "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+              "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:81:82:BEARISH_SEPARATING_LINES_CONTEXT",
+                "pattern_code": "BEARISH_SEPARATING_LINES_CONTEXT",
+                "direction": "BEARISH",
+                "role": "CONTINUATION",
+                "start_index": 81,
+                "end_index": 82,
+                "prior_structure": "BEARISH_STRUCTURE",
+                "zone_relation": "AT_RESISTANCE",
+                "related_zone_mid": 78.325,
+                "follow_through": "CONFIRMED",
+                "status": "CONFIRMED",
+                "reason_codes": [
+                  "BEARISH_SEPARATING_LINES_CONTEXT",
+                  "PATTERN_PRIOR_BEARISH_STRUCTURE",
+                  "AT_RESISTANCE",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_FOLLOW_THROUGH_CONFIRMED"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [],
+          "rejection_reason": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_CANDLE_CONTINUATION_CONFIRMED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED",
+            "HYPOTHESIS_DECISION_WINDOW_PROGRESS_ALIGNED",
+            "HYPOTHESIS_STRUCTURAL_PIVOT_BREACHED"
+          ],
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:bullish_reversal:90",
+          "hypothesis_type": "BULLISH_REVERSAL",
+          "direction": "BULLISH",
+          "status": "PENDING",
+          "score": 0.35,
+          "trigger_index": 90,
+          "confirmation_index": null,
+          "supporting_event_ids": [
+            "pattern:89:90:BULLISH_ENGULFING_CONTEXT"
+          ],
+          "reason_codes": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "confidence": 0.35,
+          "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+              "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+              "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+            ],
+            "supporting_events": [
+              {
+                "event_id": "pattern:89:90:BULLISH_ENGULFING_CONTEXT",
+                "pattern_code": "BULLISH_ENGULFING_CONTEXT",
+                "direction": "BULLISH",
+                "role": "REVERSAL",
+                "start_index": 89,
+                "end_index": 90,
+                "prior_structure": "BEARISH_STRUCTURE",
+                "zone_relation": "AT_SUPPORT",
+                "related_zone_mid": 76.92,
+                "follow_through": "PENDING",
+                "status": "AWAITING_CONFIRMATION",
+                "reason_codes": [
+                  "BULLISH_ENGULFING_CONTEXT",
+                  "PATTERN_PRIOR_BEARISH_STRUCTURE",
+                  "AT_SUPPORT",
+                  "PATTERN_LEVEL_CONTEXT_CONFIRMED",
+                  "PATTERN_AWAITING_FOLLOW_THROUGH"
+                ]
+              }
+            ]
+          },
+          "missing_evidence": [
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING"
+          ],
+          "rejection_reason": null,
+          "pending_reason": [
+            "HYPOTHESIS_PATTERN_TREND_LEVEL_ALIGNED",
+            "HYPOTHESIS_PATTERN_FOLLOW_THROUGH_PENDING",
+            "HYPOTHESIS_INDICATOR_CONFLICT_REQUIRES_MORE_CONFIRMATION"
+          ],
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "window_id": "SOLUSDT_2026_07_08_18_30",
+      "regime": "UNKNOWN",
+      "selected_hypothesis": null,
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:down_continuation",
+          "hypothesis_type": "DOWN_CONTINUATION",
+          "direction": "BEARISH",
+          "status": "CONFIRMED",
+          "score": 0.5911349142704395,
+          "trigger_index": 72,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_STRUCTURE_ALIGNED",
+            "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+          ],
+          "confidence": 0.5911349142704395,
+          "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_STRUCTURE_ALIGNED",
+              "HYPOTHESIS_TECHNICAL_INDICATORS_ALIGNED"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        },
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.5931818181818183,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.5931818181818183,
+          "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    },
+    {
+      "window_id": "SOLUSDT_2026_07_08_23_45",
+      "regime": "FLAT",
+      "selected_hypothesis": {
+        "hypothesis_id": "hypothesis:confirmed_range",
+        "hypothesis_type": "CONFIRMED_RANGE",
+        "direction": "FLAT",
+        "status": "CONFIRMED",
+        "score": 0.6230769230769231,
+        "trigger_index": 92,
+        "confirmation_index": null,
+        "supporting_event_ids": [],
+        "reason_codes": [
+          "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+          "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+          "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+        ]
+      },
+      "hypotheses": [
+        {
+          "hypothesis_id": "hypothesis:confirmed_range",
+          "hypothesis_type": "CONFIRMED_RANGE",
+          "direction": "FLAT",
+          "status": "CONFIRMED",
+          "score": 0.6230769230769231,
+          "trigger_index": 92,
+          "confirmation_index": null,
+          "supporting_event_ids": [],
+          "reason_codes": [
+            "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+            "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+            "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+          ],
+          "confidence": 0.6230769230769231,
+          "confidence_note": "Model exports score, not a separate per-hypothesis confidence; score is repeated as the available confidence proxy.",
+          "evidence": {
+            "reason_codes": [
+              "HYPOTHESIS_RANGE_STRUCTURE_CONFIRMED",
+              "HYPOTHESIS_SECONDARY_FLAT_CONTEXT_CONFIRMED",
+              "HYPOTHESIS_RANGE_BOUNDARIES_HELD"
+            ],
+            "supporting_events": []
+          },
+          "missing_evidence": [],
+          "rejection_reason": null,
+          "pending_reason": null,
+          "conflict_reason": null
+        }
+      ]
+    }
+  ]
+}
