@@ -1,0 +1,18 @@
+{
+  "stage": "ENGINE-TREND-28B",
+  "final_status": "ENGINE_TREND_28B_COMPLETED_OFFLINE_REPORT_DIAGNOSTICS_EXPOSURE",
+  "attachment_point": "offline_replay_report_after_final_decision",
+  "artifact_field": "contextual_diagnostics",
+  "source_regimes_changed": false,
+  "final_regimes_changed": false,
+  "runtime_changed": false,
+  "trading_runtime_changed": false,
+  "thresholds_changed": false,
+  "composer_changed": false,
+  "setup_contracts_changed": false,
+  "setup_eligibility_changed": false,
+  "diagnostics_only": true,
+  "trade_signal_created": false,
+  "unknown_solved": false,
+  "historical_missing_data_policy": "not_observable"
+}

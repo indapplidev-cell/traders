@@ -1,0 +1,22 @@
+{
+  "stage": "ENGINE-TREND-28B",
+  "artifact_root": "reports/engine_trend/engine_trend_28b_report_diagnostics_exposure",
+  "implementation_files": [
+    "app/market_reader/engine_trend/contextual_diagnostics.py",
+    "app/market_reader/engine_trend/offline_report_diagnostics.py",
+    "scripts/engine_trend_18_hypothesis_replay.py"
+  ],
+  "test_files": [
+    "tests/test_engine_trend_28a_contextual_diagnostics.py",
+    "tests/test_engine_trend_28b_report_diagnostics_exposure.py"
+  ],
+  "documentation_artifacts": [
+    "ENGINE_TREND_28B_REPORT_DIAGNOSTICS_EXPOSURE.md",
+    "ENGINE_TREND_28B_DECISION_RECORD.json",
+    "ENGINE_TREND_28B_ARTIFACT_MANIFEST.json"
+  ],
+  "generated_replay_field": "contextual_diagnostics",
+  "offline_only": true,
+  "protected_logic_changed": false,
+  "trade_signal_created": false
+}

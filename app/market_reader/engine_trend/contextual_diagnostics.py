@@ -72,7 +72,7 @@ class ContextualDiagnosticInput:
     as_of: str
     source_regime: str
     source_confidence: float
-    last_close: float
+    last_close: float | None
     day_high: float | None = None
     day_low: float | None = None
     atr: float | None = None
@@ -94,13 +94,14 @@ class ContextualDiagnosticInput:
     conflict_codes: tuple[str, ...] = ()
     bullish_confirmation_needed: tuple[str, ...] = ()
     bearish_confirmation_needed: tuple[str, ...] = ()
+    observable_fields: Mapping[str, bool] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.source_regime not in {"UP", "DOWN", "FLAT", "UNKNOWN"}:
             raise ValueError("unsupported source_regime")
         if not 0.0 <= self.source_confidence <= 1.0:
             raise ValueError("source_confidence must be within [0, 1]")
-        if self.last_close <= 0:
+        if self.last_close is not None and self.last_close <= 0:
             raise ValueError("last_close must be positive")
 
 
@@ -140,6 +141,8 @@ def _nearest(
     data: ContextualDiagnosticInput, zone_type: str
 ) -> tuple[DiagnosticZone | None, dict[str, Any] | None]:
     candidates = [item for item in data.zones if item.zone_type == zone_type]
+    if data.last_close is None:
+        return None, None
     zone = min(candidates, key=lambda item: _distance_to_zone(data.last_close, item), default=None)
     return zone, _zone_payload(data.last_close, data.atr, zone)
 
@@ -204,8 +207,24 @@ def _summary(data: ContextualDiagnosticInput, tags: Sequence[str]) -> str:
 def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
     """Explain an immutable source result and always remain non-actionable."""
 
-    support_zone, nearest_support = _nearest(data, "SUPPORT")
-    resistance_zone, nearest_resistance = _nearest(data, "RESISTANCE")
+    def observable(field_name: str) -> bool:
+        return data.observable_fields.get(field_name, True)
+
+    price_observable = observable("price_position") and data.last_close is not None
+    zones_observable = observable("zones")
+    zone_proximity_observable = zones_observable and price_observable
+    range_observable = observable("range")
+    breakout_observable = observable("breakout")
+    indicator_observable = observable("indicators")
+    mtf_observable = observable("multi_timeframe")
+    hypotheses_observable = observable("hypotheses")
+
+    support_zones = [item for item in data.zones if item.zone_type == "SUPPORT"]
+    resistance_zones = [item for item in data.zones if item.zone_type == "RESISTANCE"]
+    support_zone = max(support_zones, key=lambda item: item.touch_count or 0, default=None)
+    resistance_zone = max(resistance_zones, key=lambda item: item.touch_count or 0, default=None)
+    _, nearest_support = _nearest(data, "SUPPORT") if zone_proximity_observable else (None, None)
+    _, nearest_resistance = _nearest(data, "RESISTANCE") if zone_proximity_observable else (None, None)
     near_support = _is_near(nearest_support)
     near_resistance = _is_near(nearest_resistance)
     tags: list[str] = []
@@ -215,12 +234,12 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
             tags.append(tag.value)
 
     structure = (data.structure or "").upper()
-    if data.range_confirmed:
+    if range_observable and data.range_confirmed:
         add(DiagnosticTag.CONFIRMED_RANGE_CONTEXT)
-        if data.range_lower is not None and data.range_upper is not None:
+        if price_observable and data.range_lower is not None and data.range_upper is not None:
             if data.range_lower <= data.last_close <= data.range_upper:
                 add(DiagnosticTag.INSIDE_RANGE)
-    elif (
+    elif range_observable and zones_observable and (
         ("SIDEWAYS" in structure or "MIXED" in structure)
         and support_zone
         and resistance_zone
@@ -231,7 +250,7 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
     ):
         add(DiagnosticTag.LOCAL_RANGE_UNCONFIRMED)
 
-    if data.range_lower is not None and data.range_upper is not None:
+    if price_observable and range_observable and data.range_lower is not None and data.range_upper is not None:
         range_width = max(data.range_upper - data.range_lower, 1e-12)
         boundary_fraction = min(
             abs(data.last_close - data.range_lower),
@@ -248,25 +267,25 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
     if near_support:
         add(DiagnosticTag.NEAR_SUPPORT)
 
-    upward_confirmed = data.breakout_status in {"CONFIRMED", "RETEST_HELD"} and data.breakout_direction == "UPWARD"
-    downward_confirmed = data.breakout_status in {"CONFIRMED", "RETEST_HELD"} and data.breakout_direction == "DOWNWARD"
-    if near_resistance and not upward_confirmed and not _has_confirmed_direction(data, "BULLISH"):
+    upward_confirmed = breakout_observable and data.breakout_status in {"CONFIRMED", "RETEST_HELD"} and data.breakout_direction == "UPWARD"
+    downward_confirmed = breakout_observable and data.breakout_status in {"CONFIRMED", "RETEST_HELD"} and data.breakout_direction == "DOWNWARD"
+    if breakout_observable and hypotheses_observable and near_resistance and not upward_confirmed and not _has_confirmed_direction(data, "BULLISH"):
         add(DiagnosticTag.BREAKOUT_NOT_CONFIRMED)
-    if near_support and not downward_confirmed and not _has_confirmed_direction(data, "BEARISH"):
+    if breakout_observable and hypotheses_observable and near_support and not downward_confirmed and not _has_confirmed_direction(data, "BEARISH"):
         add(DiagnosticTag.BREAKDOWN_NOT_CONFIRMED)
 
     indicator_direction = data.indicator_direction.upper()
-    if indicator_direction in {"BULLISH", "BEARISH"} and not _has_confirmed_direction(
+    if indicator_observable and hypotheses_observable and indicator_direction in {"BULLISH", "BEARISH"} and not _has_confirmed_direction(
         data, indicator_direction
     ):
         add(DiagnosticTag.INDICATOR_PRESSURE_WITHOUT_CAUSAL_TRIGGER)
-    if data.adx is not None and data.adx < 15.0 and ("SIDEWAYS" in structure or "MIXED" in structure):
+    if indicator_observable and data.adx is not None and data.adx < 15.0 and ("SIDEWAYS" in structure or "MIXED" in structure):
         add(DiagnosticTag.LOW_TREND_STRENGTH)
 
     regimes = {key: value.upper() for key, value in data.timeframe_regimes.items()}
     other_regimes = [value for key, value in regimes.items() if key != data.timeframe]
     directional_other = {value for value in other_regimes if value in {"UP", "DOWN"}}
-    if directional_other and (data.source_regime == "UNKNOWN" or len(directional_other) > 1):
+    if mtf_observable and directional_other and (data.source_regime == "UNKNOWN" or len(directional_other) > 1):
         add(DiagnosticTag.MTF_CONFLICT)
     decision_seconds = _timeframe_seconds(data.timeframe)
     higher_directional = {
@@ -277,17 +296,17 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
         and decision_seconds is not None
         and (_timeframe_seconds(key) or 0) > decision_seconds
     }
-    if "DOWN" in higher_directional:
+    if mtf_observable and "DOWN" in higher_directional:
         add(DiagnosticTag.HIGHER_TF_BEARISH_RISK)
-    if "UP" in higher_directional:
+    if mtf_observable and "UP" in higher_directional:
         add(DiagnosticTag.HIGHER_TF_BULLISH_RISK)
 
     conflict_text = " ".join(data.conflict_codes).upper()
-    if "CONFLICT" in conflict_text:
+    if hypotheses_observable and "CONFLICT" in conflict_text:
         add(DiagnosticTag.UNRESOLVED_HYPOTHESIS_CONFLICT)
-    if "RANGE" in conflict_text and ("TREND" in conflict_text or "CONTINUATION" in conflict_text):
+    if hypotheses_observable and "RANGE" in conflict_text and ("TREND" in conflict_text or "CONTINUATION" in conflict_text):
         add(DiagnosticTag.RANGE_TREND_CONFLICT)
-    if data.source_regime == "UNKNOWN" and not data.confirmed_hypotheses:
+    if hypotheses_observable and data.source_regime == "UNKNOWN" and not data.confirmed_hypotheses:
         if "BEARISH" in structure:
             add(DiagnosticTag.BEARISH_STRUCTURE_WITHOUT_CONFIRMED_HYPOTHESIS)
         elif "BULLISH" in structure:
@@ -299,7 +318,7 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
         add(DiagnosticTag.NO_ACTION)
 
     day_position = None
-    if data.day_high is not None and data.day_low is not None and data.day_high > data.day_low:
+    if price_observable and data.day_high is not None and data.day_low is not None and data.day_high > data.day_low:
         day_position = (data.last_close - data.day_low) / (data.day_high - data.day_low)
     no_trade_reasons = [item.lower() for item in tags if item not in {"WAIT_FOR_CONFIRMATION", "NO_ACTION"}]
     bullish_needed = list(data.bullish_confirmation_needed) or [
@@ -318,6 +337,19 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
         "source_confidence": data.source_confidence,
         "action": "NO_ACTION",
         "contextual_state": "WAIT_FOR_CONFIRMATION" if data.source_regime == "UNKNOWN" else "CONTEXT_ONLY",
+        "observability": {
+            field_name: "observable" if state else "not_observable"
+            for field_name, state in {
+                "price_position": price_observable,
+                "zones": zones_observable,
+                "zone_proximity": zone_proximity_observable,
+                "range": range_observable,
+                "breakout": breakout_observable,
+                "indicators": indicator_observable,
+                "multi_timeframe": mtf_observable,
+                "hypotheses": hypotheses_observable,
+            }.items()
+        },
         "diagnostic_tags": tags,
         "price_position": {
             "last_close": data.last_close,

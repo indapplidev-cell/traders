@@ -20,6 +20,9 @@ from app.market_reader.engine_trend.db_cli_preview import resolve_db_url
 from app.market_reader.engine_trend.postgres_candle_adapter import (
     PostgresMarketCandlesProvider,
 )
+from app.market_reader.engine_trend.offline_report_diagnostics import (
+    attach_contextual_diagnostics,
+)
 
 STAGE = "ENGINE-TREND-18"
 ROOT = Path("reports/engine_trend/hypothesis_replay")
@@ -141,7 +144,7 @@ def build_diagnostic(window: dict[str, Any], boundary: Any) -> dict[str, Any]:
         if regime_hypotheses
         else None
     )
-    return {
+    artifact = {
         "stage": STAGE,
         "source_stage": window["source_stage"],
         "window": {
@@ -204,6 +207,7 @@ def build_diagnostic(window: dict[str, Any], boundary: Any) -> dict[str, Any]:
             "errors": list(boundary.errors),
         },
     }
+    return attach_contextual_diagnostics(artifact, candles=boundary.batch.candles)
 
 
 def markdown(item: dict[str, Any]) -> str:
@@ -211,6 +215,7 @@ def markdown(item: dict[str, Any]) -> str:
     context = item["unified_market_context"]
     hypotheses = item["hypotheses"]
     composer = item["composer"]
+    diagnostics = item["contextual_diagnostics"]
 
     def compact(value: Any) -> str:
         return json.dumps(value, ensure_ascii=False, default=str)
@@ -253,6 +258,13 @@ Note: {hypotheses['cancelled_contract_note']}
 - regime: {composer['regime']}
 - confidence: {composer['confidence']}
 - reason: {compact(composer['reason'])}
+
+## Contextual diagnostics (offline / no signal)
+
+- action: {diagnostics['action']}
+- tags: {compact(diagnostics['diagnostic_tags'])}
+- observability: {compact(diagnostics['observability'])}
+- no-action reasons: {compact(diagnostics['no_trade_reasons'])}
 
 ## Old → new
 
