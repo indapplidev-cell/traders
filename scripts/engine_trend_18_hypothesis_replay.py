@@ -261,10 +261,14 @@ Note: {hypotheses['cancelled_contract_note']}
 
 ## Contextual diagnostics (offline / no signal)
 
+- diagnostic version: {diagnostics['diagnostic_version']}
+- generated for stage: {diagnostics['generated_for_stage']}
 - action: {diagnostics['action']}
 - tags: {compact(diagnostics['diagnostic_tags'])}
 - observability: {compact(diagnostics['observability'])}
+- not observable fields: {compact(diagnostics['not_observable_fields'])}
 - no-action reasons: {compact(diagnostics['no_trade_reasons'])}
+- decision impact: {compact(diagnostics['decision_impact'])}
 
 ## Old → new
 

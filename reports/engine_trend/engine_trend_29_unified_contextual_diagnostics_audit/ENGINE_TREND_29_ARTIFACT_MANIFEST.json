@@ -1,0 +1,29 @@
+{
+  "stage": "ENGINE-TREND-29",
+  "artifacts": [
+    {
+      "path": "ENGINE_TREND_29_UNIFIED_CONTEXTUAL_DIAGNOSTICS_AUDIT.md",
+      "purpose": "Human-readable unified flow, exposure, safety, and acceptance audit"
+    },
+    {
+      "path": "ENGINE_TREND_29_DECISION_RECORD.json",
+      "purpose": "Machine-readable non-interference decision record"
+    },
+    {
+      "path": "ENGINE_TREND_29_ARTIFACT_MANIFEST.json",
+      "purpose": "Complete manifest of ENGINE-TREND-29 report artifacts"
+    },
+    {
+      "path": "ENGINE_TREND_29_CONTEXTUAL_DIAGNOSTICS_SCHEMA.json",
+      "purpose": "Versioned partial-data-safe offline diagnostics schema"
+    },
+    {
+      "path": "ENGINE_TREND_29_KNOWN_CASES_AUDIT.json",
+      "purpose": "Machine-readable value-equivalence audit for four known cases"
+    },
+    {
+      "path": "ENGINE_TREND_29_NO_ACTION_SAFETY_AUDIT.json",
+      "purpose": "Observability counts, no-action invariants, and negative controls"
+    }
+  ]
+}

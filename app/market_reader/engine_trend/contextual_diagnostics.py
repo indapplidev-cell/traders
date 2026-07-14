@@ -16,6 +16,8 @@ from typing import Any, Mapping, Sequence
 
 DIAGNOSTIC_NEAR_ZONE_PCT = 0.50
 DIAGNOSTIC_NEAR_ZONE_ATR = 1.00
+DIAGNOSTIC_VERSION = "2.0.0"
+DIAGNOSTIC_STAGE = "ENGINE-TREND-29"
 
 
 class DiagnosticTag(str, Enum):
@@ -321,6 +323,30 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
     if price_observable and data.day_high is not None and data.day_low is not None and data.day_high > data.day_low:
         day_position = (data.last_close - data.day_low) / (data.day_high - data.day_low)
     no_trade_reasons = [item.lower() for item in tags if item not in {"WAIT_FOR_CONFIRMATION", "NO_ACTION"}]
+    not_observable_fields = [
+        field_name
+        for field_name, state in {
+            "price_context": price_observable,
+            "zone_proximity": zone_proximity_observable,
+            "indicator_pressure": indicator_observable,
+            "multi_timeframe": mtf_observable,
+        }.items()
+        if not state
+    ]
+    source_fields_used = [
+        field_name
+        for field_name, state in {
+            "price_context": price_observable,
+            "zones": zones_observable,
+            "zone_proximity": zone_proximity_observable,
+            "range": range_observable,
+            "breakout": breakout_observable,
+            "indicator_pressure": indicator_observable,
+            "multi_timeframe": mtf_observable,
+            "hypotheses": hypotheses_observable,
+        }.items()
+        if state
+    ]
     bullish_needed = list(data.bullish_confirmation_needed) or [
         "closed breakout or confirmed bullish reversal",
         "retest/hold and follow-through",
@@ -330,6 +356,8 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
         "retest/hold and follow-through",
     ]
     payload: dict[str, Any] = {
+        "diagnostic_version": DIAGNOSTIC_VERSION,
+        "generated_for_stage": DIAGNOSTIC_STAGE,
         "symbol": data.symbol,
         "timeframe": data.timeframe,
         "as_of": data.as_of,
@@ -351,6 +379,16 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
             }.items()
         },
         "diagnostic_tags": tags,
+        "observed_tags": list(tags),
+        "no_action_reasons": list(no_trade_reasons),
+        "wait_for_confirmation_reasons": (
+            list(no_trade_reasons) if data.source_regime == "UNKNOWN" else []
+        ),
+        "explanation_tags": [
+            item for item in tags if item not in {"WAIT_FOR_CONFIRMATION", "NO_ACTION"}
+        ],
+        "not_observable_fields": not_observable_fields,
+        "source_fields_used": source_fields_used,
         "price_position": {
             "last_close": data.last_close,
             "day_high": data.day_high,
@@ -378,6 +416,20 @@ def diagnose_context(data: ContextualDiagnosticInput) -> dict[str, Any]:
         "confirmation_needed": {"bullish": bullish_needed, "bearish": bearish_needed},
         "no_trade_reasons": no_trade_reasons,
         "human_summary": _summary(data, tags),
+        "decision_impact": {
+            "source_regime": "unchanged",
+            "final_regime": "unchanged",
+            "setup_eligibility": "unchanged",
+            "trade_decision": "unchanged",
+            "risk_reduced_by_missing_data": False,
+            "confirmation_created_by_missing_data": False,
+        },
+        "safety_guarantees": {
+            "post_decision_only": True,
+            "offline_outputs_only": True,
+            "missing_data_is_not_observable": True,
+            "diagnostic_tags_are_non_actionable": True,
+        },
         "safety": {
             "source_regime_preserved": True,
             "setup_created": False,

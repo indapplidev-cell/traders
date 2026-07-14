@@ -16,6 +16,21 @@ from app.market_reader.engine_trend.contextual_diagnostics import (
 )
 
 
+def _assert_post_decision_invariants(
+    before: Mapping[str, Any], after: Mapping[str, Any]
+) -> None:
+    """Fail closed in the offline layer if enrichment changes source values."""
+
+    preserved = deepcopy(dict(after))
+    diagnostics = preserved.pop("contextual_diagnostics", None)
+    if preserved != dict(before):
+        raise RuntimeError("contextual diagnostics mutated the finalized artifact")
+    composer = before.get("composer")
+    if isinstance(composer, Mapping) and isinstance(diagnostics, Mapping):
+        if diagnostics.get("source_regime") != composer.get("regime"):
+            raise RuntimeError("contextual diagnostics changed the finalized regime")
+
+
 def _zone(value: Mapping[str, Any]) -> DiagnosticZone | None:
     zone_type = value.get("current_zone_type") or value.get("zone_type")
     low = value.get("lower_price")
@@ -120,10 +135,12 @@ def attach_contextual_diagnostics(
         )
     )
     diagnostic["artifact_contract"] = {
-        "attachment_point": "offline_replay_report_after_final_decision",
+        "attachment_point": "after_final_composer_decision",
+        "outputs": "offline_replay_json_and_markdown_only",
         "source_fields_mutated": False,
         "setup_eligibility_mutated": False,
         "trade_signal_created": False,
     }
     output["contextual_diagnostics"] = diagnostic
+    _assert_post_decision_invariants(artifact, output)
     return output

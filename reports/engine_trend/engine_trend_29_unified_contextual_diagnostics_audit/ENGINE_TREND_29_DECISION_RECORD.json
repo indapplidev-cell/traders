@@ -1,0 +1,19 @@
+{
+  "stage": "ENGINE-TREND-29",
+  "baseline_commit": "0a04e85eae82d8a079bb693253b8f9a5e9342338",
+  "previous_checkpoint_commit": "20fd992edd556b5eb08f2e711e3ee9d1f769c7db",
+  "runtime_changed": false,
+  "trading_runtime_changed": false,
+  "composer_changed": false,
+  "thresholds_changed": false,
+  "setup_contracts_changed": false,
+  "setup_eligibility_changed": false,
+  "trade_signal_created_by_diagnostics": false,
+  "source_regime_changed": false,
+  "final_regime_changed_by_diagnostics": false,
+  "diagnostics_attachment_phase": "after_final_composer_decision",
+  "diagnostics_outputs": "offline_replay_json_and_markdown_only",
+  "missing_data_policy": "not_observable",
+  "automatic_commit": false,
+  "decision": "ACCEPT_DIAGNOSTICS_HARDENING_WITHOUT_TRADING_AUTHORIZATION"
+}
