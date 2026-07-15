@@ -21,7 +21,14 @@ def test_cli_db_check(monkeypatch) -> None:
     get_settings.cache_clear()
     reset_engine_cache()
 
-    result = runner.invoke(cli, ["db-check"])
+    try:
+        result = runner.invoke(cli, ["db-check"])
+    finally:
+        # ``monkeypatch`` restores the environment after this test, while the
+        # lru-cached Settings object would otherwise leak SQLite into later
+        # PostgreSQL integration audits in the same pytest process.
+        get_settings.cache_clear()
+        reset_engine_cache()
 
     assert result.exit_code == 0
     assert "db-check: ok" in result.stdout

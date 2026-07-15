@@ -1,0 +1,59 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Git / IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Reports and generated artifacts
+reports/
+artifacts/
+tmp/
+temp/
+logs/
+*.log
+
+# Large local data / databases
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.backup
+
+# Test/cache outputs
+.cache/
+dist/
+build/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter / notebooks cache
+.ipynb_checkpoints/
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Docker compose override/local files if any
+docker-compose.override.yml

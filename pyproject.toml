@@ -34,3 +34,9 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "postgres: requires a migrated PostgreSQL test database",
+    "integration: opt-in integration test",
+    "requires_postgres: requires an available PostgreSQL database",
+    "requires_network: requires public network access",
+]

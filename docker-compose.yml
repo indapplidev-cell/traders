@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_DB: traders_ml
       POSTGRES_USER: traders_ml
@@ -9,6 +10,11 @@ services:
       - "5433:5432"
     volumes:
       - traders_ml_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U traders_ml -d traders_ml"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   traders-ml:
     build: .
@@ -20,6 +26,24 @@ services:
       SERVICE_VERSION: 0.1.0
     ports:
       - "8000:8000"
+
+  market-data-sync:
+    build: .
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      python scripts/engine_market_data_continuous_sync.py
+      --symbols BTCUSDT,ETHUSDT,SOLUSDT
+      --timeframes 1m,5m,15m,1h,4h,1d
+      --warmup --continuous
+      --health-report reports/engine_market_data/continuous_sync/latest_health.json
+      --health-report-interval-seconds 60
+    environment:
+      DATABASE_URL: postgresql+psycopg://traders_ml:traders_ml@postgres:5432/traders_ml
+    volumes:
+      - ./reports:/service/reports
 
 volumes:
   traders_ml_postgres_data:

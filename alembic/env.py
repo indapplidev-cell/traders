@@ -12,6 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.config.settings import get_settings
 from app.db.base import Base
 import app.db.models  # noqa: F401
+import app.engine_market_data.db.candle_tables  # noqa: F401
+import app.engine_market_data.continuous_sync_state  # noqa: F401
 
 config = context.config
 
