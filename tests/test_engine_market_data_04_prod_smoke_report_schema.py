@@ -1,4 +1,4 @@
-from validation.engine_market_data_04_prod_smoke import safety_counters, validate_trace_schema
+from app.engine_market_data.prod_smoke import safety_counters, validate_trace_schema
 
 
 def test_prod_smoke_trace_schema_accepts_complete_failure_report():

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from validation.engine_market_data_04_prod_smoke import ProdSmokeRunner
+from app.engine_market_data.prod_smoke import ProdSmokeRunner
 
 
 def main(argv: list[str] | None = None) -> int:

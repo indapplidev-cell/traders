@@ -16,17 +16,6 @@ services:
       timeout: 5s
       retries: 10
 
-  traders-ml:
-    build: .
-    depends_on:
-      - postgres
-    environment:
-      DATABASE_URL: postgresql+psycopg://traders_ml:traders_ml@postgres:5432/traders_ml
-      SERVICE_NAME: traders-ml
-      SERVICE_VERSION: 0.1.0
-    ports:
-      - "8000:8000"
-
   market-data-sync:
     build: .
     restart: always
@@ -39,6 +28,30 @@ services:
       --timeframes 1m,5m,15m,1h,4h,1d
       --warmup --continuous
       --health-report reports/engine_market_data/continuous_sync/latest_health.json
+      --health-report-interval-seconds 60
+    environment:
+      DATABASE_URL: postgresql+psycopg://traders_ml:traders_ml@postgres:5432/traders_ml
+    volumes:
+      - ./reports:/service/reports
+
+  online-orchestrator:
+    build: .
+    profiles: ["orchestrator"]
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      market-data-sync:
+        condition: service_started
+    command: >
+      python scripts/engine_orchestrator_online_pipeline.py
+      --symbols BTCUSDT,ETHUSDT,SOLUSDT
+      --primary-timeframe 15m
+      --required-timeframes 1m,5m,15m,1h,4h,1d
+      --continuous
+      --poll-interval-seconds 10
+      --max-catchup-windows 4
+      --health-report reports/engine_orchestrator/latest_health.json
       --health-report-interval-seconds 60
     environment:
       DATABASE_URL: postgresql+psycopg://traders_ml:traders_ml@postgres:5432/traders_ml

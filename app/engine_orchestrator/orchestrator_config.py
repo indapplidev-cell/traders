@@ -1,0 +1,53 @@
+"""Validated runtime configuration for the online orchestrator."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from app.engine_market_data.market_symbol import normalize_market_symbol
+from app.engine_market_data.timeframe import timeframe_to_milliseconds
+
+
+DEFAULT_MINIMUM_WINDOWS = {"1m": 240, "5m": 288, "15m": 480, "1h": 240, "4h": 180, "1d": 240}
+
+
+@dataclass(frozen=True, slots=True)
+class OrchestratorConfig:
+    symbols: tuple[str, ...] = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+    primary_timeframe: str = "15m"
+    required_timeframes: tuple[str, ...] = ("1m", "5m", "15m", "1h", "4h", "1d")
+    minimum_windows: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_MINIMUM_WINDOWS))
+    poll_interval_seconds: float = 10.0
+    health_report_interval_seconds: float = 60.0
+    health_report_path: Path = Path("reports/engine_orchestrator/latest_health.json")
+    max_catchup_windows: int = 4
+    process_latest_only: bool = False
+    require_all_timeframes_ok: bool = True
+    allow_stale_higher_timeframes: bool = False
+    trigger_source: str = "postgres_closed_candle"
+    initial_backoff_seconds: float = 2.0
+    max_backoff_seconds: float = 60.0
+
+    def __post_init__(self) -> None:
+        symbols = tuple(dict.fromkeys(normalize_market_symbol(value) for value in self.symbols))
+        timeframes = tuple(dict.fromkeys(self.required_timeframes))
+        if not symbols:
+            raise ValueError("at least one symbol is required")
+        if self.primary_timeframe != "15m":
+            raise ValueError("ENGINE-ORCHESTRATOR-01 triggers only on 15m windows")
+        if self.primary_timeframe not in timeframes:
+            raise ValueError("primary_timeframe must be required")
+        for timeframe in timeframes:
+            timeframe_to_milliseconds(timeframe)
+            if int(self.minimum_windows.get(timeframe, 0)) <= 0:
+                raise ValueError(f"positive minimum window required for {timeframe}")
+        if self.poll_interval_seconds <= 0 or self.health_report_interval_seconds <= 0:
+            raise ValueError("intervals must be positive")
+        if self.max_catchup_windows <= 0:
+            raise ValueError("max_catchup_windows must be positive")
+        if self.initial_backoff_seconds <= 0 or self.max_backoff_seconds < self.initial_backoff_seconds:
+            raise ValueError("invalid backoff bounds")
+        object.__setattr__(self, "symbols", symbols)
+        object.__setattr__(self, "required_timeframes", timeframes)
+        object.__setattr__(self, "health_report_path", Path(self.health_report_path))

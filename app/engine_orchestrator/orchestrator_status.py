@@ -1,0 +1,37 @@
+"""Closed operational vocabularies for ENGINE-ORCHESTRATOR-01."""
+
+from enum import StrEnum
+
+
+class PipelineStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    SKIPPED_DUPLICATE_WINDOW = "SKIPPED_DUPLICATE_WINDOW"
+    SKIPPED_FRESHNESS_NOT_OK = "SKIPPED_FRESHNESS_NOT_OK"
+    SKIPPED_NOT_ENOUGH_DATA = "SKIPPED_NOT_ENOUGH_DATA"
+    MODULE_ERROR = "MODULE_ERROR"
+    ERROR = "ERROR"
+
+
+class FinalResult(StrEnum):
+    PAPER_PLAN_READY = "PAPER_PLAN_READY"
+    NO_PLAN = "NO_PLAN"
+    WAIT = "WAIT"
+    REJECT = "REJECT"
+    NO_DECISION = "NO_DECISION"
+    NO_SETUP = "NO_SETUP"
+    NO_ACTION = "NO_ACTION"
+    ERROR = "ERROR"
+
+
+class OrchestratorHealthStatus(StrEnum):
+    OK = "OK"
+    WAITING_FOR_FRESH_DATA = "WAITING_FOR_FRESH_DATA"
+    DEGRADED = "DEGRADED"
+    ERROR = "ERROR"
+    STOPPED = "STOPPED"
+
+
+ALLOWED_PIPELINE_STATUSES = tuple(item.value for item in PipelineStatus)
+ALLOWED_FINAL_RESULTS = tuple(item.value for item in FinalResult)

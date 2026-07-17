@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from validation.engine_market_data_04_prod_smoke import ProdSmokeRunner
+from app.engine_market_data.prod_smoke import ProdSmokeRunner
 
 
 @pytest.mark.integration

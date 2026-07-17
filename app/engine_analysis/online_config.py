@@ -1,0 +1,29 @@
+"""Configuration for running engine_analysis on live closed-candle windows."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from app.engine_analysis.analysis_contract import RECOMMENDED_CONTEXT_CANDLES
+
+
+@dataclass(slots=True)
+class OnlineAnalysisConfig:
+    symbols: list[str] = field(default_factory=list)
+    timeframes: list[str] = field(default_factory=list)
+    required_history_candles: int = RECOMMENDED_CONTEXT_CANDLES
+    max_snapshot_age_ms: int = 300_000
+    run_on_closed_candle_only: bool = True
+    allow_degraded_market_data: bool = False
+    dedupe_by_closed_until: bool = True
+    store_snapshots: bool = True
+
+    def __post_init__(self) -> None:
+        if self.required_history_candles < 1:
+            raise ValueError("required_history_candles must be positive")
+        if self.max_snapshot_age_ms < 0:
+            raise ValueError("max_snapshot_age_ms must be non-negative")
+        self.symbols = [str(symbol).strip().upper() for symbol in self.symbols]
+        self.timeframes = [str(timeframe).strip() for timeframe in self.timeframes]
+        if any(not value for value in (*self.symbols, *self.timeframes)):
+            raise ValueError("symbols and timeframes must not contain empty values")

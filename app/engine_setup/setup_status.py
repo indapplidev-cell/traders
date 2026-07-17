@@ -1,0 +1,35 @@
+"""Stable setup-layer status vocabularies."""
+
+from enum import StrEnum
+
+
+class SetupStatus(StrEnum):
+    SETUP_CANDIDATE = "SETUP_CANDIDATE"
+    NO_SETUP = "NO_SETUP"
+    WAIT_FOR_CONFIRMATION = "WAIT_FOR_CONFIRMATION"
+    SETUP_INVALID = "SETUP_INVALID"
+    ERROR = "ERROR"
+
+
+class ConfirmationState(StrEnum):
+    CONFIRMED_BY_ANALYSIS = "CONFIRMED_BY_ANALYSIS"
+    AWAITING_CONFIRMATION = "AWAITING_CONFIRMATION"
+    REJECTED_BY_ANALYSIS = "REJECTED_BY_ANALYSIS"
+    INVALIDATED_BY_CONTEXT = "INVALIDATED_BY_CONTEXT"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+
+
+class SetupQuality(StrEnum):
+    GOOD = "GOOD"
+    ACCEPTABLE = "ACCEPTABLE"
+    WEAK = "WEAK"
+    POOR = "POOR"
+    INVALID = "INVALID"
+    UNKNOWN = "UNKNOWN"
+
+
+class DirectionHint(StrEnum):
+    BULLISH = "BULLISH"
+    BEARISH = "BEARISH"
+    NEUTRAL = "NEUTRAL"
+    NONE = "NONE"

@@ -5,20 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "traders-ml"
 version = "0.2.0"
-description = "Independent ML service for traders project."
+description = "Modular trading engine platform with PostgreSQL-backed orchestration."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.13.0",
-    "fastapi>=0.111.0",
     "httpx>=0.27.0",
     "psycopg[binary]>=3.1.0",
     "pydantic>=2.7.0",
     "sqlalchemy>=2.0.0",
-    "torch>=2.3.0",
-    "typer>=0.12.0",
-    "uvicorn>=0.30.0",
-    "numpy>=2.0.0",
 ]
 
 [project.optional-dependencies]

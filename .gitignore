@@ -7,12 +7,15 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage/
 htmlcov/
 
 # Environments
 .venv/
 venv/
 .env
+.env.*
+!.env.example
 
 # Build
 build/
@@ -21,29 +24,19 @@ dist/
 *.zip
 
 # Runtime artifacts
-artifacts/models/
-reports/replay_*.md
-reports/feature_regime_experiments/
-reports/label_grid_experiments/
+artifacts/
+reports/
+research_outputs/
+replay_outputs/
+validation_outputs/
+scan_outputs/
+*.log
+*.tmp
+*.bak
+*.sql
+*.dump
 
 # OS / IDE
 .DS_Store
 .idea/
 .vscode/
-
-# Local cleaner / packer runtime outputs
-reports/cleaner_logs/
-reports/project_archives/
-
-# Manual local runtime sequence logs
-reports/manual_sequence_runs/
-
-# Local planning backups / temporary planning artifacts
-planning/tmp/
-planning/backup/
-planning/snapshots/
-planning/**/*.zip
-
-# Keep planning/*.md visible to git.
-# Books are local reference materials; keep them out of git unless explicitly approved.
-planning/books/*.pdf

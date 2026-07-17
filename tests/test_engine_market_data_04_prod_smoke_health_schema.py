@@ -1,4 +1,4 @@
-from validation.engine_market_data_04_prod_smoke import ProdSmokeRunner, validate_health_payload
+from app.engine_market_data.prod_smoke import ProdSmokeRunner, validate_health_payload
 
 
 def test_health_schema_requires_operational_snapshot_and_outcome_context():

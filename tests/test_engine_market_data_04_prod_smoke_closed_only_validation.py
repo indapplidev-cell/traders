@@ -1,4 +1,4 @@
-from validation.engine_market_data_04_prod_smoke import validate_closed_only_rows
+from app.engine_market_data.prod_smoke import validate_closed_only_rows
 
 
 def candle(**overrides):
