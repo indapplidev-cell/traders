@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -46,6 +47,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stop-after-cycles", type=int)
     parser.add_argument("--require-all-timeframes-ok", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--allow-stale-higher-timeframes", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument(
+        "--freshness-retry-interval-seconds", type=float,
+        default=float(os.getenv("ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS", "5")),
+    )
+    parser.add_argument(
+        "--freshness-grace-seconds", type=float,
+        default=float(os.getenv("ORCHESTRATOR_FRESHNESS_GRACE_SECONDS", "180")),
+    )
+    parser.add_argument(
+        "--freshness-max-attempts", type=int,
+        default=int(os.getenv("ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS", "60")),
+    )
+    parser.add_argument(
+        "--waiting-batch-size", type=int,
+        default=int(os.getenv("ORCHESTRATOR_WAITING_BATCH_SIZE", "100")),
+    )
     return parser
 
 
@@ -61,6 +78,10 @@ def main(argv: list[str] | None = None) -> int:
         process_latest_only=args.process_latest_only,
         require_all_timeframes_ok=args.require_all_timeframes_ok,
         allow_stale_higher_timeframes=args.allow_stale_higher_timeframes,
+        freshness_retry_interval_seconds=args.freshness_retry_interval_seconds,
+        freshness_grace_seconds=args.freshness_grace_seconds,
+        freshness_max_attempts=args.freshness_max_attempts,
+        waiting_batch_size=args.waiting_batch_size,
     )
     sessions = create_market_data_session_factory()
     candle_repository = CandleRepository(sessions)
@@ -81,8 +102,20 @@ def main(argv: list[str] | None = None) -> int:
         continuous=bool(args.continuous), dry_run=bool(args.dry_run),
         stop_after_cycles=args.stop_after_cycles,
     )
-    print(json.dumps({"daemon_instance_id": daemon.daemon_instance_id,
-                      "cycles": daemon.state.cycles, "observations": observations}, indent=2))
+    print(json.dumps({
+        "daemon_instance_id": daemon.daemon_instance_id,
+        "effective_config": {
+            "symbols": list(config.symbols),
+            "primary_timeframe": config.primary_timeframe,
+            "required_timeframes": list(config.required_timeframes),
+            "freshness_retry_interval_seconds": config.freshness_retry_interval_seconds,
+            "freshness_grace_seconds": config.freshness_grace_seconds,
+            "freshness_max_attempts": config.freshness_max_attempts,
+            "waiting_batch_size": config.waiting_batch_size,
+        },
+        "cycles": daemon.state.cycles,
+        "observations": observations,
+    }, indent=2))
     return 0
 
 

@@ -8,11 +8,21 @@ from tests.engine_orchestrator_01_helpers import BOUNDARY, config
 class Detector:
     def get_unprocessed_closed_windows(self, symbol): return [SimpleNamespace(timeframe="15m", closed_until_ms=BOUNDARY)]
 class Gate:
-    def check(self, symbol, boundary): return SimpleNamespace(allowed=True, status="OK", reasons=(), timeframe_statuses={})
+    def check(self, symbol, boundary, **kwargs):
+        return SimpleNamespace(
+            allowed=True, status="READY", classification="READY", reasons=(),
+            timeframe_statuses={}, missing_timeframes=(), payload=lambda: {},
+        )
 class Runner:
     def run(self, symbol, boundary): return PipelineResult(symbol, "15m", boundary)
 class Store:
+    def claim_due_waiting(self, **kwargs): return []
     def reserve(self, *args, **kwargs): return "run"
+    def get_claim(self, run_id):
+        from datetime import datetime, timezone
+        from app.engine_orchestrator.pipeline_result_store import ClaimedWindow
+        return ClaimedWindow(run_id, "BTCUSDT", "15m", BOUNDARY, datetime.now(timezone.utc), 0, False)
+    def mark_running(self, *args, **kwargs): return True
     def finish(self, *args, **kwargs): pass
 
 

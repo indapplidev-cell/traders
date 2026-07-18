@@ -1,27 +1,40 @@
-"""Polling daemon for new closed 15-minute PostgreSQL windows."""
+"""Polling daemon for new and durable waiting 15-minute windows."""
 
 from __future__ import annotations
 
+import json
+import logging
 import random
 import signal
 import time
 from dataclasses import asdict
+from datetime import datetime, timedelta, timezone
 from threading import Event
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
+from app.engine_orchestrator.freshness_gate import FreshnessClassification
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.orchestrator_health import OrchestratorHealthReporter
 from app.engine_orchestrator.orchestrator_state import OrchestratorState
 from app.engine_orchestrator.orchestrator_status import FinalResult, OrchestratorHealthStatus, PipelineStatus
-from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters
+from app.engine_orchestrator.pipeline_result import PipelineResult
+from app.engine_orchestrator.pipeline_result_store import ClaimedWindow, aware_utc, utc_from_ms
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class OrchestratorDaemon:
     def __init__(self, config: OrchestratorConfig, detector: object, freshness_gate: object,
                  pipeline_runner: object, result_store: object, *,
                  daemon_instance_id: str | None = None,
-                 health_reporter: OrchestratorHealthReporter | None = None) -> None:
+                 health_reporter: OrchestratorHealthReporter | None = None,
+                 clock: Callable[[], datetime] = utc_now) -> None:
         self.config = config
         self.detector = detector
         self.freshness_gate = freshness_gate
@@ -29,10 +42,25 @@ class OrchestratorDaemon:
         self.result_store = result_store
         self.daemon_instance_id = daemon_instance_id or f"orchestrator-{uuid4().hex[:12]}"
         self.health_reporter = health_reporter or OrchestratorHealthReporter(config.health_report_path)
+        self.clock = clock
         self.state = OrchestratorState()
         self._stop = Event()
         self._last_health_monotonic = 0.0
         self._hydrate_persisted_health()
+
+    def _now(self) -> datetime:
+        return aware_utc(self.clock())
+
+    @staticmethod
+    def _iso(value: datetime | None) -> str | None:
+        return value.isoformat().replace("+00:00", "Z") if value else None
+
+    def _event(self, event: str, **values: object) -> None:
+        LOGGER.info(json.dumps({
+            "event": event,
+            "daemon_instance_id": self.daemon_instance_id,
+            **values,
+        }, sort_keys=True, default=str))
 
     def _hydrate_persisted_health(self) -> None:
         latest = getattr(self.result_store, "get_latest", None)
@@ -50,6 +78,17 @@ class OrchestratorDaemon:
         totals = getattr(self.result_store, "safety_totals", None)
         if callable(totals):
             self.state.safety_totals.update(totals())
+        self._refresh_waiting_metrics()
+
+    def _refresh_waiting_metrics(self) -> None:
+        metrics = getattr(self.result_store, "waiting_metrics", None)
+        if not callable(metrics):
+            return
+        values = metrics(now=self._now())
+        for name, value in values.items():
+            if isinstance(value, datetime):
+                value = self._iso(value)
+            setattr(self.state, name, value)
 
     def request_stop(self, *_: object) -> None:
         self._stop.set()
@@ -80,6 +119,7 @@ class OrchestratorDaemon:
         now = time.monotonic()
         if not force and now - self._last_health_monotonic < self.config.health_report_interval_seconds:
             return
+        self._refresh_waiting_metrics()
         payload = self.health_reporter.build(
             daemon_instance_id=self.daemon_instance_id, symbols=self.config.symbols,
             primary_timeframe=self.config.primary_timeframe, state=self.state,
@@ -88,8 +128,104 @@ class OrchestratorDaemon:
         self.health_reporter.write(payload)
         self._last_health_monotonic = now
 
+    def _timeout_result(self, claim: ClaimedWindow, reason: str) -> PipelineResult:
+        return PipelineResult(
+            symbol=claim.symbol, primary_timeframe=claim.primary_timeframe,
+            closed_until_ms=claim.closed_until_ms,
+            status=PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value,
+            final_result=FinalResult.NO_ACTION.value, final_reason=reason,
+        )
+
+    def _process_claim(self, claim: ClaimedWindow) -> dict[str, Any]:
+        now = self._now()
+        freshness = self.freshness_gate.check(
+            claim.symbol, claim.closed_until_ms,
+            deadline_at=claim.freshness_deadline_at, now=now,
+        )
+        observation = {
+            "run_id": claim.run_id, "symbol": claim.symbol,
+            "timeframe": claim.primary_timeframe,
+            "closed_until_ms": claim.closed_until_ms,
+            "freshness_status": freshness.status,
+            "freshness_classification": freshness.classification,
+            "freshness_reasons": list(freshness.reasons),
+        }
+        payload = freshness.payload()
+        next_attempt = claim.freshness_attempt_count + 1
+
+        if freshness.classification == FreshnessClassification.TRANSIENT_NOT_READY.value:
+            next_retry = min(
+                now + timedelta(seconds=self.config.freshness_retry_interval_seconds),
+                claim.freshness_deadline_at,
+            )
+            if next_attempt >= self.config.freshness_max_attempts:
+                next_retry = claim.freshness_deadline_at
+            changed = self.result_store.mark_waiting(
+                claim, daemon_instance_id=self.daemon_instance_id,
+                checked_at=now, next_retry_at=next_retry,
+                reason_code=freshness.reason_code or "WAITING_FOR_REQUIRED_BOUNDARY",
+                missing_timeframes=freshness.missing_timeframes, payload=payload,
+            )
+            if changed:
+                event = "FRESHNESS_RETRY_SCHEDULED" if claim.was_waiting else "FRESHNESS_WAIT_STARTED"
+                self._event(event, run_id=claim.run_id, symbol=claim.symbol,
+                            closed_until_ms=claim.closed_until_ms,
+                            next_retry_at=self._iso(next_retry), reason_code=freshness.reason_code)
+            observation.update({
+                "pipeline_status": PipelineStatus.WAITING_FOR_REQUIRED_BOUNDARY.value,
+                "next_retry_at": self._iso(next_retry),
+            })
+            return observation
+
+        if freshness.classification == FreshnessClassification.TERMINAL_NOT_READY.value:
+            timeout = freshness.reason_code == "FRESHNESS_TIMEOUT"
+            status = (PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value if timeout
+                      else PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value)
+            changed = self.result_store.mark_terminal_freshness(
+                claim, daemon_instance_id=self.daemon_instance_id, checked_at=now,
+                status=status, reason_code=freshness.reason_code or freshness.status,
+                missing_timeframes=freshness.missing_timeframes, payload=payload,
+            )
+            result = self._timeout_result(claim, freshness.reason_code or freshness.status)
+            result.status = status
+            if changed:
+                self._record(result)
+                self._event("FRESHNESS_TIMEOUT" if timeout else "FRESHNESS_TERMINAL_SKIP",
+                            run_id=claim.run_id, symbol=claim.symbol,
+                            closed_until_ms=claim.closed_until_ms,
+                            reason_code=freshness.reason_code)
+            observation.update({"pipeline_status": status, "final_result": result.final_result})
+            return observation
+
+        if not self.result_store.mark_running(
+                claim, daemon_instance_id=self.daemon_instance_id,
+                checked_at=now, payload=payload):
+            observation["pipeline_status"] = PipelineStatus.SKIPPED_DUPLICATE_WINDOW.value
+            return observation
+        if claim.was_waiting:
+            self._event("FRESHNESS_RECOVERED", run_id=claim.run_id, symbol=claim.symbol,
+                        closed_until_ms=claim.closed_until_ms, attempts=next_attempt)
+        result = self.pipeline_runner.run(claim.symbol, claim.closed_until_ms)
+        persisted = self.result_store.finish(claim.run_id, result, freshness_status="READY")
+        if persisted:
+            self._record(result)
+        observation.update({"pipeline_status": result.status, "final_result": result.final_result})
+        return observation
+
     def run_cycle(self, *, dry_run: bool = False) -> list[dict[str, Any]]:
         observations: list[dict[str, Any]] = []
+        if not dry_run:
+            due = self.result_store.claim_due_waiting(
+                daemon_instance_id=self.daemon_instance_id,
+                limit=self.config.waiting_batch_size, now=self._now(),
+            )
+            for claim in due:
+                if self._stop.is_set():
+                    break
+                self._event("FRESHNESS_RETRY_CLAIMED", run_id=claim.run_id,
+                            symbol=claim.symbol, closed_until_ms=claim.closed_until_ms)
+                observations.append(self._process_claim(claim))
+
         for symbol in self.config.symbols:
             if self._stop.is_set():
                 break
@@ -98,42 +234,32 @@ class OrchestratorDaemon:
             for window in windows:
                 if self._stop.is_set():
                     break
-                freshness = self.freshness_gate.check(symbol, window.closed_until_ms)
-                observation = {
-                    "symbol": symbol, "timeframe": window.timeframe,
-                    "closed_until_ms": window.closed_until_ms,
-                    "freshness_status": freshness.status,
-                    "freshness_reasons": list(freshness.reasons),
-                }
                 if dry_run:
-                    observation["dry_run"] = True
-                    observations.append(observation)
+                    freshness = self.freshness_gate.check(symbol, window.closed_until_ms)
+                    observations.append({
+                        "symbol": symbol, "timeframe": window.timeframe,
+                        "closed_until_ms": window.closed_until_ms,
+                        "freshness_status": freshness.status,
+                        "freshness_reasons": list(freshness.reasons), "dry_run": True,
+                    })
                     continue
+                deadline = utc_from_ms(window.closed_until_ms) + timedelta(
+                    seconds=self.config.freshness_grace_seconds)
                 run_id = self.result_store.reserve(
                     symbol, window.timeframe, window.closed_until_ms,
                     daemon_instance_id=self.daemon_instance_id,
                     trigger_source=self.config.trigger_source,
+                    freshness_deadline_at=deadline,
                 )
                 if run_id is None:
                     self.state.duplicate_windows += 1
-                    observation["pipeline_status"] = PipelineStatus.SKIPPED_DUPLICATE_WINDOW.value
-                    observations.append(observation)
+                    observations.append({
+                        "symbol": symbol, "timeframe": window.timeframe,
+                        "closed_until_ms": window.closed_until_ms,
+                        "pipeline_status": PipelineStatus.SKIPPED_DUPLICATE_WINDOW.value,
+                    })
                     continue
-                if not freshness.allowed:
-                    result = PipelineResult(
-                        symbol=symbol, primary_timeframe=window.timeframe,
-                        closed_until_ms=window.closed_until_ms,
-                        status=PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value,
-                        final_result=FinalResult.NO_ACTION.value,
-                        final_reason=";".join(freshness.reasons),
-                        market_data_payload={"freshness": freshness.timeframe_statuses},
-                    )
-                else:
-                    result = self.pipeline_runner.run(symbol, window.closed_until_ms)
-                self.result_store.finish(run_id, result, freshness_status=freshness.status)
-                self._record(result)
-                observation.update({"pipeline_status": result.status, "final_result": result.final_result})
-                observations.append(observation)
+                observations.append(self._process_claim(self.result_store.get_claim(run_id)))
         self.state.cycles += 1
         self._write_health()
         return observations

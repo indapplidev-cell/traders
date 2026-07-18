@@ -28,6 +28,10 @@ class OrchestratorConfig:
     trigger_source: str = "postgres_closed_candle"
     initial_backoff_seconds: float = 2.0
     max_backoff_seconds: float = 60.0
+    freshness_retry_interval_seconds: float = 5.0
+    freshness_grace_seconds: float = 180.0
+    freshness_max_attempts: int = 60
+    waiting_batch_size: int = 100
 
     def __post_init__(self) -> None:
         symbols = tuple(dict.fromkeys(normalize_market_symbol(value) for value in self.symbols))
@@ -48,6 +52,14 @@ class OrchestratorConfig:
             raise ValueError("max_catchup_windows must be positive")
         if self.initial_backoff_seconds <= 0 or self.max_backoff_seconds < self.initial_backoff_seconds:
             raise ValueError("invalid backoff bounds")
+        if self.freshness_retry_interval_seconds <= 0:
+            raise ValueError("freshness_retry_interval_seconds must be positive")
+        if self.freshness_grace_seconds <= 0:
+            raise ValueError("freshness_grace_seconds must be positive")
+        if self.freshness_max_attempts <= 0:
+            raise ValueError("freshness_max_attempts must be positive")
+        if self.waiting_batch_size <= 0:
+            raise ValueError("waiting_batch_size must be positive")
         object.__setattr__(self, "symbols", symbols)
         object.__setattr__(self, "required_timeframes", timeframes)
         object.__setattr__(self, "health_report_path", Path(self.health_report_path))

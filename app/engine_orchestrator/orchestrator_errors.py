@@ -12,5 +12,9 @@ class SnapshotNotEnoughDataError(OrchestratorError):
         super().__init__(f"not enough closed candles: available={counts}, required={required}")
 
 
+class SnapshotContractViolationError(OrchestratorError):
+    """The freshly loaded DB snapshot violates a causal boundary invariant."""
+
+
 class SafetyViolationError(OrchestratorError):
     pass

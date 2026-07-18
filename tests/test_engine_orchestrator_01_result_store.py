@@ -13,6 +13,9 @@ def test_store_finishes_run_and_payload():
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     store = PipelineResultStore(sessions)
     run_id = store.reserve("BTCUSDT", "15m", 900000, daemon_instance_id="test", trigger_source="test")
+    claim = store.get_claim(run_id)
+    from datetime import datetime, timezone
+    store.mark_running(claim, daemon_instance_id="test", checked_at=datetime.now(timezone.utc), payload={})
     store.finish(run_id, PipelineResult("BTCUSDT", "15m", 900000), freshness_status="OK")
     with sessions() as session:
         assert session.scalar(select(OnlinePipelineRun)).status == "COMPLETED"

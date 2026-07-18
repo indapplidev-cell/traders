@@ -31,7 +31,7 @@ docker compose up -d postgres market-data-sync
 ```
 
 The persistent PostgreSQL volume is `traders_ml_postgres_data`. The Alembic
-history is a single compatibility chain from `0001` through `0007`. Inspect it
+history is a single compatibility chain from `0001` through `0008`. Inspect it
 with:
 
 ```bash

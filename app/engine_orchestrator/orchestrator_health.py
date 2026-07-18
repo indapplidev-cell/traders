@@ -54,6 +54,16 @@ class OrchestratorHealthReporter:
             "last_processed": last,
             "safety": safety,
             "last_error": getattr(state, "last_error", None),
+            "waiting_windows": getattr(state, "waiting_windows", 0),
+            "waiting_by_timeframe": dict(getattr(state, "waiting_by_timeframe", {})),
+            "waiting_by_symbol": dict(getattr(state, "waiting_by_symbol", {})),
+            "oldest_wait_age_seconds": getattr(state, "oldest_wait_age_seconds", 0),
+            "next_retry_at": getattr(state, "next_retry_at", None),
+            "freshness_retry_attempts_total": getattr(state, "freshness_retry_attempts_total", 0),
+            "freshness_recovered_total": getattr(state, "freshness_recovered_total", 0),
+            "freshness_timeouts_total": getattr(state, "freshness_timeouts_total", 0),
+            "last_freshness_recovery_at": getattr(state, "last_freshness_recovery_at", None),
+            "last_freshness_timeout_at": getattr(state, "last_freshness_timeout_at", None),
         }
 
     def write(self, payload: dict[str, Any]) -> None:

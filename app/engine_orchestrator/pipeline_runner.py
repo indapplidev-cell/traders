@@ -14,7 +14,7 @@ from app.engine_market_data.gap_detector import find_missing_open_times
 from app.engine_market_data.market_data_snapshot import MarketDataSnapshot
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
-from app.engine_orchestrator.orchestrator_errors import SnapshotNotEnoughDataError
+from app.engine_orchestrator.orchestrator_errors import SnapshotContractViolationError, SnapshotNotEnoughDataError
 from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters, json_safe
 from app.engine_paper.paper_runner import PaperRunner
@@ -98,6 +98,19 @@ class PipelineRunner:
             )
             counts[timeframe] = len(candles)
             has_gaps = bool(find_missing_open_times(candles, timeframe))
+            if candles and any(
+                not bool(getattr(candle, "is_closed", False))
+                or int(candle.open_time_ms) > last_open_time
+                or int(candle.close_time_ms) >= context_boundary
+                for candle in candles
+            ):
+                raise SnapshotContractViolationError(
+                    f"{timeframe}:FUTURE_OR_UNCLOSED_DATA")
+            if len(candles) >= required and (
+                int(candles[-1].open_time_ms) != last_open_time or has_gaps
+            ):
+                raise SnapshotContractViolationError(
+                    f"{timeframe}:SNAPSHOT_CONTRACT_VIOLATION")
             sources = sorted({candle.source for candle in candles})
             snapshots[timeframe] = MarketDataSnapshot(
                 symbol=symbol.upper(), timeframe=timeframe,
@@ -169,6 +182,14 @@ class PipelineRunner:
     def run(self, symbol: str, closed_until_ms: int) -> PipelineResult:
         try:
             snapshots = self.build_snapshots(symbol, closed_until_ms)
+        except SnapshotContractViolationError as exc:
+            return PipelineResult(
+                symbol=symbol.upper(), primary_timeframe=self.config.primary_timeframe,
+                closed_until_ms=closed_until_ms,
+                status=PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value,
+                final_result=FinalResult.NO_ACTION.value,
+                final_reason=str(exc), error_code="SNAPSHOT_CONTRACT_VIOLATION",
+            )
         except SnapshotNotEnoughDataError as exc:
             return PipelineResult(
                 symbol=symbol.upper(), primary_timeframe=self.config.primary_timeframe,
