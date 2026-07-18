@@ -46,6 +46,38 @@ ARTIFACT_NAMES = (
     "ENGINE_MARKET_DATA_04_PROD_SMOKE_ARTIFACT_MANIFEST.json",
 )
 
+REPOSITORY_ROOT_MARKERS = (
+    "pyproject.toml",
+    "docker-compose.yml",
+    "alembic.ini",
+    "alembic",
+    "scripts",
+)
+
+
+def validate_repository_root(candidate: Path) -> Path:
+    """Return a resolved repository root or fail with all missing markers."""
+    root = candidate.resolve()
+    missing = [marker for marker in REPOSITORY_ROOT_MARKERS if not (root / marker).exists()]
+    if missing:
+        raise RuntimeError(
+            f"Invalid repository root {root!s}; missing required markers: {', '.join(missing)}"
+        )
+    return root
+
+
+def find_repository_root(start: Path) -> Path:
+    """Find the repository root from a file or directory, independent of cwd."""
+    current = start.resolve()
+    if current.is_file():
+        current = current.parent
+    for candidate in (current, *current.parents):
+        try:
+            return validate_repository_root(candidate)
+        except RuntimeError:
+            continue
+    raise RuntimeError(f"Repository root could not be determined from {start!s}")
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -184,8 +216,13 @@ class ProdSmokeRunner:
     def __init__(self, output_dir: Path, *, database_url: str | None = None,
                  restart_wait_seconds: int = 130,
                  preflight_symbol: str = "BTCUSDT",
-                 preflight_timeframe: str = "15m") -> None:
-        self.root = Path(__file__).resolve().parents[1]
+                 preflight_timeframe: str = "15m",
+                 repository_root: Path | None = None) -> None:
+        self.root = (
+            validate_repository_root(repository_root)
+            if repository_root is not None
+            else find_repository_root(Path(__file__))
+        )
         self.output_dir = output_dir
         self.database_url = database_url or get_settings().database_url
         self.restart_wait_seconds = restart_wait_seconds
@@ -284,14 +321,21 @@ class ProdSmokeRunner:
         heads = self._run([python, "-m", "alembic", "heads"])
         upgrade = self._run([python, "-m", "alembic", "upgrade", "head"])
         after = self._run([python, "-m", "alembic", "current"])
+        head_revision = heads["stdout"].strip().split(maxsplit=1)[0]
+        current_revision = after["stdout"].strip().split(maxsplit=1)[0]
+        migration_applied = bool(
+            upgrade["exit_code"] == 0
+            and head_revision
+            and current_revision == head_revision
+        )
         result: dict[str, Any] = {
             "alembic_before": before["stdout"].strip(), "alembic_heads": heads["stdout"].strip(),
             "alembic_after": after["stdout"].strip(), "upgrade_exit_code": upgrade["exit_code"],
-            "migration_applied": upgrade["exit_code"] == 0 and "0006_engine_market_data_sync_state" in after["stdout"],
+            "migration_applied": migration_applied,
             "upgrade_error": upgrade["stderr"].strip() or None,
             "failure_stage": None if upgrade["exit_code"] == 0 else "ALEMBIC_UPGRADE",
-            "target_revision": "0006_engine_market_data_sync_state",
-            "target_revision_length": len("0006_engine_market_data_sync_state"),
+            "target_revision": head_revision,
+            "target_revision_length": len(head_revision),
         }
         if self.engine is not None and "alembic_version" in inspect(self.engine).get_table_names():
             version_column = next(
