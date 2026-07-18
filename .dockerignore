@@ -34,8 +34,17 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+*.sql
 *.dump
 *.backup
+*.zip
+*.tar
+*.gz
+recovery*
+audit*
+postgres*
+pgdata*
+D:\DockerDesktop
 
 # Test/cache outputs
 .cache/
