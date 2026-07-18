@@ -6,7 +6,9 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.pyright/
 .coverage
+.coverage.*
 coverage/
 htmlcov/
 
@@ -35,6 +37,7 @@ scan_outputs/
 *.bak
 *.sql
 *.dump
+traders-ml-tree.md
 
 # OS / IDE
 .DS_Store

@@ -1,4 +1,0 @@
-symbol,interval,candle_count,min_open_time,max_open_time,window_count_sampled,up_candidate_count,down_candidate_count,flat_candidate_count,mixed_candidate_count,high_volatility_count,clean_directional_count,clean_range_count,median_abs_return_pct,median_range_pct,median_directional_efficiency,suitability_score,suitability_rank,selected_for_expanded_validation,selection_notes
-BTCUSDT,15m,50961,2025-01-01T00:00:00+00:00,2026-06-15T20:00:00+00:00,530,88,92,94,80,22,180,94,1.199684,3.025392,0.429538,582.5,1,True,MACRO_NOISY_BENCHMARK
-SOLUSDT,15m,50962,2025-01-01T00:00:00+00:00,2026-06-15T20:15:00+00:00,530,116,121,18,103,92,237,18,2.33582,5.573707,0.43446,538.5,2,True,MAIN_VALIDATION_CANDIDATE
-ETHUSDT,15m,50962,2025-01-01T00:00:00+00:00,2026-06-15T20:15:00+00:00,530,103,102,38,117,63,205,38,1.872148,4.744256,0.408373,528.75,3,True,SECONDARY_VALIDATION_CANDIDATE

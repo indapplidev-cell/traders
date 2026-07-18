@@ -1,2 +1,0 @@
-candidate_id,symbol,confirmation_time,entry_time,entry_age_bars,entry_price,stop_price,target_price,target_kind,stop_distance_atr,target_distance_atr,planned_rr,warnings,label,net_return_pct
-ET26-SV2-0001,ETHUSDT,2026-06-04T08:00:00Z,2026-06-04T08:15:00Z,1,1767.46,1789.330070228092,1717.28,NEAREST_STRONG_CONFIRMED_SUPPORT,1.6159591371855946,3.707753503224486,2.2944599389326306,TARGET_DISTANCE_ATR_ABOVE_3_0,SL_BEFORE_TP,-1.4773728530259178

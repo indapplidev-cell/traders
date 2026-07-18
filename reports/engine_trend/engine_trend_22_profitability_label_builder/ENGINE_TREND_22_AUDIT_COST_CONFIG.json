@@ -1,7 +1,0 @@
-{
-  "scope": "AUDIT_ONLY",
-  "source": "DETERMINISTIC_ASSUMPTION_NOT_TRADING_API",
-  "fee_bps_per_side": 10,
-  "slippage_bps_per_side": 2,
-  "round_trip_cost_bps": 24
-}
