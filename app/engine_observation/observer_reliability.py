@@ -107,6 +107,14 @@ class Collector(Protocol):
     def collect(self) -> CollectorResult: ...
 
 
+class SemanticMonitorProtocol(Protocol):
+    def start(self) -> None: ...
+    def sample(self, *, sample_sequence: int, recorded_at: datetime) -> Mapping[str, Any]: ...
+    @property
+    def health(self) -> Mapping[str, Any]: ...
+    def final_summary(self) -> Mapping[str, Any]: ...
+
+
 @dataclass(frozen=True)
 class ObserverConfig:
     soak_directory: Path
@@ -563,7 +571,7 @@ class ObserverCounters:
 
 
 class ReliableObserver:
-    def __init__(self, config: ObserverConfig, collectors: Sequence[Collector], *, clock: Clock | None = None, argv: Sequence[str] | None = None, process_inspector: ProcessInspector | None = None) -> None:
+    def __init__(self, config: ObserverConfig, collectors: Sequence[Collector], *, clock: Clock | None = None, argv: Sequence[str] | None = None, process_inspector: ProcessInspector | None = None, semantic_monitor: SemanticMonitorProtocol | None = None) -> None:
         self.config = config
         self.collectors = tuple(collectors)
         self.clock = clock or SystemClock()
@@ -594,6 +602,7 @@ class ReliableObserver:
         self._last_error_at: datetime | None = None
         self.counters = ObserverCounters()
         self._lock: InstanceLock | None = None
+        self.semantic_monitor = semantic_monitor
 
     def _load_or_create_run_id(self) -> str:
         path = self.config.soak_directory / "observer_run.json"
@@ -637,7 +646,7 @@ class ReliableObserver:
         with self._heartbeat_lock:
             if state is not None:
                 self._state = state
-            return {
+            value = {
                 "schema_version": HEARTBEAT_SCHEMA,
                 "observer_instance_id": self.instance_id,
                 "observer_run_id": self.run_id,
@@ -658,6 +667,11 @@ class ReliableObserver:
                 "last_error_at_utc": iso_utc(self._last_error_at),
                 "shutdown_requested": self._shutdown_requested,
             }
+            if self.semantic_monitor is not None:
+                value.update(self.semantic_monitor.health)
+            else:
+                value["semantic_monitoring_enabled"] = False
+            return value
 
     def _write_heartbeat(self, state: HeartbeatState | None = None) -> None:
         heartbeat = self._heartbeat(state)
@@ -684,6 +698,7 @@ class ReliableObserver:
 
     def start(self) -> None:
         self.config.soak_directory.mkdir(parents=True, exist_ok=True)
+        (self.config.soak_directory / "incident_log.jsonl").touch(exist_ok=True)
         previous_final = None
         previous_final_path = self.config.soak_directory / "observer_final_state.json"
         if previous_final_path.exists():
@@ -691,6 +706,8 @@ class ReliableObserver:
         self.run_id = self._load_or_create_run_id()
         self._lock = InstanceLock(self.config.soak_directory / "observer.lock", self._lock_metadata(), self._process_inspector)
         self._lock.acquire()
+        if self.semantic_monitor is not None:
+            self.semantic_monitor.start()
         stop_request = self.config.soak_directory / self.config.stop_request_name
         if stop_request.exists():
             stop_request.unlink()
@@ -765,6 +782,19 @@ class ReliableObserver:
                 results.append(collector.collect())
             except Exception as exc:
                 results.append(CollectorResult(collector.name, CollectorStatus.FAILED, iso_utc(self.clock.wall_utc()) or "", iso_utc(self.clock.wall_utc()) or "", 0, None, "COLLECTOR_INTERNAL_ERROR", str(redact(exc)), False))
+        if self.semantic_monitor is not None:
+            semantic_started_wall, semantic_started = self.clock.wall_utc(), self.clock.monotonic()
+            try:
+                semantic_data = dict(self.semantic_monitor.sample(sample_sequence=sequence, recorded_at=self.clock.wall_utc()))
+                semantic_status = CollectorStatus.SUCCESS if semantic_data.get("status") == "SUCCESS" else CollectorStatus.PARTIAL
+                results.append(CollectorResult("semantic_monitoring", semantic_status, iso_utc(semantic_started_wall) or "",
+                                               iso_utc(self.clock.wall_utc()) or "", int((self.clock.monotonic() - semantic_started) * 1000),
+                                               semantic_data, None if semantic_status == CollectorStatus.SUCCESS else "SEMANTIC_PARTIAL", None,
+                                               semantic_status != CollectorStatus.SUCCESS))
+            except Exception as exc:
+                results.append(CollectorResult("semantic_monitoring", CollectorStatus.FAILED, iso_utc(semantic_started_wall) or "",
+                                               iso_utc(self.clock.wall_utc()) or "", int((self.clock.monotonic() - semantic_started) * 1000),
+                                               None, "SEMANTIC_INTERNAL_ERROR", str(redact(f"{type(exc).__name__}: {exc}")), True))
         failed = [item for item in results if item.status != CollectorStatus.SUCCESS]
         if not failed:
             status = "SUCCESS"
@@ -901,6 +931,8 @@ class ReliableObserver:
                 "exit_reason": exit_reason,
                 "exit_code": exit_code,
             }
+            if self.semantic_monitor is not None:
+                summary["semantic_summary"] = dict(self.semantic_monitor.final_summary())
             self.store.write_json("observer_final_state.json", summary)
             self.store.append("observer_final_states.jsonl", summary, sample_sequence=self._sequence, scheduled_for_utc=iso_utc(self._next_sample_due), record_type="ObserverFinalState")
             self.store.write_json("observer_shutdown.json", {**summary, "shutdown_requested": self._shutdown_requested})
@@ -935,7 +967,7 @@ def audit_jsonl(directory: Path) -> dict[str, Any]:
     corrupt, records, identities = 0, 0, set()
     duplicates = 0
     files: dict[str, Any] = {}
-    for name in ArtifactStore.COMPATIBLE_JSONL:
+    for name in (*ArtifactStore.COMPATIBLE_JSONL, "semantic_snapshots.jsonl", "window_status.jsonl"):
         path = directory / name
         file_corrupt = file_records = 0
         if path.exists():
@@ -945,8 +977,8 @@ def audit_jsonl(directory: Path) -> dict[str, Any]:
                 try:
                     value = json.loads(line.decode("utf-8"))
                     file_records += 1
-                    if value.get("record_type") in {"ObserverSample", "HealthSnapshot", "ResourceAudit", "ServiceStats"}:
-                        identity = (value.get("observer_instance_id"), value.get("sample_sequence"), value.get("record_type"))
+                    if value.get("record_type") in {"ObserverSample", "HealthSnapshot", "ResourceAudit", "ServiceStats"} or value.get("schema_version") == "OBSERVER_SEMANTIC_SNAPSHOT/1.0":
+                        identity = (value.get("observer_instance_id"), value.get("sample_sequence"), value.get("record_type") or value.get("schema_version"))
                         if identity in identities:
                             duplicates += 1
                         identities.add(identity)

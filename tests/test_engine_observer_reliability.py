@@ -267,7 +267,7 @@ def test_jsonl_one_utf8_newline_terminated_object_per_line(tmp_path):
     observer.run(maximum_samples=2)
     for name in ArtifactStore.COMPATIBLE_JSONL:
         raw = (tmp_path / name).read_bytes()
-        assert raw.endswith(b"\n")
+        assert not raw or raw.endswith(b"\n")
         for line in raw.splitlines():
             value = json.loads(line.decode("utf-8"))
             assert "schema_version" in value and "observer_instance_id" in value

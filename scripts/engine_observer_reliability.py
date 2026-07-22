@@ -37,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--command-timeout-seconds", type=float, default=15.0)
     parser.add_argument("--db-timeout-seconds", type=float, default=10.0)
     parser.add_argument("--db-dsn-env", default="OBSERVER_READ_ONLY_DSN")
+    parser.add_argument("--semantic-contract", type=Path)
     parser.add_argument("--maximum-samples", type=int)
     parser.add_argument("--maximum-runtime-seconds", type=float)
     parser.add_argument("--no-docker", action="store_true")
@@ -46,7 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     soak = args.soak_directory.resolve()
     if args.request_stop:
         atomic_write_text(soak / "observer.stop.request", "CONTROLLED_STOP_REQUESTED\n")
@@ -78,7 +80,22 @@ def main(argv: list[str] | None = None) -> int:
         command_timeout_seconds=args.command_timeout_seconds,
         db_timeout_seconds=args.db_timeout_seconds,
     )
-    observer = ReliableObserver(config, collectors, argv=sys.argv)
+    semantic_monitor = None
+    if args.semantic_contract:
+        if not dsn:
+            parser.error("--semantic-contract requires the configured read-only DSN environment variable")
+        from app.engine_observation.semantic import PostgreSQLSemanticRepository, SemanticMonitor, load_semantic_contract
+        contract = load_semantic_contract(args.semantic_contract.resolve())
+        if contract.soak_directory.resolve() != soak:
+            parser.error("semantic contract SOAK_DIRECTORY must match --soak-directory")
+        repository = PostgreSQLSemanticRepository(dsn, contract, timeout_seconds=args.db_timeout_seconds)
+        # Instance identity is injected after the observer is constructed.
+        observer = ReliableObserver(config, collectors, argv=sys.argv)
+        semantic_monitor = SemanticMonitor(contract=contract, repository=repository, observer_instance_id=observer.instance_id,
+                                           artifact_directory=soak)
+        observer.semantic_monitor = semantic_monitor
+    else:
+        observer = ReliableObserver(config, collectors, argv=sys.argv)
     try:
         return observer.run(maximum_samples=args.maximum_samples, maximum_runtime_seconds=args.maximum_runtime_seconds)
     except ObserverAlreadyRunning as exc:
