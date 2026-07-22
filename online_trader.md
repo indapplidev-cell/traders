@@ -1,7 +1,7 @@
 DOCUMENT = online_trader.md
 DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 PROJECT = traders-ml
-UPDATED_AT_UTC = 2026-07-22T17:18:57Z
+UPDATED_AT_UTC = 2026-07-22T17:43:49Z
 UPDATED_BY_TASK = CONTROLLED-DEPLOYMENT-SEMANTIC-MONITORING-OBSERVER-01
 BASE_COMMIT = 74db6518d2a144fcf8814323c55e4224a71700e9
 STATUS_CONFIDENCE = ENGINEERING_ESTIMATE
@@ -78,7 +78,7 @@ coverage, количеству файлов или строк кода.
 | Docker/deployment | 90% | Production image развернут, сервисы стабильны, Git checkpoint и remote push завершены |
 | PostgreSQL/Alembic | 88% | Production DB стабильна; нормализованные trade-lifecycle tables отсутствуют |
 | Тесты и аудит | 85% | Focused tests, full suites, canary и evidence packages существуют |
-| 72h production acceptance | 45% | Первый soak выявил freshness incidents и observer gaps; повторный soak ожидает semantic observer |
+| 72h production acceptance | 45% | Первый soak выявил freshness incidents и observer gaps; повторный soak заблокирован 51 подтвержденным 1h freshness deadline skip |
 
 ## Торговый lifecycle после risk
 
