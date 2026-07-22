@@ -1,8 +1,8 @@
 DOCUMENT = online_trader.md
 DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 PROJECT = traders-ml
-UPDATED_AT_UTC = 2026-07-22T15:25:19Z
-UPDATED_BY_TASK = ONLINE-TRADER-STATUS-AND-AGENTS-SYNC-01
+UPDATED_AT_UTC = 2026-07-22T16:02:51Z
+UPDATED_BY_TASK = CONTROLLED-DEPLOYMENT-SEMANTIC-MONITORING-OBSERVER-01
 BASE_COMMIT = 74db6518d2a144fcf8814323c55e4224a71700e9
 STATUS_CONFIDENCE = ENGINEERING_ESTIMATE
 
@@ -28,9 +28,10 @@ Pipeline запускается через `engine_orchestrator`.
 Главный текущий blocker:
 
 ```text
-observer технически надежен, но пока не имеет принятого и развернутого
-semantic monitoring для runs, results, candles, freshness lifecycle
-и acceptance-impact incidents.
+semantic observer реализован и интегрирован в controlled deployment branch,
+но production deployment и отдельный production canary еще не завершены.
+Предыдущий 62-минутный read-only canary независимо подтвердил реальные
+`FRESHNESS_DEADLINE_EXCEEDED` во всех 12 due windows.
 ```
 
 Повторный 72-часовой soak пока не запущен. Заблокированная попытка
@@ -42,7 +43,8 @@ SOAK_START_STATUS = BLOCKED
 NEW_72H_SOAK_STARTED = NO
 ```
 
-Текущий этап: `ONLINE-ORCHESTRATOR-SEMANTIC-MONITORING-OBSERVER-01`.
+Текущий этап: `CONTROLLED-DEPLOYMENT-SEMANTIC-MONITORING-OBSERVER-01`.
+Авторизация нового SOAK-02 ожидает production canary; SOAK-02 не запущен.
 
 ## Общая инженерная оценка
 
@@ -70,7 +72,7 @@ coverage, количеству файлов или строк кода.
 | Freshness retry | 97% | Исправление принято, deployed, canary пройден, exact patch equivalence подтверждена |
 | `engine_safety` | 65% | Safety gates встроены в orchestrator; самостоятельный полный модуль не завершен |
 | Технический observer | 90% | PID, lock, heartbeat, monotonic scheduler, JSONL, restart/resume и controlled stop работают |
-| Semantic observer | 15% | Контракт и задача подготовлены; реализация, deployment и canary не завершены |
+| Semantic observer | 80% | Реализован и интегрирован поверх documentation commit; source full suite `520 passed, 2 skipped`, 62-минутный read-only pre-deployment canary прошел без false incidents; production deployment/canary еще не завершены |
 | Docker/deployment | 90% | Production image развернут, сервисы стабильны, Git checkpoint и remote push завершены |
 | PostgreSQL/Alembic | 88% | Production DB стабильна; нормализованные trade-lifecycle tables отсутствуют |
 | Тесты и аудит | 85% | Focused tests, full suites, canary и evidence packages существуют |
@@ -145,9 +147,9 @@ journal.
 Текущий пробел:
 
 ```text
-observer подтверждает, что процесс жив,
-но semantic observer для доказательства корректности каждого
-business window еще не принят и не развернут.
+semantic observer реализован и прошел pre-deployment validation,
+но еще не развернут и не принят отдельным production canary;
+предыдущий canary выявил истинные deadline skips в 12/12 due windows.
 ```
 
 ### LIVE execution
@@ -190,7 +192,8 @@ account safety;
 controlled LIVE rollout.
 ```
 
-Semantic observer еще не реализован, заблокированный SOAK-02 не является
+Semantic observer реализован и интегрирован в controlled deployment branch, но
+production deployment/canary еще не завершены. Заблокированный SOAK-02 не является
 production acceptance, а `engine_trade_plan` и последующие lifecycle-модули не
 являются runtime-ready. LIVE execution operationally запрещен.
 
@@ -203,8 +206,8 @@ production acceptance, а `engine_trade_plan` и последующие lifecycl
 Этап 4. Online orchestrator                     — реализован
 Этап 5. Freshness retry hardening               — завершен
 Этап 6. Observer process reliability            — завершен технически
-Этап 7. Semantic monitoring observer            — текущий этап
-Этап 8. Повторный 72h production soak           — ожидает этап 7
+Этап 7. Semantic monitoring observer            — реализован; controlled deployment/canary текущий этап
+Этап 8. Повторный 72h production soak           — не запущен; authorization ожидает production canary
 Этап 9. Trade-plan/execution/position lifecycle — предстоит
 Этап 10. Controlled LIVE rollout                — не разрешен
 ```
@@ -212,10 +215,9 @@ production acceptance, а `engine_trade_plan` и последующие lifecycl
 ## Ближайшая последовательность
 
 ```text
-ONLINE-ORCHESTRATOR-SEMANTIC-MONITORING-OBSERVER-01
-→ controlled deployment semantic observer
+CONTROLLED-DEPLOYMENT-SEMANTIC-MONITORING-OBSERVER-01
 → production canary
-→ новый ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02
+→ отдельное решение о новом ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02
 → 72h + settlement
 → final audit
 → production reliability checkpoint
@@ -228,8 +230,8 @@ ONLINE-ORCHESTRATOR-SEMANTIC-MONITORING-OBSERVER-01
 → подготовка engine_execution для controlled LIVE
 ```
 
-Следующая рекомендуемая задача:
-`ONLINE-ORCHESTRATOR-SEMANTIC-MONITORING-OBSERVER-01`.
+Следующая рекомендуемая задача до завершения canary:
+`CONTROLLED-DEPLOYMENT-SEMANTIC-MONITORING-OBSERVER-01`.
 
 ## Общая оценка
 
@@ -276,5 +278,7 @@ ONLINE-ORCHESTRATOR-SEMANTIC-MONITORING-OBSERVER-01
 
 - Production Git зафиксирован на `74db6518d2a144fcf8814323c55e4224a71700e9` (`74db6518...`).
 - Freshness retry и observer reliability deployed.
-- Повторный SOAK-02 заблокирован из-за отсутствия semantic monitoring.
-- Текущая задача: `ONLINE-ORCHESTRATOR-SEMANTIC-MONITORING-OBSERVER-01`.
+- Semantic observer реализован, интегрирован поверх documentation commit и прошел source validation: focused `26`, combined `65`, orchestrator `57`, full suite `520 passed, 2 skipped`.
+- 62-минутный read-only pre-deployment canary observer прошел; 12/12 blocking incidents независимо подтверждены как истинные `FRESHNESS_DEADLINE_EXCEEDED`.
+- Повторный SOAK-02 не запущен; authorization ожидает отдельный production canary.
+- Текущая задача: `CONTROLLED-DEPLOYMENT-SEMANTIC-MONITORING-OBSERVER-01`.
