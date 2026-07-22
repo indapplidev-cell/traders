@@ -1,9 +1,9 @@
 DOCUMENT = online_trader.md
 DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 PROJECT = traders-ml
-UPDATED_AT_UTC = 2026-07-22T17:43:49Z
-UPDATED_BY_TASK = CONTROLLED-DEPLOYMENT-SEMANTIC-MONITORING-OBSERVER-01
-BASE_COMMIT = 74db6518d2a144fcf8814323c55e4224a71700e9
+UPDATED_AT_UTC = 2026-07-22T18:00:00Z
+UPDATED_BY_TASK = ENGINE-MARKET-DATA-1H-FRESHNESS-DEADLINE-ROOT-CAUSE-02
+BASE_COMMIT = 56486039167b0278633f0ef90f05787023807315
 STATUS_CONFIDENCE = ENGINEERING_ESTIMATE
 
 # Состояние проекта traders-ml
@@ -28,11 +28,13 @@ Pipeline запускается через `engine_orchestrator`.
 Главный текущий blocker:
 
 ```text
-semantic observer развернут как отдельный host-side read-only process и принят
-production canary длительностью 3783.406 s: 64/64 semantic samples, 447 heartbeat
-records, 0 corrupt lines, 0 duplicate identities, 0 false incidents.
-Все 51 due windows независимо подтверждены SQL как истинные
-`FRESHNESS_DEADLINE_EXCEEDED`; во всех persisted `waiting_timeframes = ["1h"]`.
+Root-cause 51 истинного `FRESHNESS_DEADLINE_EXCEEDED` доказан. После transient
+public-REST timeout `ContinuousSyncDaemon.sync_expected` не удаляет восстановленную
+ошибку из `_pair_errors`: успешные 1h sync с `missing_count = 0` и lag 0 продолжают
+публиковать `DEGRADED`. Strict freshness gate поэтому сохраняет
+`waiting_timeframes = ["1h"]` до authoritative deadline. Первые 6 окон также
+застали позднюю 1h candle; остальные 45 имели required boundary и блокировались
+только ложным sticky `DEGRADED`.
 ```
 
 Повторный 72-часовой soak пока не запущен. Заблокированная попытка
@@ -42,10 +44,10 @@ records, 0 corrupt lines, 0 duplicate identities, 0 false incidents.
 ```text
 SOAK_START_STATUS = BLOCKED
 NEW_72H_SOAK_STARTED = NO
-SOAK_02_AUTHORIZATION_STATUS = BLOCKED_TRUE_FRESHNESS_DEADLINE_SKIPS
+SOAK_02_AUTHORIZATION_STATUS = BLOCKED_PENDING_MARKET_DATA_HEALTH_FIX_AND_CANARY
 ```
 
-Текущий этап: root-cause истинных 1h freshness deadline skips.
+Текущий этап: root cause подтвержден; controlled fix ожидает отдельной авторизации.
 Новый SOAK-02 не разрешен и не запущен.
 
 ## Общая инженерная оценка
@@ -144,15 +146,16 @@ journal.
 
 ### Production reliability — 68%
 
-Основные сервисы и orchestration работают. Freshness defect исправлен.
+Основные сервисы и orchestration работают. Retry lifecycle исправлен, но дефект
+сброса восстановленного market-data health еще не исправлен.
 
 Текущий пробел:
 
 ```text
-semantic observer принят в production и корректно выявляет реальные incidents;
-production pipeline продолжает завершать все измеренные окна как
-`SKIPPED_FRESHNESS_NOT_OK / FRESHNESS_DEADLINE_EXCEEDED`, при этом
-`waiting_timeframes = ["1h"]` и required candle coverage на проверке полная.
+`app/engine_market_data/continuous_sync_daemon.py::ContinuousSyncDaemon.sync_expected`
+сохраняет historical `_pair_errors` после успешного восстановления и продолжает
+публиковать `DEGRADED`. Strict orchestrator gate корректно блокирует такой статус.
+Fix, deployment и production acceptance отсутствуют.
 ```
 
 ### LIVE execution
@@ -210,7 +213,8 @@ production acceptance. `engine_trade_plan` и последующие lifecycle-�
 Этап 5. Freshness retry hardening               — завершен
 Этап 6. Observer process reliability            — завершен технически
 Этап 7. Semantic monitoring observer            — deployed и production canary validated
-Этап 7b. Root-cause 1h freshness deadline skips — текущий этап
+Этап 7b. Root-cause 1h freshness deadline skips — завершен; причина подтверждена
+Этап 7c. Recovered pair health reset fix          — текущий этап; не авторизован
 Этап 8. Повторный 72h production soak           — заблокирован; не запущен
 Этап 9. Trade-plan/execution/position lifecycle — предстоит
 Этап 10. Controlled LIVE rollout                — не разрешен
@@ -219,7 +223,7 @@ production acceptance. `engine_trade_plan` и последующие lifecycle-�
 ## Ближайшая последовательность
 
 ```text
-ENGINE-MARKET-DATA-1H-FRESHNESS-DEADLINE-ROOT-CAUSE-02
+ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01
 → controlled fix и production canary
 → повторное решение об ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02
 → 72h + settlement
@@ -235,7 +239,7 @@ ENGINE-MARKET-DATA-1H-FRESHNESS-DEADLINE-ROOT-CAUSE-02
 ```
 
 Следующая рекомендуемая задача:
-`ENGINE-MARKET-DATA-1H-FRESHNESS-DEADLINE-ROOT-CAUSE-02`.
+`ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01`.
 
 ## Общая оценка
 
@@ -280,10 +284,12 @@ ENGINE-MARKET-DATA-1H-FRESHNESS-DEADLINE-ROOT-CAUSE-02
 
 ## Последние значимые изменения
 
-- Production Git зафиксирован на `74db6518d2a144fcf8814323c55e4224a71700e9` (`74db6518...`).
+- Remote production baseline остается `74db6518d2a144fcf8814323c55e4224a71700e9`; local production перед root-cause audit находился на clean descendant `56486039167b0278633f0ef90f05787023807315` (ahead 5, behind 0).
 - Freshness retry и observer reliability deployed.
 - Semantic observer реализован, интегрирован поверх documentation commit и прошел source validation: focused `26`, combined `65`, orchestrator `57`, full suite `520 passed, 2 skipped`.
 - Host-side semantic observer production deployment принят: canary `3783.406 s`, 64/64 samples, 447 heartbeat records, controlled stop, 0 corrupt lines, duplicate identities и false incidents.
 - 51/51 blocking incidents независимо подтверждены SQL как истинные `FRESHNESS_DEADLINE_EXCEEDED`; все окна указывают `waiting_timeframes = ["1h"]`.
+- Root cause подтвержден: `ContinuousSyncDaemon.sync_expected` не очищает `_pair_errors` после успешной reconciliation, из-за чего 1h остается `DEGRADED` при полной coverage; 45/51 финальных gate snapshots были status-only blockers, первые 6 дополнительно застали позднюю candle.
+- Boundary floor, UTC/inclusive semantics, fresh retry reads, strict runtime policy и 180s deadline проверены и не являются дефектом.
 - Повторный SOAK-02 заблокирован и не запущен.
-- Текущий этап: root-cause 1h freshness deadline skips; следующая задача `ENGINE-MARKET-DATA-1H-FRESHNESS-DEADLINE-ROOT-CAUSE-02`.
+- Текущий этап: отдельная авторизация и реализация `ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01`; fix/deploy/canary еще не выполнены.
