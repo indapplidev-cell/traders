@@ -1,4 +1,4 @@
-"""Causal freshness classification with explicit boundary availability."""
+"""Causal freshness classification with deadline-driven retry diagnostics."""
 
 from __future__ import annotations
 
@@ -10,13 +10,21 @@ from typing import Callable
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
 
 
+CANONICAL_TIMEFRAME_ORDER = ("1m", "5m", "15m", "1h", "4h", "1d")
 LOWER_TIMEFRAMES = frozenset({"1m", "5m", "15m"})
+_TIMEFRAME_RANK = {timeframe: index for index, timeframe in enumerate(CANONICAL_TIMEFRAME_ORDER)}
 
 
 class FreshnessClassification(StrEnum):
     READY = "READY"
-    TRANSIENT_NOT_READY = "TRANSIENT_NOT_READY"
+    WAITING_RETRYABLE = "WAITING_RETRYABLE"
     TERMINAL_NOT_READY = "TERMINAL_NOT_READY"
+
+
+class FreshnessBlockingKind(StrEnum):
+    BOUNDARY_NOT_READY = "BOUNDARY_NOT_READY"
+    HEALTH_STATUS_NOT_OK = "HEALTH_STATUS_NOT_OK"
+    FATAL_CONTRACT_ERROR = "FATAL_CONTRACT_ERROR"
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,28 +42,48 @@ class BoundaryAvailability:
 
 
 @dataclass(frozen=True, slots=True)
+class FreshnessBlockingReason:
+    timeframe: str | None
+    kind: FreshnessBlockingKind
+    code: str
+    health_status: str | None
+    required_boundary_ms: int | None
+    available_boundary_ms: int | None
+    retryable: bool
+
+
+@dataclass(frozen=True, slots=True)
 class FreshnessDecision:
     allowed: bool
     status: str
-    classification: str
+    classification: FreshnessClassification
     reason_code: str | None = None
     reasons: tuple[str, ...] = ()
     timeframe_statuses: dict[str, str] = field(default_factory=dict)
     availability: tuple[BoundaryAvailability, ...] = ()
     missing_timeframes: tuple[str, ...] = ()
+    waiting_timeframes: tuple[str, ...] = ()
+    blocking_reasons: tuple[FreshnessBlockingReason, ...] = ()
 
     def payload(self) -> dict[str, object]:
         return {
-            "classification": self.classification,
+            "classification": self.classification.value,
+            "readiness_classification": self.classification.value,
             "status": self.status,
             "reason_code": self.reason_code,
             "reasons": list(self.reasons),
+            "waiting_timeframes": list(self.waiting_timeframes),
+            "blocking_reasons": [asdict(item) for item in self.blocking_reasons],
             "timeframes": [asdict(item) for item in self.availability],
         }
 
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _canonical_timeframes(values: list[str]) -> tuple[str, ...]:
+    return tuple(sorted(set(values), key=lambda value: (_TIMEFRAME_RANK.get(value, len(_TIMEFRAME_RANK)), value)))
 
 
 class FreshnessGate:
@@ -80,6 +108,14 @@ class FreshnessGate:
             raise ValueError("freshness clock and deadline must be timezone-aware")
         return value.astimezone(timezone.utc)
 
+    @staticmethod
+    def _terminal_contract_error(status: str, reason: str, *,
+                                 blocking_reasons: tuple[FreshnessBlockingReason, ...] = ()) -> FreshnessDecision:
+        return FreshnessDecision(
+            False, status, FreshnessClassification.TERMINAL_NOT_READY,
+            reason, (reason,), blocking_reasons=blocking_reasons,
+        )
+
     def check(self, symbol: str, closed_until_ms: int, *,
               deadline_at: datetime | None = None,
               now: datetime | None = None) -> FreshnessDecision:
@@ -87,29 +123,28 @@ class FreshnessGate:
         if deadline_at is not None:
             deadline_at = self._aware_utc(deadline_at)
         if int(closed_until_ms) <= 0:
-            return FreshnessDecision(
-                False, "INVALID_BOUNDARY", FreshnessClassification.TERMINAL_NOT_READY,
-                "INVALID_BOUNDARY", ("INVALID_BOUNDARY",),
-            )
+            return self._terminal_contract_error("INVALID_BOUNDARY", "INVALID_BOUNDARY")
 
         rows = self.repository.list_for([symbol], list(self.required_timeframes))
         by_timeframe = {row.timeframe: row for row in rows}
-        reasons: list[str] = []
-        policy_reasons: list[str] = []
+        blockers: list[FreshnessBlockingReason] = []
         statuses: dict[str, str] = {}
         availability: list[BoundaryAvailability] = []
         missing: list[str] = []
-        persistent_gap = False
-        invalid_data = False
+        fatal_reason: str | None = None
         now_ms = int(checked_at.timestamp() * 1000)
 
         for timeframe in self.required_timeframes:
             try:
                 duration = timeframe_to_milliseconds(timeframe)
             except ValueError:
-                return FreshnessDecision(
-                    False, "UNSUPPORTED_TIMEFRAME", FreshnessClassification.TERMINAL_NOT_READY,
-                    "UNSUPPORTED_TIMEFRAME", (f"{timeframe}:UNSUPPORTED_TIMEFRAME",),
+                blocker = FreshnessBlockingReason(
+                    timeframe, FreshnessBlockingKind.FATAL_CONTRACT_ERROR,
+                    "UNSUPPORTED_TIMEFRAME", None, None, None, False,
+                )
+                return self._terminal_contract_error(
+                    "UNSUPPORTED_TIMEFRAME", "UNSUPPORTED_TIMEFRAME",
+                    blocking_reasons=(blocker,),
                 )
             required_close = self._required_boundary(timeframe, closed_until_ms)
             required_open = required_close - duration
@@ -124,14 +159,19 @@ class FreshnessGate:
             lag_candles = None if lag_ms is None else lag_ms // duration
             boundary_reason = None if available else f"{timeframe}:BOUNDARY_NOT_READY"
             statuses[timeframe] = health
+
             if not available:
                 missing.append(timeframe)
-                reasons.append(boundary_reason)
-            if health == "GAP_DETECTED":
-                persistent_gap = True
+                blockers.append(FreshnessBlockingReason(
+                    timeframe, FreshnessBlockingKind.BOUNDARY_NOT_READY,
+                    "BOUNDARY_NOT_READY", health, required_close, latest_close, True,
+                ))
             if latest_close is not None and latest_close > now_ms:
-                invalid_data = True
-                reasons.append(f"{timeframe}:FUTURE_OR_UNCLOSED_DATA")
+                fatal_reason = "FUTURE_OR_UNCLOSED_DATA"
+                blockers.append(FreshnessBlockingReason(
+                    timeframe, FreshnessBlockingKind.FATAL_CONTRACT_ERROR,
+                    fatal_reason, health, required_close, latest_close, False,
+                ))
 
             stale_higher_allowed = (
                 timeframe not in LOWER_TIMEFRAMES
@@ -140,7 +180,10 @@ class FreshnessGate:
             )
             health_required = timeframe in LOWER_TIMEFRAMES or self.require_all_timeframes_ok
             if health_required and health != "OK" and not stale_higher_allowed:
-                policy_reasons.append(f"{timeframe}:STATUS_{health}")
+                blockers.append(FreshnessBlockingReason(
+                    timeframe, FreshnessBlockingKind.HEALTH_STATUS_NOT_OK,
+                    f"STATUS_{health}", health, required_close, latest_close, True,
+                ))
             availability.append(BoundaryAvailability(
                 timeframe=timeframe,
                 health_state=health,
@@ -154,47 +197,54 @@ class FreshnessGate:
                 reason_code=boundary_reason,
             ))
 
-        if invalid_data:
-            reason_code = "FUTURE_OR_UNCLOSED_DATA"
-        elif persistent_gap:
-            reason_code = "PERSISTENT_GAP"
-        else:
-            reason_code = None
-        if reason_code is not None:
+        reasons = tuple(dict.fromkeys(
+            f"{item.timeframe}:{item.code}" if item.timeframe else item.code
+            for item in blockers
+        ))
+        missing_timeframes = _canonical_timeframes(missing)
+        waiting_timeframes = _canonical_timeframes([
+            item.timeframe for item in blockers if item.retryable and item.timeframe is not None
+        ])
+        blocker_values = tuple(blockers)
+        availability_values = tuple(availability)
+
+        if fatal_reason is not None:
             return FreshnessDecision(
-                False, reason_code, FreshnessClassification.TERMINAL_NOT_READY,
-                reason_code, tuple(dict.fromkeys(reasons + policy_reasons)), statuses,
-                tuple(availability), tuple(missing),
+                False, fatal_reason, FreshnessClassification.TERMINAL_NOT_READY,
+                fatal_reason, reasons, statuses, availability_values,
+                missing_timeframes, waiting_timeframes, blocker_values,
             )
 
-        if missing:
+        if blockers:
             if deadline_at is not None and checked_at >= deadline_at:
-                reason_code = "FRESHNESS_TIMEOUT"
+                terminal_reason = "FRESHNESS_DEADLINE_EXCEEDED"
                 return FreshnessDecision(
-                    False, reason_code, FreshnessClassification.TERMINAL_NOT_READY,
-                    reason_code, tuple(dict.fromkeys(reasons + policy_reasons)), statuses,
-                    tuple(availability), tuple(missing),
+                    False, terminal_reason, FreshnessClassification.TERMINAL_NOT_READY,
+                    terminal_reason, reasons, statuses, availability_values,
+                    missing_timeframes, waiting_timeframes, blocker_values,
                 )
-            reason_code = (
-                f"{missing[0]}:BOUNDARY_NOT_READY" if len(missing) == 1
-                else "MULTIPLE_REQUIRED_BOUNDARIES_NOT_READY"
-            )
+
+            health_codes = {item.code for item in blockers if item.kind == FreshnessBlockingKind.HEALTH_STATUS_NOT_OK}
+            if "STATUS_GAP_DETECTED" in health_codes:
+                status = reason_code = "PERSISTENT_GAP"
+            elif missing_timeframes:
+                status = "WAITING_FOR_REQUIRED_BOUNDARY"
+                reason_code = (
+                    f"{missing_timeframes[0]}:BOUNDARY_NOT_READY"
+                    if len(missing_timeframes) == 1
+                    else "MULTIPLE_REQUIRED_BOUNDARIES_NOT_READY"
+                )
+            else:
+                status = reason_code = "FRESHNESS_POLICY_NOT_OK"
             return FreshnessDecision(
-                False, "WAITING_FOR_REQUIRED_BOUNDARY",
-                FreshnessClassification.TRANSIENT_NOT_READY, reason_code,
-                tuple(dict.fromkeys(reasons + policy_reasons)), statuses,
-                tuple(availability), tuple(missing),
+                False, status, FreshnessClassification.WAITING_RETRYABLE,
+                reason_code, reasons, statuses, availability_values,
+                missing_timeframes, waiting_timeframes, blocker_values,
             )
 
-        if policy_reasons:
-            return FreshnessDecision(
-                False, "FRESHNESS_POLICY_NOT_OK", FreshnessClassification.TERMINAL_NOT_READY,
-                "FRESHNESS_POLICY_NOT_OK", tuple(policy_reasons), statuses,
-                tuple(availability), (),
-            )
         return FreshnessDecision(
             True, "READY", FreshnessClassification.READY, None, (), statuses,
-            tuple(availability), (),
+            availability_values, (), (), (),
         )
 
     def ok(self, symbol: str, closed_until_ms: int) -> bool:

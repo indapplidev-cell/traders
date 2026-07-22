@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -31,24 +32,24 @@ class SafetyCounters:
 
 
 def json_safe(value: Any) -> Any:
-    if is_dataclass(value):
-        value = asdict(value)
-    elif hasattr(value, "to_dict") and callable(value.to_dict):
-        value = value.to_dict()
-    elif hasattr(value, "__dict__"):
-        value = vars(value)
-    if isinstance(value, dict):
-        return {str(key): json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple, set)):
-        return [json_safe(item) for item in value]
     if isinstance(value, Enum):
-        return value.value
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, Decimal):
-        return str(value)
+        return json_safe(value.value)
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if is_dataclass(value):
+        return json_safe(asdict(value))
+    if isinstance(value, Mapping):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (Sequence, Set)):
+        return [json_safe(item) for item in value]
+    if hasattr(value, "to_dict") and callable(value.to_dict):
+        return json_safe(value.to_dict())
+    if hasattr(value, "__dict__"):
+        return json_safe(vars(value))
     return str(value)
 
 

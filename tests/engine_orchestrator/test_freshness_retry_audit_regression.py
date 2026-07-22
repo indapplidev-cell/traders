@@ -63,7 +63,7 @@ def simulate(*, one_timeout=False):
                     assert identity not in results
                     results.add(identity)
                     break
-                if decision.reason_code == "FRESHNESS_TIMEOUT":
+                if decision.reason_code == "FRESHNESS_DEADLINE_EXCEEDED":
                     timeouts += 1
                     break
                 assert decision.status == "WAITING_FOR_REQUIRED_BOUNDARY"

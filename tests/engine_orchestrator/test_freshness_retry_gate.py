@@ -70,7 +70,7 @@ def test_ordinary_quarter_hour_uses_previous_closed_hour_and_is_ready():
 def test_health_ok_without_boundary_is_transient_wait():
     value = decision(Repo(missing=("1h",)))
     assert not value.allowed
-    assert value.classification == FreshnessClassification.TRANSIENT_NOT_READY
+    assert value.classification == FreshnessClassification.WAITING_RETRYABLE
     assert value.status == "WAITING_FOR_REQUIRED_BOUNDARY"
     assert value.reason_code == "1h:BOUNDARY_NOT_READY"
     assert value.missing_timeframes == ("1h",)
@@ -86,20 +86,21 @@ def test_health_ok_without_boundary_is_transient_wait():
 )
 def test_hour_4h_and_daily_missing_boundaries_wait(missing, reason):
     value = decision(Repo(missing=missing), ("15m", "1h", "4h", "1d"))
-    assert value.classification == "TRANSIENT_NOT_READY"
+    assert value.classification == "WAITING_RETRYABLE"
     assert value.reason_code == reason
 
 
 def test_deadline_changes_missing_boundary_to_distinct_timeout():
     value = decision(Repo(missing=("1h",)), deadline=NOW)
     assert value.classification == "TERMINAL_NOT_READY"
-    assert value.reason_code == "FRESHNESS_TIMEOUT"
+    assert value.reason_code == "FRESHNESS_DEADLINE_EXCEEDED"
 
 
-def test_persistent_gap_is_terminal_before_deadline():
+def test_gap_detected_is_retryable_before_deadline():
     value = decision(Repo(missing=("1h",), status={"1h": "GAP_DETECTED"}))
-    assert value.classification == "TERMINAL_NOT_READY"
+    assert value.classification == "WAITING_RETRYABLE"
     assert value.reason_code == "PERSISTENT_GAP"
+    assert value.waiting_timeframes == ("1h",)
 
 
 def test_future_state_boundary_is_terminal_safety_failure():
@@ -112,7 +113,7 @@ def test_stale_health_never_proves_missing_boundary_available():
         Repo(missing=("1h",), status={"1h": "STALE"}), ("15m", "1h"),
         allow_stale_higher_timeframes=True, clock=lambda: NOW,
     ).check("BTCUSDT", BOUNDARY, deadline_at=NOW + timedelta(seconds=150))
-    assert value.classification == "TRANSIENT_NOT_READY"
+    assert value.classification == "WAITING_RETRYABLE"
     assert not value.availability[1].required_boundary_available
 
 

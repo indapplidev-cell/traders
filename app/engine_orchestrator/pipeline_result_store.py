@@ -205,7 +205,7 @@ class PipelineResultStore:
 
     def mark_waiting(self, claim: ClaimedWindow, *, daemon_instance_id: str,
                      checked_at: datetime, next_retry_at: datetime,
-                     reason_code: str, missing_timeframes: tuple[str, ...],
+                     reason_code: str, waiting_timeframes: tuple[str, ...],
                      payload: dict[str, Any]) -> bool:
         checked_at = aware_utc(checked_at)
         next_retry_at = aware_utc(next_retry_at)
@@ -225,9 +225,9 @@ class PipelineResultStore:
             row.next_retry_at = next_retry_at
             row.freshness_claimed_at = None
             row.waiting_reason_code = reason_code
-            row.waiting_timeframes = list(missing_timeframes)
+            row.waiting_timeframes = list(waiting_timeframes)
             row.last_freshness_payload = json_safe(payload)
-            row.market_data_freshness_status = "WAITING_FOR_REQUIRED_BOUNDARY"
+            row.market_data_freshness_status = str(payload.get("status") or reason_code)
             session.commit()
             return True
 
@@ -258,7 +258,7 @@ class PipelineResultStore:
 
     def mark_terminal_freshness(self, claim: ClaimedWindow, *, daemon_instance_id: str,
                                 checked_at: datetime, status: str, reason_code: str,
-                                missing_timeframes: tuple[str, ...],
+                                waiting_timeframes: tuple[str, ...],
                                 payload: dict[str, Any]) -> bool:
         checked_at = aware_utc(checked_at)
         with self._session() as session:
@@ -276,7 +276,7 @@ class PipelineResultStore:
             row.finished_at = checked_at
             row.next_retry_at = None
             row.waiting_reason_code = reason_code
-            row.waiting_timeframes = list(missing_timeframes)
+            row.waiting_timeframes = list(waiting_timeframes)
             row.last_freshness_payload = json_safe(payload)
             row.market_data_freshness_status = reason_code
             row.final_result = "NO_ACTION"
@@ -364,7 +364,14 @@ class PipelineResultStore:
         first_waits = [persisted_utc(row.first_wait_at) for row in waiting if row.first_wait_at]
         next_retries = [persisted_utc(row.next_retry_at) for row in waiting if row.next_retry_at]
         recovered = [row for row in all_rows if row.freshness_recovered_at is not None]
-        timeouts = [row for row in all_rows if row.status == PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value]
+        timeouts = [
+            row for row in all_rows
+            if row.status == PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value
+            or (
+                row.status == PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value
+                and row.final_reason == "FRESHNESS_DEADLINE_EXCEEDED"
+            )
+        ]
         retry_total = sum(max(0, int(row.freshness_attempt_count or 0) - 1) for row in all_rows)
         return {
             "waiting_windows": len(waiting),

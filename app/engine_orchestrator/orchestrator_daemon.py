@@ -128,11 +128,11 @@ class OrchestratorDaemon:
         self.health_reporter.write(payload)
         self._last_health_monotonic = now
 
-    def _timeout_result(self, claim: ClaimedWindow, reason: str) -> PipelineResult:
+    def _freshness_skip_result(self, claim: ClaimedWindow, reason: str) -> PipelineResult:
         return PipelineResult(
             symbol=claim.symbol, primary_timeframe=claim.primary_timeframe,
             closed_until_ms=claim.closed_until_ms,
-            status=PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value,
+            status=PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value,
             final_result=FinalResult.NO_ACTION.value, final_reason=reason,
         )
 
@@ -151,20 +151,16 @@ class OrchestratorDaemon:
             "freshness_reasons": list(freshness.reasons),
         }
         payload = freshness.payload()
-        next_attempt = claim.freshness_attempt_count + 1
-
-        if freshness.classification == FreshnessClassification.TRANSIENT_NOT_READY.value:
+        if freshness.classification == FreshnessClassification.WAITING_RETRYABLE.value:
             next_retry = min(
                 now + timedelta(seconds=self.config.freshness_retry_interval_seconds),
                 claim.freshness_deadline_at,
             )
-            if next_attempt >= self.config.freshness_max_attempts:
-                next_retry = claim.freshness_deadline_at
             changed = self.result_store.mark_waiting(
                 claim, daemon_instance_id=self.daemon_instance_id,
                 checked_at=now, next_retry_at=next_retry,
                 reason_code=freshness.reason_code or "WAITING_FOR_REQUIRED_BOUNDARY",
-                missing_timeframes=freshness.missing_timeframes, payload=payload,
+                waiting_timeframes=freshness.waiting_timeframes, payload=payload,
             )
             if changed:
                 event = "FRESHNESS_RETRY_SCHEDULED" if claim.was_waiting else "FRESHNESS_WAIT_STARTED"
@@ -178,19 +174,17 @@ class OrchestratorDaemon:
             return observation
 
         if freshness.classification == FreshnessClassification.TERMINAL_NOT_READY.value:
-            timeout = freshness.reason_code == "FRESHNESS_TIMEOUT"
-            status = (PipelineStatus.SKIPPED_FRESHNESS_TIMEOUT.value if timeout
-                      else PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value)
+            deadline_exceeded = freshness.reason_code == "FRESHNESS_DEADLINE_EXCEEDED"
+            status = PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value
             changed = self.result_store.mark_terminal_freshness(
                 claim, daemon_instance_id=self.daemon_instance_id, checked_at=now,
                 status=status, reason_code=freshness.reason_code or freshness.status,
-                missing_timeframes=freshness.missing_timeframes, payload=payload,
+                waiting_timeframes=freshness.waiting_timeframes, payload=payload,
             )
-            result = self._timeout_result(claim, freshness.reason_code or freshness.status)
-            result.status = status
+            result = self._freshness_skip_result(claim, freshness.reason_code or freshness.status)
             if changed:
                 self._record(result)
-                self._event("FRESHNESS_TIMEOUT" if timeout else "FRESHNESS_TERMINAL_SKIP",
+                self._event("FRESHNESS_DEADLINE_EXCEEDED" if deadline_exceeded else "FRESHNESS_TERMINAL_SKIP",
                             run_id=claim.run_id, symbol=claim.symbol,
                             closed_until_ms=claim.closed_until_ms,
                             reason_code=freshness.reason_code)
@@ -204,7 +198,8 @@ class OrchestratorDaemon:
             return observation
         if claim.was_waiting:
             self._event("FRESHNESS_RECOVERED", run_id=claim.run_id, symbol=claim.symbol,
-                        closed_until_ms=claim.closed_until_ms, attempts=next_attempt)
+                        closed_until_ms=claim.closed_until_ms,
+                        attempts=claim.freshness_attempt_count + 1)
         result = self.pipeline_runner.run(claim.symbol, claim.closed_until_ms)
         persisted = self.result_store.finish(claim.run_id, result, freshness_status="READY")
         if persisted:

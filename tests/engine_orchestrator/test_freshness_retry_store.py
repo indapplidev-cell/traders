@@ -36,7 +36,7 @@ def waiting(store, *, owner="one", deadline=BASE + timedelta(seconds=159)):
     assert store.mark_waiting(
         claim, daemon_instance_id=owner, checked_at=BASE,
         next_retry_at=BASE + timedelta(seconds=5), reason_code="1h:BOUNDARY_NOT_READY",
-        missing_timeframes=("1h",), payload={"status": "WAITING"},
+        waiting_timeframes=("1h",), payload={"status": "WAITING"},
     )
     return run_id
 
@@ -91,14 +91,15 @@ def test_timeout_is_terminal_has_no_pipeline_result_and_never_reruns():
         daemon_instance_id="two", limit=1, now=BASE + timedelta(seconds=5))[0]
     assert store.mark_terminal_freshness(
         claim, daemon_instance_id="two", checked_at=BASE + timedelta(seconds=159),
-        status="SKIPPED_FRESHNESS_TIMEOUT", reason_code="FRESHNESS_TIMEOUT",
-        missing_timeframes=("1h",), payload={"last": "boundary"},
+        status="SKIPPED_FRESHNESS_NOT_OK", reason_code="FRESHNESS_DEADLINE_EXCEEDED",
+        waiting_timeframes=("1h",), payload={"last": "boundary"},
     )
     assert store.claim_due_waiting(
         daemon_instance_id="three", limit=1, now=BASE + timedelta(hours=1)) == []
     with sessions() as session:
         row = session.scalar(select(OnlinePipelineRun).where(OnlinePipelineRun.run_id == run_id))
         assert row.first_wait_at and row.freshness_deadline_at and row.freshness_attempt_count == 2
+        assert row.waiting_timeframes == ["1h"]
         assert session.scalar(select(OnlinePipelineResultRow)) is None
 
 

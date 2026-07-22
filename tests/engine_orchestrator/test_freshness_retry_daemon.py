@@ -124,8 +124,10 @@ def test_deadline_timeout_is_distinct_and_not_rerun(tmp_path):
     OrchestratorDaemon(config, Detector(), gate, runner, store, clock=clock).run_cycle()
     clock.value = BOUNDARY_DT + timedelta(seconds=180)
     daemon = OrchestratorDaemon(config, DetectorWithNoWindows(), gate, runner, store, clock=clock)
-    assert daemon.run_cycle()[0]["pipeline_status"] == "SKIPPED_FRESHNESS_TIMEOUT"
+    assert daemon.run_cycle()[0]["pipeline_status"] == "SKIPPED_FRESHNESS_NOT_OK"
     assert daemon.run_cycle() == [] and runner.calls == 0
     with sessions() as session:
-        assert session.scalar(select(OnlinePipelineRun)).status == "SKIPPED_FRESHNESS_TIMEOUT"
+        row = session.scalar(select(OnlinePipelineRun))
+        assert row.status == "SKIPPED_FRESHNESS_NOT_OK"
+        assert row.final_reason == "FRESHNESS_DEADLINE_EXCEEDED"
         assert session.scalar(select(func.count()).select_from(OnlinePipelineResultRow)) == 0

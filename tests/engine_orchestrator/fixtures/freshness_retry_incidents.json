@@ -1,0 +1,50 @@
+[
+  {
+    "run_id": "orchestrator:d6ec7f1e224d4ae9b48c8656597c64ed",
+    "symbol": "ETHUSDT",
+    "closed_until_ms": 1784455200000,
+    "first_wait_at": "2026-07-19T10:00:30.333187Z",
+    "decision_at": "2026-07-19T10:01:10.926623Z",
+    "deadline_at": "2026-07-19T10:03:00Z",
+    "blocking_timeframe": "1m",
+    "health_status": "RECOVERING",
+    "required_boundary_available": true,
+    "attempt_count": 5
+  },
+  {
+    "run_id": "orchestrator:3a948c914ac0417da54325abcbefe9da",
+    "symbol": "ETHUSDT",
+    "closed_until_ms": 1784516400000,
+    "first_wait_at": "2026-07-20T03:00:30.882785Z",
+    "decision_at": "2026-07-20T03:01:11.412078Z",
+    "deadline_at": "2026-07-20T03:03:00Z",
+    "blocking_timeframe": "1m",
+    "health_status": "RECOVERING",
+    "required_boundary_available": true,
+    "attempt_count": 5
+  },
+  {
+    "run_id": "orchestrator:cf33157893f245a0a7e7eb9f0b86867e",
+    "symbol": "SOLUSDT",
+    "closed_until_ms": 1784570400000,
+    "first_wait_at": "2026-07-20T18:00:30.219469Z",
+    "decision_at": "2026-07-20T18:01:11.130617Z",
+    "deadline_at": "2026-07-20T18:03:00Z",
+    "blocking_timeframe": "1m",
+    "health_status": "RECOVERING",
+    "required_boundary_available": true,
+    "attempt_count": 5
+  },
+  {
+    "run_id": "orchestrator:aab678a457fe4142887718adb5fa2e42",
+    "symbol": "BTCUSDT",
+    "closed_until_ms": 1784642400000,
+    "first_wait_at": "2026-07-21T14:00:30.215958Z",
+    "decision_at": "2026-07-21T14:01:00.706041Z",
+    "deadline_at": "2026-07-21T14:03:00Z",
+    "blocking_timeframe": "1h",
+    "health_status": "GAP_DETECTED",
+    "required_boundary_available": false,
+    "attempt_count": 4
+  }
+]
