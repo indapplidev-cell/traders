@@ -1,9 +1,17 @@
 DOCUMENT = online_trader.md
 DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
+DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
-UPDATED_AT_UTC = 2026-07-22T18:00:00Z
-UPDATED_BY_TASK = ENGINE-MARKET-DATA-1H-FRESHNESS-DEADLINE-ROOT-CAUSE-02
-BASE_COMMIT = 56486039167b0278633f0ef90f05787023807315
+
+STATUS_AS_OF_COMMIT = e1b5ecb341ad26277a8f3f76b4a1dd8c9fa06ec6
+DOCUMENT_REVISION = SELF
+DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
+
+RECONCILED_AT_UTC = 2026-07-23T03:32:30Z
+RECONCILED_BY_TASK = ONLINE-TRADER-SELF-REFERENCE-SAFE-STATUS-FIX-01
+
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
+PUSH_STATE_AT_RECONCILIATION = PRODUCTION_BRANCH_AHEAD_6_BEHIND_0; RECOVERED_PAIR_FIX_LOCAL_ONLY; PUSHED_NO
 STATUS_CONFIDENCE = ENGINEERING_ESTIMATE
 
 # Состояние проекта traders-ml
@@ -28,13 +36,11 @@ Pipeline запускается через `engine_orchestrator`.
 Главный текущий blocker:
 
 ```text
-Root-cause 51 истинного `FRESHNESS_DEADLINE_EXCEEDED` доказан. После transient
-public-REST timeout `ContinuousSyncDaemon.sync_expected` не удаляет восстановленную
-ошибку из `_pair_errors`: успешные 1h sync с `missing_count = 0` и lag 0 продолжают
-публиковать `DEGRADED`. Strict freshness gate поэтому сохраняет
-`waiting_timeframes = ["1h"]` до authoritative deadline. Первые 6 окон также
-застали позднюю 1h candle; остальные 45 имели required boundary и блокировались
-только ложным sticky `DEGRADED`.
+Root cause sticky `_pair_errors` доказан audit commit
+`e1b5ecb341ad26277a8f3f76b4a1dd8c9fa06ec6` и исправлен локально в отдельной
+ветке commit `0e58513d84d093f699832baef18d53550dac29b2`. Fix имеет PASS regression,
+full-suite и local canary evidence, но не интегрирован в production branch,
+не deployed и не принят production semantic canary.
 ```
 
 Повторный 72-часовой soak пока не запущен. Заблокированная попытка
@@ -44,11 +50,16 @@ public-REST timeout `ContinuousSyncDaemon.sync_expected` не удаляет в�
 ```text
 SOAK_START_STATUS = BLOCKED
 NEW_72H_SOAK_STARTED = NO
-SOAK_02_AUTHORIZATION_STATUS = BLOCKED_PENDING_MARKET_DATA_HEALTH_FIX_AND_CANARY
+SOAK_02 = BLOCKED_PENDING_FIX_DEPLOYMENT_AND_PRODUCTION_CANARY
 ```
 
-Текущий этап: root cause подтвержден; controlled fix ожидает отдельной авторизации.
-Новый SOAK-02 не разрешен и не запущен.
+```text
+CURRENT_STAGE = CONTROLLED-DEPLOYMENT-RECOVERED-PAIR-HEALTH-RESET-FIX-01
+CURRENT_BLOCKER = fix implemented locally but not production deployed/canary accepted
+```
+
+Локальный fix завершен с PASS, но production deployment и production canary не
+выполнены. Новый SOAK-02 не разрешен и не запущен.
 
 ## Общая инженерная оценка
 
@@ -77,10 +88,10 @@ coverage, количеству файлов или строк кода.
 | `engine_safety` | 65% | Safety gates встроены в orchestrator; самостоятельный полный модуль не завершен |
 | Технический observer | 90% | PID, lock, heartbeat, monotonic scheduler, JSONL, restart/resume и controlled stop работают |
 | Semantic observer | 90% | Реализован, exact patch-equivalent, host-side deployed и принят 63-минутным production canary: 64 samples, 447 heartbeats, 0 corrupt/duplicate/false incidents; controlled stop прошел |
-| Docker/deployment | 90% | Production image развернут, сервисы стабильны, Git checkpoint и remote push завершены |
+| Docker/deployment | 90% | Текущий production image развернут и сервисы стабильны; recovered-pair fix существует только локально, не pushed и не deployed |
 | PostgreSQL/Alembic | 88% | Production DB стабильна; нормализованные trade-lifecycle tables отсутствуют |
 | Тесты и аудит | 85% | Focused tests, full suites, canary и evidence packages существуют |
-| 72h production acceptance | 45% | Первый soak выявил freshness incidents и observer gaps; повторный soak заблокирован 51 подтвержденным 1h freshness deadline skip |
+| 72h production acceptance | 45% | Первый soak выявил freshness incidents и observer gaps; повторный soak заблокирован до deployment и production canary локального recovered-pair fix |
 
 ## Торговый lifecycle после risk
 
@@ -146,16 +157,17 @@ journal.
 
 ### Production reliability — 68%
 
-Основные сервисы и orchestration работают. Retry lifecycle исправлен, но дефект
-сброса восстановленного market-data health еще не исправлен.
+Основные сервисы и orchestration работают. Retry lifecycle исправлен. Дефект
+сброса восстановленного market-data health исправлен и validated локально, но
+production deployment и production canary еще не выполнены.
 
 Текущий пробел:
 
 ```text
-`app/engine_market_data/continuous_sync_daemon.py::ContinuousSyncDaemon.sync_expected`
-сохраняет historical `_pair_errors` после успешного восстановления и продолжает
-публиковать `DEGRADED`. Strict orchestrator gate корректно блокирует такой статус.
-Fix, deployment и production acceptance отсутствуют.
+Production branch все еще содержит доказанный sticky `_pair_errors` root cause.
+Локальный commit `0e58513d84d093f699832baef18d53550dac29b2` исправляет pair-scoped reset и
+имеет PASS tests/local canary evidence, но не является remote production state.
+Deployment и production acceptance отсутствуют.
 ```
 
 ### LIVE execution
@@ -214,7 +226,8 @@ production acceptance. `engine_trade_plan` и последующие lifecycle-�
 Этап 6. Observer process reliability            — завершен технически
 Этап 7. Semantic monitoring observer            — deployed и production canary validated
 Этап 7b. Root-cause 1h freshness deadline skips — завершен; причина подтверждена
-Этап 7c. Recovered pair health reset fix          — текущий этап; не авторизован
+Этап 7c. Recovered pair health reset fix          — локально реализован и validated
+Этап 7d. Controlled deployment + semantic canary  — текущий этап; не выполнен
 Этап 8. Повторный 72h production soak           — заблокирован; не запущен
 Этап 9. Trade-plan/execution/position lifecycle — предстоит
 Этап 10. Controlled LIVE rollout                — не разрешен
@@ -223,8 +236,8 @@ production acceptance. `engine_trade_plan` и последующие lifecycle-�
 ## Ближайшая последовательность
 
 ```text
-ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01
-→ controlled fix и production canary
+CONTROLLED-DEPLOYMENT-RECOVERED-PAIR-HEALTH-RESET-FIX-01
+→ production semantic canary без blocking incidents
 → повторное решение об ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02
 → 72h + settlement
 → final audit
@@ -239,7 +252,7 @@ ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01
 ```
 
 Следующая рекомендуемая задача:
-`ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01`.
+`CONTROLLED-DEPLOYMENT-RECOVERED-PAIR-HEALTH-RESET-FIX-01`.
 
 ## Общая оценка
 
@@ -248,6 +261,12 @@ ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01
 
 ## Правила актуализации
 
+- Документ является `POST_TASK_PROVEN_STATE`, а не pre-task plan.
+- Текущая задача становится completed только после доказанного PASS.
+- `CURRENT_STAGE` всегда указывает на следующий фактический этап.
+- `STATUS_AS_OF_COMMIT` не является собственным commit документа.
+- Фактическая revision документа разрешается командой
+  `git log -1 --format=%H -- online_trader.md`.
 - Файл обновляется при каждом доказанном изменении состояния проекта.
 - Проценты меняются только при наличии фактических доказательств.
 - Design/contract не считать implementation.
@@ -284,7 +303,15 @@ ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01
 
 ## Последние значимые изменения
 
-- Remote production baseline остается `74db6518d2a144fcf8814323c55e4224a71700e9`; local production перед root-cause audit находился на clean descendant `56486039167b0278633f0ef90f05787023807315` (ahead 5, behind 0).
+- Введена self-reference-safe status model: `STATUS_AS_OF_COMMIT` описывает
+  доказанное состояние проекта, `DOCUMENT_REVISION = SELF`, а фактический commit
+  документа определяется через Git.
+- `online_trader.md` теперь обновляется последним как post-task snapshot.
+- Runtime/project-state commit и documentation reconciliation commit разделены.
+- На момент reconciliation remote production base остается
+  `74db6518d2a144fcf8814323c55e4224a71700e9`; production branch находится на
+  `e1b5ecb341ad26277a8f3f76b4a1dd8c9fa06ec6`, локально ahead 6 / behind 0,
+  push в рамках этой задачи не выполнялся.
 - Freshness retry и observer reliability deployed.
 - Semantic observer реализован, интегрирован поверх documentation commit и прошел source validation: focused `26`, combined `65`, orchestrator `57`, full suite `520 passed, 2 skipped`.
 - Host-side semantic observer production deployment принят: canary `3783.406 s`, 64/64 samples, 447 heartbeat records, controlled stop, 0 corrupt lines, duplicate identities и false incidents.
@@ -292,4 +319,8 @@ ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01
 - Root cause подтвержден: `ContinuousSyncDaemon.sync_expected` не очищает `_pair_errors` после успешной reconciliation, из-за чего 1h остается `DEGRADED` при полной coverage; 45/51 финальных gate snapshots были status-only blockers, первые 6 дополнительно застали позднюю candle.
 - Boundary floor, UTC/inclusive semantics, fresh retry reads, strict runtime policy и 180s deadline проверены и не являются дефектом.
 - Повторный SOAK-02 заблокирован и не запущен.
-- Текущий этап: отдельная авторизация и реализация `ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01`; fix/deploy/canary еще не выполнены.
+- `ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01` реализован в isolated
+  branch: commit `0e58513d84d093f699832baef18d53550dac29b2`, full suite
+  `534 passed, 2 skipped` и local canary PASS. Fix не integrated, не pushed,
+  не deployed и не принят production canary.
+- Текущий этап: `CONTROLLED-DEPLOYMENT-RECOVERED-PAIR-HEALTH-RESET-FIX-01`.
