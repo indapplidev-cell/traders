@@ -129,6 +129,7 @@ class ContinuousSyncDaemon:
         self._last_health_report_ms = 0
         self._pair_status: dict[tuple[str, str], str] = {}
         self._pair_errors: dict[tuple[str, str], str] = {}
+        self._pair_unresolved_expected: dict[tuple[str, str], set[int]] = {}
         self._pair_missing: dict[tuple[str, str], int] = {}
         self._last_success: dict[tuple[str, str], str] = {}
 
@@ -177,6 +178,7 @@ class ContinuousSyncDaemon:
         result = PairSyncResult(symbol, timeframe, expected_latest_open_time_ms)
         key = (symbol, timeframe)
         attempted_at = datetime.now(timezone.utc)
+        active_error: Exception | None = None
         try:
             missing = self.repository.find_missing_open_times(symbol, timeframe, expected)
             result.missing_before = len(missing)
@@ -214,21 +216,29 @@ class ContinuousSyncDaemon:
                 result.missing_after = len(missing)
                 self._pair_status[key] = str(ContinuousSyncStatus.GAP_DETECTED if missing else ContinuousSyncStatus.OK)
             else:
-                after = self.repository.find_missing_open_times(symbol, timeframe, expected)
+                verification_scope = sorted(
+                    set(expected) | self._pair_unresolved_expected.get(key, set()))
+                after = self.repository.find_missing_open_times(
+                    symbol, timeframe, verification_scope)
                 result.missing_after = len(after)
                 result.failed_count = len(after)
                 self._pair_missing[key] = len(after)
-                has_prior_error = key in self._pair_errors
-                self._pair_status[key] = str(
-                    ContinuousSyncStatus.DEGRADED
-                    if after or has_prior_error else ContinuousSyncStatus.OK)
-                if not after and not has_prior_error:
+                if after:
+                    self._pair_unresolved_expected[key] = set(after)
+                    self._pair_status[key] = str(ContinuousSyncStatus.DEGRADED)
+                    active_error = (
+                        RuntimeError(self._pair_errors[key])
+                        if key in self._pair_errors else None)
+                else:
+                    self._pair_errors.pop(key, None)
+                    self._pair_unresolved_expected.pop(key, None)
+                    self._pair_status[key] = str(ContinuousSyncStatus.OK)
                     self._last_success[key] = attempted_at.isoformat().replace("+00:00", "Z")
-                sticky_error = RuntimeError(self._pair_errors[key]) if has_prior_error else None
+                    active_error = None
             self._persist_state(symbol, timeframe, expected_latest_open_time_ms, now_ms,
                                 status=self._pair_status[key], missing=result.missing_after,
                                 attempted_at=attempted_at, result=result,
-                                error=(sticky_error if not self.config.dry_run else None))
+                                error=active_error)
         except Exception as exc:
             error_text = _operational_error_text(exc)
             result.error = error_text
@@ -236,6 +246,7 @@ class ContinuousSyncDaemon:
             result.missing_after = result.failed_count
             self._pair_status[key] = str(ContinuousSyncStatus.ERROR)
             self._pair_errors[key] = error_text
+            self._pair_unresolved_expected.setdefault(key, set()).update(expected)
             self._pair_missing[key] = result.missing_after
             self._persist_state(symbol, timeframe, expected_latest_open_time_ms, now_ms,
                                 status=ContinuousSyncStatus.ERROR, missing=result.missing_after,
