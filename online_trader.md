@@ -3,12 +3,13 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 4c6d779558a6f67056c5c2d7f57b606f3a87b6af
+STATUS_AS_OF_COMMIT = f9d2819ba203d8f5a38ccab57bd727b5b887475c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-23T05:06:39Z
-RECONCILED_BY_TASK = CONTROLLED-DEPLOYMENT-RECOVERED-PAIR-HEALTH-RESET-FIX-01
+RECONCILED_AT_UTC = 2026-07-23T17:21:13Z
+RECONCILED_BY_TASK = CONTROLLED-DEPLOYMENT-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01
+FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
@@ -33,14 +34,15 @@ engine_market_data
 
 Pipeline запускается через `engine_orchestrator`.
 
-Главный текущий blocker:
+Текущий production-hardening статус:
 
 ```text
-Recovered pair health reset интегрирован exact runtime/test patch commit
-`4c6d779558a6f67056c5c2d7f57b606f3a87b6af`, deployed только в
-`market-data-sync` и принят 62-минутным production canary. Остается отдельный
-доказанный scheduler defect: после exhaustion public REST retries failed hourly
-boundary не получает prompt retry.
+Bounded failed-boundary prompt retry интегрирован exact project-state commit
+`f9d2819ba203d8f5a38ccab57bd727b5b887475c`, deployed только в
+`market-data-sync` immutable image
+`traders-ml:controlled-failed-boundary-prompt-retry-fix-01-f9d2819` и принят
+4570-секундным production canary. PostgreSQL и online-orchestrator не
+перезапускались; Alembic остался на `0008_engine_orchestrator_freshness_retry`.
 ```
 
 Повторный 72-часовой soak пока не запущен. Заблокированная попытка
@@ -48,26 +50,29 @@ boundary не получает prompt retry.
 активным soak:
 
 ```text
-SOAK_START_STATUS = BLOCKED
+SOAK_START_STATUS = AUTHORIZED_NOT_STARTED
 NEW_72H_SOAK_STARTED = NO
-SOAK_02 = BLOCKED_PENDING_FAILED_BOUNDARY_PROMPT_RETRY_FIX
+SOAK_02_STATUS = AUTHORIZED_NOT_STARTED
 ```
 
 ```text
-CURRENT_STAGE = ENGINE-MARKET-DATA-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01
-CURRENT_BLOCKER = failed hourly boundary has no prompt retry after REST retry exhaustion
+CURRENT_STAGE = ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02
+CURRENT_BLOCKER = NONE_FOR_SOAK_START
 ```
 
-Recovered pair health reset deployment завершен с PASS. Естественного
-post-deployment transient error→recovery event во время canary не произошло,
-поэтому recovery path честно имеет статус `NO_NATURAL_RECOVERY_EVENT`.
-Новый SOAK-02 не разрешен и не запущен.
+Production canary пересек две новые 1h boundaries и завершил 15/15 due windows
+exactly once: 77 semantic, 76 pair-health, 76 retry samples, 537 heartbeats,
+0 blocking incidents и все safety counters 0. Естественного failed-boundary
+prompt-retry event не произошло, поэтому production path честно имеет статус
+`NO_NATURAL_RETRY_EVENT`; это не утверждение о natural-event PASS.
+SOAK-02 разрешен на основании принятого deterministic retry evidence и
+production stability canary, но в этой задаче не запускался.
 
 ## Общая инженерная оценка
 
 ```text
 Онлайн-аналитик + paper-контур:      ≈ 82%
-Production reliability/acceptance:  ≈ 68%
+Production reliability/acceptance:  ≈ 70%
 Полный автономный LIVE-бот:         ≈ 58%
 ```
 
@@ -79,7 +84,7 @@ coverage, количеству файлов или строк кода.
 
 | Модуль | Готовность | Состояние |
 |---|---:|---|
-| `engine_market_data` | 95% | REST/WebSocket, closed candles, PostgreSQL, gap recovery и pair-scoped recovered health reset deployed/canary validated; scheduler failed-boundary prompt retry еще не исправлен |
+| `engine_market_data` | 96% | REST/WebSocket, closed candles, PostgreSQL, gap recovery, recovered health reset и bounded failed-boundary prompt retry deployed/canary validated; natural production retry event не наблюдался |
 | `engine_analysis` | 92% | Рыночная структура, regime, impulse, entry quality, diagnostics и online runner работают |
 | `engine_setup` | 87% | Setup families, diagnostics, quality scoring и historical discovery реализованы |
 | `engine_strategy` | 82% | APPROVED/REJECTED решения и safety reasons реализованы; нужна дальнейшая production-калибровка |
@@ -90,10 +95,10 @@ coverage, количеству файлов или строк кода.
 | `engine_safety` | 65% | Safety gates встроены в orchestrator; самостоятельный полный модуль не завершен |
 | Технический observer | 90% | PID, lock, heartbeat, monotonic scheduler, JSONL, restart/resume и controlled stop работают |
 | Semantic observer | 90% | Реализован, exact patch-equivalent, host-side deployed и принят 63-минутным production canary: 64 samples, 447 heartbeats, 0 corrupt/duplicate/false incidents; controlled stop прошел |
-| Docker/deployment | 90% | Immutable recovered-pair image deployed только в `market-data-sync`; PostgreSQL и orchestrator не перезапускались, remote push не выполнялся |
+| Docker/deployment | 91% | Immutable prompt-retry image deployed только в `market-data-sync`; PostgreSQL и orchestrator не перезапускались, remote push не выполнялся |
 | PostgreSQL/Alembic | 88% | Production DB стабильна; нормализованные trade-lifecycle tables отсутствуют |
-| Тесты и аудит | 85% | Focused tests, full suites, canary и evidence packages существуют |
-| 72h production acceptance | 45% | Recovered-pair deployment canary PASS, но повторный soak заблокирован доказанным failed-boundary prompt retry defect |
+| Тесты и аудит | 87% | Retry focused `31`, combined `286 passed, 2 skipped`, full suite `565 passed, 2 skipped`, compile/import и 4570-секундный production canary PASS |
+| 72h production acceptance | 45% | SOAK-02 разрешен, но еще не запущен; canary не является 72h acceptance |
 
 ## Торговый lifecycle после risk
 
@@ -157,18 +162,20 @@ exit execution;
 journal.
 ```
 
-### Production reliability — 68%
+### Production reliability — 70%
 
 Основные сервисы и orchestration работают. Retry lifecycle и recovered pair
-health reset исправлены; reset deployed и production-canary validated.
+health reset исправлены. Bounded failed-boundary prompt retry с identity
+`(symbol,timeframe,closed_until_ms)`, delays `5/10/20/40`, horizon `170` и
+max attempts `4` deployed и production-canary validated.
 
-Текущий пробел:
+Оставшийся acceptance gap:
 
 ```text
-После exhaustion public REST retries failed hourly boundary не получает prompt
-retry. Этот scheduler defect не изменялся текущим deployment и блокирует
-авторизацию SOAK-02. Отсутствие REST exhaustion во время canary не опровергает
-ранее доказанный failure mode.
+Во время production canary естественного REST exhaustion и failed-boundary
+prompt-retry event не произошло. Production stability доказана, deterministic
+retry path принят, но natural production event не заявляется как observed.
+Следующий этап — новый 72h SOAK-02 с уникальным anchor и полным settlement.
 ```
 
 ### LIVE execution
@@ -211,9 +218,9 @@ account safety;
 controlled LIVE rollout.
 ```
 
-Semantic observer production-deployed и canary-validated. Recovered pair health
-reset также production-canary validated, но новый SOAK-02 заблокирован отдельным
-failed-boundary prompt retry defect и не является production acceptance.
+Semantic observer, recovered pair health reset и failed-boundary prompt retry
+production-deployed и canary-validated. Новый SOAK-02 разрешен, но не запущен и
+не является уже пройденным production acceptance.
 `engine_trade_plan` и последующие lifecycle-модули не являются runtime-ready.
 LIVE execution operationally запрещен.
 
@@ -230,8 +237,9 @@ LIVE execution operationally запрещен.
 Этап 7b. Root-cause 1h freshness deadline skips — завершен; причина подтверждена
 Этап 7c. Recovered pair health reset fix          — реализован и validated
 Этап 7d. Controlled deployment + semantic canary  — завершен; PASS
-Этап 7e. Failed-boundary prompt retry fix         — текущий этап; не реализован
-Этап 8. Повторный 72h production soak           — заблокирован; не запущен
+Этап 7e. Failed-boundary prompt retry fix         — реализован и протестирован
+Этап 7f. Controlled retry deployment + canary    — завершен; PASS
+Этап 8. Повторный 72h production soak           — разрешен; не запущен
 Этап 9. Trade-plan/execution/position lifecycle — предстоит
 Этап 10. Controlled LIVE rollout                — не разрешен
 ```
@@ -239,9 +247,7 @@ LIVE execution operationally запрещен.
 ## Ближайшая последовательность
 
 ```text
-ENGINE-MARKET-DATA-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01
-→ controlled deployment и production canary scheduler fix
-→ повторное решение об ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02
+ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02
 → 72h + settlement
 → final audit
 → production reliability checkpoint
@@ -255,7 +261,7 @@ ENGINE-MARKET-DATA-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01
 ```
 
 Следующая рекомендуемая задача:
-`ENGINE-MARKET-DATA-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01`.
+`ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02`.
 
 ## Общая оценка
 
@@ -320,7 +326,25 @@ ENGINE-MARKET-DATA-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01
 - 51/51 blocking incidents независимо подтверждены SQL как истинные `FRESHNESS_DEADLINE_EXCEEDED`; все окна указывают `waiting_timeframes = ["1h"]`.
 - Root cause подтвержден: `ContinuousSyncDaemon.sync_expected` не очищает `_pair_errors` после успешной reconciliation, из-за чего 1h остается `DEGRADED` при полной coverage; 45/51 финальных gate snapshots были status-only blockers, первые 6 дополнительно застали позднюю candle.
 - Boundary floor, UTC/inclusive semantics, fresh retry reads, strict runtime policy и 180s deadline проверены и не являются дефектом.
-- Повторный SOAK-02 заблокирован failed-boundary prompt retry defect и не запущен.
+- Failed-boundary prompt retry реализован exact project-state commit
+  `f9d2819ba203d8f5a38ccab57bd727b5b887475c`: one daemon owner, identity
+  `(symbol,timeframe,closed_until_ms)`, delays `5/10/20/40`, horizon `170`,
+  max attempts `4`, closed-only guard, startup reconciliation и supersession.
+- Full gate повторно принят: focused `31`, continuous-sync `82 passed, 1 skipped`,
+  market-data `140 passed, 2 skipped`, orchestrator `81`, observer `65`,
+  combined `286 passed, 2 skipped`, full suite `565 passed, 2 skipped`,
+  compile/import PASS.
+- Immutable image
+  `traders-ml:controlled-failed-boundary-prompt-retry-fix-01-f9d2819`
+  (`sha256:0bbac2b3982d7c11d2cda0666c944117cfe608879ea05be9ade7a37b445abce5`)
+  deployed только в `market-data-sync`; PostgreSQL и orchestrator сохранили
+  container identity и restart count 0.
+- Production canary принят: `4570.062 s`, 77 semantic samples, 76 pair-health
+  samples, 76 retry samples, 537 heartbeats, две 1h boundaries, 15/15 due
+  windows completed exactly once и все safety counters 0; controlled stop PASS.
+- `PRODUCTION_PROMPT_RETRY_PATH_STATUS = NO_NATURAL_RETRY_EVENT`; artificial
+  failure не создавался.
+- `SOAK_02_STATUS = AUTHORIZED_NOT_STARTED`; новый 72h soak не запускался.
 - `ENGINE-MARKET-DATA-RECOVERED-PAIR-HEALTH-RESET-FIX-01` реализован в isolated
   branch, затем exact runtime/test patch интегрирован project-state commit
   `4c6d779558a6f67056c5c2d7f57b606f3a87b6af`; full suite
@@ -335,5 +359,4 @@ ENGINE-MARKET-DATA-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01
   false OK, cross-pair clears, hidden errors/gaps, corrupt lines и incidents.
 - `PRODUCTION_RECOVERY_PATH_STATUS = NO_NATURAL_RECOVERY_EVENT`; artificial
   failure не создавался.
-- `FAILED_BOUNDARY_PROMPT_RETRY_STATUS = KNOWN_DEFECT_UNCHANGED`.
-- Текущий этап: `ENGINE-MARKET-DATA-FAILED-BOUNDARY-PROMPT-RETRY-FIX-01`.
+- Текущий этап: `ONLINE-ORCHESTRATOR-FRESHNESS-RETRY-SOAK-02`.
