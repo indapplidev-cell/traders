@@ -24,6 +24,14 @@ from app.engine_market_data.freshness_monitor import (
     FreshnessMonitor, FreshnessSnapshot, MarketDataFreshnessReport,
     close_boundary_ms, latest_expected_closed_open_time_ms,
 )
+from app.engine_market_data.failed_boundary_retry import (
+    FailedBoundaryErrorClassification,
+    FailedBoundaryRetryRecord,
+    FailedBoundaryRetryStatus,
+    PromptRetryMetrics,
+    PromptRetryPolicy,
+    classify_failed_boundary_error,
+)
 from app.engine_market_data.historical_backfill_planner import (
     BackfillRange, group_missing_open_times_into_ranges, split_backfill_range,
 )
@@ -103,6 +111,8 @@ class PairSyncResult:
     failed_count: int = 0
     rest_calls: int = 0
     error: str | None = None
+    error_type: str | None = None
+    error_classification: str | None = None
 
 
 class ContinuousSyncDaemon:
@@ -132,8 +142,26 @@ class ContinuousSyncDaemon:
         self._pair_unresolved_expected: dict[tuple[str, str], set[int]] = {}
         self._pair_missing: dict[tuple[str, str], int] = {}
         self._last_success: dict[tuple[str, str], str] = {}
+        self.prompt_retry_policy = PromptRetryPolicy(
+            first_delay_seconds=config.prompt_retry_initial_seconds,
+            max_delay_seconds=config.prompt_retry_max_seconds,
+            horizon_seconds=config.prompt_retry_horizon_seconds,
+            max_attempts=config.prompt_retry_max_attempts,
+        )
+        self._failed_boundary_retries: dict[
+            tuple[str, str, int], FailedBoundaryRetryRecord
+        ] = {}
+        self._retry_in_flight: set[tuple[str, str, int]] = set()
+        self.prompt_retry_metrics = PromptRetryMetrics()
 
     def request_stop(self, *_args: object) -> None:
+        for record in self._failed_boundary_retries.values():
+            if record.status not in {
+                FailedBoundaryRetryStatus.RECOVERED,
+                FailedBoundaryRetryStatus.TERMINAL_FOR_LOCAL_POLICY,
+            }:
+                record.status = FailedBoundaryRetryStatus.CANCELLED_ON_SHUTDOWN
+                record.next_retry_at_ms = None
         self._stop_event.set()
 
     def install_signal_handlers(self) -> None:
@@ -154,14 +182,23 @@ class ContinuousSyncDaemon:
                     latest = self.repository.get_latest_closed_candle(symbol, timeframe)
                     latest_open = latest.open_time_ms if latest is not None else None
                     candidates = self.warmup_planner.expected_open_times(timeframe, expected, latest_open)
-                    results.append(self.sync_expected(symbol, timeframe, candidates, expected, now))
+                    result = self.sync_expected(symbol, timeframe, candidates, expected, now)
+                    results.append(result)
+                    self._register_sync_failure_for_prompt_retry(
+                        symbol, timeframe, candidates, expected, now, result)
                 except Exception as exc:
+                    error_text = _operational_error_text(exc)
                     result = PairSyncResult(symbol, timeframe, expected, failed_count=1,
-                                            missing_after=1, error=str(exc))
+                                            missing_after=1, error=error_text,
+                                            error_type=type(exc).__name__,
+                                            error_classification=str(
+                                                classify_failed_boundary_error(exc)))
                     key = (symbol, timeframe)
                     self._pair_status[key] = str(ContinuousSyncStatus.ERROR)
-                    self._pair_errors[key] = str(exc)
+                    self._pair_errors[key] = error_text
                     self._pair_missing[key] = 1
+                    self._register_sync_failure_for_prompt_retry(
+                        symbol, timeframe, [expected], expected, now, result)
                     results.append(result)
                     logger.exception("startup warmup planning failed for %s %s", symbol, timeframe)
         return results
@@ -171,6 +208,28 @@ class ContinuousSyncDaemon:
         return [self.sync_expected(symbol, timeframe, [latest_expected_closed_open_time_ms(timeframe, now)],
                                    latest_expected_closed_open_time_ms(timeframe, now), now)
                 for symbol in self.config.symbols for timeframe in self.config.timeframes]
+
+    def sync_scheduled_boundary(
+        self,
+        task: DueSyncTask,
+        now_ms: int,
+    ) -> PairSyncResult:
+        result = self.sync_expected(
+            task.symbol,
+            task.timeframe,
+            [task.expected_open_time_ms],
+            task.expected_open_time_ms,
+            now_ms,
+        )
+        self._register_sync_failure_for_prompt_retry(
+            task.symbol,
+            task.timeframe,
+            [task.expected_open_time_ms],
+            task.expected_open_time_ms,
+            now_ms,
+            result,
+        )
+        return result
 
     def sync_expected(self, symbol: str, timeframe: str, expected_open_times: Sequence[int],
                       expected_latest_open_time_ms: int, now_ms: int) -> PairSyncResult:
@@ -235,6 +294,8 @@ class ContinuousSyncDaemon:
                     self._pair_status[key] = str(ContinuousSyncStatus.OK)
                     self._last_success[key] = attempted_at.isoformat().replace("+00:00", "Z")
                     active_error = None
+                    self._clear_recovered_prompt_retries(
+                        symbol, timeframe, verification_scope)
             self._persist_state(symbol, timeframe, expected_latest_open_time_ms, now_ms,
                                 status=self._pair_status[key], missing=result.missing_after,
                                 attempted_at=attempted_at, result=result,
@@ -242,6 +303,8 @@ class ContinuousSyncDaemon:
         except Exception as exc:
             error_text = _operational_error_text(exc)
             result.error = error_text
+            result.error_type = type(exc).__name__
+            result.error_classification = str(classify_failed_boundary_error(exc))
             result.failed_count = max(1, len(expected))
             result.missing_after = result.failed_count
             self._pair_status[key] = str(ContinuousSyncStatus.ERROR)
@@ -253,6 +316,243 @@ class ContinuousSyncDaemon:
                                 attempted_at=attempted_at, result=result, error=exc)
             logger.exception("market-data sync failed for %s %s", symbol, timeframe)
         return result
+
+    def _clear_recovered_prompt_retries(
+        self,
+        symbol: str,
+        timeframe: str,
+        verified_open_times: Sequence[int],
+    ) -> None:
+        verified = set(verified_open_times)
+        recovered = [
+            identity
+            for identity, record in self._failed_boundary_retries.items()
+            if record.symbol == symbol
+            and record.timeframe == timeframe
+            and set(record.expected_open_times) <= verified
+        ]
+        for identity in recovered:
+            record = self._failed_boundary_retries.pop(identity)
+            record.status = FailedBoundaryRetryStatus.RECOVERED
+
+    def _register_sync_failure_for_prompt_retry(
+        self,
+        symbol: str,
+        timeframe: str,
+        expected_open_times: Sequence[int],
+        expected_latest_open_time_ms: int,
+        now_ms: int,
+        result: PairSyncResult,
+    ) -> None:
+        if (
+            not self.config.continuous
+            or self.config.dry_run
+            or result.missing_after == 0
+        ):
+            return
+        closed_until_ms = close_boundary_ms(expected_latest_open_time_ms, timeframe)
+        if closed_until_ms > now_ms:
+            return
+        expected = tuple(sorted({
+            value
+            for value in expected_open_times
+            if close_boundary_ms(value, timeframe) <= now_ms
+        }))
+        if not expected:
+            return
+        try:
+            expected = tuple(
+                self.repository.find_missing_open_times(
+                    symbol, timeframe, expected))
+        except Exception:
+            logger.exception(
+                "could not narrow failed-boundary retry scope for %s %s",
+                symbol,
+                timeframe,
+            )
+        if not expected:
+            return
+        if result.error_classification is None:
+            classification = FailedBoundaryErrorClassification.RETRYABLE_TRANSIENT
+            error_type = "MissingClosedBoundary"
+            error_summary = "exact closed boundary remains unavailable"
+        else:
+            classification = FailedBoundaryErrorClassification(
+                result.error_classification)
+            error_type = result.error_type or "UnknownError"
+            error_summary = result.error or "sync failed"
+        identity = (symbol, timeframe, closed_until_ms)
+        existing = self._failed_boundary_retries.get(identity)
+        if existing is not None:
+            self.prompt_retry_metrics.duplicate_registrations += 1
+            existing.last_failure_at_ms = now_ms
+            existing.last_error_type = error_type
+            existing.last_error_summary = error_summary
+            existing.error_classification = classification
+            return
+        next_retry = (
+            self.prompt_retry_policy.next_retry_at_ms(
+                first_failure_at_ms=now_ms,
+                last_failure_at_ms=now_ms,
+                completed_prompt_attempts=0,
+            )
+            if classification.retryable
+            else None
+        )
+        status = (
+            FailedBoundaryRetryStatus.RETRY_SCHEDULED
+            if next_retry is not None
+            else FailedBoundaryRetryStatus.TERMINAL_FOR_LOCAL_POLICY
+        )
+        self._failed_boundary_retries[identity] = FailedBoundaryRetryRecord(
+            symbol=symbol,
+            timeframe=timeframe,
+            closed_until_ms=closed_until_ms,
+            expected_open_times=expected,
+            first_failure_at_ms=now_ms,
+            last_failure_at_ms=now_ms,
+            next_retry_at_ms=next_retry,
+            prompt_retry_attempt_count=0,
+            last_error_type=error_type,
+            last_error_summary=error_summary,
+            error_classification=classification,
+            status=status,
+        )
+        if next_retry is not None:
+            self.prompt_retry_metrics.scheduled += 1
+            logger.warning(
+                "failed-boundary prompt retry scheduled symbol=%s timeframe=%s "
+                "closed_until_ms=%s next_retry_at_ms=%s classification=%s",
+                symbol,
+                timeframe,
+                closed_until_ms,
+                next_retry,
+                classification,
+            )
+        else:
+            self.prompt_retry_metrics.terminal += 1
+            logger.error(
+                "failed-boundary retry terminal for local policy symbol=%s "
+                "timeframe=%s closed_until_ms=%s classification=%s",
+                symbol,
+                timeframe,
+                closed_until_ms,
+                classification,
+            )
+
+    def run_prompt_retries(self, now_ms: int | None = None) -> list[PairSyncResult]:
+        now = self.exchange_now_ms() if now_ms is None else now_ms
+        results: list[PairSyncResult] = []
+        due = sorted(
+            (
+                record
+                for record in self._failed_boundary_retries.values()
+                if record.next_retry_at_ms is not None
+                and record.next_retry_at_ms <= now
+                and record.closed_until_ms <= now
+            ),
+            key=lambda record: (
+                record.next_retry_at_ms or 0,
+                record.symbol,
+                record.timeframe,
+                record.closed_until_ms,
+            ),
+        )
+        for record in due:
+            if self._stop_event.is_set():
+                break
+            identity = record.identity
+            if identity in self._retry_in_flight:
+                continue
+            current = self._failed_boundary_retries.get(identity)
+            if current is not record or record.next_retry_at_ms is None:
+                continue
+            self._retry_in_flight.add(identity)
+            record.status = FailedBoundaryRetryStatus.RETRY_IN_FLIGHT
+            record.prompt_retry_attempt_count += 1
+            self.prompt_retry_metrics.executed += 1
+            logger.info(
+                "failed-boundary prompt retry executing symbol=%s timeframe=%s "
+                "closed_until_ms=%s attempt=%s",
+                record.symbol,
+                record.timeframe,
+                record.closed_until_ms,
+                record.prompt_retry_attempt_count,
+            )
+            try:
+                result = self.sync_expected(
+                    record.symbol,
+                    record.timeframe,
+                    record.expected_open_times,
+                    max(record.expected_open_times),
+                    now,
+                )
+                results.append(result)
+                if result.missing_after == 0:
+                    self.prompt_retry_metrics.recovered += 1
+                    logger.info(
+                        "failed-boundary prompt retry recovered symbol=%s "
+                        "timeframe=%s closed_until_ms=%s attempt=%s",
+                        record.symbol,
+                        record.timeframe,
+                        record.closed_until_ms,
+                        record.prompt_retry_attempt_count,
+                    )
+                    continue
+                if result.error_classification is None:
+                    classification = (
+                        FailedBoundaryErrorClassification.RETRYABLE_TRANSIENT)
+                    error_type = "MissingClosedBoundary"
+                    error_summary = "exact closed boundary remains unavailable"
+                else:
+                    classification = FailedBoundaryErrorClassification(
+                        result.error_classification)
+                    error_type = result.error_type or "UnknownError"
+                    error_summary = result.error or "sync failed"
+                record.last_failure_at_ms = now
+                record.last_error_type = error_type
+                record.last_error_summary = error_summary
+                record.error_classification = classification
+                record.next_retry_at_ms = (
+                    self.prompt_retry_policy.next_retry_at_ms(
+                        first_failure_at_ms=record.first_failure_at_ms,
+                        last_failure_at_ms=now,
+                        completed_prompt_attempts=record.prompt_retry_attempt_count,
+                    )
+                    if classification.retryable
+                    else None
+                )
+                if record.next_retry_at_ms is None:
+                    record.status = (
+                        FailedBoundaryRetryStatus.TERMINAL_FOR_LOCAL_POLICY)
+                    self.prompt_retry_metrics.terminal += 1
+                    logger.error(
+                        "failed-boundary retry terminal for local policy "
+                        "symbol=%s timeframe=%s closed_until_ms=%s attempts=%s "
+                        "classification=%s",
+                        record.symbol,
+                        record.timeframe,
+                        record.closed_until_ms,
+                        record.prompt_retry_attempt_count,
+                        classification,
+                    )
+                else:
+                    record.status = FailedBoundaryRetryStatus.RETRY_SCHEDULED
+                    self.prompt_retry_metrics.scheduled += 1
+                    logger.warning(
+                        "failed-boundary prompt retry rescheduled symbol=%s "
+                        "timeframe=%s closed_until_ms=%s attempt=%s "
+                        "next_retry_at_ms=%s classification=%s",
+                        record.symbol,
+                        record.timeframe,
+                        record.closed_until_ms,
+                        record.prompt_retry_attempt_count,
+                        record.next_retry_at_ms,
+                        classification,
+                    )
+            finally:
+                self._retry_in_flight.discard(identity)
+        return results
 
     def run_gap_checks(self, now_ms: int | None = None, *, force: bool = False) -> list[PairSyncResult]:
         now = self.exchange_now_ms() if now_ms is None else now_ms
@@ -325,10 +625,10 @@ class ContinuousSyncDaemon:
             try:
                 now = self.exchange_now_ms()
                 for task in self.scheduler.get_due_tasks(now):
-                    self.sync_expected(task.symbol, task.timeframe, [task.expected_open_time_ms],
-                                       task.expected_open_time_ms, now)
+                    self.sync_scheduled_boundary(task, now)
                 if self.config.gap_check:
                     self.run_gap_checks(now)
+                self.run_prompt_retries(now)
                 if now - self._last_health_report_ms >= self.config.health_report_interval_seconds * 1000:
                     self.write_health_report(now)
                     self._last_health_report_ms = now

@@ -31,6 +31,10 @@ class ContinuousSyncConfig:
     max_rest_batch_size: int = 1000
     backoff_initial_seconds: float = 2.0
     backoff_max_seconds: float = 60.0
+    prompt_retry_initial_seconds: float = 5.0
+    prompt_retry_max_seconds: float = 40.0
+    prompt_retry_horizon_seconds: float = 170.0
+    prompt_retry_max_attempts: int = 4
     stop_after_cycles: int | None = None
     health_report_path: str | None = None
     daemon_instance_id: str | None = None
@@ -55,6 +59,13 @@ class ContinuousSyncConfig:
             raise ValueError("poll and health report intervals must be positive")
         if self.backoff_initial_seconds <= 0 or self.backoff_max_seconds < self.backoff_initial_seconds:
             raise ValueError("invalid backoff limits")
+        if (
+            self.prompt_retry_initial_seconds <= 0
+            or self.prompt_retry_max_seconds < self.prompt_retry_initial_seconds
+            or self.prompt_retry_horizon_seconds < self.prompt_retry_initial_seconds
+            or self.prompt_retry_max_attempts <= 0
+        ):
+            raise ValueError("invalid prompt retry policy")
         if self.stop_after_cycles is not None and self.stop_after_cycles <= 0:
             raise ValueError("stop_after_cycles must be positive")
 

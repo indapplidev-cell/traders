@@ -57,6 +57,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--health-report-interval-seconds", type=float, default=60.0)
     parser.add_argument("--poll-interval-seconds", type=float, default=1.0)
     parser.add_argument("--max-rest-batch-size", type=int, default=1000)
+    parser.add_argument("--prompt-retry-initial-seconds", type=float, default=5.0)
+    parser.add_argument("--prompt-retry-max-seconds", type=float, default=40.0)
+    parser.add_argument("--prompt-retry-horizon-seconds", type=float, default=170.0)
+    parser.add_argument("--prompt-retry-max-attempts", type=int, default=4)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--stop-after-cycles", type=int)
     parser.add_argument("--daemon-instance-id")
@@ -75,6 +79,10 @@ def config_from_args(args: argparse.Namespace) -> ContinuousSyncConfig:
         health_report_interval_seconds=args.health_report_interval_seconds,
         max_rest_batch_size=args.max_rest_batch_size, stop_after_cycles=args.stop_after_cycles,
         health_report_path=args.health_report, daemon_instance_id=args.daemon_instance_id,
+        prompt_retry_initial_seconds=args.prompt_retry_initial_seconds,
+        prompt_retry_max_seconds=args.prompt_retry_max_seconds,
+        prompt_retry_horizon_seconds=args.prompt_retry_horizon_seconds,
+        prompt_retry_max_attempts=args.prompt_retry_max_attempts,
     )
 
 
