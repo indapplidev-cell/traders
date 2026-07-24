@@ -1,0 +1,394 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Traders Read-Only Observability API",
+    "version": "v1",
+    "description": "Stable read-only projection of closed-candle analytics. No trade, mutation, administration, credential, Docker, database, or pipeline-control operations are exposed."
+  },
+  "servers": [],
+  "tags": [
+    {"name": "Observability", "description": "Read-only health and dashboard resources"},
+    {"name": "Analytics", "description": "Closed-only market, analysis, and setup resources"},
+    {"name": "Incidents", "description": "Safe operational incident projections"}
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": ["Observability"],
+        "operationId": "getHealth",
+        "responses": {
+          "200": {"description": "Health snapshot", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HealthEnvelope"}}}},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "tags": ["Observability"],
+        "operationId": "getDashboard",
+        "responses": {
+          "200": {"description": "Dashboard snapshot", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DashboardEnvelope"}}}},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/api/v1/markets": {
+      "get": {
+        "tags": ["Analytics"],
+        "operationId": "listMarkets",
+        "responses": {
+          "200": {"description": "Supported market summaries", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MarketListEnvelope"}}}},
+          "500": {"$ref": "#/components/responses/InternalError"}
+        }
+      }
+    },
+    "/api/v1/markets/{symbol}": {
+      "get": {
+        "tags": ["Analytics"],
+        "operationId": "getMarket",
+        "parameters": [{"$ref": "#/components/parameters/Symbol"}],
+        "responses": {
+          "200": {"description": "Closed-only market detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MarketDetailEnvelope"}}}},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/InvalidRequest"}
+        }
+      }
+    },
+    "/api/v1/analysis/{symbol}": {
+      "get": {
+        "tags": ["Analytics"],
+        "operationId": "getAnalysis",
+        "parameters": [{"$ref": "#/components/parameters/Symbol"}],
+        "responses": {
+          "200": {"description": "Latest closed-only analysis", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AnalysisEnvelope"}}}},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/InvalidRequest"}
+        }
+      }
+    },
+    "/api/v1/setups": {
+      "get": {
+        "tags": ["Analytics"],
+        "operationId": "listSetups",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/SymbolFilter"},
+          {"$ref": "#/components/parameters/Status"},
+          {"$ref": "#/components/parameters/From"},
+          {"$ref": "#/components/parameters/To"}
+        ],
+        "responses": {
+          "200": {"description": "Cursor page of setups", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SetupPageEnvelope"}}}},
+          "422": {"$ref": "#/components/responses/InvalidRequest"}
+        }
+      }
+    },
+    "/api/v1/setups/{setup_id}": {
+      "get": {
+        "tags": ["Analytics"],
+        "operationId": "getSetup",
+        "parameters": [{"$ref": "#/components/parameters/SetupId"}],
+        "responses": {
+          "200": {"description": "Setup detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SetupDetailEnvelope"}}}},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/api/v1/incidents": {
+      "get": {
+        "tags": ["Incidents"],
+        "operationId": "listIncidents",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/SymbolFilter"},
+          {"$ref": "#/components/parameters/Status"},
+          {"$ref": "#/components/parameters/Severity"},
+          {"$ref": "#/components/parameters/From"},
+          {"$ref": "#/components/parameters/To"}
+        ],
+        "responses": {
+          "200": {"description": "Cursor page of incidents", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentPageEnvelope"}}}},
+          "422": {"$ref": "#/components/responses/InvalidRequest"}
+        }
+      }
+    },
+    "/api/v1/incidents/{incident_id}": {
+      "get": {
+        "tags": ["Incidents"],
+        "operationId": "getIncident",
+        "parameters": [{"$ref": "#/components/parameters/IncidentId"}],
+        "responses": {
+          "200": {"description": "Incident detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentDetailEnvelope"}}}},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Symbol": {"name": "symbol", "in": "path", "required": true, "schema": {"$ref": "#/components/schemas/Symbol"}},
+      "SymbolFilter": {"name": "symbol", "in": "query", "required": false, "schema": {"$ref": "#/components/schemas/Symbol"}},
+      "SetupId": {"name": "setup_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$"}},
+      "IncidentId": {"name": "incident_id", "in": "path", "required": true, "schema": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$"}},
+      "Limit": {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}},
+      "Cursor": {"name": "cursor", "in": "query", "required": false, "schema": {"type": "string"}, "description": "Opaque stable cursor; clients must not interpret it."},
+      "Status": {"name": "status", "in": "query", "required": false, "schema": {"type": "string"}},
+      "Severity": {"name": "severity", "in": "query", "required": false, "schema": {"$ref": "#/components/schemas/Severity"}},
+      "From": {"name": "from", "in": "query", "required": false, "schema": {"$ref": "#/components/schemas/UtcTimestamp"}},
+      "To": {"name": "to", "in": "query", "required": false, "schema": {"$ref": "#/components/schemas/UtcTimestamp"}}
+    },
+    "responses": {
+      "NotFound": {"description": "Resource not found", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "InvalidRequest": {"description": "Invalid filter or identifier", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "InternalError": {"description": "Safe internal error without implementation details", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}}
+    },
+    "schemas": {
+      "UtcTimestamp": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$",
+        "description": "RFC 3339 UTC. generated_at is response assembly time; observed_at is source observation time; updated_at is resource projection update time; closed_until is the exclusive logical boundary immediately after the last included closed candle."
+      },
+      "DecimalString": {"type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$", "description": "Finite base-10 value serialized as a JSON string. Used for prices, quantities, PnL, RR, and percentages requiring exactness."},
+      "Symbol": {"type": "string", "pattern": "^[A-Z0-9]{5,20}$", "examples": ["BTCUSDT"]},
+      "HealthState": {"type": "string", "enum": ["UNKNOWN", "OK", "STALE", "DEGRADED", "NOT_AVAILABLE", "ERROR", "OFFLINE"]},
+      "Direction": {"type": "string", "enum": ["UNKNOWN", "BULLISH", "BEARISH", "NEUTRAL", "NONE", "NOT_APPLICABLE"]},
+      "AnalysisStatus": {"type": "string", "enum": ["UNKNOWN", "ANALYZED", "SKIPPED_NOT_ENOUGH_DATA", "SKIPPED_DEGRADED_MARKET_DATA", "SKIPPED_DUPLICATE_WINDOW", "SKIPPED_INVALID_SNAPSHOT", "ERROR"]},
+      "SetupStatus": {"type": "string", "enum": ["UNKNOWN", "SETUP_CANDIDATE", "NO_SETUP", "WAIT_FOR_CONFIRMATION", "SETUP_INVALID", "ERROR"]},
+      "IncidentStatus": {"type": "string", "enum": ["UNKNOWN", "OPEN", "UPDATED", "RESOLVED"]},
+      "Severity": {"type": "string", "enum": ["UNKNOWN", "INFO", "WARNING", "ERROR", "CRITICAL"]},
+      "PipelineStatus": {"type": "string", "enum": ["UNKNOWN", "PENDING", "WAITING_FOR_REQUIRED_BOUNDARY", "READY_TO_RUN", "RUNNING", "COMPLETED", "SKIPPED", "MODULE_ERROR", "ERROR"]},
+      "ServiceSnapshot": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["name", "status", "observed_at"],
+        "properties": {
+          "name": {"type": "string"},
+          "status": {"$ref": "#/components/schemas/HealthState"},
+          "observed_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "message": {"type": ["string", "null"]}
+        }
+      },
+      "HealthSnapshot": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["status", "observed_at", "services"],
+        "properties": {
+          "status": {"$ref": "#/components/schemas/HealthState"},
+          "observed_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "services": {"type": "array", "items": {"$ref": "#/components/schemas/ServiceSnapshot"}}
+        }
+      },
+      "MarketSummary": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["symbol", "status", "latest_price", "closed_until", "closed_until_ms", "regime", "setup_status", "risk_status", "updated_at"],
+        "properties": {
+          "symbol": {"$ref": "#/components/schemas/Symbol"},
+          "status": {"$ref": "#/components/schemas/HealthState"},
+          "latest_price": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "closed_until": {"anyOf": [{"$ref": "#/components/schemas/UtcTimestamp"}, {"type": "null"}]},
+          "closed_until_ms": {"type": ["integer", "null"], "minimum": 0, "description": "Optional epoch-ms mirror for exact candle-boundary correlation."},
+          "regime": {"type": ["string", "null"]},
+          "setup_status": {"$ref": "#/components/schemas/SetupStatus"},
+          "risk_status": {"type": ["string", "null"]},
+          "updated_at": {"$ref": "#/components/schemas/UtcTimestamp"}
+        }
+      },
+      "MarketDetail": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["summary", "timeframe", "open", "high", "low", "close", "volume", "has_gaps", "enough_data", "future_bars_used"],
+        "properties": {
+          "summary": {"$ref": "#/components/schemas/MarketSummary"},
+          "timeframe": {"type": "string"},
+          "open": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "high": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "low": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "close": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "volume": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "has_gaps": {"type": ["boolean", "null"]},
+          "enough_data": {"type": ["boolean", "null"]},
+          "future_bars_used": {"const": false}
+        }
+      },
+      "AnalysisSnapshot": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["analysis_id", "symbol", "timeframe", "closed_until", "closed_until_ms", "status", "market_data_status", "regime", "direction", "confidence", "impulse_phase", "entry_quality", "reason_codes", "updated_at"],
+        "properties": {
+          "analysis_id": {"type": "string"},
+          "symbol": {"$ref": "#/components/schemas/Symbol"},
+          "timeframe": {"type": "string"},
+          "closed_until": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "closed_until_ms": {"type": "integer", "minimum": 0},
+          "status": {"$ref": "#/components/schemas/AnalysisStatus"},
+          "market_data_status": {"$ref": "#/components/schemas/HealthState"},
+          "regime": {"type": ["string", "null"]},
+          "direction": {"$ref": "#/components/schemas/Direction"},
+          "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Diagnostic normalized score; not a financial value."},
+          "impulse_phase": {"type": ["string", "null"]},
+          "entry_quality": {"type": ["string", "null"]},
+          "reason_codes": {"type": "array", "items": {"type": "string"}},
+          "updated_at": {"$ref": "#/components/schemas/UtcTimestamp"}
+        }
+      },
+      "SetupSummary": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["setup_id", "symbol", "timeframe", "closed_until", "closed_until_ms", "status", "setup_type", "direction", "quality", "quality_score", "updated_at"],
+        "properties": {
+          "setup_id": {"type": "string"},
+          "symbol": {"$ref": "#/components/schemas/Symbol"},
+          "timeframe": {"type": "string"},
+          "closed_until": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "closed_until_ms": {"type": "integer", "minimum": 0},
+          "status": {"$ref": "#/components/schemas/SetupStatus"},
+          "setup_type": {"type": "string"},
+          "direction": {"$ref": "#/components/schemas/Direction"},
+          "quality": {"type": "string"},
+          "quality_score": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+          "updated_at": {"$ref": "#/components/schemas/UtcTimestamp"}
+        }
+      },
+      "SetupDetail": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["summary", "confirmation_state", "reason_codes", "warnings", "invalidation_reasons", "strategy_status", "risk_status", "paper_status", "hypothetical_entry", "hypothetical_stop", "hypothetical_target", "planned_rr", "executable"],
+        "properties": {
+          "summary": {"$ref": "#/components/schemas/SetupSummary"},
+          "confirmation_state": {"type": "string"},
+          "reason_codes": {"type": "array", "items": {"type": "string"}},
+          "warnings": {"type": "array", "items": {"type": "string"}},
+          "invalidation_reasons": {"type": "array", "items": {"type": "string"}},
+          "strategy_status": {"type": ["string", "null"]},
+          "risk_status": {"type": ["string", "null"]},
+          "paper_status": {"type": ["string", "null"]},
+          "hypothetical_entry": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "hypothetical_stop": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "hypothetical_target": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "planned_rr": {"anyOf": [{"$ref": "#/components/schemas/DecimalString"}, {"type": "null"}]},
+          "executable": {"const": false}
+        }
+      },
+      "IncidentSummary": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["incident_id", "status", "severity", "source", "title", "symbol", "opened_at", "updated_at", "resolved_at"],
+        "properties": {
+          "incident_id": {"type": "string"},
+          "status": {"$ref": "#/components/schemas/IncidentStatus"},
+          "severity": {"$ref": "#/components/schemas/Severity"},
+          "source": {"type": "string"},
+          "title": {"type": "string"},
+          "symbol": {"anyOf": [{"$ref": "#/components/schemas/Symbol"}, {"type": "null"}]},
+          "opened_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "updated_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "resolved_at": {"anyOf": [{"$ref": "#/components/schemas/UtcTimestamp"}, {"type": "null"}]}
+        }
+      },
+      "IncidentDetail": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["summary", "safe_description", "reason_code", "timeframe", "closed_until", "closed_until_ms"],
+        "properties": {
+          "summary": {"$ref": "#/components/schemas/IncidentSummary"},
+          "safe_description": {"type": "string", "description": "Redacted description without stack traces, SQL, filesystem paths, credentials, or exception repr."},
+          "reason_code": {"type": ["string", "null"]},
+          "timeframe": {"type": ["string", "null"]},
+          "closed_until": {"anyOf": [{"$ref": "#/components/schemas/UtcTimestamp"}, {"type": "null"}]},
+          "closed_until_ms": {"type": ["integer", "null"], "minimum": 0}
+        }
+      },
+      "PipelineRunSummary": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["run_id", "symbol", "primary_timeframe", "closed_until", "closed_until_ms", "status", "attempt_count", "result_count"],
+        "properties": {
+          "run_id": {"type": "string"},
+          "symbol": {"$ref": "#/components/schemas/Symbol"},
+          "primary_timeframe": {"type": "string"},
+          "closed_until": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "closed_until_ms": {"type": "integer", "minimum": 0},
+          "status": {"$ref": "#/components/schemas/PipelineStatus"},
+          "attempt_count": {"type": "integer", "minimum": 0},
+          "result_count": {"type": "integer", "minimum": 0}
+        }
+      },
+      "DashboardSnapshot": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["status", "observed_at", "markets", "recent_runs", "active_incident_count"],
+        "properties": {
+          "status": {"$ref": "#/components/schemas/HealthState"},
+          "observed_at": {"$ref": "#/components/schemas/UtcTimestamp"},
+          "markets": {"type": "array", "items": {"$ref": "#/components/schemas/MarketSummary"}},
+          "recent_runs": {"type": "array", "items": {"$ref": "#/components/schemas/PipelineRunSummary"}},
+          "active_incident_count": {"type": "integer", "minimum": 0}
+        }
+      },
+      "PageInfo": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["limit", "next_cursor"],
+        "properties": {
+          "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+          "next_cursor": {"type": ["string", "null"]}
+        }
+      },
+      "SetupPage": {
+        "type": "object",
+        "required": ["items", "page"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/SetupSummary"}},
+          "page": {"$ref": "#/components/schemas/PageInfo"}
+        }
+      },
+      "IncidentPage": {
+        "type": "object",
+        "required": ["items", "page"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/IncidentSummary"}},
+          "page": {"$ref": "#/components/schemas/PageInfo"}
+        }
+      },
+      "MarketList": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/MarketSummary"}}}
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["code", "message", "details"],
+        "properties": {
+          "code": {"type": "string", "examples": ["RESOURCE_NOT_FOUND"]},
+          "message": {"type": "string", "description": "Human-readable safe message."},
+          "details": {"type": "object", "additionalProperties": true}
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["api_version", "error"],
+        "properties": {
+          "api_version": {"const": "v1"},
+          "error": {"$ref": "#/components/schemas/Error"},
+          "request_id": {"type": ["string", "null"]}
+        }
+      },
+      "HealthEnvelope": {"$ref": "#/components/schemas/HealthEnvelopeObject"},
+      "HealthEnvelopeObject": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/HealthSnapshot"}}},
+      "DashboardEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/DashboardSnapshot"}}},
+      "MarketListEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/MarketList"}}},
+      "MarketDetailEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/MarketDetail"}}},
+      "AnalysisEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/AnalysisSnapshot"}}},
+      "SetupPageEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/SetupPage"}}},
+      "SetupDetailEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/SetupDetail"}}},
+      "IncidentPageEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/IncidentPage"}}},
+      "IncidentDetailEnvelope": {"type": "object", "required": ["api_version", "generated_at", "data"], "properties": {"api_version": {"const": "v1"}, "generated_at": {"$ref": "#/components/schemas/UtcTimestamp"}, "data": {"$ref": "#/components/schemas/IncidentDetail"}}}
+    }
+  }
+}
