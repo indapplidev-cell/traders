@@ -13,6 +13,11 @@ are verified on Windows and on Linux `python:3.11-slim`, the production base
 platform declared by `Dockerfile`. Every distribution is pinned with `==` and
 covered by one or more SHA256 hashes.
 
+The API server is the exact direct runtime dependency `uvicorn==0.51.0`.
+This version adds only Uvicorn and its required `click` dependency to the
+previously passing runtime set; the already locked `h11==0.16.0` is reused.
+Existing package versions, including `fastapi==0.116.1`, must not drift.
+
 ## Install
 
 Create a fresh environment outside the repository. Do not install into a
@@ -25,6 +30,7 @@ python -m pip install --disable-pip-version-check --no-input --require-hashes -r
 python -m pip install --disable-pip-version-check --no-input --no-deps .
 python -m pip check
 python scripts/verify_api_dependency_lock.py
+traders-readonly-api --help
 ```
 
 Development and tests:

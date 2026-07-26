@@ -25,6 +25,9 @@ FORBIDDEN_OPTIONS = (
     "--editable",
     "-e ",
 )
+RUNTIME_FORBIDDEN_PACKAGES = frozenset(
+    {"pytest", "pluggy", "iniconfig", "pygments", "pip-tools"}
+)
 REQUIRED_HEADER_FIELDS = (
     "# Source commit:",
     "# Target:",
@@ -116,6 +119,16 @@ def verify_contract() -> list[str]:
         errors.append("api-runtime.lock.txt: FastAPI must be exactly 0.116.1")
     if dev.get("fastapi") != "0.116.1":
         errors.append("api-dev.lock.txt: FastAPI must be exactly 0.116.1")
+    if runtime.get("uvicorn") != "0.51.0":
+        errors.append("api-runtime.lock.txt: Uvicorn must be exactly 0.51.0")
+    if dev.get("uvicorn") != "0.51.0":
+        errors.append("api-dev.lock.txt: Uvicorn must be exactly 0.51.0")
+    unexpected_runtime = sorted(RUNTIME_FORBIDDEN_PACKAGES.intersection(runtime))
+    if unexpected_runtime:
+        errors.append(
+            "api-runtime.lock.txt: dev packages are forbidden: "
+            + ",".join(unexpected_runtime)
+        )
     if tools.get("pip-tools") != "7.5.2":
         errors.append("lock-tools.txt: pip-tools must be exactly 7.5.2")
     for package, version in runtime.items():
@@ -138,6 +151,8 @@ def main() -> int:
     print("ALL_INSTALLABLE_LINES_PINNED = YES")
     print("HASHES_PRESENT = YES")
     print("FASTAPI_EXACTLY_0_116_1 = YES")
+    print("UVICORN_EXACTLY_0_51_0 = YES")
+    print("RUNTIME_DEV_TOOLING_ABSENT = YES")
     print("NO_ABSOLUTE_PATHS = YES")
     print("NO_CREDENTIALS = YES")
     print("NO_EDITABLE_PROJECT_ENTRY = YES")
