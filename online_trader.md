@@ -3,12 +3,12 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d7887845e79b4db9c87c8ee707184093fcc66643
+STATUS_AS_OF_COMMIT = 92816732fe91ce8834e76856e6c74795fd8b76d0
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-26T11:30:00Z
-RECONCILED_BY_TASK = TRADERS-ML-SERVER-READONLY-API-ROOT-INTEGRATION-01
+RECONCILED_AT_UTC = 2026-07-26T17:27:14Z
+RECONCILED_BY_TASK = TRADERS-ML-SERVER-READONLY-API-RUNTIME-ENTRYPOINT-AND-LOCK-CONTRACT-01
 FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
@@ -22,8 +22,9 @@ STATUS_CONFIDENCE = PROVEN_INTEGRATION_STATE
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = INTEGRATED_NOT_DEPLOYED
-CURRENT_STAGE = TRADERS-ML-SERVER-READONLY-API-POST-INTEGRATION-BUILD-CANARY-PREPARATION-01
-CURRENT_BLOCKER = NONE_FOR_POST_INTEGRATION_PREPARATION
+API_RUNTIME_STATUS = ENTRYPOINT_IMPLEMENTED_NOT_DEPLOYED
+CURRENT_STAGE = TRADERS-ML-SERVER-READONLY-API-POST-INTEGRATION-BUILD-CANARY-PREPARATION-01-RERUN
+CURRENT_BLOCKER = NONE_FOR_POST_INTEGRATION_PREPARATION_RERUN
 ```
 
 Root project-state commit `d7887845e79b4db9c87c8ee707184093fcc66643`
@@ -50,16 +51,29 @@ c3c8e8a3e539b29f3faa23f8fe0c700af514d36c
 
 ```text
 FASTAPI = 0.116.1
+ASGI_SERVER = uvicorn 0.51.0
+API_RUNTIME_ENTRYPOINT = IMPLEMENTED
+RUNTIME_FACTORY = app.server_api.runtime:create_runtime_app
+EXECUTABLE_ENTRYPOINT = traders-readonly-api
+MODULE_ENTRYPOINT = python -m app.server_api.runtime
+DOCKER_API_TARGET = readonly-api, IMPLEMENTED_NOT_DEPLOYED
+EPHEMERAL_READONLY_DB_SMOKE = PASS
 API_ROUTE_COUNT = 9
 API_GET_ONLY_ROUTES = 9
 API_WRITE_ROUTES = 0
 SELECT_ONLY_APPLICATION_ADAPTER = YES
 DB_MIGRATIONS_ADDED = 0
+PRODUCTION_MUTATIONS = 0
+CANARY_STARTED = NO
+SOAK_STARTED = NO
 ```
 
-API импортируется и создаёт inert FastAPI application без подключения к БД,
-открытия socket или запуска background work. Production repositories должны
-передаваться явно.
+Library factory `create_app()` остаётся inert. Новый runtime factory явно
+создаёт один SQLAlchemy engine/session factory и передаёт существующий
+SELECT-only adapter. Import и `--help` не открывают DB connection или socket.
+Startup проверяет PostgreSQL read-only mode, а lifespan shutdown освобождает
+engine. Этот runtime contract реализован и image-smoke подтверждён, но не
+deployed и не является production acceptance.
 
 Подтверждённые integration gates:
 
@@ -71,8 +85,9 @@ VERIFY_ENV_1_INSTALL = PASS
 VERIFY_ENV_2_INSTALL = PASS
 NORMALIZED_FREEZE_MATCH = YES
 DEPENDENCY_CONTRACT_TESTS = 2 passed
-API_FOCUSED = 26 passed
-SAFE_REGRESSION = 553 passed, 2 deselected
+RUNTIME_ENTRYPOINT_TESTS = 20 passed
+API_FOCUSED = 46 passed
+SAFE_REGRESSION = 611 passed, 2 deselected
 LINUX_PRODUCTION_TARGET_SMOKE = PASS
 LINUX_TARGET = python:3.11-slim, x86_64
 ```
@@ -108,7 +123,7 @@ Connection-preparation не интегрирован. Production runtime, Postgr
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
 | Production reliability/acceptance | ≈70% | API integration не является production acceptance |
-| Readonly Server API | 75% | Root-integrated, locked и Linux-smoke validated; не deployed |
+| Readonly Server API | 75% | Root-integrated runtime entrypoint, exact ASGI lock, `readonly-api` image target and ephemeral read-only DB smoke proven; not deployed |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
 Проценты отражают implementation, integration, tests, deployment и acceptance,
@@ -118,7 +133,7 @@ Connection-preparation не интегрирован. Production runtime, Postgr
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS-ML-SERVER-READONLY-API-POST-INTEGRATION-BUILD-CANARY-PREPARATION-01
+TRADERS-ML-SERVER-READONLY-API-POST-INTEGRATION-BUILD-CANARY-PREPARATION-01-RERUN
 ```
 
 Следующая задача должна подготовить отдельно контролируемые build/canary gates.
