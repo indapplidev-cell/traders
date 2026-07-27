@@ -63,6 +63,12 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+secrets/
+credentials/
+private/
+config/private/
 
 # Compose files contain deployment-only connection material and are not copied
 # by the application Dockerfile.

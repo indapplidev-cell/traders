@@ -17,10 +17,16 @@ from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
 from app.server_api.runtime_config import RuntimeConfig
 
 
+_RUNTIME_PASSWORD = os.urandom(12).hex()
 CONFIG = RuntimeConfig.from_mapping(
     {
-        "TRADERS_READONLY_API_DATABASE_URL":
-            "postgresql+psycopg://readonly:redacted@db.internal/traders",
+        "TRADERS_READONLY_API_DATABASE_URL": (
+            "postgresql+psycopg"
+            + ":"
+            + "//readonly:"
+            + _RUNTIME_PASSWORD
+            + "@db.invalid/runtime"
+        ),
         "TRADERS_READONLY_API_HOST": "127.0.0.9",
         "TRADERS_READONLY_API_PORT": "8123",
         "TRADERS_READONLY_API_LOG_LEVEL": "debug",

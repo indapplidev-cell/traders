@@ -11,7 +11,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/traders-ml
-Environment="DATABASE_URL=postgresql+psycopg://traders_ml:traders_ml@localhost:5432/traders_ml"
+EnvironmentFile=/etc/traders-ml/market-data.env
 ExecStart=/opt/traders-ml/.venv/bin/python scripts/engine_market_data_continuous_sync.py --symbols BTCUSDT,ETHUSDT,SOLUSDT --timeframes 1m,5m,15m,1h,4h,1d --warmup --continuous --health-report reports/engine_market_data/continuous_sync/latest_health.json
 Restart=always
 RestartSec=10

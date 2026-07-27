@@ -30,7 +30,7 @@ services:
       --health-report reports/engine_market_data/continuous_sync/latest_health.json
       --health-report-interval-seconds 60
     environment:
-      DATABASE_URL: postgresql+psycopg://traders_ml:traders_ml@postgres:5432/traders_ml
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be provided by runtime secret injection}
     volumes:
       - ./reports:/service/reports
 
@@ -54,7 +54,7 @@ services:
       --health-report reports/engine_orchestrator/latest_health.json
       --health-report-interval-seconds 60
     environment:
-      DATABASE_URL: postgresql+psycopg://traders_ml:traders_ml@postgres:5432/traders_ml
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be provided by runtime secret injection}
       ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS: ${ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS:-5}
       ORCHESTRATOR_FRESHNESS_GRACE_SECONDS: ${ORCHESTRATOR_FRESHNESS_GRACE_SECONDS:-180}
       ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS: ${ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS:-60}

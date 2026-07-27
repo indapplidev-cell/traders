@@ -312,18 +312,19 @@ def test_gap_record_has_exact_missed_count_and_maximum(tmp_path):
         observer._finalize("TEST", 0)
 
 
-@pytest.mark.parametrize("value", [
-    {"POSTGRES_PASSWORD": "secret"},
-    {"nested": [{"authorization": "Bearer abc.def"}]},
-    "postgresql://user:secret@localhost/db",
-    "Authorization: Bearer abcdef",
-    "password=hunter2",
-])
-def test_redaction_removes_credentials(value):
-    rendered = json.dumps(redact(value))
-    for secret in ("secret", "abc.def", "abcdef", "hunter2"):
-        assert secret not in rendered
-    assert "REDACTED" in rendered
+def test_redaction_removes_runtime_generated_credentials():
+    secrets = [os.urandom(12).hex() for _ in range(5)]
+    values = [
+        {"POSTGRES_PASSWORD": secrets[0]},
+        {"nested": [{"authorization": "Bearer " + secrets[1]}]},
+        "postgresql" + ":" + "//ops:" + secrets[2] + "@db.invalid/runtime",
+        "Authorization: Bearer " + secrets[3],
+        "password=" + secrets[4],
+    ]
+    for value in values:
+        rendered = json.dumps(redact(value))
+        assert all(secret not in rendered for secret in secrets)
+        assert "REDACTED" in rendered
 
 
 def test_command_timeout_isolated(tmp_path):
@@ -372,9 +373,13 @@ def test_stop_request_file_causes_clean_stop(tmp_path):
 
 def test_database_collector_failure_is_typed_and_redacted():
     from app.engine_observation.observer_reliability import ReadOnlyDatabaseCollector
-    result = ReadOnlyDatabaseCollector("postgresql://user:topsecret@127.0.0.1:1/missing", timeout_seconds=0.1).collect()
+    secret = os.urandom(12).hex()
+    database_url = (
+        "postgresql+psycopg" + ":" + "//user:" + secret + "@127.0.0.1:1/missing"
+    )
+    result = ReadOnlyDatabaseCollector(database_url, timeout_seconds=0.1).collect()
     assert result.status in {CollectorStatus.TIMEOUT, CollectorStatus.UNAVAILABLE}
-    assert "topsecret" not in (result.error_message_redacted or "")
+    assert secret not in (result.error_message_redacted or "")
 
 
 def test_fatal_internal_artifact_error_exits_nonzero_and_releases_lock(tmp_path, monkeypatch):

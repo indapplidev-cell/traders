@@ -12,4 +12,7 @@ class MarketDataDatabaseSettings:
 
     @classmethod
     def from_environment(cls) -> "MarketDataDatabaseSettings":
-        return cls(os.getenv("MARKET_DATA_DATABASE_URL", get_settings().database_url))
+        database_url = os.getenv("MARKET_DATA_DATABASE_URL")
+        if database_url:
+            return cls(database_url)
+        return cls(get_settings().require_database_url())

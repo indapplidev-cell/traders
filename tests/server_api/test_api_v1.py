@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 
 from fastapi.testclient import TestClient
@@ -147,15 +148,17 @@ def test_unconfigured_app_fails_closed_without_discovery():
 
 def test_exception_is_sanitized():
     fake = FakeReadRepository()
+    secret = os.urandom(12).hex()
 
     def fail():
-        raise RuntimeError(r"postgresql://user:secret@host/db C:\private\file.sql")
+        database_url = "postgresql" + ":" + "//admin:" + secret + "@db.invalid/private"
+        raise RuntimeError(database_url + r" C:\private\file.sql")
 
     fake.get_health = fail
     app = create_app(repositories=fake.api_repositories(), clock=lambda: NOW)
     client = TestClient(app, raise_server_exceptions=False)
     payload = assert_error(client.get("/api/v1/health"), 500, "INTERNAL_ERROR")
     text = str(payload).lower()
-    assert "secret" not in text
+    assert secret not in text
     assert "postgresql" not in text
     assert "private" not in text

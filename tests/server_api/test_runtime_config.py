@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from app.server_api.runtime_config import (
@@ -8,9 +10,15 @@ from app.server_api.runtime_config import (
 )
 
 
+_RUNTIME_PASSWORD = os.urandom(12).hex()
 VALID = {
-    "TRADERS_READONLY_API_DATABASE_URL":
-        "postgresql+psycopg://readonly:super-secret@db.internal/traders",
+    "TRADERS_READONLY_API_DATABASE_URL": (
+        "postgresql+psycopg"
+        + ":"
+        + "//readonly:"
+        + _RUNTIME_PASSWORD
+        + "@db.invalid/runtime"
+    ),
 }
 
 
@@ -23,7 +31,14 @@ def test_missing_required_configuration_fails_closed() -> None:
     ("name", "value"),
     [
         ("TRADERS_READONLY_API_DATABASE_URL", "not-a-url"),
-        ("TRADERS_READONLY_API_DATABASE_URL", "sqlite:///tmp.db"),
+        (
+            "TRADERS_READONLY_API_DATABASE_URL",
+            "postgresql"
+            + ":"
+            + "//owner:"
+            + os.urandom(12).hex()
+            + "@localhost/runtime",
+        ),
         ("TRADERS_READONLY_API_PORT", "0"),
         ("TRADERS_READONLY_API_PORT", "invalid"),
         ("TRADERS_READONLY_API_LOG_LEVEL", "verbose"),

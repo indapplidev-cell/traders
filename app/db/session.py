@@ -16,7 +16,7 @@ def reset_engine_cache() -> None:
 
 
 def get_engine(database_url: str | None = None) -> Engine:
-    url = database_url or get_settings().database_url
+    url = database_url or get_settings().require_database_url()
     if url not in _ENGINE_CACHE:
         engine_kwargs = {"pool_pre_ping": True}
         if url.startswith("sqlite"):
