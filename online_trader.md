@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = f5b48e061f99afea81f3fd39b296acded477f8b6
+STATUS_AS_OF_COMMIT = 4dcb6a3a228017408fc8e6caf554908e6b67289c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-26T18:43:37Z
-RECONCILED_BY_TASK = TRADERS-ML-SERVER-READONLY-API-POST-INTEGRATION-BUILD-CANARY-PREPARATION-01-RERUN
-FILES_CHANGED = ops/canary/readonly-api/**; scripts/verify_readonly_api_canary_contract.py; tests/server_api/test_canary_configuration.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-27T11:23:29Z
+RECONCILED_BY_TASK = TRADERS-ML-MARKET-DATA-BOUNDARY-AWARE-HEALTH-SEMANTICS-01
+FILES_CHANGED = app/engine_market_data/continuous_sync_daemon.py; app/engine_market_data/freshness_monitor.py; app/engine_market_data/operational/prod_smoke.py; app/engine_observation/observation_runner.py; docs/operations/market_data_boundary_health.md; tests/test_engine_market_data_04_boundary_aware_health.py; tests/test_engine_market_data_04_freshness_monitor.py; tests/test_engine_market_data_04_health_consumers.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_CANARY_PREPARATION_STATE
+STATUS_CONFIDENCE = PROVEN_LOCAL_BOUNDARY_HEALTH_IMPLEMENTATION_NOT_DEPLOYED
 
 # Состояние проекта traders-ml
 
@@ -23,31 +23,69 @@ STATUS_CONFIDENCE = PROVEN_CANARY_PREPARATION_STATE
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = PREPARED_NOT_DEPLOYED
 API_RUNTIME_STATUS = PREPARED_NOT_DEPLOYED
-CURRENT_STAGE = TRADERS-ML-SERVER-READONLY-API-CONTROLLED-CANARY-DEPLOYMENT-01
-CURRENT_BLOCKER = SEPARATE_OPERATOR_AUTHORIZATION_REQUIRED
+CURRENT_STAGE = AWAITING_SEPARATELY_AUTHORIZED_CONTROLLED_DEPLOYMENT_SELECTION
+CURRENT_BLOCKER = NONE_FOR_LOCAL_IMPLEMENTATION; PRODUCTION_DEPLOYMENT_NOT_AUTHORIZED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
-содержит:
+был предыдущим доказанным состоянием. Новый project-state commit
+`4dcb6a3a228017408fc8e6caf554908e6b67289c` дополнительно содержит:
 
-- ранее интегрированный online engine pipeline;
-- Readonly Server API v1;
-- hash-locked runtime/dev dependency contract;
-- cross-platform LF contract для lock-файлов и hash-checked OpenAPI snapshot;
-- API, dependency-contract и root regression tests;
-- disabled-by-default hardened canary configuration, verifier, runbook and
-  rollback plan.
+- backward-compatible boundary-aware market-data health contract;
+- operational/readiness/reason/deadline fields в atomic JSON health report;
+- direct prod-smoke и observation consumer mapping;
+- deterministic boundary, clock-skew, aggregation, serialization и incident
+  regression tests.
 
-Перенесены только implementation commits:
+Ранее доказанное состояние остаётся включённым как ancestor:
 
 ```text
-c3c8e8a3e539b29f3faa23f8fe0c700af514d36c
-0041cc3ec15d2e11fa44b345c74bca11d2a585c4
+Readonly Server API v1 = PREPARED_NOT_DEPLOYED
+API canary configuration = PREPARED_DISABLED_BY_DEFAULT
+LIVE = DISABLED
 ```
 
-Старые status commits
-`3f3444fb0691854c89a47c7e20816d92daedff6e` и
-`c20d0ecc50c22f44a610355e2472098fd074b49e` не интегрированы.
+## Market-data boundary-aware health
+
+```text
+MARKET_DATA_BOUNDARY_AWARE_HEALTH = IMPLEMENTED
+PUBLIC_HEALTH_ENUM_CHANGED = NO
+BOUNDARY_WITHIN_GRACE = OPERATIONAL_READY
+WITHIN_GRACE_PUBLIC_STATUS = OK
+WITHIN_GRACE_REASON_CODE = BOUNDARY_WITHIN_GRACE
+WITHIN_GRACE_ACCEPTANCE_BLOCKING = NO
+RECOVERING = DEADLINE_EXCEEDED_OR_REAL_RECOVERY
+DEGRADED_FAILED = REAL_HEALTH_FAILURE
+CLOCK_SKEW_HANDLING = VERIFIED
+NORMAL_BOUNDARY_FALSE_BLOCKERS = 0
+REPORT_SCHEMA = MARKET_DATA_HEALTH/2.0_ADDITIVE
+OLD_REPORT_READER_COMPATIBILITY = PASS
+NEW_REPORT_READER_COMPATIBILITY = PASS
+INCIDENT_REGRESSION = PASS
+DETERMINISTIC_REPEAT_RUNS = 3_PASS
+MARKET_DATA_FOCUSED_TESTS = 192 passed, 1 skipped
+SAFE_REGRESSION = 676 passed, 2 skipped
+PRODUCTION_DEPLOYMENT = NOT_PERFORMED
+SETUPS_FIX_BRANCH = RETAINED_UNCHANGED
+```
+
+Exact unchanged grace contract:
+
+```text
+1m = 10 seconds
+5m = 15 seconds
+15m = 20 seconds
+1h = 60 seconds
+4h = 90 seconds
+1d = 120 seconds
+```
+
+Нормальная новая boundary до inclusive deadline публикуется как
+`overall_status=OK`, `reason_code=BOUNDARY_WITHIN_GRACE`,
+`operational=true`, `ready=true`, `acceptance_blocking=false`. После deadline
+прогрессирующая recovery остаётся `RECOVERING`; stalled runtime, real gap и
+active error остаются blocking. Production code не deployed, сервисы не
+перезапускались, PostgreSQL schema/data не изменялись.
 
 ## Readonly Server API
 
@@ -137,6 +175,7 @@ deployment status не повышается до API deployment status.
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
 | Production reliability/acceptance | ≈70% | API integration не является production acceptance |
 | Readonly Server API | 75% | Reproducible build contract and disabled-by-default hardened canary configuration passed a task-owned ephemeral DB dry-run; production canary not started |
+| Market-data health contract | Implemented/tested, not deployed | Boundary grace operational readiness and real-failure blocking passed deterministic and full regression gates |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
 Проценты отражают implementation, integration, tests, deployment и acceptance,
@@ -146,14 +185,15 @@ deployment status не повышается до API deployment status.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS-ML-SERVER-READONLY-API-CONTROLLED-CANARY-DEPLOYMENT-01
+NONE_AUTOMATIC
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
-Следующая задача может запускать production canary только после отдельного
-операторского разрешения и свежей проверки production gates. Подготовительный
-dry-run не является deployment authorization или production acceptance. До
-отдельного решения API остаётся `PREPARED_NOT_DEPLOYED`.
+Возможные будущие controlled deployment market-data health и Readonly API
+canary/setup acceptance являются отдельными задачами. Обе требуют отдельного
+операторского разрешения и свежей проверки production gates. Эта задача не
+выбирает и не запускает ни одну из них. До отдельного решения новый health
+contract и API остаются `NOT_DEPLOYED` / `PREPARED_NOT_DEPLOYED`.
 
 ## Правила актуализации
 
