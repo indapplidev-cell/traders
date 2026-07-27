@@ -14,6 +14,7 @@ TOOL_LOCK = ROOT / "requirements" / "lock-tools.txt"
 LOCK_FILES = (RUNTIME_LOCK, DEV_LOCK, TOOL_LOCK)
 
 PIN_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*(?:\[[A-Za-z0-9,._-]+\])?)==([^\s;]+)")
+MARKER_RE = re.compile(r'^(?P<name>[A-Za-z0-9._-]+)==[^\s;]+\s*;\s*(?P<marker>.+?)\s*(?:\\|$)')
 HASH_RE = re.compile(r"--hash=sha256:[0-9a-f]{64}(?:\s|$)")
 WINDOWS_ABSOLUTE_RE = re.compile(r"(?i)(?:^|[\s\"'])[a-z]:[\\/]")
 CREDENTIAL_RE = re.compile(r"(?i)https?://[^\s/@:]+:[^\s/@]+@")
@@ -29,12 +30,17 @@ RUNTIME_FORBIDDEN_PACKAGES = frozenset(
     {"pytest", "pluggy", "iniconfig", "pygments", "pip-tools"}
 )
 REQUIRED_HEADER_FIELDS = (
-    "# Source commit:",
+    "# Source manifest:",
+    "# Source manifest SHA256:",
     "# Target:",
     "# Generator:",
     "# Command:",
     "# Generated at UTC:",
 )
+REQUIRED_PLATFORM_MARKERS = {
+    "colorama": 'platform_system == "Windows"',
+    "tzdata": 'sys_platform == "win32"',
+}
 
 
 def _logical_lines(text: str) -> list[str]:
@@ -131,6 +137,17 @@ def verify_contract() -> list[str]:
         )
     if tools.get("pip-tools") != "7.5.2":
         errors.append("lock-tools.txt: pip-tools must be exactly 7.5.2")
+    runtime_text = RUNTIME_LOCK.read_text(encoding="utf-8")
+    runtime_markers = {
+        _canonical_name(match.group("name")): match.group("marker")
+        for line in runtime_text.splitlines()
+        if (match := MARKER_RE.match(line))
+    }
+    for package, marker in REQUIRED_PLATFORM_MARKERS.items():
+        if runtime_markers.get(package) != marker:
+            errors.append(
+                f"api-runtime.lock.txt: {package} marker must be exactly {marker!r}"
+            )
     for package, version in runtime.items():
         if dev.get(package) != version:
             errors.append(
@@ -153,6 +170,7 @@ def main() -> int:
     print("FASTAPI_EXACTLY_0_116_1 = YES")
     print("UVICORN_EXACTLY_0_51_0 = YES")
     print("RUNTIME_DEV_TOOLING_ABSENT = YES")
+    print("PLATFORM_MARKERS_EXPLICIT = YES")
     print("NO_ABSOLUTE_PATHS = YES")
     print("NO_CREDENTIALS = YES")
     print("NO_EDITABLE_PROJECT_ENTRY = YES")

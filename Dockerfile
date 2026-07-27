@@ -6,17 +6,20 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
 
 WORKDIR /service
 
+COPY requirements/api-runtime.lock.txt ./requirements/api-runtime.lock.txt
+RUN python -m pip install --no-cache-dir --require-hashes \
+        -r requirements/api-runtime.lock.txt
+
 COPY pyproject.toml README.md ./
-
-RUN python -c "import subprocess, sys, tomllib; dependencies = tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']; subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--no-cache-dir', *dependencies])"
-
 COPY app ./app
 COPY scripts ./scripts
 COPY alembic.ini ./
 COPY alembic ./alembic
 
 RUN pip install --no-cache-dir --no-deps . \
-    && rm -rf build *.egg-info
+    && rm -rf build *.egg-info /root/.cache \
+    && find /usr/local/lib/python3.11/site-packages \
+        -type d -name __pycache__ -prune -exec rm -rf {} +
 
 FROM python:3.11-slim AS readonly-api
 

@@ -7,11 +7,17 @@ The release/test contract is the resolved, hash-locked set:
 - `api-dev.lock.txt`: the complete runtime set plus test/dev packages;
 - `lock-tools.txt`: `pip-tools==7.5.2` and its exact tool dependencies.
 
-The locks reproduce the successful API retest package set at source commit
-`3f3444fb0691854c89a47c7e20816d92daedff6e`. They target CPython 3.11 and
-are verified on Windows and on Linux `python:3.11-slim`, the production base
-platform declared by `Dockerfile`. Every distribution is pinned with `==` and
-covered by one or more SHA256 hashes.
+The locks reproduce the successful API retest package set without upgrading
+it. They are all-platform CPython 3.11 contracts: platform-specific
+distributions retain explicit PEP 508 markers. The Linux production inventory
+is the exact effective set after evaluating those markers for CPython 3.11 on
+Linux, rather than every physical line in the all-platform lock. Every
+distribution is pinned with `==` and covered by one or more SHA256 hashes.
+
+`colorama==0.4.6` is Windows-only through Click. `tzdata==2026.3` is
+Windows-only through Psycopg; Linux uses the versioned OS tzdata supplied by
+the recorded base-image digest and must pass a `zoneinfo` smoke. Neither package
+is expected in the Linux Python inventory.
 
 The API server is the exact direct runtime dependency `uvicorn==0.51.0`.
 This version adds only Uvicorn and its required `click` dependency to the
@@ -60,17 +66,19 @@ python -m venv <TASK_RUNTIME>\lock_tool_venv
 <TASK_RUNTIME>\lock_tool_venv\Scripts\python.exe -m pip install --require-hashes -r requirements/lock-tools.txt
 ```
 
-Generate lock bodies from `pyproject.toml`:
+Generate both locks from `pyproject.toml`, constrained to the current approved
+versions:
 
 ```powershell
-<TASK_RUNTIME>\lock_tool_venv\Scripts\pip-compile.exe pyproject.toml --output-file <TASK_RUNTIME>\api-runtime.body.txt --constraint <PASSING_RUNTIME_CONSTRAINTS> --generate-hashes --resolver backtracking --no-emit-index-url --no-header --no-annotate --strip-extras
-<TASK_RUNTIME>\lock_tool_venv\Scripts\pip-compile.exe pyproject.toml --extra dev --output-file <TASK_RUNTIME>\api-dev.body.txt --constraint <PASSING_DEV_CONSTRAINTS> --generate-hashes --resolver backtracking --no-emit-index-url --no-header --no-annotate --strip-extras
+<TASK_RUNTIME>\lock_tool_venv\Scripts\python.exe scripts/generate_dependency_locks.py `
+  --pip-compile <TASK_RUNTIME>\lock_tool_venv\Scripts\pip-compile.exe `
+  --generated-date <YYYY-MM-DD>
 ```
 
-In the same controlled generation script, prepend the deterministic six-line
-header used by the checked-in files. Set its source commit, target, exact
-generator version, normalized command, and UTC generation date explicitly.
-Write UTF-8 with LF line endings, then atomically replace the lock files. Run:
+The generator records the source manifest SHA256, target, exact generator
+version, normalized command, and explicit UTC generation date. Run it twice
+into separate task-owned output directories and require byte-identical hashes
+before replacing the checked-in locks. Then run:
 
 ```powershell
 python scripts/verify_api_dependency_lock.py
