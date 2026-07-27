@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 4e3c2d0fdb5222576169ac2655847715238df3c8
+STATUS_AS_OF_COMMIT = 3407cd712b65073f6ff662196775b1fd5256e417
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-27T16:23:25Z
-RECONCILED_BY_TASK = TRADERS-ML-MARKET-DATA-BOUNDARY-AWARE-HEALTH-CONTROLLED-DEPLOYMENT-RETRY-01
+RECONCILED_AT_UTC = 2026-07-27T17:21:10Z
+RECONCILED_BY_TASK = TRADERS-ML-SERVER-READONLY-API-SETUPS-PRODUCTION-ACCEPTANCE-AND-ROOT-INTEGRATION-RETRY-01
 FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PRODUCTION_BOUNDARY_AWARE_MARKET_DATA_DEPLOYED_STABLE
+STATUS_CONFIDENCE = PROVEN_SETUPS_PRODUCTION_READONLY_ACCEPTANCE_AND_ROOT_INTEGRATION
 
 # Состояние проекта traders-ml
 
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_PRODUCTION_BOUNDARY_AWARE_MARKET_DATA_DEPLOYED_STABLE
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = PREPARED_NOT_DEPLOYED
 API_RUNTIME_STATUS = PREPARED_NOT_DEPLOYED
-CURRENT_STAGE = MARKET_DATA_BOUNDARY_AWARE_HEALTH_DEPLOYED_STABLE
+CURRENT_STAGE = SERVER_READONLY_API_SETUPS_PRODUCTION_ACCEPTED_ROOT_INTEGRATED
 CURRENT_BLOCKER = NONE
 ```
 
@@ -158,8 +158,10 @@ API_GET_ONLY_ROUTES = 9
 API_WRITE_ROUTES = 0
 SELECT_ONLY_APPLICATION_ADAPTER = YES
 DB_MIGRATIONS_ADDED = 0
-PRODUCTION_MUTATIONS = 0
-PRODUCTION_DB_MUTATIONS = 0
+PRODUCTION_PERSISTENT_MUTATIONS = 0
+PRODUCTION_DB_ROLE_MUTATION = TEMPORARY_CREATED_VERIFIED_REMOVED
+PRODUCTION_SCHEMA_MUTATIONS = 0
+MANUAL_PRODUCTION_DATA_MUTATIONS = 0
 PRODUCTION_CANARY_STARTED = NO
 SOAK_STARTED = NO
 ```
@@ -168,8 +170,10 @@ Library factory `create_app()` остаётся inert. Новый runtime factor
 создаёт один SQLAlchemy engine/session factory и передаёт существующий
 SELECT-only adapter. Import и `--help` не открывают DB connection или socket.
 Startup проверяет PostgreSQL read-only mode, а lifespan shutdown освобождает
-engine. Этот runtime contract реализован и image-smoke подтверждён, но не
-deployed и не является production acceptance.
+engine. Этот runtime contract реализован и image-smoke подтверждён. Persistent
+API service не deployed; отдельный `setups` endpoint прошёл ограниченную
+production read-only acceptance через полностью удалённые temporary role и
+ephemeral container.
 
 Подтверждённые integration gates:
 
@@ -191,6 +195,41 @@ LINUX_TARGET = python:3.11-slim, x86_64
 
 Это integration acceptance, а не deployment или production acceptance.
 
+### Setups endpoint production read-only acceptance
+
+```text
+SERVER_READONLY_API_SETUPS_ENDPOINT_RELIABILITY = PRODUCTION_ACCEPTED_AND_ROOT_INTEGRATED
+SETUPS_IMPLEMENTATION_SOURCE_COMMIT = e24073aee5f7e31f6a13c57e5ed3c7ad81cbc3ee
+SETUPS_ACCEPTANCE_REPLAY_COMMIT = 3407cd712b65073f6ff662196775b1fd5256e417
+PRODUCTION_ACCEPTANCE = PASS
+TEMP_READONLY_ROLE = CREATED_VERIFIED_REMOVED
+EPHEMERAL_API = STARTED_VERIFIED_REMOVED
+GET_ROUTES = 9
+WRITE_ROUTES = 0
+UNEXPECTED_5XX = 0
+LIST_QUERY_BOUNDED = YES
+DETAIL_QUERY_BOUNDED = YES
+LARGE_JSON_MATERIALIZATION = NO
+PRODUCTION_SCHEMA_MUTATIONS = 0
+MANUAL_PRODUCTION_DATA_MUTATIONS = 0
+MARKET_DATA = DEPLOYED_STABLE_UNCHANGED
+POSTGRESQL = HEALTHY_UNCHANGED
+ORCHESTRATOR = HEALTHY_UNCHANGED
+CLIENT_CONNECTION = NOT_STARTED
+```
+
+Implementation commit был replayed без конфликтов на current root. Pinned
+source gates прошли: setups `18 passed` в трёх deterministic runs, server API
+`64 passed`, runtime/dependency gates `46 passed`, safe regression
+`687 passed, 2 deselected`. Temporary PostgreSQL и hardened local container
+acceptance прошли до production boundary. Production acceptance использовала
+роль без write privileges и один loopback-only container: все 9 GET routes
+прошли, bounded 60-second load дал `240/240` HTTP 200 и zero unexpected 5xx.
+После cleanup одиннадцать health snapshots за 10 минут сохранили 18/18 streams,
+PostgreSQL и orchestrator healthy, а service IDs и restart counts неизменными.
+Это endpoint acceptance и root integration, но не persistent API deployment,
+canary или soak.
+
 ## Production boundary
 
 В рамках этой задачи:
@@ -198,36 +237,40 @@ LINUX_TARGET = python:3.11-slim, x86_64
 ```text
 API_DEPLOYED = NO
 MARKET_DATA_DEPLOYED = YES
-MARKET_DATA_DEPLOYMENT_REPLACEMENTS = 1
 MARKET_DATA_RUNTIME_STATUS = RUNNING_HEALTHY
-PRODUCTION_RUNTIME_CHANGED = MARKET_DATA_ONLY
+PRODUCTION_RUNTIME_CHANGED = TEMPORARY_ACCEPTANCE_RESOURCES_REMOVED
 POSTGRESQL_CHANGED = NO
 ALEMBIC_RUN = NO
-PRODUCTION_COMPOSE_APPLIED = MARKET_DATA_ONLY
-SERVICES_RESTARTED = market-data-sync only
+PRODUCTION_COMPOSE_APPLIED = NO
+SERVICES_RESTARTED = NONE
+MARKET_DATA_RESTARTS_BY_TASK = 0
 POSTGRESQL_RESTARTS_BY_TASK = 0
 ORCHESTRATOR_RESTARTS_BY_TASK = 0
 UNRELATED_SERVICE_MUTATIONS = 0
 PRODUCTION_CANARY_STARTED = NO
 NEW_SOAK_STARTED = NO
+TEMP_READONLY_ROLE_REMAINS = NO
+EPHEMERAL_API_REMAINS = NO
+ACCEPTANCE_PORT_REMAINS = NO
 PRIVATE_BINANCE_API_USED = NO
 LIVE_ORDERS = 0
 PUSHED = NO
 ```
 
-Market-data boundary-aware health deployment принят после live `1m`, `5m`,
-`15m`, `1h` boundaries и 30-минутного stability observation. Readonly API
-canary и soak не запускались. PostgreSQL, orchestrator и существующие soak
-artifacts не изменялись. Market-data deployment не повышает API deployment
-status.
+Market-data boundary-aware health deployment остаётся стабильным. Временная
+production role была создана только после fresh health gate, получила SELECT
+на три необходимые таблицы, прошла explicit write denial и была удалена.
+Ephemeral API container также удалён до Git integration. PostgreSQL schema,
+Alembic version, production data, Compose, networks, volumes, market-data,
+orchestrator и существующие soak artifacts не изменялись.
 
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
-| Production reliability/acceptance | ≈70% | API integration не является production acceptance |
-| Readonly Server API | 75% | Reproducible build contract and disabled-by-default hardened canary configuration passed a task-owned ephemeral DB dry-run; production canary not started |
+| Production reliability/acceptance | ≈70% | Setups endpoint production read-only acceptance passed; persistent API deployment/canary remains separate |
+| Readonly Server API | 75% | Setups list/detail production read-only acceptance passed and fix is root-integrated; persistent API service and canary not started |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -242,10 +285,11 @@ NONE_AUTOMATIC
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
-Readonly API canary и `setups` production acceptance остаются отдельными
-задачами, требующими отдельного операторского разрешения и свежей проверки
-production gates. Эта задача не запускает их автоматически. Market-data health
-contract остаётся `DEPLOYED_STABLE`; API остаётся `PREPARED_NOT_DEPLOYED`.
+Readonly API persistent deployment/canary остаётся отдельной задачей,
+требующей отдельного операторского разрешения и свежей проверки production
+gates. Эта задача не запускает его автоматически. Market-data health contract
+остаётся `DEPLOYED_STABLE`; API остаётся `PREPARED_NOT_DEPLOYED`, а `setups`
+endpoint fix является production read-only accepted и root-integrated.
 
 ## Правила актуализации
 
