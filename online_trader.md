@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 4dcb6a3a228017408fc8e6caf554908e6b67289c
+STATUS_AS_OF_COMMIT = 4e3c2d0fdb5222576169ac2655847715238df3c8
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-27T11:23:29Z
-RECONCILED_BY_TASK = TRADERS-ML-MARKET-DATA-BOUNDARY-AWARE-HEALTH-SEMANTICS-01
-FILES_CHANGED = app/engine_market_data/continuous_sync_daemon.py; app/engine_market_data/freshness_monitor.py; app/engine_market_data/operational/prod_smoke.py; app/engine_observation/observation_runner.py; docs/operations/market_data_boundary_health.md; tests/test_engine_market_data_04_boundary_aware_health.py; tests/test_engine_market_data_04_freshness_monitor.py; tests/test_engine_market_data_04_health_consumers.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-27T13:32:18Z
+RECONCILED_BY_TASK = TRADERS-ML-MARKET-DATA-IMAGE-CONTENT-SECURITY-AND-DEPENDENCY-LOCK-FIX-01
+FILES_CHANGED = .dockerignore; .env.example; Dockerfile; alembic.ini; app/config/settings.py; app/db/session.py; app/engine_market_data/db/settings.py; docker-compose.yml; docs/operations/engine_market_data_04_systemd.md; pyproject.toml; requirements/README.md; requirements/api-dev.lock.txt; requirements/api-runtime.lock.txt; scripts/generate_dependency_locks.py; scripts/market_data_image_contract.py; scripts/verify_api_dependency_lock.py; tests/server_api/test_api_v1.py; tests/server_api/test_runtime_config.py; tests/server_api/test_runtime_entrypoint.py; tests/test_engine_observer_reliability.py; tests/test_market_data_dependency_contract.py; tests/test_market_data_image_security_contract.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_LOCAL_BOUNDARY_HEALTH_IMPLEMENTATION_NOT_DEPLOYED
+STATUS_CONFIDENCE = PROVEN_LOCAL_SECURE_LOCK_ALIGNED_IMAGE_NOT_DEPLOYED
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_LOCAL_BOUNDARY_HEALTH_IMPLEMENTATION_NOT_DEPLOYED
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = PREPARED_NOT_DEPLOYED
 API_RUNTIME_STATUS = PREPARED_NOT_DEPLOYED
-CURRENT_STAGE = AWAITING_SEPARATELY_AUTHORIZED_CONTROLLED_DEPLOYMENT_SELECTION
-CURRENT_BLOCKER = NONE_FOR_LOCAL_IMPLEMENTATION; PRODUCTION_DEPLOYMENT_NOT_AUTHORIZED
+CURRENT_STAGE = MARKET_DATA_SECURE_IMAGE_READY_AWAITING_SEPARATELY_AUTHORIZED_CONTROLLED_DEPLOYMENT_RETRY
+CURRENT_BLOCKER = NONE_FOR_LOCAL_IMAGE; PRODUCTION_DEPLOYMENT_NOT_PERFORMED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -68,6 +68,42 @@ SAFE_REGRESSION = 676 passed, 2 skipped
 PRODUCTION_DEPLOYMENT = NOT_PERFORMED
 SETUPS_FIX_BRANCH = RETAINED_UNCHANGED
 ```
+
+## Market-data image security and Linux dependency contract
+
+```text
+MARKET_DATA_IMAGE_CONTENT_SECURITY = PASS
+CREDENTIAL_BEARING_URI_LITERALS = 0
+PRODUCTION_SECRETS = RUNTIME_INJECTED_ONLY
+PRODUCTION_MISSING_SECRET = FAIL_CLOSED
+CANONICAL_RUNTIME_LOCK = requirements/api-runtime.lock.txt
+CANONICAL_LOCK_SCOPE = ALL_PLATFORM_WITH_PEP_508_MARKERS
+CANONICAL_LINUX_RUNTIME_LOCK = VERIFIED
+LOCKED_ALL_PLATFORM_PACKAGE_COUNT = 24
+LOCKED_LINUX_EFFECTIVE_PACKAGE_COUNT = 22
+ACTUAL_LINUX_RUNTIME_PACKAGE_COUNT = 22
+COLORAMA_LINUX_DECISION = WINDOWS_ONLY_MARKER; ABSENT_ON_LINUX
+TZDATA_LINUX_DECISION = WINDOWS_ONLY_PYTHON_MARKER; SYSTEM_TZDATA_2026b-0+deb13u1
+IMAGE_DEPENDENCY_MISSING = 0
+IMAGE_DEPENDENCY_UNEXPECTED = 0
+IMAGE_DEPENDENCY_VERSION_MISMATCH = 0
+IMAGE_SECURITY_SMOKE = PASS
+IMAGE_FUNCTIONAL_SMOKE = PASS
+IMAGE_REPRODUCIBILITY = PACKAGE_SBOM_CONTENT_MANIFEST_PASS
+ACCEPTED_LOCAL_IMAGE = traders-market-data:4e3c2d0f-boundary-health-secure-lock-01
+PRODUCTION_DEPLOYMENT = NOT_PERFORMED
+BOUNDARY_AWARE_HEALTH = READY_FOR_CONTROLLED_DEPLOYMENT_RETRY
+SETUPS_FIX_BRANCH = RETAINED_UNCHANGED
+```
+
+Two credential-bearing defaults were removed from `app/config/settings.py`.
+Production database configuration is now required from external runtime
+configuration and fails closed when absent. The production Docker target uses
+the hash-locked runtime file and evaluates explicit Windows-only markers for
+`colorama` and Python `tzdata` on the exact Linux target. Two clean builds
+matched package inventory, normalized SPDX SBOM, and filesystem content
+manifests. No production container, service, database, schema, or data was
+changed.
 
 Exact unchanged grace contract:
 
