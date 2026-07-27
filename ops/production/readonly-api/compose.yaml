@@ -1,0 +1,46 @@
+name: traders-readonly-api
+
+services:
+  readonly-api:
+    image: traders-readonly-api:production-readonly-v1
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+      target: readonly-api
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    init: true
+    cpus: "0.50"
+    mem_limit: 256m
+    pids_limit: 64
+    env_file:
+      - ../../../.env.production.local
+    environment:
+      TRADERS_READONLY_API_HOST: "0.0.0.0"
+      TRADERS_READONLY_API_PORT: "8765"
+    ports:
+      - "127.0.0.1:8765:8765"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/v1/health', timeout=2).read()"
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+    networks:
+      - production
+
+networks:
+  production:
+    name: "${TRADERS_READONLY_API_NETWORK:-traders-ml_default}"
+    external: true
