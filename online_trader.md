@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2a3ee11afdbb496413c4efa5f64621f73102b4c5
+STATUS_AS_OF_COMMIT = 6bcaa6969c82a72e51d48d110a905879a558e58f
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-27T18:52:46Z
-RECONCILED_BY_TASK = TRADERS-ML-PERSISTENT-PROTECTED-SECRET-BINDING-01
-FILES_CHANGED = .dockerignore, .env.example, .gitignore, docs/operations/persistent_protected_secret_binding.md, scripts/verify_persistent_secret_binding.py, tests/test_persistent_secret_binding_contract.py, online_trader.md
+RECONCILED_AT_UTC = 2026-07-27T21:11:00Z
+RECONCILED_BY_TASK = TRADERS-CLIENT-PRODUCTION-READONLY-API-CONTROLLED-CONNECTION-RETRY-01
+FILES_CHANGED = docs/operations/readonly_api_persistent_service.md, ops/production/readonly-api/compose.yaml, tests/server_api/test_persistent_service_configuration.py, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PERSISTENT_PROTECTED_SECRET_BINDING_FOUNDATION
+STATUS_CONFIDENCE = PROVEN_PRODUCTION_LOCALHOST_READONLY_API_AND_CLIENT_CONNECTION
 
 # Состояние проекта traders-ml
 
@@ -21,9 +21,9 @@ STATUS_CONFIDENCE = PROVEN_PERSISTENT_PROTECTED_SECRET_BINDING_FOUNDATION
 
 ```text
 ROOT_BRANCH = feature/engine-platform
-API_ROOT_STATUS = PREPARED_NOT_DEPLOYED
-API_RUNTIME_STATUS = PREPARED_NOT_DEPLOYED
-CURRENT_STAGE = PERSISTENT_PROTECTED_SECRET_BINDING_READY_FOR_SECRET_PROVISIONING
+API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
+API_RUNTIME_STATUS = DEPLOYED_HEALTHY
+CURRENT_STAGE = PRODUCTION_READONLY_API_CLIENT_CONNECTION_COMPLETED
 CURRENT_BLOCKER = NONE
 ```
 
@@ -40,7 +40,7 @@ Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
 Ранее доказанное состояние остаётся включённым как ancestor:
 
 ```text
-Readonly Server API v1 = PREPARED_NOT_DEPLOYED
+Readonly Server API v1 = DEPLOYED_LOCALHOST_READONLY
 API canary configuration = PREPARED_DISABLED_BY_DEFAULT
 LIVE = DISABLED
 ```
@@ -140,11 +140,11 @@ boundary и stability acceptance. PostgreSQL schema/data не изменялис
 FASTAPI = 0.116.1
 ASGI_SERVER = uvicorn 0.51.0
 API_RUNTIME_ENTRYPOINT = IMPLEMENTED
-API_STATUS = PREPARED_NOT_DEPLOYED
+API_STATUS = DEPLOYED_LOCALHOST_READONLY
 RUNTIME_FACTORY = app.server_api.runtime:create_runtime_app
 EXECUTABLE_ENTRYPOINT = traders-readonly-api
 MODULE_ENTRYPOINT = python -m app.server_api.runtime
-DOCKER_API_TARGET = readonly-api, IMPLEMENTED_NOT_DEPLOYED
+DOCKER_API_TARGET = readonly-api, DEPLOYED
 EPHEMERAL_READONLY_DB_SMOKE = PASS
 CANARY_CONFIGURATION = PREPARED_DISABLED_BY_DEFAULT
 CANARY_PROFILE = readonly-api-canary
@@ -162,6 +162,17 @@ PRODUCTION_PERSISTENT_MUTATIONS = 0
 PRODUCTION_DB_ROLE_MUTATION = TEMPORARY_CREATED_VERIFIED_REMOVED
 PRODUCTION_SCHEMA_MUTATIONS = 0
 MANUAL_PRODUCTION_DATA_MUTATIONS = 0
+PERSISTENT_SERVICE = traders-readonly-api-readonly-api-1
+PERSISTENT_SERVICE_BIND = 127.0.0.1:8765
+PERSISTENT_SERVICE_HEALTH = HEALTHY
+PERSISTENT_SERVICE_RESTARTS = 0
+PRODUCTION_READONLY_ROLE = traders_readonly_api
+PRODUCTION_READONLY_ROLE_CONTRACT = PASS
+PRODUCTION_HTTP_ACCEPTANCE = PASS
+CONTROLLED_HTTP_LOAD = 90/90 HTTP 200
+UNEXPECTED_5XX = 0
+CLIENT_PROVIDER = PRODUCTION_READONLY_HTTP
+CLIENT_CONNECTION = CONNECTED
 PRODUCTION_CANARY_STARTED = NO
 SOAK_STARTED = NO
 ```
@@ -170,10 +181,9 @@ Library factory `create_app()` остаётся inert. Новый runtime factor
 создаёт один SQLAlchemy engine/session factory и передаёт существующий
 SELECT-only adapter. Import и `--help` не открывают DB connection или socket.
 Startup проверяет PostgreSQL read-only mode, а lifespan shutdown освобождает
-engine. Этот runtime contract реализован и image-smoke подтверждён. Persistent
-API service не deployed; отдельный `setups` endpoint прошёл ограниченную
-production read-only acceptance через полностью удалённые temporary role и
-ephemeral container.
+engine. Этот runtime contract реализован, image-smoke подтверждён и теперь
+развёрнут как постоянный hardened service на `127.0.0.1:8765`. Все девять GET
+routes прошли production HTTP acceptance; write routes отсутствуют.
 
 Подтверждённые integration gates:
 
@@ -215,7 +225,7 @@ MANUAL_PRODUCTION_DATA_MUTATIONS = 0
 MARKET_DATA = DEPLOYED_STABLE_UNCHANGED
 POSTGRESQL = HEALTHY_UNCHANGED
 ORCHESTRATOR = HEALTHY_UNCHANGED
-CLIENT_CONNECTION = NOT_STARTED
+CLIENT_CONNECTION = PRODUCTION_READONLY_HTTP_CONNECTED
 ```
 
 Implementation commit был replayed без конфликтов на current root. Pinned
@@ -227,13 +237,14 @@ acceptance прошли до production boundary. Production acceptance испо
 прошли, bounded 60-second load дал `240/240` HTTP 200 и zero unexpected 5xx.
 После cleanup одиннадцать health snapshots за 10 минут сохранили 18/18 streams,
 PostgreSQL и orchestrator healthy, а service IDs и restart counts неизменными.
-Это endpoint acceptance и root integration, но не persistent API deployment,
-canary или soak.
+Первоначальная endpoint acceptance была отдельна от deployment. Текущая
+задача дополнительно завершила persistent localhost deployment и client
+connection; canary и 72-hour soak не запускались.
 
 ### Persistent protected secret binding
 
 ```text
-PERSISTENT_PROTECTED_SECRET_BINDING = READY_FOR_SECRET_PROVISIONING
+PERSISTENT_PROTECTED_SECRET_BINDING = PROVISIONED_AND_VERIFIED
 PERSISTENT_SECRET_BINDING_PATH = D:\disk_E\game_projects\traders\traders-ml\.env.production.local
 PERSISTENT_SECRET_BINDING_GIT_TRACKED = NO
 PERSISTENT_SECRET_BINDING_GIT_IGNORED = YES
@@ -241,68 +252,67 @@ PERSISTENT_SECRET_BINDING_DOCKER_CONTEXT = EXCLUDED
 PERSISTENT_SECRET_BINDING_ACL = RESTRICTED_CURRENT_USER_SYSTEM_ADMINISTRATORS
 PERSISTENT_SECRET_BINDING_ACL_BROAD_PRINCIPALS = 0
 READONLY_API_DATABASE_URI_CANONICAL_KEY = TRADERS_READONLY_API_DATABASE_URL
-READONLY_API_DATABASE_URI_PROVISIONED = NO
+READONLY_API_DATABASE_URI_PROVISIONED = YES
 READONLY_API_BIND_HOST_CANONICAL_KEY = TRADERS_READONLY_API_HOST
 READONLY_API_BIND_HOST = 127.0.0.1
 READONLY_API_PORT = 8765
 PERSISTENT_BINDING_FOCUSED_TESTS = 11 passed
 PERSISTENT_BINDING_FOUNDATION_VERIFIER = PASS
-PERSISTENT_BINDING_PROVISIONED_VERIFIER = EXPECTED_FAIL_EMPTY_SECRET
-PRODUCTION_READONLY_API = NOT_DEPLOYED
-CLIENT_CONNECTION = NOT_STARTED
+PERSISTENT_BINDING_PROVISIONED_VERIFIER = PASS
+PRODUCTION_READONLY_API = DEPLOYED_LOCALHOST_READONLY
+CLIENT_CONNECTION = PRODUCTION_READONLY_HTTP_CONNECTED
 ```
 
-Permanent host-local binding создан в active server root без production
-credential. Он исключён из Git и Docker build context, защищён Windows ACL,
-проверен без вывода values и готов только к следующему отдельно разрешённому
-least-privilege provisioning/deployment task. Реальный database URI, password
-и PostgreSQL role в этой задаче не создавались.
+Permanent host-local binding provisioned canonical credential-bearing runtime
+value без его вывода. Он остаётся исключённым из Git и Docker build context,
+защищён exact Windows ACL и прошёл provisioned verifier. Client не получает DB
+credential; он хранит только localhost HTTP base URL и provider mode.
 
 ## Production boundary
 
 В рамках этой задачи:
 
 ```text
-API_DEPLOYED = NO
+API_DEPLOYED = YES_LOCALHOST_ONLY
 MARKET_DATA_DEPLOYED = YES
 MARKET_DATA_RUNTIME_STATUS = RUNNING_HEALTHY
-PRODUCTION_RUNTIME_CHANGED = NO
-POSTGRESQL_CHANGED = NO
+PRODUCTION_RUNTIME_CHANGED = READONLY_API_ONLY
+POSTGRESQL_CHANGED = ROLE_AND_GRANTS_ONLY
 ALEMBIC_RUN = NO
-PRODUCTION_COMPOSE_APPLIED = NO
-SERVICES_RESTARTED = NONE
+PRODUCTION_COMPOSE_APPLIED = READONLY_API_ONLY
+SERVICES_RESTARTED = NONE_EXISTING
 MARKET_DATA_RESTARTS_BY_TASK = 0
 POSTGRESQL_RESTARTS_BY_TASK = 0
 ORCHESTRATOR_RESTARTS_BY_TASK = 0
 UNRELATED_SERVICE_MUTATIONS = 0
 PRODUCTION_CANARY_STARTED = NO
 NEW_SOAK_STARTED = NO
-TEMP_READONLY_ROLE_REMAINS = NO
+PERSISTENT_READONLY_ROLE_REMAINS = YES
 EPHEMERAL_API_REMAINS = NO
-ACCEPTANCE_PORT_REMAINS = NO
-PRODUCTION_DB_ROLE_MUTATIONS = 0
+PERSISTENT_API_PORT_8765_ACTIVE = YES
+PRODUCTION_DB_ROLE_MUTATIONS = AUTHORIZED_TRADERS_READONLY_API_CREATE_AND_GRANTS
 PRODUCTION_SCHEMA_MUTATIONS = 0
 MANUAL_PRODUCTION_DATA_MUTATIONS = 0
-CLIENT_REPOSITORY_MUTATIONS = 0
+CLIENT_REPOSITORY_MUTATIONS = EXPLICIT_PRODUCTION_READONLY_HTTP_MODE
 PRIVATE_BINANCE_API_USED = NO
 LIVE_ORDERS = 0
 PUSHED = NO
 ```
 
-Market-data boundary-aware health deployment остаётся стабильным. Временная
-production role была создана только после fresh health gate, получила SELECT
-на три необходимые таблицы, прошла explicit write denial и была удалена.
-Ephemeral API container также удалён до Git integration. PostgreSQL schema,
-Alembic version, production data, Compose, networks, volumes, market-data,
-orchestrator и существующие soak artifacts не изменялись.
+Market-data boundary-aware health deployment остаётся стабильным. Постоянная
+role `traders_readonly_api` создана после fresh health gate, получила SELECT
+только на три необходимые таблицы и прошла explicit write denial. Persistent
+Readonly API работает в отдельном hardened container; PostgreSQL, market-data
+и orchestrator не перезапускались. Schema structure, Alembic version,
+production data и существующие soak artifacts не изменялись.
 
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
-| Production reliability/acceptance | ≈70% | Setups endpoint production read-only acceptance passed; persistent API deployment/canary remains separate |
-| Readonly Server API | 75% | Setups list/detail production read-only acceptance passed and fix is root-integrated; persistent API service and canary not started |
+| Production reliability/acceptance | ≈78% | Persistent localhost Readonly API and desktop client connection passed; no 72-hour soak |
+| Readonly Server API | 85% | Persistent localhost service healthy, 9 GET/0 write, least-privilege role and client production mode accepted |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -313,16 +323,15 @@ orchestrator и существующие soak artifacts не изменялис�
 
 ```text
 RECOMMENDED_NEXT_TASK =
-RERUN_TRADERS_CLIENT_PRODUCTION_READONLY_API_CONTROLLED_CONNECTION_01
+TRADERS_ML_READONLY_API_POST_DEPLOYMENT_STABILITY_OBSERVATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
-Readonly API secret provisioning, persistent deployment/canary и client
-connection остаются отдельной задачей, требующей отдельного операторского
-разрешения, dedicated least-privilege role и свежей проверки production gates.
-Эта задача не запускает их автоматически. Market-data health contract остаётся
-`DEPLOYED_STABLE`; API остаётся `PREPARED_NOT_DEPLOYED`, а `setups` endpoint
-fix является production read-only accepted и root-integrated.
+Readonly API secret provisioning, least-privilege role, persistent localhost
+deployment и desktop client connection завершены с PASS. Следующий отдельно
+разрешаемый этап — time-bounded post-deployment stability observation без
+автоматического перехода в 72-hour soak. Market-data health contract остаётся
+`DEPLOYED_STABLE`; LIVE остаётся disabled.
 
 ## Правила актуализации
 
