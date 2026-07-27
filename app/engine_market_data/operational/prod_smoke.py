@@ -117,6 +117,16 @@ def validate_health_payload(payload: Mapping[str, Any]) -> list[str]:
             errors.append(f"missing {field}")
     if payload.get("overall_status") not in ALLOWED_HEALTH_STATUSES:
         errors.append("invalid overall_status")
+    for field in ("operational", "ready", "acceptance_blocking"):
+        if field in payload and not isinstance(payload[field], bool):
+            errors.append(f"{field} must be boolean")
+    if payload.get("schema_version") == "MARKET_DATA_HEALTH/2.0":
+        for field in (
+            "operational", "ready", "acceptance_blocking", "reason_code",
+            "within_grace_count", "deadline_expired_count",
+        ):
+            if field not in payload:
+                errors.append(f"missing v2 field {field}")
     snapshots = payload.get("snapshots")
     if not isinstance(snapshots, list) or not snapshots:
         errors.append("snapshots must be a non-empty list")
@@ -134,9 +144,38 @@ def validate_health_payload(payload: Mapping[str, Any]) -> list[str]:
             errors.append(f"snapshot[{index}] missing {sorted(missing)}")
         if snapshot.get("status") not in ALLOWED_HEALTH_STATUSES:
             errors.append(f"snapshot[{index}] invalid status")
-        if not snapshot.get("last_success_at") and not snapshot.get("last_error"):
+        v2_current_evidence = (
+            payload.get("schema_version") == "MARKET_DATA_HEALTH/2.0"
+            and snapshot.get("operational") is True
+            and snapshot.get("heartbeat_progressing") is True
+            and snapshot.get("reason_code") in {
+                "HEALTHY_CURRENT", "BOUNDARY_WITHIN_GRACE",
+            }
+        )
+        if (
+            not snapshot.get("last_success_at")
+            and not snapshot.get("last_error")
+            and not v2_current_evidence
+        ):
             errors.append(f"snapshot[{index}] needs last_success_at or last_error")
+        if payload.get("schema_version") == "MARKET_DATA_HEALTH/2.0":
+            for field in (
+                "operational", "ready", "acceptance_blocking", "reason_code",
+                "expected_boundary_utc", "deadline_utc", "observed_at_utc",
+                "heartbeat_progressing", "scheduler_due", "recovery_active",
+                "recovery_progressing", "gap_count", "active_error",
+                "cached_error_stale", "clock_skew_seconds",
+            ):
+                if field not in snapshot:
+                    errors.append(f"snapshot[{index}] missing v2 field {field}")
     return errors
+
+
+def health_payload_operational(payload: Mapping[str, Any]) -> bool:
+    """Read v2 readiness while keeping old status-only reports compatible."""
+    if "operational" in payload or "ready" in payload:
+        return payload.get("operational") is True and payload.get("ready") is True
+    return payload.get("overall_status") == "OK"
 
 
 def validate_closed_only_rows(
@@ -409,6 +448,8 @@ class ProdSmokeRunner:
         result = self._run(command, timeout=timeout)
         payload, errors = self._load_health(health_name)
         return {"exit_code": result["exit_code"], "health_status": payload.get("overall_status"),
+                "operational": health_payload_operational(payload),
+                "ready": payload.get("ready", payload.get("overall_status") == "OK"),
                 "health_valid": not errors, "health_errors": errors}
 
     @staticmethod
@@ -416,9 +457,14 @@ class ProdSmokeRunner:
         errors = validate_health_payload(payload)
         for snapshot in payload.get("snapshots", []):
             pair = f"{snapshot.get('symbol')}:{snapshot.get('timeframe')}"
-            if snapshot.get("status") != "OK":
+            operational = (
+                snapshot.get("operational") is True and snapshot.get("ready") is True
+                if "operational" in snapshot or "ready" in snapshot
+                else snapshot.get("status") == "OK"
+            )
+            if not operational:
                 errors.append(f"{pair} status={snapshot.get('status')}")
-            if snapshot.get("last_error"):
+            if snapshot.get("active_error", bool(snapshot.get("last_error"))):
                 errors.append(f"{pair} reports last_error despite status={snapshot.get('status')}")
         return errors
 
@@ -562,7 +608,7 @@ class ProdSmokeRunner:
                     restart_health = "ENGINE_MARKET_DATA_04_PROD_SMOKE_HEALTH_RESTART.json"
                     restart = self._daemon(["--once"], restart_health)
                     after_restart = self.snapshot_db("AFTER_RESTART")
-                    if restart["exit_code"] or restart.get("health_status") != "OK":
+                    if restart["exit_code"] or not restart.get("operational"):
                         verdict = "PROD_SMOKE_FAILED"
             if verdict == "PROD_SMOKE_PASSED":
                 closed = self.closed_only()

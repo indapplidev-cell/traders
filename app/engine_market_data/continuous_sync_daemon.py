@@ -21,8 +21,14 @@ from app.engine_market_data.continuous_sync_config import (
 from app.engine_market_data.continuous_sync_state import ContinuousSyncStatus, SyncStateUpdate
 from app.engine_market_data.exchange_time_sync import ExchangeTimeSync
 from app.engine_market_data.freshness_monitor import (
-    FreshnessMonitor, FreshnessSnapshot, MarketDataFreshnessReport,
-    close_boundary_ms, latest_expected_closed_open_time_ms,
+    BoundaryTimingState,
+    FreshnessMonitor,
+    FreshnessSnapshot,
+    HealthReasonCode,
+    MarketDataFreshnessReport,
+    close_boundary_ms,
+    latest_expected_closed_open_time_ms,
+    utc_from_ms,
 )
 from app.engine_market_data.failed_boundary_retry import (
     FailedBoundaryErrorClassification,
@@ -137,6 +143,7 @@ class ContinuousSyncDaemon:
         self._stop_event = threading.Event()
         self._last_gap_check_ms = {timeframe: 0 for timeframe in config.timeframes}
         self._last_health_report_ms = 0
+        self._last_cycle_progress_ms: int | None = None
         self._pair_status: dict[tuple[str, str], str] = {}
         self._pair_errors: dict[tuple[str, str], str] = {}
         self._pair_unresolved_expected: dict[tuple[str, str], set[int]] = {}
@@ -569,8 +576,22 @@ class ContinuousSyncDaemon:
                 results.append(self.sync_expected(symbol, timeframe, expected, latest, now))
         return results
 
-    def build_health_report(self, now_ms: int | None = None) -> MarketDataFreshnessReport:
+    def build_health_report(
+        self,
+        now_ms: int | None = None,
+        *,
+        heartbeat_progressing: bool | None = None,
+    ) -> MarketDataFreshnessReport:
         now = self.exchange_now_ms() if now_ms is None else now_ms
+        if heartbeat_progressing is None:
+            heartbeat_timeout_ms = max(
+                5_000,
+                int(self.config.poll_interval_seconds * 3_000),
+            )
+            heartbeat_progressing = (
+                self._last_cycle_progress_ms is None
+                or now - self._last_cycle_progress_ms <= heartbeat_timeout_ms
+            )
         snapshots: list[FreshnessSnapshot] = []
         for symbol in self.config.symbols:
             for timeframe in self.config.timeframes:
@@ -583,14 +604,52 @@ class ContinuousSyncDaemon:
                         symbol, timeframe, now, missing_count=self._pair_missing.get(key, 0),
                         status_override=override, last_success_at=self._last_success.get(key),
                         last_error=self._pair_errors.get(key),
+                        heartbeat_progressing=heartbeat_progressing,
+                        recovery_active=override in {"GAP_DETECTED", "RECOVERING"},
+                        recovery_progressing=(
+                            heartbeat_progressing and override == "RECOVERING"
+                        ),
+                        clock_skew_seconds=self.time_sync.drift_ms / 1000,
                     ))
                 except Exception as exc:
                     self._pair_errors[key] = str(exc)
+                    expected = latest_expected_closed_open_time_ms(timeframe, now)
+                    boundary = close_boundary_ms(expected, timeframe)
+                    deadline = boundary + self.config.freshness_allowance_ms[timeframe]
                     snapshots.append(FreshnessSnapshot(
-                        symbol, timeframe, latest_expected_closed_open_time_ms(timeframe, now),
-                        None, 0, max(1, self._pair_missing.get(key, 1)), "ERROR",
-                        max(1, self._pair_missing.get(key, 1)), self._last_success.get(key), str(exc)))
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        expected_open_time_ms=expected,
+                        stored_open_time_ms=None,
+                        freshness_lag_ms=0,
+                        freshness_lag_candles=max(1, self._pair_missing.get(key, 1)),
+                        status="ERROR",
+                        missing_count=max(1, self._pair_missing.get(key, 1)),
+                        last_success_at=self._last_success.get(key),
+                        last_error=str(exc),
+                        operational=False,
+                        ready=False,
+                        acceptance_blocking=True,
+                        reason_code=str(HealthReasonCode.ACTIVE_DATABASE_ERROR),
+                        timing_state=str(
+                            BoundaryTimingState.DEADLINE_EXPIRED
+                            if now > deadline else BoundaryTimingState.WITHIN_GRACE
+                        ),
+                        pair=symbol,
+                        expected_boundary_utc=utc_from_ms(boundary),
+                        deadline_utc=utc_from_ms(deadline),
+                        observed_at_utc=utc_from_ms(now),
+                        seconds_since_boundary=round((now - boundary) / 1000, 3),
+                        seconds_until_deadline=round((deadline - now) / 1000, 3),
+                        heartbeat_progressing=heartbeat_progressing,
+                        scheduler_due=now >= deadline,
+                        active_error=True,
+                        clock_skew_seconds=round(self.time_sync.drift_ms / 1000, 3),
+                        deadline_expired=now > deadline,
+                    ))
         return self.freshness_monitor.report(snapshots, self.daemon_instance_id,
+                                             generated_at=datetime.fromtimestamp(
+                                                 now / 1000, timezone.utc),
                                              symbols=list(self.config.symbols),
                                              timeframes=list(self.config.timeframes),
                                              dry_run=self.config.dry_run)
@@ -617,6 +676,7 @@ class ContinuousSyncDaemon:
         elif not self.config.continuous:
             self.sync_latest()
         if not self.config.continuous:
+            self._last_cycle_progress_ms = self.exchange_now_ms()
             return self.write_health_report()
 
         cycles = 0
@@ -629,6 +689,7 @@ class ContinuousSyncDaemon:
                 if self.config.gap_check:
                     self.run_gap_checks(now)
                 self.run_prompt_retries(now)
+                self._last_cycle_progress_ms = self.exchange_now_ms()
                 if now - self._last_health_report_ms >= self.config.health_report_interval_seconds * 1000:
                     self.write_health_report(now)
                     self._last_health_report_ms = now

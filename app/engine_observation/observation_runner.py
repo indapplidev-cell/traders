@@ -27,6 +27,12 @@ def _read_health(path: Path, now: datetime) -> dict:
         parsed = datetime.fromisoformat(generated.replace("Z", "+00:00")) if generated else None
         return {"path": str(path), "available": True, "current": bool(parsed and now - parsed <= timedelta(minutes=5)),
                 "generated_at": generated, "overall_status": payload.get("overall_status") or payload.get("status"),
+                "operational": payload.get("operational"),
+                "ready": payload.get("ready"),
+                "acceptance_blocking": payload.get("acceptance_blocking"),
+                "reason_code": payload.get("reason_code"),
+                "within_grace_count": payload.get("within_grace_count"),
+                "deadline_expired_count": payload.get("deadline_expired_count"),
                 "daemon_instance_id": payload.get("daemon_instance_id")}
     except Exception as exc:
         return {"path": str(path), "available": True, "current": False, "parse_error": str(exc)}
