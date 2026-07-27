@@ -82,6 +82,7 @@ class SetupRecord:
     hypothetical_target: Decimal | None = None
     planned_rr: Decimal | None = None
     executable: bool = False
+    cursor_identifier: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -103,6 +103,13 @@ def test_incidents_list_filters_and_detail_is_redacted():
 def test_resource_not_found_and_invalid_identifiers():
     client, _ = client_and_fake()
     assert_error(client.get("/api/v1/markets/SOLUSDT"), 404, "RESOURCE_NOT_FOUND")
+    missing = assert_error(
+        client.get("/api/v1/setups/nonexistent"),
+        404,
+        "RESOURCE_NOT_FOUND",
+    )
+    assert "trace" not in str(missing).lower()
+    assert "sql" not in str(missing).lower()
     assert_error(client.get("/api/v1/markets/btcusdt"), 422, "INVALID_REQUEST")
     assert_error(client.get("/api/v1/setups/bad!id"), 422, "INVALID_REQUEST")
 
@@ -162,3 +169,20 @@ def test_exception_is_sanitized():
     assert secret not in text
     assert "postgresql" not in text
     assert "private" not in text
+
+
+def test_setup_database_error_is_not_mapped_to_not_found():
+    fake = FakeReadRepository()
+
+    def fail(_setup_id):
+        raise RuntimeError("database unavailable")
+
+    fake.get_setup = fail
+    app = create_app(repositories=fake.api_repositories(), clock=lambda: NOW)
+    client = TestClient(app, raise_server_exceptions=False)
+
+    assert_error(
+        client.get("/api/v1/setups/nonexistent"),
+        500,
+        "INTERNAL_ERROR",
+    )

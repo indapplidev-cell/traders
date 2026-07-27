@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, literal, or_, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
@@ -212,34 +212,47 @@ class SqlAlchemyReadAdapter:
         )
 
     @staticmethod
-    def _setup_record(run: OnlinePipelineRun, result: OnlinePipelineResultRow) -> SetupRecord | None:
-        setup = _mapping(result.setup_payload_json)
+    def _setup_record(
+        *,
+        symbol: str,
+        primary_timeframe: str,
+        closed_until_ms: int,
+        updated_at: datetime,
+        setup_payload: Any,
+        strategy_payload: Any = None,
+        risk_payload: Any = None,
+        paper_payload: Any = None,
+        strategy_status: str | None = None,
+        risk_status: str | None = None,
+        paper_status: str | None = None,
+    ) -> SetupRecord | None:
+        setup = _mapping(setup_payload)
         if not setup:
             return None
-        strategy = _mapping(result.strategy_payload_json)
-        risk = _mapping(result.risk_payload_json)
-        paper = _mapping(result.paper_payload_json)
+        strategy = _mapping(strategy_payload)
+        risk = _mapping(risk_payload)
+        paper = _mapping(paper_payload)
         setup_id = str(setup.get("setup_id") or "")
         if not setup_id:
             return None
         return SetupRecord(
             setup_id=setup_id,
-            symbol=run.symbol,
-            timeframe=str(setup.get("timeframe") or run.primary_timeframe),
-            closed_until_ms=int(run.closed_until_ms),
+            symbol=symbol,
+            timeframe=str(setup.get("timeframe") or primary_timeframe),
+            closed_until_ms=int(closed_until_ms),
             status=str(setup.get("status") or "UNKNOWN"),
             setup_type=str(setup.get("setup_type") or "UNKNOWN"),
             direction=_direction(setup.get("direction_hint")),
             quality=str(setup.get("setup_quality") or "UNKNOWN"),
             quality_score=_score(setup.get("quality_score")),
-            updated_at=_aware(run.updated_at),
+            updated_at=_aware(updated_at),
             confirmation_state=str(setup.get("confirmation_state") or "NOT_APPLICABLE"),
             reason_codes=_sequence(setup.get("reason_codes")),
             warnings=_sequence(setup.get("quality_warnings")),
             invalidation_reasons=_sequence(setup.get("invalidation_reasons")),
-            strategy_status=str(strategy.get("decision_status")) if strategy.get("decision_status") is not None else run.strategy_status,
-            risk_status=str(risk.get("risk_status")) if risk.get("risk_status") is not None else run.risk_status,
-            paper_status=str(paper.get("paper_status")) if paper.get("paper_status") is not None else run.paper_status,
+            strategy_status=str(strategy.get("decision_status")) if strategy.get("decision_status") is not None else strategy_status,
+            risk_status=str(risk.get("risk_status")) if risk.get("risk_status") is not None else risk_status,
+            paper_status=str(paper.get("paper_status")) if paper.get("paper_status") is not None else paper_status,
             hypothetical_entry=_decimal(paper.get("hypothetical_entry_reference")),
             hypothetical_stop=_decimal(paper.get("hypothetical_stop_level")),
             hypothetical_target=_decimal(paper.get("hypothetical_target_level")),
@@ -247,47 +260,156 @@ class SqlAlchemyReadAdapter:
             executable=False,
         )
 
-    def _setup_rows(self, query: SetupQuery | None = None, *, scan_limit: int = 5000):
-        statement = (
-            select(OnlinePipelineRun, OnlinePipelineResultRow)
-            .join(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
-        )
-        if query is not None:
-            if query.symbol:
-                statement = statement.where(OnlinePipelineRun.symbol == query.symbol.upper())
-            if query.from_at:
-                statement = statement.where(OnlinePipelineRun.updated_at >= query.from_at)
-            if query.to_at:
-                statement = statement.where(OnlinePipelineRun.updated_at < query.to_at)
-            if query.cursor:
-                statement = statement.where(OnlinePipelineRun.updated_at <= query.cursor.updated_at)
-        statement = statement.order_by(
-            OnlinePipelineRun.updated_at.desc(), OnlinePipelineRun.run_id.desc()
-        ).limit(scan_limit)
-        with self._session() as session:
-            return tuple(session.execute(statement))
-
     def list_setups(self, query: SetupQuery) -> RecordPage:
-        records = [
-            item
-            for run, result in self._setup_rows(query, scan_limit=max(1000, query.limit * 10))
-            if (item := self._setup_record(run, result)) is not None
-        ]
+        setup = OnlinePipelineResultRow.setup_payload_json
+        setup_id = setup["setup_id"].as_string()
+        candidates = (
+            select(
+                OnlinePipelineRun.run_id.label("run_id"),
+                OnlinePipelineRun.symbol.label("symbol"),
+                OnlinePipelineRun.primary_timeframe.label("primary_timeframe"),
+                OnlinePipelineRun.closed_until_ms.label("closed_until_ms"),
+                OnlinePipelineRun.setup_status.label("status"),
+                OnlinePipelineRun.updated_at.label("updated_at"),
+            )
+            .join(
+                OnlinePipelineResultRow,
+                OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+            )
+            .where(OnlinePipelineRun.setup_status.is_not(None))
+        )
+        if query.symbol:
+            candidates = candidates.where(
+                OnlinePipelineRun.symbol == query.symbol.upper()
+            )
         if query.status:
-            records = [item for item in records if item.status == query.status]
-        records.sort(key=lambda item: (item.updated_at, item.setup_id), reverse=True)
+            candidates = candidates.where(
+                OnlinePipelineRun.setup_status == query.status
+            )
+        if query.from_at:
+            candidates = candidates.where(
+                OnlinePipelineRun.updated_at >= query.from_at
+            )
+        if query.to_at:
+            candidates = candidates.where(
+                OnlinePipelineRun.updated_at < query.to_at
+            )
         if query.cursor:
-            anchor = (query.cursor.updated_at, query.cursor.identifier)
-            records = [item for item in records if (item.updated_at, item.setup_id) < anchor]
-        selected = records[: query.limit + 1]
-        return RecordPage(tuple(selected[: query.limit]), len(selected) > query.limit)
+            candidates = candidates.where(
+                tuple_(OnlinePipelineRun.updated_at, OnlinePipelineRun.run_id)
+                < (query.cursor.updated_at, query.cursor.identifier)
+            )
+        candidates = (
+            candidates.order_by(
+                OnlinePipelineRun.updated_at.desc(),
+                OnlinePipelineRun.run_id.desc(),
+            )
+            .limit(query.limit + 1)
+            .subquery()
+        )
+        statement = (
+            select(
+                candidates.c.run_id,
+                setup_id.label("setup_id"),
+                candidates.c.symbol,
+                func.coalesce(
+                    setup["timeframe"].as_string(),
+                    candidates.c.primary_timeframe,
+                ).label("timeframe"),
+                candidates.c.closed_until_ms,
+                func.coalesce(
+                    setup["status"].as_string(),
+                    candidates.c.status,
+                    literal("UNKNOWN"),
+                ).label("status"),
+                func.coalesce(
+                    setup["setup_type"].as_string(), literal("UNKNOWN")
+                ).label("setup_type"),
+                setup["direction_hint"].as_string().label("direction"),
+                func.coalesce(
+                    setup["setup_quality"].as_string(), literal("UNKNOWN")
+                ).label("quality"),
+                setup["quality_score"].as_string().label("quality_score"),
+                candidates.c.updated_at,
+            )
+            .join(
+                OnlinePipelineResultRow,
+                OnlinePipelineResultRow.run_id == candidates.c.run_id,
+            )
+            .order_by(
+                candidates.c.updated_at.desc(),
+                candidates.c.run_id.desc(),
+            )
+        )
+        with self._session() as session:
+            rows = tuple(session.execute(statement))
+        records = [
+            SetupRecord(
+                setup_id=row.setup_id,
+                symbol=row.symbol,
+                timeframe=row.timeframe,
+                closed_until_ms=int(row.closed_until_ms),
+                status=row.status,
+                setup_type=row.setup_type,
+                direction=_direction(row.direction),
+                quality=row.quality,
+                quality_score=_score(row.quality_score),
+                updated_at=_aware(row.updated_at),
+                cursor_identifier=row.run_id,
+            )
+            for row in rows
+            if row.setup_id
+        ]
+        return RecordPage(
+            tuple(records[: query.limit]), len(records) > query.limit
+        )
 
     def get_setup(self, setup_id: str) -> SetupRecord | None:
-        for run, result in self._setup_rows(scan_limit=5000):
-            record = self._setup_record(run, result)
-            if record is not None and record.setup_id == setup_id:
-                return record
-        return None
+        setup = OnlinePipelineResultRow.setup_payload_json
+        statement = (
+            select(
+                OnlinePipelineRun.symbol,
+                OnlinePipelineRun.primary_timeframe,
+                OnlinePipelineRun.closed_until_ms,
+                OnlinePipelineRun.updated_at,
+                OnlinePipelineRun.strategy_status,
+                OnlinePipelineRun.risk_status,
+                OnlinePipelineRun.paper_status,
+                setup.label("setup_payload"),
+                OnlinePipelineResultRow.strategy_payload_json.label(
+                    "strategy_payload"
+                ),
+                OnlinePipelineResultRow.risk_payload_json.label("risk_payload"),
+                OnlinePipelineResultRow.paper_payload_json.label("paper_payload"),
+            )
+            .join(
+                OnlinePipelineResultRow,
+                OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+            )
+            .where(setup["setup_id"].as_string() == setup_id)
+            .order_by(
+                OnlinePipelineRun.updated_at.desc(),
+                OnlinePipelineRun.run_id.desc(),
+            )
+            .limit(1)
+        )
+        with self._session() as session:
+            row = session.execute(statement).first()
+        if row is None:
+            return None
+        return self._setup_record(
+            symbol=row.symbol,
+            primary_timeframe=row.primary_timeframe,
+            closed_until_ms=row.closed_until_ms,
+            updated_at=row.updated_at,
+            setup_payload=row.setup_payload,
+            strategy_payload=row.strategy_payload,
+            risk_payload=row.risk_payload,
+            paper_payload=row.paper_payload,
+            strategy_status=row.strategy_status,
+            risk_status=row.risk_status,
+            paper_status=row.paper_status,
+        )
 
     @staticmethod
     def _incident_record(run: OnlinePipelineRun) -> IncidentRecord:

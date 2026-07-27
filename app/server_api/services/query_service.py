@@ -138,7 +138,13 @@ class ApiQueryService:
         next_cursor = None
         if page.has_more and records:
             last = records[-1]
-            next_cursor = encode_cursor("setups", CursorPosition(last.updated_at, last.setup_id))
+            next_cursor = encode_cursor(
+                "setups",
+                CursorPosition(
+                    last.updated_at,
+                    last.cursor_identifier or last.setup_id,
+                ),
+            )
         data = SetupPage(
             items=[self._mapper.setup_summary(item) for item in records],
             page=PageInfo(limit=limit, next_cursor=next_cursor),
