@@ -13,9 +13,10 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import and_, func, literal, or_, select, tuple_
-from sqlalchemy.orm import Session
+from sqlalchemy import String, and_, cast, func, literal, or_, select, tuple_
+from sqlalchemy.orm import Session, aliased
 
+from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.server_api.health_policy import evaluate_boundary_health
@@ -133,6 +134,60 @@ class SqlAlchemyReadAdapter:
             row = session.execute(statement).first()
         return (row[0], row[1]) if row else (None, None)
 
+    def _latest_available_analysis(
+        self, symbol: str
+    ) -> tuple[OnlinePipelineRun | None, OnlinePipelineResultRow | None]:
+        candidate = aliased(OnlinePipelineResultRow)
+        analysis = candidate.analysis_payload_json
+        analyzed = AnalysisSnapshotStatus.ANALYZED.value
+        eligible_result_id = (
+            select(candidate.id)
+            .where(
+                candidate.run_id == OnlinePipelineRun.run_id,
+                candidate.symbol == OnlinePipelineRun.symbol,
+                candidate.primary_timeframe == OnlinePipelineRun.primary_timeframe,
+                candidate.closed_until_ms == OnlinePipelineRun.closed_until_ms,
+                analysis["status"].as_string() == analyzed,
+                analysis["snapshot_id"].as_string().is_not(None),
+                analysis["snapshot_id"].as_string() != "",
+                analysis["created_at_ms"].as_string().is_not(None),
+                analysis["market_data_health"].as_string().is_not(None),
+                analysis["market_data_health"].as_string() != "",
+                analysis["symbol"].as_string() == OnlinePipelineRun.symbol,
+                analysis["timeframe"].as_string()
+                == OnlinePipelineRun.primary_timeframe,
+                analysis["closed_until_ms"].as_string()
+                == cast(OnlinePipelineRun.closed_until_ms, String),
+                analysis["future_bars_used"].as_boolean().is_(False),
+                analysis["degraded"].as_boolean().is_(False),
+                analysis["enough_data"].as_boolean().is_(True),
+            )
+            .correlate(OnlinePipelineRun)
+            .limit(1)
+            .scalar_subquery()
+        )
+        statement = (
+            select(OnlinePipelineRun, OnlinePipelineResultRow)
+            .join(
+                OnlinePipelineResultRow,
+                OnlinePipelineResultRow.id == eligible_result_id,
+            )
+            .where(
+                OnlinePipelineRun.symbol == symbol.upper(),
+                OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
+                OnlinePipelineRun.analysis_status == analyzed,
+            )
+            .order_by(
+                OnlinePipelineRun.closed_until_ms.desc(),
+                OnlinePipelineResultRow.created_at.desc(),
+                OnlinePipelineResultRow.id.desc(),
+            )
+            .limit(1)
+        )
+        with self._session() as session:
+            row = session.execute(statement).first()
+        return (row[0], row[1]) if row else (None, None)
+
     def _latest_candle(self, symbol: str):
         model = CANDLE_MODELS[self._primary_timeframe]
         statement = (
@@ -192,7 +247,7 @@ class SqlAlchemyReadAdapter:
         return self._market_record(symbol)
 
     def get_analysis(self, symbol: str) -> AnalysisRecord | None:
-        run, result = self._latest_bundle(symbol)
+        run, result = self._latest_available_analysis(symbol)
         if run is None or result is None:
             return None
         payload = _mapping(result.analysis_payload_json)
