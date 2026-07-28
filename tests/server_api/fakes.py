@@ -144,6 +144,11 @@ class FakeReadRepository:
                 ServiceRecord("market-data", "OK", NOW, None),
                 ServiceRecord("online-orchestrator", "OK", NOW, "closed-only"),
             ),
+            timing_state="CURRENT",
+            reason_code="CURRENT",
+            operational=True,
+            ready=True,
+            acceptance_blocking=False,
         )
 
     def list_markets(self) -> tuple[MarketRecord, ...]:

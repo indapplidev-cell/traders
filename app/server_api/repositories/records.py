@@ -18,6 +18,11 @@ class HealthRecord:
     status: str
     observed_at: datetime
     services: tuple[ServiceRecord, ...]
+    timing_state: str = "UNKNOWN"
+    reason_code: str = "UNKNOWN"
+    operational: bool = False
+    ready: bool = False
+    acceptance_blocking: bool = True
 
 
 @dataclass(frozen=True, slots=True)

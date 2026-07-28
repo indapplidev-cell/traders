@@ -66,6 +66,11 @@ class ContractMapper:
         return HealthSnapshot(
             status=safe_enum(HealthState, value.status),
             observed_at=utc_text(value.observed_at),
+            timing_state=value.timing_state,
+            reason_code=value.reason_code,
+            operational=value.operational,
+            ready=value.ready,
+            acceptance_blocking=value.acceptance_blocking,
             services=[
                 ServiceSnapshot(
                     name=item.name,

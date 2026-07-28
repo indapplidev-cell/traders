@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
+from app.server_api.health_policy import evaluate_boundary_health
 from app.server_api.repositories.records import (
     AnalysisRecord,
     HealthRecord,
@@ -104,11 +105,13 @@ class SqlAlchemyReadAdapter:
         session_or_factory: Session | Callable[[], Session],
         *,
         primary_timeframe: str = "15m",
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         if primary_timeframe not in CANDLE_MODELS:
             raise ValueError("unsupported primary timeframe")
         self._session_or_factory = session_or_factory
         self._primary_timeframe = primary_timeframe
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
@@ -514,22 +517,24 @@ class SqlAlchemyReadAdapter:
         with self._session() as session:
             candle_observed = session.scalar(candle_statement)
             run = session.scalar(run_statement)
+        decision = evaluate_boundary_health(
+            run,
+            candle_available=candle_observed is not None,
+            now=self._clock(),
+        )
         observations = [value for value in (candle_observed, getattr(run, "updated_at", None)) if value is not None]
         observed_at = max((_aware(value) for value in observations), default=datetime.now(timezone.utc))
-        market_status = "NOT_AVAILABLE" if candle_observed is None else _health(
-            getattr(run, "market_data_freshness_status", None)
-        )
-        orchestrator_status = "NOT_AVAILABLE"
-        if run is not None:
-            orchestrator_status = "ERROR" if run.status in {"ERROR", "MODULE_ERROR"} else "UNKNOWN"
-            if run.status == "COMPLETED":
-                orchestrator_status = "OK"
-            elif run.status in {"WAITING_FOR_REQUIRED_BOUNDARY", "CHECKING_FRESHNESS"}:
-                orchestrator_status = "DEGRADED"
         services = (
-            ServiceRecord("market-data", market_status, _aware(candle_observed or observed_at)),
-            ServiceRecord("online-orchestrator", orchestrator_status, _aware(getattr(run, "updated_at", observed_at))),
+            ServiceRecord("market-data", decision.market_data_status, _aware(candle_observed or observed_at)),
+            ServiceRecord("online-orchestrator", decision.orchestrator_status, _aware(getattr(run, "updated_at", observed_at))),
         )
-        rank = {"ERROR": 5, "OFFLINE": 4, "DEGRADED": 3, "STALE": 2, "NOT_AVAILABLE": 1, "UNKNOWN": 1, "OK": 0}
-        overall = max(services, key=lambda item: rank.get(item.status, 1)).status
-        return HealthRecord(overall, observed_at, services)
+        return HealthRecord(
+            decision.status,
+            observed_at,
+            services,
+            timing_state=decision.timing_state,
+            reason_code=decision.reason_code,
+            operational=decision.operational,
+            ready=decision.ready,
+            acceptance_blocking=decision.acceptance_blocking,
+        )

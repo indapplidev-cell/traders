@@ -92,6 +92,11 @@ class HealthSnapshot(ContractModel):
     status: HealthState
     observed_at: UtcTimestamp
     services: list[ServiceSnapshot]
+    timing_state: str
+    reason_code: str
+    operational: bool
+    ready: bool
+    acceptance_blocking: bool
 
 
 class MarketSummary(ContractModel):
