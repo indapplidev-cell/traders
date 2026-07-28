@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = e5152c5865e61a9801d866f01f96eab18c2c2d59
+STATUS_AS_OF_COMMIT = 80c46f3f59aaade111b81af45b5eca5094ca38d8
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-28T14:46:22Z
-RECONCILED_BY_TASK = TRADERS-ML-READONLY-API-CREDENTIAL-INVALIDATION-VERIFIER-AND-ROTATION-RETRY-03
+RECONCILED_AT_UTC = 2026-07-28T16:04:57Z
+RECONCILED_BY_TASK = TRADERS-ML-READONLY-API-ANALYSIS-LATEST-AVAILABLE-RESULT-REMEDIATION-01
 FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_CREDENTIAL_VERIFIER_CONTROLLER_ROTATION_REBIND_AND_PRODUCTION_ACCEPTANCE
+STATUS_CONFIDENCE = PROVEN_ANALYSIS_LATEST_AVAILABLE_RESULT_PRODUCTION_BOUNDARY_ACCEPTANCE
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_CREDENTIAL_VERIFIER_CONTROLLER_ROTATION_REBIND_AND_PR
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = READONLY_API_ANALYSIS_LATEST_AVAILABLE_RESULT_REMEDIATION_01_PENDING
-CURRENT_BLOCKER = ANALYSIS_ROUTE_LATEST_AVAILABLE_RESULT_DEFECT_OPEN
+CURRENT_STAGE = READONLY_API_POST_ANALYSIS_REMEDIATION_STABILITY_OBSERVATION_01_PENDING
+CURRENT_BLOCKER = NEW_UNINTERRUPTED_75_MINUTE_STABILITY_OBSERVATION_REQUIRED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -166,7 +166,8 @@ PERSISTENT_SERVICE = traders-readonly-api-readonly-api-1
 PERSISTENT_SERVICE_BIND = 127.0.0.1:8765
 PERSISTENT_SERVICE_HEALTH = HEALTHY
 PERSISTENT_SERVICE_RESTARTS = 0
-PERSISTENT_SERVICE_IMAGE_ID = sha256:e9695a802045fecf64a025481029612a8a578e5d206cc657bab7cb6db8df3c6b
+PERSISTENT_SERVICE_CONTAINER_ID = e1ac8811b07685960738c3fac816b3d15656abee3a5ea90544d1b7d98bc5199c
+PERSISTENT_SERVICE_IMAGE_ID = sha256:3f6312806467ee7ffaac6fe372769a0470b9eb3622d25f73b9d8148df25d4917
 PRODUCTION_READONLY_ROLE = traders_readonly_api
 PRODUCTION_READONLY_ROLE_CONTRACT = PASS
 PRODUCTION_HTTP_ACCEPTANCE = PASS
@@ -213,6 +214,47 @@ production boundary showed five non-blocking grace samples, three expected
 blocking post-deadline samples before synchronization, and a return to
 `OK/CURRENT`. This remediation acceptance is not the required new 75-minute
 stability PASS.
+
+### Latest available analysis result remediation
+
+```text
+ANALYSIS_AVAILABILITY_ROOT_CAUSE = ANALYSIS_LATEST_RUN_RESULT_ATOMICITY_RACE
+ANALYSIS_QUERY_CONTRACT = LATEST_AVAILABLE_VALID_ANALYSIS_RESULT
+ELIGIBILITY = ANALYZED; IDENTITY_MATCH; REQUIRED_SNAPSHOT_FIELDS; NO_FUTURE_BARS; NOT_DEGRADED; ENOUGH_DATA
+DOWNSTREAM_COMPLETION_REQUIRED = NO
+ORDERING = RUN_BOUNDARY_DESC; RESULT_CREATED_AT_DESC; RESULT_ID_DESC
+BOUNDED_SQL = CORRELATED_ELIGIBLE_RESULT_LIMIT_1; OUTER_LIMIT_1
+IMPLEMENTATION_COMMIT = 80c46f3f59aaade111b81af45b5eca5094ca38d8
+API_SCHEMA_CHANGED = NO
+CLIENT_CODE_CHANGED = NO
+DETERMINISTIC_REGRESSION = 12_PASSED
+SAFE_SERVER_REGRESSION = 774_PASSED; 2_SKIPPED
+CLIENT_REGRESSION = 105_PASSED; 63_SUBTESTS_PASSED
+PRODUCTION_IMAGE_ID = sha256:3f6312806467ee7ffaac6fe372769a0470b9eb3622d25f73b9d8148df25d4917
+PRODUCTION_CONTAINER_ID = e1ac8811b07685960738c3fac816b3d15656abee3a5ea90544d1b7d98bc5199c
+HTTP_ROUTE_SMOKE = 9_GET_PASS; 0_WRITE
+NATURAL_BOUNDARY = 2026-07-28T16:00:00Z
+BOUNDARY_ANALYSIS_CONTINUITY = 110/110_HTTP_200; OLD_TO_NEW; 0_4XX; 0_5XX; 0_TIMEOUT
+NATURAL_INCOMPLETE_RUN_WINDOW_OBSERVED = YES
+OLD_VALID_RESULT_SERVED_DURING_INCOMPLETE_RUN = YES
+NEW_VALID_RESULT_BECAME_VISIBLE = YES
+RESULT_TIMESTAMP_REGRESSION = NO
+HEALTH_CURRENT_PASS = YES
+HEALTH_WITHIN_GRACE_PASS = YES
+HEALTH_FALSE_DEGRADED = 0
+HEALTH_REAL_BLOCKER_MASKED = NO
+PRODUCTION_ACCEPTANCE = PASS
+POST_ANALYSIS_REMEDIATION_75_MINUTE_STABILITY = NOT_RUN
+PAPER_FOUNDATION_UNBLOCKED = NO
+```
+
+The analysis route now joins each ordered run only to a bounded correlated
+eligible result. A newer run without a result, or with an invalid or unrelated
+payload, cannot hide the last valid analysis. The natural 1h boundary served
+the old result for 43 post-boundary samples and then switched directly to the
+new result without a 404, 5xx, timeout, or timestamp regression. This is route
+production acceptance, not the separate uninterrupted 75-minute stability
+gate.
 
 Library factory `create_app()` остаётся inert. Новый runtime factory явно
 создаёт один SQLAlchemy engine/session factory и передаёт существующий
@@ -349,7 +391,7 @@ UNEXPECTED_5XX = 0
 TIMEOUTS = 0
 SAFE_DOCKER_INSPECTION = ALLOWLIST_ONLY
 SECRET_VALUE_OUTPUT = NO
-ANALYSIS_REMEDIATION = NOT_RUN_UNBLOCKED
+ANALYSIS_REMEDIATION = COMPLETED_PRODUCTION_ACCEPTED
 POST_REMEDIATION_STABILITY_OBSERVATION = NOT_RUN
 PAPER_FOUNDATION_UNBLOCKED = NO
 ```
@@ -363,8 +405,8 @@ and `SystemExit(0)` as success; the completed production run exited zero with
 zero rollback calls. Role attributes and three-table SELECT-only authorization
 are unchanged. No credential value, URI, password verifier, environment dump,
 or full Docker inspection is retained in Git or task evidence. This restores
-the secret boundary; it does not remediate the analysis route defect and does
-not satisfy a stability gate.
+the secret boundary. The separately authorized analysis remediation is now
+production accepted, but the follow-on 75-minute stability gate remains open.
 
 ### Security scanner protected-binding scope remediation
 
@@ -390,7 +432,7 @@ SAFE_SECURITY_REGRESSION = 23 passed
 CURRENT_READONLY_CREDENTIAL_SECURITY = ROTATED_PROTECTED
 CREDENTIAL_ROTATION_REQUIRED = NO
 ANALYSIS_CANDIDATE = PRESERVED_LOCAL_FORENSIC_COMMIT_NOT_DEPLOYED
-ANALYSIS_ROUTE_PRODUCTION_DEFECT = OPEN_UNREMEDIATED
+ANALYSIS_ROUTE_PRODUCTION_DEFECT = REMEDIATED_PRODUCTION_ACCEPTED
 PAPER_FOUNDATION_UNBLOCKED = NO
 PRODUCTION_MUTATIONS = 0
 DEPLOYMENT = NOT_RUN
@@ -407,8 +449,9 @@ the preserved local forensic branch and is not approved for integration.
 The scanner remains restricted to tracked inputs and excludes the protected
 binding before read. The separately authorized RETRY-03 task has now restored
 the credential boundary with a new protected credential and exact old-
-credential SQLSTATE proof. Analysis remediation may resume only as its own
-task; its preserved candidate remains undeployed and unapproved.
+credential SQLSTATE proof. The preserved forensic candidate remains undeployed
+and unapproved; the accepted remediation was reapplied and corrected on a clean
+branch from the authoritative baseline.
 
 ## Production boundary
 
@@ -419,7 +462,7 @@ API_DEPLOYED = YES_LOCALHOST_ONLY
 MARKET_DATA_DEPLOYED = YES
 MARKET_DATA_RUNTIME_STATUS = RUNNING_HEALTHY
 PRODUCTION_RUNTIME_CHANGED = READONLY_API_ONLY
-POSTGRESQL_CHANGED = ROLE_PASSWORD_ONLY
+POSTGRESQL_CHANGED = NO
 ALEMBIC_RUN = NO
 PRODUCTION_COMPOSE_APPLIED = READONLY_API_ONLY
 SERVICES_RESTARTED = READONLY_API_TARGETED_RECREATE_ONLY
@@ -432,7 +475,7 @@ NEW_SOAK_STARTED = NO
 PERSISTENT_READONLY_ROLE_REMAINS = YES
 EPHEMERAL_API_REMAINS = NO
 PERSISTENT_API_PORT_8765_ACTIVE = YES
-PRODUCTION_DB_ROLE_MUTATIONS = AUTHORIZED_TRADERS_READONLY_API_PASSWORD_ROTATION_ONLY
+PRODUCTION_DB_ROLE_MUTATIONS = 0
 PRODUCTION_SCHEMA_MUTATIONS = 0
 MANUAL_PRODUCTION_DATA_MUTATIONS = 0
 CLIENT_REPOSITORY_MUTATIONS = 0
@@ -453,8 +496,8 @@ production data и существующие soak artifacts не изменяли
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
-| Production reliability/acceptance | ≈78% | Scanner scope and credential boundary are remediated; the analysis defect remains open and no new stability observation or 72-hour soak ran |
-| Readonly Server API | 88% | Runtime is healthy and localhost-only with a protected rotated credential, 9 GET/0 write, and exact old-credential SQLSTATE invalidation proof |
+| Production reliability/acceptance | ≈80% | Scanner and credential boundaries remain closed; analysis continuity passed a natural 1h boundary, while the new 75-minute stability observation and 72-hour soak remain open |
+| Readonly Server API | 90% | Latest-available analysis selection is production accepted with 110/110 boundary responses, 9 GET/0 write, and no schema or client change |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -465,16 +508,16 @@ production data и существующие soak artifacts не изменяли
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_READONLY_API_ANALYSIS_LATEST_AVAILABLE_RESULT_REMEDIATION_01
+TRADERS_ML_READONLY_API_POST_ANALYSIS_REMEDIATION_STABILITY_OBSERVATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
-Scanner scope remediation и отдельная credential rotation/safe-rebind завершены
-с PASS. Analysis candidate сохранён только в локальном forensic commit, не
-deployed и не approved for integration. Эта задача не исправляла analysis route
-defect, не запускала 75-minute stability observation и не переходила в 72-hour
-soak. Market-data health contract остаётся `DEPLOYED_STABLE`; LIVE остаётся
-disabled.
+Scanner scope remediation, credential rotation/safe-rebind and the clean
+analysis latest-available-result remediation are completed with PASS. The
+forensic candidate remains preserved and undeployed. The required new
+75-minute stability observation was not started, so paper foundation and the
+72-hour soak remain blocked. Market-data health stays `DEPLOYED_STABLE`; LIVE
+stays disabled.
 
 ## Правила актуализации
 
