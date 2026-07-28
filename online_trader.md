@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = c95939abaf41619eb166f20fd2ec869fa39c9390
+STATUS_AS_OF_COMMIT = e5152c5865e61a9801d866f01f96eab18c2c2d59
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-28T10:58:57Z
-RECONCILED_BY_TASK = TRADERS-ML-SECURITY-SCANNER-PROTECTED-BINDING-SCOPE-REMEDIATION-01
+RECONCILED_AT_UTC = 2026-07-28T14:46:22Z
+RECONCILED_BY_TASK = TRADERS-ML-READONLY-API-CREDENTIAL-INVALIDATION-VERIFIER-AND-ROTATION-RETRY-03
 FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_SCANNER_SCOPE_REMEDIATED_CURRENT_READONLY_CREDENTIAL_REQUIRES_ROTATION
+STATUS_CONFIDENCE = PROVEN_CREDENTIAL_VERIFIER_CONTROLLER_ROTATION_REBIND_AND_PRODUCTION_ACCEPTANCE
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_SCANNER_SCOPE_REMEDIATED_CURRENT_READONLY_CREDENTIAL_
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = READONLY_API_CREDENTIAL_ROTATION_AND_SAFE_REBIND_02_PENDING
-CURRENT_BLOCKER = CURRENT_READONLY_CREDENTIAL_COMPROMISED_REQUIRES_ROTATION
+CURRENT_STAGE = READONLY_API_ANALYSIS_LATEST_AVAILABLE_RESULT_REMEDIATION_01_PENDING
+CURRENT_BLOCKER = ANALYSIS_ROUTE_LATEST_AVAILABLE_RESULT_DEFECT_OPEN
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -281,7 +281,7 @@ connection; canary и 72-hour soak не запускались.
 ### Persistent protected secret binding
 
 ```text
-PERSISTENT_PROTECTED_SECRET_BINDING = PROVISIONED_COMPROMISED_REQUIRES_ROTATION
+PERSISTENT_PROTECTED_SECRET_BINDING = PROVISIONED_ROTATED_PROTECTED
 PERSISTENT_SECRET_BINDING_PATH = D:\disk_E\game_projects\traders\traders-ml\.env.production.local
 PERSISTENT_SECRET_BINDING_GIT_TRACKED = NO
 PERSISTENT_SECRET_BINDING_GIT_IGNORED = YES
@@ -308,11 +308,23 @@ credential; он хранит только localhost HTTP base URL и provider m
 ### Readonly API credential rotation and safe rebind
 
 ```text
-ROTATION_TASK = TRADERS-ML-READONLY-API-CREDENTIAL-ROTATION-AND-SAFE-REBIND-01
-SOURCE_BLOCKER = SECRET_EXPOSURE_DURING_PREFLIGHT
+ROTATION_TASK = TRADERS-ML-READONLY-API-CREDENTIAL-INVALIDATION-VERIFIER-AND-ROTATION-RETRY-03
+SOURCE_BLOCKER = CONTROL_PROCESS_SUCCESS_EXIT_MISCLASSIFIED_TRIGGERED_ROLLBACK
+CREDENTIAL_INVALIDATION_VERIFIER = PROVEN_AND_INTEGRATED
+VERIFIER_PRIMARY_AUTHORITY = POSTGRESQL_SQLSTATE_AND_ERROR_RESPONSE_FIELD_C
+VERIFIER_STRING_MATCH_PRIMARY = NO
+CONTROL_PROCESS_EXIT_SEMANTICS = REMEDIATED
+SYSTEM_EXIT_ZERO_CLASSIFICATION = SUCCESS
+SYSTEM_EXIT_ZERO_ROLLBACK_CALLS = 0
+CONTROL_PROCESS_FINAL_EXIT = 0
+CONTROL_PROCESS_FINAL_CLASSIFICATION = SUCCESS
+ROLLBACK_TRIGGERED_AFTER_SUCCESS = NO
 CREDENTIAL_ROTATION = COMPLETED
 SAFE_REBIND = COMPLETED
 OLD_CREDENTIAL_NEW_CONNECTION = DENIED
+OLD_CREDENTIAL_SQLSTATE = 28P01
+OLD_CREDENTIAL_CONDITION = invalid_password
+OLD_CREDENTIAL_NORMALIZED_CLASS = AUTHENTICATION_FAILED
 OLD_CREDENTIAL_INVALIDATION = PROVEN
 NEW_CREDENTIAL_DIRECT_CONNECTION = PASS
 BINDING_VERIFIER = PASS
@@ -321,7 +333,7 @@ BINDING_GIT_TRACKED = NO
 BINDING_GIT_IGNORED = YES
 BINDING_DOCKER_CONTEXT = EXCLUDED
 READONLY_API_CONTAINER_REPLACED = YES
-READONLY_API_CONTAINER_ID = 786ff4f62debec22f4f6738b041dad322ef31a8b2562304d98638fa83dd9efab
+READONLY_API_CONTAINER_ID = abb61719d07a125aff752aba236fec80f18b4b33d6a7a565306f4a3b2eb42fbe
 READONLY_API_IMAGE_ID = sha256:e9695a802045fecf64a025481029612a8a578e5d206cc657bab7cb6db8df3c6b
 READONLY_API_IMAGE_UNCHANGED = YES
 READONLY_API_HEALTH = HEALTHY
@@ -342,15 +354,17 @@ POST_REMEDIATION_STABILITY_OBSERVATION = NOT_RUN
 PAPER_FOUNDATION_UNBLOCKED = NO
 ```
 
-The credential exposed during the interrupted analysis remediation preflight is
-treated as compromised and is no longer accepted by a new PostgreSQL
-connection. A fresh credential was generated in memory, applied only to
-`traders_readonly_api`, atomically stored through the existing protected
-binding, and loaded by a targeted Readonly API recreation. The role attributes
-and three-table SELECT-only authorization are unchanged. No credential value,
-URI, password verifier, environment dump, or full Docker inspection is retained
-in Git or task evidence. This restores the secret boundary; it does not
-remediate the analysis route defect and does not satisfy a stability gate.
+The previously restored compromised credential is no longer accepted by a new
+PostgreSQL connection and returns SQLSTATE `28P01`. A fresh credential was
+generated in memory, applied only to `traders_readonly_api`, atomically stored
+through the protected binding, and loaded by one targeted Readonly API
+recreation. The tracked controller now treats normal return, return code zero,
+and `SystemExit(0)` as success; the completed production run exited zero with
+zero rollback calls. Role attributes and three-table SELECT-only authorization
+are unchanged. No credential value, URI, password verifier, environment dump,
+or full Docker inspection is retained in Git or task evidence. This restores
+the secret boundary; it does not remediate the analysis route defect and does
+not satisfy a stability gate.
 
 ### Security scanner protected-binding scope remediation
 
@@ -373,8 +387,8 @@ REAL_PROTECTED_BINDING_FINGERPRINT_COUNT = 0
 SCANNER_NEW_TESTS = 19 passed, 3 deterministic runs
 SCANNER_EXISTING_TESTS = 7 passed
 SAFE_SECURITY_REGRESSION = 23 passed
-CURRENT_READONLY_CREDENTIAL_SECURITY = COMPROMISED_REQUIRES_ROTATION
-CREDENTIAL_ROTATION_REQUIRED = YES
+CURRENT_READONLY_CREDENTIAL_SECURITY = ROTATED_PROTECTED
+CREDENTIAL_ROTATION_REQUIRED = NO
 ANALYSIS_CANDIDATE = PRESERVED_LOCAL_FORENSIC_COMMIT_NOT_DEPLOYED
 ANALYSIS_ROUTE_PRODUCTION_DEFECT = OPEN_UNREMEDIATED
 PAPER_FOUNDATION_UNBLOCKED = NO
@@ -390,11 +404,11 @@ category, severity and count; matched values and secret-derived hashes or
 fingerprints are forbidden. The interrupted analysis candidate remains only in
 the preserved local forensic branch and is not approved for integration.
 
-Although the earlier rotation task passed, its replacement credential is now
-treated as compromised because the failed analysis-remediation scanner read the
-protected binding and emitted secret-derived metadata. Scanner remediation does
-not restore that credential boundary; a new separately authorized rotation and
-safe rebind is required before analysis remediation can resume.
+The scanner remains restricted to tracked inputs and excludes the protected
+binding before read. The separately authorized RETRY-03 task has now restored
+the credential boundary with a new protected credential and exact old-
+credential SQLSTATE proof. Analysis remediation may resume only as its own
+task; its preserved candidate remains undeployed and unapproved.
 
 ## Production boundary
 
@@ -439,8 +453,8 @@ production data и существующие soak artifacts не изменяли
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
-| Production reliability/acceptance | ≈78% | Scanner scope is remediated, but the current Readonly credential is compromised and requires a new rotation; the analysis defect remains open and no new stability observation or 72-hour soak ran |
-| Readonly Server API | 88% | Runtime remains healthy and localhost-only with 9 GET/0 write, but the current credential must be rotated before analysis remediation resumes |
+| Production reliability/acceptance | ≈78% | Scanner scope and credential boundary are remediated; the analysis defect remains open and no new stability observation or 72-hour soak ran |
+| Readonly Server API | 88% | Runtime is healthy and localhost-only with a protected rotated credential, 9 GET/0 write, and exact old-credential SQLSTATE invalidation proof |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -451,16 +465,16 @@ production data и существующие soak artifacts не изменяли
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_READONLY_API_CREDENTIAL_ROTATION_AND_SAFE_REBIND_02
+TRADERS_ML_READONLY_API_ANALYSIS_LATEST_AVAILABLE_RESULT_REMEDIATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
-Scanner scope remediation завершена с PASS, но текущий Readonly credential
-считается скомпрометированным и требует новой rotation/safe-rebind task.
-Analysis candidate сохранён только в локальном forensic commit, не deployed и
-не approved for integration. Эта задача не исправляла analysis route defect,
-не запускала 75-minute stability observation и не переходила в 72-hour soak.
-Market-data health contract остаётся `DEPLOYED_STABLE`; LIVE остаётся disabled.
+Scanner scope remediation и отдельная credential rotation/safe-rebind завершены
+с PASS. Analysis candidate сохранён только в локальном forensic commit, не
+deployed и не approved for integration. Эта задача не исправляла analysis route
+defect, не запускала 75-minute stability observation и не переходила в 72-hour
+soak. Market-data health contract остаётся `DEPLOYED_STABLE`; LIVE остаётся
+disabled.
 
 ## Правила актуализации
 
