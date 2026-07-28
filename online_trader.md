@@ -7,13 +7,13 @@ STATUS_AS_OF_COMMIT = e67a4adf7ba6f2d737f1a91a7b39bde59b6d2bb2
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-28T05:03:48Z
-RECONCILED_BY_TASK = TRADERS-ML-READONLY-API-BOUNDARY-HEALTH-SEMANTICS-REMEDIATION-01
-FILES_CHANGED = app/server_api/health_policy.py, app/server_api/mapping/contract.py, app/server_api/repositories/records.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/schemas/models.py, tests/server_api/fakes.py, tests/server_api/test_boundary_health_policy.py, online_trader.md
+RECONCILED_AT_UTC = 2026-07-28T09:39:46Z
+RECONCILED_BY_TASK = TRADERS-ML-READONLY-API-CREDENTIAL-ROTATION-AND-SAFE-REBIND-01
+FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_READONLY_API_BOUNDARY_HEALTH_REMEDIATION_PRODUCTION_ACCEPTED_STABILITY_PENDING
+STATUS_CONFIDENCE = PROVEN_READONLY_API_CREDENTIAL_ROTATED_SAFE_REBIND_HEALTHY_ANALYSIS_REMEDIATION_PENDING
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_READONLY_API_BOUNDARY_HEALTH_REMEDIATION_PRODUCTION_A
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = READONLY_API_BOUNDARY_HEALTH_REMEDIATION_PRODUCTION_ACCEPTED
-CURRENT_BLOCKER = POST_REMEDIATION_75_MINUTE_STABILITY_OBSERVATION_REQUIRED
+CURRENT_STAGE = READONLY_API_ANALYSIS_LATEST_AVAILABLE_RESULT_REMEDIATION_PENDING
+CURRENT_BLOCKER = ANALYSIS_LATEST_AVAILABLE_RESULT_DEFECT_UNREMEDIATED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -305,6 +305,53 @@ value без его вывода. Он остаётся исключённым �
 защищён exact Windows ACL и прошёл provisioned verifier. Client не получает DB
 credential; он хранит только localhost HTTP base URL и provider mode.
 
+### Readonly API credential rotation and safe rebind
+
+```text
+ROTATION_TASK = TRADERS-ML-READONLY-API-CREDENTIAL-ROTATION-AND-SAFE-REBIND-01
+SOURCE_BLOCKER = SECRET_EXPOSURE_DURING_PREFLIGHT
+CREDENTIAL_ROTATION = COMPLETED
+SAFE_REBIND = COMPLETED
+OLD_CREDENTIAL_NEW_CONNECTION = DENIED
+OLD_CREDENTIAL_INVALIDATION = PROVEN
+NEW_CREDENTIAL_DIRECT_CONNECTION = PASS
+BINDING_VERIFIER = PASS
+BINDING_ACL = RESTRICTED_UNCHANGED
+BINDING_GIT_TRACKED = NO
+BINDING_GIT_IGNORED = YES
+BINDING_DOCKER_CONTEXT = EXCLUDED
+READONLY_API_CONTAINER_REPLACED = YES
+READONLY_API_CONTAINER_ID = 786ff4f62debec22f4f6738b041dad322ef31a8b2562304d98638fa83dd9efab
+READONLY_API_IMAGE_ID = sha256:e9695a802045fecf64a025481029612a8a578e5d206cc657bab7cb6db8df3c6b
+READONLY_API_IMAGE_UNCHANGED = YES
+READONLY_API_HEALTH = HEALTHY
+READONLY_API_RESTARTS = 0
+READONLY_API_BIND = 127.0.0.1:8765
+ROLE_AUTHORIZATION_UNCHANGED = YES
+ROLE_SELECT_GRANTS = 3
+ROLE_NONSELECT_GRANTS = 0
+HTTP_ROUTE_SMOKE = 9_GET_PASS
+EXPECTED_MISSING_RESOURCE_404 = PASS
+UNEXPECTED_4XX = 0
+UNEXPECTED_5XX = 0
+TIMEOUTS = 0
+SAFE_DOCKER_INSPECTION = ALLOWLIST_ONLY
+SECRET_VALUE_OUTPUT = NO
+ANALYSIS_REMEDIATION = NOT_RUN_UNBLOCKED
+POST_REMEDIATION_STABILITY_OBSERVATION = NOT_RUN
+PAPER_FOUNDATION_UNBLOCKED = NO
+```
+
+The credential exposed during the interrupted analysis remediation preflight is
+treated as compromised and is no longer accepted by a new PostgreSQL
+connection. A fresh credential was generated in memory, applied only to
+`traders_readonly_api`, atomically stored through the existing protected
+binding, and loaded by a targeted Readonly API recreation. The role attributes
+and three-table SELECT-only authorization are unchanged. No credential value,
+URI, password verifier, environment dump, or full Docker inspection is retained
+in Git or task evidence. This restores the secret boundary; it does not
+remediate the analysis route defect and does not satisfy a stability gate.
+
 ## Production boundary
 
 В рамках этой задачи:
@@ -314,10 +361,10 @@ API_DEPLOYED = YES_LOCALHOST_ONLY
 MARKET_DATA_DEPLOYED = YES
 MARKET_DATA_RUNTIME_STATUS = RUNNING_HEALTHY
 PRODUCTION_RUNTIME_CHANGED = READONLY_API_ONLY
-POSTGRESQL_CHANGED = ROLE_AND_GRANTS_ONLY
+POSTGRESQL_CHANGED = ROLE_PASSWORD_ONLY
 ALEMBIC_RUN = NO
 PRODUCTION_COMPOSE_APPLIED = READONLY_API_ONLY
-SERVICES_RESTARTED = NONE_EXISTING
+SERVICES_RESTARTED = READONLY_API_TARGETED_RECREATE_ONLY
 MARKET_DATA_RESTARTS_BY_TASK = 0
 POSTGRESQL_RESTARTS_BY_TASK = 0
 ORCHESTRATOR_RESTARTS_BY_TASK = 0
@@ -327,10 +374,10 @@ NEW_SOAK_STARTED = NO
 PERSISTENT_READONLY_ROLE_REMAINS = YES
 EPHEMERAL_API_REMAINS = NO
 PERSISTENT_API_PORT_8765_ACTIVE = YES
-PRODUCTION_DB_ROLE_MUTATIONS = AUTHORIZED_TRADERS_READONLY_API_CREATE_AND_GRANTS
+PRODUCTION_DB_ROLE_MUTATIONS = AUTHORIZED_TRADERS_READONLY_API_PASSWORD_ROTATION_ONLY
 PRODUCTION_SCHEMA_MUTATIONS = 0
 MANUAL_PRODUCTION_DATA_MUTATIONS = 0
-CLIENT_REPOSITORY_MUTATIONS = EXPLICIT_PRODUCTION_READONLY_HTTP_MODE
+CLIENT_REPOSITORY_MUTATIONS = 0
 PRIVATE_BINANCE_API_USED = NO
 LIVE_ORDERS = 0
 PUSHED = NO
@@ -348,8 +395,8 @@ production data и существующие soak artifacts не изменяли
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
-| Production reliability/acceptance | ≈78% | Readonly boundary-health remediation is production accepted; post-remediation 75-minute stability observation and 72-hour soak remain absent |
-| Readonly Server API | 88% | Boundary-aware health policy is deployed and accepted at a natural 1h boundary; 9 GET/0 write and explicit production client mode remain intact |
+| Production reliability/acceptance | ≈78% | Readonly credential rotation and safe rebind passed; the analysis latest-result defect remains pending and no new stability observation or 72-hour soak ran |
+| Readonly Server API | 88% | Secret boundary restored with proven old-credential denial, unchanged least privilege, healthy localhost-only service, and 9 GET/0 write; analysis remediation remains pending |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -360,16 +407,15 @@ production data и существующие soak artifacts не изменяли
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_READONLY_API_POST_REMEDIATION_STABILITY_OBSERVATION_01
+TRADERS_ML_READONLY_API_ANALYSIS_LATEST_AVAILABLE_RESULT_REMEDIATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
-Readonly API secret provisioning, least-privilege role, persistent localhost
-deployment, desktop client connection и boundary-health remediation завершены
-с PASS. Следующий отдельно разрешаемый этап — новый полный 75-minute
-post-remediation stability observation без
-автоматического перехода в 72-hour soak. Market-data health contract остаётся
-`DEPLOYED_STABLE`; LIVE остаётся disabled.
+Readonly API credential rotation and safe rebind завершены с PASS. Прерванная
+analysis latest-available-result remediation снова разрешена как следующий
+отдельный этап. Эта задача не исправляла analysis route defect, не запускала
+75-minute stability observation и не переходила в 72-hour soak. Market-data
+health contract остаётся `DEPLOYED_STABLE`; LIVE остаётся disabled.
 
 ## Правила актуализации
 
