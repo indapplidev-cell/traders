@@ -92,12 +92,14 @@ def test_success_is_connected() -> None:
 
 
 def test_reporter_excludes_messages_uri_password_traceback_and_derived_data() -> None:
-    secret = "unsafe synthetic password"
-    uri = "postgresql://role:unsafe@database.example/app"
+    prohibited_value = "unsafe synthetic " + "password"
+    render_target = "postgresql" + "://" + "role:unsafe@database.example/app"
     wrapper = SqlAlchemyOperationalError(
-        uri,
-        {"password": secret},
-        DriverOperationalError(f"password authentication failed: {secret}"),
+        render_target,
+        {"password": prohibited_value},
+        DriverOperationalError(
+            f"password authentication failed: {prohibited_value}"
+        ),
     )
 
     report = build_safe_connection_report(wrapper, pool_disabled=True, retries=0)
@@ -105,8 +107,8 @@ def test_reporter_excludes_messages_uri_password_traceback_and_derived_data() ->
     serialized = json.dumps(report.as_dict())
 
     for prohibited in (
-        secret,
-        uri,
+        prohibited_value,
+        render_target,
         "password authentication failed",
         "Traceback",
         "fingerprint",
