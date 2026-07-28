@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 6bcaa6969c82a72e51d48d110a905879a558e58f
+STATUS_AS_OF_COMMIT = e67a4adf7ba6f2d737f1a91a7b39bde59b6d2bb2
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-27T21:11:00Z
-RECONCILED_BY_TASK = TRADERS-CLIENT-PRODUCTION-READONLY-API-CONTROLLED-CONNECTION-RETRY-01
-FILES_CHANGED = docs/operations/readonly_api_persistent_service.md, ops/production/readonly-api/compose.yaml, tests/server_api/test_persistent_service_configuration.py, online_trader.md
+RECONCILED_AT_UTC = 2026-07-28T05:03:48Z
+RECONCILED_BY_TASK = TRADERS-ML-READONLY-API-BOUNDARY-HEALTH-SEMANTICS-REMEDIATION-01
+FILES_CHANGED = app/server_api/health_policy.py, app/server_api/mapping/contract.py, app/server_api/repositories/records.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/schemas/models.py, tests/server_api/fakes.py, tests/server_api/test_boundary_health_policy.py, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PRODUCTION_LOCALHOST_READONLY_API_AND_CLIENT_CONNECTION
+STATUS_CONFIDENCE = PROVEN_READONLY_API_BOUNDARY_HEALTH_REMEDIATION_PRODUCTION_ACCEPTED_STABILITY_PENDING
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PRODUCTION_LOCALHOST_READONLY_API_AND_CLIENT_CONNECTI
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PRODUCTION_READONLY_API_CLIENT_CONNECTION_COMPLETED
-CURRENT_BLOCKER = NONE
+CURRENT_STAGE = READONLY_API_BOUNDARY_HEALTH_REMEDIATION_PRODUCTION_ACCEPTED
+CURRENT_BLOCKER = POST_REMEDIATION_75_MINUTE_STABILITY_OBSERVATION_REQUIRED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -166,6 +166,7 @@ PERSISTENT_SERVICE = traders-readonly-api-readonly-api-1
 PERSISTENT_SERVICE_BIND = 127.0.0.1:8765
 PERSISTENT_SERVICE_HEALTH = HEALTHY
 PERSISTENT_SERVICE_RESTARTS = 0
+PERSISTENT_SERVICE_IMAGE_ID = sha256:e9695a802045fecf64a025481029612a8a578e5d206cc657bab7cb6db8df3c6b
 PRODUCTION_READONLY_ROLE = traders_readonly_api
 PRODUCTION_READONLY_ROLE_CONTRACT = PASS
 PRODUCTION_HTTP_ACCEPTANCE = PASS
@@ -176,6 +177,42 @@ CLIENT_CONNECTION = CONNECTED
 PRODUCTION_CANARY_STARTED = NO
 SOAK_STARTED = NO
 ```
+
+### Boundary-aware Readonly API health remediation
+
+```text
+BOUNDARY_HEALTH_ROOT_CAUSE = HEALTH_ENDPOINT_BOUNDARY_GRACE_MAPPING_DEFECT
+BOUNDARY_HEALTH_POLICY = app.server_api.health_policy:evaluate_boundary_health
+HEALTH_POLICY_PRECEDENCE = REAL_BLOCKING_EVIDENCE > AUTHORITATIVE_BOUNDARY_STATE > ORCHESTRATOR_WORKFLOW_LABEL > SAFE_UNKNOWN
+API_HEALTH_SCHEMA = ADDITIVE_BACKWARD_COMPATIBLE
+VALID_CURRENT = HTTP_200_OK_CURRENT_OPERATIONAL_READY_NON_BLOCKING
+VALID_WITHIN_GRACE = HTTP_200_OK_WITHIN_GRACE_BOUNDARY_WITHIN_GRACE_OPERATIONAL_READY_NON_BLOCKING
+EXPIRED_GRACE = HTTP_200_DEGRADED_DEADLINE_EXPIRED_BLOCKING
+REAL_GAP_NO_PROGRESS_ACTIVE_ERROR = BLOCKING
+OBSERVER_PREDICATE_CHANGED = NO
+DOCKER_HEALTHCHECK_CHANGED = NO
+CLIENT_CODE_CHANGED = NO
+PRODUCTION_BOUNDARY_OBSERVED = 1h_2026-07-28T05:00:00Z
+BOUNDARY_OBSERVATION_WINDOW = 2026-07-28T04:58:30Z/2026-07-28T05:02:30Z
+BOUNDARY_OBSERVATION_SAMPLES = 49
+WITHIN_GRACE_SAMPLES = 5_PASS
+EXPIRED_GRACE_SAMPLES = 3_BLOCKING_AS_DESIGNED
+POST_SYNC = OK_CURRENT
+ROOT_CAUSE_REMEDIATED = YES
+PRODUCTION_ACCEPTANCE = PASS
+POST_REMEDIATION_STABILITY_OBSERVATION = NOT_RUN
+PAPER_FOUNDATION_UNBLOCKED = NO
+```
+
+The Readonly API now reconstructs dependency health from persisted per-timeframe
+boundary availability, UTC boundary timestamps, grace deadlines, health states,
+and blocking reasons. A transient orchestrator workflow label cannot override
+authoritative `WITHIN_GRACE` or `CURRENT` state and cannot mask expired grace,
+gap, no-progress, active-error, database, or internal failures. The natural 1h
+production boundary showed five non-blocking grace samples, three expected
+blocking post-deadline samples before synchronization, and a return to
+`OK/CURRENT`. This remediation acceptance is not the required new 75-minute
+stability PASS.
 
 Library factory `create_app()` остаётся inert. Новый runtime factory явно
 создаёт один SQLAlchemy engine/session factory и передаёт существующий
@@ -311,8 +348,8 @@ production data и существующие soak artifacts не изменяли
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
-| Production reliability/acceptance | ≈78% | Persistent localhost Readonly API and desktop client connection passed; no 72-hour soak |
-| Readonly Server API | 85% | Persistent localhost service healthy, 9 GET/0 write, least-privilege role and client production mode accepted |
+| Production reliability/acceptance | ≈78% | Readonly boundary-health remediation is production accepted; post-remediation 75-minute stability observation and 72-hour soak remain absent |
+| Readonly Server API | 88% | Boundary-aware health policy is deployed and accepted at a natural 1h boundary; 9 GET/0 write and explicit production client mode remain intact |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -323,13 +360,14 @@ production data и существующие soak artifacts не изменяли
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_READONLY_API_POST_DEPLOYMENT_STABILITY_OBSERVATION_01
+TRADERS_ML_READONLY_API_POST_REMEDIATION_STABILITY_OBSERVATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
 Readonly API secret provisioning, least-privilege role, persistent localhost
-deployment и desktop client connection завершены с PASS. Следующий отдельно
-разрешаемый этап — time-bounded post-deployment stability observation без
+deployment, desktop client connection и boundary-health remediation завершены
+с PASS. Следующий отдельно разрешаемый этап — новый полный 75-minute
+post-remediation stability observation без
 автоматического перехода в 72-hour soak. Market-data health contract остаётся
 `DEPLOYED_STABLE`; LIVE остаётся disabled.
 
