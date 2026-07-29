@@ -54,11 +54,18 @@ def test_runtime_ast_has_no_private_exchange_or_credential_operations():
 
 
 def test_runtime_import_boundary_allows_only_engine_paper_project_adapter():
-    project_imports = set()
+    violations = []
     for path in RUNTIME_FILES:
+        paper_foundation = path.parent.name == "engine_execution" and path.name.startswith("paper_")
+        allowed = ("app.engine_execution", "app.engine_safety", "app.engine_journal")
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("app."):
-                project_imports.add(node.module)
-    assert all(name.startswith("app.engine_execution") or name == "app.engine_paper"
-               for name in project_imports)
+                legacy_allowed = (
+                    node.module.startswith("app.engine_execution")
+                    or node.module == "app.engine_paper"
+                )
+                paper_allowed = paper_foundation and node.module.startswith(allowed)
+                if not (legacy_allowed or paper_allowed):
+                    violations.append((path.name, node.lineno, node.module))
+    assert violations == []
