@@ -7,24 +7,24 @@ STATUS_AS_OF_COMMIT = d3a7f6b4b188349a68396b2950a55518c93e270b
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T00:39:46Z
-RECONCILED_BY_TASK = TRADERS_ML_READONLY_API_STABILITY_OBSERVER_RUNTIME_UNKNOWN_DIAGNOSTIC_01
+RECONCILED_AT_UTC = 2026-07-29T05:05:51Z
+RECONCILED_BY_TASK = TRADERS_ML_READONLY_API_POST_ANALYSIS_REMEDIATION_STABILITY_OBSERVATION_02_WITH_DIAGNOSTIC_OBSERVER
 FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_OBSERVER_CAPTURE_REMEDIATION_WITH_HISTORICAL_PAYLOAD_LIMITATION
+STATUS_CONFIDENCE = PROVEN_UNINTERRUPTED_DIAGNOSTIC_OBSERVER_STABILITY_PASS
 
 # Состояние проекта traders-ml
 
 ## Текущая стадия
 
 ```text
-ROOT_BRANCH = fix/traders-ml-readonly-api-stability-observer-tooling-01
+ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = READONLY_API_POST_ANALYSIS_REMEDIATION_STABILITY_OBSERVATION_02_PENDING
-CURRENT_BLOCKER = FRESH_SUCCESSFUL_75_MINUTE_RETRY_REQUIRED_AFTER_HISTORICAL_FAILED_WINDOW
+CURRENT_STAGE = PAPER_TRADING_FOUNDATION_PREPARATION_PENDING
+CURRENT_BLOCKER = NONE_FOR_PAPER_FOUNDATION
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -201,8 +201,8 @@ EXPIRED_GRACE_SAMPLES = 3_BLOCKING_AS_DESIGNED
 POST_SYNC = OK_CURRENT
 ROOT_CAUSE_REMEDIATED = YES
 PRODUCTION_ACCEPTANCE = PASS
-POST_REMEDIATION_STABILITY_OBSERVATION = FAILED_RUNTIME_UNKNOWN_UNCHANGED
-PAPER_FOUNDATION_UNBLOCKED = NO
+POST_REMEDIATION_STABILITY_OBSERVATION = PASS_SEPARATE_FRESH_WINDOW_4569_843_SECONDS
+PAPER_FOUNDATION_UNBLOCKED = YES
 ```
 
 The Readonly API now reconstructs dependency health from persisted per-timeframe
@@ -244,8 +244,8 @@ HEALTH_WITHIN_GRACE_PASS = YES
 HEALTH_FALSE_DEGRADED = 0
 HEALTH_REAL_BLOCKER_MASKED = NO
 PRODUCTION_ACCEPTANCE = PASS
-POST_ANALYSIS_REMEDIATION_75_MINUTE_STABILITY = FAILED_RUNTIME_UNKNOWN_UNCHANGED
-PAPER_FOUNDATION_UNBLOCKED = NO
+POST_ANALYSIS_REMEDIATION_75_MINUTE_STABILITY = PASS_SEPARATE_FRESH_WINDOW_4569_843_SECONDS
+PAPER_FOUNDATION_UNBLOCKED = YES
 ```
 
 The analysis route now joins each ordered run only to a bounded correlated
@@ -285,8 +285,8 @@ SAFE_RELEVANT_SERVER_REGRESSION = 839_PASSED; 2_SKIPPED
 FORBIDDEN_CANARY_TESTS = 13_NOT_RUN
 CLIENT_PARSER_PROVIDER_TESTS = 37_PASSED; 19_SUBTESTS_PASSED
 PRODUCTION_DEPLOYMENT = NOT_RUN
-NEW_75_MINUTE_OBSERVATION = NOT_RUN
-PAPER_FOUNDATION_UNBLOCKED = NO
+NEW_75_MINUTE_OBSERVATION = PASS_SEPARATE_FOLLOW_ON_TASK_4569_843_SECONDS
+PAPER_FOUNDATION_UNBLOCKED = YES
 ```
 
 The historical source retained only the aggregate
@@ -297,7 +297,60 @@ historical runtime state or reclassify that failed window. The tracked observer
 now validates the exact FastAPI/Pydantic health envelope, reports stable
 fail-closed reason and branch IDs, and retains only bounded allowlisted
 structure with a paths/types-only digest. A fresh uninterrupted 75-minute
-observation remains required.
+observation was subsequently completed by the separately authorized follow-on
+task; the historical failed window remains failed and was not reclassified.
+
+### Post-analysis remediation stability observation 02
+
+```text
+STABILITY_TASK = TRADERS_ML_READONLY_API_POST_ANALYSIS_REMEDIATION_STABILITY_OBSERVATION_02_WITH_DIAGNOSTIC_OBSERVER
+STABILITY_RESULT = PASS_UNINTERRUPTED
+OBSERVER_SOURCE_COMMIT = 817f929aedb431f9da9f9a3509a30ab67a7c3acf
+OBSERVER_START_METHOD = FOREGROUND_CONTROLLED_PROCESS
+OBSERVER_PID = 10396
+OBSERVER_RESTARTS = 0
+PARTIAL_WINDOWS_CONCATENATED = NO
+OBSERVATION_START_UTC = 2026-07-29T03:48:50.126900Z
+NATURAL_BOUNDARY_UTC = 2026-07-29T04:00:00Z
+OBSERVATION_END_UTC = 2026-07-29T05:05:05.167827Z
+OBSERVATION_DURATION_SECONDS = 4569.843
+NORMAL_SAMPLES = 43
+BOUNDARY_SAMPLES = 105
+NORMAL_AFTER_BOUNDARY_SAMPLES = 249
+HEALTH_SAMPLES = 397
+ANALYSIS_SAMPLES = 397
+MISSED_SCHEDULED_SAMPLES = 0
+UNEXPLAINED_SEQUENCE_GAPS = 0
+HEALTH_SEQUENCE = CURRENT; WITHIN_GRACE; DEADLINE_EXPIRED; CURRENT
+HEALTH_RUNTIME_UNKNOWN_SAMPLES = 0
+HEALTH_FALSE_DEGRADED = 0
+ANALYSIS_HTTP_FAILURES = 0
+ANALYSIS_RESULT_TRANSITIONS = 5
+ANALYSIS_RESULT_TIMESTAMP_REGRESSION = NO
+FULL_ROUTE_SMOKE_CYCLES = 18
+FULL_ROUTE_HTTP_2XX = 162
+FULL_ROUTE_EXPECTED_404 = 54
+FULL_ROUTE_UNEXPECTED_FAILURES = 0
+CLIENT_START_MID_END = PASS
+CONTAINER_IMAGE_IDENTITIES_UNCHANGED = YES
+ALL_RESTART_DELTAS = 0
+RESOURCE_STABILITY = PASS
+DATABASE_STABILITY = PASS
+SCHEMA_ALEMBIC_UNCHANGED = YES
+SECURITY_STABILITY = PASS
+OBSERVER_LEFT_RUNNING = NO
+PRODUCTION_MUTATIONS = 0
+PAPER_FOUNDATION_UNBLOCKED = YES
+```
+
+The tracked diagnostic observer completed one new independent window. It
+crossed the natural UTC hour boundary, preserved the expected
+`CURRENT -> WITHIN_GRACE -> DEADLINE_EXPIRED -> CURRENT` sequence, served
+forward-only analysis results through five natural result transitions, and
+retained zero runtime UNKNOWN descriptors. The failed historical window was
+not reused, concatenated, rerun, or reclassified. This gate authorizes only
+paper-foundation preparation; paper execution and LIVE orders remain
+unimplemented and disabled.
 
 Library factory `create_app()` остаётся inert. Новый runtime factory явно
 создаёт один SQLAlchemy engine/session factory и передаёт существующий
@@ -539,8 +592,8 @@ production data и существующие soak artifacts не изменяли
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
 | Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
-| Production reliability/acceptance | ≈80% | Historical 75-minute observation remains FAILED on one context-poor UNKNOWN; observer capture is remediated with limitations, while observation 02 and the 72-hour soak remain open |
-| Readonly Server API | 90% | Latest-available analysis remains production accepted; observer-only classifier/capture remediation is tested but not a server deployment |
+| Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
+| Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -551,17 +604,18 @@ production data и существующие soak artifacts не изменяли
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_READONLY_API_POST_ANALYSIS_REMEDIATION_STABILITY_OBSERVATION_02_WITH_DIAGNOSTIC_OBSERVER
+TRADERS_ML_PAPER_TRADING_FOUNDATION_PREPARATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
 Scanner scope remediation, credential rotation/safe-rebind and the clean
 analysis latest-available-result remediation are completed with PASS. The
-historical full observation remains failed unchanged. The observer's bounded
-UNKNOWN capture and strict classifier are remediated with historical-payload
-limitations, but no new 75-minute observation was started. Paper foundation
-and the 72-hour soak remain blocked. Market-data health stays
-`DEPLOYED_STABLE`; LIVE stays disabled.
+historical full observation remains failed unchanged. A separate new
+diagnostic-observer window passed continuously for 4569.843 seconds with zero
+runtime UNKNOWN samples, no sequence gaps, and stable production invariants.
+Paper foundation is unblocked for a separately authorized preparation task;
+paper trading was not implemented, the 72-hour soak remains open, market-data
+health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
 
 ## Правила актуализации
 
