@@ -14,18 +14,20 @@ from decimal import Decimal
 from typing import TypeVar
 
 from sqlalchemy import or_, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.paper_mappings import (
     orm_values_to_paper_command,
     orm_values_to_paper_event,
+    orm_values_to_paper_exit_cursor,
     orm_values_to_paper_exit_decision,
     orm_values_to_paper_fill,
     orm_values_to_paper_order,
     orm_values_to_paper_position,
     paper_command_to_orm_values,
     paper_event_to_journal_values,
+    paper_exit_cursor_to_orm_values,
     paper_exit_decision_to_orm_values,
     paper_fill_to_orm_values,
     paper_order_to_orm_values,
@@ -33,6 +35,7 @@ from app.db.paper_mappings import (
 )
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
+    PaperExitEvaluationCursorRecord,
     PaperExitDecisionRecord,
     PaperFillRecord,
     PaperJournalEntryRecord,
@@ -41,7 +44,10 @@ from app.db.paper_models import (
     PaperPositionRecord,
     PaperSimulationPolicyRecord,
 )
-from app.engine_execution.paper_idempotency import journal_event_idempotency_key
+from app.engine_execution.paper_idempotency import (
+    journal_event_idempotency_key,
+    order_idempotency_key,
+)
 from app.engine_execution.paper_models import PaperExecutionCommand, PaperFill, PaperOrder
 from app.engine_execution.paper_state_machine import (
     command_created_event,
@@ -51,6 +57,14 @@ from app.engine_execution.paper_state_machine import (
 from app.engine_exit.paper_exit import PaperExitDecision
 from app.engine_journal.paper_events import PaperDomainEvent
 from app.engine_paper.db_failures import classify_database_failure
+from app.engine_paper.exit_evaluation_cursor import (
+    PaperExitCursorAdvance,
+    PaperExitCursorOutcome,
+    PaperExitCursorResult,
+    PaperExitEvaluationCursor,
+    advanced_cursor,
+    paper_exit_evaluation_cursor_id,
+)
 from app.engine_paper.repository_results import RepositoryOutcome, RepositoryResult, result
 from app.engine_paper.semantic_idempotency import (
     command_semantic_tuple,
@@ -129,6 +143,14 @@ class CloseFillGraph:
     order: PaperOrder
     fill: PaperFill
     position: PaperPosition
+
+
+@dataclass(frozen=True, slots=True)
+class ExitTriggerGraph:
+    cursor: PaperExitEvaluationCursor
+    decision: PaperExitDecision
+    position: PaperPosition
+    close_order: PaperOrder
 
 
 def _same(existing: T, proposed: T, semantic) -> RepositoryResult[T]:
@@ -884,6 +906,196 @@ class ExitRepository:
         return result(RepositoryOutcome.CREATED, decision)
 
 
+def _copy_exit_cursor(
+    row: PaperExitEvaluationCursorRecord,
+    cursor: PaperExitEvaluationCursor,
+) -> None:
+    for name, value in paper_exit_cursor_to_orm_values(cursor).items():
+        if name not in {"cursor_id", "position_id", "created_at"}:
+            setattr(row, name, value)
+
+
+class ExitEvaluationCursorRepository:
+    """One row-locked, optimistic checkpoint per PAPER position."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def get_cursor_bounded(
+        self, position_id: str
+    ) -> PaperExitEvaluationCursor | None:
+        row = self.session.scalar(
+            select(PaperExitEvaluationCursorRecord)
+            .where(PaperExitEvaluationCursorRecord.position_id == position_id)
+            .limit(1)
+        )
+        return orm_values_to_paper_exit_cursor(row) if row else None
+
+    def get_cursor_for_update(
+        self, position_id: str
+    ) -> PaperExitEvaluationCursor | None:
+        row = self.session.scalar(
+            select(PaperExitEvaluationCursorRecord)
+            .where(PaperExitEvaluationCursorRecord.position_id == position_id)
+            .with_for_update()
+        )
+        return orm_values_to_paper_exit_cursor(row) if row else None
+
+    def create_or_get_cursor(
+        self,
+        position_id: str,
+        cursor: PaperExitEvaluationCursor,
+    ) -> PaperExitCursorResult:
+        position_row = self.session.scalar(
+            select(PaperPositionRecord)
+            .where(PaperPositionRecord.position_id == position_id)
+            .with_for_update()
+        )
+        if position_row is None:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.POSITION_NOT_FOUND,
+                reason_code="PAPER_EXIT_CURSOR_POSITION_NOT_FOUND",
+            )
+        existing = self.get_cursor_bounded(position_id)
+        if existing is not None:
+            outcome = (
+                PaperExitCursorOutcome.CURSOR_ALREADY_EXISTS
+                if existing == cursor
+                else PaperExitCursorOutcome.CURSOR_IDEMPOTENCY_CONFLICT
+            )
+            return PaperExitCursorResult(outcome, existing)
+        position = orm_values_to_paper_position(position_row)
+        entry_fill_row = self.session.get(
+            PaperFillRecord, position.entry_fill_id
+        )
+        expected_cursor_id = paper_exit_evaluation_cursor_id(
+            position_id=position.position_id,
+            mode=position.mode,
+            symbol=position.symbol,
+            position_opened_closed_until_ms=(
+                entry_fill_row.source_closed_until_ms if entry_fill_row else -1
+            ),
+            evaluation_policy_id=cursor.evaluation_policy_id,
+        ) if entry_fill_row else None
+        if (
+            entry_fill_row is None
+            or entry_fill_row.fill_role != "ENTRY"
+            or cursor.position_id != position.position_id
+            or cursor.mode is not position.mode
+            or cursor.symbol != position.symbol
+            or cursor.position_opened_closed_until_ms
+            != entry_fill_row.source_closed_until_ms
+            or cursor.last_evaluated_closed_until_ms
+            != entry_fill_row.source_closed_until_ms
+            or cursor.version != 0
+            or cursor.cursor_id != expected_cursor_id
+            or cursor.last_advance_idempotency_key is not None
+        ):
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.SOURCE_GRAPH_INCONSISTENT,
+                reason_code="PAPER_EXIT_CURSOR_INITIALIZATION_GRAPH_INVALID",
+            )
+        try:
+            with self.session.begin_nested():
+                self.session.add(
+                    PaperExitEvaluationCursorRecord(
+                        **paper_exit_cursor_to_orm_values(cursor)
+                    )
+                )
+                self.session.flush()
+        except IntegrityError:
+            existing = self.get_cursor_bounded(position_id)
+            if existing is not None:
+                outcome = (
+                    PaperExitCursorOutcome.CURSOR_ALREADY_EXISTS
+                    if existing == cursor
+                    else PaperExitCursorOutcome.CURSOR_IDEMPOTENCY_CONFLICT
+                )
+                return PaperExitCursorResult(outcome, existing)
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.TRANSIENT_DB_FAILURE,
+                reason_code="PAPER_EXIT_CURSOR_DATABASE_FAILURE",
+            )
+        except SQLAlchemyError:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.TRANSIENT_DB_FAILURE,
+                reason_code="PAPER_EXIT_CURSOR_DATABASE_FAILURE",
+            )
+        return PaperExitCursorResult(
+            PaperExitCursorOutcome.CURSOR_CREATED, cursor
+        )
+
+    def advance_cursor(
+        self, advance: PaperExitCursorAdvance
+    ) -> PaperExitCursorResult:
+        try:
+            row = self.session.scalar(
+                select(PaperExitEvaluationCursorRecord)
+                .where(
+                    PaperExitEvaluationCursorRecord.position_id
+                    == advance.position_id
+                )
+                .with_for_update()
+            )
+        except SQLAlchemyError:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.TRANSIENT_DB_FAILURE,
+                reason_code="PAPER_EXIT_CURSOR_DATABASE_FAILURE",
+            )
+        if row is None:
+            return PaperExitCursorResult(PaperExitCursorOutcome.CURSOR_NOT_FOUND)
+        current = orm_values_to_paper_exit_cursor(row)
+        if current.last_advance_idempotency_key == advance.idempotency_key:
+            exact = (
+                current.last_advance_expected_version == advance.expected_version
+                and current.last_advance_from_closed_until_ms
+                == advance.from_closed_until_ms
+                and current.last_advance_to_closed_until_ms
+                == advance.to_closed_until_ms
+                and current.last_window_identity == advance.window_identity
+                and current.evaluation_policy_id == advance.evaluation_policy_id
+            )
+            return PaperExitCursorResult(
+                (
+                    PaperExitCursorOutcome.CURSOR_ALREADY_ADVANCED
+                    if exact
+                    else PaperExitCursorOutcome.CURSOR_IDEMPOTENCY_CONFLICT
+                ),
+                current,
+            )
+        if current.version != advance.expected_version:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.CURSOR_STALE_VERSION, current
+            )
+        if current.evaluation_policy_id != advance.evaluation_policy_id:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.SOURCE_GRAPH_INCONSISTENT, current
+            )
+        if advance.from_closed_until_ms < current.last_evaluated_closed_until_ms:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.CURSOR_REGRESSION_REJECTED, current
+            )
+        if advance.from_closed_until_ms > current.last_evaluated_closed_until_ms:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.CURSOR_GAP_REJECTED, current
+            )
+        try:
+            changed = advanced_cursor(current, advance)
+            _copy_exit_cursor(row, changed)
+            self.session.flush()
+        except ValueError:
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.SOURCE_GRAPH_INCONSISTENT, current
+            )
+        except (IntegrityError, SQLAlchemyError):
+            return PaperExitCursorResult(
+                PaperExitCursorOutcome.TRANSIENT_DB_FAILURE,
+                current,
+                reason_code="PAPER_EXIT_CURSOR_DATABASE_FAILURE",
+            )
+        return PaperExitCursorResult(PaperExitCursorOutcome.CURSOR_ADVANCED, changed)
+
+
 def _copy_position(row: PaperPositionRecord, position: PaperPosition) -> None:
     for name, value in paper_position_to_orm_values(position).items():
         if name not in {"position_id", "entry_order_id", "entry_fill_id", "created_at"}:
@@ -898,12 +1110,211 @@ class PaperRepositories:
         self.orders = OrderRepository(session)
         self.positions = PositionRepository(session)
         self.exits = ExitRepository(session)
+        self.exit_cursors = ExitEvaluationCursorRepository(session)
         self.journal = JournalRepository(session)
         self.fault_injector: Callable[[str], None] | None = None
 
     def _fault(self, stage: str) -> None:
         if self.fault_injector is not None:
             self.fault_injector(stage)
+
+    def apply_exit_trigger_and_open_close_order(
+        self,
+        advance: PaperExitCursorAdvance,
+        decision: PaperExitDecision,
+        close_order: PaperOrder,
+        exit_event: PaperDomainEvent,
+        order_events: tuple[PaperDomainEvent, PaperDomainEvent, PaperDomainEvent],
+    ) -> RepositoryResult[ExitTriggerGraph]:
+        """Atomically finalize a trigger cursor and persist its exit graph.
+
+        This is a repository composition primitive, not an exit evaluator.
+        The caller supplies an already evaluated trigger candidate.
+        """
+
+        cursor_row = self.session.scalar(
+            select(PaperExitEvaluationCursorRecord)
+            .where(
+                PaperExitEvaluationCursorRecord.position_id
+                == advance.position_id
+            )
+            .with_for_update()
+        )
+        if cursor_row is None:
+            return result(RepositoryOutcome.NOT_FOUND)
+        cursor = orm_values_to_paper_exit_cursor(cursor_row)
+        existing_decision_row = self.session.get(
+            PaperExitDecisionRecord, decision.exit_decision_id
+        )
+        existing_order_row = self.session.get(PaperOrderRecord, close_order.order_id)
+        if (
+            cursor.last_advance_idempotency_key == advance.idempotency_key
+            and existing_decision_row is not None
+            and existing_order_row is not None
+        ):
+            existing_decision = orm_values_to_paper_exit_decision(
+                existing_decision_row
+            )
+            existing_order = orm_values_to_paper_order(existing_order_row)
+            position_row = self.session.get(
+                PaperPositionRecord, advance.position_id
+            )
+            if position_row is None:
+                return result(RepositoryOutcome.INTERNAL_INVARIANT_FAILURE)
+            position = orm_values_to_paper_position(position_row)
+            if (
+                exit_semantic_tuple(existing_decision)
+                == exit_semantic_tuple(decision)
+                and order_semantic_tuple(existing_order)
+                == order_semantic_tuple(close_order)
+                and position.state is PaperPositionState.CLOSING
+            ):
+                return result(
+                    RepositoryOutcome.EXISTING_IDEMPOTENT,
+                    ExitTriggerGraph(
+                        cursor, existing_decision, position, existing_order
+                    ),
+                )
+            return result(RepositoryOutcome.IDEMPOTENCY_CONFLICT)
+        if cursor.version != advance.expected_version:
+            return result(RepositoryOutcome.STALE_VERSION)
+        if cursor.last_evaluated_closed_until_ms != advance.from_closed_until_ms:
+            return result(RepositoryOutcome.INVALID_STATE)
+        position_row = self.session.scalar(
+            select(PaperPositionRecord)
+            .where(PaperPositionRecord.position_id == advance.position_id)
+            .with_for_update()
+        )
+        if position_row is None:
+            return result(RepositoryOutcome.NOT_FOUND)
+        position = orm_values_to_paper_position(position_row)
+        command_row = self.session.scalar(
+            select(PaperExecutionCommandRecord)
+            .where(
+                PaperExecutionCommandRecord.command_id
+                == close_order.command_id
+            )
+            .with_for_update()
+        )
+        if command_row is None:
+            return result(RepositoryOutcome.NOT_FOUND)
+        if existing_decision_row is not None or existing_order_row is not None:
+            return result(RepositoryOutcome.IDEMPOTENCY_CONFLICT)
+        if (
+            position.state is not PaperPositionState.OPEN
+            or decision.position_id != position.position_id
+            or decision.position_version != position.version
+            or decision.requested_close_quantity != position.remaining_quantity
+            or decision.source_closed_until_ms != advance.to_closed_until_ms
+            or close_order.idempotency_key
+            != order_idempotency_key(close_order.command_id, "EXIT")
+            or close_order.state is not PaperOrderState.OPEN
+            or close_order.version != 2
+            or close_order.symbol != position.symbol
+            or close_order.side is not position.side
+            or close_order.requested_quantity != position.remaining_quantity
+            or len(order_events) != 3
+        ):
+            return result(RepositoryOutcome.INVALID_STATE)
+        expected_event_shape = (
+            (PaperEventType.PAPER_ORDER_CREATED, 0),
+            (PaperEventType.PAPER_ORDER_VALIDATED, 1),
+            (PaperEventType.PAPER_ORDER_OPENED, 2),
+        )
+        if any(
+            event.aggregate_type != "paper_order"
+            or event.aggregate_id != close_order.order_id
+            or (event.event_type, event.aggregate_version) != expected
+            for event, expected in zip(order_events, expected_event_shape)
+        ):
+            return result(RepositoryOutcome.INVALID_STATE)
+        if (
+            exit_event.event_type is not PaperEventType.PAPER_EXIT_TRIGGERED
+            or exit_event.aggregate_type != "paper_exit"
+            or exit_event.aggregate_id != decision.exit_decision_id
+        ):
+            return result(RepositoryOutcome.INVALID_STATE)
+        try:
+            changed_cursor = advanced_cursor(cursor, advance)
+            changed_position = begin_closing(
+                position,
+                expected_version=position.version,
+                exit_decision_id=decision.exit_decision_id,
+                occurred_at=decision.decided_at,
+            ).position
+            with self.session.begin_nested():
+                _copy_exit_cursor(cursor_row, changed_cursor)
+                _copy_position(position_row, changed_position)
+                self.session.add(
+                    PaperExitDecisionRecord(
+                        **paper_exit_decision_to_orm_values(decision)
+                    )
+                )
+                self.session.add(
+                    PaperOrderRecord(
+                        **paper_order_to_orm_values(
+                            close_order, order_role="EXIT"
+                        )
+                    )
+                )
+                self.session.flush()
+                self._fault("exit_trigger_after_cursor_position_decision_order")
+                previous_states = (
+                    None,
+                    PaperOrderState.CREATED,
+                    PaperOrderState.VALIDATED,
+                )
+                target_states = (
+                    PaperOrderState.CREATED,
+                    PaperOrderState.VALIDATED,
+                    PaperOrderState.OPEN,
+                )
+                for event, previous, target in zip(
+                    order_events, previous_states, target_states
+                ):
+                    self.session.add(
+                        PaperOrderEventRecord(
+                            **_order_event_values(
+                                event,
+                                previous_state=previous,
+                                state=target,
+                            )
+                        )
+                    )
+                    self.session.add(
+                        PaperJournalEntryRecord(
+                            **_journal_values(
+                                event,
+                                command_id=close_order.command_id,
+                                order_id=close_order.order_id,
+                                position_id=position.position_id,
+                                exit_decision_id=decision.exit_decision_id,
+                            )
+                        )
+                    )
+                self.session.add(
+                    PaperJournalEntryRecord(
+                        **_journal_values(
+                            exit_event,
+                            command_id=close_order.command_id,
+                            order_id=close_order.order_id,
+                            position_id=position.position_id,
+                            exit_decision_id=decision.exit_decision_id,
+                        )
+                    )
+                )
+                self.session.flush()
+        except PaperDomainError as exception:
+            return _domain_failure(exception)
+        except IntegrityError as exception:
+            failure = classify_database_failure(exception)
+            return result(failure.outcome, reason_code=failure.reason_code)
+        return result(
+            RepositoryOutcome.CREATED,
+            ExitTriggerGraph(
+                changed_cursor, decision, changed_position, close_order
+            ),
+        )
 
     def apply_entry_fill_and_open_position(
         self,

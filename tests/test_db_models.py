@@ -38,6 +38,7 @@ def test_db_models_create_expected_tables() -> None:
         "paper_order_events",
         "paper_fills",
         "paper_positions",
-        "paper_exit_decisions",
-        "paper_journal_entries",
+            "paper_exit_decisions",
+            "paper_exit_evaluation_cursors",
+            "paper_journal_entries",
     }

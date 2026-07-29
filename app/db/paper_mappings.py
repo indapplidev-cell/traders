@@ -12,6 +12,7 @@ from typing import Any
 from app.engine_execution.paper_models import PaperExecutionCommand, PaperFill, PaperOrder
 from app.engine_exit.paper_exit import PaperExitDecision
 from app.engine_journal.paper_events import PaperDomainEvent
+from app.engine_paper.exit_evaluation_cursor import PaperExitEvaluationCursor
 from app.engine_position.paper_models import PaperPosition
 from app.engine_safety.paper_domain import (
     ExecutionMode,
@@ -263,6 +264,68 @@ def paper_exit_decision_to_orm_values(decision: PaperExitDecision) -> dict[str, 
         "decided_at": decision.decided_at,
         "reason_code": decision.reason_code.value,
     }
+
+
+def paper_exit_cursor_to_orm_values(
+    cursor: PaperExitEvaluationCursor,
+) -> dict[str, object]:
+    return {
+        "cursor_id": cursor.cursor_id,
+        "contract_version": cursor.contract_version,
+        "position_id": cursor.position_id,
+        "mode": cursor.mode.value,
+        "symbol": cursor.symbol,
+        "last_evaluated_closed_until_ms": cursor.last_evaluated_closed_until_ms,
+        "position_opened_closed_until_ms": cursor.position_opened_closed_until_ms,
+        "evaluation_policy_id": cursor.evaluation_policy_id,
+        "version": cursor.version,
+        "created_at": cursor.created_at,
+        "updated_at": cursor.updated_at,
+        "correlation_id": cursor.correlation_id,
+        "causation_id": cursor.causation_id,
+        "last_advance_idempotency_key": cursor.last_advance_idempotency_key,
+        "last_advance_from_closed_until_ms": (
+            cursor.last_advance_from_closed_until_ms
+        ),
+        "last_advance_to_closed_until_ms": cursor.last_advance_to_closed_until_ms,
+        "last_advance_expected_version": cursor.last_advance_expected_version,
+        "last_window_identity": cursor.last_window_identity,
+    }
+
+
+def orm_values_to_paper_exit_cursor(source: object) -> PaperExitEvaluationCursor:
+    return PaperExitEvaluationCursor(
+        cursor_id=_read(source, "cursor_id"),
+        contract_version=_read(source, "contract_version"),
+        position_id=_read(source, "position_id"),
+        mode=ExecutionMode(_read(source, "mode")),
+        symbol=_read(source, "symbol"),
+        last_evaluated_closed_until_ms=_read(
+            source, "last_evaluated_closed_until_ms"
+        ),
+        position_opened_closed_until_ms=_read(
+            source, "position_opened_closed_until_ms"
+        ),
+        evaluation_policy_id=_read(source, "evaluation_policy_id"),
+        version=_read(source, "version"),
+        created_at=_read(source, "created_at"),
+        updated_at=_read(source, "updated_at"),
+        correlation_id=_read(source, "correlation_id"),
+        causation_id=_read(source, "causation_id"),
+        last_advance_idempotency_key=_read(
+            source, "last_advance_idempotency_key"
+        ),
+        last_advance_from_closed_until_ms=_read(
+            source, "last_advance_from_closed_until_ms"
+        ),
+        last_advance_to_closed_until_ms=_read(
+            source, "last_advance_to_closed_until_ms"
+        ),
+        last_advance_expected_version=_read(
+            source, "last_advance_expected_version"
+        ),
+        last_window_identity=_read(source, "last_window_identity"),
+    )
 
 
 def orm_values_to_paper_exit_decision(source: object) -> PaperExitDecision:

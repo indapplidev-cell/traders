@@ -16,6 +16,11 @@ from app.engine_paper.fill_policy import (
     PaperFillSimulationPolicy,
     PaperIntrabarConflictPolicy,
 )
+from app.engine_paper.fill_causal_boundary import (
+    PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
+    PaperFillCausalBoundary,
+    PaperFillSourceEntityType,
+)
 from app.engine_paper.fill_simulator import (
     FillSimulationRequest,
     PaperFillCandle,
@@ -173,12 +178,37 @@ def make_request(
             role.persistence_role,
         ),
     )
+    selected_policy = policy or make_policy()
+    causal_boundary = PaperFillCausalBoundary(
+        contract_version=PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
+        fill_role=role,
+        source_entity_type=(
+            PaperFillSourceEntityType.PAPER_EXECUTION_COMMAND
+            if role is PaperFillRole.ENTRY
+            else PaperFillSourceEntityType.PAPER_EXIT_DECISION
+        ),
+        source_entity_id=(
+            command.command_id if role is PaperFillRole.ENTRY else "exit:fill:1"
+        ),
+        source_closed_until_ms=command.closed_until_ms,
+        order_id=order.order_id,
+        symbol=command.symbol,
+        timeframe=selected_policy.timeframe,
+        latency_candles=selected_policy.latency_candles,
+        simulation_policy_id=selected_policy.simulation_policy_id,
+        slippage_policy_id=selected_policy.slippage_policy_id,
+        fee_policy_id=selected_policy.fee_policy_id,
+        latency_policy_id=selected_policy.latency_policy_id,
+        correlation_id="correlation:fill:1",
+        causation_id="causation:fill:1",
+    )
     values: dict[str, object] = {
         "command": command,
         "order": order,
         "fill_role": role,
+        "causal_boundary": causal_boundary,
         "quote_asset": "USDT",
-        "simulation_policy": policy or make_policy(),
+        "simulation_policy": selected_policy,
         "candidate_candles": candles if candles is not None else (make_candle(),),
         "market_snapshot_closed_until_ms": EXPECTED_CLOSE_BOUNDARY_MS,
         "correlation_id": "correlation:fill:1",

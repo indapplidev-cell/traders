@@ -20,6 +20,8 @@ from typing import Final
 
 from app.engine_execution.paper_idempotency import (
     order_idempotency_key,
+    simulated_close_fill_id,
+    simulated_close_fill_idempotency_key,
     simulated_fill_id,
     simulated_fill_idempotency_key,
 )
@@ -28,10 +30,15 @@ from app.engine_market_data.freshness_monitor import close_boundary_ms
 from app.engine_market_data.timeframe import (
     is_aligned_to_timeframe,
 )
+from app.engine_paper.fill_causal_boundary import (
+    PaperFillCausalBoundary,
+    PaperFillSourceEntityType,
+)
 from app.engine_paper.fill_policy import (
     PaperFillSimulationPolicy,
     is_numeric_38_18_compatible,
 )
+from app.engine_paper.fill_roles import PaperFillRole
 from app.engine_safety.paper_domain import (
     PaperOrderState,
     PaperDomainError,
@@ -45,15 +52,6 @@ BPS_DENOMINATOR: Final = Decimal("10000")
 MAX_CANDIDATE_CANDLES: Final = 64
 _DECIMAL_PRECISION: Final = 128
 _EPOCH_UTC: Final = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-class PaperFillRole(StrEnum):
-    ENTRY = "ENTRY"
-    CLOSE = "CLOSE"
-
-    @property
-    def persistence_role(self) -> str:
-        return "ENTRY" if self is PaperFillRole.ENTRY else "EXIT"
 
 
 class SimulatedTradeAction(StrEnum):
@@ -82,6 +80,7 @@ class FillSimulationOutcome(StrEnum):
     INVALID_SIMULATED_PRICE = "INVALID_SIMULATED_PRICE"
     IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT"
     INTERNAL_INVARIANT_FAILURE = "INTERNAL_INVARIANT_FAILURE"
+    INVALID_CAUSAL_BOUNDARY = "INVALID_CAUSAL_BOUNDARY"
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,6 +239,7 @@ class FillSimulationRequest:
     command: PaperExecutionCommand
     order: PaperOrder
     fill_role: PaperFillRole
+    causal_boundary: PaperFillCausalBoundary
     quote_asset: str
     simulation_policy: PaperFillSimulationPolicy
     candidate_candles: tuple[PaperFillCandle, ...]
@@ -252,6 +252,8 @@ class FillSimulationRequest:
             raise TypeError("command must be PaperExecutionCommand")
         if not isinstance(self.order, PaperOrder):
             raise TypeError("order must be PaperOrder")
+        if not isinstance(self.causal_boundary, PaperFillCausalBoundary):
+            raise TypeError("causal_boundary must be PaperFillCausalBoundary")
         if not isinstance(self.simulation_policy, PaperFillSimulationPolicy):
             raise TypeError("simulation_policy must be PaperFillSimulationPolicy")
         try:
@@ -259,6 +261,8 @@ class FillSimulationRequest:
         except (TypeError, ValueError) as exc:
             raise ValueError("invalid fill_role") from exc
         object.__setattr__(self, "fill_role", role)
+        if self.causal_boundary.fill_role is not role:
+            raise ValueError("fill role and causal boundary do not agree")
         object.__setattr__(self, "quote_asset", normalize_symbol(self.quote_asset))
         object.__setattr__(
             self,
@@ -498,11 +502,18 @@ def _duplicate_outcome(
 def _policy_matches_command(request: FillSimulationRequest) -> bool:
     policy = request.simulation_policy
     command = request.command
+    boundary = request.causal_boundary
     return (
         policy.simulation_policy_id == command.simulation_policy_id
         and policy.slippage_policy_id == command.slippage_policy_id
         and policy.fee_policy_id == command.fee_policy_id
         and policy.latency_policy_id == command.latency_policy_id
+        and boundary.simulation_policy_id == policy.simulation_policy_id
+        and boundary.slippage_policy_id == policy.slippage_policy_id
+        and boundary.fee_policy_id == policy.fee_policy_id
+        and boundary.latency_policy_id == policy.latency_policy_id
+        and boundary.timeframe == policy.timeframe
+        and boundary.latency_candles == policy.latency_candles
     )
 
 
@@ -512,6 +523,30 @@ def simulate_paper_fill(request: FillSimulationRequest) -> FillSimulationResult:
     command = request.command
     order = request.order
     policy = request.simulation_policy
+    boundary = request.causal_boundary
+
+    expected_source_type = (
+        PaperFillSourceEntityType.PAPER_EXECUTION_COMMAND
+        if request.fill_role is PaperFillRole.ENTRY
+        else PaperFillSourceEntityType.PAPER_EXIT_DECISION
+    )
+    if (
+        boundary.fill_role is not request.fill_role
+        or boundary.source_entity_type is not expected_source_type
+        or boundary.order_id != order.order_id
+        or boundary.symbol != command.symbol
+        or (
+            request.fill_role is PaperFillRole.ENTRY
+            and (
+                boundary.source_entity_id != command.command_id
+                or boundary.source_closed_until_ms != command.closed_until_ms
+            )
+        )
+    ):
+        return _result(
+            FillSimulationOutcome.INVALID_CAUSAL_BOUNDARY,
+            field_path="causal_boundary",
+        )
 
     if order.state is not PaperOrderState.OPEN:
         return _result(
@@ -565,12 +600,12 @@ def simulate_paper_fill(request: FillSimulationRequest) -> FillSimulationResult:
 
     try:
         expected_open = authoritative_next_1m_open_after_command_boundary(
-            command.closed_until_ms
+            boundary.source_closed_until_ms
         )
     except ValueError:
         return _result(
             FillSimulationOutcome.INVALID_CANDLE,
-            field_path="command.closed_until_ms",
+            field_path="causal_boundary.source_closed_until_ms",
         )
     expected_close = close_boundary_ms(expected_open, "1m")
 
@@ -654,7 +689,10 @@ def simulate_paper_fill(request: FillSimulationRequest) -> FillSimulationResult:
             field_path="candidate_candles",
         )
 
-    if command.valid_until_ms < expected_close:
+    if (
+        request.fill_role is PaperFillRole.ENTRY
+        and command.valid_until_ms < expected_close
+    ):
         return _result(
             FillSimulationOutcome.COMMAND_EXPIRED,
             field_path="command.valid_until_ms",
@@ -717,10 +755,30 @@ def simulate_paper_fill(request: FillSimulationRequest) -> FillSimulationResult:
         "latency_policy_id": policy.latency_policy_id,
     }
     try:
+        if request.fill_role is PaperFillRole.CLOSE:
+            close_identity_arguments = {
+                "fill_contract_version": boundary.contract_version,
+                "order_id": order.order_id,
+                "exit_decision_id": boundary.source_entity_id,
+                "exit_source_closed_until_ms": boundary.source_closed_until_ms,
+                "source_open_time_ms": expected_open,
+                "source_close_boundary_ms": expected_close,
+                "simulation_policy_id": policy.simulation_policy_id,
+                "slippage_policy_id": policy.slippage_policy_id,
+                "fee_policy_id": policy.fee_policy_id,
+                "latency_policy_id": policy.latency_policy_id,
+            }
+            fill_id = simulated_close_fill_id(**close_identity_arguments)
+            fill_key = simulated_close_fill_idempotency_key(
+                **close_identity_arguments
+            )
+        else:
+            fill_id = simulated_fill_id(**identity_arguments)
+            fill_key = simulated_fill_idempotency_key(**identity_arguments)
         fill = PaperFill(
-            fill_id=simulated_fill_id(**identity_arguments),
+            fill_id=fill_id,
             order_id=order.order_id,
-            idempotency_key=simulated_fill_idempotency_key(**identity_arguments),
+            idempotency_key=fill_key,
             symbol=command.symbol,
             side=command.side,
             quantity=order.requested_quantity,

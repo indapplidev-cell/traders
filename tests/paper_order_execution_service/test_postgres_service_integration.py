@@ -136,8 +136,20 @@ def _seed_close_request(factory, *, suffix="service-pg-close"):
             PaperPositionRecord, position.position_id
         ).version
     policy = make_policy()
-    candle = make_candle()
-    fill = simulated_fill(command, close_order, policy, candle, PaperFillRole.CLOSE)
+    candle = make_candle(
+        open_time_ms=decision.source_closed_until_ms,
+        close_boundary_ms=decision.source_closed_until_ms + 60_000,
+        observed_closed_until_ms=decision.source_closed_until_ms + 60_000,
+    )
+    fill = simulated_fill(
+        command,
+        close_order,
+        policy,
+        candle,
+        PaperFillRole.CLOSE,
+        exit_decision_id=decision.exit_decision_id,
+        source_closed_until_ms=decision.source_closed_until_ms,
+    )
     request = PaperCloseExecutionRequest(
         command_id=command.command_id,
         order_id=close_order.order_id,

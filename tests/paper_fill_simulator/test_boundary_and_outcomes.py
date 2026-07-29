@@ -315,5 +315,5 @@ def test_unaligned_command_boundary_fails_closed(request_factory, command_factor
         closed_until_ms=COMMAND_BOUNDARY_MS + 1,
         valid_until_ms=EXPECTED_CLOSE_BOUNDARY_MS + 1,
     )
-    result = simulate_paper_fill(request_factory(command=command))
-    assert result.outcome is FillSimulationOutcome.INVALID_CANDLE
+    with pytest.raises(ValueError, match="aligned 1m boundary"):
+        request_factory(command=command)

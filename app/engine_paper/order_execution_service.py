@@ -24,6 +24,10 @@ from app.engine_exit.paper_exit import PaperExitDecision
 from app.engine_journal.paper_events import PaperDomainEvent
 from app.engine_paper.commit_recovery import recover_uncertain_commit
 from app.engine_paper.fill_policy import PaperFillSimulationPolicy
+from app.engine_paper.fill_causal_boundary import (
+    PaperFillCausalBoundary,
+    resolve_paper_fill_causal_boundary,
+)
 from app.engine_paper.fill_simulator import (
     FillSimulationOutcome,
     FillSimulationRequest,
@@ -261,6 +265,11 @@ class PaperOrderExecutionResult:
     order_version_before: int | None = None
     position_version_before: int | None = None
     source_closed_until_ms: int | None = None
+    source_entity_type: str | None = None
+    source_entity_id: str | None = None
+    source_boundary_closed_until_ms: int | None = None
+    selected_candle_open_ms: int | None = None
+    selected_candle_close_boundary_ms: int | None = None
 
     @property
     def successful(self) -> bool:
@@ -372,7 +381,29 @@ class PaperOrderExecutionService:
                         PaperOrderExecutionReasonCode.INVALID_ORDER_STATE,
                         order=order,
                     )
-                simulation = self._simulate(request, command, simulation_order)
+                boundary_result = resolve_paper_fill_causal_boundary(
+                    fill_role=PaperFillRole.ENTRY,
+                    command=command,
+                    order=simulation_order,
+                    simulation_policy=request.simulation_policy,
+                    correlation_id=request.correlation_id,
+                    causation_id=request.causation_id,
+                )
+                if not boundary_result.successful:
+                    return self._failure(
+                        request,
+                        operation,
+                        PaperOrderExecutionOutcome.GRAPH_INCONSISTENT,
+                        boundary_result.reason_code,
+                        order=order,
+                    )
+                assert boundary_result.boundary is not None
+                simulation = self._simulate(
+                    request,
+                    command,
+                    simulation_order,
+                    boundary_result.boundary,
+                )
                 if not simulation.successful:
                     return self._simulation_failure(
                         request, operation, order, None, simulation
@@ -425,6 +456,8 @@ class PaperOrderExecutionService:
                         simulation.outcome,
                         request.expected_order_version,
                         None,
+                        boundary=boundary_result.boundary,
+                        selected_candle=simulation.selected_candle,
                     )
 
                 order_change = fill_order(
@@ -482,6 +515,8 @@ class PaperOrderExecutionService:
                         simulation.outcome,
                         order.version,
                         None,
+                        boundary=boundary_result.boundary,
+                        selected_candle=simulation.selected_candle,
                     )
                 if repository_result.outcome is not RepositoryOutcome.CREATED:
                     return self._repository_failure(
@@ -502,6 +537,8 @@ class PaperOrderExecutionService:
                         simulation.outcome,
                         order.version,
                         None,
+                        boundary=boundary_result.boundary,
+                        selected_candle=simulation.selected_candle,
                     )
                 return self._after_commit_failure(
                     request,
@@ -511,6 +548,8 @@ class PaperOrderExecutionService:
                     simulation.outcome,
                     order.version,
                     None,
+                    boundary_result.boundary,
+                    simulation.selected_candle,
                 )
         except (PaperDomainError, ValueError):
             return self._failure(
@@ -607,7 +646,50 @@ class PaperOrderExecutionService:
                         order=order,
                         position=position,
                     )
-                simulation = self._simulate(request, command, simulation_order)
+                entry_order = next(
+                    (
+                        item
+                        for item in graph.orders
+                        if item.order_id == simulation_position.entry_order_id
+                    ),
+                    None,
+                ) if graph is not None else None
+                entry_fill = next(
+                    (
+                        item
+                        for item in graph.fills
+                        if item.fill_id == simulation_position.entry_fill_id
+                    ),
+                    None,
+                ) if graph is not None else None
+                boundary_result = resolve_paper_fill_causal_boundary(
+                    fill_role=PaperFillRole.CLOSE,
+                    command=command,
+                    order=simulation_order,
+                    simulation_policy=request.simulation_policy,
+                    correlation_id=request.correlation_id,
+                    causation_id=request.causation_id,
+                    exit_decision=decision,
+                    position=simulation_position,
+                    entry_order=entry_order,
+                    entry_fill=entry_fill,
+                )
+                if not boundary_result.successful:
+                    return self._failure(
+                        request,
+                        operation,
+                        PaperOrderExecutionOutcome.GRAPH_INCONSISTENT,
+                        boundary_result.reason_code,
+                        order=order,
+                        position=position,
+                    )
+                assert boundary_result.boundary is not None
+                simulation = self._simulate(
+                    request,
+                    command,
+                    simulation_order,
+                    boundary_result.boundary,
+                )
                 if not simulation.successful:
                     return self._simulation_failure(
                         request, operation, order, position, simulation
@@ -660,6 +742,8 @@ class PaperOrderExecutionService:
                         simulation.outcome,
                         request.expected_order_version,
                         request.expected_position_version,
+                        boundary=boundary_result.boundary,
+                        selected_candle=simulation.selected_candle,
                     )
                 order_change = fill_order(
                     simulation_order,
@@ -697,6 +781,8 @@ class PaperOrderExecutionService:
                         simulation.outcome,
                         order.version,
                         position.version,
+                        boundary=boundary_result.boundary,
+                        selected_candle=simulation.selected_candle,
                     )
                 if repository_result.outcome is not RepositoryOutcome.UPDATED:
                     current_order = repositories.orders.get_order(request.order_id)
@@ -721,6 +807,8 @@ class PaperOrderExecutionService:
                         simulation.outcome,
                         order.version,
                         position.version,
+                        boundary=boundary_result.boundary,
+                        selected_candle=simulation.selected_candle,
                     )
                 return self._after_commit_failure(
                     request,
@@ -730,6 +818,8 @@ class PaperOrderExecutionService:
                     simulation.outcome,
                     order.version,
                     position.version,
+                    boundary_result.boundary,
+                    simulation.selected_candle,
                 )
         except (PaperDomainError, ValueError):
             return self._failure(
@@ -757,11 +847,13 @@ class PaperOrderExecutionService:
         request: ExecutionRequest,
         command: PaperExecutionCommand,
         order: PaperOrder,
+        causal_boundary: PaperFillCausalBoundary,
     ):
         simulation_request = FillSimulationRequest(
             command=command,
             order=order,
             fill_role=request.fill_role,
+            causal_boundary=causal_boundary,
             quote_asset=request.quote_asset,
             simulation_policy=request.simulation_policy,
             candidate_candles=request.candidate_candles,
@@ -1111,6 +1203,8 @@ class PaperOrderExecutionService:
         simulation_outcome: FillSimulationOutcome,
         order_version_before: int,
         position_version_before: int | None,
+        boundary: PaperFillCausalBoundary,
+        selected_candle: PaperFillCandle | None,
     ) -> PaperOrderExecutionResult:
         if (
             commit.outcome is not RepositoryOutcome.UNCERTAIN_COMMIT_UNRESOLVED
@@ -1143,6 +1237,8 @@ class PaperOrderExecutionService:
                 simulation_outcome,
                 order_version_before,
                 position_version_before,
+                boundary=boundary,
+                selected_candle=selected_candle,
             )
         return self._failure(
             request,
@@ -1266,6 +1362,9 @@ class PaperOrderExecutionService:
         simulation_outcome: FillSimulationOutcome,
         order_version_before: int,
         position_version_before: int | None,
+        *,
+        boundary: PaperFillCausalBoundary | None = None,
+        selected_candle: PaperFillCandle | None = None,
     ) -> PaperOrderExecutionResult:
         graph = repository_result.value
         if not isinstance(graph, (EntryFillGraph, CloseFillGraph)):
@@ -1295,6 +1394,19 @@ class PaperOrderExecutionService:
             order_version_before=order_version_before,
             position_version_before=position_version_before,
             source_closed_until_ms=graph.fill.source_closed_until_ms,
+            source_entity_type=(
+                boundary.source_entity_type.value if boundary else None
+            ),
+            source_entity_id=boundary.source_entity_id if boundary else None,
+            source_boundary_closed_until_ms=(
+                boundary.source_closed_until_ms if boundary else None
+            ),
+            selected_candle_open_ms=(
+                selected_candle.open_time_ms if selected_candle else None
+            ),
+            selected_candle_close_boundary_ms=(
+                selected_candle.close_boundary_ms if selected_candle else None
+            ),
         )
 
     @staticmethod

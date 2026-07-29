@@ -13,6 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
+    PaperExitEvaluationCursorRecord,
     PaperExitDecisionRecord,
     PaperFillRecord,
     PaperJournalEntryRecord,
@@ -62,14 +63,12 @@ def ingestion_engine():
     get_settings.cache_clear()
     alembic_command.upgrade(
         config,
-        "0010_paper_final_approval_and_order_transition_event_vocabulary",
+        "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
     )
     with engine.connect() as connection:
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).scalar_one() == (
-            "0010_paper_final_approval_and_order_transition_event_vocabulary"
-        )
+        ).scalar_one() == "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"
     try:
         yield engine
     finally:
@@ -87,6 +86,7 @@ def ingestion_factory(ingestion_engine):
     with ingestion_engine.begin() as connection:
         for model in (
             PaperJournalEntryRecord,
+            PaperExitEvaluationCursorRecord,
             PaperExitDecisionRecord,
             PaperPositionRecord,
             PaperFillRecord,

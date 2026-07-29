@@ -458,6 +458,12 @@ created_at
 updated_at
 ```
 
+> Remediation note: `last_mark_closed_until_ms` remains mark/accounting state
+> and is not the exit-evaluation checkpoint. The dedicated immutable and
+> persisted cursor, together with ENTRY/CLOSE fill source mapping, is specified
+> in
+> [`paper_close_causal_boundary_and_exit_cursor.md`](paper_close_causal_boundary_and_exit_cursor.md).
+
 `realized_pnl` means net realized PnL. The explicit gross column prevents
 ambiguous accounting.
 

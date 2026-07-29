@@ -579,6 +579,93 @@ class PaperPositionRecord(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class PaperExitEvaluationCursorRecord(Base):
+    __tablename__ = "paper_exit_evaluation_cursors"
+    __table_args__ = (
+        UniqueConstraint(
+            "position_id", name="uq_paper_exit_evaluation_cursor_position"
+        ),
+        CheckConstraint("mode = 'PAPER'", name="ck_paper_exit_cursor_mode"),
+        CheckConstraint(
+            "length(trim(cursor_id)) BETWEEN 1 AND 128 AND "
+            "length(trim(contract_version)) BETWEEN 1 AND 128 AND "
+            "length(trim(symbol)) BETWEEN 2 AND 32 AND "
+            "length(trim(evaluation_policy_id)) BETWEEN 1 AND 128 AND "
+            "length(trim(correlation_id)) BETWEEN 1 AND 128 AND "
+            "length(trim(causation_id)) BETWEEN 1 AND 128",
+            name="ck_paper_exit_cursor_identities",
+        ),
+        CheckConstraint(
+            "last_evaluated_closed_until_ms >= position_opened_closed_until_ms "
+            "AND position_opened_closed_until_ms >= 0 "
+            "AND mod(last_evaluated_closed_until_ms, 60000) = 0 "
+            "AND mod(position_opened_closed_until_ms, 60000) = 0",
+            name="ck_paper_exit_cursor_boundaries",
+        ),
+        CheckConstraint("version >= 0", name="ck_paper_exit_cursor_version"),
+        CheckConstraint(
+            "updated_at >= created_at", name="ck_paper_exit_cursor_timestamps"
+        ),
+        CheckConstraint(
+            "(last_advance_idempotency_key IS NULL "
+            "AND last_advance_from_closed_until_ms IS NULL "
+            "AND last_advance_to_closed_until_ms IS NULL "
+            "AND last_advance_expected_version IS NULL "
+            "AND last_window_identity IS NULL) OR "
+            "(last_advance_idempotency_key IS NOT NULL "
+            "AND length(trim(last_advance_idempotency_key)) BETWEEN 1 AND 128 "
+            "AND last_advance_from_closed_until_ms IS NOT NULL "
+            "AND last_advance_to_closed_until_ms IS NOT NULL "
+            "AND last_advance_expected_version IS NOT NULL "
+            "AND last_window_identity IS NOT NULL "
+            "AND length(trim(last_window_identity)) BETWEEN 1 AND 128 "
+            "AND last_advance_from_closed_until_ms >= 0 "
+            "AND last_advance_to_closed_until_ms > "
+            "last_advance_from_closed_until_ms "
+            "AND last_advance_to_closed_until_ms = "
+            "last_evaluated_closed_until_ms "
+            "AND last_advance_expected_version + 1 = version)",
+            name="ck_paper_exit_cursor_last_advance",
+        ),
+        Index(
+            "ix_paper_exit_evaluation_cursors_updated_at",
+            "updated_at",
+            "position_id",
+        ),
+    )
+
+    cursor_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    contract_version: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    position_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH),
+        ForeignKey("paper_positions.position_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    mode: Mapped[str] = mapped_column(String(8), nullable=False)
+    symbol: Mapped[str] = mapped_column(String(SYMBOL_LENGTH), nullable=False)
+    last_evaluated_closed_until_ms: Mapped[int] = mapped_column(
+        BigInteger, nullable=False
+    )
+    position_opened_closed_until_ms: Mapped[int] = mapped_column(
+        BigInteger, nullable=False
+    )
+    evaluation_policy_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False
+    )
+    version: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    causation_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    last_advance_idempotency_key: Mapped[str | None] = mapped_column(
+        String(IDENTITY_LENGTH)
+    )
+    last_advance_from_closed_until_ms: Mapped[int | None] = mapped_column(BigInteger)
+    last_advance_to_closed_until_ms: Mapped[int | None] = mapped_column(BigInteger)
+    last_advance_expected_version: Mapped[int | None] = mapped_column(BigInteger)
+    last_window_identity: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+
+
 class PaperExitDecisionRecord(Base):
     __tablename__ = "paper_exit_decisions"
     __table_args__ = (

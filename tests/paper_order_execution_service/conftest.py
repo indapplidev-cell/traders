@@ -19,6 +19,11 @@ from app.engine_paper.fill_policy import (
     PaperFillSimulationPolicy,
     PaperIntrabarConflictPolicy,
 )
+from app.engine_paper.fill_causal_boundary import (
+    PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
+    PaperFillCausalBoundary,
+    PaperFillSourceEntityType,
+)
 from app.engine_paper.fill_simulator import (
     FillSimulationRequest,
     PaperFillCandle,
@@ -49,7 +54,7 @@ from app.engine_safety import (
 )
 
 # Register the existing fail-closed loopback ``paper_test_*`` PostgreSQL
-# fixtures for this focused service suite.  The fixture owns migration to 0009
+# fixtures for this focused service suite.  The fixture owns migration to 0011
 # and never accepts a production/non-loopback database URL.
 from tests.paper_repository.conftest import (  # noqa: F401,E402
     paper_session_factory,
@@ -170,16 +175,55 @@ def make_candle(**changes):
     return PaperFillCandle(**values)
 
 
-def simulated_fill(command, order, policy, candle, role):
+def simulated_fill(
+    command,
+    order,
+    policy,
+    candle,
+    role,
+    *,
+    exit_decision_id="exit:service:1",
+    source_closed_until_ms=None,
+):
+    boundary = PaperFillCausalBoundary(
+        contract_version=PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
+        fill_role=role,
+        source_entity_type=(
+            PaperFillSourceEntityType.PAPER_EXECUTION_COMMAND
+            if role is PaperFillRole.ENTRY
+            else PaperFillSourceEntityType.PAPER_EXIT_DECISION
+        ),
+        source_entity_id=(
+            command.command_id
+            if role is PaperFillRole.ENTRY
+            else exit_decision_id
+        ),
+        source_closed_until_ms=(
+            command.closed_until_ms
+            if source_closed_until_ms is None
+            else source_closed_until_ms
+        ),
+        order_id=order.order_id,
+        symbol=command.symbol,
+        timeframe=policy.timeframe,
+        latency_candles=policy.latency_candles,
+        simulation_policy_id=policy.simulation_policy_id,
+        slippage_policy_id=policy.slippage_policy_id,
+        fee_policy_id=policy.fee_policy_id,
+        latency_policy_id=policy.latency_policy_id,
+        correlation_id="correlation:service:1",
+        causation_id="causation:service:1",
+    )
     return simulate_paper_fill(
         FillSimulationRequest(
             command=command,
             order=order,
             fill_role=role,
+            causal_boundary=boundary,
             quote_asset="USDT",
             simulation_policy=policy,
             candidate_candles=(candle,),
-            market_snapshot_closed_until_ms=CLOSE_BOUNDARY,
+            market_snapshot_closed_until_ms=candle.close_boundary_ms,
             correlation_id="correlation:service:1",
             causation_id="causation:service:1",
         )
@@ -218,11 +262,22 @@ def make_position(command, entry_order, *, state=PaperPositionState.CLOSING, **c
 
 
 class FakeRepositories:
-    def __init__(self, command, order, *, position=None, decision=None):
+    def __init__(
+        self,
+        command,
+        order,
+        *,
+        position=None,
+        decision=None,
+        entry_order=None,
+        entry_fill=None,
+    ):
         self.command = command
         self.order = order
         self.position = position
         self.decision = decision
+        self.entry_order = entry_order
+        self.entry_fill = entry_fill
         self.active_position = None
         self.atomic_calls = 0
         self.atomic_outcome = None
@@ -255,8 +310,12 @@ class FakeRepositories:
     def get_command_graph(self, command_id, *, limit=100):
         graph = PaperCommandGraph(
             self.command,
-            (self.order,) if self.order else (),
-            (),
+            tuple(
+                item
+                for item in (self.entry_order, self.order)
+                if item is not None
+            ),
+            (self.entry_fill,) if self.entry_fill else (),
             (self.position,) if self.position else (),
             (self.decision,) if self.decision else (),
             (),
@@ -391,7 +450,17 @@ def close_context():
     command = make_command()
     entry_order = make_order(command, suffix="prior-entry")
     close_order = make_order(command, role="EXIT", suffix="close")
-    position = make_position(command, entry_order)
+    policy = make_policy()
+    entry_candle = make_candle()
+    entry_fill = simulated_fill(
+        command, entry_order, policy, entry_candle, PaperFillRole.ENTRY
+    )
+    position = make_position(
+        command,
+        entry_order,
+        entry_fill_id=entry_fill.fill_id,
+        last_mark_closed_until_ms=entry_fill.source_closed_until_ms,
+    )
     decision = PaperExitDecision(
         exit_decision_id="exit:service:1",
         idempotency_key="exit:key:service:1",
@@ -400,13 +469,24 @@ def close_context():
         cause=PaperExitCause.STOP_LOSS,
         decision_price=Decimal("90"),
         requested_close_quantity=position.remaining_quantity,
-        source_closed_until_ms=BOUNDARY,
+        source_closed_until_ms=CLOSE_BOUNDARY,
         decided_at=NOW,
         reason_code=PaperReasonCode.PAPER_EXIT_STOP_LOSS_TRIGGERED,
     )
-    policy = make_policy()
-    candle = make_candle()
-    fill = simulated_fill(command, close_order, policy, candle, PaperFillRole.CLOSE)
+    candle = make_candle(
+        open_time_ms=CLOSE_BOUNDARY,
+        close_boundary_ms=CLOSE_BOUNDARY + 60_000,
+        observed_closed_until_ms=CLOSE_BOUNDARY + 60_000,
+    )
+    fill = simulated_fill(
+        command,
+        close_order,
+        policy,
+        candle,
+        PaperFillRole.CLOSE,
+        exit_decision_id=decision.exit_decision_id,
+        source_closed_until_ms=decision.source_closed_until_ms,
+    )
     request = PaperCloseExecutionRequest(
         command_id=command.command_id,
         order_id=close_order.order_id,
@@ -416,7 +496,7 @@ def close_context():
         exit_decision_id=decision.exit_decision_id,
         fill_role=PaperFillRole.CLOSE,
         candidate_candles=(candle,),
-        market_snapshot_closed_until_ms=CLOSE_BOUNDARY,
+        market_snapshot_closed_until_ms=candle.close_boundary_ms,
         simulation_policy=policy,
         price_quantum=policy.price_quantum,
         fee_quantum=policy.fee_quantum,
@@ -433,7 +513,12 @@ def close_context():
         operation_at=OPERATION_AT,
     )
     repositories = FakeRepositories(
-        command, close_order, position=position, decision=decision
+        command,
+        close_order,
+        position=position,
+        decision=decision,
+        entry_order=entry_order,
+        entry_fill=entry_fill,
     )
     uow = FakeUow(repositories)
     return SimpleNamespace(

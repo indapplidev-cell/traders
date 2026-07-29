@@ -6,6 +6,11 @@ from typing import Protocol
 
 from app.engine_execution.paper_models import PaperExecutionCommand, PaperOrder
 from app.engine_journal.paper_events import PaperDomainEvent
+from app.engine_paper.exit_evaluation_cursor import (
+    PaperExitCursorAdvance,
+    PaperExitCursorResult,
+    PaperExitEvaluationCursor,
+)
 from app.engine_paper.repositories import PaperCommandGraph, PaperIngestionGraph
 from app.engine_paper.repository_results import RepositoryResult
 
@@ -44,3 +49,21 @@ class JournalRepositoryProtocol(Protocol):
     def list_journal_for_aggregate(
         self, aggregate_type: str, aggregate_id: str, *, limit: int = 100
     ) -> RepositoryResult[tuple[PaperDomainEvent, ...]]: ...
+
+
+class ExitEvaluationCursorRepositoryProtocol(Protocol):
+    def create_or_get_cursor(
+        self, position_id: str, cursor: PaperExitEvaluationCursor
+    ) -> PaperExitCursorResult: ...
+
+    def get_cursor_for_update(
+        self, position_id: str
+    ) -> PaperExitEvaluationCursor | None: ...
+
+    def get_cursor_bounded(
+        self, position_id: str
+    ) -> PaperExitEvaluationCursor | None: ...
+
+    def advance_cursor(
+        self, advance: PaperExitCursorAdvance
+    ) -> PaperExitCursorResult: ...

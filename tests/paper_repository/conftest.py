@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
+    PaperExitEvaluationCursorRecord,
     PaperExitDecisionRecord,
     PaperFillRecord,
     PaperJournalEntryRecord,
@@ -46,12 +47,12 @@ def repository_postgres_engine() -> Iterator[Engine]:
     if revision is None:
         command.upgrade(
             config,
-            "0010_paper_final_approval_and_order_transition_event_vocabulary",
+            "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
         )
     else:
         command.upgrade(
             config,
-            "0010_paper_final_approval_and_order_transition_event_vocabulary",
+            "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
         )
     yield engine
     engine.dispose()
@@ -69,6 +70,7 @@ def paper_session_factory(repository_postgres_engine) -> Iterator[sessionmaker]:
     with engine.begin() as connection:
         for model in (
             PaperJournalEntryRecord,
+            PaperExitEvaluationCursorRecord,
             PaperExitDecisionRecord,
             PaperPositionRecord,
             PaperFillRecord,

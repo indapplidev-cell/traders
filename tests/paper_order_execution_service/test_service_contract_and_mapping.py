@@ -62,6 +62,12 @@ def test_entry_happy_path_calls_simulator_atomic_operation_and_commit_once(entry
     assert outcome.order_version == entry_context.order.version + 1
     assert outcome.position_version == 0
     assert outcome.fill_id == entry_context.fill.fill_id
+    assert outcome.source_entity_type == "PAPER_EXECUTION_COMMAND"
+    assert outcome.source_entity_id == entry_context.command.command_id
+    assert (
+        calls[0].causal_boundary.source_closed_until_ms
+        == entry_context.command.closed_until_ms
+    )
     assert len(calls) == 1
     assert entry_context.repositories.atomic_calls == 1
     assert entry_context.uow.commit_calls == 1
@@ -83,6 +89,13 @@ def test_close_happy_path_closes_once_and_uses_role_action(close_context):
     assert outcome.order_state is PaperOrderState.FILLED
     assert outcome.position_state is PaperPositionState.CLOSED
     assert outcome.position_version == close_context.position.version + 1
+    assert outcome.source_entity_type == "PAPER_EXIT_DECISION"
+    assert outcome.source_entity_id == close_context.decision.exit_decision_id
+    assert (
+        calls[0].causal_boundary.source_closed_until_ms
+        == close_context.decision.source_closed_until_ms
+    )
+    assert outcome.selected_candle_open_ms == close_context.decision.source_closed_until_ms
     assert len(calls) == 1
     assert close_context.repositories.atomic_calls == 1
     assert close_context.uow.commit_calls == 1

@@ -30,6 +30,22 @@ from app.engine_paper.command_ingestion_service import (
     PaperCommandIngestionService,
     paper_ingestion_command_id,
 )
+from app.engine_paper.fill_causal_boundary import (
+    PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
+    PaperFillBoundaryOutcome,
+    PaperFillCausalBoundary,
+    PaperFillCausalBoundaryResult,
+    PaperFillSourceEntityType,
+    resolve_paper_fill_causal_boundary,
+)
+from app.engine_paper.exit_evaluation_cursor import (
+    PAPER_EXIT_CURSOR_CONTRACT_VERSION,
+    PAPER_EXIT_CURSOR_IDEMPOTENCY_VERSION,
+    PaperExitCursorAdvance,
+    PaperExitCursorOutcome,
+    PaperExitCursorResult,
+    PaperExitEvaluationCursor,
+)
 
 __all__ = ["PaperConfig", "PaperContext", "PaperLevelBuilder", "PaperLevels",
            "PaperPlanPolicy", "PaperRunner", "PaperStore", "PaperTradePlan",
@@ -42,4 +58,11 @@ __all__ = ["PaperConfig", "PaperContext", "PaperLevelBuilder", "PaperLevels",
            "map_final_approvals_to_command_compatibility",
            "PaperCommandIngestionOutcome", "PaperCommandIngestionReasonCode",
            "PaperCommandIngestionRequest", "PaperCommandIngestionResult",
-           "PaperCommandIngestionService", "paper_ingestion_command_id"]
+           "PaperCommandIngestionService", "paper_ingestion_command_id",
+           "PAPER_FILL_CAUSAL_BOUNDARY_VERSION", "PaperFillBoundaryOutcome",
+           "PaperFillCausalBoundary", "PaperFillCausalBoundaryResult",
+           "PaperFillSourceEntityType", "resolve_paper_fill_causal_boundary",
+           "PAPER_EXIT_CURSOR_CONTRACT_VERSION",
+           "PAPER_EXIT_CURSOR_IDEMPOTENCY_VERSION", "PaperExitCursorAdvance",
+           "PaperExitCursorOutcome", "PaperExitCursorResult",
+           "PaperExitEvaluationCursor"]

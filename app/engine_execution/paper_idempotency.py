@@ -18,9 +18,10 @@ from app.engine_safety.paper_domain import (
 
 
 PAPER_IDEMPOTENCY_VERSION = "v1"
+PAPER_CLOSE_FILL_IDEMPOTENCY_VERSION = "v2"
 
 
-def _key(kind: str, *parts: object) -> str:
+def _key_with_version(kind: str, version: str, *parts: object) -> str:
     normalized: list[str] = []
     for index, part in enumerate(parts):
         value = getattr(part, "value", part)
@@ -40,7 +41,11 @@ def _key(kind: str, *parts: object) -> str:
         normalized.append(text)
     canonical = "|".join(f"{len(value)}:{value}" for value in normalized)
     digest = sha256(canonical.encode("ascii")).hexdigest()
-    return f"paper:{kind}:{PAPER_IDEMPOTENCY_VERSION}:{digest}"
+    return f"paper:{kind}:{version}:{digest}"
+
+
+def _key(kind: str, *parts: object) -> str:
+    return _key_with_version(kind, PAPER_IDEMPOTENCY_VERSION, *parts)
 
 
 def command_idempotency_key(
@@ -206,6 +211,61 @@ def simulated_fill_id(
             fee_policy_id=fee_policy_id,
             latency_policy_id=latency_policy_id,
         ),
+    )
+
+
+def _simulated_close_fill_causal_parts(
+    *,
+    fill_contract_version: str,
+    order_id: str,
+    exit_decision_id: str,
+    exit_source_closed_until_ms: int,
+    source_open_time_ms: int,
+    source_close_boundary_ms: int,
+    simulation_policy_id: str,
+    slippage_policy_id: str,
+    fee_policy_id: str,
+    latency_policy_id: str,
+) -> tuple[object, ...]:
+    return (
+        require_identity(fill_contract_version, "fill_contract_version"),
+        require_identity(order_id, "order_id"),
+        "CLOSE",
+        require_identity(exit_decision_id, "exit_decision_id"),
+        require_nonnegative_int(
+            exit_source_closed_until_ms, "exit_source_closed_until_ms"
+        ),
+        *_simulated_fill_causal_parts(
+            contract_version=fill_contract_version,
+            order_id=order_id,
+            fill_role="CLOSE",
+            source_open_time_ms=source_open_time_ms,
+            source_close_boundary_ms=source_close_boundary_ms,
+            simulation_policy_id=simulation_policy_id,
+            slippage_policy_id=slippage_policy_id,
+            fee_policy_id=fee_policy_id,
+            latency_policy_id=latency_policy_id,
+        )[3:],
+    )
+
+
+def simulated_close_fill_idempotency_key(**arguments: object) -> str:
+    """CLOSE v2 identity including the authoritative exit decision."""
+
+    return _key_with_version(
+        "fill",
+        PAPER_CLOSE_FILL_IDEMPOTENCY_VERSION,
+        *_simulated_close_fill_causal_parts(**arguments),
+    )
+
+
+def simulated_close_fill_id(**arguments: object) -> str:
+    """CLOSE v2 fill ID including exit identity and its causal boundary."""
+
+    return _key_with_version(
+        "fill-id",
+        PAPER_CLOSE_FILL_IDEMPOTENCY_VERSION,
+        *_simulated_close_fill_causal_parts(**arguments),
     )
 
 
