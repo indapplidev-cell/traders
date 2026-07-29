@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 8035b2fe035d09f788879380955c31098467cbbc
+STATUS_AS_OF_COMMIT = 26205a6ea7dc20d0f4e722a9c82ff68dd684217a
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T20:07:41Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_CLOSE_ORDER_CAUSAL_CONTRACT_REMEDIATION_01
-FILES_CHANGED = alembic/versions/0011_paper_close_causal_boundary_and_exit_evaluation_cursor.py; app/db/paper_mappings.py; app/db/paper_models.py; app/engine_execution/paper_idempotency.py; app/engine_paper/__init__.py; app/engine_paper/exit_cursor_recovery.py; app/engine_paper/exit_evaluation_cursor.py; app/engine_paper/fill_causal_boundary.py; app/engine_paper/fill_roles.py; app/engine_paper/fill_simulator.py; app/engine_paper/order_execution_service.py; app/engine_paper/repositories.py; app/engine_paper/repository_protocols.py; docs/architecture/paper_close_causal_boundary_and_exit_cursor.md; docs/architecture/paper_trading_foundation_preparation.md; tests/paper_close_causal_cursor_remediation/__init__.py; tests/paper_close_causal_cursor_remediation/conftest.py; tests/paper_close_causal_cursor_remediation/test_boundary_contract_and_simulator.py; tests/paper_close_causal_cursor_remediation/test_cursor_domain_and_bounded_progression.py; tests/paper_close_causal_cursor_remediation/test_mapping_recovery_and_static_guarantees.py; tests/paper_close_causal_cursor_remediation/test_postgres_cursor_and_migration.py; tests/paper_command_ingestion_retry/test_postgres_ingestion_service.py; tests/paper_fill_simulator/conftest.py; tests/paper_fill_simulator/test_boundary_and_outcomes.py; tests/paper_order_execution_service/conftest.py; tests/paper_order_execution_service/test_postgres_service_integration.py; tests/paper_order_execution_service/test_service_contract_and_mapping.py; tests/paper_repository/conftest.py; tests/test_db_models.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T20:49:16Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_EXIT_EVALUATION_SERVICE_01_RETRY_01
+FILES_CHANGED = app/engine_paper/exit_evaluator.py; app/engine_paper/exit_evaluation_service.py; docs/architecture/paper_exit_evaluation_service.md; tests/paper_exit_evaluation_retry/__init__.py; tests/paper_exit_evaluation_retry/conftest.py; tests/paper_exit_evaluation_retry/test_evaluator_matrix.py; tests/paper_exit_evaluation_retry/test_postgres_service.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PAPER_CLOSE_CAUSAL_BOUNDARY_AND_EXIT_CURSOR_REMEDIATION_PASS
+STATUS_CONFIDENCE = PROVEN_PAPER_EXIT_EVALUATION_SERVICE_RETRY_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PAPER_CLOSE_CAUSAL_BOUNDARY_AND_EXIT_CURSOR_REMEDIATI
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_EXIT_EVALUATION_SERVICE_RETRY_PENDING
-CURRENT_BLOCKER = NONE_FOR_EXIT_EVALUATION_PREREQUISITES
+CURRENT_STAGE = PAPER_TRADING_CONTROLLED_WORKER_AND_LIFECYCLE_ORCHESTRATION_PENDING
+CURRENT_BLOCKER = NONE_FOR_CONTROLLED_WORKER_PREREQUISITES
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1051,7 +1051,7 @@ ISOLATED_LOCK_WAITS_AFTER = 0
 PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
 PRODUCTION_SCHEMA_MUTATIONS = 0
 PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
-PAPER_EXIT_EVALUATION_SERVICE_IMPLEMENTED = NO
+PAPER_EXIT_EVALUATION_SERVICE_IMPLEMENTED_AT_REMEDIATION_BOUNDARY = NO
 PAPER_WORKER_IMPLEMENTED = NO
 PAPER_RUNTIME_STARTED = NO
 PAPER_MODE_ENABLED = NO
@@ -1068,11 +1068,71 @@ composition, but do not implement the exit-evaluation service or autonomous
 runtime. Revision 0011 was exercised only on task-owned isolated PostgreSQL and
 was not applied to production.
 
+## PAPER exit-evaluation application service
+
+```text
+EXIT_EVALUATION_TASK = TRADERS_ML_PAPER_TRADING_EXIT_EVALUATION_SERVICE_01_RETRY_01
+EXIT_EVALUATION_RESULT = PASS
+IMPLEMENTATION_COMMIT = 26205a6ea7dc20d0f4e722a9c82ff68dd684217a
+PAPER_EXIT_EVALUATION_SERVICE = IMPLEMENTED_AND_TESTED_ISOLATED
+REQUEST = IMMUTABLE_EXACT_POSITION_CURSOR_SOURCE_GRAPH_WINDOW_AND_IDENTITIES
+AUTHORIZATION = PAPER_AND_EXPLICIT_FINAL_AUTHORIZATION_REQUIRED
+CALLER_SYMBOL_SIDE_QUANTITY_STOP_TARGET_START_OVERRIDE = FORBIDDEN
+WINDOW = CLOSED_1M_CONTIGUOUS_CANONICAL_BOUNDED_64
+WINDOW_START = PERSISTED_CURSOR_LAST_EVALUATED_BOUNDARY
+GAP_SKIP_LATER_FALLBACK_FUTURE_DATA = FORBIDDEN
+PURE_EVALUATOR_IO_CLOCK_RANDOM_MUTABLE_GLOBALS = 0
+MARKET_RULES = LONG_SHORT_HIGH_LOW_BOUNDARY_EQUALITY
+EARLIEST_TRIGGER = REQUIRED
+INTRABAR_CONFLICT_POLICY = STOP_FIRST_CONSERVATIVE
+SAFETY_PRECEDENCE = EARLIER_BOUNDARY_WINS_SAFETY_WINS_SAME_BOUNDARY
+NO_TRIGGER = ONE_CURSOR_ADVANCE_ZERO_BUSINESS_GRAPH_MUTATIONS
+TRIGGER = CURSOR_EXIT_DECISION_CLOSING_OPEN_CLOSE_ORDER_EVENTS_JOURNAL_ONE_UOW
+EXIT_DECISION_SOURCE_BOUNDARY = EXACT_TRIGGER_CLOSED_UNTIL
+CLOSE_ORDER = MARKET_SIMULATED_CREATED_VALIDATED_OPEN
+EXACT_REPLAY = ZERO_MUTATION
+CONFLICTING_OR_PARTIAL_GRAPH = FAIL_CLOSED_NO_REPAIR
+UNCERTAIN_COMMIT_RECOVERY = THREE_FRESH_SESSION_LOOKUPS_NO_BLIND_REPLAY
+CLOSE_CAUSAL_SOURCE = PAPER_EXIT_DECISION_ONLY
+CLOSE_FILL_IDENTITY = V2_PRESERVED
+CLOSE_EXECUTION_REQUEST = CONSTRUCTED_NOT_EXECUTED
+CLOSE_FILL_CREATED = NO
+POSITION_CLOSED = NO
+REALIZED_PNL_CALCULATED = NO
+NEW_EXIT_EVALUATION_RETRY_TESTS = 295 passed
+FULL_SAFE_PINNED_REGRESSION = 2753 passed, 2 skipped, 13 canary excluded
+SCANNER_CREDENTIAL_OBSERVER_CONTROL_TESTS = 143 passed
+PROTECTED_VENV_EVALUATOR_SMOKE = 275 passed
+ISOLATED_POSTGRESQL = 0011_MIGRATED_TESTED_CLEANED
+ISOLATED_OPEN_CONNECTIONS_AFTER = 0
+ISOLATED_IDLE_IN_TRANSACTION_AFTER = 0
+ISOLATED_LOCK_WAITS_AFTER = 0
+MIGRATION_0009_CHANGED = NO
+MIGRATION_0010_CHANGED = NO
+MIGRATION_0011_CHANGED = NO
+NEW_ALEMBIC_REVISION = NO
+ORM_SCHEMA_CHANGED = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PAPER_WORKER_IMPLEMENTED = NO
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+The service evaluates one explicit position/window request and composes only
+the previously proven cursor and trigger repository primitives. It neither
+fetches candles nor scans positions. Exact trigger replay requires the complete
+event/journal graph; commit uncertainty is resolved read-only in fresh
+sessions. A valid close execution request is returned for the next controlled
+step, but the fill simulator and order-execution service are not called.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈88% | Close-fill causal authority and a bounded persisted exit cursor are ready; the exit evaluator itself, worker/runtime integration, deployment, and PAPER enablement remain unimplemented |
+| Online analytics/paper pipeline | ≈90% | The bounded deterministic exit-evaluation service is implemented and transactionally tested; controlled worker/runtime integration, deployment, and PAPER enablement remain unimplemented |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1085,7 +1145,7 @@ was not applied to production.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_EXIT_EVALUATION_SERVICE_01_RETRY_01
+TRADERS_ML_PAPER_TRADING_CONTROLLED_WORKER_AND_LIFECYCLE_ORCHESTRATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -1103,10 +1163,13 @@ callable command-ingestion service now atomically creates the immutable command
 and OPEN entry order with complete event/journal evidence. Close fills now use
 the exit-decision causal boundary, and the dedicated persisted cursor supports
 bounded, contiguous, concurrency-safe exit evaluation without business-state
-mutation on no-trigger windows. The next separately authorized task is the
-PAPER exit-evaluation service retry. That evaluator, its worker, and Paper
-runtime were not implemented or enabled; the 72-hour soak remains open,
-market-data health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
+mutation on no-trigger windows. The deterministic one-request exit evaluator
+and its application service now prepare the exact cursor/decision/CLOSING
+position/OPEN CLOSE-order graph with complete audit rows, while creating no
+close fill or realized PnL. The next separately authorized task is controlled
+worker and lifecycle orchestration. That worker and Paper runtime were not
+implemented or enabled; the 72-hour soak remains open, market-data health
+stays `DEPLOYED_STABLE`, and LIVE stays disabled.
 
 ## Правила актуализации
 
