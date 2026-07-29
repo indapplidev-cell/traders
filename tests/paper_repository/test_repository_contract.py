@@ -268,13 +268,13 @@ def test_order_transition_select_for_update_and_exact_plus_one(paper_session_fac
         uow.repositories.orders.create_or_get_order(
             command, created.order, created.events[0], created.events[0]
         )
-        event = _event(
-            "event:validated",
-            PaperEventType.PAPER_ORDER_CREATED,
-            "paper_order",
-            created.order.order_id,
-            1,
-        )
+        event = transition_order(
+            created.order,
+            PaperOrderState.VALIDATED,
+            expected_version=0,
+            occurred_at=NOW,
+            event_id="event:validated",
+        ).events[0]
         changed = uow.repositories.orders.transition_order(
             created.order.order_id,
             0,

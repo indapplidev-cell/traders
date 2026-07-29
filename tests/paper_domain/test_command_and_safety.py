@@ -38,6 +38,8 @@ from app.engine_safety import (
                 "PAPER_COMMAND_CREATED",
                 "PAPER_COMMAND_REJECTED",
                 "PAPER_ORDER_CREATED",
+                "PAPER_ORDER_VALIDATED",
+                "PAPER_ORDER_OPENED",
                 "PAPER_ORDER_FILLED",
                 "PAPER_POSITION_OPENED",
                 "PAPER_EXIT_TRIGGERED",

@@ -98,15 +98,14 @@ def _open_order(uow, command, suffix: str, role: str = "ENTRY"):
         created.events[0],
         order_role=role,
     ).outcome is RepositoryOutcome.CREATED
-    validated_event = _event(
-        f"event:{suffix}:validated",
-        PaperEventType.PAPER_ORDER_CREATED,
-        "paper_order",
-        created.order.order_id,
-        1,
-        f"cause:{suffix}:validated",
-        PaperReasonCode.PAPER_ORDER_VALIDATED,
+    validated_change = transition_order(
+        created.order,
+        PaperOrderState.VALIDATED,
+        expected_version=0,
+        occurred_at=NOW,
+        event_id=f"event:{suffix}:validated",
     )
+    validated_event = validated_change.events[0]
     validated = uow.repositories.orders.transition_order(
         created.order.order_id,
         0,
@@ -116,15 +115,14 @@ def _open_order(uow, command, suffix: str, role: str = "ENTRY"):
         occurred_at=NOW,
     )
     assert validated.outcome is RepositoryOutcome.UPDATED
-    opened_event = _event(
-        f"event:{suffix}:opened",
-        PaperEventType.PAPER_ORDER_CREATED,
-        "paper_order",
-        created.order.order_id,
-        2,
-        f"cause:{suffix}:opened",
-        PaperReasonCode.PAPER_ORDER_OPENED,
+    opened_change = transition_order(
+        validated_change.order,
+        PaperOrderState.OPEN,
+        expected_version=1,
+        occurred_at=NOW,
+        event_id=f"event:{suffix}:opened",
     )
+    opened_event = opened_change.events[0]
     opened = uow.repositories.orders.transition_order(
         created.order.order_id,
         1,
@@ -469,7 +467,7 @@ def test_concurrent_same_command_creates_one_graph(paper_session_factory):
         assert session.scalar(select(func.count()).select_from(PaperJournalEntryRecord)) == 1
 
 
-def test_concurrent_order_transition_one_updates_one_stale(paper_session_factory):
+def test_concurrent_order_transition_one_updates_one_conflicts(paper_session_factory):
     command = _command("race")
     with PaperUnitOfWork(paper_session_factory) as uow:
         uow.repositories.commands.create_or_get_command(command)
@@ -478,15 +476,15 @@ def test_concurrent_order_transition_one_updates_one_stale(paper_session_factory
     barrier = Barrier(2)
 
     def worker(index):
-        event = _event(
-            f"event:race:{index}",
-            PaperEventType.PAPER_ORDER_FILLED,
-            "paper_order",
-            order.order_id,
-            3,
-            f"cause:race:{index}",
-            PaperReasonCode.PAPER_ORDER_FAILED,
+        change = transition_order(
+            order,
+            PaperOrderState.FAILED,
+            expected_version=2,
+            occurred_at=NOW,
+            event_id=f"event:race:{index}",
+            reason_code=PaperReasonCode.PAPER_ORDER_FAILED,
         )
+        event = change.events[0]
         with PaperUnitOfWork(paper_session_factory) as uow:
             barrier.wait()
             outcome = uow.repositories.orders.transition_order(
@@ -505,5 +503,5 @@ def test_concurrent_order_transition_one_updates_one_stale(paper_session_factory
         outcomes = [future.result(timeout=20) for future in (pool.submit(worker, 1), pool.submit(worker, 2))]
     assert {item for item in outcomes} == {
         RepositoryOutcome.UPDATED,
-        RepositoryOutcome.STALE_VERSION,
+        RepositoryOutcome.IDEMPOTENCY_CONFLICT,
     }

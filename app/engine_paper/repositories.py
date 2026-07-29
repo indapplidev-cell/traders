@@ -500,6 +500,19 @@ class OrderRepository:
             return _domain_failure(exception)
         if not changed.applied or changed.order.version != current.version + 1:
             return result(RepositoryOutcome.INTERNAL_INVARIANT_FAILURE)
+        canonical_event = changed.events[0] if len(changed.events) == 1 else None
+        if (
+            canonical_event is None
+            or event is None
+            or journal_entry is None
+            or journal_semantic_tuple(event) != journal_semantic_tuple(canonical_event)
+            or journal_semantic_tuple(journal_entry) != journal_semantic_tuple(canonical_event)
+        ):
+            return result(
+                RepositoryOutcome.INVALID_STATE,
+                current,
+                reason_code="PAPER_ORDER_TRANSITION_EVENT_MISMATCH",
+            )
         try:
             with self.session.begin_nested():
                 for name, value in paper_order_to_orm_values(
@@ -507,24 +520,24 @@ class OrderRepository:
                 ).items():
                     if name not in {"order_id", "command_id", "idempotency_key", "order_role", "mode"}:
                         setattr(row, name, value)
-                if event:
-                    self.session.add(
-                        PaperOrderEventRecord(
-                            **_order_event_values(
-                                event, previous_state=current.state, state=changed.order.state
-                            )
+                self.session.add(
+                    PaperOrderEventRecord(
+                        **_order_event_values(
+                            canonical_event,
+                            previous_state=current.state,
+                            state=changed.order.state,
                         )
                     )
-                if journal_entry:
-                    self.session.add(
-                        PaperJournalEntryRecord(
-                            **_journal_values(
-                                journal_entry,
-                                command_id=current.command_id,
-                                order_id=current.order_id,
-                            )
+                )
+                self.session.add(
+                    PaperJournalEntryRecord(
+                        **_journal_values(
+                            canonical_event,
+                            command_id=current.command_id,
+                            order_id=current.order_id,
                         )
                     )
+                )
                 self.session.flush()
         except IntegrityError as exception:
             failure = classify_database_failure(exception)

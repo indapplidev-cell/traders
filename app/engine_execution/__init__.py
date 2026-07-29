@@ -24,11 +24,13 @@ from app.engine_execution.paper_idempotency import (
     exit_decision_idempotency_key,
     fill_idempotency_key,
     journal_event_idempotency_key,
+    order_transition_event_id,
     order_idempotency_key,
     position_application_key,
 )
 from app.engine_execution.paper_models import PaperExecutionCommand, PaperFill, PaperOrder
 from app.engine_execution.paper_state_machine import (
+    ORDER_TRANSITION_EVENT_TYPES,
     PaperOrderTransition,
     command_created_event,
     create_paper_order,
@@ -45,9 +47,11 @@ __all__ = [
     "InMemoryIdempotencyRegistry", "PaperExecutionGateway", "build_execution_intent",
     "build_idempotency_key", "canonical_json", "execution_schema_version",
     "PAPER_IDEMPOTENCY_VERSION", "PaperExecutionCommand", "PaperFill", "PaperOrder",
+    "ORDER_TRANSITION_EVENT_TYPES",
     "PaperOrderTransition", "command_created_event", "command_idempotency_key",
     "create_paper_order", "exit_decision_idempotency_key", "fill_idempotency_key",
     "fill_order", "journal_event_idempotency_key", "order_idempotency_key",
+    "order_transition_event_id",
     "position_application_key", "transition_order",
 ]
 """Order-execution layer skeleton; no exchange calls are implemented."""

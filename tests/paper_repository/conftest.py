@@ -44,9 +44,15 @@ def repository_postgres_engine() -> Iterator[Engine]:
             text("SELECT to_regclass('public.alembic_version')")
         ).scalar_one()
     if revision is None:
-        command.upgrade(config, "0009_paper_trading_persistence_foundation")
+        command.upgrade(
+            config,
+            "0010_paper_final_approval_and_order_transition_event_vocabulary",
+        )
     else:
-        command.upgrade(config, "0009_paper_trading_persistence_foundation")
+        command.upgrade(
+            config,
+            "0010_paper_final_approval_and_order_transition_event_vocabulary",
+        )
     yield engine
     engine.dispose()
     get_settings.cache_clear()

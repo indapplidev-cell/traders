@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime
+from types import MappingProxyType
 
 from app.engine_execution.paper_models import PaperExecutionCommand, PaperFill, PaperOrder
+from app.engine_execution.paper_idempotency import order_transition_event_id
 from app.engine_journal.paper_events import PaperDomainEvent
 from app.engine_safety.paper_domain import (
     PaperEventType,
@@ -33,6 +35,25 @@ _ALLOWED_TRANSITIONS = frozenset(
 _TERMINAL_STATES = frozenset(
     {PaperOrderState.FILLED, PaperOrderState.REJECTED, PaperOrderState.FAILED}
 )
+
+ORDER_TRANSITION_EVENT_TYPES = MappingProxyType({
+    (PaperOrderState.CREATED, PaperOrderState.VALIDATED):
+        PaperEventType.PAPER_ORDER_VALIDATED,
+    (PaperOrderState.CREATED, PaperOrderState.REJECTED):
+        PaperEventType.PAPER_COMMAND_REJECTED,
+    (PaperOrderState.CREATED, PaperOrderState.FAILED):
+        PaperEventType.PAPER_EXECUTION_FAILED,
+    (PaperOrderState.VALIDATED, PaperOrderState.OPEN):
+        PaperEventType.PAPER_ORDER_OPENED,
+    (PaperOrderState.VALIDATED, PaperOrderState.REJECTED):
+        PaperEventType.PAPER_COMMAND_REJECTED,
+    (PaperOrderState.VALIDATED, PaperOrderState.FAILED):
+        PaperEventType.PAPER_EXECUTION_FAILED,
+    (PaperOrderState.OPEN, PaperOrderState.FILLED):
+        PaperEventType.PAPER_ORDER_FILLED,
+    (PaperOrderState.OPEN, PaperOrderState.FAILED):
+        PaperEventType.PAPER_EXECUTION_FAILED,
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,31 +200,26 @@ def transition_order(
         version=order.version + 1,
         reason_code=selected_reason,
     )
-    events: tuple[PaperDomainEvent, ...] = ()
-    if target in {PaperOrderState.REJECTED, PaperOrderState.FAILED}:
-        if event_id is None:
-            fail(
-                PaperReasonCode.PAPER_INPUT_IDENTITY_INVALID,
-                "event identity required",
-                "event_id",
-            )
-        event_type = (
-            PaperEventType.PAPER_COMMAND_REJECTED
-            if target is PaperOrderState.REJECTED
-            else PaperEventType.PAPER_EXECUTION_FAILED
+    canonical_event_id = (
+        require_identity(event_id, "event_id")
+        if event_id is not None
+        else order_transition_event_id(
+            order_id=order.order_id,
+            from_state=order.state,
+            to_state=target,
+            aggregate_version=new_order.version,
         )
-        events = (
-            _event(
-                event_id=require_identity(event_id, "event_id"),
-                event_type=event_type,
-                occurred_at=occurred_at,
-                order=new_order,
-                correlation_id=order.command_id,
-                causation_id=order.order_id,
-                reason_code=selected_reason,
-            ),
-        )
-    return PaperOrderTransition(order, new_order, events, True, selected_reason)
+    )
+    event = _event(
+        event_id=canonical_event_id,
+        event_type=ORDER_TRANSITION_EVENT_TYPES[(order.state, target)],
+        occurred_at=occurred_at,
+        order=new_order,
+        correlation_id=order.command_id,
+        causation_id=order.order_id,
+        reason_code=selected_reason,
+    )
+    return PaperOrderTransition(order, new_order, (event,), True, selected_reason)
 
 
 def fill_order(

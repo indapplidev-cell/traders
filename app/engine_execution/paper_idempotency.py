@@ -7,6 +7,7 @@ from hashlib import sha256
 from app.engine_safety.paper_domain import (
     PaperEventType,
     PaperExitCause,
+    PaperOrderState,
     PaperReasonCode,
     fail,
     normalize_symbol,
@@ -73,6 +74,34 @@ def order_idempotency_key(command_id: str, role: str) -> str:
         "order",
         require_identity(command_id, "command_id"),
         require_identity(role, "role"),
+    )
+
+
+def order_transition_event_id(
+    *,
+    order_id: str,
+    from_state: PaperOrderState,
+    to_state: PaperOrderState,
+    aggregate_version: int,
+) -> str:
+    """Deterministic identity for one approved order-state transition."""
+
+    return _key(
+        "order-transition-event",
+        require_identity(order_id, "order_id"),
+        require_enum(
+            from_state,
+            PaperOrderState,
+            PaperReasonCode.PAPER_ORDER_INVALID_TRANSITION,
+            "from_state",
+        ),
+        require_enum(
+            to_state,
+            PaperOrderState,
+            PaperReasonCode.PAPER_ORDER_INVALID_TRANSITION,
+            "to_state",
+        ),
+        require_nonnegative_int(aggregate_version, "aggregate_version"),
     )
 
 
