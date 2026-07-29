@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d3d2cd7be70e61f1782c02ac4d9ea630ff3ffff7
+STATUS_AS_OF_COMMIT = 07d815f3555ef0830e16c63117c6c4e4296121dc
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T05:57:13Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_FOUNDATION_PREPARATION_01
-FILES_CHANGED = docs/architecture/paper_trading_foundation_preparation.md; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T08:22:15Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_DOMAIN_AND_STATE_MACHINE_01
+FILES_CHANGED = app/engine_safety/__init__.py; app/engine_safety/paper_domain.py; app/engine_execution/__init__.py; app/engine_execution/paper_idempotency.py; app/engine_execution/paper_models.py; app/engine_execution/paper_state_machine.py; app/engine_position/__init__.py; app/engine_position/paper_accounting.py; app/engine_position/paper_models.py; app/engine_position/paper_state_machine.py; app/engine_exit/__init__.py; app/engine_exit/paper_exit.py; app/engine_journal/__init__.py; app/engine_journal/paper_events.py; tests/engine_execution/test_static_safety.py; tests/paper_domain/__init__.py; tests/paper_domain/conftest.py; tests/paper_domain/test_command_and_safety.py; tests/paper_domain/test_order_and_fill.py; tests/paper_domain/test_position_exit_accounting_identity_events.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_ARCHITECTURE_FOUNDATION_PREPARATION_PASS
+STATUS_CONFIDENCE = PROVEN_PAPER_DOMAIN_AND_STATE_MACHINE_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_ARCHITECTURE_FOUNDATION_PREPARATION_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_DOMAIN_AND_STATE_MACHINE_PENDING
-CURRENT_BLOCKER = NONE_FOR_DOMAIN_AND_STATE_MACHINE_TASK
+CURRENT_STAGE = PAPER_TRADING_PERSISTENCE_SCHEMA_AND_MIGRATION_PENDING
+CURRENT_BLOCKER = NONE_FOR_PERSISTENCE_SCHEMA_AND_MIGRATION_TASK
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -595,11 +595,11 @@ FOUNDATION_RESULT = PASS
 ARCHITECTURE_DOCUMENT = docs/architecture/paper_trading_foundation_preparation.md
 ARCHITECTURE_COMMIT = d3d2cd7be70e61f1782c02ac4d9ea630ff3ffff7
 ENGINE_PAPER = EXISTS_AND_TESTED_RESEARCH_PLAN_ONLY
-ENGINE_EXECUTION = EXISTS_AND_TESTED_LOCAL_INTENT_ONLY
-ENGINE_POSITION = EXISTS_AND_TESTED_LOCAL_IN_MEMORY_DOMAIN
-ENGINE_EXIT = SKELETON_ONLY
-ENGINE_JOURNAL = SKELETON_ONLY
-ENGINE_SAFETY = SKELETON_ONLY
+ENGINE_EXECUTION = LEGACY_LOCAL_INTENT_RETAINED; PURE_PAPER_COMMAND_ORDER_FILL_IMPLEMENTED
+ENGINE_POSITION = LEGACY_LOCAL_DOMAIN_RETAINED; PURE_PAPER_POSITION_ACCOUNTING_IMPLEMENTED
+ENGINE_EXIT = PURE_PAPER_EXIT_DECISION_AND_CONFLICT_POLICY_IMPLEMENTED
+ENGINE_JOURNAL = IMMUTABLE_TYPED_PAPER_EVENTS_IMPLEMENTED
+ENGINE_SAFETY = STRICT_OFF_PAPER_LIVE_AND_REASON_CODES_IMPLEMENTED
 AUTHORITATIVE_FUTURE_INPUT = IMMUTABLE_PAPER_EXECUTION_COMMAND
 ORCHESTRATOR_INTEGRATION = IMMUTABLE_COMMAND_PLUS_SEPARATE_IDEMPOTENT_WORKER
 EXECUTION_MODES = OFF,PAPER,LIVE
@@ -631,11 +631,67 @@ source runtime, schema, routes, worker, client code, deployment, order, fill,
 position, or journal records. The existing readiness percentage is unchanged:
 this task improved architectural certainty, not runtime capability.
 
+## Paper trading domain and state-machine foundation
+
+```text
+DOMAIN_TASK = TRADERS_ML_PAPER_TRADING_DOMAIN_AND_STATE_MACHINE_01
+DOMAIN_RESULT = PASS
+IMPLEMENTATION_COMMIT = 07d815f3555ef0830e16c63117c6c4e4296121dc
+PAPER_DOMAIN_AND_STATE_MACHINE = IMPLEMENTED_AND_TESTED
+PAPER_EXECUTION_COMMAND = IMMUTABLE_DECIMAL_ONLY
+AUTHORITATIVE_SIZE_FIELD = requested_quantity
+REQUESTED_NOTIONAL_ROLE = OPTIONAL_DERIVED_EQUALITY_CHECK
+EXECUTION_MODE = OFF,PAPER,LIVE
+DEFAULT_EXECUTION_MODE = OFF
+PAPER_ORDER_STATES = CREATED,VALIDATED,OPEN,FILLED,REJECTED,FAILED
+PAPER_ORDER_TERMINAL_STATES = FILLED,REJECTED,FAILED
+PAPER_POSITION_STATES = OPEN,CLOSING,CLOSED,FAILED
+PARTIAL_FILL_SUPPORTED = NO
+PARTIAL_CLOSE_SUPPORTED = NO
+PAPER_INTRABAR_CONFLICT_POLICY = STOP_FIRST_CONSERVATIVE
+STOP_AND_TARGET_BOTH_HIT_RESULT = STOP_LOSS
+IDEMPOTENCY = DETERMINISTIC_VERSIONED_V1_PUBLIC_CAUSAL_TUPLES
+REASON_CODE_COUNT = 55
+DOMAIN_EVENT_TYPES = 9_IMMUTABLE_BOUNDED
+FLOAT_MONETARY_FIELDS = 0
+MUTABLE_DEFAULTS_INTRODUCED = 0
+UNBOUNDED_DOMAIN_PAYLOADS = 0
+IMPORT_CYCLE_SMOKE = PASS
+NEW_DOMAIN_TESTS = 216 passed
+LEGACY_ENGINE_REGRESSION = 233 passed
+FULL_SAFE_PINNED_REGRESSION = 1055 passed, 2 opt-in deselected
+SCANNER_SECURITY_TESTS = 26 passed
+CREDENTIAL_CONTROL_TESTS = 31 passed
+OBSERVER_TESTS = 65 passed
+PROTECTED_VENV_REGRESSION = 1052 passed, 3 route-count failures caused by known FastAPI 0.139.2 mismatch
+AUTHORITATIVE_PINNED_FASTAPI = 0.116.1
+PRODUCTION_ROUTE_SMOKE = 9 HTTP 2xx; 3 expected 404; 0 unexpected 4xx/5xx/timeouts
+ALEMBIC = 0008_engine_orchestrator_freshness_retry
+SCHEMA_OBJECT_SHA256 = 8bde58f386b20256ba7b8bb74e466353f3b3cd97b3926ccd304f03199f47b63c
+ALL_CONTAINER_IDS_AND_IMAGE_IDS_UNCHANGED = YES
+ALL_RESTART_DELTAS = 0
+PAPER_PERSISTENCE_IMPLEMENTED = NO
+PAPER_WORKER_IMPLEMENTED = NO
+PAPER_API_IMPLEMENTED = NO
+PAPER_CLIENT_IMPLEMENTED = NO
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+The new contracts are pure local code only. Legacy `PaperTradePlan`,
+`ExecutionIntent`, `PaperExecutionGateway`, and `Position` remain unchanged in
+meaning and are not treated as the new authoritative PAPER runtime graph.
+No migration, repository, worker, queue, candle lookup, fill-price simulator,
+API, client, Docker, deployment, exchange transport, or production record was
+added. One-active-position-per-mode-and-symbol remains a documented future
+persistence constraint and is not globally enforced by this pure layer.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈82% | Paper foundation design contract completed and validated; paper trading remains unimplemented and disabled |
+| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines are implemented and tested; persistence/runtime integration remains unimplemented and disabled |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -648,7 +704,7 @@ this task improved architectural certainty, not runtime capability.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_DOMAIN_AND_STATE_MACHINE_01
+TRADERS_ML_PAPER_TRADING_PERSISTENCE_SCHEMA_AND_MIGRATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
