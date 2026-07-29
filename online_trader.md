@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = ada8dd4733ae4d23566061f994173c878fdfe95e
+STATUS_AS_OF_COMMIT = a875668bee60aaa7ed4c197c909c05b45d578246
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T15:11:35Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_DETERMINISTIC_FILL_SIMULATOR_01
-FILES_CHANGED = app/engine_execution/paper_idempotency.py; app/engine_paper/fill_policy.py; app/engine_paper/fill_simulator.py; docs/architecture/paper_fill_simulator.md; tests/paper_fill_simulator/__init__.py; tests/paper_fill_simulator/conftest.py; tests/paper_fill_simulator/test_boundary_and_outcomes.py; tests/paper_fill_simulator/test_policy_and_candle_contracts.py; tests/paper_fill_simulator/test_price_fee_identity_determinism.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T16:24:37Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_ORDER_EXECUTION_SERVICE_01
+FILES_CHANGED = app/engine_paper/order_execution_service.py; docs/architecture/paper_order_execution_service.md; tests/paper_order_execution_service/__init__.py; tests/paper_order_execution_service/conftest.py; tests/paper_order_execution_service/test_postgres_service_integration.py; tests/paper_order_execution_service/test_service_contract_and_mapping.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PURE_DETERMINISTIC_FILL_SIMULATOR_PASS
+STATUS_CONFIDENCE = PROVEN_PAPER_ORDER_EXECUTION_SERVICE_ISOLATED_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PURE_DETERMINISTIC_FILL_SIMULATOR_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_ORDER_EXECUTION_SERVICE_PENDING
-CURRENT_BLOCKER = NONE_FOR_ORDER_EXECUTION_SERVICE_TASK
+CURRENT_STAGE = PAPER_TRADING_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_PENDING
+CURRENT_BLOCKER = NONE_FOR_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_TASK
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -829,11 +829,67 @@ policy, precision, and bounded candle inputs. It creates a deterministic
 open a session, persist a row, transition an order or position, poll a queue,
 evaluate stop/target candle hits, or start PAPER runtime.
 
+## PAPER order execution application service
+
+```text
+ORDER_EXECUTION_TASK = TRADERS_ML_PAPER_TRADING_ORDER_EXECUTION_SERVICE_01
+ORDER_EXECUTION_RESULT = PASS
+IMPLEMENTATION_COMMIT = a875668bee60aaa7ed4c197c909c05b45d578246
+PAPER_ORDER_EXECUTION_SERVICE = IMPLEMENTED_AND_TESTED_ISOLATED
+ENTRY_REQUEST = IMMUTABLE_EXPLICIT_CANDLES_POLICY_PRECISION_IDENTITIES
+CLOSE_REQUEST = IMMUTABLE_EXISTING_EXIT_DECISION_REQUIRED
+AUTHORITATIVE_COMMAND_ORDER_POSITION_EXIT = REPOSITORY_LOADED_BOUNDED_GRAPH
+SIMULATOR_CALLS_PER_ATTEMPT = EXACTLY_ONE_AFTER_GRAPH_VALIDATION
+ENTRY_ATOMIC_OPERATION = EXISTING_apply_entry_fill_and_open_position
+CLOSE_ATOMIC_OPERATION = EXISTING_apply_close_fill_and_close_position
+UOW_PER_ATTEMPT = ONE
+DIRECT_SESSION_COMMIT = NO
+NON_SUCCESS_SIMULATION_MUTATIONS = 0
+EXACT_REPLAY = EXISTING_GRAPH_NO_MUTATION
+CONFLICTING_REPLAY = IDEMPOTENCY_CONFLICT
+ENTRY_CONCURRENCY = ONE_FILL_ONE_POSITION
+CLOSE_CONCURRENCY = ONE_FILL_ONE_PNL_ONE_VERSION
+UNCERTAIN_COMMIT_RECOVERY = THREE_FRESH_SESSION_LOOKUPS_NO_BLIND_REPLAY
+MAX_CANDIDATE_CANDLES = 64
+SERVICE_DATABASE_CANDLE_QUERY = NO
+SERVICE_MARKET_DATA_NETWORK_CALL = NO
+SERVICE_WALL_CLOCK_OR_RANDOM = NO
+NEW_ORDER_EXECUTION_SERVICE_TESTS = 146 passed
+COMBINED_PAPER_FOUNDATION_REGRESSION = 823 passed
+FULL_SAFE_PINNED_REGRESSION = 1662 passed, 2 skipped, 13 canary deselected
+SCANNER_SECURITY_TESTS = 26 passed
+CREDENTIAL_CONTROL_TESTS = 31 passed
+OBSERVER_TESTS = 104 passed
+ISOLATED_POSTGRESQL = 0009_MIGRATED_TESTED_CLEANED
+ISOLATED_OPEN_CONNECTIONS_AFTER = 0
+ISOLATED_IDLE_IN_TRANSACTION_AFTER = 0
+ISOLATED_LOCK_WAITS_AFTER = 0
+MIGRATION_0009_CHANGED = NO
+NEW_ALEMBIC_REVISION = NO
+ORM_SCHEMA_CHANGED = NO
+REPOSITORY_TRANSACTION_SEMANTICS_CHANGED = NO
+FILL_SIMULATOR_SEMANTICS_CHANGED = NO
+DOMAIN_STATE_GRAPH_CHANGED = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+The callable service executes only one supplied entry or close request. It
+loads authoritative aggregates through one Unit of Work, maps every
+non-success simulator result without mutation, and delegates successful graph
+updates to the existing atomic repository operations. It does not create a
+command, order, exit decision, worker, API, deployment, or autonomous PAPER
+runtime.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines, normalized persistence schema, transactional repository/idempotency foundation, and deterministic fill simulator are implemented and tested in isolation; execution service/worker/runtime integration remains unimplemented and disabled |
+| Online analytics/paper pipeline | ≈84% | Pure immutable PAPER domain/state machines, normalized persistence schema, transactional repository/idempotency foundation, deterministic fill simulator, and callable entry/close order execution service are implemented and tested in isolation; command ingestion, worker/runtime integration, and PAPER enablement remain unimplemented |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -846,7 +902,7 @@ evaluate stop/target candle hits, or start PAPER runtime.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_ORDER_EXECUTION_SERVICE_01
+TRADERS_ML_PAPER_TRADING_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -858,10 +914,11 @@ runtime UNKNOWN samples, no sequence gaps, and stable production invariants.
 Paper foundation preparation is completed with a verified design contract.
 The immutable domain/state-machine, isolated persistence, and transactional
 repository/idempotency foundation tasks are completed. The next separately
-authorized task is the PAPER order execution service only. The deterministic
-fill simulator is implemented and tested as pure code; Paper trading runtime was
-not implemented or enabled, the 72-hour soak remains open, market-data health stays
-`DEPLOYED_STABLE`, and LIVE stays disabled.
+authorized task is the PAPER command-ingestion and order-creation application
+service. The deterministic fill simulator and callable entry/close order
+execution service are implemented and tested in isolation; Paper trading
+runtime was not implemented or enabled, the 72-hour soak remains open,
+market-data health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
 
 ## Правила актуализации
 
