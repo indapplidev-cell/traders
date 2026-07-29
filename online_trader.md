@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = f57d8bf37d62ffc680dd79f3b8b28fd99b7bafd8
+STATUS_AS_OF_COMMIT = ada8dd4733ae4d23566061f994173c878fdfe95e
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T12:25:49Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_REPOSITORY_AND_IDEMPOTENCY_01
-FILES_CHANGED = app/engine_paper/commit_recovery.py; app/engine_paper/db_failures.py; app/engine_paper/repositories.py; app/engine_paper/repository_protocols.py; app/engine_paper/repository_results.py; app/engine_paper/semantic_idempotency.py; app/engine_paper/unit_of_work.py; docs/architecture/paper_repository_foundation.md; tests/paper_repository/__init__.py; tests/paper_repository/conftest.py; tests/paper_repository/test_atomic_lifecycle_and_concurrency.py; tests/paper_repository/test_repository_contract.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T15:11:35Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_DETERMINISTIC_FILL_SIMULATOR_01
+FILES_CHANGED = app/engine_execution/paper_idempotency.py; app/engine_paper/fill_policy.py; app/engine_paper/fill_simulator.py; docs/architecture/paper_fill_simulator.md; tests/paper_fill_simulator/__init__.py; tests/paper_fill_simulator/conftest.py; tests/paper_fill_simulator/test_boundary_and_outcomes.py; tests/paper_fill_simulator/test_policy_and_candle_contracts.py; tests/paper_fill_simulator/test_price_fee_identity_determinism.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PAPER_REPOSITORY_FOUNDATION_ISOLATED_PASS
+STATUS_CONFIDENCE = PROVEN_PURE_DETERMINISTIC_FILL_SIMULATOR_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PAPER_REPOSITORY_FOUNDATION_ISOLATED_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_DETERMINISTIC_FILL_SIMULATOR_PENDING
-CURRENT_BLOCKER = NONE_FOR_DETERMINISTIC_FILL_SIMULATOR_TASK
+CURRENT_STAGE = PAPER_TRADING_ORDER_EXECUTION_SERVICE_PENDING
+CURRENT_BLOCKER = NONE_FOR_ORDER_EXECUTION_SERVICE_TASK
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -787,11 +787,53 @@ task-owned PostgreSQL database. It does not simulate fills or evaluate candles,
 does not poll commands, and is not connected to the orchestrator or any
 production runtime.
 
+## PAPER deterministic fill simulator
+
+```text
+SIMULATOR_TASK = TRADERS_ML_PAPER_TRADING_DETERMINISTIC_FILL_SIMULATOR_01
+SIMULATOR_RESULT = PASS
+IMPLEMENTATION_COMMIT = ada8dd4733ae4d23566061f994173c878fdfe95e
+PAPER_DETERMINISTIC_FILL_SIMULATOR = IMPLEMENTED_AND_TESTED_PURE
+PRICE_SOURCE = NEXT_ELIGIBLE_CLOSED_1M_OPEN
+TIMEFRAME = 1m
+LATENCY_CANDLES = 1
+SLIPPAGE_BPS = 2_ADVERSE_DIRECTIONAL
+FEE_BPS = 10_QUOTE_ASSET_PER_FILL
+PRICE_ROUNDING = BUY_CEILING_SELL_FLOOR_EXPLICIT_QUANTUM
+FEE_ROUNDING = CEILING_EXPLICIT_QUANTUM
+CLOSED_UNTIL_SEMANTICS = EXCLUSIVE_UPPER_BOUNDARY_PROVEN
+EXACT_NEXT_CANDLE_REQUIRED = YES
+LATER_OR_PREVIOUS_CANDLE_FALLBACK = NO
+GAP_DUPLICATE_CONFLICT_FUTURE_DATA = FAIL_CLOSED
+PARTIAL_FILL_SUPPORTED = NO
+WALL_CLOCK_RANDOM_DATABASE_NETWORK_REPOSITORY_CALLS = 0
+NEW_FILL_SIMULATOR_TESTS = 206 passed
+DOMAIN_REGRESSION = 216 passed
+FULL_SAFE_PINNED_REGRESSION = 1516 passed, 2 skipped, 13 canary deselected
+SCANNER_SECURITY_TESTS = 26 passed
+CREDENTIAL_CONTROL_TESTS = 31 passed
+OBSERVER_TESTS = 125 passed
+MIGRATION_0009_CHANGED = NO
+NEW_ALEMBIC_REVISION = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+The simulator is a pure immutable computation over explicit command, order,
+policy, precision, and bounded candle inputs. It creates a deterministic
+`PaperFill` candidate suitable for a later repository transaction but does not
+open a session, persist a row, transition an order or position, poll a queue,
+evaluate stop/target candle hits, or start PAPER runtime.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines, normalized persistence schema, and transactional repository/idempotency foundation are implemented and tested in isolation; simulator/worker/runtime integration remains unimplemented and disabled |
+| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines, normalized persistence schema, transactional repository/idempotency foundation, and deterministic fill simulator are implemented and tested in isolation; execution service/worker/runtime integration remains unimplemented and disabled |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -804,7 +846,7 @@ production runtime.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_DETERMINISTIC_FILL_SIMULATOR_01
+TRADERS_ML_PAPER_TRADING_ORDER_EXECUTION_SERVICE_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -816,8 +858,9 @@ runtime UNKNOWN samples, no sequence gaps, and stable production invariants.
 Paper foundation preparation is completed with a verified design contract.
 The immutable domain/state-machine, isolated persistence, and transactional
 repository/idempotency foundation tasks are completed. The next separately
-authorized task is deterministic fill simulator implementation only. Paper trading was not implemented or
-enabled, the 72-hour soak remains open, market-data health stays
+authorized task is the PAPER order execution service only. The deterministic
+fill simulator is implemented and tested as pure code; Paper trading runtime was
+not implemented or enabled, the 72-hour soak remains open, market-data health stays
 `DEPLOYED_STABLE`, and LIVE stays disabled.
 
 ## Правила актуализации
