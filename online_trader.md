@@ -3,13 +3,13 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = cc26d389865e30010c72ed6c8690bb205250ca11
+STATUS_AS_OF_COMMIT = 53fce14bc6a9629d3ea01fe37affab913f4c1c64
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T18:12:08Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_FINAL_APPROVAL_AND_QUANTITY_AUTHORITY_REMEDIATION_01
-FILES_CHANGED = alembic/versions/0010_paper_final_approval_and_order_transition_event_vocabulary.py; app/engine_execution/__init__.py; app/engine_execution/paper_idempotency.py; app/engine_execution/paper_state_machine.py; app/engine_paper/__init__.py; app/engine_paper/paper_approvals.py; app/engine_paper/repositories.py; app/engine_safety/paper_domain.py; tests/paper_approval_remediation/__init__.py; tests/paper_approval_remediation/conftest.py; tests/paper_approval_remediation/test_event_vocabulary.py; tests/paper_approval_remediation/test_migration_0010.py; tests/paper_approval_remediation/test_quantity_and_risk_approval.py; tests/paper_approval_remediation/test_static_safety_contract.py; tests/paper_approval_remediation/test_strategy_approval.py; tests/paper_domain/test_command_and_safety.py; tests/paper_repository/conftest.py; tests/paper_repository/test_atomic_lifecycle_and_concurrency.py; tests/paper_repository/test_repository_contract.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T18:46:33Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_01_RETRY_01
+FILES_CHANGED = app/engine_paper/__init__.py; app/engine_paper/command_ingestion_service.py; app/engine_paper/repositories.py; app/engine_paper/repository_protocols.py; docs/architecture/paper_command_ingestion_service.md; tests/paper_command_ingestion_retry/__init__.py; tests/paper_command_ingestion_retry/conftest.py; tests/paper_command_ingestion_retry/test_postgres_ingestion_service.py; tests/paper_command_ingestion_retry/test_validation_matrix.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PAPER_FINAL_APPROVAL_QUANTITY_AND_EVENT_VOCABULARY_PA
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_RETRY_PENDING
-CURRENT_BLOCKER = NONE_FOR_COMMAND_INGESTION_PREREQUISITES
+CURRENT_STAGE = PAPER_TRADING_EXIT_EVALUATION_SERVICE_PENDING
+CURRENT_BLOCKER = NONE_FOR_EXIT_EVALUATION_PREREQUISITES
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -944,11 +944,78 @@ The repository now requires the canonical event and journal mapping for every
 approved order transition. Revision 0010 changes only the two event-type CHECK
 constraints in an isolated migration path and was not applied to production.
 
+## PAPER command ingestion and entry-order creation service
+
+```text
+INGESTION_TASK = TRADERS_ML_PAPER_TRADING_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_01_RETRY_01
+INGESTION_RESULT = PASS
+IMPLEMENTATION_COMMIT = 53fce14bc6a9629d3ea01fe37affab913f4c1c64
+PAPER_COMMAND_INGESTION_SERVICE = IMPLEMENTED_AND_TESTED_ISOLATED
+REQUEST = IMMUTABLE_FINAL_APPROVAL_POLICY_IDENTITY_AND_UTC_INPUT
+FINAL_STRATEGY_APPROVAL = REUSED
+CONTROLLED_QUANTITY_APPROVAL = REUSED
+FINAL_RISK_APPROVAL = REUSED
+COMMAND_COMPATIBILITY_MAPPER = REUSED
+GLOBAL_DEFAULT_EXECUTION_MODE = OFF_UNCHANGED
+EXPLICIT_PAPER_AUTHORIZATION = REQUIRED
+OFF_LIVE_UNKNOWN = FAIL_CLOSED_ZERO_MUTATION
+CALLER_SYMBOL_SIDE_QUANTITY_PRICE_CAUSAL_OVERRIDE = FORBIDDEN
+POLICY_AUTHORITY = EXACT_ACTIVE_V1_LOOKUP
+COMMAND = EXISTING_IMMUTABLE_PAPER_EXECUTION_COMMAND
+ENTRY_ORDER = CREATED_TO_VALIDATED_TO_OPEN_VIA_EXISTING_STATE_MACHINE
+ENTRY_ORDER_ROLE = ENTRY
+ENTRY_ORDER_TYPE = MARKET_SIMULATED
+ENTRY_ORDER_FINAL_VERSION = 2
+ORDER_EVENTS = CREATED,VALIDATED,OPENED
+JOURNAL_ROWS = COMMAND_CREATED_PLUS_THREE_ORDER_EVENTS
+ATOMICITY = ONE_UOW_COMMAND_ORDER_EVENTS_JOURNAL
+EXACT_REPLAY = COMPLETE_GRAPH_ALREADY_EXISTS_ZERO_MUTATION
+CONFLICTING_REPLAY = IDEMPOTENCY_CONFLICT
+INCONSISTENT_GRAPH = FAIL_CLOSED_NO_REPAIR
+IDENTICAL_CONCURRENCY = ONE_CREATED_ONE_ALREADY_EXISTS
+CONFLICTING_CONCURRENCY = ONE_CREATED_ONE_IDEMPOTENCY_CONFLICT
+UNCERTAIN_COMMIT_RECOVERY = THREE_FRESH_SESSION_LOOKUPS_NO_BLIND_REPLAY
+COMMAND_GRAPH_LIMIT = 100
+JOURNAL_LIMIT = 200
+ORDER_EXECUTION_COMPATIBILITY = PASS_REQUEST_SHAPE_BUILT_NOT_EXECUTED
+NEW_INGESTION_TESTS = 261 passed
+COMBINED_PAPER_FOUNDATION_REGRESSION = 1104 passed
+FULL_SAFE_PINNED_REGRESSION = 2204 passed, 2 skipped, 13 canary deselected
+SCANNER_SECURITY_TESTS = 26 passed
+CREDENTIAL_CONTROL_TESTS = 31 passed
+OBSERVER_TESTS = 78 passed
+ISOLATED_POSTGRESQL = 0010_MIGRATED_TESTED_CLEANED
+ISOLATED_OPEN_CONNECTIONS_AFTER = 0
+ISOLATED_IDLE_IN_TRANSACTION_AFTER = 0
+ISOLATED_LOCK_WAITS_AFTER = 0
+MIGRATION_0009_CHANGED = NO
+MIGRATION_0010_CHANGED = NO
+NEW_ALEMBIC_REVISION = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+FILL_CREATED_DURING_INGESTION = NO
+POSITION_CREATED_DURING_INGESTION = NO
+PAPER_WORKER_IMPLEMENTED = NO
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+The callable service admits only an explicit complete approval chain and exact
+immutable policy. It creates the command and entry order through CREATED,
+VALIDATED, and OPEN in one transaction, with the complete event/journal graph.
+Replay is read/verify-only, corruption is not repaired, and uncertain commits
+are resolved only through bounded fresh-session lookup. This is isolated
+application-service readiness, not deployment, autonomous runtime, PAPER mode
+enablement, fill execution, position creation, or production acceptance.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈86% | Pure immutable final strategy/quantity/risk approvals and event-complete order transitions now join the tested domain, persistence, repository, fill simulator, and order execution foundations; command ingestion, worker/runtime integration, and PAPER enablement remain unimplemented |
+| Online analytics/paper pipeline | ≈88% | Final approvals now feed a tested atomic command plus OPEN entry-order ingestion service; exit evaluation, worker/runtime integration, deployment, and PAPER enablement remain unimplemented |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -961,7 +1028,7 @@ constraints in an isolated migration path and was not applied to production.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_01_RETRY_01
+TRADERS_ML_PAPER_TRADING_EXIT_EVALUATION_SERVICE_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -973,10 +1040,11 @@ runtime UNKNOWN samples, no sequence gaps, and stable production invariants.
 Paper foundation preparation is completed with a verified design contract.
 The immutable domain/state-machine, isolated persistence, and transactional
 repository/idempotency foundation tasks are completed. Separate final PAPER
-strategy, controlled quantity, and final risk authorities are now implemented
-with a complete order-transition event vocabulary and isolated revision 0010.
-The next separately authorized task is the retry of the PAPER command-ingestion
-and order-creation application service. The deterministic fill simulator and
+strategy, controlled quantity, and final risk authorities are implemented with
+a complete order-transition event vocabulary and isolated revision 0010. The
+callable command-ingestion service now atomically creates the immutable command
+and OPEN entry order with complete event/journal evidence. The next separately
+authorized task is PAPER exit evaluation. The deterministic fill simulator and
 callable entry/close order execution service remain tested in isolation; Paper
 trading runtime was not implemented or enabled, the 72-hour soak remains open,
 market-data health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
