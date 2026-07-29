@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 07d815f3555ef0830e16c63117c6c4e4296121dc
+STATUS_AS_OF_COMMIT = d13e19b6a2fa8cac4b78d942a7ae54b20afbe597
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T08:22:15Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_DOMAIN_AND_STATE_MACHINE_01
-FILES_CHANGED = app/engine_safety/__init__.py; app/engine_safety/paper_domain.py; app/engine_execution/__init__.py; app/engine_execution/paper_idempotency.py; app/engine_execution/paper_models.py; app/engine_execution/paper_state_machine.py; app/engine_position/__init__.py; app/engine_position/paper_accounting.py; app/engine_position/paper_models.py; app/engine_position/paper_state_machine.py; app/engine_exit/__init__.py; app/engine_exit/paper_exit.py; app/engine_journal/__init__.py; app/engine_journal/paper_events.py; tests/engine_execution/test_static_safety.py; tests/paper_domain/__init__.py; tests/paper_domain/conftest.py; tests/paper_domain/test_command_and_safety.py; tests/paper_domain/test_order_and_fill.py; tests/paper_domain/test_position_exit_accounting_identity_events.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T11:08:53Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PERSISTENCE_SCHEMA_AND_MIGRATION_01
+FILES_CHANGED = alembic/env.py; alembic/versions/0009_paper_trading_persistence_foundation.py; app/db/paper_mappings.py; app/db/paper_models.py; docs/architecture/paper_trading_persistence_foundation.md; tests/paper_persistence/__init__.py; tests/paper_persistence/conftest.py; tests/paper_persistence/test_postgres_constraints.py; tests/paper_persistence/test_pure_mappings.py; tests/test_db_models.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PAPER_DOMAIN_AND_STATE_MACHINE_PASS
+STATUS_CONFIDENCE = PROVEN_PAPER_PERSISTENCE_FOUNDATION_ISOLATED_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PAPER_DOMAIN_AND_STATE_MACHINE_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_PERSISTENCE_SCHEMA_AND_MIGRATION_PENDING
-CURRENT_BLOCKER = NONE_FOR_PERSISTENCE_SCHEMA_AND_MIGRATION_TASK
+CURRENT_STAGE = PAPER_TRADING_REPOSITORY_AND_IDEMPOTENCY_PENDING
+CURRENT_BLOCKER = NONE_FOR_REPOSITORY_AND_IDEMPOTENCY_TASK
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -670,7 +670,7 @@ ALEMBIC = 0008_engine_orchestrator_freshness_retry
 SCHEMA_OBJECT_SHA256 = 8bde58f386b20256ba7b8bb74e466353f3b3cd97b3926ccd304f03199f47b63c
 ALL_CONTAINER_IDS_AND_IMAGE_IDS_UNCHANGED = YES
 ALL_RESTART_DELTAS = 0
-PAPER_PERSISTENCE_IMPLEMENTED = NO
+PAPER_PERSISTENCE_IMPLEMENTED = YES_SCHEMA_FOUNDATION_TESTED_ISOLATED
 PAPER_WORKER_IMPLEMENTED = NO
 PAPER_API_IMPLEMENTED = NO
 PAPER_CLIENT_IMPLEMENTED = NO
@@ -679,19 +679,76 @@ PAPER_MODE_ENABLED = NO
 LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
 ```
 
-The new contracts are pure local code only. Legacy `PaperTradePlan`,
+The domain contracts remain pure local code. Legacy `PaperTradePlan`,
 `ExecutionIntent`, `PaperExecutionGateway`, and `Position` remain unchanged in
 meaning and are not treated as the new authoritative PAPER runtime graph.
-No migration, repository, worker, queue, candle lookup, fill-price simulator,
-API, client, Docker, deployment, exchange transport, or production record was
-added. One-active-position-per-mode-and-symbol remains a documented future
-persistence constraint and is not globally enforced by this pure layer.
+The earlier domain-only task added no migration or runtime integration. The
+separate persistence task below now provides isolated schema enforcement while
+repository, worker, queue mutation, candle lookup, fill-price simulator, API,
+client, deployment, exchange transport, and production records remain absent.
+
+## Paper trading persistence foundation
+
+```text
+PERSISTENCE_TASK = TRADERS_ML_PAPER_TRADING_PERSISTENCE_SCHEMA_AND_MIGRATION_01
+PERSISTENCE_RESULT = PASS
+IMPLEMENTATION_COMMIT = d13e19b6a2fa8cac4b78d942a7ae54b20afbe597
+MIGRATION_REVISION = 0009_paper_trading_persistence_foundation
+MIGRATION_DOWN_REVISION = 0008_engine_orchestrator_freshness_retry
+PAPER_TABLES = 8_NORMALIZED
+ORM_BASE = app.db.base.Base
+ENUM_STRATEGY = BOUNDED_VARCHAR_PLUS_CHECK
+PRICE_QUANTITY_MONEY = NUMERIC_38_18
+RATIO_BPS = NUMERIC_20_10
+FLOAT_MONETARY_COLUMNS = 0
+ONE_ACTIVE_POSITION_PER_MODE_SYMBOL = DATABASE_ENFORCED_PARTIAL_UNIQUE_INDEX
+SAFE_FOREIGN_KEYS = ON_DELETE_RESTRICT
+LOGICAL_FOREIGN_KEYS = EXPLICITLY_DOCUMENTED_ONLY
+RAW_JSON_PAYLOADS = 0
+DOMAIN_TO_ORM_MAPPING = PURE
+ORM_TO_DOMAIN_MAPPING = PURE
+MAPPING_SESSION_ACCESS = NO
+NEW_PERSISTENCE_TESTS = 133 passed
+NEW_PERSISTENCE_TEST_FAILURES = 0
+DOMAIN_REGRESSION = 216 passed
+FULL_SAFE_PINNED_REGRESSION = 1188 passed, 2 skipped, 13 canary deselected
+SCANNER_SECURITY_TESTS = 26 passed
+CREDENTIAL_CONTROL_TESTS = 31 passed
+OBSERVER_TESTS = 129 passed
+UPGRADE_0008_TO_0009 = PASS_ISOLATED_POSTGRESQL
+DOWNGRADE_0009_TO_0008 = PASS_ISOLATED_POSTGRESQL
+REUPGRADE_0008_TO_0009 = PASS_ISOLATED_POSTGRESQL
+PAPER_OBJECTS_REMOVED_ON_DOWNGRADE = YES
+PREEXISTING_SCHEMA_UNCHANGED = YES
+ISOLATED_TEST_ARTIFACTS_CLEANED = YES
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_MIGRATION_APPLIED = NO
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_DATA_MUTATIONS = 0
+ALL_PRODUCTION_CONTAINER_AND_IMAGE_IDS_UNCHANGED = YES
+ALL_PRODUCTION_RESTART_DELTAS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PAPER_REPOSITORY_IMPLEMENTED = NO
+PAPER_WORKER_IMPLEMENTED = NO
+PAPER_API_IMPLEMENTED = NO
+PAPER_CLIENT_IMPLEMENTED = NO
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+Revision 0009 creates the PAPER tables only in an isolated PostgreSQL target.
+It alters and rewrites no existing table, seeds no policy, performs no
+backfill, and was not applied to production. Cross-row fill/order and
+exit/position equality plus aggregate compare-and-swap remain explicit future
+repository transaction responsibilities; no invalid cross-table `CHECK` or
+new production trigger was introduced.
 
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines are implemented and tested; persistence/runtime integration remains unimplemented and disabled |
+| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines and normalized persistence schema are implemented and tested in isolation; repository/runtime integration remains unimplemented and disabled |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -704,7 +761,7 @@ persistence constraint and is not globally enforced by this pure layer.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PERSISTENCE_SCHEMA_AND_MIGRATION_01
+TRADERS_ML_PAPER_TRADING_REPOSITORY_AND_IDEMPOTENCY_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -714,9 +771,11 @@ historical full observation remains failed unchanged. A separate new
 diagnostic-observer window passed continuously for 4569.843 seconds with zero
 runtime UNKNOWN samples, no sequence gaps, and stable production invariants.
 Paper foundation preparation is completed with a verified design contract.
-The next separately authorized task is domain/state-machine implementation
-only. Paper trading was not implemented or enabled, the 72-hour soak remains
-open, market-data health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
+The immutable domain/state-machine and isolated persistence foundation tasks
+are completed. The next separately authorized task is repository and
+idempotency workflow implementation only. Paper trading was not implemented or
+enabled, the 72-hour soak remains open, market-data health stays
+`DEPLOYED_STABLE`, and LIVE stays disabled.
 
 ## Правила актуализации
 
