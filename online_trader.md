@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d3a7f6b4b188349a68396b2950a55518c93e270b
+STATUS_AS_OF_COMMIT = d3d2cd7be70e61f1782c02ac4d9ea630ff3ffff7
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T05:05:51Z
-RECONCILED_BY_TASK = TRADERS_ML_READONLY_API_POST_ANALYSIS_REMEDIATION_STABILITY_OBSERVATION_02_WITH_DIAGNOSTIC_OBSERVER
-FILES_CHANGED = online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T05:57:13Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_FOUNDATION_PREPARATION_01
+FILES_CHANGED = docs/architecture/paper_trading_foundation_preparation.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_UNINTERRUPTED_DIAGNOSTIC_OBSERVER_STABILITY_PASS
+STATUS_CONFIDENCE = PROVEN_ARCHITECTURE_FOUNDATION_PREPARATION_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_UNINTERRUPTED_DIAGNOSTIC_OBSERVER_STABILITY_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_FOUNDATION_PREPARATION_PENDING
-CURRENT_BLOCKER = NONE_FOR_PAPER_FOUNDATION
+CURRENT_STAGE = PAPER_TRADING_DOMAIN_AND_STATE_MACHINE_PENDING
+CURRENT_BLOCKER = NONE_FOR_DOMAIN_AND_STATE_MACHINE_TASK
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -587,11 +587,55 @@ Readonly API работает в отдельном hardened container; PostgreS
 и orchestrator не перезапускались. Schema structure, Alembic version,
 production data и существующие soak artifacts не изменялись.
 
+## Paper trading foundation preparation
+
+```text
+FOUNDATION_TASK = TRADERS_ML_PAPER_TRADING_FOUNDATION_PREPARATION_01
+FOUNDATION_RESULT = PASS
+ARCHITECTURE_DOCUMENT = docs/architecture/paper_trading_foundation_preparation.md
+ARCHITECTURE_COMMIT = d3d2cd7be70e61f1782c02ac4d9ea630ff3ffff7
+ENGINE_PAPER = EXISTS_AND_TESTED_RESEARCH_PLAN_ONLY
+ENGINE_EXECUTION = EXISTS_AND_TESTED_LOCAL_INTENT_ONLY
+ENGINE_POSITION = EXISTS_AND_TESTED_LOCAL_IN_MEMORY_DOMAIN
+ENGINE_EXIT = SKELETON_ONLY
+ENGINE_JOURNAL = SKELETON_ONLY
+ENGINE_SAFETY = SKELETON_ONLY
+AUTHORITATIVE_FUTURE_INPUT = IMMUTABLE_PAPER_EXECUTION_COMMAND
+ORCHESTRATOR_INTEGRATION = IMMUTABLE_COMMAND_PLUS_SEPARATE_IDEMPOTENT_WORKER
+EXECUTION_MODES = OFF,PAPER,LIVE
+DEFAULT_EXECUTION_MODE = OFF
+PAPER_REQUIRES_EXPLICIT_ENABLE = YES
+LIVE_ENABLED = NO
+PAPER_BINANCE_ORDER_API = FORBIDDEN_BY_CONSTRUCTION
+FOUNDATION_FILL_POLICY = NEXT_ELIGIBLE_CLOSED_1M_OPEN_WITH_FIXED_DIRECTIONAL_SLIPPAGE
+FOUNDATION_PARTIAL_FILLS = UNSUPPORTED
+FOUNDATION_POSITION_MULTIPLICITY = ONE_ACTIVE_POSITION_PER_MODE_AND_SYMBOL
+FOUNDATION_INTRABAR_AMBIGUITY = STOP_FIRST_CONSERVATIVE
+JOURNAL_MODEL = APPEND_ONLY_AUDIT_PROJECTION
+FUTURE_API_SCOPE = GET_ONLY
+FUTURE_WRITE_ROUTES_APPROVED = NO
+SAFE_VALIDATION = 469 passed
+AUTHORITATIVE_PINNED_API_RUNTIME = 85 passed
+PROTECTED_VENV_API_ENVIRONMENT_MISMATCH = 82 passed, 3 failed; FastAPI 0.139.2 is not locked 0.116.1
+SCANNER_FINDINGS = 0
+PRODUCTION_MUTATIONS = 0
+CLIENT_REPOSITORY_MUTATIONS = 0
+PAPER_TRADING_IMPLEMENTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+Foundation preparation verified the current source inventory and selected one
+fail-closed contract for the later domain implementation. It did not add
+source runtime, schema, routes, worker, client code, deployment, order, fill,
+position, or journal records. The existing readiness percentage is unchanged:
+this task improved architectural certainty, not runtime capability.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈82% | Интегрирован ранее; эта задача runtime не меняла |
+| Online analytics/paper pipeline | ≈82% | Paper foundation design contract completed and validated; paper trading remains unimplemented and disabled |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -604,7 +648,7 @@ production data и существующие soak artifacts не изменяли
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_FOUNDATION_PREPARATION_01
+TRADERS_ML_PAPER_TRADING_DOMAIN_AND_STATE_MACHINE_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -613,9 +657,10 @@ analysis latest-available-result remediation are completed with PASS. The
 historical full observation remains failed unchanged. A separate new
 diagnostic-observer window passed continuously for 4569.843 seconds with zero
 runtime UNKNOWN samples, no sequence gaps, and stable production invariants.
-Paper foundation is unblocked for a separately authorized preparation task;
-paper trading was not implemented, the 72-hour soak remains open, market-data
-health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
+Paper foundation preparation is completed with a verified design contract.
+The next separately authorized task is domain/state-machine implementation
+only. Paper trading was not implemented or enabled, the 72-hour soak remains
+open, market-data health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
 
 ## Правила актуализации
 
