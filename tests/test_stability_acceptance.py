@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.observability.stability_acceptance import evaluate_acceptance
 from app.observability.stability_models import (
+    ClassificationReasonCode,
     ObservationAggregates,
     RuntimeHealthClassification,
     SafeHttpResult,
@@ -19,10 +20,19 @@ def observation(duration=4500.0):
 
 
 def health(classification, transport=SampleTransport.SUCCESS):
+    reason = {
+        RuntimeHealthClassification.CURRENT: ClassificationReasonCode.CLASSIFIED_CURRENT,
+        RuntimeHealthClassification.WITHIN_GRACE: ClassificationReasonCode.CLASSIFIED_WITHIN_GRACE,
+        RuntimeHealthClassification.DEADLINE_EXPIRED: ClassificationReasonCode.CLASSIFIED_DEADLINE_EXPIRED,
+        RuntimeHealthClassification.DEGRADED: ClassificationReasonCode.CLASSIFIED_DEGRADED,
+        RuntimeHealthClassification.UNKNOWN: ClassificationReasonCode.GENUINELY_UNKNOWN_RUNTIME_STATE,
+    }[classification]
     return SafeHttpResult(
         "/api/v1/health", transport, 200 if transport is SampleTransport.SUCCESS else None,
-        0.1, 100, "application/json", "a" * 64,
-        runtime_health=classification,
+        0.1, 100, "application/json",
+        runtime_classification=classification,
+        classification_reason_code=reason,
+        classifier_branch_id=f"TEST_{classification.value}",
     )
 
 
@@ -87,4 +97,3 @@ def test_degraded_is_runtime_failure_not_observer_interruption():
 
 def test_start_mid_end_client_schedule_is_deterministic():
     assert tuple(("START", "MIDPOINT", "END")) == ("START", "MIDPOINT", "END")
-

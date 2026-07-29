@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import atexit
-import hashlib
 import json
 import os
 import subprocess
@@ -23,8 +22,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from app.observability.health_classifier import classify_health_body
 from app.observability.stability_acceptance import evaluate_acceptance
 from app.observability.stability_models import (
+    ClassificationReasonCode,
     CompletedSample,
     ObservationAggregates,
     PhaseName,
@@ -41,6 +42,7 @@ from app.observability.stability_schedule import (
 
 MAX_RESPONSE_BYTES = 2_000_000
 SAFE_OUTPUT_BYTES = 4096
+MAX_UNKNOWN_DETAILS = 20
 CORE_ROUTES = ("/api/v1/health", "/api/v1/analysis/BTCUSDT")
 CONTAINERS = (
     "traders-readonly-api-readonly-api-1",
@@ -74,36 +76,15 @@ def next_utc_hour(value: datetime) -> datetime:
     return value.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
 
 
-def runtime_classification(payload: Any) -> RuntimeHealthClassification:
-    if not isinstance(payload, dict) or not isinstance(payload.get("data"), dict):
-        return RuntimeHealthClassification.UNKNOWN
-    data = payload["data"]
-    values = {
-        str(data.get("timing_state", "")).upper(),
-        str(data.get("reason_code", "")).upper(),
-        str(data.get("status", "")).upper(),
-    }
-    if "DEADLINE_EXPIRED" in values or "DEADLINE_EXCEEDED" in values:
-        return RuntimeHealthClassification.DEADLINE_EXPIRED
-    if "WITHIN_GRACE" in values or "BOUNDARY_WITHIN_GRACE" in values:
-        return RuntimeHealthClassification.WITHIN_GRACE
-    if "CURRENT" in values:
-        return RuntimeHealthClassification.CURRENT
-    if values.intersection({"DEGRADED", "RECOVERING", "ERROR", "NOT_READY"}):
-        return RuntimeHealthClassification.DEGRADED
-    return RuntimeHealthClassification.UNKNOWN
-
-
-def _safe_hash(body: bytes) -> str:
-    return hashlib.sha256(body).hexdigest()
-
-
 def sample_http(
     base_url: str,
     route: str,
     *,
     timeout_seconds: float = 8.0,
     clock_ns: Callable[[], int] = time.monotonic_ns,
+    sample_sequence_id: int | None = None,
+    sample_phase: PhaseName | None = None,
+    sample_utc: str | None = None,
 ) -> SafeHttpResult:
     started = clock_ns()
     status: int | None = None
@@ -122,7 +103,7 @@ def sample_http(
         if len(body) > MAX_RESPONSE_BYTES:
             return SafeHttpResult(
                 route, SampleTransport.PARSE_ERROR, status,
-                (clock_ns() - started) / NANOSECONDS, len(body), content_type, None,
+                (clock_ns() - started) / NANOSECONDS, len(body), content_type,
                 safe_api_code="RESPONSE_TOO_LARGE",
             )
     except urllib.error.HTTPError as error:
@@ -140,7 +121,7 @@ def sample_http(
         return SafeHttpResult(
             route, SampleTransport.HTTP_ERROR, status,
             (clock_ns() - started) / NANOSECONDS, len(body), content_type,
-            _safe_hash(body), safe_api_code=api_code,
+            safe_api_code=api_code,
         )
     except (TimeoutError, urllib.error.URLError) as error:
         reason = getattr(error, "reason", None)
@@ -151,12 +132,35 @@ def sample_http(
         )
         return SafeHttpResult(
             route, transport, None, (clock_ns() - started) / NANOSECONDS,
-            0, None, None,
+            0, None,
         )
     except (ConnectionError, OSError):
         return SafeHttpResult(
             route, SampleTransport.CONNECTION_ERROR, None,
-            (clock_ns() - started) / NANOSECONDS, 0, None, None,
+            (clock_ns() - started) / NANOSECONDS, 0, None,
+        )
+
+    if route.endswith("/health"):
+        health = classify_health_body(body)
+        transport = (
+            SampleTransport.SUCCESS
+            if health.safe_structure_descriptor.json_parse_success
+            else SampleTransport.PARSE_ERROR
+        )
+        return SafeHttpResult(
+            route,
+            transport,
+            status,
+            (clock_ns() - started) / NANOSECONDS,
+            len(body),
+            content_type,
+            runtime_classification=health.runtime_classification,
+            classification_reason_code=health.classification_reason_code,
+            classifier_branch_id=health.classifier_branch_id,
+            safe_structure_descriptor=health.safe_structure_descriptor,
+            sample_sequence_id=sample_sequence_id,
+            sample_phase=sample_phase,
+            sample_utc=sample_utc,
         )
 
     try:
@@ -165,19 +169,13 @@ def sample_http(
         return SafeHttpResult(
             route, SampleTransport.PARSE_ERROR, status,
             (clock_ns() - started) / NANOSECONDS, len(body), content_type,
-            _safe_hash(body),
         )
     if not isinstance(payload, dict) or payload.get("api_version") != "v1":
         return SafeHttpResult(
             route, SampleTransport.PARSE_ERROR, status,
             (clock_ns() - started) / NANOSECONDS, len(body), content_type,
-            _safe_hash(body), safe_api_code="INVALID_ENVELOPE",
+            safe_api_code="INVALID_ENVELOPE",
         )
-    health = (
-        runtime_classification(payload)
-        if route.endswith("/health")
-        else RuntimeHealthClassification.UNKNOWN
-    )
     analysis_ms = None
     analysis_id = None
     if route.startswith("/api/v1/analysis/") and isinstance(payload.get("data"), dict):
@@ -192,14 +190,47 @@ def sample_http(
             return SafeHttpResult(
                 route, SampleTransport.PARSE_ERROR, status,
                 (clock_ns() - started) / NANOSECONDS, len(body), content_type,
-                _safe_hash(body), safe_api_code="INVALID_ANALYSIS_ENVELOPE",
+                safe_api_code="INVALID_ANALYSIS_ENVELOPE",
             )
     return SafeHttpResult(
         route, SampleTransport.SUCCESS, status,
         (clock_ns() - started) / NANOSECONDS, len(body), content_type,
-        _safe_hash(body), runtime_health=health,
         analysis_timestamp_ms=analysis_ms, analysis_run_id=analysis_id,
     )
+
+
+def render_unknown_details(
+    results: list[SafeHttpResult],
+) -> tuple[list[dict[str, Any]], bool]:
+    unknown = [
+        result
+        for result in results
+        if result.route.endswith("/health")
+        and result.runtime_health is RuntimeHealthClassification.UNKNOWN
+    ]
+    rendered = [
+        {
+            "classification_reason_code": result.classification_reason_code.value,
+            "classifier_branch_id": result.classifier_branch_id,
+            "content_type": result.content_type,
+            "http_status": result.numeric_http_status,
+            "response_bytes": result.response_bytes,
+            "sample_phase": (
+                result.sample_phase.value
+                if result.sample_phase is not None
+                else None
+            ),
+            "sample_sequence_id": result.sample_sequence_id,
+            "sample_utc": result.sample_utc,
+            "safe_structure_descriptor": (
+                asdict(result.safe_structure_descriptor)
+                if result.safe_structure_descriptor is not None
+                else None
+            ),
+        }
+        for result in unknown[:MAX_UNKNOWN_DETAILS]
+    ]
+    return rendered, len(unknown) > MAX_UNKNOWN_DETAILS
 
 
 class ClientSmokeProcess:
@@ -481,7 +512,14 @@ def simulate() -> dict[str, Any]:
         observation.http_results.append(
             SafeHttpResult(
                 "/api/v1/health", SampleTransport.SUCCESS, 200, 0.01, 100,
-                "application/json", "0" * 64, runtime_health=classification,
+                "application/json",
+                runtime_classification=classification,
+                classification_reason_code=(
+                    ClassificationReasonCode.GENUINELY_UNKNOWN_RUNTIME_STATE
+                    if classification is RuntimeHealthClassification.UNKNOWN
+                    else ClassificationReasonCode.CLASSIFIED_CURRENT
+                ),
+                classifier_branch_id=f"SIMULATED_{classification.value}",
             )
         )
     validation = validate_completed_schedule(schedule, completed)
@@ -563,7 +601,15 @@ def run_observation(args: argparse.Namespace) -> int:
             time.sleep(min(0.2, max(0.0, remaining)))
         started_ns = time.monotonic_ns()
         for route in CORE_ROUTES:
-            observation.http_results.append(sample_http(args.base_url, route))
+            observation.http_results.append(
+                sample_http(
+                    args.base_url,
+                    route,
+                    sample_sequence_id=item.sequence_id,
+                    sample_phase=item.phase_name,
+                    sample_utc=utc_now().isoformat(),
+                )
+            )
         completed_ns = time.monotonic_ns()
         lateness = max(0.0, (started_ns - item.scheduled_due_monotonic_ns) / NANOSECONDS)
         completed = CompletedSample(item, started_ns, completed_ns, lateness)
@@ -660,6 +706,9 @@ def run_observation(args: argparse.Namespace) -> int:
             for earlier, later in zip(analysis_timestamps, analysis_timestamps[1:])
         )
     )
+    unknown_details, unknown_details_truncated = render_unknown_details(
+        observation.http_results
+    )
     summary = {
         "schema": "TRADERS_READONLY_API_STABILITY/1",
         "TASK_STATUS": "COMPLETED" if acceptance else "FAILED",
@@ -684,6 +733,9 @@ def run_observation(args: argparse.Namespace) -> int:
         "HEALTH_RETURNED_TO_CURRENT": returned_current,
         "HEALTH_DEADLINE_EXPIRED_OBSERVED": RuntimeHealthClassification.DEADLINE_EXPIRED in health,
         "HEALTH_DEGRADED_COUNT": health.count(RuntimeHealthClassification.DEGRADED),
+        "HEALTH_UNKNOWN_DETAILS": unknown_details,
+        "HEALTH_UNKNOWN_DETAILS_LIMIT": MAX_UNKNOWN_DETAILS,
+        "HEALTH_UNKNOWN_DETAILS_TRUNCATED": unknown_details_truncated,
         "ANALYSIS_RESULT_TIMESTAMP_MIN": min(analysis_timestamps, default=None),
         "ANALYSIS_RESULT_TIMESTAMP_MAX": max(analysis_timestamps, default=None),
         "ANALYSIS_RESULT_TRANSITIONS": result_transition_count,

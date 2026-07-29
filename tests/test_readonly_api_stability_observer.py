@@ -43,12 +43,26 @@ class Response:
 
 
 def health_payload(timing_state):
+    status = {
+        "CURRENT": "OK",
+        "WITHIN_GRACE": "OK",
+        "DEADLINE_EXPIRED": "DEGRADED",
+        "DEGRADED": "DEGRADED",
+        "UNKNOWN": "UNKNOWN",
+    }[timing_state]
+    non_blocking = timing_state in {"CURRENT", "WITHIN_GRACE"}
     return {
         "api_version": "v1",
+        "generated_at": "2026-07-28T20:00:00.000Z",
         "data": {
+            "observed_at": "2026-07-28T20:00:00.000Z",
+            "services": [],
             "timing_state": timing_state,
             "reason_code": timing_state,
-            "status": "DEGRADED" if timing_state == "DEADLINE_EXPIRED" else "OK",
+            "status": status,
+            "operational": non_blocking,
+            "ready": non_blocking,
+            "acceptance_blocking": not non_blocking,
         },
     }
 

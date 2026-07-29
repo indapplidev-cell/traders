@@ -47,7 +47,11 @@ def evaluate_acceptance(
             }
         ):
             runtime_reasons.append(
-                f"RUNTIME_{result.runtime_health.value}:{result.route}"
+                "RUNTIME_"
+                f"{result.runtime_health.value}:"
+                f"{result.classification_reason_code.value}:"
+                f"{result.classifier_branch_id}:"
+                f"{result.route}"
             )
     reasons.extend(observer_reasons)
     reasons.extend(runtime_reasons)
