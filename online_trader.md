@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 53fce14bc6a9629d3ea01fe37affab913f4c1c64
+STATUS_AS_OF_COMMIT = 8035b2fe035d09f788879380955c31098467cbbc
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T18:46:33Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_COMMAND_INGESTION_AND_ORDER_CREATION_SERVICE_01_RETRY_01
-FILES_CHANGED = app/engine_paper/__init__.py; app/engine_paper/command_ingestion_service.py; app/engine_paper/repositories.py; app/engine_paper/repository_protocols.py; docs/architecture/paper_command_ingestion_service.md; tests/paper_command_ingestion_retry/__init__.py; tests/paper_command_ingestion_retry/conftest.py; tests/paper_command_ingestion_retry/test_postgres_ingestion_service.py; tests/paper_command_ingestion_retry/test_validation_matrix.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T20:07:41Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_CLOSE_ORDER_CAUSAL_CONTRACT_REMEDIATION_01
+FILES_CHANGED = alembic/versions/0011_paper_close_causal_boundary_and_exit_evaluation_cursor.py; app/db/paper_mappings.py; app/db/paper_models.py; app/engine_execution/paper_idempotency.py; app/engine_paper/__init__.py; app/engine_paper/exit_cursor_recovery.py; app/engine_paper/exit_evaluation_cursor.py; app/engine_paper/fill_causal_boundary.py; app/engine_paper/fill_roles.py; app/engine_paper/fill_simulator.py; app/engine_paper/order_execution_service.py; app/engine_paper/repositories.py; app/engine_paper/repository_protocols.py; docs/architecture/paper_close_causal_boundary_and_exit_cursor.md; docs/architecture/paper_trading_foundation_preparation.md; tests/paper_close_causal_cursor_remediation/__init__.py; tests/paper_close_causal_cursor_remediation/conftest.py; tests/paper_close_causal_cursor_remediation/test_boundary_contract_and_simulator.py; tests/paper_close_causal_cursor_remediation/test_cursor_domain_and_bounded_progression.py; tests/paper_close_causal_cursor_remediation/test_mapping_recovery_and_static_guarantees.py; tests/paper_close_causal_cursor_remediation/test_postgres_cursor_and_migration.py; tests/paper_command_ingestion_retry/test_postgres_ingestion_service.py; tests/paper_fill_simulator/conftest.py; tests/paper_fill_simulator/test_boundary_and_outcomes.py; tests/paper_order_execution_service/conftest.py; tests/paper_order_execution_service/test_postgres_service_integration.py; tests/paper_order_execution_service/test_service_contract_and_mapping.py; tests/paper_repository/conftest.py; tests/test_db_models.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PAPER_FINAL_APPROVAL_QUANTITY_AND_EVENT_VOCABULARY_PASS
+STATUS_CONFIDENCE = PROVEN_PAPER_CLOSE_CAUSAL_BOUNDARY_AND_EXIT_CURSOR_REMEDIATION_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_PAPER_FINAL_APPROVAL_QUANTITY_AND_EVENT_VOCABULARY_PA
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_EXIT_EVALUATION_SERVICE_PENDING
+CURRENT_STAGE = PAPER_TRADING_EXIT_EVALUATION_SERVICE_RETRY_PENDING
 CURRENT_BLOCKER = NONE_FOR_EXIT_EVALUATION_PREREQUISITES
 ```
 
@@ -1011,11 +1011,68 @@ are resolved only through bounded fresh-session lookup. This is isolated
 application-service readiness, not deployment, autonomous runtime, PAPER mode
 enablement, fill execution, position creation, or production acceptance.
 
+## PAPER close causal boundary and exit-evaluation cursor remediation
+
+```text
+REMEDIATION_TASK = TRADERS_ML_PAPER_CLOSE_ORDER_CAUSAL_CONTRACT_REMEDIATION_01
+REMEDIATION_RESULT = PASS
+IMPLEMENTATION_COMMIT = 8035b2fe035d09f788879380955c31098467cbbc
+FILL_CAUSAL_BOUNDARY_CONTRACT = PAPER_FILL_CAUSAL_BOUNDARY_V1_IMMUTABLE
+BOUNDARY_RESOLVER = PURE_FAIL_CLOSED_ZERO_IO
+ENTRY_SOURCE = PAPER_EXECUTION_COMMAND.closed_until_ms
+CLOSE_SOURCE = PAPER_EXIT_DECISION.source_closed_until_ms
+CLOSE_COMMAND_BOUNDARY_FALLBACK = FORBIDDEN
+EXCLUSIVE_NEXT_1M_CANDLE_SEMANTICS = PRESERVED
+ENTRY_FILL_IDENTITY = V1_BYTE_COMPATIBLE
+CLOSE_FILL_IDENTITY = V2_INCLUDES_EXIT_DECISION_AND_SOURCE_BOUNDARY
+FILL_PRICE_FEE_SLIPPAGE_FORMULAS_CHANGED = NO
+CURSOR_AUTHORITY = DEDICATED_PERSISTED_PAPER_EXIT_EVALUATION_CURSOR
+CURSOR_INITIALIZATION = ENTRY_FILL_CLOSED_BOUNDARY
+CURSOR_PROGRESS = CONTIGUOUS_MONOTONIC_VERSIONED_ROW_LOCKED
+NO_EXIT_TRIGGER = ZERO_BUSINESS_GRAPH_MUTATION_ONE_CURSOR_ADVANCE
+TRIGGER_COMPATIBILITY = ONE_UOW_CURSOR_EXIT_POSITION_CLOSE_ORDER_EVENTS_JOURNAL
+UNCERTAIN_COMMIT_RECOVERY = THREE_FRESH_SESSION_LOOKUPS_NO_BLIND_REPLAY
+MIGRATION_REVISION = 0011_paper_close_causal_boundary_and_exit_evaluation_cursor
+MIGRATION_DOWN_REVISION = 0010_paper_final_approval_and_order_transition_event_vocabulary
+MIGRATION_0009_CHANGED = NO
+MIGRATION_0010_CHANGED = NO
+UPGRADE_0010_TO_0011 = PASS_ISOLATED_POSTGRESQL
+DOWNGRADE_0011_TO_0010 = PASS_ISOLATED_POSTGRESQL
+REUPGRADE_0010_TO_0011 = PASS_ISOLATED_POSTGRESQL
+NEW_REMEDIATION_TESTS = 252 passed
+COMBINED_PAPER_FOUNDATION_REGRESSION = 1367 passed
+FULL_SAFE_PINNED_REGRESSION = 2458 passed, 2 skipped, 13 canary excluded
+SCANNER_SECURITY_TESTS = 37 passed
+CREDENTIAL_CONTROL_TESTS = 31 passed
+OBSERVER_TESTS = 78 passed
+ISOLATED_OPEN_CONNECTIONS_AFTER = 0
+ISOLATED_IDLE_IN_TRANSACTION_AFTER = 0
+ISOLATED_LOCK_WAITS_AFTER = 0
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PAPER_EXIT_EVALUATION_SERVICE_IMPLEMENTED = NO
+PAPER_WORKER_IMPLEMENTED = NO
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+ENTRY retains the original command boundary and v1 identity. CLOSE now receives
+an already validated exit-decision boundary and uses a causal v2 fill identity;
+the simulator no longer selects the source entity. The dedicated cursor starts
+at the entry-fill closed boundary, advances only across exact bounded contiguous
+windows, and is not an order, position, or exit-decision event. Repository
+primitives prove atomic no-trigger checkpointing and future trigger-graph
+composition, but do not implement the exit-evaluation service or autonomous
+runtime. Revision 0011 was exercised only on task-owned isolated PostgreSQL and
+was not applied to production.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈88% | Final approvals now feed a tested atomic command plus OPEN entry-order ingestion service; exit evaluation, worker/runtime integration, deployment, and PAPER enablement remain unimplemented |
+| Online analytics/paper pipeline | ≈88% | Close-fill causal authority and a bounded persisted exit cursor are ready; the exit evaluator itself, worker/runtime integration, deployment, and PAPER enablement remain unimplemented |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1028,7 +1085,7 @@ enablement, fill execution, position creation, or production acceptance.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_EXIT_EVALUATION_SERVICE_01
+TRADERS_ML_PAPER_TRADING_EXIT_EVALUATION_SERVICE_01_RETRY_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -1043,10 +1100,12 @@ repository/idempotency foundation tasks are completed. Separate final PAPER
 strategy, controlled quantity, and final risk authorities are implemented with
 a complete order-transition event vocabulary and isolated revision 0010. The
 callable command-ingestion service now atomically creates the immutable command
-and OPEN entry order with complete event/journal evidence. The next separately
-authorized task is PAPER exit evaluation. The deterministic fill simulator and
-callable entry/close order execution service remain tested in isolation; Paper
-trading runtime was not implemented or enabled, the 72-hour soak remains open,
+and OPEN entry order with complete event/journal evidence. Close fills now use
+the exit-decision causal boundary, and the dedicated persisted cursor supports
+bounded, contiguous, concurrency-safe exit evaluation without business-state
+mutation on no-trigger windows. The next separately authorized task is the
+PAPER exit-evaluation service retry. That evaluator, its worker, and Paper
+runtime were not implemented or enabled; the 72-hour soak remains open,
 market-data health stays `DEPLOYED_STABLE`, and LIVE stays disabled.
 
 ## Правила актуализации
