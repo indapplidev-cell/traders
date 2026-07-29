@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Callable
+from datetime import datetime
+from decimal import Decimal
 from typing import TypeVar
 
 from sqlalchemy import or_, select
@@ -37,6 +39,7 @@ from app.db.paper_models import (
     PaperOrderEventRecord,
     PaperOrderRecord,
     PaperPositionRecord,
+    PaperSimulationPolicyRecord,
 )
 from app.engine_execution.paper_idempotency import journal_event_idempotency_key
 from app.engine_execution.paper_models import PaperExecutionCommand, PaperFill, PaperOrder
@@ -84,6 +87,33 @@ class PaperCommandGraph:
     fills: tuple[PaperFill, ...]
     positions: tuple[PaperPosition, ...]
     exit_decisions: tuple[PaperExitDecision, ...]
+    journal: tuple[PaperDomainEvent, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PaperStoredSimulationPolicy:
+    policy_id: str
+    policy_version: int
+    status: str
+    price_source: str
+    timeframe: str
+    latency_candles: int
+    slippage_bps: Decimal
+    fee_bps: Decimal
+    partial_fill_enabled: bool
+    future_data_allowed: bool
+    intrabar_conflict_policy: str
+    configuration_fingerprint: str
+    created_at: datetime
+    retired_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class PaperIngestionGraph:
+    command: PaperExecutionCommand
+    order: PaperOrder | None
+    order_role: str | None
+    order_events: tuple[PaperDomainEvent, ...]
     journal: tuple[PaperDomainEvent, ...]
 
 
@@ -157,6 +187,51 @@ def _order_event_values(
     }
 
 
+def _order_event_from_record(row: PaperOrderEventRecord) -> PaperDomainEvent:
+    return PaperDomainEvent(
+        event_id=row.order_event_id,
+        event_type=PaperEventType(row.event_type),
+        occurred_at=row.occurred_at,
+        aggregate_type="paper_order",
+        aggregate_id=row.order_id,
+        correlation_id=row.correlation_id,
+        causation_id=row.causation_id,
+        reason_code=PaperReasonCode(row.reason_code),
+        aggregate_version=row.aggregate_version,
+    )
+
+
+class SimulationPolicyRepository:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def get_policy(
+        self, policy_id: str, *, policy_version: int = 1
+    ) -> PaperStoredSimulationPolicy | None:
+        row = self.session.get(
+            PaperSimulationPolicyRecord,
+            {"policy_id": policy_id, "policy_version": policy_version},
+        )
+        if row is None:
+            return None
+        return PaperStoredSimulationPolicy(
+            policy_id=row.policy_id,
+            policy_version=row.policy_version,
+            status=row.status,
+            price_source=row.price_source,
+            timeframe=row.timeframe,
+            latency_candles=row.latency_candles,
+            slippage_bps=row.slippage_bps,
+            fee_bps=row.fee_bps,
+            partial_fill_enabled=row.partial_fill_enabled,
+            future_data_allowed=row.future_data_allowed,
+            intrabar_conflict_policy=row.intrabar_conflict_policy,
+            configuration_fingerprint=row.configuration_fingerprint,
+            created_at=row.created_at,
+            retired_at=row.retired_at,
+        )
+
+
 class CommandRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -174,7 +249,10 @@ class CommandRepository:
         return orm_values_to_paper_command(row) if row else None
 
     def create_or_get_command(
-        self, command: PaperExecutionCommand
+        self,
+        command: PaperExecutionCommand,
+        *,
+        event_id: str | None = None,
     ) -> RepositoryResult[PaperExecutionCommand]:
         existing = self.get_command_by_idempotency_key(command.idempotency_key)
         if existing:
@@ -182,7 +260,8 @@ class CommandRepository:
         event = command_created_event(
             command,
             occurred_at=command.created_at,
-            event_id=journal_event_idempotency_key(
+            event_id=event_id
+            or journal_event_idempotency_key(
                 aggregate_type="paper_command",
                 aggregate_id=command.command_id,
                 causation_id=command.analysis_result_id,
@@ -286,6 +365,68 @@ class CommandRepository:
             tuple(map(orm_values_to_paper_event, journal_rows)),
         )
         return result(RepositoryOutcome.EXISTING_IDEMPOTENT, graph)
+
+    def get_ingestion_graph(
+        self, command_id: str, *, limit: int = MAX_GRAPH_ROWS
+    ) -> RepositoryResult[PaperIngestionGraph]:
+        if limit < 1 or limit > MAX_GRAPH_ROWS:
+            return result(
+                RepositoryOutcome.CONSTRAINT_VIOLATION,
+                reason_code="PAPER_REPOSITORY_LIMIT_INVALID",
+            )
+        command = self.get_command(command_id)
+        if command is None:
+            return result(RepositoryOutcome.NOT_FOUND)
+        order_rows = tuple(
+            self.session.scalars(
+                select(PaperOrderRecord)
+                .where(PaperOrderRecord.command_id == command_id)
+                .order_by(PaperOrderRecord.order_role, PaperOrderRecord.order_id)
+                .limit(2)
+            )
+        )
+        order_row = order_rows[0] if len(order_rows) == 1 else None
+        order = orm_values_to_paper_order(order_row) if order_row is not None else None
+        event_rows = ()
+        if order_row is not None:
+            event_rows = tuple(
+                self.session.scalars(
+                    select(PaperOrderEventRecord)
+                    .where(PaperOrderEventRecord.order_id == order_row.order_id)
+                    .order_by(
+                        PaperOrderEventRecord.aggregate_version,
+                        PaperOrderEventRecord.order_event_id,
+                    )
+                    .limit(limit)
+                )
+            )
+        journal_rows = tuple(
+            self.session.scalars(
+                select(PaperJournalEntryRecord)
+                .where(
+                    or_(
+                        PaperJournalEntryRecord.command_id == command_id,
+                        PaperJournalEntryRecord.order_id
+                        == (order_row.order_id if order_row is not None else ""),
+                    )
+                )
+                .order_by(
+                    PaperJournalEntryRecord.aggregate_version,
+                    PaperJournalEntryRecord.journal_entry_id,
+                )
+                .limit(MAX_JOURNAL_ROWS)
+            )
+        )
+        return result(
+            RepositoryOutcome.EXISTING_IDEMPOTENT,
+            PaperIngestionGraph(
+                command=command,
+                order=order,
+                order_role=order_row.order_role if order_row is not None else None,
+                order_events=tuple(map(_order_event_from_record, event_rows)),
+                journal=tuple(map(orm_values_to_paper_event, journal_rows)),
+            ),
+        )
 
 
 class JournalRepository:
@@ -752,6 +893,7 @@ def _copy_position(row: PaperPositionRecord, position: PaperPosition) -> None:
 class PaperRepositories:
     def __init__(self, session: Session) -> None:
         self.session = session
+        self.policies = SimulationPolicyRepository(session)
         self.commands = CommandRepository(session)
         self.orders = OrderRepository(session)
         self.positions = PositionRepository(session)

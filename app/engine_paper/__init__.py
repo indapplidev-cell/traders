@@ -22,6 +22,14 @@ from app.engine_paper.paper_approvals import (
     issue_paper_quantity_approval,
     map_final_approvals_to_command_compatibility,
 )
+from app.engine_paper.command_ingestion_service import (
+    PaperCommandIngestionOutcome,
+    PaperCommandIngestionReasonCode,
+    PaperCommandIngestionRequest,
+    PaperCommandIngestionResult,
+    PaperCommandIngestionService,
+    paper_ingestion_command_id,
+)
 
 __all__ = ["PaperConfig", "PaperContext", "PaperLevelBuilder", "PaperLevels",
            "PaperPlanPolicy", "PaperRunner", "PaperStore", "PaperTradePlan",
@@ -31,4 +39,7 @@ __all__ = ["PaperConfig", "PaperContext", "PaperLevelBuilder", "PaperLevels",
            "PaperStrategyApproval", "approval_serialization",
            "finalize_paper_risk_approval", "finalize_paper_strategy_approval",
            "issue_paper_quantity_approval",
-           "map_final_approvals_to_command_compatibility"]
+           "map_final_approvals_to_command_compatibility",
+           "PaperCommandIngestionOutcome", "PaperCommandIngestionReasonCode",
+           "PaperCommandIngestionRequest", "PaperCommandIngestionResult",
+           "PaperCommandIngestionService", "paper_ingestion_command_id"]

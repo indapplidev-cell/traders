@@ -6,13 +6,13 @@ from typing import Protocol
 
 from app.engine_execution.paper_models import PaperExecutionCommand, PaperOrder
 from app.engine_journal.paper_events import PaperDomainEvent
-from app.engine_paper.repositories import PaperCommandGraph
+from app.engine_paper.repositories import PaperCommandGraph, PaperIngestionGraph
 from app.engine_paper.repository_results import RepositoryResult
 
 
 class CommandRepositoryProtocol(Protocol):
     def create_or_get_command(
-        self, command: PaperExecutionCommand
+        self, command: PaperExecutionCommand, *, event_id: str | None = None
     ) -> RepositoryResult[PaperExecutionCommand]: ...
 
     def get_command(self, command_id: str) -> PaperExecutionCommand | None: ...
@@ -24,6 +24,10 @@ class CommandRepositoryProtocol(Protocol):
     def get_command_graph(
         self, command_id: str, *, limit: int = 100
     ) -> RepositoryResult[PaperCommandGraph]: ...
+
+    def get_ingestion_graph(
+        self, command_id: str, *, limit: int = 100
+    ) -> RepositoryResult[PaperIngestionGraph]: ...
 
 
 class OrderRepositoryProtocol(Protocol):
