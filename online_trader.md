@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d13e19b6a2fa8cac4b78d942a7ae54b20afbe597
+STATUS_AS_OF_COMMIT = f57d8bf37d62ffc680dd79f3b8b28fd99b7bafd8
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-29T11:08:53Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PERSISTENCE_SCHEMA_AND_MIGRATION_01
-FILES_CHANGED = alembic/env.py; alembic/versions/0009_paper_trading_persistence_foundation.py; app/db/paper_mappings.py; app/db/paper_models.py; docs/architecture/paper_trading_persistence_foundation.md; tests/paper_persistence/__init__.py; tests/paper_persistence/conftest.py; tests/paper_persistence/test_postgres_constraints.py; tests/paper_persistence/test_pure_mappings.py; tests/test_db_models.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-29T12:25:49Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_REPOSITORY_AND_IDEMPOTENCY_01
+FILES_CHANGED = app/engine_paper/commit_recovery.py; app/engine_paper/db_failures.py; app/engine_paper/repositories.py; app/engine_paper/repository_protocols.py; app/engine_paper/repository_results.py; app/engine_paper/semantic_idempotency.py; app/engine_paper/unit_of_work.py; docs/architecture/paper_repository_foundation.md; tests/paper_repository/__init__.py; tests/paper_repository/conftest.py; tests/paper_repository/test_atomic_lifecycle_and_concurrency.py; tests/paper_repository/test_repository_contract.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PAPER_PERSISTENCE_FOUNDATION_ISOLATED_PASS
+STATUS_CONFIDENCE = PROVEN_PAPER_REPOSITORY_FOUNDATION_ISOLATED_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PAPER_PERSISTENCE_FOUNDATION_ISOLATED_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_REPOSITORY_AND_IDEMPOTENCY_PENDING
-CURRENT_BLOCKER = NONE_FOR_REPOSITORY_AND_IDEMPOTENCY_TASK
+CURRENT_STAGE = PAPER_TRADING_DETERMINISTIC_FILL_SIMULATOR_PENDING
+CURRENT_BLOCKER = NONE_FOR_DETERMINISTIC_FILL_SIMULATOR_TASK
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -728,7 +728,7 @@ PRODUCTION_DATA_MUTATIONS = 0
 ALL_PRODUCTION_CONTAINER_AND_IMAGE_IDS_UNCHANGED = YES
 ALL_PRODUCTION_RESTART_DELTAS = 0
 PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
-PAPER_REPOSITORY_IMPLEMENTED = NO
+PAPER_REPOSITORY_IMPLEMENTED = YES_ISOLATED_TRANSACTIONAL_FOUNDATION
 PAPER_WORKER_IMPLEMENTED = NO
 PAPER_API_IMPLEMENTED = NO
 PAPER_CLIENT_IMPLEMENTED = NO
@@ -744,11 +744,54 @@ exit/position equality plus aggregate compare-and-swap remain explicit future
 repository transaction responsibilities; no invalid cross-table `CHECK` or
 new production trigger was introduced.
 
+## Paper trading repository and idempotency foundation
+
+```text
+REPOSITORY_TASK = TRADERS_ML_PAPER_TRADING_REPOSITORY_AND_IDEMPOTENCY_01
+REPOSITORY_RESULT = PASS
+IMPLEMENTATION_COMMIT = f57d8bf37d62ffc680dd79f3b8b28fd99b7bafd8
+SESSION_FACTORY = EXISTING_APP_DB_SESSION_REUSED
+UOW = SINGLE_EXPLICIT_TRANSACTION_OWNER
+TRANSACTION_ISOLATION = POSTGRESQL_DEFAULT_READ_COMMITTED_UNCHANGED
+LOCK_ORDER = COMMAND_ORDER_POSITION_EXIT_DECISION_INSERTS
+SELECT_FOR_UPDATE = ORDER_AND_POSITION_MUTATIONS
+OPTIMISTIC_VERSION = EXPECTED_VERSION_EXACT_PLUS_ONE
+SEMANTIC_IDEMPOTENCY = EXPLICIT_PUBLIC_CAUSAL_TUPLES
+ATOMIC_GRAPHS = COMMAND_ORDER_ENTRY_EXIT_CLOSE_EVENT_JOURNAL
+UNCERTAIN_COMMIT_RECOVERY = BOUNDED_FRESH_SESSION_LOOKUP_NO_BLIND_REPLAY
+ACTIVE_POSITION_CONFLICT = NORMALIZED
+BOUNDED_READS = COMMAND_GRAPH_100_JOURNAL_200
+NEW_REPOSITORY_TESTS = 122 passed
+PERSISTENCE_REGRESSION = 133 passed
+DOMAIN_REGRESSION = 216 passed
+FULL_SAFE_PINNED_REGRESSION = 1310 passed, 2 skipped, 13 canary deselected
+SCANNER_SECURITY_TESTS = 26 passed
+CREDENTIAL_CONTROL_TESTS = 36 passed
+OBSERVER_TESTS = 115 passed
+ISOLATED_POSTGRESQL = 0009_MIGRATED_TESTED_CLEANED
+ISOLATED_OPEN_CONNECTIONS_AFTER = 0
+ISOLATED_IDLE_IN_TRANSACTION_AFTER = 0
+ISOLATED_LOCK_WAITS_AFTER = 0
+MIGRATION_0009_CHANGED = NO
+NEW_ALEMBIC_REVISION = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+The repository layer is durable and transactionally tested only against a
+task-owned PostgreSQL database. It does not simulate fills or evaluate candles,
+does not poll commands, and is not connected to the orchestrator or any
+production runtime.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines and normalized persistence schema are implemented and tested in isolation; repository/runtime integration remains unimplemented and disabled |
+| Online analytics/paper pipeline | ≈82% | Pure immutable PAPER domain/state machines, normalized persistence schema, and transactional repository/idempotency foundation are implemented and tested in isolation; simulator/worker/runtime integration remains unimplemented and disabled |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -761,7 +804,7 @@ new production trigger was introduced.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_REPOSITORY_AND_IDEMPOTENCY_01
+TRADERS_ML_PAPER_TRADING_DETERMINISTIC_FILL_SIMULATOR_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -771,9 +814,9 @@ historical full observation remains failed unchanged. A separate new
 diagnostic-observer window passed continuously for 4569.843 seconds with zero
 runtime UNKNOWN samples, no sequence gaps, and stable production invariants.
 Paper foundation preparation is completed with a verified design contract.
-The immutable domain/state-machine and isolated persistence foundation tasks
-are completed. The next separately authorized task is repository and
-idempotency workflow implementation only. Paper trading was not implemented or
+The immutable domain/state-machine, isolated persistence, and transactional
+repository/idempotency foundation tasks are completed. The next separately
+authorized task is deterministic fill simulator implementation only. Paper trading was not implemented or
 enabled, the 72-hour soak remains open, market-data health stays
 `DEPLOYED_STABLE`, and LIVE stays disabled.
 
