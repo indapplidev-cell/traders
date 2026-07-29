@@ -84,6 +84,102 @@ def fill_idempotency_key(order_id: str, role: str) -> str:
     )
 
 
+def _simulated_fill_causal_parts(
+    *,
+    contract_version: str,
+    order_id: str,
+    fill_role: str,
+    source_open_time_ms: int,
+    source_close_boundary_ms: int,
+    simulation_policy_id: str,
+    slippage_policy_id: str,
+    fee_policy_id: str,
+    latency_policy_id: str,
+) -> tuple[object, ...]:
+    opened = require_nonnegative_int(source_open_time_ms, "source_open_time_ms")
+    closed = require_nonnegative_int(
+        source_close_boundary_ms,
+        "source_close_boundary_ms",
+    )
+    if closed <= opened:
+        fail(
+            PaperReasonCode.PAPER_IDEMPOTENCY_KEY_INVALID,
+            "fill source boundary must follow its open",
+            "source_close_boundary_ms",
+        )
+    return (
+        require_identity(contract_version, "contract_version"),
+        require_identity(order_id, "order_id"),
+        require_identity(fill_role, "fill_role"),
+        opened,
+        closed,
+        require_identity(simulation_policy_id, "simulation_policy_id"),
+        require_identity(slippage_policy_id, "slippage_policy_id"),
+        require_identity(fee_policy_id, "fee_policy_id"),
+        require_identity(latency_policy_id, "latency_policy_id"),
+    )
+
+
+def simulated_fill_idempotency_key(
+    *,
+    contract_version: str,
+    order_id: str,
+    fill_role: str,
+    source_open_time_ms: int,
+    source_close_boundary_ms: int,
+    simulation_policy_id: str,
+    slippage_policy_id: str,
+    fee_policy_id: str,
+    latency_policy_id: str,
+) -> str:
+    """Identity for a simulated fill over the approved public causal tuple."""
+
+    return _key(
+        "fill",
+        *_simulated_fill_causal_parts(
+            contract_version=contract_version,
+            order_id=order_id,
+            fill_role=fill_role,
+            source_open_time_ms=source_open_time_ms,
+            source_close_boundary_ms=source_close_boundary_ms,
+            simulation_policy_id=simulation_policy_id,
+            slippage_policy_id=slippage_policy_id,
+            fee_policy_id=fee_policy_id,
+            latency_policy_id=latency_policy_id,
+        ),
+    )
+
+
+def simulated_fill_id(
+    *,
+    contract_version: str,
+    order_id: str,
+    fill_role: str,
+    source_open_time_ms: int,
+    source_close_boundary_ms: int,
+    simulation_policy_id: str,
+    slippage_policy_id: str,
+    fee_policy_id: str,
+    latency_policy_id: str,
+) -> str:
+    """Deterministic fill identifier over the same public causal tuple."""
+
+    return _key(
+        "fill-id",
+        *_simulated_fill_causal_parts(
+            contract_version=contract_version,
+            order_id=order_id,
+            fill_role=fill_role,
+            source_open_time_ms=source_open_time_ms,
+            source_close_boundary_ms=source_close_boundary_ms,
+            simulation_policy_id=simulation_policy_id,
+            slippage_policy_id=slippage_policy_id,
+            fee_policy_id=fee_policy_id,
+            latency_policy_id=latency_policy_id,
+        ),
+    )
+
+
 def position_application_key(fill_id: str) -> str:
     return _key("position-application", require_identity(fill_id, "fill_id"))
 
