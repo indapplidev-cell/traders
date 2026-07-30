@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = bbc2a898633746c382c4edbee176397215e7d027
+STATUS_AS_OF_COMMIT = 515130c04bef5621b948e2a504d2c15acc361e06
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-30T17:15:16Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_ENTRY_CURSOR_INITIALIZATION_REMEDIATION_01_RETRY_01
-FILES_CHANGED = app/engine_paper/order_execution_service.py; app/engine_paper/repositories.py; docs/architecture/paper_order_execution_service.md; tests/paper_order_execution_service/conftest.py; tests/paper_order_execution_service/test_entry_cursor_retry.py; tests/paper_order_execution_service/test_entry_cursor_retry_postgres.py; tests/paper_order_execution_service/test_postgres_service_integration.py; tests/paper_repository/test_atomic_lifecycle_and_concurrency.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-30T18:21:28Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_CONTROLLED_WORKER_AND_LIFECYCLE_ORCHESTRATION_01_RETRY_01
+FILES_CHANGED = app/engine_paper/controlled_worker.py; docs/architecture/paper_controlled_lifecycle_worker.md; tests/paper_controlled_worker_retry/__init__.py; tests/paper_controlled_worker_retry/conftest.py; tests/paper_controlled_worker_retry/test_classifier_contract_and_authorization.py; tests/paper_controlled_worker_retry/test_cycle_stages_resume_and_faults.py; tests/paper_controlled_worker_retry/test_postgres_concurrency.py; tests/paper_controlled_worker_retry/test_postgres_full_lifecycle.py; tests/paper_controlled_worker_retry/test_static_safety.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PAPER_ENTRY_CURSOR_INITIALIZATION_RETRY_PASS
+STATUS_CONFIDENCE = PROVEN_CONTROLLED_PAPER_LIFECYCLE_WORKER_RETRY_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PAPER_ENTRY_CURSOR_INITIALIZATION_RETRY_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_CONTROLLED_WORKER_AND_LIFECYCLE_ORCHESTRATION_RETRY_PENDING
-CURRENT_BLOCKER = NONE_FOR_CONTROLLED_WORKER_PREREQUISITES
+CURRENT_STAGE = PAPER_TRADING_CONTROLLED_RUNTIME_CONFIGURATION_AND_DRY_RUN_PENDING
+CURRENT_BLOCKER = SEPARATE_RUNTIME_CONFIGURATION_AND_DRY_RUN_AUTHORIZATION_REQUIRED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1181,14 +1181,81 @@ from the immutable ENTRY fill causal boundary. Replay and uncertain-commit
 verification require the complete graph and never repair historical partial
 graphs. A task-owned PostgreSQL 16 compatibility case loaded the new cursor and
 advanced it through one contiguous no-trigger window while the position
-remained OPEN. This satisfies the controlled-worker cursor prerequisite only;
-the worker and autonomous PAPER runtime remain unimplemented and disabled.
+remained OPEN. This satisfies the controlled-worker cursor prerequisite. The
+autonomous PAPER runtime remains unimplemented and disabled.
+
+## Controlled PAPER lifecycle worker
+
+```text
+WORKER_TASK = TRADERS_ML_PAPER_TRADING_CONTROLLED_WORKER_AND_LIFECYCLE_ORCHESTRATION_01_RETRY_01
+WORKER_RESULT = PASS
+IMPLEMENTATION_COMMIT = 515130c04bef5621b948e2a504d2c15acc361e06
+PAPER_CONTROLLED_WORKER = IMPLEMENTED_AND_TESTED_ISOLATED
+PAPER_END_TO_END_LIFECYCLE = CONTROLLED_BOUNDED_CYCLE_READY
+CYCLE_REQUEST = IMMUTABLE_NESTED_STAGE_INPUTS_EXPLICIT_PAPER_AUTHORIZATION
+CYCLE_RESULT = IMMUTABLE_BOUNDED_SAFE_PERSISTED_GRAPH_SUMMARY
+LIFECYCLE_CLASSIFIER = PURE_SIX_STATE_FAIL_CLOSED
+STAGES = INGEST_COMMAND_EXECUTE_ENTRY_EVALUATE_EXIT_EXECUTE_CLOSE_COMPLETE_BLOCKED_FAILED_CANCELLED
+ADVANCE_ONE_LIFECYCLE_STEP = IMPLEMENTED_MAX_ONE_MUTATING_STAGE
+ADVANCE_UNTIL_BLOCKED_WITHIN_REQUEST = IMPLEMENTED_EXPLICIT_MAX_FOUR
+PERSISTED_GRAPH_SOURCE_OF_TRUTH = FRESH_READ_ONLY_UOW_AT_EACH_BOUNDARY
+STALE_ORM_OBJECT_AUTHORITY = NO
+TRANSACTION_PER_APPLICATION_SERVICE = YES
+CROSS_STAGE_TRANSACTION = NO
+WORKER_DIRECT_SESSION_COMMIT = NO
+EXPLICIT_PAPER_AUTHORIZATION = REQUIRED_AT_CYCLE_AND_CHILD_BOUNDARIES
+OFF_ALLOWED = NO
+LIVE_ALLOWED = NO
+MARKET_DATA_FETCH = NO
+POLLING_SLEEP_WAIT = NO
+RESUME = PERSISTED_GRAPH_DRIVEN
+REPLAY = NO_BLIND_REPEAT_COMPLETED_STAGE
+CANCELLATION = COOPERATIVE_BETWEEN_CHILD_TRANSACTIONS
+CONCURRENCY = INGEST_ENTRY_NO_TRIGGER_TRIGGER_CLOSE_PASS_POSTGRESQL
+WORKER_FAULT_RESUME = PASS_POSTGRESQL
+FULL_LIFECYCLE = COMMAND_ENTRY_CURSOR_NO_TRIGGER_EXIT_CLOSE_CLOSED_PASS
+FULL_LIFECYCLE_MATERIAL_COUNTS = 1_COMMAND_2_ORDERS_2_FILLS_1_POSITION_1_CURSOR_1_EXIT_DECISION
+FULL_LIFECYCLE_AUDIT_COUNTS = 8_ORDER_EVENTS_12_JOURNAL_ROWS
+FEES_AND_REALIZED_PNL = APPLIED_EXACTLY_ONCE_REPLAY_UNCHANGED
+NEW_CONTROLLED_WORKER_RETRY_TESTS = 423 passed
+FULL_SAFE_PINNED_REGRESSION = 3437 passed, 2 skipped, 13 canary excluded
+SCANNER_SECURITY_TESTS = 37 passed
+CREDENTIAL_CONTROL_TESTS = 36 passed
+OBSERVER_TESTS = 103 passed
+PROTECTED_VENV_WORKER_IMPORT_SMOKE = PASS
+ISOLATED_POSTGRESQL = 0011_MIGRATED_TESTED_CLEANED
+ISOLATED_OPEN_CONNECTIONS_AFTER = 0
+ISOLATED_IDLE_IN_TRANSACTION_AFTER = 0
+ISOLATED_LOCK_WAITS_AFTER = 0
+MIGRATION_0009_CHANGED = NO
+MIGRATION_0010_CHANGED = NO
+MIGRATION_0011_CHANGED = NO
+NEW_ALEMBIC_REVISION = NO
+ORM_SCHEMA_CHANGED = NO
+CHILD_SERVICE_SEMANTICS_CHANGED = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+PAPER_WORKER_RUNTIME_STARTED = NO
+PAPER_DAEMON_STARTED = NO
+PAPER_SCHEDULER_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_TRADING_IMPLEMENTED_OR_ENABLED = NO
+```
+
+The controller links the existing ingestion, ENTRY execution, exit evaluation,
+and CLOSE execution authorities without duplicating their business logic or
+transactions. Every successful child stage is durable before a fresh bounded
+graph reload chooses the next state. The complete chain was proven only in a
+task-owned PostgreSQL 16 database. No production runtime, background process,
+API, client, exchange transport, PAPER mode, or LIVE mode was enabled.
 
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈90% | ENTRY now atomically initializes the exit cursor and the worker prerequisite is ready for retry; controlled worker/runtime integration, deployment, and PAPER enablement remain unimplemented |
+| Online analytics/paper pipeline | ≈92% | Controlled bounded lifecycle orchestration now passes isolated PostgreSQL through CLOSED with exact replay/concurrency/accounting; runtime configuration, dry-run acceptance, deployment, and PAPER enablement remain pending |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1201,7 +1268,7 @@ the worker and autonomous PAPER runtime remain unimplemented and disabled.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_CONTROLLED_WORKER_AND_LIFECYCLE_ORCHESTRATION_01_RETRY_01
+TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_CONFIGURATION_AND_DRY_RUN_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -1225,10 +1292,11 @@ position/OPEN CLOSE-order graph with complete audit rows, while creating no
 close fill or realized PnL. Successful ENTRY execution now initializes its
 exit-evaluation cursor atomically from the ENTRY fill boundary, eliminating
 `CURSOR_NOT_FOUND` for fresh successful ENTRY graphs. The next separately
-authorized task is the controlled worker and lifecycle orchestration retry.
-That worker and Paper runtime were not
-implemented or enabled; the 72-hour soak remains open, market-data health
-stays `DEPLOYED_STABLE`, and LIVE stays disabled.
+authorized task is controlled runtime configuration and dry-run acceptance.
+The bounded worker is implemented and tested only in an isolated environment;
+no autonomous Paper runtime was configured, deployed, started, or enabled.
+The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
+LIVE stays disabled.
 
 ## Правила актуализации
 
