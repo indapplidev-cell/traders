@@ -35,6 +35,12 @@ from app.engine_paper.fill_simulator import (
     PaperFillRole,
     simulate_paper_fill,
 )
+from app.engine_paper.exit_evaluation_cursor import (
+    PAPER_EXIT_CURSOR_CONTRACT_VERSION,
+    PaperExitEvaluationCursor,
+    paper_exit_evaluation_cursor_id,
+)
+from app.engine_paper.exit_evaluator import PAPER_EXIT_EVALUATION_POLICY_ID
 from app.engine_paper.repositories import (
     CloseFillGraph,
     EntryFillGraph,
@@ -95,6 +101,7 @@ class PaperOrderExecutionOutcome(StrEnum):
     STALE_ORDER_VERSION = "STALE_ORDER_VERSION"
     STALE_POSITION_VERSION = "STALE_POSITION_VERSION"
     GRAPH_INCONSISTENT = "GRAPH_INCONSISTENT"
+    EXISTING_ENTRY_GRAPH_INCONSISTENT = "EXISTING_ENTRY_GRAPH_INCONSISTENT"
     IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT"
     ACTIVE_POSITION_CONFLICT = "ACTIVE_POSITION_CONFLICT"
     CONSTRAINT_VIOLATION = "CONSTRAINT_VIOLATION"
@@ -116,6 +123,9 @@ class PaperOrderExecutionReasonCode(StrEnum):
     POSITION_NOT_FOUND = "PAPER_EXECUTION_POSITION_NOT_FOUND"
     EXIT_NOT_FOUND = "PAPER_EXECUTION_EXIT_NOT_FOUND"
     GRAPH_INCONSISTENT = "PAPER_EXECUTION_GRAPH_INCONSISTENT"
+    EXISTING_ENTRY_GRAPH_INCONSISTENT = (
+        "PAPER_EXECUTION_EXISTING_ENTRY_GRAPH_INCONSISTENT"
+    )
     INVALID_ROLE = "PAPER_EXECUTION_INVALID_ROLE"
     INVALID_ORDER_STATE = "PAPER_EXECUTION_INVALID_ORDER_STATE"
     INVALID_POSITION_STATE = "PAPER_EXECUTION_INVALID_POSITION_STATE"
@@ -270,6 +280,10 @@ class PaperOrderExecutionResult:
     source_boundary_closed_until_ms: int | None = None
     selected_candle_open_ms: int | None = None
     selected_candle_close_boundary_ms: int | None = None
+    cursor_id: str | None = None
+    cursor_version: int | None = None
+    cursor_last_evaluated_closed_until_ms: int | None = None
+    cursor_evaluation_policy_id: str | None = None
 
     @property
     def successful(self) -> bool:
@@ -427,39 +441,6 @@ class PaperOrderExecutionService:
                         order=order,
                         simulation_outcome=simulation.outcome,
                     )
-                if replay:
-                    graph_result = repositories.commands.get_command_graph(
-                        request.command_id, limit=_COMMAND_GRAPH_LIMIT
-                    )
-                    existing = self._existing_entry_graph(
-                        graph_result.value, request, simulation.fill
-                    )
-                    if existing is None:
-                        return self._failure(
-                            request,
-                            operation,
-                            PaperOrderExecutionOutcome.IDEMPOTENCY_CONFLICT,
-                            PaperOrderExecutionReasonCode.IDEMPOTENCY_CONFLICT,
-                            order=order,
-                            simulation_outcome=simulation.outcome,
-                        )
-                    return self._success(
-                        request,
-                        operation,
-                        PaperOrderExecutionOutcome.ENTRY_ALREADY_EXECUTED,
-                        RepositoryResult(
-                            RepositoryOutcome.EXISTING_IDEMPOTENT,
-                            existing,
-                            "PAPER_REPOSITORY_EXISTING_IDEMPOTENT",
-                            "existing entry execution graph",
-                        ),
-                        simulation.outcome,
-                        request.expected_order_version,
-                        None,
-                        boundary=boundary_result.boundary,
-                        selected_candle=simulation.selected_candle,
-                    )
-
                 order_change = fill_order(
                     simulation_order,
                     simulation.fill,
@@ -479,6 +460,55 @@ class PaperOrderExecutionService:
                     order_change.events[0],
                     position_change.events[0],
                 )
+                cursor = self._entry_cursor(
+                    request, simulation.fill, position_change.position
+                )
+                if replay:
+                    graph_result = repositories.commands.get_command_graph(
+                        request.command_id, limit=_COMMAND_GRAPH_LIMIT
+                    )
+                    existing = self._existing_entry_graph(
+                        graph_result.value,
+                        request,
+                        simulation.fill,
+                        position_change.position,
+                        cursor,
+                        order_event,
+                        journal,
+                    )
+                    if existing.outcome is not RepositoryOutcome.EXISTING_IDEMPOTENT:
+                        inconsistent = (
+                            existing.outcome
+                            is RepositoryOutcome.INTERNAL_INVARIANT_FAILURE
+                        )
+                        return self._failure(
+                            request,
+                            operation,
+                            (
+                                PaperOrderExecutionOutcome.EXISTING_ENTRY_GRAPH_INCONSISTENT
+                                if inconsistent
+                                else PaperOrderExecutionOutcome.IDEMPOTENCY_CONFLICT
+                            ),
+                            (
+                                PaperOrderExecutionReasonCode.EXISTING_ENTRY_GRAPH_INCONSISTENT
+                                if inconsistent
+                                else PaperOrderExecutionReasonCode.IDEMPOTENCY_CONFLICT
+                            ),
+                            order=order,
+                            simulation_outcome=simulation.outcome,
+                            repository_outcome=existing.outcome,
+                        )
+                    return self._success(
+                        request,
+                        operation,
+                        PaperOrderExecutionOutcome.ENTRY_ALREADY_EXECUTED,
+                        existing,
+                        simulation.outcome,
+                        request.expected_order_version,
+                        None,
+                        boundary=boundary_result.boundary,
+                        selected_candle=simulation.selected_candle,
+                    )
                 if not replay:
                     active = repositories.positions.get_active_position(
                         ExecutionMode.PAPER, command.symbol
@@ -502,6 +532,7 @@ class PaperOrderExecutionService:
                     request.expected_order_version,
                     simulation.fill,
                     position_change.position,
+                    cursor,
                     order_event,
                     position_event,
                     journal,
@@ -1122,13 +1153,49 @@ class PaperOrderExecutionService:
         )
 
     @staticmethod
+    def _entry_cursor(
+        request: PaperEntryExecutionRequest,
+        fill,
+        position: PaperPosition,
+    ) -> PaperExitEvaluationCursor:
+        boundary = fill.source_closed_until_ms
+        return PaperExitEvaluationCursor(
+            cursor_id=paper_exit_evaluation_cursor_id(
+                position_id=position.position_id,
+                mode=position.mode,
+                symbol=position.symbol,
+                position_opened_closed_until_ms=boundary,
+                evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
+            ),
+            contract_version=PAPER_EXIT_CURSOR_CONTRACT_VERSION,
+            position_id=position.position_id,
+            mode=position.mode,
+            symbol=position.symbol,
+            last_evaluated_closed_until_ms=boundary,
+            position_opened_closed_until_ms=boundary,
+            evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
+            version=0,
+            created_at=request.operation_at,
+            updated_at=request.operation_at,
+            correlation_id=request.correlation_id,
+            causation_id=fill.fill_id,
+        )
+
+    @staticmethod
     def _existing_entry_graph(
         graph: PaperCommandGraph | None,
         request: PaperEntryExecutionRequest,
         expected_fill,
-    ) -> EntryFillGraph | None:
+        expected_position: PaperPosition,
+        expected_cursor: PaperExitEvaluationCursor,
+        expected_order_event: PaperDomainEvent,
+        expected_journal: tuple[PaperDomainEvent, ...],
+    ) -> RepositoryResult[EntryFillGraph]:
         if graph is None:
-            return None
+            return RepositoryResult(
+                RepositoryOutcome.INTERNAL_INVARIANT_FAILURE,
+                reason_code="PAPER_REPOSITORY_EXISTING_ENTRY_GRAPH_INCONSISTENT",
+            )
         order = next(
             (item for item in graph.orders if item.order_id == request.order_id),
             None,
@@ -1146,16 +1213,77 @@ class PaperOrderExecutionService:
             ),
             None,
         )
+        position_for_fill = next(
+            (
+                item
+                for item in graph.positions
+                if item.entry_fill_id == request.fill_id
+            ),
+            None,
+        )
+        if position is None and position_for_fill is not None:
+            return RepositoryResult(
+                RepositoryOutcome.IDEMPOTENCY_CONFLICT,
+                reason_code="PAPER_IDEMPOTENCY_IDENTITY_COLLISION",
+            )
+        cursor = next(
+            (
+                item
+                for item in graph.cursors
+                if item.position_id == request.position_id
+            ),
+            None,
+        )
+        order_event = next(
+            (
+                item
+                for item in graph.order_events
+                if item.event_id == expected_order_event.event_id
+            ),
+            None,
+        )
+        journal_by_id = {item.event_id: item for item in graph.journal}
+        persisted_journal = tuple(
+            journal_by_id.get(item.event_id) for item in expected_journal
+        )
         if (
             order is None
             or fill is None
             or position is None
+            or cursor is None
+            or order_event is None
+            or any(item is None for item in persisted_journal)
             or order.state is not PaperOrderState.FILLED
             or order.applied_fill_id != fill.fill_id
-            or fill_semantic_tuple(fill) != fill_semantic_tuple(expected_fill)
         ):
-            return None
-        return EntryFillGraph(order, fill, position)
+            return RepositoryResult(
+                RepositoryOutcome.INTERNAL_INVARIANT_FAILURE,
+                reason_code="PAPER_REPOSITORY_EXISTING_ENTRY_GRAPH_INCONSISTENT",
+            )
+        if (
+            fill_semantic_tuple(fill) != fill_semantic_tuple(expected_fill)
+            or position != expected_position
+            or cursor != expected_cursor
+            or order_event != expected_order_event
+            or tuple(persisted_journal) != expected_journal
+        ):
+            return RepositoryResult(
+                RepositoryOutcome.IDEMPOTENCY_CONFLICT,
+                reason_code="PAPER_IDEMPOTENCY_IDENTITY_COLLISION",
+            )
+        return RepositoryResult(
+            RepositoryOutcome.EXISTING_IDEMPOTENT,
+            EntryFillGraph(
+                order,
+                fill,
+                position,
+                cursor,
+                order_event,
+                tuple(item for item in persisted_journal if item is not None),
+            ),
+            "PAPER_REPOSITORY_EXISTING_IDEMPOTENT",
+            "existing cursor-complete entry execution graph",
+        )
 
     @staticmethod
     def _existing_close_graph(
@@ -1271,10 +1399,70 @@ class PaperOrderExecutionService:
             (item for item in graph.positions if item.position_id == request.position_id),
             None,
         )
+        position_for_fill = next(
+            (
+                item
+                for item in graph.positions
+                if item.entry_fill_id == request.fill_id
+            ),
+            None,
+        )
+        if position is None and position_for_fill is not None:
+            return RepositoryResult(
+                RepositoryOutcome.IDEMPOTENCY_CONFLICT,
+                reason_code="PAPER_IDEMPOTENCY_IDENTITY_COLLISION",
+            )
+        if operation == "ENTRY":
+            cursor = next(
+                (
+                    item
+                    for item in graph.cursors
+                    if item.position_id == request.position_id
+                ),
+                None,
+            )
+            order_event = next(
+                (
+                    item
+                    for item in graph.order_events
+                    if item.event_id == request.order_event_id
+                ),
+                None,
+            )
+            journal_by_id = {item.event_id: item for item in graph.journal}
+            journal = tuple(
+                journal_by_id.get(event_id)
+                for event_id in request.journal_entry_ids
+            )
+            if (
+                order is not None
+                and order.state is PaperOrderState.OPEN
+                and fill is None
+                and position is None
+                and cursor is None
+                and order_event is None
+                and all(item is None for item in journal)
+            ):
+                return None
+            if (
+                order is None
+                or fill is None
+                or position is None
+                or cursor is None
+                or order_event is None
+                or any(item is None for item in journal)
+            ):
+                raise RuntimeError("PAPER_EXISTING_ENTRY_GRAPH_INCONSISTENT")
+            return EntryFillGraph(
+                order,
+                fill,
+                position,
+                cursor,
+                order_event,
+                tuple(item for item in journal if item is not None),
+            )
         if order is None or fill is None or position is None:
             return None
-        if operation == "ENTRY":
-            return EntryFillGraph(order, fill, position)
         return CloseFillGraph(order, fill, position)
 
     @staticmethod
@@ -1287,6 +1475,14 @@ class PaperOrderExecutionService:
             and found.order == expected.order
             and fill_semantic_tuple(found.fill) == fill_semantic_tuple(expected.fill)
             and found.position == expected.position
+            and (
+                not isinstance(found, EntryFillGraph)
+                or (
+                    found.cursor == expected.cursor
+                    and found.order_event == expected.order_event
+                    and found.journal == expected.journal
+                )
+            )
         )
 
     def _simulation_failure(
@@ -1336,6 +1532,13 @@ class PaperOrderExecutionService:
         elif repository_result.outcome is RepositoryOutcome.NOT_FOUND:
             outcome = PaperOrderExecutionOutcome.ORDER_NOT_FOUND
             reason = PaperOrderExecutionReasonCode.ORDER_NOT_FOUND
+        elif (
+            operation == "ENTRY"
+            and repository_result.reason_code
+            == "PAPER_REPOSITORY_EXISTING_ENTRY_GRAPH_INCONSISTENT"
+        ):
+            outcome = PaperOrderExecutionOutcome.EXISTING_ENTRY_GRAPH_INCONSISTENT
+            reason = PaperOrderExecutionReasonCode.EXISTING_ENTRY_GRAPH_INCONSISTENT
         else:
             outcome = _REPOSITORY_OUTCOME_MAP.get(
                 repository_result.outcome,
@@ -1406,6 +1609,22 @@ class PaperOrderExecutionService:
             ),
             selected_candle_close_boundary_ms=(
                 selected_candle.close_boundary_ms if selected_candle else None
+            ),
+            cursor_id=(
+                graph.cursor.cursor_id if isinstance(graph, EntryFillGraph) else None
+            ),
+            cursor_version=(
+                graph.cursor.version if isinstance(graph, EntryFillGraph) else None
+            ),
+            cursor_last_evaluated_closed_until_ms=(
+                graph.cursor.last_evaluated_closed_until_ms
+                if isinstance(graph, EntryFillGraph)
+                else None
+            ),
+            cursor_evaluation_policy_id=(
+                graph.cursor.evaluation_policy_id
+                if isinstance(graph, EntryFillGraph)
+                else None
             ),
         )
 

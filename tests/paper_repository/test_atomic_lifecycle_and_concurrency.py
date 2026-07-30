@@ -31,6 +31,12 @@ from app.engine_execution.paper_state_machine import (
 from app.engine_exit.paper_exit import create_exit_decision
 from app.engine_journal.paper_events import PaperDomainEvent
 from app.engine_paper.repository_results import RepositoryOutcome
+from app.engine_paper.exit_evaluation_cursor import (
+    PAPER_EXIT_CURSOR_CONTRACT_VERSION,
+    PaperExitEvaluationCursor,
+    paper_exit_evaluation_cursor_id,
+)
+from app.engine_paper.exit_evaluator import PAPER_EXIT_EVALUATION_POLICY_ID
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_position.paper_state_machine import apply_close_fill, apply_entry_fill
 from app.engine_safety.paper_domain import (
@@ -143,6 +149,7 @@ def _prepare_entry(uow, suffix: str = "1"):
         fill_id=f"fill:{suffix}:entry",
         order_id=order.order_id,
         idempotency_key=fill_idempotency_key(order.order_id, "ENTRY"),
+        source_closed_until_ms=60_000,
     )
     order_change = fill_order(
         order, fill, expected_version=2, event_id=f"event:{suffix}:entry-fill"
@@ -158,6 +165,30 @@ def _prepare_entry(uow, suffix: str = "1"):
     return command, order, fill, order_change.events[0], position_change
 
 
+def _cursor(fill, position):
+    return PaperExitEvaluationCursor(
+        cursor_id=paper_exit_evaluation_cursor_id(
+            position_id=position.position_id,
+            mode=position.mode,
+            symbol=position.symbol,
+            position_opened_closed_until_ms=fill.source_closed_until_ms,
+            evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
+        ),
+        contract_version=PAPER_EXIT_CURSOR_CONTRACT_VERSION,
+        position_id=position.position_id,
+        mode=position.mode,
+        symbol=position.symbol,
+        last_evaluated_closed_until_ms=fill.source_closed_until_ms,
+        position_opened_closed_until_ms=fill.source_closed_until_ms,
+        evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
+        version=0,
+        created_at=NOW,
+        updated_at=NOW,
+        correlation_id="command:1",
+        causation_id=fill.fill_id,
+    )
+
+
 def _apply_entry(uow, suffix: str = "1"):
     command, order, fill, order_event, position_change = _prepare_entry(uow, suffix)
     outcome = uow.repositories.apply_entry_fill_and_open_position(
@@ -165,6 +196,7 @@ def _apply_entry(uow, suffix: str = "1"):
         2,
         fill,
         position_change.position,
+        _cursor(fill, position_change.position),
         order_event,
         position_change.events[0],
         (order_event, position_change.events[0]),
@@ -224,25 +256,10 @@ def test_entry_fill_and_position_open_are_atomic_and_replay_safe(paper_session_f
             2,
             fill,
             position,
-            _event(
-                "event:1:entry-fill",
-                PaperEventType.PAPER_ORDER_FILLED,
-                "paper_order",
-                "order:1",
-                3,
-                fill.fill_id,
-                PaperReasonCode.PAPER_ORDER_FILLED,
-            ),
-            _event(
-                "event:1:position-open",
-                PaperEventType.PAPER_POSITION_OPENED,
-                "paper_position",
-                "position:1",
-                0,
-                fill.fill_id,
-                PaperReasonCode.PAPER_POSITION_OPENED,
-            ),
-            (),
+            created.value.cursor,
+            created.value.order_event,
+            created.value.journal[1],
+            created.value.journal,
         )
         assert replay.outcome is RepositoryOutcome.EXISTING_IDEMPOTENT
     with paper_session_factory() as session:
@@ -258,7 +275,7 @@ def test_entry_conflicting_fill_and_partial_fill_fail_closed(paper_session_facto
     conflicting = replace(fill, price=fill.price + Decimal("1"))
     with PaperUnitOfWork(paper_session_factory) as uow:
         outcome = uow.repositories.apply_entry_fill_and_open_position(
-            "order:1", 2, conflicting, position,
+            "order:1", 2, conflicting, position, created.value.cursor,
             _event("event:x", PaperEventType.PAPER_ORDER_FILLED, "paper_order", "order:1", 3, "x", PaperReasonCode.PAPER_ORDER_FILLED),
             _event("event:y", PaperEventType.PAPER_POSITION_OPENED, "paper_position", "position:1", 0, "y", PaperReasonCode.PAPER_POSITION_OPENED),
             (),
@@ -269,10 +286,17 @@ def test_entry_conflicting_fill_and_partial_fill_fail_closed(paper_session_facto
 @pytest.mark.parametrize(
     "stage",
     [
+        "entry_before_fill",
         "entry_after_fill",
         "entry_after_order",
         "entry_after_position",
+        "entry_before_cursor",
+        "entry_after_cursor_insert",
+        "entry_after_cursor_mapping",
+        "entry_after_cursor_audit_metadata",
         "entry_after_event",
+        "entry_after_order_journal",
+        "entry_after_position_journal",
         "entry_after_journal",
     ],
 )
@@ -286,7 +310,8 @@ def test_entry_fault_injection_rolls_back_entire_graph(paper_session_factory, st
                 else None
             )
             uow.repositories.apply_entry_fill_and_open_position(
-                order.order_id, 2, fill, position_change.position, order_event,
+                order.order_id, 2, fill, position_change.position,
+                _cursor(fill, position_change.position), order_event,
                 position_change.events[0], (order_event, position_change.events[0]),
             )
     with paper_session_factory() as session:

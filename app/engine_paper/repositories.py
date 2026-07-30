@@ -94,6 +94,13 @@ MAX_JOURNAL_ROWS = 200
 T = TypeVar("T")
 
 
+class _EntryCursorCreationRejected(Exception):
+    def __init__(self, outcome: RepositoryOutcome, reason_code: str) -> None:
+        super().__init__(reason_code)
+        self.outcome = outcome
+        self.reason_code = reason_code
+
+
 @dataclass(frozen=True, slots=True)
 class PaperCommandGraph:
     command: PaperExecutionCommand
@@ -102,6 +109,8 @@ class PaperCommandGraph:
     positions: tuple[PaperPosition, ...]
     exit_decisions: tuple[PaperExitDecision, ...]
     journal: tuple[PaperDomainEvent, ...]
+    order_events: tuple[PaperDomainEvent, ...] = ()
+    cursors: tuple[PaperExitEvaluationCursor, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +145,9 @@ class EntryFillGraph:
     order: PaperOrder
     fill: PaperFill
     position: PaperPosition
+    cursor: PaperExitEvaluationCursor
+    order_event: PaperDomainEvent
+    journal: tuple[PaperDomainEvent, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -355,6 +367,32 @@ class CommandRepository:
                 .limit(limit)
             )
         )
+        event_rows = tuple(
+            self.session.scalars(
+                select(PaperOrderEventRecord)
+                .where(PaperOrderEventRecord.order_id.in_(order_ids or [""]))
+                .order_by(
+                    PaperOrderEventRecord.occurred_at,
+                    PaperOrderEventRecord.order_event_id,
+                )
+                .limit(limit)
+            )
+        )
+        cursor_rows = tuple(
+            self.session.scalars(
+                select(PaperExitEvaluationCursorRecord)
+                .where(
+                    PaperExitEvaluationCursorRecord.position_id.in_(
+                        position_ids or [""]
+                    )
+                )
+                .order_by(
+                    PaperExitEvaluationCursorRecord.created_at,
+                    PaperExitEvaluationCursorRecord.cursor_id,
+                )
+                .limit(limit)
+            )
+        )
         journal_rows = tuple(
             self.session.scalars(
                 select(PaperJournalEntryRecord)
@@ -379,12 +417,14 @@ class CommandRepository:
             )
         )
         graph = PaperCommandGraph(
-            command,
-            tuple(map(orm_values_to_paper_order, order_rows)),
-            tuple(map(orm_values_to_paper_fill, fill_rows)),
-            tuple(map(orm_values_to_paper_position, position_rows)),
-            tuple(map(orm_values_to_paper_exit_decision, exit_rows)),
-            tuple(map(orm_values_to_paper_event, journal_rows)),
+            command=command,
+            orders=tuple(map(orm_values_to_paper_order, order_rows)),
+            fills=tuple(map(orm_values_to_paper_fill, fill_rows)),
+            positions=tuple(map(orm_values_to_paper_position, position_rows)),
+            exit_decisions=tuple(map(orm_values_to_paper_exit_decision, exit_rows)),
+            journal=tuple(map(orm_values_to_paper_event, journal_rows)),
+            order_events=tuple(map(_order_event_from_record, event_rows)),
+            cursors=tuple(map(orm_values_to_paper_exit_cursor, cursor_rows)),
         )
         return result(RepositoryOutcome.EXISTING_IDEMPOTENT, graph)
 
@@ -1322,6 +1362,7 @@ class PaperRepositories:
         expected_order_version: int,
         fill: PaperFill,
         position: PaperPosition,
+        cursor: PaperExitEvaluationCursor,
         order_event: PaperDomainEvent,
         position_event: PaperDomainEvent,
         journal_entries: tuple[PaperDomainEvent, ...],
@@ -1348,12 +1389,37 @@ class PaperRepositories:
                 .where(PaperPositionRecord.entry_fill_id == existing_fill.fill_id)
                 .limit(1)
             )
-            if (
-                current_order.state is PaperOrderState.FILLED
-                and position_row is not None
-            ):
+            if current_order.state is PaperOrderState.FILLED and position_row is not None:
                 existing_position = orm_values_to_paper_position(position_row)
-                if existing_position != position:
+                existing_cursor = self.exit_cursors.get_cursor_bounded(
+                    existing_position.position_id
+                )
+                existing_event_row = self.session.get(
+                    PaperOrderEventRecord, order_event.event_id
+                )
+                existing_journal_rows = tuple(
+                    self.session.get(PaperJournalEntryRecord, entry.event_id)
+                    for entry in journal_entries
+                )
+                if existing_cursor is None or existing_event_row is None or any(
+                    row is None for row in existing_journal_rows
+                ):
+                    return result(
+                        RepositoryOutcome.INTERNAL_INVARIANT_FAILURE,
+                        reason_code="PAPER_REPOSITORY_EXISTING_ENTRY_GRAPH_INCONSISTENT",
+                    )
+                existing_event = _order_event_from_record(existing_event_row)
+                existing_journal = tuple(
+                    orm_values_to_paper_event(row)
+                    for row in existing_journal_rows
+                    if row is not None
+                )
+                if (
+                    existing_position != position
+                    or existing_cursor != cursor
+                    or existing_event != order_event
+                    or existing_journal != journal_entries
+                ):
                     return result(RepositoryOutcome.IDEMPOTENCY_CONFLICT)
                 return result(
                     RepositoryOutcome.EXISTING_IDEMPOTENT,
@@ -1361,9 +1427,15 @@ class PaperRepositories:
                         current_order,
                         existing_fill,
                         existing_position,
+                        existing_cursor,
+                        existing_event,
+                        existing_journal,
                     ),
                 )
-            return result(RepositoryOutcome.INTERNAL_INVARIANT_FAILURE)
+            return result(
+                RepositoryOutcome.INTERNAL_INVARIANT_FAILURE,
+                reason_code="PAPER_REPOSITORY_EXISTING_ENTRY_GRAPH_INCONSISTENT",
+            )
         if current_order.state is PaperOrderState.FILLED:
             return result(RepositoryOutcome.INVALID_STATE)
         if current_order.version != expected_order_version:
@@ -1400,6 +1472,7 @@ class PaperRepositories:
             )
         try:
             with self.session.begin_nested():
+                self._fault("entry_before_fill")
                 self.session.add(
                     PaperFillRecord(**paper_fill_to_orm_values(fill, fill_role="ENTRY"))
                 )
@@ -1417,6 +1490,26 @@ class PaperRepositories:
                 )
                 self.session.flush()
                 self._fault("entry_after_position")
+                self._fault("entry_before_cursor")
+                cursor_result = self.exit_cursors.create_or_get_cursor(
+                    position.position_id, cursor
+                )
+                if cursor_result.outcome is not PaperExitCursorOutcome.CURSOR_CREATED:
+                    if (
+                        cursor_result.outcome
+                        is PaperExitCursorOutcome.CURSOR_IDEMPOTENCY_CONFLICT
+                    ):
+                        raise _EntryCursorCreationRejected(
+                            RepositoryOutcome.IDEMPOTENCY_CONFLICT,
+                            "PAPER_IDEMPOTENCY_IDENTITY_COLLISION",
+                        )
+                    raise _EntryCursorCreationRejected(
+                        RepositoryOutcome.INTERNAL_INVARIANT_FAILURE,
+                        cursor_result.reason_code,
+                    )
+                self._fault("entry_after_cursor_insert")
+                self._fault("entry_after_cursor_mapping")
+                self._fault("entry_after_cursor_audit_metadata")
                 self.session.add(
                     PaperOrderEventRecord(
                         **_order_event_values(
@@ -1428,7 +1521,7 @@ class PaperRepositories:
                 )
                 self.session.flush()
                 self._fault("entry_after_event")
-                for entry in journal_entries:
+                for index, entry in enumerate(journal_entries):
                     self.session.add(
                         PaperJournalEntryRecord(
                             **_journal_values(
@@ -1440,14 +1533,32 @@ class PaperRepositories:
                             )
                         )
                     )
+                    self.session.flush()
+                    self._fault(
+                        "entry_after_order_journal"
+                        if index == 0
+                        else "entry_after_position_journal"
+                    )
                 self.session.flush()
                 self._fault("entry_after_journal")
+        except _EntryCursorCreationRejected as exception:
+            return result(
+                exception.outcome,
+                reason_code=exception.reason_code,
+            )
         except IntegrityError as exception:
             failure = classify_database_failure(exception)
             return result(failure.outcome, reason_code=failure.reason_code)
         return result(
             RepositoryOutcome.CREATED,
-            EntryFillGraph(order_change.order, fill, position),
+            EntryFillGraph(
+                order_change.order,
+                fill,
+                position,
+                cursor,
+                order_event,
+                journal_entries,
+            ),
         )
 
     def apply_close_fill_and_close_position(

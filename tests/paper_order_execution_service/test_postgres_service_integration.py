@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.paper_models import (
+    PaperExitEvaluationCursorRecord,
     PaperFillRecord,
     PaperJournalEntryRecord,
     PaperOrderEventRecord,
@@ -187,9 +188,18 @@ def test_real_postgres_entry_commit_and_exact_replay_are_one_graph(
     second = _service(paper_session_factory).execute_entry(request)
     assert first.outcome is PaperOrderExecutionOutcome.ENTRY_EXECUTED
     assert second.outcome is PaperOrderExecutionOutcome.ENTRY_ALREADY_EXECUTED
+    assert first.cursor_id == second.cursor_id
+    assert first.cursor_version == second.cursor_version == 0
+    assert (
+        first.cursor_last_evaluated_closed_until_ms
+        == first.source_closed_until_ms
+    )
     with paper_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(PaperFillRecord)) == 1
         assert session.scalar(select(func.count()).select_from(PaperPositionRecord)) == 1
+        assert session.scalar(
+            select(func.count()).select_from(PaperExitEvaluationCursorRecord)
+        ) == 1
         stored_order = session.get(PaperOrderRecord, order.order_id)
         assert stored_order.state == "FILLED"
         assert stored_order.version == order.version + 1
@@ -217,6 +227,9 @@ def test_real_postgres_entry_concurrency_creates_exactly_one_fill_and_position(
     with paper_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(PaperFillRecord)) == 1
         assert session.scalar(select(func.count()).select_from(PaperPositionRecord)) == 1
+        assert session.scalar(
+            select(func.count()).select_from(PaperExitEvaluationCursorRecord)
+        ) == 1
 
 
 def test_real_postgres_close_commit_replay_and_pnl_apply_once(
@@ -284,10 +297,17 @@ class _FaultPaperUow(PaperUnitOfWork):
 @pytest.mark.parametrize(
     "stage",
     [
+        "entry_before_fill",
         "entry_after_fill",
         "entry_after_order",
         "entry_after_position",
+        "entry_before_cursor",
+        "entry_after_cursor_insert",
+        "entry_after_cursor_mapping",
+        "entry_after_cursor_audit_metadata",
         "entry_after_event",
+        "entry_after_order_journal",
+        "entry_after_position_journal",
         "entry_after_journal",
     ],
 )
@@ -310,6 +330,9 @@ def test_real_postgres_entry_fault_at_each_atomic_boundary_leaves_no_fragment(
     with paper_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(PaperFillRecord)) == 0
         assert session.scalar(select(func.count()).select_from(PaperPositionRecord)) == 0
+        assert session.scalar(
+            select(func.count()).select_from(PaperExitEvaluationCursorRecord)
+        ) == 0
         stored = session.get(PaperOrderRecord, order.order_id)
         assert stored.state == "OPEN"
         assert stored.version == order.version

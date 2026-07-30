@@ -278,6 +278,9 @@ class FakeRepositories:
         self.decision = decision
         self.entry_order = entry_order
         self.entry_fill = entry_fill
+        self.cursor = None
+        self.order_event = None
+        self.entry_journal = ()
         self.active_position = None
         self.atomic_calls = 0
         self.atomic_outcome = None
@@ -318,7 +321,9 @@ class FakeRepositories:
             (self.entry_fill,) if self.entry_fill else (),
             (self.position,) if self.position else (),
             (self.decision,) if self.decision else (),
-            (),
+            self.entry_journal,
+            (self.order_event,) if self.order_event else (),
+            (self.cursor,) if self.cursor else (),
         )
         return result(RepositoryOutcome.EXISTING_IDEMPOTENT, graph)
 
@@ -328,6 +333,7 @@ class FakeRepositories:
         expected_order_version,
         fill,
         position,
+        cursor,
         order_event,
         position_event,
         journal_entries,
@@ -341,9 +347,20 @@ class FakeRepositories:
             expected_version=expected_order_version,
             event_id=order_event.event_id,
         ).order
-        graph = EntryFillGraph(changed, fill, position)
+        graph = EntryFillGraph(
+            changed,
+            fill,
+            position,
+            cursor,
+            order_event,
+            journal_entries,
+        )
         self.order = changed
         self.position = position
+        self.entry_fill = fill
+        self.cursor = cursor
+        self.order_event = order_event
+        self.entry_journal = journal_entries
         return result(RepositoryOutcome.CREATED, graph)
 
     def apply_close_fill_and_close_position(
