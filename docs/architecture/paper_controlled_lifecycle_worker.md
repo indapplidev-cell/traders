@@ -190,8 +190,10 @@ autonomous runtime is added or changed.
 
 ## Remaining enablement gates
 
-This module is ready only for explicit bounded isolated use. A separate task
-must define controlled runtime configuration and dry-run acceptance before any
-runtime integration. Production PAPER enablement, scheduler/daemon operation,
-API/client visibility, exchange transport, and all LIVE behavior remain out of
-scope and disabled.
+The separate configuration and read-only dry-run boundary is documented in
+`paper_controlled_runtime_configuration_and_dry_run.md`. It validates safe
+configuration and can plan the next persisted stage without invoking this
+worker. A later, separately authorized task is still required for any
+single-cycle runtime canary. Production PAPER enablement, scheduler/daemon
+operation, API/client visibility, exchange transport, and all LIVE behavior
+remain out of scope and disabled.
