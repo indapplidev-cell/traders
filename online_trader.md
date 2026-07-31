@@ -3,13 +3,13 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 17c19d94d7c0b8ebdd25ed2c398751cce31dd607
+STATUS_AS_OF_COMMIT = 429d1d81738597c9862f9b74c5f4b55747aead10
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-31T07:09:39Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_SINGLE_CYCLE_CANARY_01_RETRY_02
-FILES_CHANGED = app/engine_paper/controlled_runtime.py; app/engine_paper/controlled_runtime_canary.py; docs/architecture/paper_controlled_runtime_configuration_and_dry_run.md; docs/architecture/paper_controlled_runtime_single_cycle_canary.md; tests/paper_controlled_runtime_canary/__init__.py; tests/paper_controlled_runtime_canary/conftest.py; tests/paper_controlled_runtime_canary/test_contract_matrix.py; tests/paper_controlled_runtime_canary/test_postgres_canary.py; tests/paper_controlled_runtime_canary/test_service_safety.py; tests/paper_controlled_runtime_canary/test_static_safety.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-31T08:34:16Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_BOUNDED_SEQUENCE_CANARY_01
+FILES_CHANGED = app/engine_paper/controlled_runtime.py; app/engine_paper/controlled_runtime_sequence_canary.py; docs/architecture/paper_controlled_runtime_bounded_sequence_canary.md; tests/paper_controlled_runtime_sequence_canary/__init__.py; tests/paper_controlled_runtime_sequence_canary/conftest.py; tests/paper_controlled_runtime_sequence_canary/test_contract_matrix.py; tests/paper_controlled_runtime_sequence_canary/test_postgres_sequence.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_CONTROLLED_SINGLE_CYCLE_CANARY_RETRY_02_ISOLATED_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_CONTROLLED_RUNTIME_BOUNDED_SEQUENCE_CANARY_PENDING
-CURRENT_BLOCKER = SEPARATE_BOUNDED_SEQUENCE_CANARY_AUTHORIZATION_REQUIRED
+CURRENT_STAGE = PAPER_TRADING_OPERATOR_CONTROLLED_BOUNDED_RUNTIME_RUNNER_PENDING
+CURRENT_BLOCKER = SEPARATE_OPERATOR_CONTROLLED_RUNTIME_RUNNER_AUTHORIZATION_REQUIRED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1265,7 +1265,7 @@ SAFE_DEFAULT = VALIDATE_CONFIGURATION_CONFIGURATION_ONLY_OFF_RUNTIME_DISABLED
 PAPER_DRY_RUN_AUTHORIZATION = EXPLICIT_REQUIRED
 LIVE_CONFIGURATION = FORBIDDEN
 EXECUTABLE_RUNTIME_ACTION_AT_CONFIGURATION_TASK_BOUNDARY = NOT_IMPLEMENTED
-CURRENT_EXECUTABLE_RUNTIME_ACTION = SINGLE_CYCLE_CANARY_ISOLATED_ONLY
+CURRENT_EXECUTABLE_RUNTIME_ACTION = BOUNDED_SEQUENCE_CANARY_ISOLATED_ONLY
 PRODUCTION_MUTATING_TARGET = FORBIDDEN
 SYMBOL_ALLOWLIST = NORMALIZED_NO_WILDCARD_NO_DUPLICATE_MAX_32
 CONFIGURATION_LOADER = EXPLICIT_MAPPING_OR_EXPLICIT_MAX_64_KIB_UTF8_JSON
@@ -1381,6 +1381,78 @@ invariance were checked only through permanent allowlisted no-echo tooling.
 This PASS does not enable a production PAPER runtime, daemon, scheduler, API,
 client, exchange transport, or LIVE trading.
 
+## Controlled PAPER runtime bounded-sequence canary
+
+```text
+BOUNDED_SEQUENCE_CANARY_TASK = TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_BOUNDED_SEQUENCE_CANARY_01
+BOUNDED_SEQUENCE_CANARY_RESULT = PASS
+IMPLEMENTATION_COMMIT = 429d1d81738597c9862f9b74c5f4b55747aead10
+PAPER_CONTROLLED_RUNTIME_BOUNDED_SEQUENCE_CANARY = IMPLEMENTED_AND_PASSED_ISOLATED
+PAPER_RUNTIME_EXECUTION = EXPLICIT_BOUNDED_ISOLATED_SEQUENCE_ONLY
+SEQUENCE_ACTION = BOUNDED_SEQUENCE_CANARY
+TARGET = ISOLATED_POSTGRESQL_ONLY
+SEQUENCE_MIN_STEPS = 1
+SEQUENCE_MAX_STEPS = 5
+WORKER_INVOCATIONS_PER_STEP = MAXIMUM_ONE
+MUTATING_STAGES_PER_STEP = MAXIMUM_ONE
+TOTAL_WORKER_INVOCATIONS = MAXIMUM_FIVE
+TOTAL_MUTATING_STAGES = MAXIMUM_FIVE
+EXPLICIT_PAPER_AND_SEQUENCE_AUTHORIZATION = REQUIRED
+ORDERED_IMMUTABLE_STEP_PLAN_AND_SEQUENCE_ARMING = REQUIRED
+FRESH_PER_STEP_GRAPH_DRY_RUN_FINGERPRINT_ARMING_POSTFLIGHT = REQUIRED
+SEQUENCE_USES_SINGLE_CYCLE_CANARY_BOUNDARY = YES
+SEQUENCE_DIRECT_CHILD_SERVICE_CALLS = 0
+SEQUENCE_DIRECT_BUSINESS_COMMITS = 0
+SEQUENCE_SPANNING_BUSINESS_TRANSACTION = NO
+STOP_ON_FIRST_NON_SUCCESS = YES
+DURABLE_PREFIX_RESUME = PERSISTED_MATERIAL_GRAPH_DRIVEN
+SEQUENCE_PERSISTENCE_TABLE = NO
+COMPLETED_REPLAY = ZERO_WORKER_ZERO_MUTATION
+AMBIGUOUS_RESUME = FAIL_CLOSED_ZERO_WORKER
+PREFIXES_1_TO_5 = PASS
+TARGETED_SUBSEQUENCES = PASS
+FULL_SEQUENCE = ONE_INVOCATION_FIVE_SINGLE_CYCLE_CALLS_PASS
+FINAL_MATERIAL_COUNTS = 1_COMMAND_2_ORDERS_2_FILLS_1_POSITION_1_CURSOR_1_EXIT_DECISION
+FINAL_AUDIT_COUNTS = 8_ORDER_EVENTS_12_JOURNAL_ROWS
+FINAL_POSITION_STATE = CLOSED
+FEES_AND_REALIZED_PNL = APPLIED_EXACTLY_ONCE
+CONCURRENCY_CANCELLATION_FAULT_PREFIX_RECOVERY = PASS
+NEW_BOUNDED_SEQUENCE_TESTS = 751 passed
+FULL_ALLOWED_REGRESSION = 5855 passed, 1 skipped
+EXACT_IMPLEMENTATION_COMMIT_SECURITY_TESTS = 625 passed
+COMPOSE_RENDERING_AND_LIVE_PRODUCTION_SMOKE = NOT_RUN_FORBIDDEN
+ISOLATED_POSTGRESQL = 0011_MIGRATED_TESTED_CLEANED
+ISOLATED_OPEN_CONNECTIONS_AFTER = 0
+ISOLATED_IDLE_IN_TRANSACTION_AFTER = 0
+ISOLATED_LOCK_WAITS_AFTER = 0
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+CREDENTIAL_REVALIDATION_BY_TASK = NO
+SECURITY_PASS_EVIDENCE = ACCEPTED_IMMUTABLE_HASH_MATCH
+SECURITY_HARDENING = PRESERVED
+MIGRATION_0009_0010_0011_CHANGED = NO
+NEW_ALEMBIC_REVISION = NO
+ORM_SCHEMA_CHANGED = NO
+SINGLE_CYCLE_AND_WORKER_SEMANTICS_CHANGED = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_AND_IMAGE_IDENTITIES = UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+PRODUCTION_PAPER_GRAPH_READS = 0
+PRODUCTION_SEQUENCE_SINGLE_CYCLE_WORKER_INVOCATIONS = 0
+PAPER_DAEMON_SCHEDULER_MODE = NOT_STARTED_NOT_ENABLED
+LIVE_MODE = DISABLED
+BINANCE_CALLS = 0
+PAPER_PRODUCTION_ENABLEMENT = NOT_IMPLEMENTED
+```
+
+One explicit isolated invocation now composes one to five independently armed
+single-cycle steps. Every successful step commits through its existing child
+service transaction before the next fresh graph load. Replay and partial
+resume infer a contiguous durable prefix without a sequence table; ambiguity
+fails closed before mutation. This PASS remains an isolated operator canary
+and does not implement an operator runner, continuous runtime, production
+PAPER, API/client, exchange transport, or LIVE trading.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -1426,7 +1498,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈92% | Controlled single-cycle canary passed all five isolated stages and the sequential lifecycle; bounded-sequence canary, deployment, and PAPER enablement remain pending |
+| Online analytics/paper pipeline | ≈92% | Controlled bounded-sequence canary passed prefixes, targeted subsequences, full lifecycle, replay/resume, concurrency, cancellation and faults in isolated PostgreSQL; operator runner, deployment, and PAPER enablement remain pending |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1439,7 +1511,7 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_BOUNDED_SEQUENCE_CANARY_01
+TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROLLED_BOUNDED_RUNTIME_RUNNER_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -1466,9 +1538,12 @@ exit-evaluation cursor atomically from the ENTRY fill boundary, eliminating
 runtime configuration, fail-closed startup policy, and read-only lifecycle
 planning pass. The controlled single-cycle canary now also passes five
 independent isolated stages and a five-invocation sequential lifecycle with
-exact mutation budgets and audit counts. The next separately authorized task
-is a bounded-sequence canary. No autonomous Paper runtime was configured,
-deployed, started, or enabled.
+exact mutation budgets and audit counts. The controlled bounded-sequence
+canary now composes up to five freshly armed single-cycle boundaries in one
+explicit isolated invocation, with durable-prefix resume and exact aggregate
+budgets. The next separately authorized task is an operator-controlled bounded
+runtime runner. No autonomous Paper runtime was configured, deployed, started,
+or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
 
