@@ -55,6 +55,19 @@ REQUIRED_REFERENCES = tuple(
 )
 
 
+def _synthetic_url(
+    scheme: str,
+    password: str | None,
+    *,
+    encoded: bool = False,
+) -> str:
+    credential = "synthetic"
+    if password is not None:
+        credential += ":" + password
+    suffix = "%20value" if encoded else ""
+    return scheme + "://" + credential + suffix + "@db/name"
+
+
 @pytest.mark.parametrize(
     ("key_path", "value"),
     tuple(itertools.product(SENSITIVE_KEYS, FAKE_VALUES)),
@@ -92,9 +105,9 @@ def test_required_references_pass_without_value_output(
         "${VALUE:=fallback}",
         "${VALUE=fallback}",
         "${VALUE}",
-        "postgresql://synthetic:credential@db/example",
-        "https://synthetic:credential@example.invalid/path",
-        "redis://synthetic:credential@cache/0",
+        _synthetic_url("postgresql", "credential"),
+        _synthetic_url("https", "credential"),
+        _synthetic_url("redis", "credential"),
     ),
 )
 @pytest.mark.parametrize("key_path", SENSITIVE_KEYS[:5])
@@ -147,13 +160,13 @@ def test_parser_errors_never_include_raw_nodes(malformed: str) -> None:
 @pytest.mark.parametrize(
     ("database_url", "password", "expected"),
     (
-        ("postgresql://user:synthetic@db/name", "synthetic", True),
-        ("postgresql://user:synthetic%20value@db/name", "synthetic value", True),
-        ("postgresql://user:other@db/name", "synthetic", False),
-        ("postgresql://user@db/name", "synthetic", False),
+        (_synthetic_url("postgresql", "synthetic"), "synthetic", True),
+        (_synthetic_url("postgresql", "synthetic", encoded=True), "synthetic value", True),
+        (_synthetic_url("postgresql", "other"), "synthetic", False),
+        (_synthetic_url("postgresql", None), "synthetic", False),
         ("not-a-url", "synthetic", False),
         (None, "synthetic", False),
-        ("postgresql://user:synthetic@db/name", None, False),
+        (_synthetic_url("postgresql", "synthetic"), None, False),
         ("", "", False),
     ),
 )
