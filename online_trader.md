@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 7b6b4c5788830be1ccc7b5a45e44efd8ee5b487e
+STATUS_AS_OF_COMMIT = 09c1b16792be2304940cea7b4e551c2b8739e4e6
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-30T20:20:33Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_CONFIGURATION_AND_DRY_RUN_01
-FILES_CHANGED = app/engine_paper/controlled_runtime.py; docs/architecture/paper_controlled_lifecycle_worker.md; docs/architecture/paper_controlled_runtime_configuration_and_dry_run.md; tests/paper_controlled_runtime_dry_run/__init__.py; tests/paper_controlled_runtime_dry_run/conftest.py; tests/paper_controlled_runtime_dry_run/test_configuration_loader_and_symbols.py; tests/paper_controlled_runtime_dry_run/test_dry_run_planning.py; tests/paper_controlled_runtime_dry_run/test_postgres_readonly.py; tests/paper_controlled_runtime_dry_run/test_startup_gate_matrix.py; tests/paper_controlled_runtime_dry_run/test_static_safety.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-31T04:12:25Z
+RECONCILED_BY_TASK = TRADERS_ML_SECURITY_TRACKED_COMPOSE_SECRET_EXPOSURE_INCIDENT_REVIEW_AND_ROTATION_01_RETRY_01
+FILES_CHANGED = docker-compose.yml; docs/security/tracked_compose_secret_policy.md; scripts/safe_production_inspector.py; scripts/safe_tracked_file_inspector.py; scripts/security_retry_controls.py; tests/security_retry/__init__.py; tests/security_retry/test_compose_policy_matrix.py; tests/security_retry/test_control_and_quarantine_matrix.py; tests/security_retry/test_safe_inspection_and_output_matrix.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_CONTROLLED_PAPER_RUNTIME_CONFIGURATION_DRY_RUN_PASS
+STATUS_CONFIDENCE = PROVEN_TRACKED_COMPOSE_SECRET_INCIDENT_REMEDIATION_RETRY_PASS
 
 # Состояние проекта traders-ml
 
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_CONTROLLED_PAPER_RUNTIME_CONFIGURATION_DRY_RUN_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_CONTROLLED_RUNTIME_SINGLE_CYCLE_CANARY_PENDING
+CURRENT_STAGE = PAPER_TRADING_CONTROLLED_RUNTIME_SINGLE_CYCLE_CANARY_RETRY_PENDING
 CURRENT_BLOCKER = SEPARATE_SINGLE_CYCLE_CANARY_AUTHORIZATION_REQUIRED
 ```
 
@@ -1317,6 +1317,47 @@ only because production is on revision 0008 and no protected binding or PAPER
 graph is accessed. This PASS is readiness for a separately authorized
 single-cycle canary, not runtime enablement or production acceptance.
 
+## Tracked Compose secret incident remediation
+
+```text
+SECURITY_INCIDENT_TASK = TRADERS_ML_SECURITY_TRACKED_COMPOSE_SECRET_EXPOSURE_INCIDENT_REVIEW_AND_ROTATION_01_RETRY_01
+SECURITY_INCIDENT_RESULT = PASS
+SECURITY_PROJECT_STATE_COMMIT = 09c1b16792be2304940cea7b4e551c2b8739e4e6
+EXPOSED_CREDENTIAL = ROTATED_AND_OLD_INVALIDATED
+REPEAT_ROTATION = NOT_REQUIRED_NOT_PERFORMED
+TRACKED_COMPOSE_CURRENT_TREE = NO_LITERAL_SECRET_REQUIRED_PROTECTED_REFERENCE
+MISSING_PROTECTED_VALUE = FAIL_CLOSED_NO_SERVICE_START
+PROTECTED_BINDING = IGNORED_UNTRACKED_ACL_RESTRICTED
+PRODUCTION_INVARIANCE_TOOLING = ALLOWLISTED_PERSISTENT_NO_ECHO
+SAFE_TRACKED_FILE_INSPECTOR = INTEGRATED
+SAFE_PRODUCTION_INSPECTOR = INTEGRATED
+FORBIDDEN_RUNTIME_INSPECTION_CALLS = 0
+PROTECTED_BINDING_SCANNER_OPEN_READ_HASH_FINGERPRINT = 0
+NEW_SECURITY_RETRY_TESTS = 599 passed
+FULL_SAFE_PINNED_REGRESSION = 4560 passed, 2 skipped, canary harness excluded
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_AND_IMAGE_IDENTITIES = UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+PRODUCTION_SCHEMA_MUTATIONS = 0
+PRODUCTION_BUSINESS_DATA_MUTATIONS = 0
+FAILED_CANARY_BRANCH = QUARANTINED_CLEAN_NOT_INTEGRATED_NOT_PUSHED
+FAILED_CANARY_QUARANTINE_COMMIT = ad2ac52a9107107458bfa899d80640c27193f016
+PAPER_CANARY_INVOCATIONS = 0
+PAPER_WORKER_INVOCATIONS = 0
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+```
+
+The invalidated credential remains treated as permanently compromised and may
+still exist in historical Git objects; history was not rewritten. The current
+tracked Compose tree contains only a required protected reference at the
+affected field. The failed canary work is preserved solely on its quarantine
+branch and was not merged, cherry-picked, pushed, deployed, or executed. This
+security PASS does not accept the failed canary and does not enable PAPER or
+LIVE.
+
 ## Готовность основных контуров
 
 | Контур | Готовность | Доказанное состояние |
@@ -1334,7 +1375,7 @@ single-cycle canary, not runtime enablement or production acceptance.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_SINGLE_CYCLE_CANARY_01
+TRADERS_ML_PAPER_TRADING_CONTROLLED_RUNTIME_SINGLE_CYCLE_CANARY_01_RETRY_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
