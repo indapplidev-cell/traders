@@ -66,6 +66,7 @@ class PaperControlledRuntimeAction(StrEnum):
     VALIDATE_CONFIGURATION = "VALIDATE_CONFIGURATION"
     DRY_RUN_PLAN = "DRY_RUN_PLAN"
     SINGLE_CYCLE_CANARY = "SINGLE_CYCLE_CANARY"
+    BOUNDED_SEQUENCE_CANARY = "BOUNDED_SEQUENCE_CANARY"
     EXECUTE = "EXECUTE"
     START = "START"
     RUN_CONTINUOUS = "RUN_CONTINUOUS"
@@ -188,6 +189,7 @@ class PaperControlledRuntimeConfiguration:
     runtime_enabled: bool = False
     dry_run_enabled: bool = True
     explicit_paper_authorization: bool = False
+    explicit_sequence_authorization: bool = False
     cycle_scope: object = PaperLifecycleCycleScope.ADVANCE_ONE_LIFECYCLE_STEP
     max_stages_per_cycle: int = 1
     allowed_symbols: tuple[str, ...] = ()
@@ -546,6 +548,7 @@ def evaluate_controlled_runtime_startup_gate(
         "runtime_enabled",
         "dry_run_enabled",
         "explicit_paper_authorization",
+        "explicit_sequence_authorization",
         "network_access_allowed",
         "polling_allowed",
         "scheduler_allowed",
@@ -586,9 +589,15 @@ def evaluate_controlled_runtime_startup_gate(
             return _gate(PaperControlledRuntimeOutcome.RUNTIME_DISABLED)
         if not configuration.explicit_paper_authorization:
             return _gate(PaperControlledRuntimeOutcome.PAPER_AUTHORIZATION_MISSING)
+        if (
+            action is PaperControlledRuntimeAction.BOUNDED_SEQUENCE_CANARY
+            and not configuration.explicit_sequence_authorization
+        ):
+            return _gate(PaperControlledRuntimeOutcome.PAPER_AUTHORIZATION_MISSING)
         if action not in {
             PaperControlledRuntimeAction.DRY_RUN_PLAN,
             PaperControlledRuntimeAction.SINGLE_CYCLE_CANARY,
+            PaperControlledRuntimeAction.BOUNDED_SEQUENCE_CANARY,
         }:
             return _gate(PaperControlledRuntimeOutcome.UNSUPPORTED_RUNTIME_ACTION)
     if action is PaperControlledRuntimeAction.VALIDATE_CONFIGURATION:
@@ -603,7 +612,11 @@ def evaluate_controlled_runtime_startup_gate(
         if target is PaperControlledRuntimeTarget.ISOLATED_POSTGRESQL:
             expected_access = (
                 PaperDatabaseAccessMode.ISOLATED_CANARY_READ_WRITE
-                if action is PaperControlledRuntimeAction.SINGLE_CYCLE_CANARY
+                if action
+                in {
+                    PaperControlledRuntimeAction.SINGLE_CYCLE_CANARY,
+                    PaperControlledRuntimeAction.BOUNDED_SEQUENCE_CANARY,
+                }
                 else PaperDatabaseAccessMode.ISOLATED_READ_ONLY
             )
             if configuration.database_access_mode is not expected_access:
