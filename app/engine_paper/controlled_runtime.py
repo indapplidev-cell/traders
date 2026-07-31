@@ -65,6 +65,7 @@ _SENSITIVE_FIELD_NAMES: Final = frozenset(
 class PaperControlledRuntimeAction(StrEnum):
     VALIDATE_CONFIGURATION = "VALIDATE_CONFIGURATION"
     DRY_RUN_PLAN = "DRY_RUN_PLAN"
+    SINGLE_CYCLE_CANARY = "SINGLE_CYCLE_CANARY"
     EXECUTE = "EXECUTE"
     START = "START"
     RUN_CONTINUOUS = "RUN_CONTINUOUS"
@@ -87,6 +88,7 @@ class PaperMarketDataInputMode(StrEnum):
 class PaperDatabaseAccessMode(StrEnum):
     NONE = "NONE"
     ISOLATED_READ_ONLY = "ISOLATED_READ_ONLY"
+    ISOLATED_CANARY_READ_WRITE = "ISOLATED_CANARY_READ_WRITE"
     PRODUCTION_READONLY_METADATA = "PRODUCTION_READONLY_METADATA"
 
 
@@ -584,7 +586,10 @@ def evaluate_controlled_runtime_startup_gate(
             return _gate(PaperControlledRuntimeOutcome.RUNTIME_DISABLED)
         if not configuration.explicit_paper_authorization:
             return _gate(PaperControlledRuntimeOutcome.PAPER_AUTHORIZATION_MISSING)
-        if action is not PaperControlledRuntimeAction.DRY_RUN_PLAN:
+        if action not in {
+            PaperControlledRuntimeAction.DRY_RUN_PLAN,
+            PaperControlledRuntimeAction.SINGLE_CYCLE_CANARY,
+        }:
             return _gate(PaperControlledRuntimeOutcome.UNSUPPORTED_RUNTIME_ACTION)
     if action is PaperControlledRuntimeAction.VALIDATE_CONFIGURATION:
         return _gate(PaperControlledRuntimeOutcome.CONFIGURATION_VALID, ready=True)
@@ -596,7 +601,12 @@ def evaluate_controlled_runtime_startup_gate(
         if not configuration.allowed_symbols:
             return _gate(PaperControlledRuntimeOutcome.SYMBOL_ALLOWLIST_EMPTY)
         if target is PaperControlledRuntimeTarget.ISOLATED_POSTGRESQL:
-            if configuration.database_access_mode is not PaperDatabaseAccessMode.ISOLATED_READ_ONLY:
+            expected_access = (
+                PaperDatabaseAccessMode.ISOLATED_CANARY_READ_WRITE
+                if action is PaperControlledRuntimeAction.SINGLE_CYCLE_CANARY
+                else PaperDatabaseAccessMode.ISOLATED_READ_ONLY
+            )
+            if configuration.database_access_mode is not expected_access:
                 return _gate(PaperControlledRuntimeOutcome.INVALID_TARGET)
             return _gate(PaperControlledRuntimeOutcome.DRY_RUN_READY, ready=True)
         if target in {
