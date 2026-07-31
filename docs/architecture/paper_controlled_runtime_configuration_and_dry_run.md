@@ -17,8 +17,10 @@ DRY_RUN_PLAN
 
 Executable spellings such as `EXECUTE`, `START`, `RUN_CONTINUOUS`, `DAEMON`,
 `SCHEDULE`, and `LIVE` are represented only so that the startup gate can deny
-them deterministically with `RUNTIME_EXECUTION_NOT_IMPLEMENTED`. There is no
-fallback from planning to execution.
+them deterministically with `RUNTIME_EXECUTION_NOT_IMPLEMENTED`. The sole
+explicit execution boundary is now `SINGLE_CYCLE_CANARY`, accepted only for
+the separately documented isolated, PAPER-authorized, read-write canary
+configuration. There is no fallback from planning to execution.
 
 ## Immutable configuration and safe defaults
 
@@ -161,13 +163,13 @@ Planning is deterministic for identical explicit inputs.
 
 ## CLI and remaining gates
 
-No CLI is added because the service-level acceptance is complete. Therefore
-there is no accidental non-dry-run invocation surface, daemon/scheduler option,
-or default production target.
+The canary module adds a bounded CLI acknowledgement surface that requires an
+explicit configuration path, request path, and `--single-cycle-canary` flag.
+It has no daemon, scheduler, continuous, or default production option; actual
+database/service wiring remains an explicit caller-owned service boundary.
 
-The next separately authorized task may design a single-cycle canary. It must
-retain explicit configuration and authorization, provide its own acceptance
-and rollback evidence, and must not infer production PAPER enablement from
-this dry-run PASS. Production PAPER, continuous runtime, scheduler/daemon,
-write API/client work, Binance transport, and LIVE remain unimplemented and
-disabled.
+The separately authorized single-cycle canary is documented in
+`paper_controlled_runtime_single_cycle_canary.md`. It reuses this unchanged
+read-only planner before one isolated worker invocation. Production PAPER,
+continuous runtime, scheduler/daemon operation, write API/client work,
+Binance transport, and LIVE remain unimplemented and disabled.
