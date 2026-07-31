@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 999ab8c7d836c62313de85e2d44769c4fe5d1552
+STATUS_AS_OF_COMMIT = 89b4ac0909372c760cf1d7c2cc20317a3f0999c2
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-31T10:15:21Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROLLED_BOUNDED_RUNTIME_RUNNER_01
-FILES_CHANGED = app/engine_paper/operator_bounded_runtime_runner.py; docs/architecture/paper_operator_controlled_bounded_runtime_runner.md; tests/paper_operator_bounded_runtime_runner/__init__.py; tests/paper_operator_bounded_runtime_runner/conftest.py; tests/paper_operator_bounded_runtime_runner/test_contract_and_cli.py; tests/paper_operator_bounded_runtime_runner/test_postgres_runner.py; online_trader.md
+RECONCILED_AT_UTC = 2026-07-31T11:18:54Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_01
+FILES_CHANGED = app/engine_paper/production_readiness.py; docs/architecture/paper_production_runtime_readiness_review.md; tests/paper_production_readiness_review/__init__.py; tests/paper_production_readiness_review/conftest.py; tests/paper_production_readiness_review/test_contract_matrix.py; tests/paper_production_readiness_review/test_migration_and_static_policy.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_OPERATOR_CONTROLLED_BOUNDED_RUNTIME_RUNNER_ISOLATED_PASS
+STATUS_CONFIDENCE = PROVEN_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_COMPLETED_NOT_READY
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_OPERATOR_CONTROLLED_BOUNDED_RUNTIME_RUNNER_ISOLATED_P
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_PENDING
-CURRENT_BLOCKER = SEPARATE_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_AUTHORIZATION_REQUIRED
+CURRENT_STAGE = PAPER_TRADING_PRODUCTION_BACKUP_RESTORE_AND_RECONCILIATION_READINESS_PENDING
+CURRENT_BLOCKER = PRODUCTION_PAPER_CRITICAL_AND_HIGH_READINESS_BLOCKERS_IDENTIFIED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1522,6 +1522,67 @@ runner invokes the authoritative bounded-sequence service no more than once.
 This PASS does not deploy or enable production PAPER, add an API/client,
 install a service or scheduler, fetch market data, or implement LIVE trading.
 
+## Production PAPER runtime readiness review
+
+```text
+READINESS_REVIEW_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_01
+READINESS_REVIEW_RESULT = COMPLETED
+IMPLEMENTATION_COMMIT = 89b4ac0909372c760cf1d7c2cc20317a3f0999c2
+PRODUCTION_PAPER_RUNTIME_READINESS = NOT_READY_BLOCKERS_IDENTIFIED
+READINESS_CRITICAL_BLOCKERS = 6
+READINESS_HIGH_BLOCKERS = 3
+READINESS_MEDIUM_FINDINGS = 1
+READINESS_LOW_FINDINGS = 0
+R1_SCHEMA_MIGRATION = READY
+R2_ROLLBACK_FORWARD_FIX = NOT_READY
+R3_DEPLOYMENT_TOPOLOGY = READY
+R4_OPERATOR_AUTHORIZATION = READY
+R5_TARGET_ISOLATION_PERMISSIONS = READY
+R6_MARKET_DATA_INPUT = NOT_READY
+R7_EXECUTION_BOUNDS_STOP_CONTROLS = NOT_READY
+R8_IDEMPOTENCY_REPLAY_CONCURRENCY = READY
+R9_OBSERVABILITY_ALERTING = NOT_READY
+R10_INCIDENT_EMERGENCY_STOP = NOT_READY
+R11_DATA_RETENTION_CLEANUP = NOT_READY
+R12_BACKUP_RECOVERY_RECONCILIATION = NOT_READY
+R13_PERFORMANCE_CAPACITY = NOT_READY
+R14_API_CLIENT_EXPOSURE = READY
+R15_SECURITY_SECRET_HANDLING = READY
+R16_RELEASE_ROLLBACK_PROCEDURE = READY
+R17_POST_ENABLE_VALIDATION = READY
+R18_LIVE_SEPARATION = READY
+ISOLATED_MIGRATION_REHEARSAL = PASS
+ISOLATED_UPGRADE_0008_TO_0011_MS = 1701.231
+ISOLATED_MAX_LOCK_WAITING_SESSIONS = 0
+ISOLATED_UNEXPECTED_DESTRUCTIVE_DDL = 0
+DOWNGRADE_CLASSIFICATION = DOWNGRADE_DESTRUCTIVE
+ROLLBACK_STRATEGY = APPLICATION_DISABLE_PLUS_FORWARD_FIX
+PAPER_DATA_LOSS_ON_DOWNGRADE = PROVEN_IN_ISOLATION
+FORWARD_RECOVERY_TO_0011_MS = 728.530
+NEW_READINESS_REVIEW_TESTS = 1448_PASSED
+FULL_SAFE_REGRESSION = 8295_PASSED_2_SKIPPED_3_DESELECTED
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+CREDENTIAL_REVALIDATION_BY_TASK = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_AND_IMAGE_IDENTITIES = UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+PRODUCTION_PAPER_GRAPH_READS = 0
+PRODUCTION_RUNNER_INVOCATIONS = 0
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+```
+
+The review statically classified the exact migration chain, rehearsed upgrade,
+destructive downgrade and forward recovery in task-owned PostgreSQL 16, and
+specified topology, least privilege, authorization, bounds, release, minimal
+canary and observation contracts. Readiness remains fail-closed because
+production backup/restore and PITR are unproven; authoritative market-data and
+approval adapters, a global PAPER kill switch, production observability,
+approved retention, and a safe read-only reconciliation command do not exist.
+No production PAPER enablement, schema/data/role mutation, graph read, runner,
+API/client control, scheduler/daemon, LIVE path, or Binance call occurred.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -1567,7 +1628,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈92% | Foreground operator-controlled bounded runner passed manifests, acknowledgement, isolated resolution, prefixes, full lifecycle, replay/resume, concurrency, cancellation, faults and CLI no-echo in PostgreSQL 0011; production readiness review, deployment and PAPER enablement remain pending |
+| Online analytics/paper pipeline | ≈92% | Production readiness review completed with `NOT_READY_BLOCKERS_IDENTIFIED`: isolated migration and rollback rehearsal passed, while restore/PITR, authoritative inputs, kill switch, observability, retention and reconciliation remain blockers; deployment and PAPER enablement were not attempted |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1580,7 +1641,7 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_01
+TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_BACKUP_RESTORE_AND_RECONCILIATION_READINESS_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -1612,9 +1673,11 @@ canary now composes up to five freshly armed single-cycle boundaries in one
 explicit isolated invocation, with durable-prefix resume and exact aggregate
 budgets. The foreground operator-controlled runner now validates explicit
 manifests and acknowledgement, resolves only a task-owned isolated target, and
-delegates exactly one bounded sequence with safe process results. The next
-separately authorized task is a production PAPER runtime readiness review. No
-autonomous Paper runtime was configured, deployed, started, or enabled.
+delegates exactly one bounded sequence with safe process results. The production
+PAPER readiness review is now completed and fail-closed with critical/high
+blockers. The next separately authorized task is backup/restore and read-only
+reconciliation readiness remediation, not enablement. No autonomous Paper
+runtime was configured, deployed, started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
 
