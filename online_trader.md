@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 89b4ac0909372c760cf1d7c2cc20317a3f0999c2
+STATUS_AS_OF_COMMIT = b54a4670141c471b17c57c4ab119f12d8d7c7e40
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-07-31T11:18:54Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_01
-FILES_CHANGED = app/engine_paper/production_readiness.py; docs/architecture/paper_production_runtime_readiness_review.md; tests/paper_production_readiness_review/__init__.py; tests/paper_production_readiness_review/conftest.py; tests/paper_production_readiness_review/test_contract_matrix.py; tests/paper_production_readiness_review/test_migration_and_static_policy.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-10T21:31:08Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_BACKUP_RESTORE_AND_RECONCILIATION_READINESS_01
+FILES_CHANGED = app/engine_paper/reconciliation.py; app/engine_paper/recovery_readiness.py; docs/operations/paper_backup_restore_reconciliation.md; tests/paper_backup_restore_reconciliation_readiness/__init__.py; tests/paper_backup_restore_reconciliation_readiness/conftest.py; tests/paper_backup_restore_reconciliation_readiness/test_cli_and_static_safety.py; tests/paper_backup_restore_reconciliation_readiness/test_postgres_pitr_rehearsal.py; tests/paper_backup_restore_reconciliation_readiness/test_postgres_restore_rehearsal.py; tests/paper_backup_restore_reconciliation_readiness/test_reconciliation_matrix.py; tests/paper_backup_restore_reconciliation_readiness/test_recovery_contracts.py; tests/paper_backup_restore_reconciliation_readiness/test_scope_and_performance.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_COMPLETED_NOT_READY
+STATUS_CONFIDENCE = PROVEN_BACKUP_RESTORE_PITR_RECONCILIATION_READINESS_COMPLETED_PARTIAL_BLOCKERS_REMAIN
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PRODUCTION_PAPER_RUNTIME_READINESS_REVIEW_COMPLETED_N
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_PRODUCTION_BACKUP_RESTORE_AND_RECONCILIATION_READINESS_PENDING
-CURRENT_BLOCKER = PRODUCTION_PAPER_CRITICAL_AND_HIGH_READINESS_BLOCKERS_IDENTIFIED
+CURRENT_STAGE = PAPER_TRADING_PRODUCTION_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_PENDING
+CURRENT_BLOCKER = PRODUCTION_BACKUP_AND_PITR_CAPABILITY_UNPROVEN
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1583,6 +1583,78 @@ approved retention, and a safe read-only reconciliation command do not exist.
 No production PAPER enablement, schema/data/role mutation, graph read, runner,
 API/client control, scheduler/daemon, LIVE path, or Binance call occurred.
 
+## PAPER backup, restore, PITR, and read-only reconciliation readiness
+
+```text
+BACKUP_RESTORE_RECONCILIATION_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_BACKUP_RESTORE_AND_RECONCILIATION_READINESS_01
+BACKUP_RESTORE_RECONCILIATION_RESULT = COMPLETED
+IMPLEMENTATION_COMMIT = b54a4670141c471b17c57c4ab119f12d8d7c7e40
+BACKUP_RESTORE_AND_RECONCILIATION_READINESS = PARTIAL_BLOCKERS_REMAIN
+LOGICAL_BACKUP_RESTORE_READINESS = READY_ISOLATED
+PITR_TECHNICAL_READINESS = READY_ISOLATED
+PRODUCTION_BACKUP_CAPABILITY = UNPROVEN
+PRODUCTION_PITR_CAPABILITY = UNPROVEN
+BACKUP_PITR_BLOCKER_CLOSED = NO
+RECONCILIATION_BLOCKER_CLOSED = YES
+RECOVERY_RUNBOOK_READINESS = READY
+RECONCILIATION_IMPLEMENTATION_READINESS = READY
+READINESS_CRITICAL_BLOCKERS_REMAINING = 5
+READINESS_HIGH_BLOCKERS_REMAINING = 3
+LOGICAL_BACKUP_REHEARSAL = PASS
+LOGICAL_RESTORE_REHEARSAL = PASS
+LOGICAL_BACKUP_BYTES = 145005
+LOGICAL_BACKUP_DURATION_MS = 512
+LOGICAL_RESTORE_DURATION_MS = 1411
+RESTORED_SCHEMA_HEAD = 0011_paper_close_causal_boundary_and_exit_evaluation_cursor
+RESTORED_RECONCILIATION = HEALTHY
+RESTORED_MATERIAL_GRAPH_EXACT = YES
+RESTORED_MATERIAL_COUNTS = 1_COMMAND_2_ORDERS_2_FILLS_1_POSITION_1_CURSOR_1_EXIT_DECISION_8_EVENTS_12_JOURNAL
+ISOLATED_PITR_REHEARSAL = PITR_PROVEN_ISOLATED
+ISOLATED_PITR_TARGET_ACCURACY = PASS
+ISOLATED_PITR_PRE_TARGET_STATE_PRESENT = YES
+ISOLATED_PITR_POST_TARGET_STATE_ABSENT = YES
+ISOLATED_PITR_RECONCILIATION = HEALTHY
+PRODUCTION_PITR_SAFE_ASSESSMENT = UNPROVEN_APPROVED_METADATA_UNAVAILABLE
+RPO_RTO_POLICY_STATUS = PROPOSED_NOT_APPROVED
+TARGET_RPO = 15_MINUTES_PROPOSED
+TARGET_RTO = 2_HOURS_PROPOSED
+MAX_BACKUP_AGE = 24_HOURS_PROPOSED
+RESTORE_REHEARSAL_CADENCE = 30_DAYS_PROPOSED
+PITR_REHEARSAL_CADENCE = 90_DAYS_PROPOSED
+NORMAL_SCHEMA_DOWNGRADE_FOR_RECOVERY = FORBIDDEN
+APPLICATION_DISABLE_PLUS_FORWARD_FIX_STRATEGY = READY
+RESTORE_FROM_BACKUP_STRATEGY = READY_ISOLATED
+PRODUCTION_0008_RECONCILIATION_SCHEMA_GATE = PAPER_SCHEMA_NOT_DEPLOYED_ZERO_PAPER_QUERIES
+RECONCILIATION_BUSINESS_AND_SCHEMA_MUTATIONS = 0
+NEW_READINESS_TESTS = 1435_PASSED_2_EXPLICIT_DOCKER_SKIPPED
+FULL_ALLOWED_REGRESSION = 9684_PASSED_2_SKIPPED_1_DESELECTED
+ISOLATED_RESTORE_TEST = PASS
+ISOLATED_PITR_TEST = PASS
+TASK_OWNED_DATABASES_CONTAINERS_BACKUP_WAL_ARTIFACTS_REMAIN = 0
+PROTECTED_VENV = UNCHANGED_SMOKE_PASS
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+CREDENTIAL_REVALIDATION_BY_TASK = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_AND_IMAGE_IDENTITIES = UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+PRODUCTION_PAPER_GRAPH_READS_AND_TABLE_QUERIES = 0
+PRODUCTION_RUNNER_WORKER_CANARY_INVOCATIONS = 0
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+```
+
+Immutable backup/recovery contracts, byte-integrity manifest validation,
+destructive-loss logical restore, physical/WAL point-in-time recovery, and a
+bounded read-only reconciliation service/CLI are now implemented and proven in
+task-owned PostgreSQL 16. The service begins with a read-only transaction and
+schema gate, so revision 0008 returns `PAPER_SCHEMA_NOT_DEPLOYED` before any
+PAPER-table query. Production remains unchanged and was assessed only through
+permanent no-echo metadata tooling. The production backup mechanism, durable
+backup storage, approved operator ownership/RPO/RTO, and production WAL/PITR
+configuration remain unproven; isolated readiness must not be treated as
+production capability or enablement authority.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -1628,7 +1700,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈92% | Production readiness review completed with `NOT_READY_BLOCKERS_IDENTIFIED`: isolated migration and rollback rehearsal passed, while restore/PITR, authoritative inputs, kill switch, observability, retention and reconciliation remain blockers; deployment and PAPER enablement were not attempted |
+| Online analytics/paper pipeline | ≈92% | Backup/restore/PITR/reconciliation remediation completed: logical restore and PITR are proven isolated and read-only reconciliation is ready, while production backup/PITR capability, approved RPO/RTO/ownership, authoritative inputs, kill switch, observability and retention remain blockers; deployment and PAPER enablement were not attempted |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1641,7 +1713,7 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_BACKUP_RESTORE_AND_RECONCILIATION_READINESS_01
+TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -1675,8 +1747,10 @@ budgets. The foreground operator-controlled runner now validates explicit
 manifests and acknowledgement, resolves only a task-owned isolated target, and
 delegates exactly one bounded sequence with safe process results. The production
 PAPER readiness review is now completed and fail-closed with critical/high
-blockers. The next separately authorized task is backup/restore and read-only
-reconciliation readiness remediation, not enablement. No autonomous Paper
+blockers. Isolated logical restore and PITR now pass, and bounded read-only
+reconciliation is implemented; production backup/PITR capability and formal
+RPO/RTO/ownership remain unproven. The next separately authorized task is
+production backup/PITR infrastructure remediation, not enablement. No autonomous Paper
 runtime was configured, deployed, started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
