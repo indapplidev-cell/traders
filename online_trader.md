@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = b54a4670141c471b17c57c4ab119f12d8d7c7e40
+STATUS_AS_OF_COMMIT = ba6f17a9518975cb8fb5e0a7f058558bdabe3d13
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-10T21:31:08Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_BACKUP_RESTORE_AND_RECONCILIATION_READINESS_01
-FILES_CHANGED = app/engine_paper/reconciliation.py; app/engine_paper/recovery_readiness.py; docs/operations/paper_backup_restore_reconciliation.md; tests/paper_backup_restore_reconciliation_readiness/__init__.py; tests/paper_backup_restore_reconciliation_readiness/conftest.py; tests/paper_backup_restore_reconciliation_readiness/test_cli_and_static_safety.py; tests/paper_backup_restore_reconciliation_readiness/test_postgres_pitr_rehearsal.py; tests/paper_backup_restore_reconciliation_readiness/test_postgres_restore_rehearsal.py; tests/paper_backup_restore_reconciliation_readiness/test_reconciliation_matrix.py; tests/paper_backup_restore_reconciliation_readiness/test_recovery_contracts.py; tests/paper_backup_restore_reconciliation_readiness/test_scope_and_performance.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-10T22:22:20Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_01
+FILES_CHANGED = app/engine_paper/backup_pitr_infrastructure.py; docs/operations/paper_production_backup_pitr_infrastructure.md; scripts/safe_production_inspector.py; scripts/security_retry_controls.py; tests/paper_backup_pitr_infrastructure_remediation/__init__.py; tests/paper_backup_pitr_infrastructure_remediation/test_baseline_and_safety.py; tests/paper_backup_pitr_infrastructure_remediation/test_contract_matrices.py; tests/paper_backup_pitr_infrastructure_remediation/test_safe_inspector.py; tests/paper_backup_pitr_infrastructure_remediation/test_storage_readiness_and_domains.py; tests/paper_backup_restore_reconciliation_readiness/test_postgres_pitr_rehearsal.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_BACKUP_RESTORE_PITR_RECONCILIATION_READINESS_COMPLETED_PARTIAL_BLOCKERS_REMAIN
+STATUS_CONFIDENCE = PROVEN_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_COMPLETED_PARTIAL_BLOCKERS_REMAIN
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_BACKUP_RESTORE_PITR_RECONCILIATION_READINESS_COMPLETE
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_PRODUCTION_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_PENDING
-CURRENT_BLOCKER = PRODUCTION_BACKUP_AND_PITR_CAPABILITY_UNPROVEN
+CURRENT_STAGE = PAPER_TRADING_PRODUCTION_BACKUP_PITR_CONTROLLED_INFRASTRUCTURE_CHANGE_PENDING
+CURRENT_BLOCKER = APPROVED_BACKUP_DESTINATION_PITR_CONFIGURATION_POLICY_OWNERSHIP_CAPACITY_MONITORING_REQUIRED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1655,6 +1655,72 @@ backup storage, approved operator ownership/RPO/RTO, and production WAL/PITR
 configuration remain unproven; isolated readiness must not be treated as
 production capability or enablement authority.
 
+## PAPER production backup/PITR infrastructure remediation
+
+```text
+BACKUP_PITR_INFRASTRUCTURE_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_01
+BACKUP_PITR_INFRASTRUCTURE_RESULT = COMPLETED
+IMPLEMENTATION_COMMIT = ba6f17a9518975cb8fb5e0a7f058558bdabe3d13
+BACKUP_PITR_INFRASTRUCTURE_READINESS = PARTIAL_BLOCKERS_REMAIN
+BACKUP_PITR_BLOCKER_CLOSED = NO
+PRODUCTION_POSTGRES_MAJOR = 16
+PRODUCTION_DATA_PERSISTENCE_CLASS = PERSISTENT_EXTERNAL_VOLUME
+PRODUCTION_DATA_PERSISTENCE_PROVEN = YES
+PRODUCTION_BACKUP_TOOLING_PRESENT = YES
+PRODUCTION_BACKUP_MECHANISM = NOT_READY_NO_APPROVED_AUTOMATION_OR_CATALOG
+PRODUCTION_BACKUP_DESTINATION = NOT_READY_NOT_CONFIGURED
+PRODUCTION_APPLICABLE_RESTORE_REHEARSAL = PASS
+REHEARSAL_BACKUP_FORMAT = PG_DUMP_CUSTOM
+REHEARSAL_BACKUP_BYTES = 141954
+REHEARSAL_BACKUP_DURATION_MS = 546
+REHEARSAL_RESTORE_DURATION_MS = 1389
+REHEARSAL_SCHEMA_HEAD = 0011_paper_close_causal_boundary_and_exit_evaluation_cursor
+REHEARSAL_RECONCILIATION = HEALTHY
+REHEARSAL_MATERIAL_GRAPH_EXACT = YES
+ISOLATED_PITR_DESIGN_REHEARSAL = PASS
+PRODUCTION_ARCHIVE_MODE = UNPROVEN_SAFE_SETTINGS_UNAVAILABLE
+PRODUCTION_PITR_CAPABILITY = UNPROVEN
+PITR_REMEDIATION = SPECIFIED_NOT_APPLIED
+PITR_REQUIRED_MUTATIONS = EXTERNAL_STORAGE_PLUS_POSTGRES_RESTART_OR_CONTAINER_RECREATE
+ATOMIC_BACKUP_PUBLICATION_CONTRACT = READY_TESTED_FAIL_CLOSED
+CAPACITY_READINESS = UNPROVEN
+RPO_RTO_POLICY_STATUS = PROPOSED_NOT_APPROVED
+OPERATOR_OWNERSHIP_STATUS = PROPOSED_NOT_APPROVED
+BACKUP_MONITORING_STATUS = CONTRACT_COMPLETE_NOT_IMPLEMENTED_OR_ACCEPTED
+B1_TO_B15_REVIEW = COMPLETE
+NEW_REMEDIATION_TESTS = 1673_PASSED
+FOCUSED_SAFE_REGRESSION = 5155_PASSED_2_DESELECTED
+FULL_ALLOWED_REGRESSION = 10992_PASSED_1_SKIPPED
+ISOLATED_RESTORE_REHEARSAL_TESTS = 2_PASSED
+ISOLATED_PITR_REHEARSAL_TESTS = 1_PASSED
+TASK_OWNED_CONTAINERS_VOLUMES_BACKUP_WAL_MANIFEST_ARTIFACTS_REMAIN = 0
+PROTECTED_VENV = UNCHANGED_SMOKE_PASS
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+CREDENTIAL_REVALIDATION_BY_TASK = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_AND_IMAGE_IDENTITIES = UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+PRODUCTION_BACKUP_RESTORE_PITR_MIGRATION_ATTEMPTS = 0
+PRODUCTION_PAPER_GRAPH_READS_AND_TABLE_QUERIES = 0
+PRODUCTION_RUNNER_WORKER_CANARY_INVOCATIONS = 0
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+```
+
+Production PostgreSQL 16 and its external persistent data volume are now
+proven through permanent allowlisted no-echo metadata. Backup tooling is
+present, but there is no approved separate persistent backup destination,
+automation/catalog, capacity evidence, or last-backup metadata. WAL/archive
+settings remain unproven because the safe settings probe cannot authenticate
+without crossing the protected binding; no credential fallback was attempted.
+The exact PostgreSQL 16 production-shape logical restore and isolated PITR
+design both pass with reconciliation, but isolated proof is not production
+PITR capability. RPO/RTO, retention, operator ownership and monitoring remain
+proposed or unimplemented. A controlled infrastructure change requiring
+external storage and likely PostgreSQL restart/container recreation is the
+next task; none was applied here.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -1700,7 +1766,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈92% | Backup/restore/PITR/reconciliation remediation completed: logical restore and PITR are proven isolated and read-only reconciliation is ready, while production backup/PITR capability, approved RPO/RTO/ownership, authoritative inputs, kill switch, observability and retention remain blockers; deployment and PAPER enablement were not attempted |
+| Online analytics/paper pipeline | ≈92% | Backup/PITR infrastructure review completed: production PostgreSQL 16 persistence and tooling plus production-shape restore applicability are proven, while an approved separate destination, production PITR configuration, policy/ownership, capacity and monitoring remain blockers; no production infrastructure change or PAPER enablement was attempted |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1713,7 +1779,7 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_01
+TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_CONTROLLED_INFRASTRUCTURE_CHANGE_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
 ```
 
@@ -1749,8 +1815,8 @@ delegates exactly one bounded sequence with safe process results. The production
 PAPER readiness review is now completed and fail-closed with critical/high
 blockers. Isolated logical restore and PITR now pass, and bounded read-only
 reconciliation is implemented; production backup/PITR capability and formal
-RPO/RTO/ownership remain unproven. The next separately authorized task is
-production backup/PITR infrastructure remediation, not enablement. No autonomous Paper
+RPO/RTO/ownership remain unproven. The next separately authorized task is the
+controlled backup/PITR infrastructure change, not enablement. No autonomous Paper
 runtime was configured, deployed, started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
