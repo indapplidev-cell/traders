@@ -897,6 +897,195 @@ def compare_runtime_identities(
     )
 
 
+class DataPersistenceClass(StrEnum):
+    PERSISTENT_EXTERNAL_VOLUME = "PERSISTENT_EXTERNAL_VOLUME"
+    PERSISTENT_HOST_BIND = "PERSISTENT_HOST_BIND"
+    MANAGED_PERSISTENT_STORAGE = "MANAGED_PERSISTENT_STORAGE"
+    EPHEMERAL_CONTAINER_STORAGE = "EPHEMERAL_CONTAINER_STORAGE"
+    UNPROVEN = "UNPROVEN"
+
+
+class WalLevelClass(StrEnum):
+    MINIMAL = "MINIMAL"
+    REPLICA_OR_HIGHER = "REPLICA_OR_HIGHER"
+    UNPROVEN = "UNPROVEN"
+
+
+class ArchiveTimeoutClass(StrEnum):
+    DISABLED = "DISABLED"
+    AT_MOST_15_MINUTES = "AT_MOST_15_MINUTES"
+    OVER_15_MINUTES = "OVER_15_MINUTES"
+    UNPROVEN = "UNPROVEN"
+
+
+@dataclass(frozen=True, slots=True)
+class SafePostgresRecoveryMetadata:
+    postgres_major: int | None
+    archive_mode_enabled: bool | None
+    wal_level_class: WalLevelClass
+    archive_command_configured_boolean: bool | None
+    archive_library_configured_boolean: bool | None
+    archive_timeout_class: ArchiveTimeoutClass
+    data_persistence_class: DataPersistenceClass
+    backup_tooling_present_boolean: bool | None
+    backup_destination_configured_boolean: bool | None
+    backup_destination_persistence_class: DataPersistenceClass
+    last_backup_metadata_present_boolean: bool | None
+    last_backup_age_class: str
+    wal_archive_health_class: str
+    error_class: str
+
+    def render(self) -> str:
+        def boolean(value: bool | None) -> str:
+            return "YES" if value is True else "NO" if value is False else "UNPROVEN"
+
+        return "\n".join(
+            (
+                f"postgres_major={self.postgres_major or 'UNPROVEN'}",
+                f"archive_mode_enabled={boolean(self.archive_mode_enabled)}",
+                f"wal_level_class={self.wal_level_class.value}",
+                f"archive_command_configured_boolean={boolean(self.archive_command_configured_boolean)}",
+                f"archive_library_configured_boolean={boolean(self.archive_library_configured_boolean)}",
+                f"archive_timeout_class={self.archive_timeout_class.value}",
+                f"data_persistence_class={self.data_persistence_class.value}",
+                f"backup_tooling_present_boolean={boolean(self.backup_tooling_present_boolean)}",
+                f"backup_destination_configured_boolean={boolean(self.backup_destination_configured_boolean)}",
+                f"backup_destination_persistence_class={self.backup_destination_persistence_class.value}",
+                f"last_backup_metadata_present_boolean={boolean(self.last_backup_metadata_present_boolean)}",
+                f"last_backup_age_class={self.last_backup_age_class}",
+                f"wal_archive_health_class={self.wal_archive_health_class}",
+                f"error_class={self.error_class}",
+            )
+        )
+
+
+_SAFE_POSTGRES_METADATA = re.compile(
+    r"^(?P<major>[0-9]{1,3})\|(?P<archive>on|off)\|"
+    r"(?P<wal>minimal|replica|logical)\|(?P<command>[01])\|"
+    r"(?P<library>[01])\|(?P<timeout>[0-9]{1,8})$"
+)
+
+
+def _unknown_recovery_metadata(error_class: str) -> SafePostgresRecoveryMetadata:
+    return SafePostgresRecoveryMetadata(
+        None, None, WalLevelClass.UNPROVEN, None, None,
+        ArchiveTimeoutClass.UNPROVEN, DataPersistenceClass.UNPROVEN, None,
+        None, DataPersistenceClass.UNPROVEN, None, "UNPROVEN", "UNPROVEN",
+        error_class,
+    )
+
+
+def parse_safe_postgres_recovery_metadata(
+    settings_record: str,
+    persistence_record: str,
+    tooling_record: str,
+) -> SafePostgresRecoveryMetadata | None:
+    match = _SAFE_POSTGRES_METADATA.fullmatch(settings_record.strip())
+    if match is None or persistence_record not in {"volume", "bind", "tmpfs", "none"}:
+        return None
+    if tooling_record not in {"present", "absent"}:
+        return None
+    persistence = {
+        "volume": DataPersistenceClass.PERSISTENT_EXTERNAL_VOLUME,
+        "bind": DataPersistenceClass.PERSISTENT_HOST_BIND,
+        "tmpfs": DataPersistenceClass.EPHEMERAL_CONTAINER_STORAGE,
+        "none": DataPersistenceClass.EPHEMERAL_CONTAINER_STORAGE,
+    }[persistence_record]
+    timeout = int(match.group("timeout"))
+    timeout_class = (
+        ArchiveTimeoutClass.DISABLED if timeout == 0
+        else ArchiveTimeoutClass.AT_MOST_15_MINUTES if timeout <= 900
+        else ArchiveTimeoutClass.OVER_15_MINUTES
+    )
+    return SafePostgresRecoveryMetadata(
+        postgres_major=int(match.group("major")),
+        archive_mode_enabled=match.group("archive") == "on",
+        wal_level_class=(
+            WalLevelClass.MINIMAL if match.group("wal") == "minimal"
+            else WalLevelClass.REPLICA_OR_HIGHER
+        ),
+        archive_command_configured_boolean=match.group("command") == "1",
+        archive_library_configured_boolean=match.group("library") == "1",
+        archive_timeout_class=timeout_class,
+        data_persistence_class=persistence,
+        backup_tooling_present_boolean=tooling_record == "present",
+        backup_destination_configured_boolean=False,
+        backup_destination_persistence_class=DataPersistenceClass.UNPROVEN,
+        last_backup_metadata_present_boolean=False,
+        last_backup_age_class="UNAVAILABLE",
+        wal_archive_health_class="UNAVAILABLE" if match.group("archive") == "off" else "UNPROVEN",
+        error_class="NONE",
+    )
+
+
+def inspect_postgres_recovery_metadata(
+    container: str,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> SafePostgresRecoveryMetadata:
+    """Return fixed recovery enums/booleans without commands, paths, or secrets."""
+    sql = (
+        "SELECT current_setting('server_version_num')::int/10000 || '|' || "
+        "current_setting('archive_mode') || '|' || current_setting('wal_level') || '|' || "
+        "(current_setting('archive_command') <> '')::int || '|' || "
+        "(current_setting('archive_library') <> '')::int || '|' || "
+        "current_setting('archive_timeout')::int"
+    )
+    settings = run_allowlisted_command(
+        ("docker", "exec", "--user", "postgres", container, "psql", "-d", "postgres", "-AtX", "-c", sql),
+        runner=runner,
+        timeout_seconds=15,
+    )
+    persistence = run_allowlisted_command(
+        (
+            "docker", "container", "inspect", "--format",
+            "{{range .Mounts}}{{if eq .Destination \"/var/lib/postgresql/data\"}}{{.Type}}{{end}}{{end}}",
+            container,
+        ),
+        runner=runner,
+    )
+    tooling = run_allowlisted_command(
+        ("docker", "exec", container, "sh", "-c", "command -v pg_dump >/dev/null && printf present || printf absent"),
+        runner=runner,
+    )
+    version = run_allowlisted_command(
+        ("docker", "exec", container, "postgres", "--version"),
+        runner=runner,
+    )
+    if not persistence.succeeded or not tooling.succeeded or not version.succeeded:
+        return _unknown_recovery_metadata("RECOVERY_METADATA_INCOMPLETE")
+    major_match = re.fullmatch(r"postgres \(PostgreSQL\) (?P<major>[0-9]{1,3})\.[0-9]+", version.safe_output)
+    if major_match is None:
+        return _unknown_recovery_metadata("POSTGRES_MAJOR_REJECTED")
+    persistence_class = {
+        "volume": DataPersistenceClass.PERSISTENT_EXTERNAL_VOLUME,
+        "bind": DataPersistenceClass.PERSISTENT_HOST_BIND,
+        "tmpfs": DataPersistenceClass.EPHEMERAL_CONTAINER_STORAGE,
+        "": DataPersistenceClass.EPHEMERAL_CONTAINER_STORAGE,
+    }.get(persistence.safe_output, DataPersistenceClass.UNPROVEN)
+    if not settings.succeeded:
+        return SafePostgresRecoveryMetadata(
+            postgres_major=int(major_match.group("major")),
+            archive_mode_enabled=None,
+            wal_level_class=WalLevelClass.UNPROVEN,
+            archive_command_configured_boolean=None,
+            archive_library_configured_boolean=None,
+            archive_timeout_class=ArchiveTimeoutClass.UNPROVEN,
+            data_persistence_class=persistence_class,
+            backup_tooling_present_boolean=tooling.safe_output == "present",
+            backup_destination_configured_boolean=False,
+            backup_destination_persistence_class=DataPersistenceClass.UNPROVEN,
+            last_backup_metadata_present_boolean=False,
+            last_backup_age_class="UNAVAILABLE",
+            wal_archive_health_class="UNPROVEN",
+            error_class="SETTINGS_UNAVAILABLE",
+        )
+    parsed = parse_safe_postgres_recovery_metadata(
+        settings.safe_output, persistence.safe_output or "none", tooling.safe_output
+    )
+    return parsed or _unknown_recovery_metadata("RECOVERY_METADATA_REJECTED")
+
+
 @dataclass(frozen=True, slots=True)
 class SafeHttpStatus:
     endpoint: str
@@ -1020,9 +1209,11 @@ def render_safe_items(items: Iterable[object]) -> str:
 
 
 __all__ = [
+    "ArchiveTimeoutClass",
     "BindingConsistency",
     "ContainerIdentity",
     "CredentialStatus",
+    "DataPersistenceClass",
     "PolicyResult",
     "POSTGRES_PASSWORD_KEY_PATH",
     "POSTGRES_PASSWORD_REFERENCE_KEY",
@@ -1035,22 +1226,26 @@ __all__ = [
     "SafeAlembicStatus",
     "SafeHttpStatus",
     "SafeParserError",
+    "SafePostgresRecoveryMetadata",
     "SafeRouteCounts",
     "SafeTrackedFileInspection",
     "TrackedValue",
     "ValueClass",
+    "WalLevelClass",
     "binding_consistency",
     "classify_quarantine_path",
     "classify_tracked_value",
     "command_is_forbidden",
     "compare_runtime_identities",
     "inspect_container_identity",
+    "inspect_postgres_recovery_metadata",
     "inspect_alembic_status",
     "inspect_readonly_health_http",
     "inspect_tracked_route_counts",
     "inspect_tracked_compose_key",
     "parse_indented_yaml_scalars",
     "parse_safe_container_record",
+    "parse_safe_postgres_recovery_metadata",
     "render_safe_items",
     "resolve_required_reference",
     "run_allowlisted_command",

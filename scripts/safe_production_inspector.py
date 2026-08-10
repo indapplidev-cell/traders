@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 from scripts.security_retry_controls import (
     inspect_alembic_status,
     inspect_container_identity,
+    inspect_postgres_recovery_metadata,
     inspect_readonly_health_http,
     inspect_tracked_route_counts,
 )
@@ -32,6 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--health", action="store_true")
     parser.add_argument("--routes", action="store_true")
     parser.add_argument("--alembic-container")
+    parser.add_argument("--postgres-recovery-container")
     args = parser.parse_args(argv)
     status = 0
     for name in args.container:
@@ -57,6 +59,12 @@ def main(argv: list[str] | None = None) -> int:
         alembic = inspect_alembic_status(args.alembic_container)
         print(alembic.render())
         status = max(status, int(alembic.error_class != "NONE"))
+    if args.postgres_recovery_container:
+        recovery = inspect_postgres_recovery_metadata(
+            args.postgres_recovery_container
+        )
+        print(recovery.render())
+        status = max(status, int(recovery.error_class != "NONE"))
     return status
 
 

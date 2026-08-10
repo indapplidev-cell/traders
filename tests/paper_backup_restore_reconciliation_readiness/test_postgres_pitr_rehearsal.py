@@ -31,7 +31,6 @@ RESTORE_VOLUME = "traders_ml_paper_pitr_restore_01"
 PORT = "55440"
 USER = "paper_pitr_task"
 DATABASE = "paper_test_pitr_01"
-PASSWORD = "task-owned-pitr-ephemeral"
 
 
 def _run(*arguments: str, timeout=120, allow_failure=False):
@@ -57,7 +56,7 @@ def _wait_ready(container: str):
 
 
 def _url():
-    return f"postgresql+psycopg://{USER}:{PASSWORD}@127.0.0.1:{PORT}/{DATABASE}"
+    return f"postgresql+psycopg://{USER}@127.0.0.1:{PORT}/{DATABASE}"
 
 
 def _migrate(revision: str):
@@ -111,7 +110,7 @@ def test_physical_base_backup_wal_target_recovery_and_reconciliation():
             _run("volume", "create", volume)
         _run(
             "run", "-d", "--name", SOURCE,
-            "-e", f"POSTGRES_PASSWORD={PASSWORD}", "-e", f"POSTGRES_USER={USER}",
+            "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "-e", f"POSTGRES_USER={USER}",
             "-e", f"POSTGRES_DB={DATABASE}",
             "-p", f"127.0.0.1:{PORT}:5432",
             "-v", f"{SOURCE_VOLUME}:/var/lib/postgresql/data",
