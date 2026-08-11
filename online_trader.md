@@ -3,13 +3,13 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 9b6294ba5475a323537b88008d9845b9c63b8386
+STATUS_AS_OF_COMMIT = 0c3bf6497391cfa8c94fc70cba16cd1e22d72e74
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T11:38:00Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_WAL_ARCHIVE_UNRESOLVED_FAILURE_REMEDIATION_01
-FILES_CHANGED = app/engine_safety/production_wal_archive.py; scripts/production_wal_archive_remediation.py; tests/production_wal_archive_unresolved_failure_remediation/__init__.py; tests/production_wal_archive_unresolved_failure_remediation/test_contracts.py; tests/production_wal_archive_unresolved_failure_remediation/test_isolated_postgres16_transient_retry.py; tests/production_wal_archive_unresolved_failure_remediation/test_operator_safety.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T13:03:24Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_APPROVAL_SOURCE_ADAPTER_01
+FILES_CHANGED = app/engine_paper/production_approval.py; scripts/production_approval_adapter_proof.py; tests/paper_production_approval_source_adapter/__init__.py; tests/paper_production_approval_source_adapter/test_adapter_contract.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_WAL_ARCHIVE_RECOVERED_CONTIGUOUS_AND_AUTONOMOUS_HOST_
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_PRODUCTION_APPROVAL_SOURCE_ADAPTER_PENDING
+CURRENT_STAGE = PAPER_TRADING_PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_PENDING
 CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
 
@@ -1892,6 +1892,64 @@ blocker was subsequently closed by the dedicated remediation task; the
 separate minimum 24-hour PITR accumulation gate remains open. Adapter semantics
 and source were unchanged by that remediation.
 
+## PAPER production approval source adapter
+
+```text
+APPROVAL_SOURCE_ADAPTER_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_APPROVAL_SOURCE_ADAPTER_01
+APPROVAL_SOURCE_ADAPTER_RESULT = COMPLETED
+IMPLEMENTATION_COMMIT = 0c3bf6497391cfa8c94fc70cba16cd1e22d72e74
+PRODUCTION_APPROVAL_SOURCE_ADAPTER_READINESS = READY
+PRODUCTION_APPROVAL_SOURCE_ADAPTER_BLOCKER_CLOSED = YES
+CURRENT_PRODUCTION_APPROVAL_AVAILABILITY = NO_ELIGIBLE_APPROVAL
+ADAPTER = app.engine_paper.production_approval:PaperProductionApprovalSourceAdapter
+AUTHORITATIVE_SOURCE = PRODUCTION_PERSISTED_ONLINE_PIPELINE_RESULTS
+READ_ONLY_TRANSACTION = REPEATABLE_READ_READ_ONLY
+CONSISTENT_DECISION_SNAPSHOT = YES
+PRODUCTION_SCHEMA_COMPATIBILITY = 0008_engine_orchestrator_freshness_retry_PASS
+PRODUCTION_CONTROLLED_APPROVAL_READ_PROOF = PASS
+PRODUCTION_READ_SCOPE = BTCUSDT_ETHUSDT_SOLUSDT_BOUNDED_8_RUN_LOOKBACK
+PRODUCTION_READ_OUTCOME = 3_NO_TRADE_SIGNAL_0_ELIGIBLE_APPROVALS
+PRODUCTION_READ_QUERY_COUNT = 5
+PRODUCTION_READ_ROWS = 24
+PRODUCTION_READ_DURATION_MS = 168.533
+FINAL_APPROVAL_AUTHORITY = EXISTING_PAPER_STRATEGY_QUANTITY_RISK_APPROVAL_CHAIN_REUSED
+QUANTITY_AUTHORITY = CONTROLLED_PAPER_AUTHORITY_REUSED_NO_RECALCULATION
+DETERMINISTIC_CANDIDATE_IDENTITY = PASS_ISOLATED
+CAUSAL_LINEAGE_AND_CLOSED_DATA_WATERMARK = PASS_ISOLATED_AND_PRODUCTION_NO_TRADE
+NO_TRADE_HEALTHY_SEMANTICS = PASS
+NEW_ADAPTER_TESTS = 1435_PASSED
+FULL_ALLOWED_REGRESSION = PASS_COMPOSED_17599_PASSED_6_SKIPPED
+PRODUCTION_MARKET_DATA_ADAPTER = UNCHANGED_IMPORT_AND_1336_TEST_REGRESSION_PASS
+PRODUCTION_MARKET_DATA_FRESH_PROOF = PASS_18_OF_18_READY_0_ANOMALIES
+PROTECTED_VENV = UNCHANGED_CONFIG_HASH_IMPORT_SMOKE_PASS
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+CREDENTIAL_REVALIDATION_BY_TASK = NO
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTAINER_RESTART_DELTAS = 0
+PRODUCTION_PAPER_GRAPH_READS_AND_TABLE_QUERIES = 0
+PRODUCTION_COMMAND_INGESTION_CALLS = 0
+PAPER_COMMANDS_ORDERS_FILLS_POSITIONS_CREATED = 0
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+PITR_WINDOW_SECONDS_BEFORE_AFTER = 15971_17770_NOT_RESET
+WAL_ARCHIVE_HEALTH_BEFORE_AFTER = PASS_PASS
+WAL_ARCHIVE_UNRESOLVED_FAILURES_BEFORE_AFTER = 0_0
+WAL_ACK_DAEMON = RUNNING_UNCHANGED_PID_13936
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+```
+
+The adapter reads only bounded, atomically joined revision-0008 online
+pipeline run/result rows and interprets their persisted analysis, setup,
+strategy, risk and PAPER payloads. It never recalculates those decisions. A
+future eligible candidate requires the exact immutable final approval and
+controlled quantity contracts already accepted by command ingestion; absent
+persisted final approvals fail closed. The fresh production proof found the
+healthy normal state `NO_TRADE_SIGNAL` for all three allowed symbols and
+created no candidate or PAPER business object. The separate kill-switch gate
+is deliberately not implemented or bypassed here. The PITR chain remained
+continuous and continued accumulating in parallel.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -1937,7 +1995,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈92% | Production persisted market-data adapter and WAL archive remediation are proven; PAPER remains disabled, approval-source adapter is next, and the separate minimum 24-hour PITR window is not yet proven |
+| Online analytics/paper pipeline | ≈93% | Production persisted market-data and approval-source adapters are proven; PAPER remains disabled, kill-switch/emergency-stop is next, and the separate minimum 24-hour PITR window is not yet proven |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1950,7 +2008,7 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_APPROVAL_SOURCE_ADAPTER_01
+TRADERS_ML_PAPER_TRADING_PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_IMPLEMENTATION_ONLY
 ```
 
@@ -1987,9 +2045,11 @@ PAPER readiness review is now completed and fail-closed with critical/high
 blockers. Isolated logical restore and PITR now pass, and bounded read-only
 reconciliation is implemented. The production persisted market-data input
 adapter is now implemented and proved against all 18 production streams
-without a Binance dependency or PAPER mutation. The next implementation task
-is the production approval source adapter. WAL archive incident handling is
-completed; minimum PITR-window confirmation remains a separate timed gate and
+without a Binance dependency or PAPER mutation. The production approval source
+adapter is now implemented and production-read proven with healthy no-trade
+results. The next implementation task is the production kill switch and
+emergency stop. WAL archive incident handling is completed; minimum
+PITR-window confirmation remains a separate timed gate and
 is not bypassed by that recommendation. No autonomous Paper runtime was configured, deployed,
 started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
