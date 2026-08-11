@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 74327e7948d04f2dd908428915c0f0372905165f
+STATUS_AS_OF_COMMIT = 9fea4b1b9601f8b2270cb950c7a25e0c4cd3d0db
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T17:28:02Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_ACCOUNT_BALANCE_AND_TRADE_REPORTING_01
-FILES_CHANGED = app/engine_paper/accounting.py; tests/paper_account_balance_trade_reporting/__init__.py; tests/paper_account_balance_trade_reporting/conftest.py; tests/paper_account_balance_trade_reporting/test_contracts_and_faults.py; tests/paper_account_balance_trade_reporting/test_reporting_matrix.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T18:31:27Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_01
+FILES_CHANGED = alembic/versions/0012_paper_account_baseline.py; app/db/paper_models.py; app/engine_paper/accounting.py; app/engine_paper/baseline_repository.py; app/engine_paper/production_composition.py; app/engine_paper/production_readiness.py; app/engine_paper/reconciliation.py; app/engine_paper/recovery_readiness.py; app/engine_paper/repositories.py; app/engine_paper/controlled_runtime_canary.py; app/engine_safety/paper_production_control.py; tests/paper_account_baseline_persistence_schema_extension/; related PAPER production/repository regression tests; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PAPER_ACCOUNTING_PROJECTIONS_PASS_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_REQUIRED_PRODUCTION_DISABLED_PITR_WINDOW_STILL_ACCUMULATING
+STATUS_CONFIDENCE = PROVEN_0012_IMMUTABLE_BASELINE_AND_PERSISTED_ACCOUNTING_PASS_PRODUCTION_0008_DISABLED_PITR_WINDOW_STILL_BELOW_24H
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_PAPER_ACCOUNTING_PROJECTIONS_PASS_BASELINE_PERSISTENC
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_DECISION_PENDING
-CURRENT_BLOCKER = ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_REQUIRED
+CURRENT_STAGE = PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_WHEN_MATURE
+CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 BACKGROUND_TIMED_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
 
@@ -2083,13 +2083,21 @@ after validation. Production remained at revision 0008 and disabled.
 
 ```text
 ACCOUNTING_TASK = TRADERS_ML_PAPER_TRADING_ACCOUNT_BALANCE_AND_TRADE_REPORTING_01
-ACCOUNTING_RESULT = COMPLETED_WITH_REMAINING_BASELINE_PERSISTENCE_BLOCKER
-IMPLEMENTATION_COMMIT = 74327e7948d04f2dd908428915c0f0372905165f
+ACCOUNTING_RESULT = COMPLETED_WITH_PERSISTED_BASELINE_READY
+IMPLEMENTATION_COMMIT = 9fea4b1b9601f8b2270cb950c7a25e0c4cd3d0db
 ACCOUNTING_MODULE = app/engine_paper/accounting.py
-ACCOUNT_BALANCE_AND_TRADE_REPORTING_READINESS = IMPLEMENTED_PENDING_BASELINE_PERSISTENCE_SCHEMA_EXTENSION
-CURRENT_0011_BASELINE_PERSISTENCE_CAPABILITY = UNSUPPORTED_REQUIRES_SCHEMA_EXTENSION
-ACCOUNT_BASELINE_PERSISTENCE_BLOCKER_CLOSED = NO
-BLOCKER_CODE = ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_REQUIRED
+BASELINE_TASK = TRADERS_ML_PAPER_TRADING_ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_01
+ACCOUNT_BALANCE_AND_TRADE_REPORTING_READINESS = READY
+ACCOUNT_BASELINE_PERSISTENCE_READINESS = READY
+ACCOUNT_BASELINE_PERSISTENCE_BLOCKER_CLOSED = YES
+BLOCKER_CODE = NONE
+REPOSITORY_ALEMBIC_HEAD = 0012_paper_account_baseline
+BASELINE_TABLE = paper_account_baselines
+BASELINE_UNIQUENESS = UNIQUE_ACCOUNT_ID_ACCOUNTING_SESSION_ID
+BASELINE_IMMUTABILITY = APPLICATION_RUNTIME_CREATE_GET_ONLY_NO_UPDATE_DELETE
+BASELINE_INITIALIZATION = TRANSACTION_ADVISORY_LOCK_IDEMPOTENT_CONFLICT_SAFE
+BASELINE_BEFORE_FIRST_COMMAND = ENFORCED_BY_SHARED_TRANSACTION_LOCK_AND_EXACTLY_ONE_ROW_GATE
+V1_ACTIVITY_MAPPING = ANY_COMMAND_ORDER_FILL_POSITION_OR_JOURNAL_ROW_IN_SINGLE_LOGICAL_ACCOUNT_SESSION
 PERSISTED_REALIZED_PNL_SEMANTIC = NET_OF_ENTRY_AND_EXIT_FEES
 REPORT_FEES_SOURCE = AUTHORITATIVE_PERSISTED_FILL_FACTS
 REPORT_PNL_SOURCE = AUTHORITATIVE_FINALIZED_CLOSED_POSITION_WITH_DIRECTION_AWARE_FILL_RECONCILIATION
@@ -2097,18 +2105,21 @@ ACCOUNT_BALANCE_MODEL = INITIAL_BASELINE_PLUS_UNIQUE_CLOSED_TRADE_NET_PNL_REALIZ
 TRADE_BALANCE_ORDERING = ECONOMIC_CLOSE_TIMESTAMP_PLUS_STABLE_REPORT_SEMANTIC_ID
 BASELINE_GATE_CONTRACT = PASS_MISSING_INVALID_FAIL_CLOSED
 BASELINE_HOST_STATE_FALLBACK = FORBIDDEN_NOT_IMPLEMENTED
-NEW_ACCOUNTING_TESTS = 1422_PASSED_ZERO_FAILED
-TARGETED_PAPER_RUNTIME_REGRESSION = 3971_PASSED_1_SKIPPED
-TARGETED_PRODUCTION_COMPOSITION = 2920_PASSED
+NEW_BASELINE_PERSISTENCE_TESTS = 1546_PASSED_ZERO_FAILED
+TARGETED_ACCOUNTING_REPORTING = 1422_PASSED
+TARGETED_PAPER_CORE_REGRESSION = 3310_PASSED
+TARGETED_CANARY_SEQUENCE_OPERATOR = 2298_PASSED_1_SKIPPED
+TARGETED_PRODUCTION_COMPOSITION = 2976_PASSED
 TARGETED_KILL_SWITCH = 1635_PASSED
 TARGETED_APPROVAL_ADAPTER = 1435_PASSED
 TARGETED_MARKET_DATA_ADAPTER = 1336_PASSED
-TARGETED_BACKUP_PITR = 6524_PASSED_1_SKIPPED
-TARGETED_SECURITY_SAFE_SERVER_OBSERVER = 599_98_93_PASSED
-BROAD_NON_DB_REGRESSION = 23148_PASSED_4_SKIPPED_ZERO_CODE_FAILURES
-POSTGRES_FIXTURE_TESTS = NOT_RUN_PROTECTED_DATABASE_URI_NOT_READ
+TARGETED_BACKUP_PITR = 5305_PASSED_2_SKIPPED
+TARGETED_SECURITY_SAFE_SERVER_OBSERVER_AND_ENGINE = 9864_PASSED_1_SKIPPED
+REAL_POSTGRESQL_16_BASELINE_REHEARSALS = PASS
 MIGRATIONS_0009_0010_0011 = UNCHANGED
-NEW_ALEMBIC_REVISION = NO
+NEW_ALEMBIC_REVISION = 0012_paper_account_baseline
+MIGRATION_SEEDS_BASELINE = NO
+DOWNGRADE_0012_TO_0011 = DESTRUCTIVE_NO_AUTOMATIC_DOWNGRADE
 PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
 PRODUCTION_ROUTES = 9_GET_0_WRITE
 PRODUCTION_CONTROL = HEALTHY_DISABLED_GENERATION_3
@@ -2117,13 +2128,13 @@ PRODUCTION_ACCOUNTING_DATA_MUTATIONS = 0
 PAPER_RUNTIME_STARTED = NO
 PAPER_MODE_ENABLED = NO
 LIVE_MODE_ENABLED = NO
-PITR_WINDOW_SECONDS_BEFORE_AFTER = 31276_33976_NOT_RESET
+PITR_WINDOW_SECONDS_BEFORE_AFTER = 37577_37577_NOT_RESET
 WAL_ARCHIVE_HEALTH_BEFORE_AFTER = PASS_PASS
 WAL_ARCHIVE_UNRESOLVED_FAILURES_BEFORE_AFTER = 0_0
 WAL_ACK_DAEMON = RUNNING_UNCHANGED_PID_13936
 PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
 PROTECTED_VENV_CONFIG_SHA256 = 138bedfc7039d64e7be9e2c2cd5e49a1c0afda78260dd57482ffaaf02ba663ca_UNCHANGED
-REMAINING_BLOCKERS = ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_REQUIRED;MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+REMAINING_BLOCKERS = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
 
 The existing lifecycle semantics are unambiguous: each persisted fill owns its
@@ -2133,12 +2144,14 @@ The new module only validates and projects those facts into deterministic
 closed-trade reports, realized account summaries and fail-closed reconciliation;
 it does not introduce a fee, PnL, risk, sizing or mutable economic ledger.
 
-Revision 0011 has no legitimate account/session-level immutable baseline
-structure. Reusing a command, position, cursor, journal row or host control file
-would silently weaken identity, uniqueness or history immutability. Therefore
-no 0012 migration was created in this task, no production baseline exists, and
-a separately approved narrow schema extension is required before the first
-production PAPER canary. PITR accumulation continued independently.
+Revision 0012 adds exactly one account/session baseline table with Numeric(38,18)
+USDT-only positive opening capital. The create/get-only repository shares a
+transaction advisory lock with first command creation, so initialization is
+idempotent, conflicting amounts are denied, and economic activity cannot race
+ahead of the baseline. Reports, summaries, and reconciliation remain projections
+over this baseline plus authoritative fills and CLOSED position net realized PnL.
+No production migration or baseline initialization occurred; production remains
+at 0008 with PAPER disabled while PITR continues toward the 24-hour gate.
 
 ## Tracked Compose secret incident remediation
 
@@ -2185,7 +2198,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈94% | Closed-trade accounting/reporting projections are implemented and regression-proven, but revision 0011 cannot persist an immutable account/session baseline; production remains at 0008 with PAPER disabled while the schema decision and minimum 24-hour PITR window remain open |
+| Online analytics/paper pipeline | ≈95% | Revision 0012 immutable baseline persistence and the existing closed-trade reporting/reconciliation chain are isolated-PG16 proven; production remains at 0008 with PAPER disabled until the minimum 24-hour PITR gate and a separately authorized preparation task |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -2198,9 +2211,9 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_SCHEMA_CHANGE_DECISION
-BACKGROUND_NEXT_TIMED_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01_WHEN_WINDOW_IS_MATURE
+TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01_WHEN_WINDOW_IS_MATURE
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_READ_ONLY_CONFIRMATION
+FOLLOWING_TASK_AFTER_PITR_PASS = CONTROLLED_PRODUCTION_PAPER_PREPARATION_TO_0012_REQUIRES_SEPARATE_AUTHORIZATION
 ```
 
 Scanner scope remediation, credential rotation/safe-rebind and the clean
@@ -2244,10 +2257,11 @@ disabled production composition and controlled migration, least-privilege
 principal, runtime deployment and first-canary preparation contracts are now
 implemented and isolated-proven without a production mutation. WAL
 archive incident handling is completed and PITR continues accumulating. The
-closed-trade accounting/reporting projection is implemented, but revision 0011
-cannot persist the required immutable account/session baseline. A separate
-schema-extension decision is the next development gate; minimum PITR-window
-confirmation remains the next timed gate when mature. No autonomous Paper
+closed-trade accounting/reporting projection now consumes the persisted
+revision 0012 immutable account/session baseline, and isolated reconciliation
+passes without a second ledger. Minimum PITR-window confirmation is the next
+timed gate when mature; production preparation remains separately authorized.
+No autonomous Paper
 runtime was configured, deployed, started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
