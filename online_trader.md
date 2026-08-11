@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 0c3bf6497391cfa8c94fc70cba16cd1e22d72e74
+STATUS_AS_OF_COMMIT = c5d47fa2b1905b798ea8dd5f3c46459c720620e0
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T13:03:24Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_APPROVAL_SOURCE_ADAPTER_01
-FILES_CHANGED = app/engine_paper/production_approval.py; scripts/production_approval_adapter_proof.py; tests/paper_production_approval_source_adapter/__init__.py; tests/paper_production_approval_source_adapter/test_adapter_contract.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T14:06:15Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_01
+FILES_CHANGED = app/engine_safety/__init__.py; app/engine_safety/paper_production_control.py; tests/paper_production_kill_switch_emergency_stop/__init__.py; tests/paper_production_kill_switch_emergency_stop/conftest.py; tests/paper_production_kill_switch_emergency_stop/test_control_contract.py; tests/paper_production_kill_switch_emergency_stop/test_fail_closed_and_atomicity.py; tests/paper_production_kill_switch_emergency_stop/test_concurrency_and_matrix.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_WAL_ARCHIVE_RECOVERED_CONTIGUOUS_AND_AUTONOMOUS_HOST_ACK_PROGRESS_PASSED_24H_WINDOW_STILL_ACCUMULATING
+STATUS_CONFIDENCE = PROVEN_PRODUCTION_PAPER_KILL_SWITCH_EMERGENCY_STOP_PASS_FINAL_DISABLED_PITR_WINDOW_STILL_ACCUMULATING
 
 # Состояние проекта traders-ml
 
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_WAL_ARCHIVE_RECOVERED_CONTIGUOUS_AND_AUTONOMOUS_HOST_
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_PENDING
+CURRENT_STAGE = PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_PENDING
 CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
 
@@ -1576,10 +1576,12 @@ LIVE_MODE_ENABLED = NO
 The review statically classified the exact migration chain, rehearsed upgrade,
 destructive downgrade and forward recovery in task-owned PostgreSQL 16, and
 specified topology, least privilege, authorization, bounds, release, minimal
-canary and observation contracts. Readiness remains fail-closed because
-production backup/restore and PITR are unproven; authoritative market-data and
-approval adapters, a global PAPER kill switch, production observability,
-approved retention, and a safe read-only reconciliation command do not exist.
+canary and observation contracts. At review time readiness remained fail-closed
+because production backup/restore and PITR were unproven and authoritative
+adapters, a global PAPER kill switch, production observability, approved
+retention, and a safe read-only reconciliation command did not exist. The
+subsequent dedicated tasks have now implemented the adapters, backup/recovery
+controls, reconciliation and kill switch; the minimum PITR window remains open.
 No production PAPER enablement, schema/data/role mutation, graph read, runner,
 API/client control, scheduler/daemon, LIVE path, or Binance call occurred.
 
@@ -1946,9 +1948,80 @@ future eligible candidate requires the exact immutable final approval and
 controlled quantity contracts already accepted by command ingestion; absent
 persisted final approvals fail closed. The fresh production proof found the
 healthy normal state `NO_TRADE_SIGNAL` for all three allowed symbols and
-created no candidate or PAPER business object. The separate kill-switch gate
-is deliberately not implemented or bypassed here. The PITR chain remained
-continuous and continued accumulating in parallel.
+created no candidate or PAPER business object. That adapter task did not
+implement or bypass the separate kill-switch gate; the dedicated subsequent
+task below now implements it. The PITR chain remained continuous and continued
+accumulating in parallel.
+
+## PAPER production kill switch and emergency stop
+
+```text
+KILL_SWITCH_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_01
+KILL_SWITCH_RESULT = COMPLETED
+IMPLEMENTATION_COMMIT = c5d47fa2b1905b798ea8dd5f3c46459c720620e0
+PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_READINESS = READY
+PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_BLOCKER_CLOSED = YES
+CONTROL_ROOT = D:\disk_E\game_projects\traders\production_control\paper
+CONTROL_ROOT_CLASS = PERSISTENT_HOST_LOCAL_OUTSIDE_REPOSITORIES_EVIDENCE_PGDATA
+CONTROL_ROOT_ACL = PASS
+STATE_FILE_ACL = PASS
+AUDIT_FILE_ACL = PASS
+PERSISTENT_STATES = DISABLED_ARMED_EMERGENCY_STOP
+FAIL_STATE = FAIL_CLOSED_NON_PERSISTED
+DEFAULT_STATE = DISABLED
+FINAL_PRODUCTION_STATE = DISABLED
+FINAL_PRODUCTION_EFFECTIVE_STATE = DISABLED
+FINAL_PRODUCTION_GENERATION = 3
+PRODUCTION_ARMED_DURING_TASK = NO
+PRODUCTION_ARM_PREFLIGHT = DENIED_FAIL_CLOSED_EXPECTED
+PRODUCTION_ARM_DENIALS = SCHEMA_0008;PITR_BELOW_24H;PAPER_RUNTIME_DISABLED
+PRODUCTION_EMERGENCY_STOP_PROOF = PASS_DISABLED_TO_EMERGENCY_STOP_TO_DISABLED
+ATOMIC_PUBLICATION = PASS
+OPTIMISTIC_GENERATION = PASS_STALE_GENERATION_REJECTED
+STATE_AUDIT_RECONCILIATION = PASS
+MISSING_CORRUPT_UNKNOWN_MISMATCH = FAIL_CLOSED
+DISABLED_ALL_MUTATING_STAGES_DENIED = PASS
+EMERGENCY_STOP_ALL_MUTATING_STAGES_DENIED = PASS
+EMERGENCY_STOP_DB_NETWORK_SECRET_INDEPENDENCE = PASS
+DIRECT_EMERGENCY_STOP_TO_ARMED = FORBIDDEN
+CLEAR_EMERGENCY_STOP_TARGET = DISABLED_ONLY
+AUTHORITATIVE_REREAD_BEFORE_EACH_MUTATING_STAGE = YES
+SHARED_HOST_INTERLOCK = PASS_BOUNDED_EXCLUSIVE_CONSERVATIVE
+INFLIGHT_STAGE_EMERGENCY_STOP = CURRENT_ATOMIC_STAGE_AT_MOST_ONCE_NEXT_STAGE_DENIED
+ARMED_ISOLATED_ONE_STAGE_AUTHORIZATION = PASS
+LIVE_ARM_AND_MUTATION = DENIED
+FUTURE_PRODUCTION_COMPOSITION_REQUIRES_SAFETY_GATE = YES
+NEW_KILL_SWITCH_TESTS = 1635_PASSED
+FULL_ALLOWED_REGRESSION = PASS_COMPOSED_19236_PASSED_6_SKIPPED
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE
+PRODUCTION_PAPER_TABLE_QUERIES = 0
+PRODUCTION_PAPER_MUTATIONS = 0
+PAPER_RUNTIME_DAEMON_SCHEDULER = OFF_OFF_OFF
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+PITR_WINDOW_SECONDS_BEFORE_AFTER = 19571_22272_NOT_RESET
+WAL_ARCHIVE_HEALTH_BEFORE_AFTER = PASS_PASS
+WAL_ARCHIVE_UNRESOLVED_FAILURES_BEFORE_AFTER = 0_0
+WAL_ACK_DAEMON = RUNNING_UNCHANGED_PID_13936
+MARKET_DATA_HEALTH_AFTER = PASS_18_OF_18
+ORCHESTRATOR_HEALTH_AFTER = PASS
+READONLY_API_HEALTH_AFTER = PASS
+PROTECTED_VENV = UNCHANGED_CONFIG_HASH_SMOKE_PASS
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+```
+
+The host-local control plane is independent from PostgreSQL, API/network
+availability and protected bindings. State publication is canonical,
+checksum-protected and atomic; the audit tail must reconcile to the state or
+the effective result is fail-closed. Production was initialized disabled,
+rejected the expected arm attempt, demonstrated an emergency-stop transition,
+and was explicitly cleared back to disabled. The mutation gate and future
+production composition were proved only against isolated targets. No PAPER
+domain row, production schema, runtime, service, adapter, PITR/WAL policy or
+LIVE behavior changed. The minimum 24-hour PITR window remains the next timed
+gate.
 
 ## Tracked Compose secret incident remediation
 
@@ -1995,7 +2068,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈93% | Production persisted market-data and approval-source adapters are proven; PAPER remains disabled, kill-switch/emergency-stop is next, and the separate minimum 24-hour PITR window is not yet proven |
+| Online analytics/paper pipeline | ≈94% | Production persisted market-data and approval-source adapters plus the host-local kill-switch/emergency-stop are proven; PAPER remains disabled and the separate minimum 24-hour PITR window is not yet proven |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -2008,8 +2081,8 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_IMPLEMENTATION_ONLY
+TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_READ_ONLY_CONFIRMATION_WHEN_MATURE
 ```
 
 Scanner scope remediation, credential rotation/safe-rebind and the clean
@@ -2047,11 +2120,11 @@ reconciliation is implemented. The production persisted market-data input
 adapter is now implemented and proved against all 18 production streams
 without a Binance dependency or PAPER mutation. The production approval source
 adapter is now implemented and production-read proven with healthy no-trade
-results. The next implementation task is the production kill switch and
-emergency stop. WAL archive incident handling is completed; minimum
-PITR-window confirmation remains a separate timed gate and
-is not bypassed by that recommendation. No autonomous Paper runtime was configured, deployed,
-started, or enabled.
+results. The host-local production PAPER kill switch and emergency stop are
+now implemented and production-proven with the final state disabled. WAL
+archive incident handling is completed; minimum PITR-window confirmation is
+the next separate timed gate. No autonomous Paper runtime was configured,
+deployed, started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
 
