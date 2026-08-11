@@ -31,3 +31,15 @@ __all__ = [
     "parse_execution_mode",
     "require_paper_mode",
 ]
+
+from app.engine_safety.paper_production_control import (
+    PaperProductionMutationSafetyGate,
+    PaperProductionSafetyControl,
+    ProductionPaperMutationComposition,
+)
+
+__all__ += [
+    "PaperProductionMutationSafetyGate",
+    "PaperProductionSafetyControl",
+    "ProductionPaperMutationComposition",
+]
