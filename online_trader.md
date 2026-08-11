@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = c5d47fa2b1905b798ea8dd5f3c46459c720620e0
+STATUS_AS_OF_COMMIT = b391b4c83eaa0aa88b02687f9c1d6fc306a6e8ce
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T14:06:15Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_KILL_SWITCH_AND_EMERGENCY_STOP_01
-FILES_CHANGED = app/engine_safety/__init__.py; app/engine_safety/paper_production_control.py; tests/paper_production_kill_switch_emergency_stop/__init__.py; tests/paper_production_kill_switch_emergency_stop/conftest.py; tests/paper_production_kill_switch_emergency_stop/test_control_contract.py; tests/paper_production_kill_switch_emergency_stop/test_fail_closed_and_atomicity.py; tests/paper_production_kill_switch_emergency_stop/test_concurrency_and_matrix.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T15:21:30Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_DISABLED_WIRING_01
+FILES_CHANGED = app/engine_paper/production_composition.py; tests/paper_production_preparation_disabled_wiring/__init__.py; tests/paper_production_preparation_disabled_wiring/conftest.py; tests/paper_production_preparation_disabled_wiring/test_composition_contract.py; tests/paper_production_preparation_disabled_wiring/test_plans_principal_runtime.py; tests/paper_production_preparation_disabled_wiring/test_stage_safety.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_PRODUCTION_PAPER_KILL_SWITCH_EMERGENCY_STOP_PASS_FINAL_DISABLED_PITR_WINDOW_STILL_ACCUMULATING
+STATUS_CONFIDENCE = PROVEN_DISABLED_PRODUCTION_PAPER_PREPARATION_WIRING_PASS_FINAL_DISABLED_PITR_WINDOW_STILL_ACCUMULATING
 
 # Состояние проекта traders-ml
 
@@ -2023,6 +2023,61 @@ domain row, production schema, runtime, service, adapter, PITR/WAL policy or
 LIVE behavior changed. The minimum 24-hour PITR window remains the next timed
 gate.
 
+## Disabled production PAPER preparation wiring
+
+```text
+PREPARATION_WIRING_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_DISABLED_WIRING_01
+PREPARATION_WIRING_RESULT = COMPLETED_WITH_REMAINING_PITR_BLOCKER
+IMPLEMENTATION_COMMIT = b391b4c83eaa0aa88b02687f9c1d6fc306a6e8ce
+COMPOSITION_MODULE = app/engine_paper/production_composition.py
+COMPOSITION_CLASS = PaperProductionComposition
+PRODUCTION_PAPER_PREPARATION_DISABLED_WIRING_READINESS = READY_FOR_CONTROLLED_PRODUCTION_PREPARATION
+PRODUCTION_PAPER_PREPARATION_DISABLED_WIRING_BLOCKER_CLOSED = YES
+MARKET_DATA_APPROVAL_KILL_SWITCH_BINDINGS = PASS_EXISTING_SEMANTICS_UNCHANGED
+SCHEMA_PITR_WAL_PRINCIPAL_RUNTIME_LIVE_GATES = PASS_FAIL_CLOSED_COMPOSITION
+CURRENT_PRODUCTION_DRY_RUN = DENIED_FAIL_CLOSED
+CURRENT_PRODUCTION_MUTATION_READY = NO
+CURRENT_PRODUCTION_MUTATION_DENIAL_REASONS = SCHEMA_0008;PITR_BELOW_24H;PAPER_RUNTIME_DISABLED;CONTROL_STATE_DISABLED
+CURRENT_NO_ELIGIBLE_APPROVAL = HEALTHY_ZERO_MUTATION_NOT_PREPARATION_BLOCKER
+CURRENT_PRODUCTION_RECONCILIATION_PRECONDITION = PAPER_SCHEMA_NOT_DEPLOYED_ZERO_PAPER_TABLE_READS
+MIGRATION_PLAN = CONTROLLED_0008_TO_0009_TO_0010_TO_0011_FORWARD_REMEDIATION_ONLY
+DESTRUCTIVE_AUTO_DOWNGRADE = NOT_IMPLEMENTED
+ISOLATED_POSTGRESQL_MAJOR = 16
+ISOLATED_MIGRATION_0008_TO_0011 = PASS_546_223_MS_ZERO_LOCK_WAITS_ZERO_STATEMENT_TIMEOUTS
+ISOLATED_NON_PAPER_DATA_PRESERVATION = PASS_4_OF_4_REPRESENTATIVE_ROWS
+ISOLATED_PAPER_START_EMPTY = PASS
+PAPER_PRINCIPAL_POLICY = traders_paper_runtime_PREPARED_NOT_PRODUCTION_CREATED
+ISOLATED_LEAST_PRIVILEGE_LIFECYCLE = PASS_FULL_CLOSED_GRAPH_AND_READ_ONLY_RECONCILIATION
+ISOLATED_ADMIN_DDL_AND_UNRELATED_WRITE_DENIAL = PASS
+DISABLED_RUNTIME_DEPLOYMENT_CONTRACT = READY_NOT_DEPLOYED
+FIRST_PRODUCTION_CANARY_PLAN = READY_NOT_EXECUTED_ONE_COMMAND_ONE_POSITION_ZERO_BINANCE_CALLS
+NEW_PREPARATION_WIRING_TESTS = 2920_PASSED_ZERO_FAILED
+FOCUSED_ALLOWED_REGRESSION = 14117_PASSED_1_SKIPPED
+BROAD_ALLOWED_REGRESSION = 21324_PASSED_2_SKIPPED_PLUS_CANONICAL_LOCK_SERVER_19_PASSED
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE
+PRODUCTION_CONTROL = HEALTHY_DISABLED_GENERATION_3
+PRODUCTION_PAPER_RUNTIME_DAEMON_SCHEDULER = OFF_OFF_OFF
+PRODUCTION_PAPER_MUTATIONS = 0
+LIVE_MODE_ENABLED = NO
+PITR_WINDOW_SECONDS_BEFORE_AFTER = 22272_26773_NOT_RESET
+WAL_ARCHIVE_HEALTH_BEFORE_AFTER = PASS_PASS
+WAL_ARCHIVE_UNRESOLVED_FAILURES_BEFORE_AFTER = 0_0
+WAL_ACK_DAEMON = RUNNING_UNCHANGED_PID_13936
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+PROTECTED_VENV_CONFIG_SHA256 = 138bedfc7039d64e7be9e2c2cd5e49a1c0afda78260dd57482ffaaf02ba663ca_UNCHANGED
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+```
+
+The new layer is preparation-only and cannot resolve a production database
+target or execute a production migration. It binds the existing production
+market-data and approval adapters to the authoritative per-stage mutation
+safety gate, models the deterministic controlled preparation phases, exact
+least-privilege capability matrix, disabled runtime identity, idempotent
+resume rules, cancellation and first-canary budget. The real database proof
+used only a task-owned isolated PostgreSQL 16 container, which was removed
+after validation. Production remained at revision 0008 and disabled.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -2068,7 +2123,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈94% | Production persisted market-data and approval-source adapters plus the host-local kill-switch/emergency-stop are proven; PAPER remains disabled and the separate minimum 24-hour PITR window is not yet proven |
+| Online analytics/paper pipeline | ≈94% | Disabled production composition, migration/principal/runtime preparation contracts, persisted adapters and the host-local kill-switch are isolated-proven; production remains at 0008 with PAPER disabled and the separate minimum 24-hour PITR window not yet proven |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -2121,7 +2176,10 @@ adapter is now implemented and proved against all 18 production streams
 without a Binance dependency or PAPER mutation. The production approval source
 adapter is now implemented and production-read proven with healthy no-trade
 results. The host-local production PAPER kill switch and emergency stop are
-now implemented and production-proven with the final state disabled. WAL
+now implemented and production-proven with the final state disabled. The
+disabled production composition and controlled migration, least-privilege
+principal, runtime deployment and first-canary preparation contracts are now
+implemented and isolated-proven without a production mutation. WAL
 archive incident handling is completed; minimum PITR-window confirmation is
 the next separate timed gate. No autonomous Paper runtime was configured,
 deployed, started, or enabled.
