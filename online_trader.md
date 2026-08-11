@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d9dc41f1afb28bc3523a18d12cbfdc2bcc974b16
+STATUS_AS_OF_COMMIT = 9b6294ba5475a323537b88008d9845b9c63b8386
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T10:26:29Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_MARKET_DATA_INPUT_ADAPTER_01
-FILES_CHANGED = app/engine_paper/production_market_data.py; scripts/production_market_data_adapter_proof.py; tests/paper_production_market_data_input_adapter/__init__.py; tests/paper_production_market_data_input_adapter/test_adapter_contract.py; tests/production_backup_pitr_controlled_change/test_runtime_contract.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T11:38:00Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_WAL_ARCHIVE_UNRESOLVED_FAILURE_REMEDIATION_01
+FILES_CHANGED = app/engine_safety/production_wal_archive.py; scripts/production_wal_archive_remediation.py; tests/production_wal_archive_unresolved_failure_remediation/__init__.py; tests/production_wal_archive_unresolved_failure_remediation/test_contracts.py; tests/production_wal_archive_unresolved_failure_remediation/test_isolated_postgres16_transient_retry.py; tests/production_wal_archive_unresolved_failure_remediation/test_operator_safety.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_MARKET_DATA_ADAPTER_IMPLEMENTED_AND_PRODUCTION_READ_PASSED_EXTERNAL_WAL_ARCHIVE_BLOCKER_REMAINS
+STATUS_CONFIDENCE = PROVEN_WAL_ARCHIVE_RECOVERED_CONTIGUOUS_AND_AUTONOMOUS_HOST_ACK_PROGRESS_PASSED_24H_WINDOW_STILL_ACCUMULATING
 
 # Состояние проекта traders-ml
 
@@ -24,7 +24,7 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
 CURRENT_STAGE = PAPER_TRADING_PRODUCTION_APPROVAL_SOURCE_ADAPTER_PENDING
-CURRENT_BLOCKER = PRODUCTION_WAL_ARCHIVE_UNRESOLVED_FAILURE_AND_MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1781,14 +1781,66 @@ The blocker is not closed because the newly established base/WAL chain had
 accumulated only 4,888 of the required 86,400 seconds at the last monitoring
 snapshot; no bootstrap exception is applied to this requirement.
 
+## PAPER production WAL archive unresolved failure remediation
+
+```text
+WAL_ARCHIVE_REMEDIATION_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_WAL_ARCHIVE_UNRESOLVED_FAILURE_REMEDIATION_01
+WAL_ARCHIVE_REMEDIATION_RESULT = COMPLETED
+IMPLEMENTATION_COMMIT = 9b6294ba5475a323537b88008d9845b9c63b8386
+WAL_ARCHIVE_UNRESOLVED_FAILURE_BLOCKER_CLOSED = YES
+BACKUP_PITR_BLOCKER_CLOSED = NO
+REMAINING_BACKUP_PITR_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+ROOT_CAUSE = MISSING_CONTINUOUS_HOST_ACK_PUBLISHER_FOR_EXISTING_FAIL_CLOSED_WAL_EXPORT_PROTOCOL
+DIAGNOSIS_BEFORE = RETRY_PENDING
+DIAGNOSIS_AFTER = HISTORICAL_FAILURE_ALREADY_RECOVERED
+WAL_ARCHIVE_HEALTH = PASS
+WAL_ARCHIVE_HISTORICAL_FAILURE_COUNT = 114_RETAINED_NOT_RESET
+WAL_ARCHIVE_ACTIVE_UNRESOLVED_FAILURE_COUNT = 0
+WAL_ARCHIVE_PENDING_COUNT = 0
+WAL_ARCHIVE_BACKLOG_COUNT = 0
+REQUIRED_WAL_RANGE_KNOWN = YES
+MISSING_REQUIRED_WAL_SEGMENTS = 0
+PHYSICAL_WAL_GAP = NO
+BASE_BACKUP_RECOVERY_CHAIN_CONTIGUOUS = YES
+PITR_CHAIN_VALID = YES
+PITR_WINDOW_SECONDS_A = 4887
+PITR_WINDOW_SECONDS_B = 13273
+PITR_WINDOW_RESET_BY_TASK = NO
+HOST_ACK_DAEMON = RUNNING_SAFE_ATOMIC_IDEMPOTENT
+AUTONOMOUS_ARCHIVE_PROGRESS = PASS_PG_SWITCH_ARCHIVED_COUNT_19_TO_20
+POSTGRES_RESTARTS_BY_TASK = 0
+POSTGRES_RECREATES_BY_TASK = 0
+NEW_PRODUCTION_BASE_BACKUPS_BY_TASK = 0
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE
+MARKET_DATA = PASS_18_OF_18
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+NEW_REMEDIATION_TESTS = 1227_PASSED_1_DEFAULT_SKIP_PLUS_1_EXPLICIT_ISOLATED_PG16_PASS
+FULL_ALLOWED_REGRESSION = 16135_PASSED_6_SKIPPED
+PROTECTED_VENV = UNCHANGED_CONFIG_HASH_IMPORT_SMOKE_PASS
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+```
+
+The cumulative PostgreSQL archiver failure counter was preserved as historical
+telemetry. Physical inspection proved complete coverage from the retained base
+backup through the newest archived segment before the blocker was cleared. The
+recurring failure was caused by the absence of a continuous host publisher for
+the existing fail-closed export/ACK protocol. A no-secret host ACK daemon now
+performs bounded, checksum-verified, idempotent publication and acknowledgement;
+one independent `pg_switch_wal()` advanced the archive without manual
+synchronization. No PostgreSQL restart, PGDATA change, archive-root relocation,
+replacement base backup, PAPER access, or LIVE action occurred. The separate
+24-hour minimum PITR window gate remains open while accumulation continues.
+
 ## PAPER production persisted market-data input adapter
 
 ```text
 MARKET_DATA_INPUT_ADAPTER_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_MARKET_DATA_INPUT_ADAPTER_01
 MARKET_DATA_INPUT_ADAPTER_RESULT = COMPLETED_WITH_REMAINING_EXTERNAL_BLOCKER
 IMPLEMENTATION_COMMIT = d9dc41f1afb28bc3523a18d12cbfdc2bcc974b16
-PRODUCTION_MARKET_DATA_INPUT_ADAPTER_READINESS = NOT_READY_EXTERNAL_WAL_ARCHIVE_BLOCKER
-PRODUCTION_MARKET_DATA_INPUT_ADAPTER_BLOCKER_CLOSED = NO
+PRODUCTION_MARKET_DATA_INPUT_ADAPTER_READINESS = READY_IMPLEMENTED_AND_PRODUCTION_READ_PASSED
+PRODUCTION_MARKET_DATA_INPUT_ADAPTER_BLOCKER_CLOSED = YES
 ADAPTER = app.engine_paper.production_market_data:PaperProductionMarketDataInputAdapter
 AUTHORITATIVE_SOURCE = PRODUCTION_PERSISTED_MARKET_DATA
 DIRECT_BINANCE_DEPENDENCY = NO
@@ -1825,7 +1877,7 @@ LIVE_MODE_ENABLED = NO
 PITR_WINDOW_SECONDS_BEFORE_AFTER = 7272_7272_PUBLISHED_MONITORING_SNAPSHOT_NOT_RESET
 WAL_ARCHIVE_HEALTH_BEFORE_AFTER = FAIL_UNRESOLVED_FAILURE
 WAL_ARCHIVE_FAILED_COUNT_AT_FINAL_REREAD = 77
-REMAINING_BLOCKER = PRODUCTION_WAL_ARCHIVE_UNRESOLVED_FAILURE_PLUS_MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
 
 The new adapter composes only the existing revision-0008 candle tables,
@@ -1835,11 +1887,10 @@ returns immutable snapshots with deterministic content watermarks. A
 controlled proof executed the actual adapter through the existing market-data
 runtime injection path and returned all 18 streams as current and contiguous;
 temporary proof files were removed and no service was restarted. The adapter
-itself is implemented and production-read proven, but the readiness blocker is
-not closed because the independent WAL archiver already had an unresolved
-failure at task start and still has one at final reread. This task did not run
-WAL sync, mutate archive storage/configuration, replace a base backup, restart
-PostgreSQL, or access the protected binding.
+itself is implemented and production-read proven. Its independent WAL archive
+blocker was subsequently closed by the dedicated remediation task; the
+separate minimum 24-hour PITR accumulation gate remains open. Adapter semantics
+and source were unchanged by that remediation.
 
 ## Tracked Compose secret incident remediation
 
@@ -1886,7 +1937,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈92% | Production persisted market-data adapter is implemented and actual 18-stream read-only proof passed; PAPER remains disabled and readiness stays fail-closed because WAL archiving has an unresolved runtime failure and the minimum 24-hour PITR window is not yet proven |
+| Online analytics/paper pipeline | ≈92% | Production persisted market-data adapter and WAL archive remediation are proven; PAPER remains disabled, approval-source adapter is next, and the separate minimum 24-hour PITR window is not yet proven |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1937,9 +1988,9 @@ blockers. Isolated logical restore and PITR now pass, and bounded read-only
 reconciliation is implemented. The production persisted market-data input
 adapter is now implemented and proved against all 18 production streams
 without a Binance dependency or PAPER mutation. The next implementation task
-is the production approval source adapter; WAL archive incident handling and
-minimum PITR-window confirmation remain independent gates and are not bypassed
-by that recommendation. No autonomous Paper runtime was configured, deployed,
+is the production approval source adapter. WAL archive incident handling is
+completed; minimum PITR-window confirmation remains a separate timed gate and
+is not bypassed by that recommendation. No autonomous Paper runtime was configured, deployed,
 started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
