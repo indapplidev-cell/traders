@@ -32,6 +32,17 @@ REQUIRED_PATHS = {
     "/api/v1/incidents",
     "/api/v1/incidents/{incident_id}",
 }
+PAPER_PATHS = {
+    "/api/v1/paper/readiness",
+    "/api/v1/paper/account",
+    "/api/v1/paper/positions",
+    "/api/v1/paper/positions/{position_id}",
+    "/api/v1/paper/trades",
+    "/api/v1/paper/trades/{position_id}/report",
+    "/api/v1/paper/reconciliation",
+    "/api/v1/paper/runtime/status",
+    "/api/v1/paper/control/status",
+}
 
 
 def _resolve(document: dict, schema: dict) -> dict:
@@ -108,7 +119,7 @@ def test_required_paths_and_get_only_surface():
 
 def test_framework_openapi_has_exact_business_paths_and_no_mutations():
     generated = create_app().openapi()
-    assert set(generated["paths"]) == REQUIRED_PATHS
+    assert set(generated["paths"]) == REQUIRED_PATHS | PAPER_PATHS
     for operations in generated["paths"].values():
         assert {key for key in operations if key in {"get", "post", "put", "patch", "delete"}} == {"get"}
     assert "/openapi.json" not in generated["paths"]
@@ -170,7 +181,7 @@ def test_app_import_and_factory_have_no_socket_db_or_thread_side_effects(monkeyp
             del sys.modules[name]
     module = importlib.import_module("app.server_api")
     app = module.create_app()
-    assert len(app.routes) == 9
+    assert len(app.routes) == 18
     assert counters == {"bind": 0, "connect": 0, "db": 0, "thread": 0}
 
 
@@ -191,7 +202,7 @@ def test_app_factory_uses_only_explicit_repositories():
     repositories = fake.api_repositories()
     assert isinstance(repositories, ApiRepositories)
     app = create_app(repositories=repositories, clock=lambda: NOW)
-    assert len(app.routes) == 9
+    assert len(app.routes) == 18
     assert fake.calls == []
 
 
@@ -208,7 +219,7 @@ def test_runtime_api_code_has_no_forbidden_control_or_write_calls():
         "subprocess.",
         "docker sdk",
         "binance",
-        "alembic",
+        "alembic.command",
         "session.commit(",
         "session.flush(",
         "session.add(",

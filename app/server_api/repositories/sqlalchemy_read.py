@@ -13,13 +13,20 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import String, and_, cast, func, literal, or_, select, tuple_
+from sqlalchemy import String, and_, cast, func, literal, or_, select, text, tuple_
 from sqlalchemy.orm import Session, aliased
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
+from app.db.paper_mappings import orm_values_to_paper_event, orm_values_to_paper_fill, orm_values_to_paper_position
+from app.db.paper_models import (
+    PaperAccountBaselineRecord, PaperExitDecisionRecord, PaperExitEvaluationCursorRecord,
+    PaperFillRecord, PaperJournalEntryRecord, PaperOrderRecord, PaperPositionRecord,
+)
+from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity, PaperClosedTradeFacts
 from app.server_api.health_policy import evaluate_boundary_health
+from app.server_api.mapping.contract import utc_text
 from app.server_api.repositories.records import (
     AnalysisRecord,
     HealthRecord,
@@ -31,6 +38,9 @@ from app.server_api.repositories.records import (
     ServiceRecord,
     SetupQuery,
     SetupRecord,
+    PaperPositionQuery,
+    PaperPositionRecordView,
+    PaperTradeQuery,
 )
 
 
@@ -593,3 +603,134 @@ class SqlAlchemyReadAdapter:
             ready=decision.ready,
             acceptance_blocking=decision.acceptance_blocking,
         )
+
+    def schema_revision(self) -> str | None:
+        """Read only Alembic's singleton version; no PAPER relation is touched."""
+        with self._session() as session:
+            return session.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar_one_or_none()
+
+    def list_account_baselines(self, limit: int = 2) -> tuple[PaperAccountBaseline, ...]:
+        statement = select(PaperAccountBaselineRecord).order_by(
+            PaperAccountBaselineRecord.initialized_at,
+            PaperAccountBaselineRecord.baseline_id,
+        ).limit(limit)
+        with self._session() as session:
+            rows = tuple(session.scalars(statement))
+        return tuple(PaperAccountBaseline(
+            baseline_id=row.baseline_id,
+            identity=PaperAccountIdentity(row.account_id, row.accounting_session_id, row.currency),
+            initial_balance=row.initial_balance,
+            initialized_at=_aware(row.initialized_at),
+            semantic_version=row.semantic_version,
+        ) for row in rows)
+
+    @staticmethod
+    def _facts_for_rows(session: Session, rows: tuple[PaperPositionRecord, ...]) -> tuple[PaperClosedTradeFacts, ...]:
+        if not rows:
+            return ()
+        position_ids = tuple(row.position_id for row in rows)
+        fill_ids = tuple({value for row in rows for value in (row.entry_fill_id, row.exit_fill_id) if value})
+        fills = tuple(session.scalars(select(PaperFillRecord).where(PaperFillRecord.fill_id.in_(fill_ids))))
+        fill_map = {row.fill_id: orm_values_to_paper_fill(row) for row in fills}
+        journals = tuple(session.scalars(
+            select(PaperJournalEntryRecord)
+            .where(PaperJournalEntryRecord.position_id.in_(position_ids))
+            .order_by(PaperJournalEntryRecord.occurred_at, PaperJournalEntryRecord.journal_entry_id)
+        ))
+        event_map: dict[str, list] = {value: [] for value in position_ids}
+        for row in journals:
+            if row.position_id in event_map:
+                event_map[row.position_id].append(orm_values_to_paper_event(row))
+        return tuple(PaperClosedTradeFacts(
+            position=orm_values_to_paper_position(row),
+            entry_fill=fill_map.get(row.entry_fill_id),
+            exit_fill=fill_map.get(row.exit_fill_id),
+            exit_reason=row.reason_code,
+            journal_events=tuple(event_map[row.position_id]),
+        ) for row in rows)
+
+    def list_closed_trade_facts(self, limit: int) -> tuple[PaperClosedTradeFacts, ...]:
+        statement = select(PaperPositionRecord).where(PaperPositionRecord.state == "CLOSED").order_by(
+            PaperPositionRecord.closed_at, PaperPositionRecord.position_id
+        ).limit(limit)
+        with self._session() as session:
+            rows = tuple(session.scalars(statement))
+            return self._facts_for_rows(session, rows)
+
+    @staticmethod
+    def _position_view(row: PaperPositionRecord) -> PaperPositionRecordView:
+        return PaperPositionRecordView(
+            position=orm_values_to_paper_position(row), entry_time=_aware(row.opened_at), updated_at=_aware(row.updated_at),
+            exit_reason=row.reason_code if row.state in {"CLOSED", "FAILED"} else None,
+            entry_order_id=row.entry_order_id, entry_fill_id=row.entry_fill_id,
+            close_fill_id=row.exit_fill_id,
+        )
+
+    def list_paper_positions(self, query: PaperPositionQuery) -> RecordPage:
+        statement = select(PaperPositionRecord)
+        if query.state:
+            statement = statement.where(PaperPositionRecord.state == query.state)
+        if query.symbol:
+            statement = statement.where(PaperPositionRecord.symbol == query.symbol)
+        if query.cursor:
+            statement = statement.where(tuple_(PaperPositionRecord.updated_at, PaperPositionRecord.position_id) <
+                (query.cursor.updated_at, query.cursor.identifier))
+        statement = statement.order_by(PaperPositionRecord.updated_at.desc(), PaperPositionRecord.position_id.desc()).limit(query.limit + 1)
+        with self._session() as session:
+            rows = tuple(session.scalars(statement))
+        selected = rows[:query.limit]
+        return RecordPage(tuple(self._position_view(row) for row in selected), len(rows) > query.limit)
+
+    def get_paper_position(self, position_id: str) -> PaperPositionRecordView | None:
+        with self._session() as session:
+            row = session.scalar(select(PaperPositionRecord).where(PaperPositionRecord.position_id == position_id))
+            if row is None:
+                return None
+            entry_order = session.scalar(select(PaperOrderRecord).where(PaperOrderRecord.order_id == row.entry_order_id))
+            close_order = None
+            if entry_order is not None:
+                close_order = session.scalar(select(PaperOrderRecord).where(
+                    PaperOrderRecord.command_id == entry_order.command_id,
+                    PaperOrderRecord.order_role == "EXIT",
+                ).order_by(PaperOrderRecord.created_at.desc(), PaperOrderRecord.order_id.desc()).limit(1))
+            cursor = session.scalar(select(PaperExitEvaluationCursorRecord).where(
+                PaperExitEvaluationCursorRecord.position_id == position_id).limit(1))
+            decision = session.scalar(select(PaperExitDecisionRecord).where(
+                PaperExitDecisionRecord.position_id == position_id)
+                .order_by(PaperExitDecisionRecord.decided_at.desc(), PaperExitDecisionRecord.exit_decision_id.desc()).limit(1))
+            events = tuple(session.scalars(select(PaperJournalEntryRecord).where(
+                PaperJournalEntryRecord.position_id == position_id)
+                .order_by(PaperJournalEntryRecord.occurred_at.desc(), PaperJournalEntryRecord.journal_entry_id.desc()).limit(50)))
+        base = self._position_view(row)
+        return PaperPositionRecordView(
+            position=base.position, entry_time=base.entry_time, updated_at=base.updated_at,
+            exit_reason=(decision.cause if decision is not None else base.exit_reason),
+            entry_order_id=base.entry_order_id, entry_fill_id=base.entry_fill_id,
+            close_order_id=None if close_order is None else close_order.order_id,
+            close_fill_id=base.close_fill_id,
+            exit_cursor_status=None if cursor is None else f"VERSION_{cursor.version}",
+            exit_decision=None if decision is None else decision.cause,
+            lifecycle_events=tuple({"event_type": event.event_type, "occurred_at": utc_text(_aware(event.occurred_at)),
+                                    "reason_code": event.reason_code} for event in reversed(events)),
+        )
+
+    def list_paper_trades(self, query: PaperTradeQuery) -> RecordPage:
+        statement = select(PaperPositionRecord).where(PaperPositionRecord.state == "CLOSED")
+        if query.symbol:
+            statement = statement.where(PaperPositionRecord.symbol == query.symbol)
+        if query.side:
+            statement = statement.where(PaperPositionRecord.side == query.side)
+        if query.exit_reason:
+            statement = statement.where(PaperPositionRecord.reason_code == query.exit_reason)
+        if query.from_at:
+            statement = statement.where(PaperPositionRecord.closed_at >= query.from_at)
+        if query.to_at:
+            statement = statement.where(PaperPositionRecord.closed_at < query.to_at)
+        if query.cursor:
+            statement = statement.where(tuple_(PaperPositionRecord.closed_at, PaperPositionRecord.position_id) <
+                (query.cursor.updated_at, query.cursor.identifier))
+        statement = statement.order_by(PaperPositionRecord.closed_at.desc(), PaperPositionRecord.position_id.desc()).limit(query.limit + 1)
+        with self._session() as session:
+            rows = tuple(session.scalars(statement))
+            facts = self._facts_for_rows(session, rows[:query.limit])
+        return RecordPage(facts, len(rows) > query.limit)

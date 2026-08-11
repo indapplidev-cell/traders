@@ -13,7 +13,12 @@ from .records import (
     RunRecord,
     SetupQuery,
     SetupRecord,
+    PaperPositionQuery,
+    PaperPositionRecordView,
+    PaperTradeQuery,
 )
+
+from app.engine_paper.accounting import PaperAccountBaseline, PaperClosedTradeFacts
 
 
 class HealthReadRepository(Protocol):
@@ -44,6 +49,15 @@ class DashboardReadRepository(Protocol):
     def list_recent_runs(self, limit: int) -> tuple[RunRecord, ...]: ...
 
 
+class PaperReportingReadRepository(Protocol):
+    def schema_revision(self) -> str | None: ...
+    def list_account_baselines(self, limit: int = 2) -> tuple[PaperAccountBaseline, ...]: ...
+    def list_closed_trade_facts(self, limit: int) -> tuple[PaperClosedTradeFacts, ...]: ...
+    def list_paper_positions(self, query: PaperPositionQuery) -> RecordPage: ...
+    def get_paper_position(self, position_id: str) -> PaperPositionRecordView | None: ...
+    def list_paper_trades(self, query: PaperTradeQuery) -> RecordPage: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ApiRepositories:
     health: HealthReadRepository
@@ -52,3 +66,4 @@ class ApiRepositories:
     setups: SetupReadRepository
     incidents: IncidentReadRepository
     dashboard: DashboardReadRepository
+    paper: PaperReportingReadRepository | None = None

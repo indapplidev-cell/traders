@@ -149,3 +149,37 @@ class IncidentQuery:
 class RecordPage:
     items: tuple[object, ...] = field(default_factory=tuple)
     has_more: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class PaperPositionQuery:
+    limit: int
+    cursor: CursorPosition | None = None
+    state: str | None = None
+    symbol: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PaperTradeQuery:
+    limit: int
+    cursor: CursorPosition | None = None
+    symbol: str | None = None
+    side: str | None = None
+    exit_reason: str | None = None
+    from_at: datetime | None = None
+    to_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PaperPositionRecordView:
+    position: object
+    entry_time: datetime
+    updated_at: datetime
+    exit_reason: str | None = None
+    entry_order_id: str | None = None
+    entry_fill_id: str | None = None
+    close_order_id: str | None = None
+    close_fill_id: str | None = None
+    exit_cursor_status: str | None = None
+    exit_decision: str | None = None
+    lifecycle_events: tuple[dict[str, str], ...] = ()

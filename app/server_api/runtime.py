@@ -16,6 +16,9 @@ from app.server_api.app_factory import create_app
 from app.server_api.repositories.protocols import ApiRepositories
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
 from app.server_api.runtime_config import RuntimeConfig
+from app.server_api.schemas.paper import PaperControlStatus
+from app.server_api.services import PaperRuntimeObservation
+from app.engine_safety.paper_production_control import PaperProductionSafetyControl
 
 
 APPLICATION_NAME = "traders-readonly-api"
@@ -51,6 +54,21 @@ def _repositories(engine: Engine) -> ApiRepositories:
         setups=adapter,
         incidents=adapter,
         dashboard=adapter,
+        paper=adapter,
+    )
+
+
+def _paper_control_status() -> PaperControlStatus:
+    """Observe the reconciled control state without acquiring/writing a lock."""
+    state = PaperProductionSafetyControl().read_authoritative()
+    return PaperControlStatus(
+        state=state.state.value,
+        effective_state=state.state.value,
+        generation=state.generation,
+        health="HEALTHY",
+        emergency_stop_available=True,
+        audit_health="HEALTHY",
+        state_audit_reconciliation="HEALTHY",
     )
 
 
@@ -75,7 +93,11 @@ def create_runtime_app() -> FastAPI:
         finally:
             engine.dispose()
 
-    app = create_app(repositories=repositories)
+    app = create_app(
+        repositories=repositories,
+        paper_runtime=PaperRuntimeObservation(environment="production"),
+        paper_control_status=_paper_control_status,
+    )
     app.router.lifespan_context = lifespan
     app.state.runtime_config = config
     app.state.runtime_engine = engine

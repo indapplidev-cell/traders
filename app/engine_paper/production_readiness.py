@@ -272,7 +272,7 @@ MIGRATION_MANIFESTS: Final = (
         data_backfill="none; no fake or default baseline is seeded",
         default_nullability="all baseline identity value timestamp and semantic fields are non-null",
         runtime_compatibility="0008 services unaffected; current PAPER runtime and accounting require 0012 exactly",
-        source_sha256="9acf623e1c1b64fb51658a95e5f4cddac6999e0b1f2ada5d9b2428cd527e881e",
+        source_sha256="7f8ceb22a472efec1301ceac6c4b3ee203ff282ac32a8b84860711e90fe79048",
     ),
 )
 
