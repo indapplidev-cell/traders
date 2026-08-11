@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = ba6f17a9518975cb8fb5e0a7f058558bdabe3d13
+STATUS_AS_OF_COMMIT = ab7eda851f8cf697d36b0aeb1a3b89663df88ff7
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-10T22:22:20Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_01
-FILES_CHANGED = app/engine_paper/backup_pitr_infrastructure.py; docs/operations/paper_production_backup_pitr_infrastructure.md; scripts/safe_production_inspector.py; scripts/security_retry_controls.py; tests/paper_backup_pitr_infrastructure_remediation/__init__.py; tests/paper_backup_pitr_infrastructure_remediation/test_baseline_and_safety.py; tests/paper_backup_pitr_infrastructure_remediation/test_contract_matrices.py; tests/paper_backup_pitr_infrastructure_remediation/test_safe_inspector.py; tests/paper_backup_pitr_infrastructure_remediation/test_storage_readiness_and_domains.py; tests/paper_backup_restore_reconciliation_readiness/test_postgres_pitr_rehearsal.py; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T09:20:18Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_CONTROLLED_INFRASTRUCTURE_CHANGE_01
+FILES_CHANGED = app/engine_safety/production_backup.py; docker-compose.yml; docs/operations/paper_production_backup_pitr_controlled_change.md; scripts/production_backup.py; scripts/safe_production_inspector.py; scripts/security_retry_controls.py; tests/production_backup_pitr_controlled_change/__init__.py; tests/production_backup_pitr_controlled_change/test_catalog_retention_and_safety.py; tests/production_backup_pitr_controlled_change/test_policy_and_gates.py; tests/production_backup_pitr_controlled_change/test_runtime_contract.py; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_COMPLETED_PARTIAL_BLOCKERS_REMAIN
+STATUS_CONFIDENCE = PROVEN_CONTROLLED_BACKUP_PITR_CHANGE_COMPLETED_MINIMUM_PITR_WINDOW_ACCUMULATION_REMAINS
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = PROVEN_BACKUP_PITR_INFRASTRUCTURE_REMEDIATION_COMPLETED_PART
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_TRADING_PRODUCTION_BACKUP_PITR_CONTROLLED_INFRASTRUCTURE_CHANGE_PENDING
-CURRENT_BLOCKER = APPROVED_BACKUP_DESTINATION_PITR_CONFIGURATION_POLICY_OWNERSHIP_CAPACITY_MONITORING_REQUIRED
+CURRENT_STAGE = PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_PENDING
+CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1721,6 +1721,66 @@ proposed or unimplemented. A controlled infrastructure change requiring
 external storage and likely PostgreSQL restart/container recreation is the
 next task; none was applied here.
 
+## PAPER production backup/PITR controlled infrastructure change
+
+```text
+BACKUP_PITR_CONTROLLED_CHANGE_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_CONTROLLED_INFRASTRUCTURE_CHANGE_01
+BACKUP_PITR_CONTROLLED_CHANGE_RESULT = COMPLETED_WITH_REMAINING_BLOCKER
+IMPLEMENTATION_COMMIT = ab7eda851f8cf697d36b0aeb1a3b89663df88ff7
+BACKUP_PITR_INFRASTRUCTURE_READINESS = PARTIAL_BLOCKERS_REMAIN
+BACKUP_PITR_BLOCKER_CLOSED = NO
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+PRODUCTION_POSTGRES_MAJOR = 16
+PRODUCTION_DATA_VOLUME_IDENTITY = volume:traders-ml_traders_ml_postgres_data
+PRODUCTION_DATA_VOLUME_UNCHANGED = YES
+BACKUP_STORAGE_ROOT_CLASS = PERSISTENT_HOST_FILESYSTEM_OUTSIDE_REPOSITORIES_EVIDENCE_PGDATA
+BACKUP_STORAGE_FAILURE_DOMAIN = SAME_PHYSICAL_FAILURE_DOMAIN_HOST_LEVEL
+BACKUP_STORAGE_ACCESS_CONTROL = PASS
+BACKUP_STORAGE_FREE_SPACE_BYTES = 123338076160
+PRODUCTION_LOGICAL_BACKUP = PUBLISHED_VERIFIED
+PRODUCTION_LOGICAL_BACKUP_ARTIFACT_ID = logical-20260811T060638Z-4c052006
+PRODUCTION_LOGICAL_BACKUP_BYTES = 4922896488
+PRODUCTION_LOGICAL_BACKUP_ISOLATED_RESTORE = PASS_PG16_SCHEMA_0008
+RESTORED_RECONCILIATION = PAPER_SCHEMA_NOT_DEPLOYED_READ_ONLY_ZERO_PAPER_TABLE_QUERIES
+BACKUP_CATALOG_HEALTH = PASS_2_VERIFIED_ENTRIES
+VALID_LOGICAL_BACKUPS = 1_FRESH_BOOTSTRAP_EXCEPTION
+VALID_BASE_BACKUPS = 1
+PRODUCTION_BASE_BACKUP_ARTIFACT_ID = base-20260811T075419Z-f179b4e1
+PRODUCTION_BASE_BACKUP_BYTES = 11600881563
+PRODUCTION_ARCHIVE_MODE = ON
+PRODUCTION_WAL_LEVEL = REPLICA_OR_HIGHER
+PRODUCTION_ARCHIVE_TIMEOUT = AT_MOST_15_MINUTES
+WAL_ARCHIVE_HEALTH = PASS_ARCHIVED_COUNT_9_UNRESOLVED_FAILURE_NO
+PRODUCTION_ARTIFACT_PITR_REHEARSAL = PASS_NAMED_TARGET_PAUSED_SCHEMA_0008
+ACTUAL_PITR_WINDOW_AT_LAST_MONITORING_SECONDS = 4888
+MINIMUM_REQUIRED_PITR_WINDOW_SECONDS = 86400
+BACKUP_MONITORING = IMPLEMENTED_FAIL_CLOSED
+FUTURE_PAPER_BACKUP_PITR_GATE = FAIL_CLOSED_PITR_WINDOW_BELOW_TARGET
+TARGETED_POSTGRES_RESTARTS = 1
+DOCKER_COMPOSE_DOWN_CALLS = 0
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE
+PRODUCTION_PAPER_GRAPH_READS_AND_TABLE_QUERIES = 0
+PRODUCTION_RUNNER_WORKER_CANARY_INVOCATIONS = 0
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+NEW_CONTROLLED_CHANGE_TESTS = 2197_PASSED
+FULL_ALLOWED_REGRESSION = 13610_PASSED_4_SKIPPED_1_PRODUCTION_SMOKE_DESELECTED
+PROTECTED_VENV = UNCHANGED_CONFIG_HASH_SMOKE_PASS
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+```
+
+The controlled change created ACL-protected persistent host backup storage,
+published and restored a real production logical backup, enabled production
+WAL archiving with a fail-closed host ACK protocol, published and verified a
+real production base backup, and reached a named restore point in isolated
+PostgreSQL 16. Production retained the same PGDATA volume, schema `0008`, API
+surface and disabled PAPER/LIVE state. Technical policy, local operator roles,
+catalog, retention, monitoring and future PAPER fail-closed gates are active.
+The blocker is not closed because the newly established base/WAL chain had
+accumulated only 4,888 of the required 86,400 seconds at the last monitoring
+snapshot; no bootstrap exception is applied to this requirement.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -1766,7 +1826,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈92% | Backup/PITR infrastructure review completed: production PostgreSQL 16 persistence and tooling plus production-shape restore applicability are proven, while an approved separate destination, production PITR configuration, policy/ownership, capacity and monitoring remain blockers; no production infrastructure change or PAPER enablement was attempted |
+| Online analytics/paper pipeline | ≈92% | Controlled production backup/PITR infrastructure is active and verified with logical restore, WAL progress, base backup and isolated named-target PITR; readiness remains fail-closed only until the new chain accumulates the required 24-hour PITR window; PAPER remains disabled |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -1779,8 +1839,8 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_BACKUP_PITR_CONTROLLED_INFRASTRUCTURE_CHANGE_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES
+TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_MONITORING_CONFIRMATION_ONLY
 ```
 
 Scanner scope remediation, credential rotation/safe-rebind and the clean
