@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = fee782aebbc10921c347d9dec6e7d3be96aa0297
+STATUS_AS_OF_COMMIT = 51ca396275e89d3d23ad45bc6a96768f7dd93aa4
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T20:21:03Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_READONLY_PAPER_REPORTING_API_01
-FILES_CHANGED = app/server_api/ read-only PAPER routes, schemas, service and SQL adapter; app/engine_paper/production_readiness.py factual 0012 hash correction; docs/paper_readonly_role_capability_matrix.md; tests/paper_readonly_reporting_api/; related server/security/model inventory regression tests; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T23:09:32Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_DISABLED_FOUNDATION_01
+FILES_CHANGED = app/operator_control/ separate disabled PAPER operator control API, auth, DTO, executor and existing safety-authority composition; docs/architecture/paper_operator_control_api_disabled_foundation.md; tests/paper_operator_control_api_disabled_foundation/; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_0012_IMMUTABLE_BASELINE_AND_PERSISTED_ACCOUNTING_PASS_PRODUCTION_0008_DISABLED_PITR_WINDOW_STILL_BELOW_24H
+STATUS_CONFIDENCE = PROVEN_SEPARATE_OPERATOR_CONTROL_DISABLED_FOUNDATION_PASS_PRODUCTION_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_STILL_BELOW_24H
 
 # Состояние проекта traders-ml
 
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_0012_IMMUTABLE_BASELINE_AND_PERSISTED_ACCOUNTING_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PAPER_OPERATOR_CONTROL_API_DISABLED_FOUNDATION_WHILE_PITR_ACCUMULATES
+CURRENT_STAGE = CLIENT_PAPER_OPERATOR_AND_REPORTING_FOUNDATION_WHILE_PITR_ACCUMULATES
 CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 BACKGROUND_TIMED_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
@@ -2196,6 +2196,59 @@ queried; revision 0012 reporting delegates all financial values to the existing
 accounting services. The production image and process were not replaced or
 restarted, so the deployed surface remains the existing nine GET routes.
 
+## Disabled PAPER Operator Control API foundation
+
+```text
+OPERATOR_CONTROL_TASK = TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_DISABLED_FOUNDATION_01
+OPERATOR_CONTROL_RESULT = COMPLETED_WITH_REMAINING_PITR_BLOCKER
+IMPLEMENTATION_COMMIT = 51ca396275e89d3d23ad45bc6a96768f7dd93aa4
+CONTROL_API_MODULE = app/operator_control
+CONTROL_API_FACTORY = create_paper_operator_control_app
+CONTROL_API_SERVICE = PaperOperatorControlService
+CONTROL_API_VERSION = 1
+SOURCE_CONTROL_ROUTES = 2_GET_5_POST_EXACT_ALLOWLIST
+READONLY_API_OPERATOR_CONTROL_ROUTES = 0
+READONLY_API_WRITE_ROUTES = 0
+DEFAULT_CONFIGURATION = ENABLED_FALSE_DISABLED_FOUNDATION_PAPER_LIVE_FALSE
+RESERVED_BIND = 127.0.0.1:8766_LOOPBACK_ONLY_NOT_LISTENING
+AUTH_MODEL = HEADER_ONLY_LOCAL_CAPABILITY_CONSTANT_TIME_EXACT_SCOPES
+PRODUCTION_CREDENTIAL_BINDING = CONTRACT_ONLY_NOT_CREATED
+ARM_SCOPE = MAX_1_NEW_COMMAND_MAX_1_OPEN_POSITION_BTCUSDT_ETHUSDT_SOLUSDT
+CLIENT_TRADE_DECISION_FIELDS = REJECTED
+EXISTING_SAFETY_CONTROL_AUTHORITY = REUSED_NO_SECOND_STATE_MACHINE_AUDIT_OR_INTERLOCK
+ISOLATED_HTTP_TRANSITIONS = ALL_LEGAL_PASS_EMERGENCY_STOP_TO_ARMED_DENIED
+GENERATION_AND_IDEMPOTENCY = PASS_STALE_AND_CONFLICT_409_REPLAY_NO_DUPLICATE
+EMERGENCY_STOP_EXTERNAL_DEPENDENCIES = DATABASE_NO_NETWORK_NO_PROTECTED_BINDING_NO
+PRODUCTION_TARGET_POSTS = CONTROL_API_DISABLED_FOUNDATION_ZERO_TRANSITIONS
+PRODUCTION_DEPLOYMENT = NOT_PERFORMED
+PRODUCTION_CONTROL_API_LISTENING = NO
+PRODUCTION_CONTROL = HEALTHY_DISABLED_GENERATION_3
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_PAPER_MUTATIONS = 0
+NEW_OPERATOR_CONTROL_TESTS = 1873_PASSED_ZERO_FAILED
+FULL_ALLOWED_REGRESSION = PASS_COMPOSED_28902_PASSED_6_SKIPPED_ZERO_UNRESOLVED_FAILURES
+LOCAL_LATENCY_P95_MS = STATUS_13.011_CANARY_STATUS_7.672_DISABLED_POST_9.777
+PITR_WINDOW_SECONDS_BEFORE_AFTER = 51981_54902_NOT_RESET_STILL_BELOW_24H
+WAL_ARCHIVE_HEALTH_BEFORE_AFTER = PASS_PASS
+WAL_ARCHIVE_UNRESOLVED_FAILURES_BEFORE_AFTER = 0_0
+WAL_ACK_DAEMON = RUNNING_PID_15724_RESTARTED_AFTER_TRANSIENT_DOCKER_TIMEOUT_ONE_RECOVERABLE_BACKLOG_ACKED
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+PROTECTED_VENV_CONFIG_SHA256 = 138bedfc7039d64e7be9e2c2cd5e49a1c0afda78260dd57482ffaaf02ba663ca_UNCHANGED
+OPERATOR_CONTROL_API_DISABLED_FOUNDATION_READINESS = READY_FOR_DISABLED_CLIENT_INTEGRATION
+OPERATOR_CONTROL_API_DISABLED_FOUNDATION_BLOCKER_CLOSED = YES
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+```
+
+The control app is a separate source-only ASGI composition and is never
+included in the read-only API router. Its production-capable defaults cannot
+enable mutation or an external bind. Every production-target POST authenticates
+and validates its bounded DTO, then stops before the existing safety authority
+with `CONTROL_API_DISABLED_FOUNDATION`. Only task-owned isolated control roots
+proved the real legal transitions and generation increments. No production
+credential, listener, deployment, transition, PAPER runtime or PAPER business
+row was created.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -2245,6 +2298,7 @@ LIVE.
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
 | Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
+| PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated seven-route control boundary passes isolated transitions and production-target disabled proofs; no listener, credential binding, production transition, runtime or PAPER mutation exists |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -2255,10 +2309,10 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_DISABLED_FOUNDATION_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_SEPARATE_CONTROL_BOUNDARY
+TRADERS_CLIENT_PAPER_TRADING_OPERATOR_AND_REPORTING_FOUNDATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CLIENT_REPOSITORY_SCOPE
 PARALLEL_TIMED_TASK_WHEN_MATURE = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
-FOLLOWING_CLIENT_TASK = TRADERS_CLIENT_PAPER_TRADING_OPERATOR_AND_REPORTING_FOUNDATION_01
+FOLLOWING_CLIENT_TASK = TRADERS_CLIENT_PAPER_TRADING_DISABLED_SERVER_INTEGRATION_01
 ```
 
 Scanner scope remediation, credential rotation/safe-rebind and the clean
