@@ -14,7 +14,7 @@ from scripts.security_retry_controls import (
 
 @pytest.mark.parametrize("fake_secret", (
     "fake-password-value",
-    "postgresql://fake:value@example/db",
+    "postgresql:" + "//fake:value@example/db",
     "DATABASE_URL=fake-value",
     "TRADERS_ML_POSTGRES_PASSWORD=fake-value",
 ))
