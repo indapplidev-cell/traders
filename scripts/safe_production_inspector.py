@@ -17,6 +17,9 @@ if str(ROOT) not in sys.path:
 from scripts.security_retry_controls import (
     inspect_alembic_status,
     inspect_container_identity,
+    inspect_postgres_capacity_metadata,
+    inspect_postgres_archive_health,
+    inspect_postgres_volume_identity,
     inspect_postgres_recovery_metadata,
     inspect_readonly_health_http,
     inspect_tracked_route_counts,
@@ -34,6 +37,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--routes", action="store_true")
     parser.add_argument("--alembic-container")
     parser.add_argument("--postgres-recovery-container")
+    parser.add_argument("--postgres-size-container")
+    parser.add_argument("--postgres-volume-container")
+    parser.add_argument("--postgres-archive-health-container")
     args = parser.parse_args(argv)
     status = 0
     for name in args.container:
@@ -65,6 +71,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(recovery.render())
         status = max(status, int(recovery.error_class != "NONE"))
+    if args.postgres_size_container:
+        capacity = inspect_postgres_capacity_metadata(args.postgres_size_container)
+        print(capacity.render())
+        status = max(status, int(capacity.error_class != "NONE"))
+    if args.postgres_volume_container:
+        volume = inspect_postgres_volume_identity(args.postgres_volume_container)
+        print(volume.render())
+        status = max(status, int(volume.error_class != "NONE"))
+    if args.postgres_archive_health_container:
+        archive = inspect_postgres_archive_health(args.postgres_archive_health_container)
+        print(archive.render())
+        status = max(status, int(archive.error_class != "NONE" or archive.unresolved_failure is not False))
     return status
 
 

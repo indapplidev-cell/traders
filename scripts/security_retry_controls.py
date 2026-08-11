@@ -959,6 +959,122 @@ class SafePostgresRecoveryMetadata:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class SafePostgresCapacityMetadata:
+    database_size_bytes: int | None
+    error_class: str
+
+    def render(self) -> str:
+        return "\n".join((
+            f"database_size_bytes={self.database_size_bytes if self.database_size_bytes is not None else 'UNPROVEN'}",
+            f"error_class={self.error_class}",
+        ))
+
+
+def inspect_postgres_capacity_metadata(
+    container: str,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> SafePostgresCapacityMetadata:
+    """Return only the numeric production database size, never names or settings."""
+    result = run_allowlisted_command(
+        (
+            "docker", "exec", "--user", "postgres", container,
+            "psql", "-U", "traders_ml", "-d", "postgres", "-AtX", "-c",
+            "SELECT pg_database_size('traders_ml')",
+        ),
+        runner=runner,
+        timeout_seconds=30,
+    )
+    if not result.succeeded or not re.fullmatch(r"[0-9]{1,20}", result.safe_output):
+        return SafePostgresCapacityMetadata(None, "CAPACITY_UNAVAILABLE")
+    size = int(result.safe_output)
+    if size <= 0:
+        return SafePostgresCapacityMetadata(None, "CAPACITY_INVALID")
+    return SafePostgresCapacityMetadata(size, "NONE")
+
+
+@dataclass(frozen=True, slots=True)
+class SafePostgresVolumeIdentity:
+    opaque_volume_identity: str
+    error_class: str
+
+    def render(self) -> str:
+        return "\n".join((
+            f"opaque_volume_identity={self.opaque_volume_identity}",
+            f"error_class={self.error_class}",
+        ))
+
+
+def inspect_postgres_volume_identity(
+    container: str,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> SafePostgresVolumeIdentity:
+    result = run_allowlisted_command(
+        (
+            "docker", "container", "inspect", "--format",
+            "{{range .Mounts}}{{if eq .Destination \"/var/lib/postgresql/data\"}}{{.Type}}:{{.Name}}{{end}}{{end}}",
+            container,
+        ),
+        runner=runner,
+    )
+    if not result.succeeded or not re.fullmatch(r"volume:[A-Za-z0-9_.-]{1,128}", result.safe_output):
+        return SafePostgresVolumeIdentity("UNPROVEN", "VOLUME_IDENTITY_UNAVAILABLE")
+    return SafePostgresVolumeIdentity(result.safe_output, "NONE")
+
+
+@dataclass(frozen=True, slots=True)
+class SafePostgresArchiveHealth:
+    archived_count: int | None
+    failed_count: int | None
+    archived_segment_observed: bool | None
+    unresolved_failure: bool | None
+    last_success_age_seconds: int | None
+    error_class: str
+
+    def render(self) -> str:
+        def boolean(value: bool | None) -> str:
+            return "YES" if value is True else "NO" if value is False else "UNPROVEN"
+        return "\n".join((
+            f"archived_count={self.archived_count if self.archived_count is not None else 'UNPROVEN'}",
+            f"failed_count={self.failed_count if self.failed_count is not None else 'UNPROVEN'}",
+            f"archived_segment_observed={boolean(self.archived_segment_observed)}",
+            f"unresolved_failure={boolean(self.unresolved_failure)}",
+            f"last_success_age_seconds={self.last_success_age_seconds if self.last_success_age_seconds is not None else 'UNPROVEN'}",
+            f"error_class={self.error_class}",
+        ))
+
+
+def inspect_postgres_archive_health(
+    container: str,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> SafePostgresArchiveHealth:
+    sql = (
+        "SELECT archived_count || '|' || failed_count || '|' || "
+        "(last_archived_wal IS NOT NULL)::int || '|' || "
+        "(last_failed_wal IS NOT NULL AND (last_archived_time IS NULL OR last_failed_time > last_archived_time))::int || '|' || "
+        "COALESCE(EXTRACT(EPOCH FROM clock_timestamp() - last_archived_time)::bigint, -1) FROM pg_stat_archiver"
+    )
+    result = run_allowlisted_command(
+        (
+            "docker", "exec", "--user", "postgres", container,
+            "psql", "-U", "traders_ml", "-d", "traders_ml", "-AtX", "-c", sql,
+        ),
+        runner=runner,
+        timeout_seconds=30,
+    )
+    match = re.fullmatch(r"([0-9]{1,20})\|([0-9]{1,20})\|([01])\|([01])\|(-1|[0-9]{1,20})", result.safe_output) if result.succeeded else None
+    if match is None:
+        return SafePostgresArchiveHealth(None, None, None, None, None, "ARCHIVE_HEALTH_UNAVAILABLE")
+    age = int(match.group(5))
+    return SafePostgresArchiveHealth(
+        int(match.group(1)), int(match.group(2)), match.group(3) == "1",
+        match.group(4) == "1", None if age < 0 else age, "NONE",
+    )
+
+
 _SAFE_POSTGRES_METADATA = re.compile(
     r"^(?P<major>[0-9]{1,3})\|(?P<archive>on|off)\|"
     r"(?P<wal>minimal|replica|logical)\|(?P<command>[01])\|"
@@ -1029,10 +1145,10 @@ def inspect_postgres_recovery_metadata(
         "current_setting('archive_mode') || '|' || current_setting('wal_level') || '|' || "
         "(current_setting('archive_command') <> '')::int || '|' || "
         "(current_setting('archive_library') <> '')::int || '|' || "
-        "current_setting('archive_timeout')::int"
+        "EXTRACT(EPOCH FROM current_setting('archive_timeout')::interval)::int"
     )
     settings = run_allowlisted_command(
-        ("docker", "exec", "--user", "postgres", container, "psql", "-d", "postgres", "-AtX", "-c", sql),
+        ("docker", "exec", "--user", "postgres", container, "psql", "-U", "traders_ml", "-d", "traders_ml", "-AtX", "-c", sql),
         runner=runner,
         timeout_seconds=15,
     )
@@ -1143,9 +1259,19 @@ def inspect_tracked_route_counts() -> SafeRouteCounts:
     try:
         from app.server_api import create_app
 
+        def expanded(routes):
+            for route in routes:
+                methods = getattr(route, "methods", None)
+                if methods is not None:
+                    yield route
+                    continue
+                original = getattr(route, "original_router", None)
+                if original is not None:
+                    yield from expanded(getattr(original, "routes", ()))
+
         methods = [
             method.upper()
-            for route in create_app().routes
+            for route in expanded(create_app().routes)
             for method in getattr(route, "methods", set())
         ]
     except BaseException:

@@ -2,6 +2,16 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: always
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_timeout=900
+      - -c
+      - "archive_command=if [ -f /var/lib/postgresql/wal_export/%f ]; then cmp -s %p /var/lib/postgresql/wal_export/%f; else mkdir -p /var/lib/postgresql/wal_export && cp %p /var/lib/postgresql/wal_export/%f; fi || exit 1; i=0; while [ $$i -lt 300 ] && [ ! -f /var/lib/postgresql/wal_export/%f.ack ]; do sleep 1; i=$$((i+1)); done; test -f /var/lib/postgresql/wal_export/%f.ack"
     environment:
       POSTGRES_DB: traders_ml
       POSTGRES_USER: traders_ml
@@ -10,6 +20,7 @@ services:
       - "5433:5432"
     volumes:
       - traders_ml_postgres_data:/var/lib/postgresql/data
+      - D:/traders_ml_recovery/postgres:/var/lib/postgresql/recovery
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U traders_ml -d traders_ml"]
       interval: 10s
