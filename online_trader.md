@@ -3,13 +3,13 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 9fea4b1b9601f8b2270cb950c7a25e0c4cd3d0db
+STATUS_AS_OF_COMMIT = fee782aebbc10921c347d9dec6e7d3be96aa0297
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T18:31:27Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_ACCOUNT_BASELINE_PERSISTENCE_SCHEMA_EXTENSION_01
-FILES_CHANGED = alembic/versions/0012_paper_account_baseline.py; app/db/paper_models.py; app/engine_paper/accounting.py; app/engine_paper/baseline_repository.py; app/engine_paper/production_composition.py; app/engine_paper/production_readiness.py; app/engine_paper/reconciliation.py; app/engine_paper/recovery_readiness.py; app/engine_paper/repositories.py; app/engine_paper/controlled_runtime_canary.py; app/engine_safety/paper_production_control.py; tests/paper_account_baseline_persistence_schema_extension/; related PAPER production/repository regression tests; online_trader.md
+RECONCILED_AT_UTC = 2026-08-11T20:21:03Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_READONLY_PAPER_REPORTING_API_01
+FILES_CHANGED = app/server_api/ read-only PAPER routes, schemas, service and SQL adapter; app/engine_paper/production_readiness.py factual 0012 hash correction; docs/paper_readonly_role_capability_matrix.md; tests/paper_readonly_reporting_api/; related server/security/model inventory regression tests; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_0012_IMMUTABLE_BASELINE_AND_PERSISTED_ACCOUNTING_PASS
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_WHEN_MATURE
+CURRENT_STAGE = PAPER_OPERATOR_CONTROL_API_DISABLED_FOUNDATION_WHILE_PITR_ACCUMULATES
 CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 BACKGROUND_TIMED_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
@@ -2153,6 +2153,49 @@ over this baseline plus authoritative fills and CLOSED position net realized PnL
 No production migration or baseline initialization occurred; production remains
 at 0008 with PAPER disabled while PITR continues toward the 24-hour gate.
 
+## Read-only PAPER reporting API
+
+```text
+REPORTING_API_TASK = TRADERS_ML_PAPER_TRADING_READONLY_PAPER_REPORTING_API_01
+REPORTING_API_RESULT = COMPLETED_WITH_REMAINING_PITR_BLOCKER
+IMPLEMENTATION_COMMIT = fee782aebbc10921c347d9dec6e7d3be96aa0297
+PAPER_REPORTING_API_VERSION = 1
+SOURCE_PAPER_ROUTES = 9_GET_0_WRITE
+SOURCE_TOTAL_ROUTES = 18_GET_0_WRITE
+READONLY_PAPER_REPORTING_API_READINESS = READY_FOR_DISABLED_CLIENT_INTEGRATION
+READONLY_PAPER_REPORTING_API_BLOCKER_CLOSED = YES
+SCHEMA_0008_GATE = PASS_READINESS_200_DB_ENDPOINTS_409_ZERO_PAPER_TABLE_QUERIES
+SCHEMA_0012_EMPTY_BASELINE_LIFECYCLE = PASS_REAL_POSTGRESQL_16
+AUTHORITATIVE_ACCOUNT_AND_TRADE_REPORT_MAPPING = PASS_NO_API_FINANCIAL_FORMULAS
+POSITIONS_TRADES_PAGINATION_FILTERS = PASS_SQL_BOUNDED_50_DEFAULT_100_MAX
+ATOMIC_CLOSE_REPORT_RACE = PASS_FINAL_REPORT_NOT_AVAILABLE_OR_COMPLETE_ONLY
+REPORTING_DB_MUTATIONS = 0
+REPORTING_SELECT_FOR_UPDATE = 0
+CONTROL_STATUS_STATE_MUTATIONS = 0
+CONTROL_STATUS_GENERATION_CHANGES = 0
+LIVE_ALLOWED_API_VALUE = false
+NEW_REPORTING_API_TESTS = 1817_PASSED_ZERO_FAILED
+FULL_ALLOWED_REGRESSION = PASS_COMPOSED_26119_PLUS_REMAINDER_486_AND_FOCUSED_2513
+PRODUCTION_DEPLOYMENT = NOT_PERFORMED
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE
+PRODUCTION_CONTROL = HEALTHY_DISABLED_GENERATION_3
+PITR_WINDOW_SECONDS_AFTER = 44804_NOT_RESET_STILL_BELOW_24H
+WAL_ARCHIVE_UNRESOLVED_FAILURES = 0
+WAL_ACK_DAEMON = RUNNING
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+PROTECTED_VENV_CONFIG_SHA256 = 138bedfc7039d64e7be9e2c2cd5e49a1c0afda78260dd57482ffaaf02ba663ca_UNCHANGED
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+```
+
+The source-only API exposes readiness, immutable account baseline and realized
+balance, bounded positions and closed-trade history, authoritative full trade
+reports, reconciliation, runtime status and host-local control status. Every
+route is GET-only. Revision 0008 is detected before any PAPER relation is
+queried; revision 0012 reporting delegates all financial values to the existing
+accounting services. The production image and process were not replaced or
+restarted, so the deployed surface remains the existing nine GET routes.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -2200,7 +2243,8 @@ LIVE.
 |---|---:|---|
 | Online analytics/paper pipeline | ≈95% | Revision 0012 immutable baseline persistence and the existing closed-trade reporting/reconciliation chain are isolated-PG16 proven; production remains at 0008 with PAPER disabled until the minimum 24-hour PITR gate and a separately authorized preparation task |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Readonly Server API | 92% | Latest-available analysis remains production accepted and passed the separate uninterrupted 75-minute stability gate |
+| Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
+| Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -2211,9 +2255,10 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01_WHEN_WINDOW_IS_MATURE
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_READ_ONLY_CONFIRMATION
-FOLLOWING_TASK_AFTER_PITR_PASS = CONTROLLED_PRODUCTION_PAPER_PREPARATION_TO_0012_REQUIRES_SEPARATE_AUTHORIZATION
+TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_DISABLED_FOUNDATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_SEPARATE_CONTROL_BOUNDARY
+PARALLEL_TIMED_TASK_WHEN_MATURE = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
+FOLLOWING_CLIENT_TASK = TRADERS_CLIENT_PAPER_TRADING_OPERATOR_AND_REPORTING_FOUNDATION_01
 ```
 
 Scanner scope remediation, credential rotation/safe-rebind and the clean
