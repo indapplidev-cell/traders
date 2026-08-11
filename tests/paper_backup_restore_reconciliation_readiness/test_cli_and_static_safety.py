@@ -11,7 +11,7 @@ from .conftest import FakeReader
 
 def _manifest(tmp_path, **changes):
     values = {
-        "target_class": "ISOLATED_POSTGRESQL_0011",
+        "target_class": "ISOLATED_POSTGRESQL_0012",
         "target_identity": "task-owned-cli-target",
         "expected_schema_head": reconciliation.EXPECTED_SCHEMA_HEAD,
     }

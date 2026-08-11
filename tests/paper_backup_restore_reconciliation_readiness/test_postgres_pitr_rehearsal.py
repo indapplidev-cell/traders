@@ -84,7 +84,7 @@ def _reconcile():
         PaperReconciliationRequest(
             request_id="pitr-rehearsal-request",
             correlation_id="pitr-rehearsal-correlation",
-            target_class="ISOLATED_POSTGRESQL_0011",
+            target_class="ISOLATED_POSTGRESQL_0012",
             target_identity="task-pitr-restore",
             expected_schema_head=EXPECTED_SCHEMA_HEAD,
             scope=PaperReconciliationScope(full_isolated_fixture=True),

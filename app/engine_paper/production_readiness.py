@@ -22,7 +22,7 @@ EXPECTED_SERVER_HEAD: Final = "0988984b9d37ab22e811ba106ae19c068d374438"
 EXPECTED_SERVER_TREE: Final = "d423e5ce44c19245ed8161a9e0505c4090103057"
 EXPECTED_SCHEMA_BASE: Final = "0008_engine_orchestrator_freshness_retry"
 EXPECTED_SCHEMA_HEAD: Final = (
-    "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"
+    "0012_paper_account_baseline"
 )
 MAX_SAFE_RENDER_BYTES: Final = 65_536
 MAX_EVIDENCE_ITEMS: Final = 32
@@ -236,7 +236,7 @@ MIGRATION_MANIFESTS: Final = (
         source_sha256="1b84e106162a374fef781b71ed2f40d81a76a0cd352a8179aef10402219e8b55",
     ),
     PaperProductionMigrationManifest(
-        revision=EXPECTED_SCHEMA_HEAD,
+        revision="0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
         predecessor="0010_paper_final_approval_and_order_transition_event_vocabulary",
         classification=MigrationClassification.REQUIRES_PRE_BACKUP,
         ddl_operations=(
@@ -252,8 +252,27 @@ MIGRATION_MANIFESTS: Final = (
         downgrade_support=DowngradeClassification.DOWNGRADE_DESTRUCTIVE,
         data_backfill="none; production has no PAPER rows before enablement",
         default_nullability="all required cursor fields non-null; last-advance group nullable as an all-or-none set",
-        runtime_compatibility="0008 services unaffected; current PAPER runtime requires 0011 exactly",
+        runtime_compatibility="0008 services unaffected; cursor-aware PAPER runtime requires 0011 or later",
         source_sha256="01e011e457a33b61f76ae413b18a23e4a9787a2920dbdbefe9c48a0553287b49",
+    ),
+    PaperProductionMigrationManifest(
+        revision=EXPECTED_SCHEMA_HEAD,
+        predecessor="0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+        classification=MigrationClassification.REQUIRES_PRE_BACKUP,
+        ddl_operations=(
+            "CREATE paper_account_baselines table",
+            "CREATE primary unique and immutable-value check constraints",
+        ),
+        locking_characteristics="catalog locks for one new empty table; no existing PAPER row rewrite",
+        transaction_behavior="single transactional Alembic revision on PostgreSQL",
+        expected_duration="short because the baseline table is created empty",
+        dependency_ordering="requires the complete 0011 PAPER economic graph",
+        forward_only_assumptions="operator supplies initial balance only after migration and before first command",
+        downgrade_support=DowngradeClassification.DOWNGRADE_DESTRUCTIVE,
+        data_backfill="none; no fake or default baseline is seeded",
+        default_nullability="all baseline identity value timestamp and semantic fields are non-null",
+        runtime_compatibility="0008 services unaffected; current PAPER runtime and accounting require 0012 exactly",
+        source_sha256="9acf623e1c1b64fb51658a95e5f4cddac6999e0b1f2ada5d9b2428cd527e881e",
     ),
 )
 
@@ -324,7 +343,7 @@ ROLLBACK_STRATEGY: Final = PaperProductionRollbackStrategy(
     preconditions=(
         "deny new PAPER commands and wait for active child transaction completion",
         "capture approved database backup and durable PAPER reconciliation manifest",
-        "retain 0011 schema while application is disabled unless destructive loss is accepted",
+        "retain 0012 schema while application is disabled unless destructive loss is accepted",
     ),
     validation=(
         "existing market-data orchestrator and readonly API healthy",
@@ -528,7 +547,7 @@ RELEASE_SEQUENCE: Final = (
     "verify evidence and security",
     "capture safe production baseline",
     "verify backup and restore",
-    "apply 0009 through 0011 with migration principal",
+    "apply 0009 through 0012 with migration principal",
     "validate schema and existing services",
     "provision least-privilege PAPER runtime role",
     "deploy disabled PAPER artifacts",
@@ -686,15 +705,15 @@ def perform_review(request: PaperProductionRuntimeReadinessReviewRequest) -> Pap
         _finding(
             PaperProductionRuntimeReadinessDomain.R1_SCHEMA_MIGRATION,
             ReadinessStatus.READY if rehearsal_ready else ReadinessStatus.NOT_READY,
-            ("exact 0008 to 0011 chain statically classified", "isolated PostgreSQL 16 production-shape rehearsal required"),
+            ("exact 0008 to 0012 chain statically classified", "isolated PostgreSQL 16 production-shape rehearsal required"),
             migration_blockers,
             "retain rehearsal metrics and repeat against frozen enablement commit",
-            "0009 0010 0011 rehearsal passes with zero destructive upgrade DDL and zero lock waits",
+            "0009 0010 0011 0012 rehearsal passes with zero destructive upgrade DDL and zero lock waits",
         ),
         _finding(
             PaperProductionRuntimeReadinessDomain.R2_ROLLBACK_FORWARD_FIX,
             ReadinessStatus.NOT_READY,
-            ("0009 and 0011 downgrade drop PAPER data", "application disable plus forward fix is the safe strategy"),
+            ("0009, 0011, and 0012 downgrade drop PAPER data", "application disable plus forward fix is the safe strategy"),
             (blocker("BACKUP_RESTORE_CAPABILITY_UNPROVEN", FindingSeverity.CRITICAL, "PAPER_PRODUCTION_BACKUP_RESTORE_REHEARSAL_01"),),
             "prove backup integrity and isolated restore before enablement",
             "approved fresh backup and successful restore rehearsal with reconciliation",

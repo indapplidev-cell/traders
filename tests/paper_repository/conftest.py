@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
+from datetime import datetime, timezone
+from decimal import Decimal
 
 import pytest
 from alembic import command
@@ -11,6 +13,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from app.db.paper_models import (
+    PaperAccountBaselineRecord,
     PaperExecutionCommandRecord,
     PaperExitEvaluationCursorRecord,
     PaperExitDecisionRecord,
@@ -47,12 +50,12 @@ def repository_postgres_engine() -> Iterator[Engine]:
     if revision is None:
         command.upgrade(
             config,
-            "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+            "0012_paper_account_baseline",
         )
     else:
         command.upgrade(
             config,
-            "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+            "0012_paper_account_baseline",
         )
     yield engine
     engine.dispose()
@@ -69,6 +72,7 @@ def paper_session_factory(repository_postgres_engine) -> Iterator[sessionmaker]:
     factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     with engine.begin() as connection:
         for model in (
+            PaperAccountBaselineRecord,
             PaperJournalEntryRecord,
             PaperExitEvaluationCursorRecord,
             PaperExitDecisionRecord,
@@ -79,5 +83,16 @@ def paper_session_factory(repository_postgres_engine) -> Iterator[sessionmaker]:
             PaperExecutionCommandRecord,
         ):
             connection.execute(delete(model))
+        connection.execute(
+            PaperAccountBaselineRecord.__table__.insert().values(
+                baseline_id="baseline:test:repository",
+                account_id="paper-primary",
+                accounting_session_id="session-001",
+                currency="USDT",
+                initial_balance=Decimal("100"),
+                initialized_at=datetime(2026, 8, 11, tzinfo=timezone.utc),
+                semantic_version="PAPER_ACCOUNTING/1.0",
+            )
+        )
     yield factory
     engine.dispose()

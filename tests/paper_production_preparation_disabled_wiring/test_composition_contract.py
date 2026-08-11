@@ -53,7 +53,8 @@ SCHEMA_CASES = (
     (EXPECTED_SCHEMA_BASE, PaperProductionGateStatus.FAIL, "SCHEMA_0008"),
     ("0009_paper_trading_persistence_foundation", PaperProductionGateStatus.FAIL, "SCHEMA_PARTIAL_FAIL_CLOSED"),
     ("0010_paper_final_approval_and_order_transition_event_vocabulary", PaperProductionGateStatus.FAIL, "SCHEMA_PARTIAL_FAIL_CLOSED"),
-    (EXPECTED_SCHEMA_HEAD, PaperProductionGateStatus.PASS, "SCHEMA_0011"),
+    ("0011_paper_close_causal_boundary_and_exit_evaluation_cursor", PaperProductionGateStatus.FAIL, "SCHEMA_PARTIAL_FAIL_CLOSED"),
+    (EXPECTED_SCHEMA_HEAD, PaperProductionGateStatus.PASS, "SCHEMA_0012"),
     ("0012_unknown", PaperProductionGateStatus.FAIL, "SCHEMA_UNEXPECTED_COMPATIBILITY_REVIEW_REQUIRED"),
     ("garbage", PaperProductionGateStatus.FAIL, "SCHEMA_UNEXPECTED_COMPATIBILITY_REVIEW_REQUIRED"),
 )

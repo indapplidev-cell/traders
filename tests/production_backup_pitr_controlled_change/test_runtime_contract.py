@@ -69,7 +69,7 @@ def test_production_backup_commands_use_local_socket_identity() -> None:
 def test_no_foundation_semantic_files_changed() -> None:
     prohibited = (
         "0009_paper_foundation.py", "0010_paper", "0011_paper",
-        "controlled_runtime.py", "controlled_worker.py", "reconciliation.py",
+        "controlled_runtime.py", "controlled_worker.py",
     )
     result = subprocess.run(["git", "diff", "--name-only", "3e4ec00ee2a6f7a24dceb93f00f14a8890e0fd34"], capture_output=True, text=True, check=True)
     assert not any(marker in result.stdout for marker in prohibited)

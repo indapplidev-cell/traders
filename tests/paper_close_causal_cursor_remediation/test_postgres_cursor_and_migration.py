@@ -110,6 +110,9 @@ def test_migration_0010_0011_0010_0011_cycle(repository_postgres_engine):
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar_one() == "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"
+    # The historical cursor cycle is proved at 0011, then the shared isolated
+    # database is returned to the current repository head for later suites.
+    alembic_command.upgrade(config, "0012_paper_account_baseline")
 
 
 def test_cursor_table_has_exact_constraints_and_index(repository_postgres_engine):

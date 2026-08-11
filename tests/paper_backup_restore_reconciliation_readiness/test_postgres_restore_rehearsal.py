@@ -62,7 +62,7 @@ def _request(identity: str):
     return PaperReconciliationRequest(
         request_id="restore-rehearsal-request",
         correlation_id="restore-rehearsal-correlation",
-        target_class="ISOLATED_POSTGRESQL_0011",
+        target_class="ISOLATED_POSTGRESQL_0012",
         target_identity=identity,
         expected_schema_head=EXPECTED_SCHEMA_HEAD,
         scope=PaperReconciliationScope(full_isolated_fixture=True),

@@ -91,7 +91,7 @@ class _ResolvedRequestResolver:
         return operator.PaperOperatorResolvedIsolatedTarget(
             target_identity=target_identity,
             task_owned=True,
-            migration_head="0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+            migration_head="0012_paper_account_baseline",
             sequence_service=CapturingService(),
             request_builder=build,
             cleanup=cleanup,

@@ -65,7 +65,7 @@ PAPER_CONTROLLED_RUNTIME_CANARY_TARGET_VERSION: Final = (
 )
 CANARY_ACKNOWLEDGEMENT: Final = "I_ACKNOWLEDGE_ONE_ISOLATED_PAPER_STAGE"
 EXPECTED_MIGRATION_HEAD: Final = (
-    "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"
+    "0012_paper_account_baseline"
 )
 MAX_SAFE_RESULT_IDENTITIES: Final = 16
 MAX_SAFE_REASON_LENGTH: Final = 96

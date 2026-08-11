@@ -44,12 +44,13 @@ def test_preparation_plan_is_exact_ordered_cancellable_non_destructive(repeat):
 
 
 @pytest.mark.parametrize("repeat", range(96))
-def test_migration_plan_is_exact_0008_to_0011_forward_only(repeat):
+def test_migration_plan_is_exact_0008_to_0012_forward_only(repeat):
     plan = PaperProductionMigrationPlan()
     assert repeat >= 0
     assert plan.revisions == (
         "0009_paper_trading_persistence_foundation",
         "0010_paper_final_approval_and_order_transition_event_vocabulary",
+        "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
         EXPECTED_SCHEMA_HEAD,
     )
     assert not plan.automatic_downgrade
@@ -125,6 +126,7 @@ def test_isolated_orchestrator_success_is_bounded_and_leaves_disabled(repeat):
 FAULTS = (
     "0009_paper_trading_persistence_foundation",
     "0010_paper_final_approval_and_order_transition_event_vocabulary",
+    "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
     EXPECTED_SCHEMA_HEAD,
 )
 
@@ -201,6 +203,10 @@ def test_principal_capability_matrix_uses_actual_objects_and_denies_admin(repeat
                   "paper_orders", "paper_fills", "paper_positions",
                   "paper_exit_evaluation_cursors", "paper_journal_entries"):
         assert (table, PaperDatabaseOperation.SELECT) in allowed
+    assert ("paper_account_baselines", PaperDatabaseOperation.SELECT) in allowed
+    for operation in (PaperDatabaseOperation.INSERT, PaperDatabaseOperation.UPDATE,
+                      PaperDatabaseOperation.DELETE):
+        assert ("paper_account_baselines", operation) in denied
     assert ("DATABASE_CLUSTER", PaperDatabaseOperation.CREATE_ROLE) in denied
     assert ("DATABASE_CLUSTER", PaperDatabaseOperation.GRANT) in denied
     assert ("ALL_TABLES", PaperDatabaseOperation.ALTER) in denied
@@ -222,7 +228,7 @@ def test_principal_creation_is_idempotent_and_broader_grants_fail_closed(state, 
     assert gate.action is expected
 
 
-@pytest.mark.parametrize("field", ("pitr_confirmed", "schema_at_0011", "kill_switch_disabled",
+@pytest.mark.parametrize("field", ("pitr_confirmed", "schema_at_0012", "kill_switch_disabled",
                                     "runtime_stopped", "explicit_operator_authorization"))
 @pytest.mark.parametrize("repeat", range(16))
 def test_each_future_principal_creation_precondition_is_mandatory(field, repeat):

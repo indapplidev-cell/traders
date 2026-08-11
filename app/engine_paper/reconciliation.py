@@ -1,7 +1,7 @@
 """Bounded, fail-closed, read-only reconciliation for PAPER persistence.
 
 The schema gate is intentionally the first database operation.  A target that
-is not at revision 0011 returns ``PAPER_SCHEMA_NOT_DEPLOYED`` without issuing
+is not at revision 0012 returns ``PAPER_SCHEMA_NOT_DEPLOYED`` without issuing
 any query against a PAPER table.
 """
 
@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 PAPER_RECONCILIATION_SCHEMA_VERSION: Final = "PAPER_RECONCILIATION_REPORT_V1"
 EXPECTED_SCHEMA_HEAD: Final = (
-    "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"
+    "0012_paper_account_baseline"
 )
 MAX_SAFE_ID_LENGTH: Final = 128
 MAX_SAFE_REPORT_BYTES: Final = 65_536
@@ -473,7 +473,7 @@ class PaperReadOnlyReconciliationService:
 
         try:
             self._fault("before_target_validation")
-            if request.target_class not in {"ISOLATED_POSTGRESQL_0011", "PRODUCTION_POSTGRESQL"}:
+            if request.target_class not in {"ISOLATED_POSTGRESQL_0012", "PRODUCTION_POSTGRESQL"}:
                 return result(PaperReconciliationOutcome.TARGET_REJECTED, "TARGET_CLASS_REJECTED")
             if self._cancelled():
                 return result(PaperReconciliationOutcome.CANCELLED, "CANCELLED_BEFORE_SCHEMA_GATE")

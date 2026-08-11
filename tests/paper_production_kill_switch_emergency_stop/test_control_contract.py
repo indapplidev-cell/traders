@@ -245,7 +245,7 @@ def test_cli_live_arm_denied_before_any_write(tmp_path):
         "--root", str(root), "arm", "--environment", "PRODUCTION", "--mode", "LIVE",
         "--expected-generation", "1", "--reason", "OPERATOR_ARM",
         "--acknowledge-production-control", "--acknowledge-paper-arming",
-        "--schema", "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+        "--schema", "0012_paper_account_baseline",
         "--pitr-window-seconds", "86400", "--market-data-ready", "--approval-source-ready",
         "--wal-archive-health", "PASS", "--wal-unresolved-failures", "0", "--pitr-chain-valid",
         "--paper-runtime-enabled", "--max-new-commands", "1", "--max-open-positions", "1",

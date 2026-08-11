@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 import pytest
 from alembic import command as alembic_command
@@ -12,6 +13,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from app.db.paper_models import (
+    PaperAccountBaselineRecord,
     PaperExecutionCommandRecord,
     PaperExitEvaluationCursorRecord,
     PaperExitDecisionRecord,
@@ -63,12 +65,12 @@ def ingestion_engine():
     get_settings.cache_clear()
     alembic_command.upgrade(
         config,
-        "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+        "0012_paper_account_baseline",
     )
     with engine.connect() as connection:
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).scalar_one() == "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"
+        ).scalar_one() == "0012_paper_account_baseline"
     try:
         yield engine
     finally:
@@ -85,6 +87,7 @@ def ingestion_factory(ingestion_engine):
     factory = sessionmaker(bind=ingestion_engine, autoflush=False, autocommit=False)
     with ingestion_engine.begin() as connection:
         for model in (
+            PaperAccountBaselineRecord,
             PaperJournalEntryRecord,
             PaperExitEvaluationCursorRecord,
             PaperExitDecisionRecord,
@@ -96,6 +99,17 @@ def ingestion_factory(ingestion_engine):
             PaperSimulationPolicyRecord,
         ):
             connection.execute(delete(model))
+        connection.execute(
+            PaperAccountBaselineRecord.__table__.insert().values(
+                baseline_id="baseline:test:ingestion",
+                account_id="paper-primary",
+                accounting_session_id="session-001",
+                currency="USDT",
+                initial_balance=Decimal("100"),
+                initialized_at=datetime(2026, 8, 11, tzinfo=timezone.utc),
+                semantic_version="PAPER_ACCOUNTING/1.0",
+            )
+        )
     yield factory
 
 

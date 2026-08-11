@@ -94,6 +94,49 @@ def _finite(column: str) -> str:
     )
 
 
+class PaperAccountBaselineRecord(Base):
+    __tablename__ = "paper_account_baselines"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "accounting_session_id",
+            name="uq_paper_account_baselines_account_session",
+        ),
+        CheckConstraint(
+            "length(trim(baseline_id)) BETWEEN 1 AND 128 AND "
+            "length(trim(account_id)) BETWEEN 1 AND 128 AND "
+            "length(trim(accounting_session_id)) BETWEEN 1 AND 128 AND "
+            "length(trim(semantic_version)) BETWEEN 1 AND 128",
+            name="ck_paper_account_baseline_identities",
+        ),
+        CheckConstraint(
+            "currency = 'USDT'", name="ck_paper_account_baseline_currency"
+        ),
+        CheckConstraint(
+            f"{_finite('initial_balance')} AND initial_balance > 0",
+            name="ck_paper_account_baseline_initial_balance",
+        ),
+    )
+
+    baseline_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), primary_key=True
+    )
+    account_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    accounting_session_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False
+    )
+    currency: Mapped[str] = mapped_column(String(8), nullable=False)
+    initial_balance: Mapped[Decimal] = mapped_column(
+        Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False
+    )
+    initialized_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    semantic_version: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH), nullable=False
+    )
+
+
 EXECUTION_MODES = tuple(item.value for item in ExecutionMode)
 PAPER_SIDES = tuple(item.value for item in PaperSide)
 PAPER_ORDER_TYPES = tuple(item.value for item in PaperOrderType)

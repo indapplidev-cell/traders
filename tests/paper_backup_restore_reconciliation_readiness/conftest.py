@@ -109,7 +109,7 @@ def rows():
 def reconcile_request():
     return PaperReconciliationRequest(
         request_id="request-1", correlation_id="correlation-1",
-        target_class="ISOLATED_POSTGRESQL_0011", target_identity="task-owned-db-1",
+        target_class="ISOLATED_POSTGRESQL_0012", target_identity="task-owned-db-1",
         expected_schema_head=EXPECTED_SCHEMA_HEAD,
         scope=PaperReconciliationScope(full_isolated_fixture=True),
     )

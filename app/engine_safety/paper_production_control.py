@@ -668,7 +668,7 @@ def restrictive_acl_tree_valid(root: Path, required_paths: tuple[Path, ...]) -> 
 
 def _preflight_from_args(args: argparse.Namespace) -> ArmReadinessPreflight:
     return ArmReadinessPreflight(
-        args.schema == "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+        args.schema == "0012_paper_account_baseline",
         args.pitr_window_seconds >= 86400, args.market_data_ready, args.approval_source_ready,
         args.wal_archive_health == "PASS", args.wal_unresolved_failures == 0,
         args.pitr_chain_valid, args.paper_runtime_enabled, not args.live_enabled,

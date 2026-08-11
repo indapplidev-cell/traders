@@ -38,7 +38,7 @@ EXPECTED_SERVER_BRANCH: Final = "feature/engine-platform"
 EXPECTED_SERVER_HEAD: Final = "ff118505a2fe892c7381f9fbb48f2a8530eb22e8"
 EXPECTED_SERVER_TREE: Final = "27298c2de1641fa47e4bc3bb8f91c39896323bbe"
 EXPECTED_SCHEMA_BASE: Final = "0008_engine_orchestrator_freshness_retry"
-EXPECTED_SCHEMA_HEAD: Final = "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"
+EXPECTED_SCHEMA_HEAD: Final = "0012_paper_account_baseline"
 MINIMUM_PITR_WINDOW_SECONDS: Final = 86_400
 PAPER_PRINCIPAL_LOGICAL_NAME: Final = "traders_paper_runtime"
 
@@ -201,14 +201,16 @@ class PaperProductionCompositionSnapshot:
 class PaperProductionPreparationPhase(StrEnum):
     PHASE_1_PRECHECK = "PHASE_1_PRECHECK"
     PHASE_2_CONFIRM_PITR = "PHASE_2_CONFIRM_PITR"
-    PHASE_3_MIGRATE_0008_TO_0011 = "PHASE_3_MIGRATE_0008_TO_0011"
-    PHASE_4_VERIFY_SCHEMA = "PHASE_4_VERIFY_SCHEMA"
+    PHASE_3_MIGRATE_0008_TO_0012 = "PHASE_3_MIGRATE_0008_TO_0012"
+    PHASE_4_VERIFY_SCHEMA_0012 = "PHASE_4_VERIFY_SCHEMA_0012"
     PHASE_5_CREATE_PAPER_PRINCIPAL = "PHASE_5_CREATE_PAPER_PRINCIPAL"
     PHASE_6_APPLY_LEAST_PRIVILEGE = "PHASE_6_APPLY_LEAST_PRIVILEGE"
     PHASE_7_DEPLOY_DISABLED_RUNTIME_CONFIG = "PHASE_7_DEPLOY_DISABLED_RUNTIME_CONFIG"
-    PHASE_8_RECONCILIATION = "PHASE_8_RECONCILIATION"
-    PHASE_9_HEALTH = "PHASE_9_HEALTH"
-    PHASE_10_CONFIRM_DISABLED = "PHASE_10_CONFIRM_DISABLED"
+    PHASE_8_INITIALIZE_ACCOUNT_BASELINE = "PHASE_8_INITIALIZE_ACCOUNT_BASELINE"
+    PHASE_9_ACCOUNTING_RECONCILIATION = "PHASE_9_ACCOUNTING_RECONCILIATION"
+    PHASE_10_PAPER_RECONCILIATION = "PHASE_10_PAPER_RECONCILIATION"
+    PHASE_11_HEALTH = "PHASE_11_HEALTH"
+    PHASE_12_CONFIRM_DISABLED = "PHASE_12_CONFIRM_DISABLED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +246,7 @@ class PaperProductionMigrationPlan:
     revisions: tuple[str, ...] = (
         "0009_paper_trading_persistence_foundation",
         "0010_paper_final_approval_and_order_transition_event_vocabulary",
+        "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
         EXPECTED_SCHEMA_HEAD,
     )
     lock_timeout_ms: int = 5_000
@@ -288,6 +291,7 @@ class PaperDatabaseOperation(StrEnum):
     SELECT = "SELECT"
     INSERT = "INSERT"
     UPDATE = "UPDATE"
+    DELETE = "DELETE"
     ALTER = "ALTER"
     DROP = "DROP"
     CREATE_ROLE = "CREATE_ROLE"
@@ -313,7 +317,7 @@ class PaperProductionIdempotencyAction(StrEnum):
 class PaperProductionPrincipalPreflight:
     state: PaperProductionPrincipalState
     pitr_confirmed: bool
-    schema_at_0011: bool
+    schema_at_0012: bool
     kill_switch_disabled: bool
     runtime_stopped: bool
     explicit_operator_authorization: bool
@@ -326,7 +330,7 @@ class PaperProductionPrincipalPreflight:
             PaperProductionPrincipalState.CONFLICTING_IDENTITY,
         }:
             return PaperProductionIdempotencyAction.DENY_CONFLICT
-        if not all((self.pitr_confirmed, self.schema_at_0011,
+        if not all((self.pitr_confirmed, self.schema_at_0012,
                     self.kill_switch_disabled, self.runtime_stopped,
                     self.explicit_operator_authorization)):
             return PaperProductionIdempotencyAction.DENY_CONFLICT
@@ -376,6 +380,7 @@ _PAPER_RESOURCES: Final = (
     "paper_exit_evaluation_cursors", "paper_exit_decisions",
     "paper_journal_entries",
 )
+_BASELINE_RESOURCE: Final = "paper_account_baselines"
 
 
 def _capability_matrix() -> tuple[PaperProductionDatabaseCapability, ...]:
@@ -384,6 +389,20 @@ def _capability_matrix() -> tuple[PaperProductionDatabaseCapability, ...]:
                                           "existing persisted input or approval boundary", "PRE_MUTATION_READ")
         for resource in _READ_RESOURCES
     ]
+    rows.append(PaperProductionDatabaseCapability(
+        _BASELINE_RESOURCE, PaperDatabaseOperation.SELECT, True,
+        "read operator-initialized immutable account baseline", "PAPER_LIFECYCLE"
+    ))
+    for operation in (
+        PaperDatabaseOperation.INSERT,
+        PaperDatabaseOperation.UPDATE,
+        PaperDatabaseOperation.DELETE,
+    ):
+        rows.append(PaperProductionDatabaseCapability(
+            _BASELINE_RESOURCE, operation, False,
+            "baseline initialization is operator-owned and immutable to runtime",
+            "DENY",
+        ))
     for resource in _PAPER_RESOURCES:
         rows.append(PaperProductionDatabaseCapability(resource, PaperDatabaseOperation.SELECT, True,
                                                        "repository load and reconciliation", "PAPER_LIFECYCLE"))
@@ -496,6 +515,10 @@ class PaperProductionFirstCanaryPlan:
     bounded_lifecycle: bool = True
     kill_switch_checked_every_stage: bool = True
     reconciliation_after_canary: bool = True
+    account_baseline_persistence_ready: bool = True
+    account_baseline_exists: bool = True
+    account_baseline_valid: bool = True
+    accounting_reconciliation_healthy: bool = True
     no_eligible_approval_behavior: str = "NO_ELIGIBLE_APPROVAL_ZERO_MUTATION_CLEAN_NO_TRADE"
 
     def __post_init__(self) -> None:
@@ -505,6 +528,10 @@ class PaperProductionFirstCanaryPlan:
             self.simulated_execution_only, self.explicit_operator_arm_required,
             self.bounded_lifecycle, self.kill_switch_checked_every_stage,
             self.reconciliation_after_canary,
+            self.account_baseline_persistence_ready,
+            self.account_baseline_exists,
+            self.account_baseline_valid,
+            self.accounting_reconciliation_healthy,
         )):
             raise ValueError("UNSAFE_FIRST_CANARY_PLAN")
 
@@ -544,11 +571,12 @@ def safe_structured_event(event: str, fields: Mapping[str, object]) -> str:
 def _schema_finding(revision: str) -> PaperProductionPreparationFinding:
     if revision == EXPECTED_SCHEMA_HEAD:
         return PaperProductionPreparationFinding(PaperProductionPreparationGate.SCHEMA,
-                                                  PaperProductionGateStatus.PASS, "SCHEMA_0011")
+                                                  PaperProductionGateStatus.PASS, "SCHEMA_0012")
     if revision == EXPECTED_SCHEMA_BASE:
         code = "SCHEMA_0008"
     elif revision in {"0009_paper_trading_persistence_foundation",
-                      "0010_paper_final_approval_and_order_transition_event_vocabulary"}:
+                      "0010_paper_final_approval_and_order_transition_event_vocabulary",
+                      "0011_paper_close_causal_boundary_and_exit_evaluation_cursor"}:
         code = "SCHEMA_PARTIAL_FAIL_CLOSED"
     else:
         code = "SCHEMA_UNEXPECTED_COMPATIBILITY_REVIEW_REQUIRED"

@@ -9,7 +9,7 @@ import pytest
 
 from app.engine_paper.accounting import (
     ACCOUNTING_SEMANTIC_VERSION,
-    CURRENT_0011_BASELINE_PERSISTENCE_CAPABILITY,
+    ACCOUNT_BASELINE_PERSISTENCE_CAPABILITY,
     PaperAccountAccountingService,
     PaperAccountBaseline,
     PaperAccountBaselineGate,
@@ -44,18 +44,31 @@ class MemoryBaselinePort:
             raise RuntimeError("db unavailable")
         return self.activity
 
-    def insert_once(self, baseline):
-        if self.fault == "insert":
+    def create_if_absent(self, baseline):
+        if self.fault in {"read", "activity", "insert"}:
             raise RuntimeError("cancelled")
         if self.rows:
-            raise RuntimeError("unique conflict")
+            current = self.rows[0]
+            if (current.identity == baseline.identity
+                    and current.initial_balance == baseline.initial_balance
+                    and current.semantic_version == baseline.semantic_version):
+                return current
+            raise PaperAccountingError(
+                PaperAccountingFinding.BASELINE_IMMUTABILITY_VIOLATION,
+                "immutable conflict",
+            )
+        if self.activity:
+            raise PaperAccountingError(
+                PaperAccountingFinding.BASELINE_AFTER_ECONOMIC_ACTIVITY_DENIED,
+                "activity exists",
+            )
         self.rows.append(baseline)
         return baseline
 
 
-def test_0011_persistence_decision_is_narrow_and_no_0012():
-    assert CURRENT_0011_BASELINE_PERSISTENCE_CAPABILITY == "UNSUPPORTED_REQUIRES_SCHEMA_EXTENSION"
-    assert not Path("alembic/versions/0012_paper_accounting.py").exists()
+def test_0012_persistence_decision_is_narrow_and_present():
+    assert ACCOUNT_BASELINE_PERSISTENCE_CAPABILITY == "READY_REVISION_0012"
+    assert Path("alembic/versions/0012_paper_account_baseline.py").is_file()
 
 
 def test_baseline_validation_usdt_paper_and_positive(identity):

@@ -2,9 +2,8 @@
 
 The existing fill and position lifecycle remains the sole fee/PnL engine.  This
 module validates and projects those persisted facts; it never prices a fill or
-calculates a configured fee.  Revision 0011 has no account/session baseline
-table, so the persistence boundary is deliberately a port rather than an
-unrelated-table fallback.
+calculates a configured fee. Revision 0012 persists only the immutable
+account/session opening balance used by these projections.
 """
 
 from __future__ import annotations
@@ -30,9 +29,7 @@ from app.engine_safety.paper_domain import (
 
 ACCOUNTING_SEMANTIC_VERSION = "PAPER_ACCOUNTING/1.0"
 SUPPORTED_CURRENCY = "USDT"
-CURRENT_0011_BASELINE_PERSISTENCE_CAPABILITY = (
-    "UNSUPPORTED_REQUIRES_SCHEMA_EXTENSION"
-)
+ACCOUNT_BASELINE_PERSISTENCE_CAPABILITY = "READY_REVISION_0012"
 
 
 class PaperAccountingFinding(str, Enum):
@@ -159,13 +156,13 @@ class PaperAccountBaseline:
 
 @runtime_checkable
 class PaperAccountBaselinePersistence(Protocol):
-    """Transactional port required from a future account-baseline schema task."""
+    """Create/get-only transactional baseline persistence port."""
 
     def list_for_identity(self, identity: PaperAccountIdentity) -> Sequence[PaperAccountBaseline]: ...
 
     def has_economic_activity(self, identity: PaperAccountIdentity) -> bool: ...
 
-    def insert_once(self, baseline: PaperAccountBaseline) -> PaperAccountBaseline: ...
+    def create_if_absent(self, baseline: PaperAccountBaseline) -> PaperAccountBaseline: ...
 
 
 class PaperAccountBaselineService:
@@ -210,29 +207,7 @@ class PaperAccountBaselineService:
             semantic_version=semantic_version,
         )
         try:
-            existing = tuple(self._persistence.list_for_identity(identity))
-            if len(existing) > 1:
-                raise PaperAccountingError(
-                    PaperAccountingFinding.BASELINE_DUPLICATE, "multiple baselines"
-                )
-            if existing:
-                current = existing[0]
-                if (
-                    current.initial_balance == requested.initial_balance
-                    and current.identity == requested.identity
-                    and current.semantic_version == requested.semantic_version
-                ):
-                    return current
-                raise PaperAccountingError(
-                    PaperAccountingFinding.BASELINE_IMMUTABILITY_VIOLATION,
-                    "an established baseline cannot be rewritten",
-                )
-            if self._persistence.has_economic_activity(identity):
-                raise PaperAccountingError(
-                    PaperAccountingFinding.BASELINE_AFTER_ECONOMIC_ACTIVITY_DENIED,
-                    "baseline initialization after economic activity is denied",
-                )
-            return self._persistence.insert_once(requested)
+            return self._persistence.create_if_absent(requested)
         except PaperAccountingError:
             raise
         except Exception as exc:
@@ -488,8 +463,28 @@ class PaperAccountingReconciliationResult:
 
 
 class PaperAccountingReconciliationService:
-    def __init__(self, accounting: PaperAccountAccountingService | None = None) -> None:
+    def __init__(
+        self,
+        accounting: PaperAccountAccountingService | None = None,
+        baseline_persistence: PaperAccountBaselinePersistence | None = None,
+    ) -> None:
         self._accounting = accounting or PaperAccountAccountingService()
+        self._baseline_persistence = baseline_persistence
+
+    def reconcile_persisted(
+        self,
+        identity: PaperAccountIdentity,
+        trades: Sequence[PaperClosedTradeFacts],
+    ) -> PaperAccountingReconciliationResult:
+        """Fail closed while loading the one authoritative persisted baseline."""
+
+        if self._baseline_persistence is None:
+            return self._failed(PaperAccountingFinding.SCHEMA_PERSISTENCE_UNAVAILABLE)
+        try:
+            baselines = tuple(self._baseline_persistence.list_for_identity(identity))
+        except Exception:
+            return self._failed(PaperAccountingFinding.SAFE_FAILURE)
+        return self.reconcile(baselines, trades)
 
     def reconcile(
         self,

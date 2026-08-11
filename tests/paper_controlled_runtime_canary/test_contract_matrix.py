@@ -346,7 +346,7 @@ def test_cli_requires_all_three_explicit_inputs(argv, capsys):
 
 def test_contract_exposes_exact_task_and_migration_identity():
     assert TASK_ID.endswith("SINGLE_CYCLE_CANARY_01_RETRY_02")
-    assert EXPECTED_MIGRATION_HEAD.startswith("0011_")
+    assert EXPECTED_MIGRATION_HEAD == "0012_paper_account_baseline"
     assert CANARY_ACKNOWLEDGEMENT == "I_ACKNOWLEDGE_ONE_ISOLATED_PAPER_STAGE"
 
 

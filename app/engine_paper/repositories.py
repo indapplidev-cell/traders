@@ -13,7 +13,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TypeVar
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -34,6 +34,7 @@ from app.db.paper_mappings import (
     paper_position_to_orm_values,
 )
 from app.db.paper_models import (
+    PaperAccountBaselineRecord,
     PaperExecutionCommandRecord,
     PaperExitEvaluationCursorRecord,
     PaperExitDecisionRecord,
@@ -56,6 +57,10 @@ from app.engine_execution.paper_state_machine import (
 )
 from app.engine_exit.paper_exit import PaperExitDecision
 from app.engine_journal.paper_events import PaperDomainEvent
+from app.engine_paper.baseline_repository import (
+    PaperAccountBaselineRepository,
+    acquire_v1_account_initialization_lock,
+)
 from app.engine_paper.db_failures import classify_database_failure
 from app.engine_paper.exit_evaluation_cursor import (
     PaperExitCursorAdvance,
@@ -288,6 +293,19 @@ class CommandRepository:
         *,
         event_id: str | None = None,
     ) -> RepositoryResult[PaperExecutionCommand]:
+        baseline_table = self.session.scalar(
+            select(text("to_regclass('public.paper_account_baselines')"))
+        )
+        if baseline_table is not None:
+            acquire_v1_account_initialization_lock(self.session)
+            baseline_count = self.session.scalar(
+                select(func.count()).select_from(PaperAccountBaselineRecord)
+            )
+            if baseline_count != 1:
+                return result(
+                    RepositoryOutcome.INVALID_STATE,
+                    reason_code="PAPER_ACCOUNT_BASELINE_REQUIRED_BEFORE_COMMAND",
+                )
         existing = self.get_command_by_idempotency_key(command.idempotency_key)
         if existing:
             return _same(existing, command, command_semantic_tuple)
@@ -1145,6 +1163,7 @@ def _copy_position(row: PaperPositionRecord, position: PaperPosition) -> None:
 class PaperRepositories:
     def __init__(self, session: Session) -> None:
         self.session = session
+        self.account_baselines = PaperAccountBaselineRepository(session)
         self.policies = SimulationPolicyRepository(session)
         self.commands = CommandRepository(session)
         self.orders = OrderRepository(session)
