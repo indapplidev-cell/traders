@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = a60386f08ec11d4149ace1f8f9e968246d358eb9
+STATUS_AS_OF_COMMIT = 5ae04fc6083c64e8c7386c60bbba9c421a34497c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-12T09:30:01Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_FIRST_CANARY_CORRELATION_AND_READINESS_CONTRACT_REMEDIATION_01
-FILES_CHANGED = alembic/versions/0013_paper_first_canary_correlation.py; app/db/paper_models.py; app/engine_paper/ correlation, repository, readiness and composition integration; app/operator_control/ exact canary contracts; app/server_api/ readiness contract and derivation; docs/architecture/paper_first_canary_correlation.md; tests/ canary remediation and compatible contract updates; online_trader.md
+RECONCILED_AT_UTC = 2026-08-12T12:34:01Z
+RECONCILED_BY_TASK = TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_01
+FILES_CHANGED = docs/operations/pitr_wal_ack_daemon_safe_inspector_recovery.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_FIRST_CANARY_CORRELATION_AND_READINESS_CONTRACT_PASS_ISOLATED_POSTGRESQL16_PRODUCTION_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_STILL_BELOW_24H
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_109
+STATUS_CONFIDENCE = PROVEN_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_PASS_PRODUCTION_POSTGRESQL16_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_103076_SECONDS_GATE_PASSED
 
 # Состояние проекта traders-ml
 
@@ -23,9 +23,9 @@ STATUS_CONFIDENCE = PROVEN_FIRST_CANARY_CORRELATION_AND_READINESS_CONTRACT_PASS_
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = RETRY_CLIENT_PAPER_FIRST_CANARY_WORKFLOW_READINESS_AGAINST_AUTHORITATIVE_SERVER_CONTRACTS_WHILE_PITR_ACCUMULATES
-CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
-BACKGROUND_TIMED_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+CURRENT_STAGE = RETRY_CLIENT_PAPER_FIRST_CANARY_WORKFLOW_READINESS_AGAINST_AUTHORITATIVE_SERVER_CONTRACTS
+CURRENT_BLOCKER = NONE_FOR_CURRENT_CLIENT_RETRY_SEPARATE_CLIENT_REPOSITORY_AUTHORIZATION_REQUIRED
+BACKGROUND_TIMED_GATE = MINIMUM_24_HOUR_PITR_WINDOW_PASSED_103076_SECONDS
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1836,6 +1836,60 @@ synchronization. No PostgreSQL restart, PGDATA change, archive-root relocation,
 replacement base backup, PAPER access, or LIVE action occurred. The separate
 24-hour minimum PITR window gate remains open while accumulation continues.
 
+The preceding paragraph is the historical result of the original archive
+remediation. The later recovery and minimum-window confirmation below supersede
+its open timed-gate statement without changing that task's historical evidence.
+
+## PITR WAL ACK daemon and safe inspector recovery
+
+```text
+PITR_RECOVERY_TASK = TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_01
+PITR_RECOVERY_RESULT = PASS
+AUDIT_RESULT_COMMIT = 5ae04fc6083c64e8c7386c60bbba9c421a34497c
+ROOT_CAUSE = DOCKER_DESKTOP_STOPPED_WAL_ACK_PROCESS_ABSENT_STALE_PID_LOCK
+DOCKER_ENGINE_RECOVERY = PASS
+PRODUCTION_CONTAINERS = RESTORED_EXISTING_IDENTITIES
+POSTGRES_HEALTH = HEALTHY
+READONLY_API_HEALTH = HTTP_200
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+WAL_ACK_STALE_PID = 15724_PROVEN_ABSENT_REMOVED
+WAL_ACK_DAEMON = RUNNING_PID_12828
+WAL_ACK_DAEMON_ERROR_CLASS = NONE
+WAL_ARCHIVE_HEALTH = PASS
+WAL_ARCHIVE_HISTORICAL_FAILURE_COUNT_SINCE_RESTART = 0
+WAL_ARCHIVE_ACTIVE_UNRESOLVED_FAILURE_COUNT = 0
+WAL_ARCHIVE_PENDING_COUNT = 0
+WAL_ARCHIVE_BACKLOG_COUNT = 0
+REQUIRED_WAL_SEGMENTS = 107
+ARCHIVE_ARTIFACT_COVERAGE = 107
+MISSING_REQUIRED_WAL_SEGMENTS = 0
+SOURCE_RECOVERABLE_MISSING_SEGMENTS = 0
+BASE_BACKUP_RECOVERY_CHAIN_CONTIGUOUS = YES
+PHYSICAL_WAL_GAP = NO
+PITR_WINDOW_SECONDS = 103076
+MINIMUM_REQUIRED_PITR_WINDOW_SECONDS = 86400
+MINIMUM_24_HOUR_PITR_GATE = PASS
+FORCED_WAL_SWITCH = NO
+PAPER_CONTROL = HEALTHY_DISABLED_GENERATION_3
+PAPER_BUSINESS_MUTATIONS = 0
+LIVE_MODE_ENABLED = NO
+SAFE_INSPECTOR_PROTECTED_BINDING_READS = 0
+TARGETED_RECOVERY_AND_INSPECTOR_TESTS = 1443_PASSED_1_SKIPPED
+```
+
+Docker Desktop and the existing persistent-volume containers were restored
+after a host runtime stop. The exact stale daemon lock was removed only after
+PID 15724 was proven absent, and the daemon's replacement PID 12828 published
+fresh healthy state. Recovery then waited for the configured natural archive
+timeout; no `pg_switch_wal`, write query, PAPER mutation, schema migration,
+container recreation, image replacement, or LIVE transition was used. The
+first post-restart archive completion re-established safe inspector evidence
+for all 107 required segments and proved a continuous 103,076-second PITR
+window. The former timed PITR blocker is therefore closed. Production remains
+at revision 0008 with PAPER disabled; migration, disabled-runtime deployment,
+operator-control deployment and first canary still require separate explicit
+authorization.
+
 ## PAPER production persisted market-data input adapter
 
 ```text
@@ -2350,8 +2404,9 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈95% | Revision 0013 adds isolated-PG16-proven durable first-canary correlation over the revision 0012 baseline and existing closed-trade reporting/reconciliation chain; production remains at 0008 with PAPER disabled until the minimum 24-hour PITR gate and separately authorized preparation/deployment |
+| Online analytics/paper pipeline | ≈95% | Revision 0013 adds isolated-PG16-proven durable first-canary correlation over the revision 0012 baseline and existing closed-trade reporting/reconciliation chain; the 103,076-second production PITR window now passes the 24-hour gate, while production remains at 0008 with PAPER disabled pending separately authorized preparation/deployment |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
+| Production backup/PITR | Production gate passed | WAL archive health is PASS with 107/107 required segments, no physical gap or unresolved failure, a continuous 103,076-second PITR window, and WAL ACK daemon PID 12828 running; restore policy and separate deployment authorization remain unchanged |
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
 | Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
 | PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
@@ -2368,7 +2423,7 @@ LIVE.
 RECOMMENDED_NEXT_TASK =
 TRADERS_CLIENT_PAPER_TRADING_FIRST_CANARY_WORKFLOW_READINESS_RETRY_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CLIENT_REPOSITORY_SCOPE
-PARALLEL_TIMED_TASK_WHEN_MATURE = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
+PITR_MINIMUM_WINDOW_CONFIRMATION = COMPLETED_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_01
 CLIENT_RETRY_BASE = UNCHANGED_CLIENT_MAIN_73a987157d9a1330a786c9dd79dc9bb9ce194b9c
 PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_UNCHANGED
 ```
@@ -2413,11 +2468,13 @@ now implemented and production-proven with the final state disabled. The
 disabled production composition and controlled migration, least-privilege
 principal, runtime deployment and first-canary preparation contracts are now
 implemented and isolated-proven without a production mutation. WAL
-archive incident handling is completed and PITR continues accumulating. The
+archive incident handling is completed, its daemon was safely recovered after
+a Docker Desktop stop, and the continuous 103,076-second PITR window now passes
+the minimum 24-hour gate. The
 closed-trade accounting/reporting projection now consumes the persisted
 revision 0012 immutable account/session baseline, and isolated reconciliation
-passes without a second ledger. Minimum PITR-window confirmation is the next
-timed gate when mature; production preparation remains separately authorized.
+passes without a second ledger. Production preparation remains separately
+authorized and was not performed by the PITR recovery task.
 No autonomous Paper
 runtime was configured, deployed, started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
