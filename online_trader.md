@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = fd18b9bb7e219fa93187026a6f5c089431ba88bb
+STATUS_AS_OF_COMMIT = 1d454ba444b70a583032677b1e0d15d34130d0f6
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-12T15:32:34.1919734Z
-RECONCILED_BY_TASK = TRADERS_ML_PITR_WAL_ARCHIVE_RETRY_PENDING_REMEDIATION_01
+RECONCILED_AT_UTC = 2026-08-12T15:59:44.1451302Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
 FILES_CHANGED = FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_115_BEFORE_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = WAL_RETRY_PENDING_CLEARED_PITR_CHAIN_VALID_PRODUCTION_PAPER_PREPARATION_RETRY_READY
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_118_AFTER_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = PRODUCTION_PREPARATION_BLOCKED_PRE_MUTATION_BY_REQUIRED_SOURCE_CONTRACT_REMEDIATION
 
 # Состояние проекта traders-ml
 
@@ -23,10 +23,51 @@ STATUS_CONFIDENCE = WAL_RETRY_PENDING_CLEARED_PITR_CHAIN_VALID_PRODUCTION_PAPER_
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PRODUCTION_PAPER_PREPARATION_RETRY_REQUIRED
-CURRENT_BLOCKER = NONE_FOR_PRODUCTION_PAPER_PREPARATION_RETRY
-BACKGROUND_TIMED_GATE = FORMAL_24H_CONFIRMATION_REMAINS_ACCEPTED_AND_FRESH_PITR_WINDOW_IS_113879_SECONDS
+CURRENT_STAGE = PRODUCTION_PAPER_PREPARATION_SOURCE_CONTRACT_REMEDIATION_REQUIRED
+CURRENT_BLOCKER = MIGRATION_0013_FROZEN_HASH_MISMATCH_AND_MISSING_PRODUCTION_IDENTITY_BINDING_DEPLOYMENT_CONTRACTS
+BACKGROUND_TIMED_GATE = FORMAL_24H_CONFIRMATION_REMAINS_ACCEPTED_AND_FRESH_PITR_WINDOW_IS_114778_SECONDS
 ```
+
+## Production PAPER preparation controlled rerun
+
+```text
+PREPARATION_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
+PREPARATION_RESULT = BLOCKED_PRE_MUTATION
+PROJECT_STATE_AUDIT_COMMIT = 1d454ba444b70a583032677b1e0d15d34130d0f6
+BLOCKER_CODE = PRODUCTION_PREPARATION_REQUIRES_UNPLANNED_SOURCE_CHANGE
+PRE_MUTATION_FOCUSED_TESTS = 6607_PASSED_16_FAILED
+FAILED_REQUIRED_GATE = REVISION_0013_FROZEN_SHA256_CONTRACT
+MIGRATION_0013_EXPECTED_SHA256 = 08f9f65acfef946e89dd41297ba14a1dbeb113b62a91a22331a64b5adf620f54
+MIGRATION_0013_ACTUAL_SHA256 = 6d46a437e8f44562e1c6d0bd9a746827d404b8bd530c363d045ff4abf2f8d5f1
+PRODUCTION_ACCOUNT_SESSION_IDENTITY = UNDEFINED_BY_TRACKED_PRODUCTION_CONTRACT
+APPROVED_PAPER_RUNTIME_BINDING_DEPLOYMENT_EXECUTOR = UNAVAILABLE_IN_TRACKED_SOURCE
+OPERATOR_INITIAL_BALANCE = 100.00_USDT_EXPLICIT_VALID_RETAINED
+FRESH_WAL_ARCHIVE_HEALTH = PASS_120_OF_120_ZERO_UNRESOLVED_ZERO_PENDING_ZERO_BACKLOG
+FRESH_PITR_WINDOW_SECONDS = 114778
+WAL_ACK_DAEMON = RUNNING_PID_12124_IDENTITY_HEARTBEAT_PROGRESS_PASS
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_MIGRATION_STARTED = NO
+PRODUCTION_ROLE_AND_GRANT_MUTATIONS = 0
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0_0_0_0
+PAPER_BASELINE_CREATED = NO
+READONLY_API_DEPLOYMENT = NOT_RUN
+SERVICE_RESTARTS_BY_TASK = 0
+PRODUCTION_CONTROL = HEALTHY_DISABLED_GENERATION_3_UNCHANGED
+PAPER_ECONOMIC_MUTATIONS = 0
+PAPER_RUNTIME_STARTED = NO
+LIVE_MODE_ENABLED = NO
+BINANCE_ORDER_API_CALLS_BY_TASK = 0
+```
+
+The task-required fresh WAL/PITR gate passed, so the recovered archive state
+remains healthy. Production preparation stopped before its first mutation
+because a required deterministic test found that the frozen SHA256 in the
+production readiness manifest does not match tracked migration 0013. The
+source also provides no authoritative production account/session identity and
+no approved PAPER runtime protected-binding/deployment executor. Test fixture
+identities were not promoted to production and the protected binding was not
+directly accessed. A dedicated source-contract remediation and review must
+pass before this preparation task is rerun.
 
 ## WAL archive retry-pending remediation
 
@@ -2535,9 +2576,9 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈95% | Revision 0013 remains isolated-PG16 proven; the fresh production PITR window is 113,879 seconds with the retry-pending blocker cleared, while production remains at 0008 with PAPER disabled pending a separately authorized preparation retry |
+| Online analytics/paper pipeline | ≈95% | Production remains at 0008 with PAPER disabled; the preparation rerun stopped before mutation because the tracked revision-0013 frozen hash contract fails and production identity/binding deployment contracts are absent |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Production gate passed | Fresh WAL archive health is PASS with 119/119 required segments, no physical gap or unresolved failure, a continuous 113,879-second PITR window, and WAL ACK daemon PID 12124 healthy after the bounded recovery; restore policy and separate deployment authorization remain unchanged |
+| Production backup/PITR | Production gate passed | Fresh WAL archive health is PASS with 120/120 required segments, no physical gap or unresolved failure, a continuous 114,778-second PITR window, and WAL ACK daemon PID 12124 healthy; this did not override the separate source-contract blocker |
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
 | Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
 | PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
@@ -2552,11 +2593,12 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_PAPER_PREPARATION_SCOPE
+TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_SOURCE_CONTRACT_REMEDIATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_SOURCE_REMEDIATION_SCOPE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
+AFTER_SOURCE_REMEDIATION = RERUN_TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
 CLIENT_READINESS_MAIN = aa333baa33c88b0a5a51eafa016a3cc4a03d056b
 PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_UNCHANGED
 ```
