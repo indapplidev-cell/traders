@@ -7,13 +7,13 @@ STATUS_AS_OF_COMMIT = 5ae04fc6083c64e8c7386c60bbba9c421a34497c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-12T12:34:01Z
-RECONCILED_BY_TASK = TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_01
-FILES_CHANGED = docs/operations/pitr_wal_ack_daemon_safe_inspector_recovery.md; online_trader.md
+RECONCILED_AT_UTC = 2026-08-12T13:06:48Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
+FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_109
-STATUS_CONFIDENCE = PROVEN_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_PASS_PRODUCTION_POSTGRESQL16_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_103076_SECONDS_GATE_PASSED
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_111
+STATUS_CONFIDENCE = FRESH_PITR_CONFIRMATION_PASS_PRODUCTION_POSTGRESQL16_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_104874_SECONDS_WAL_109_OF_109
 
 # Состояние проекта traders-ml
 
@@ -25,7 +25,7 @@ API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
 CURRENT_STAGE = RETRY_CLIENT_PAPER_FIRST_CANARY_WORKFLOW_READINESS_AGAINST_AUTHORITATIVE_SERVER_CONTRACTS
 CURRENT_BLOCKER = NONE_FOR_CURRENT_CLIENT_RETRY_SEPARATE_CLIENT_REPOSITORY_AUTHORIZATION_REQUIRED
-BACKGROUND_TIMED_GATE = MINIMUM_24_HOUR_PITR_WINDOW_PASSED_103076_SECONDS
+BACKGROUND_TIMED_GATE = MINIMUM_24_HOUR_PITR_WINDOW_FORMALLY_CONFIRMED_104874_SECONDS
 ```
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
@@ -1890,6 +1890,46 @@ at revision 0008 with PAPER disabled; migration, disabled-runtime deployment,
 operator-control deployment and first canary still require separate explicit
 authorization.
 
+## Fresh minimum 24-hour PITR window confirmation
+
+```text
+PITR_CONFIRMATION_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
+PITR_CONFIRMATION_RESULT = PASS
+PITR_WINDOW_MEASURED_AT_UTC = 2026-08-12T13:06:48.696424Z
+PITR_WINDOW_SECONDS_CURRENT = 104874
+PITR_TARGET_SECONDS = 86400
+PITR_EXCESS_SECONDS = 18474
+PITR_PROGRESS_PERCENT = 121.381944
+PITR_MINIMUM_24_HOUR_WINDOW_CONFIRMATION = CONFIRMED
+MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED = CLOSED
+WAL_ACK_DAEMON = RUNNING_PID_12828_IDENTITY_HEARTBEAT_PROGRESS_PASS
+WAL_ACK_ERROR_BACKLOG_PENDING = 0_0_0
+WAL_ARCHIVE_HEALTH = PASS
+WAL_ARCHIVE_SEGMENT_COVERAGE = 109_OF_109
+WAL_ARCHIVE_UNRESOLVED_FAILURES = 0
+WAL_ARCHIVE_PHYSICAL_GAP = NO
+CURRENT_PITR_CHAIN_VALID = YES
+PITR_WINDOW_RESET_DETECTED = NO
+BACKUP_ARTIFACT_VERIFICATION = PASS_2_OF_2_ONE_LOGICAL_ONE_BASE
+POSTGRESQL = HEALTHY_MAJOR_16_RESTART_COUNT_0
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_API = HTTP_200
+MARKET_DATA = OK_18_OF_18_STREAMS
+ORCHESTRATOR = OK
+PAPER_CONTROL = HEALTHY_DISABLED_GENERATION_3
+PRODUCTION_MUTATIONS = 0
+PRODUCTION_RESTARTS_BY_TASK = 0
+REMAINING_READINESS_BLOCKERS = CLIENT_REPOSITORY_BRANCH_CORRECTION_AND_READINESS_RETRY_PENDING
+```
+
+This confirmation used a fresh safe inspector reading rather than the prior
+103,076-second value or wall-clock extrapolation. The archive remained complete
+and progressing with no reset, missing required segment, physical gap, active
+failure, pending status or export backlog. Published base and logical backup
+artifacts both reverified successfully. Production schema, services, PAPER
+control and LIVE denial remained unchanged; no PAPER preparation or migration
+was performed.
+
 ## PAPER production persisted market-data input adapter
 
 ```text
@@ -2404,9 +2444,9 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈95% | Revision 0013 adds isolated-PG16-proven durable first-canary correlation over the revision 0012 baseline and existing closed-trade reporting/reconciliation chain; the 103,076-second production PITR window now passes the 24-hour gate, while production remains at 0008 with PAPER disabled pending separately authorized preparation/deployment |
+| Online analytics/paper pipeline | ≈95% | Revision 0013 adds isolated-PG16-proven durable first-canary correlation over the revision 0012 baseline and existing closed-trade reporting/reconciliation chain; a fresh 104,874-second production PITR reading formally confirms the 24-hour gate, while production remains at 0008 with PAPER disabled pending separately authorized preparation/deployment |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Production gate passed | WAL archive health is PASS with 107/107 required segments, no physical gap or unresolved failure, a continuous 103,076-second PITR window, and WAL ACK daemon PID 12828 running; restore policy and separate deployment authorization remain unchanged |
+| Production backup/PITR | Production gate passed | Fresh WAL archive health is PASS with 109/109 required segments, no physical gap or unresolved failure, a continuous 104,874-second PITR window, and WAL ACK daemon PID 12828 healthy; restore policy and separate deployment authorization remain unchanged |
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
 | Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
 | PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
@@ -2423,7 +2463,7 @@ LIVE.
 RECOMMENDED_NEXT_TASK =
 TRADERS_CLIENT_PAPER_TRADING_FIRST_CANARY_WORKFLOW_READINESS_RETRY_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CLIENT_REPOSITORY_SCOPE
-PITR_MINIMUM_WINDOW_CONFIRMATION = COMPLETED_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_01
+PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 CLIENT_RETRY_BASE = UNCHANGED_CLIENT_MAIN_73a987157d9a1330a786c9dd79dc9bb9ce194b9c
 PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_UNCHANGED
 ```
