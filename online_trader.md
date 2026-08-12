@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 5ae04fc6083c64e8c7386c60bbba9c421a34497c
+STATUS_AS_OF_COMMIT = 7f702c8c03e75d88afee8e67d9f2c2c7a71e0d4c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-12T13:06:48Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
+RECONCILED_AT_UTC = 2026-08-12T13:59:10Z
+RECONCILED_BY_TASK = TRADERS_CLIENT_REPOSITORY_BRANCH_CORRECTION_AND_READINESS_RETRY_01
 FILES_CHANGED = online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_111
-STATUS_CONFIDENCE = FRESH_PITR_CONFIRMATION_PASS_PRODUCTION_POSTGRESQL16_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_104874_SECONDS_WAL_109_OF_109
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_111_BEFORE_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = CLIENT_FIRST_CANARY_READINESS_PASS_EXACT_CANARY_ID_REAL_HTTP_POSTGRESQL16_SCHEMA0013_PRODUCTION_0008_UNCHANGED
 
 # Состояние проекта traders-ml
 
@@ -23,8 +23,8 @@ STATUS_CONFIDENCE = FRESH_PITR_CONFIRMATION_PASS_PRODUCTION_POSTGRESQL16_0008_CO
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = RETRY_CLIENT_PAPER_FIRST_CANARY_WORKFLOW_READINESS_AGAINST_AUTHORITATIVE_SERVER_CONTRACTS
-CURRENT_BLOCKER = NONE_FOR_CURRENT_CLIENT_RETRY_SEPARATE_CLIENT_REPOSITORY_AUTHORIZATION_REQUIRED
+CURRENT_STAGE = PRODUCTION_PAPER_PREPARATION_PENDING_SEPARATE_AUTHORIZATION
+CURRENT_BLOCKER = NONE_FOR_PRODUCTION_PAPER_PREPARATION
 BACKGROUND_TIMED_GATE = MINIMUM_24_HOUR_PITR_WINDOW_FORMALLY_CONFIRMED_104874_SECONDS
 ```
 
@@ -1919,7 +1919,7 @@ ORCHESTRATOR = OK
 PAPER_CONTROL = HEALTHY_DISABLED_GENERATION_3
 PRODUCTION_MUTATIONS = 0
 PRODUCTION_RESTARTS_BY_TASK = 0
-REMAINING_READINESS_BLOCKERS = CLIENT_REPOSITORY_BRANCH_CORRECTION_AND_READINESS_RETRY_PENDING
+REMAINING_READINESS_BLOCKERS = NONE_FOR_PRODUCTION_PAPER_PREPARATION
 ```
 
 This confirmation used a fresh safe inspector reading rather than the prior
@@ -2399,6 +2399,45 @@ server-derived conjunction of the existing mutation gates. No production
 migration, listener, transition, database query, PAPER mutation or runtime
 activation occurred.
 
+## Client first-canary workflow readiness retry
+
+```text
+CLIENT_READINESS_TASK = TRADERS_CLIENT_REPOSITORY_BRANCH_CORRECTION_AND_READINESS_RETRY_01
+CLIENT_READINESS_RESULT = PASS
+CLIENT_REPOSITORY_BRANCH_CORRECTION = COMPLETED_NON_DESTRUCTIVE
+CLIENT_MAIN = aa333baa33c88b0a5a51eafa016a3cc4a03d056b
+CLIENT_IMPLEMENTATION_COMMIT = 5cd5f64f35a0958d465c36555454f2ed32047a21
+CLIENT_STATUS_COMMIT = aa333baa33c88b0a5a51eafa016a3cc4a03d056b
+PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_AT_73a987157d9a1330a786c9dd79dc9bb9ce194b9c
+FIRST_CANARY_WORKFLOW_READINESS = READY_FOR_PRODUCTION_PAPER_PREPARATION_AND_CONTROLLED_CLIENT_CANARY
+FIRST_CANARY_WORKFLOW_READINESS_BLOCKER_CLOSED = YES
+CLIENT_REPOSITORY_BRANCH_CORRECTION_AND_READINESS_RETRY_PENDING = CLOSED
+CANARY_LIFECYCLE_CORRELATION = PASS_AUTHORITATIVE_CANARY_ID_NO_FUZZY_MATCHING
+CURRENT_MUTATION_READY_BOOLEAN_FALSE_TRUE = PASS
+REAL_HTTP_CONTROLLER_SCHEMA0013_NO_TRADE = PASS
+REAL_POSTGRESQL16_LONG_SHORT_EXACT_COMPLETED_RESUME = PASS
+GUI_SMOKE_RU_EN_REAL_HTTP = PASS
+NEW_CLIENT_RETRY_MATRIX = 1600_PASSED_ZERO_FAILED
+FULL_CLIENT_REGRESSION = 173_PASSED_ZERO_FAILED
+FOCUSED_SERVER_CONTRACT_REGRESSION = 15326_PASSED_ZERO_FINAL_FAILURES
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry_UNCHANGED
+PRODUCTION_CONTROL = DISABLED_GENERATION_3_UNCHANGED
+PRODUCTION_MUTATIONS = 0
+PRODUCTION_HTTP_CALLS_AND_CONTROL_PORT_PROBES = 0
+PITR_CONFIRMATION_RERUN = NO
+PITR_WAL_TASK_DIRECTED_MUTATIONS = 0
+REMAINING_READINESS_BLOCKERS = NONE_FOR_PRODUCTION_PAPER_PREPARATION
+```
+
+The client now obtains and retains the durable UUID from ARM, starts only with
+that exact canary and arming identity, recovers uncertain ARM/START outcomes by
+exact request/UUID lookup, and resumes observation without automatic mutation.
+Command, position and report presentation follows the server's exact links;
+timestamp, latest-entity, symbol-only, nearest-command and account-delta
+correlation are absent. Acceptance used isolated loopback HTTP and PostgreSQL
+16 at revision 0013. Production was not migrated, probed through its control
+port, mutated, restarted or enabled.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -2450,7 +2489,7 @@ LIVE.
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
 | Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
 | PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
-| First-canary correlation/readiness | 100% source/integration / 0% production deployment | Durable UUID correlation, exact lifecycle lookup, max-one budgets, symbol scope, terminal reconciliation and boolean mutation readiness pass 2062 new tests and real isolated PostgreSQL 16; production remains unchanged at 0008 |
+| First-canary correlation/readiness | 100% server/client source and integration / 0% production deployment | Durable UUID correlation, exact client ARM/START/recovery/resume, max-one budgets, symbol scope, terminal reconciliation and boolean mutation readiness pass isolated real-HTTP PostgreSQL 16 LONG/SHORT/no-trade acceptance; production remains unchanged at 0008 |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -2461,10 +2500,10 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_CLIENT_PAPER_TRADING_FIRST_CANARY_WORKFLOW_READINESS_RETRY_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CLIENT_REPOSITORY_SCOPE
+TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_PREPARATION_SCOPE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
-CLIENT_RETRY_BASE = UNCHANGED_CLIENT_MAIN_73a987157d9a1330a786c9dd79dc9bb9ce194b9c
+CLIENT_READINESS_MAIN = aa333baa33c88b0a5a51eafa016a3cc4a03d056b
 PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_UNCHANGED
 ```
 
@@ -2509,12 +2548,14 @@ disabled production composition and controlled migration, least-privilege
 principal, runtime deployment and first-canary preparation contracts are now
 implemented and isolated-proven without a production mutation. WAL
 archive incident handling is completed, its daemon was safely recovered after
-a Docker Desktop stop, and the continuous 103,076-second PITR window now passes
-the minimum 24-hour gate. The
+a Docker Desktop stop, and the freshly confirmed continuous 104,874-second PITR
+window passes the minimum 24-hour gate. The client first-canary readiness retry
+now passes exact UUID correlation, real HTTP, isolated PostgreSQL 16, restart
+resume and terminal reconciliation acceptance. The
 closed-trade accounting/reporting projection now consumes the persisted
 revision 0012 immutable account/session baseline, and isolated reconciliation
 passes without a second ledger. Production preparation remains separately
-authorized and was not performed by the PITR recovery task.
+authorized and was not performed by the client readiness retry.
 No autonomous Paper
 runtime was configured, deployed, started, or enabled.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
