@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     PrimaryKeyConstraint,
     String,
@@ -74,6 +75,20 @@ INTRABAR_CONFLICT_POLICIES = ("STOP_FIRST_CONSERVATIVE",)
 ORDER_ROLES = ("ENTRY", "EXIT")
 FILL_ROLES = ("ENTRY", "EXIT")
 PROCESSING_STATUSES = ("PENDING", "PROCESSING", "COMPLETED", "FAILED")
+FIRST_CANARY_STATES = (
+    "RESERVED",
+    "ARMED",
+    "ARMED_WAITING",
+    "NO_ELIGIBLE_APPROVAL",
+    "RUNNING",
+    "POSITION_OPEN",
+    "POSITION_CLOSING",
+    "POSITION_CLOSED",
+    "RECONCILIATION_PENDING",
+    "COMPLETED",
+    "STOPPED",
+    "FAILED_SAFE",
+)
 AGGREGATE_TYPES = (
     "paper_command",
     "paper_order",
@@ -135,6 +150,81 @@ class PaperAccountBaselineRecord(Base):
     semantic_version: Mapped[str] = mapped_column(
         String(IDENTITY_LENGTH), nullable=False
     )
+
+
+class PaperFirstCanarySessionRecord(Base):
+    """One durable, bounded first-canary causal identity."""
+
+    __tablename__ = "paper_first_canary_sessions"
+    __table_args__ = (
+        UniqueConstraint("arm_request_id", name="uq_paper_first_canary_arm_request"),
+        UniqueConstraint("arming_transition_id", name="uq_paper_first_canary_arm_transition"),
+        UniqueConstraint("start_request_id", name="uq_paper_first_canary_start_request"),
+        UniqueConstraint("command_id", name="uq_paper_first_canary_command"),
+        UniqueConstraint("position_id", name="uq_paper_first_canary_position"),
+        CheckConstraint("environment = 'PRODUCTION'", name="ck_paper_first_canary_environment"),
+        CheckConstraint("mode = 'PAPER'", name="ck_paper_first_canary_mode"),
+        CheckConstraint(
+            f"state IN ({_values(FIRST_CANARY_STATES)})",
+            name="ck_paper_first_canary_state",
+        ),
+        CheckConstraint("max_new_commands = 1", name="ck_paper_first_canary_command_budget"),
+        CheckConstraint("max_open_positions = 1", name="ck_paper_first_canary_position_budget"),
+        CheckConstraint("command_count BETWEEN 0 AND 1", name="ck_paper_first_canary_command_count"),
+        CheckConstraint("position_count BETWEEN 0 AND 1", name="ck_paper_first_canary_position_count"),
+        CheckConstraint(
+            "(command_count = 0 AND command_id IS NULL) OR (command_count = 1 AND command_id IS NOT NULL)",
+            name="ck_paper_first_canary_command_link",
+        ),
+        CheckConstraint(
+            "(position_count = 0 AND position_id IS NULL) OR (position_count = 1 AND position_id IS NOT NULL)",
+            name="ck_paper_first_canary_position_link",
+        ),
+        CheckConstraint("version >= 0", name="ck_paper_first_canary_version"),
+        Index(
+            "uq_paper_first_canary_one_active_environment",
+            "environment",
+            unique=True,
+            postgresql_where=text(
+                "state NOT IN ('COMPLETED','STOPPED','FAILED_SAFE')"
+            ),
+        ),
+    )
+
+    canary_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    environment: Mapped[str] = mapped_column(String(32), nullable=False)
+    mode: Mapped[str] = mapped_column(String(8), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    armed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    arm_request_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    arm_request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    arming_transition_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    arming_generation: Mapped[int | None] = mapped_column(Integer)
+    start_request_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    start_request_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    current_control_generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_new_commands: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_open_positions: Mapped[int] = mapped_column(Integer, nullable=False)
+    allowed_symbols: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    approval_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    command_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    command_id: Mapped[str | None] = mapped_column(
+        String(IDENTITY_LENGTH), ForeignKey("paper_execution_commands.command_id", ondelete="RESTRICT")
+    )
+    position_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    position_id: Mapped[str | None] = mapped_column(
+        String(IDENTITY_LENGTH), ForeignKey("paper_positions.position_id", ondelete="RESTRICT")
+    )
+    trade_report_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    paper_reconciliation_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    accounting_reconciliation_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    reconciliation_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    terminal_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    finding_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 EXECUTION_MODES = tuple(item.value for item in ExecutionMode)

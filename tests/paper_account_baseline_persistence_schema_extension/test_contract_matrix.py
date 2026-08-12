@@ -63,9 +63,9 @@ def test_repository_is_create_get_only_and_transaction_owner_safe(repeat):
 def test_preparation_head_phases_canary_and_principal_policy(repeat):
     assert repeat >= 0
     assert ACCOUNT_BASELINE_PERSISTENCE_CAPABILITY == "READY_REVISION_0012"
-    assert EXPECTED_SCHEMA_HEAD == "0012_paper_account_baseline"
+    assert EXPECTED_SCHEMA_HEAD == "0013_paper_first_canary_correlation"
     assert PaperProductionMigrationPlan().revisions[-2:] == (
-        "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+        "0012_paper_account_baseline",
         EXPECTED_SCHEMA_HEAD,
     )
     assert len(PaperProductionPreparationPhase) == 12

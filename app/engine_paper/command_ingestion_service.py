@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from hashlib import sha256
 from typing import Final, TypeAlias
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -181,6 +182,7 @@ class PaperCommandIngestionRequest:
     created_at: datetime
     correlation_id: str
     causation_id: str
+    canary_id: str | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -194,6 +196,11 @@ class PaperCommandIngestionRequest:
             "causation_id",
         ):
             object.__setattr__(self, name, _identity(getattr(self, name), name))
+        if self.canary_id is not None:
+            try:
+                object.__setattr__(self, "canary_id", str(UUID(self.canary_id)))
+            except (TypeError, ValueError, AttributeError) as exc:
+                raise ValueError("canary_id must be a UUID") from exc
         if not isinstance(self.journal_entry_ids, tuple):
             raise TypeError("journal_entry_ids must be an immutable tuple")
         if len(self.journal_entry_ids) != _JOURNAL_COUNT:
@@ -363,6 +370,7 @@ class PaperCommandIngestionService:
                 command_result = repositories.commands.create_or_get_command(
                     expected.command,
                     event_id=request.command_event_id,
+                    canary_id=request.canary_id,
                 )
                 if command_result.outcome is RepositoryOutcome.EXISTING_IDEMPOTENT:
                     return self._existing_result(

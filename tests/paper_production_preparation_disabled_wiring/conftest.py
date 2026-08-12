@@ -63,7 +63,7 @@ def current_request() -> PaperProductionPreparationRequest:
 def future_request(current_request):
     return replace(
         current_request,
-        schema_revision="0012_paper_account_baseline",
+        schema_revision="0013_paper_first_canary_correlation",
         pitr_window_seconds=86_400,
         approval_boundary_readiness=PaperProductionApprovalReadiness.READY,
         eligible_approval_count=1,

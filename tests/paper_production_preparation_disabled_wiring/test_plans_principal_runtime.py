@@ -49,9 +49,10 @@ def test_migration_plan_is_exact_0008_to_0012_forward_only(repeat):
     assert repeat >= 0
     assert plan.revisions == (
         "0009_paper_trading_persistence_foundation",
-        "0010_paper_final_approval_and_order_transition_event_vocabulary",
-        "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
-        EXPECTED_SCHEMA_HEAD,
+            "0010_paper_final_approval_and_order_transition_event_vocabulary",
+            "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
+            "0012_paper_account_baseline",
+            EXPECTED_SCHEMA_HEAD,
     )
     assert not plan.automatic_downgrade
     assert "PRESERVE_DB" in plan.failure_policy

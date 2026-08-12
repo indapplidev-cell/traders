@@ -18,7 +18,7 @@ from typing import Final, Mapping
 
 EXPECTED_POSTGRESQL_MAJOR: Final = 16
 EXPECTED_PAPER_SCHEMA_HEAD: Final = (
-    "0012_paper_account_baseline"
+    "0013_paper_first_canary_correlation"
 )
 EXPECTED_SERVER_HEAD: Final = "d605b28752fdd19e9086384c93f910fb2dc9f69d"
 EXPECTED_SERVER_TREE: Final = "fd9c413ee3b083f5dd01b8d25930a1b3d58b4625"

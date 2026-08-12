@@ -42,7 +42,7 @@ from app.server_api.schemas.paper import (
 )
 
 
-PAPER_SCHEMA_EXPECTED = "0012_paper_account_baseline"
+PAPER_SCHEMA_EXPECTED = "0013_paper_first_canary_correlation"
 PAPER_REPORTING_API_VERSION = 1
 MAX_RECONCILIATION_CLOSED_TRADES = 10_000
 MAX_TRADE_DATE_RANGE = timedelta(days=365)
@@ -65,6 +65,11 @@ class PaperRuntimeObservation:
     wal_ready: bool | None = None
     pitr_ready: bool | None = None
     current_approval_availability: str = "NOT_AVAILABLE"
+    paper_principal_ready: bool = False
+    runtime_config_ready: bool = False
+    kill_switch_ready: bool = False
+    canary_scope_valid: bool = False
+    live_enabled: bool = False
 
 
 def _default_control_status() -> PaperControlStatus:
@@ -176,10 +181,26 @@ class PaperReadonlyReportingService:
         denials = []
         if not ready:
             denials.append("PAPER_SCHEMA_NOT_DEPLOYED")
-        if not self._runtime.runtime_enabled:
-            denials.append("PAPER_RUNTIME_DISABLED")
-        if control.effective_state != "ARMED":
-            denials.append("CONTROL_NOT_ARMED")
+        gates = (
+            ("PITR_NOT_READY", self._runtime.pitr_ready is True),
+            ("WAL_NOT_READY", self._runtime.wal_ready is True),
+            ("MARKET_DATA_NOT_READY", self._runtime.market_data_adapter_ready is True),
+            ("APPROVAL_SOURCE_NOT_READY", self._runtime.approval_source_adapter_ready is True),
+            ("BASELINE_PERSISTENCE_NOT_READY", ready),
+            ("BASELINE_MISSING", baseline_exists is True),
+            ("BASELINE_INVALID", baseline_valid is True),
+            ("ACCOUNTING_NOT_HEALTHY", accounting_status == "HEALTHY"),
+            ("PAPER_RECONCILIATION_NOT_HEALTHY", paper_status == "HEALTHY"),
+            ("PAPER_PRINCIPAL_NOT_READY", self._runtime.paper_principal_ready),
+            ("RUNTIME_CONFIG_NOT_READY", self._runtime.runtime_config_ready),
+            ("PAPER_RUNTIME_DISABLED", self._runtime.runtime_enabled),
+            ("KILL_SWITCH_NOT_READY", self._runtime.kill_switch_ready),
+            ("CONTROL_NOT_ELIGIBLE", control.state == "DISABLED" and control.effective_state == "DISABLED" and control.health == "HEALTHY"),
+            ("CANARY_SCOPE_INVALID", self._runtime.canary_scope_valid),
+            ("LIVE_NOT_DENIED", not self._runtime.live_enabled),
+        )
+        denials.extend(code for code, passed in gates if not passed and code not in denials)
+        mutation_ready = ready and not denials
         return PaperReadiness(
             environment=self._runtime.environment,
             paper_schema_ready=ready,
@@ -201,6 +222,7 @@ class PaperReadonlyReportingService:
             wal_ready=self._runtime.wal_ready,
             pitr_ready=self._runtime.pitr_ready,
             current_approval_availability=self._runtime.current_approval_availability,
+            current_mutation_ready=mutation_ready,
             current_mutation_denial_reasons=denials,
         )
 

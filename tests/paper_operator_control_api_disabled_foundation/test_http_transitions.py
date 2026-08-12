@@ -106,6 +106,7 @@ def test_start_is_immediate_bounded_executor_call(isolated_client, isolated_exec
         json={
             "request_id": "request-start-0001",
             "expected_generation": arm["generation_after"],
+            "canary_id": arm["canary_id"],
             "arming_transition_id": arm["transition_id"],
             "canary_acknowledgement": True,
         },

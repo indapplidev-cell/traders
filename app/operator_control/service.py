@@ -4,7 +4,9 @@ import hashlib
 import json
 import threading
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Callable, Protocol
+from uuid import uuid4
 
 from app.engine_safety.paper_production_control import (
     ArmReadinessPreflight,
@@ -13,6 +15,11 @@ from app.engine_safety.paper_production_control import (
     PersistentState,
     ReasonCode,
     SafetyControlError,
+)
+from app.engine_paper.first_canary_correlation import (
+    CanaryCorrelationError,
+    PaperFirstCanarySession,
+    PaperFirstCanaryState,
 )
 
 from .config import CONTROL_API_VERSION, PaperOperatorControlConfig, PaperOperatorControlOperationMode
@@ -113,7 +120,7 @@ class PaperOperatorArmReadiness:
 class PaperFirstCanaryExecutor(Protocol):
     def preflight(self, *, transition_id: str, generation: int) -> tuple[str, ...]: ...
 
-    def start_bounded_canary(self, *, request_id: str, transition_id: str, generation: int) -> tuple[str, ...]: ...
+    def start_bounded_canary(self, *, request_id: str, canary_id: str, transition_id: str, generation: int) -> tuple[str, ...]: ...
 
     def status(self) -> PaperOperatorCanaryStatus: ...
 
@@ -122,7 +129,7 @@ class DisabledPaperFirstCanaryExecutor:
     def preflight(self, *, transition_id: str, generation: int) -> tuple[str, ...]:
         return ("CONTROL_API_DISABLED_FOUNDATION",)
 
-    def start_bounded_canary(self, *, request_id: str, transition_id: str, generation: int) -> tuple[str, ...]:
+    def start_bounded_canary(self, *, request_id: str, canary_id: str, transition_id: str, generation: int) -> tuple[str, ...]:
         return ("CONTROL_API_DISABLED_FOUNDATION",)
 
     def status(self) -> PaperOperatorCanaryStatus:
@@ -132,6 +139,17 @@ class DisabledPaperFirstCanaryExecutor:
             deployment_status="NOT_DEPLOYED",
             finding_codes=("PAPER_SCHEMA_NOT_DEPLOYED", "RUNTIME_NOT_READY"),
         )
+
+
+class PaperFirstCanaryStore(Protocol):
+    def reserve_arm(self, **kwargs) -> PaperFirstCanarySession: ...
+    def complete_arm(self, *args, **kwargs) -> PaperFirstCanarySession: ...
+    def reserve_start(self, *args, **kwargs) -> PaperFirstCanarySession: ...
+    def mark_started(self, *args, **kwargs) -> PaperFirstCanarySession: ...
+    def fail_safe(self, *args, **kwargs) -> PaperFirstCanarySession: ...
+    def get(self, canary_id: str) -> PaperFirstCanarySession | None: ...
+    def current(self) -> PaperFirstCanarySession | None: ...
+    def get_by_arm_request(self, request_id: str) -> PaperFirstCanarySession | None: ...
 
 
 @dataclass(slots=True)
@@ -181,11 +199,13 @@ class PaperOperatorControlService:
         control: PaperProductionSafetyControl,
         readiness: Callable[[], PaperOperatorArmReadiness] | None = None,
         executor: PaperFirstCanaryExecutor | None = None,
+        canary_store: PaperFirstCanaryStore | None = None,
     ) -> None:
         self.config = config
         self.control = control
         self.readiness = readiness or PaperOperatorArmReadiness
         self.executor = executor or DisabledPaperFirstCanaryExecutor()
+        self.canary_store = canary_store
         self._idempotency = _IdempotencyRegistry()
 
     @staticmethod
@@ -241,11 +261,68 @@ class PaperOperatorControlService:
             production_mutation_enabled=False,
         )
 
-    def canary_status(self) -> PaperOperatorCanaryStatus:
+    @staticmethod
+    def _canary_dto(value: PaperFirstCanarySession) -> PaperOperatorCanaryStatus:
+        return PaperOperatorCanaryStatus(
+            canary_id=value.canary_id,
+            state=PaperCanaryNormalizedState(value.state.value),
+            availability_code="AVAILABLE",
+            deployment_status="SOURCE_READY",
+            environment=value.environment,
+            mode=value.mode,
+            created_at=value.created_at.isoformat().replace("+00:00", "Z"),
+            armed_at=value.armed_at.isoformat().replace("+00:00", "Z") if value.armed_at else None,
+            started_at=value.started_at.isoformat().replace("+00:00", "Z") if value.started_at else None,
+            completed_at=value.completed_at.isoformat().replace("+00:00", "Z") if value.completed_at else None,
+            arming_transition_id=value.arming_transition_id,
+            current_control_generation=value.current_control_generation,
+            max_new_commands=value.max_new_commands,
+            max_open_positions=value.max_open_positions,
+            allowed_symbols=value.allowed_symbols,
+            command_count=value.command_count,
+            command_id=value.command_id,
+            position_count=value.position_count,
+            position_id=value.position_id,
+            trade_report_available=value.trade_report_available,
+            trade_report_position_id=value.position_id if value.trade_report_available else None,
+            paper_reconciliation_status=value.paper_reconciliation_status,
+            accounting_reconciliation_status=value.accounting_reconciliation_status,
+            reconciliation_checked_at=(value.reconciliation_checked_at.isoformat().replace("+00:00", "Z") if value.reconciliation_checked_at else None),
+            terminal_reason=value.terminal_reason,
+            finding_codes=value.finding_codes,
+            live_allowed=False,
+            binance_order_calls_allowed=False,
+        )
+
+    def canary_status(
+        self, canary_id: str | None = None, arm_request_id: str | None = None
+    ) -> PaperOperatorCanaryStatus:
         try:
+            if self.canary_store is not None:
+                if canary_id is not None:
+                    value = self.canary_store.get(canary_id)
+                    if value is None:
+                        raise ControlApiError(404, "CANARY_NOT_FOUND")
+                elif arm_request_id is not None:
+                    value = self.canary_store.get_by_arm_request(arm_request_id)
+                    if value is None:
+                        raise ControlApiError(404, "CANARY_NOT_FOUND")
+                else:
+                    value = self.canary_store.current()
+                if value is None:
+                    return PaperOperatorCanaryStatus(
+                        state=PaperCanaryNormalizedState.NOT_CONFIGURED,
+                        availability_code="NO_ACTIVE_CANARY",
+                        deployment_status="SOURCE_READY",
+                    )
+                return self._canary_dto(value)
             return self.executor.status()
+        except ControlApiError:
+            raise
+        except CanaryCorrelationError as error:
+            raise ControlApiError(503, error.code) from error
         except BaseException as error:
-            raise ControlApiError(503, "CONTROL_SAFE_FAILURE") from error
+            raise ControlApiError(503, "CANARY_CORRELATION_UNAVAILABLE") from error
 
     def _foundation_denial(self, request_id: str, operation: str) -> PaperOperatorControlDecision:
         state = self._state()
@@ -263,6 +340,16 @@ class PaperOperatorControlService:
     def _deny_if_foundation(self, request_id: str, operation: str) -> None:
         if self.config.operation_mode is PaperOperatorControlOperationMode.DISABLED_FOUNDATION:
             raise ControlDecisionError(409, self._foundation_denial(request_id, operation))
+
+    @staticmethod
+    def _correlation_error(error: CanaryCorrelationError) -> ControlApiError:
+        status = 404 if error.code == "CANARY_NOT_FOUND" else (
+            409 if error.code in {
+                "REQUEST_ID_CONFLICT", "CANARY_ALREADY_ACTIVE", "CANARY_NOT_ARMED",
+                "CANARY_ALREADY_STARTED", "CANARY_CORRELATION_CONFLICT",
+            } else 503
+        )
+        return ControlApiError(status, error.code)
 
     def arm_first_canary(self, request: PaperOperatorArmFirstCanaryRequest) -> PaperOperatorControlDecision:
         def execute() -> PaperOperatorControlDecision:
@@ -284,6 +371,55 @@ class PaperOperatorControlService:
             readiness = self.readiness()
             if readiness.finding_codes:
                 raise ControlApiError(409, readiness.finding_codes[0])
+            canary = None
+            if self.canary_store is not None:
+                fingerprint = self._fingerprint("ARM_FIRST_CANARY", request)
+                try:
+                    canary = self.canary_store.reserve_arm(
+                        request_id=request.request_id,
+                        fingerprint=fingerprint,
+                        expected_generation=request.expected_generation,
+                        allowed_symbols=symbols,
+                        now=datetime.now(timezone.utc),
+                    )
+                except CanaryCorrelationError as error:
+                    raise self._correlation_error(error) from error
+            if canary is not None and canary.state is PaperFirstCanaryState.ARMED:
+                return PaperOperatorControlDecision(
+                    request_id=request.request_id, operation="ARM_FIRST_CANARY",
+                    accepted=True, executed=True, state_before="DISABLED", state_after="ARMED",
+                    generation_before=(canary.arming_generation or 1) - 1,
+                    generation_after=canary.arming_generation or canary.current_control_generation,
+                    transition_id=canary.arming_transition_id,
+                    arming_transition_id=canary.arming_transition_id,
+                    canary_id=canary.canary_id,
+                    scope={"max_new_commands": 1, "max_open_positions": 1, "allowed_symbols": list(canary.allowed_symbols)},
+                )
+            if (
+                canary is not None
+                and canary.state is PaperFirstCanaryState.RESERVED
+                and before.state is PersistentState.ARMED
+                and before.generation == request.expected_generation + 1
+                and before.arming_scope is not None
+                and before.arming_scope.max_new_commands == 1
+                and before.arming_scope.max_open_positions == 1
+                and tuple(before.arming_scope.allowed_symbols) == symbols
+            ):
+                try:
+                    canary = self.canary_store.complete_arm(
+                        canary.canary_id, before.transition_id, before.generation,
+                        datetime.now(timezone.utc),
+                    )
+                except CanaryCorrelationError as error:
+                    raise self._correlation_error(error) from error
+                return PaperOperatorControlDecision(
+                    request_id=request.request_id, operation="ARM_FIRST_CANARY",
+                    accepted=True, executed=True, state_before="DISABLED", state_after="ARMED",
+                    generation_before=request.expected_generation,
+                    generation_after=before.generation, transition_id=before.transition_id,
+                    arming_transition_id=before.transition_id, canary_id=canary.canary_id,
+                    scope={"max_new_commands": 1, "max_open_positions": 1, "allowed_symbols": list(symbols)},
+                )
             try:
                 after = self.control.transition(
                     PersistentState.ARMED,
@@ -295,12 +431,32 @@ class PaperOperatorControlService:
                     arming_scope=PaperProductionArmingScope(1, 1, symbols),
                 )
             except SafetyControlError as error:
+                if self.canary_store is not None and canary is not None:
+                    try:
+                        self.canary_store.fail_safe(canary.canary_id, self._map_authority_error(error).code)
+                    except Exception:
+                        pass
                 raise self._map_authority_error(error) from error
+            if self.canary_store is not None and canary is not None:
+                try:
+                    canary = self.canary_store.complete_arm(
+                        canary.canary_id, after.transition_id, after.generation,
+                        datetime.now(timezone.utc),
+                    )
+                except CanaryCorrelationError as error:
+                    raise self._correlation_error(error) from error
+                canary_id = canary.canary_id
+            else:
+                # Compatibility-only isolated executor path. Production-capable
+                # composition is required to inject the durable store.
+                canary_id = str(uuid4())
             return PaperOperatorControlDecision(
                 request_id=request.request_id, operation="ARM_FIRST_CANARY", accepted=True, executed=True,
                 state_before=before.state.value, state_after=after.state.value,
                 generation_before=before.generation, generation_after=after.generation,
-                transition_id=after.transition_id,
+                transition_id=after.transition_id, arming_transition_id=after.transition_id,
+                canary_id=canary_id,
+                scope={"max_new_commands": 1, "max_open_positions": 1, "allowed_symbols": list(symbols)},
             )
         return self._run(request.request_id, "ARM_FIRST_CANARY", request, execute)
 
@@ -314,6 +470,32 @@ class PaperOperatorControlService:
                 raise ControlApiError(409, "STALE_GENERATION")
             if state.state is not PersistentState.ARMED or state.transition_id != request.arming_transition_id:
                 raise ControlApiError(409, "CANARY_NOT_ARMED")
+            canary = None
+            if self.canary_store is not None:
+                try:
+                    canary = self.canary_store.reserve_start(
+                        request.canary_id,
+                        request.request_id,
+                        self._fingerprint("START_FIRST_CANARY", request),
+                        request.arming_transition_id,
+                        request.expected_generation,
+                    )
+                except CanaryCorrelationError as error:
+                    raise self._correlation_error(error) from error
+            if canary is not None and canary.state is not PaperFirstCanaryState.ARMED:
+                started = canary.started_at.isoformat().replace("+00:00", "Z") if canary.started_at else None
+                return PaperOperatorControlDecision(
+                    request_id=request.request_id, operation="START_FIRST_CANARY",
+                    accepted=True,
+                    executed=canary.state is not PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL,
+                    state_before="ARMED", state_after=canary.state.value,
+                    generation_before=state.generation, generation_after=state.generation,
+                    finding_codes=canary.finding_codes,
+                    transition_id=state.transition_id,
+                    arming_transition_id=state.transition_id,
+                    canary_id=canary.canary_id,
+                    started_at=started,
+                )
             try:
                 findings = self.executor.preflight(
                     transition_id=state.transition_id, generation=state.generation
@@ -321,28 +503,47 @@ class PaperOperatorControlService:
             except BaseException as error:
                 raise ControlApiError(503, "CONTROL_SAFE_FAILURE") from error
             if findings == ("NO_ELIGIBLE_APPROVAL",):
+                if self.canary_store is not None and canary is not None:
+                    try:
+                        canary = self.canary_store.mark_started(
+                            canary.canary_id, no_approval=True, now=datetime.now(timezone.utc)
+                        )
+                    except CanaryCorrelationError as error:
+                        raise self._correlation_error(error) from error
                 return PaperOperatorControlDecision(
                     request_id=request.request_id, operation="START_FIRST_CANARY",
                     accepted=True, executed=False, state_before=state.state.value,
                     state_after=state.state.value, generation_before=state.generation,
                     generation_after=state.generation, finding_codes=findings,
-                    transition_id=state.transition_id,
+                    transition_id=state.transition_id, arming_transition_id=state.transition_id,
+                    canary_id=request.canary_id,
+                    started_at=(canary.started_at.isoformat().replace("+00:00", "Z") if canary is not None and canary.started_at else None),
                 )
             if findings:
                 raise ControlApiError(503, findings[0])
             try:
                 findings = self.executor.start_bounded_canary(
                     request_id=request.request_id,
+                    canary_id=request.canary_id,
                     transition_id=state.transition_id,
                     generation=state.generation,
                 )
             except BaseException as error:
                 raise ControlApiError(503, "CONTROL_SAFE_FAILURE") from error
+            if self.canary_store is not None and canary is not None:
+                try:
+                    canary = self.canary_store.mark_started(
+                        canary.canary_id, no_approval=False, now=datetime.now(timezone.utc)
+                    )
+                except CanaryCorrelationError as error:
+                    raise self._correlation_error(error) from error
             return PaperOperatorControlDecision(
                 request_id=request.request_id, operation="START_FIRST_CANARY", accepted=not findings,
                 executed=not findings, state_before=state.state.value, state_after=state.state.value,
                 generation_before=state.generation, generation_after=state.generation,
                 finding_codes=findings, transition_id=state.transition_id,
+                arming_transition_id=state.transition_id, canary_id=request.canary_id,
+                started_at=(canary.started_at.isoformat().replace("+00:00", "Z") if canary is not None and canary.started_at else None),
             )
         return self._run(request.request_id, "START_FIRST_CANARY", request, execute)
 

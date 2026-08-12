@@ -171,7 +171,7 @@ def _target(database_identity: str = "opaque-db-identity") -> ProductionPaperRun
     return ProductionPaperRuntimeTargetIdentity(
         environment_identity="production-paper",
         database_identity=database_identity,
-        schema_head="0012_paper_account_baseline",
+        schema_head="0013_paper_first_canary_correlation",
         deployment_version="frozen-commit",
         change_ticket_id="CHG-1",
     )

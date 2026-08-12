@@ -22,7 +22,7 @@ EXPECTED_SERVER_HEAD: Final = "0988984b9d37ab22e811ba106ae19c068d374438"
 EXPECTED_SERVER_TREE: Final = "d423e5ce44c19245ed8161a9e0505c4090103057"
 EXPECTED_SCHEMA_BASE: Final = "0008_engine_orchestrator_freshness_retry"
 EXPECTED_SCHEMA_HEAD: Final = (
-    "0012_paper_account_baseline"
+    "0013_paper_first_canary_correlation"
 )
 MAX_SAFE_RENDER_BYTES: Final = 65_536
 MAX_EVIDENCE_ITEMS: Final = 32
@@ -256,7 +256,7 @@ MIGRATION_MANIFESTS: Final = (
         source_sha256="01e011e457a33b61f76ae413b18a23e4a9787a2920dbdbefe9c48a0553287b49",
     ),
     PaperProductionMigrationManifest(
-        revision=EXPECTED_SCHEMA_HEAD,
+        revision="0012_paper_account_baseline",
         predecessor="0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
         classification=MigrationClassification.REQUIRES_PRE_BACKUP,
         ddl_operations=(
@@ -273,6 +273,25 @@ MIGRATION_MANIFESTS: Final = (
         default_nullability="all baseline identity value timestamp and semantic fields are non-null",
         runtime_compatibility="0008 services unaffected; current PAPER runtime and accounting require 0012 exactly",
         source_sha256="7f8ceb22a472efec1301ceac6c4b3ee203ff282ac32a8b84860711e90fe79048",
+    ),
+    PaperProductionMigrationManifest(
+        revision=EXPECTED_SCHEMA_HEAD,
+        predecessor="0012_paper_account_baseline",
+        classification=MigrationClassification.REQUIRES_PRE_BACKUP,
+        ddl_operations=(
+            "CREATE paper_first_canary_sessions table",
+            "CREATE exact request command position and active-session constraints",
+        ),
+        locking_characteristics="catalog and referenced-table foreign-key locks; new empty table avoids row rewrite",
+        transaction_behavior="single transactional Alembic revision on PostgreSQL",
+        expected_duration="short because the authoritative canary table is created empty",
+        dependency_ordering="requires the complete 0012 PAPER economic and baseline graph",
+        forward_only_assumptions="no canary is auto-created; runtime remains disabled until separately authorized",
+        downgrade_support=DowngradeClassification.DOWNGRADE_DESTRUCTIVE,
+        data_backfill="none; no canary or baseline row is seeded",
+        default_nullability="lifecycle links remain nullable until their exact causal entity exists",
+        runtime_compatibility="0008 services unaffected; first-canary correlation requires 0013 exactly",
+        source_sha256="08f9f65acfef946e89dd41297ba14a1dbeb113b62a91a22331a64b5adf620f54",
     ),
 )
 

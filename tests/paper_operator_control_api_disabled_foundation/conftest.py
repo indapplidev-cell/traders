@@ -41,7 +41,7 @@ class IsolatedExecutor:
     def preflight(self, *, transition_id: str, generation: int) -> tuple[str, ...]:
         return ()
 
-    def start_bounded_canary(self, *, request_id: str, transition_id: str, generation: int) -> tuple[str, ...]:
+    def start_bounded_canary(self, *, request_id: str, canary_id: str, transition_id: str, generation: int) -> tuple[str, ...]:
         self.started += 1
         return ()
 

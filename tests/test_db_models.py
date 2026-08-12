@@ -34,6 +34,7 @@ def test_db_models_create_expected_tables() -> None:
         "online_pipeline_results",
             "paper_simulation_policies",
             "paper_account_baselines",
+        "paper_first_canary_sessions",
         "paper_execution_commands",
         "paper_orders",
         "paper_order_events",

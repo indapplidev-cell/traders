@@ -17,7 +17,8 @@ from app.engine_paper.repository_results import RepositoryResult
 
 class CommandRepositoryProtocol(Protocol):
     def create_or_get_command(
-        self, command: PaperExecutionCommand, *, event_id: str | None = None
+        self, command: PaperExecutionCommand, *, event_id: str | None = None,
+        canary_id: str | None = None,
     ) -> RepositoryResult[PaperExecutionCommand]: ...
 
     def get_command(self, command_id: str) -> PaperExecutionCommand | None: ...

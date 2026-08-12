@@ -33,6 +33,7 @@ class PaperOperatorArmFirstCanaryRequest(StrictRequest):
 class PaperOperatorStartFirstCanaryRequest(StrictRequest):
     request_id: RequestId
     expected_generation: Generation
+    canary_id: Annotated[StrictStr, Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")]
     arming_transition_id: Annotated[StrictStr, Field(min_length=16, max_length=128)]
     canary_acknowledgement: StrictBool
 
@@ -60,6 +61,10 @@ class PaperOperatorControlDecision(BaseModel):
     generation_after: int
     finding_codes: tuple[str, ...] = ()
     transition_id: str | None = None
+    canary_id: str | None = None
+    arming_transition_id: str | None = None
+    started_at: str | None = None
+    scope: dict[str, object] | None = None
 
 
 class PaperOperatorControlStatus(BaseModel):
@@ -85,16 +90,18 @@ class PaperOperatorControlStatus(BaseModel):
 class PaperCanaryNormalizedState(StrEnum):
     NOT_CONFIGURED = "NOT_CONFIGURED"
     DISABLED = "DISABLED"
+    RESERVED = "RESERVED"
+    ARMED = "ARMED"
     ARMED_WAITING = "ARMED_WAITING"
     NO_ELIGIBLE_APPROVAL = "NO_ELIGIBLE_APPROVAL"
     RUNNING = "RUNNING"
     POSITION_OPEN = "POSITION_OPEN"
-    CLOSING = "CLOSING"
-    CLOSED = "CLOSED"
+    POSITION_CLOSING = "POSITION_CLOSING"
+    POSITION_CLOSED = "POSITION_CLOSED"
     RECONCILIATION_PENDING = "RECONCILIATION_PENDING"
     COMPLETED = "COMPLETED"
     STOPPED = "STOPPED"
-    FAILED = "FAILED"
+    FAILED_SAFE = "FAILED_SAFE"
 
 
 class PaperOperatorCanaryStatus(BaseModel):
@@ -103,12 +110,31 @@ class PaperOperatorCanaryStatus(BaseModel):
     state: PaperCanaryNormalizedState
     availability_code: str
     deployment_status: str
+    canary_id: str | None = None
+    environment: str = "PRODUCTION"
     mode: str = "PAPER"
+    created_at: str | None = None
+    armed_at: str | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+    arming_transition_id: str | None = None
+    current_control_generation: int | None = None
     live_allowed: bool = False
     max_new_commands: int = 1
     max_open_positions: int = 1
     allowed_symbols: tuple[str, ...] = ()
+    command_count: int = 0
+    command_id: str | None = None
+    position_count: int = 0
+    position_id: str | None = None
+    trade_report_available: bool = False
+    trade_report_position_id: str | None = None
+    paper_reconciliation_status: str = "NOT_STARTED"
+    accounting_reconciliation_status: str = "NOT_STARTED"
+    reconciliation_checked_at: str | None = None
+    terminal_reason: str | None = None
     finding_codes: tuple[str, ...] = ()
+    binance_order_calls_allowed: bool = False
 
 
 class ControlErrorItem(BaseModel):

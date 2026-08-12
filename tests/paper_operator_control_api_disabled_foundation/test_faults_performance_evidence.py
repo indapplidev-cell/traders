@@ -112,6 +112,7 @@ def _armed_client(tmp_path, executor):
     start = {
         "request_id": f"start-{type(executor).__name__.lower()}",
         "expected_generation": arm["generation_after"],
+        "canary_id": arm["canary_id"],
         "arming_transition_id": arm["transition_id"],
         "canary_acknowledgement": True,
     }

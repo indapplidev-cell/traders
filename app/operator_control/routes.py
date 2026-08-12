@@ -28,8 +28,15 @@ def build_operator_control_router(
         return service.status()
 
     @router.get("/canary/status", response_model=PaperOperatorCanaryStatus, dependencies=[Depends(require_scope(PaperOperatorScope.CANARY_STATUS_READ))])
-    def canary_status() -> PaperOperatorCanaryStatus:
-        return service.canary_status()
+    def canary_status(
+        canary_id: str | None = None,
+        arm_request_id: str | None = None,
+    ) -> PaperOperatorCanaryStatus:
+        return service.canary_status(canary_id=canary_id, arm_request_id=arm_request_id)
+
+    @router.get("/canaries/{canary_id}", response_model=PaperOperatorCanaryStatus, dependencies=[Depends(require_scope(PaperOperatorScope.CANARY_STATUS_READ))])
+    def canary_by_id(canary_id: str) -> PaperOperatorCanaryStatus:
+        return service.canary_status(canary_id=canary_id)
 
     @router.post("/arm-first-canary", response_model=PaperOperatorControlDecision, dependencies=[Depends(require_scope(PaperOperatorScope.CANARY_ARM))])
     def arm(request: PaperOperatorArmFirstCanaryRequest) -> PaperOperatorControlDecision:

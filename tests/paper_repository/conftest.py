@@ -8,13 +8,14 @@ from decimal import Decimal
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import Engine, create_engine, delete, text
+from sqlalchemy import Engine, create_engine, delete, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from app.db.paper_models import (
     PaperAccountBaselineRecord,
     PaperExecutionCommandRecord,
+    PaperFirstCanarySessionRecord,
     PaperExitEvaluationCursorRecord,
     PaperExitDecisionRecord,
     PaperFillRecord,
@@ -50,12 +51,12 @@ def repository_postgres_engine() -> Iterator[Engine]:
     if revision is None:
         command.upgrade(
             config,
-            "0012_paper_account_baseline",
+            "0013_paper_first_canary_correlation",
         )
     else:
         command.upgrade(
             config,
-            "0012_paper_account_baseline",
+            "0013_paper_first_canary_correlation",
         )
     yield engine
     engine.dispose()
@@ -72,6 +73,7 @@ def paper_session_factory(repository_postgres_engine) -> Iterator[sessionmaker]:
     factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     with engine.begin() as connection:
         for model in (
+            PaperFirstCanarySessionRecord,
             PaperAccountBaselineRecord,
             PaperJournalEntryRecord,
             PaperExitEvaluationCursorRecord,
@@ -82,7 +84,11 @@ def paper_session_factory(repository_postgres_engine) -> Iterator[sessionmaker]:
             PaperOrderRecord,
             PaperExecutionCommandRecord,
         ):
-            connection.execute(delete(model))
+            # Some legacy suites intentionally pin an earlier migration and
+            # reuse this cleanup fixture.  Only clear tables present at that
+            # suite's authoritative schema revision.
+            if inspect(connection).has_table(model.__tablename__):
+                connection.execute(delete(model))
         connection.execute(
             PaperAccountBaselineRecord.__table__.insert().values(
                 baseline_id="baseline:test:repository",

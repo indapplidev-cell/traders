@@ -20,7 +20,7 @@ class PaperEnvelope(BaseModel, Generic[T]):
 class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
-    paper_schema_expected: Literal["0012_paper_account_baseline"] = "0012_paper_account_baseline"
+    paper_schema_expected: Literal["0013_paper_first_canary_correlation"] = "0013_paper_first_canary_correlation"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool
@@ -41,7 +41,7 @@ class PaperReadiness(BaseModel):
     wal_ready: bool | None
     pitr_ready: bool | None
     current_approval_availability: str
-    current_mutation_ready: Literal[False] = False
+    current_mutation_ready: bool = False
     current_mutation_denial_reasons: list[str]
 
 

@@ -70,6 +70,10 @@ from app.engine_paper.exit_evaluation_cursor import (
     advanced_cursor,
     paper_exit_evaluation_cursor_id,
 )
+from app.engine_paper.first_canary_correlation import (
+    PaperFirstCanaryRepository,
+    PaperFirstCanaryState,
+)
 from app.engine_paper.repository_results import RepositoryOutcome, RepositoryResult, result
 from app.engine_paper.semantic_idempotency import (
     command_semantic_tuple,
@@ -292,6 +296,7 @@ class CommandRepository:
         command: PaperExecutionCommand,
         *,
         event_id: str | None = None,
+        canary_id: str | None = None,
     ) -> RepositoryResult[PaperExecutionCommand]:
         baseline_table = self.session.scalar(
             select(text("to_regclass('public.paper_account_baselines')"))
@@ -308,7 +313,14 @@ class CommandRepository:
                 )
         existing = self.get_command_by_idempotency_key(command.idempotency_key)
         if existing:
-            return _same(existing, command, command_semantic_tuple)
+            compared = _same(existing, command, command_semantic_tuple)
+            if compared.outcome is RepositoryOutcome.EXISTING_IDEMPOTENT and canary_id is not None:
+                linked = PaperFirstCanaryRepository(self.session).link_command(
+                    canary_id, existing.command_id, existing.symbol
+                )
+                if linked.state is PaperFirstCanaryState.FAILED_SAFE:
+                    return result(RepositoryOutcome.INVALID_STATE, reason_code=linked.terminal_reason)
+            return compared
         event = command_created_event(
             command,
             occurred_at=command.created_at,
@@ -329,6 +341,17 @@ class CommandRepository:
                     )
                 )
                 self.session.flush()
+                if canary_id is not None:
+                    linked = PaperFirstCanaryRepository(self.session).link_command(
+                        canary_id, command.command_id, command.symbol
+                    )
+                    if linked.state is PaperFirstCanaryState.FAILED_SAFE:
+                        raise _EntryCursorCreationRejected(
+                            RepositoryOutcome.INVALID_STATE,
+                            linked.terminal_reason or "CANARY_SAFE_FAILURE",
+                        )
+        except _EntryCursorCreationRejected as exception:
+            return result(exception.outcome, reason_code=exception.reason_code)
         except IntegrityError as exception:
             existing = self.get_command_by_idempotency_key(command.idempotency_key)
             if existing:
@@ -1164,6 +1187,7 @@ class PaperRepositories:
     def __init__(self, session: Session) -> None:
         self.session = session
         self.account_baselines = PaperAccountBaselineRepository(session)
+        self.first_canaries = PaperFirstCanaryRepository(session)
         self.policies = SimulationPolicyRepository(session)
         self.commands = CommandRepository(session)
         self.orders = OrderRepository(session)
@@ -1508,6 +1532,26 @@ class PaperRepositories:
                     PaperPositionRecord(**paper_position_to_orm_values(position))
                 )
                 self.session.flush()
+                canary_table = self.session.scalar(
+                    select(text("to_regclass('public.paper_first_canary_sessions')"))
+                )
+                linked_canary = (
+                    PaperFirstCanaryRepository(self.session).link_position_for_command(
+                        current_order.command_id,
+                        position.position_id,
+                        position.symbol,
+                    )
+                    if canary_table is not None
+                    else None
+                )
+                if (
+                    linked_canary is not None
+                    and linked_canary.state is PaperFirstCanaryState.FAILED_SAFE
+                ):
+                    raise _EntryCursorCreationRejected(
+                        RepositoryOutcome.INVALID_STATE,
+                        linked_canary.terminal_reason or "CANARY_SAFE_FAILURE",
+                    )
                 self._fault("entry_after_position")
                 self._fault("entry_before_cursor")
                 cursor_result = self.exit_cursors.create_or_get_cursor(

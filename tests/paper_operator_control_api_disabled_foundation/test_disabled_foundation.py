@@ -64,6 +64,7 @@ def _requests():
         ("/control/v1/arm-first-canary", arm_body("foundation-arm", 3)),
         ("/control/v1/start-first-canary", {
             "request_id": "foundation-start", "expected_generation": 3,
+            "canary_id": "00000000-0000-4000-8000-000000000004",
             "arming_transition_id": "00000000-0000-4000-8000-000000000003",
             "canary_acknowledgement": True,
         }),

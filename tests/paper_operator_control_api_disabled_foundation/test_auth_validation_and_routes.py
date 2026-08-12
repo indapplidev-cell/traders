@@ -25,7 +25,8 @@ def test_exact_control_route_inventory(isolated_client):
     }
     assert routes == {
         ("GET", "/control/v1/status"),
-        ("GET", "/control/v1/canary/status"),
+            ("GET", "/control/v1/canary/status"),
+            ("GET", "/control/v1/canaries/{canary_id}"),
         ("POST", "/control/v1/arm-first-canary"),
         ("POST", "/control/v1/start-first-canary"),
         ("POST", "/control/v1/disable"),
