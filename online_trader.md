@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 40e4401423fdfa06b99108b9d24f280b2aa42a2b
+STATUS_AS_OF_COMMIT = fd18b9bb7e219fa93187026a6f5c089431ba88bb
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-12T15:11:33.1277860Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
+RECONCILED_AT_UTC = 2026-08-12T15:32:34.1919734Z
+RECONCILED_BY_TASK = TRADERS_ML_PITR_WAL_ARCHIVE_RETRY_PENDING_REMEDIATION_01
 FILES_CHANGED = FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_111_BEFORE_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = PAPER_PREPARATION_BLOCKED_PRE_MUTATION_BY_FRESH_WAL_ARCHIVE_RETRY_PENDING_PRODUCTION_UNCHANGED
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD_115_BEFORE_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = WAL_RETRY_PENDING_CLEARED_PITR_CHAIN_VALID_PRODUCTION_PAPER_PREPARATION_RETRY_READY
 
 # Состояние проекта traders-ml
 
@@ -23,35 +23,45 @@ STATUS_CONFIDENCE = PAPER_PREPARATION_BLOCKED_PRE_MUTATION_BY_FRESH_WAL_ARCHIVE_
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = PRODUCTION_WAL_ARCHIVE_CURRENT_HEALTH_REMEDIATION_REQUIRED_BEFORE_PAPER_PREPARATION_RETRY
-CURRENT_BLOCKER = PITR_PREPARATION_GATE_NOT_CURRENTLY_HEALTHY
-BACKGROUND_TIMED_GATE = HISTORICAL_24H_CONFIRMATION_REMAINS_104874_SECONDS_BUT_FRESH_ARCHIVE_HEALTH_IS_RETRY_PENDING
+CURRENT_STAGE = PRODUCTION_PAPER_PREPARATION_RETRY_REQUIRED
+CURRENT_BLOCKER = NONE_FOR_PRODUCTION_PAPER_PREPARATION_RETRY
+BACKGROUND_TIMED_GATE = FORMAL_24H_CONFIRMATION_REMAINS_ACCEPTED_AND_FRESH_PITR_WINDOW_IS_113879_SECONDS
 ```
 
-## Production PAPER preparation blocked pre-mutation
+## WAL archive retry-pending remediation
 
 ```text
-PREPARATION_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
-PREPARATION_RESULT = BLOCKED_PRE_MUTATION
-PROJECT_STATE_AUDIT_COMMIT = 40e4401423fdfa06b99108b9d24f280b2aa42a2b
-BLOCKER_CODE = PITR_PREPARATION_GATE_NOT_CURRENTLY_HEALTHY
-OPERATOR_INITIAL_BALANCE = 100.00_USDT_EXPLICIT_VALID
+REMEDIATION_TASK = TRADERS_ML_PITR_WAL_ARCHIVE_RETRY_PENDING_REMEDIATION_01
+REMEDIATION_RESULT = COMPLETED
+PROJECT_STATE_AUDIT_COMMIT = fd18b9bb7e219fa93187026a6f5c089431ba88bb
+BLOCKER_CODE = NONE
+CURRENT_WAL_ARCHIVE_RETRY_PENDING = CLOSED
+WAL_ARCHIVE_RETRY_PENDING_REMEDIATION_READINESS = READY_FOR_PRODUCTION_PAPER_PREPARATION_RETRY
+OPERATOR_INITIAL_BALANCE = 100.00_USDT_EXPLICIT_VALID_RETAINED
 ALL_REQUIRED_EVIDENCE_HASHES = PASS
-PITR_WINDOW_SECONDS_PREP_CURRENT = 104874
-PITR_WINDOW_MEASURED_AT_UTC = 2026-08-12T15:09:05.012398Z
-WAL_ARCHIVE_HEALTH_PREP = FAIL_RETRY_PENDING
-WAL_ARCHIVE_ACTIVE_UNRESOLVED_FAILURES_PREP = 1
-WAL_ACK_BACKLOG_PREP = 1
-WAL_ACK_PENDING_PREP = 8
-WAL_ACK_EXPORT_ACK_PREP = 0
-WAL_ARCHIVE_PHYSICAL_GAP_PREP = NO
-BASE_BACKUP_CHAIN_CONTIGUOUS_PREP = YES
+ROOT_CAUSE = ACK_DAEMON_PROCESS_ABSENT_WITH_STALE_RUNNING_STATE_AND_NO_PID_FILE
+PENDING_SET_BEFORE = 9_SEGMENTS_OLDEST_7745_SECONDS
+WAL_ACK_DAEMON_RECOVERY = RESTARTED_ONLY_ACK_DAEMON_PID_12124
+WAL_ACK_ERROR_BACKLOG_PENDING_AFTER = 0_0_0
+WAL_ARCHIVE_ACTIVE_UNRESOLVED_FAILURES_AFTER = 0
+WAL_ARCHIVE_SEGMENT_COVERAGE_AFTER = 119_OF_119
+WAL_ARCHIVE_HEALTH_AFTER = PASS
+WAL_ARCHIVE_PHYSICAL_GAP_AFTER = NO
+BASE_BACKUP_CHAIN_CONTIGUOUS_AFTER = YES
+PITR_WINDOW_SECONDS_AFTER = 113879
+PITR_WINDOW_RESET_DETECTED = NO
+FOCUSED_REGRESSION = 1443_PASSED_1_SKIPPED_0_FAILED
+POSTGRESQL = HEALTHY_MAJOR_16_RESTART_COUNT_0
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+MARKET_DATA = PASS_18_OF_18
+ORCHESTRATOR = PASS
+PRODUCTION_API = HTTP_200
 PRODUCTION_MIGRATION_STARTED = NO
 PRODUCTION_ROLE_AND_GRANT_MUTATIONS = 0
 PROTECTED_BINDING_MUTATIONS = 0
 PAPER_BASELINE_CREATED = NO
 READONLY_API_DEPLOYMENT = NOT_RUN
-PRODUCTION_SERVICE_RESTARTS = 0
+NON_WAL_ACK_SERVICE_RESTARTS = 0
 PRODUCTION_CONTROL_TRANSITIONS = 0
 PAPER_ECONOMIC_MUTATIONS = 0
 PAPER_RUNTIME_STARTED = NO
@@ -59,13 +69,16 @@ LIVE_MODE_ENABLE_ACTIONS = 0
 BINANCE_ORDER_API_CALLS = 0
 ```
 
-The historical minimum 24-hour PITR confirmation was not rerun and remains
-valid as historical readiness evidence. The task-required fresh snapshot found
-the current WAL archive in `RETRY_PENDING`, so the preparation contract stopped
-before isolated rehearsal and every authorized production mutation. No wait or
-automatic archive recovery was performed in this task. Production remains at
-its pre-task schema and disabled PAPER/LIVE boundary. A dedicated current WAL
-archive remediation must pass before this preparation task is retried.
+The exact pending set was diagnosed before retry. The host ACK daemon process
+was absent, its prior atomic state still named PID 12828, and no PID lock
+remained to remove. The existing daemon was started as PID 12124 and the
+existing bounded checksum-verified publication/ACK mechanism resolved all nine
+items. Four recovery samples proved zero pending, backlog and unresolved
+failures. The formal 24-hour confirmation was not rerun; fresh physical
+continuity instead proved a complete 119/119 chain and a 113,879-second PITR
+window. Production remains at schema 0008 and the DISABLED generation-3
+PAPER/LIVE boundary. The previously blocked production preparation must now be
+rerun as a separate task.
 
 Root project-state commit `f5b48e061f99afea81f3fd39b296acded477f8b6`
 был предыдущим доказанным состоянием. Новый project-state commit
@@ -2522,9 +2535,9 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈95% | Revision 0013 adds isolated-PG16-proven durable first-canary correlation over the revision 0012 baseline and existing closed-trade reporting/reconciliation chain; a fresh 104,874-second production PITR reading formally confirms the 24-hour gate, while production remains at 0008 with PAPER disabled pending separately authorized preparation/deployment |
+| Online analytics/paper pipeline | ≈95% | Revision 0013 remains isolated-PG16 proven; the fresh production PITR window is 113,879 seconds with the retry-pending blocker cleared, while production remains at 0008 with PAPER disabled pending a separately authorized preparation retry |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Production gate passed | Fresh WAL archive health is PASS with 109/109 required segments, no physical gap or unresolved failure, a continuous 104,874-second PITR window, and WAL ACK daemon PID 12828 healthy; restore policy and separate deployment authorization remain unchanged |
+| Production backup/PITR | Production gate passed | Fresh WAL archive health is PASS with 119/119 required segments, no physical gap or unresolved failure, a continuous 113,879-second PITR window, and WAL ACK daemon PID 12124 healthy after the bounded recovery; restore policy and separate deployment authorization remain unchanged |
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
 | Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
 | PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
@@ -2539,10 +2552,11 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_PRODUCTION_WAL_ARCHIVE_UNRESOLVED_FAILURE_REMEDIATION_02
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CURRENT_WAL_ARCHIVE_REMEDIATION_SCOPE
+TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_PAPER_PREPARATION_SCOPE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
-PAPER_PREPARATION_RETRY_AFTER_REMEDIATION = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
+WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED
+OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 CLIENT_READINESS_MAIN = aa333baa33c88b0a5a51eafa016a3cc4a03d056b
 PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_UNCHANGED
 ```
