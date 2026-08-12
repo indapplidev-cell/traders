@@ -24,6 +24,7 @@ def test_0013_checkout_bytes_and_manifest_match_accepted_git_blob():
     assert hashlib.sha256(blob).hexdigest() == EXPECTED == manifest.source_sha256
 
 
-def test_gitattributes_freezes_all_alembic_revisions_to_lf():
+def test_gitattributes_freezes_only_lf_accepted_0013_revision():
     attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
-    assert "alembic/versions/*.py text eol=lf" in attributes
+    assert "alembic/versions/0013_paper_first_canary_correlation.py text eol=lf" in attributes
+    assert "alembic/versions/*.py text eol=lf" not in attributes

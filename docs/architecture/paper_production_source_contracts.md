@@ -8,7 +8,7 @@ are authoritative. The accepted LF SHA256 is
 `08f9f65acfef946e89dd41297ba14a1dbeb113b62a91a22331a64b5adf620f54`.
 The apparent `6d46a437e8f44562e1c6d0bd9a746827d404b8bd530c363d045ff4abf2f8d5f1`
 value was the same content after Windows `core.autocrlf` materialized CRLF.
-The registry is unchanged. `.gitattributes` now fixes Alembic revisions to LF,
+The registry is unchanged. `.gitattributes` now fixes revision 0013 only to LF,
 and the verifier canonicalizes only the already-accepted 0013 checkout while
 also comparing the accepted Git blob. Any semantic or byte change after LF
 canonicalization still fails deterministically.

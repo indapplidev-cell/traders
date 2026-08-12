@@ -3,6 +3,6 @@ requirements/api-runtime.lock.txt text eol=lf
 requirements/api-dev.lock.txt text eol=lf
 requirements/lock-tools.txt text eol=lf
 docs/api/contracts/client-openapi-v1.json text eol=lf
-# Accepted Alembic revisions are byte-frozen. Keep their SHA256 portable when
-# a Windows checkout has core.autocrlf enabled.
-alembic/versions/*.py text eol=lf
+# Revision 0013 was accepted as an LF blob. Older frozen revisions retain their
+# historical Windows-byte contracts, so this rule must remain revision-specific.
+alembic/versions/0013_paper_first_canary_correlation.py text eol=lf
