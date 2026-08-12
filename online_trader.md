@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 8d7c50fcb288d5617a6484f6b86eadb8b36ed5ca
+STATUS_AS_OF_COMMIT = d0f5f2afc164194c5c5f7a2aead0770c6ee0575f
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-12T16:55:14.3839533Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_SOURCE_CONTRACT_REMEDIATION_01
-FILES_CHANGED = .gitattributes, app/engine_paper/production_preparation.py, app/server_api/app_factory.py, app/server_api/services/paper_reporting.py, docs/architecture/paper_production_source_contracts.md, tests/paper_production_readiness_review/test_migration_and_static_policy.py, tests/paper_production_source_contract_remediation/*, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-12T20:30:00Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PREPARATION_BACKEND_AND_BINDING_ADAPTER_REMEDIATION_01
+FILES_CHANGED = .gitignore, pyproject.toml, app/engine_paper/production_preparation.py, app/engine_paper/production_preparation_backend.py, app/engine_paper/production_preparation_cli.py, ops/production/paper-preparation.json, docs/operations/paper_production_preparation_backend.md, tests/paper_production_preparation_backend_remediation/*, tests/paper_production_source_contract_remediation/test_identity_and_executor.py, tests/paper_production_source_contract_remediation/test_postgres16_acceptance.py, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_SOURCE_REMEDIATION_LOCAL_ONLY
-STATUS_CONFIDENCE = SOURCE_CONTRACTS_READY_FOR_PRODUCTION_PREPARATION_RETRY_PRODUCTION_UNPREPARED
+STATUS_CONFIDENCE = CONCRETE_PREPARATION_EXECUTION_LAYER_ISOLATED_PG16_ACCEPTED_PRODUCTION_UNPREPARED
 
 # Состояние проекта traders-ml
 
@@ -64,7 +64,48 @@ without weakening semantic immutability. Production identity and preparation
 executor contracts are source/integration ready, but no production credential,
 role, grant, baseline, deployment, control transition, or PAPER row was created.
 
-## Production PAPER preparation controlled rerun
+## Production preparation backend and binding-adapter remediation
+
+```text
+BACKEND_REMEDIATION_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PREPARATION_BACKEND_AND_BINDING_ADAPTER_REMEDIATION_01
+BACKEND_REMEDIATION_RESULT = COMPLETED
+IMPLEMENTATION_COMMIT = d0f5f2afc164194c5c5f7a2aead0770c6ee0575f
+CONCRETE_BACKEND = PostgresPaperProductionPreparationBackend_READY
+PROTECTED_BINDING_ADAPTER = ProtectedPaperRuntimeBindingAdapter_READY
+NON_SECRET_IDENTITY_ADAPTER = PaperProductionIdentityConfigurationAdapter_READY
+APPROVED_CLI = app.engine_paper.production_preparation_cli_READY
+PRODUCTION_PREPARATION_EXECUTION_READINESS = READY_FOR_PRODUCTION_PAPER_PREPARATION_RETRY
+REMAINING_EXECUTION_BACKEND_BLOCKERS = NONE_FOR_PRODUCTION_PAPER_PREPARATION_RETRY
+ISOLATED_CLI_DRY_RUN = PASS_ZERO_MUTATIONS_ZERO_SECRET_OUTPUT
+ISOLATED_CLI_EXECUTE_AND_REPLAY = PASS_REAL_POSTGRESQL16_0008_TO_0013
+ISOLATED_BASELINE = 100.00_USDT_IDEMPOTENT_CONFLICT_REJECTED
+ISOLATED_RUNTIME_CONFIGURATION = DEPLOYED_DISABLED_RUNTIME_NOT_STARTED
+ISOLATED_READONLY_REPORTING = 18_GET_0_WRITE
+ISOLATED_ZERO_TRADE = PASS
+SECRET_LEAK_NEGATIVE_TESTS = PASS
+MIGRATION_0013_FROZEN_HASH = PASS_08f9f65acfef946e89dd41297ba14a1dbeb113b62a91a22331a64b5adf620f54
+REQUIRED_REGRESSION = PASS_PARTITIONED_18514_PLUS_1546_PLUS_1311_PLUS_987_PLUS_402_PLUS_281_ZERO_CONFIGURED_FAILURES
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry_UNCHANGED
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED_CONTAINER_ID
+PRODUCTION_CONTROL = DISABLED_GENERATION_3_UNCHANGED
+PRODUCTION_MUTATIONS = 0
+PRODUCTION_SERVICE_RESTARTS = 0
+PROTECTED_PRODUCTION_BINDING_OPEN_READ_HASH_FINGERPRINT = 0_0_0_0
+PAPER_BASELINE_CREATED = NO
+PAPER_RUNTIME_STARTED = NO
+LIVE_MODE_ENABLED = NO
+BINANCE_ORDER_API_CALLS = 0
+```
+
+The executor is now composed with a concrete PostgreSQL backend, atomic
+recoverable protected-binding adapter, persistent exact-key non-secret
+identity loader, and preparation-only CLI with explicit acknowledgement and
+action allowlist. Credential generation and consumption stay inside the
+protected boundary. Production preparation was not executed; a fresh WAL/PITR
+and production-target gate is still required by the separately authorized
+retry.
+
+## Earlier production PAPER preparation controlled rerun (historical)
 
 ```text
 PREPARATION_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
@@ -102,8 +143,9 @@ production readiness manifest does not match tracked migration 0013. The
 source also provides no authoritative production account/session identity and
 no approved PAPER runtime protected-binding/deployment executor. Test fixture
 identities were not promoted to production and the protected binding was not
-directly accessed. A dedicated source-contract remediation and review must
-pass before this preparation task is rerun.
+directly accessed. The source-contract and concrete execution-layer
+remediations have since passed. This historical block remains evidence of why
+the preparation task must be rerun rather than treated as completed.
 
 ## WAL archive retry-pending remediation
 
@@ -2612,7 +2654,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈95% | Production remains at 0008 with PAPER disabled; the preparation rerun stopped before mutation because the tracked revision-0013 frozen hash contract fails and production identity/binding deployment contracts are absent |
+| Online analytics/paper pipeline | ≈95% | Production remains at 0008 with PAPER disabled; frozen migration, identity, concrete backend, protected binding adapter and preparation CLI pass isolated PG16 acceptance, but production preparation has not been rerun |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Production gate passed | Fresh WAL archive health is PASS with 120/120 required segments, no physical gap or unresolved failure, a continuous 114,778-second PITR window, and WAL ACK daemon PID 12124 healthy; this did not override the separate source-contract blocker |
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
@@ -2635,6 +2677,7 @@ PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADIN
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = READY_TO_RERUN_TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
+AFTER_BACKEND_ADAPTER_REMEDIATION = READY_TO_RERUN_TRADERS_ML_PAPER_TRADING_PRODUCTION_PAPER_PREPARATION_01
 CLIENT_READINESS_MAIN = aa333baa33c88b0a5a51eafa016a3cc4a03d056b
 PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_UNCHANGED
 ```
