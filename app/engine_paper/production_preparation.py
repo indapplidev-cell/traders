@@ -1,18 +1,16 @@
-"""Fail-closed contracts for a future production PAPER preparation run.
+"""Secret-free contracts for bounded production PAPER preparation.
 
-Nothing in this module discovers a production target or opens a protected
-binding.  Callers provide narrow privileged ports; dry-run invokes none of
-their mutating or secret-consuming methods.
+The executor never resolves a database URL, opens a protected binding, or
+handles credential material.  Those responsibilities live behind the concrete
+backend.  Planning invokes no backend method and therefore consumes no secret.
 """
 
 from __future__ import annotations
 
 import re
-import secrets
 from dataclasses import dataclass
 from enum import StrEnum
-from types import MappingProxyType
-from typing import Callable, Final, Mapping, Protocol
+from typing import Final, Mapping, Protocol
 
 from app.engine_paper.accounting import PaperAccountIdentity
 
@@ -27,6 +25,7 @@ IDENTITY_KEYS: Final = (
     "PAPER_PRODUCTION_CURRENCY",
 )
 _IDENTIFIER = re.compile(r"^[A-Z0-9][A-Z0-9_-]{2,127}$")
+_TARGET_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$")
 _FIXTURE_MARKERS = ("TEST", "FIXTURE", "EXAMPLE", "DEMO", "PYTEST")
 
 
@@ -60,9 +59,8 @@ class PaperProductionAccountIdentityBinding:
 
     @classmethod
     def from_configuration(cls, values: Mapping[str, str]) -> "PaperProductionAccountIdentityBinding":
-        missing = tuple(key for key in IDENTITY_KEYS if key not in values)
-        if missing:
-            raise PaperProductionIdentityError("PRODUCTION_IDENTITY_BINDING_MISSING")
+        if set(values) != set(IDENTITY_KEYS):
+            raise PaperProductionIdentityError("PRODUCTION_IDENTITY_BINDING_MISSING_OR_CONFLICTING")
         return cls(values[IDENTITY_KEYS[0]], values[IDENTITY_KEYS[1]], values[IDENTITY_KEYS[2]])
 
     def account_identity(self) -> PaperAccountIdentity:
@@ -79,6 +77,9 @@ class PaperPreparationAction(StrEnum):
     DEPLOY_READONLY_API_NARROW = "DEPLOY_READONLY_API_NARROW"
 
 
+ALL_PREPARATION_ACTIONS: Final = tuple(PaperPreparationAction)
+
+
 class PaperPreparationConsumerHealth(StrEnum):
     NOT_CHECKED = "NOT_CHECKED"
     HEALTHY = "HEALTHY"
@@ -88,47 +89,63 @@ class PaperPreparationConsumerHealth(StrEnum):
 class PaperPreparationFinding(StrEnum):
     READY = "READY"
     IDENTITY_BINDING_MISSING = "IDENTITY_BINDING_MISSING"
+    PROTECTED_BACKEND_MISSING = "PROTECTED_BACKEND_MISSING"
     RUNTIME_CREDENTIAL_BINDING_MISSING = "RUNTIME_CREDENTIAL_BINDING_MISSING"
     RUNTIME_GRANTS_NOT_READY = "RUNTIME_GRANTS_NOT_READY"
     READONLY_GRANTS_NOT_READY = "READONLY_GRANTS_NOT_READY"
     SCHEMA_NOT_READY = "SCHEMA_NOT_READY"
     BASELINE_MISSING = "BASELINE_MISSING"
+    READONLY_REPORTING_NOT_DEPLOYED = "READONLY_REPORTING_NOT_DEPLOYED"
     EXISTING_ROLE_PRIVILEGE_DRIFT = "EXISTING_ROLE_PRIVILEGE_DRIFT"
     TARGET_ENVIRONMENT_MISMATCH = "TARGET_ENVIRONMENT_MISMATCH"
     MUTATION_BUDGET_EXCEEDED = "MUTATION_BUDGET_EXCEEDED"
+    EXECUTION_NOT_AUTHORIZED = "EXECUTION_NOT_AUTHORIZED"
     SAFE_FAILURE = "SAFE_FAILURE"
 
 
 @dataclass(frozen=True, slots=True)
 class PaperProductionTargetGuard:
+    database_target_id: str
     environment: str = "PRODUCTION"
     postgresql_major: int = 16
     expected_start_alembic: str = EXPECTED_START_ALEMBIC
+    control_state: str = "DISABLED"
+    live_enabled: bool = False
 
     def __post_init__(self) -> None:
-        if (self.environment, self.postgresql_major, self.expected_start_alembic) != (
-            "PRODUCTION", 16, EXPECTED_START_ALEMBIC
-        ):
+        if (not _TARGET_IDENTIFIER.fullmatch(self.database_target_id)
+                or self.environment != "PRODUCTION" or self.postgresql_major != 16
+                or self.expected_start_alembic not in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC}
+                or self.control_state != "DISABLED" or self.live_enabled):
             raise ValueError("PRODUCTION_TARGET_GUARD_MISMATCH")
 
 
 @dataclass(frozen=True, slots=True)
 class PaperProductionPreparationMutationBudget:
-    max_schema_migration_actions: int = 5
-    max_role_create: int = 1
+    max_runtime_role_create: int = 1
     max_runtime_grant_reconciliation: int = 1
     max_readonly_grant_reconciliation: int = 1
     max_runtime_binding_write: int = 1
-    max_baseline_create: int = 1
+    max_disabled_runtime_deployment: int = 1
     max_readonly_api_deployment: int = 1
 
     def __post_init__(self) -> None:
-        if (self.max_schema_migration_actions, self.max_role_create,
-                self.max_runtime_grant_reconciliation,
-                self.max_readonly_grant_reconciliation,
-                self.max_runtime_binding_write, self.max_baseline_create,
-                self.max_readonly_api_deployment) != (5, 1, 1, 1, 1, 1, 1):
+        if tuple(getattr(self, name) for name in self.__dataclass_fields__) != (1, 1, 1, 1, 1, 1):
             raise ValueError("UNBOUNDED_PRODUCTION_PREPARATION_BUDGET")
+
+
+@dataclass(frozen=True, slots=True)
+class PaperProductionExecutionAuthorization:
+    production_acknowledgement: str
+    allowed_actions: tuple[PaperPreparationAction, ...]
+
+    def __post_init__(self) -> None:
+        if self.production_acknowledgement != "I_ACKNOWLEDGE_PRODUCTION_PREPARATION_MUTATIONS":
+            raise ValueError("PRODUCTION_EXECUTION_ACKNOWLEDGEMENT_REQUIRED")
+        if not self.allowed_actions or len(set(self.allowed_actions)) != len(self.allowed_actions):
+            raise ValueError("EXPLICIT_UNIQUE_ACTION_SET_REQUIRED")
+        if any(action not in ALL_PREPARATION_ACTIONS for action in self.allowed_actions):
+            raise ValueError("FORBIDDEN_PREPARATION_ACTION")
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,8 +168,6 @@ class PaperRuntimeRolePolicy:
 
 
 RUNTIME_ROLE_POLICY: Final = PaperRuntimeRolePolicy()
-
-
 RUNTIME_READ_TABLES: Final = (
     "alembic_version", "candles_1m", "candles_5m", "candles_15m", "candles_1h",
     "candles_4h", "candles_1d", "market_data_sync_state", "online_pipeline_runs",
@@ -169,27 +184,30 @@ RUNTIME_UPDATE_TABLES: Final = (
     "paper_exit_evaluation_cursors", "paper_first_canary_sessions",
 )
 READONLY_PAPER_TABLES: Final = ("paper_account_baselines",) + RUNTIME_WRITE_TABLES
-RUNTIME_GRANTS: Final = tuple(
-    DatabaseGrant(table, ("SELECT",)) for table in RUNTIME_READ_TABLES
-) + tuple(
+RUNTIME_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in RUNTIME_READ_TABLES) + tuple(
     DatabaseGrant(table, ("SELECT", "INSERT") + (("UPDATE",) if table in RUNTIME_UPDATE_TABLES else ()))
     for table in RUNTIME_WRITE_TABLES
 )
 READONLY_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in READONLY_PAPER_TABLES)
 
 
-class PaperPreparationPrivilegedBackend(Protocol):
-    def inspect_role(self, role_name: str) -> str: ...
-    def ensure_login_role(self, role_name: str, password: str, policy: PaperRuntimeRolePolicy) -> bool: ...
-    def reconcile_grants(self, role_name: str, grants: tuple[DatabaseGrant, ...]) -> bool: ...
-    def validate_binding(self, role_name: str) -> bool: ...
-    def deploy_disabled_runtime(self) -> bool: ...
-    def deploy_readonly_api_narrow(self) -> bool: ...
+@dataclass(frozen=True, slots=True)
+class PaperPreparationOperationResult:
+    changed: bool
+    ready: bool = True
 
 
-class PaperRuntimeProtectedBinding(Protocol):
-    def binding_present(self) -> bool: ...
-    def store_runtime_credential(self, role_name: str, password: str) -> None: ...
+class PaperProductionPreparationBackend(Protocol):
+    def validate_target(self, target: PaperProductionTargetGuard) -> bool: ...
+    def inspect_privilege_drift(self) -> bool: ...
+    def inspect_runtime_role(self) -> str: ...
+    def ensure_runtime_role(self) -> PaperPreparationOperationResult: ...
+    def reconcile_runtime_grants(self) -> PaperPreparationOperationResult: ...
+    def reconcile_readonly_grants(self) -> PaperPreparationOperationResult: ...
+    def ensure_runtime_binding(self) -> PaperPreparationOperationResult: ...
+    def validate_runtime_binding(self) -> bool: ...
+    def deploy_disabled_runtime(self) -> PaperPreparationOperationResult: ...
+    def deploy_readonly_api_narrow(self) -> PaperPreparationOperationResult: ...
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -217,87 +235,89 @@ class PaperProductionPreparationResult:
                 "production_mutations": self.production_mutations}
 
 
-ALL_PREPARATION_ACTIONS: Final = tuple(PaperPreparationAction)
-
-
 class PaperProductionPreparationExecutor:
-    """Narrow executor with no ARM/START/LIVE/trading vocabulary or capability."""
+    """Preparation-only executor. It has no secret, ARM, START, or trading port."""
 
-    def __init__(self, backend: PaperPreparationPrivilegedBackend,
-                 protected_binding: PaperRuntimeProtectedBinding,
-                 password_factory: Callable[[int], str] = secrets.token_urlsafe) -> None:
+    def __init__(self, backend: PaperProductionPreparationBackend) -> None:
         self._backend = backend
-        self._binding = protected_binding
-        self._password_factory = password_factory
 
     def plan(self, identity: PaperProductionAccountIdentityBinding | None,
-             target: PaperProductionTargetGuard = PaperProductionTargetGuard()) -> PaperProductionPreparationResult:
-        del target
+             actions: tuple[PaperPreparationAction, ...] = ALL_PREPARATION_ACTIONS) -> PaperProductionPreparationResult:
         finding = PaperPreparationFinding.READY if identity is not None else PaperPreparationFinding.IDENTITY_BINDING_MISSING
-        return PaperProductionPreparationResult(ALL_PREPARATION_ACTIONS, (), finding, False, False, production_mutations=0)
+        return PaperProductionPreparationResult(actions, (), finding, False, False, production_mutations=0)
 
     def execute(self, identity: PaperProductionAccountIdentityBinding,
                 target: PaperProductionTargetGuard,
-                budget: PaperProductionPreparationMutationBudget) -> PaperProductionPreparationResult:
-        del identity, target, budget
+                budget: PaperProductionPreparationMutationBudget,
+                authorization: PaperProductionExecutionAuthorization) -> PaperProductionPreparationResult:
+        del identity, budget
+        actions = authorization.allowed_actions
         executed: list[PaperPreparationAction] = []
+        mutations = 0
         try:
-            state = self._backend.inspect_role(PRODUCTION_PAPER_RUNTIME_ROLE)
+            if not self._backend.validate_target(target):
+                return PaperProductionPreparationResult(actions, (), PaperPreparationFinding.TARGET_ENVIRONMENT_MISMATCH, False, False)
+            if self._backend.inspect_privilege_drift():
+                return PaperProductionPreparationResult(actions, (), PaperPreparationFinding.EXISTING_ROLE_PRIVILEGE_DRIFT, False, False)
+            state = self._backend.inspect_runtime_role()
             if state == "BROADER_THAN_CONTRACT":
-                return PaperProductionPreparationResult(ALL_PREPARATION_ACTIONS, (),
-                    PaperPreparationFinding.EXISTING_ROLE_PRIVILEGE_DRIFT, False, False)
-            present = self._binding.binding_present()
-            password = None
-            if state == "ABSENT" or not present:
-                password = self._password_factory(48)
-                if not isinstance(password, str) or len(password) < 32:
-                    raise RuntimeError("SECURE_CREDENTIAL_GENERATION_FAILED")
-                self._backend.ensure_login_role(PRODUCTION_PAPER_RUNTIME_ROLE, password, RUNTIME_ROLE_POLICY)
-                executed.append(PaperPreparationAction.ENSURE_RUNTIME_ROLE)
-                self._binding.store_runtime_credential(PRODUCTION_PAPER_RUNTIME_ROLE, password)
-                executed.append(PaperPreparationAction.BIND_RUNTIME_CREDENTIAL)
-                password = None
-                present = True
-            self._backend.reconcile_grants(PRODUCTION_PAPER_RUNTIME_ROLE, RUNTIME_GRANTS)
-            executed.append(PaperPreparationAction.APPLY_RUNTIME_GRANTS)
-            self._backend.reconcile_grants(PRODUCTION_READONLY_ROLE, READONLY_GRANTS)
-            executed.append(PaperPreparationAction.APPLY_READONLY_REPORTING_GRANTS)
-            valid = self._backend.validate_binding(PRODUCTION_PAPER_RUNTIME_ROLE)
-            executed.append(PaperPreparationAction.VALIDATE_RUNTIME_BINDING)
-            if not valid:
-                return PaperProductionPreparationResult(ALL_PREPARATION_ACTIONS, tuple(executed),
-                    PaperPreparationFinding.RUNTIME_CREDENTIAL_BINDING_MISSING, present, False,
-                    production_mutations=len(executed))
-            self._backend.deploy_disabled_runtime()
-            executed.append(PaperPreparationAction.DEPLOY_DISABLED_RUNTIME_CONFIGURATION)
-            self._backend.deploy_readonly_api_narrow()
-            executed.append(PaperPreparationAction.DEPLOY_READONLY_API_NARROW)
-            return PaperProductionPreparationResult(ALL_PREPARATION_ACTIONS, tuple(executed),
-                PaperPreparationFinding.READY, present, True,
-                consumer_health=PaperPreparationConsumerHealth.HEALTHY,
-                production_mutations=len(executed))
-        except Exception as error:
+                return PaperProductionPreparationResult(actions, (), PaperPreparationFinding.EXISTING_ROLE_PRIVILEGE_DRIFT, False, False)
+            binding_present = False
+            binding_valid = False
+            operations = {
+                PaperPreparationAction.ENSURE_RUNTIME_ROLE: self._backend.ensure_runtime_role,
+                PaperPreparationAction.APPLY_RUNTIME_GRANTS: self._backend.reconcile_runtime_grants,
+                PaperPreparationAction.APPLY_READONLY_REPORTING_GRANTS: self._backend.reconcile_readonly_grants,
+                PaperPreparationAction.BIND_RUNTIME_CREDENTIAL: self._backend.ensure_runtime_binding,
+                PaperPreparationAction.DEPLOY_DISABLED_RUNTIME_CONFIGURATION: self._backend.deploy_disabled_runtime,
+                PaperPreparationAction.DEPLOY_READONLY_API_NARROW: self._backend.deploy_readonly_api_narrow,
+            }
+            for action in actions:
+                if action is PaperPreparationAction.VALIDATE_RUNTIME_BINDING:
+                    binding_valid = self._backend.validate_runtime_binding()
+                    binding_present = binding_valid
+                    executed.append(action)
+                    if not binding_valid:
+                        return PaperProductionPreparationResult(actions, tuple(executed),
+                            PaperPreparationFinding.RUNTIME_CREDENTIAL_BINDING_MISSING,
+                            binding_present, False, production_mutations=mutations)
+                    continue
+                outcome = operations[action]()
+                executed.append(action)
+                mutations += int(outcome.changed)
+                if action is PaperPreparationAction.BIND_RUNTIME_CREDENTIAL:
+                    binding_present = outcome.ready
+            return PaperProductionPreparationResult(actions, tuple(executed), PaperPreparationFinding.READY,
+                binding_present, binding_valid,
+                consumer_health=(PaperPreparationConsumerHealth.HEALTHY if binding_valid
+                                 else PaperPreparationConsumerHealth.NOT_CHECKED),
+                production_mutations=mutations)
+        except Exception:
             raise RuntimeError("PAPER_PRODUCTION_PREPARATION_SAFE_FAILURE") from None
 
 
 @dataclass(frozen=True, slots=True)
 class PaperProductionPreparationReadiness:
     identity_binding_ready: bool
+    protected_backend_ready: bool
     runtime_binding_ready: bool
     runtime_grants_ready: bool
     readonly_grants_ready: bool
     schema_ready: bool
     baseline_ready: bool
+    readonly_reporting_deployed: bool
 
     @property
     def findings(self) -> tuple[PaperPreparationFinding, ...]:
         checks = (
             (self.identity_binding_ready, PaperPreparationFinding.IDENTITY_BINDING_MISSING),
+            (self.protected_backend_ready, PaperPreparationFinding.PROTECTED_BACKEND_MISSING),
             (self.runtime_binding_ready, PaperPreparationFinding.RUNTIME_CREDENTIAL_BINDING_MISSING),
             (self.runtime_grants_ready, PaperPreparationFinding.RUNTIME_GRANTS_NOT_READY),
             (self.readonly_grants_ready, PaperPreparationFinding.READONLY_GRANTS_NOT_READY),
             (self.schema_ready, PaperPreparationFinding.SCHEMA_NOT_READY),
             (self.baseline_ready, PaperPreparationFinding.BASELINE_MISSING),
+            (self.readonly_reporting_deployed, PaperPreparationFinding.READONLY_REPORTING_NOT_DEPLOYED),
         )
         failed = tuple(finding for passed, finding in checks if not passed)
         return failed or (PaperPreparationFinding.READY,)
@@ -310,6 +330,5 @@ class PaperProductionPreparationReadiness:
 __all__ = [name for name in globals() if name.startswith("Paper") or name in {
     "ALL_PREPARATION_ACTIONS", "EXPECTED_FINAL_ALEMBIC", "EXPECTED_START_ALEMBIC",
     "IDENTITY_KEYS", "PRODUCTION_PAPER_RUNTIME_ROLE", "PRODUCTION_READONLY_ROLE",
-    "READONLY_GRANTS", "READONLY_PAPER_TABLES", "RUNTIME_GRANTS",
-    "RUNTIME_ROLE_POLICY",
+    "READONLY_GRANTS", "READONLY_PAPER_TABLES", "RUNTIME_GRANTS", "RUNTIME_ROLE_POLICY",
 }]

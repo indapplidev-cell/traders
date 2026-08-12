@@ -1,0 +1,8 @@
+{
+  "compose_file": "readonly-api/compose.yaml",
+  "deployment_driver": "DOCKER_COMPOSE_NARROW",
+  "identity_config": "paper-identity.json",
+  "protected_binding": "../../.env.production.local",
+  "state_root": "../../artifacts/paper-production-preparation",
+  "target_id": "traders-production-primary"
+}

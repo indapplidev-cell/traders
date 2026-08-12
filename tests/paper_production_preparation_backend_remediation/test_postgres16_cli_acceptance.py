@@ -1,0 +1,148 @@
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, text
+
+from app.engine_paper.production_preparation import ALL_PREPARATION_ACTIONS
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture(scope="module")
+def isolated_pg16():
+    raw = os.environ.get("PAPER_BACKEND_TEST_PG_URL")
+    if not raw:
+        pytest.fail("PAPER_BACKEND_TEST_PG_URL is required")
+    assert "127.0.0.1" in raw and "/paper_backend_remediation" in raw
+    engine = create_engine(raw, hide_parameters=True)
+    with engine.connect() as connection:
+        assert str(connection.execute(text("SHOW server_version_num")).scalar_one()).startswith("16")
+    import app.config.settings as settings
+    original = settings.get_settings
+    settings.get_settings = lambda: type("Settings", (), {"database_url": raw})()
+    try:
+        config = Config("alembic.ini")
+        with engine.connect() as connection:
+            relation = connection.execute(text("SELECT to_regclass('public.alembic_version')")).scalar_one()
+        if relation:
+            command.downgrade(config, "0008_engine_orchestrator_freshness_retry")
+        else:
+            command.upgrade(config, "0008_engine_orchestrator_freshness_retry")
+        with engine.begin() as connection:
+            connection.exec_driver_sql('DROP ROLE IF EXISTS "traders_paper_runtime"')
+            connection.exec_driver_sql('DROP ROLE IF EXISTS "traders_readonly_api"')
+            connection.exec_driver_sql(
+                'CREATE ROLE "traders_readonly_api" NOLOGIN NOSUPERUSER NOCREATEDB '
+                'NOCREATEROLE NOREPLICATION NOBYPASSRLS')
+        yield engine, raw
+    finally:
+        with engine.begin() as connection:
+            for role in ("traders_paper_runtime", "traders_readonly_api"):
+                connection.exec_driver_sql(f'DROP OWNED BY "{role}"')
+                connection.exec_driver_sql(f'DROP ROLE IF EXISTS "{role}"')
+        engine.dispose()
+        settings.get_settings = original
+
+
+def _files(tmp_path: Path):
+    identity = tmp_path / "paper-identity.json"
+    identity.write_text(json.dumps({
+        "PAPER_PRODUCTION_ACCOUNT_ID": "PAPER-ISOLATED-PRIMARY",
+        "PAPER_PRODUCTION_ACCOUNTING_SESSION_ID": "PAPER-ISOLATED-LIFECYCLE-01",
+        "PAPER_PRODUCTION_CURRENCY": "USDT",
+    }), encoding="utf-8")
+    binding = tmp_path / ".env.isolated.local"
+    binding.write_text("TRADERS_READONLY_API_DATABASE_URL=\nTRADERS_READONLY_API_HOST=127.0.0.1\n"
+                       "TRADERS_READONLY_API_PORT=8765\n", encoding="utf-8")
+    state = tmp_path / "state"
+    config = tmp_path / "composition.json"
+    config.write_text(json.dumps({
+        "deployment_driver": "ISOLATED_FILESYSTEM", "identity_config": str(identity),
+        "protected_binding": str(binding), "state_root": str(state),
+        "target_id": "isolated-production-target",
+    }), encoding="utf-8")
+    return config, binding, state
+
+
+def _run(config: Path, raw: str):
+    env = dict(os.environ)
+    env["TRADERS_PAPER_PREPARATION_ADMIN_DATABASE_URL"] = raw
+    env["TRADERS_PAPER_PREPARATION_TARGET_ID"] = "isolated-production-target"
+    return subprocess.run([
+        sys.executable, "-m", "app.engine_paper.production_preparation_cli",
+        "--config", str(config), "execute",
+        "--ack", "I_ACKNOWLEDGE_PRODUCTION_PREPARATION_MUTATIONS",
+        "--actions", ",".join(item.value for item in ALL_PREPARATION_ACTIONS),
+        "--orchestrate-schema-and-baseline", "--initial-balance-usdt", "100.00",
+    ], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
+
+
+def test_real_cli_execute_replay_roles_grants_baseline_and_zero_trade(isolated_pg16, tmp_path):
+    engine, raw = isolated_pg16
+    config, binding, state = _files(tmp_path)
+    first = _run(config, raw)
+    assert first.returncode == 0, first.stderr
+    first_output = json.loads(first.stdout)
+    assert first_output["result"] == "PASS" and first_output["binding_ready"] is True
+    protected_content = binding.read_text(encoding="utf-8")
+    runtime_binding_line = next(line for line in protected_content.splitlines()
+                                if line.startswith("TRADERS_PAPER_RUNTIME_DATABASE_URL="))
+    assert runtime_binding_line
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013_paper_first_canary_correlation"
+        attrs = connection.execute(text(
+            "SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls "
+            "FROM pg_roles WHERE rolname='traders_paper_runtime'")).one()
+        assert tuple(attrs) == (True, False, False, False, False, False)
+        readonly_attrs = connection.execute(text(
+            "SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls "
+            "FROM pg_roles WHERE rolname='traders_readonly_api'")).one()
+        assert not any(readonly_attrs)
+        assert connection.execute(text("SELECT count(*) FROM paper_account_baselines")).scalar_one() == 1
+        baseline = connection.execute(text(
+            "SELECT account_id,accounting_session_id,currency,initial_balance FROM paper_account_baselines")).one()
+        assert tuple(baseline[:3]) == ("PAPER-ISOLATED-PRIMARY", "PAPER-ISOLATED-LIFECYCLE-01", "USDT")
+        assert baseline[3] == Decimal("100.00")
+        for table in ("paper_execution_commands", "paper_orders", "paper_fills", "paper_positions",
+                      "paper_exit_decisions", "paper_first_canary_sessions"):
+            assert connection.execute(text(f"SELECT count(*) FROM {table}")).scalar_one() == 0
+        assert not connection.execute(text(
+            "SELECT has_table_privilege('traders_paper_runtime','paper_account_baselines','INSERT,UPDATE,DELETE')")).scalar_one()
+        assert not connection.execute(text(
+            "SELECT has_table_privilege('traders_readonly_api','paper_orders','INSERT,UPDATE,DELETE')")).scalar_one()
+    assert json.loads((state / "paper-runtime.disabled.json").read_text())["state"] == "DEPLOYED_DISABLED"
+    assert json.loads((state / "readonly-api.narrow.json").read_text())["write_routes"] == 0
+
+    second = _run(config, raw)
+    assert second.returncode == 0, second.stderr
+    assert json.loads(second.stdout)["mutations"] == 0
+    assert binding.read_text(encoding="utf-8") == protected_content
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT count(*) FROM paper_account_baselines")).scalar_one() == 1
+
+
+def test_privilege_drift_fails_closed_before_mutation(isolated_pg16, tmp_path):
+    engine, raw = isolated_pg16
+    config, binding, state = _files(tmp_path)
+    if not binding.exists():
+        pytest.fail("isolated binding fixture missing")
+    with engine.begin() as connection:
+        connection.exec_driver_sql('ALTER ROLE "traders_paper_runtime" CREATEDB')
+    before = state.joinpath("paper-runtime.disabled.json").read_bytes() if state.exists() else b""
+    result = _run(config, raw)
+    assert result.returncode == 4
+    assert "CREATEDB" not in result.stdout + result.stderr
+    after = state.joinpath("paper-runtime.disabled.json").read_bytes() if state.exists() else b""
+    assert after == before
+    with engine.begin() as connection:
+        connection.exec_driver_sql('ALTER ROLE "traders_paper_runtime" NOCREATEDB')

@@ -13,11 +13,13 @@ from app.engine_paper.production_preparation import (
     PaperPreparationAction,
     PaperPreparationFinding,
     PaperProductionAccountIdentityBinding,
+    PaperProductionExecutionAuthorization,
     PaperProductionIdentityError,
     PaperProductionPreparationExecutor,
     PaperProductionPreparationMutationBudget,
     PaperProductionPreparationReadiness,
     PaperProductionTargetGuard,
+    PaperPreparationOperationResult,
 )
 from app.engine_paper.accounting import PaperAccountBaseline
 from app.server_api.errors import ApiError
@@ -31,58 +33,64 @@ VALID = {
 }
 
 
-class Binding:
-    def __init__(self, present=False):
-        self.present = present
-        self.stores = 0
-        self.value = None
-
-    def binding_present(self):
-        return self.present
-
-    def store_runtime_credential(self, role_name, password):
-        assert role_name == "traders_paper_runtime"
-        self.stores += 1
-        self.present = True
-        self.value = password
-
-
 class Backend:
-    def __init__(self, state="ABSENT"):
+    def __init__(self, state="ABSENT", binding=False):
         self.state = state
+        self.binding = binding
         self.calls = []
 
-    def inspect_role(self, role_name):
-        self.calls.append(("inspect", role_name))
+    def validate_target(self, target):
+        self.calls.append(("target", target.database_target_id))
+        return True
+
+    def inspect_runtime_role(self):
+        self.calls.append(("inspect",))
         return self.state
 
-    def ensure_login_role(self, role_name, password, policy):
-        assert not any((policy.superuser, policy.createdb, policy.createrole,
-                        policy.replication, policy.bypassrls, policy.grant_option,
-                        policy.ownership, bool(policy.memberships)))
-        self.calls.append(("role", role_name, password))
+    def inspect_privilege_drift(self):
+        self.calls.append(("drift",))
+        return self.state == "BROADER_THAN_CONTRACT"
+
+    def ensure_runtime_role(self):
+        self.calls.append(("role",))
+        changed = self.state == "ABSENT"
         self.state = "EXACT"
-        return True
+        return PaperPreparationOperationResult(changed)
 
-    def reconcile_grants(self, role_name, grants):
-        self.calls.append(("grants", role_name, grants))
-        return True
+    def reconcile_runtime_grants(self):
+        self.calls.append(("runtime_grants",))
+        return PaperPreparationOperationResult(True)
 
-    def validate_binding(self, role_name):
-        self.calls.append(("validate", role_name))
-        return True
+    def reconcile_readonly_grants(self):
+        self.calls.append(("readonly_grants",))
+        return PaperPreparationOperationResult(True)
+
+    def ensure_runtime_binding(self):
+        changed = not self.binding
+        self.binding = True
+        self.calls.append(("binding",))
+        return PaperPreparationOperationResult(changed)
+
+    def validate_runtime_binding(self):
+        self.calls.append(("validate",))
+        return self.binding
 
     def deploy_disabled_runtime(self):
         self.calls.append(("disabled",))
-        return True
+        return PaperPreparationOperationResult(True)
 
     def deploy_readonly_api_narrow(self):
         self.calls.append(("readonly",))
-        return True
+        return PaperPreparationOperationResult(True)
 
 
 def identity():
     return PaperProductionAccountIdentityBinding.from_configuration(VALID)
+
+
+TARGET = PaperProductionTargetGuard(database_target_id="production-primary")
+AUTH = PaperProductionExecutionAuthorization(
+    "I_ACKNOWLEDGE_PRODUCTION_PREPARATION_MUTATIONS", ALL_PREPARATION_ACTIONS)
 
 
 def test_identity_is_explicit_canonical_and_stable_across_restart():
@@ -118,46 +126,45 @@ def test_contract_has_no_client_or_random_identity_input():
 
 
 def test_dry_run_is_non_mutating_and_does_not_touch_binding():
-    backend, binding = Backend(), Binding()
-    result = PaperProductionPreparationExecutor(backend, binding).plan(identity())
+    backend = Backend()
+    result = PaperProductionPreparationExecutor(backend).plan(identity())
     assert result.finding is PaperPreparationFinding.READY
     assert result.executed_actions == () and result.production_mutations == 0
-    assert backend.calls == [] and binding.stores == 0
+    assert backend.calls == [] and not backend.binding
 
 
 def test_missing_identity_is_an_explicit_dry_run_finding():
-    result = PaperProductionPreparationExecutor(Backend(), Binding()).plan(None)
+    result = PaperProductionPreparationExecutor(Backend()).plan(None)
     assert result.finding is PaperPreparationFinding.IDENTITY_BINDING_MISSING
 
 
-def test_executor_generates_binds_and_never_returns_secret():
-    backend, binding = Backend(), Binding()
-    secret = "S" * 48
-    result = PaperProductionPreparationExecutor(backend, binding, lambda _: secret).execute(
-        identity(), PaperProductionTargetGuard(), PaperProductionPreparationMutationBudget())
+def test_executor_binds_and_never_has_or_returns_secret_surface():
+    backend = Backend()
+    result = PaperProductionPreparationExecutor(backend).execute(
+        identity(), TARGET, PaperProductionPreparationMutationBudget(), AUTH)
     rendered = repr(result) + str(result.safe_dict())
     assert result.finding is PaperPreparationFinding.READY
-    assert binding.value == secret and binding.stores == 1
-    assert secret not in rendered and "://" not in rendered
+    assert backend.binding
+    assert "://" not in rendered
     assert not ({"password", "secret", "credential", "uri", "dsn"} & set(result.safe_dict()))
 
 
-def test_existing_exact_role_and_binding_is_idempotent():
-    backend, binding = Backend("EXACT"), Binding(True)
-    result = PaperProductionPreparationExecutor(backend, binding).execute(
-        identity(), PaperProductionTargetGuard(), PaperProductionPreparationMutationBudget())
+def test_existing_exact_role_and_binding_take_idempotent_ensure_paths():
+    backend = Backend("EXACT", True)
+    result = PaperProductionPreparationExecutor(backend).execute(
+        identity(), TARGET, PaperProductionPreparationMutationBudget(), AUTH)
     assert result.finding is PaperPreparationFinding.READY
-    assert binding.stores == 0
-    assert not any(call[0] == "role" for call in backend.calls)
+    assert sum(call[0] == "role" for call in backend.calls) == 1
+    assert sum(call[0] == "binding" for call in backend.calls) == 1
 
 
 def test_broader_role_fails_closed_without_revoke_or_mutation():
-    backend, binding = Backend("BROADER_THAN_CONTRACT"), Binding(True)
-    result = PaperProductionPreparationExecutor(backend, binding).execute(
-        identity(), PaperProductionTargetGuard(), PaperProductionPreparationMutationBudget())
+    backend = Backend("BROADER_THAN_CONTRACT", True)
+    result = PaperProductionPreparationExecutor(backend).execute(
+        identity(), TARGET, PaperProductionPreparationMutationBudget(), AUTH)
     assert result.finding is PaperPreparationFinding.EXISTING_ROLE_PRIVILEGE_DRIFT
     assert result.executed_actions == ()
-    assert backend.calls == [("inspect", "traders_paper_runtime")]
+    assert backend.calls == [("target", "production-primary"), ("drift",)]
 
 
 def test_allowlists_are_exact_least_privilege():
@@ -177,34 +184,36 @@ def test_action_vocabulary_cannot_trade_arm_start_or_enable_live():
 
 def test_target_and_budget_are_fixed_and_fail_closed():
     with pytest.raises(ValueError):
-        PaperProductionTargetGuard(environment="STAGING")
+        PaperProductionTargetGuard(database_target_id="production-primary", environment="STAGING")
     with pytest.raises(ValueError):
-        PaperProductionPreparationMutationBudget(max_role_create=2)
+        PaperProductionPreparationMutationBudget(max_runtime_role_create=2)
 
 
 def test_exception_is_sanitized():
     class Exploding(Backend):
-        def inspect_role(self, role_name):
+        def inspect_runtime_role(self):
             raise RuntimeError("postgresql://user:password@host/db")
     with pytest.raises(RuntimeError) as caught:
-        PaperProductionPreparationExecutor(Exploding(), Binding()).execute(
-            identity(), PaperProductionTargetGuard(), PaperProductionPreparationMutationBudget())
+        PaperProductionPreparationExecutor(Exploding()).execute(
+            identity(), TARGET, PaperProductionPreparationMutationBudget(), AUTH)
     assert str(caught.value) == "PAPER_PRODUCTION_PREPARATION_SAFE_FAILURE"
     assert caught.value.__cause__ is None
 
 
 def test_readiness_reports_each_preparation_gap_and_never_false_positive():
-    value = PaperProductionPreparationReadiness(False, False, False, False, False, False)
+    value = PaperProductionPreparationReadiness(False, False, False, False, False, False, False, False)
     assert not value.current_mutation_ready
     assert set(value.findings) == {
         PaperPreparationFinding.IDENTITY_BINDING_MISSING,
+        PaperPreparationFinding.PROTECTED_BACKEND_MISSING,
         PaperPreparationFinding.RUNTIME_CREDENTIAL_BINDING_MISSING,
         PaperPreparationFinding.RUNTIME_GRANTS_NOT_READY,
         PaperPreparationFinding.READONLY_GRANTS_NOT_READY,
         PaperPreparationFinding.SCHEMA_NOT_READY,
         PaperPreparationFinding.BASELINE_MISSING,
+        PaperPreparationFinding.READONLY_REPORTING_NOT_DEPLOYED,
     }
-    assert PaperProductionPreparationReadiness(True, True, True, True, True, True).current_mutation_ready
+    assert PaperProductionPreparationReadiness(True, True, True, True, True, True, True, True).current_mutation_ready
 
 
 class ReportingRepository:

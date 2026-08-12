@@ -19,6 +19,7 @@ venv/
 .env.*
 !.env.example
 /.env.production.local
+/ops/production/paper-identity.json
 
 # Build
 build/

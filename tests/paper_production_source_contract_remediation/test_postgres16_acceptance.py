@@ -110,7 +110,7 @@ def test_isolated_full_production_preparation_contract_remains_disabled_and_zero
             baseline_persistence=repository).reconcile_persisted(IDENTITY.account_identity(), ())
     assert len(baselines) == 1 and baselines[0].initial_balance == Decimal("100.00")
     assert result.outcome is PaperAccountingOutcome.HEALTHY
-    assert PaperProductionPreparationReadiness(True, True, True, True, True, True).current_mutation_ready
+    assert PaperProductionPreparationReadiness(True, True, True, True, True, True, True, True).current_mutation_ready
     document = create_app().openapi()
     methods = [method for operations in document["paths"].values() for method in operations
                if method in {"get", "post", "put", "patch", "delete"}]
