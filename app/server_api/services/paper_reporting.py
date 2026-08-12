@@ -17,6 +17,7 @@ from app.engine_paper.accounting import (
     PaperAccountingReconciliationService,
     PaperTradeFinancialReport,
 )
+from app.engine_paper.production_preparation import PaperProductionAccountIdentityBinding
 from app.server_api.errors import ApiError
 from app.server_api.mapping.contract import decimal_text, utc_text
 from app.server_api.pagination import decode_cursor, encode_cursor
@@ -66,6 +67,10 @@ class PaperRuntimeObservation:
     pitr_ready: bool | None = None
     current_approval_availability: str = "NOT_AVAILABLE"
     paper_principal_ready: bool = False
+    production_identity_binding_ready: bool | None = None
+    runtime_credential_binding_ready: bool | None = None
+    runtime_grants_ready: bool | None = None
+    readonly_grants_ready: bool | None = None
     runtime_config_ready: bool = False
     kill_switch_ready: bool = False
     canary_scope_valid: bool = False
@@ -104,11 +109,13 @@ class PaperReadonlyReportingService:
         runtime: PaperRuntimeObservation | None = None,
         control_status: Callable[[], PaperControlStatus] = _default_control_status,
         max_closed_trades: int = MAX_RECONCILIATION_CLOSED_TRADES,
+        production_identity: PaperProductionAccountIdentityBinding | None = None,
     ) -> None:
         self._repository = repository
         self._runtime = runtime or PaperRuntimeObservation()
         self._control_status = control_status
         self._max_closed_trades = max_closed_trades
+        self._production_identity = production_identity
         self._accounting = PaperAccountAccountingService()
         self._reconciliation = PaperAccountingReconciliationService(self._accounting)
 
@@ -144,6 +151,9 @@ class PaperReadonlyReportingService:
             raise ApiError(409, "BASELINE_MISSING", "The immutable PAPER account baseline is missing.")
         if len(baselines) != 1:
             raise ApiError(409, "ACCOUNTING_NOT_AUTHORITATIVE", "PAPER accounting is not authoritative.")
+        if (self._production_identity is not None
+                and baselines[0].identity != self._production_identity.account_identity()):
+            raise ApiError(409, "PRODUCTION_IDENTITY_MISMATCH", "PAPER production identity does not match the baseline.")
         facts = self._repo().list_closed_trade_facts(self._max_closed_trades + 1)
         if len(facts) > self._max_closed_trades:
             raise ApiError(409, "RECONCILIATION_SCOPE_EXCEEDED", "The bounded reconciliation scope was exceeded.")
@@ -181,6 +191,13 @@ class PaperReadonlyReportingService:
         denials = []
         if not ready:
             denials.append("PAPER_SCHEMA_NOT_DEPLOYED")
+        preparation_gates = (
+            ("PRODUCTION_IDENTITY_BINDING_MISSING", self._runtime.production_identity_binding_ready),
+            ("RUNTIME_CREDENTIAL_BINDING_MISSING", self._runtime.runtime_credential_binding_ready),
+            ("RUNTIME_GRANTS_NOT_READY", self._runtime.runtime_grants_ready),
+            ("READONLY_GRANTS_NOT_READY", self._runtime.readonly_grants_ready),
+        )
+        denials.extend(code for code, passed in preparation_gates if passed is False)
         gates = (
             ("PITR_NOT_READY", self._runtime.pitr_ready is True),
             ("WAL_NOT_READY", self._runtime.wal_ready is True),

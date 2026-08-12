@@ -12,6 +12,7 @@ from app.server_api.routes import build_paper_router, build_v1_router
 from app.server_api.services import ApiQueryService, PaperReadonlyReportingService, PaperRuntimeObservation
 from app.server_api.schemas.paper import PaperControlStatus
 from app.server_api.settings import ApiSettings
+from app.engine_paper.production_preparation import PaperProductionAccountIdentityBinding
 
 
 def create_app(
@@ -21,6 +22,7 @@ def create_app(
     clock: Callable[[], datetime] | None = None,
     paper_runtime: PaperRuntimeObservation | None = None,
     paper_control_status: Callable[[], PaperControlStatus] | None = None,
+    paper_production_identity: PaperProductionAccountIdentityBinding | None = None,
 ) -> FastAPI:
     """Build an inert ASGI application with explicit read dependencies only."""
     active_settings = settings or ApiSettings()
@@ -31,6 +33,7 @@ def create_app(
     paper_service = PaperReadonlyReportingService(
         None if repositories is None else repositories.paper,
         runtime=paper_runtime,
+        production_identity=paper_production_identity,
         **({"control_status": paper_control_status} if paper_control_status is not None else {}),
     )
     active_clock = clock or (lambda: datetime.now().astimezone())

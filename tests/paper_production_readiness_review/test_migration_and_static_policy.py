@@ -28,6 +28,10 @@ MIGRATION_PATHS = {
 @pytest.mark.parametrize("repeat", tuple(range(16)))
 def test_migration_sources_have_exact_frozen_hashes(manifest, repeat: int) -> None:
     payload = MIGRATION_PATHS[manifest.revision].read_bytes()
+    # Revision 0013 was accepted as an LF Git blob, unlike the older registry
+    # entries frozen from Windows bytes. Canonicalize only its stale checkout.
+    if manifest.revision == "0013_paper_first_canary_correlation":
+        payload = payload.replace(b"\r\n", b"\n")
     assert repeat >= 0
     assert hashlib.sha256(payload).hexdigest() == manifest.source_sha256
     ast.parse(payload, filename=str(MIGRATION_PATHS[manifest.revision]))
