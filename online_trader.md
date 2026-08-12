@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 51ca396275e89d3d23ad45bc6a96768f7dd93aa4
+STATUS_AS_OF_COMMIT = a60386f08ec11d4149ace1f8f9e968246d358eb9
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-11T23:09:32Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_DISABLED_FOUNDATION_01
-FILES_CHANGED = app/operator_control/ separate disabled PAPER operator control API, auth, DTO, executor and existing safety-authority composition; docs/architecture/paper_operator_control_api_disabled_foundation.md; tests/paper_operator_control_api_disabled_foundation/; online_trader.md
+RECONCILED_AT_UTC = 2026-08-12T09:30:01Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_FIRST_CANARY_CORRELATION_AND_READINESS_CONTRACT_REMEDIATION_01
+FILES_CHANGED = alembic/versions/0013_paper_first_canary_correlation.py; app/db/paper_models.py; app/engine_paper/ correlation, repository, readiness and composition integration; app/operator_control/ exact canary contracts; app/server_api/ readiness contract and derivation; docs/architecture/paper_first_canary_correlation.md; tests/ canary remediation and compatible contract updates; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED
-STATUS_CONFIDENCE = PROVEN_SEPARATE_OPERATOR_CONTROL_DISABLED_FOUNDATION_PASS_PRODUCTION_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_STILL_BELOW_24H
+STATUS_CONFIDENCE = PROVEN_FIRST_CANARY_CORRELATION_AND_READINESS_CONTRACT_PASS_ISOLATED_POSTGRESQL16_PRODUCTION_0008_CONTROL_DISABLED_GENERATION_3_PITR_WINDOW_STILL_BELOW_24H
 
 # Состояние проекта traders-ml
 
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = PROVEN_SEPARATE_OPERATOR_CONTROL_DISABLED_FOUNDATION_PASS_PR
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_HEALTHY
-CURRENT_STAGE = CLIENT_PAPER_OPERATOR_AND_REPORTING_FOUNDATION_WHILE_PITR_ACCUMULATES
+CURRENT_STAGE = RETRY_CLIENT_PAPER_FIRST_CANARY_WORKFLOW_READINESS_AGAINST_AUTHORITATIVE_SERVER_CONTRACTS_WHILE_PITR_ACCUMULATES
 CURRENT_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 BACKGROUND_TIMED_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
 ```
@@ -2249,6 +2249,62 @@ proved the real legal transitions and generation increments. No production
 credential, listener, deployment, transition, PAPER runtime or PAPER business
 row was created.
 
+## Authoritative PAPER first-canary correlation and readiness contract
+
+```text
+CANARY_CORRELATION_TASK = TRADERS_ML_PAPER_TRADING_FIRST_CANARY_CORRELATION_AND_READINESS_CONTRACT_REMEDIATION_01
+CANARY_CORRELATION_RESULT = COMPLETED_WITH_REMAINING_PITR_BLOCKER
+IMPLEMENTATION_COMMIT = a60386f08ec11d4149ace1f8f9e968246d358eb9
+FIRST_CANARY_CORRELATION_CONTRACT_READINESS = READY
+SERVER_MUTATION_READY_PRESENTATION_READINESS = READY
+FIRST_CANARY_LIFECYCLE_CORRELATION_CONTRACT_GAP_CLOSED = YES
+SERVER_READINESS_CANNOT_REPRESENT_MUTATION_READY_TRUE_CLOSED = YES
+CANARY_ID = SERVER_GENERATED_IMMUTABLE_UUID_AT_ARM_RESERVATION
+CANARY_PERSISTENCE = paper_first_canary_sessions_DEDICATED_AUTHORITATIVE_RECORD
+CANARY_DURABILITY = DATABASE_BACKED_RESTART_AND_UNCERTAIN_RESULT_RECOVERABLE
+CANARY_EXACT_CHAIN = ARM_START_COMMAND_POSITION_CLOSED_REPORT_RECONCILIATION_DISABLED_COMPLETED
+CANARY_FUZZY_MATCHING = FORBIDDEN_NOT_REQUIRED
+CANARY_ACTIVE_UNIQUENESS = ONE_NONTERMINAL_PER_ENVIRONMENT
+CANARY_COMMAND_BUDGET = MAX_1_FAIL_SAFE
+CANARY_POSITION_BUDGET = MAX_1_FAIL_SAFE
+CANARY_SYMBOL_SCOPE = PERSISTED_SERVER_ENFORCED_FAIL_SAFE
+CANARY_STATUS_LOOKUP = CURRENT_OR_EXACT_UUID_WITH_404_NO_FALLBACK
+SOURCE_CONTROL_ROUTES = 3_GET_5_POST_EXACT_ALLOWLIST
+SOURCE_READONLY_ROUTES = 18_GET_0_WRITE
+PAPER_READINESS_CURRENT_MUTATION_READY_TYPE = BOOLEAN
+PRODUCTION_LIKE_MUTATION_READY = FALSE_WITH_DENIAL_REASONS
+FUTURE_READY_ISOLATED_MUTATION_READY = TRUE_WITH_ZERO_DENIAL_REASONS
+REPOSITORY_ALEMBIC_HEAD = 0013_paper_first_canary_correlation
+FUTURE_PRODUCTION_SCHEMA_TARGET = 0008_TO_0009_TO_0010_TO_0011_TO_0012_TO_0013
+MIGRATION_SEEDS_CANARY_ROWS = NO
+MIGRATION_SEEDS_BASELINE = NO
+NEW_REMEDIATION_TESTS = 2062_PASSED_ZERO_FAILED
+FULL_ALLOWED_REGRESSION = PASS_PARTITIONED_30997_PASSED_6_SKIPPED_ZERO_REQUIRED_FAILURES
+REAL_POSTGRESQL16_CORRELATION = PASS
+PRODUCTION_DEPLOYMENT = NOT_PERFORMED
+PRODUCTION_ALEMBIC = 0008_engine_orchestrator_freshness_retry
+PRODUCTION_ROUTES = 9_GET_0_WRITE_UNCHANGED
+PRODUCTION_CONTROL = DISABLED_GENERATION_3_UNCHANGED
+PRODUCTION_PAPER_AND_ACCOUNTING_MUTATIONS = 0
+PAPER_RUNTIME_STARTED = NO
+PAPER_MODE_ENABLED = NO
+LIVE_MODE_ENABLED = NO
+BINANCE_ORDER_API_CALLS = 0
+PROTECTED_BINDING_OPEN_READ_HASH_FINGERPRINT = 0
+REMAINING_BLOCKER = MINIMUM_24_HOUR_PITR_WINDOW_NOT_YET_ACCUMULATED
+```
+
+Revision 0013 adds one dedicated correlation record and exact transactional
+links to the existing command and position identities. ARM reserves the UUID,
+START must present that UUID and the arming transition identity, and exact
+status survives service/client restart or a lost POST response. A canary can
+reach `COMPLETED` only after its exact position is CLOSED, its report exists,
+both existing reconciliations are healthy, and the safety control is DISABLED.
+The readiness DTO now serializes both boolean values while its value remains a
+server-derived conjunction of the existing mutation gates. No production
+migration, listener, transition, database query, PAPER mutation or runtime
+activation occurred.
+
 ## Tracked Compose secret incident remediation
 
 ```text
@@ -2294,11 +2350,12 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈95% | Revision 0012 immutable baseline persistence and the existing closed-trade reporting/reconciliation chain are isolated-PG16 proven; production remains at 0008 with PAPER disabled until the minimum 24-hour PITR gate and a separately authorized preparation task |
+| Online analytics/paper pipeline | ≈95% | Revision 0013 adds isolated-PG16-proven durable first-canary correlation over the revision 0012 baseline and existing closed-trade reporting/reconciliation chain; production remains at 0008 with PAPER disabled until the minimum 24-hour PITR gate and separately authorized preparation/deployment |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Readonly Server API | 94% | Existing nine-route production API remains accepted; nine additional GET-only PAPER reporting routes are source/integration and isolated-PG16 ready but not deployed |
 | Readonly PAPER reporting API | 100% source/integration / 0% production deployment | Readiness, account, positions, trades, reports, reconciliation, runtime and control status pass with 0012; production remains at 0008 and does not expose these routes |
-| PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated seven-route control boundary passes isolated transitions and production-target disabled proofs; no listener, credential binding, production transition, runtime or PAPER mutation exists |
+| PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
+| First-canary correlation/readiness | 100% source/integration / 0% production deployment | Durable UUID correlation, exact lifecycle lookup, max-one budgets, symbol scope, terminal reconciliation and boolean mutation readiness pass 2062 new tests and real isolated PostgreSQL 16; production remains unchanged at 0008 |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -2309,10 +2366,11 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_CLIENT_PAPER_TRADING_OPERATOR_AND_REPORTING_FOUNDATION_01
+TRADERS_CLIENT_PAPER_TRADING_FIRST_CANARY_WORKFLOW_READINESS_RETRY_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CLIENT_REPOSITORY_SCOPE
 PARALLEL_TIMED_TASK_WHEN_MATURE = TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
-FOLLOWING_CLIENT_TASK = TRADERS_CLIENT_PAPER_TRADING_DISABLED_SERVER_INTEGRATION_01
+CLIENT_RETRY_BASE = UNCHANGED_CLIENT_MAIN_73a987157d9a1330a786c9dd79dc9bb9ce194b9c
+PRESERVED_BLOCKED_CLIENT_BRANCH = feature/traders-client-paper-first-canary-workflow-readiness-01_UNCHANGED
 ```
 
 Scanner scope remediation, credential rotation/safe-rebind and the clean
