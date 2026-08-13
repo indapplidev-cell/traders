@@ -409,6 +409,22 @@ class PaperPreparationDeploymentAdapter:
         })
         return PaperPreparationOperationResult(changed, True)
 
+    def accept_deployed_readonly_api_narrow(self) -> PaperPreparationOperationResult:
+        """Publish bookkeeping for an already-deployed, fully accepted runtime."""
+
+        acceptance = self._probe(self._source_identity_provider())
+        runtime_identity = acceptance.source_identity
+        if not acceptance.accepted_for(runtime_identity):
+            raise PaperPreparationAdapterError("READONLY_RUNTIME_ACCEPTANCE_FAILED")
+        changed = self._publish("readonly-api.narrow.json", {
+            "deployment": "NARROW", "service": "readonly-api", "schema": 2,
+            "source_identity": runtime_identity, "runtime_health": "PASS",
+            "get_routes": len(READONLY_EXPECTED_GET_ROUTES), "write_routes": 0,
+            "legacy_endpoints": len(READONLY_LEGACY_ROUTES),
+            "paper_endpoints": len(READONLY_PAPER_ROUTES),
+        })
+        return PaperPreparationOperationResult(changed, True)
+
     def _marker_matches(self, source_identity: str) -> bool:
         path = self._root / "readonly-api.narrow.json"
         try:
@@ -551,8 +567,10 @@ class PaperPreparationDeploymentAdapter:
 
     def readonly_api_narrow_ready(self) -> bool:
         try:
-            source_identity = self._source_identity_provider()
-            return (self._marker_matches(source_identity)
+            payload = json.loads((self._root / "readonly-api.narrow.json").read_text(encoding="utf-8"))
+            source_identity = payload.get("source_identity")
+            return (isinstance(source_identity, str)
+                    and self._marker_matches(source_identity)
                     and self._probe(source_identity).accepted_for(source_identity))
         except Exception:
             return False

@@ -200,3 +200,38 @@ def test_old_schema_marker_is_bookkeeping_only_even_with_healthy_runtime(tmp_pat
         encoding="utf-8",
     )
     assert not adapter(tmp_path, [acceptance()]).readonly_api_narrow_ready()
+
+
+def test_accepted_deployed_runtime_can_publish_marker_without_build_or_recreate(tmp_path):
+    runner = Runner()
+    deployment = docker_adapter(tmp_path, [acceptance(identity=OTHER_IDENTITY)], runner)
+
+    result = deployment.accept_deployed_readonly_api_narrow()
+
+    assert result.changed and result.ready
+    assert runner.calls == []
+    assert json.loads((tmp_path / "state/readonly-api.narrow.json").read_text()) == (
+        marker_payload(OTHER_IDENTITY)
+    )
+    assert deployment.readonly_api_narrow_ready()
+
+
+@pytest.mark.parametrize(
+    "bad",
+    (
+        acceptance(healthy=False),
+        acceptance(routes=READONLY_LEGACY_ROUTES),
+        acceptance(writes=1),
+        acceptance(paper_statuses=(200, 200, 500, 200, 200, 200, 200)),
+        acceptance(legacy_statuses=(200,) * 8 + (500,)),
+    ),
+)
+def test_marker_only_acceptance_fails_closed_before_marker_write(tmp_path, bad):
+    runner = Runner()
+    deployment = docker_adapter(tmp_path, [bad], runner)
+
+    with pytest.raises(PaperPreparationAdapterError, match="READONLY_RUNTIME_ACCEPTANCE_FAILED"):
+        deployment.accept_deployed_readonly_api_narrow()
+
+    assert runner.calls == []
+    assert not (tmp_path / "state/readonly-api.narrow.json").exists()

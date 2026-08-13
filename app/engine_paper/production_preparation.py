@@ -249,7 +249,9 @@ RUNTIME_UPDATE_TABLES: Final = (
     "paper_execution_commands", "paper_orders", "paper_positions",
     "paper_exit_evaluation_cursors", "paper_first_canary_sessions",
 )
-READONLY_PAPER_TABLES: Final = ("paper_account_baselines",) + RUNTIME_WRITE_TABLES
+READONLY_PAPER_TABLES: Final = (
+    "alembic_version", "paper_account_baselines",
+) + RUNTIME_WRITE_TABLES
 # Authoritative pre-PAPER Readonly API relation contract. These are the only
 # relations used by the original nine-route production API and remain valid
 # when the separately authorized PAPER reporting SELECT grants are added.
