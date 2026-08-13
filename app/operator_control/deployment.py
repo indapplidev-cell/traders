@@ -37,6 +37,9 @@ class ControlApiRuntimeAcceptance:
     invalid_token_mutation_rejected: bool
     control_state: str
     control_generation: int
+    foundation_mode: str
+    service_enabled: bool
+    production_mutation_enabled: bool
     secret_output: bool
 
     def accepted_for(self, identity: str) -> bool:
@@ -50,6 +53,9 @@ class ControlApiRuntimeAcceptance:
             and self.invalid_token_mutation_rejected
             and self.control_state == "DISABLED"
             and self.control_generation == 3
+            and self.foundation_mode == "PRODUCTION_PAPER"
+            and self.service_enabled
+            and self.production_mutation_enabled
             and not self.secret_output
         )
 
@@ -152,6 +158,8 @@ class OperatorControlDeploymentAdapter:
             "get_routes": acceptance.get_routes, "post_routes": acceptance.post_routes,
             "bind": "127.0.0.1:8766", "control_state": acceptance.control_state,
             "control_generation": acceptance.control_generation,
+            "foundation_mode": acceptance.foundation_mode,
+            "production_mutation_enabled": acceptance.production_mutation_enabled,
         }
         self._marker.parent.mkdir(parents=True, exist_ok=True)
         rendered = json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"

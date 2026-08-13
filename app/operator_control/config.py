@@ -15,6 +15,7 @@ READONLY_API_PORT = 8765
 class PaperOperatorControlOperationMode(StrEnum):
     DISABLED_FOUNDATION = "DISABLED_FOUNDATION"
     ISOLATED_CONTROL_ROOT = "ISOLATED_CONTROL_ROOT"
+    PRODUCTION_PAPER = "PRODUCTION_PAPER"
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +31,24 @@ class PaperOperatorControlConfig:
     live_allowed: bool = False
     docs_enabled: bool = False
     max_request_body_bytes: int = MAX_REQUEST_BODY_BYTES
+
+    @classmethod
+    def production_paper(cls) -> "PaperOperatorControlConfig":
+        """Enable only the authenticated PAPER mutation foundation."""
+        return cls(
+            enabled=True,
+            operation_mode=PaperOperatorControlOperationMode.PRODUCTION_PAPER,
+        )
+
+    @property
+    def mutation_foundation_enabled(self) -> bool:
+        return (
+            self.enabled
+            and self.operation_mode is not PaperOperatorControlOperationMode.DISABLED_FOUNDATION
+            and self.environment == "PRODUCTION"
+            and self.mode == "PAPER"
+            and not self.live_allowed
+        )
 
     def __post_init__(self) -> None:
         try:

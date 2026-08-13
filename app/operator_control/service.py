@@ -22,7 +22,7 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanaryState,
 )
 
-from .config import CONTROL_API_VERSION, PaperOperatorControlConfig, PaperOperatorControlOperationMode
+from .config import CONTROL_API_VERSION, PaperOperatorControlConfig
 from .schemas import (
     PaperCanaryNormalizedState,
     PaperOperatorArmFirstCanaryRequest,
@@ -258,7 +258,7 @@ class PaperOperatorControlService:
             state_audit_reconciliation="PASS" if health.effective_state.value != "FAIL_CLOSED" else "FAIL",
             emergency_stop_available=health.emergency_stop_available,
             live_allowed=False,
-            production_mutation_enabled=False,
+            production_mutation_enabled=self.config.mutation_foundation_enabled,
         )
 
     @staticmethod
@@ -338,7 +338,7 @@ class PaperOperatorControlService:
         return self._idempotency.run(request_id, fingerprint, function)
 
     def _deny_if_foundation(self, request_id: str, operation: str) -> None:
-        if self.config.operation_mode is PaperOperatorControlOperationMode.DISABLED_FOUNDATION:
+        if not self.config.mutation_foundation_enabled:
             raise ControlDecisionError(409, self._foundation_denial(request_id, operation))
 
     @staticmethod

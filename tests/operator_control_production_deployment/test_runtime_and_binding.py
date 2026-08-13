@@ -42,7 +42,12 @@ def test_production_app_binding_auth_routes_and_disabled_state(tmp_path):
     token_path.write_bytes(TOKEN)
     binding = ProtectedFileOperatorCredentialBinding(token_path)
     control = generation_three_control(tmp_path / "control")
-    app = create_runtime_app(credential_binding=binding, control=control, runtime_identity="build-1")
+    app = create_runtime_app(
+        credential_binding=binding,
+        control=control,
+        runtime_identity="build-1",
+        require_production_store=False,
+    )
     routes = [(route.path, route.methods) for route in app.routes]
     assert sum("GET" in methods for _, methods in routes) == 3
     assert sum("POST" in methods for _, methods in routes) == 5
@@ -53,6 +58,8 @@ def test_production_app_binding_auth_routes_and_disabled_state(tmp_path):
         assert response.status_code == 200
         assert response.json()["control_state"] == "DISABLED"
         assert response.json()["generation"] == 3
+        assert response.json()["foundation_mode"] == "PRODUCTION_PAPER"
+        assert response.json()["production_mutation_enabled"] is True
     after = control.read_authoritative()
     assert (after.state.value, after.generation) == ("DISABLED", 3)
     assert app.state.runtime_identity == "build-1"

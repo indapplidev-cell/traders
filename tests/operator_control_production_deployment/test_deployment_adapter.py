@@ -31,7 +31,9 @@ class Runner:
                 "identity": IDENTITY, "healthy": True, "get_routes": 3, "post_routes": 5,
                 "valid_safe_read": True, "unauthenticated_mutation_rejected": True,
                 "invalid_token_mutation_rejected": True, "control_state": "DISABLED",
-                "control_generation": 3, "secret_output": False,
+                "control_generation": 3, "foundation_mode": "PRODUCTION_PAPER",
+                "service_enabled": True, "production_mutation_enabled": True,
+                "secret_output": False,
             }
             return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
@@ -61,6 +63,8 @@ def test_adapter_builds_and_recreates_only_operator_control_then_accepts(tmp_pat
     marker = json.loads((tmp_path / "artifacts/paper-production-preparation/operator-control-api.narrow.json").read_text())
     assert marker["bind"] == "127.0.0.1:8766"
     assert marker["get_routes"] == 3 and marker["post_routes"] == 5
+    assert marker["foundation_mode"] == "PRODUCTION_PAPER"
+    assert marker["production_mutation_enabled"] is True
 
 
 def test_compose_publishes_only_literal_loopback_for_container_listener():

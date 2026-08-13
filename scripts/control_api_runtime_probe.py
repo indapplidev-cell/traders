@@ -44,6 +44,9 @@ def probe() -> dict[str, object]:
         "invalid_token_mutation_rejected": invalid in {401, 403},
         "control_state": body.get("control_state"),
         "control_generation": body.get("generation"),
+        "foundation_mode": body.get("foundation_mode"),
+        "service_enabled": body.get("service_enabled"),
+        "production_mutation_enabled": body.get("production_mutation_enabled"),
         "secret_output": False,
     }
 
@@ -59,6 +62,9 @@ def main() -> int:
             result["valid_safe_read"], result["unauthenticated_mutation_rejected"],
             result["invalid_token_mutation_rejected"], result["control_state"] == "DISABLED",
             result["control_generation"] == 3, not result["secret_output"],
+            result["foundation_mode"] == "PRODUCTION_PAPER",
+            result["service_enabled"] is True,
+            result["production_mutation_enabled"] is True,
         ))
         if not args.health_only:
             print(json.dumps(result, sort_keys=True, separators=(",", ":")))

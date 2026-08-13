@@ -21,10 +21,21 @@ services:
     cpus: "0.50"
     mem_limit: 256m
     pids_limit: 64
+    env_file:
+      - ../../../.env.production.local
     environment:
+      # The shared protected binding supplies only the PAPER runtime URL to
+      # this process; unrelated database/admin bindings are explicitly erased.
+      DATABASE_URL: ""
+      MARKET_DATA_DATABASE_URL: ""
+      TRADERS_ML_POSTGRES_PASSWORD: ""
+      TRADERS_READONLY_API_DATABASE_URL: ""
       TRADERS_CONTROL_SOURCE_IDENTITY: "${TRADERS_CONTROL_SOURCE_IDENTITY:-UNSET}"
       TRADERS_CONTROL_CONTAINER_LISTENER: "1"
       TRADERS_PRODUCTION_CONTROL_ROOT: "/run/traders-control"
+      TRADERS_PAPER_RUNTIME_DATABASE_HOST: "postgres"
+      TRADERS_PAPER_RUNTIME_DATABASE_PORT: "5432"
+      TRADERS_READONLY_API_INTERNAL_URL: "http://readonly-api:8765"
     ports:
       - "127.0.0.1:8766:8766"
     secrets:
@@ -33,7 +44,14 @@ services:
       - type: bind
         source: D:/disk_E/game_projects/traders/production_control/paper
         target: /run/traders-control
+    networks:
+      - production
 
 secrets:
   traders_control_api_token:
     file: ../../../.control-api.token
+
+networks:
+  production:
+    name: "${TRADERS_READONLY_API_NETWORK:-traders-ml_default}"
+    external: true
