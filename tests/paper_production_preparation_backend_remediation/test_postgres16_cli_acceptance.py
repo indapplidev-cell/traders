@@ -11,6 +11,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 from app.engine_paper.production_preparation import ALL_PREPARATION_ACTIONS
 
@@ -54,7 +55,8 @@ def isolated_pg16():
         settings.get_settings = original
 
 
-def _files(tmp_path: Path):
+def _files(tmp_path: Path, raw: str):
+    admin = make_url(raw)
     identity = tmp_path / "paper-identity.json"
     identity.write_text(json.dumps({
         "PAPER_PRODUCTION_ACCOUNT_ID": "PAPER-ISOLATED-PRIMARY",
@@ -62,7 +64,8 @@ def _files(tmp_path: Path):
         "PAPER_PRODUCTION_CURRENCY": "USDT",
     }), encoding="utf-8")
     binding = tmp_path / ".env.isolated.local"
-    binding.write_text("TRADERS_READONLY_API_DATABASE_URL=\nTRADERS_READONLY_API_HOST=127.0.0.1\n"
+    binding.write_text(f"TRADERS_ML_POSTGRES_PASSWORD={admin.password}\n"
+                       "TRADERS_READONLY_API_DATABASE_URL=\nTRADERS_READONLY_API_HOST=127.0.0.1\n"
                        "TRADERS_READONLY_API_PORT=8765\n", encoding="utf-8")
     state = tmp_path / "state"
     config = tmp_path / "composition.json"
@@ -70,27 +73,52 @@ def _files(tmp_path: Path):
         "deployment_driver": "ISOLATED_FILESYSTEM", "identity_config": str(identity),
         "protected_binding": str(binding), "state_root": str(state),
         "target_id": "isolated-production-target",
+        "admin_host": admin.host, "admin_port": admin.port,
+        "admin_database": admin.database, "admin_user": admin.username,
     }), encoding="utf-8")
     return config, binding, state
 
 
-def _run(config: Path, raw: str):
+def _run(config: Path, mode: str = "execute"):
     env = dict(os.environ)
-    env["TRADERS_PAPER_PREPARATION_ADMIN_DATABASE_URL"] = raw
-    env["TRADERS_PAPER_PREPARATION_TARGET_ID"] = "isolated-production-target"
-    return subprocess.run([
+    env.pop("TRADERS_PAPER_PREPARATION_ADMIN_DATABASE_URL", None)
+    env.pop("TRADERS_PAPER_PREPARATION_TARGET_ID", None)
+    command_line = [
         sys.executable, "-m", "app.engine_paper.production_preparation_cli",
-        "--config", str(config), "execute",
-        "--ack", "I_ACKNOWLEDGE_PRODUCTION_PREPARATION_MUTATIONS",
-        "--actions", ",".join(item.value for item in ALL_PREPARATION_ACTIONS),
-        "--orchestrate-schema-and-baseline", "--initial-balance-usdt", "100.00",
-    ], cwd=ROOT, env=env, capture_output=True, text=True, check=False)
+        "--config", str(config), mode,
+    ]
+    if mode == "execute":
+        command_line.extend([
+            "--ack", "I_ACKNOWLEDGE_PRODUCTION_PREPARATION_MUTATIONS",
+            "--actions", ",".join(item.value for item in ALL_PREPARATION_ACTIONS),
+            "--orchestrate-schema-and-baseline", "--initial-balance-usdt", "100.00",
+        ])
+    return subprocess.run(command_line, cwd=ROOT, env=env,
+                          capture_output=True, text=True, check=False)
 
 
 def test_real_cli_execute_replay_roles_grants_baseline_and_zero_trade(isolated_pg16, tmp_path):
     engine, raw = isolated_pg16
-    config, binding, state = _files(tmp_path)
-    first = _run(config, raw)
+    config, binding, state = _files(tmp_path, raw)
+    with engine.connect() as connection:
+        before_revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+        before_roles = connection.execute(text(
+            "SELECT count(*) FROM pg_roles WHERE rolname IN ('traders_paper_runtime','traders_readonly_api')"
+        )).scalar_one()
+    for mode in ("status", "plan"):
+        safe = _run(config, mode)
+        assert safe.returncode == 0, safe.stderr
+        payload = json.loads(safe.stdout)
+        assert payload["result"] == "PASS" and payload["target_verified"] is True
+        assert str(make_url(raw).password) not in safe.stdout + safe.stderr
+        assert "://" not in safe.stdout + safe.stderr
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == before_revision
+        assert connection.execute(text(
+            "SELECT count(*) FROM pg_roles WHERE rolname IN ('traders_paper_runtime','traders_readonly_api')"
+        )).scalar_one() == before_roles
+    assert not state.exists()
+    first = _run(config)
     assert first.returncode == 0, first.stderr
     first_output = json.loads(first.stdout)
     assert first_output["result"] == "PASS" and first_output["binding_ready"] is True
@@ -123,7 +151,7 @@ def test_real_cli_execute_replay_roles_grants_baseline_and_zero_trade(isolated_p
     assert json.loads((state / "paper-runtime.disabled.json").read_text())["state"] == "DEPLOYED_DISABLED"
     assert json.loads((state / "readonly-api.narrow.json").read_text())["write_routes"] == 0
 
-    second = _run(config, raw)
+    second = _run(config)
     assert second.returncode == 0, second.stderr
     assert json.loads(second.stdout)["mutations"] == 0
     assert binding.read_text(encoding="utf-8") == protected_content
@@ -133,13 +161,13 @@ def test_real_cli_execute_replay_roles_grants_baseline_and_zero_trade(isolated_p
 
 def test_privilege_drift_fails_closed_before_mutation(isolated_pg16, tmp_path):
     engine, raw = isolated_pg16
-    config, binding, state = _files(tmp_path)
+    config, binding, state = _files(tmp_path, raw)
     if not binding.exists():
         pytest.fail("isolated binding fixture missing")
     with engine.begin() as connection:
         connection.exec_driver_sql('ALTER ROLE "traders_paper_runtime" CREATEDB')
     before = state.joinpath("paper-runtime.disabled.json").read_bytes() if state.exists() else b""
-    result = _run(config, raw)
+    result = _run(config)
     assert result.returncode == 4
     assert "CREATEDB" not in result.stdout + result.stderr
     after = state.joinpath("paper-runtime.disabled.json").read_bytes() if state.exists() else b""

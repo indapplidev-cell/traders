@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -23,9 +22,7 @@ from app.engine_paper.production_preparation import (
 )
 from app.engine_paper.production_preparation_backend import (
     PaperPreparationAdapterError,
-    PaperProductionIdentityConfigurationAdapter,
     compose_production_preparation,
-    validate_production_preparation_config,
 )
 
 
@@ -37,6 +34,8 @@ EXIT_BINDING_UNAVAILABLE = 5
 EXIT_IDENTITY_UNAVAILABLE = 6
 EXIT_EXECUTION_FAILURE = 7
 ACKNOWLEDGEMENT = "I_ACKNOWLEDGE_PRODUCTION_PREPARATION_MUTATIONS"
+ROOT = Path(__file__).resolve().parents[2]
+PRODUCTION_CONFIG = ROOT / "ops/production/paper-preparation.json"
 
 
 def _json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -70,8 +69,11 @@ def _emit(payload: Mapping[str, object], *, stderr: bool = False) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="paper-production-preparation")
-    parser.add_argument("--config", type=Path, required=True,
-                        help="non-secret preparation composition JSON")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--production", action="store_true",
+                        help="trusted canonical production target binding")
+    source.add_argument("--config", type=Path,
+                        help="non-secret isolated preparation composition JSON")
     subparsers = parser.add_subparsers(dest="mode", required=True)
     subparsers.add_parser("plan", help="secret-free, zero-mutation plan")
     subparsers.add_parser("status", help="sanitized target and readiness validation")
@@ -150,24 +152,27 @@ def _execute(composition, actions: tuple[PaperPreparationAction, ...], *, orches
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        config = _load_config(args.config)
+        config = _load_config(PRODUCTION_CONFIG if args.production else args.config)
+        composition = compose_production_preparation(config, production_mode=args.production)
         if args.mode == "plan":
-            validate_production_preparation_config(config)
-            identity = PaperProductionIdentityConfigurationAdapter(Path(str(config["identity_config"]))).load()
-            del identity
+            target_ok = composition.backend.validate_target(composition.target)
             _emit({"action": "PLAN", "backend": "PostgresPaperProductionPreparationBackend",
-                   "binding_adapter": "ProtectedPaperRuntimeBindingAdapter", "dry_run": True,
+                   "binding_adapter": "PaperProductionPreparationTargetBinding", "binding_ready": True,
+                   "dry_run": True, "execute_composition_ready": True,
                    "identity_adapter": "PaperProductionIdentityConfigurationAdapter",
-                   "mutations": 0, "result": "PASS", "target": "production"})
-            return EXIT_SUCCESS
-        composition = compose_production_preparation(config)
+                   "mutations": 0, "result": "PASS" if target_ok else "BLOCKED",
+                   "target": "production", "target_verified": target_ok})
+            return EXIT_SUCCESS if target_ok else EXIT_TARGET_MISMATCH
         if args.mode == "status":
             target_ok = composition.backend.validate_target(composition.target)
             role_state = composition.backend.inspect_runtime_role() if target_ok else "NOT_CHECKED"
             binding = composition.protected_binding.metadata()
             result = "PASS" if target_ok and role_state != "BROADER_THAN_CONTRACT" else "BLOCKED"
-            _emit({"binding_ready": binding.binding_valid, "dry_run": True,
+            _emit({"alembic_revision": composition.backend.current_revision() if target_ok else "UNVERIFIED",
+                   "binding_ready": True, "control_state": composition.target.control_state,
+                   "dry_run": True, "execute_composition_ready": True,
                    "identity_ready": True, "result": result, "role_state": role_state,
+                   "runtime_binding_ready": binding.binding_valid,
                    "target": "production", "target_verified": target_ok})
             if not target_ok:
                 return EXIT_TARGET_MISMATCH
@@ -197,7 +202,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except PaperPreparationAdapterError as error:
         reason = str(error)
         _emit({"result": "BLOCKED", "reason": reason}, stderr=True)
-        return EXIT_TARGET_MISMATCH if reason == "TARGET_MISMATCH" else EXIT_EXECUTION_FAILURE
+        if reason in {"TARGET_MISMATCH", "PRODUCTION_TARGET_MISMATCH"}:
+            return EXIT_TARGET_MISMATCH
+        if reason in {"PRODUCTION_TARGET_BINDING_UNAVAILABLE", "PRODUCTION_TARGET_BINDING_INVALID"}:
+            return EXIT_BINDING_UNAVAILABLE
+        return EXIT_EXECUTION_FAILURE
     except Exception:
         _emit({"result": "BLOCKED", "reason": "EXECUTION_FAILURE"}, stderr=True)
         return EXIT_EXECUTION_FAILURE

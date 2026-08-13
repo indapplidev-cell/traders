@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -11,10 +12,15 @@ from sqlalchemy.engine import make_url
 
 from app.engine_paper.production_preparation import PaperProductionIdentityError
 from app.engine_paper.production_preparation_backend import (
+    PRODUCTION_ADMIN_PASSWORD_KEY,
+    PRODUCTION_PROTECTED_SOURCE,
+    PRODUCTION_TARGET_ID,
     RUNTIME_DATABASE_KEY,
     PaperPreparationAdapterError,
+    PaperProductionPreparationTargetBinding,
     PaperProductionIdentityConfigurationAdapter,
     ProtectedPaperRuntimeBindingAdapter,
+    compose_production_preparation,
 )
 from app.engine_paper.production_preparation_cli import build_parser
 
@@ -60,7 +66,8 @@ def test_identity_adapter_is_persistent_restart_stable_and_exact(tmp_path):
 
 def test_protected_adapter_atomic_binding_safe_repr_and_idempotency(tmp_path, monkeypatch):
     binding = tmp_path / ".env.isolated.local"
-    binding.write_text("TRADERS_READONLY_API_DATABASE_URL=\nTRADERS_READONLY_API_HOST=127.0.0.1\n"
+    binding.write_text("TRADERS_ML_POSTGRES_PASSWORD=synthetic-admin\n"
+                       "TRADERS_READONLY_API_DATABASE_URL=\nTRADERS_READONLY_API_HOST=127.0.0.1\n"
                        "TRADERS_READONLY_API_PORT=8765\n", encoding="utf-8")
     monkeypatch.setattr("app.engine_paper.production_preparation_backend.secrets.token_urlsafe",
                         lambda _: SECRET)
@@ -75,6 +82,7 @@ def test_protected_adapter_atomic_binding_safe_repr_and_idempotency(tmp_path, mo
     assert validation.binding_valid and SECRET not in rendered and "://" not in rendered
     assert not adapter.ensure(installed.append).changed and installed == [SECRET]
     assert windows_sddl(binding) == security_before
+    assert f"{PRODUCTION_ADMIN_PASSWORD_KEY}=synthetic-admin" in binding.read_text()
     assert make_url(dict(line.split("=", 1) for line in binding.read_text().splitlines())[
         RUNTIME_DATABASE_KEY]).username == "traders_paper_runtime"
 
@@ -99,7 +107,7 @@ def test_uncertain_binding_result_reuses_staged_credential_without_rotation(tmp_
     assert SECRET not in repr(caught.value)
 
 
-def test_cli_plan_is_real_secret_free_zero_mutation(tmp_path):
+def test_cli_plan_missing_protected_binding_fails_closed_without_mutation(tmp_path):
     identity = tmp_path / "identity.json"
     write_identity(identity)
     config = tmp_path / "composition.json"
@@ -116,17 +124,18 @@ def test_cli_plan_is_real_secret_free_zero_mutation(tmp_path):
         [sys.executable, "-m", "app.engine_paper.production_preparation_cli",
          "--config", str(config), "plan"], cwd=ROOT, env=env,
         capture_output=True, text=True, check=False)
-    assert completed.returncode == 0 and completed.stderr == ""
-    payload = json.loads(completed.stdout)
-    assert payload["dry_run"] is True and payload["mutations"] == 0 and payload["result"] == "PASS"
-    assert not state.exists() and SECRET not in completed.stdout
+    assert completed.returncode == 5 and completed.stdout == ""
+    payload = json.loads(completed.stderr)
+    assert payload["reason"] == "PRODUCTION_TARGET_BINDING_UNAVAILABLE"
+    assert not state.exists() and SECRET not in completed.stderr
 
 
-def test_cli_failure_stdout_stderr_and_diagnostics_never_expose_environment_secret(tmp_path):
+def test_cli_failure_stdout_stderr_and_diagnostics_never_expose_protected_secret(tmp_path):
     identity = tmp_path / "identity.json"
     write_identity(identity)
     binding = tmp_path / ".env.isolated.local"
-    binding.write_text("TRADERS_READONLY_API_DATABASE_URL=\nTRADERS_READONLY_API_HOST=127.0.0.1\n"
+    binding.write_text(f"{PRODUCTION_ADMIN_PASSWORD_KEY}={SECRET}\n"
+                       "TRADERS_READONLY_API_DATABASE_URL=\nTRADERS_READONLY_API_HOST=127.0.0.1\n"
                        "TRADERS_READONLY_API_PORT=8765\n", encoding="utf-8")
     config = tmp_path / "composition.json"
     config.write_text(json.dumps({
@@ -134,15 +143,11 @@ def test_cli_failure_stdout_stderr_and_diagnostics_never_expose_environment_secr
         "protected_binding": str(binding), "state_root": str(tmp_path / "state"),
         "target_id": "declared-target",
     }), encoding="utf-8")
-    env = dict(os.environ)
-    env["TRADERS_PAPER_PREPARATION_ADMIN_DATABASE_URL"] = (
-        f"postgresql+psycopg://admin:{SECRET}@127.0.0.1:1/isolated")
-    env["TRADERS_PAPER_PREPARATION_TARGET_ID"] = "conflicting-target"
     completed = subprocess.run([
         sys.executable, "-m", "app.engine_paper.production_preparation_cli",
-        "--config", str(config), "status"], cwd=ROOT, env=env,
+        "--config", str(config), "status"], cwd=ROOT,
         capture_output=True, text=True, check=False)
-    assert completed.returncode == 7
+    assert completed.returncode == 3
     rendered = completed.stdout + completed.stderr
     assert SECRET not in rendered and "://" not in rendered and "admin" not in rendered
 
@@ -156,12 +161,79 @@ def test_cli_has_no_default_or_secret_arguments_and_no_trading_modes():
     assert not any(item in help_text for item in forbidden)
 
 
-def test_production_binding_direct_access_guard():
+def test_target_binding_is_safe_and_never_returns_protected_value(tmp_path):
+    captured = []
+
+    class Engine:
+        pass
+
+    def engine_factory(url, **options):
+        captured.append((url, options))
+        return Engine()
+
+    binding = PaperProductionPreparationTargetBinding(
+        tmp_path / "protected", "isolated-production-target",
+        protected_value_provider=lambda _: SECRET,
+        engine_factory=engine_factory,
+    )
+    engine = binding.build_engine()
+    rendered = repr(binding) + str(binding) + repr(engine)
+    assert SECRET not in rendered and "://" not in rendered
+    assert len(captured) == 1 and captured[0][0].password == SECRET
+    assert captured[0][1] == {"hide_parameters": True, "pool_pre_ping": True}
+
+    failing = PaperProductionPreparationTargetBinding(
+        tmp_path / "protected", "isolated-production-target",
+        protected_value_provider=lambda _: SECRET,
+        engine_factory=lambda url, **_: (_ for _ in ()).throw(RuntimeError(str(url))),
+    )
+    with pytest.raises(PaperPreparationAdapterError) as caught:
+        failing.build_engine()
+    assert str(caught.value) == "PRODUCTION_TARGET_BINDING_INVALID"
+    assert SECRET not in repr(caught.value) + str(caught.value)
+
+
+def test_target_binding_missing_invalid_and_logging_are_secret_free(tmp_path, caplog):
+    missing = PaperProductionPreparationTargetBinding(tmp_path / "missing", "isolated-target")
+    with pytest.raises(PaperPreparationAdapterError, match="PRODUCTION_TARGET_BINDING_UNAVAILABLE"):
+        missing.build_engine()
+    invalid_path = tmp_path / "invalid"
+    invalid_path.write_text(f"{PRODUCTION_ADMIN_PASSWORD_KEY}=\n", encoding="utf-8")
+    invalid = PaperProductionPreparationTargetBinding(invalid_path, "isolated-target")
+    with pytest.raises(PaperPreparationAdapterError) as caught:
+        invalid.build_engine()
+    with caplog.at_level(logging.DEBUG):
+        logging.getLogger("binding-test").debug("%r %s", invalid, invalid)
+    rendered = str(caught.value) + caplog.text
+    assert SECRET not in rendered and "://" not in rendered
+
+
+@pytest.mark.parametrize("target", ["test-target", "isolated-production-target"])
+def test_production_mode_rejects_non_production_target_before_secret_load(target):
+    config = {
+        "deployment_driver": "DOCKER_COMPOSE_NARROW",
+        "identity_config": str(ROOT / "ops/production/paper-identity.json"),
+        "protected_binding": str(PRODUCTION_PROTECTED_SOURCE),
+        "state_root": str(ROOT / "artifacts/paper-production-preparation"),
+        "target_id": target,
+        "compose_file": str(ROOT / "ops/production/readonly-api/compose.yaml"),
+    }
+    called = []
+    with pytest.raises(PaperPreparationAdapterError, match="PRODUCTION_TARGET_MISMATCH"):
+        compose_production_preparation(
+            config, production_mode=True,
+            protected_value_provider=lambda _: called.append(True) or SECRET,
+        )
+    assert called == []
+
+
+def test_production_binding_access_is_single_trusted_source_path():
     sources = "\n".join(path.read_text(encoding="utf-8") for path in (
         ROOT / "app/engine_paper/production_preparation.py",
         ROOT / "app/engine_paper/production_preparation_backend.py",
         ROOT / "app/engine_paper/production_preparation_cli.py",
     ))
-    assert ".env.production.local" not in sources
     assert "os.environ" not in (ROOT / "app/engine_paper/production_preparation_cli.py").read_text(encoding="utf-8")
     assert "printenv" not in sources and "environ.items" not in sources
+    assert sources.count(' / ".env.production.local"') == 1
+    assert "TRADERS_PAPER_PREPARATION_ADMIN_DATABASE_URL" not in sources

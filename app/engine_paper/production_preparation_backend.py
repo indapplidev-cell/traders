@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import stat
 import subprocess
@@ -19,7 +20,7 @@ from typing import Callable, Final, Mapping
 
 from psycopg import sql
 from sqlalchemy import Engine, create_engine, text
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import sessionmaker
 from alembic import command
 from alembic.config import Config
@@ -43,13 +44,17 @@ from app.engine_paper.production_preparation import (
 )
 
 
-ADMIN_DATABASE_ENV: Final = "TRADERS_PAPER_PREPARATION_ADMIN_DATABASE_URL"
-TARGET_ID_ENV: Final = "TRADERS_PAPER_PREPARATION_TARGET_ID"
+PRODUCTION_ADMIN_PASSWORD_KEY: Final = "TRADERS_ML_POSTGRES_PASSWORD"
+PRODUCTION_TARGET_ID: Final = "traders-production-primary"
+PRODUCTION_PROTECTED_SOURCE: Final = Path(__file__).resolve().parents[2] / ".env.production.local"
 RUNTIME_DATABASE_KEY: Final = "TRADERS_PAPER_RUNTIME_DATABASE_URL"
 _ALLOWED_BINDING_KEYS: Final = frozenset({
+    "DATABASE_URL", "MARKET_DATA_DATABASE_URL",
     "TRADERS_READONLY_API_DATABASE_URL", "TRADERS_READONLY_API_HOST",
-    "TRADERS_READONLY_API_PORT", RUNTIME_DATABASE_KEY,
+    "TRADERS_READONLY_API_PORT", PRODUCTION_ADMIN_PASSWORD_KEY,
+    RUNTIME_DATABASE_KEY,
 })
+_ENV_BINDING_KEY: Final = re.compile(r"[A-Z][A-Z0-9_]{0,127}")
 
 
 class PaperPreparationAdapterError(RuntimeError):
@@ -98,6 +103,7 @@ def _parse_env_binding(content: str) -> dict[str, str]:
         if "=" not in line:
             raise PaperPreparationAdapterError("PROTECTED_BINDING_FORMAT_INVALID")
         key, value = line.split("=", 1)
+        key = key.strip()
         if key in values or key not in _ALLOWED_BINDING_KEYS:
             raise PaperPreparationAdapterError("PROTECTED_BINDING_KEYS_INVALID")
         values[key] = value
@@ -106,10 +112,12 @@ def _parse_env_binding(content: str) -> dict[str, str]:
 
 def _render_env_binding(values: Mapping[str, str]) -> str:
     ordered = (
+        PRODUCTION_ADMIN_PASSWORD_KEY, "DATABASE_URL", "MARKET_DATA_DATABASE_URL",
         "TRADERS_READONLY_API_DATABASE_URL", "TRADERS_READONLY_API_HOST",
         "TRADERS_READONLY_API_PORT", RUNTIME_DATABASE_KEY,
     )
-    return "".join(f"{key}={values[key]}\n" for key in ordered if key in values)
+    keys = tuple(key for key in ordered if key in values)
+    return "".join(f"{key}={values[key]}\n" for key in keys)
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -134,10 +142,15 @@ class PaperProtectedBindingValidation:
 class ProtectedPaperRuntimeBindingAdapter:
     """Atomic protected file adapter with recoverable pending publication."""
 
-    def __init__(self, binding_path: Path, admin_database_url: str) -> None:
+    def __init__(self, binding_path: Path, admin_database_url: str | URL) -> None:
         self._path = binding_path.resolve()
         self._pending = self._path.with_name(f"{self._path.name}.pending")
         self._admin_url = admin_database_url
+
+    def __repr__(self) -> str:
+        return "ProtectedPaperRuntimeBindingAdapter(protected=True)"
+
+    __str__ = __repr__
 
     def _read_values(self, path: Path) -> dict[str, str]:
         try:
@@ -458,6 +471,91 @@ class PostgresPaperProductionPreparationBackend:
         return self._deployment.deploy_readonly_api_narrow()
 
 
+class PaperProductionPreparationTargetBinding:
+    """Opaque production administrator capability and target binding.
+
+    The protected value is retained only long enough to construct an engine.
+    Public methods return composed dependencies or fixed, non-secret failures;
+    no raw protected value or credential-bearing URL crosses this boundary.
+    """
+
+    def __init__(
+        self,
+        protected_source: Path,
+        target_id: str,
+        *,
+        admin_host: str = "127.0.0.1",
+        admin_port: int = 5433,
+        admin_database: str = "traders_ml",
+        admin_user: str = "traders_ml",
+        protected_value_provider: Callable[[Path], str] | None = None,
+        engine_factory: Callable[..., Engine] = create_engine,
+    ) -> None:
+        self._source = protected_source.resolve()
+        self._target_id = target_id
+        self._admin_host = admin_host
+        self._admin_port = admin_port
+        self._admin_database = admin_database
+        self._admin_user = admin_user
+        self._value_provider = protected_value_provider or self._read_admin_password
+        self._engine_factory = engine_factory
+
+    def __repr__(self) -> str:
+        return "PaperProductionPreparationTargetBinding(protected=True)"
+
+    __str__ = __repr__
+
+    @staticmethod
+    def _read_admin_password(path: Path) -> str:
+        """Read exactly one protected capability without retaining other values."""
+        found: str | None = None
+        try:
+            with path.open("r", encoding="utf-8") as stream:
+                for raw in stream:
+                    line = raw.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    key, separator, value = line.partition("=")
+                    key = key.strip()
+                    if not separator or not _ENV_BINDING_KEY.fullmatch(key):
+                        raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID")
+                    if key == PRODUCTION_ADMIN_PASSWORD_KEY:
+                        if found is not None or not value:
+                            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID")
+                        found = value
+        except PaperPreparationAdapterError:
+            raise
+        except Exception:
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_UNAVAILABLE") from None
+        if found is None:
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_UNAVAILABLE")
+        return found
+
+    def build_engine(self) -> Engine:
+        if (not self._target_id or self._admin_host != "127.0.0.1"
+                or not isinstance(self._admin_port, int) or not 1 <= self._admin_port <= 65535
+                or not self._admin_database or not self._admin_user):
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID")
+        try:
+            PaperProductionTargetGuard(database_target_id=self._target_id)
+            password = self._value_provider(self._source)
+            if not isinstance(password, str) or not password:
+                raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID")
+            url = URL.create(
+                "postgresql+psycopg",
+                username=self._admin_user,
+                password=password,
+                host=self._admin_host,
+                port=self._admin_port,
+                database=self._admin_database,
+            )
+            return self._engine_factory(url, hide_parameters=True, pool_pre_ping=True)
+        except PaperPreparationAdapterError:
+            raise
+        except Exception:
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID") from None
+
+
 @dataclass(frozen=True, slots=True)
 class PaperProductionPreparationComposition:
     executor: object
@@ -465,36 +563,68 @@ class PaperProductionPreparationComposition:
     protected_binding: ProtectedPaperRuntimeBindingAdapter
     identity: PaperProductionAccountIdentityBinding
     target: PaperProductionTargetGuard
+    target_binding: PaperProductionPreparationTargetBinding
 
 
-def compose_production_preparation(config: Mapping[str, object], environment: Mapping[str, str] | None = None):
-    """Build the real executor from explicit non-secret config and two env keys."""
+def compose_production_preparation(
+    config: Mapping[str, object],
+    *,
+    production_mode: bool = False,
+    protected_value_provider: Callable[[Path], str] | None = None,
+    engine_factory: Callable[..., Engine] = create_engine,
+):
+    """Build the real executor through one opaque, secret-free target binding."""
     from app.engine_paper.production_preparation import PaperProductionPreparationExecutor
-    env = os.environ if environment is None else environment
     validate_production_preparation_config(config)
-    admin_url = env.get(ADMIN_DATABASE_ENV, "")
-    environment_target = env.get(TARGET_ID_ENV, "")
-    if not admin_url or environment_target != config["target_id"]:
-        raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_UNAVAILABLE")
-    engine = create_engine(admin_url, hide_parameters=True, pool_pre_ping=True)
+    target_id = str(config["target_id"])
+    protected_source = Path(str(config["protected_binding"])).resolve()
+    if production_mode:
+        if target_id != PRODUCTION_TARGET_ID:
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_MISMATCH")
+        if (protected_source != PRODUCTION_PROTECTED_SOURCE
+                or config["deployment_driver"] != "DOCKER_COMPOSE_NARROW"
+                or config.get("admin_host", "127.0.0.1") != "127.0.0.1"
+                or config.get("admin_port", 5433) != 5433
+                or config.get("admin_database", "traders_ml") != "traders_ml"
+                or config.get("admin_user", "traders_ml") != "traders_ml"):
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID")
+    elif target_id == PRODUCTION_TARGET_ID:
+        raise PaperPreparationAdapterError("PRODUCTION_TARGET_MISMATCH")
+    target_binding = PaperProductionPreparationTargetBinding(
+        protected_source, target_id,
+        admin_host=str(config.get("admin_host", "127.0.0.1")),
+        admin_port=int(config.get("admin_port", 5433)),
+        admin_database=str(config.get("admin_database", "traders_ml")),
+        admin_user=str(config.get("admin_user", "traders_ml")),
+        protected_value_provider=protected_value_provider,
+        engine_factory=engine_factory,
+    )
+    engine = target_binding.build_engine()
     identity = PaperProductionIdentityConfigurationAdapter(Path(str(config["identity_config"]))).load()
-    binding = ProtectedPaperRuntimeBindingAdapter(Path(str(config["protected_binding"])), admin_url)
+    binding = ProtectedPaperRuntimeBindingAdapter(protected_source, engine.url)
     deployment = PaperPreparationDeploymentAdapter(
         Path(str(config["state_root"])), driver=str(config["deployment_driver"]),
         compose_file=(Path(str(config["compose_file"])) if config.get("compose_file") else None),
     )
-    backend = PostgresPaperProductionPreparationBackend(engine, environment_target, binding, deployment)
-    target = PaperProductionTargetGuard(database_target_id=environment_target)
+    backend = PostgresPaperProductionPreparationBackend(engine, target_id, binding, deployment)
+    target = PaperProductionTargetGuard(database_target_id=target_id)
     return PaperProductionPreparationComposition(
-        PaperProductionPreparationExecutor(backend), backend, binding, identity, target)
+        PaperProductionPreparationExecutor(backend), backend, binding, identity, target, target_binding)
 
 
 def validate_production_preparation_config(config: Mapping[str, object]) -> None:
     """Validate only non-secret composition shape; safe for plan mode."""
     required = {"identity_config", "protected_binding", "state_root", "target_id", "deployment_driver"}
-    if set(config) - (required | {"compose_file"}) or not required <= set(config):
+    optional = {"compose_file", "admin_host", "admin_port", "admin_database", "admin_user"}
+    if set(config) - (required | optional) or not required <= set(config):
         raise PaperPreparationAdapterError("PRODUCTION_COMPOSITION_CONFIGURATION_INVALID")
     if any(not isinstance(config[key], str) or not config[key] for key in required):
+        raise PaperPreparationAdapterError("PRODUCTION_COMPOSITION_CONFIGURATION_INVALID")
+    if any(key in config and (not isinstance(config[key], str) or not config[key])
+           for key in ("admin_host", "admin_database", "admin_user")):
+        raise PaperPreparationAdapterError("PRODUCTION_COMPOSITION_CONFIGURATION_INVALID")
+    if "admin_port" in config and (not isinstance(config["admin_port"], int)
+                                    or not 1 <= config["admin_port"] <= 65535):
         raise PaperPreparationAdapterError("PRODUCTION_COMPOSITION_CONFIGURATION_INVALID")
     PaperProductionTargetGuard(database_target_id=str(config["target_id"]))
     if config["deployment_driver"] not in {"ISOLATED_FILESYSTEM", "DOCKER_COMPOSE_NARROW"}:
@@ -504,6 +634,8 @@ def validate_production_preparation_config(config: Mapping[str, object]) -> None
 
 
 __all__ = [name for name in globals() if name.startswith("Paper") or name.startswith("Postgres") or name in {
-    "ADMIN_DATABASE_ENV", "RUNTIME_DATABASE_KEY", "TARGET_ID_ENV", "compose_production_preparation",
+    "PRODUCTION_ADMIN_PASSWORD_KEY", "PRODUCTION_PROTECTED_SOURCE", "PRODUCTION_TARGET_ID",
+    "RUNTIME_DATABASE_KEY",
+    "compose_production_preparation",
     "validate_production_preparation_config",
 }]

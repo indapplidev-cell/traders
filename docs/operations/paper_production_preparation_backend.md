@@ -17,7 +17,16 @@ DELETE, or baseline write privilege fail closed; dry-run never revokes drift.
 
 ## Protected binding boundary
 
-`ProtectedPaperRuntimeBindingAdapter` is the only credential boundary. Public
+`PaperProductionPreparationTargetBinding` is the production administrator
+capability boundary. In canonical production mode it accepts no caller URL,
+password, target environment variable, or secret argument. It reads exactly
+the protected `TRADERS_ML_POSTGRES_PASSWORD` capability internally from the
+existing `.env.production.local`, combines it with the fixed tracked
+localhost PostgreSQL contract, constructs the hidden-parameter engine, and
+returns only composed dependencies. Missing, malformed, mismatched, or
+unreachable targets fail with fixed reason codes.
+
+`ProtectedPaperRuntimeBindingAdapter` remains the runtime credential boundary. Public
 executor/backend calls accept and return no password, URI, token, or secret.
 The adapter generates a credential with `secrets.token_urlsafe(48)`, stages a
 restrictive same-directory pending binding, installs the same staged value in
@@ -54,15 +63,16 @@ The tracked module is `app.engine_paper.production_preparation_cli` and the
 installed command is `traders-paper-production-prepare`.
 
 ```text
-python -m app.engine_paper.production_preparation_cli --config <non-secret-json> plan
-python -m app.engine_paper.production_preparation_cli --config <non-secret-json> status
-python -m app.engine_paper.production_preparation_cli --config <non-secret-json> execute \
+python -m app.engine_paper.production_preparation_cli --production plan
+python -m app.engine_paper.production_preparation_cli --production status
+python -m app.engine_paper.production_preparation_cli --production execute \
   --ack I_ACKNOWLEDGE_PRODUCTION_PREPARATION_MUTATIONS \
   --actions ENSURE_RUNTIME_ROLE,...
 ```
 
-`plan` is the only mode that does not resolve the privileged environment
-binding; it consumes no secret and performs zero mutation. `execute` has no
+All three modes use the same trusted target binding and executor composition.
+`status` and `plan` validate the exact target read-only and perform zero
+mutation. `execute` has no
 default, requires the exact acknowledgement and an exact comma-separated
 action set, and accepts no secret argument. Full separately authorized
 preparation additionally uses `--orchestrate-schema-and-baseline
@@ -70,11 +80,13 @@ preparation additionally uses `--orchestrate-schema-and-baseline
 executes role/grant/binding actions, creates/gets the immutable baseline, then
 executes only the disabled-runtime and narrow-Readonly deployment actions.
 
-The privileged database URL and the independent safe target ID are resolved
-only from `TRADERS_PAPER_PREPARATION_ADMIN_DATABASE_URL` and
-`TRADERS_PAPER_PREPARATION_TARGET_ID`. They are never serialized. The target
-must be production, PostgreSQL 16, at the caller-declared accepted revision,
-with control DISABLED and LIVE false.
+The privileged database URL is never accepted from or returned to the caller.
+The production target ID is the exact tracked `traders-production-primary`;
+canonical production mode also fixes the protected source, deployment driver,
+host, port, database, and administrator identity. `--config` is reserved for
+isolated synthetic PostgreSQL 16 proofs and rejects the canonical production
+target. The target must be PostgreSQL 16 at the accepted revision, with
+control DISABLED and LIVE false.
 
 Exit codes are deterministic: `0` success, `2` validation blocked, `3` target
 mismatch, `4` privilege drift, `5` binding unavailable, `6` identity
