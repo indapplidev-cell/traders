@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2880a41e7832b0bdd2f9aa2e5d44e4745de480f1
+STATUS_AS_OF_COMMIT = d802121b39a59b20dc7242c749ffe0e91e615090
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-13T15:08:02Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_READONLY_DEPLOYMENT_POSTCONDITION_REMEDIATION_01
-FILES_CHANGED = Dockerfile, app/engine_paper/production_preparation_backend.py, ops/production/readonly-api/compose.yaml, tests/paper_readonly_deployment_postcondition_remediation/__init__.py, tests/paper_readonly_deployment_postcondition_remediation/test_deployment_adapter.py, online_trader.md
+RECONCILED_AT_UTC = 2026-08-13T15:30:42Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_READONLY_CURRENT_IMAGE_BUILD_AND_NARROW_DEPLOYMENT_RETRY_01
+FILES_CHANGED = FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AUDIT_AND_DOCUMENTATION_ONLY
-STATUS_CONFIDENCE = SOURCE_REMEDIATION_AND_TESTS_PROVEN_BUT_PRODUCTION_BUILD_ATTEMPT_INTERRUPTED_BEFORE_IMAGE_OR_RUNTIME_CHANGE
+STATUS_CONFIDENCE = CURRENT_IMAGE_BUILD_AND_NARROW_RUNTIME_IDENTITY_18_GET_0_WRITE_PROVEN_BUT_PAPER_HTTP_ACCEPTANCE_FAILED_WITH_FIVE_500_RESPONSES
 
 # Состояние проекта traders-ml
 
@@ -22,11 +22,52 @@ STATUS_CONFIDENCE = SOURCE_REMEDIATION_AND_TESTS_PROVEN_BUT_PRODUCTION_BUILD_ATT
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
-API_RUNTIME_STATUS = DEPLOYED_HEALTHY_9_GET_0_WRITE_PAPER_ROUTES_NOT_DEPLOYED
-CURRENT_STAGE = PRODUCTION_READONLY_CURRENT_IMAGE_BUILD_AND_NARROW_DEPLOYMENT_RETRY
-CURRENT_BLOCKER = PRODUCTION_READONLY_CURRENT_IMAGE_BUILD_FAILED; SINGLE_AUTHORIZED_BUILD_INVOCATION_WAS_INTERRUPTED_BEFORE_IMAGE_CREATION_AND_RUNTIME_REMAINS_9_GET_0_WRITE
+API_RUNTIME_STATUS = DEPLOYED_CURRENT_IMAGE_HEALTHY_18_GET_0_WRITE_LEGACY_9_HEALTHY_PAPER_DATABASE_ENDPOINTS_5XX
+CURRENT_STAGE = PRODUCTION_READONLY_PAPER_SCHEMA_PREFLIGHT_LEAST_PRIVILEGE_REMEDIATION
+CURRENT_BLOCKER = CURRENT_READONLY_PAPER_ENDPOINTS_UNEXPECTED_5XX; READONLY_PRINCIPAL_IS_DENIED_SELECT_ON_ALEMBIC_VERSION_DURING_PAPER_SCHEMA_PREFLIGHT
 BACKGROUND_TIMED_GATE = CURRENT_WAL_ARCHIVE_HEALTH_PASS_AND_FRESH_CONTINUOUS_PITR_WINDOW_IS_195581_SECONDS
 ```
+
+## Production Readonly current-image narrow deployment retry 01 blocked acceptance
+
+```text
+DEPLOYMENT_RETRY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_READONLY_CURRENT_IMAGE_BUILD_AND_NARROW_DEPLOYMENT_RETRY_01
+DEPLOYMENT_RETRY_RESULT = BLOCKED_AFTER_CURRENT_IMAGE_BUILD_AND_NARROW_RUNTIME_CONVERGENCE
+SOURCE_CHANGES_BY_TASK = 0
+IMPLEMENTATION_COMMIT = NONE
+PROJECT_STATE_AUDIT_COMMIT = d802121b39a59b20dc7242c749ffe0e91e615090
+CURRENT_SOURCE_IDENTITY = sha256:39c0d9a1bc3e35567b5019a32e7004849b7bced6c5aedf31f68b07675fb188da
+CURRENT_IMAGE = sha256:7ad33ed74bcaa4d14cddc0edcff22719b16ebc04695ce9db2de482af2ad7a197
+CURRENT_RUNTIME_IDENTITY_MATCH = PASS
+CURRENT_RUNTIME_HEALTH = PASS
+CURRENT_RUNTIME_ROUTES = 18_GET_0_WRITE
+LEGACY_HTTP_ACCEPTANCE = PASS_9_OF_9
+PAPER_ROUTE_INVENTORY = PRESENT_9_OF_9
+PAPER_STATIC_HTTP_404_COUNT = 0
+PAPER_STATIC_HTTP_UNEXPECTED_5XX_COUNT = 5
+RUNTIME_ACCEPTANCE = FAIL
+RUNTIME_DEFECT = READONLY_PRINCIPAL_PERMISSION_DENIED_FOR_TABLE_ALEMBIC_VERSION_DURING_PAPER_SCHEMA_PREFLIGHT
+MARKER_PUBLICATION = NOT_PERFORMED_AFTER_FAILED_ACCEPTANCE_OLD_SCHEMA_MARKER_PRESERVED
+PRODUCTION_PREPARATION_PHASE = PARTIAL_RESUMABLE
+POST_RETRY_PLAN = DEPLOY_READONLY_API_NARROW_ONLY
+PRODUCTION_DATABASE_AND_PAPER_MUTATIONS = 0
+PAPER_RUNTIME = OFF_DEPLOYED_DISABLED
+PRODUCTION_CONTROL = DISABLED_GENERATION_3_HEALTHY
+LIVE_MODE = OFF
+OTHER_PRODUCTION_SERVICE_RESTARTS = 0
+CURRENT_WAL_PITR_GATE = PASS_199181_SECONDS_195_OF_195_NO_PHYSICAL_GAP
+BLOCKER_CODE = CURRENT_READONLY_PAPER_ENDPOINTS_UNEXPECTED_5XX
+NEXT_REQUIRED_TASK = REMEDIATE_READONLY_PAPER_SCHEMA_PREFLIGHT_LEAST_PRIVILEGE_CONTRACT_THEN_RETRY_NARROW_ACCEPTANCE
+```
+
+The exact current Readonly image was built and only the Readonly container was
+recreated. Its runtime label matches the deterministic source identity, the
+container is healthy, route discovery proves 18 GET and zero write routes, and
+all nine legacy HTTP probes pass. Acceptance remains fail-closed because five
+database-backed PAPER endpoints return 500. Sanitized runtime diagnostics prove
+that the Readonly principal is denied `SELECT` on `alembic_version` while the
+PAPER repository performs its schema preflight. The deployment marker was not
+updated, and no database/grant/PAPER safety mutation was performed.
 
 ## Production Readonly deployment postcondition remediation 01 blocked execution
 
@@ -2882,8 +2923,8 @@ LIVE.
 | Online analytics/paper pipeline | ≈95% | Production database preparation is complete at schema 0013 with exact 100.00 USDT baseline, runtime role/grants/binding and disabled configuration; production acceptance remains blocked because the Readonly runtime is still 9 GET/0 write instead of source 18/0 |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current production gate ready | Fresh WAL archive health is PASS with 191/191 required segments, no physical gap or unresolved failure, a continuous 195,581-second PITR window, and WAL ACK daemon PID 2052 identity/heartbeat/progress healthy |
-| Readonly Server API | 94% | Production runtime is healthy but still exposes only the original 9 GET/0 write routes; the narrow adapter recreated it without building/selecting the current 18-route image |
-| Readonly PAPER reporting API | 100% source/integration / database production foundation ready / runtime deployment blocked | Schema, identity, baseline, roles/grants/binding and accounting reconciliation are ready, but all nine PAPER reporting routes return 404 in production because runtime remains 9 GET/0 write |
+| Readonly Server API | 96% | Exact current image is deployed and healthy with 18 GET/0 write; legacy 9/9 pass, but overall runtime acceptance fails on PAPER database-backed 500 responses |
+| Readonly PAPER reporting API | 100% source/integration / database production foundation ready / runtime acceptance blocked | All nine PAPER routes are present and static 404 count is zero, but five database-backed endpoints return 500 because the least-privilege Readonly principal cannot read `alembic_version` for schema preflight |
 | PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
 | First-canary correlation/readiness | 100% server/client source and integration / 0% production deployment | Durable UUID correlation, exact client ARM/START/recovery/resume, max-one budgets, symbol scope, terminal reconciliation and boolean mutation readiness pass isolated real-HTTP PostgreSQL 16 LONG/SHORT/no-trade acceptance; production remains unchanged at 0008 |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
@@ -2896,7 +2937,7 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-REAUTHORIZE_ONE_CURRENT_IMAGE_BUILD_AND_NARROW_READONLY_ONLY_DEPLOYMENT_RETRY
+REMEDIATE_READONLY_PAPER_SCHEMA_PREFLIGHT_LEAST_PRIVILEGE_CONTRACT_THEN_RETRY_NARROW_ACCEPTANCE
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_SOURCE_REMEDIATION_AND_LATER_BOUNDED_PRODUCTION_RETRY
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED
