@@ -1,8 +1,4 @@
-"""Header-only local capability authentication.
-
-The production credential binding is deliberately a contract only in this
-foundation.  No credential path or production capability is created here.
-"""
+"""Header-only local capability authentication."""
 
 from __future__ import annotations
 
@@ -10,6 +6,7 @@ import hmac
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
+from pathlib import Path
 
 
 class PaperOperatorScope(StrEnum):
@@ -55,6 +52,31 @@ class PaperOperatorControlCredentialBinding(Protocol):
     def load_current(self) -> PaperOperatorCapability: ...
 
     def rotate(self) -> None: ...
+
+
+class ProtectedFileOperatorCredentialBinding:
+    """Read one capability from a protected runtime file without disclosure."""
+
+    def __init__(self, path: Path) -> None:
+        self._path = path.resolve()
+
+    def __repr__(self) -> str:
+        return "ProtectedFileOperatorCredentialBinding(protected=True)"
+
+    __str__ = __repr__
+
+    def load_current(self) -> PaperOperatorCapability:
+        try:
+            secret = self._path.read_bytes().strip()
+        except Exception:
+            raise OperatorAuthError(503, "CONTROL_CREDENTIAL_UNAVAILABLE") from None
+        try:
+            return PaperOperatorCapability(secret=secret, scopes=ALL_OPERATOR_SCOPES)
+        except ValueError:
+            raise OperatorAuthError(503, "CONTROL_CREDENTIAL_INVALID") from None
+
+    def rotate(self) -> None:
+        raise OperatorAuthError(503, "CONTROL_CREDENTIAL_ROTATION_REQUIRES_DEPLOYMENT_BOUNDARY")
 
 
 class OperatorAuthError(RuntimeError):

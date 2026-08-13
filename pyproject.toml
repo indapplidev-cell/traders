@@ -23,6 +23,8 @@ dependencies = [
 [project.scripts]
 traders-readonly-api = "app.server_api.runtime:main"
 traders-paper-production-prepare = "app.engine_paper.production_preparation_cli:main"
+traders-operator-control-api = "app.operator_control.runtime:main"
+traders-operator-control-deploy = "app.operator_control.deployment:main"
 
 [project.optional-dependencies]
 dev = [

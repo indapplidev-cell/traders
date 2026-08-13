@@ -1,0 +1,38 @@
+name: traders-operator-control-api
+
+services:
+  operator-control-api:
+    image: traders-operator-control-api:production-v1
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+      target: operator-control-api
+      args:
+        TRADERS_CONTROL_SOURCE_IDENTITY: "${TRADERS_CONTROL_SOURCE_IDENTITY:-UNSET}"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    init: true
+    cpus: "0.50"
+    mem_limit: 256m
+    pids_limit: 64
+    environment:
+      TRADERS_CONTROL_SOURCE_IDENTITY: "${TRADERS_CONTROL_SOURCE_IDENTITY:-UNSET}"
+      TRADERS_CONTROL_CONTAINER_LISTENER: "1"
+    ports:
+      - "127.0.0.1:8766:8766"
+    secrets:
+      - traders_control_api_token
+    volumes:
+      - type: bind
+        source: D:/disk_E/game_projects/traders/production_control/paper
+        target: /run/traders-control
+
+secrets:
+  traders_control_api_token:
+    file: ../../../.control-api.token

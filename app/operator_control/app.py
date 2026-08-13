@@ -134,7 +134,12 @@ def create_paper_operator_control_app(
     async def safe_failure(request: Request, exc: Exception) -> JSONResponse:
         return _error_response(request, 503, "CONTROL_SAFE_FAILURE", "The control subsystem failed closed.")
 
-    app.include_router(build_operator_control_router(active_service, require_scope))
+    # Materialize the already-composed narrow router.  FastAPI 0.116 defers
+    # include_router() behind an internal placeholder; direct materialization
+    # keeps the exact eight-route inventory inspectable before startup.
+    app.router.routes.extend(
+        build_operator_control_router(active_service, require_scope).routes
+    )
     app.add_middleware(RequestBodyLimitMiddleware, limit=active_config.max_request_body_bytes)
     app.state.operator_control_config = active_config
     app.state.operator_control_service = active_service
