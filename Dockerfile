@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir --no-deps . \
 
 FROM python:3.11-slim AS readonly-api
 
+ARG TRADERS_READONLY_SOURCE_IDENTITY=UNSET
+LABEL org.opencontainers.image.revision="${TRADERS_READONLY_SOURCE_IDENTITY}"
+
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

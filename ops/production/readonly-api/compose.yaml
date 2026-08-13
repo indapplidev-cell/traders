@@ -7,6 +7,8 @@ services:
       context: ../../..
       dockerfile: Dockerfile
       target: readonly-api
+      args:
+        TRADERS_READONLY_SOURCE_IDENTITY: "${TRADERS_READONLY_SOURCE_IDENTITY:-UNSET}"
     user: "10001:10001"
     read_only: true
     tmpfs:

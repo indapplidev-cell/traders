@@ -7,16 +7,20 @@ generation, pending-write recovery, binding publication, and consumer probes.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import secrets
 import stat
 import subprocess
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Callable, Final, Mapping
+from typing import Callable, Final, Mapping, Sequence
 
 from psycopg import sql
 from sqlalchemy import Engine, create_engine, text
@@ -64,6 +68,84 @@ _ENV_BINDING_KEY: Final = re.compile(r"[A-Z][A-Z0-9_]{0,127}")
 
 class PaperPreparationAdapterError(RuntimeError):
     """Always raised with a fixed, secret-free reason code."""
+
+
+READONLY_SOURCE_IDENTITY_LABEL: Final = "org.opencontainers.image.revision"
+READONLY_EXPECTED_GET_ROUTES: Final = frozenset({
+    "/api/v1/health", "/api/v1/dashboard", "/api/v1/markets",
+    "/api/v1/markets/{symbol}", "/api/v1/analysis/{symbol}",
+    "/api/v1/setups", "/api/v1/setups/{setup_id}",
+    "/api/v1/incidents", "/api/v1/incidents/{incident_id}",
+    "/api/v1/paper/readiness", "/api/v1/paper/account",
+    "/api/v1/paper/positions", "/api/v1/paper/positions/{position_id}",
+    "/api/v1/paper/trades", "/api/v1/paper/trades/{position_id}/report",
+    "/api/v1/paper/reconciliation", "/api/v1/paper/runtime/status",
+    "/api/v1/paper/control/status",
+})
+READONLY_LEGACY_ROUTES: Final = frozenset(
+    path for path in READONLY_EXPECTED_GET_ROUTES if "/paper/" not in path
+)
+READONLY_PAPER_ROUTES: Final = READONLY_EXPECTED_GET_ROUTES - READONLY_LEGACY_ROUTES
+READONLY_STATIC_PAPER_HTTP_PATHS: Final = (
+    "/api/v1/paper/readiness", "/api/v1/paper/account", "/api/v1/paper/positions",
+    "/api/v1/paper/trades", "/api/v1/paper/reconciliation",
+    "/api/v1/paper/runtime/status", "/api/v1/paper/control/status",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ReadonlyRuntimeAcceptance:
+    """Sanitized runtime truth used by deployment and status postconditions."""
+
+    source_identity: str
+    healthy: bool
+    get_routes: frozenset[str]
+    write_route_count: int
+    legacy_http_statuses: tuple[int, ...]
+    paper_http_statuses: tuple[int, ...]
+
+    def accepted_for(self, expected_identity: str) -> bool:
+        return (
+            self.source_identity == expected_identity
+            and self.healthy
+            and self.get_routes == READONLY_EXPECTED_GET_ROUTES
+            and self.write_route_count == 0
+            and len(self.legacy_http_statuses) == len(READONLY_LEGACY_ROUTES)
+            and all(200 <= status < 300 for status in self.legacy_http_statuses)
+            and len(self.paper_http_statuses) == len(READONLY_STATIC_PAPER_HTTP_PATHS)
+            and all(status != 404 and status < 500 for status in self.paper_http_statuses)
+        )
+
+
+def readonly_source_identity(root: Path | None = None) -> str:
+    """Hash exactly the non-secret inputs copied into the Readonly image target."""
+
+    repository = (root or Path(__file__).resolve().parents[2]).resolve()
+    fixed = (
+        repository / "Dockerfile",
+        repository / "requirements/api-runtime.lock.txt",
+        repository / "pyproject.toml",
+        repository / "README.md",
+    )
+    app_files = tuple(
+        path for path in (repository / "app").rglob("*")
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix not in {".pyc", ".pyo"}
+    )
+    files = tuple(sorted((*fixed, *app_files), key=lambda path: path.relative_to(repository).as_posix()))
+    if any(not path.is_file() for path in fixed):
+        raise PaperPreparationAdapterError("READONLY_SOURCE_IDENTITY_UNAVAILABLE")
+    digest = hashlib.sha256()
+    try:
+        for path in files:
+            relative = path.relative_to(repository).as_posix().encode("utf-8")
+            content = path.read_bytes()
+            digest.update(len(relative).to_bytes(4, "big"))
+            digest.update(relative)
+            digest.update(len(content).to_bytes(8, "big"))
+            digest.update(content)
+    except Exception:
+        raise PaperPreparationAdapterError("READONLY_SOURCE_IDENTITY_UNAVAILABLE") from None
+    return f"sha256:{digest.hexdigest()}"
 
 
 def _atomic_write(path: Path, content: str, *, template: Path | None = None) -> None:
@@ -254,10 +336,13 @@ class PaperProductionIdentityConfigurationAdapter:
 
 
 class PaperPreparationDeploymentAdapter:
-    """Publishes disabled runtime state and optionally performs one narrow deploy."""
+    """Builds and accepts one narrow Readonly runtime before publishing bookkeeping."""
 
     def __init__(self, state_root: Path, *, driver: str = "ISOLATED_FILESYSTEM",
-                 compose_file: Path | None = None, compose_service: str = "readonly-api") -> None:
+                 compose_file: Path | None = None, compose_service: str = "readonly-api",
+                 command_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+                 source_identity_provider: Callable[[], str] = readonly_source_identity,
+                 runtime_probe: Callable[[str], ReadonlyRuntimeAcceptance] | None = None) -> None:
         if driver not in {"ISOLATED_FILESYSTEM", "DOCKER_COMPOSE_NARROW"}:
             raise PaperPreparationAdapterError("DEPLOYMENT_DRIVER_NOT_ALLOWED")
         if compose_service != "readonly-api":
@@ -266,6 +351,9 @@ class PaperPreparationDeploymentAdapter:
         self._driver = driver
         self._compose_file = compose_file.resolve() if compose_file else None
         self._service = compose_service
+        self._command_runner = command_runner
+        self._source_identity_provider = source_identity_provider
+        self._runtime_probe = runtime_probe
 
     def _publish(self, name: str, payload: Mapping[str, object]) -> bool:
         path = self._root / name
@@ -284,20 +372,170 @@ class PaperPreparationDeploymentAdapter:
         return PaperPreparationOperationResult(changed, True)
 
     def deploy_readonly_api_narrow(self) -> PaperPreparationOperationResult:
+        source_identity = self._source_identity_provider()
+        if self._marker_matches(source_identity) and self._probe(source_identity).accepted_for(source_identity):
+            return PaperPreparationOperationResult(False, True)
         if self._driver == "DOCKER_COMPOSE_NARROW":
             if self._compose_file is None or not self._compose_file.is_file():
                 raise PaperPreparationAdapterError("READONLY_COMPOSE_UNAVAILABLE")
-            completed = subprocess.run(
-                ["docker", "compose", "-f", str(self._compose_file), "up", "-d", "--no-deps", self._service],
+            environment = dict(os.environ)
+            environment["TRADERS_READONLY_SOURCE_IDENTITY"] = source_identity
+            built = self._command_runner(
+                ["docker", "compose", "-f", str(self._compose_file), "build", self._service],
+                env=environment,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False, timeout=600,
+            )
+            if built.returncode:
+                raise PaperPreparationAdapterError("READONLY_CURRENT_IMAGE_BUILD_FAILED")
+            started = self._command_runner(
+                ["docker", "compose", "-f", str(self._compose_file), "up", "-d",
+                 "--no-deps", "--force-recreate", "--wait", "--wait-timeout", "120", self._service],
+                env=environment,
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 check=False, timeout=180,
             )
-            if completed.returncode:
+            if started.returncode:
                 raise PaperPreparationAdapterError("READONLY_NARROW_DEPLOYMENT_FAILED")
+        acceptance = self._probe(source_identity)
+        if not acceptance.accepted_for(source_identity):
+            raise PaperPreparationAdapterError("READONLY_RUNTIME_ACCEPTANCE_FAILED")
         changed = self._publish("readonly-api.narrow.json", {
-            "deployment": "NARROW", "service": "readonly-api", "write_routes": 0,
+            "deployment": "NARROW", "service": "readonly-api", "schema": 2,
+            "source_identity": source_identity, "runtime_health": "PASS",
+            "get_routes": len(READONLY_EXPECTED_GET_ROUTES), "write_routes": 0,
+            "legacy_endpoints": len(READONLY_LEGACY_ROUTES),
+            "paper_endpoints": len(READONLY_PAPER_ROUTES),
         })
         return PaperPreparationOperationResult(changed, True)
+
+    def _marker_matches(self, source_identity: str) -> bool:
+        path = self._root / "readonly-api.narrow.json"
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return (
+                payload.get("schema") == 2
+                and payload.get("deployment") == "NARROW"
+                and payload.get("service") == self._service
+                and payload.get("source_identity") == source_identity
+                and payload.get("runtime_health") == "PASS"
+                and payload.get("get_routes") == len(READONLY_EXPECTED_GET_ROUTES)
+                and payload.get("write_routes") == 0
+                and payload.get("legacy_endpoints") == len(READONLY_LEGACY_ROUTES)
+                and payload.get("paper_endpoints") == len(READONLY_PAPER_ROUTES)
+            )
+        except Exception:
+            return False
+
+    def _probe(self, expected_identity: str) -> ReadonlyRuntimeAcceptance:
+        if self._runtime_probe is not None:
+            return self._runtime_probe(expected_identity)
+        if self._driver == "ISOLATED_FILESYSTEM":
+            from app.server_api.app_factory import create_app
+            document = create_app().openapi()
+            routes = frozenset(
+                path for path, methods in document["paths"].items() if "get" in methods
+            )
+            writes = sum(
+                method in methods for methods in document["paths"].values()
+                for method in ("post", "put", "patch", "delete")
+            )
+            return ReadonlyRuntimeAcceptance(
+                expected_identity, True, routes, writes,
+                (200,) * len(READONLY_LEGACY_ROUTES),
+                (200,) * len(READONLY_STATIC_PAPER_HTTP_PATHS),
+            )
+        return self._probe_docker_runtime()
+
+    def _captured(self, command: Sequence[str], reason: str, *, timeout: int = 30) -> str:
+        completed = self._command_runner(
+            list(command), stdin=subprocess.DEVNULL, capture_output=True, text=True,
+            check=False, timeout=timeout,
+        )
+        if completed.returncode:
+            raise PaperPreparationAdapterError(reason)
+        return completed.stdout.strip()
+
+    @staticmethod
+    def _http_json(path: str) -> tuple[int, object | None]:
+        request = urllib.request.Request(f"http://127.0.0.1:8765{path}", method="GET")
+        try:
+            with urllib.request.urlopen(request, timeout=8) as response:
+                raw = response.read(2_000_000)
+                return int(response.status), json.loads(raw) if raw else None
+        except urllib.error.HTTPError as error:
+            error.read(2_000_000)
+            return int(error.code), None
+        except Exception:
+            return 0, None
+
+    @staticmethod
+    def _first_identifier(payload: object, key: str) -> str | None:
+        try:
+            items = payload["data"]["items"]  # type: ignore[index]
+            value = items[0][key]
+            return value if isinstance(value, str) and value else None
+        except Exception:
+            return None
+
+    def _probe_docker_runtime(self) -> ReadonlyRuntimeAcceptance:
+        if self._compose_file is None:
+            raise PaperPreparationAdapterError("READONLY_COMPOSE_UNAVAILABLE")
+        base = ["docker", "compose", "-f", str(self._compose_file)]
+        container_id = self._captured(
+            [*base, "ps", "-q", self._service], "READONLY_RUNTIME_CONTAINER_UNAVAILABLE"
+        )
+        if not re.fullmatch(r"[a-f0-9]{12,64}", container_id):
+            raise PaperPreparationAdapterError("READONLY_RUNTIME_CONTAINER_UNAVAILABLE")
+        identity = self._captured(
+            ["docker", "inspect", "--format",
+             f'{{{{ index .Config.Labels "{READONLY_SOURCE_IDENTITY_LABEL}" }}}}', container_id],
+            "READONLY_RUNTIME_IDENTITY_UNAVAILABLE",
+        )
+        health = self._captured(
+            ["docker", "inspect", "--format", "{{.State.Health.Status}}", container_id],
+            "READONLY_RUNTIME_HEALTH_UNAVAILABLE",
+        )
+        route_code = (
+            "import json; from app.server_api.app_factory import create_app; "
+            "d=create_app().openapi(); w=('post','put','patch','delete'); "
+            "print(json.dumps({'get':sorted(p for p,m in d['paths'].items() if 'get' in m),"
+            "'writes':sum(x in m for m in d['paths'].values() for x in w)},sort_keys=True))"
+        )
+        route_output = self._captured(
+            [*base, "exec", "-T", self._service, "python", "-c", route_code],
+            "READONLY_RUNTIME_ROUTE_DISCOVERY_FAILED",
+        )
+        try:
+            route_payload = json.loads(route_output)
+            routes = frozenset(str(path) for path in route_payload["get"])
+            writes = int(route_payload["writes"])
+        except Exception:
+            raise PaperPreparationAdapterError("READONLY_RUNTIME_ROUTE_DISCOVERY_FAILED") from None
+
+        legacy_statuses: list[int] = []
+        for path in ("/api/v1/health", "/api/v1/dashboard", "/api/v1/markets",
+                     "/api/v1/markets/BTCUSDT", "/api/v1/analysis/BTCUSDT"):
+            status, _ = self._http_json(path)
+            legacy_statuses.append(status)
+        setups_status, setups = self._http_json("/api/v1/setups?limit=1")
+        incidents_status, incidents = self._http_json("/api/v1/incidents?limit=1")
+        legacy_statuses.extend((setups_status, incidents_status))
+        setup_id = self._first_identifier(setups, "setup_id")
+        incident_id = self._first_identifier(incidents, "incident_id")
+        if setup_id is not None:
+            legacy_statuses.append(self._http_json(
+                "/api/v1/setups/" + urllib.parse.quote(setup_id, safe=":._-")
+            )[0])
+        if incident_id is not None:
+            legacy_statuses.append(self._http_json(
+                "/api/v1/incidents/" + urllib.parse.quote(incident_id, safe=":._-")
+            )[0])
+        paper_statuses = tuple(self._http_json(path)[0] for path in READONLY_STATIC_PAPER_HTTP_PATHS)
+        return ReadonlyRuntimeAcceptance(
+            identity, health == "healthy", routes, writes,
+            tuple(legacy_statuses), paper_statuses,
+        )
 
     def disabled_runtime_ready(self) -> bool:
         path = self._root / "paper-runtime.disabled.json"
@@ -312,10 +550,10 @@ class PaperPreparationDeploymentAdapter:
             return False
 
     def readonly_api_narrow_ready(self) -> bool:
-        path = self._root / "readonly-api.narrow.json"
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            return payload.get("deployment") == "NARROW" and payload.get("write_routes") == 0
+            source_identity = self._source_identity_provider()
+            return (self._marker_matches(source_identity)
+                    and self._probe(source_identity).accepted_for(source_identity))
         except Exception:
             return False
 
