@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2d7563e5efa7fa642e931d659da5d2dbd66b0db3
+STATUS_AS_OF_COMMIT = 5dc1ad11f75a89d457c144b7e714f10a8ee3828a
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-13T16:50:05Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_PRODUCTION_DEPLOYMENT_01
+RECONCILED_AT_UTC = 2026-08-13T17:35:00Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_PRODUCTION_DEPLOYMENT_PATH_REMEDIATION_AND_DEPLOYMENT_01
 FILES_CHANGED = FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_BLOCKED_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = CONTROL_API_PRODUCTION_DEPLOYMENT_PATH_ABSENCE_PROVEN_FROM_TRACKED_SOURCE_AND_ARCHITECTURE_CONTRACT
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
+STATUS_CONFIDENCE = CONTROL_API_PRODUCTION_DEPLOYMENT_ACCEPTED_BY_RUNTIME_IDENTITY_ROUTE_AUTH_STATE_AND_INVARIANCE_PROOFS
 
 # Состояние проекта traders-ml
 
@@ -23,10 +23,50 @@ STATUS_CONFIDENCE = CONTROL_API_PRODUCTION_DEPLOYMENT_PATH_ABSENCE_PROVEN_FROM_T
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_CURRENT_IMAGE_HEALTHY_18_GET_0_WRITE_LEGACY_9_HEALTHY_PAPER_9_ROUTE_ACCEPTANCE_PASS_0_5XX
-CURRENT_STAGE = PAPER_OPERATOR_CONTROL_API_PRODUCTION_DEPLOYMENT_PATH_REMEDIATION
-CURRENT_BLOCKER = CONTROL_API_SOURCE_DEPLOYMENT_PATH_MISSING
-BACKGROUND_TIMED_GATE = LAST_PROVEN_WAL_ARCHIVE_HEALTH_PASS_AND_CONTINUOUS_PITR_WINDOW_WAS_203683_SECONDS_NOT_REREAD_BY_BLOCKED_TASK
+CURRENT_STAGE = CLIENT_PRODUCTION_PAPER_OPERATOR_CONTROLLED_CONNECTION
+CURRENT_BLOCKER = NONE_FOR_CLIENT_CONTROLLED_CONNECTION
+BACKGROUND_TIMED_GATE = WAL_ARCHIVE_HEALTH_PASS_CONTINUOUS_PITR_WINDOW_207282_SECONDS_204_OF_204_REQUIRED_SEGMENTS
 ```
+
+## Operator Control API production deployment path remediation and deployment 01
+
+```text
+DEPLOYMENT_TASK = TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_PRODUCTION_DEPLOYMENT_PATH_REMEDIATION_AND_DEPLOYMENT_01
+DEPLOYMENT_RESULT = PASS
+IMPLEMENTATION_COMMIT = 7c9614242c80febb82b17e5bbbd13e29dca046bf
+PROJECT_STATE_AUDIT_COMMIT = 5dc1ad11f75a89d457c144b7e714f10a8ee3828a
+PRODUCTION_ENTRYPOINT = app.operator_control.runtime
+PROTECTED_BEARER_BINDING = GIT_IGNORED_ACL_PROTECTED_DOCKER_SECRET_NO_OUTPUT
+RUNTIME_IDENTITY = 7c9614242c80febb82b17e5bbbd13e29dca046bf_MATCH
+DEPLOYMENT_ADAPTER = OPERATOR_CONTROL_API_ONLY_BUILD_AND_UP_NO_DEPS
+PRODUCTION_BIND = 127.0.0.1:8766_LOOPBACK_ONLY
+PRODUCTION_CONTROL_ROUTES = 3_GET_5_POST
+PRODUCTION_AUTH = UNAUTHENTICATED_REJECTED_INVALID_REJECTED_VALID_SAFE_READ_PASS
+PRODUCTION_CONTROL_API_HEALTH = PASS
+PRODUCTION_CONTROL = DISABLED_GENERATION_3
+CONTROL_TRANSITIONS_BY_TASK = 0
+PAPER_COMMANDS_ORDERS_FILLS_POSITIONS_CANARIES = 0_0_0_0_0
+PAPER_RUNTIME = DEPLOYED_DISABLED_NOT_STARTED
+LIVE_ENABLE_ACTIONS = 0
+BINANCE_ORDER_API_CALLS_BY_TASK = 0
+READONLY_API = UNCHANGED_HEALTHY_18_GET_0_WRITE
+ACCOUNT = 100.00_USDT_ZERO_CLOSED_TRADES_ZERO_PNL_ZERO_FEES
+RECONCILIATION = PAPER_HEALTHY_ACCOUNTING_HEALTHY
+CORE_HEALTH = POSTGRES_PASS_MARKET_DATA_PASS_18_OF_18_ORCHESTRATOR_PASS_READONLY_PASS_CONTROL_PASS_KILL_SWITCH_PASS
+UNRELATED_SERVICE_RESTARTS = 0
+PITR = PASS_207282_SECONDS_204_OF_204_NO_PHYSICAL_GAP
+NEXT_REQUIRED_TASK = TRADERS_CLIENT_PRODUCTION_PAPER_OPERATOR_CONTROLLED_CONNECTION_01
+```
+
+The production path now starts only the existing disabled Operator Control API
+through a narrow Compose service. The protected capability is generated and
+mounted inside the protected boundary and is never returned, logged, hashed,
+fingerprinted, or tracked. Runtime acceptance used an in-container probe so a
+valid safe read could be proven without disclosing the capability. Rejected
+POST probes and the safe GET produced no control transition; the authoritative
+audit remained at three historical events and generation 3. No PAPER runtime,
+canary, LIVE path, Binance call, production preparation, schema/data/grant,
+Readonly lifecycle, or unrelated service lifecycle action occurred.
 
 ## Operator Control API production deployment 01 blocked at source gate
 
@@ -3007,8 +3047,8 @@ LIVE.
 | Production backup/PITR | Current production gate ready | Fresh WAL archive health is PASS with 200/200 required segments, no physical gap or unresolved failure, and a continuous 203,683-second PITR window |
 | Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 18 GET/0 write, legacy 9/9, all nine PAPER routes present, zero PAPER 404 and zero unexpected PAPER 5xx |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
-| PAPER Operator Control API | 100% disabled source/integration / 0% production deployment | Separate localhost-only authenticated eight-route control boundary exposes exact durable canary lookup and preserves five narrow mutations; no listener, credential binding, production transition, runtime or PAPER mutation exists |
-| First-canary correlation/readiness | 100% server/client source and integration / 0% production control deployment | Durable UUID correlation, exact client ARM/START/recovery/resume, max-one budgets, symbol scope, terminal reconciliation and boolean mutation readiness pass isolated real-HTTP PostgreSQL 16 LONG/SHORT/no-trade acceptance; production schema is 0013 but Operator Control API remains undeployed |
+| PAPER Operator Control API | 100% disabled source/integration and production deployment | Separate localhost-only authenticated eight-route control boundary is healthy at 127.0.0.1:8766 with protected Bearer binding and matching implementation identity; it remains DISABLED generation 3 with zero task transitions |
+| First-canary correlation/readiness | 100% server/client source and integration; control deployment ready | Durable UUID correlation and exact client workflow remain proven; Operator Control API deployment is ready for the separately controlled client connection, while no canary has started |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -3019,8 +3059,8 @@ LIVE.
 
 ```text
 RECOMMENDED_NEXT_TASK =
-TRADERS_ML_PAPER_TRADING_OPERATOR_CONTROL_API_PRODUCTION_DEPLOYMENT_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_OPERATOR_CONTROL_API_PRODUCTION_DEPLOYMENT
+TRADERS_CLIENT_PRODUCTION_PAPER_OPERATOR_CONTROLLED_CONNECTION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CLIENT_PRODUCTION_PAPER_OPERATOR_CONTROLLED_CONNECTION
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
