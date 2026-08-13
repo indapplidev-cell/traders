@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from uvicorn import run as run_server
 
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
+from app.engine_safety.production_control_root import resolve_production_control_root
 
 from .app import create_paper_operator_control_app
 from .auth import PaperOperatorAuthenticator, ProtectedFileOperatorCredentialBinding
@@ -20,7 +21,6 @@ from .config import DEFAULT_BIND_HOST, DEFAULT_PORT, PaperOperatorControlConfig
 APPLICATION_NAME = "traders-operator-control-api"
 FACTORY_REFERENCE = "app.operator_control.runtime:create_runtime_app"
 PROTECTED_TOKEN_PATH = Path("/run/secrets/traders_control_api_token")
-PRODUCTION_CONTROL_ROOT = Path("/run/traders-control")
 RUNTIME_IDENTITY_KEY = "TRADERS_CONTROL_SOURCE_IDENTITY"
 CONTAINER_LISTENER_KEY = "TRADERS_CONTROL_CONTAINER_LISTENER"
 
@@ -39,7 +39,7 @@ def create_runtime_app(
         config=PaperOperatorControlConfig(),
         authenticator=PaperOperatorAuthenticator((capability,)),
         control=control or PaperProductionSafetyControl(
-            PRODUCTION_CONTROL_ROOT,
+            resolve_production_control_root(),
             # Docker Desktop does not preserve Windows ACL metadata in its
             # Linux view. The production mount is enforced read-only.
             acl_checker=(lambda _path: True),

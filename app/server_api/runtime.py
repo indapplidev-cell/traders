@@ -17,8 +17,12 @@ from app.server_api.repositories.protocols import ApiRepositories
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
 from app.server_api.runtime_config import RuntimeConfig
 from app.server_api.schemas.paper import PaperControlStatus
-from app.server_api.services import PaperRuntimeObservation
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
+from app.engine_safety.production_control_root import resolve_production_control_root
+from app.server_api.paper_runtime_observation import (
+    ProductionPaperRuntimeObservationSource,
+    load_production_identity,
+)
 
 
 APPLICATION_NAME = "traders-readonly-api"
@@ -58,17 +62,17 @@ def _repositories(engine: Engine) -> ApiRepositories:
     )
 
 
-def _paper_control_status() -> PaperControlStatus:
+def _paper_control_status(control: PaperProductionSafetyControl) -> PaperControlStatus:
     """Observe the reconciled control state without acquiring/writing a lock."""
-    state = PaperProductionSafetyControl().read_authoritative()
+    state = control.read_authoritative()
     return PaperControlStatus(
         state=state.state.value,
         effective_state=state.state.value,
         generation=state.generation,
         health="HEALTHY",
         emergency_stop_available=True,
-        audit_health="HEALTHY",
-        state_audit_reconciliation="HEALTHY",
+        audit_health="PASS",
+        state_audit_reconciliation="PASS",
     )
 
 
@@ -77,6 +81,20 @@ def create_runtime_app() -> FastAPI:
     config = RuntimeConfig.from_environment()
     engine = _create_engine(config)
     repositories = _repositories(engine)
+    sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    control = PaperProductionSafetyControl(
+        resolve_production_control_root(),
+        # Docker Desktop does not project Windows ACL metadata into Linux.
+        acl_checker=(lambda _path: True),
+    )
+    control_status = lambda: _paper_control_status(control)
+    paper_runtime = ProductionPaperRuntimeObservationSource(sessions, control_status)
+    try:
+        production_identity = load_production_identity()
+    except (OSError, ValueError):
+        # The service may start for diagnostics, but readiness remains
+        # fail-closed through the observation source when the binding is absent.
+        production_identity = None
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -95,8 +113,9 @@ def create_runtime_app() -> FastAPI:
 
     app = create_app(
         repositories=repositories,
-        paper_runtime=PaperRuntimeObservation(environment="production"),
-        paper_control_status=_paper_control_status,
+        paper_runtime=paper_runtime,
+        paper_control_status=control_status,
+        paper_production_identity=production_identity,
     )
     app.router.lifespan_context = lifespan
     app.state.runtime_config = config

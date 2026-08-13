@@ -20,7 +20,7 @@ def create_app(
     repositories: ApiRepositories | None = None,
     settings: ApiSettings | None = None,
     clock: Callable[[], datetime] | None = None,
-    paper_runtime: PaperRuntimeObservation | None = None,
+    paper_runtime: PaperRuntimeObservation | Callable[[], PaperRuntimeObservation] | None = None,
     paper_control_status: Callable[[], PaperControlStatus] | None = None,
     paper_production_identity: PaperProductionAccountIdentityBinding | None = None,
 ) -> FastAPI:

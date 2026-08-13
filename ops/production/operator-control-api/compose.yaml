@@ -24,6 +24,7 @@ services:
     environment:
       TRADERS_CONTROL_SOURCE_IDENTITY: "${TRADERS_CONTROL_SOURCE_IDENTITY:-UNSET}"
       TRADERS_CONTROL_CONTAINER_LISTENER: "1"
+      TRADERS_PRODUCTION_CONTROL_ROOT: "/run/traders-control"
     ports:
       - "127.0.0.1:8766:8766"
     secrets:

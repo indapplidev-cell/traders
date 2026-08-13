@@ -27,6 +27,28 @@ services:
     environment:
       TRADERS_READONLY_API_HOST: "0.0.0.0"
       TRADERS_READONLY_API_PORT: "8765"
+      TRADERS_PRODUCTION_CONTROL_ROOT: "/run/traders-control"
+    volumes:
+      - type: bind
+        source: D:/disk_E/game_projects/traders/production_control/paper
+        target: /run/traders-control
+        read_only: true
+      - type: bind
+        source: ../../../artifacts/paper-production-preparation
+        target: /run/traders-paper-runtime
+        read_only: true
+      - type: bind
+        source: ..
+        target: /run/traders-paper-identity
+        read_only: true
+      - type: bind
+        source: D:/traders_ml_recovery/postgres
+        target: /run/traders-recovery
+        read_only: true
+      - type: bind
+        source: ../../../reports/engine_market_data/continuous_sync
+        target: /run/traders-market-data-health
+        read_only: true
     ports:
       - "127.0.0.1:8765:8765"
     healthcheck:

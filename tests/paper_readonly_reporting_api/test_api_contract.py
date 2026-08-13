@@ -205,6 +205,38 @@ def test_no_eligible_approval_is_healthy_no_trade_semantic(baseline):
     assert data["current_mutation_ready"] is False
 
 
+def test_callable_authoritative_runtime_can_make_first_arm_truthfully_ready(baseline):
+    paper = FakePaperRepository(baseline)
+    calls = []
+    runtime = PaperRuntimeObservation(
+        environment="production", runtime_enabled=True,
+        market_data_adapter_ready=True, approval_source_adapter_ready=True,
+        wal_ready=True, pitr_ready=True, current_approval_availability="NO_TRADE_SIGNAL",
+        paper_principal_ready=True, production_identity_binding_ready=True,
+        runtime_config_ready=True, kill_switch_ready=True, canary_scope_valid=True,
+        live_enabled=False,
+    )
+    app = create_app(
+        repositories=replace(FakeReadRepository().api_repositories(), paper=paper),
+        clock=lambda: NOW,
+        paper_runtime=lambda: calls.append("observed") or runtime,
+        paper_control_status=lambda: PaperControlStatus(
+            state="DISABLED", effective_state="DISABLED", generation=3,
+            health="HEALTHY", emergency_stop_available=True,
+            audit_health="PASS", state_audit_reconciliation="PASS",
+        ),
+    )
+    data = TestClient(app).get("/api/v1/paper/readiness").json()["data"]
+    assert calls == ["observed"]
+    assert data["paper_control_state"] == "DISABLED"
+    assert data["paper_control_generation"] == 3
+    assert data["market_data_adapter_ready"] is True
+    assert data["approval_source_adapter_ready"] is True
+    assert data["current_mutation_ready"] is True
+    assert data["current_mutation_denial_reasons"] == []
+    assert data["live_allowed"] is False
+
+
 def test_trade_pagination_100_plus_one_has_no_duplicate_or_missing_rows(baseline):
     facts = tuple(make_trade(index + 100) for index in range(101))
     client, _ = client_for(baseline, facts=facts)

@@ -106,18 +106,22 @@ class PaperReadonlyReportingService:
         self,
         repository: PaperReportingReadRepository | None,
         *,
-        runtime: PaperRuntimeObservation | None = None,
+        runtime: PaperRuntimeObservation | Callable[[], PaperRuntimeObservation] | None = None,
         control_status: Callable[[], PaperControlStatus] = _default_control_status,
         max_closed_trades: int = MAX_RECONCILIATION_CLOSED_TRADES,
         production_identity: PaperProductionAccountIdentityBinding | None = None,
     ) -> None:
         self._repository = repository
-        self._runtime = runtime or PaperRuntimeObservation()
+        self._runtime_source = runtime or PaperRuntimeObservation()
         self._control_status = control_status
         self._max_closed_trades = max_closed_trades
         self._production_identity = production_identity
         self._accounting = PaperAccountAccountingService()
         self._reconciliation = PaperAccountingReconciliationService(self._accounting)
+
+    def _runtime(self) -> PaperRuntimeObservation:
+        value = self._runtime_source
+        return value() if callable(value) else value
 
     def _repo(self) -> PaperReportingReadRepository:
         if self._repository is None:
@@ -163,6 +167,7 @@ class PaperReadonlyReportingService:
         return baselines[0], result
 
     def readiness(self) -> PaperReadiness:
+        runtime = self._runtime()
         ready = self._schema_ready()
         control = self.control_status()
         baseline_exists: bool | None = None
@@ -192,39 +197,39 @@ class PaperReadonlyReportingService:
         if not ready:
             denials.append("PAPER_SCHEMA_NOT_DEPLOYED")
         preparation_gates = (
-            ("PRODUCTION_IDENTITY_BINDING_MISSING", self._runtime.production_identity_binding_ready),
-            ("RUNTIME_CREDENTIAL_BINDING_MISSING", self._runtime.runtime_credential_binding_ready),
-            ("RUNTIME_GRANTS_NOT_READY", self._runtime.runtime_grants_ready),
-            ("READONLY_GRANTS_NOT_READY", self._runtime.readonly_grants_ready),
+            ("PRODUCTION_IDENTITY_BINDING_MISSING", runtime.production_identity_binding_ready),
+            ("RUNTIME_CREDENTIAL_BINDING_MISSING", runtime.runtime_credential_binding_ready),
+            ("RUNTIME_GRANTS_NOT_READY", runtime.runtime_grants_ready),
+            ("READONLY_GRANTS_NOT_READY", runtime.readonly_grants_ready),
         )
         denials.extend(code for code, passed in preparation_gates if passed is False)
         gates = (
-            ("PITR_NOT_READY", self._runtime.pitr_ready is True),
-            ("WAL_NOT_READY", self._runtime.wal_ready is True),
-            ("MARKET_DATA_NOT_READY", self._runtime.market_data_adapter_ready is True),
-            ("APPROVAL_SOURCE_NOT_READY", self._runtime.approval_source_adapter_ready is True),
+            ("PITR_NOT_READY", runtime.pitr_ready is True),
+            ("WAL_NOT_READY", runtime.wal_ready is True),
+            ("MARKET_DATA_NOT_READY", runtime.market_data_adapter_ready is True),
+            ("APPROVAL_SOURCE_NOT_READY", runtime.approval_source_adapter_ready is True),
             ("BASELINE_PERSISTENCE_NOT_READY", ready),
             ("BASELINE_MISSING", baseline_exists is True),
             ("BASELINE_INVALID", baseline_valid is True),
             ("ACCOUNTING_NOT_HEALTHY", accounting_status == "HEALTHY"),
             ("PAPER_RECONCILIATION_NOT_HEALTHY", paper_status == "HEALTHY"),
-            ("PAPER_PRINCIPAL_NOT_READY", self._runtime.paper_principal_ready),
-            ("RUNTIME_CONFIG_NOT_READY", self._runtime.runtime_config_ready),
-            ("PAPER_RUNTIME_DISABLED", self._runtime.runtime_enabled),
-            ("KILL_SWITCH_NOT_READY", self._runtime.kill_switch_ready),
+            ("PAPER_PRINCIPAL_NOT_READY", runtime.paper_principal_ready),
+            ("RUNTIME_CONFIG_NOT_READY", runtime.runtime_config_ready),
+            ("PAPER_RUNTIME_DISABLED", runtime.runtime_enabled),
+            ("KILL_SWITCH_NOT_READY", runtime.kill_switch_ready),
             ("CONTROL_NOT_ELIGIBLE", control.state == "DISABLED" and control.effective_state == "DISABLED" and control.health == "HEALTHY"),
-            ("CANARY_SCOPE_INVALID", self._runtime.canary_scope_valid),
-            ("LIVE_NOT_DENIED", not self._runtime.live_enabled),
+            ("CANARY_SCOPE_INVALID", runtime.canary_scope_valid),
+            ("LIVE_NOT_DENIED", not runtime.live_enabled),
         )
         denials.extend(code for code, passed in gates if not passed and code not in denials)
         mutation_ready = ready and not denials
         return PaperReadiness(
-            environment=self._runtime.environment,
+            environment=runtime.environment,
             paper_schema_ready=ready,
             status="READY" if ready and baseline_valid and accounting_status == "HEALTHY" else ("PAPER_SCHEMA_NOT_DEPLOYED" if not ready else accounting_status),
-            paper_runtime_enabled=self._runtime.runtime_enabled,
-            paper_daemon_enabled=self._runtime.daemon_enabled,
-            paper_scheduler_enabled=self._runtime.scheduler_enabled,
+            paper_runtime_enabled=runtime.runtime_enabled,
+            paper_daemon_enabled=runtime.daemon_enabled,
+            paper_scheduler_enabled=runtime.scheduler_enabled,
             paper_control_state=control.state,
             paper_control_effective_state=control.effective_state,
             paper_control_generation=control.generation,
@@ -234,11 +239,11 @@ class PaperReadonlyReportingService:
             account_baseline_valid=baseline_valid,
             accounting_reconciliation_status=accounting_status,
             paper_reconciliation_status=paper_status,
-            market_data_adapter_ready=self._runtime.market_data_adapter_ready,
-            approval_source_adapter_ready=self._runtime.approval_source_adapter_ready,
-            wal_ready=self._runtime.wal_ready,
-            pitr_ready=self._runtime.pitr_ready,
-            current_approval_availability=self._runtime.current_approval_availability,
+            market_data_adapter_ready=runtime.market_data_adapter_ready,
+            approval_source_adapter_ready=runtime.approval_source_adapter_ready,
+            wal_ready=runtime.wal_ready,
+            pitr_ready=runtime.pitr_ready,
+            current_approval_availability=runtime.current_approval_availability,
             current_mutation_ready=mutation_ready,
             current_mutation_denial_reasons=denials,
         )
@@ -362,7 +367,7 @@ class PaperReadonlyReportingService:
         return PaperReconciliation(overall_status=status, paper_reconciliation=section, accounting_reconciliation=section)
 
     def runtime_status(self) -> PaperRuntimeStatus:
-        value = self._runtime
+        value = self._runtime()
         return PaperRuntimeStatus(runtime_enabled=value.runtime_enabled, daemon_enabled=value.daemon_enabled,
             scheduler_enabled=value.scheduler_enabled, dry_run=value.dry_run, mutation_enabled=value.mutation_enabled,
             worker_running=value.worker_running, operator_runner_running=value.operator_runner_running)
