@@ -2,7 +2,8 @@
 
 The executor never resolves a database URL, opens a protected binding, or
 handles credential material.  Those responsibilities live behind the concrete
-backend.  Planning invokes no backend method and therefore consumes no secret.
+backend. Planning reads only sanitized postconditions through the trusted
+backend and therefore consumes no caller-provided secret.
 """
 
 from __future__ import annotations
@@ -80,6 +81,26 @@ class PaperPreparationAction(StrEnum):
 ALL_PREPARATION_ACTIONS: Final = tuple(PaperPreparationAction)
 
 
+class PaperPreparationPhase(StrEnum):
+    PRE_MIGRATION_READY = "PRE_MIGRATION_READY"
+    PARTIAL_RESUMABLE = "PARTIAL_RESUMABLE"
+    COMPLETED = "COMPLETED"
+    INCOMPATIBLE = "INCOMPATIBLE"
+
+
+def classify_preparation_phase(
+    alembic_revision: str, *, preparation_complete: bool, privilege_drift: bool = False,
+    incompatible_postcondition: bool = False,
+) -> PaperPreparationPhase:
+    if (privilege_drift or incompatible_postcondition
+            or alembic_revision not in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC}):
+        return PaperPreparationPhase.INCOMPATIBLE
+    if alembic_revision == EXPECTED_START_ALEMBIC:
+        return PaperPreparationPhase.PRE_MIGRATION_READY
+    return (PaperPreparationPhase.COMPLETED if preparation_complete
+            else PaperPreparationPhase.PARTIAL_RESUMABLE)
+
+
 class PaperPreparationConsumerHealth(StrEnum):
     NOT_CHECKED = "NOT_CHECKED"
     HEALTHY = "HEALTHY"
@@ -146,12 +167,57 @@ class PaperProductionExecutionAuthorization:
             raise ValueError("EXPLICIT_UNIQUE_ACTION_SET_REQUIRED")
         if any(action not in ALL_PREPARATION_ACTIONS for action in self.allowed_actions):
             raise ValueError("FORBIDDEN_PREPARATION_ACTION")
+        ordered = tuple(action for action in ALL_PREPARATION_ACTIONS if action in self.allowed_actions)
+        if self.allowed_actions != ordered:
+            raise ValueError("PREPARATION_ACTION_ORDER_INVALID")
 
 
 @dataclass(frozen=True, slots=True)
 class DatabaseGrant:
     table: str
     operations: tuple[str, ...]
+
+
+def normalize_database_grants(
+    rows: tuple[tuple[str, str, str], ...],
+) -> frozenset[tuple[str, str, bool]]:
+    """Normalize PostgreSQL grant metadata as an order-independent semantic set."""
+    return frozenset(
+        (table.strip().lower(), privilege.strip().upper(), grantable.strip().upper() == "YES")
+        for table, privilege, grantable in rows
+    )
+
+
+def classify_database_privilege_drift(
+    rows: tuple[tuple[str, str, str], ...],
+    accepted: tuple[DatabaseGrant, ...],
+    *,
+    memberships: int = 0,
+    ownership: int = 0,
+    non_table_acl: int = 0,
+) -> bool:
+    expected = frozenset(
+        (item.table.strip().lower(), operation.strip().upper())
+        for item in accepted for operation in item.operations
+    )
+    normalized = normalize_database_grants(rows)
+    return bool(
+        memberships or ownership or non_table_acl
+        or any(grantable or (table, privilege) not in expected
+               for table, privilege, grantable in normalized)
+    )
+
+
+def required_database_privileges_present(
+    rows: tuple[tuple[str, str, str], ...], required: tuple[DatabaseGrant, ...],
+) -> bool:
+    normalized = normalize_database_grants(rows)
+    present = frozenset((table, privilege) for table, privilege, _ in normalized)
+    expected = frozenset(
+        (item.table.strip().lower(), operation.strip().upper())
+        for item in required for operation in item.operations
+    )
+    return expected <= present
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,11 +250,21 @@ RUNTIME_UPDATE_TABLES: Final = (
     "paper_exit_evaluation_cursors", "paper_first_canary_sessions",
 )
 READONLY_PAPER_TABLES: Final = ("paper_account_baselines",) + RUNTIME_WRITE_TABLES
+# Authoritative pre-PAPER Readonly API relation contract. These are the only
+# relations used by the original nine-route production API and remain valid
+# when the separately authorized PAPER reporting SELECT grants are added.
+READONLY_BASELINE_TABLES: Final = (
+    "candles_15m", "online_pipeline_results", "online_pipeline_runs",
+)
 RUNTIME_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in RUNTIME_READ_TABLES) + tuple(
     DatabaseGrant(table, ("SELECT", "INSERT") + (("UPDATE",) if table in RUNTIME_UPDATE_TABLES else ()))
     for table in RUNTIME_WRITE_TABLES
 )
 READONLY_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in READONLY_PAPER_TABLES)
+READONLY_BASELINE_GRANTS: Final = tuple(
+    DatabaseGrant(table, ("SELECT",)) for table in READONLY_BASELINE_TABLES
+)
+READONLY_ACCEPTED_GRANTS: Final = READONLY_BASELINE_GRANTS + READONLY_GRANTS
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +284,27 @@ class PaperProductionPreparationBackend(Protocol):
     def validate_runtime_binding(self) -> bool: ...
     def deploy_disabled_runtime(self) -> PaperPreparationOperationResult: ...
     def deploy_readonly_api_narrow(self) -> PaperPreparationOperationResult: ...
+    def action_satisfied(self, action: PaperPreparationAction) -> bool: ...
+
+
+@dataclass(frozen=True, slots=True)
+class PaperProductionPreparationState:
+    alembic_revision: str
+    phase: PaperPreparationPhase
+    schema_ready: bool
+    baseline_ready: bool
+    runtime_binding_ready: bool
+    runtime_role_ready: bool
+    runtime_grants_ready: bool
+    readonly_paper_grants_ready: bool
+    readonly_baseline_grants_ready: bool
+    runtime_configuration_ready: bool
+    readonly_reporting_deployed: bool
+    privilege_drift: bool = False
+
+    @property
+    def preparation_complete(self) -> bool:
+        return self.phase is PaperPreparationPhase.COMPLETED
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -220,6 +317,7 @@ class PaperProductionPreparationResult:
     role_name: str = PRODUCTION_PAPER_RUNTIME_ROLE
     consumer_health: PaperPreparationConsumerHealth = PaperPreparationConsumerHealth.NOT_CHECKED
     production_mutations: int = 0
+    phase: PaperPreparationPhase | None = None
 
     def __repr__(self) -> str:
         return ("PaperProductionPreparationResult(role_name='traders_paper_runtime', "
@@ -232,7 +330,8 @@ class PaperProductionPreparationResult:
                 "finding": self.finding.value, "binding_present": self.binding_present,
                 "binding_valid": self.binding_valid, "role_name": self.role_name,
                 "consumer_health": self.consumer_health.value,
-                "production_mutations": self.production_mutations}
+                "production_mutations": self.production_mutations,
+                "phase": None if self.phase is None else self.phase.value}
 
 
 class PaperProductionPreparationExecutor:
@@ -244,14 +343,20 @@ class PaperProductionPreparationExecutor:
     def plan(self, identity: PaperProductionAccountIdentityBinding | None,
              actions: tuple[PaperPreparationAction, ...] = ALL_PREPARATION_ACTIONS) -> PaperProductionPreparationResult:
         finding = PaperPreparationFinding.READY if identity is not None else PaperPreparationFinding.IDENTITY_BINDING_MISSING
-        return PaperProductionPreparationResult(actions, (), finding, False, False, production_mutations=0)
+        remaining = tuple(action for action in actions if not self._action_satisfied(action))
+        return PaperProductionPreparationResult(remaining, (), finding, False, False, production_mutations=0)
+
+    def _action_satisfied(self, action: PaperPreparationAction) -> bool:
+        checker = getattr(self._backend, "action_satisfied", None)
+        return bool(checker(action)) if checker is not None else False
 
     def execute(self, identity: PaperProductionAccountIdentityBinding,
                 target: PaperProductionTargetGuard,
                 budget: PaperProductionPreparationMutationBudget,
                 authorization: PaperProductionExecutionAuthorization) -> PaperProductionPreparationResult:
         del identity, budget
-        actions = authorization.allowed_actions
+        requested_actions = authorization.allowed_actions
+        actions = requested_actions
         executed: list[PaperPreparationAction] = []
         mutations = 0
         try:
@@ -262,6 +367,7 @@ class PaperProductionPreparationExecutor:
             state = self._backend.inspect_runtime_role()
             if state == "BROADER_THAN_CONTRACT":
                 return PaperProductionPreparationResult(actions, (), PaperPreparationFinding.EXISTING_ROLE_PRIVILEGE_DRIFT, False, False)
+            actions = tuple(action for action in requested_actions if not self._action_satisfied(action))
             binding_present = False
             binding_valid = False
             operations = {
@@ -330,5 +436,6 @@ class PaperProductionPreparationReadiness:
 __all__ = [name for name in globals() if name.startswith("Paper") or name in {
     "ALL_PREPARATION_ACTIONS", "EXPECTED_FINAL_ALEMBIC", "EXPECTED_START_ALEMBIC",
     "IDENTITY_KEYS", "PRODUCTION_PAPER_RUNTIME_ROLE", "PRODUCTION_READONLY_ROLE",
+    "READONLY_ACCEPTED_GRANTS", "READONLY_BASELINE_GRANTS", "READONLY_BASELINE_TABLES",
     "READONLY_GRANTS", "READONLY_PAPER_TABLES", "RUNTIME_GRANTS", "RUNTIME_ROLE_POLICY",
 }]

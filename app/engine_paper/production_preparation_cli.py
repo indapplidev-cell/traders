@@ -15,6 +15,7 @@ from app.engine_paper.production_preparation import (
     EXPECTED_START_ALEMBIC,
     PaperPreparationAction,
     PaperPreparationFinding,
+    PaperPreparationPhase,
     PaperProductionExecutionAuthorization,
     PaperProductionIdentityError,
     PaperProductionPreparationMutationBudget,
@@ -121,7 +122,7 @@ def _execute(composition, actions: tuple[PaperPreparationAction, ...], *, orches
     )
     if not composition.backend.validate_target(current_target):
         raise PaperPreparationAdapterError("TARGET_MISMATCH")
-    migration_changed = _migrate(composition)
+    migration_changed = _migrate(composition) if current_revision == EXPECTED_START_ALEMBIC else False
     final_target = PaperProductionTargetGuard(
         database_target_id=composition.target.database_target_id,
         expected_start_alembic=EXPECTED_FINAL_ALEMBIC,
@@ -136,7 +137,8 @@ def _execute(composition, actions: tuple[PaperPreparationAction, ...], *, orches
         PaperProductionExecutionAuthorization(ACKNOWLEDGEMENT, before))
     if first.finding is not PaperPreparationFinding.READY:
         return first
-    baseline_changed = _baseline(composition, balance)
+    baseline_changed = (False if composition.backend.baseline_ready(composition.identity)
+                        else _baseline(composition, balance))
     if not after:
         return first
     second = composition.executor.execute(composition.identity, final_target, budget,
@@ -155,28 +157,77 @@ def main(argv: Sequence[str] | None = None) -> int:
         config = _load_config(PRODUCTION_CONFIG if args.production else args.config)
         composition = compose_production_preparation(config, production_mode=args.production)
         if args.mode == "plan":
-            target_ok = composition.backend.validate_target(composition.target)
+            state = composition.backend.preparation_state(composition.identity)
+            current_target = PaperProductionTargetGuard(
+                database_target_id=composition.target.database_target_id,
+                expected_start_alembic=state.alembic_revision,
+            ) if state.alembic_revision in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC} else None
+            target_ok = current_target is not None and composition.backend.validate_target(current_target)
+            planned = composition.executor.plan(composition.identity)
+            migration_required = state.phase is PaperPreparationPhase.PRE_MIGRATION_READY
+            plan_ok = target_ok and state.phase is not PaperPreparationPhase.INCOMPATIBLE
+            deployment_actions = {
+                PaperPreparationAction.DEPLOY_DISABLED_RUNTIME_CONFIGURATION,
+                PaperPreparationAction.DEPLOY_READONLY_API_NARROW,
+            }
+            planned_before = [item.value for item in planned.planned_actions
+                              if item not in deployment_actions]
+            planned_after = [item.value for item in planned.planned_actions
+                             if item in deployment_actions]
+            planned_steps = ((["MIGRATE_SCHEMA_TO_0013"] if migration_required else [])
+                             + planned_before
+                             + (["ENSURE_ACCOUNT_BASELINE"] if not state.baseline_ready else [])
+                             + planned_after)
             _emit({"action": "PLAN", "backend": "PostgresPaperProductionPreparationBackend",
                    "binding_adapter": "PaperProductionPreparationTargetBinding", "binding_ready": True,
                    "dry_run": True, "execute_composition_ready": True,
                    "identity_adapter": "PaperProductionIdentityConfigurationAdapter",
-                   "mutations": 0, "result": "PASS" if target_ok else "BLOCKED",
-                   "target": "production", "target_verified": target_ok})
-            return EXIT_SUCCESS if target_ok else EXIT_TARGET_MISMATCH
-        if args.mode == "status":
-            target_ok = composition.backend.validate_target(composition.target)
-            role_state = composition.backend.inspect_runtime_role() if target_ok else "NOT_CHECKED"
-            binding = composition.protected_binding.metadata()
-            result = "PASS" if target_ok and role_state != "BROADER_THAN_CONTRACT" else "BLOCKED"
-            _emit({"alembic_revision": composition.backend.current_revision() if target_ok else "UNVERIFIED",
-                   "binding_ready": True, "control_state": composition.target.control_state,
-                   "dry_run": True, "execute_composition_ready": True,
-                   "identity_ready": True, "result": result, "role_state": role_state,
-                   "runtime_binding_ready": binding.binding_valid,
-                   "target": "production", "target_verified": target_ok})
+                   "mutations": 0, "result": "PASS" if plan_ok else "BLOCKED",
+                   "target": "production", "target_verified": target_ok,
+                   "preparation_phase": state.phase.value,
+                   "migration_action_required": migration_required,
+                   "migration_already_satisfied": state.schema_ready,
+                   "planned_actions": [item.value for item in planned.planned_actions],
+                   "planned_steps": planned_steps,
+                   "baseline_action_required": not state.baseline_ready,
+                   "privilege_drift": state.privilege_drift})
             if not target_ok:
                 return EXIT_TARGET_MISMATCH
-            return EXIT_PRIVILEGE_DRIFT if role_state == "BROADER_THAN_CONTRACT" else EXIT_SUCCESS
+            return EXIT_PRIVILEGE_DRIFT if state.privilege_drift else (
+                EXIT_SUCCESS if plan_ok else EXIT_VALIDATION_BLOCKED)
+        if args.mode == "status":
+            state = composition.backend.preparation_state(composition.identity)
+            invariance = composition.backend.safe_invariance_counts()
+            current_target = PaperProductionTargetGuard(
+                database_target_id=composition.target.database_target_id,
+                expected_start_alembic=state.alembic_revision,
+            ) if state.alembic_revision in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC} else None
+            target_ok = current_target is not None and composition.backend.validate_target(current_target)
+            role_state = composition.backend.inspect_runtime_role() if target_ok else "NOT_CHECKED"
+            binding = composition.protected_binding.metadata()
+            result = "PASS" if (target_ok and state.phase is not PaperPreparationPhase.INCOMPATIBLE) else "BLOCKED"
+            _emit({"alembic_revision": state.alembic_revision if target_ok else "UNVERIFIED",
+                    "binding_ready": True, "control_state": composition.target.control_state,
+                    "dry_run": True, "execute_composition_ready": True,
+                    "identity_ready": True, "result": result, "role_state": role_state,
+                    "runtime_binding_ready": binding.binding_valid,
+                    "target": "production", "target_verified": target_ok,
+                    "preparation_phase": state.phase.value,
+                    "schema_ready": state.schema_ready,
+                    "baseline_ready": state.baseline_ready,
+                    "runtime_role_ready": state.runtime_role_ready,
+                    "runtime_grants_ready": state.runtime_grants_ready,
+                    "readonly_paper_grants_ready": state.readonly_paper_grants_ready,
+                    "readonly_baseline_grants_ready": state.readonly_baseline_grants_ready,
+                    "runtime_configuration_ready": state.runtime_configuration_ready,
+                    "readonly_reporting_deployed": state.readonly_reporting_deployed,
+                    "preparation_complete": state.preparation_complete,
+                    "privilege_drift": state.privilege_drift,
+                    # Fixed count-only readback; no identifiers or row contents cross the boundary.
+                    **invariance})
+            if not target_ok:
+                return EXIT_TARGET_MISMATCH
+            return EXIT_PRIVILEGE_DRIFT if state.privilege_drift else EXIT_SUCCESS
         actions = _actions(args.actions)
         if args.ack != ACKNOWLEDGEMENT:
             _emit({"result": "BLOCKED", "reason": "EXECUTION_NOT_AUTHORIZED"}, stderr=True)
@@ -202,7 +253,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except PaperPreparationAdapterError as error:
         reason = str(error)
         _emit({"result": "BLOCKED", "reason": reason}, stderr=True)
-        if reason in {"TARGET_MISMATCH", "PRODUCTION_TARGET_MISMATCH"}:
+        if reason in {"TARGET_MISMATCH", "PRODUCTION_TARGET_MISMATCH", "SCHEMA_REVISION_UNAVAILABLE"}:
             return EXIT_TARGET_MISMATCH
         if reason in {"PRODUCTION_TARGET_BINDING_UNAVAILABLE", "PRODUCTION_TARGET_BINDING_INVALID"}:
             return EXIT_BINDING_UNAVAILABLE

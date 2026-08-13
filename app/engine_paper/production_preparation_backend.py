@@ -29,14 +29,19 @@ from app.engine_paper.accounting import PaperAccountBaselineService
 from app.engine_paper.baseline_repository import PaperAccountBaselineRepository
 
 from app.engine_paper.production_preparation import (
+    EXPECTED_FINAL_ALEMBIC,
     EXPECTED_START_ALEMBIC,
     IDENTITY_KEYS,
     PRODUCTION_PAPER_RUNTIME_ROLE,
     PRODUCTION_READONLY_ROLE,
+    READONLY_ACCEPTED_GRANTS,
+    READONLY_BASELINE_GRANTS,
     READONLY_GRANTS,
     RUNTIME_GRANTS,
     RUNTIME_ROLE_POLICY,
     DatabaseGrant,
+    classify_database_privilege_drift,
+    PaperPreparationAction,
     PaperPreparationOperationResult,
     PaperProductionAccountIdentityBinding,
     PaperProductionIdentityError,
@@ -294,6 +299,26 @@ class PaperPreparationDeploymentAdapter:
         })
         return PaperPreparationOperationResult(changed, True)
 
+    def disabled_runtime_ready(self) -> bool:
+        path = self._root / "paper-runtime.disabled.json"
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return (payload.get("state") == "DEPLOYED_DISABLED"
+                    and payload.get("runtime_enabled") is False
+                    and payload.get("live_enabled") is False
+                    and payload.get("daemon_enabled") is False
+                    and payload.get("scheduler_enabled") is False)
+        except Exception:
+            return False
+
+    def readonly_api_narrow_ready(self) -> bool:
+        path = self._root / "readonly-api.narrow.json"
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return payload.get("deployment") == "NARROW" and payload.get("write_routes") == 0
+        except Exception:
+            return False
+
 
 class PostgresPaperProductionPreparationBackend:
     """Concrete PostgreSQL 16 least-privilege preparation backend."""
@@ -364,7 +389,6 @@ class PostgresPaperProductionPreparationBackend:
                 "FROM pg_roles WHERE rolname=:role"), {"role": role}).one_or_none()
 
     def _extra_privileges(self, role: str, grants: tuple[DatabaseGrant, ...]) -> bool:
-        expected = {(item.table, operation) for item in grants for operation in item.operations}
         with self._engine.connect() as connection:
             rows = connection.execute(text(
                 "SELECT table_name,privilege_type,is_grantable FROM information_schema.role_table_grants "
@@ -374,12 +398,41 @@ class PostgresPaperProductionPreparationBackend:
                 {"role": role}).scalar_one()
             ownership = connection.execute(text(
                 "SELECT (SELECT count(*) FROM pg_database d JOIN pg_roles r ON r.oid=d.datdba WHERE r.rolname=:role) + "
-                "(SELECT count(*) FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname=:role)"),
+                "(SELECT count(*) FROM pg_namespace n JOIN pg_roles r ON r.oid=n.nspowner WHERE r.rolname=:role) + "
+                "(SELECT count(*) FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname=:role) + "
+                "(SELECT count(*) FROM pg_proc p JOIN pg_roles r ON r.oid=p.proowner WHERE r.rolname=:role)"),
                 {"role": role}).scalar_one()
-        return bool(memberships or ownership or any(
-            grantable == "YES" or (table_name, privilege) not in expected
-            for table_name, privilege, grantable in rows
-        ))
+            non_table_acl = connection.execute(text(
+                "SELECT count(*) FROM ("
+                " SELECT x.privilege_type FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) x"
+                " JOIN pg_roles r ON r.oid=x.grantee WHERE r.rolname=:role"
+                " AND (n.nspname<>'public' OR x.privilege_type<>'USAGE' OR x.is_grantable)"
+                " UNION ALL SELECT x.privilege_type FROM pg_database d CROSS JOIN LATERAL aclexplode(d.datacl) x"
+                " JOIN pg_roles r ON r.oid=x.grantee WHERE r.rolname=:role"
+                " AND (d.datname<>current_database() OR x.privilege_type<>'CONNECT' OR x.is_grantable)"
+                " UNION ALL SELECT x.privilege_type FROM pg_proc p CROSS JOIN LATERAL aclexplode(p.proacl) x"
+                " JOIN pg_roles r ON r.oid=x.grantee WHERE r.rolname=:role"
+                " UNION ALL SELECT x.privilege_type FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) x"
+                " JOIN pg_roles r ON r.oid=x.grantee WHERE r.rolname=:role AND c.relkind='S'"
+                ") unexpected"), {"role": role}).scalar_one()
+        return classify_database_privilege_drift(
+            tuple((str(table_name), str(privilege), str(grantable))
+                  for table_name, privilege, grantable in rows),
+            grants, memberships=int(memberships), ownership=int(ownership),
+            non_table_acl=int(non_table_acl),
+        )
+
+    def _required_privileges(self, role: str, grants: tuple[DatabaseGrant, ...]) -> bool:
+        if self._role_row(role) is None:
+            return False
+        try:
+            with self._engine.connect() as connection:
+                return all(connection.execute(text(
+                    "SELECT has_table_privilege(:role,:table,:operation)"), {
+                        "role": role, "table": f"public.{grant.table}", "operation": operation,
+                    }).scalar_one() for grant in grants for operation in grant.operations)
+        except Exception:
+            return False
 
     def inspect_runtime_role(self) -> str:
         row = self._role_row(PRODUCTION_PAPER_RUNTIME_ROLE)
@@ -395,7 +448,7 @@ class PostgresPaperProductionPreparationBackend:
             return True
         readonly = self._role_row(PRODUCTION_READONLY_ROLE)
         return bool(readonly is not None and (
-            any(readonly[1:]) or self._extra_privileges(PRODUCTION_READONLY_ROLE, READONLY_GRANTS)
+            any(readonly[1:]) or self._extra_privileges(PRODUCTION_READONLY_ROLE, READONLY_ACCEPTED_GRANTS)
         ))
 
     def ensure_runtime_role(self) -> PaperPreparationOperationResult:
@@ -437,7 +490,8 @@ class PostgresPaperProductionPreparationBackend:
         row = self._role_row(role)
         if row is None:
             raise PaperPreparationAdapterError("REQUIRED_DATABASE_ROLE_MISSING")
-        if any(row[1:]) or self._extra_privileges(role, grants):
+        accepted = READONLY_ACCEPTED_GRANTS if role == PRODUCTION_READONLY_ROLE else grants
+        if any(row[1:]) or self._extra_privileges(role, accepted):
             raise PaperPreparationAdapterError("EXISTING_ROLE_PRIVILEGE_DRIFT")
         changed = False
         with self._engine.begin() as connection:
@@ -449,7 +503,7 @@ class PostgresPaperProductionPreparationBackend:
                     operations = ", ".join(missing)
                     connection.exec_driver_sql(f'GRANT {operations} ON TABLE "{grant.table}" TO "{role}"')
                     changed = True
-        if self._extra_privileges(role, grants):
+        if self._extra_privileges(role, accepted):
             raise PaperPreparationAdapterError("GRANT_POSTCONDITION_FAILED")
         with self._engine.connect() as connection:
             if any(not connection.execute(text("SELECT has_table_privilege(:role,:table,:operation)"),
@@ -463,6 +517,92 @@ class PostgresPaperProductionPreparationBackend:
 
     def reconcile_readonly_grants(self) -> PaperPreparationOperationResult:
         return self._reconcile(PRODUCTION_READONLY_ROLE, READONLY_GRANTS)
+
+    def baseline_ready(self, identity: PaperProductionAccountIdentityBinding) -> bool:
+        try:
+            with self._engine.connect() as connection:
+                rows = connection.execute(text(
+                    "SELECT account_id,accounting_session_id,currency,initial_balance "
+                    "FROM paper_account_baselines"
+                )).all()
+            return len(rows) == 1 and tuple(rows[0]) == (
+                identity.paper_account_id, identity.accounting_session_id,
+                identity.currency, Decimal("100.00"),
+            )
+        except Exception:
+            return False
+
+    def action_satisfied(self, action: PaperPreparationAction) -> bool:
+        if action is PaperPreparationAction.ENSURE_RUNTIME_ROLE:
+            return self.inspect_runtime_role() == "EXACT_OR_NARROWER"
+        if action is PaperPreparationAction.APPLY_RUNTIME_GRANTS:
+            return (self.inspect_runtime_role() == "EXACT_OR_NARROWER"
+                    and self._required_privileges(PRODUCTION_PAPER_RUNTIME_ROLE, RUNTIME_GRANTS))
+        if action is PaperPreparationAction.APPLY_READONLY_REPORTING_GRANTS:
+            return (not self.inspect_privilege_drift()
+                    and self._required_privileges(PRODUCTION_READONLY_ROLE, READONLY_GRANTS))
+        if action is PaperPreparationAction.BIND_RUNTIME_CREDENTIAL:
+            return self._binding.metadata().binding_valid
+        if action is PaperPreparationAction.VALIDATE_RUNTIME_BINDING:
+            return self._binding.validate_consumer()
+        if action is PaperPreparationAction.DEPLOY_DISABLED_RUNTIME_CONFIGURATION:
+            return self._deployment.disabled_runtime_ready()
+        if action is PaperPreparationAction.DEPLOY_READONLY_API_NARROW:
+            return self._deployment.readonly_api_narrow_ready()
+        return False
+
+    def preparation_state(self, identity: PaperProductionAccountIdentityBinding):
+        from app.engine_paper.production_preparation import (
+            PaperProductionPreparationState, classify_preparation_phase,
+        )
+        revision = self.current_revision()
+        drift = self.inspect_privilege_drift()
+        runtime_role_ready = self.action_satisfied(PaperPreparationAction.ENSURE_RUNTIME_ROLE)
+        runtime_grants_ready = self.action_satisfied(PaperPreparationAction.APPLY_RUNTIME_GRANTS)
+        readonly_ready = self.action_satisfied(PaperPreparationAction.APPLY_READONLY_REPORTING_GRANTS)
+        readonly_baseline_ready = self._required_privileges(
+            PRODUCTION_READONLY_ROLE, READONLY_BASELINE_GRANTS,
+        )
+        binding_ready = self._binding.validate_consumer() if self._binding.metadata().binding_valid else False
+        runtime_config_ready = self._deployment.disabled_runtime_ready()
+        readonly_deployed = self._deployment.readonly_api_narrow_ready()
+        baseline_ready = self.baseline_ready(identity) if revision == EXPECTED_FINAL_ALEMBIC else False
+        complete = all((runtime_role_ready, runtime_grants_ready, readonly_ready, binding_ready,
+                        runtime_config_ready, readonly_deployed, baseline_ready))
+        phase = classify_preparation_phase(
+            revision, preparation_complete=complete, privilege_drift=drift,
+            incompatible_postcondition=not readonly_baseline_ready,
+        )
+        return PaperProductionPreparationState(
+            revision, phase, revision == EXPECTED_FINAL_ALEMBIC, baseline_ready,
+            binding_ready, runtime_role_ready, runtime_grants_ready, readonly_ready,
+            readonly_baseline_ready, runtime_config_ready, readonly_deployed, drift,
+        )
+
+    def safe_invariance_counts(self) -> dict[str, int | None]:
+        """Return only fixed bounded production invariance counters."""
+        tables = {
+            "baseline_count": "paper_account_baselines",
+            "paper_commands": "paper_execution_commands",
+            "paper_orders": "paper_orders",
+            "paper_fills": "paper_fills",
+            "paper_positions": "paper_positions",
+            "paper_canaries": "paper_first_canary_sessions",
+        }
+        result: dict[str, int | None] = {}
+        with self._engine.connect() as connection:
+            result["schema_head_count"] = int(connection.execute(text(
+                "SELECT count(*) FROM alembic_version"
+            )).scalar_one())
+            for key, table_name in tables.items():
+                try:
+                    result[key] = int(connection.execute(text(
+                        f'SELECT count(*) FROM "{table_name}"'
+                    )).scalar_one())
+                except Exception:
+                    connection.rollback()
+                    result[key] = None
+        return result
 
     def deploy_disabled_runtime(self) -> PaperPreparationOperationResult:
         return self._deployment.deploy_disabled_runtime()

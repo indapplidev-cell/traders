@@ -13,7 +13,10 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
-from app.engine_paper.production_preparation import ALL_PREPARATION_ACTIONS
+from app.engine_paper.production_preparation import (
+    ALL_PREPARATION_ACTIONS, READONLY_BASELINE_GRANTS, READONLY_GRANTS,
+)
+from app.engine_paper.production_preparation_backend import compose_production_preparation
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,6 +48,10 @@ def isolated_pg16():
             connection.exec_driver_sql(
                 'CREATE ROLE "traders_readonly_api" NOLOGIN NOSUPERUSER NOCREATEDB '
                 'NOCREATEROLE NOREPLICATION NOBYPASSRLS')
+            for grant in READONLY_BASELINE_GRANTS:
+                connection.exec_driver_sql(
+                    f'GRANT SELECT ON TABLE "{grant.table}" TO "traders_readonly_api"'
+                )
         yield engine, raw
     finally:
         with engine.begin() as connection:
@@ -174,3 +181,70 @@ def test_privilege_drift_fails_closed_before_mutation(isolated_pg16, tmp_path):
     assert after == before
     with engine.begin() as connection:
         connection.exec_driver_sql('ALTER ROLE "traders_paper_runtime" NOCREATEDB')
+
+
+def test_real_pg16_partial_0013_legitimate_baseline_grants_resume_and_replay(
+    isolated_pg16, tmp_path,
+):
+    engine, raw = isolated_pg16
+    config, binding, state_root = _files(tmp_path, raw)
+    command.upgrade(Config("alembic.ini"), "0013_paper_first_canary_correlation")
+    with engine.begin() as connection:
+        connection.exec_driver_sql('DROP OWNED BY "traders_paper_runtime"')
+        connection.exec_driver_sql('DROP ROLE "traders_paper_runtime"')
+        connection.exec_driver_sql(
+            'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM "traders_readonly_api"'
+        )
+        connection.execute(text("DELETE FROM paper_account_baselines"))
+        for grant in READONLY_BASELINE_GRANTS:
+            connection.exec_driver_sql(
+                f'GRANT SELECT ON TABLE "{grant.table}" TO "traders_readonly_api"'
+            )
+
+    composition_config = json.loads(config.read_text(encoding="utf-8"))
+    composition = compose_production_preparation(composition_config)
+    # This is the exact old PAPER-only comparison that rejected production.
+    assert composition.backend._extra_privileges("traders_readonly_api", READONLY_GRANTS)
+    assert not composition.backend.inspect_privilege_drift()
+
+    status = _run(config, "status")
+    assert status.returncode == 0, status.stderr
+    status_payload = json.loads(status.stdout)
+    assert status_payload["alembic_revision"] == "0013_paper_first_canary_correlation"
+    assert status_payload["preparation_phase"] == "PARTIAL_RESUMABLE"
+    assert status_payload["baseline_ready"] is False
+    assert status_payload["runtime_binding_ready"] is False
+    assert status_payload["privilege_drift"] is False
+    assert status_payload["schema_head_count"] == 1
+    assert status_payload["baseline_count"] == 0
+    assert all(status_payload[key] == 0 for key in (
+        "paper_commands", "paper_orders", "paper_fills", "paper_positions", "paper_canaries",
+    ))
+
+    plan = _run(config, "plan")
+    assert plan.returncode == 0, plan.stderr
+    plan_payload = json.loads(plan.stdout)
+    assert plan_payload["preparation_phase"] == "PARTIAL_RESUMABLE"
+    assert plan_payload["migration_action_required"] is False
+    assert plan_payload["migration_already_satisfied"] is True
+    assert plan_payload["planned_actions"] == [item.value for item in ALL_PREPARATION_ACTIONS]
+
+    first = _run(config)
+    assert first.returncode == 0, first.stderr
+    first_payload = json.loads(first.stdout)
+    assert first_payload["result"] == "PASS"
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
+            "0013_paper_first_canary_correlation"
+        )
+        assert connection.execute(text("SELECT count(*) FROM paper_account_baselines")).scalar_one() == 1
+        for table in ("paper_execution_commands", "paper_orders", "paper_fills", "paper_positions",
+                      "paper_first_canary_sessions"):
+            assert connection.execute(text(f"SELECT count(*) FROM {table}")).scalar_one() == 0
+
+    replay = _run(config)
+    assert replay.returncode == 0, replay.stderr
+    assert json.loads(replay.stdout)["mutations"] == 0
+    completed = _run(config, "status")
+    assert completed.returncode == 0
+    assert json.loads(completed.stdout)["preparation_phase"] == "COMPLETED"
