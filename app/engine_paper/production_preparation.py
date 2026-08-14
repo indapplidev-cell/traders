@@ -261,7 +261,9 @@ READONLY_PAPER_TABLES: Final = (
 # relations used by the original nine-route production API and remain valid
 # when the separately authorized PAPER reporting SELECT grants are added.
 READONLY_BASELINE_TABLES: Final = (
-    "candles_15m", "online_pipeline_results", "online_pipeline_runs",
+    "candles_1m", "candles_5m", "candles_15m", "candles_1h", "candles_4h",
+    "candles_1d", "market_data_sync_state", "online_pipeline_results",
+    "online_pipeline_runs",
 )
 RUNTIME_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in RUNTIME_READ_TABLES) + tuple(
     DatabaseGrant(table, ("SELECT", "INSERT") + (("UPDATE",) if table in RUNTIME_UPDATE_TABLES else ()))
