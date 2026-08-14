@@ -34,6 +34,7 @@ from app.engine_paper.baseline_repository import PaperAccountBaselineRepository
 
 from app.engine_paper.production_preparation import (
     EXPECTED_FINAL_ALEMBIC,
+    EXPECTED_PREVIOUS_ALEMBIC,
     EXPECTED_START_ALEMBIC,
     IDENTITY_KEYS,
     PRODUCTION_PAPER_RUNTIME_ROLE,
@@ -609,7 +610,7 @@ class PostgresPaperProductionPreparationBackend:
         from app.engine_paper.production_preparation import EXPECTED_FINAL_ALEMBIC
         if self.current_revision() == EXPECTED_FINAL_ALEMBIC:
             return PaperPreparationOperationResult(False, True)
-        if self.current_revision() != EXPECTED_START_ALEMBIC:
+        if self.current_revision() not in {EXPECTED_START_ALEMBIC, EXPECTED_PREVIOUS_ALEMBIC}:
             raise PaperPreparationAdapterError("SCHEMA_REVISION_MISMATCH")
         import app.config.settings as settings
         original = settings.get_settings

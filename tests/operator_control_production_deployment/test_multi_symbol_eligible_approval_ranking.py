@@ -19,6 +19,12 @@ from app.engine_paper.production_approval import (
     SYMBOL_ALLOWLIST,
 )
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
+from app.engine_paper.production_preparation import (
+    EXPECTED_PREVIOUS_ALEMBIC,
+    PaperPreparationPhase,
+    PaperProductionTargetGuard,
+    classify_preparation_phase,
+)
 from tests.paper_production_approval_source_adapter.test_adapter_contract import (
     FakeReader,
     FakeSession,
@@ -147,6 +153,19 @@ def test_same_candidate_set_produces_same_winner_for_independent_workers():
         tuple(reversed(values)), policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION
     )
     assert first.winner.candidate_id == second.winner.candidate_id
+
+
+def test_deployment_accepts_only_the_exact_0013_predecessor_for_incremental_0014_migration():
+    assert EXPECTED_PREVIOUS_ALEMBIC == "0013_paper_first_canary_correlation"
+    assert classify_preparation_phase(
+        EXPECTED_PREVIOUS_ALEMBIC, preparation_complete=False
+    ) is PaperPreparationPhase.PARTIAL_RESUMABLE
+    assert PaperProductionTargetGuard(
+        "traders-production-primary", expected_start_alembic=EXPECTED_PREVIOUS_ALEMBIC
+    ).expected_start_alembic == EXPECTED_PREVIOUS_ALEMBIC
+    assert classify_preparation_phase(
+        "0013_unrecognized", preparation_complete=False
+    ) is PaperPreparationPhase.INCOMPATIBLE
 
 
 @pytest.mark.parametrize("field,value", (

@@ -19,7 +19,11 @@ from app.engine_paper.accounting import PaperAccountIdentity
 PRODUCTION_PAPER_RUNTIME_ROLE: Final = "traders_paper_runtime"
 PRODUCTION_READONLY_ROLE: Final = "traders_readonly_api"
 EXPECTED_START_ALEMBIC: Final = "0008_engine_orchestrator_freshness_retry"
+EXPECTED_PREVIOUS_ALEMBIC: Final = "0013_paper_first_canary_correlation"
 EXPECTED_FINAL_ALEMBIC: Final = "0014_paper_canary_selection_policy"
+SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
+    EXPECTED_START_ALEMBIC, EXPECTED_PREVIOUS_ALEMBIC, EXPECTED_FINAL_ALEMBIC,
+})
 IDENTITY_KEYS: Final = (
     "PAPER_PRODUCTION_ACCOUNT_ID",
     "PAPER_PRODUCTION_ACCOUNTING_SESSION_ID",
@@ -93,7 +97,7 @@ def classify_preparation_phase(
     incompatible_postcondition: bool = False,
 ) -> PaperPreparationPhase:
     if (privilege_drift or incompatible_postcondition
-            or alembic_revision not in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC}):
+            or alembic_revision not in SUPPORTED_PREPARATION_REVISIONS):
         return PaperPreparationPhase.INCOMPATIBLE
     if alembic_revision == EXPECTED_START_ALEMBIC:
         return PaperPreparationPhase.PRE_MIGRATION_READY
@@ -136,7 +140,7 @@ class PaperProductionTargetGuard:
     def __post_init__(self) -> None:
         if (not _TARGET_IDENTIFIER.fullmatch(self.database_target_id)
                 or self.environment != "PRODUCTION" or self.postgresql_major != 16
-                or self.expected_start_alembic not in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC}
+                or self.expected_start_alembic not in SUPPORTED_PREPARATION_REVISIONS
                 or self.control_state != "DISABLED" or self.live_enabled):
             raise ValueError("PRODUCTION_TARGET_GUARD_MISMATCH")
 
@@ -436,7 +440,8 @@ class PaperProductionPreparationReadiness:
 
 
 __all__ = [name for name in globals() if name.startswith("Paper") or name in {
-    "ALL_PREPARATION_ACTIONS", "EXPECTED_FINAL_ALEMBIC", "EXPECTED_START_ALEMBIC",
+    "ALL_PREPARATION_ACTIONS", "EXPECTED_FINAL_ALEMBIC", "EXPECTED_PREVIOUS_ALEMBIC",
+    "EXPECTED_START_ALEMBIC", "SUPPORTED_PREPARATION_REVISIONS",
     "IDENTITY_KEYS", "PRODUCTION_PAPER_RUNTIME_ROLE", "PRODUCTION_READONLY_ROLE",
     "READONLY_ACCEPTED_GRANTS", "READONLY_BASELINE_GRANTS", "READONLY_BASELINE_TABLES",
     "READONLY_GRANTS", "READONLY_PAPER_TABLES", "RUNTIME_GRANTS", "RUNTIME_ROLE_POLICY",

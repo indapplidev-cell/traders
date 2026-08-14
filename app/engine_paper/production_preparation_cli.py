@@ -13,6 +13,7 @@ from app.engine_paper.production_preparation import (
     ALL_PREPARATION_ACTIONS,
     EXPECTED_FINAL_ALEMBIC,
     EXPECTED_START_ALEMBIC,
+    SUPPORTED_PREPARATION_REVISIONS,
     PaperPreparationAction,
     PaperPreparationFinding,
     PaperPreparationPhase,
@@ -114,7 +115,7 @@ def _execute(composition, actions: tuple[PaperPreparationAction, ...], *, orches
     if balance != "100.00":
         raise PaperPreparationAdapterError("EXPLICIT_100_USDT_BASELINE_REQUIRED")
     current_revision = composition.backend.current_revision()
-    if current_revision not in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC}:
+    if current_revision not in SUPPORTED_PREPARATION_REVISIONS:
         raise PaperPreparationAdapterError("TARGET_MISMATCH")
     current_target = PaperProductionTargetGuard(
         database_target_id=composition.target.database_target_id,
@@ -122,7 +123,7 @@ def _execute(composition, actions: tuple[PaperPreparationAction, ...], *, orches
     )
     if not composition.backend.validate_target(current_target):
         raise PaperPreparationAdapterError("TARGET_MISMATCH")
-    migration_changed = _migrate(composition) if current_revision == EXPECTED_START_ALEMBIC else False
+    migration_changed = _migrate(composition) if current_revision != EXPECTED_FINAL_ALEMBIC else False
     final_target = PaperProductionTargetGuard(
         database_target_id=composition.target.database_target_id,
         expected_start_alembic=EXPECTED_FINAL_ALEMBIC,
@@ -161,10 +162,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             current_target = PaperProductionTargetGuard(
                 database_target_id=composition.target.database_target_id,
                 expected_start_alembic=state.alembic_revision,
-            ) if state.alembic_revision in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC} else None
+            ) if state.alembic_revision in SUPPORTED_PREPARATION_REVISIONS else None
             target_ok = current_target is not None and composition.backend.validate_target(current_target)
             planned = composition.executor.plan(composition.identity)
-            migration_required = state.phase is PaperPreparationPhase.PRE_MIGRATION_READY
+            migration_required = state.alembic_revision != EXPECTED_FINAL_ALEMBIC
             plan_ok = target_ok and state.phase is not PaperPreparationPhase.INCOMPATIBLE
             deployment_actions = {
                 PaperPreparationAction.DEPLOY_DISABLED_RUNTIME_CONFIGURATION,
@@ -174,7 +175,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                               if item not in deployment_actions]
             planned_after = [item.value for item in planned.planned_actions
                              if item in deployment_actions]
-            planned_steps = ((["MIGRATE_SCHEMA_TO_0013"] if migration_required else [])
+            planned_steps = ((["MIGRATE_SCHEMA_TO_0014"] if migration_required else [])
                              + planned_before
                              + (["ENSURE_ACCOUNT_BASELINE"] if not state.baseline_ready else [])
                              + planned_after)
@@ -201,7 +202,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             current_target = PaperProductionTargetGuard(
                 database_target_id=composition.target.database_target_id,
                 expected_start_alembic=state.alembic_revision,
-            ) if state.alembic_revision in {EXPECTED_START_ALEMBIC, EXPECTED_FINAL_ALEMBIC} else None
+            ) if state.alembic_revision in SUPPORTED_PREPARATION_REVISIONS else None
             target_ok = current_target is not None and composition.backend.validate_target(current_target)
             role_state = composition.backend.inspect_runtime_role() if target_ok else "NOT_CHECKED"
             binding = composition.protected_binding.metadata()
