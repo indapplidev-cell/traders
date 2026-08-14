@@ -34,6 +34,11 @@ def test_semantic_classifications_and_no_invented_target_return():
     assert items["planned_risk_reward"]["classification"] == "DERIVED_VALUE"
     assert items["minimum_target_return"]["classification"] == "NOT_CONFIGURED_AS_FIXED_THRESHOLD"
     assert items["minimum_target_return"]["value"] is None
+    assert items["default_stop_buffer"]["value"] == 0.1
+    assert items["fallback_target_default_rr"]["classification"] == "NOT_APPLICABLE"
+    assert items["allowed_risk_levels"]["value"] == ["LOW"]
+    assert items["intrabar_conflict_policy"]["value"] == ["STOP_FIRST_CONSERVATIVE"]
+    assert items["balance_exposure_limit"]["classification"] == "NOT_CONFIGURED_AS_FIXED_THRESHOLD"
     assert items["allowed_symbols"]["classification"] == "ENUM_ALLOWLIST"
     assert items["mode"]["value"] == ["PAPER"]
     assert items["max_new_commands"]["value"] == 1
