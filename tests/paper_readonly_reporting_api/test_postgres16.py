@@ -35,7 +35,7 @@ def test_real_pg16_0008_gate_and_0012_full_reporting_lifecycle(reporting_pg_engi
     assert service.readiness().status == "PAPER_SCHEMA_NOT_DEPLOYED"
     assert not [statement for statement in observed if "paper_" in statement]
 
-    command.upgrade(Config("alembic.ini"), "0013_paper_first_canary_correlation")
+    command.upgrade(Config("alembic.ini"), "0014_paper_canary_selection_policy")
     with reporting_pg_engine.begin() as connection:
         connection.execute(text("TRUNCATE paper_account_baselines, paper_exit_evaluation_cursors, paper_journal_entries, paper_exit_decisions, paper_positions, paper_fills, paper_order_events, paper_orders, paper_execution_commands, paper_simulation_policies RESTART IDENTITY CASCADE"))
     baseline = PaperAccountBaseline("baseline:reporting", PaperAccountIdentity("paper-primary", "session-001"), Decimal("100"), NOW)
@@ -48,7 +48,7 @@ def test_real_pg16_0008_gate_and_0012_full_reporting_lifecycle(reporting_pg_engi
         )
         assert result.successful and uow.commit().successful
 
-    assert adapter.schema_revision() == "0013_paper_first_canary_correlation"
+    assert adapter.schema_revision() == "0014_paper_canary_selection_policy"
     observed.clear()
     account = service.account()
     account_queries = len(observed)

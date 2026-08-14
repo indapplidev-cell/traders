@@ -134,7 +134,7 @@ def test_real_cli_execute_replay_roles_grants_baseline_and_zero_trade(isolated_p
                                 if line.startswith("TRADERS_PAPER_RUNTIME_DATABASE_URL="))
     assert runtime_binding_line
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013_paper_first_canary_correlation"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0014_paper_canary_selection_policy"
         attrs = connection.execute(text(
             "SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls "
             "FROM pg_roles WHERE rolname='traders_paper_runtime'")).one()
@@ -188,7 +188,7 @@ def test_real_pg16_partial_0013_legitimate_baseline_grants_resume_and_replay(
 ):
     engine, raw = isolated_pg16
     config, binding, state_root = _files(tmp_path, raw)
-    command.upgrade(Config("alembic.ini"), "0013_paper_first_canary_correlation")
+    command.upgrade(Config("alembic.ini"), "0014_paper_canary_selection_policy")
     with engine.begin() as connection:
         connection.exec_driver_sql('DROP OWNED BY "traders_paper_runtime"')
         connection.exec_driver_sql('DROP ROLE "traders_paper_runtime"')
@@ -210,7 +210,7 @@ def test_real_pg16_partial_0013_legitimate_baseline_grants_resume_and_replay(
     status = _run(config, "status")
     assert status.returncode == 0, status.stderr
     status_payload = json.loads(status.stdout)
-    assert status_payload["alembic_revision"] == "0013_paper_first_canary_correlation"
+    assert status_payload["alembic_revision"] == "0014_paper_canary_selection_policy"
     assert status_payload["preparation_phase"] == "PARTIAL_RESUMABLE"
     assert status_payload["baseline_ready"] is False
     assert status_payload["runtime_binding_ready"] is False
@@ -235,7 +235,7 @@ def test_real_pg16_partial_0013_legitimate_baseline_grants_resume_and_replay(
     assert first_payload["result"] == "PASS"
     with engine.connect() as connection:
         assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == (
-            "0013_paper_first_canary_correlation"
+            "0014_paper_canary_selection_policy"
         )
         assert connection.execute(text("SELECT count(*) FROM paper_account_baselines")).scalar_one() == 1
         for table in ("paper_execution_commands", "paper_orders", "paper_fills", "paper_positions",

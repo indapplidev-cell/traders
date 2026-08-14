@@ -27,6 +27,7 @@ from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineResultRow,
     OnlinePipelineRun,
 )
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 if TYPE_CHECKING:
     from app.engine_paper.paper_approvals import PaperQuantityApprovalSource
     from app.engine_safety.paper_domain import PaperSide
@@ -41,13 +42,13 @@ AUTHORITATIVE_STRATEGY_SOURCE: Final = "online_pipeline_results.strategy_payload
 AUTHORITATIVE_RISK_SOURCE: Final = "online_pipeline_results.risk_payload_json"
 AUTHORITATIVE_FINAL_APPROVAL_SOURCE: Final = "paper_payload_json.persisted_final_approvals"
 AUTHORITATIVE_QUANTITY_SOURCE: Final = "PaperQuantityApproval.CONTROLLED_PAPER_AUTHORITY"
-SYMBOL_ALLOWLIST: Final = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+SYMBOL_ALLOWLIST: Final = PREPARED_NEXT_TRADING_UNIVERSE.symbols
 PRIMARY_TIMEFRAME: Final = "15m"
-MAX_SYMBOLS_PER_REQUEST: Final = 3
+MAX_SYMBOLS_PER_REQUEST: Final = 10
 MAX_RUN_LOOKBACK: Final = 8
 MAX_RESULTS_PER_MODULE: Final = 8
-MAX_ROWS_PER_REQUEST: Final = 24
-MAX_CANDIDATES_PER_REQUEST: Final = 3
+MAX_ROWS_PER_REQUEST: Final = 80
+MAX_CANDIDATES_PER_REQUEST: Final = 10
 MAX_TIME_RANGE_MS: Final = 7 * 24 * 60 * 60 * 1000
 _TRANSACTION_CONTROL: Final = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
 _COMPLETE_STATUSES: Final = frozenset({"COMPLETED"})
@@ -204,6 +205,18 @@ class PaperProductionApprovalQuantityAuthority:
 
 
 @dataclass(frozen=True, slots=True)
+class PaperProductionApprovalRankingInputs:
+    """Validated dimensionless quality inputs copied from the persisted decision."""
+
+    risk_score: Decimal | None
+    planned_risk_reward: Decimal
+    strategy_score: Decimal | None
+    closed_until_ms: int
+    source_run_id: str
+    final_approval_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class PaperProductionApprovalCandidate:
     candidate_id: str
     source: str
@@ -222,6 +235,7 @@ class PaperProductionApprovalCandidate:
     paper_strategy_approval: PaperStrategyApproval
     paper_quantity_approval: PaperQuantityApproval
     paper_risk_approval: PaperRiskApproval
+    ranking: PaperProductionApprovalRankingInputs
 
 
 @dataclass(frozen=True, slots=True)
@@ -859,6 +873,28 @@ class PaperProductionApprovalSourceAdapter:
         candidate_id = "paper:production-approval-candidate:v1:" + _canonical_hash((
             lineage_id, str(authority.approved_quantity), risk_approval.valid_until_ms,
         ))
+        try:
+            risk_score = _decimal(risk.get("risk_score"))
+        except ValueError:
+            risk_score = None
+        try:
+            strategy_score = _decimal(strategy.get("strategy_score"))
+        except ValueError:
+            strategy_score = None
+        risk_distance = abs(
+            strategy_approval.entry_reference_price - strategy_approval.stop_price
+        )
+        reward_distance = abs(
+            strategy_approval.target_price - strategy_approval.entry_reference_price
+        )
+        # Approved geometry already proves a positive risk distance. This is
+        # the authoritative production R/R formula, derived once upstream of
+        # selection and never recomputed by the ranker.
+        planned_risk_reward = reward_distance / risk_distance
+        ranking = PaperProductionApprovalRankingInputs(
+            risk_score, planned_risk_reward, strategy_score,
+            row.closed_until_ms, row.run_id, risk_approval.approval_id,
+        )
         candidate = PaperProductionApprovalCandidate(
             candidate_id, AUTHORITATIVE_SOURCE, row.symbol, compatibility.side,
             compatibility.entry_reference_price, compatibility.stop_price,
@@ -869,6 +905,7 @@ class PaperProductionApprovalSourceAdapter:
             strategy_approval,
             quantity_approval,
             risk_approval,
+            ranking,
         )
         return self._symbol_result(
             row, PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL,

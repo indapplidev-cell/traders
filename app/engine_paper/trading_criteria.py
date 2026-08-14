@@ -10,6 +10,12 @@ from app.engine_analysis.regime_composer import MIN_REGIME_SCORE, MIN_SCORE_MARG
 from app.engine_market_data.continuous_sync_config import FRESHNESS_ALLOWANCE_MS
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_paper.paper_config import PaperConfig
+from app.engine_paper.eligible_approval_ranking import (
+    FINAL_TIE_BREAK,
+    MULTI_SYMBOL_SELECTION_POLICY_VERSION,
+    RANKING_FIELDS,
+    SELECTION_MODE,
+)
 from app.engine_paper.production_approval import (
     PRIMARY_TIMEFRAME, SYMBOL_ALLOWLIST, _RISK_APPROVED, _SETUP_ELIGIBLE,
     _STRATEGY_ALLOWED,
@@ -253,6 +259,23 @@ def build_trading_criteria_snapshot() -> dict[str, object]:
             _criterion("fixed_approval_ttl", "approval_policy", C.NOT_CONFIGURED_AS_FIXED_THRESHOLD,
                        None, "app.engine_paper.paper_approvals"),
         ),
+        "multi_symbol_selection_policy": (
+            _criterion("multi_symbol_selection_policy_version", "multi_symbol_selection_policy",
+                       C.DYNAMIC_RULE, MULTI_SYMBOL_SELECTION_POLICY_VERSION,
+                       "app.engine_paper.eligible_approval_ranking.ProductionEligibleApprovalSelector"),
+            _criterion("multi_symbol_selection_mode", "multi_symbol_selection_policy",
+                       C.DYNAMIC_RULE, SELECTION_MODE,
+                       "app.engine_paper.eligible_approval_ranking.ProductionEligibleApprovalSelector"),
+            _criterion("ranking_fields", "multi_symbol_selection_policy", C.DERIVED_VALUE,
+                       list(RANKING_FIELDS),
+                       "app.engine_paper.eligible_approval_ranking.RANKING_FIELDS"),
+            _criterion("final_tie_break", "multi_symbol_selection_policy", C.DYNAMIC_RULE,
+                       FINAL_TIE_BREAK,
+                       "app.engine_paper.eligible_approval_ranking.FINAL_TIE_BREAK"),
+            _criterion("multiple_eligible_fail_closed", "multi_symbol_selection_policy",
+                       C.BOOLEAN_GATE, False,
+                       "app.engine_paper.eligible_approval_ranking.ProductionEligibleApprovalSelector"),
+        ),
         "first_canary_bounds": (
             _criterion("max_new_commands", "first_canary_bounds", C.FIXED_THRESHOLD,
                        canary_fields["max_new_commands"].default,
@@ -271,7 +294,8 @@ def build_trading_criteria_snapshot() -> dict[str, object]:
         "provenance": {
             "projection": "EFFECTIVE_CURRENT_SERVER_POLICY",
             "policy_versions": {"strategy": "StrategyConfig", "risk": risk.policy_version,
-                                "paper_plan": paper.plan_policy_version, "fill": fill.contract_version},
+                                "paper_plan": paper.plan_policy_version, "fill": fill.contract_version,
+                                "multi_symbol_selection": MULTI_SYMBOL_SELECTION_POLICY_VERSION},
         },
     }
 

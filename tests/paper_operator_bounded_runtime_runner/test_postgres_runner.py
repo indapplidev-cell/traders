@@ -91,7 +91,7 @@ class _ResolvedRequestResolver:
         return operator.PaperOperatorResolvedIsolatedTarget(
             target_identity=target_identity,
             task_owned=True,
-            migration_head="0013_paper_first_canary_correlation",
+            migration_head="0014_paper_canary_selection_policy",
             sequence_service=CapturingService(),
             request_builder=build,
             cleanup=cleanup,

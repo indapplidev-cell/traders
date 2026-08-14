@@ -17,6 +17,10 @@ from app.engine_paper.fill_policy import (
     PaperIntrabarConflictPolicy,
 )
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
+from app.engine_paper.eligible_approval_ranking import (
+    EligibleApprovalSelectionResult,
+    ProductionEligibleApprovalSelector,
+)
 from app.engine_paper.production_approval import (
     PaperProductionApprovalOutcome,
     PaperProductionApprovalRequest,
@@ -65,12 +69,15 @@ class ProductionPaperFirstCanaryExecutor:
         canary_store: SqlAlchemyPaperFirstCanaryStore,
         approval_source: PaperProductionApprovalSourceAdapter,
         ingestion_service: PaperCommandIngestionService,
+        selector: ProductionEligibleApprovalSelector | None = None,
     ) -> None:
         self._control = control
         self._canary_store = canary_store
         self._approval_source = approval_source
         self._ingestion_service = ingestion_service
+        self._selector = selector or ProductionEligibleApprovalSelector()
         self._prepared = None
+        self.last_selection_diagnostics = None
 
     def _validate_boundary(self, transition_id: str, generation: int):
         state = self._control.read_authoritative()
@@ -95,10 +102,21 @@ class ProductionPaperFirstCanaryExecutor:
         return self._approval_source.read(PaperProductionApprovalRequest(
             PaperProductionApprovalScope(
                 symbols=canary.allowed_symbols,
-                max_candidates=1,
+                max_candidates=len(canary.allowed_symbols),
             ),
             request_id=request_id,
         ))
+
+    def _select_candidate(self, canary, result) -> EligibleApprovalSelectionResult:
+        candidates = tuple(
+            value.candidate for value in result.symbol_results
+            if value.candidate is not None
+        )
+        selection = self._selector.select(
+            candidates, policy_version=canary.selection_policy_version
+        )
+        self.last_selection_diagnostics = selection.diagnostics
+        return selection
 
     def preflight(self, *, transition_id: str, generation: int) -> tuple[str, ...]:
         canary = self._validate_boundary(transition_id, generation)
@@ -106,10 +124,10 @@ class ProductionPaperFirstCanaryExecutor:
             return ("CANARY_NOT_ARMED",)
         result = self._read_approval(canary, _id(canary.canary_id, "approval-preflight"))
         if result.outcome is PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
-            candidates = tuple(value.candidate for value in result.symbol_results if value.candidate is not None)
-            if len(candidates) != 1:
-                return ("APPROVAL_SOURCE_AMBIGUOUS",)
-            self._prepared = (canary.canary_id, transition_id, generation, candidates[0])
+            selection = self._select_candidate(canary, result)
+            if selection.failure_code is not None or selection.winner is None:
+                return (selection.failure_code or "APPROVAL_SOURCE_NOT_READY",)
+            self._prepared = (canary.canary_id, transition_id, generation, selection.winner)
             return ()
         if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL":
             return ("NO_ELIGIBLE_APPROVAL",)
@@ -126,10 +144,12 @@ class ProductionPaperFirstCanaryExecutor:
             candidate = self._prepared[3]
         if candidate is None:
             result = self._read_approval(canary, _id(request_id, "approval-start"))
-            candidates = tuple(value.candidate for value in result.symbol_results if value.candidate is not None)
-            if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL or len(candidates) != 1:
+            if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
                 return ("NO_ELIGIBLE_APPROVAL",) if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL" else ("APPROVAL_SOURCE_NOT_READY",)
-            candidate = candidates[0]
+            selection = self._select_candidate(canary, result)
+            if selection.failure_code is not None or selection.winner is None:
+                return (selection.failure_code or "APPROVAL_SOURCE_NOT_READY",)
+            candidate = selection.winner
         return self._ingest_candidate(
             candidate=candidate, request_id=request_id, canary_id=canary_id
         )
@@ -155,10 +175,6 @@ class ProductionPaperFirstCanaryExecutor:
         result = self._read_approval(
             validated, _id(canary.start_request_id, "approval-continuation")
         )
-        candidates = tuple(
-            value.candidate for value in result.symbol_results
-            if value.candidate is not None
-        )
         if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
             return (
                 ("NO_ELIGIBLE_APPROVAL",)
@@ -166,10 +182,11 @@ class ProductionPaperFirstCanaryExecutor:
                 else tuple(value.code.value for value in result.findings)
                 or ("APPROVAL_SOURCE_NOT_READY",)
             )
-        if len(candidates) != 1:
-            return ("APPROVAL_SOURCE_AMBIGUOUS",)
+        selection = self._select_candidate(validated, result)
+        if selection.failure_code is not None or selection.winner is None:
+            return (selection.failure_code or "APPROVAL_SOURCE_NOT_READY",)
         return self._ingest_candidate(
-            candidate=candidates[0],
+            candidate=selection.winner,
             request_id=canary.start_request_id,
             canary_id=canary_id,
         )
@@ -222,6 +239,7 @@ class ProductionPaperFirstCanaryExecutor:
                    else PaperCanaryNormalizedState(canary.state.value)),
             availability_code=("NO_ELIGIBLE_APPROVAL" if waiting else "AVAILABLE"),
             deployment_status="DEPLOYED",
+            selection_policy_version=canary.selection_policy_version,
             live_allowed=False,
             binance_order_calls_allowed=False,
         )

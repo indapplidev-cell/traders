@@ -44,7 +44,7 @@ from app.server_api.schemas.paper import (
 from app.engine_paper.trading_criteria import build_trading_criteria_snapshot
 
 
-PAPER_SCHEMA_EXPECTED = "0013_paper_first_canary_correlation"
+PAPER_SCHEMA_EXPECTED = "0014_paper_canary_selection_policy"
 PAPER_REPORTING_API_VERSION = 1
 MAX_RECONCILIATION_CLOSED_TRADES = 10_000
 MAX_TRADE_DATE_RANGE = timedelta(days=365)

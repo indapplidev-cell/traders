@@ -13,6 +13,7 @@ from app.engine_paper.first_canary_correlation import (
 )
 from app.engine_safety.paper_production_control import PersistentState
 from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
+from app.engine_paper.eligible_approval_ranking import MULTI_SYMBOL_SELECTION_POLICY_VERSION
 from app.operator_control.continuation_worker import (
     PaperFirstCanaryEligibleApprovalContinuationWorker,
     continuation_poll_seconds,
@@ -190,6 +191,63 @@ def test_real_production_approval_adapter_future_visibility_uses_existing_ingest
     assert store.value.approval_id == request.paper_risk_approval.approval_id
     assert store.value.command_count == 1 and store.created_canaries == 1
     assert subject.run_once() == "NO_WAITING_CANARY"
+    assert len(ingestion.requests) == 1
+
+
+def test_new_policy_continuation_ranks_multiple_eligible_and_ingests_exactly_once():
+    store = Store(waiting_canary(
+        allowed_symbols=("BTCUSDT", "ETHUSDT"),
+        selection_policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION,
+    ))
+    adapter = PaperProductionApprovalSourceAdapter(
+        lambda: FakeSession(), reader=FakeReader({"BTCUSDT": (eligible_row(),)}),
+        monotonic=iter((1.0, 1.001)).__next__,
+    )
+    base_result = adapter.read(type("Request", (), {
+        "scope": type("Scope", (), {
+            "symbols": ("BTCUSDT",), "primary_timeframe": "15m",
+            "max_run_lookback": 8, "max_results_per_module": 8,
+            "max_candidates": 1, "start_ms": None,
+        })(),
+        "request_id": "fixture", "as_of_ms": AS_OF,
+    })())
+    first = base_result.symbol_results[0]
+    assert first.candidate is not None
+    second_candidate = replace(
+        first.candidate,
+        candidate_id="candidate:second",
+        symbol="ETHUSDT",
+        ranking=replace(first.candidate.ranking, risk_score=first.candidate.ranking.risk_score - 1),
+    )
+    second = replace(first, symbol="ETHUSDT", candidate=second_candidate)
+    multiple = replace(base_result, symbol_results=(second, first))
+
+    class ApprovalSource:
+        def read(self, _request):
+            return multiple
+
+    class Ingestion:
+        def __init__(self): self.requests = []
+        def ingest_and_create_entry_order(self, request):
+            self.requests.append(request)
+            store.value = replace(
+                store.value, state=PaperFirstCanaryState.RUNNING,
+                approval_id=request.paper_risk_approval.approval_id,
+                command_count=1, command_id=request.command_id,
+            )
+            return type("Result", (), {"successful": True})()
+
+    ingestion = Ingestion()
+    executor = ProductionPaperFirstCanaryExecutor(
+        control=Control(), canary_store=store, approval_source=ApprovalSource(),
+        ingestion_service=ingestion,
+    )
+    assert worker(store, executor).run_once() == "COMMAND_CREATED_OR_REPLAYED"
+    assert len(ingestion.requests) == 1
+    assert executor.last_selection_diagnostics.eligible_count == 2
+    assert executor.last_selection_diagnostics.winner_symbol == "BTCUSDT"
+    assert store.value.command_count == 1 and store.value.position_count == 0
+    assert worker(store, executor).run_once() == "NO_WAITING_CANARY"
     assert len(ingestion.requests) == 1
 
 

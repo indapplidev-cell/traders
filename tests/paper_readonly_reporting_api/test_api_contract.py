@@ -36,7 +36,7 @@ def baseline():
 
 
 class FakePaperRepository:
-    def __init__(self, baseline: PaperAccountBaseline, *, revision="0013_paper_first_canary_correlation", facts=()):
+    def __init__(self, baseline: PaperAccountBaseline, *, revision="0014_paper_canary_selection_policy", facts=()):
         self.revision = revision
         self.baselines = (baseline,)
         self.facts = tuple(facts)
@@ -104,7 +104,7 @@ def control(state="DISABLED", generation=3):
         emergency_stop_available=True, audit_health="HEALTHY", state_audit_reconciliation="HEALTHY")
 
 
-def client_for(baseline, *, revision="0013_paper_first_canary_correlation", facts=()):
+def client_for(baseline, *, revision="0014_paper_canary_selection_policy", facts=()):
     paper = FakePaperRepository(baseline, revision=revision, facts=facts)
     common = FakeReadRepository().api_repositories()
     app = create_app(repositories=replace(common, paper=paper), clock=lambda: NOW,

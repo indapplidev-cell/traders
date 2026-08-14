@@ -16,6 +16,7 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanaryState,
     SqlAlchemyPaperFirstCanaryStore,
 )
+from app.engine_paper.eligible_approval_ranking import MULTI_SYMBOL_SELECTION_POLICY_VERSION
 from app.engine_paper.repository_results import RepositoryOutcome
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_execution.paper_idempotency import (
@@ -69,6 +70,7 @@ def test_empty_exact_lookup_and_durable_arm_restart(canary_sessions) -> None:
     assert first_store.get(str(uuid4())) is None
     reserved = _reserve(first_store)
     assert reserved.state is PaperFirstCanaryState.RESERVED
+    assert reserved.selection_policy_version == MULTI_SYMBOL_SELECTION_POLICY_VERSION
     armed = first_store.complete_arm(
         reserved.canary_id, "00000000-0000-4000-8000-000000000111", 2, NOW
     )

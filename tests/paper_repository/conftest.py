@@ -51,12 +51,12 @@ def repository_postgres_engine() -> Iterator[Engine]:
     if revision is None:
         command.upgrade(
             config,
-            "0013_paper_first_canary_correlation",
+            "0014_paper_canary_selection_policy",
         )
     else:
         command.upgrade(
             config,
-            "0013_paper_first_canary_correlation",
+            "0014_paper_canary_selection_policy",
         )
     yield engine
     engine.dispose()

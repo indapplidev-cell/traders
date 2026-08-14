@@ -22,7 +22,7 @@ EXPECTED_SERVER_HEAD: Final = "0988984b9d37ab22e811ba106ae19c068d374438"
 EXPECTED_SERVER_TREE: Final = "d423e5ce44c19245ed8161a9e0505c4090103057"
 EXPECTED_SCHEMA_BASE: Final = "0008_engine_orchestrator_freshness_retry"
 EXPECTED_SCHEMA_HEAD: Final = (
-    "0013_paper_first_canary_correlation"
+    "0014_paper_canary_selection_policy"
 )
 MAX_SAFE_RENDER_BYTES: Final = 65_536
 MAX_EVIDENCE_ITEMS: Final = 32
@@ -275,7 +275,7 @@ MIGRATION_MANIFESTS: Final = (
         source_sha256="7f8ceb22a472efec1301ceac6c4b3ee203ff282ac32a8b84860711e90fe79048",
     ),
     PaperProductionMigrationManifest(
-        revision=EXPECTED_SCHEMA_HEAD,
+        revision="0013_paper_first_canary_correlation",
         predecessor="0012_paper_account_baseline",
         classification=MigrationClassification.REQUIRES_PRE_BACKUP,
         ddl_operations=(
@@ -292,6 +292,25 @@ MIGRATION_MANIFESTS: Final = (
         default_nullability="lifecycle links remain nullable until their exact causal entity exists",
         runtime_compatibility="0008 services unaffected; first-canary correlation requires 0013 exactly",
         source_sha256="08f9f65acfef946e89dd41297ba14a1dbeb113b62a91a22331a64b5adf620f54",
+    ),
+    PaperProductionMigrationManifest(
+        revision=EXPECTED_SCHEMA_HEAD,
+        predecessor="0013_paper_first_canary_correlation",
+        classification=MigrationClassification.REQUIRES_PRE_BACKUP,
+        ddl_operations=(
+            "ADD immutable selection_policy_version to paper_first_canary_sessions",
+            "PRESERVE existing canaries with exactly-one-eligible-v1 server default",
+        ),
+        locking_characteristics="brief catalog lock on one bounded canary table",
+        transaction_behavior="single transactional Alembic revision on PostgreSQL",
+        expected_duration="short because the table has at most one nonterminal canary",
+        dependency_ordering="requires 0013 first-canary correlation",
+        forward_only_assumptions="existing canaries retain legacy selection lineage",
+        downgrade_support=DowngradeClassification.SCHEMA_DOWNGRADE_ONLY,
+        data_backfill="server default binds existing rows to exactly-one-eligible-v1",
+        default_nullability="selection policy is non-null and allowlisted",
+        runtime_compatibility="0014 runtime selects by the persisted canary policy version",
+        source_sha256="4f148a70693c145e57d0684c68f58ee3cd3061649ba9e46a9dd459182804068b",
     ),
 )
 

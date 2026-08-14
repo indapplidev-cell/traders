@@ -668,7 +668,7 @@ def restrictive_acl_tree_valid(root: Path, required_paths: tuple[Path, ...]) -> 
 
 def _preflight_from_args(args: argparse.Namespace) -> ArmReadinessPreflight:
     return ArmReadinessPreflight(
-        args.schema == "0013_paper_first_canary_correlation",
+        args.schema == "0014_paper_canary_selection_policy",
         args.pitr_window_seconds >= 86400, args.market_data_ready, args.approval_source_ready,
         args.wal_archive_health == "PASS", args.wal_unresolved_failures == 0,
         args.pitr_chain_valid, args.paper_runtime_enabled, not args.live_enabled,

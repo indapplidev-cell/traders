@@ -76,7 +76,7 @@ def test_future_ready_composition_true_and_current_like_false() -> None:
         Decimal("100"), datetime(2026, 8, 12, tzinfo=timezone.utc),
     )
     repository = FakePaperRepository(
-        baseline, revision="0013_paper_first_canary_correlation", facts=()
+        baseline, revision="0014_paper_canary_selection_policy", facts=()
     )
     control = PaperControlStatus(
         state="DISABLED", effective_state="DISABLED", generation=3, health="HEALTHY",

@@ -34,9 +34,9 @@ def test_real_pg16_0008_to_0013_preserves_existing_data_and_schema(source_contra
             "(run_id,symbol,primary_timeframe,closed_until_ms,closed_until_utc,status,trigger_source,daemon_instance_id) "
             "VALUES ('source-contract-existing','BTCUSDT','1m',1,:at,'COMPLETED','TEST','isolated') "
             "ON CONFLICT (run_id) DO NOTHING"), {"at": NOW})
-    command.upgrade(config, "0013_paper_first_canary_correlation")
+    command.upgrade(config, "0014_paper_canary_selection_policy")
     with source_contract_pg_engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0013_paper_first_canary_correlation"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0014_paper_canary_selection_policy"
         assert connection.execute(text("SELECT count(*) FROM online_pipeline_runs WHERE run_id='source-contract-existing'")).scalar_one() == 1
         assert connection.execute(text("SELECT count(*) FROM paper_first_canary_sessions")).scalar_one() == 0
     assert "paper_first_canary_sessions" in inspect(source_contract_pg_engine).get_table_names()

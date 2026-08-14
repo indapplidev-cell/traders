@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 PAPER_RECONCILIATION_SCHEMA_VERSION: Final = "PAPER_RECONCILIATION_REPORT_V1"
 EXPECTED_SCHEMA_HEAD: Final = (
-    "0013_paper_first_canary_correlation"
+    "0014_paper_canary_selection_policy"
 )
 MAX_SAFE_ID_LENGTH: Final = 128
 MAX_SAFE_REPORT_BYTES: Final = 65_536

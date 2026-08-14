@@ -38,7 +38,7 @@ EXPECTED_SERVER_BRANCH: Final = "feature/engine-platform"
 EXPECTED_SERVER_HEAD: Final = "ff118505a2fe892c7381f9fbb48f2a8530eb22e8"
 EXPECTED_SERVER_TREE: Final = "27298c2de1641fa47e4bc3bb8f91c39896323bbe"
 EXPECTED_SCHEMA_BASE: Final = "0008_engine_orchestrator_freshness_retry"
-EXPECTED_SCHEMA_HEAD: Final = "0013_paper_first_canary_correlation"
+EXPECTED_SCHEMA_HEAD: Final = "0014_paper_canary_selection_policy"
 MINIMUM_PITR_WINDOW_SECONDS: Final = 86_400
 PAPER_PRINCIPAL_LOGICAL_NAME: Final = "traders_paper_runtime"
 
@@ -248,6 +248,7 @@ class PaperProductionMigrationPlan:
         "0010_paper_final_approval_and_order_transition_event_vocabulary",
         "0011_paper_close_causal_boundary_and_exit_evaluation_cursor",
         "0012_paper_account_baseline",
+        "0013_paper_first_canary_correlation",
         EXPECTED_SCHEMA_HEAD,
     )
     lock_timeout_ms: int = 5_000

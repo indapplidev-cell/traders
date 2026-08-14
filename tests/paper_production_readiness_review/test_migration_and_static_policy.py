@@ -21,6 +21,7 @@ MIGRATION_PATHS = {
     "0011_paper_close_causal_boundary_and_exit_evaluation_cursor": ROOT / "alembic/versions/0011_paper_close_causal_boundary_and_exit_evaluation_cursor.py",
     "0012_paper_account_baseline": ROOT / "alembic/versions/0012_paper_account_baseline.py",
     "0013_paper_first_canary_correlation": ROOT / "alembic/versions/0013_paper_first_canary_correlation.py",
+    "0014_paper_canary_selection_policy": ROOT / "alembic/versions/0014_paper_canary_selection_policy.py",
 }
 
 
@@ -30,7 +31,7 @@ def test_migration_sources_have_exact_frozen_hashes(manifest, repeat: int) -> No
     payload = MIGRATION_PATHS[manifest.revision].read_bytes()
     # Revision 0013 was accepted as an LF Git blob, unlike the older registry
     # entries frozen from Windows bytes. Canonicalize only its stale checkout.
-    if manifest.revision == "0013_paper_first_canary_correlation":
+    if manifest.revision in {"0013_paper_first_canary_correlation", "0014_paper_canary_selection_policy"}:
         payload = payload.replace(b"\r\n", b"\n")
     assert repeat >= 0
     assert hashlib.sha256(payload).hexdigest() == manifest.source_sha256
@@ -56,17 +57,19 @@ def test_each_migration_manifest_is_complete_and_ordered(manifest, repeat: int) 
 @pytest.mark.parametrize("repeat", tuple(range(32)))
 def test_exact_migration_chain_and_classifications(repeat: int) -> None:
     assert repeat >= 0
-    assert tuple(item.revision[:4] for item in MIGRATION_MANIFESTS) == ("0009", "0010", "0011", "0012", "0013")
+    assert tuple(item.revision[:4] for item in MIGRATION_MANIFESTS) == ("0009", "0010", "0011", "0012", "0013", "0014")
     assert MIGRATION_MANIFESTS[0].predecessor.startswith("0008_")
     assert MIGRATION_MANIFESTS[1].predecessor == MIGRATION_MANIFESTS[0].revision
     assert MIGRATION_MANIFESTS[2].predecessor == MIGRATION_MANIFESTS[1].revision
     assert MIGRATION_MANIFESTS[3].predecessor == MIGRATION_MANIFESTS[2].revision
     assert MIGRATION_MANIFESTS[4].predecessor == MIGRATION_MANIFESTS[3].revision
+    assert MIGRATION_MANIFESTS[5].predecessor == MIGRATION_MANIFESTS[4].revision
     assert MIGRATION_MANIFESTS[0].classification is MigrationClassification.REQUIRES_PRE_BACKUP
     assert MIGRATION_MANIFESTS[1].classification is MigrationClassification.REQUIRES_WRITE_QUIESCE
     assert MIGRATION_MANIFESTS[2].classification is MigrationClassification.REQUIRES_PRE_BACKUP
     assert MIGRATION_MANIFESTS[3].classification is MigrationClassification.REQUIRES_PRE_BACKUP
     assert MIGRATION_MANIFESTS[4].classification is MigrationClassification.REQUIRES_PRE_BACKUP
+    assert MIGRATION_MANIFESTS[5].classification is MigrationClassification.REQUIRES_PRE_BACKUP
 
 
 @pytest.mark.parametrize("repeat", tuple(range(32)))

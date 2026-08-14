@@ -37,7 +37,7 @@ from .schemas import (
 )
 
 
-ALLOWED_FIRST_CANARY_SYMBOLS = frozenset({"BTCUSDT", "ETHUSDT", "SOLUSDT"})
+ALLOWED_FIRST_CANARY_SYMBOLS = frozenset(ACTIVE_TRADING_UNIVERSE.symbols)
 
 
 class ControlApiError(RuntimeError):
@@ -288,6 +288,7 @@ class PaperOperatorControlService:
             max_new_commands=value.max_new_commands,
             max_open_positions=value.max_open_positions,
             allowed_symbols=value.allowed_symbols,
+            selection_policy_version=value.selection_policy_version,
             command_count=value.command_count,
             command_id=value.command_id,
             position_count=value.position_count,
@@ -369,7 +370,7 @@ class PaperOperatorControlService:
             if not (request.operator_acknowledgement and request.paper_acknowledgement and request.live_forbidden_acknowledgement):
                 raise ControlApiError(400, "INVALID_REQUEST")
             symbols = tuple(sorted(set(request.allowed_symbols)))
-            if not symbols or len(symbols) != len(request.allowed_symbols) or len(symbols) > 3:
+            if not symbols or len(symbols) != len(request.allowed_symbols) or len(symbols) > 10:
                 raise ControlApiError(400, "INVALID_CANARY_SCOPE")
             if any(symbol not in ALLOWED_FIRST_CANARY_SYMBOLS for symbol in symbols):
                 raise ControlApiError(400, "INVALID_SYMBOL")

@@ -173,6 +173,10 @@ class PaperFirstCanarySessionRecord(Base):
         CheckConstraint("command_count BETWEEN 0 AND 1", name="ck_paper_first_canary_command_count"),
         CheckConstraint("position_count BETWEEN 0 AND 1", name="ck_paper_first_canary_position_count"),
         CheckConstraint(
+            "selection_policy_version IN ('exactly-one-eligible-v1','eligible-approval-ranking-v1')",
+            name="ck_paper_first_canary_selection_policy",
+        ),
+        CheckConstraint(
             "(command_count = 0 AND command_id IS NULL) OR (command_count = 1 AND command_id IS NOT NULL)",
             name="ck_paper_first_canary_command_link",
         ),
@@ -209,6 +213,7 @@ class PaperFirstCanarySessionRecord(Base):
     max_new_commands: Mapped[int] = mapped_column(Integer, nullable=False)
     max_open_positions: Mapped[int] = mapped_column(Integer, nullable=False)
     allowed_symbols: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    selection_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
     approval_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
     command_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     command_id: Mapped[str | None] = mapped_column(

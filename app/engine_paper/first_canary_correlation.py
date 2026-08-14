@@ -21,6 +21,11 @@ from app.db.paper_models import (
     PaperFirstCanarySessionRecord,
     PaperPositionRecord,
 )
+from app.engine_paper.eligible_approval_ranking import (
+    DEFAULT_NEW_CANARY_SELECTION_POLICY_VERSION,
+    LEGACY_EXACTLY_ONE_POLICY_VERSION,
+    MULTI_SYMBOL_SELECTION_POLICY_VERSION,
+)
 
 
 TERMINAL_CANARY_STATES = frozenset({"COMPLETED", "STOPPED", "FAILED_SAFE"})
@@ -77,6 +82,7 @@ class PaperFirstCanarySession:
     terminal_reason: str | None
     finding_codes: tuple[str, ...]
     version: int
+    selection_policy_version: str = LEGACY_EXACTLY_ONE_POLICY_VERSION
 
 def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
     try:
@@ -94,6 +100,10 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
         or (row.command_count == 1) != (row.command_id is not None)
         or (row.position_count == 1) != (row.position_id is not None)
         or row.version < 0
+        or row.selection_policy_version not in {
+            LEGACY_EXACTLY_ONE_POLICY_VERSION,
+            MULTI_SYMBOL_SELECTION_POLICY_VERSION,
+        }
     ):
         raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
     return PaperFirstCanarySession(
@@ -125,6 +135,7 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
         terminal_reason=row.terminal_reason,
         finding_codes=findings,
         version=row.version,
+        selection_policy_version=row.selection_policy_version,
     )
 
 
@@ -183,6 +194,7 @@ class PaperFirstCanaryRepository:
         expected_generation: int,
         allowed_symbols: tuple[str, ...],
         now: datetime,
+        selection_policy_version: str = DEFAULT_NEW_CANARY_SELECTION_POLICY_VERSION,
     ) -> PaperFirstCanarySession:
         replay = self.get_by_arm_request(request_id, for_update=True)
         if replay is not None:
@@ -201,6 +213,7 @@ class PaperFirstCanaryRepository:
             arming_transition_id=None, arming_generation=None, start_request_id=None,
             start_request_fingerprint=None, current_control_generation=expected_generation,
             max_new_commands=1, max_open_positions=1, allowed_symbols=list(allowed_symbols),
+            selection_policy_version=selection_policy_version,
             approval_id=None, command_count=0, command_id=None, position_count=0,
             position_id=None, trade_report_available=False, paper_reconciliation_status="NOT_STARTED",
             accounting_reconciliation_status="NOT_STARTED", reconciliation_checked_at=None,
