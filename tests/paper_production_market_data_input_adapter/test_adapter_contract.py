@@ -13,6 +13,7 @@ from app.engine_market_data.db.candle_repository import candle_checksum
 from app.engine_market_data.db.candle_tables import Candle1m
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
 from app.engine_paper import production_market_data as market
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
 BASE_BOUNDARY = 2_000_000_000_000
@@ -128,7 +129,7 @@ def request(symbols=("BTCUSDT",), timeframes=("1m",), history=3, *, as_of=None):
 def test_contract_constants_and_no_transport_or_business_dependency():
     source = Path(market.__file__).read_text(encoding="utf-8")
     assert market.AUTHORITATIVE_SOURCE == "PRODUCTION_PERSISTED_MARKET_DATA"
-    assert market.SYMBOL_ALLOWLIST == ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+    assert market.SYMBOL_ALLOWLIST == PREPARED_NEXT_TRADING_UNIVERSE.symbols
     assert market.TIMEFRAME_ALLOWLIST == ("1m", "5m", "15m", "1h", "4h", "1d")
     assert "binance_public_rest" not in source.lower()
     assert "binance_kline_ws" not in source.lower()
@@ -156,7 +157,7 @@ def test_all_public_contracts_are_immutable():
 
 @pytest.mark.parametrize("case", range(1300))
 def test_1300_deterministic_closed_snapshot_matrix(case):
-    symbol = market.SYMBOL_ALLOWLIST[case % 3]
+    symbol = market.SYMBOL_ALLOWLIST[case % len(market.SYMBOL_ALLOWLIST)]
     timeframe = market.TIMEFRAME_ALLOWLIST[(case // 3) % 6]
     history = case % 4 + 1
     as_of = aligned_boundary(timeframe, BASE_BOUNDARY + case * 1000) + 1
@@ -176,16 +177,16 @@ def test_1300_deterministic_closed_snapshot_matrix(case):
     assert all("FOR UPDATE" not in str(value).upper() for value in session.statements)
 
 
-def test_full_18_stream_snapshot_is_atomic_bounded_and_ordered():
+def test_full_60_stream_snapshot_is_atomic_bounded_and_ordered():
     as_of = aligned_boundary("1d") + 1
     reader = FakeReader(market.SYMBOL_ALLOWLIST, market.TIMEFRAME_ALLOWLIST, 4, as_of=as_of)
     service, session = adapter(reader)
     result = service.read(request(market.SYMBOL_ALLOWLIST, market.TIMEFRAME_ALLOWLIST, 4, as_of=as_of))
     assert result.outcome is market.PaperProductionMarketDataOutcome.READY
-    assert len(result.data.snapshots) == 3
-    assert sum(len(groups) for groups in (item.candles for item in result.data.snapshots)) == 18
-    assert result.query_count == 20  # transaction control + one health read + 18 candle reads
-    assert result.rows_read == 72
+    assert len(result.data.snapshots) == 10
+    assert sum(len(groups) for groups in (item.candles for item in result.data.snapshots)) == 60
+    assert result.query_count == 62  # transaction control + one health read + 60 candle reads
+    assert result.rows_read == 240
     assert session.begin_count == 1
 
 
@@ -259,7 +260,7 @@ def test_missing_timeframe_and_insufficient_history_are_distinct():
 
 
 @pytest.mark.parametrize("symbols,timeframes,history,expected", [
-    (("DOGEUSDT",), ("1m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
+    (("LTCUSDT",), ("1m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
     (("BTCUSDT", "BTCUSDT"), ("1m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
     (("BTCUSDT",), ("30m",), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),
     (("BTCUSDT",), ("1m", "1m"), 1, market.PaperProductionMarketDataOutcome.TARGET_NOT_ALLOWED),

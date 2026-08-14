@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -11,6 +12,7 @@ from app.engine_risk.risk_config import RiskConfig
 import app.engine_paper.trading_criteria as criteria_module
 from app.server_api.routes.paper import build_paper_router
 from app.server_api.services.paper_reporting import PaperReadonlyReportingService
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
 def _items(snapshot):
@@ -55,7 +57,8 @@ def test_snapshot_is_bounded_and_contains_no_secrets():
 
 def test_readonly_get_contract_and_zero_write_routes():
     app = FastAPI()
-    service = PaperReadonlyReportingService(None)
+    repository = SimpleNamespace(active_trading_universe=lambda: PREPARED_NEXT_TRADING_UNIVERSE)
+    service = PaperReadonlyReportingService(repository)
     app.include_router(build_paper_router(service, lambda: "2026-08-14T00:00:00.000Z"))
     response = TestClient(app).get("/api/v1/paper/trading-criteria")
     assert response.status_code == 200

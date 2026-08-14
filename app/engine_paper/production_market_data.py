@@ -29,17 +29,18 @@ from app.engine_market_data.freshness_monitor import (
 )
 from app.engine_market_data.market_symbol import normalize_market_symbol
 from app.engine_market_data.timeframe import expected_next_open_time, timeframe_to_milliseconds
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
 ADAPTER_SCHEMA_VERSION: Final = "PAPER_PRODUCTION_MARKET_DATA/1.0"
 ADAPTER_VERSION: Final = "1.0.0"
 AUTHORITATIVE_SOURCE: Final = "PRODUCTION_PERSISTED_MARKET_DATA"
-SYMBOL_ALLOWLIST: Final = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+SYMBOL_ALLOWLIST: Final = PREPARED_NEXT_TRADING_UNIVERSE.symbols
 TIMEFRAME_ALLOWLIST: Final = ("1m", "5m", "15m", "1h", "4h", "1d")
-MAX_SYMBOLS_PER_REQUEST: Final = 3
+MAX_SYMBOLS_PER_REQUEST: Final = len(SYMBOL_ALLOWLIST)
 MAX_TIMEFRAMES_PER_REQUEST: Final = 6
 MAX_CANDLES_PER_TIMEFRAME: Final = 512
-MAX_ROWS_PER_REQUEST: Final = 9_216
+MAX_ROWS_PER_REQUEST: Final = MAX_SYMBOLS_PER_REQUEST * MAX_TIMEFRAMES_PER_REQUEST * MAX_CANDLES_PER_TIMEFRAME
 MAX_TIME_RANGE_MS: Final = 512 * timeframe_to_milliseconds("1d")
 _TIMEFRAME_ORDER: Final = {value: index for index, value in enumerate(TIMEFRAME_ALLOWLIST)}
 _READY_SYNC_STATES: Final = frozenset({"OK"})
