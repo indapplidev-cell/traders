@@ -1,0 +1,1 @@
+"""Trading-universe acceptance tests."""

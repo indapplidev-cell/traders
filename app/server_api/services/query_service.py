@@ -30,7 +30,11 @@ from app.server_api.schemas.models import (
     SetupDetailEnvelope,
     SetupPage,
     SetupPageEnvelope,
+    TradingUniverseEnvelope,
+    TradingUniverseSnapshot,
+    TradingUniverseSymbolStatus,
 )
+from app.trading_universe.domain import ACTIVE_TRADING_UNIVERSE, PREPARED_NEXT_TRADING_UNIVERSE
 from app.server_api.settings import ApiSettings
 
 
@@ -104,6 +108,38 @@ class ApiQueryService:
         records = self._repos().markets.list_markets()
         items = sorted((self._mapper.market_summary(item) for item in records), key=lambda item: item.symbol)
         return MarketListEnvelope(generated_at=self._generated_at(), data=MarketList(items=items))
+
+    def trading_universe(self) -> TradingUniverseEnvelope:
+        repository = self._repos().universe
+        if repository is None:
+            raise ApiError(503, "SERVICE_NOT_CONFIGURED", "Trading universe readiness is not configured.")
+        records = repository.trading_universe_readiness()
+        active = set(ACTIVE_TRADING_UNIVERSE.symbols)
+        items = []
+        for record in records:
+            is_active = record.symbol in active
+            items.append(TradingUniverseSymbolStatus(
+                symbol=record.symbol,
+                universe_version=(ACTIVE_TRADING_UNIVERSE.version_id if is_active else PREPARED_NEXT_TRADING_UNIVERSE.version_id),
+                market_data_ready=len(record.ready_timeframes) == 6,
+                ready_streams=len(record.ready_timeframes),
+                history_ready=record.history_ready,
+                analysis_ready=record.analysis_ready,
+                setup_ready=record.setup_ready,
+                strategy_compatible=record.strategy_compatible,
+                risk_compatible=record.risk_compatible,
+                trading_activation_state=("ACTIVE" if is_active else "PREPARED_NOT_ACTIVE"),
+            ))
+        data = TradingUniverseSnapshot(
+            active_universe_version=ACTIVE_TRADING_UNIVERSE.version_id,
+            prepared_universe_version=PREPARED_NEXT_TRADING_UNIVERSE.version_id,
+            active_symbols=list(ACTIVE_TRADING_UNIVERSE.symbols),
+            prepared_symbols=list(PREPARED_NEXT_TRADING_UNIVERSE.symbols),
+            active_symbol_count=len(ACTIVE_TRADING_UNIVERSE.symbols),
+            ready_market_data_streams=sum(item.ready_streams for item in items),
+            symbols=items,
+        )
+        return TradingUniverseEnvelope(generated_at=self._generated_at(), data=data)
 
     def market(self, symbol: str) -> MarketDetailEnvelope:
         record = self._repos().markets.get_market(symbol)

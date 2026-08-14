@@ -18,6 +18,9 @@ from sqlalchemy.orm import Session, aliased
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
+from app.engine_market_data.continuous_sync_state import MarketDataSyncState
+from app.engine_orchestrator.orchestrator_config import DEFAULT_MINIMUM_WINDOWS
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE, TARGET_TIMEFRAMES
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.db.paper_mappings import orm_values_to_paper_event, orm_values_to_paper_fill, orm_values_to_paper_position
 from app.db.paper_models import (
@@ -41,6 +44,7 @@ from app.server_api.repositories.records import (
     PaperPositionQuery,
     PaperPositionRecordView,
     PaperTradeQuery,
+    TradingUniverseSymbolReadinessRecord,
 )
 
 
@@ -255,6 +259,82 @@ class SqlAlchemyReadAdapter:
 
     def get_market(self, symbol: str) -> MarketRecord | None:
         return self._market_record(symbol)
+
+    def trading_universe_readiness(self) -> tuple[TradingUniverseSymbolReadinessRecord, ...]:
+        """Project preparation readiness solely from persisted runtime state."""
+
+        symbols = PREPARED_NEXT_TRADING_UNIVERSE.symbols
+        counts: dict[tuple[str, str], int] = {}
+        with self._session() as session:
+            states = tuple(session.scalars(
+                select(MarketDataSyncState).where(MarketDataSyncState.symbol.in_(symbols))
+            ))
+            for timeframe, model in CANDLE_MODELS.items():
+                rows = session.execute(
+                    select(model.symbol, func.count())
+                    .where(model.symbol.in_(symbols), model.is_closed.is_(True))
+                    .group_by(model.symbol)
+                )
+                for symbol, count in rows:
+                    counts[(str(symbol), timeframe)] = int(count)
+            runs = tuple(session.scalars(
+                select(OnlinePipelineRun)
+                .where(OnlinePipelineRun.symbol.in_(symbols))
+                .order_by(
+                    OnlinePipelineRun.symbol.asc(),
+                    OnlinePipelineRun.closed_until_ms.desc(),
+                    OnlinePipelineRun.id.desc(),
+                )
+            ))
+
+        state_by_key = {(row.symbol, row.timeframe): row for row in states}
+        latest_run: dict[str, OnlinePipelineRun] = {}
+        for run in runs:
+            latest_run.setdefault(run.symbol, run)
+
+        result = []
+        for symbol in symbols:
+            ready_timeframes = tuple(
+                timeframe for timeframe in TARGET_TIMEFRAMES
+                if (
+                    (state := state_by_key.get((symbol, timeframe))) is not None
+                    and state.status == "OK"
+                    and state.missing_count == 0
+                    and state.source.endswith("_public_rest")
+                    and counts.get((symbol, timeframe), 0) >= DEFAULT_MINIMUM_WINDOWS[timeframe]
+                )
+            )
+            history_ready = all(
+                counts.get((symbol, timeframe), 0) >= DEFAULT_MINIMUM_WINDOWS[timeframe]
+                for timeframe in TARGET_TIMEFRAMES
+            )
+            run = latest_run.get(symbol)
+            analysis_ready = bool(
+                run is not None and run.status == "COMPLETED"
+                and run.analysis_status == "ANALYZED" and not run.error_code
+            )
+            setup_ready = bool(
+                analysis_ready and run is not None
+                and run.setup_status not in {None, "", "ERROR"}
+            )
+            strategy_compatible = bool(
+                setup_ready and run is not None
+                and run.strategy_status not in {None, "", "ERROR", "MODULE_ERROR"}
+            )
+            risk_compatible = bool(
+                setup_ready and run is not None
+                and run.risk_status not in {None, "", "ERROR", "MODULE_ERROR"}
+            )
+            result.append(TradingUniverseSymbolReadinessRecord(
+                symbol=symbol,
+                ready_timeframes=ready_timeframes,
+                history_ready=history_ready,
+                analysis_ready=analysis_ready,
+                setup_ready=setup_ready,
+                strategy_compatible=strategy_compatible,
+                risk_compatible=risk_compatible,
+            ))
+        return tuple(result)
 
     def get_analysis(self, symbol: str) -> AnalysisRecord | None:
         run, result = self._latest_available_analysis(symbol)

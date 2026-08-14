@@ -320,7 +320,7 @@ def test_limits_filters_errors_and_schema_inventory(baseline):
     assert client.get("/api/v1/paper/trades?from=2025-01-01T00:00:00Z&to=2026-08-01T00:00:00Z").json()["error"]["code"] == "DATE_RANGE_EXCEEDED"
     document = create_app().openapi()
     methods = [method for operations in document["paths"].values() for method in operations if method in {"get", "post", "put", "patch", "delete"}]
-    assert methods.count("get") == 19
+    assert methods.count("get") == 20
     assert set(methods) == {"get"}
 
 

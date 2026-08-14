@@ -12,6 +12,7 @@ from app.engine_market_data.continuous_sync_daemon import ContinuousSyncDaemon
 from app.engine_market_data.db.candle_repository import CandleRepository
 from app.engine_market_data.db.session import create_market_data_session_factory
 from app.engine_market_data.sync_state_repository import SyncStateRepository
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
 class _DryRunRepository:
@@ -39,7 +40,7 @@ def _csv(value: str) -> list[str]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--symbols", default="BTCUSDT,ETHUSDT,SOLUSDT")
+    parser.add_argument("--symbols", default=",".join(PREPARED_NEXT_TRADING_UNIVERSE.symbols))
     parser.add_argument("--timeframes", default="1m,5m,15m,1h,4h,1d")
     warmup = parser.add_mutually_exclusive_group()
     warmup.add_argument("--warmup", dest="warmup", action="store_true")

@@ -123,7 +123,7 @@ def test_openapi_surfaces_are_narrow_and_readiness_is_boolean() -> None:
         path: operations for path, operations in readonly["paths"].items()
         if path.startswith("/api/v1/paper")
     }
-    assert len(paper_paths) == 9
+    assert len(paper_paths) == 10
     assert all("get" in operations for operations in paper_paths.values())
     assert not any(
         method in operations

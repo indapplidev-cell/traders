@@ -4,10 +4,11 @@ from dataclasses import dataclass, field
 
 from app.engine_market_data.market_symbol import normalize_market_symbol
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
 SUPPORTED_SYNC_TIMEFRAMES = ("1m", "5m", "15m", "1h", "4h", "1d")
-DEFAULT_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+DEFAULT_SYMBOLS = PREPARED_NEXT_TRADING_UNIVERSE.symbols
 DEFAULT_WARMUP_DEPTHS = {"1m": 1440, "5m": 2016, "15m": 2016, "1h": 720, "4h": 720, "1d": 365}
 DEFAULT_GAP_CHECK_WINDOWS = {"1m": 360, "5m": 288, "15m": 192, "1h": 168, "4h": 180, "1d": 365}
 FRESHNESS_ALLOWANCE_MS = {"1m": 10_000, "5m": 15_000, "15m": 20_000, "1h": 60_000, "4h": 90_000, "1d": 120_000}

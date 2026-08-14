@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from typing import Callable, Protocol
 from uuid import uuid4
 
+from app.trading_universe.domain import ACTIVE_TRADING_UNIVERSE, bind_new_canary
+
 from app.engine_safety.paper_production_control import (
     ArmReadinessPreflight,
     PaperProductionArmingScope,
@@ -371,6 +373,12 @@ class PaperOperatorControlService:
                 raise ControlApiError(400, "INVALID_CANARY_SCOPE")
             if any(symbol not in ALLOWED_FIRST_CANARY_SYMBOLS for symbol in symbols):
                 raise ControlApiError(400, "INVALID_SYMBOL")
+            try:
+                universe_binding = bind_new_canary(
+                    ACTIVE_TRADING_UNIVERSE.version_id, symbols
+                )
+            except ValueError as error:
+                raise ControlApiError(400, "INVALID_SYMBOL") from error
             if request.max_new_commands != 1 or request.max_open_positions != 1:
                 raise ControlApiError(400, "INVALID_CANARY_SCOPE")
             self._deny_if_foundation(request.request_id, "ARM_FIRST_CANARY")
@@ -386,7 +394,7 @@ class PaperOperatorControlService:
                         request_id=request.request_id,
                         fingerprint=fingerprint,
                         expected_generation=request.expected_generation,
-                        allowed_symbols=symbols,
+                        allowed_symbols=universe_binding.allowed_symbols,
                         now=datetime.now(timezone.utc),
                     )
                 except CanaryCorrelationError as error:

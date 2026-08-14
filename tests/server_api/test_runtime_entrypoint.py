@@ -124,11 +124,13 @@ def test_asgi_factory_reference_resolves_to_canonical_factory() -> None:
     assert resolved.__name__ == "create_runtime_app"
 
 
-def test_factory_exposes_eighteen_get_only_source_routes(monkeypatch) -> None:
+def test_factory_exposes_twenty_get_only_source_routes(monkeypatch) -> None:
     app, _ = _composed(monkeypatch)
-    routes = [route for route in app.routes if isinstance(route, APIRoute)]
-    assert len(routes) == 18
-    assert all(route.methods == {"GET"} for route in routes)
+    operations = [
+        method for route in app.openapi()["paths"].values()
+        for method in route if method in {"get", "post", "put", "patch", "delete"}
+    ]
+    assert operations == ["get"] * 20
 
 
 def test_main_passes_canonical_factory_and_server_settings(monkeypatch) -> None:

@@ -211,6 +211,32 @@ class DashboardSnapshot(ContractModel):
     active_incident_count: int = Field(ge=0)
 
 
+class TradingUniverseSymbolStatus(ContractModel):
+    symbol: Symbol
+    universe_version: str
+    market_data_ready: bool
+    ready_streams: int = Field(ge=0, le=6)
+    total_streams: Literal[6] = 6
+    history_ready: bool
+    analysis_ready: bool
+    setup_ready: bool
+    strategy_compatible: bool
+    risk_compatible: bool
+    trading_activation_state: Literal["ACTIVE", "PREPARED_NOT_ACTIVE"]
+
+
+class TradingUniverseSnapshot(ContractModel):
+    active_universe_version: str
+    prepared_universe_version: str
+    active_symbols: list[Symbol]
+    prepared_symbols: list[Symbol]
+    active_symbol_count: int = Field(ge=0, le=10)
+    target_symbol_count: Literal[10] = 10
+    ready_market_data_streams: int = Field(ge=0, le=60)
+    target_market_data_streams: Literal[60] = 60
+    symbols: list[TradingUniverseSymbolStatus]
+
+
 class PageInfo(ContractModel):
     limit: int = Field(ge=1, le=100)
     next_cursor: str | None
@@ -255,6 +281,12 @@ class DashboardEnvelope(BaseModel):
     api_version: Literal["v1"] = "v1"
     generated_at: UtcTimestamp
     data: DashboardSnapshot
+
+
+class TradingUniverseEnvelope(BaseModel):
+    api_version: Literal["v1"] = "v1"
+    generated_at: UtcTimestamp
+    data: TradingUniverseSnapshot
 
 
 class MarketListEnvelope(BaseModel):

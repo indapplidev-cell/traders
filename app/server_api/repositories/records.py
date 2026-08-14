@@ -119,6 +119,17 @@ class RunRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class TradingUniverseSymbolReadinessRecord:
+    symbol: str
+    ready_timeframes: tuple[str, ...]
+    history_ready: bool
+    analysis_ready: bool
+    setup_ready: bool
+    strategy_compatible: bool
+    risk_compatible: bool
+
+
+@dataclass(frozen=True, slots=True)
 class CursorPosition:
     updated_at: datetime
     identifier: str

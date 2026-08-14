@@ -16,6 +16,7 @@ from .records import (
     PaperPositionQuery,
     PaperPositionRecordView,
     PaperTradeQuery,
+    TradingUniverseSymbolReadinessRecord,
 )
 
 from app.engine_paper.accounting import PaperAccountBaseline, PaperClosedTradeFacts
@@ -49,6 +50,10 @@ class DashboardReadRepository(Protocol):
     def list_recent_runs(self, limit: int) -> tuple[RunRecord, ...]: ...
 
 
+class TradingUniverseReadRepository(Protocol):
+    def trading_universe_readiness(self) -> tuple[TradingUniverseSymbolReadinessRecord, ...]: ...
+
+
 class PaperReportingReadRepository(Protocol):
     def schema_revision(self) -> str | None: ...
     def list_account_baselines(self, limit: int = 2) -> tuple[PaperAccountBaseline, ...]: ...
@@ -67,3 +72,4 @@ class ApiRepositories:
     incidents: IncidentReadRepository
     dashboard: DashboardReadRepository
     paper: PaperReportingReadRepository | None = None
+    universe: TradingUniverseReadRepository | None = None

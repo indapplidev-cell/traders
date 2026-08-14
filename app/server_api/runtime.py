@@ -63,6 +63,7 @@ def _repositories(engine: Engine) -> ApiRepositories:
         incidents=adapter,
         dashboard=adapter,
         paper=adapter,
+        universe=adapter,
     )
 
 
