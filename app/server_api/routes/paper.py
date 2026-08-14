@@ -8,7 +8,7 @@ from app.server_api.schemas.models import ErrorEnvelope
 from app.server_api.schemas.paper import (
     PaperAccount, PaperControlStatus, PaperEnvelope, PaperList, PaperPositionDetail,
     PaperPositionItem, PaperReadiness, PaperReconciliation, PaperRuntimeStatus,
-    PaperTradeItem, PaperTradeReport,
+    PaperTradeItem, PaperTradeReport, TradingCriteriaSnapshot,
 )
 from app.server_api.services.paper_reporting import PaperReadonlyReportingService
 
@@ -58,5 +58,8 @@ def build_paper_router(service: PaperReadonlyReportingService, generated_at) -> 
 
     @router.get("/control/status", response_model=PaperEnvelope[PaperControlStatus], operation_id="getPaperControlStatus", responses=errors)
     def control_status(): return envelope(service.control_status())
+
+    @router.get("/trading-criteria", response_model=PaperEnvelope[TradingCriteriaSnapshot], operation_id="getPaperTradingCriteria", responses=errors)
+    def trading_criteria(): return envelope(service.trading_criteria())
 
     return router

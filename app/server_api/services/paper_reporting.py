@@ -39,8 +39,9 @@ from app.server_api.schemas.paper import (
     PaperReconciliationSection,
     PaperRuntimeStatus,
     PaperTradeItem,
-    PaperTradeReport,
+    PaperTradeReport, TradingCriteriaSnapshot,
 )
+from app.engine_paper.trading_criteria import build_trading_criteria_snapshot
 
 
 PAPER_SCHEMA_EXPECTED = "0013_paper_first_canary_correlation"
@@ -122,6 +123,9 @@ class PaperReadonlyReportingService:
     def _runtime(self) -> PaperRuntimeObservation:
         value = self._runtime_source
         return value() if callable(value) else value
+
+    def trading_criteria(self) -> TradingCriteriaSnapshot:
+        return TradingCriteriaSnapshot.model_validate(build_trading_criteria_snapshot())
 
     def _repo(self) -> PaperReportingReadRepository:
         if self._repository is None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -171,3 +171,30 @@ class PaperControlStatus(BaseModel):
     state_audit_reconciliation: str
     canary_id: str | None = None
     canary_status: str | None = None
+
+
+class TradingCriterion(BaseModel):
+    key: str = Field(min_length=1, max_length=96)
+    category: str = Field(min_length=1, max_length=96)
+    classification: Literal[
+        "FIXED_THRESHOLD", "DYNAMIC_RULE", "DERIVED_VALUE", "BOOLEAN_GATE",
+        "ENUM_ALLOWLIST", "NOT_CONFIGURED_AS_FIXED_THRESHOLD", "NOT_APPLICABLE",
+    ]
+    value: Any = None
+    unit: str | None = Field(default=None, max_length=48)
+    source_component: str = Field(min_length=1, max_length=200)
+
+
+class TradingCriteriaProvenance(BaseModel):
+    projection: Literal["EFFECTIVE_CURRENT_SERVER_POLICY"]
+    policy_versions: dict[str, str]
+
+
+class TradingCriteriaSnapshot(BaseModel):
+    title_key: Literal["current_server_trading_criteria"]
+    environment: Literal["PRODUCTION"]
+    mode: Literal["PAPER"]
+    versioned_trading_policy_present: bool
+    canary_bound_policy_snapshot_available: bool
+    groups: dict[str, list[TradingCriterion]]
+    provenance: TradingCriteriaProvenance

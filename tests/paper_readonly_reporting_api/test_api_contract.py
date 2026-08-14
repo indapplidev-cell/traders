@@ -24,6 +24,7 @@ PAPER_PATHS = (
     "/api/v1/paper/positions/{position_id}", "/api/v1/paper/trades",
     "/api/v1/paper/trades/{position_id}/report", "/api/v1/paper/reconciliation",
     "/api/v1/paper/runtime/status", "/api/v1/paper/control/status",
+    "/api/v1/paper/trading-criteria",
 )
 OPENAPI = create_app().openapi()
 
@@ -319,7 +320,7 @@ def test_limits_filters_errors_and_schema_inventory(baseline):
     assert client.get("/api/v1/paper/trades?from=2025-01-01T00:00:00Z&to=2026-08-01T00:00:00Z").json()["error"]["code"] == "DATE_RANGE_EXCEEDED"
     document = create_app().openapi()
     methods = [method for operations in document["paths"].values() for method in operations if method in {"get", "post", "put", "patch", "delete"}]
-    assert methods.count("get") == 18
+    assert methods.count("get") == 19
     assert set(methods) == {"get"}
 
 
