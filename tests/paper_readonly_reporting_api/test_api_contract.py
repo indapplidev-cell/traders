@@ -237,6 +237,47 @@ def test_callable_authoritative_runtime_can_make_first_arm_truthfully_ready(base
     assert data["live_allowed"] is False
 
 
+def test_armed_control_projects_exact_generation_canary_and_start_specific_readiness(baseline):
+    paper = FakePaperRepository(baseline)
+    runtime = PaperRuntimeObservation(
+        environment="production", runtime_enabled=True,
+        market_data_adapter_ready=True, approval_source_adapter_ready=True,
+        wal_ready=True, pitr_ready=True, current_approval_availability="NO_TRADE_SIGNAL",
+        paper_principal_ready=True, production_identity_binding_ready=True,
+        runtime_config_ready=True, kill_switch_ready=False, canary_scope_valid=True,
+        live_enabled=False,
+    )
+    canary_id = "8c52768d-2a3a-47cb-acdc-3d1cb1b6ce9d"
+    app = create_app(
+        repositories=replace(FakeReadRepository().api_repositories(), paper=paper),
+        clock=lambda: NOW,
+        paper_runtime=runtime,
+        paper_control_status=lambda: PaperControlStatus(
+            state="ARMED", effective_state="ARMED", generation=4,
+            health="HEALTHY", emergency_stop_available=True,
+            audit_health="PASS", state_audit_reconciliation="PASS",
+            canary_id=canary_id,
+        ),
+    )
+    client = TestClient(app)
+    readiness = client.get("/api/v1/paper/readiness").json()["data"]
+    status = client.get("/api/v1/paper/control/status").json()["data"]
+
+    assert readiness["paper_control_state"] == "ARMED"
+    assert readiness["paper_control_effective_state"] == "ARMED"
+    assert readiness["paper_control_generation"] == 4
+    assert readiness["paper_control_health"] == "HEALTHY"
+    assert readiness["paper_canary_id"] == canary_id
+    assert readiness["current_mutation_ready"] is False
+    assert "CONTROL_NOT_ELIGIBLE" in readiness["current_mutation_denial_reasons"]
+    assert status == {
+        "state": "ARMED", "effective_state": "ARMED", "generation": 4,
+        "health": "HEALTHY", "emergency_stop_available": True,
+        "audit_health": "PASS", "state_audit_reconciliation": "PASS",
+        "canary_id": canary_id,
+    }
+
+
 def test_trade_pagination_100_plus_one_has_no_duplicate_or_missing_rows(baseline):
     facts = tuple(make_trade(index + 100) for index in range(101))
     client, _ = client_for(baseline, facts=facts)

@@ -9,7 +9,12 @@ services:
       target: readonly-api
       args:
         TRADERS_READONLY_SOURCE_IDENTITY: "${TRADERS_READONLY_SOURCE_IDENTITY:-UNSET}"
-    user: "10001:10001"
+    # Control transitions republish the shared authoritative artifacts as
+    # root-owned 0600/0700.  This container has no write capability (the
+    # filesystem and control bind are read-only, all capabilities are dropped,
+    # and no-new-privileges is set), but it must retain root read access to
+    # project the reconciled control state after ARM.
+    user: "0:0"
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=16m

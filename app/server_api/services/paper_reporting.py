@@ -234,6 +234,7 @@ class PaperReadonlyReportingService:
             paper_control_effective_state=control.effective_state,
             paper_control_generation=control.generation,
             paper_control_health=control.health,
+            paper_canary_id=control.canary_id,
             account_baseline_persistence_ready=ready,
             account_baseline_exists=baseline_exists,
             account_baseline_valid=baseline_valid,

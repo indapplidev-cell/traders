@@ -30,6 +30,7 @@ class PaperReadiness(BaseModel):
     paper_control_effective_state: str
     paper_control_generation: int | None = Field(ge=0)
     paper_control_health: str
+    paper_canary_id: str | None = None
     live_allowed: Literal[False] = False
     account_baseline_persistence_ready: bool
     account_baseline_exists: bool | None
@@ -167,3 +168,4 @@ class PaperControlStatus(BaseModel):
     emergency_stop_available: bool
     audit_health: str
     state_audit_reconciliation: str
+    canary_id: str | None = None

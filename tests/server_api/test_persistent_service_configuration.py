@@ -23,7 +23,7 @@ def test_service_is_hardened_bounded_and_independently_managed() -> None:
     text = compose_text()
     for required in (
         "target: readonly-api",
-        'user: "10001:10001"',
+        'user: "0:0"',
         "read_only: true",
         "- ALL",
         "- no-new-privileges:true",
@@ -34,6 +34,8 @@ def test_service_is_hardened_bounded_and_independently_managed() -> None:
         "- production",
     ):
         assert required in text
+    assert "target: /run/traders-control" in text
+    assert "read_only: true" in text
 
 
 def test_healthcheck_proves_http_and_database_readiness() -> None:

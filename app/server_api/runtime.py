@@ -19,6 +19,10 @@ from app.server_api.runtime_config import RuntimeConfig
 from app.server_api.schemas.paper import PaperControlStatus
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
 from app.engine_safety.production_control_root import resolve_production_control_root
+from app.engine_paper.first_canary_correlation import (
+    PaperFirstCanaryState,
+    SqlAlchemyPaperFirstCanaryStore,
+)
 from app.server_api.paper_runtime_observation import (
     ProductionPaperRuntimeObservationSource,
     load_production_identity,
@@ -62,9 +66,29 @@ def _repositories(engine: Engine) -> ApiRepositories:
     )
 
 
-def _paper_control_status(control: PaperProductionSafetyControl) -> PaperControlStatus:
+def _paper_control_status(
+    control: PaperProductionSafetyControl,
+    canaries: SqlAlchemyPaperFirstCanaryStore | None = None,
+) -> PaperControlStatus:
     """Observe the reconciled control state without acquiring/writing a lock."""
     state = control.read_authoritative()
+    canary = None if canaries is None else canaries.current()
+    if state.state.value == "ARMED":
+        if (
+            canary is None
+            or canary.state not in {
+                PaperFirstCanaryState.ARMED,
+                PaperFirstCanaryState.ARMED_WAITING,
+                PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL,
+                PaperFirstCanaryState.RUNNING,
+                PaperFirstCanaryState.POSITION_OPEN,
+                PaperFirstCanaryState.POSITION_CLOSING,
+                PaperFirstCanaryState.POSITION_CLOSED,
+                PaperFirstCanaryState.RECONCILIATION_PENDING,
+            }
+            or canary.current_control_generation != state.generation
+        ):
+            raise RuntimeError("CONTROL_CANARY_RECONCILIATION_FAILED")
     return PaperControlStatus(
         state=state.state.value,
         effective_state=state.state.value,
@@ -73,6 +97,7 @@ def _paper_control_status(control: PaperProductionSafetyControl) -> PaperControl
         emergency_stop_available=True,
         audit_health="PASS",
         state_audit_reconciliation="PASS",
+        canary_id=None if canary is None else canary.canary_id,
     )
 
 
@@ -87,7 +112,8 @@ def create_runtime_app() -> FastAPI:
         # Docker Desktop does not project Windows ACL metadata into Linux.
         acl_checker=(lambda _path: True),
     )
-    control_status = lambda: _paper_control_status(control)
+    canaries = SqlAlchemyPaperFirstCanaryStore(sessions)
+    control_status = lambda: _paper_control_status(control, canaries)
     paper_runtime = ProductionPaperRuntimeObservationSource(sessions, control_status)
     try:
         production_identity = load_production_identity()
