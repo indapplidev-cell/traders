@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Callable, Protocol
 from uuid import uuid4
 
-from app.trading_universe.domain import ACTIVE_TRADING_UNIVERSE, bind_new_canary
+from app.trading_universe.domain import ACTIVE_TRADING_UNIVERSE, TradingUniverseVersion, bind_new_canary
 
 from app.engine_safety.paper_production_control import (
     ArmReadinessPreflight,
@@ -149,6 +149,7 @@ class PaperFirstCanaryStore(Protocol):
     def reserve_start(self, *args, **kwargs) -> PaperFirstCanarySession: ...
     def mark_started(self, *args, **kwargs) -> PaperFirstCanarySession: ...
     def fail_safe(self, *args, **kwargs) -> PaperFirstCanarySession: ...
+    def stop_waiting(self, *args, **kwargs) -> PaperFirstCanarySession: ...
     def get(self, canary_id: str) -> PaperFirstCanarySession | None: ...
     def current(self) -> PaperFirstCanarySession | None: ...
     def get_by_arm_request(self, request_id: str) -> PaperFirstCanarySession | None: ...
@@ -203,6 +204,7 @@ class PaperOperatorControlService:
         executor: PaperFirstCanaryExecutor | None = None,
         canary_store: PaperFirstCanaryStore | None = None,
         continuation_status: Callable[[], tuple[bool, float | None]] | None = None,
+        active_universe: Callable[[], TradingUniverseVersion] | None = None,
     ) -> None:
         self.config = config
         self.control = control
@@ -210,6 +212,7 @@ class PaperOperatorControlService:
         self.executor = executor or DisabledPaperFirstCanaryExecutor()
         self.canary_store = canary_store
         self.continuation_status = continuation_status or (lambda: (False, None))
+        self.active_universe = active_universe or (lambda: ACTIVE_TRADING_UNIVERSE)
         self._idempotency = _IdempotencyRegistry()
 
     @staticmethod
@@ -288,6 +291,7 @@ class PaperOperatorControlService:
             max_new_commands=value.max_new_commands,
             max_open_positions=value.max_open_positions,
             allowed_symbols=value.allowed_symbols,
+            universe_version_id=value.universe_version_id,
             selection_policy_version=value.selection_policy_version,
             command_count=value.command_count,
             command_id=value.command_id,
@@ -357,6 +361,7 @@ class PaperOperatorControlService:
             409 if error.code in {
                 "REQUEST_ID_CONFLICT", "CANARY_ALREADY_ACTIVE", "CANARY_NOT_ARMED",
                 "CANARY_ALREADY_STARTED", "CANARY_CORRELATION_CONFLICT",
+                "CANARY_NOT_SAFE_TO_STOP",
             } else 503
         )
         return ControlApiError(status, error.code)
@@ -370,13 +375,16 @@ class PaperOperatorControlService:
             if not (request.operator_acknowledgement and request.paper_acknowledgement and request.live_forbidden_acknowledgement):
                 raise ControlApiError(400, "INVALID_REQUEST")
             symbols = tuple(sorted(set(request.allowed_symbols)))
+            active_universe = self.active_universe()
             if not symbols or len(symbols) != len(request.allowed_symbols) or len(symbols) > 10:
                 raise ControlApiError(400, "INVALID_CANARY_SCOPE")
-            if any(symbol not in ALLOWED_FIRST_CANARY_SYMBOLS for symbol in symbols):
+            if any(symbol not in active_universe.symbols for symbol in symbols):
                 raise ControlApiError(400, "INVALID_SYMBOL")
             try:
                 universe_binding = bind_new_canary(
-                    ACTIVE_TRADING_UNIVERSE.version_id, symbols
+                    active_universe.version_id,
+                    symbols,
+                    active_version_id=active_universe.version_id,
                 )
             except ValueError as error:
                 raise ControlApiError(400, "INVALID_SYMBOL") from error
@@ -396,6 +404,7 @@ class PaperOperatorControlService:
                         fingerprint=fingerprint,
                         expected_generation=request.expected_generation,
                         allowed_symbols=universe_binding.allowed_symbols,
+                        universe_version_id=universe_binding.universe_version_id,
                         now=datetime.now(timezone.utc),
                     )
                 except CanaryCorrelationError as error:
@@ -625,7 +634,51 @@ class PaperOperatorControlService:
         return self._run(request.request_id, operation, request, execute)
 
     def disable(self, request: PaperOperatorTransitionRequest) -> PaperOperatorControlDecision:
-        return self._transition(request, "DISABLE", PersistentState.DISABLED, ReasonCode.OPERATOR_DISABLE)
+        def execute() -> PaperOperatorControlDecision:
+            if not request.operator_acknowledgement:
+                raise ControlApiError(400, "INVALID_REQUEST")
+            self._deny_if_foundation(request.request_id, "DISABLE")
+            before = self._state()
+            canary = self.canary_store.current() if self.canary_store is not None else None
+            if canary is not None and (
+                canary.state is not PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL
+                or canary.command_count != 0 or canary.command_id is not None
+                or canary.position_count != 0 or canary.position_id is not None
+                or canary.approval_id is not None
+            ):
+                raise ControlApiError(409, "CANARY_NOT_SAFE_TO_STOP")
+            try:
+                after = self.control.transition(
+                    PersistentState.DISABLED,
+                    expected_generation=request.expected_generation,
+                    reason=ReasonCode.OPERATOR_DISABLE,
+                    acknowledge=True,
+                )
+            except SafetyControlError as error:
+                raise self._map_authority_error(error) from error
+            if canary is not None and self.canary_store is not None:
+                try:
+                    self.canary_store.stop_waiting(
+                        canary.canary_id,
+                        control_generation=after.generation,
+                        reason="CONTROLLED_OPERATOR_DISABLE_WAITING_ZERO_TRADE",
+                        now=datetime.now(timezone.utc),
+                    )
+                except CanaryCorrelationError as error:
+                    raise self._correlation_error(error) from error
+            return PaperOperatorControlDecision(
+                request_id=request.request_id,
+                operation="DISABLE",
+                accepted=True,
+                executed=after.transition_id != before.transition_id,
+                state_before=before.state.value,
+                state_after=after.state.value,
+                generation_before=before.generation,
+                generation_after=after.generation,
+                transition_id=after.transition_id,
+                canary_id=None if canary is None else canary.canary_id,
+            )
+        return self._run(request.request_id, "DISABLE", request, execute)
 
     def emergency_stop(self, request: PaperOperatorTransitionRequest) -> PaperOperatorControlDecision:
         return self._transition(request, "EMERGENCY_STOP", PersistentState.EMERGENCY_STOP, ReasonCode.OPERATOR_EMERGENCY_STOP)

@@ -20,12 +20,13 @@ from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
 from app.engine_market_data.continuous_sync_state import MarketDataSyncState
 from app.engine_orchestrator.orchestrator_config import DEFAULT_MINIMUM_WINDOWS
-from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE, TARGET_TIMEFRAMES
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE, TARGET_TIMEFRAMES, TradingUniverseVersion, runtime_universe
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.db.paper_mappings import orm_values_to_paper_event, orm_values_to_paper_fill, orm_values_to_paper_position
 from app.db.paper_models import (
     PaperAccountBaselineRecord, PaperExitDecisionRecord, PaperExitEvaluationCursorRecord,
     PaperFillRecord, PaperJournalEntryRecord, PaperOrderRecord, PaperPositionRecord,
+    TradingUniverseRuntimeStateRecord,
 )
 from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity, PaperClosedTradeFacts
 from app.server_api.health_policy import evaluate_boundary_health
@@ -335,6 +336,13 @@ class SqlAlchemyReadAdapter:
                 risk_compatible=risk_compatible,
             ))
         return tuple(result)
+
+    def active_trading_universe(self) -> TradingUniverseVersion:
+        with self._session() as session:
+            row = session.get(TradingUniverseRuntimeStateRecord, "PRODUCTION")
+        if row is None:
+            raise RuntimeError("TRADING_UNIVERSE_STATE_UNAVAILABLE")
+        return runtime_universe(row.active_version_id)
 
     def get_analysis(self, symbol: str) -> AnalysisRecord | None:
         run, result = self._latest_available_analysis(symbol)

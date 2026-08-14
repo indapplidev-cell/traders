@@ -53,7 +53,9 @@ def _criterion(key: str, category: str, classification: CriterionClassification,
     return TradingCriterion(key, category, classification, value, unit, source)
 
 
-def build_trading_criteria_snapshot() -> dict[str, object]:
+def build_trading_criteria_snapshot(
+    allowed_symbols: tuple[str, ...] | None = None,
+) -> dict[str, object]:
     """Build a bounded snapshot directly from active policy/config objects."""
 
     orchestrator, strategy, risk, paper = (
@@ -66,7 +68,8 @@ def build_trading_criteria_snapshot() -> dict[str, object]:
     fill = _foundation_policy()
     control = PaperOperatorControlConfig.production_paper()
     canary_fields = PaperOperatorCanaryStatus.model_fields
-    symbols = [s for s in orchestrator.symbols
+    source_symbols = allowed_symbols if allowed_symbols is not None else orchestrator.symbols
+    symbols = [s for s in source_symbols
                if s in SYMBOL_ALLOWLIST and s in MARKET_DATA_SYMBOL_ALLOWLIST]
     C = CriterionClassification
     groups = {
@@ -79,7 +82,7 @@ def build_trading_criteria_snapshot() -> dict[str, object]:
                        "app.operator_control.config.PaperOperatorControlConfig.live_allowed"),
         ),
         "symbols": (_criterion("allowed_symbols", "symbols", C.ENUM_ALLOWLIST, symbols,
-                    "app.engine_orchestrator.orchestrator_config.OrchestratorConfig.symbols"),),
+                    "app.trading_universe.TradingUniverseRuntimeState.active_version_id"),),
         "timeframes": (
             _criterion("primary_timeframe", "timeframes", C.ENUM_ALLOWLIST, [PRIMARY_TIMEFRAME],
                        "app.engine_paper.production_approval.PRIMARY_TIMEFRAME"),

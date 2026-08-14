@@ -44,7 +44,7 @@ from app.server_api.schemas.paper import (
 from app.engine_paper.trading_criteria import build_trading_criteria_snapshot
 
 
-PAPER_SCHEMA_EXPECTED = "0014_paper_canary_selection_policy"
+PAPER_SCHEMA_EXPECTED = "0015_trading_universe_activation"
 PAPER_REPORTING_API_VERSION = 1
 MAX_RECONCILIATION_CLOSED_TRADES = 10_000
 MAX_TRADE_DATE_RANGE = timedelta(days=365)
@@ -125,7 +125,10 @@ class PaperReadonlyReportingService:
         return value() if callable(value) else value
 
     def trading_criteria(self) -> TradingCriteriaSnapshot:
-        return TradingCriteriaSnapshot.model_validate(build_trading_criteria_snapshot())
+        repository = self._repo()
+        active = getattr(repository, "active_trading_universe", None)
+        symbols = active().symbols if callable(active) else None
+        return TradingCriteriaSnapshot.model_validate(build_trading_criteria_snapshot(symbols))
 
     def _repo(self) -> PaperReportingReadRepository:
         if self._repository is None:

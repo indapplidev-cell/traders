@@ -24,6 +24,7 @@ from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_paper.production_preparation_backend import RUNTIME_DATABASE_KEY
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
 from app.engine_safety.production_control_root import resolve_production_control_root
+from app.trading_universe.activation import SqlAlchemyTradingUniverseStore
 
 from .app import create_paper_operator_control_app
 from .auth import PaperOperatorAuthenticator, ProtectedFileOperatorCredentialBinding
@@ -137,6 +138,7 @@ def create_runtime_app(
             ),
         )
     continuation_worker = None
+    universe_store = SqlAlchemyTradingUniverseStore(sessions) if sessions is not None else None
     if (
         require_production_store
         and engine is not None
@@ -164,6 +166,7 @@ def create_runtime_app(
             (lambda: (continuation_worker.active, continuation_worker.poll_seconds))
             if continuation_worker is not None else None
         ),
+        active_universe=(universe_store.active_universe if universe_store is not None else None),
     )
 
     @asynccontextmanager
@@ -189,6 +192,7 @@ def create_runtime_app(
     app.state.runtime_engine = engine
     app.state.first_canary_executor = service.executor
     app.state.first_canary_continuation_worker = continuation_worker
+    app.state.trading_universe_store = universe_store
     return app
 
 

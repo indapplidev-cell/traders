@@ -177,6 +177,10 @@ class PaperFirstCanarySessionRecord(Base):
             name="ck_paper_first_canary_selection_policy",
         ),
         CheckConstraint(
+            "universe_version_id IN ('trading-universe-v1','trading-universe-v2')",
+            name="ck_paper_first_canary_universe_version",
+        ),
+        CheckConstraint(
             "(command_count = 0 AND command_id IS NULL) OR (command_count = 1 AND command_id IS NOT NULL)",
             name="ck_paper_first_canary_command_link",
         ),
@@ -213,6 +217,9 @@ class PaperFirstCanarySessionRecord(Base):
     max_new_commands: Mapped[int] = mapped_column(Integer, nullable=False)
     max_open_positions: Mapped[int] = mapped_column(Integer, nullable=False)
     allowed_symbols: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    universe_version_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="trading-universe-v1"
+    )
     selection_policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
     approval_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
     command_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -230,6 +237,32 @@ class PaperFirstCanarySessionRecord(Base):
     terminal_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
     finding_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class TradingUniverseRuntimeStateRecord(Base):
+    """Singleton production activation state; updates are transactional and audited."""
+
+    __tablename__ = "trading_universe_runtime_state"
+    __table_args__ = (
+        CheckConstraint("environment = 'PRODUCTION'", name="ck_trading_universe_runtime_environment"),
+        CheckConstraint(
+            "active_version_id IN ('trading-universe-v1','trading-universe-v2')",
+            name="ck_trading_universe_runtime_active_version",
+        ),
+        CheckConstraint(
+            "previous_version_id IS NULL OR previous_version_id IN ('trading-universe-v1','trading-universe-v2')",
+            name="ck_trading_universe_runtime_previous_version",
+        ),
+        CheckConstraint("generation >= 1", name="ck_trading_universe_runtime_generation"),
+    )
+
+    environment: Mapped[str] = mapped_column(String(32), primary_key=True)
+    active_version_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    previous_version_id: Mapped[str | None] = mapped_column(String(64))
+    generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    activation_reason: Mapped[str] = mapped_column(String(REASON_CODE_LENGTH), nullable=False)
+    runtime_revision: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
 EXECUTION_MODES = tuple(item.value for item in ExecutionMode)

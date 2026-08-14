@@ -22,7 +22,7 @@ EXPECTED_SERVER_HEAD: Final = "0988984b9d37ab22e811ba106ae19c068d374438"
 EXPECTED_SERVER_TREE: Final = "d423e5ce44c19245ed8161a9e0505c4090103057"
 EXPECTED_SCHEMA_BASE: Final = "0008_engine_orchestrator_freshness_retry"
 EXPECTED_SCHEMA_HEAD: Final = (
-    "0014_paper_canary_selection_policy"
+    "0015_trading_universe_activation"
 )
 MAX_SAFE_RENDER_BYTES: Final = 65_536
 MAX_EVIDENCE_ITEMS: Final = 32

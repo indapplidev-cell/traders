@@ -20,6 +20,7 @@ from .records import (
 )
 
 from app.engine_paper.accounting import PaperAccountBaseline, PaperClosedTradeFacts
+from app.trading_universe.domain import TradingUniverseVersion
 
 
 class HealthReadRepository(Protocol):
@@ -51,6 +52,7 @@ class DashboardReadRepository(Protocol):
 
 
 class TradingUniverseReadRepository(Protocol):
+    def active_trading_universe(self) -> TradingUniverseVersion: ...
     def trading_universe_readiness(self) -> tuple[TradingUniverseSymbolReadinessRecord, ...]: ...
 
 

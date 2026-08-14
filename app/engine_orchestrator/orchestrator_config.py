@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app.engine_market_data.market_symbol import normalize_market_symbol
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
+from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
 DEFAULT_MINIMUM_WINDOWS = {"1m": 240, "5m": 288, "15m": 480, "1h": 240, "4h": 180, "1d": 240}
@@ -14,7 +15,7 @@ DEFAULT_MINIMUM_WINDOWS = {"1m": 240, "5m": 288, "15m": 480, "1h": 240, "4h": 18
 
 @dataclass(frozen=True, slots=True)
 class OrchestratorConfig:
-    symbols: tuple[str, ...] = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+    symbols: tuple[str, ...] = PREPARED_NEXT_TRADING_UNIVERSE.symbols
     primary_timeframe: str = "15m"
     required_timeframes: tuple[str, ...] = ("1m", "5m", "15m", "1h", "4h", "1d")
     minimum_windows: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_MINIMUM_WINDOWS))

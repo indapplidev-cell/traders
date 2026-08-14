@@ -19,8 +19,8 @@ from app.engine_paper.accounting import PaperAccountIdentity
 PRODUCTION_PAPER_RUNTIME_ROLE: Final = "traders_paper_runtime"
 PRODUCTION_READONLY_ROLE: Final = "traders_readonly_api"
 EXPECTED_START_ALEMBIC: Final = "0008_engine_orchestrator_freshness_retry"
-EXPECTED_PREVIOUS_ALEMBIC: Final = "0013_paper_first_canary_correlation"
-EXPECTED_FINAL_ALEMBIC: Final = "0014_paper_canary_selection_policy"
+EXPECTED_PREVIOUS_ALEMBIC: Final = "0014_paper_canary_selection_policy"
+EXPECTED_FINAL_ALEMBIC: Final = "0015_trading_universe_activation"
 SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
     EXPECTED_START_ALEMBIC, EXPECTED_PREVIOUS_ALEMBIC, EXPECTED_FINAL_ALEMBIC,
 })

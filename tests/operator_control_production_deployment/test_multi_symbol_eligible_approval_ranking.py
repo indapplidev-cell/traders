@@ -155,8 +155,8 @@ def test_same_candidate_set_produces_same_winner_for_independent_workers():
     assert first.winner.candidate_id == second.winner.candidate_id
 
 
-def test_deployment_accepts_only_the_exact_0013_predecessor_for_incremental_0014_migration():
-    assert EXPECTED_PREVIOUS_ALEMBIC == "0013_paper_first_canary_correlation"
+def test_deployment_accepts_only_the_exact_0014_predecessor_for_incremental_0015_migration():
+    assert EXPECTED_PREVIOUS_ALEMBIC == "0014_paper_canary_selection_policy"
     assert classify_preparation_phase(
         EXPECTED_PREVIOUS_ALEMBIC, preparation_complete=False
     ) is PaperPreparationPhase.PARTIAL_RESUMABLE
@@ -164,7 +164,7 @@ def test_deployment_accepts_only_the_exact_0013_predecessor_for_incremental_0014
         "traders-production-primary", expected_start_alembic=EXPECTED_PREVIOUS_ALEMBIC
     ).expected_start_alembic == EXPECTED_PREVIOUS_ALEMBIC
     assert classify_preparation_phase(
-        "0013_unrecognized", preparation_complete=False
+        "0014_unrecognized", preparation_complete=False
     ) is PaperPreparationPhase.INCOMPATIBLE
 
 

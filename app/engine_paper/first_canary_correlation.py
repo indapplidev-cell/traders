@@ -83,6 +83,7 @@ class PaperFirstCanarySession:
     finding_codes: tuple[str, ...]
     version: int
     selection_policy_version: str = LEGACY_EXACTLY_ONE_POLICY_VERSION
+    universe_version_id: str = "trading-universe-v1"
 
 def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
     try:
@@ -104,6 +105,7 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
             LEGACY_EXACTLY_ONE_POLICY_VERSION,
             MULTI_SYMBOL_SELECTION_POLICY_VERSION,
         }
+        or row.universe_version_id not in {"trading-universe-v1", "trading-universe-v2"}
     ):
         raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
     return PaperFirstCanarySession(
@@ -136,6 +138,7 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
         finding_codes=findings,
         version=row.version,
         selection_policy_version=row.selection_policy_version,
+        universe_version_id=row.universe_version_id,
     )
 
 
@@ -195,6 +198,7 @@ class PaperFirstCanaryRepository:
         allowed_symbols: tuple[str, ...],
         now: datetime,
         selection_policy_version: str = DEFAULT_NEW_CANARY_SELECTION_POLICY_VERSION,
+        universe_version_id: str = "trading-universe-v1",
     ) -> PaperFirstCanarySession:
         replay = self.get_by_arm_request(request_id, for_update=True)
         if replay is not None:
@@ -213,6 +217,7 @@ class PaperFirstCanaryRepository:
             arming_transition_id=None, arming_generation=None, start_request_id=None,
             start_request_fingerprint=None, current_control_generation=expected_generation,
             max_new_commands=1, max_open_positions=1, allowed_symbols=list(allowed_symbols),
+            universe_version_id=universe_version_id,
             selection_policy_version=selection_policy_version,
             approval_id=None, command_count=0, command_id=None, position_count=0,
             position_id=None, trade_report_available=False, paper_reconciliation_status="NOT_STARTED",
@@ -301,6 +306,37 @@ class PaperFirstCanaryRepository:
         row.terminal_reason = code
         row.finding_codes = list(dict.fromkeys([*row.finding_codes, code]))
         row.completed_at = now or datetime.now(timezone.utc)
+        row.version += 1
+        self.session.flush()
+        return _snapshot(row)
+
+    def stop_waiting(
+        self,
+        canary_id: str,
+        *,
+        control_generation: int,
+        reason: str,
+        now: datetime | None = None,
+    ) -> PaperFirstCanarySession:
+        row = self.session.scalar(select(PaperFirstCanarySessionRecord).where(
+            PaperFirstCanarySessionRecord.canary_id == canary_id
+        ).with_for_update())
+        if row is None:
+            raise CanaryCorrelationError("CANARY_NOT_FOUND")
+        if row.state == "STOPPED":
+            return _snapshot(row)
+        if (
+            row.state != "NO_ELIGIBLE_APPROVAL"
+            or row.command_count != 0 or row.command_id is not None
+            or row.position_count != 0 or row.position_id is not None
+            or row.approval_id is not None
+        ):
+            raise CanaryCorrelationError("CANARY_NOT_SAFE_TO_STOP")
+        row.state = "STOPPED"
+        row.current_control_generation = control_generation
+        row.completed_at = now or datetime.now(timezone.utc)
+        row.terminal_reason = reason
+        row.finding_codes = []
         row.version += 1
         self.session.flush()
         return _snapshot(row)
@@ -428,6 +464,9 @@ class SqlAlchemyPaperFirstCanaryStore:
 
     def fail_safe(self, *args, **kwargs) -> PaperFirstCanarySession:
         return self._write(lambda repo: repo.fail_safe(*args, **kwargs))
+
+    def stop_waiting(self, *args, **kwargs) -> PaperFirstCanarySession:
+        return self._write(lambda repo: repo.stop_waiting(*args, **kwargs))
 
     def get(self, canary_id: str) -> PaperFirstCanarySession | None:
         with self._session_factory() as session:

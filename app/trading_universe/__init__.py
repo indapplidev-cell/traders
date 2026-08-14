@@ -9,6 +9,7 @@ from .domain import (
     TradingUniverseVersion,
     bind_new_canary,
     market_data_streams,
+    runtime_universe,
     resolve_universe,
 )
 
@@ -21,5 +22,6 @@ __all__ = (
     "TradingUniverseVersion",
     "bind_new_canary",
     "market_data_streams",
+    "runtime_universe",
     "resolve_universe",
 )

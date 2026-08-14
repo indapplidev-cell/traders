@@ -38,7 +38,7 @@ EXPECTED_SERVER_BRANCH: Final = "feature/engine-platform"
 EXPECTED_SERVER_HEAD: Final = "ff118505a2fe892c7381f9fbb48f2a8530eb22e8"
 EXPECTED_SERVER_TREE: Final = "27298c2de1641fa47e4bc3bb8f91c39896323bbe"
 EXPECTED_SCHEMA_BASE: Final = "0008_engine_orchestrator_freshness_retry"
-EXPECTED_SCHEMA_HEAD: Final = "0014_paper_canary_selection_policy"
+EXPECTED_SCHEMA_HEAD: Final = "0015_trading_universe_activation"
 MINIMUM_PITR_WINDOW_SECONDS: Final = 86_400
 PAPER_PRINCIPAL_LOGICAL_NAME: Final = "traders_paper_runtime"
 

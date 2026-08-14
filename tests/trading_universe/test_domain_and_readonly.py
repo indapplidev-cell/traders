@@ -13,9 +13,16 @@ from app.trading_universe import (
     bind_new_canary,
     market_data_streams,
 )
+from app.trading_universe.domain import runtime_universe
 
 
 class _UniverseRepository:
+    def __init__(self, active_version="trading-universe-v1"):
+        self.active_version = active_version
+
+    def active_trading_universe(self):
+        return runtime_universe(self.active_version)
+
     def trading_universe_readiness(self):
         return tuple(
             TradingUniverseSymbolReadinessRecord(
@@ -80,3 +87,20 @@ def test_readonly_projection_labels_active_and_prepared_without_controls():
     assert [item.trading_activation_state for item in envelope.data.symbols[:3]] == ["ACTIVE"] * 3
     assert [item.trading_activation_state for item in envelope.data.symbols[3:]] == ["PREPARED_NOT_ACTIVE"] * 7
     assert "activation" not in envelope.model_dump()
+
+
+def test_readonly_projection_switches_atomically_to_exact_v2():
+    repository = _UniverseRepository("trading-universe-v2")
+    service = ApiQueryService(
+        ApiRepositories(
+            health=None, markets=None, analysis=None, setups=None, incidents=None,
+            dashboard=None, universe=repository,
+        ),
+        ApiSettings(),
+        clock=lambda: datetime(2026, 8, 14, tzinfo=timezone.utc),
+    )
+    data = service.trading_universe().data
+    assert data.active_universe_version == "trading-universe-v2"
+    assert data.active_symbol_count == 10
+    assert tuple(data.active_symbols) == PREPARED_NEXT_TRADING_UNIVERSE.symbols
+    assert {item.trading_activation_state for item in data.symbols} == {"ACTIVE"}

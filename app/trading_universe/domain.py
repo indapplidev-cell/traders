@@ -80,6 +80,8 @@ class CanaryUniverseBinding:
 def bind_new_canary(
     universe_version_id: str,
     allowed_symbols: tuple[str, ...],
+    *,
+    active_version_id: str = ACTIVE_TRADING_UNIVERSE.version_id,
 ) -> CanaryUniverseBinding:
     """Freeze a new canary to an explicitly active universe version.
 
@@ -89,7 +91,7 @@ def bind_new_canary(
     """
 
     universe = resolve_universe(universe_version_id)
-    if universe.activation_state is not TradingUniverseActivationState.ACTIVE:
+    if universe.version_id != active_version_id:
         raise ValueError("trading universe version is not active")
     normalized = tuple(normalize_market_symbol(value) for value in allowed_symbols)
     if not normalized or len(set(normalized)) != len(normalized):
@@ -97,3 +99,14 @@ def bind_new_canary(
     if any(symbol not in universe.symbols for symbol in normalized):
         raise ValueError("canary symbol is outside the bound universe version")
     return CanaryUniverseBinding(universe.version_id, normalized)
+
+
+def runtime_universe(version_id: str) -> TradingUniverseVersion:
+    """Resolve a persisted active version with runtime ACTIVE semantics."""
+
+    universe = resolve_universe(version_id)
+    return TradingUniverseVersion(
+        version_id=universe.version_id,
+        symbols=universe.symbols,
+        activation_state=TradingUniverseActivationState.ACTIVE,
+    )

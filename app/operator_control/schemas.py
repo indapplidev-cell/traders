@@ -126,6 +126,7 @@ class PaperOperatorCanaryStatus(BaseModel):
     max_new_commands: int = 1
     max_open_positions: int = 1
     allowed_symbols: tuple[str, ...] = ()
+    universe_version_id: str | None = None
     selection_policy_version: str | None = None
     command_count: int = 0
     command_id: str | None = None
