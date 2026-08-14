@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = ea32669d643d27a653eb2e5c564d558b269803bd
+STATUS_AS_OF_COMMIT = 1474c70cf02f98e41835eb8aa2da7e5bfb100d80
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-14T10:30:00Z
-RECONCILED_BY_TASK = TRADERS_ML_TRADING_UNIVERSE_EXPANSION_PREPARATION_10_PAIRS_01
-FILES_CHANGED = app/engine_market_data/continuous_sync_cli.py, app/engine_market_data/continuous_sync_config.py, app/operator_control/service.py, app/server_api/repositories/protocols.py, app/server_api/repositories/records.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/routes/v1.py, app/server_api/runtime.py, app/server_api/schemas/models.py, app/server_api/services/query_service.py, app/trading_universe/__init__.py, app/trading_universe/domain.py, docker-compose.yml, tests/paper_first_canary_correlation_readiness_remediation/test_contract_matrix_2048.py, tests/paper_readonly_reporting_api/test_api_contract.py, tests/security_retry/test_safe_inspection_and_output_matrix.py, tests/server_api/test_contract_and_safety.py, tests/server_api/test_runtime_entrypoint.py, tests/trading_universe/__init__.py, tests/trading_universe/test_domain_and_readonly.py, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-14T11:21:00Z
+RECONCILED_BY_TASK = TRADERS_ML_MULTI_SYMBOL_ELIGIBLE_APPROVAL_DETERMINISTIC_WINNER_SELECTION_REMEDIATION_01
+FILES_CHANGED = alembic/versions/0014_paper_canary_selection_policy.py, app/db/paper_models.py, app/engine_paper/controlled_runtime_canary.py, app/engine_paper/eligible_approval_ranking.py, app/engine_paper/first_canary_correlation.py, app/engine_paper/production_approval.py, app/engine_paper/production_composition.py, app/engine_paper/production_preparation.py, app/engine_paper/production_preparation_backend.py, app/engine_paper/production_preparation_cli.py, app/engine_paper/production_readiness.py, app/engine_paper/reconciliation.py, app/engine_paper/recovery_readiness.py, app/engine_paper/trading_criteria.py, app/engine_safety/paper_production_control.py, app/operator_control/production_executor.py, app/operator_control/schemas.py, app/operator_control/service.py, app/server_api/schemas/paper.py, app/server_api/services/paper_reporting.py, 20_CHANGED_TEST_FIXTURE_FILES, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = PRODUCTION_60_OF_60_MARKET_STREAMS_READY_VERSIONED_ACTIVE3_PREPARED10_READONLY_AND_GUI_ACCEPTED_SAME_CANARY_UNCHANGED_LIVE_OFF
+STATUS_CONFIDENCE = PRODUCTION_SCHEMA_0014_DETERMINISTIC_SELECTION_DEPLOYED_60_OF_60_MARKET_STREAMS_READY_ACTIVE3_PREPARED10_SAME_CANARY_FROZEN_LEGACY_ZERO_TRADES_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -22,11 +22,50 @@ STATUS_CONFIDENCE = PRODUCTION_60_OF_60_MARKET_STREAMS_READY_VERSIONED_ACTIVE3_P
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
-API_RUNTIME_STATUS = DEPLOYED_CURRENT_IMAGE_HEALTHY_20_GET_0_WRITE_TRADING_UNIVERSE_ACTIVE_V1_PREPARED_V2_PAPER_READINESS_PASS_ARMED_GENERATION_4
-CURRENT_STAGE = WAIT_FOR_CURRENT_FIRST_CANARY_ACCEPTED_TERMINAL_STATE_BEFORE_10_PAIR_UNIVERSE_ACTIVATION
-CURRENT_BLOCKER = NONE_PREPARATION_COMPLETE_ACTIVATION_INTENTIONALLY_DEFERRED
-BACKGROUND_TIMED_GATE = PITR_CHAIN_VALID_283_OF_283_268110_SECONDS_NO_WINDOW_RESET_NO_PHYSICAL_GAP
+API_RUNTIME_STATUS = DEPLOYED_f394dd7_CONTROL_AND_READONLY_HEALTHY_20_GET_0_WRITE_SCHEMA_0014_ACTIVE_V1_PREPARED_V2_PAPER_READINESS_PASS_ARMED_GENERATION_4
+CURRENT_STAGE = TRADERS_ML_PRODUCTION_FIRST_CANARY_STOP_10_PAIR_UNIVERSE_ACTIVATION_AND_NEW_SEARCH_01
+CURRENT_BLOCKER = NONE_DETERMINISTIC_MULTI_SYMBOL_SELECTION_ACCEPTED_V2_ACTIVATION_REQUIRES_SEPARATE_TASK
+BACKGROUND_TIMED_GATE = PITR_READY_CHAIN_VALID_NO_WINDOW_RESET_NO_PHYSICAL_GAP_WAL_UNRESOLVED_FAILURE_NO
 ```
+
+## Deterministic multi-symbol eligible approval selection remediation 01
+
+```text
+TASK = TRADERS_ML_MULTI_SYMBOL_ELIGIBLE_APPROVAL_DETERMINISTIC_WINNER_SELECTION_REMEDIATION_01
+RESULT = PASS
+IMPLEMENTATION_COMMITS = 78035f12170ac97612dc9b3945828baa8a6394f4,f394dd7ca13c9e424cfaf7318db180d180626440
+PROJECT_STATE_AUDIT_COMMIT = 1474c70cf02f98e41835eb8aa2da7e5bfb100d80
+OLD_SELECTION = LATEST_PER_SYMBOL_BY_CLOSED_UNTIL_DESC_RUN_ID_DESC_THEN_EXACTLY_ONE_ELIGIBLE_REQUIRED
+NEW_SELECTION = CANARY_UNIVERSE_AND_EXISTING_ELIGIBILITY_THEN_DETERMINISTIC_TOTAL_ORDER_ONE_WINNER_FOR_ANY_NONEMPTY_VALID_SET
+POLICY_VERSION = eligible-approval-ranking-v1
+RANKING_COMPONENT = ProductionEligibleApprovalSelector
+AUTHORITATIVE_FINAL_COMPOSITE_SCORE = NONE
+RANKING_ORDER = risk_score_DESC,planned_risk_reward_DESC,strategy_score_DESC,closed_until_ms_DESC,source_run_id_ASC,final_approval_id_ASC,candidate_id_ASC,symbol_ASC
+FINAL_TIE_BREAK = candidate_id_ASC_THEN_symbol_ASC
+ELIGIBILITY_FRESHNESS_LATEST_PER_SYMBOL_THRESHOLDS = UNCHANGED
+CURRENT_CANARY_POLICY = exactly-one-eligible-v1_FROZEN_BY_MIGRATION_DEFAULT
+FUTURE_CANARY_POLICY = eligible-approval-ranking-v1_IMMUTABLY_BOUND_AT_RESERVATION
+CURRENT_CANARY = 8c52768d-2a3a-47cb-acdc-3d1cb1b6ce9d_WAITING_FOR_ELIGIBLE_APPROVAL_BTCUSDT_ETHUSDT_SOLUSDT_COMMAND0_ORDER0_FILL0_POSITION0
+CURRENT_CANARY_STOPPED_OR_REPLACED = NO
+ACTIVE_UNIVERSE = trading-universe-v1_BTCUSDT_ETHUSDT_SOLUSDT
+PREPARED_UNIVERSE = trading-universe-v2_EXACT10_NOT_ACTIVE
+SCHEMA = 0014_paper_canary_selection_policy_SINGLE_HEAD
+TESTS = 33_FOCUSED_3070_MIGRATION_3543_IMPLEMENTATION_8512_SCHEMA_12055_COMBINED_10_ISOLATED_POSTGRESQL16_PASS_ZERO_REQUIRED_FAILURES
+DEPLOYMENT = READONLY_ONE_RECREATE_CONTROL_ONE_RECREATE_POSTGRES_MARKET_DATA_ORCHESTRATOR_ZERO
+READONLY_DIAGNOSTICS = eligible-approval-ranking-v1_DETERMINISTIC_RANKING_EXACT_FIELDS_MULTIPLE_FAIL_CLOSED_FALSE
+MARKET_DATA = 60_OF_60_READY_NEW7_HISTORY_PRESERVED
+PITR_WAL = READY_CHAIN_VALID_NO_WINDOW_RESET_NO_PHYSICAL_GAP
+LIVE = OFF
+BINANCE_ORDER_API_CALLS = 0
+NEXT_REQUIRED_TASK = TRADERS_ML_PRODUCTION_FIRST_CANARY_STOP_10_PAIR_UNIVERSE_ACTIVATION_AND_NEW_SEARCH_01
+```
+
+The multiple-valid-candidate condition is no longer a failure for newly
+reserved canaries. Ranking remains downstream of the canary universe,
+latest-per-symbol, freshness and every existing strategy/risk eligibility
+gate. The current V1 canary retains its original policy lineage; the new
+policy is deployed and bound by default only to future canaries. V2 remains
+prepared and inactive.
 
 ## Ten-pair Trading Universe preparation 01
 
