@@ -45,6 +45,40 @@ def test_host_ack_helper_preserves_validated_protocol_and_daemon_is_bounded() ->
         remediation.run_host_ack_daemon(Path("unused"), interval_seconds=31)
 
 
+def test_daemon_state_publication_retries_transient_permission_error(
+    tmp_path, monkeypatch
+) -> None:
+    calls = 0
+
+    def transient_write(_path, _payload):
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            raise PermissionError(5, "access denied")
+
+    monkeypatch.setattr(remediation, "atomic_json_write", transient_write)
+    monkeypatch.setattr(remediation.time, "sleep", lambda _seconds: None)
+
+    assert remediation._publish_daemon_state(
+        tmp_path / "state.json", {}, attempts=3, retry_seconds=0.01
+    )
+    assert calls == 3
+
+
+def test_daemon_state_publication_exhaustion_does_not_terminate_owner(
+    tmp_path, monkeypatch
+) -> None:
+    def denied(_path, _payload):
+        raise PermissionError(5, "access denied")
+
+    monkeypatch.setattr(remediation, "atomic_json_write", denied)
+    monkeypatch.setattr(remediation.time, "sleep", lambda _seconds: None)
+
+    assert not remediation._publish_daemon_state(
+        tmp_path / "state.json", {}, attempts=2, retry_seconds=0.01
+    )
+
+
 def test_foundation_and_market_data_adapter_unchanged() -> None:
     changed = subprocess.run(
         ["git", "diff", "--name-only", "ba8d19d099d7bafcdc3d643125898a3e7a7240c2"],

@@ -43,6 +43,8 @@ HOST_ACK_ARCHIVE_COMMAND = (
     "sleep 1; i=$((i+1)); done; "
     "test -f /var/lib/postgresql/wal_export/%f.ack"
 )
+DAEMON_STATE_WRITE_ATTEMPTS = 5
+DAEMON_STATE_WRITE_RETRY_SECONDS = 0.2
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,6 +251,26 @@ def install_host_ack_archive_command(root: Path) -> bool:
     return True
 
 
+def _publish_daemon_state(
+    path: Path,
+    payload: dict[str, object],
+    *,
+    attempts: int = DAEMON_STATE_WRITE_ATTEMPTS,
+    retry_seconds: float = DAEMON_STATE_WRITE_RETRY_SECONDS,
+) -> bool:
+    """Keep the archive owner alive across transient Windows replace denial."""
+    if attempts < 1 or retry_seconds < 0:
+        raise OperationFailure("INVALID_DAEMON_STATE_RETRY_POLICY")
+    for attempt in range(attempts):
+        try:
+            atomic_json_write(path, payload)
+            return True
+        except PermissionError:
+            if attempt + 1 < attempts:
+                time.sleep(retry_seconds)
+    return False
+
+
 def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
     """Continuously service the existing fail-closed host ACK protocol."""
     if interval_seconds < 1 or interval_seconds > 30:
@@ -271,7 +293,7 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
                 if snapshot.export_backlog_count:
                     result = sync_wal(root)
                     published = int(result["published_segment_count"])
-                atomic_json_write(state, {
+                payload: dict[str, object] = {
                     "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
                     "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "process_id": os.getpid(),
@@ -280,9 +302,9 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
                     "export_backlog_count": snapshot.export_backlog_count,
                     "published_segment_count_last_cycle": published,
                     "error_class": "NONE",
-                })
+                }
             except (OSError, ValueError, json.JSONDecodeError, OperationFailure) as error:
-                atomic_json_write(state, {
+                payload = {
                     "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
                     "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "process_id": os.getpid(),
@@ -291,7 +313,8 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
                     "export_backlog_count": -1,
                     "published_segment_count_last_cycle": 0,
                     "error_class": str(error),
-                })
+                }
+            _publish_daemon_state(state, payload)
             time.sleep(interval_seconds)
     finally:
         try:
