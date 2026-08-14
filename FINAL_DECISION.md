@@ -936,3 +936,72 @@ production status endpoint provides a non-mutating enablement proof; Readonly
 readiness remains authoritative, and the existing durable canary store is
 connected through a validated container-only endpoint translation. No ARM,
 START, canary, PAPER business row, LIVE action, or Binance order call occurred.
+# TRADERS_ML_PERSISTED_CONTROLLED_QUANTITY_AND_APPROVAL_VALIDITY_AUTHORITIES_01
+
+```text
+TASK_STATUS = BLOCKED
+FINAL_VERDICT = BLOCKED_TRADERS_ML_PERSISTED_CONTROLLED_QUANTITY_AND_APPROVAL_VALIDITY_AUTHORITIES_01_QUANTITY_POLICY_DEFINITION_REQUIRED
+BLOCKER_CODE = QUANTITY_POLICY_DEFINITION_REQUIRES_NEW_BUSINESS_RULE
+SECONDARY_BLOCKER = APPROVAL_VALIDITY_POLICY_REQUIRES_NEW_BUSINESS_RULE
+STOP_CONDITION = SOURCE_INVENTORY_PROVED_NO_UNIQUE_QUANTITY_FORMULA_AND_NO_UPSTREAM_VALIDITY_ORIGIN
+
+SERVER_BRANCH_BEFORE = feature/engine-platform
+SERVER_HEAD_BEFORE = c96b83cd6a816d035b3a6c9bd33f225dff988290
+SERVER_TREE_BEFORE = f7b7149d1969f1b4afc9b9a845beba912a4826aa
+SERVER_ROOT_CLEAN_BEFORE = YES
+
+PAPER_QUANTITY_APPROVAL_MODEL = app.engine_paper.paper_approvals.PaperQuantityApproval
+PAPER_QUANTITY_APPROVAL_ISSUER = app.engine_paper.paper_approvals.issue_paper_quantity_approval
+CURRENT_PRODUCTION_CALLER_COUNT = 0
+QUANTITY_POLICY_CAN_BE_DERIVED_UNIQUELY = NO
+VALIDITY_POLICY_CAN_BE_DERIVED_UNIQUELY = NO
+SCHEMA_CHANGE_REQUIRED = NOT_EVALUATED_AFTER_MANDATORY_POLICY_STOP
+QUANTITY_AUTHORITY_IMPLEMENTED = NO
+VALIDITY_AUTHORITY_IMPLEMENTED = NO
+PRODUCTION_FINAL_APPROVAL_GENERATION_ENABLED = NO
+PRODUCTION_DEPLOYMENT_BY_TASK = NO
+PRODUCTION_DB_WRITES_BY_TASK = 0
+
+FOCUSED_QUANTITY_VALIDITY_TESTS = PASS_1714_WITH_DB_MIGRATION_FIXTURE_EXCLUDED
+UNFILTERED_FOCUSED_RUN = 1715_PASS_1_ENVIRONMENT_PRECONDITION_FAILURE_PAPER_TEST_DATABASE_URL_ABSENT
+SERVER_FULL_REQUIRED_REGRESSION = NOT_RUN_BLOCKED_BEFORE_IMPLEMENTATION
+ALL_REQUIRED_TEST_FAILURES = 0
+
+CURRENT_CANARY_ID_BEFORE = 6f9858cd-f6b1-4c7f-810c-fccc1065bb9d
+CURRENT_CANARY_STATUS_BEFORE = WAITING_FOR_ELIGIBLE_APPROVAL
+CURRENT_CANARY_MUTATED_BY_TASK = NO
+PAPER_ARM_ACTIONS_BY_TASK = 0
+PAPER_START_ACTIONS_BY_TASK = 0
+PAPER_DISABLE_ACTIONS_BY_TASK = 0
+EMERGENCY_STOP_ACTIONS_BY_TASK = 0
+TRADING_MUTATION_POSTS_BY_TASK = 0
+
+WAL_ARCHIVE_REMEDIATION_BY_TASK = NO
+PITR_REINITIALIZATION_BY_TASK = NO
+SERVICE_RESTARTS_BY_TASK = 0
+DOCKER_COMPOSE_DOWN_CALLS = 0
+CLIENT_SOURCE_CHANGED = NO
+PUSHED = NO
+```
+
+The source has an immutable controlled-quantity envelope but no sizing
+authority. `issue_paper_quantity_approval` accepts a caller-selected positive
+`requested_quantity`; it does not derive one. `PaperTradePlan` has no quantity,
+`RiskDecision` explicitly forbids balance, leverage, margin and position-size
+context, and the published criteria classify risk-per-trade, fixed position
+size and balance exposure as not configured. Instrument precision/notional
+semantics exist only in an architecture design document and test identities,
+not as a production source authority. Choosing fixed quantity, fixed notional,
+or balance-and-stop-distance risk sizing would therefore add a business rule.
+
+The downstream freshness rule is proven: all consumers fail closed after the
+earliest `valid_until_ms`, and final risk uses the minimum of strategy and
+quantity deadlines. The origin of those deadlines is not proven. Current
+`StrategyDecision`, `RiskDecision`, and `PaperTradePlan` expose a causal
+`closed_until_ms` but no `valid_until_ms`; approval constructors require a
+caller-supplied value. Choosing a wall-clock TTL, next-candle deadline, or
+until-next-primary-window rule would therefore add a second business rule.
+
+No authority, persistence, schema, production integration, trading policy,
+runtime, canary, WAL/PITR, service, database or client mutation was performed.
+The task stopped at the mandatory ambiguity gate.
