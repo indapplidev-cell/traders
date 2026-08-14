@@ -129,6 +129,15 @@ def test_market_health_accepts_exact_current_and_existing_grace_semantics(tmp_pa
     _write_json(tmp_path / "latest_health.json", payload)
     assert observation._market_data_readiness(tmp_path, now)
 
+    # The producer may retain aggregate OK during the same boundary grace
+    # window; readiness is governed by the explicit lag/boundary fields.
+    for item in snapshots:
+        if item["timeframe"] == "1m":
+            item["status"] = "OK"
+    payload["overall_status"] = "OK"
+    _write_json(tmp_path / "latest_health.json", payload)
+    assert observation._market_data_readiness(tmp_path, now)
+
     snapshots[0]["missing_count"] = 1
     _write_json(tmp_path / "latest_health.json", payload)
     assert not observation._market_data_readiness(tmp_path, now)

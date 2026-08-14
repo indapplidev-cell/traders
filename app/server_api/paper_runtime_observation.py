@@ -151,7 +151,7 @@ def _market_data_readiness(
                 timeframe in FRESHNESS_ALLOWANCE_MS
                 and isinstance(stored, int)
                 and isinstance(expected_open, int)
-                and item.get("status") == "RECOVERING"
+                and item.get("status") in {"OK", "RECOVERING"}
                 and item.get("freshness_lag_candles") == 1
                 and stored == expected_open - timeframe_to_milliseconds(timeframe)
                 and generated_ms <= close_boundary_ms(expected_open, timeframe) + FRESHNESS_ALLOWANCE_MS[timeframe]
