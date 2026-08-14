@@ -1,0 +1,183 @@
+"""Production PAPER-only bridge from Operator Control START to ingestion."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from decimal import Decimal
+from hashlib import sha256
+
+from app.engine_paper.command_ingestion_service import (
+    PaperCommandIngestionRequest,
+    PaperCommandIngestionService,
+    paper_ingestion_command_id,
+)
+from app.engine_paper.fill_policy import (
+    PaperFillPriceSource,
+    PaperFillSimulationPolicy,
+    PaperIntrabarConflictPolicy,
+)
+from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
+from app.engine_paper.production_approval import (
+    PaperProductionApprovalOutcome,
+    PaperProductionApprovalRequest,
+    PaperProductionApprovalScope,
+    PaperProductionApprovalSourceAdapter,
+)
+from app.engine_safety.paper_domain import ExecutionMode
+from app.engine_safety.paper_production_control import PaperProductionSafetyControl, PersistentState
+
+from .schemas import PaperCanaryNormalizedState, PaperOperatorCanaryStatus
+
+
+def _id(request_id: str, role: str) -> str:
+    digest = sha256(f"{request_id}|{role}".encode("ascii")).hexdigest()
+    return f"paper:first-canary:{role}:{digest}"
+
+
+def _foundation_policy() -> PaperFillSimulationPolicy:
+    quantum = Decimal("0.00000001")
+    return PaperFillSimulationPolicy(
+        simulation_policy_id="simulation:foundation:v1",
+        fee_policy_id="fee:quote:10bps:v1",
+        slippage_policy_id="slippage:adverse:2bps:v1",
+        latency_policy_id="latency:one-closed-1m:v1",
+        price_source=PaperFillPriceSource.NEXT_ELIGIBLE_CLOSED_1M_OPEN,
+        timeframe="1m",
+        latency_candles=1,
+        slippage_bps=Decimal("2"),
+        fee_bps=Decimal("10"),
+        partial_fill_enabled=False,
+        future_data_allowed=False,
+        intrabar_conflict_policy=PaperIntrabarConflictPolicy.STOP_FIRST_CONSERVATIVE,
+        price_quantum=quantum,
+        fee_quantum=quantum,
+        contract_version="PAPER_FILL_SIMULATION_V1",
+    )
+
+
+class ProductionPaperFirstCanaryExecutor:
+    """One-command maximum, simulated-only production first-canary executor."""
+
+    def __init__(
+        self,
+        *,
+        control: PaperProductionSafetyControl,
+        canary_store: SqlAlchemyPaperFirstCanaryStore,
+        approval_source: PaperProductionApprovalSourceAdapter,
+        ingestion_service: PaperCommandIngestionService,
+    ) -> None:
+        self._control = control
+        self._canary_store = canary_store
+        self._approval_source = approval_source
+        self._ingestion_service = ingestion_service
+        self._prepared = None
+
+    def _validate_boundary(self, transition_id: str, generation: int):
+        state = self._control.read_authoritative()
+        canary = self._canary_store.current()
+        if (
+            state.state is not PersistentState.ARMED
+            or state.transition_id != transition_id
+            or state.generation != generation
+            or canary is None
+            or canary.arming_transition_id != transition_id
+            or canary.arming_generation != generation
+            or canary.mode != "PAPER"
+            or canary.max_new_commands != 1
+            or canary.max_open_positions != 1
+            or canary.command_count not in (0, 1)
+            or canary.position_count not in (0, 1)
+        ):
+            return None
+        return canary
+
+    def _read_approval(self, canary, request_id: str):
+        return self._approval_source.read(PaperProductionApprovalRequest(
+            PaperProductionApprovalScope(
+                symbols=canary.allowed_symbols,
+                max_candidates=1,
+            ),
+            request_id=request_id,
+        ))
+
+    def preflight(self, *, transition_id: str, generation: int) -> tuple[str, ...]:
+        canary = self._validate_boundary(transition_id, generation)
+        if canary is None:
+            return ("CANARY_NOT_ARMED",)
+        result = self._read_approval(canary, _id(canary.canary_id, "approval-preflight"))
+        if result.outcome is PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
+            candidates = tuple(value.candidate for value in result.symbol_results if value.candidate is not None)
+            if len(candidates) != 1:
+                return ("APPROVAL_SOURCE_AMBIGUOUS",)
+            self._prepared = (canary.canary_id, transition_id, generation, candidates[0])
+            return ()
+        if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL":
+            return ("NO_ELIGIBLE_APPROVAL",)
+        return tuple(value.code.value for value in result.findings) or ("APPROVAL_SOURCE_NOT_READY",)
+
+    def start_bounded_canary(
+        self, *, request_id: str, canary_id: str, transition_id: str, generation: int
+    ) -> tuple[str, ...]:
+        canary = self._validate_boundary(transition_id, generation)
+        if canary is None or canary.canary_id != canary_id:
+            return ("CANARY_NOT_ARMED",)
+        candidate = None
+        if self._prepared is not None and self._prepared[:3] == (canary_id, transition_id, generation):
+            candidate = self._prepared[3]
+        if candidate is None:
+            result = self._read_approval(canary, _id(request_id, "approval-start"))
+            candidates = tuple(value.candidate for value in result.symbol_results if value.candidate is not None)
+            if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL or len(candidates) != 1:
+                return ("NO_ELIGIBLE_APPROVAL",) if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL" else ("APPROVAL_SOURCE_NOT_READY",)
+            candidate = candidates[0]
+        command_id = paper_ingestion_command_id(
+            candidate.paper_strategy_approval.approval_id,
+            candidate.paper_quantity_approval.quantity_approval_id,
+            candidate.paper_risk_approval.approval_id,
+        )
+        created_at = candidate.paper_risk_approval.approved_at
+        result = self._ingestion_service.ingest_and_create_entry_order(PaperCommandIngestionRequest(
+            paper_strategy_approval=candidate.paper_strategy_approval,
+            paper_quantity_approval=candidate.paper_quantity_approval,
+            paper_risk_approval=candidate.paper_risk_approval,
+            simulation_policy=_foundation_policy(),
+            execution_mode=ExecutionMode.PAPER,
+            explicit_paper_authorization=True,
+            command_id=command_id,
+            order_id=_id(request_id, "entry-order"),
+            command_event_id=_id(request_id, "command-event"),
+            order_created_event_id=_id(request_id, "order-created-event"),
+            order_validated_event_id=_id(request_id, "order-validated-event"),
+            order_opened_event_id=_id(request_id, "order-opened-event"),
+            journal_entry_ids=(
+                _id(request_id, "command-event"),
+                _id(request_id, "order-created-event"),
+                _id(request_id, "order-validated-event"),
+                _id(request_id, "order-opened-event"),
+            ),
+            created_at=created_at,
+            correlation_id=candidate.paper_strategy_approval.correlation_id,
+            causation_id=candidate.paper_risk_approval.approval_id,
+            canary_id=canary_id,
+        ))
+        return () if result.successful else (str(result.reason_code),)
+
+    def status(self) -> PaperOperatorCanaryStatus:
+        canary = self._canary_store.current()
+        if canary is None:
+            return PaperOperatorCanaryStatus(
+                state=PaperCanaryNormalizedState.NOT_CONFIGURED,
+                availability_code="NO_ACTIVE_CANARY",
+                deployment_status="DEPLOYED",
+            )
+        return PaperOperatorCanaryStatus(
+            canary_id=canary.canary_id,
+            state=PaperCanaryNormalizedState(canary.state.value),
+            availability_code="AVAILABLE",
+            deployment_status="DEPLOYED",
+            live_allowed=False,
+            binance_order_calls_allowed=False,
+        )
+
+
+__all__ = ("ProductionPaperFirstCanaryExecutor",)

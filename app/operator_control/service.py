@@ -483,6 +483,15 @@ class PaperOperatorControlService:
                 except CanaryCorrelationError as error:
                     raise self._correlation_error(error) from error
             if canary is not None and canary.state is not PaperFirstCanaryState.ARMED:
+                if canary.started_at is None and canary.start_request_id == request.request_id:
+                    try:
+                        canary = self.canary_store.mark_started(
+                            canary.canary_id,
+                            no_approval=canary.state is PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL,
+                            now=datetime.now(timezone.utc),
+                        )
+                    except CanaryCorrelationError as error:
+                        raise self._correlation_error(error) from error
                 started = canary.started_at.isoformat().replace("+00:00", "Z") if canary.started_at else None
                 return PaperOperatorControlDecision(
                     request_id=request.request_id, operation="START_FIRST_CANARY",
@@ -546,6 +555,29 @@ class PaperOperatorControlService:
                 started_at=(canary.started_at.isoformat().replace("+00:00", "Z") if canary is not None and canary.started_at else None),
             )
         return self._run(request.request_id, "START_FIRST_CANARY", request, execute)
+
+    def recover_pending_start(self, canary_id: str) -> PaperOperatorControlDecision:
+        """Resume the exact durable GUI START reservation; never mint an id."""
+
+        if self.canary_store is None:
+            raise ControlApiError(503, "CANARY_CORRELATION_UNAVAILABLE")
+        try:
+            canary = self.canary_store.get(canary_id)
+        except CanaryCorrelationError as error:
+            raise self._correlation_error(error) from error
+        if canary is None:
+            raise ControlApiError(404, "CANARY_NOT_FOUND")
+        if canary.start_request_id is None:
+            raise ControlApiError(409, "PENDING_START_REQUEST_NOT_FOUND")
+        if canary.arming_transition_id is None or canary.arming_generation is None:
+            raise ControlApiError(409, "CANARY_CORRELATION_CONFLICT")
+        return self.start_first_canary(PaperOperatorStartFirstCanaryRequest(
+            request_id=canary.start_request_id,
+            expected_generation=canary.arming_generation,
+            canary_id=canary.canary_id,
+            arming_transition_id=canary.arming_transition_id,
+            canary_acknowledgement=True,
+        ))
 
     def _transition(self, request: PaperOperatorTransitionRequest, operation: str, target: PersistentState, reason: ReasonCode) -> PaperOperatorControlDecision:
         def execute() -> PaperOperatorControlDecision:

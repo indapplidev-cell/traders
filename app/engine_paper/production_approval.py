@@ -219,6 +219,9 @@ class PaperProductionApprovalCandidate:
     quantity_authority: PaperProductionApprovalQuantityAuthority
     configuration_fingerprint: str
     symbol_constraints_id: str
+    paper_strategy_approval: PaperStrategyApproval
+    paper_quantity_approval: PaperQuantityApproval
+    paper_risk_approval: PaperRiskApproval
 
 
 @dataclass(frozen=True, slots=True)
@@ -863,6 +866,9 @@ class PaperProductionApprovalSourceAdapter:
             compatibility.valid_until_ms, watermark, lineage, authority,
             compatibility.configuration_fingerprint,
             compatibility.symbol_constraints_id,
+            strategy_approval,
+            quantity_approval,
+            risk_approval,
         )
         return self._symbol_result(
             row, PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL,

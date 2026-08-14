@@ -261,7 +261,14 @@ class PaperFirstCanaryRepository:
         if row is None:
             raise CanaryCorrelationError("CANARY_NOT_FOUND")
         target = "NO_ELIGIBLE_APPROVAL" if no_approval else "RUNNING"
-        if row.state in (target, "POSITION_OPEN", "POSITION_CLOSING", "POSITION_CLOSED", "RECONCILIATION_PENDING", "COMPLETED"):
+        if row.state in (target, "RUNNING", "POSITION_OPEN", "POSITION_CLOSING", "POSITION_CLOSED", "RECONCILIATION_PENDING", "COMPLETED"):
+            # Recover an uncertain outcome where the executor committed the
+            # command graph (which advances the canary) before the control
+            # service durably recorded START completion.
+            if row.start_request_id is not None and row.started_at is None:
+                row.started_at = now
+                row.version += 1
+                self.session.flush()
             return _snapshot(row)
         if row.state != "ARMED" or row.start_request_id is None:
             raise CanaryCorrelationError("CANARY_CORRELATION_CONFLICT")

@@ -17,6 +17,9 @@ from sqlalchemy.orm import sessionmaker
 from uvicorn import run as run_server
 
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
+from app.engine_paper.command_ingestion_service import PaperCommandIngestionService
+from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
+from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_paper.production_preparation_backend import RUNTIME_DATABASE_KEY
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
 from app.engine_safety.production_control_root import resolve_production_control_root
@@ -24,7 +27,8 @@ from app.engine_safety.production_control_root import resolve_production_control
 from .app import create_paper_operator_control_app
 from .auth import PaperOperatorAuthenticator, ProtectedFileOperatorCredentialBinding
 from .config import DEFAULT_BIND_HOST, DEFAULT_PORT, PaperOperatorControlConfig
-from .service import PaperFirstCanaryStore, PaperOperatorArmReadiness
+from .service import PaperFirstCanaryExecutor, PaperFirstCanaryStore, PaperOperatorArmReadiness
+from .production_executor import ProductionPaperFirstCanaryExecutor
 
 
 APPLICATION_NAME = "traders-operator-control-api"
@@ -96,6 +100,7 @@ def create_runtime_app(
     runtime_identity: str | None = None,
     readiness: Callable[[], PaperOperatorArmReadiness] | None = None,
     canary_store: PaperFirstCanaryStore | None = None,
+    executor: PaperFirstCanaryExecutor | None = None,
     require_production_store: bool = True,
 ) -> FastAPI:
     """Compose the authenticated PAPER mutation boundary without transitioning it."""
@@ -103,8 +108,10 @@ def create_runtime_app(
     binding = credential_binding or ProtectedFileOperatorCredentialBinding(PROTECTED_TOKEN_PATH)
     capability = binding.load_current()
     engine = None
+    sessions = None
     if canary_store is None and require_production_store:
         canary_store, engine = _production_canary_store()
+        sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     config = PaperOperatorControlConfig.production_paper()
     active_control = control or PaperProductionSafetyControl(
         resolve_production_control_root(),
@@ -112,6 +119,17 @@ def create_runtime_app(
         # Linux view. The production mount is enforced by Compose.
         acl_checker=(lambda _path: True),
     )
+    if executor is None and require_production_store:
+        if sessions is None or not isinstance(canary_store, SqlAlchemyPaperFirstCanaryStore):
+            raise RuntimeError("CONTROL_RUNTIME_EXECUTOR_COMPOSITION_UNAVAILABLE")
+        executor = ProductionPaperFirstCanaryExecutor(
+            control=active_control,
+            canary_store=canary_store,
+            approval_source=PaperProductionApprovalSourceAdapter(sessions),
+            ingestion_service=PaperCommandIngestionService(
+                lambda: PaperUnitOfWork(sessions), sessions
+            ),
+        )
     from .service import PaperOperatorControlService
     service = PaperOperatorControlService(
         config=config,
@@ -120,6 +138,7 @@ def create_runtime_app(
             os.environ.get(READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL)
         ),
         canary_store=canary_store,
+        executor=executor,
     )
     app = create_paper_operator_control_app(
         config=config,
@@ -129,6 +148,7 @@ def create_runtime_app(
     app.state.runtime_identity = runtime_identity or os.environ.get(RUNTIME_IDENTITY_KEY, "UNSET")
     app.state.credential_binding = binding
     app.state.runtime_engine = engine
+    app.state.first_canary_executor = service.executor
     return app
 
 
