@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = b18a993e5d1822e66035dd1b55e95327fc95ec86
+STATUS_AS_OF_COMMIT = 4f3a9cd7517b1d730bf864e3dd77b84a32be05ca
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-14T05:47:27Z
-RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_FIRST_CANARY_EXECUTOR_COMPOSITION_AND_PENDING_START_RECOVERY_01
+RECONCILED_AT_UTC = 2026-08-14T07:09:00Z
+RECONCILED_BY_TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_FIRST_CANARY_ELIGIBLE_APPROVAL_CONTINUATION_01
 FILES_CHANGED = FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = PRODUCTION_EXECUTOR_COMPOSED_CONTROL_ONLY_DEPLOYED_EXACT_PENDING_GUI_START_RECOVERED_IDEMPOTENTLY_NO_ELIGIBLE_APPROVAL_ZERO_TRADE_MUTATIONS
+STATUS_CONFIDENCE = PRODUCTION_DURABLE_CONTINUATION_DEPLOYED_RESTART_SAFE_SAME_CANARY_WAITING_FOR_REAL_APPROVAL_ZERO_TRADE_MUTATIONS
 
 # Состояние проекта traders-ml
 
@@ -23,10 +23,51 @@ STATUS_CONFIDENCE = PRODUCTION_EXECUTOR_COMPOSED_CONTROL_ONLY_DEPLOYED_EXACT_PEN
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_CURRENT_IMAGE_HEALTHY_18_GET_0_WRITE_PAPER_READINESS_PASS_ARMED_GENERATION_4_MUTATION_READY_FALSE_EXPECTED
-CURRENT_STAGE = CONTINUE_SAME_FIRST_CANARY_NO_ELIGIBLE_APPROVAL_ACCEPTANCE_AND_CLIENT_REFRESH
-CURRENT_BLOCKER = NONE_FOR_EXECUTOR_COMPOSITION_OR_EXACT_START_RECOVERY_CURRENT_SERVER_OWNED_APPROVAL_RESULT_IS_NO_ELIGIBLE_APPROVAL
+CURRENT_STAGE = SAME_FIRST_CANARY_AUTONOMOUSLY_WAITING_FOR_REAL_SERVER_OWNED_ELIGIBLE_APPROVAL
+CURRENT_BLOCKER = NONE_INFRASTRUCTURAL_WAITING_FOR_REAL_SERVER_OWNED_ELIGIBLE_APPROVAL
 BACKGROUND_TIMED_GATE = PITR_CHAIN_VALID_NO_WINDOW_RESET_NO_PHYSICAL_GAP
 ```
+
+## Production first-canary durable eligible-approval continuation 01
+
+```text
+TASK = TRADERS_ML_PAPER_TRADING_PRODUCTION_FIRST_CANARY_ELIGIBLE_APPROVAL_CONTINUATION_01
+RESULT = PASS_WAITING_FOR_REAL_APPROVAL
+IMPLEMENTATION_COMMIT = 24dcff5131bc20a355cec6f65c82b15f397c6e80
+PROJECT_STATE_AUDIT_COMMIT = 4f3a9cd7517b1d730bf864e3dd77b84a32be05ca
+CLIENT_IMPLEMENTATION_COMMIT = 2a8e61764bb58a18350704acdeb2b2b048153cdb
+CLIENT_DOCUMENTATION_COMMIT = 89803f5edea17486dd258aa53591f626f404ceb9
+PERSISTENCE_DESIGN = EXISTING_SCHEMA_SAFE_NO_MIGRATION_PERSISTED_NO_ELIGIBLE_APPROVAL_EXTERNAL_WAITING_SEMANTICS
+CONTINUATION_WORKER = PaperFirstCanaryEligibleApprovalContinuationWorker_CONTROL_API_LIFESPAN
+CONCURRENCY = POSTGRES_SESSION_ADVISORY_LOCK_PER_CANARY_MULTI_INSTANCE_SAFE
+POLLING = DEFAULT_30_SECONDS_CONFIGURABLE_BOUNDED_5_TO_3600_NO_EMPTY_POLL_ROW_WRITES
+APPROVAL = EXISTING_PRODUCTION_ADAPTER_UNCHANGED_ELIGIBILITY
+INGESTION = EXISTING_PaperCommandIngestionService_EXACTLY_ONCE_COMMAND_GRAPH
+TESTS = 1840_FOCUSED_PLUS_2062_CORRELATION_PG_PLUS_261_INGESTION_PG_PLUS_129_REPOSITORY_PG_PLUS_560_RUNTIME_PG_PASS
+DEPLOYMENT = CONTROL_ONE_RECREATE_READONLY_ONE_RECREATE_NO_OTHER_SERVICE_RESTART
+CANARY_ID = 8c52768d-2a3a-47cb-acdc-3d1cb1b6ce9d
+ORIGINAL_START_LINEAGE = EXACT_MATCH_PRESERVED
+CANARY = WAITING_FOR_ELIGIBLE_APPROVAL_STARTED_COMMAND_0_ORDER_0_FILL_0_POSITION_0_TOTAL_CANARIES_1
+WORKER = ACTIVE_AFTER_RESTART_WAITING_ROW_REDISCOVERED
+SECOND_ARM = NO
+SECOND_START = NO
+SECOND_CANARY = NO
+ACCOUNT = INITIAL_100_USDT_CURRENT_100_USDT_PNL_0_FEES_0_RECONCILIATION_HEALTHY
+READONLY = HEALTHY_18_GET_0_WRITE_EXPLICIT_WAITING_PROJECTION
+CLIENT = MINIMAL_WAITING_STATE_SUPPORT_RELAUNCHED_RUNTIME_PARSE_PASS_VISUAL_CAPTURE_UNAVAILABLE_0x80004002
+LIVE = OFF
+BINANCE_ORDER_API_CALLS = 0
+NEXT_REQUIRED_TASK = NO_OPERATOR_ACTION_OBSERVE_SAME_CANARY_UNTIL_REAL_APPROVAL_OR_EXISTING_LIFECYCLE_ADVANCE
+```
+
+The same started first canary now remains durably waiting after an empty
+approval lookup. A bounded Control API lifecycle worker rediscovers it after
+restart and serializes each evaluation with a PostgreSQL advisory lock. Empty
+polls do not rewrite the canary row. If a real eligible approval appears, the
+original START request lineage supplies deterministic ingestion identities and
+the existing command transaction persists both the canary link and consumed
+risk approval identity. Production has seen no eligible approval yet, so no
+command, order, fill or position was created.
 
 ## Production first-canary executor composition and pending START recovery 01
 
@@ -3206,13 +3247,13 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈96% | Production preparation is complete at schema 0013 with exact 100.00 USDT baseline, least-privilege roles/grants/binding, disabled runtime configuration, and accepted 18 GET/0 write Readonly runtime; operator control API production deployment is next |
+| Online analytics/paper pipeline | ≈97% | Schema 0013 remains current; the same production first canary is durably waiting under the deployed restart-safe continuation worker with exact 100.00 USDT accounting and accepted 18 GET/0 write Readonly projection |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current production gate ready | Fresh WAL archive health is PASS with 200/200 required segments, no physical gap or unresolved failure, and a continuous 203,683-second PITR window |
 | Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 18 GET/0 write, legacy 9/9, all nine PAPER routes present, zero PAPER 404 and zero unexpected PAPER 5xx |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
-| PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Separate localhost-only authenticated eight-route boundary is healthy with matching runtime identity; foundation mode is PRODUCTION_PAPER while control remains DISABLED generation 3 with zero task transitions |
-| First-canary correlation/readiness | 100% server/client source and integration; control deployment ready | Durable UUID correlation and exact client workflow remain proven; Operator Control API deployment is ready for the separately controlled client connection, while no canary has started |
+| PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 4; an internal bounded continuation worker is active without adding a public mutation route |
+| First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive restart; the sole canary is explicitly WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
 | Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -3222,7 +3263,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = CONTINUE_OR_COMPLETE_TRADERS_CLIENT_DESKTOP_PRODUCTION_PAPER_FIRST_OPERATOR_CANARY_01_USING_SAME_CANARY
+RECOMMENDED_NEXT_TASK = OBSERVE_SAME_FIRST_CANARY_AUTONOMOUS_CONTINUATION_NO_OPERATOR_ACTION
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_NEW_ARM_OR_START_FOR_CURRENT_CANARY
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED
