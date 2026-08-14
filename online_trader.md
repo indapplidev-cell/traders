@@ -7,9 +7,9 @@ STATUS_AS_OF_COMMIT = 5f81d15393a7ff8e093f7cbf77489102975817c8
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-14T12:50:00Z
-RECONCILED_BY_TASK = TRADERS_ML_PRODUCTION_FIRST_CANARY_STOP_10_PAIR_UNIVERSE_ACTIVATION_AND_NEW_SEARCH_01
-FILES_CHANGED = alembic/versions/0015_trading_universe_activation.py, app/trading_universe/activation.py, app/trading_universe/activation_cli.py, app/db/paper_models.py, app/engine_paper/production_market_data.py, app/engine_paper/production_approval.py, app/engine_paper/trading_criteria.py, app/operator_control/production_executor.py, app/operator_control/service.py, app/server_api/paper_runtime_observation.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/services/paper_reporting.py, docker-compose.yml, ops/production grants and deployment contracts, affected tests, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-14T13:24:28Z
+RECONCILED_BY_TASK = TRADERS_CLIENT_KEYBOARD_NAVIGATION_SHORTCUTS_AND_F5_REFRESH_01
+FILES_CHANGED = traders-client keyboard shortcut implementation/tests/client_status.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
@@ -27,6 +27,37 @@ CURRENT_STAGE = OBSERVE_NEW_V2_CANARY_AUTONOMOUS_PAPER_LIFECYCLE
 CURRENT_BLOCKER = NONE_NEW_V2_CANARY_WAITING_FOR_NATURAL_ELIGIBLE_APPROVAL
 BACKGROUND_TIMED_GATE = PITR_READY_CHAIN_VALID_NO_WINDOW_RESET_NO_PHYSICAL_GAP_WAL_UNRESOLVED_FAILURE_NO
 ```
+
+## Client keyboard navigation and active-page F5 refresh 01
+
+```text
+TASK = TRADERS_CLIENT_KEYBOARD_NAVIGATION_SHORTCUTS_AND_F5_REFRESH_01
+RESULT = PASS
+CLIENT_IMPLEMENTATION_COMMIT = f7c7ad26542cb42d83f9ea6e0dad758d2a55fe43
+CLIENT_DOCUMENTATION_COMMIT = 5a723fb9212d67b569ada2e0580140fdbcc08f35
+RU_EN_ALT_NAVIGATION = PASS_EXACT_LANGUAGE_AWARE_MAPS
+LANGUAGE_SWITCH = PASS_NO_STALE_OR_DUPLICATE_BINDINGS
+F5 = ACTIVE_PAGE_ONLY_EXISTING_ASYNC_REFRESH_BUTTON_PATH
+F5_REQUEST_STORM = NO_ACTIVE_SCOPE_GUARD
+SAME_PAGE_NAVIGATION = IDEMPOTENT_NO_REQUEST
+TEXT_INPUT_AND_ALTGR = SAFE
+SENSITIVE_MODAL_SHORTCUTS = SUPPRESSED
+TRADING_MUTATION_HOTKEYS = 0
+PAPER_F5_POSTS_AND_MUTATIONS = 0_0
+FOCUSED_REAL_WINDOWS_TK_TESTS = 9_PASSED
+FULL_CLIENT_REGRESSION = 1399_PASSED_2_SKIPPED_3020_SUBTESTS
+SERVER_SOURCE_CHANGED = NO
+SERVER_AND_POSTGRES_RESTARTS_BY_TASK = 0_0
+PAPER_ARM_START_DISABLE_EMERGENCY_ACTIONS_BY_TASK = 0_0_0_0
+CURRENT_CANARY = UNTOUCHED_STILL_WAITING_FOR_NATURAL_ELIGIBLE_APPROVAL
+LIVE = OFF
+```
+
+This task changed only the desktop client's localized navigation, help and
+refresh UX. Mouse and keyboard navigation share the existing client router;
+F5 invokes only the active page's existing read/refresh callback. No server
+source, API contract, provider selection, deployment, service, database,
+Trading Universe, policy or PAPER runtime state was changed.
 
 ## Production first-canary stop, V2 activation, and new search 01
 
