@@ -45,6 +45,7 @@ RUNTIME_CONFIGURATION_NAME: Final = "paper-runtime.disabled.json"
 IDENTITY_CONFIGURATION_NAME: Final = "paper-identity.json"
 MINIMUM_PITR_WINDOW_SECONDS: Final = 86_400
 MAX_JSON_BYTES: Final = 16 * 1024
+MAX_MARKET_HEALTH_JSON_BYTES: Final = 256 * 1024
 MAX_WAL_DAEMON_AGE_SECONDS: Final = 1_200
 MAX_MARKET_HEALTH_AGE_SECONDS: Final = 180
 _START_WAL = re.compile(
@@ -54,8 +55,8 @@ _START_WAL = re.compile(
 _START_TIMELINE = re.compile(r"^START TIMELINE: (?P<timeline>[0-9]+)$", re.MULTILINE)
 
 
-def _json_object(path: Path) -> dict[str, object]:
-    if not path.is_file() or path.stat().st_size > MAX_JSON_BYTES:
+def _json_object(path: Path, *, max_bytes: int = MAX_JSON_BYTES) -> dict[str, object]:
+    if not path.is_file() or path.stat().st_size > max_bytes:
         raise ValueError("PRODUCTION_OBSERVATION_ARTIFACT_INVALID")
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -119,7 +120,9 @@ def _market_data_readiness(
 ) -> bool:
     """Validate the health artifact with the persisted adapter's grace semantics."""
     try:
-        payload = _json_object(root / "latest_health.json")
+        payload = _json_object(
+            root / "latest_health.json", max_bytes=MAX_MARKET_HEALTH_JSON_BYTES,
+        )
         generated = datetime.fromisoformat(str(payload["generated_at"]).replace("Z", "+00:00"))
         generated_ms = int(generated.timestamp() * 1000)
         snapshots = payload.get("snapshots")
