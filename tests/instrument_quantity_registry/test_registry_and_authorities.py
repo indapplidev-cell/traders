@@ -174,6 +174,23 @@ def test_quantity_caps_round_down_and_never_exceeds_risk_or_equity():
     assert audit.normalized_quantity <= audit.balance_cap_quantity
 
 
+def test_doge_exact_minimum_quantity_and_notional_boundaries():
+    _, strategy = chain("DOGEUSDT")
+    audit = calculate_controlled_quantity(strategy=strategy, account=account(Decimal("1")))
+    assert audit.normalized_quantity == Decimal("1.00000000")
+    assert audit.normalized_quantity == audit.applicable_min_quantity
+    assert audit.normalized_quantity * audit.entry_price == audit.applicable_min_notional
+
+
+def test_effective_market_max_quantity_caps_before_round_down():
+    _, strategy = chain("BTCUSDT", entry="1", stop="0.9999")
+    audit = calculate_controlled_quantity(
+        strategy=strategy, account=account(Decimal("1000000")),
+    )
+    assert audit.normalized_quantity <= REGISTRY.for_symbol("BTCUSDT").max_quantity
+    assert audit.normalized_quantity == Decimal("143.33152000")
+
+
 @pytest.mark.parametrize("equity", ["0", "0.01"])
 def test_quantity_invalid_or_minimum_constraints_fail_closed(equity: str):
     _, strategy = chain()
@@ -197,6 +214,13 @@ def test_validity_next_boundary_stricter_no_extension_and_replay():
     assert derive_approval_valid_until_ms(CLOSED, stricter_valid_until_ms=(expected - 1,)) == expected - 1
     assert_paper_error(lambda: derive_approval_valid_until_ms(CLOSED, evaluation_time_ms=expected + 1))
     assert_paper_error(lambda: derive_approval_valid_until_ms(CLOSED + 1))
+
+
+def test_validity_is_compatible_with_30_second_continuation_poll():
+    deadline = derive_approval_valid_until_ms(CLOSED)
+    assert derive_approval_valid_until_ms(
+        CLOSED, evaluation_time_ms=deadline - 30_000,
+    ) == deadline
 
 
 def test_replay_identity_and_final_approval_prerequisite_compatibility():
