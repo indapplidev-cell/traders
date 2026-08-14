@@ -200,12 +200,14 @@ class PaperOperatorControlService:
         readiness: Callable[[], PaperOperatorArmReadiness] | None = None,
         executor: PaperFirstCanaryExecutor | None = None,
         canary_store: PaperFirstCanaryStore | None = None,
+        continuation_status: Callable[[], tuple[bool, float | None]] | None = None,
     ) -> None:
         self.config = config
         self.control = control
         self.readiness = readiness or PaperOperatorArmReadiness
         self.executor = executor or DisabledPaperFirstCanaryExecutor()
         self.canary_store = canary_store
+        self.continuation_status = continuation_status or (lambda: (False, None))
         self._idempotency = _IdempotencyRegistry()
 
     @staticmethod
@@ -243,6 +245,7 @@ class PaperOperatorControlService:
     def status(self) -> PaperOperatorControlStatus:
         state = self._state()
         health = self.control.health()
+        continuation_active, continuation_interval = self.continuation_status()
         return PaperOperatorControlStatus(
             control_api_version=CONTROL_API_VERSION,
             foundation_mode=self.config.operation_mode.value,
@@ -259,14 +262,18 @@ class PaperOperatorControlService:
             emergency_stop_available=health.emergency_stop_available,
             live_allowed=False,
             production_mutation_enabled=self.config.mutation_foundation_enabled,
+            continuation_worker_active=continuation_active,
+            continuation_poll_seconds=continuation_interval,
         )
 
     @staticmethod
     def _canary_dto(value: PaperFirstCanarySession) -> PaperOperatorCanaryStatus:
+        waiting = value.state is PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL
         return PaperOperatorCanaryStatus(
             canary_id=value.canary_id,
-            state=PaperCanaryNormalizedState(value.state.value),
-            availability_code="AVAILABLE",
+            state=(PaperCanaryNormalizedState.WAITING_FOR_ELIGIBLE_APPROVAL if waiting
+                   else PaperCanaryNormalizedState(value.state.value)),
+            availability_code=("NO_ELIGIBLE_APPROVAL" if waiting else "AVAILABLE"),
             deployment_status="SOURCE_READY",
             environment=value.environment,
             mode=value.mode,
@@ -497,7 +504,11 @@ class PaperOperatorControlService:
                     request_id=request.request_id, operation="START_FIRST_CANARY",
                     accepted=True,
                     executed=canary.state is not PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL,
-                    state_before="ARMED", state_after=canary.state.value,
+                    state_before="ARMED", state_after=(
+                        "WAITING_FOR_ELIGIBLE_APPROVAL"
+                        if canary.state is PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL
+                        else canary.state.value
+                    ),
                     generation_before=state.generation, generation_after=state.generation,
                     finding_codes=canary.finding_codes,
                     transition_id=state.transition_id,
@@ -522,7 +533,7 @@ class PaperOperatorControlService:
                 return PaperOperatorControlDecision(
                     request_id=request.request_id, operation="START_FIRST_CANARY",
                     accepted=True, executed=False, state_before=state.state.value,
-                    state_after=state.state.value, generation_before=state.generation,
+                    state_after="WAITING_FOR_ELIGIBLE_APPROVAL", generation_before=state.generation,
                     generation_after=state.generation, finding_codes=findings,
                     transition_id=state.transition_id, arming_transition_id=state.transition_id,
                     canary_id=request.canary_id,

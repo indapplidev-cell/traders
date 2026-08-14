@@ -304,6 +304,12 @@ class PaperFirstCanaryRepository:
             return _snapshot(row)
         if row.command_id is not None or row.command_count != 0:
             return self.fail_safe(canary_id, "FIRST_CANARY_COMMAND_BUDGET_VIOLATION")
+        command = self.session.get(PaperExecutionCommandRecord, command_id)
+        if command is None or not command.risk_decision_id:
+            return self.fail_safe(canary_id, "CANARY_CORRELATION_UNAVAILABLE")
+        if row.approval_id is not None and row.approval_id != command.risk_decision_id:
+            return self.fail_safe(canary_id, "CANARY_APPROVAL_CONSUMPTION_CONFLICT")
+        row.approval_id = command.risk_decision_id
         row.command_id = command_id
         row.command_count = 1
         row.state = "RUNNING"

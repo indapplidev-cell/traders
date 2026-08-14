@@ -130,6 +130,51 @@ class ProductionPaperFirstCanaryExecutor:
             if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL or len(candidates) != 1:
                 return ("NO_ELIGIBLE_APPROVAL",) if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL" else ("APPROVAL_SOURCE_NOT_READY",)
             candidate = candidates[0]
+        return self._ingest_candidate(
+            candidate=candidate, request_id=request_id, canary_id=canary_id
+        )
+
+    def continue_waiting_canary(self, canary_id: str) -> tuple[str, ...]:
+        """Continue the original START lineage without creating another START."""
+
+        canary = self._canary_store.get(canary_id)
+        if (
+            canary is None
+            or canary.state.value != "NO_ELIGIBLE_APPROVAL"
+            or canary.started_at is None
+            or canary.start_request_id is None
+            or canary.command_count != 0
+            or canary.position_count != 0
+        ):
+            return ("CANARY_NOT_WAITING",)
+        validated = self._validate_boundary(
+            canary.arming_transition_id or "", canary.arming_generation or 0
+        )
+        if validated is None or validated.canary_id != canary_id:
+            return ("CANARY_NOT_ARMED",)
+        result = self._read_approval(
+            validated, _id(canary.start_request_id, "approval-continuation")
+        )
+        candidates = tuple(
+            value.candidate for value in result.symbol_results
+            if value.candidate is not None
+        )
+        if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
+            return (
+                ("NO_ELIGIBLE_APPROVAL",)
+                if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL"
+                else tuple(value.code.value for value in result.findings)
+                or ("APPROVAL_SOURCE_NOT_READY",)
+            )
+        if len(candidates) != 1:
+            return ("APPROVAL_SOURCE_AMBIGUOUS",)
+        return self._ingest_candidate(
+            candidate=candidates[0],
+            request_id=canary.start_request_id,
+            canary_id=canary_id,
+        )
+
+    def _ingest_candidate(self, *, candidate, request_id: str, canary_id: str) -> tuple[str, ...]:
         command_id = paper_ingestion_command_id(
             candidate.paper_strategy_approval.approval_id,
             candidate.paper_quantity_approval.quantity_approval_id,
@@ -170,10 +215,12 @@ class ProductionPaperFirstCanaryExecutor:
                 availability_code="NO_ACTIVE_CANARY",
                 deployment_status="DEPLOYED",
             )
+        waiting = canary.state.value == "NO_ELIGIBLE_APPROVAL"
         return PaperOperatorCanaryStatus(
             canary_id=canary.canary_id,
-            state=PaperCanaryNormalizedState(canary.state.value),
-            availability_code="AVAILABLE",
+            state=(PaperCanaryNormalizedState.WAITING_FOR_ELIGIBLE_APPROVAL if waiting
+                   else PaperCanaryNormalizedState(canary.state.value)),
+            availability_code=("NO_ELIGIBLE_APPROVAL" if waiting else "AVAILABLE"),
             deployment_status="DEPLOYED",
             live_allowed=False,
             binance_order_calls_allowed=False,

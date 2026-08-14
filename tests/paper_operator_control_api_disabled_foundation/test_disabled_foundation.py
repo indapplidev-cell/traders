@@ -51,6 +51,8 @@ def test_foundation_status_and_canary_status_are_safe(foundation):
         "emergency_stop_available": True,
         "live_allowed": False,
         "production_mutation_enabled": False,
+        "continuation_worker_active": False,
+        "continuation_poll_seconds": None,
     }
     canary = client.get("/control/v1/canary/status", headers=AUTH)
     assert canary.status_code == 200

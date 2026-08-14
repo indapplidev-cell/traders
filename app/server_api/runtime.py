@@ -89,6 +89,13 @@ def _paper_control_status(
             or canary.current_control_generation != state.generation
         ):
             raise RuntimeError("CONTROL_CANARY_RECONCILIATION_FAILED")
+    canary_status = None
+    if canary is not None:
+        canary_status = (
+            "WAITING_FOR_ELIGIBLE_APPROVAL"
+            if canary.state is PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL
+            else canary.state.value
+        )
     return PaperControlStatus(
         state=state.state.value,
         effective_state=state.state.value,
@@ -98,6 +105,7 @@ def _paper_control_status(
         audit_health="PASS",
         state_audit_reconciliation="PASS",
         canary_id=None if canary is None else canary.canary_id,
+        canary_status=canary_status,
     )
 
 

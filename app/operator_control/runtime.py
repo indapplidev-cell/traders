@@ -6,7 +6,8 @@ import argparse
 import json
 import os
 import urllib.request
-from collections.abc import Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -29,6 +30,11 @@ from .auth import PaperOperatorAuthenticator, ProtectedFileOperatorCredentialBin
 from .config import DEFAULT_BIND_HOST, DEFAULT_PORT, PaperOperatorControlConfig
 from .service import PaperFirstCanaryExecutor, PaperFirstCanaryStore, PaperOperatorArmReadiness
 from .production_executor import ProductionPaperFirstCanaryExecutor
+from .continuation_worker import (
+    PaperFirstCanaryEligibleApprovalContinuationWorker,
+    PostgresCanaryContinuationLock,
+    continuation_poll_seconds,
+)
 
 
 APPLICATION_NAME = "traders-operator-control-api"
@@ -130,6 +136,21 @@ def create_runtime_app(
                 lambda: PaperUnitOfWork(sessions), sessions
             ),
         )
+    continuation_worker = None
+    if (
+        require_production_store
+        and engine is not None
+        and isinstance(canary_store, SqlAlchemyPaperFirstCanaryStore)
+        and isinstance(executor, ProductionPaperFirstCanaryExecutor)
+    ):
+        continuation_worker = PaperFirstCanaryEligibleApprovalContinuationWorker(
+            control=active_control,
+            canary_store=canary_store,
+            executor=executor,
+            lock=PostgresCanaryContinuationLock(engine),
+            poll_seconds=continuation_poll_seconds(),
+        )
+
     from .service import PaperOperatorControlService
     service = PaperOperatorControlService(
         config=config,
@@ -139,16 +160,35 @@ def create_runtime_app(
         ),
         canary_store=canary_store,
         executor=executor,
+        continuation_status=(
+            (lambda: (continuation_worker.active, continuation_worker.poll_seconds))
+            if continuation_worker is not None else None
+        ),
     )
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        if continuation_worker is not None:
+            continuation_worker.start()
+        try:
+            yield
+        finally:
+            if continuation_worker is not None:
+                continuation_worker.stop()
+            if engine is not None and hasattr(engine, "dispose"):
+                engine.dispose()
+
     app = create_paper_operator_control_app(
         config=config,
         authenticator=PaperOperatorAuthenticator((capability,)),
         service=service,
+        lifespan=lifespan,
     )
     app.state.runtime_identity = runtime_identity or os.environ.get(RUNTIME_IDENTITY_KEY, "UNSET")
     app.state.credential_binding = binding
     app.state.runtime_engine = engine
     app.state.first_canary_executor = service.executor
+    app.state.first_canary_continuation_worker = continuation_worker
     return app
 
 

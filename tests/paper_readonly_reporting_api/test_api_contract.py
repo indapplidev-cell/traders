@@ -275,6 +275,7 @@ def test_armed_control_projects_exact_generation_canary_and_start_specific_readi
         "health": "HEALTHY", "emergency_stop_available": True,
         "audit_health": "PASS", "state_audit_reconciliation": "PASS",
         "canary_id": canary_id,
+        "canary_status": None,
     }
 
 

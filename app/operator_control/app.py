@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
@@ -76,6 +78,7 @@ def create_paper_operator_control_app(
     authenticator: PaperOperatorAuthenticator | None = None,
     service: PaperOperatorControlService | None = None,
     control: PaperProductionSafetyControl | None = None,
+    lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] | None = None,
 ) -> FastAPI:
     active_config = config or PaperOperatorControlConfig()
     active_authenticator = authenticator or PaperOperatorAuthenticator()
@@ -89,6 +92,7 @@ def create_paper_operator_control_app(
         docs_url="/docs" if active_config.docs_enabled else None,
         redoc_url=None,
         openapi_url="/openapi.json" if active_config.docs_enabled else None,
+        lifespan=lifespan,
     )
 
     @app.middleware("http")

@@ -85,6 +85,8 @@ class PaperOperatorControlStatus(BaseModel):
     emergency_stop_available: bool
     live_allowed: bool
     production_mutation_enabled: bool
+    continuation_worker_active: bool = False
+    continuation_poll_seconds: float | None = None
 
 
 class PaperCanaryNormalizedState(StrEnum):
@@ -94,6 +96,7 @@ class PaperCanaryNormalizedState(StrEnum):
     ARMED = "ARMED"
     ARMED_WAITING = "ARMED_WAITING"
     NO_ELIGIBLE_APPROVAL = "NO_ELIGIBLE_APPROVAL"
+    WAITING_FOR_ELIGIBLE_APPROVAL = "WAITING_FOR_ELIGIBLE_APPROVAL"
     RUNNING = "RUNNING"
     POSITION_OPEN = "POSITION_OPEN"
     POSITION_CLOSING = "POSITION_CLOSING"

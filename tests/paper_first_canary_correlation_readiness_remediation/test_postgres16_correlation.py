@@ -148,7 +148,8 @@ def test_uncertain_arm_and_start_are_exactly_recoverable_after_service_restart(c
 
     _, restarted_again = _control_service(tmp_path / "control", canary_sessions)
     recovered = restarted_again.canary_status(canary_id=arm.canary_id)
-    assert recovered.state.value == "NO_ELIGIBLE_APPROVAL"
+    assert recovered.state.value == "WAITING_FOR_ELIGIBLE_APPROVAL"
+    assert recovered.availability_code == "NO_ELIGIBLE_APPROVAL"
     assert recovered.command_count == recovered.position_count == 0
     replay = restarted_again.start_first_canary(start_request)
     assert replay.canary_id == arm.canary_id

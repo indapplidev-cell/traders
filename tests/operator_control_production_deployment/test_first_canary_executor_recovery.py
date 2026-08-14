@@ -19,6 +19,7 @@ from app.engine_safety.paper_production_control import (
 from app.operator_control.auth import ProtectedFileOperatorCredentialBinding
 from app.operator_control.config import PaperOperatorControlConfig
 from app.operator_control.production_executor import ProductionPaperFirstCanaryExecutor
+from app.operator_control.continuation_worker import PaperFirstCanaryEligibleApprovalContinuationWorker
 from app.operator_control.runtime import create_runtime_app
 from app.operator_control.schemas import PaperOperatorStartFirstCanaryRequest
 from app.operator_control.service import (
@@ -144,6 +145,10 @@ def test_runtime_auto_composes_real_executor_and_isolated_mode_stays_disabled(mo
         credential_binding=binding, control=control, runtime_identity="focused-build"
     )
     assert isinstance(app.state.first_canary_executor, ProductionPaperFirstCanaryExecutor)
+    assert isinstance(
+        app.state.first_canary_continuation_worker,
+        PaperFirstCanaryEligibleApprovalContinuationWorker,
+    )
     assert not isinstance(app.state.first_canary_executor, DisabledPaperFirstCanaryExecutor)
     assert app.state.runtime_identity == "focused-build"
 
