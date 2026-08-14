@@ -242,6 +242,7 @@ RUNTIME_READ_TABLES: Final = (
     "alembic_version", "candles_1m", "candles_5m", "candles_15m", "candles_1h",
     "candles_4h", "candles_1d", "market_data_sync_state", "online_pipeline_runs",
     "online_pipeline_results", "paper_account_baselines",
+    "trading_universe_runtime_state",
 )
 RUNTIME_WRITE_TABLES: Final = (
     "paper_simulation_policies", "paper_execution_commands", "paper_orders",
@@ -265,8 +266,10 @@ READONLY_BASELINE_TABLES: Final = (
 RUNTIME_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in RUNTIME_READ_TABLES) + tuple(
     DatabaseGrant(table, ("SELECT", "INSERT") + (("UPDATE",) if table in RUNTIME_UPDATE_TABLES else ()))
     for table in RUNTIME_WRITE_TABLES
-)
-READONLY_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in READONLY_PAPER_TABLES)
+) + (DatabaseGrant("trading_universe_runtime_state", ("UPDATE",)),)
+READONLY_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in (
+    READONLY_PAPER_TABLES + ("trading_universe_runtime_state",)
+))
 READONLY_BASELINE_GRANTS: Final = tuple(
     DatabaseGrant(table, ("SELECT",)) for table in READONLY_BASELINE_TABLES
 )

@@ -647,6 +647,31 @@ class PaperOperatorControlService:
                 or canary.approval_id is not None
             ):
                 raise ControlApiError(409, "CANARY_NOT_SAFE_TO_STOP")
+            if before.state is PersistentState.DISABLED:
+                if request.expected_generation != before.generation:
+                    raise ControlApiError(409, "STALE_GENERATION")
+                if canary is not None and self.canary_store is not None:
+                    try:
+                        self.canary_store.stop_waiting(
+                            canary.canary_id,
+                            control_generation=before.generation,
+                            reason="CONTROLLED_OPERATOR_DISABLE_WAITING_ZERO_TRADE",
+                            now=datetime.now(timezone.utc),
+                        )
+                    except CanaryCorrelationError as error:
+                        raise self._correlation_error(error) from error
+                return PaperOperatorControlDecision(
+                    request_id=request.request_id,
+                    operation="DISABLE",
+                    accepted=True,
+                    executed=False,
+                    state_before=before.state.value,
+                    state_after=before.state.value,
+                    generation_before=before.generation,
+                    generation_after=before.generation,
+                    transition_id=before.transition_id,
+                    canary_id=None if canary is None else canary.canary_id,
+                )
             try:
                 after = self.control.transition(
                     PersistentState.DISABLED,

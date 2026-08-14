@@ -175,7 +175,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                               if item not in deployment_actions]
             planned_after = [item.value for item in planned.planned_actions
                              if item in deployment_actions]
-            planned_steps = ((["MIGRATE_SCHEMA_TO_0014"] if migration_required else [])
+            planned_steps = ((["MIGRATE_SCHEMA_TO_0015"] if migration_required else [])
                              + planned_before
                              + (["ENSURE_ACCOUNT_BASELINE"] if not state.baseline_ready else [])
                              + planned_after)
