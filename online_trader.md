@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 6ffbea3d9c13d2d1b120194ee82c77acfc44ea56
+STATUS_AS_OF_COMMIT = ea32669d643d27a653eb2e5c564d558b269803bd
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-14T09:22:00Z
-RECONCILED_BY_TASK = TRADERS_CLIENT_PRODUCTION_TRADING_CRITERIA_READONLY_VISIBILITY_01
-FILES_CHANGED = app/engine_paper/trading_criteria.py, app/server_api/routes/paper.py, app/server_api/schemas/paper.py, app/server_api/services/paper_reporting.py, tests/paper_readonly_reporting_api/test_api_contract.py, tests/paper_trading_criteria_readonly/test_trading_criteria.py, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-14T10:30:00Z
+RECONCILED_BY_TASK = TRADERS_ML_TRADING_UNIVERSE_EXPANSION_PREPARATION_10_PAIRS_01
+FILES_CHANGED = app/engine_market_data/continuous_sync_cli.py, app/engine_market_data/continuous_sync_config.py, app/operator_control/service.py, app/server_api/repositories/protocols.py, app/server_api/repositories/records.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/routes/v1.py, app/server_api/runtime.py, app/server_api/schemas/models.py, app/server_api/services/query_service.py, app/trading_universe/__init__.py, app/trading_universe/domain.py, docker-compose.yml, tests/paper_first_canary_correlation_readiness_remediation/test_contract_matrix_2048.py, tests/paper_readonly_reporting_api/test_api_contract.py, tests/security_retry/test_safe_inspection_and_output_matrix.py, tests/server_api/test_contract_and_safety.py, tests/server_api/test_runtime_entrypoint.py, tests/trading_universe/__init__.py, tests/trading_universe/test_domain_and_readonly.py, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = PRODUCTION_READONLY_CRITERIA_DEPLOYED_GUI_ACCEPTED_SAME_CANARY_WAITING_ZERO_POLICY_OR_TRADE_MUTATIONS
+STATUS_CONFIDENCE = PRODUCTION_60_OF_60_MARKET_STREAMS_READY_VERSIONED_ACTIVE3_PREPARED10_READONLY_AND_GUI_ACCEPTED_SAME_CANARY_UNCHANGED_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -22,11 +22,46 @@ STATUS_CONFIDENCE = PRODUCTION_READONLY_CRITERIA_DEPLOYED_GUI_ACCEPTED_SAME_CANA
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
-API_RUNTIME_STATUS = DEPLOYED_CURRENT_IMAGE_HEALTHY_19_GET_0_WRITE_TRADING_CRITERIA_PASS_PAPER_READINESS_PASS_ARMED_GENERATION_4_MUTATION_READY_FALSE_EXPECTED
-CURRENT_STAGE = SAME_FIRST_CANARY_AUTONOMOUSLY_WAITING_FOR_REAL_SERVER_OWNED_ELIGIBLE_APPROVAL
-CURRENT_BLOCKER = NONE_INFRASTRUCTURAL_WAITING_FOR_REAL_SERVER_OWNED_ELIGIBLE_APPROVAL
-BACKGROUND_TIMED_GATE = PITR_CHAIN_VALID_NO_WINDOW_RESET_NO_PHYSICAL_GAP
+API_RUNTIME_STATUS = DEPLOYED_CURRENT_IMAGE_HEALTHY_20_GET_0_WRITE_TRADING_UNIVERSE_ACTIVE_V1_PREPARED_V2_PAPER_READINESS_PASS_ARMED_GENERATION_4
+CURRENT_STAGE = WAIT_FOR_CURRENT_FIRST_CANARY_ACCEPTED_TERMINAL_STATE_BEFORE_10_PAIR_UNIVERSE_ACTIVATION
+CURRENT_BLOCKER = NONE_PREPARATION_COMPLETE_ACTIVATION_INTENTIONALLY_DEFERRED
+BACKGROUND_TIMED_GATE = PITR_CHAIN_VALID_283_OF_283_268110_SECONDS_NO_WINDOW_RESET_NO_PHYSICAL_GAP
 ```
+
+## Ten-pair Trading Universe preparation 01
+
+```text
+TASK = TRADERS_ML_TRADING_UNIVERSE_EXPANSION_PREPARATION_10_PAIRS_01
+RESULT = PASS_PREPARED_NOT_ACTIVATED
+IMPLEMENTATION_COMMIT = 17153a3c413f953d5f019e15d87c87e5d0a4703e
+PROJECT_STATE_AUDIT_COMMIT = ea32669d643d27a653eb2e5c564d558b269803bd
+CLIENT_IMPLEMENTATION_COMMIT = 08447c9c6702226dff45438d6e6d5a92d042a0d7
+CLIENT_DOCUMENTATION_COMMIT = a0845cbb484dc03a28246519bc8f37b293482f85
+ACTIVE_UNIVERSE = trading-universe-v1_BTCUSDT_ETHUSDT_SOLUSDT
+PREPARED_UNIVERSE = trading-universe-v2_BTCUSDT_ETHUSDT_SOLUSDT_BNBUSDT_XRPUSDT_LINKUSDT_DOGEUSDT_ADAUSDT_AVAXUSDT_SUIUSDT_NOT_ACTIVE
+CANARY_BINDING = IMMUTABLE_PERSISTED_ALLOWED_SYMBOLS
+CURRENT_CANARY = 8c52768d-2a3a-47cb-acdc-3d1cb1b6ce9d_WAITING_FOR_ELIGIBLE_APPROVAL_BTCUSDT_ETHUSDT_SOLUSDT_COMMAND0_POSITION0
+MARKET_DATA = PRODUCTION_BINANCE_60_OF_60_OK_ZERO_CURRENT_POLICY_GAPS_DUPLICATES_CONFLICTS_FUTURE_CANDLES
+HISTORY = CURRENT_POLICY_COMPLETE_EXCEPT_SUI_1d_PRE_LISTING_301_UNAVAILABLE_WITH_1199_AVAILABLE_AND_240_WARMUP_PASS
+COMPATIBILITY = NEW7_ANALYSIS_SETUP_STRATEGY_RISK_DRY_PASS_ZERO_TRADING_MUTATIONS
+READONLY = HEALTHY_20_GET_0_WRITE_TRADING_UNIVERSE_RUNTIME_READINESS
+CLIENT = RU_EN_ACTIVE_NOW_VS_PREPARED_NEXT_ZERO_EDIT_OR_ACTIVATION_CONTROLS
+RESOURCE_CAPACITY = PASS_WITH_LIMITATIONS_TRANSIENT_BACKFILL_WAL_LOAD_NO_PRESSURE_ERROR_OR_RESTART
+PITR = PASS_283_OF_283_268110_SECONDS_ZERO_BACKLOG_NO_PHYSICAL_GAP
+TESTS = SERVER_IMPACTED_4181_PASS_CLIENT_TARGETED_46_PASS_12_SUBTESTS_GUI_5_PASS
+DEPLOYMENT = MARKET_DATA_ONE_READONLY_ONE_CONTROL_ONE_CONTROLLED_RECREATE_POSTGRES_AND_ORCHESTRATOR_ZERO
+LIVE = OFF
+BINANCE_ORDER_API_CALLS = 0
+NEXT_REQUIRED_TASK = TRADERS_ML_TRADING_UNIVERSE_ACTIVATION_10_PAIRS_01_ONLY_AFTER_CURRENT_FIRST_CANARY_ACCEPTED_TERMINAL_STATE
+```
+
+The first-class universe domain now separates active version v1 from prepared
+version v2. Only the market-data service collects the ten-pair set; the
+orchestrator and persisted running canary continue with the original three
+symbols. All seven additional pairs use the canonical production Binance and
+PostgreSQL paths and passed a real-data isolated analysis/setup/strategy/risk
+cycle without producing a PAPER command. Activation and operator pair editing
+remain deliberately absent.
 
 ## Production trading criteria Readonly visibility 01
 
@@ -3289,14 +3324,14 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈97% | Schema 0013 remains current; the same production first canary is durably waiting under the deployed restart-safe continuation worker with exact 100.00 USDT accounting and accepted 18 GET/0 write Readonly projection |
+| Online analytics/paper pipeline | ≈97% | Schema 0013 remains current; the same production first canary is durably waiting on its immutable three-symbol binding while the prepared ten-pair universe passed isolated real-data compatibility; Readonly is 20 GET/0 write |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current production gate ready | Fresh WAL archive health is PASS with 200/200 required segments, no physical gap or unresolved failure, and a continuous 203,683-second PITR window |
-| Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 18 GET/0 write, legacy 9/9, all nine PAPER routes present, zero PAPER 404 and zero unexpected PAPER 5xx |
+| Production backup/PITR | Current production gate ready | Fresh WAL archive health is PASS with 283/283 required segments, zero backlog, no physical gap or unresolved failure, and a continuous 268,110-second PITR window |
+| Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 20 GET/0 write and includes the runtime-derived active/prepared Trading Universe response |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 4; an internal bounded continuation worker is active without adding a public mutation route |
 | First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive restart; the sole canary is explicitly WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
-| Market-data health contract | Deployed and verified | Accepted immutable image passed live 1m/5m/15m/1h boundaries, blocking probes, consumer compatibility, candle integrity, and 30-minute stability observation |
+| Market-data health contract | Deployed and verified for prepared ten-pair universe | Production Binance collection is 60/60 OK across ten pairs and six timeframes with zero current-policy-window gaps, duplicates, checksum conflicts, or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
 Проценты отражают implementation, integration, tests, deployment и acceptance,
@@ -3305,12 +3340,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = OBSERVE_SAME_FIRST_CANARY_AUTONOMOUS_CONTINUATION_NO_OPERATOR_ACTION
+RECOMMENDED_NEXT_TASK = TRADERS_ML_TRADING_UNIVERSE_ACTIVATION_10_PAIRS_01_ONLY_AFTER_CURRENT_FIRST_CANARY_ACCEPTED_TERMINAL_STATE
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_NEW_ARM_OR_START_FOR_CURRENT_CANARY
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
-CURRENT_WAL_PITR_GATE = READY_203683_SECONDS_200_OF_200_CONTINUITY_PRESERVED
+CURRENT_WAL_PITR_GATE = READY_268110_SECONDS_283_OF_283_CONTINUITY_PRESERVED
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
