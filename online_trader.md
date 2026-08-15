@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = debe93aa0afa34989995e3875e7746c12f4c7a91
+STATUS_AS_OF_COMMIT = a8baf66675f24e764f857348b1f885a3561c2e03
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-14T22:13:00Z
-RECONCILED_BY_TASK = TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
-FILES_CHANGED = scripts/production_wal_archive_remediation.py, tests/production_wal_archive_unresolved_failure_remediation/test_operator_safety.py, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-15T00:10:41Z
+RECONCILED_BY_TASK = TRADERS_ML_CURRENT_MUTATION_READY_ARMED_CANARY_CONTROL_SEMANTICS_REMEDIATION_01
+FILES_CHANGED = app/operator_control/production_executor.py, app/operator_control/runtime.py, docs/architecture/paper_first_canary_correlation.md, tests/operator_control_production_deployment/test_eligible_approval_continuation.py, tests/operator_control_production_deployment/test_mutation_foundation_enablement.py, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = WAL_PITR_ARCHIVE_RECOVERED_LINEAGE_PRESERVED_FLAGS_TRUE_CURRENT_MUTATION_REMAINS_FALSE_ONLY_FOR_EXISTING_ARMED_CANARY_CONTROL_GATES_NO_CANARY_ACTION_LIVE_OFF
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
+STATUS_CONFIDENCE = CONTROL_READINESS_PROVEN_PRE_ARM_RUNTIME_READINESS_SEPARATE_FIRST_COMMAND_FAIL_CLOSED_WAL_PITR_GATE_DEPLOYED_CANARY_UNCHANGED_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -23,10 +23,40 @@ STATUS_CONFIDENCE = WAL_PITR_ARCHIVE_RECOVERED_LINEAGE_PRESERVED_FLAGS_TRUE_CURR
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_CONTROL_AND_READONLY_HEALTHY_GET_ONLY_SCHEMA_0015_ACTIVE_V2_EXACT10_PAPER_WAITING_GENERATION_6
-CURRENT_STAGE = AWAIT_SEPARATE_CURRENT_MUTATION_READY_ARMED_CANARY_CONTROL_SEMANTICS_RESOLUTION
-CURRENT_BLOCKER = CURRENT_MUTATION_READY_FALSE_KILL_SWITCH_NOT_READY_CONTROL_NOT_ELIGIBLE_BECAUSE_EXISTING_CANARY_IS_ARMED_AND_MUST_REMAIN_UNTOUCHED
-BACKGROUND_TIMED_GATE = WAL_READY_TRUE_PITR_READY_TRUE_310503_SECONDS_330_OF_330_ARCHIVE_OWNER_RUNNING_CURRENT_MUTATION_FALSE_FOR_ARMED_CONTROL_ONLY
+CURRENT_STAGE = AWAIT_PRODUCTION_FINAL_APPROVAL_GENERATION_INTEGRATION_REMEDIATION_RETRY
+CURRENT_BLOCKER = NO_CURRENT_ELIGIBLE_APPROVAL_FINAL_APPROVAL_GENERATION_REMAINS_OUT_OF_SCOPE_AND_DISABLED
+BACKGROUND_TIMED_GATE = WAL_READY_TRUE_PITR_READY_TRUE_317623_SECONDS_338_OF_338_ARCHIVE_OWNER_RUNNING_CONTROL_PREARM_READINESS_FALSE_EXISTING_ARMED_RUNTIME_INFRASTRUCTURE_READY
 ```
+
+## ARMED canary control/runtime readiness semantics remediation 01
+
+```text
+TASK = TRADERS_ML_CURRENT_MUTATION_READY_ARMED_CANARY_CONTROL_SEMANTICS_REMEDIATION_01
+RESULT = PASS_SOURCE_DEFECT_FIXED_DEPLOYED_CANARY_UNCHANGED
+IMPLEMENTATION_COMMIT = 3081e2590a120eaf874e6c59ce53c8b0a4fe1305
+PROJECT_STATE_AUDIT_COMMIT = a8baf66675f24e764f857348b1f885a3561c2e03
+SEMANTIC_VERDICT = current_mutation_ready_IS_NEXT_ARM_CONTROL_READINESS_NOT_UNIVERSAL_RUNTIME_GATE
+EXPECTED_ARMED_DENIALS = KILL_SWITCH_NOT_READY_CONTROL_NOT_ELIGIBLE
+PROVEN_SOURCE_DEFECT = FIRST_COMMAND_CONTINUATION_BYPASSED_EXISTING_MANDATORY_MUTATION_SAFETY_GATE_AND_DID_NOT_REOBSERVE_CURRENT_WAL_PITR
+SOURCE_FIX = TYPED_EXISTING_CANARY_RUNTIME_READINESS_PLUS_EXISTING_ATOMIC_MUTATION_SAFETY_GATE_AT_COMMAND_INGESTION
+RUNTIME_COMMON_GATES = SCHEMA_ACCOUNTING_RUNTIME_MARKET_APPROVAL_WAL_PITR_LIVE_DENIAL
+RUNTIME_ATOMIC_GATES = AUTHORITATIVE_ARMED_CURRENT_GENERATION_PAPER_SYMBOL_CANDIDATE_COMMAND_BUDGET_OPEN_POSITION_BUDGET
+EXIT_CLOSE_SEMANTICS = EXISTING_STAGE_SPECIFIC_GUARDS_PRESERVED_NOT_BLOCKED_BY_CONSUMED_ENTRY_BUDGET
+FOCUSED_REGRESSION = 5558_PASSED_2_SKIPPED_0_REQUIRED_FAILURES
+DEPLOYMENT = NARROW_OPERATOR_CONTROL_API_IMAGE_3081e2590a120eaf874e6c59ce53c8b0a4fe1305_HEALTHY_ONE_RECREATE
+WAL_PITR_AFTER = TRUE_TRUE_338_OF_338_317623_SECONDS_NO_GAP_ZERO_BACKLOG
+CANARY = 6f9858cd-f6b1-4c7f-810c-fccc1065bb9d_WAITING_FOR_ELIGIBLE_APPROVAL_GENERATION_6_COMMAND0_POSITION0_UNCHANGED
+CONTROL_OR_BUSINESS_MUTATIONS = 0
+LIVE = OFF
+NEXT_REQUIRED_ACTION = TRADERS_ML_PRODUCTION_FINAL_APPROVAL_GENERATION_INTEGRATION_REMEDIATION_01_RETRY_01
+```
+
+`current_mutation_ready=false` remains the correct projection while control is
+already ARMED: the two denial reasons mean another ARM is not eligible. The
+same canary's continuation has an independent fail-closed runtime contract and
+does not require that pre-control boolean to become true. A current eligible
+approval is still absent; this task did not generate one or alter strategy,
+quantity, risk, validity, universe, selection, control, or canary state.
 
 ## WAL archive and current mutation readiness remediation 01
 
@@ -3691,11 +3721,11 @@ LIVE.
 |---|---:|---|
 | Online analytics/paper pipeline | ≈97% | Schema 0013 remains current; the same production first canary is durably waiting on its immutable three-symbol binding while the prepared ten-pair universe passed isolated real-data compatibility; Readonly is 20 GET/0 write |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current production WAL/PITR gate ready | Fresh WAL archive health is PASS with 330/330 required segments, zero backlog, no physical gap or unresolved failure, and a continuous 310,503-second PITR window; current mutation remains separately denied by the existing ARMED canary control state |
+| Production backup/PITR | Current production WAL/PITR gate ready | Fresh WAL archive health is PASS with 338/338 required segments, zero backlog, no physical gap or unresolved failure, and a continuous 317,623-second PITR window; the existing-canary first-command boundary now re-observes both flags |
 | Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 20 GET/0 write and includes the runtime-derived active/prepared Trading Universe response |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
-| PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 4; an internal bounded continuation worker is active without adding a public mutation route |
-| First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive restart; the sole canary is explicitly WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
+| PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
+| First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
 | Market-data health contract | Deployed and verified for prepared ten-pair universe | Production Binance collection is 60/60 OK across ten pairs and six timeframes with zero current-policy-window gaps, duplicates, checksum conflicts, or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -3705,8 +3735,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_ML_CURRENT_MUTATION_READY_ARMED_CANARY_CONTROL_SEMANTICS_RESOLUTION_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_CANARY_CONTROL_MUTATION_IS_OUTSIDE_THIS_TASK_OR_TASK_TARGET_MUST_BE_REFRAMED_FOR_ALREADY_ARMED_CANARY
+RECOMMENDED_NEXT_TASK = TRADERS_ML_PRODUCTION_FINAL_APPROVAL_GENERATION_INTEGRATION_REMEDIATION_01_RETRY_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = FINAL_APPROVAL_GENERATION_REMEDIATION_ONLY_NO_CANARY_CONTROL_TRANSITION_REQUIRED_BY_CURRENT_RUNTIME_READINESS_CONTRACT
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
