@@ -3,13 +3,13 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 1417860cce4a4d8a0377b98a18ebac358443b5e4
+STATUS_AS_OF_COMMIT = 601c70b182713593f9740d132245342693f22aac
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-15T05:06:00Z
-RECONCILED_BY_TASK = TRADERS_ML_FIRST_NATURAL_PAPER_TRADE_OBSERVATION_AND_RECONCILIATION_01
-FILES_CHANGED = FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-15T07:13:50Z
+RECONCILED_BY_TASK = TRADERS_PRODUCTION_TRADING_FUNNEL_READONLY_OBSERVABILITY_AND_CLIENT_VISUALIZATION_01
+FILES_CHANGED = app/server_api/trading_funnel.py, app/server_api/repositories/protocols.py, app/server_api/routes/v1.py, app/server_api/runtime.py, app/server_api/schemas/models.py, app/server_api/services/query_service.py, tests/server_api/test_trading_funnel.py, tests/server_api/test_contract_and_safety.py, tests/server_api/test_runtime_entrypoint.py, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
@@ -27,6 +27,43 @@ CURRENT_STAGE = CONTINUE_FIRST_NATURAL_PAPER_TRADE_OBSERVATION_AND_RECONCILIATIO
 CURRENT_BLOCKER = NO_NATURAL_ELIGIBLE_APPROVAL_OBSERVED_EXISTING_CANARY_CONTINUES_WAITING
 BACKGROUND_TIMED_GATE = FINAL_WAL_READY_TRUE_PITR_READY_TRUE_OBSERVATION_34_OF_37_READY_3_TRANSIENT_FAIL_CLOSED_FALSE_SAMPLES_AUTORECOVERED_CONTROL_PREARM_READINESS_FALSE_EXPECTED
 ```
+
+## Production trading funnel read-only observability
+
+```text
+TASK = TRADERS_PRODUCTION_TRADING_FUNNEL_READONLY_OBSERVABILITY_AND_CLIENT_VISUALIZATION_01
+RESULT = PASS_SERVER_AUTHORITATIVE_PROJECTION_DEPLOYED_CLIENT_VISUALIZATION_READY
+IMPLEMENTATION_COMMIT = 601c70b182713593f9740d132245342693f22aac
+PROJECTION = trading-funnel-v1
+ENDPOINT = GET_/api/v1/trading/funnel
+SOURCE = online_pipeline_runs_JOIN_online_pipeline_results_EXISTING_PERSISTED_STATE
+BOUNDARY = primary_timeframe_15m_closed_until_ms
+UNIVERSE = RUNTIME_ACTIVE_TRADING_UNIVERSE_trading-universe-v2_10_SYMBOLS
+CURRENT_LAST_COMPLETED = DISTINCT_WITH_UNIQUE_SYMBOL_TIMEFRAME_BOUNDARY_IDENTITY
+COUNT_UNITS = SYMBOL_FOR_ALL_VISIBLE_STAGES
+ELIGIBILITY = EXISTING_PaperProductionApprovalSourceAdapter_CURRENT_AT_GENERATED_TIME
+SELECTOR = existing_eligible-approval-ranking-v1_UNCHANGED
+ROLLING = UTC_BOUNDARY_CLOSE_IN_GENERATED_AT_MINUS_WINDOW_THROUGH_GENERATED_AT
+QUERY_BOUND = 4H_PLUS_15M_180_ROWS_MAX_FOR_10_SYMBOLS
+SCHEMA_MIGRATION = NONE
+SOURCE_TRADING_POLICY_CHANGE = NONE
+SERVER_TESTS = 107_SERVER_API_PLUS_1492_APPROVAL_SELECTOR_INTEGRATION_PASS
+PRODUCTION = NARROW_READONLY_API_ONE_RECREATE_HEALTHY_21_GET_0_WRITE
+PRODUCTION_CURRENT = BOUNDARY_1786778100000_PARTIAL_2_OF_10_ZERO_ELIGIBLE_WINNER_NULL
+PRODUCTION_LAST_COMPLETED = BOUNDARY_1786777200000_COMPLETE_10_OF_10_ZERO_ELIGIBLE_WINNER_NULL
+PRODUCTION_ROLLING = 1H_32_ANALYSES_0_SETUPS;4H_152_ANALYSES_16_SETUPS
+LATENCY_50_GET = P50_999.311MS_P95_2297.125MS_BOUNDED_TARGET_NOT_MET
+CANARY = SAME_6f9858cd-f6b1-4c7f-810c-fccc1065bb9d_GENERATION6_WAITING_COMMAND0_POSITION0_CLOSED0
+CONTROL_TRADING_DB_LIVE_MUTATIONS = 0
+NEXT_REQUIRED_ACTION = CONTINUE_EXISTING_NATURAL_PAPER_TRADE_OBSERVATION_WITHOUT_CONTROL_OR_POLICY_CHANGE
+```
+
+The funnel is computed on demand from the existing persisted pipeline rows and
+the existing production eligibility/selector authorities. It introduces no
+observer-owned mutable state. The desktop client consumes this single DTO and
+does not combine analysis, setup, PAPER, or control pages locally. The measured
+endpoint remains hard bounded but did not meet the preferred latency target;
+no unplanned schema/index migration or second Readonly API restart was used.
 
 ## First natural PAPER trade observation and reconciliation 01
 
@@ -3803,7 +3840,7 @@ LIVE.
 | Online analytics/paper pipeline | ≈98% | Schema 0015 is current; natural same-run strategy/quantity/risk final approvals are generated atomically and forward-only on the ten-symbol 15m pipeline, while the existing generation-6 canary waits with zero commands/positions |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current production WAL/PITR gate ready | Fresh WAL archive health is PASS with 351/351 required segments, zero backlog, no physical gap or unresolved failure, and a continuous 329,326-second PITR window; the existing-canary first-command boundary re-observes both flags |
-| Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 20 GET/0 write and includes the runtime-derived active/prepared Trading Universe response |
+| Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 21 GET/0 write and includes Trading Universe plus the authoritative bounded trading-funnel projection |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
 | First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
