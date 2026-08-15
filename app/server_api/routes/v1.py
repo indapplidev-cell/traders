@@ -16,6 +16,7 @@ from app.server_api.schemas.models import (
     SetupDetailEnvelope,
     SetupPageEnvelope,
     TradingUniverseEnvelope,
+    TradingFunnelEnvelope,
     Severity,
 )
 from app.server_api.services import ApiQueryService
@@ -50,6 +51,10 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
     @router.get("/trading-universe", response_model=TradingUniverseEnvelope, operation_id="getTradingUniverse", responses={500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}})
     def get_trading_universe() -> TradingUniverseEnvelope:
         return service.trading_universe()
+
+    @router.get("/trading/funnel", response_model=TradingFunnelEnvelope, operation_id="getTradingFunnel", responses={500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}})
+    def get_trading_funnel() -> TradingFunnelEnvelope:
+        return service.trading_funnel()
 
     @router.get("/markets/{symbol}", response_model=MarketDetailEnvelope, operation_id="getMarket", responses=error_responses)
     def get_market(symbol: SymbolPath) -> MarketDetailEnvelope:

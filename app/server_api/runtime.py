@@ -15,6 +15,7 @@ from uvicorn import run as run_server
 from app.server_api.app_factory import create_app
 from app.server_api.repositories.protocols import ApiRepositories
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
+from app.server_api.trading_funnel import TradingFunnelReadRepository
 from app.server_api.runtime_config import RuntimeConfig
 from app.server_api.schemas.paper import PaperControlStatus
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
@@ -55,6 +56,7 @@ def _repositories(engine: Engine) -> ApiRepositories:
         expire_on_commit=False,
     )
     adapter = SqlAlchemyReadAdapter(sessions)
+    funnel = TradingFunnelReadRepository(sessions, adapter.active_trading_universe)
     return ApiRepositories(
         health=adapter,
         markets=adapter,
@@ -64,6 +66,7 @@ def _repositories(engine: Engine) -> ApiRepositories:
         dashboard=adapter,
         paper=adapter,
         universe=adapter,
+        funnel=funnel,
     )
 
 

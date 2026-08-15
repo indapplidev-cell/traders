@@ -56,6 +56,10 @@ class TradingUniverseReadRepository(Protocol):
     def trading_universe_readiness(self) -> tuple[TradingUniverseSymbolReadinessRecord, ...]: ...
 
 
+class TradingFunnelReadRepository(Protocol):
+    def project(self, now_ms: int) -> dict[str, object]: ...
+
+
 class PaperReportingReadRepository(Protocol):
     def schema_revision(self) -> str | None: ...
     def list_account_baselines(self, limit: int = 2) -> tuple[PaperAccountBaseline, ...]: ...
@@ -75,3 +79,4 @@ class ApiRepositories:
     dashboard: DashboardReadRepository
     paper: PaperReportingReadRepository | None = None
     universe: TradingUniverseReadRepository | None = None
+    funnel: TradingFunnelReadRepository | None = None

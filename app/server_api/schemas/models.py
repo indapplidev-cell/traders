@@ -289,6 +289,78 @@ class TradingUniverseEnvelope(BaseModel):
     data: TradingUniverseSnapshot
 
 
+class FunnelCandidateStatus(ContractModel):
+    symbol: Symbol
+    source_run_id: str
+    candidate_id: str | None
+    direction: str | None
+    current_stage: str
+    stage_status: str
+    source_reason_code: str | None
+    source_reason_detail_safe: str | None
+    ui_reason_category: str
+    final_approval_id: str | None
+    eligible: bool
+    selector_rank: int | None = Field(default=None, ge=1)
+    selected_winner: bool
+    updated_at_ms: int = Field(ge=0)
+    stage_trace: dict[str, str]
+    risk_score: Any | None = None
+    strategy_score: Any | None = None
+    planned_risk_reward: Any | None = None
+
+
+class FunnelEligibleCompetitor(ContractModel):
+    rank: int = Field(ge=1)
+    symbol: Symbol
+    candidate_id: str
+    final_approval_id: str
+
+
+class FunnelCycle(ContractModel):
+    boundary_close_ms: int = Field(ge=0)
+    boundary_start_ms: int = Field(ge=0)
+    symbols_expected: int = Field(ge=1, le=10)
+    symbols_seen: int = Field(ge=0, le=10)
+    symbols_processed: int = Field(ge=0, le=10)
+    cycle_complete: bool
+    stage_counts: dict[str, int]
+    items: list[FunnelCandidateStatus]
+    eligible_competitors: list[FunnelEligibleCompetitor]
+    winner_symbol: Symbol | None
+    winner_candidate_id: str | None
+    latest_pipeline_update_ms: int = Field(ge=0)
+
+
+class FunnelRollingSummary(ContractModel):
+    window_ms: int = Field(gt=0)
+    boundary_count: int = Field(ge=0)
+    stage_counts: dict[str, int]
+
+
+class TradingFunnelSnapshot(ContractModel):
+    projection_version: Literal["trading-funnel-v1"]
+    decision_timeframe: Literal["15m"]
+    universe_id: str
+    selection_policy_version: Literal["eligible-approval-ranking-v1"]
+    count_unit: dict[str, Literal["SYMBOL"]]
+    current_cycle: FunnelCycle | None
+    last_completed_cycle: FunnelCycle | None
+    rolling_1h: FunnelRollingSummary
+    rolling_4h: FunnelRollingSummary
+    projection_generated_at_ms: int = Field(ge=0)
+    latest_pipeline_update_ms: int | None = Field(default=None, ge=0)
+    age_ms: int | None = Field(default=None, ge=0)
+    freshness_state: Literal["CURRENT", "STALE", "NOT_AVAILABLE"]
+    query_time_horizon_ms: int = Field(gt=0)
+
+
+class TradingFunnelEnvelope(BaseModel):
+    api_version: Literal["v1"] = "v1"
+    generated_at: UtcTimestamp
+    data: TradingFunnelSnapshot
+
+
 class MarketListEnvelope(BaseModel):
     api_version: Literal["v1"] = "v1"
     generated_at: UtcTimestamp

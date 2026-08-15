@@ -33,6 +33,7 @@ from app.server_api.schemas.models import (
     TradingUniverseEnvelope,
     TradingUniverseSnapshot,
     TradingUniverseSymbolStatus,
+    TradingFunnelEnvelope,
 )
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 from app.server_api.settings import ApiSettings
@@ -141,6 +142,16 @@ class ApiQueryService:
             symbols=items,
         )
         return TradingUniverseEnvelope(generated_at=self._generated_at(), data=data)
+
+    def trading_funnel(self) -> TradingFunnelEnvelope:
+        repository = self._repos().funnel
+        if repository is None:
+            raise ApiError(503, "SERVICE_NOT_CONFIGURED", "Trading funnel projection is not configured.")
+        generated = self._clock()
+        return TradingFunnelEnvelope(
+            generated_at=utc_text(generated),
+            data=repository.project(int(generated.timestamp() * 1000)),
+        )
 
     def market(self, symbol: str) -> MarketDetailEnvelope:
         record = self._repos().markets.get_market(symbol)

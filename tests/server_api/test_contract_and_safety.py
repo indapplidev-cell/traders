@@ -121,7 +121,7 @@ def test_required_paths_and_get_only_surface():
 
 def test_framework_openapi_has_exact_business_paths_and_no_mutations():
     generated = create_app().openapi()
-    assert set(generated["paths"]) == REQUIRED_PATHS | PAPER_PATHS | UNIVERSE_PATHS
+    assert set(generated["paths"]) == REQUIRED_PATHS | PAPER_PATHS | UNIVERSE_PATHS | {"/api/v1/trading/funnel"}
     for operations in generated["paths"].values():
         assert {key for key in operations if key in {"get", "post", "put", "patch", "delete"}} == {"get"}
     assert "/openapi.json" not in generated["paths"]
@@ -183,7 +183,7 @@ def test_app_import_and_factory_have_no_socket_db_or_thread_side_effects(monkeyp
             del sys.modules[name]
     module = importlib.import_module("app.server_api")
     app = module.create_app()
-    assert sum("get" in value for value in app.openapi()["paths"].values()) == 20
+    assert sum("get" in value for value in app.openapi()["paths"].values()) == 21
     assert counters == {"bind": 0, "connect": 0, "db": 0, "thread": 0}
 
 
@@ -204,7 +204,7 @@ def test_app_factory_uses_only_explicit_repositories():
     repositories = fake.api_repositories()
     assert isinstance(repositories, ApiRepositories)
     app = create_app(repositories=repositories, clock=lambda: NOW)
-    assert sum("get" in value for value in app.openapi()["paths"].values()) == 20
+    assert sum("get" in value for value in app.openapi()["paths"].values()) == 21
     assert fake.calls == []
 
 
