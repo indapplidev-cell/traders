@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_orchestrator.orchestrator_status import PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult, json_safe
+from app.engine_paper.final_approval_materializer import (
+    DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER,
+    NaturalFinalApprovalMaterializer,
+)
 
 
 ACTIVE_CLAIM_STATUSES = (
@@ -62,12 +66,15 @@ class ClaimedWindow:
 class PipelineResultStore:
     def __init__(self, session_or_factory: Session | Callable[[], Session], *,
                  stale_run_after_seconds: int = 300,
-                 clock: Callable[[], datetime] = utc_now) -> None:
+                 clock: Callable[[], datetime] = utc_now,
+                 final_approval_materializer: NaturalFinalApprovalMaterializer =
+                 DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER) -> None:
         if stale_run_after_seconds < 1:
             raise ValueError("stale_run_after_seconds must be positive")
         self._session_or_factory = session_or_factory
         self.stale_run_after_seconds = stale_run_after_seconds
         self.clock = clock
+        self.final_approval_materializer = final_approval_materializer
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
@@ -317,6 +324,15 @@ class PipelineResultStore:
             run.execution_approved = counters.execution_approved_count > 0
             run.position_opened = counters.position_opened_count > 0
             run.position_size_approved = counters.position_size_approved_count > 0
+            materialized = self.final_approval_materializer.materialize(
+                session, run_id=run_id, result=result, evaluation_time=now
+            )
+            if materialized.final_approval_created:
+                run.is_trade_signal = True
+                run.is_executable = True
+                run.order_approved = True
+                run.execution_approved = True
+                run.position_size_approved = True
             session.add(OnlinePipelineResultRow(
                 run_id=run_id, symbol=result.symbol, primary_timeframe=result.primary_timeframe,
                 closed_until_ms=result.closed_until_ms,
@@ -325,13 +341,17 @@ class PipelineResultStore:
                 setup_payload_json=json_safe(result.setup_payload),
                 strategy_payload_json=json_safe(result.strategy_payload),
                 risk_payload_json=json_safe(result.risk_payload),
-                paper_payload_json=json_safe(result.paper_payload),
+                paper_payload_json=json_safe(materialized.paper_payload),
                 module_reasons_json=json_safe(result.module_reasons),
                 module_warnings_json=json_safe(result.module_warnings),
                 safety_counters_json=json_safe(result.safety_counters),
             ))
-            session.commit()
-            return True
+            try:
+                session.commit()
+                return True
+            except IntegrityError:
+                session.rollback()
+                return False
 
     def get_latest(self, symbol: str, timeframe: str) -> OnlinePipelineRun | None:
         query = select(OnlinePipelineRun).where(

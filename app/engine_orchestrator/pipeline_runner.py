@@ -154,6 +154,7 @@ class PipelineRunner:
                 "has_gaps": snapshot.has_gaps, "enough_data": snapshot.enough_data,
                 "first_open_time_ms": snapshot.candles[0].open_time_ms if snapshot.candles else None,
                 "last_open_time_ms": snapshot.candles[-1].open_time_ms if snapshot.candles else None,
+                "last_close_time_ms": snapshot.candles[-1].close_time_ms if snapshot.candles else None,
                 "closed_until_ms": snapshot.closed_until_ms,
             }
             for timeframe, snapshot in snapshots.items()

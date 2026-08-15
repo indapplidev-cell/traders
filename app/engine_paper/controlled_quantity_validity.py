@@ -161,12 +161,18 @@ def issue_controlled_paper_quantity_approval(
     *,
     approved_at: datetime,
     evaluation_time_ms: int,
+    source_candle_close_time_ms: int | None = None,
     registry: InstrumentQuantityConstraintRegistry = ACTIVE_QUANTITY_CONSTRAINT_REGISTRY,
 ) -> ControlledPaperQuantityResult:
     """Issue the deterministic immutable quantity approval for one causal run."""
     audit = calculate_controlled_quantity(strategy=strategy, account=account, registry=registry)
+    source_close = (
+        strategy.closed_until_ms
+        if source_candle_close_time_ms is None
+        else source_candle_close_time_ms
+    )
     valid = derive_approval_valid_until_ms(
-        strategy.closed_until_ms,
+        source_close,
         stricter_valid_until_ms=(strategy.valid_until_ms,),
         evaluation_time_ms=evaluation_time_ms,
     )
@@ -179,5 +185,5 @@ def issue_controlled_paper_quantity_approval(
         correlation_id=strategy.correlation_id, causation_id=strategy.approval_id,
     )
     return ControlledPaperQuantityResult(
-        approval, audit, VALIDITY_POLICY_VERSION, strategy.closed_until_ms,
+        approval, audit, VALIDITY_POLICY_VERSION, source_close,
     )
