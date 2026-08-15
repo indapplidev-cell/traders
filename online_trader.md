@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = a8baf66675f24e764f857348b1f885a3561c2e03
+STATUS_AS_OF_COMMIT = e24b6eb03dcecf8d3ffbe2e0294776447e0edf6c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-15T00:10:41Z
-RECONCILED_BY_TASK = TRADERS_ML_CURRENT_MUTATION_READY_ARMED_CANARY_CONTROL_SEMANTICS_REMEDIATION_01
-FILES_CHANGED = app/operator_control/production_executor.py, app/operator_control/runtime.py, docs/architecture/paper_first_canary_correlation.md, tests/operator_control_production_deployment/test_eligible_approval_continuation.py, tests/operator_control_production_deployment/test_mutation_foundation_enablement.py, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-15T03:34:54Z
+RECONCILED_BY_TASK = TRADERS_ML_PRODUCTION_FINAL_APPROVAL_GENERATION_INTEGRATION_REMEDIATION_01_RETRY_01
+FILES_CHANGED = app/engine_orchestrator/pipeline_result_store.py, app/engine_orchestrator/pipeline_runner.py, app/engine_paper/controlled_quantity_validity.py, app/engine_paper/final_approval_materializer.py, tests/final_approval_generation_integration/__init__.py, tests/final_approval_generation_integration/test_natural_materialization.py, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = CONTROL_READINESS_PROVEN_PRE_ARM_RUNTIME_READINESS_SEPARATE_FIRST_COMMAND_FAIL_CLOSED_WAL_PITR_GATE_DEPLOYED_CANARY_UNCHANGED_LIVE_OFF
+STATUS_CONFIDENCE = NATURAL_FINAL_APPROVAL_GENERATION_INTEGRATED_TESTED_DEPLOYED_FORWARD_ONLY_ONE_NATURAL_BOUNDARY_HEALTHY_CANARY_UNCHANGED_WAL_PITR_READY_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -23,10 +23,54 @@ STATUS_CONFIDENCE = CONTROL_READINESS_PROVEN_PRE_ARM_RUNTIME_READINESS_SEPARATE_
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = DEPLOYED_CONTROL_AND_READONLY_HEALTHY_GET_ONLY_SCHEMA_0015_ACTIVE_V2_EXACT10_PAPER_WAITING_GENERATION_6
-CURRENT_STAGE = AWAIT_PRODUCTION_FINAL_APPROVAL_GENERATION_INTEGRATION_REMEDIATION_RETRY
-CURRENT_BLOCKER = NO_CURRENT_ELIGIBLE_APPROVAL_FINAL_APPROVAL_GENERATION_REMAINS_OUT_OF_SCOPE_AND_DISABLED
-BACKGROUND_TIMED_GATE = WAL_READY_TRUE_PITR_READY_TRUE_317623_SECONDS_338_OF_338_ARCHIVE_OWNER_RUNNING_CONTROL_PREARM_READINESS_FALSE_EXISTING_ARMED_RUNTIME_INFRASTRUCTURE_READY
+CURRENT_STAGE = AWAIT_FIRST_NATURAL_PAPER_TRADE_OBSERVATION_AND_RECONCILIATION
+CURRENT_BLOCKER = NO_NATURAL_ELIGIBLE_APPROVAL_OBSERVED_YET_EXISTING_CANARY_CONTINUES_WAITING
+BACKGROUND_TIMED_GATE = WAL_READY_TRUE_PITR_READY_TRUE_329326_SECONDS_351_OF_351_NO_PHYSICAL_GAP_ZERO_BACKLOG_CONTROL_PREARM_READINESS_FALSE_EXPECTED_EXISTING_ARMED_RUNTIME_BASE_READY
 ```
+
+## Natural final-approval generation integration remediation retry 01
+
+```text
+TASK = TRADERS_ML_PRODUCTION_FINAL_APPROVAL_GENERATION_INTEGRATION_REMEDIATION_01_RETRY_01
+RESULT = PASS_DEPLOYED_WAITING_FOR_NATURAL_ELIGIBLE_APPROVAL
+IMPLEMENTATION_COMMIT = 010d8415f175c87be16f4bb2769ef257cb53ee73
+PROJECT_STATE_AUDIT_COMMIT = e24b6eb03dcecf8d3ffbe2e0294776447e0edf6c
+SOURCE_INTEGRATION = PipelineResultStore.finish_NaturalFinalApprovalMaterializer_ATOMIC_FORWARD_ONLY
+FINAL_APPROVAL_COMPONENTS = PaperStrategyApproval_PaperQuantityApproval_PaperRiskApproval
+QUANTITY_AUTHORITY = paper-quantity-policy-v1_PERSISTED_TYPED_DISTINCT
+VALIDITY_AUTHORITY = paper-approval-validity-policy-v1_SOURCE_15M_Candle.close_time_ms_PLUS_900000_MIN_STRICTER
+REGISTRY = trading-universe-v2-binance-spot-quantity-constraints-v1_OFFLINE_UNCHANGED
+PERSISTENCE = online_pipeline_results.paper_payload_json.persisted_final_approvals
+IDEMPOTENCY = DETERMINISTIC_SAME_LINEAGE_SHA256_PLUS_UNIQUE_RESULT_RUN_ID
+ADAPTER_SELECTOR = EXISTING_PaperProductionApprovalSourceAdapter_THEN_eligible-approval-ranking-v1_UNCHANGED
+FOCUSED_REGRESSION = 1813_PASSED_ZERO_REQUIRED_FAILURES
+RUNTIME_SAFETY_REGRESSION = 1660_PASSED_ZERO_REQUIRED_FAILURES
+FULL_NON_PRODUCTION_PROFILE = 30408_PASSED_3_SKIPPED_5_DESELECTED_558_PREEXISTING_FAILED_342_PREEXISTING_ENVIRONMENT_ERRORS_ZERO_NEW_DELTA
+DEPLOYMENT = NARROW_online-orchestrator_IMAGE_sha256:b3b289705ed8dfafa8b07fb7c3065d0abf4578d9646bb4c9444ba823c8c1d6a4_ONE_RECREATE
+OBSERVATION = 226.403_SECONDS_ONE_NATURAL_15M_BOUNDARY_10_RESULTS_10_NORMAL_NOT_ELIGIBLE
+NATURAL_QUANTITY_FINAL_ELIGIBLE_COMMAND_COUNTS = 0_0_0_0
+HISTORICAL_BACKFILL_SYNTHETIC_MANUAL_APPROVAL_WRITES = 0_0_0
+CANARY = 6f9858cd-f6b1-4c7f-810c-fccc1065bb9d_WAITING_GENERATION_6_COMMAND0_POSITION0_UNCHANGED
+CURRENT_MUTATION_READY = false_EXPECTED_PRE_ARM_PROJECTION_NOT_EXISTING_RUNTIME_GATE
+EXISTING_CANARY_RUNTIME_BASE_READINESS = PASS
+WAL_PITR_AFTER = TRUE_TRUE_351_OF_351_329326_SECONDS_NO_GAP_ZERO_BACKLOG
+LIVE = OFF
+NEXT_REQUIRED_ACTION = TRADERS_ML_FIRST_NATURAL_PAPER_TRADE_OBSERVATION_AND_RECONCILIATION_01
+```
+
+The online pipeline now materializes a final approval only when its natural
+same-run strategy, risk and ready PAPER plan form a complete valid lineage. It
+loads the authoritative persisted PAPER account projection, invokes the
+existing controlled quantity authority, binds validity to the exact source 15m
+candle close, and writes the typed quantity plus immutable triplet in the same
+result-finalization commit. Normal non-opportunities still complete without a
+final approval. No historical row was scanned or rewritten.
+
+One natural post-deployment boundary completed for all ten symbols without an
+eligible opportunity. This is a successful waiting state, not a trade
+acceptance. The existing canary, generation and budgets remain unchanged and
+its continuation may advance autonomously if a future natural approval passes
+the existing adapter, selector and runtime safety gate.
 
 ## ARMED canary control/runtime readiness semantics remediation 01
 
@@ -3719,9 +3763,9 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈97% | Schema 0013 remains current; the same production first canary is durably waiting on its immutable three-symbol binding while the prepared ten-pair universe passed isolated real-data compatibility; Readonly is 20 GET/0 write |
+| Online analytics/paper pipeline | ≈98% | Schema 0015 is current; natural same-run strategy/quantity/risk final approvals are generated atomically and forward-only on the ten-symbol 15m pipeline, while the existing generation-6 canary waits with zero commands/positions |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current production WAL/PITR gate ready | Fresh WAL archive health is PASS with 338/338 required segments, zero backlog, no physical gap or unresolved failure, and a continuous 317,623-second PITR window; the existing-canary first-command boundary now re-observes both flags |
+| Production backup/PITR | Current production WAL/PITR gate ready | Fresh WAL archive health is PASS with 351/351 required segments, zero backlog, no physical gap or unresolved failure, and a continuous 329,326-second PITR window; the existing-canary first-command boundary re-observes both flags |
 | Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 20 GET/0 write and includes the runtime-derived active/prepared Trading Universe response |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
@@ -3735,12 +3779,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_ML_PRODUCTION_FINAL_APPROVAL_GENERATION_INTEGRATION_REMEDIATION_01_RETRY_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = FINAL_APPROVAL_GENERATION_REMEDIATION_ONLY_NO_CANARY_CONTROL_TRANSITION_REQUIRED_BY_CURRENT_RUNTIME_READINESS_CONTRACT
+RECOMMENDED_NEXT_TASK = TRADERS_ML_FIRST_NATURAL_PAPER_TRADE_OBSERVATION_AND_RECONCILIATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = OBSERVATION_AND_RECONCILIATION_ONLY_NO_CANARY_CONTROL_TRANSITION_REQUIRED
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
-CURRENT_WAL_PITR_GATE = READY_310503_SECONDS_330_OF_330_CONTINUITY_PRESERVED
+CURRENT_WAL_PITR_GATE = READY_329326_SECONDS_351_OF_351_CONTINUITY_PRESERVED
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -3797,10 +3841,10 @@ now passes exact UUID correlation, real HTTP, isolated PostgreSQL 16, restart
 resume and terminal reconciliation acceptance. The
 closed-trade accounting/reporting projection now consumes the persisted
 revision 0012 immutable account/session baseline, and isolated reconciliation
-passes without a second ledger. Production preparation remains separately
-authorized and was not performed by the client readiness retry.
-No autonomous Paper
-runtime was configured, deployed, started, or enabled.
+passes without a second ledger. Production preparation and the existing
+canary continuation are deployed. The natural final-approval producer is
+enabled in the online orchestrator, while no natural approval, command,
+position or closed trade has yet occurred.
 The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
 LIVE stays disabled.
 
