@@ -11,7 +11,7 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanarySession,
     PaperFirstCanaryState,
 )
-from app.engine_safety.paper_production_control import PersistentState
+from app.engine_safety.paper_production_control import PersistentState, SafetyControlError
 from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
 from app.engine_paper.eligible_approval_ranking import MULTI_SYMBOL_SELECTION_POLICY_VERSION
 from app.operator_control.continuation_worker import (
@@ -19,6 +19,7 @@ from app.operator_control.continuation_worker import (
     continuation_poll_seconds,
 )
 from app.operator_control.production_executor import ProductionPaperFirstCanaryExecutor
+from app.operator_control.production_executor import ExistingCanaryRuntimeReadiness
 from app.operator_control.service import PaperOperatorControlService
 from tests.paper_production_approval_source_adapter.test_adapter_contract import (
     AS_OF,
@@ -72,6 +73,20 @@ class AlwaysLock:
     @contextmanager
     def acquire(self, _canary_id):
         yield True
+
+
+class AllowMutationGate:
+    @contextmanager
+    def authorize_mutation(self, _stage, _target, _prerequisites):
+        yield object()
+
+
+class PrerequisiteMutationGate:
+    @contextmanager
+    def authorize_mutation(self, _stage, _target, prerequisites):
+        if not prerequisites.passed:
+            raise SafetyControlError("INDEPENDENT_READINESS_GATE_DENIED")
+        yield object()
 
 
 class ExclusiveLock:
@@ -173,7 +188,8 @@ def test_real_production_approval_adapter_future_visibility_uses_existing_ingest
     ingestion = Ingestion()
     executor = ProductionPaperFirstCanaryExecutor(
         control=Control(), canary_store=store, approval_source=approval_source,
-        ingestion_service=ingestion,
+        ingestion_service=ingestion, mutation_safety_gate=AllowMutationGate(),
+        runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(True, True, True, True, True),
     )
     subject = worker(store, executor)
     assert subject.run_once() == "WAITING_FOR_ELIGIBLE_APPROVAL"
@@ -240,7 +256,8 @@ def test_new_policy_continuation_ranks_multiple_eligible_and_ingests_exactly_onc
     ingestion = Ingestion()
     executor = ProductionPaperFirstCanaryExecutor(
         control=Control(), canary_store=store, approval_source=ApprovalSource(),
-        ingestion_service=ingestion,
+        ingestion_service=ingestion, mutation_safety_gate=AllowMutationGate(),
+        runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(True, True, True, True, True),
     )
     assert worker(store, executor).run_once() == "COMMAND_CREATED_OR_REPLAYED"
     assert len(ingestion.requests) == 1
@@ -249,6 +266,37 @@ def test_new_policy_continuation_ranks_multiple_eligible_and_ingests_exactly_onc
     assert store.value.command_count == 1 and store.value.position_count == 0
     assert worker(store, executor).run_once() == "NO_WAITING_CANARY"
     assert len(ingestion.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "readiness",
+    [
+        ExistingCanaryRuntimeReadiness(True, True, False, True, True),
+        ExistingCanaryRuntimeReadiness(True, True, True, False, True),
+        ExistingCanaryRuntimeReadiness(True, True, True, True, False),
+    ],
+)
+def test_first_command_fails_closed_on_current_runtime_infrastructure(readiness):
+    store = Store(waiting_canary())
+    approval_source = PaperProductionApprovalSourceAdapter(
+        lambda: FakeSession(), reader=FakeReader({"BTCUSDT": (eligible_row(),)}),
+        monotonic=lambda: 1.0,
+    )
+
+    class Ingestion:
+        def __init__(self): self.requests = []
+        def ingest_and_create_entry_order(self, request):
+            self.requests.append(request)
+            return type("Result", (), {"successful": True})()
+
+    ingestion = Ingestion()
+    executor = ProductionPaperFirstCanaryExecutor(
+        control=Control(), canary_store=store, approval_source=approval_source,
+        ingestion_service=ingestion, mutation_safety_gate=PrerequisiteMutationGate(),
+        runtime_readiness=lambda: readiness,
+    )
+    assert worker(store, executor).run_once() == "SAFE_FAILURE:INDEPENDENT_READINESS_GATE_DENIED"
+    assert ingestion.requests == [] and store.value.command_count == 0
 
 
 def test_two_concurrent_workers_obtain_one_database_claim():

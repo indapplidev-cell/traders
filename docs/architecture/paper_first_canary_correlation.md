@@ -40,6 +40,24 @@ baseline, both reconciliations, PAPER principal/runtime configuration,
 kill-switch health and eligible DISABLED control state, bounded canary scope,
 and LIVE denial all pass. Current production-like revision 0008 remains false.
 
+The boolean is specifically the readiness of the next operator ARM transition:
+its `KILL_SWITCH_NOT_READY` and `CONTROL_NOT_ELIGIBLE` findings mean that the
+control is not safely `DISABLED` for another ARM. They are expected while the
+same generation is already `ARMED`; they are not a universal denial of that
+canary's previously authorized lifecycle.
+
+An already-ARMED continuation uses a separate fail-closed contract. Immediately
+before first-command ingestion it re-observes schema/accounting/runtime,
+market-data and approval-source readiness, WAL and PITR, and LIVE denial. Only
+the two expected pre-control findings above may remain in the read-only
+projection. The existing mutation safety gate then atomically revalidates the
+authoritative `ARMED` kill switch, transition generation, PAPER target, symbol,
+command/open-position budgets, and candidate identity around ingestion.
+`DISABLED`, `EMERGENCY_STOP`, stale generation, exhausted bounds, or any new
+readiness finding denies the mutation. Exit/close stages retain the existing
+stage-specific budget semantics and are not blocked by a consumed new-entry
+budget.
+
 Future production schema preparation is forward-only:
 
 ```text

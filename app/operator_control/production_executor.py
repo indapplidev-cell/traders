@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
@@ -28,7 +30,15 @@ from app.engine_paper.production_approval import (
     PaperProductionApprovalSourceAdapter,
 )
 from app.engine_safety.paper_domain import ExecutionMode
-from app.engine_safety.paper_production_control import PaperProductionSafetyControl, PersistentState
+from app.engine_safety.paper_production_control import (
+    MutationPrerequisites,
+    MutationStage,
+    PaperProductionMutationSafetyGate,
+    PaperProductionMutationTarget,
+    PaperProductionSafetyControl,
+    PersistentState,
+    SafetyControlError,
+)
 
 from .schemas import PaperCanaryNormalizedState, PaperOperatorCanaryStatus
 
@@ -59,6 +69,21 @@ def _foundation_policy() -> PaperFillSimulationPolicy:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class ExistingCanaryRuntimeReadiness:
+    """Current infrastructure gates for an already-authorized PAPER canary."""
+
+    market_data_ready: bool = False
+    approval_source_ready: bool = False
+    wal_ready: bool = False
+    pitr_ready: bool = False
+    live_disabled: bool = True
+
+    @property
+    def backup_pitr_pass(self) -> bool:
+        return self.wal_ready and self.pitr_ready
+
+
 class ProductionPaperFirstCanaryExecutor:
     """One-command maximum, simulated-only production first-canary executor."""
 
@@ -69,12 +94,16 @@ class ProductionPaperFirstCanaryExecutor:
         canary_store: SqlAlchemyPaperFirstCanaryStore,
         approval_source: PaperProductionApprovalSourceAdapter,
         ingestion_service: PaperCommandIngestionService,
+        mutation_safety_gate: PaperProductionMutationSafetyGate,
+        runtime_readiness: Callable[[], ExistingCanaryRuntimeReadiness],
         selector: ProductionEligibleApprovalSelector | None = None,
     ) -> None:
         self._control = control
         self._canary_store = canary_store
         self._approval_source = approval_source
         self._ingestion_service = ingestion_service
+        self._mutation_safety_gate = mutation_safety_gate
+        self._runtime_readiness = runtime_readiness
         self._selector = selector or ProductionEligibleApprovalSelector()
         self._prepared = None
         self.last_selection_diagnostics = None
@@ -192,36 +221,67 @@ class ProductionPaperFirstCanaryExecutor:
         )
 
     def _ingest_candidate(self, *, candidate, request_id: str, canary_id: str) -> tuple[str, ...]:
+        canary = self._canary_store.get(canary_id)
+        if canary is None:
+            return ("CANARY_NOT_ARMED",)
+        readiness = self._runtime_readiness()
         command_id = paper_ingestion_command_id(
             candidate.paper_strategy_approval.approval_id,
             candidate.paper_quantity_approval.quantity_approval_id,
             candidate.paper_risk_approval.approval_id,
         )
         created_at = candidate.paper_risk_approval.approved_at
-        result = self._ingestion_service.ingest_and_create_entry_order(PaperCommandIngestionRequest(
+        request = PaperCommandIngestionRequest(
             paper_strategy_approval=candidate.paper_strategy_approval,
             paper_quantity_approval=candidate.paper_quantity_approval,
             paper_risk_approval=candidate.paper_risk_approval,
-            simulation_policy=_foundation_policy(),
-            execution_mode=ExecutionMode.PAPER,
-            explicit_paper_authorization=True,
-            command_id=command_id,
+            simulation_policy=_foundation_policy(), execution_mode=ExecutionMode.PAPER,
+            explicit_paper_authorization=True, command_id=command_id,
             order_id=_id(request_id, "entry-order"),
             command_event_id=_id(request_id, "command-event"),
             order_created_event_id=_id(request_id, "order-created-event"),
             order_validated_event_id=_id(request_id, "order-validated-event"),
             order_opened_event_id=_id(request_id, "order-opened-event"),
             journal_entry_ids=(
-                _id(request_id, "command-event"),
-                _id(request_id, "order-created-event"),
-                _id(request_id, "order-validated-event"),
-                _id(request_id, "order-opened-event"),
+                _id(request_id, "command-event"), _id(request_id, "order-created-event"),
+                _id(request_id, "order-validated-event"), _id(request_id, "order-opened-event"),
             ),
             created_at=created_at,
             correlation_id=candidate.paper_strategy_approval.correlation_id,
-            causation_id=candidate.paper_risk_approval.approval_id,
-            canary_id=canary_id,
-        ))
+            causation_id=candidate.paper_risk_approval.approval_id, canary_id=canary_id,
+        )
+        target = PaperProductionMutationTarget(
+            environment=canary.environment, mode=canary.mode, symbol=candidate.symbol,
+            candidate_identity=candidate.candidate_id,
+            current_generation=canary.current_control_generation,
+            new_commands_before=canary.command_count,
+            open_positions_before=canary.position_count,
+        )
+        prerequisites = MutationPrerequisites(
+            market_data_ready=(
+                readiness.market_data_ready and readiness.approval_source_ready
+            ),
+            approval_candidate_eligible=True,
+            backup_pitr_pass=readiness.backup_pitr_pass,
+            paper_target_authorized=True,
+            live_disabled=readiness.live_disabled,
+        )
+        try:
+            with self._mutation_safety_gate.authorize_mutation(
+                MutationStage.COMMAND_INGESTION, target, prerequisites
+            ):
+                result = self._ingestion_service.ingest_and_create_entry_order(request)
+        except SafetyControlError as error:
+            code = str(error)
+            if code in {
+                "MUTATION_DENIED_DISABLED", "MUTATION_DENIED_EMERGENCY_STOP",
+                "STALE_GENERATION", "INDEPENDENT_READINESS_GATE_DENIED",
+                "SYMBOL_SCOPE_DENIED", "NEW_COMMAND_BUDGET_EXHAUSTED",
+                "OPEN_POSITION_BUDGET_EXHAUSTED", "INVALID_MUTATION_COUNTER",
+                "INVALID_CANDIDATE_IDENTITY", "LIVE_OR_NON_PRODUCTION_TARGET_DENIED",
+            }:
+                return (code,)
+            raise
         return () if result.successful else (str(result.reason_code),)
 
     def status(self) -> PaperOperatorCanaryStatus:
@@ -245,4 +305,4 @@ class ProductionPaperFirstCanaryExecutor:
         )
 
 
-__all__ = ("ProductionPaperFirstCanaryExecutor",)
+__all__ = ("ExistingCanaryRuntimeReadiness", "ProductionPaperFirstCanaryExecutor")

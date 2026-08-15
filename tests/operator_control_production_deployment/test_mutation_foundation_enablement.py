@@ -12,6 +12,7 @@ from app.operator_control.config import (
 from app.operator_control.runtime import (
     RUNTIME_DATABASE_HOST_KEY,
     RUNTIME_DATABASE_PORT_KEY,
+    ReadonlyExistingCanaryRuntimeReadinessSource,
     ReadonlyPaperArmReadinessSource,
     _production_canary_store,
     create_runtime_app,
@@ -152,6 +153,69 @@ def test_readonly_readiness_source_consumes_authoritative_envelope(monkeypatch):
     assert readiness.finding_codes == ()
     assert readiness.live_disabled is True
     assert readiness.binance_order_authority_absent is True
+
+
+def test_armed_existing_runtime_accepts_only_the_two_precontrol_denials(monkeypatch):
+    payload = {
+        "data": {
+            "status": "READY", "paper_schema_ready": True,
+            "account_baseline_exists": True, "account_baseline_valid": True,
+            "accounting_reconciliation_status": "HEALTHY",
+            "paper_reconciliation_status": "HEALTHY", "paper_runtime_enabled": True,
+            "paper_control_state": "ARMED", "paper_control_effective_state": "ARMED",
+            "paper_control_health": "HEALTHY", "live_allowed": False,
+            "market_data_adapter_ready": True, "approval_source_adapter_ready": True,
+            "wal_ready": True, "pitr_ready": True, "current_mutation_ready": False,
+            "current_mutation_denial_reasons": [
+                "KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"
+            ],
+        }
+    }
+
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *_args): return None
+        def read(self): return json.dumps(payload).encode()
+
+    monkeypatch.setattr("app.operator_control.runtime.urllib.request.urlopen", lambda *_a, **_k: Response())
+    readiness = ReadonlyExistingCanaryRuntimeReadinessSource()()
+    assert readiness.market_data_ready and readiness.approval_source_ready
+    assert readiness.wal_ready and readiness.pitr_ready and readiness.backup_pitr_pass
+    assert readiness.live_disabled
+
+
+def test_existing_runtime_readiness_fails_closed_on_wal_pitr_or_extra_denial(monkeypatch):
+    base = {
+        "status": "READY", "paper_schema_ready": True,
+        "account_baseline_exists": True, "account_baseline_valid": True,
+        "accounting_reconciliation_status": "HEALTHY",
+        "paper_reconciliation_status": "HEALTHY", "paper_runtime_enabled": True,
+        "paper_control_state": "ARMED", "paper_control_effective_state": "ARMED",
+        "paper_control_health": "HEALTHY", "live_allowed": False,
+        "market_data_adapter_ready": True, "approval_source_adapter_ready": True,
+        "wal_ready": True, "pitr_ready": True, "current_mutation_ready": False,
+        "current_mutation_denial_reasons": ["KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"],
+    }
+
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *_args): return None
+        def read(self): return json.dumps({"data": current}).encode()
+
+    source = ReadonlyExistingCanaryRuntimeReadinessSource()
+    for changes in (
+        {"wal_ready": False, "current_mutation_denial_reasons": ["WAL_NOT_READY", "KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"]},
+        {"pitr_ready": False, "current_mutation_denial_reasons": ["PITR_NOT_READY", "KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"]},
+        {"current_mutation_denial_reasons": ["KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE", "CANARY_SCOPE_INVALID"]},
+        {"paper_control_state": "EMERGENCY_STOP", "paper_control_effective_state": "EMERGENCY_STOP"},
+    ):
+        current = {**base, **changes}
+        monkeypatch.setattr("app.operator_control.runtime.urllib.request.urlopen", lambda *_a, **_k: Response())
+        readiness = source()
+        assert not readiness.backup_pitr_pass
+        assert not readiness.live_disabled
 
 
 def test_runtime_database_binding_translates_only_exact_host_endpoint(monkeypatch):

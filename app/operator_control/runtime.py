@@ -22,7 +22,10 @@ from app.engine_paper.command_ingestion_service import PaperCommandIngestionServ
 from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_paper.production_preparation_backend import RUNTIME_DATABASE_KEY
-from app.engine_safety.paper_production_control import PaperProductionSafetyControl
+from app.engine_safety.paper_production_control import (
+    PaperProductionMutationSafetyGate,
+    PaperProductionSafetyControl,
+)
 from app.engine_safety.production_control_root import resolve_production_control_root
 from app.trading_universe.activation import SqlAlchemyTradingUniverseStore
 
@@ -30,7 +33,7 @@ from .app import create_paper_operator_control_app
 from .auth import PaperOperatorAuthenticator, ProtectedFileOperatorCredentialBinding
 from .config import DEFAULT_BIND_HOST, DEFAULT_PORT, PaperOperatorControlConfig
 from .service import PaperFirstCanaryExecutor, PaperFirstCanaryStore, PaperOperatorArmReadiness
-from .production_executor import ProductionPaperFirstCanaryExecutor
+from .production_executor import ExistingCanaryRuntimeReadiness, ProductionPaperFirstCanaryExecutor
 from .continuation_worker import (
     PaperFirstCanaryEligibleApprovalContinuationWorker,
     PostgresCanaryContinuationLock,
@@ -74,6 +77,52 @@ class ReadonlyPaperArmReadinessSource:
         except Exception:
             ready = False
         return PaperOperatorArmReadiness.isolated_ready() if ready else PaperOperatorArmReadiness()
+
+
+class ReadonlyExistingCanaryRuntimeReadinessSource:
+    """Fail closed over current non-control gates for the already-ARMED runtime."""
+
+    _EXPECTED_CONTROL_DENIALS = {"KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"}
+
+    def __init__(self, base_url: str = DEFAULT_READONLY_INTERNAL_URL) -> None:
+        self._url = base_url.rstrip("/") + "/api/v1/paper/readiness"
+
+    def __call__(self) -> ExistingCanaryRuntimeReadiness:
+        try:
+            request = urllib.request.Request(self._url, method="GET")
+            with urllib.request.urlopen(request, timeout=3) as response:
+                document = json.loads(response.read())
+            payload = document.get("data") if isinstance(document, dict) else None
+            denials = payload.get("current_mutation_denial_reasons") if isinstance(payload, dict) else None
+            common_ready = (
+                response.status == 200
+                and isinstance(payload, dict)
+                and payload.get("status") == "READY"
+                and payload.get("paper_schema_ready") is True
+                and payload.get("account_baseline_exists") is True
+                and payload.get("account_baseline_valid") is True
+                and payload.get("accounting_reconciliation_status") == "HEALTHY"
+                and payload.get("paper_reconciliation_status") == "HEALTHY"
+                and payload.get("paper_runtime_enabled") is True
+                and payload.get("paper_control_state") == "ARMED"
+                and payload.get("paper_control_effective_state") == "ARMED"
+                and payload.get("paper_control_health") == "HEALTHY"
+                and payload.get("live_allowed") is False
+                and isinstance(denials, list)
+                and set(denials) == self._EXPECTED_CONTROL_DENIALS
+                and payload.get("current_mutation_ready") is False
+            )
+            if not common_ready:
+                return ExistingCanaryRuntimeReadiness(live_disabled=False)
+            return ExistingCanaryRuntimeReadiness(
+                market_data_ready=payload.get("market_data_adapter_ready") is True,
+                approval_source_ready=payload.get("approval_source_adapter_ready") is True,
+                wal_ready=payload.get("wal_ready") is True,
+                pitr_ready=payload.get("pitr_ready") is True,
+                live_disabled=True,
+            )
+        except Exception:
+            return ExistingCanaryRuntimeReadiness(live_disabled=False)
 
 
 def _production_canary_store() -> tuple[SqlAlchemyPaperFirstCanaryStore, Engine]:
@@ -135,6 +184,10 @@ def create_runtime_app(
             approval_source=PaperProductionApprovalSourceAdapter(sessions),
             ingestion_service=PaperCommandIngestionService(
                 lambda: PaperUnitOfWork(sessions), sessions
+            ),
+            mutation_safety_gate=PaperProductionMutationSafetyGate(active_control),
+            runtime_readiness=ReadonlyExistingCanaryRuntimeReadinessSource(
+                os.environ.get(READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL)
             ),
         )
     continuation_worker = None
