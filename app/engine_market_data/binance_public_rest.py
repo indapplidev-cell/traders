@@ -17,7 +17,10 @@ class HttpTransport(Protocol):
 
 
 class BinancePublicRestClient:
-    BASE_URL = "https://api.binance.com"
+    # Binance's public market-data-only origin remains usable from production
+    # locations where the trading API origin rejects even unauthenticated
+    # market-data requests.  This client never calls private/order endpoints.
+    BASE_URL = "https://data-api.binance.vision"
     MAX_LIMIT = 1000
     RETRYABLE_STATUS_CODES = frozenset({418, 429, 500, 502, 503, 504})
 

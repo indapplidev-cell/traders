@@ -1,6 +1,10 @@
 from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 
 
+def test_default_origin_is_public_market_data_only() -> None:
+    assert BinancePublicRestClient.BASE_URL == "https://data-api.binance.vision"
+
+
 class Response:
     status_code = 200
 
