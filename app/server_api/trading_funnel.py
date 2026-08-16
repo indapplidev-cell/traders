@@ -60,14 +60,14 @@ def _first_reason(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None
     if row.error_code:
         return row.error_code
     if result is not None:
+        generation = _mapping(_mapping(result.paper_payload_json).get("final_approval_generation"))
+        if generation.get("outcome") not in (None, "FINAL_APPROVAL_CREATED", "NOT_ELIGIBLE"):
+            return str(generation.get("reason_code") or generation["outcome"])
         reasons = _mapping(result.module_reasons_json)
         for stage in ("paper", "risk", "strategy", "setup", "analysis"):
             values = _reasons(reasons.get(stage))
             if values:
                 return values[0]
-        generation = _mapping(_mapping(result.paper_payload_json).get("final_approval_generation"))
-        if generation.get("outcome") not in (None, "FINAL_APPROVAL_CREATED", "NOT_ELIGIBLE"):
-            return str(generation["outcome"])
     return row.final_reason
 
 
@@ -115,8 +115,27 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
     quantity = _mapping(approvals.get("paper_quantity_approval"))
     risk_approval = _mapping(approvals.get("paper_risk_approval"))
     generation = _mapping(paper.get("final_approval_generation"))
-    trace["QUANTITY_APPROVED"] = "PASS" if quantity else "REJECTED"
+    materializer_outcome = generation.get("outcome")
+    materializer_failed = materializer_outcome not in (
+        None, "FINAL_APPROVAL_CREATED", "NOT_ELIGIBLE"
+    )
+    quantity_status = str(generation.get("quantity_authority_status") or "")
+    attempted_stage = str(generation.get("stage") or "")
+    trace["QUANTITY_APPROVED"] = "PASS" if quantity else "NOT_REACHED"
     if not quantity:
+        if quantity_status == "REJECTED":
+            trace["QUANTITY_APPROVED"] = "REJECTED"
+        elif quantity_status == "PASS":
+            trace["QUANTITY_APPROVED"] = "PASS"
+        if materializer_failed:
+            if attempted_stage == "VALIDITY_APPROVED":
+                trace["VALIDITY_APPROVED"] = "REJECTED"
+            elif attempted_stage == "FINAL_APPROVAL" or (
+                not attempted_stage and materializer_outcome == "PAPER_INPUT_IDENTITY_INVALID"
+            ):
+                trace["FINAL_APPROVAL"] = (
+                    "ERROR" if generation.get("status") == "ERROR" else "REJECTED"
+                )
         return trace, meta
     valid_values = [int(value["valid_until_ms"]) for value in approvals.values()
                     if isinstance(value, Mapping) and value.get("valid_until_ms") is not None]
@@ -203,12 +222,16 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             updated_ms = max(filter(None, (_ms(row.updated_at), _ms(row.finished_at), _ms(result.created_at) if result else None)), default=boundary)
             latest_update = max(latest_update, updated_ms)
             reason = meta.get("forced_reason") or _first_reason(row, result)
+            generation = _mapping(
+                _mapping(result.paper_payload_json).get("final_approval_generation")
+            ) if result is not None else {}
+            reason_detail = generation.get("safe_reason_detail") or reason
             current_stage = next((stage for stage in reversed(STAGES[:-1]) if trace[stage] != "NOT_REACHED"), "ANALYSIS")
             items.append({
                 "symbol": row.symbol, "source_run_id": row.run_id,
                 "candidate_id": meta.get("candidate_id"), "direction": meta.get("direction"),
                 "current_stage": current_stage, "stage_status": trace[current_stage],
-                "source_reason_code": reason, "source_reason_detail_safe": reason,
+                "source_reason_code": reason, "source_reason_detail_safe": reason_detail,
                 "ui_reason_category": current_stage, "final_approval_id": meta.get("final_approval_id"),
                 "eligible": candidate is not None, "selector_rank": None, "selected_winner": False,
                 "updated_at_ms": updated_ms, "stage_trace": trace,

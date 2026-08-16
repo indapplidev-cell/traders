@@ -30,7 +30,7 @@ def _run(symbol: str, boundary: int = BOUNDARY, *, status: str = "COMPLETED", ru
 
 def _result(run: OnlinePipelineRun, *, setup="SETUP_CANDIDATE", strategy="ALLOW_RESEARCH_TRADE_PLAN",
             risk="RISK_PRE_APPROVED_RESEARCH", paper="PAPER_PLAN_READY", approvals=True,
-            valid_until=NOW_MS + 60_000, reasons=None):
+            valid_until=NOW_MS + 60_000, reasons=None, generation=None):
     approval = {
         "approval_id": f"approval:{run.symbol}", "valid_until_ms": valid_until,
         "final_paper_approval": True, "order_approved": True,
@@ -46,6 +46,8 @@ def _result(run: OnlinePipelineRun, *, setup="SETUP_CANDIDATE", strategy="ALLOW_
         payload["final_approval_generation"] = {
             "final_approval_id": f"approval:{run.symbol}", "candidate_id": f"setup:{run.symbol}"
         }
+    elif generation is not None:
+        payload["final_approval_generation"] = generation
     return OnlinePipelineResultRow(
         run_id=run.run_id, symbol=run.symbol, primary_timeframe="15m", closed_until_ms=run.closed_until_ms,
         analysis_payload_json={"status": "ANALYZED"},
@@ -131,6 +133,66 @@ def test_final_approval_exists_but_expired_is_not_eligible():
     assert item["stage_trace"]["VALIDITY_APPROVED"] == "REJECTED"
     assert item["eligible"] is False
     assert item["source_reason_code"] == "APPROVAL_EXPIRED"
+
+
+def test_identity_failure_uses_authoritative_reason_and_quantity_not_reached():
+    run = _run("BTCUSDT")
+    result = _result(
+        run,
+        approvals=False,
+        reasons={"paper": ["PAPER_PLAN_READY_LOW_RISK"]},
+        generation={
+            "outcome": "PAPER_INPUT_IDENTITY_INVALID",
+            "reason_code": "PAPER_INPUT_IDENTITY_INVALID",
+            "stage": "FINAL_APPROVAL",
+            "status": "REJECTED",
+            "safe_reason_detail": "invalid public identity (causation_id)",
+            "source_component": "NaturalFinalApprovalMaterializer",
+            "quantity_authority_status": "NOT_REACHED",
+        },
+    )
+    item = _project([(run, result)])["current_cycle"]["items"][0]
+    assert item["source_reason_code"] == "PAPER_INPUT_IDENTITY_INVALID"
+    assert item["source_reason_detail_safe"] == "invalid public identity (causation_id)"
+    assert item["current_stage"] == "FINAL_APPROVAL"
+    assert item["stage_status"] == "REJECTED"
+    assert item["stage_trace"]["QUANTITY_APPROVED"] == "NOT_REACHED"
+    assert item["stage_trace"]["FINAL_APPROVAL"] == "REJECTED"
+
+
+def test_actual_quantity_reject_is_quantity_rejected_with_authority_reason():
+    run = _run("BTCUSDT")
+    result = _result(
+        run,
+        approvals=False,
+        reasons={"paper": ["PAPER_PLAN_READY_LOW_RISK"]},
+        generation={
+            "outcome": "PAPER_INPUT_NOTIONAL_INVALID",
+            "reason_code": "PAPER_INPUT_NOTIONAL_INVALID",
+            "stage": "QUANTITY_APPROVED",
+            "status": "REJECTED",
+            "safe_reason_detail": "minimum notional is not met (approved_quantity)",
+            "source_component": "NaturalFinalApprovalMaterializer",
+            "quantity_authority_status": "REJECTED",
+        },
+    )
+    item = _project([(run, result)])["current_cycle"]["items"][0]
+    assert item["source_reason_code"] == "PAPER_INPUT_NOTIONAL_INVALID"
+    assert item["current_stage"] == "QUANTITY_APPROVED"
+    assert item["stage_status"] == "REJECTED"
+    assert item["stage_trace"]["FINAL_APPROVAL"] == "NOT_REACHED"
+
+
+def test_plan_ready_without_materializer_attempt_stays_at_plan_ready():
+    run = _run("BTCUSDT")
+    result = _result(
+        run, approvals=False, reasons={"paper": ["PAPER_PLAN_READY_LOW_RISK"]}
+    )
+    item = _project([(run, result)])["current_cycle"]["items"][0]
+    assert item["current_stage"] == "PAPER_TRADE_PLAN"
+    assert item["stage_status"] == "PASS"
+    assert item["stage_trace"]["QUANTITY_APPROVED"] == "NOT_REACHED"
+    assert item["source_reason_code"] == "PAPER_PLAN_READY_LOW_RISK"
 
 
 def test_zero_one_multiple_eligible_ranking_and_winner():

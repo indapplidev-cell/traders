@@ -125,13 +125,31 @@ class NaturalFinalApprovalMaterializer:
         self._configuration_fingerprint_source = configuration_fingerprint_source
 
     @staticmethod
-    def _not_created(result: PipelineResult, outcome: str) -> FinalApprovalMaterialization:
+    def _not_created(
+        result: PipelineResult,
+        outcome: str,
+        *,
+        attempted_stage: str | None = None,
+        stage_status: str = "NOT_ATTEMPTED",
+        quantity_authority_status: str = "NOT_REACHED",
+        safe_reason_detail: str | None = None,
+    ) -> FinalApprovalMaterialization:
         payload = dict(result.paper_payload)
-        payload["final_approval_generation"] = {
+        generation = {
             "materializer_version": FINAL_APPROVAL_MATERIALIZER_VERSION,
             "outcome": outcome,
             "forward_only": True,
         }
+        if attempted_stage is not None:
+            generation.update({
+                "stage": attempted_stage,
+                "status": stage_status,
+                "reason_code": outcome,
+                "safe_reason_detail": safe_reason_detail or outcome,
+                "source_component": "NaturalFinalApprovalMaterializer",
+                "quantity_authority_status": quantity_authority_status,
+            })
+        payload["final_approval_generation"] = generation
         return FinalApprovalMaterialization(payload, False, outcome)
 
     def materialize(
@@ -150,6 +168,8 @@ class NaturalFinalApprovalMaterializer:
         ):
             return self._not_created(result, "NOT_ELIGIBLE")
 
+        attempted_stage = "FINAL_APPROVAL"
+        quantity_authority_status = "NOT_REACHED"
         try:
             strategy = _typed(StrategyDecision, result.strategy_payload)
             research_risk = _typed(RiskDecision, result.risk_payload)
@@ -178,13 +198,21 @@ class NaturalFinalApprovalMaterializer:
                 or plan.source_setup_id != strategy.source_setup_id
                 or plan.source_analysis_snapshot_id != strategy.source_analysis_snapshot_id
             ):
-                return self._not_created(result, "LINEAGE_MISMATCH")
+                return self._not_created(
+                    result, "LINEAGE_MISMATCH", attempted_stage="FINAL_APPROVAL",
+                    stage_status="REJECTED",
+                    safe_reason_detail="same-run approval lineage mismatch",
+                )
 
             side = PaperSide.LONG if plan.paper_direction == "BULLISH" else (
                 PaperSide.SHORT if plan.paper_direction == "BEARISH" else None
             )
             if side is None or strategy.direction_hint != plan.paper_direction or research_risk.direction_hint != plan.paper_direction:
-                return self._not_created(result, "DIRECTION_MISMATCH")
+                return self._not_created(
+                    result, "DIRECTION_MISMATCH", attempted_stage="FINAL_APPROVAL",
+                    stage_status="REJECTED",
+                    safe_reason_detail="approval direction lineage mismatch",
+                )
 
             prerequisite_ms = max(
                 int(result.analysis_payload["created_at_ms"]),
@@ -194,12 +222,14 @@ class NaturalFinalApprovalMaterializer:
                 int(plan.created_at_ms),
             )
             approved_at = datetime.fromtimestamp(prerequisite_ms / 1000, tz=timezone.utc)
+            attempted_stage = "VALIDITY_APPROVED"
             valid_until_ms = derive_approval_valid_until_ms(
                 source_close_ms, evaluation_time_ms=evaluation_time_ms
             )
             configuration_fingerprint = self._configuration_fingerprint_source(session, result)
             account = self._account_summary_source(session)
 
+            attempted_stage = "FINAL_APPROVAL"
             strategy_approval = finalize_paper_strategy_approval(
                 strategy,
                 mode=ExecutionMode.PAPER,
@@ -221,6 +251,7 @@ class NaturalFinalApprovalMaterializer:
                 causation_id=strategy.decision_id,
                 evaluation_time_ms=evaluation_time_ms,
             )
+            attempted_stage = "QUANTITY_APPROVED"
             controlled_quantity = issue_controlled_paper_quantity_approval(
                 strategy_approval,
                 research_risk,
@@ -229,6 +260,8 @@ class NaturalFinalApprovalMaterializer:
                 evaluation_time_ms=evaluation_time_ms,
                 source_candle_close_time_ms=source_close_ms,
             )
+            quantity_authority_status = "PASS"
+            attempted_stage = "FINAL_APPROVAL"
             risk_approval = finalize_paper_risk_approval(
                 strategy_approval,
                 research_risk,
@@ -276,6 +309,12 @@ class NaturalFinalApprovalMaterializer:
             payload["final_approval_generation"] = {
                 "materializer_version": FINAL_APPROVAL_MATERIALIZER_VERSION,
                 "outcome": "FINAL_APPROVAL_CREATED",
+                "stage": "FINAL_APPROVAL",
+                "status": "PASS",
+                "reason_code": "FINAL_APPROVAL_CREATED",
+                "safe_reason_detail": "immutable final approval created",
+                "source_component": "NaturalFinalApprovalMaterializer",
+                "quantity_authority_status": "PASS",
                 "idempotency_key": idempotency_key,
                 "final_approval_id": risk_approval.approval_id,
                 "source_run_id": run_id,
@@ -291,9 +330,31 @@ class NaturalFinalApprovalMaterializer:
             }
             return FinalApprovalMaterialization(json_safe(payload), True, "FINAL_APPROVAL_CREATED", idempotency_key)
         except PaperDomainError as error:
-            return self._not_created(result, error.reason_code.value)
+            detail = error.public_message
+            if error.field_path:
+                detail = f"{detail} ({error.field_path})"
+            return self._not_created(
+                result,
+                error.reason_code.value,
+                attempted_stage=attempted_stage,
+                stage_status="REJECTED",
+                quantity_authority_status=(
+                    "REJECTED" if attempted_stage == "QUANTITY_APPROVED"
+                    else quantity_authority_status
+                ),
+                safe_reason_detail=detail,
+            )
         except Exception:
-            return self._not_created(result, "SAFE_MATERIALIZATION_FAILURE")
+            return self._not_created(
+                result,
+                "SAFE_MATERIALIZATION_FAILURE",
+                attempted_stage=locals().get("attempted_stage", "FINAL_APPROVAL"),
+                stage_status="ERROR",
+                quantity_authority_status=locals().get(
+                    "quantity_authority_status", "NOT_REACHED"
+                ),
+                safe_reason_detail="safe final approval materialization failure",
+            )
 
 
 DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER = NaturalFinalApprovalMaterializer()

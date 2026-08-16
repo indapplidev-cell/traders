@@ -7,7 +7,12 @@ import time
 from app.engine_setup.setup_candidate import SetupCandidate
 from app.engine_strategy.strategy_config import StrategyConfig
 from app.engine_strategy.strategy_context import StrategyContext
-from app.engine_strategy.strategy_decision import StrategyDecision, strategy_decision_id
+from app.engine_strategy.lineage_identity import BOUNDED_LINEAGE_IDENTITY_ALGORITHM_VERSION
+from app.engine_strategy.strategy_decision import (
+    StrategyDecision,
+    canonical_strategy_decision_identity,
+    strategy_decision_id,
+)
 from app.engine_strategy.strategy_reason_codes import StrategyReasonCode
 from app.engine_strategy.strategy_rules import evaluate_strategy_rules
 from app.engine_strategy.strategy_status import StrategyStatus
@@ -49,6 +54,17 @@ class StrategyFilter:
             rejection_reasons=result.rejection_reasons, wait_reasons=result.wait_reasons,
             required_next_layer="engine_risk" if allow else None,
             requires_risk_review=allow,
-            context={**context.to_dict(), "strategy_type": result.strategy_type,
-                     "direction_hint": setup_candidate.direction_hint},
+            context={
+                **context.to_dict(),
+                "strategy_type": result.strategy_type,
+                "direction_hint": setup_candidate.direction_hint,
+                "canonical_strategy_decision_identity": canonical_strategy_decision_identity(
+                    setup_candidate.symbol,
+                    setup_candidate.timeframe,
+                    setup_candidate.closed_until_ms,
+                    setup_candidate.setup_id,
+                ),
+                "bounded_identity_algorithm_version":
+                    BOUNDED_LINEAGE_IDENTITY_ALGORITHM_VERSION,
+            },
         )

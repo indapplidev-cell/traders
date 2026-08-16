@@ -28,9 +28,15 @@ from app.engine_paper.eligible_approval_ranking import (
     ProductionEligibleApprovalSelector,
 )
 from app.engine_paper.final_approval_materializer import NaturalFinalApprovalMaterializer
+from app.engine_paper import final_approval_materializer as materializer_module
 from app.engine_paper.paper_trade_plan import PaperTradePlan
-from app.engine_risk.risk_decision import RiskDecision
-from app.engine_strategy.strategy_decision import StrategyDecision
+from app.engine_risk.risk_decision import RiskDecision, risk_decision_id
+from app.engine_strategy.lineage_identity import BOUNDED_LINEAGE_IDENTITY_ALGORITHM_VERSION
+from app.engine_strategy.strategy_decision import (
+    StrategyDecision,
+    canonical_strategy_decision_identity,
+    strategy_decision_id,
+)
 from app.instrument_constraints.registry import REGISTRY_VERSION
 
 
@@ -146,6 +152,110 @@ def materialize(result: PipelineResult | None = None, *, equity: Decimal = Decim
         SimpleNamespace(), run_id="orchestrator:natural:1",
         result=result or natural_result(), evaluation_time=EVALUATION,
     )
+
+
+def long_production_shape_result() -> PipelineResult:
+    value = deepcopy(natural_result())
+    symbol = "AVAXUSDT"
+    setup_id = (
+        "setup:AVAXUSDT:15m:1800000000000:BREAKOUT_CONTINUATION:"
+        "SETUP_CANDIDATE:09b38de71b8e518d"
+    )
+    canonical = canonical_strategy_decision_identity(
+        symbol, "15m", BOUNDARY, setup_id
+    )
+    decision_id = strategy_decision_id(symbol, "15m", BOUNDARY, setup_id)
+    risk_id = risk_decision_id(symbol, "15m", BOUNDARY, decision_id)
+    strategy_value = replace(
+        strategy(), decision_id=decision_id, source_setup_id=setup_id,
+        symbol=symbol,
+        context={
+            "canonical_strategy_decision_identity": canonical,
+            "bounded_identity_algorithm_version":
+                BOUNDED_LINEAGE_IDENTITY_ALGORITHM_VERSION,
+        },
+    )
+    risk_value = replace(
+        risk(), risk_decision_id=risk_id,
+        source_strategy_decision_id=decision_id,
+        source_setup_id=setup_id, symbol=symbol,
+    )
+    plan_value = replace(
+        plan(), paper_plan_id="paper:production-shape:1",
+        source_risk_decision_id=risk_id,
+        source_strategy_decision_id=decision_id,
+        source_setup_id=setup_id, symbol=symbol,
+        hypothetical_entry_reference=Decimal("6.411"),
+        hypothetical_invalidation_level=Decimal("6.361571428571429"),
+        hypothetical_stop_level=Decimal("6.361571428571429"),
+        hypothetical_target_level=Decimal("6.51"),
+    )
+    value.symbol = symbol
+    value.analysis_payload["symbol"] = symbol
+    value.setup_payload.update({"setup_id": setup_id, "symbol": symbol})
+    value.strategy_payload = strategy_value.to_dict()
+    value.risk_payload = risk_value.to_dict()
+    value.paper_payload = plan_value.to_dict()
+    return value
+
+
+def test_long_natural_identity_finalizes_and_reaches_quantity_authority(monkeypatch):
+    calls = []
+    authority = materializer_module.issue_controlled_paper_quantity_approval
+
+    def observed(*args, **kwargs):
+        calls.append((args, kwargs))
+        return authority(*args, **kwargs)
+
+    monkeypatch.setattr(
+        materializer_module, "issue_controlled_paper_quantity_approval", observed
+    )
+    value = materialize(long_production_shape_result())
+    assert value.final_approval_created
+    assert len(calls) == 1
+    generation = value.paper_payload["final_approval_generation"]
+    assert generation["quantity_authority_status"] == "PASS"
+    approvals = value.paper_payload["persisted_final_approvals"]
+    assert len(approvals["paper_strategy_approval"]["causation_id"]) == 76
+    assert value.paper_payload["controlled_quantity_approval"]["approved_quantity"]
+    assert value.paper_payload["paper_context"]["plan_policy_version"] == "paper-plan-policy-v1"
+
+
+def test_long_natural_identity_actual_quantity_reject_is_not_bypassed(monkeypatch):
+    calls = []
+    authority = materializer_module.issue_controlled_paper_quantity_approval
+
+    def observed(*args, **kwargs):
+        calls.append((args, kwargs))
+        return authority(*args, **kwargs)
+
+    monkeypatch.setattr(
+        materializer_module, "issue_controlled_paper_quantity_approval", observed
+    )
+    value = materialize(long_production_shape_result(), equity=Decimal("0.01"))
+    assert not value.final_approval_created
+    assert len(calls) == 1
+    generation = value.paper_payload["final_approval_generation"]
+    assert generation["stage"] == "QUANTITY_APPROVED"
+    assert generation["quantity_authority_status"] == "REJECTED"
+    assert generation["reason_code"] == value.outcome
+    assert "persisted_final_approvals" not in value.paper_payload
+
+
+def test_long_natural_identity_full_typed_lineage_is_preserved():
+    source = long_production_shape_result()
+    value = materialize(source)
+    generation = value.paper_payload["final_approval_generation"]
+    strategy_payload = source.strategy_payload
+    assert generation["source_run_id"] == "orchestrator:natural:1"
+    assert generation["candidate_id"] == source.setup_payload["setup_id"]
+    assert strategy_payload["source_setup_id"] == source.setup_payload["setup_id"]
+    assert strategy_payload["context"]["canonical_strategy_decision_identity"]
+    assert source.risk_payload["source_strategy_decision_id"] == strategy_payload["decision_id"]
+    assert source.paper_payload["source_risk_decision_id"] == source.risk_payload["risk_decision_id"]
+    assert source.paper_payload["symbol"] == source.symbol
+    assert source.paper_payload["paper_direction"] == "BULLISH"
+    assert source.closed_until_ms == BOUNDARY
 
 
 def test_valid_triplet_persists_final_approval_test():

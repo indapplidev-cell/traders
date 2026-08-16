@@ -6,7 +6,12 @@ import time
 from collections.abc import AsyncIterable, AsyncIterator, Iterable
 
 from app.engine_setup.setup_candidate import SetupCandidate
-from app.engine_strategy.strategy_decision import StrategyDecision, strategy_decision_id
+from app.engine_strategy.lineage_identity import BOUNDED_LINEAGE_IDENTITY_ALGORITHM_VERSION
+from app.engine_strategy.strategy_decision import (
+    StrategyDecision,
+    canonical_strategy_decision_identity,
+    strategy_decision_id,
+)
 from app.engine_strategy.strategy_filter import StrategyFilter
 from app.engine_strategy.strategy_reason_codes import StrategyReasonCode
 from app.engine_strategy.strategy_status import StrategyQuality, StrategyStatus
@@ -61,5 +66,16 @@ class StrategyRunner:
                               StrategyReasonCode.STRATEGY_NOT_EXECUTABLE.value],
             decision_warnings=[f"{type(exc).__name__}: {exc}"],
             rejection_reasons=[], wait_reasons=[], required_next_layer=None,
-            requires_risk_review=False, context={"processing_error_type": type(exc).__name__},
+            requires_risk_review=False,
+            context={
+                "processing_error_type": type(exc).__name__,
+                "canonical_strategy_decision_identity": canonical_strategy_decision_identity(
+                    candidate.symbol,
+                    candidate.timeframe,
+                    candidate.closed_until_ms,
+                    candidate.setup_id,
+                ),
+                "bounded_identity_algorithm_version":
+                    BOUNDED_LINEAGE_IDENTITY_ALGORITHM_VERSION,
+            },
         )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from hashlib import sha256
 from typing import Any
 
 from app.engine_setup.setup_status import DirectionHint, SetupQuality, SetupStatus
@@ -11,6 +10,7 @@ from app.engine_setup.setup_type import SetupType
 from app.engine_strategy.strategy_errors import StrategyContractError
 from app.engine_strategy.strategy_status import StrategyQuality, StrategyStatus
 from app.engine_strategy.strategy_type import StrategyType
+from app.engine_strategy.lineage_identity import bounded_lineage_identity
 
 
 _QUALITY_RANK = {"GOOD": 0, "ACCEPTABLE": 1, "WEAK": 2, "POOR": 3, "INVALID": 4, "UNKNOWN": 5}
@@ -20,11 +20,21 @@ _FORBIDDEN_CONTEXT_KEYS = {
 }
 
 
+def canonical_strategy_decision_identity(
+    symbol: str,
+    timeframe: str,
+    closed_until_ms: int,
+    source_setup_id: str | None,
+) -> str:
+    return f"{symbol.upper()}:{timeframe}:{int(closed_until_ms)}:{source_setup_id or 'NONE'}"
+
+
 def strategy_decision_id(symbol: str, timeframe: str, closed_until_ms: int,
                          source_setup_id: str | None) -> str:
-    identity = f"{symbol.upper()}:{timeframe}:{int(closed_until_ms)}:{source_setup_id or 'NONE'}"
-    digest = sha256(identity.encode("utf-8")).hexdigest()[:16]
-    return f"strategy:{identity}:{digest}"
+    canonical = canonical_strategy_decision_identity(
+        symbol, timeframe, closed_until_ms, source_setup_id
+    )
+    return bounded_lineage_identity("strategy:v2", canonical)
 
 
 @dataclass(frozen=True, slots=True)
