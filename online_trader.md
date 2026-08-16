@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = cd913f0264eeb120f012290d7e5df73417641b88
+STATUS_AS_OF_COMMIT = e1ee0fbf1322bfad7791a5153d51293cf0164d59
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-16T15:36:49Z
-RECONCILED_BY_TASK = TRADERS_ML_LAST_FOUR_PAPER_TRADE_PLAN_QUANTITY_REJECTION_DIAGNOSTIC_01
-FILES_CHANGED = FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-16T16:11:20Z
+RECONCILED_BY_TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01
+FILES_CHANGED = app/engine_strategy/lineage_identity.py, app/engine_strategy/strategy_decision.py, app/engine_strategy/strategy_filter.py, app/engine_strategy/strategy_runner.py, app/engine_paper/final_approval_materializer.py, app/server_api/trading_funnel.py, tests/lineage_identity_remediation/test_bounded_lineage_identity.py, tests/final_approval_generation_integration/test_natural_materialization.py, tests/server_api/test_trading_funnel.py, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = BOUNDED_READONLY_12_HOUR_QUERY_FOUR_LATEST_NATURAL_QUANTITY_STAGE_CANDIDATES_ALL_PRE_QUANTITY_IDENTITY_REJECTED_CANARY_UNCHANGED_RUNTIME_CURRENTLY_DEGRADED_LIVE_OFF
+STATUS_CONFIDENCE = SOURCE_REMEDIATION_FOCUSED_AND_IMPACTED_TEST_PASS_PRODUCTION_DEPLOYMENT_BLOCKED_FRESH_READINESS_10_OF_60_WAL_FALSE_PITR_FALSE_CANARY_UNCHANGED_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -22,11 +22,53 @@ STATUS_CONFIDENCE = BOUNDED_READONLY_12_HOUR_QUERY_FOUR_LATEST_NATURAL_QUANTITY_
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
-API_RUNTIME_STATUS = READONLY_HTTP_OK_CONTROL_CONTAINER_HEALTHY_SCHEMA_0015_PAPER_ARMED_GENERATION_6_LIVE_OFF_MARKET20_OF60_WAL_FALSE_PITR_FALSE
-CURRENT_STAGE = REMEDIATE_NATURAL_FINAL_APPROVAL_IDENTITY_CONTRACT_AND_FUNNEL_REASON_PROJECTION
-CURRENT_BLOCKER = 140_CHAR_STRATEGY_DECISION_ID_EXCEEDS_128_CHAR_PAPER_APPROVAL_IDENTITY_CONTRACT_BLOCKING_ALL_OBSERVED_NATURAL_FINAL_APPROVALS_BEFORE_QUANTITY_CALCULATION
-BACKGROUND_TIMED_GATE = CURRENT_MARKET_DATA_20_OF_60_NOT_READY_WAL_READY_FALSE_PITR_READY_FALSE_NO_TASK_RESTART_OR_MUTATION
+API_RUNTIME_STATUS = SOURCE_FIXED_NOT_DEPLOYED_READONLY_HTTP_OK_CONTROL_HEALTHY_SCHEMA_0015_PAPER_ARMED_GENERATION_6_LIVE_OFF_MARKET10_OF60_WAL_FALSE_PITR_FALSE
+CURRENT_STAGE = RESTORE_PRODUCTION_READINESS_THEN_NARROWLY_DEPLOY_LINEAGE_AND_FUNNEL_REMEDIATION
+CURRENT_BLOCKER = PREDEPLOY_MARKET_DATA_10_OF_60_WAL_READY_FALSE_PITR_READY_FALSE
+BACKGROUND_TIMED_GATE = DEPLOYMENT_FORBIDDEN_UNTIL_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_NO_TASK_READINESS_MUTATION
 ```
+
+## Natural final-approval lineage identity and Funnel reason remediation 01
+
+```text
+TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01
+RESULT = BLOCKED_SOURCE_PASS_PRODUCTION_READINESS_NOT_ACCEPTABLE_NO_DEPLOYMENT
+IMPLEMENTATION_COMMIT = e1ee0fbf1322bfad7791a5153d51293cf0164d59
+ROOT_CAUSE = NATURAL_STRATEGY_DECISION_ID_REEMBEDDED_87_CHAR_SETUP_ID_PRODUCING_140_CHARS_AGAINST_128_CHAR_PUBLIC_IDENTITY_CONTRACT
+OLD_PRODUCTION_FORMAT = strategy_SYMBOL_timeframe_boundary_full_setup_id_sha256_16
+OLD_PRODUCTION_COMPONENT_LENGTHS = 9_8_3_13_87_16_PLUS4_SEPARATORS_TOTAL140
+REMEDIATION_BOUNDARY = FORWARD_ONLY_NEW_StrategyDecision_ID_CONSTRUCTION
+IDENTITY_ALGORITHM = bounded-lineage-sha256-v1
+NEW_IDENTITY_FORMAT = strategy:v2:SHA256_HEX64_LENGTH76
+DERIVED_MAX_OBSERVED_SHAPE = RiskDecision_ID_LENGTH125_WITHIN128
+BLIND_TRUNCATION = NO
+RANDOM_OR_SECRET_SALT = NO
+FULL_LINEAGE = CANONICAL_FULL_STRING_PERSISTED_IN_STRATEGY_CONTEXT_PLUS_TYPED_SETUP_SYMBOL_TIMEFRAME_BOUNDARY_AND_APPROVAL_RUN_FIELDS
+HISTORICAL_REWRITE_OR_BACKFILL = ZERO
+MATERIALIZER_OUTCOME = SAFE_STRUCTURED_STAGE_STATUS_REASON_CODE_DETAIL_SOURCE_COMPONENT_QUANTITY_AUTHORITY_STATUS_IN_EXISTING_JSON
+FUNNEL_PRECEDENCE = MATERIALIZER_OUTCOME_BEFORE_GENERIC_MODULE_REASON
+IDENTITY_FAILURE_SEMANTICS = FINAL_APPROVAL_REJECTED_QUANTITY_NOT_REACHED_PAPER_INPUT_IDENTITY_INVALID
+ACTUAL_QUANTITY_REJECT_SEMANTICS = QUANTITY_REJECTED_ACTUAL_AUTHORITY_REASON
+CLIENT = UNCHANGED_ALREADY_RENDERS_RAW_source_reason_code
+SCHEMA_MIGRATION = NONE
+FOCUSED_TESTS = 356_PASS_ZERO_REQUIRED_FAILURES
+IMPACTED_REGRESSION = 455_PASS_ZERO_REQUIRED_FAILURES
+BROAD_PROFILE = 25563_PASS_5_SKIP_555_PREEXISTING_STALE_CONTRACT_FAILURES_342_MISSING_ISOLATED_POSTGRES_ERRORS_ZERO_PROVEN_TASK_DELTA
+PREDEPLOY = POSTGRES_HEALTHY_ORCHESTRATOR_OK_READONLY200_CONTROL_HEALTHY_LIVE_OFF_BUT_MARKET10_OF60_WAL_FALSE_PITR_FALSE
+DEPLOYMENT = NOT_PERFORMED_READINESS_GATE_ENFORCED
+PRODUCTION_FUNNEL_VALIDATION = NOT_PERFORMED_SOURCE_NOT_DEPLOYED
+CANARY = 6f9858cd-f6b1-4c7f-810c-fccc1065bb9d_GENERATION6_WAITING_COMMAND0_POSITION0_UNCHANGED
+TASK_MUTATIONS = ZERO_CONTROL_CANARY_DB_BUSINESS_WAL_PITR_BALANCE_POLICY_LIVE_RESTARTS
+NEXT_REQUIRED_ACTION = RESTORE_INDEPENDENT_MARKET_DATA_AND_WAL_PITR_READINESS_THEN_DEPLOY_ORCHESTRATOR_AND_READONLY_API_NARROWLY_AND_OBSERVE_NEW_NATURAL_CANDIDATES_FORWARD_ONLY
+```
+
+The source defect is closed at the narrow forward-only identity construction
+boundary and the exact historical 140-character shape now has deterministic,
+restart-stable and concurrency-stable bounded coverage. The implementation is
+not production state: the mandatory deployment gate failed on fresh runtime
+evidence, so neither owning component was rebuilt or restarted. Historical
+rows remain unchanged, the production Funnel still runs the prior image, and
+no post-deployment natural quantity decision is claimed.
 
 ## Last four natural quantity-stage rejection diagnostic
 
@@ -3871,14 +3913,14 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% | Schema 0015 is current; natural same-run strategy/quantity/risk final approvals are generated atomically and forward-only on the ten-symbol 15m pipeline, while the existing generation-6 canary waits with zero commands/positions |
+| Online analytics/paper pipeline | ≈98% source / production remediation pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons pass source tests at `e1ee0fb`, but the production orchestrator and Readonly API still run their previous images because readiness blocked deployment |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current production WAL/PITR gate ready | Fresh WAL archive health is PASS with 351/351 required segments, zero backlog, no physical gap or unresolved failure, and a continuous 329,326-second PITR window; the existing-canary first-command boundary re-observes both flags |
+| Production backup/PITR | Current gate not ready | The fresh authoritative Readonly readiness projection reports `wal_ready=false` and `pitr_ready=false`; prior accumulated readiness evidence remains historical and is not promoted to current state |
 | Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 21 GET/0 write and includes Trading Universe plus the authoritative bounded trading-funnel projection |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
 | First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
-| Market-data health contract | Deployed and verified for prepared ten-pair universe | Production Binance collection is 60/60 OK across ten pairs and six timeframes with zero current-policy-window gaps, duplicates, checksum conflicts, or future closed candles |
+| Market-data health contract | Deployed but currently not ready | Fresh Trading Universe projection reports 10/60 ready streams and all ten symbols not ready; no task restart or readiness mutation was authorized |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
 Проценты отражают implementation, integration, tests, deployment и acceptance,
@@ -3887,12 +3929,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_ML_FIRST_NATURAL_PAPER_TRADE_OBSERVATION_AND_RECONCILIATION_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = OBSERVATION_AND_RECONCILIATION_ONLY_NO_CANARY_CONTROL_TRANSITION_REQUIRED
+RECOMMENDED_NEXT_TASK = RESTORE_CURRENT_MARKET_DATA_60_OF_60_AND_WAL_PITR_READINESS_THEN_RESUME_TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_DEPLOYMENT
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = INFRASTRUCTURE_READINESS_REMEDIATION_AND_NARROW_DEPLOYMENT_NO_CANARY_CONTROL_TRANSITION
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
-CURRENT_WAL_PITR_GATE = READY_329326_SECONDS_351_OF_351_CONTINUITY_PRESERVED
+CURRENT_WAL_PITR_GATE = NOT_READY_FRESH_READONLY_PROJECTION_WAL_FALSE_PITR_FALSE
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -3950,11 +3992,11 @@ resume and terminal reconciliation acceptance. The
 closed-trade accounting/reporting projection now consumes the persisted
 revision 0012 immutable account/session baseline, and isolated reconciliation
 passes without a second ledger. Production preparation and the existing
-canary continuation are deployed. The natural final-approval producer is
-enabled in the online orchestrator, while no natural approval, command,
-position or closed trade has yet occurred.
-The 72-hour soak remains open, market-data health stays `DEPLOYED_STABLE`, and
-LIVE stays disabled.
+canary continuation remain deployed. The natural final-approval producer still
+runs the pre-remediation image; the bounded identity and Funnel fix are
+committed and test-proven only. No natural approval, command, position or
+closed trade has occurred. The 72-hour soak remains open, current Market Data
+and WAL/PITR readiness are false, and LIVE stays disabled.
 
 ## Правила актуализации
 
