@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = e1ee0fbf1322bfad7791a5153d51293cf0164d59
+STATUS_AS_OF_COMMIT = 765bcc1026f53840c09d7e27e73bb50796597bad
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-16T16:11:20Z
-RECONCILED_BY_TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01
-FILES_CHANGED = app/engine_strategy/lineage_identity.py, app/engine_strategy/strategy_decision.py, app/engine_strategy/strategy_filter.py, app/engine_strategy/strategy_runner.py, app/engine_paper/final_approval_materializer.py, app/server_api/trading_funnel.py, tests/lineage_identity_remediation/test_bounded_lineage_identity.py, tests/final_approval_generation_integration/test_natural_materialization.py, tests/server_api/test_trading_funnel.py, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-16T17:01:40Z
+RECONCILED_BY_TASK = TRADERS_ML_MARKET_DATA_60_OF_60_AND_WAL_PITR_READINESS_RESTORE_01
+FILES_CHANGED = app/engine_market_data/binance_public_rest.py, tests/test_engine_market_data_01_binance_rest_mapping.py, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = SOURCE_REMEDIATION_FOCUSED_AND_IMPACTED_TEST_PASS_PRODUCTION_DEPLOYMENT_BLOCKED_FRESH_READINESS_10_OF_60_WAL_FALSE_PITR_FALSE_CANARY_UNCHANGED_LIVE_OFF
+STATUS_CONFIDENCE = PRODUCTION_MARKET_DATA_60_OF_60_WAL_TRUE_PITR_TRUE_422_OF_422_LINEAGE_VALID_SERVICES_HEALTHY_CANARY_UNCHANGED_IDENTITY_FIX_STILL_NOT_DEPLOYED_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -22,10 +22,35 @@ STATUS_CONFIDENCE = SOURCE_REMEDIATION_FOCUSED_AND_IMPACTED_TEST_PASS_PRODUCTION
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
-API_RUNTIME_STATUS = SOURCE_FIXED_NOT_DEPLOYED_READONLY_HTTP_OK_CONTROL_HEALTHY_SCHEMA_0015_PAPER_ARMED_GENERATION_6_LIVE_OFF_MARKET10_OF60_WAL_FALSE_PITR_FALSE
-CURRENT_STAGE = RESTORE_PRODUCTION_READINESS_THEN_NARROWLY_DEPLOY_LINEAGE_AND_FUNNEL_REMEDIATION
-CURRENT_BLOCKER = PREDEPLOY_MARKET_DATA_10_OF_60_WAL_READY_FALSE_PITR_READY_FALSE
-BACKGROUND_TIMED_GATE = DEPLOYMENT_FORBIDDEN_UNTIL_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_NO_TASK_READINESS_MUTATION
+API_RUNTIME_STATUS = READONLY_HTTP_OK_CONTROL_HEALTHY_SCHEMA_0015_PAPER_ARMED_GENERATION_6_LIVE_OFF_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID
+CURRENT_STAGE = NARROWLY_DEPLOY_AND_VALIDATE_EXISTING_LINEAGE_AND_FUNNEL_REMEDIATION
+CURRENT_BLOCKER = NONE_INFRASTRUCTURE_READINESS_RESTORED
+BACKGROUND_TIMED_GATE = SATISFIED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_CANARY_UNCHANGED
+```
+
+## Market Data 60/60 and WAL/PITR readiness restoration 01
+
+```text
+TASK = TRADERS_ML_MARKET_DATA_60_OF_60_AND_WAL_PITR_READINESS_RESTORE_01
+RESULT = PASS_CONTROLLED_REMEDIATION
+MARKET_DATA_BEFORE_AFTER = 10_OF_60_TO_60_OF_60
+MARKET_DATA_ROOT_CAUSE = PRIMARY_BINANCE_API_ORIGIN_HTTP451_WHILE_OFFICIAL_MARKET_DATA_ONLY_ORIGIN_HTTP200
+MARKET_DATA_FIX_COMMIT = ac4e63c4d1d9487697f7d52b2303a102ada74bba
+MARKET_DATA_DEPLOYMENT = ONE_NARROW_MARKET_DATA_REBUILD_RECREATE
+MARKET_DATA_TESTS = 193_PASS_2_ENVIRONMENT_DEPENDENT_SKIP_ZERO_FAILURE
+MARKET_DATA_HISTORY = 60_OF_60_DEPTH_READY_ZERO_INTERNAL_GAPS_ZERO_DUPLICATES_ZERO_CHECKSUM_CONFLICTS_ZERO_FUTURE_CLOSED
+FRESHNESS_POLICY = UNCHANGED_BOUNDARY_AWARE_10S_15S_20S_60S_90S_120S
+WAL_PITR_BEFORE = OWNER_PID15108_DEAD_HEARTBEAT_STALE_PENDING44_BACKLOG1_UNRESOLVED1_FALSE_FALSE
+WAL_ROOT_CAUSE = POST_RESTART_EXISTING_HOST_ACK_OWNER_NOT_RESUMED
+WAL_REMEDIATION = VERIFIED_STALE_LOCK_REMOVED_EXISTING_run_host_ack_daemon_STARTED_ONCE_NORMAL_DRAIN
+WAL_PITR_AFTER = TRUE_TRUE_PENDING0_BACKLOG0_UNRESOLVED0_REQUIRED422_PRESENT422_PHYSICAL_GAP_NO
+PITR_LINEAGE = 2026_08_11T07_54_20Z_TO_2026_08_16T17_00_07Z_464747_SECONDS_VALID
+NEW_24H_ACCUMULATION = NOT_REQUIRED_EXISTING_LINEAGE_CONTIGUOUS_NO_PHYSICAL_GAP
+SERVICE_HEALTH = POSTGRES_HEALTHY_MARKET_OK_ORCHESTRATOR_OK_READONLY200_CONTROL_HEALTHY
+CANARY = 6f9858cd-f6b1-4c7f-810c-fccc1065bb9d_GENERATION6_WAITING_COMMAND0_POSITION0_CLOSED0_UNCHANGED
+TASK_MUTATIONS = ZERO_TRADING_DB_CONTROL_POLICY_BALANCE_LIVE_ORDER_PRIVATE_BINANCE
+IDENTITY_FIX = e1ee0fb_SOURCE_PRESENT_OWNING_ORCHESTRATOR_AND_READONLY_IMAGES_STILL_NOT_DEPLOYED
+NEXT_ACTION = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_RETRY_01
 ```
 
 ## Natural final-approval lineage identity and Funnel reason remediation 01
@@ -3915,12 +3940,12 @@ LIVE.
 |---|---:|---|
 | Online analytics/paper pipeline | ≈98% source / production remediation pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons pass source tests at `e1ee0fb`, but the production orchestrator and Readonly API still run their previous images because readiness blocked deployment |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate not ready | The fresh authoritative Readonly readiness projection reports `wal_ready=false` and `pitr_ready=false`; prior accumulated readiness evidence remains historical and is not promoted to current state |
+| Production backup/PITR | Current gate ready | Existing host-ACK owner was resumed without PostgreSQL restart; fresh projection is `wal_ready=true`, `pitr_ready=true`, with 422/422 required segments, 464747 contiguous seconds and no physical gap or lineage reset |
 | Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 21 GET/0 write and includes Trading Universe plus the authoritative bounded trading-funnel projection |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
 | First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
-| Market-data health contract | Deployed but currently not ready | Fresh Trading Universe projection reports 10/60 ready streams and all ten symbols not ready; no task restart or readiness mutation was authorized |
+| Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
 Проценты отражают implementation, integration, tests, deployment и acceptance,
@@ -3929,12 +3954,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = RESTORE_CURRENT_MARKET_DATA_60_OF_60_AND_WAL_PITR_READINESS_THEN_RESUME_TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_DEPLOYMENT
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = INFRASTRUCTURE_READINESS_REMEDIATION_AND_NARROW_DEPLOYMENT_NO_CANARY_CONTROL_TRANSITION
+RECOMMENDED_NEXT_TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_RETRY_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NARROW_ORCHESTRATOR_AND_READONLY_DEPLOYMENT_NO_CANARY_CONTROL_TRANSITION
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
-CURRENT_WAL_PITR_GATE = NOT_READY_FRESH_READONLY_PROJECTION_WAL_FALSE_PITR_FALSE
+CURRENT_WAL_PITR_GATE = PASS_FRESH_READONLY_PROJECTION_WAL_TRUE_PITR_TRUE_422_OF_422_464747_SECONDS_NO_PHYSICAL_GAP
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -3996,7 +4021,9 @@ canary continuation remain deployed. The natural final-approval producer still
 runs the pre-remediation image; the bounded identity and Funnel fix are
 committed and test-proven only. No natural approval, command, position or
 closed trade has occurred. The 72-hour soak remains open, current Market Data
-and WAL/PITR readiness are false, and LIVE stays disabled.
+is 60/60 and WAL/PITR readiness is true with valid preserved lineage. LIVE stays
+disabled, and the bounded identity/Funnel remediation is still not deployed to
+its owning production components.
 
 ## Правила актуализации
 
