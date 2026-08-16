@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 765bcc1026f53840c09d7e27e73bb50796597bad
+STATUS_AS_OF_COMMIT = 8ca3ed458cf2fd52faa5a10cad0ebd5ebe3a1b39
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-16T17:01:40Z
-RECONCILED_BY_TASK = TRADERS_ML_MARKET_DATA_60_OF_60_AND_WAL_PITR_READINESS_RESTORE_01
-FILES_CHANGED = app/engine_market_data/binance_public_rest.py, tests/test_engine_market_data_01_binance_rest_mapping.py, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-16T18:05:54Z
+RECONCILED_BY_TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_RETRY_01
+FILES_CHANGED = FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = PRODUCTION_MARKET_DATA_60_OF_60_WAL_TRUE_PITR_TRUE_422_OF_422_LINEAGE_VALID_SERVICES_HEALTHY_CANARY_UNCHANGED_IDENTITY_FIX_STILL_NOT_DEPLOYED_LIVE_OFF
+STATUS_CONFIDENCE = PRODUCTION_IDENTITY_AND_FUNNEL_IMAGES_DEPLOYED_FROM_CURRENT_TREE_THREE_COMPLETE_NATURAL_CYCLES_ZERO_PLANS_ZERO_QUANTITY_MARKET60_OF60_WAL_TRUE_PITR_TRUE_426_OF_426_LINEAGE_VALID_CANARY_UNCHANGED_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -23,9 +23,9 @@ STATUS_CONFIDENCE = PRODUCTION_MARKET_DATA_60_OF_60_WAL_TRUE_PITR_TRUE_422_OF_42
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
 API_RUNTIME_STATUS = READONLY_HTTP_OK_CONTROL_HEALTHY_SCHEMA_0015_PAPER_ARMED_GENERATION_6_LIVE_OFF_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID
-CURRENT_STAGE = NARROWLY_DEPLOY_AND_VALIDATE_EXISTING_LINEAGE_AND_FUNNEL_REMEDIATION
-CURRENT_BLOCKER = NONE_INFRASTRUCTURE_READINESS_RESTORED
-BACKGROUND_TIMED_GATE = SATISFIED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_CANARY_UNCHANGED
+CURRENT_STAGE = FORWARD_ONLY_WAIT_FOR_NEW_NATURAL_LONG_IDENTITY_QUANTITY_CANDIDATE
+CURRENT_BLOCKER = NONE_DEPLOYMENT_ACCEPTED_WITH_LIMITATION_NO_NATURAL_QUANTITY_CANDIDATE_IN_BOUNDED_WINDOW
+BACKGROUND_TIMED_GATE = SATISFIED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_CANARY_UNCHANGED_THREE_COMPLETE_POSTDEPLOY_CYCLES
 ```
 
 ## Market Data 60/60 and WAL/PITR readiness restoration 01
@@ -49,15 +49,15 @@ NEW_24H_ACCUMULATION = NOT_REQUIRED_EXISTING_LINEAGE_CONTIGUOUS_NO_PHYSICAL_GAP
 SERVICE_HEALTH = POSTGRES_HEALTHY_MARKET_OK_ORCHESTRATOR_OK_READONLY200_CONTROL_HEALTHY
 CANARY = 6f9858cd-f6b1-4c7f-810c-fccc1065bb9d_GENERATION6_WAITING_COMMAND0_POSITION0_CLOSED0_UNCHANGED
 TASK_MUTATIONS = ZERO_TRADING_DB_CONTROL_POLICY_BALANCE_LIVE_ORDER_PRIVATE_BINANCE
-IDENTITY_FIX = e1ee0fb_SOURCE_PRESENT_OWNING_ORCHESTRATOR_AND_READONLY_IMAGES_STILL_NOT_DEPLOYED
-NEXT_ACTION = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_RETRY_01
+IDENTITY_FIX = e1ee0fb_SOURCE_PRESENT_AND_DEPLOYED_BY_NARROW_CURRENT_TREE_RETRY
+NEXT_ACTION = CONTINUE_FORWARD_ONLY_NATURAL_QUANTITY_PATH_OBSERVATION_WITHOUT_SYNTHETIC_INPUT
 ```
 
 ## Natural final-approval lineage identity and Funnel reason remediation 01
 
 ```text
-TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01
-RESULT = BLOCKED_SOURCE_PASS_PRODUCTION_READINESS_NOT_ACCEPTABLE_NO_DEPLOYMENT
+TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_RETRY_01
+RESULT = PASS_WITH_LIMITATIONS_DEPLOYED_WAITING_FOR_NEW_NATURAL_QUANTITY_CANDIDATE
 IMPLEMENTATION_COMMIT = e1ee0fbf1322bfad7791a5153d51293cf0164d59
 ROOT_CAUSE = NATURAL_STRATEGY_DECISION_ID_REEMBEDDED_87_CHAR_SETUP_ID_PRODUCING_140_CHARS_AGAINST_128_CHAR_PUBLIC_IDENTITY_CONTRACT
 OLD_PRODUCTION_FORMAT = strategy_SYMBOL_timeframe_boundary_full_setup_id_sha256_16
@@ -79,21 +79,28 @@ SCHEMA_MIGRATION = NONE
 FOCUSED_TESTS = 356_PASS_ZERO_REQUIRED_FAILURES
 IMPACTED_REGRESSION = 455_PASS_ZERO_REQUIRED_FAILURES
 BROAD_PROFILE = 25563_PASS_5_SKIP_555_PREEXISTING_STALE_CONTRACT_FAILURES_342_MISSING_ISOLATED_POSTGRES_ERRORS_ZERO_PROVEN_TASK_DELTA
-PREDEPLOY = POSTGRES_HEALTHY_ORCHESTRATOR_OK_READONLY200_CONTROL_HEALTHY_LIVE_OFF_BUT_MARKET10_OF60_WAL_FALSE_PITR_FALSE
-DEPLOYMENT = NOT_PERFORMED_READINESS_GATE_ENFORCED
-PRODUCTION_FUNNEL_VALIDATION = NOT_PERFORMED_SOURCE_NOT_DEPLOYED
+PREDEPLOY = POSTGRES_HEALTHY_MARKET60_OF60_ZERO_GAP_DUPLICATE_CONFLICT_FUTURE_ORCHESTRATOR_OK_READONLY200_CONTROL_HEALTHY_WAL_TRUE_PITR_TRUE_LIVE_OFF
+RETRY_FOCUSED_TESTS = 214_PASS_ZERO_FAILURES
+DEPLOYMENT = CURRENT_TREE_8b446e09_8bc9d9d9_ONE_ORCHESTRATOR_RECREATE_ONE_READONLY_RECREATE_NO_OTHER_RESTART
+DEPLOYED_IMAGES = ORCHESTRATOR_sha256_09ac8432f00325532_READONLY_sha256_c640f7bd8086dd26
+PRODUCTION_FUNNEL_VALIDATION = DEPLOYED_GET200_REASON_MATRIX_SOURCE_TEST_PASS_HISTORICAL_IDENTITY_ROW_NOT_AVAILABLE_IN_CURRENT_WINDOW
+FORWARD_ONLY_OBSERVATION = THREE_COMPLETE_15M_CYCLES_30_OF30_SYMBOL_RUNS_ANALYSIS30_SETUP0_PLAN0_QUANTITY0
+NATURAL_QUANTITY_DECISIONS = 0
+NEW_PREQUANTITY_IDENTITY_FAILURES = 0
+OBSERVATION_LIMITATION = NO_NEW_NATURAL_LONG_IDENTITY_CANDIDATE_IN_1912_SECONDS
+WAL_PITR_OBSERVATION = SIX_TRANSIENT_FALSE_SAMPLES_NO_APPROVAL_OVERLAP_NO_LOSS_FINAL_TRUE_TRUE_426_OF426_468345_SECONDS_PHYSICAL_GAP_NO
 CANARY = 6f9858cd-f6b1-4c7f-810c-fccc1065bb9d_GENERATION6_WAITING_COMMAND0_POSITION0_UNCHANGED
-TASK_MUTATIONS = ZERO_CONTROL_CANARY_DB_BUSINESS_WAL_PITR_BALANCE_POLICY_LIVE_RESTARTS
-NEXT_REQUIRED_ACTION = RESTORE_INDEPENDENT_MARKET_DATA_AND_WAL_PITR_READINESS_THEN_DEPLOY_ORCHESTRATOR_AND_READONLY_API_NARROWLY_AND_OBSERVE_NEW_NATURAL_CANDIDATES_FORWARD_ONLY
+TASK_MUTATIONS = ZERO_CONTROL_CANARY_DB_BUSINESS_WAL_PITR_BALANCE_POLICY_LIVE_EXCEPT_TWO_AUTHORIZED_OWNER_RECREATES
+NEXT_REQUIRED_ACTION = CONTINUE_FORWARD_ONLY_NATURAL_OBSERVATION_UNTIL_A_NEW_LONG_IDENTITY_CANDIDATE_REACHES_QUANTITY_THEN_FIRST_NATURAL_TRADE_RECONCILIATION_IF_APPLICABLE
 ```
 
 The source defect is closed at the narrow forward-only identity construction
-boundary and the exact historical 140-character shape now has deterministic,
-restart-stable and concurrency-stable bounded coverage. The implementation is
-not production state: the mandatory deployment gate failed on fresh runtime
-evidence, so neither owning component was rebuilt or restarted. Historical
-rows remain unchanged, the production Funnel still runs the prior image, and
-no post-deployment natural quantity decision is claimed.
+boundary and the exact historical 140-character shape has deterministic,
+restart-stable and concurrency-stable bounded coverage. The current-tree
+orchestrator and Readonly API images are now narrowly deployed. Historical rows
+remain unchanged. Three complete forward-only cycles produced no structural
+setup or PAPER plan, so no production natural quantity invocation or bounded
+long-identity candidate is claimed yet.
 
 ## Last four natural quantity-stage rejection diagnostic
 
@@ -3938,9 +3945,9 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% source / production remediation pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons pass source tests at `e1ee0fb`, but the production orchestrator and Readonly API still run their previous images because readiness blocked deployment |
+| Online analytics/paper pipeline | ≈98% deployed / natural quantity proof pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons are deployed from the current tree to orchestrator and Readonly API; three complete postdeploy cycles had zero natural plans, so the production long-identity quantity call remains unobserved |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate ready | Existing host-ACK owner was resumed without PostgreSQL restart; fresh projection is `wal_ready=true`, `pitr_ready=true`, with 422/422 required segments, 464747 contiguous seconds and no physical gap or lineage reset |
+| Production backup/PITR | Current gate ready | Final projection is `wal_ready=true`, `pitr_ready=true`, with 426/426 required segments, 468345 contiguous seconds and no physical gap or lineage reset; six transient false samples during archive transitions overlapped no approval and self-recovered without a task action |
 | Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 21 GET/0 write and includes Trading Universe plus the authoritative bounded trading-funnel projection |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
@@ -3954,12 +3961,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_RETRY_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NARROW_ORCHESTRATOR_AND_READONLY_DEPLOYMENT_NO_CANARY_CONTROL_TRANSITION
+RECOMMENDED_NEXT_TASK = CONTINUE_FORWARD_ONLY_NATURAL_QUANTITY_PATH_OBSERVATION_THEN_TRADERS_ML_FIRST_NATURAL_PAPER_TRADE_OBSERVATION_AND_RECONCILIATION_01_RETRY_01_IF_APPLICABLE
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = READ_ONLY_NATURAL_OBSERVATION_NO_CANARY_CONTROL_TRANSITION
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
-CURRENT_WAL_PITR_GATE = PASS_FRESH_READONLY_PROJECTION_WAL_TRUE_PITR_TRUE_422_OF_422_464747_SECONDS_NO_PHYSICAL_GAP
+CURRENT_WAL_PITR_GATE = PASS_FRESH_READONLY_PROJECTION_WAL_TRUE_PITR_TRUE_426_OF_426_468345_SECONDS_NO_PHYSICAL_GAP
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -4017,13 +4024,14 @@ resume and terminal reconciliation acceptance. The
 closed-trade accounting/reporting projection now consumes the persisted
 revision 0012 immutable account/session baseline, and isolated reconciliation
 passes without a second ledger. Production preparation and the existing
-canary continuation remain deployed. The natural final-approval producer still
-runs the pre-remediation image; the bounded identity and Funnel fix are
-committed and test-proven only. No natural approval, command, position or
-closed trade has occurred. The 72-hour soak remains open, current Market Data
-is 60/60 and WAL/PITR readiness is true with valid preserved lineage. LIVE stays
-disabled, and the bounded identity/Funnel remediation is still not deployed to
-its owning production components.
+canary continuation remain deployed. The natural final-approval producer and
+Trading Funnel now run current-tree images containing the bounded identity and
+deepest-reason remediation. Three complete postdeploy cycles produced zero
+natural PAPER plans and zero quantity decisions, so the long-identity production
+quantity path remains unobserved rather than failed. No natural approval,
+command, position or closed trade has occurred. The 72-hour soak remains open,
+current Market Data is 60/60 and WAL/PITR readiness is true with valid preserved
+lineage. LIVE stays disabled.
 
 ## Правила актуализации
 
