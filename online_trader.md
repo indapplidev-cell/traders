@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 8ca3ed458cf2fd52faa5a10cad0ebd5ebe3a1b39
+STATUS_AS_OF_COMMIT = dc094e49040b3359b6917ee4335e55395879b5b9
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-16T18:05:54Z
-RECONCILED_BY_TASK = TRADERS_ML_NATURAL_FINAL_APPROVAL_LINEAGE_IDENTITY_AND_FUNNEL_REASON_REMEDIATION_01_RETRY_01
-FILES_CHANGED = FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-17T15:18:16Z
+RECONCILED_BY_TASK = TRADERS_MOBILE_READONLY_API_PARITY_CONTRACT_GAPS_REMEDIATION_01_RETRY_01
+FILES_CHANGED = app/server_api/mapping/contract.py, app/server_api/paper_runtime_observation.py, app/server_api/repositories/protocols.py, app/server_api/repositories/records.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/routes/paper.py, app/server_api/routes/v1.py, app/server_api/runtime.py, app/server_api/schemas/models.py, app/server_api/schemas/paper.py, app/server_api/services/paper_reporting.py, app/server_api/services/query_service.py, app/server_api/trading_funnel.py, tests/paper_first_canary_correlation_readiness_remediation/test_contract_matrix_2048.py, tests/paper_readonly_reporting_api/test_api_contract.py, tests/readonly_production_runtime_observation/test_observation.py, tests/server_api/fakes.py, tests/server_api/test_analysis_latest_available_repository.py, tests/server_api/test_api_v1.py, tests/server_api/test_contract_and_safety.py, tests/server_api/test_runtime_entrypoint.py, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_IMPLEMENTATION_DEPLOYMENT_AUDIT_AND_DOCUMENTATION
-STATUS_CONFIDENCE = PRODUCTION_IDENTITY_AND_FUNNEL_IMAGES_DEPLOYED_FROM_CURRENT_TREE_THREE_COMPLETE_NATURAL_CYCLES_ZERO_PLANS_ZERO_QUANTITY_MARKET60_OF60_WAL_TRUE_PITR_TRUE_426_OF_426_LINEAGE_VALID_CANARY_UNCHANGED_LIVE_OFF
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_SOURCE_TEST_AND_DOCUMENTATION
+STATUS_CONFIDENCE = READONLY_PARITY_SOURCE_AND_ISOLATED_TEST_PASS_NO_DEPLOYMENT_PRODUCTION_STATE_UNCHANGED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_426_OF_426_LINEAGE_VALID_CANARY_UNCHANGED_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -27,6 +27,33 @@ CURRENT_STAGE = FORWARD_ONLY_WAIT_FOR_NEW_NATURAL_LONG_IDENTITY_QUANTITY_CANDIDA
 CURRENT_BLOCKER = NONE_DEPLOYMENT_ACCEPTED_WITH_LIMITATION_NO_NATURAL_QUANTITY_CANDIDATE_IN_BOUNDED_WINDOW
 BACKGROUND_TIMED_GATE = SATISFIED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_CANARY_UNCHANGED_THREE_COMPLETE_POSTDEPLOY_CYCLES
 ```
+
+## Mobile shared Readonly API parity remediation
+
+```text
+TASK = TRADERS_MOBILE_READONLY_API_PARITY_CONTRACT_GAPS_REMEDIATION_01_RETRY_01
+RESULT = PASS_WITH_LIMITATIONS_ALL_P0_RESOLVED_NON_P0_DEFERRED_WITH_JUSTIFICATION
+PROJECT_STATE_COMMIT = dc094e49040b3359b6917ee4335e55395879b5b9
+SOURCE_API_ROUTE_COUNT = 25_GET_0_WRITE
+PRODUCTION_API_ROUTE_COUNT = 21_GET_0_WRITE_UNCHANGED_BY_TASK
+P0_RESOLVED = AUTHORITATIVE_COMMAND_BUDGET_AND_OPEN_POSITION_BUDGET
+P1_RESOLVED = PITR_LINEAGE_CANARY_COUNTS_AGGREGATE_ANALYSIS_MARKET_ANALYSIS_PAPER_UNREALIZED_ORDERS_FILLS_JOURNAL
+P2_RESOLVED = MARKET_STRATEGY_STATUS_FUNNEL_COMPLETED_COUNT_GLOBAL_OPEN_POSITION_COUNT
+DEFERRED_NO_AUTHORITATIVE_SOURCE = PAPER_EQUITY_INCIDENT_CURRENT_ACTIVE
+DEFERRED_SECURITY = GENERAL_INCIDENT_METADATA
+QUERY_BOUNDS = ANALYSIS_MAX10_PAPER_LIST_DEFAULT50_MAX100_NO_N_PLUS_ONE
+TESTS = 5480_PASS_2_SKIP_ZERO_FAILURE_IMPACTED_REGRESSION
+DESKTOP_COMPATIBILITY = 1435_PASS_2_SKIP_3020_SUBTESTS_ZERO_SOURCE_CHANGE
+PRODUCTION_DEPLOYMENT = NO
+NETWORK_FIREWALL_CONTROL_TRADING_DATABASE_LIVE_MUTATIONS = ZERO
+MOBILE_NEXT_ACTION = TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01_SEPARATE_AUTHORIZATION_REQUIRED
+```
+
+The additive source contract exposes no arbitrary incident metadata, archive
+paths, credentials, environment, process arguments, database URI, or secret
+fingerprints. Incident lifecycle history is not reinterpreted as current-active.
+The existing production deployment and natural-candidate observation stage are
+unchanged because this task performed source/unit/isolated verification only.
 
 ## Market Data 60/60 and WAL/PITR readiness restoration 01
 
@@ -3948,7 +3975,7 @@ LIVE.
 | Online analytics/paper pipeline | ≈98% deployed / natural quantity proof pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons are deployed from the current tree to orchestrator and Readonly API; three complete postdeploy cycles had zero natural plans, so the production long-identity quantity call remains unobserved |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate ready | Final projection is `wal_ready=true`, `pitr_ready=true`, with 426/426 required segments, 468345 contiguous seconds and no physical gap or lineage reset; six transient false samples during archive transitions overlapped no approval and self-recovered without a task action |
-| Readonly Server API | 100% current production acceptance | Exact deployed image is healthy with 21 GET/0 write and includes Trading Universe plus the authoritative bounded trading-funnel projection |
+| Readonly Server API | 100% existing production acceptance; additive parity source verified locally | Production remains healthy at 21 GET/0 write; additive shared parity source is 25 GET/0 write at commit `dc094e4` and is not deployed by this task |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
 | First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
