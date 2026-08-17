@@ -16,9 +16,9 @@ All three required repositories were clean. The actual branches, commits and
 trees matched the supplied reference state:
 
 ```text
-SERVER = feature/engine-platform fff017c1879b3463fedd8ceca76a3012c2928c74 tree dc094e49040b3359b6917ee4335e55395879b5b9 CLEAN
-MOBILE = main 81b714b8a02ce5310adc4c034e7a466ec6930afc tree a1873e0a5bb77d1cb5e3645f5a8516c73ee8dfe7 CLEAN
-DESKTOP = main e16e48fdb78e605d0c3c6232946537ee241a8708 tree 8a8d1ebea35284aa79037325e7eaa63b62eeaa54 CLEAN
+SERVER = feature/engine-platform fff017c1879b3463fedd8ceca76a3012c2928c74 tree b55c58c7a824d3d04da03ac11dd8fed692d43fd5 CLEAN
+MOBILE = main 81b714b8a02ce5310adc4c034e7a466ec6930afc tree ae9e9bcc982af05cced0fd4a29ed3eb62354ae4e CLEAN
+DESKTOP = main e16e48fdb78e605d0c3c6232946537ee241a8708 tree 5beb001dd80b7997bcf9548eb4474f37c0190b8c CLEAN
 ```
 
 The trusted host LAN was unambiguous:
