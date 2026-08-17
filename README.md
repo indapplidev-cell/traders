@@ -70,3 +70,20 @@ Operational Docker and systemd notes are in `docs/operations/`.
 python -m pytest -q
 python -m compileall app scripts tests
 ```
+# Mobile Control security boundary
+
+MOBILE-08 is blocked at its mandatory Phase A security gate. The production
+Control API remains healthy and loopback-only on `127.0.0.1:8766`, with 3 GET
+and 5 POST routes protected by a static bearer capability loaded from a
+server-side protected file. That local capability is not accepted for mobile
+LAN use: HTTP would expose a reusable bearer, it does not identify an
+individual device, requests have no signed method/path/body/time/nonce/action
+envelope, and there is no per-device revocation lifecycle.
+
+No Control LAN listener, firewall rule, Android Control URL/provider, runtime
+restart, database change, or production Control action was created. The
+accepted Readonly phone-scoped path remains unchanged. The next task is a
+dedicated device-bound Android Keystore authentication, server-authenticated
+TLS, persistent replay-protection, audit, rotation, and revocation design and
+deployment review; MOBILE-08 may resume only after that security contract is
+proven.

@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = e02226c9ed823023f4d226509c3abb06d79d78ab
+STATUS_AS_OF_COMMIT = c8232698aa6cd57848950626d32e29f31ea3656c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-17T19:04:51Z
-RECONCILED_BY_TASK = TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01_RETRY_02
-FILES_CHANGED = docs/audits/TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01_RETRY_02_FINAL.md, online_trader.md; traders-mobile README.md, MOBILE_STATUS.md
+RECONCILED_AT_UTC = 2026-08-17T19:26:11Z
+RECONCILED_BY_TASK = TRADERS_MOBILE_08_CONTROL_API_INTEGRATION_AND_SAFETY_CONFIRMATIONS_01
+FILES_CHANGED = docs/audits/TRADERS_MOBILE_08_CONTROL_API_INTEGRATION_AND_SAFETY_CONFIRMATIONS_01_FINAL.md, README.md, online_trader.md; traders-mobile README.md, MOBILE_STATUS.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_MOBILE_ACCEPTANCE_AUDIT_AND_DOCUMENTATION_STATE
-STATUS_CONFIDENCE = MOBILE_07_ACCEPTED_REAL_ANDROID_21_OF21_HTTP200_EXACT_PRIVATE_LAN_PHONE_SCOPE_CELLULAR_CONTROL_POSTGRES_DENIED_READONLY_HEALTHY_CONTROL_CANARY_LIVE_UNCHANGED
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_MOBILE_08_SECURITY_BLOCK_AUDIT_AND_DOCUMENTATION_STATE
+STATUS_CONFIDENCE = MOBILE_08_PHASE_A_BLOCKED_STATIC_BEARER_HTTP_NO_DEVICE_ID_NO_SIGNED_FRESHNESS_NONCE_REPLAY_OR_PER_DEVICE_REVOCATION_CONTROL_REMAINS_LOOPBACK_ONLY_NO_PRODUCTION_MUTATION
 
 # Состояние проекта traders-ml
 
@@ -23,10 +23,43 @@ STATUS_CONFIDENCE = MOBILE_07_ACCEPTED_REAL_ANDROID_21_OF21_HTTP200_EXACT_PRIVAT
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_HEALTHY_25_GET_0_WRITE_OPTIMIZED_ANALYSIS_AND_MARKETS_HTTP200_ACCEPTED_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
-CURRENT_STAGE = MOBILE_08_CONTROL_INTEGRATION_SEPARATE_AUTHORIZATION_REQUIRED_NOT_AUTHORIZED
-CURRENT_BLOCKER = NONE_FOR_MOBILE_07_MOBILE_08_NOT_AUTHORIZED
+CURRENT_STAGE = CONTROL_MOBILE_DEVICE_AUTH_TLS_AND_REPLAY_SECURITY_REMEDIATION_REQUIRED_BEFORE_MOBILE_08_RESUME
+CURRENT_BLOCKER = CURRENT_CONTROL_AUTH_NOT_SAFE_FOR_MOBILE_LAN_EXPOSURE
 BACKGROUND_TIMED_GATE = SATISFIED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_CANARY_PERSISTED_NO_ELIGIBLE_APPROVAL_GENERATION6
 ```
+
+## Mobile Control security acceptance
+
+```text
+TASK = TRADERS_MOBILE_08_CONTROL_API_INTEGRATION_AND_SAFETY_CONFIRMATIONS_01
+RESULT = BLOCKED_AT_PHASE_A_BEFORE_NETWORK_OR_ANDROID_CONTROL_INTEGRATION
+PROJECT_STATE_AUDIT_COMMIT = c8232698aa6cd57848950626d32e29f31ea3656c
+BLOCKER_CODE = CURRENT_CONTROL_AUTH_NOT_SAFE_FOR_MOBILE_LAN_EXPOSURE
+SECONDARY_BLOCKER = CONTROL_MOBILE_SECURITY_REMEDIATION_EXCEEDS_MOBILE_08_BOUNDED_SCOPE
+CONTROL_RUNTIME = HEALTHY_ARMED_GENERATION6_AUDIT_PASS_LOOPBACK_127_0_0_1_8766
+CONTROL_ROUTES = 3_GET_5_POST_ALL_BEARER_SCOPE_PROTECTED
+AUTH_MODEL = STATIC_REUSABLE_BEARER_CAPABILITY_FROM_PROTECTED_SERVER_FILE
+TRANSPORT = HTTP_LOOPBACK_SAFE_CURRENTLY_NOT_ACCEPTED_FOR_LAN_BEARER
+MOBILE_SECURITY_GAPS = NO_DEVICE_ID_NO_TLS_NO_METHOD_PATH_BODY_TIMESTAMP_NONCE_ACTION_SIGNATURE_NO_PER_DEVICE_REVOCATION
+REPLAY = REQUEST_ID_IDEMPOTENCY_NOT_SECURITY_REPLAY_PROTECTION_EXACT_DUPLICATE_RETURNS_PRIOR_RESULT
+SERVER_AUTHORITY = GENERATION_ACKNOWLEDGEMENT_ELIGIBILITY_AND_LEGAL_TRANSITION_PRESERVED
+NETWORK_CHANGES = ZERO_CONTROL_LISTENER_FIREWALL_PORTPROXY_URL_PUBLIC_PATH
+ANDROID_CONTROL_SOURCE = NOT_CREATED_FAIL_CLOSED_AFTER_PHASE_A
+VALIDATION = EXISTING_ISOLATED_CONTROL_1927_PASS_READONLY_ANALYSIS_MARKETS_LOOPBACK_AND_ACCEPTED_LAN_HTTP200
+PRODUCTION_MUTATIONS = ZERO_CONTROL_POST_ARM_START_STOP_DISABLE_CANARY_PAPER_DB_BINANCE_LIVE
+READONLY = ACCEPTED_192_168_1_100_18765_PATH_PRESERVED
+NEXT_ACTION = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_TLS_AND_REPLAY_REMEDIATION_01
+```
+
+MOBILE-08 cannot reuse the accepted Readonly LAN trust boundary. The current
+Control bearer is appropriate only behind the existing loopback boundary: it
+does not authenticate an individual phone, HTTP does not protect the reusable
+credential, requests are unsigned, and there is no freshness/nonce or
+per-device revocation lifecycle. The task therefore stopped before any
+Android Control implementation or Control network exposure. Resume requires a
+separately designed and deployed device-bound authentication, TLS, replay and
+revocation subsystem; no persistent schema or PKI design was rushed into this
+task.
 
 ## Mobile controlled LAN Readonly acceptance retry 02
 
@@ -4171,7 +4204,8 @@ LIVE.
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate ready | Final projection is `wal_ready=true`, `pitr_ready=true`, with 426/426 required segments, 468345 contiguous seconds and no physical gap or lineage reset; six transient false samples during archive transitions overlapped no approval and self-recovered without a task action |
 | Readonly Server API | 25 GET/0 write optimized runtime deployed and accepted | Analysis and Markets return bounded HTTP 200 responses; seven-request samples measured median/max 270.522/905.864 ms and 403.387/692.651 ms respectively, PAPER lists remain healthy, and the full GET matrix has zero unexpected 4xx/5xx |
-| Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 Control integration is not authorized |
+| Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
+| Android Control client | 0% operational / Phase A security review blocked | Existing static bearer over HTTP has no device identity, signed request freshness/nonce, or per-device revocation; no Android Control source or LAN endpoint was created |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
 | First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
@@ -4184,8 +4218,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = MOBILE_08_CONTROL_INTEGRATION
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_MOBILE_CONTROL_INTEGRATION_NOT_AUTHORIZED_NO_CONTROL_CANARY_TRADING_LIVE_MUTATION
+RECOMMENDED_NEXT_TASK = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_TLS_AND_REPLAY_REMEDIATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_DEDICATED_CONTROL_SECURITY_DESIGN_PERSISTENCE_DEPLOYMENT_AND_ACCEPTANCE_NO_CONTROL_CANARY_TRADING_LIVE_MUTATION
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
