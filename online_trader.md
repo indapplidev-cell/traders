@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = dc094e49040b3359b6917ee4335e55395879b5b9
+STATUS_AS_OF_COMMIT = e218d670fe47558dcaa889682f295505cd06e8fc
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-17T15:18:16Z
-RECONCILED_BY_TASK = TRADERS_MOBILE_READONLY_API_PARITY_CONTRACT_GAPS_REMEDIATION_01_RETRY_01
-FILES_CHANGED = app/server_api/mapping/contract.py, app/server_api/paper_runtime_observation.py, app/server_api/repositories/protocols.py, app/server_api/repositories/records.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/routes/paper.py, app/server_api/routes/v1.py, app/server_api/runtime.py, app/server_api/schemas/models.py, app/server_api/schemas/paper.py, app/server_api/services/paper_reporting.py, app/server_api/services/query_service.py, app/server_api/trading_funnel.py, tests/paper_first_canary_correlation_readiness_remediation/test_contract_matrix_2048.py, tests/paper_readonly_reporting_api/test_api_contract.py, tests/readonly_production_runtime_observation/test_observation.py, tests/server_api/fakes.py, tests/server_api/test_analysis_latest_available_repository.py, tests/server_api/test_api_v1.py, tests/server_api/test_contract_and_safety.py, tests/server_api/test_runtime_entrypoint.py, online_trader.md
+RECONCILED_AT_UTC = 2026-08-17T15:59:10Z
+RECONCILED_BY_TASK = TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01
+FILES_CHANGED = docs/audits/TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01_BLOCKED.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_SOURCE_TEST_AND_DOCUMENTATION
-STATUS_CONFIDENCE = READONLY_PARITY_SOURCE_AND_ISOLATED_TEST_PASS_NO_DEPLOYMENT_PRODUCTION_STATE_UNCHANGED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_426_OF_426_LINEAGE_VALID_CANARY_UNCHANGED_LIVE_OFF
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AUDIT_AND_DOCUMENTATION
+STATUS_CONFIDENCE = MOBILE_07_CLEAN_HOST_PREFLIGHT_PASS_REAL_ANDROID_DEVICE_GATE_BLOCKED_NO_NETWORK_FIREWALL_SOURCE_CONTROL_DATABASE_TRADING_CANARY_OR_LIVE_CHANGE
 
 # Состояние проекта traders-ml
 
@@ -54,6 +54,36 @@ paths, credentials, environment, process arguments, database URI, or secret
 fingerprints. Incident lifecycle history is not reinterpreted as current-active.
 The existing production deployment and natural-candidate observation stage are
 unchanged because this task performed source/unit/isolated verification only.
+
+## Mobile controlled LAN Readonly acceptance 01
+
+```text
+TASK = TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01
+RESULT = BLOCKED_BEFORE_NETWORK_MUTATION
+PROJECT_STATE_AUDIT_COMMIT = e218d670fe47558dcaa889682f295505cd06e8fc
+BLOCKER_CODE = REAL_ANDROID_DEVICE_NOT_AVAILABLE_FOR_MOBILE_NETWORK_ACCEPTANCE
+SERVER_MOBILE_DESKTOP_BASELINES = CLEAN
+HOST_LAN = Беспроводная_сеть_192.168.1.100_24_PRIVATE
+LOCAL_READONLY = 127.0.0.1:8765_HEALTH_AND_DASHBOARD_HTTP200_BEFORE_AFTER
+LOCAL_CONTROL = 127.0.0.1:8766_LOOPBACK_ONLY_OBSERVED
+HOST_POSTGRES_5432_LISTENER = NOT_OBSERVED
+CANDIDATE_MOBILE_PORT = 18765_FREE_NOT_CONFIGURED
+PORTPROXY_CREATED = NO
+FIREWALL_RULE_CREATED = NO
+ANDROID_CONFIGURATION_CHANGED = NO
+RELEASE_CLEARTEXT = DISABLED_UNCHANGED
+CONTROL_DATABASE_ROUTER_PUBLIC_TUNNEL_EXPOSURE_CREATED = NO
+CONTROL_DATABASE_TRADING_CANARY_LIVE_MUTATIONS = ZERO
+NEXT_ACTION = RETRY_MOBILE_07_AFTER_REAL_ANDROID_DEVICE_IS_ATTACHED_AUTHORIZED_AND_ON_EXPECTED_PRIVATE_LAN
+MOBILE_08_AUTHORIZED = NO
+```
+
+The required real-device gate could not be satisfied because `adb devices -l`
+returned no attached or authorized phone. Without a proven phone LAN identity,
+an exact-IP firewall scope and Android reachability/negative tests could not be
+accepted. The task therefore stopped fail-closed before creating a listener,
+firewall rule, Android URL, cleartext exception, or any public path. Emulator
+or host-only evidence was not promoted to mobile acceptance.
 
 ## Market Data 60/60 and WAL/PITR readiness restoration 01
 
