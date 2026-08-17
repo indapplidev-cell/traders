@@ -108,6 +108,10 @@ class MarketSummary(ContractModel):
     regime: str | None
     setup_status: SetupStatus
     risk_status: str | None
+    strategy_status: str | None = None
+    analysis_status: AnalysisStatus | None = None
+    analysis_direction: Direction | None = None
+    analysis_phase: str | None = None
     updated_at: UtcTimestamp
 
 
@@ -335,6 +339,7 @@ class FunnelCycle(ContractModel):
 class FunnelRollingSummary(ContractModel):
     window_ms: int = Field(gt=0)
     boundary_count: int = Field(ge=0)
+    completed_cycle_count: int = Field(ge=0)
     stage_counts: dict[str, int]
 
 
@@ -377,6 +382,18 @@ class AnalysisEnvelope(BaseModel):
     api_version: Literal["v1"] = "v1"
     generated_at: UtcTimestamp
     data: AnalysisSnapshot
+
+
+class AnalysisList(BaseModel):
+    items: list[AnalysisSnapshot]
+    active_symbol_count: int = Field(ge=0, le=10)
+    active_symbols: list[Symbol]
+
+
+class AnalysisListEnvelope(BaseModel):
+    api_version: Literal["v1"] = "v1"
+    generated_at: UtcTimestamp
+    data: AnalysisList
 
 
 class SetupPageEnvelope(BaseModel):

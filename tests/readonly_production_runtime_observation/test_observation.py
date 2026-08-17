@@ -86,6 +86,10 @@ def test_current_wal_and_pitr_chain_are_observed_and_gap_fails_closed(tmp_path: 
     good = tmp_path / "good"
     _recovery(good, now=now)
     assert observation._pitr_readiness(good, now) == (True, True)
+    lineage = observation._pitr_lineage(good, now)
+    assert lineage.lineage_valid is True and lineage.physical_gap is False
+    assert lineage.lineage_start is not None and lineage.lineage_end is not None
+    assert lineage.contiguous_duration_seconds >= 24 * 60 * 60
     gap = tmp_path / "gap"
     _recovery(gap, now=now, gap=True)
     assert observation._pitr_readiness(gap, now) == (False, False)
@@ -161,7 +165,9 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
     monkeypatch.setattr(observation, "_runtime_configuration_ready", lambda root: True)
     monkeypatch.setattr(observation, "_market_data_readiness", lambda root, now: True)
     monkeypatch.setattr(observation, "load_production_identity", lambda root: object())
-    monkeypatch.setattr(observation, "_pitr_readiness", lambda root, now: (True, True))
+    monkeypatch.setattr(observation, "_pitr_lineage", lambda root, now: observation.PitrLineageObservation(
+        wal_ready=True, pitr_ready=True, lineage_valid=True,
+    ))
     monkeypatch.setattr(observation, "_runtime_principal_ready", lambda sessions: True)
 
     value = source()

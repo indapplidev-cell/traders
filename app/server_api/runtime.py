@@ -110,6 +110,15 @@ def _paper_control_status(
         state_audit_reconciliation="PASS",
         canary_id=None if canary is None else canary.canary_id,
         canary_status=canary_status,
+        canary_command_limit=None if canary is None else canary.max_new_commands,
+        canary_command_count=None if canary is None else canary.command_count,
+        canary_command_remaining=None if canary is None else max(0, canary.max_new_commands - canary.command_count),
+        canary_command_budget_exhausted=None if canary is None else canary.command_count >= canary.max_new_commands,
+        canary_open_position_limit=None if canary is None else canary.max_open_positions,
+        canary_open_position_count=None if canary is None else canary.position_count,
+        canary_open_position_remaining=None if canary is None else max(0, canary.max_open_positions - canary.position_count),
+        canary_open_position_budget_exhausted=None if canary is None else canary.position_count >= canary.max_open_positions,
+        canary_closed_trade_count=None if canary is None else int(canary.trade_report_available),
     )
 
 

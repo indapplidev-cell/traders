@@ -27,6 +27,10 @@ from app.server_api.repositories.records import (
     PaperPositionQuery,
     PaperPositionRecordView,
     PaperTradeQuery,
+    PaperListQuery,
+    PaperOrderRecordView,
+    PaperFillRecordView,
+    PaperJournalRecordView,
 )
 from app.server_api.schemas.paper import (
     PaperAccount,
@@ -39,7 +43,8 @@ from app.server_api.schemas.paper import (
     PaperReconciliationSection,
     PaperRuntimeStatus,
     PaperTradeItem,
-    PaperTradeReport, TradingCriteriaSnapshot,
+    PaperTradeReport, TradingCriteriaSnapshot, PaperOrderItem, PaperFillItem,
+    PaperJournalItem,
 )
 from app.engine_paper.trading_criteria import build_trading_criteria_snapshot
 
@@ -66,6 +71,11 @@ class PaperRuntimeObservation:
     approval_source_adapter_ready: bool | None = None
     wal_ready: bool | None = None
     pitr_ready: bool | None = None
+    pitr_lineage_valid: bool | None = None
+    pitr_lineage_start: datetime | None = None
+    pitr_lineage_end: datetime | None = None
+    pitr_contiguous_duration_seconds: int | None = None
+    pitr_physical_gap: bool | None = None
     current_approval_availability: str = "NOT_AVAILABLE"
     paper_principal_ready: bool = False
     production_identity_binding_ready: bool | None = None
@@ -252,6 +262,20 @@ class PaperReadonlyReportingService:
             approval_source_adapter_ready=runtime.approval_source_adapter_ready,
             wal_ready=runtime.wal_ready,
             pitr_ready=runtime.pitr_ready,
+            pitr_lineage_valid=runtime.pitr_lineage_valid,
+            pitr_lineage_start=utc_text(runtime.pitr_lineage_start) if runtime.pitr_lineage_start else None,
+            pitr_lineage_end=utc_text(runtime.pitr_lineage_end) if runtime.pitr_lineage_end else None,
+            pitr_contiguous_duration_seconds=runtime.pitr_contiguous_duration_seconds,
+            pitr_physical_gap=runtime.pitr_physical_gap,
+            canary_command_limit=control.canary_command_limit,
+            canary_command_count=control.canary_command_count,
+            canary_command_remaining=control.canary_command_remaining,
+            canary_command_budget_exhausted=control.canary_command_budget_exhausted,
+            canary_open_position_limit=control.canary_open_position_limit,
+            canary_open_position_count=control.canary_open_position_count,
+            canary_open_position_remaining=control.canary_open_position_remaining,
+            canary_open_position_budget_exhausted=control.canary_open_position_budget_exhausted,
+            canary_closed_trade_count=control.canary_closed_trade_count,
             current_approval_availability=runtime.current_approval_availability,
             current_mutation_ready=mutation_ready,
             current_mutation_denial_reasons=denials,
@@ -261,6 +285,10 @@ class PaperReadonlyReportingService:
         baseline, result = self._authoritative()
         value = result.summary
         assert value is not None
+        unrealized_source = getattr(self._repo(), "total_unrealized_pnl", None)
+        open_count_source = getattr(self._repo(), "count_open_paper_positions", None)
+        unrealized = unrealized_source() if callable(unrealized_source) else None
+        open_count = open_count_source() if callable(open_count_source) else None
         return PaperAccount(
             account_id=value.account_id, accounting_session_id=value.accounting_session_id,
             currency=value.currency, baseline_id=baseline.baseline_id,
@@ -275,6 +303,8 @@ class PaperReadonlyReportingService:
             average_net_pnl=decimal_text(value.average_net_pnl), average_win=decimal_text(value.average_win),
             average_loss=decimal_text(value.average_loss), largest_win=decimal_text(value.largest_win),
             largest_loss=decimal_text(value.largest_loss), accounting_reconciliation_status=result.outcome.value,
+            unrealized_pnl=decimal_text(unrealized),
+            global_open_position_count=open_count,
         )
 
     @staticmethod
@@ -386,3 +416,54 @@ class PaperReadonlyReportingService:
             return self._control_status()
         except Exception:
             return _default_control_status()
+
+    def orders(self, *, limit: int, cursor: str | None, symbol: str | None) -> PaperList[PaperOrderItem]:
+        self._filters(limit=limit, symbol=symbol)
+        self._require_schema()
+        page = self._repo().list_paper_orders(PaperListQuery(limit, decode_cursor(cursor, "paper_orders"), symbol))
+        records = tuple(item for item in page.items if isinstance(item, PaperOrderRecordView))[:limit]
+        next_cursor = None
+        if page.has_more and records:
+            last = records[-1]
+            next_cursor = encode_cursor("paper_orders", CursorPosition(last.updated_at, last.order_id))
+        items = [PaperOrderItem(
+            order_id=item.order_id, command_id=item.command_id, symbol=item.symbol, side=item.side,
+            role=item.order_role, order_type=item.order_type, state=item.state,
+            quantity=decimal_text(item.requested_quantity), filled_quantity=decimal_text(item.filled_quantity),
+            average_fill_price=decimal_text(item.average_fill_price), reason_code=item.reason_code,
+            created_at=utc_text(item.created_at), updated_at=utc_text(item.updated_at),
+        ) for item in records]
+        return PaperList[PaperOrderItem](items=items, next_cursor=next_cursor, has_more=bool(next_cursor))
+
+    def fills(self, *, limit: int, cursor: str | None, symbol: str | None) -> PaperList[PaperFillItem]:
+        self._filters(limit=limit, symbol=symbol)
+        self._require_schema()
+        page = self._repo().list_paper_fills(PaperListQuery(limit, decode_cursor(cursor, "paper_fills"), symbol))
+        records = tuple(item for item in page.items if isinstance(item, PaperFillRecordView))[:limit]
+        next_cursor = None
+        if page.has_more and records:
+            last = records[-1]
+            next_cursor = encode_cursor("paper_fills", CursorPosition(last.filled_at, last.fill_id))
+        items = [PaperFillItem(
+            fill_id=item.fill_id, order_id=item.order_id, symbol=item.symbol, side=item.side,
+            role=item.fill_role, quantity=decimal_text(item.quantity), price=decimal_text(item.price),
+            fee=decimal_text(item.fee_amount), fee_asset=item.fee_asset, timestamp=utc_text(item.filled_at),
+        ) for item in records]
+        return PaperList[PaperFillItem](items=items, next_cursor=next_cursor, has_more=bool(next_cursor))
+
+    def journal(self, *, limit: int, cursor: str | None) -> PaperList[PaperJournalItem]:
+        self._filters(limit=limit)
+        self._require_schema()
+        page = self._repo().list_paper_journal(PaperListQuery(limit, decode_cursor(cursor, "paper_journal")))
+        records = tuple(item for item in page.items if isinstance(item, PaperJournalRecordView))[:limit]
+        next_cursor = None
+        if page.has_more and records:
+            last = records[-1]
+            next_cursor = encode_cursor("paper_journal", CursorPosition(last.occurred_at, last.event_id))
+        items = [PaperJournalItem(
+            event_id=item.event_id, entity_type=item.entity_type, entity_id=item.entity_id,
+            event_type=item.event_type, state_version=item.state_version, reason_code=item.reason_code,
+            causation_id=item.causation_id, correlation_id=item.correlation_id,
+            timestamp=utc_text(item.occurred_at),
+        ) for item in records]
+        return PaperList[PaperJournalItem](items=items, next_cursor=next_cursor, has_more=bool(next_cursor))

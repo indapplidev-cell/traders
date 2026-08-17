@@ -8,7 +8,8 @@ from app.server_api.schemas.models import ErrorEnvelope
 from app.server_api.schemas.paper import (
     PaperAccount, PaperControlStatus, PaperEnvelope, PaperList, PaperPositionDetail,
     PaperPositionItem, PaperReadiness, PaperReconciliation, PaperRuntimeStatus,
-    PaperTradeItem, PaperTradeReport, TradingCriteriaSnapshot,
+    PaperTradeItem, PaperTradeReport, TradingCriteriaSnapshot, PaperOrderItem,
+    PaperFillItem, PaperJournalItem,
 )
 from app.server_api.services.paper_reporting import PaperReadonlyReportingService
 
@@ -46,6 +47,20 @@ def build_paper_router(service: PaperReadonlyReportingService, generated_at) -> 
                to_value: Annotated[str | None, Query(alias="to")] = None):
         return envelope(service.trades(limit=limit, cursor=cursor, symbol=symbol, side=side,
             exit_reason=exit_reason, from_value=from_value, to_value=to_value))
+
+    @router.get("/orders", response_model=PaperEnvelope[PaperList[PaperOrderItem]], operation_id="listPaperOrders", responses=errors)
+    def orders(limit: Annotated[int, Query(ge=1, le=100)] = 50, cursor: str | None = None,
+               symbol: SymbolFilter = None):
+        return envelope(service.orders(limit=limit, cursor=cursor, symbol=symbol))
+
+    @router.get("/fills", response_model=PaperEnvelope[PaperList[PaperFillItem]], operation_id="listPaperFills", responses=errors)
+    def fills(limit: Annotated[int, Query(ge=1, le=100)] = 50, cursor: str | None = None,
+              symbol: SymbolFilter = None):
+        return envelope(service.fills(limit=limit, cursor=cursor, symbol=symbol))
+
+    @router.get("/journal", response_model=PaperEnvelope[PaperList[PaperJournalItem]], operation_id="listPaperJournal", responses=errors)
+    def journal(limit: Annotated[int, Query(ge=1, le=100)] = 50, cursor: str | None = None):
+        return envelope(service.journal(limit=limit, cursor=cursor))
 
     @router.get("/trades/{position_id}/report", response_model=PaperEnvelope[PaperTradeReport], operation_id="getPaperTradeReport", responses={404: {"model": ErrorEnvelope}, **errors})
     def report(position_id: SafeIdPath): return envelope(service.trade_report(position_id))

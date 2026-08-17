@@ -42,6 +42,20 @@ class PaperReadiness(BaseModel):
     approval_source_adapter_ready: bool | None
     wal_ready: bool | None
     pitr_ready: bool | None
+    pitr_lineage_valid: bool | None = None
+    pitr_lineage_start: UtcTimestamp | None = None
+    pitr_lineage_end: UtcTimestamp | None = None
+    pitr_contiguous_duration_seconds: int | None = Field(default=None, ge=0)
+    pitr_physical_gap: bool | None = None
+    canary_command_limit: int | None = Field(default=None, ge=0)
+    canary_command_count: int | None = Field(default=None, ge=0)
+    canary_command_remaining: int | None = Field(default=None, ge=0)
+    canary_command_budget_exhausted: bool | None = None
+    canary_open_position_limit: int | None = Field(default=None, ge=0)
+    canary_open_position_count: int | None = Field(default=None, ge=0)
+    canary_open_position_remaining: int | None = Field(default=None, ge=0)
+    canary_open_position_budget_exhausted: bool | None = None
+    canary_closed_trade_count: int | None = Field(default=None, ge=0)
     current_approval_availability: str
     current_mutation_ready: bool = False
     current_mutation_denial_reasons: list[str]
@@ -74,6 +88,8 @@ class PaperAccount(BaseModel):
     largest_win: DecimalString | None
     largest_loss: DecimalString | None
     accounting_reconciliation_status: str
+    unrealized_pnl: DecimalString | None = None
+    global_open_position_count: int | None = Field(default=None, ge=0)
 
 
 class PaperPositionItem(BaseModel):
@@ -171,6 +187,56 @@ class PaperControlStatus(BaseModel):
     state_audit_reconciliation: str
     canary_id: str | None = None
     canary_status: str | None = None
+    canary_command_limit: int | None = Field(default=None, ge=0)
+    canary_command_count: int | None = Field(default=None, ge=0)
+    canary_command_remaining: int | None = Field(default=None, ge=0)
+    canary_command_budget_exhausted: bool | None = None
+    canary_open_position_limit: int | None = Field(default=None, ge=0)
+    canary_open_position_count: int | None = Field(default=None, ge=0)
+    canary_open_position_remaining: int | None = Field(default=None, ge=0)
+    canary_open_position_budget_exhausted: bool | None = None
+    canary_closed_trade_count: int | None = Field(default=None, ge=0)
+
+
+class PaperOrderItem(BaseModel):
+    order_id: SafeIdentifier
+    command_id: SafeIdentifier
+    symbol: Symbol
+    side: str
+    role: str
+    order_type: str
+    state: str
+    quantity: DecimalString
+    filled_quantity: DecimalString
+    average_fill_price: DecimalString | None
+    reason_code: str
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
+
+
+class PaperFillItem(BaseModel):
+    fill_id: SafeIdentifier
+    order_id: SafeIdentifier
+    symbol: Symbol
+    side: str
+    role: str
+    quantity: DecimalString
+    price: DecimalString
+    fee: DecimalString
+    fee_asset: str
+    timestamp: UtcTimestamp
+
+
+class PaperJournalItem(BaseModel):
+    event_id: SafeIdentifier
+    entity_type: str
+    entity_id: SafeIdentifier
+    event_type: str
+    state_version: int = Field(ge=0)
+    reason_code: str
+    causation_id: SafeIdentifier
+    correlation_id: SafeIdentifier
+    timestamp: UtcTimestamp
 
 
 class TradingCriterion(BaseModel):

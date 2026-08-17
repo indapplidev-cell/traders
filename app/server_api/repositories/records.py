@@ -36,6 +36,7 @@ class MarketRecord:
     regime: str | None = None
     setup_status: str = "UNKNOWN"
     risk_status: str | None = None
+    strategy_status: str | None = None
     open: Decimal | None = None
     high: Decimal | None = None
     low: Decimal | None = None
@@ -179,6 +180,57 @@ class PaperTradeQuery:
     exit_reason: str | None = None
     from_at: datetime | None = None
     to_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PaperListQuery:
+    limit: int
+    cursor: CursorPosition | None = None
+    symbol: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PaperOrderRecordView:
+    order_id: str
+    command_id: str
+    symbol: str
+    side: str
+    order_role: str
+    order_type: str
+    state: str
+    requested_quantity: Decimal
+    filled_quantity: Decimal
+    average_fill_price: Decimal | None
+    reason_code: str
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class PaperFillRecordView:
+    fill_id: str
+    order_id: str
+    symbol: str
+    side: str
+    fill_role: str
+    quantity: Decimal
+    price: Decimal
+    fee_amount: Decimal
+    fee_asset: str
+    filled_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class PaperJournalRecordView:
+    event_id: str
+    entity_type: str
+    entity_id: str
+    event_type: str
+    state_version: int
+    reason_code: str
+    causation_id: str
+    correlation_id: str
+    occurred_at: datetime
 
 
 @dataclass(frozen=True, slots=True)

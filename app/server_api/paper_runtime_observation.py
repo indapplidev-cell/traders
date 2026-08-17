@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -166,11 +167,22 @@ def _market_data_readiness(
         return False
 
 
-def _pitr_readiness(
+@dataclass(frozen=True, slots=True)
+class PitrLineageObservation:
+    wal_ready: bool = False
+    pitr_ready: bool = False
+    lineage_valid: bool = False
+    lineage_start: datetime | None = None
+    lineage_end: datetime | None = None
+    contiguous_duration_seconds: int = 0
+    physical_gap: bool | None = None
+
+
+def _pitr_lineage(
     root: Path,
     now: datetime,
-) -> tuple[bool, bool]:
-    """Return current WAL and >=24h PITR readiness from the recovery chain."""
+) -> PitrLineageObservation:
+    """Return safe canonical lineage facts without exposing archive paths."""
 
     try:
         daemon = _json_object(root / "catalog" / "wal_ack_daemon_state.json")
@@ -186,7 +198,7 @@ def _pitr_readiness(
         catalog = _json_object(root / "catalog" / "catalog.json")
         entries = catalog.get("entries")
         if catalog.get("schema") != "TRADERS_ML_BACKUP_CATALOG_V1" or not isinstance(entries, list):
-            return False, False
+            return PitrLineageObservation()
         bases = [
             item for item in entries
             if isinstance(item, dict)
@@ -196,7 +208,7 @@ def _pitr_readiness(
             and item.get("recovery_anchor_valid") is True
         ]
         if not bases:
-            return False, False
+            return PitrLineageObservation()
         base = max(bases, key=lambda item: str(item.get("created_at", "")))
         relative = str(base.get("relative_path", ""))
         base_path = (root / relative)
@@ -212,7 +224,7 @@ def _pitr_readiness(
             if path.is_file() and wal_segment_identity(path.name) is not None
         )
         if start is None or timeline is None or not archive_names:
-            return False, False
+            return PitrLineageObservation()
         latest = max(archive_names, key=lambda name: wal_segment_identity(name) or (-1, -1))
         continuity = inspect_wal_continuity(
             timeline=int(timeline.group("timeline")),
@@ -225,9 +237,23 @@ def _pitr_readiness(
         newest = datetime.fromtimestamp((root / "wal_archive" / latest).stat().st_mtime, timezone.utc)
         window = max(0, int((newest - oldest.astimezone(timezone.utc)).total_seconds()))
         wal_ready = daemon_ready and continuity.base_backup_chain_contiguous
-        return wal_ready, wal_ready and window >= MINIMUM_PITR_WINDOW_SECONDS
+        lineage_valid = continuity.base_backup_chain_contiguous and not continuity.physical_gap
+        return PitrLineageObservation(
+            wal_ready=wal_ready,
+            pitr_ready=wal_ready and lineage_valid and window >= MINIMUM_PITR_WINDOW_SECONDS,
+            lineage_valid=lineage_valid,
+            lineage_start=oldest.astimezone(timezone.utc),
+            lineage_end=newest,
+            contiguous_duration_seconds=window,
+            physical_gap=continuity.physical_gap,
+        )
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
-        return False, False
+        return PitrLineageObservation()
+
+
+def _pitr_readiness(root: Path, now: datetime) -> tuple[bool, bool]:
+    value = _pitr_lineage(root, now)
+    return value.wal_ready, value.pitr_ready
 
 
 class ProductionPaperRuntimeObservationSource:
@@ -275,7 +301,7 @@ class ProductionPaperRuntimeObservationSource:
             identity_ready = load_production_identity(self._identity_root) is not None
         except (OSError, ValueError):
             identity_ready = False
-        wal_ready, pitr_ready = _pitr_readiness(self._recovery_root, now)
+        pitr = _pitr_lineage(self._recovery_root, now)
         try:
             control = self._control_status()
             kill_switch_ready = (
@@ -302,8 +328,13 @@ class ProductionPaperRuntimeObservationSource:
             operator_runner_running=False,
             market_data_adapter_ready=market_ready,
             approval_source_adapter_ready=approval_ready,
-            wal_ready=wal_ready,
-            pitr_ready=pitr_ready,
+            wal_ready=pitr.wal_ready,
+            pitr_ready=pitr.pitr_ready,
+            pitr_lineage_valid=pitr.lineage_valid,
+            pitr_lineage_start=pitr.lineage_start,
+            pitr_lineage_end=pitr.lineage_end,
+            pitr_contiguous_duration_seconds=pitr.contiguous_duration_seconds,
+            pitr_physical_gap=pitr.physical_gap,
             current_approval_availability=approval_availability,
             paper_principal_ready=principal_ready,
             production_identity_binding_ready=identity_ready,

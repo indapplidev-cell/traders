@@ -45,6 +45,10 @@ from app.server_api.repositories.records import (
     PaperPositionQuery,
     PaperPositionRecordView,
     PaperTradeQuery,
+    PaperListQuery,
+    PaperOrderRecordView,
+    PaperFillRecordView,
+    PaperJournalRecordView,
     TradingUniverseSymbolReadinessRecord,
 )
 
@@ -222,6 +226,7 @@ class SqlAlchemyReadAdapter:
         analysis = _mapping(result.analysis_payload_json) if result is not None else {}
         setup = _mapping(result.setup_payload_json) if result is not None else {}
         risk = _mapping(result.risk_payload_json) if result is not None else {}
+        strategy = _mapping(result.strategy_payload_json) if result is not None else {}
         market = _mapping(result.market_data_payload_json) if result is not None else {}
         timeframe_market = _mapping(market.get(self._primary_timeframe))
         updated_at = _aware(
@@ -241,6 +246,8 @@ class SqlAlchemyReadAdapter:
             regime=str(analysis.get("regime")) if analysis.get("regime") is not None else None,
             setup_status=str(setup.get("status") or "UNKNOWN"),
             risk_status=str(risk.get("risk_status")) if risk.get("risk_status") is not None else None,
+            strategy_status=(str(strategy.get("decision_status")) if strategy.get("decision_status") is not None
+                             else (run.strategy_status if run is not None else None)),
             open=_decimal(getattr(candle, "open", None)),
             high=_decimal(getattr(candle, "high", None)),
             low=_decimal(getattr(candle, "low", None)),
@@ -348,9 +355,13 @@ class SqlAlchemyReadAdapter:
         run, result = self._latest_available_analysis(symbol)
         if run is None or result is None:
             return None
+        return self._analysis_record(run, result)
+
+    @staticmethod
+    def _analysis_record(run: OnlinePipelineRun, result: OnlinePipelineResultRow) -> AnalysisRecord:
         payload = _mapping(result.analysis_payload_json)
         if not payload:
-            return None
+            raise ValueError("eligible analysis result has no payload")
         return AnalysisRecord(
             analysis_id=str(payload.get("snapshot_id") or f"analysis:{run.run_id}"),
             symbol=run.symbol,
@@ -366,6 +377,53 @@ class SqlAlchemyReadAdapter:
             entry_quality=str(payload.get("entry_quality")) if payload.get("entry_quality") is not None else None,
             reason_codes=_sequence(payload.get("reason_codes")),
         )
+
+    def list_latest_analyses(self, symbols: tuple[str, ...]) -> tuple[AnalysisRecord, ...]:
+        """One SQL query, at most one latest-available row per active symbol."""
+        bounded = tuple(dict.fromkeys(value.upper() for value in symbols))
+        if not bounded or len(bounded) > 10:
+            return ()
+        candidate = aliased(OnlinePipelineResultRow)
+        analysis = candidate.analysis_payload_json
+        analyzed = AnalysisSnapshotStatus.ANALYZED.value
+        ranked = (
+            select(
+                OnlinePipelineRun.id.label("run_pk"), candidate.id.label("result_pk"),
+                func.row_number().over(
+                    partition_by=OnlinePipelineRun.symbol,
+                    order_by=(OnlinePipelineRun.closed_until_ms.desc(), candidate.created_at.desc(), candidate.id.desc()),
+                ).label("row_number"),
+            )
+            .join(candidate, candidate.run_id == OnlinePipelineRun.run_id)
+            .where(
+                OnlinePipelineRun.symbol.in_(bounded),
+                OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
+                OnlinePipelineRun.analysis_status == analyzed,
+                candidate.symbol == OnlinePipelineRun.symbol,
+                candidate.primary_timeframe == OnlinePipelineRun.primary_timeframe,
+                candidate.closed_until_ms == OnlinePipelineRun.closed_until_ms,
+                analysis["status"].as_string() == analyzed,
+                analysis["snapshot_id"].as_string().is_not(None), analysis["snapshot_id"].as_string() != "",
+                analysis["created_at_ms"].as_string().is_not(None),
+                analysis["market_data_health"].as_string().is_not(None), analysis["market_data_health"].as_string() != "",
+                analysis["symbol"].as_string() == OnlinePipelineRun.symbol,
+                analysis["timeframe"].as_string() == OnlinePipelineRun.primary_timeframe,
+                analysis["closed_until_ms"].as_string() == cast(OnlinePipelineRun.closed_until_ms, String),
+                analysis["future_bars_used"].as_boolean().is_(False),
+                analysis["degraded"].as_boolean().is_(False),
+                analysis["enough_data"].as_boolean().is_(True),
+            ).subquery()
+        )
+        statement = (
+            select(OnlinePipelineRun, OnlinePipelineResultRow)
+            .join(ranked, ranked.c.run_pk == OnlinePipelineRun.id)
+            .join(OnlinePipelineResultRow, OnlinePipelineResultRow.id == ranked.c.result_pk)
+            .where(ranked.c.row_number == 1)
+            .order_by(OnlinePipelineRun.symbol.asc()).limit(len(bounded))
+        )
+        with self._session() as session:
+            rows = tuple(session.execute(statement))
+        return tuple(self._analysis_record(run, result) for run, result in rows)
 
     @staticmethod
     def _setup_record(
@@ -822,3 +880,62 @@ class SqlAlchemyReadAdapter:
             rows = tuple(session.scalars(statement))
             facts = self._facts_for_rows(session, rows[:query.limit])
         return RecordPage(facts, len(rows) > query.limit)
+
+    def list_paper_orders(self, query: PaperListQuery) -> RecordPage:
+        statement = select(PaperOrderRecord)
+        if query.symbol:
+            statement = statement.where(PaperOrderRecord.symbol == query.symbol)
+        if query.cursor:
+            statement = statement.where(tuple_(PaperOrderRecord.updated_at, PaperOrderRecord.order_id) <
+                (query.cursor.updated_at, query.cursor.identifier))
+        statement = statement.order_by(PaperOrderRecord.updated_at.desc(), PaperOrderRecord.order_id.desc()).limit(query.limit + 1)
+        with self._session() as session:
+            rows = tuple(session.scalars(statement))
+        items = tuple(PaperOrderRecordView(
+            row.order_id, row.command_id, row.symbol, row.side, row.order_role, row.order_type,
+            row.state, row.requested_quantity, row.filled_quantity, row.average_fill_price,
+            row.reason_code, _aware(row.created_at), _aware(row.updated_at),
+        ) for row in rows[:query.limit])
+        return RecordPage(items, len(rows) > query.limit)
+
+    def list_paper_fills(self, query: PaperListQuery) -> RecordPage:
+        statement = select(PaperFillRecord)
+        if query.symbol:
+            statement = statement.where(PaperFillRecord.symbol == query.symbol)
+        if query.cursor:
+            statement = statement.where(tuple_(PaperFillRecord.filled_at, PaperFillRecord.fill_id) <
+                (query.cursor.updated_at, query.cursor.identifier))
+        statement = statement.order_by(PaperFillRecord.filled_at.desc(), PaperFillRecord.fill_id.desc()).limit(query.limit + 1)
+        with self._session() as session:
+            rows = tuple(session.scalars(statement))
+        items = tuple(PaperFillRecordView(
+            row.fill_id, row.order_id, row.symbol, row.side, row.fill_role, row.quantity,
+            row.price, row.fee_amount, row.fee_asset, _aware(row.filled_at),
+        ) for row in rows[:query.limit])
+        return RecordPage(items, len(rows) > query.limit)
+
+    def list_paper_journal(self, query: PaperListQuery) -> RecordPage:
+        statement = select(PaperJournalEntryRecord)
+        if query.cursor:
+            statement = statement.where(tuple_(PaperJournalEntryRecord.occurred_at, PaperJournalEntryRecord.journal_entry_id) <
+                (query.cursor.updated_at, query.cursor.identifier))
+        statement = statement.order_by(PaperJournalEntryRecord.occurred_at.desc(), PaperJournalEntryRecord.journal_entry_id.desc()).limit(query.limit + 1)
+        with self._session() as session:
+            rows = tuple(session.scalars(statement))
+        items = tuple(PaperJournalRecordView(
+            row.journal_entry_id, row.aggregate_type, row.aggregate_id, row.event_type,
+            int(row.aggregate_version), row.reason_code, row.causation_id, row.correlation_id,
+            _aware(row.occurred_at),
+        ) for row in rows[:query.limit])
+        return RecordPage(items, len(rows) > query.limit)
+
+    def count_open_paper_positions(self) -> int:
+        with self._session() as session:
+            return int(session.scalar(select(func.count()).select_from(PaperPositionRecord).where(
+                PaperPositionRecord.state.in_(("OPEN", "CLOSING")))) or 0)
+
+    def total_unrealized_pnl(self) -> Decimal:
+        with self._session() as session:
+            value = session.scalar(select(func.sum(PaperPositionRecord.unrealized_pnl)).where(
+                PaperPositionRecord.state.in_(("OPEN", "CLOSING"))))
+        return Decimal("0") if value is None else Decimal(value)

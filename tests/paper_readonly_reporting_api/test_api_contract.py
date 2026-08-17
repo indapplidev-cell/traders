@@ -11,7 +11,10 @@ from fastapi.testclient import TestClient
 from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity
 from app.engine_safety.paper_domain import PaperPositionState, PaperSide
 from app.server_api import create_app
-from app.server_api.repositories.records import PaperPositionRecordView, RecordPage
+from app.server_api.repositories.records import (
+    PaperPositionRecordView, RecordPage, PaperOrderRecordView, PaperFillRecordView,
+    PaperJournalRecordView,
+)
 from app.server_api.schemas.paper import PaperControlStatus
 from app.server_api.services import PaperRuntimeObservation
 from tests.paper_account_balance_trade_reporting.conftest import make_trade
@@ -25,6 +28,7 @@ PAPER_PATHS = (
     "/api/v1/paper/trades/{position_id}/report", "/api/v1/paper/reconciliation",
     "/api/v1/paper/runtime/status", "/api/v1/paper/control/status",
     "/api/v1/paper/trading-criteria",
+    "/api/v1/paper/orders", "/api/v1/paper/fills", "/api/v1/paper/journal",
 )
 OPENAPI = create_app().openapi()
 
@@ -43,6 +47,9 @@ class FakePaperRepository:
         self.paper_calls = 0
         self.schema_calls = 0
         self.extra_positions = ()
+        self.orders = ()
+        self.fills = ()
+        self.journal = ()
 
     def schema_revision(self):
         self.schema_calls += 1
@@ -97,6 +104,15 @@ class FakePaperRepository:
             anchor = (query.cursor.updated_at, query.cursor.identifier)
             values = [v for v in values if (v.position.closed_at, v.position.position_id) < anchor]
         return RecordPage(tuple(values[:query.limit]), len(values) > query.limit)
+
+    def list_paper_orders(self, query): return RecordPage(self.orders[:query.limit], len(self.orders) > query.limit)
+    def list_paper_fills(self, query): return RecordPage(self.fills[:query.limit], len(self.fills) > query.limit)
+    def list_paper_journal(self, query): return RecordPage(self.journal[:query.limit], len(self.journal) > query.limit)
+    def count_open_paper_positions(self):
+        return sum(item.position.state.value in {"OPEN", "CLOSING"} for item in self._views())
+    def total_unrealized_pnl(self):
+        return sum((item.position.unrealized_pnl for item in self._views()
+                    if item.position.state.value in {"OPEN", "CLOSING"}), Decimal("0"))
 
 
 def control(state="DISABLED", generation=3):
@@ -277,6 +293,11 @@ def test_armed_control_projects_exact_generation_canary_and_start_specific_readi
         "audit_health": "PASS", "state_audit_reconciliation": "PASS",
         "canary_id": canary_id,
         "canary_status": None,
+        "canary_command_limit": None, "canary_command_count": None,
+        "canary_command_remaining": None, "canary_command_budget_exhausted": None,
+        "canary_open_position_limit": None, "canary_open_position_count": None,
+        "canary_open_position_remaining": None, "canary_open_position_budget_exhausted": None,
+        "canary_closed_trade_count": None,
     }
 
 
@@ -320,8 +341,55 @@ def test_limits_filters_errors_and_schema_inventory(baseline):
     assert client.get("/api/v1/paper/trades?from=2025-01-01T00:00:00Z&to=2026-08-01T00:00:00Z").json()["error"]["code"] == "DATE_RANGE_EXCEEDED"
     document = create_app().openapi()
     methods = [method for operations in document["paths"].values() for method in operations if method in {"get", "post", "put", "patch", "delete"}]
-    assert methods.count("get") == 20
+    assert methods.count("get") == 25
     assert set(methods) == {"get"}
+
+
+def test_authoritative_canary_budgets_and_counts_are_additive(baseline):
+    paper = FakePaperRepository(baseline)
+    app = create_app(
+        repositories=replace(FakeReadRepository().api_repositories(), paper=paper), clock=lambda: NOW,
+        paper_runtime=PaperRuntimeObservation(environment="isolated"),
+        paper_control_status=lambda: PaperControlStatus(
+            state="ARMED", effective_state="ARMED", generation=6, health="HEALTHY",
+            emergency_stop_available=True, audit_health="PASS", state_audit_reconciliation="PASS",
+            canary_id="8c52768d-2a3a-47cb-acdc-3d1cb1b6ce9d", canary_status="WAITING_FOR_ELIGIBLE_APPROVAL",
+            canary_command_limit=1, canary_command_count=0, canary_command_remaining=1,
+            canary_command_budget_exhausted=False, canary_open_position_limit=1,
+            canary_open_position_count=0, canary_open_position_remaining=1,
+            canary_open_position_budget_exhausted=False, canary_closed_trade_count=0,
+        ),
+    )
+    data = TestClient(app).get("/api/v1/paper/readiness").json()["data"]
+    assert data["paper_control_generation"] == 6
+    assert (data["canary_command_limit"], data["canary_command_count"], data["canary_command_remaining"]) == (1, 0, 1)
+    assert (data["canary_open_position_limit"], data["canary_open_position_count"], data["canary_open_position_remaining"]) == (1, 0, 1)
+    assert data["canary_command_budget_exhausted"] is data["canary_open_position_budget_exhausted"] is False
+
+
+def test_bounded_orders_fills_and_journal_contracts(baseline):
+    paper = FakePaperRepository(baseline)
+    paper.orders = (PaperOrderRecordView(
+        "order-1", "command-1", "BTCUSDT", "LONG", "ENTRY", "MARKET", "FILLED",
+        Decimal("1.25"), Decimal("1.25"), Decimal("100"), "PAPER_ORDER_FILLED", NOW, NOW,
+    ),)
+    paper.fills = (PaperFillRecordView(
+        "fill-1", "order-1", "BTCUSDT", "LONG", "ENTRY", Decimal("1.25"),
+        Decimal("100"), Decimal("0.1"), "USDT", NOW,
+    ),)
+    paper.journal = (PaperJournalRecordView(
+        "event-1", "ORDER", "order-1", "PAPER_ORDER_FILLED", 1,
+        "PAPER_ORDER_FILLED", "cause-1", "correlation-1", NOW,
+    ),)
+    client = TestClient(create_app(
+        repositories=replace(FakeReadRepository().api_repositories(), paper=paper), clock=lambda: NOW,
+    ))
+    order = client.get("/api/v1/paper/orders?limit=50").json()["data"]["items"][0]
+    fill = client.get("/api/v1/paper/fills?limit=50").json()["data"]["items"][0]
+    event = client.get("/api/v1/paper/journal?limit=50").json()["data"]["items"][0]
+    assert order["quantity"] == "1.25" and order["state"] == "FILLED"
+    assert fill["price"] == "100" and fill["fee"] == "0.1"
+    assert event["entity_id"] == "order-1" and event["correlation_id"] == "correlation-1"
 
 
 def test_server_reporting_source_contains_no_mutation_or_financial_formula_duplication():

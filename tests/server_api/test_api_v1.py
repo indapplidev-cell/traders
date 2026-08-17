@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import replace
 
 from fastapi.testclient import TestClient
 
 from app.server_api import create_app
 from tests.server_api.fakes import FakeReadRepository, NOW
+from app.trading_universe.domain import ACTIVE_TRADING_UNIVERSE
 
 
 def client_and_fake(*, raise_server_exceptions: bool = True):
@@ -39,6 +41,18 @@ def test_health_endpoint_and_success_envelope():
     data = assert_success(client.get("/api/v1/health"))
     assert data["status"] == "OK"
     assert [item["name"] for item in data["services"]] == ["market-data", "online-orchestrator"]
+
+
+def test_aggregate_analysis_route_uses_active_universe_and_latest_items():
+    fake = FakeReadRepository()
+    class Universe:
+        def active_trading_universe(self): return ACTIVE_TRADING_UNIVERSE
+    repositories = replace(fake.api_repositories(), universe=Universe())
+    data = assert_success(TestClient(create_app(repositories=repositories, clock=lambda: NOW)).get("/api/v1/analysis"))
+    assert data["active_symbol_count"] == 3
+    assert data["active_symbols"] == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+    assert [item["symbol"] for item in data["items"]] == ["BTCUSDT"]
+    assert fake.calls == ["list_latest_analyses"]
 
 
 def test_dashboard_endpoint():

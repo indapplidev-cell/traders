@@ -6,6 +6,7 @@ from fastapi import APIRouter, Path, Query
 
 from app.server_api.schemas.models import (
     AnalysisEnvelope,
+    AnalysisListEnvelope,
     DashboardEnvelope,
     ErrorEnvelope,
     HealthEnvelope,
@@ -59,6 +60,10 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
     @router.get("/markets/{symbol}", response_model=MarketDetailEnvelope, operation_id="getMarket", responses=error_responses)
     def get_market(symbol: SymbolPath) -> MarketDetailEnvelope:
         return service.market(symbol)
+
+    @router.get("/analysis", response_model=AnalysisListEnvelope, operation_id="listLatestAnalysis", responses=error_responses)
+    def list_analysis() -> AnalysisListEnvelope:
+        return service.analyses()
 
     @router.get("/analysis/{symbol}", response_model=AnalysisEnvelope, operation_id="getAnalysis", responses=error_responses)
     def get_analysis(symbol: SymbolPath) -> AnalysisEnvelope:

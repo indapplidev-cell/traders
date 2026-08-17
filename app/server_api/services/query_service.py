@@ -17,6 +17,8 @@ from app.server_api.repositories.records import (
 )
 from app.server_api.schemas.models import (
     AnalysisEnvelope,
+    AnalysisList,
+    AnalysisListEnvelope,
     DashboardEnvelope,
     DashboardSnapshot,
     HealthEnvelope,
@@ -108,6 +110,15 @@ class ApiQueryService:
     def markets(self) -> MarketListEnvelope:
         records = self._repos().markets.list_markets()
         items = sorted((self._mapper.market_summary(item) for item in records), key=lambda item: item.symbol)
+        universe = self._repos().universe
+        if universe is not None:
+            active = universe.active_trading_universe().symbols
+            analyses = {item.symbol: self._mapper.analysis(item) for item in self._repos().analysis.list_latest_analyses(active)}
+            items = [item.model_copy(update={
+                "analysis_status": analyses[item.symbol].status,
+                "analysis_direction": analyses[item.symbol].direction,
+                "analysis_phase": analyses[item.symbol].impulse_phase,
+            }) if item.symbol in analyses else item for item in items]
         return MarketListEnvelope(generated_at=self._generated_at(), data=MarketList(items=items))
 
     def trading_universe(self) -> TradingUniverseEnvelope:
@@ -164,6 +175,18 @@ class ApiQueryService:
         if record is None:
             raise ApiError(404, "RESOURCE_NOT_FOUND", "The requested resource was not found.")
         return AnalysisEnvelope(generated_at=self._generated_at(), data=self._mapper.analysis(record))
+
+    def analyses(self) -> AnalysisListEnvelope:
+        repos = self._repos()
+        if repos.universe is None:
+            raise ApiError(503, "SERVICE_NOT_CONFIGURED", "Trading universe readiness is not configured.")
+        symbols = repos.universe.active_trading_universe().symbols
+        records = repos.analysis.list_latest_analyses(symbols)
+        items = [self._mapper.analysis(item) for item in records]
+        return AnalysisListEnvelope(
+            generated_at=self._generated_at(),
+            data=AnalysisList(items=items, active_symbol_count=len(symbols), active_symbols=list(symbols)),
+        )
 
     def setups(
         self,

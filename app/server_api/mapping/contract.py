@@ -93,6 +93,7 @@ class ContractMapper:
             regime=value.regime,
             setup_status=safe_enum(SetupStatus, value.setup_status),
             risk_status=value.risk_status,
+            strategy_status=value.strategy_status,
             updated_at=utc_text(value.updated_at),
         )
 

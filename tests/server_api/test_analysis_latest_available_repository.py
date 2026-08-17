@@ -435,3 +435,26 @@ def test_database_unavailable_is_internal_error_not_not_found():
 
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "INTERNAL_ERROR"
+
+
+def test_aggregate_latest_analysis_is_one_query_latest_only_and_deterministic():
+    engine, sessions, adapter, _client = _database()
+    btc_old = _run("btc-old", OLD_BOUNDARY)
+    btc_new = _run("btc-new", NEW_BOUNDARY)
+    eth = _run("eth-new", NEW_BOUNDARY, symbol="ETHUSDT")
+    _insert(sessions, btc_old, _result(btc_old))
+    _insert(sessions, btc_new, _result(btc_new))
+    _insert(sessions, eth, _result(eth))
+    statements: list[str] = []
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def capture(_connection, _cursor, statement, _parameters, _context, _many):
+        statements.append(" ".join(statement.lower().split()))
+
+    values = adapter.list_latest_analyses(("ETHUSDT", "BTCUSDT"))
+
+    assert [item.symbol for item in values] == ["BTCUSDT", "ETHUSDT"]
+    assert values[0].analysis_id == "analysis:btc-new"
+    assert len(statements) == 1
+    assert "row_number() over (partition by online_pipeline_runs.symbol" in statements[0]
+    assert " limit " in statements[0]

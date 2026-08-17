@@ -275,6 +275,11 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
 
     def rolling(window_ms: int) -> dict[str, Any]:
         selected = [pair for boundary, pairs in by_boundary.items() if now_ms - window_ms <= boundary <= now_ms for pair in pairs]
+        selected_boundaries = {row.closed_until_ms for row, _ in selected}
+        completed = sum(
+            1 for boundary in selected_boundaries
+            if {row.symbol for row, _ in by_boundary[boundary] if row.status in TERMINAL_RUN_STATUSES} == set(universe.symbols)
+        )
         counts = Counter()
         for row, result in selected:
             trace, _ = _stage_trace(row, result, now_ms)
@@ -282,7 +287,8 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 trace["ELIGIBLE"] = "PASS"
             for stage, status in trace.items():
                 if status == "PASS": counts[stage] += 1
-        return {"window_ms": window_ms, "boundary_count": len({row.closed_until_ms for row, _ in selected}),
+        return {"window_ms": window_ms, "boundary_count": len(selected_boundaries),
+                "completed_cycle_count": completed,
                 "stage_counts": {stage: counts[stage] for stage in STAGES[:-2]}}
 
     current = cycle(current_boundary)

@@ -130,7 +130,7 @@ def test_factory_exposes_twenty_get_only_source_routes(monkeypatch) -> None:
         method for route in app.openapi()["paths"].values()
         for method in route if method in {"get", "post", "put", "patch", "delete"}
     ]
-    assert operations == ["get"] * 21
+    assert operations == ["get"] * 25
 
 
 def test_main_passes_canonical_factory_and_server_settings(monkeypatch) -> None:

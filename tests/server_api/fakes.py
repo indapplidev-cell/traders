@@ -163,6 +163,10 @@ class FakeReadRepository:
         self.calls.append("get_analysis")
         return self.analysis_record if symbol == "BTCUSDT" else None
 
+    def list_latest_analyses(self, symbols: tuple[str, ...]) -> tuple[AnalysisRecord, ...]:
+        self.calls.append("list_latest_analyses")
+        return (self.analysis_record,) if "BTCUSDT" in symbols else ()
+
     @staticmethod
     def _after_cursor(items, cursor, identifier):
         if cursor is None:
