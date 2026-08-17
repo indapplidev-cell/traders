@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 3b407646f4cefdb48b4e11a119892f4705d6214d
+STATUS_AS_OF_COMMIT = 6701a01be10ebabf01ba2126d974d9d6a652c4d4
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-17T17:31:55Z
-RECONCILED_BY_TASK = TRADERS_MOBILE_READONLY_API_PARITY_RUNTIME_DEPLOYMENT_01
-FILES_CHANGED = docs/audits/TRADERS_MOBILE_READONLY_API_PARITY_RUNTIME_DEPLOYMENT_01_BLOCKED.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-17T18:01:29Z
+RECONCILED_BY_TASK = TRADERS_MOBILE_READONLY_AGGREGATE_ANALYSIS_AND_MARKETS_QUERY_TIMEOUT_REMEDIATION_01
+FILES_CHANGED = app/server_api/repositories/sqlalchemy_read.py, tests/server_api/test_analysis_latest_available_repository.py, tests/security_retry/test_safe_inspection_and_output_matrix.py, docs/audits/TRADERS_MOBILE_READONLY_AGGREGATE_ANALYSIS_AND_MARKETS_QUERY_TIMEOUT_REMEDIATION_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AUDIT_DOCUMENTATION_RUNTIME_DEPLOYMENT_STATE
-STATUS_CONFIDENCE = READONLY_25_GET_0_WRITE_DEPLOYED_HEALTHY_THREE_TARGETS_200_ANALYSIS_AND_MARKETS_PRODUCTION_SELECT_TIMEOUT_BLOCKED
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_SOURCE_REMEDIATION_AND_DOCUMENTATION_STATE
+STATUS_CONFIDENCE = READONLY_AGGREGATE_QUERY_ROOT_CAUSE_PROVEN_CODE_ONLY_SOURCE_FIX_POSTGRESQL_PERFORMANCE_PASS_PRODUCTION_RUNTIME_UNCHANGED_PENDING_REDEPLOYMENT
 
 # Состояние проекта traders-ml
 
@@ -22,11 +22,47 @@ STATUS_CONFIDENCE = READONLY_25_GET_0_WRITE_DEPLOYED_HEALTHY_THREE_TARGETS_200_A
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY
-API_RUNTIME_STATUS = READONLY_HEALTHY_25_GET_0_WRITE_ANALYSIS_AND_MARKETS_HTTP500_STATEMENT_TIMEOUT_CONTROL_HEALTHY_SCHEMA_0015_PAPER_ARMED_GENERATION_6_LIVE_OFF_WAL_TRUE_PITR_TRUE
-CURRENT_STAGE = READONLY_AGGREGATE_QUERY_TIMEOUT_SOURCE_REMEDIATION_REQUIRED
-CURRENT_BLOCKER = READONLY_RUNTIME_TARGET_ROUTE_5XX_AFTER_DEPLOYMENT
-BACKGROUND_TIMED_GATE = SATISFIED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_CANARY_UNCHANGED_THREE_COMPLETE_POSTDEPLOY_CYCLES
+API_RUNTIME_STATUS = READONLY_HEALTHY_25_GET_0_WRITE_DEPLOYED_ANALYSIS_AND_MARKETS_OLD_QUERY_HTTP500_SOURCE_FIX_NOT_DEPLOYED_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
+CURRENT_STAGE = READONLY_API_PARITY_RUNTIME_REDEPLOYMENT_ACCEPTANCE_02_REQUIRED
+CURRENT_BLOCKER = CODE_ONLY_QUERY_FIX_NOT_YET_DEPLOYED_RUNTIME_REMAINS_ON_OLD_QUERY
+BACKGROUND_TIMED_GATE = SATISFIED_MARKET60_OF60_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_CANARY_PERSISTED_NO_ELIGIBLE_APPROVAL_GENERATION6
 ```
+
+## Readonly aggregate Analysis and Markets query timeout remediation
+
+```text
+TASK = TRADERS_MOBILE_READONLY_AGGREGATE_ANALYSIS_AND_MARKETS_QUERY_TIMEOUT_REMEDIATION_01
+RESULT = PASS_CODE_ONLY_SOURCE_REMEDIATION
+PROJECT_STATE_COMMIT = 6701a01be10ebabf01ba2126d974d9d6a652c4d4
+SHARED_QUERY_ROOT = API_ANALYSIS_AND_DESKTOP_MARKET_BOTH_CALL_LIST_LATEST_ANALYSES_ACTIVE
+ROOT_CAUSE = WINDOW_OVER_FULL_ACTIVE_HISTORY_FULL_JSON_ELIGIBILITY_SEQ_SCAN_SORT_AND_LATE_LIMIT
+SOURCE_FIX = MAX10_UNION_ALL_OF_CORRELATED_LATEST_ELIGIBLE_SCALAR_SUBQUERIES_ONE_DATABASE_REQUEST
+SEMANTICS = CANONICAL_SINGLE_AND_BATCH_ELIGIBILITY_SHARED_LATEST_BOUNDARY_EXACT_MISSING_SYMBOLS_OMITTED
+EXISTING_INDEX_REUSED = uq_online_pipeline_window_SYMBOL_PRIMARY_TIMEFRAME_CLOSED_UNTIL
+SCHEMA_CHANGE = NO
+PRODUCTION_TABLES = RUNS_APPROX7625_RESULTS_APPROX7253_RESULTS_TOTAL109MB_10_SYMBOLS
+PRODUCTION_PLAN_BEFORE = COST2321_49_RESULTS_SEQ_SCAN_WINDOW_SORT_LATE_LIMIT
+PRODUCTION_NEW_QUERY_READONLY_PROOF = 10_OF10_ROWS_COST362_26_EXECUTION93_510MS_BACKWARD_UNIQUE_INDEX_SCANS_NO_RESULTS_SEQ_SCAN
+ISOLATED_POSTGRESQL16_DATASET = 100000_RUNS_100000_RESULTS_10_SYMBOLS_2KB_JSON_PADDING
+ISOLATED_TIMING = OLD17197_433MS_ONE_SAMPLE_NEW7_SAMPLES_MEDIAN35_611MS_MAX74_569MS
+TESTS = FOCUSED14_PASS_SERVER_IMPACTED1932_PASS_SECURITY618_PASS_DESKTOP29_PASS12_SUBTESTS
+ROUTES = SOURCE25_GET0_WRITE_UNCHANGED
+DEPLOYMENT = NO_PRODUCTION_RUNTIME_REBUILD_RECREATE_RESTART_OR_SCHEMA_CHANGE
+PRODUCTION_MUTATIONS = ZERO_DATABASE_CONTROL_TRADING_CANARY_LIVE_BINANCE
+RUNTIME = DEPLOYED_OLD_QUERY_REMAINS_UNCHANGED_AND_NOT_YET_ACCEPTED
+FRESH_RUNTIME_STATE = READONLY_CONTROL_POSTGRES_HEALTHY_RESTART_COUNT0_SCHEMA0015_CANARY_NO_ELIGIBLE_APPROVAL_GENERATION6_COMMAND0_POSITION0_LIVE_OFF
+NEXT_ACTION = TRADERS_MOBILE_READONLY_API_PARITY_RUNTIME_REDEPLOYMENT_ACCEPTANCE_02
+```
+
+The source defect is closed without a migration. The old batch query evaluated
+the complete active-symbol history, repeatedly extracted eligibility fields
+from large JSON values, sorted a window and only then retained one row per
+symbol. The replacement performs one database request containing at most ten
+symbol-specific latest lookups. Each lookup walks the existing unique
+`(symbol, primary_timeframe, closed_until_ms)` index backward and stops at the
+first record satisfying the same canonical eligibility predicates as the
+single-symbol route. Production remains on the old image, so neither
+`/api/v1/analysis` nor desktop Market is recorded as runtime-fixed yet.
 
 ## Mobile Readonly API parity runtime deployment
 
@@ -4069,7 +4105,7 @@ LIVE.
 | Online analytics/paper pipeline | ≈98% deployed / natural quantity proof pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons are deployed from the current tree to orchestrator and Readonly API; three complete postdeploy cycles had zero natural plans, so the production long-identity quantity call remains unobserved |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate ready | Final projection is `wal_ready=true`, `pitr_ready=true`, with 426/426 required segments, 468345 contiguous seconds and no physical gap or lineage reset; six transient false samples during archive transitions overlapped no approval and self-recovered without a task action |
-| Readonly Server API | Additive 25 GET/0 write deployed; aggregate acceptance blocked | Runtime is healthy and the three new PAPER lists return 200, but aggregate Analysis and existing Markets hit the production 30-second read-only statement timeout; source remediation and redeployment are required |
+| Readonly Server API | Additive 25 GET/0 write deployed; code-only aggregate fix proven, redeployment pending | Runtime remains healthy on the old image and the three PAPER lists return 200; the shared Analysis/Markets full-history JSON window defect is source-fixed with existing-index bounded lookups and PostgreSQL performance proof, but runtime acceptance remains blocked until narrow redeployment |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
 | PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
 | First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
@@ -4082,7 +4118,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = SEPARATE_READONLY_AGGREGATE_ANALYSIS_AND_MARKETS_QUERY_TIMEOUT_SOURCE_REMEDIATION_THEN_NARROW_REDEPLOYMENT_ACCEPTANCE
+RECOMMENDED_NEXT_TASK = TRADERS_MOBILE_READONLY_API_PARITY_RUNTIME_REDEPLOYMENT_ACCEPTANCE_02
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = READ_ONLY_NATURAL_OBSERVATION_NO_CANARY_CONTROL_TRANSITION
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
