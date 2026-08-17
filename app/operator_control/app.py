@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
+import hashlib
+import logging
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
@@ -13,7 +15,8 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
 
 from .auth import OperatorAuthError, PaperOperatorAuthenticator, PaperOperatorScope
-from .config import PaperOperatorControlConfig
+from .config import ControlAuthProfile, PaperOperatorControlConfig
+from .mobile_security import MobileRequestVerifier
 from .routes import build_operator_control_router
 from .schemas import ControlErrorEnvelope, ControlErrorItem
 from .service import ControlApiError, ControlDecisionError, PaperOperatorControlService
@@ -25,6 +28,7 @@ TRADING_DECISION_FIELDS = frozenset({
     "approval", "approval_override", "final_approval_override",
 })
 QUERY_CREDENTIAL_FIELDS = frozenset({"token", "access_token", "credential", "authorization", "api_key"})
+SECURITY_AUDIT_LOG = logging.getLogger("traders.control.mobile.security")
 
 
 class RequestBodyLimitMiddleware:
@@ -76,12 +80,18 @@ def create_paper_operator_control_app(
     *,
     config: PaperOperatorControlConfig | None = None,
     authenticator: PaperOperatorAuthenticator | None = None,
+    mobile_verifier: MobileRequestVerifier | None = None,
     service: PaperOperatorControlService | None = None,
     control: PaperProductionSafetyControl | None = None,
     lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] | None = None,
 ) -> FastAPI:
     active_config = config or PaperOperatorControlConfig()
     active_authenticator = authenticator or PaperOperatorAuthenticator()
+    if (
+        active_config.auth_profile is ControlAuthProfile.MOBILE_DEVICE_SIGNED_TLS
+        and mobile_verifier is None
+    ):
+        raise ValueError("CONTROL_MOBILE_PERSISTENCE_REQUIRED")
     active_service = service or PaperOperatorControlService(
         config=active_config,
         control=control or PaperProductionSafetyControl(),
@@ -103,18 +113,55 @@ def create_paper_operator_control_app(
         if any(key.casefold() in QUERY_CREDENTIAL_FIELDS for key in request.query_params.keys()):
             return _error_response(request, 400, "INVALID_REQUEST", "Credentials are not accepted in the URL.")
         response = await call_next(request)
+        principal = getattr(request.state, "control_principal", None)
+        if active_config.auth_profile is ControlAuthProfile.MOBILE_DEVICE_SIGNED_TLS and principal is not None:
+            SECURITY_AUDIT_LOG.info(
+                "mobile_control_request device_id=%s key_version=%s fingerprint=%s "
+                "action=%s request_id=%s generation=%s nonce_fingerprint=%s status=%s",
+                principal.device_id,
+                principal.key_version,
+                principal.public_key_fingerprint,
+                principal.action,
+                principal.request_id,
+                principal.expected_generation,
+                principal.nonce_fingerprint,
+                response.status_code,
+            )
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Request-ID"] = request.state.request_id
         return response
 
-    def require_scope(scope: PaperOperatorScope):
-        def dependency(request: Request) -> None:
-            active_authenticator.authenticate(request.headers.get("authorization"), scope)
+    def require_scope(scope: PaperOperatorScope, action: str, mutation: bool):
+        async def dependency(request: Request) -> None:
+            if active_config.auth_profile is ControlAuthProfile.OPERATOR_LOOPBACK_BEARER:
+                request.state.control_principal = active_authenticator.authenticate(
+                    request.headers.get("authorization"), scope
+                )
+                return
+            if active_config.auth_profile is not ControlAuthProfile.MOBILE_DEVICE_SIGNED_TLS:
+                raise OperatorAuthError(401, "MOBILE_AUTH_PROFILE_INVALID")
+            if mobile_verifier is None:
+                raise OperatorAuthError(503, "MOBILE_AUTH_PROFILE_INVALID")
+            request.state.control_principal = await mobile_verifier.authenticate(
+                request, expected_action=action, mutation=mutation
+            )
         return dependency
 
     @app.exception_handler(OperatorAuthError)
     async def auth_error(request: Request, exc: OperatorAuthError) -> JSONResponse:
+        if active_config.auth_profile is ControlAuthProfile.MOBILE_DEVICE_SIGNED_TLS:
+            nonce = request.headers.get("x-traders-nonce", "")[:128]
+            SECURITY_AUDIT_LOG.warning(
+                "mobile_control_rejected device_id=%s key_version=%s action=%s "
+                "request_id=%s nonce_fingerprint=%s result=%s",
+                request.headers.get("x-traders-device-id", "")[:64],
+                request.headers.get("x-traders-key-version", "")[:16],
+                request.headers.get("x-traders-action", "")[:48],
+                request.headers.get("x-traders-request-id", "")[:128],
+                hashlib.sha256(nonce.encode("utf-8")).hexdigest()[:16] if nonce else "",
+                exc.code,
+            )
         return _error_response(request, exc.status_code, exc.code, "Operator authentication was denied.")
 
     @app.exception_handler(ControlDecisionError)
@@ -123,7 +170,13 @@ def create_paper_operator_control_app(
 
     @app.exception_handler(ControlApiError)
     async def control_error(request: Request, exc: ControlApiError) -> JSONResponse:
-        return _error_response(request, exc.status_code, exc.code, exc.safe_message)
+        code = (
+            "MOBILE_GENERATION_MISMATCH"
+            if active_config.auth_profile is ControlAuthProfile.MOBILE_DEVICE_SIGNED_TLS
+            and exc.code == "STALE_GENERATION"
+            else exc.code
+        )
+        return _error_response(request, exc.status_code, code, exc.safe_message)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:

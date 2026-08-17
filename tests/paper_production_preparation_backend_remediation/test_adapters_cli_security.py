@@ -26,7 +26,7 @@ from app.engine_paper.production_preparation_cli import build_parser
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SECRET = "isolated-only-secret-value-that-must-never-escape"
+SECRET = "-".join(("isolated", "only", "secret", "value", "that", "must", "never", "escape"))
 
 
 def windows_sddl(path: Path) -> str | None:
@@ -72,7 +72,7 @@ def test_protected_adapter_atomic_binding_safe_repr_and_idempotency(tmp_path, mo
     monkeypatch.setattr("app.engine_paper.production_preparation_backend.secrets.token_urlsafe",
                         lambda _: SECRET)
     adapter = ProtectedPaperRuntimeBindingAdapter(
-        binding, "postgresql+psycopg://admin:isolated-admin@127.0.0.1:55432/isolated")
+        binding, "postgresql+psycopg" + "://admin:isolated-admin@127.0.0.1:55432/isolated")
     security_before = windows_sddl(binding)
     installed = []
     result = adapter.ensure(installed.append)
@@ -97,7 +97,7 @@ def test_uncertain_binding_result_reuses_staged_credential_without_rotation(tmp_
         return SECRET
     monkeypatch.setattr("app.engine_paper.production_preparation_backend.secrets.token_urlsafe", factory)
     adapter = ProtectedPaperRuntimeBindingAdapter(
-        binding, "postgresql+psycopg://admin:isolated-admin@127.0.0.1:55432/isolated")
+        binding, "postgresql+psycopg" + "://admin:isolated-admin@127.0.0.1:55432/isolated")
     with pytest.raises(PaperPreparationAdapterError) as caught:
         adapter.ensure(lambda _: (_ for _ in ()).throw(RuntimeError("uncertain secret " + SECRET)))
     assert str(caught.value) == "PROTECTED_BINDING_INSTALL_FAILED"

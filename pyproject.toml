@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.13.0",
     "colorama==0.4.6; platform_system == 'Windows'",
+    "cryptography==49.0.0",
     "fastapi==0.116.1",
     "httpx>=0.27.0",
     "psycopg[binary]>=3.1.0",
@@ -24,6 +25,7 @@ dependencies = [
 traders-readonly-api = "app.server_api.runtime:main"
 traders-paper-production-prepare = "app.engine_paper.production_preparation_cli:main"
 traders-operator-control-api = "app.operator_control.runtime:main"
+traders-operator-control-mobile = "app.operator_control.runtime:mobile_main"
 traders-operator-control-deploy = "app.operator_control.deployment:main"
 
 [project.optional-dependencies]

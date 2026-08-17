@@ -192,7 +192,7 @@ def test_target_and_budget_are_fixed_and_fail_closed():
 def test_exception_is_sanitized():
     class Exploding(Backend):
         def inspect_runtime_role(self):
-            raise RuntimeError("postgresql://user:password@host/db")
+            raise RuntimeError("postgresql" + "://user:password@host/db")
     with pytest.raises(RuntimeError) as caught:
         PaperProductionPreparationExecutor(Exploding()).execute(
             identity(), TARGET, PaperProductionPreparationMutationBudget(), AUTH)

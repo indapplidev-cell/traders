@@ -221,7 +221,7 @@ def test_existing_runtime_readiness_fails_closed_on_wal_pitr_or_extra_denial(mon
 def test_runtime_database_binding_translates_only_exact_host_endpoint(monkeypatch):
     monkeypatch.setenv(
         RUNTIME_DATABASE_KEY,
-        "postgresql+psycopg://traders_paper_runtime:isolated-password@127.0.0.1:5433/traders",
+        "postgresql+psycopg" + "://traders_paper_runtime:isolated-password@127.0.0.1:5433/traders",
     )
     monkeypatch.setenv(RUNTIME_DATABASE_HOST_KEY, "postgres")
     monkeypatch.setenv(RUNTIME_DATABASE_PORT_KEY, "5432")

@@ -11,9 +11,11 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     JSON,
+    LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
     String,
@@ -949,3 +951,52 @@ class PaperJournalEntryRecord(Base):
         String(IDENTITY_LENGTH),
         ForeignKey("paper_exit_decisions.exit_decision_id", ondelete="RESTRICT"),
     )
+
+
+class ControlMobileDeviceRecord(Base):
+    """Public device identity only; Android private keys never reach the server."""
+
+    __tablename__ = "control_mobile_devices"
+    __table_args__ = (
+        CheckConstraint("algorithm = 'ECDSA_P256_SHA256'", name="ck_control_mobile_device_algorithm"),
+        CheckConstraint("key_version >= 1", name="ck_control_mobile_device_key_version"),
+        CheckConstraint("octet_length(public_key_spki) BETWEEN 80 AND 512", name="ck_control_mobile_device_spki"),
+        CheckConstraint("length(public_key_fingerprint) = 64", name="ck_control_mobile_device_fingerprint"),
+        CheckConstraint(
+            "(enabled AND revoked_at IS NULL) OR (NOT enabled AND revoked_at IS NOT NULL)",
+            name="ck_control_mobile_device_revocation",
+        ),
+    )
+
+    device_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    public_key_spki: Mapped[bytes] = mapped_column(LargeBinary(512), nullable=False)
+    public_key_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    algorithm: Mapped[str] = mapped_column(String(32), nullable=False)
+    key_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    label: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ControlMobileReplayNonceRecord(Base):
+    """Durable device-scoped claim made before a Control mutation."""
+
+    __tablename__ = "control_mobile_replay_nonces"
+    __table_args__ = (
+        PrimaryKeyConstraint("device_id", "nonce", name="pk_control_mobile_replay_nonce"),
+        ForeignKeyConstraint(
+            ["device_id"], ["control_mobile_devices.device_id"], ondelete="RESTRICT",
+            name="fk_control_mobile_replay_device",
+        ),
+        CheckConstraint("length(nonce) BETWEEN 22 AND 128", name="ck_control_mobile_replay_nonce"),
+        Index("ix_control_mobile_replay_expires_at", "expires_at"),
+    )
+
+    device_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    nonce: Mapped[str] = mapped_column(String(128), nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    request_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    action: Mapped[str | None] = mapped_column(String(48))
+    accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

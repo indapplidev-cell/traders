@@ -31,7 +31,14 @@ from app.trading_universe.activation import SqlAlchemyTradingUniverseStore
 
 from .app import create_paper_operator_control_app
 from .auth import PaperOperatorAuthenticator, ProtectedFileOperatorCredentialBinding
-from .config import DEFAULT_BIND_HOST, DEFAULT_PORT, PaperOperatorControlConfig
+from .config import (
+    DEFAULT_BIND_HOST,
+    DEFAULT_MOBILE_PORT,
+    DEFAULT_PORT,
+    ControlAuthProfile,
+    PaperOperatorControlConfig,
+)
+from .mobile_security import MobileRequestVerifier, SqlAlchemyMobileSecurityStore
 from .service import PaperFirstCanaryExecutor, PaperFirstCanaryStore, PaperOperatorArmReadiness
 from .production_executor import ExistingCanaryRuntimeReadiness, ProductionPaperFirstCanaryExecutor
 from .continuation_worker import (
@@ -50,6 +57,12 @@ READONLY_INTERNAL_URL_KEY = "TRADERS_READONLY_API_INTERNAL_URL"
 DEFAULT_READONLY_INTERNAL_URL = "http://readonly-api:8765"
 RUNTIME_DATABASE_HOST_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_HOST"
 RUNTIME_DATABASE_PORT_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_PORT"
+MOBILE_BIND_HOST_KEY = "TRADERS_CONTROL_MOBILE_BIND_HOST"
+MOBILE_PORT_KEY = "TRADERS_CONTROL_MOBILE_PORT"
+MOBILE_TLS_CERTIFICATE_KEY = "TRADERS_CONTROL_MOBILE_TLS_CERTIFICATE"
+MOBILE_TLS_PRIVATE_KEY_KEY = "TRADERS_CONTROL_MOBILE_TLS_PRIVATE_KEY"
+MOBILE_TLS_CHAIN_KEY = "TRADERS_CONTROL_MOBILE_TLS_CHAIN"
+MOBILE_TLS_SERVER_IDENTITY_KEY = "TRADERS_CONTROL_MOBILE_TLS_SERVER_IDENTITY"
 
 
 class ReadonlyPaperArmReadinessSource:
@@ -158,17 +171,23 @@ def create_runtime_app(
     canary_store: PaperFirstCanaryStore | None = None,
     executor: PaperFirstCanaryExecutor | None = None,
     require_production_store: bool = True,
+    config: PaperOperatorControlConfig | None = None,
+    mobile_verifier: MobileRequestVerifier | None = None,
 ) -> FastAPI:
     """Compose the authenticated PAPER mutation boundary without transitioning it."""
 
+    active_config = config or PaperOperatorControlConfig.production_paper()
     binding = credential_binding or ProtectedFileOperatorCredentialBinding(PROTECTED_TOKEN_PATH)
-    capability = binding.load_current()
+    capability = (
+        binding.load_current()
+        if active_config.auth_profile is ControlAuthProfile.OPERATOR_LOOPBACK_BEARER
+        else None
+    )
     engine = None
     sessions = None
     if canary_store is None and require_production_store:
         canary_store, engine = _production_canary_store()
         sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-    config = PaperOperatorControlConfig.production_paper()
     active_control = control or PaperProductionSafetyControl(
         resolve_production_control_root(),
         # Docker Desktop does not preserve Windows ACL metadata in its
@@ -208,7 +227,7 @@ def create_runtime_app(
 
     from .service import PaperOperatorControlService
     service = PaperOperatorControlService(
-        config=config,
+        config=active_config,
         control=active_control,
         readiness=readiness or ReadonlyPaperArmReadinessSource(
             os.environ.get(READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL)
@@ -235,8 +254,12 @@ def create_runtime_app(
                 engine.dispose()
 
     app = create_paper_operator_control_app(
-        config=config,
-        authenticator=PaperOperatorAuthenticator((capability,)),
+        config=active_config,
+        authenticator=PaperOperatorAuthenticator((capability,)) if capability is not None else None,
+        mobile_verifier=(
+            mobile_verifier
+            or (MobileRequestVerifier(SqlAlchemyMobileSecurityStore(sessions)) if sessions is not None else None)
+        ),
         service=service,
         lifespan=lifespan,
     )
@@ -247,6 +270,54 @@ def create_runtime_app(
     app.state.first_canary_continuation_worker = continuation_worker
     app.state.trading_universe_store = universe_store
     return app
+
+
+def mobile_runtime_config_from_environment() -> PaperOperatorControlConfig:
+    try:
+        host = os.environ[MOBILE_BIND_HOST_KEY]
+        certificate = Path(os.environ[MOBILE_TLS_CERTIFICATE_KEY])
+        private_key = Path(os.environ[MOBILE_TLS_PRIVATE_KEY_KEY])
+        identity = os.environ[MOBILE_TLS_SERVER_IDENTITY_KEY]
+        port = int(os.environ.get(MOBILE_PORT_KEY, str(DEFAULT_MOBILE_PORT)))
+        chain_value = os.environ.get(MOBILE_TLS_CHAIN_KEY)
+    except (KeyError, ValueError):
+        raise RuntimeError("MOBILE_TLS_REQUIRED") from None
+    if not certificate.is_file() or not private_key.is_file():
+        raise RuntimeError("MOBILE_TLS_REQUIRED")
+    chain = Path(chain_value) if chain_value else None
+    if chain is not None and not chain.is_file():
+        raise RuntimeError("MOBILE_TLS_REQUIRED")
+    return PaperOperatorControlConfig.mobile_device_signed_tls(
+        bind_host=host,
+        port=port,
+        tls_certificate_path=certificate,
+        tls_private_key_path=private_key,
+        tls_chain_path=chain,
+        tls_server_identity=identity,
+    )
+
+
+def create_mobile_runtime_app() -> FastAPI:
+    """Factory for the future, separately deployed TLS mobile instance."""
+    return create_runtime_app(config=mobile_runtime_config_from_environment())
+
+
+def mobile_main(argv: Sequence[str] | None = None) -> int:
+    _parser().parse_args(argv)
+    config = mobile_runtime_config_from_environment()
+    run_server(
+        "app.operator_control.runtime:create_mobile_runtime_app",
+        factory=True,
+        host=config.bind_host,
+        port=config.port,
+        ssl_certfile=str(config.tls_certificate_path),
+        ssl_keyfile=str(config.tls_private_key_path),
+        log_level="info",
+        access_log=False,
+        reload=False,
+        workers=1,
+    )
+    return 0
 
 
 def _parser() -> argparse.ArgumentParser:

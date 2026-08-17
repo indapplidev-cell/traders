@@ -24,7 +24,7 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanaryState,
 )
 
-from .config import CONTROL_API_VERSION, PaperOperatorControlConfig
+from .config import CONTROL_API_VERSION, ControlAuthProfile, PaperOperatorControlConfig
 from .schemas import (
     PaperCanaryNormalizedState,
     PaperOperatorArmFirstCanaryRequest,
@@ -255,7 +255,11 @@ class PaperOperatorControlService:
             control_api_version=CONTROL_API_VERSION,
             foundation_mode=self.config.operation_mode.value,
             service_enabled=self.config.enabled,
-            bind_scope="LOOPBACK_ONLY",
+            bind_scope=(
+                "LOOPBACK_ONLY"
+                if self.config.auth_profile is ControlAuthProfile.OPERATOR_LOOPBACK_BEARER
+                else "EXACT_PRIVATE_ADDRESS_TLS_ONLY"
+            ),
             environment="PRODUCTION",
             mode="PAPER",
             control_state=state.state.value,

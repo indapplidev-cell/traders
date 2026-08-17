@@ -4,6 +4,22 @@ Modular trading pipeline built around the `app/engine_*` packages. The active
 runtime uses public Binance market data and PostgreSQL; it does not require the
 removed experimental ML project.
 
+## Mobile Control security source foundation
+
+The deployed operator Control runtime remains unchanged: HTTP on exact
+`127.0.0.1:8766` with the existing protected bearer. Source now also defines a
+separate fail-closed `mobile_device_signed_tls` profile using registered P-256
+device public keys, versioned signatures, bounded freshness and durable
+device-scoped mutation nonces. Bearer fallback is impossible in that profile,
+and production startup requires certificate/key paths plus an exact private
+bind and persistent device/replay stores.
+
+Alembic 0016 contains the additive public-device registry and replay tables but
+has not been applied to production. No production TLS key/certificate, mobile
+Control listener, firewall rule, device enrollment or Control mutation is part
+of this source change. See
+[the mobile Control security contract](docs/architecture/control_mobile_device_security.md).
+
 ## Current architecture
 
 ```text
