@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import String, and_, cast, func, literal, or_, select, text, tuple_
+from sqlalchemy import String, and_, cast, func, literal, or_, select, text, tuple_, union_all
 from sqlalchemy.orm import Session, aliased
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
@@ -117,6 +117,29 @@ def _direction(value: Any) -> str:
     } else "UNKNOWN"
 
 
+def _eligible_analysis_predicates(result, run) -> tuple[Any, ...]:
+    """Canonical persisted-analysis eligibility shared by detail and batch reads."""
+    analysis = result.analysis_payload_json
+    analyzed = AnalysisSnapshotStatus.ANALYZED.value
+    return (
+        result.symbol == run.symbol,
+        result.primary_timeframe == run.primary_timeframe,
+        result.closed_until_ms == run.closed_until_ms,
+        analysis["status"].as_string() == analyzed,
+        analysis["snapshot_id"].as_string().is_not(None),
+        analysis["snapshot_id"].as_string() != "",
+        analysis["created_at_ms"].as_string().is_not(None),
+        analysis["market_data_health"].as_string().is_not(None),
+        analysis["market_data_health"].as_string() != "",
+        analysis["symbol"].as_string() == run.symbol,
+        analysis["timeframe"].as_string() == run.primary_timeframe,
+        analysis["closed_until_ms"].as_string() == cast(run.closed_until_ms, String),
+        analysis["future_bars_used"].as_boolean().is_(False),
+        analysis["degraded"].as_boolean().is_(False),
+        analysis["enough_data"].as_boolean().is_(True),
+    )
+
+
 class SqlAlchemyReadAdapter:
     """Implements API read protocols using existing candle/run/result tables."""
 
@@ -157,29 +180,12 @@ class SqlAlchemyReadAdapter:
         self, symbol: str
     ) -> tuple[OnlinePipelineRun | None, OnlinePipelineResultRow | None]:
         candidate = aliased(OnlinePipelineResultRow)
-        analysis = candidate.analysis_payload_json
         analyzed = AnalysisSnapshotStatus.ANALYZED.value
         eligible_result_id = (
             select(candidate.id)
             .where(
                 candidate.run_id == OnlinePipelineRun.run_id,
-                candidate.symbol == OnlinePipelineRun.symbol,
-                candidate.primary_timeframe == OnlinePipelineRun.primary_timeframe,
-                candidate.closed_until_ms == OnlinePipelineRun.closed_until_ms,
-                analysis["status"].as_string() == analyzed,
-                analysis["snapshot_id"].as_string().is_not(None),
-                analysis["snapshot_id"].as_string() != "",
-                analysis["created_at_ms"].as_string().is_not(None),
-                analysis["market_data_health"].as_string().is_not(None),
-                analysis["market_data_health"].as_string() != "",
-                analysis["symbol"].as_string() == OnlinePipelineRun.symbol,
-                analysis["timeframe"].as_string()
-                == OnlinePipelineRun.primary_timeframe,
-                analysis["closed_until_ms"].as_string()
-                == cast(OnlinePipelineRun.closed_until_ms, String),
-                analysis["future_bars_used"].as_boolean().is_(False),
-                analysis["degraded"].as_boolean().is_(False),
-                analysis["enough_data"].as_boolean().is_(True),
+                *_eligible_analysis_predicates(candidate, OnlinePipelineRun),
             )
             .correlate(OnlinePipelineRun)
             .limit(1)
@@ -383,42 +389,49 @@ class SqlAlchemyReadAdapter:
         bounded = tuple(dict.fromkeys(value.upper() for value in symbols))
         if not bounded or len(bounded) > 10:
             return ()
-        candidate = aliased(OnlinePipelineResultRow)
-        analysis = candidate.analysis_payload_json
         analyzed = AnalysisSnapshotStatus.ANALYZED.value
-        ranked = (
-            select(
-                OnlinePipelineRun.id.label("run_pk"), candidate.id.label("result_pk"),
-                func.row_number().over(
-                    partition_by=OnlinePipelineRun.symbol,
-                    order_by=(OnlinePipelineRun.closed_until_ms.desc(), candidate.created_at.desc(), candidate.id.desc()),
-                ).label("row_number"),
+        latest_keys = []
+        for symbol in bounded:
+            candidate = aliased(OnlinePipelineResultRow)
+            eligible_result_id = (
+                select(candidate.id)
+                .where(
+                    candidate.run_id == OnlinePipelineRun.run_id,
+                    *_eligible_analysis_predicates(candidate, OnlinePipelineRun),
+                )
+                .correlate(OnlinePipelineRun)
+                .limit(1)
+                .scalar_subquery()
             )
-            .join(candidate, candidate.run_id == OnlinePipelineRun.run_id)
-            .where(
-                OnlinePipelineRun.symbol.in_(bounded),
-                OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
-                OnlinePipelineRun.analysis_status == analyzed,
-                candidate.symbol == OnlinePipelineRun.symbol,
-                candidate.primary_timeframe == OnlinePipelineRun.primary_timeframe,
-                candidate.closed_until_ms == OnlinePipelineRun.closed_until_ms,
-                analysis["status"].as_string() == analyzed,
-                analysis["snapshot_id"].as_string().is_not(None), analysis["snapshot_id"].as_string() != "",
-                analysis["created_at_ms"].as_string().is_not(None),
-                analysis["market_data_health"].as_string().is_not(None), analysis["market_data_health"].as_string() != "",
-                analysis["symbol"].as_string() == OnlinePipelineRun.symbol,
-                analysis["timeframe"].as_string() == OnlinePipelineRun.primary_timeframe,
-                analysis["closed_until_ms"].as_string() == cast(OnlinePipelineRun.closed_until_ms, String),
-                analysis["future_bars_used"].as_boolean().is_(False),
-                analysis["degraded"].as_boolean().is_(False),
-                analysis["enough_data"].as_boolean().is_(True),
-            ).subquery()
-        )
+            latest_for_symbol = (
+                select(
+                    OnlinePipelineRun.id.label("run_pk"),
+                    eligible_result_id.label("result_pk"),
+                )
+                .where(
+                    OnlinePipelineRun.symbol == symbol,
+                    OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
+                    OnlinePipelineRun.analysis_status == analyzed,
+                    eligible_result_id.is_not(None),
+                )
+                # The schema uniquely identifies a run by symbol, timeframe,
+                # and boundary, and a result by run_id. Boundary order is
+                # therefore the same total latest-order used by the detail read.
+                .order_by(
+                    OnlinePipelineRun.closed_until_ms.desc(),
+                )
+                .limit(1)
+                .subquery()
+            )
+            latest_keys.append(
+                select(latest_for_symbol.c.run_pk, latest_for_symbol.c.result_pk)
+            )
+
+        latest = union_all(*latest_keys).subquery()
         statement = (
             select(OnlinePipelineRun, OnlinePipelineResultRow)
-            .join(ranked, ranked.c.run_pk == OnlinePipelineRun.id)
-            .join(OnlinePipelineResultRow, OnlinePipelineResultRow.id == ranked.c.result_pk)
-            .where(ranked.c.row_number == 1)
+            .join(latest, latest.c.run_pk == OnlinePipelineRun.id)
+            .join(OnlinePipelineResultRow, OnlinePipelineResultRow.id == latest.c.result_pk)
             .order_by(OnlinePipelineRun.symbol.asc()).limit(len(bounded))
         )
         with self._session() as session:

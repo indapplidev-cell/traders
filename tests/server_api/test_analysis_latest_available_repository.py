@@ -456,5 +456,41 @@ def test_aggregate_latest_analysis_is_one_query_latest_only_and_deterministic():
     assert [item.symbol for item in values] == ["BTCUSDT", "ETHUSDT"]
     assert values[0].analysis_id == "analysis:btc-new"
     assert len(statements) == 1
-    assert "row_number() over (partition by online_pipeline_runs.symbol" in statements[0]
-    assert " limit " in statements[0]
+    assert "row_number() over" not in statements[0]
+    assert " union all " in statements[0]
+    assert statements[0].count(" limit ") >= 3
+
+
+def test_aggregate_matches_single_symbol_latest_semantics_for_ten_symbol_bound():
+    _engine, sessions, adapter, _client = _database()
+    symbols = (
+        "BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT", "AVAXUSDT",
+        "BNBUSDT", "DOGEUSDT", "LINKUSDT", "SUIUSDT", "XRPUSDT",
+    )
+    for symbol in symbols[:-1]:
+        old = _run(f"{symbol}-old", OLD_BOUNDARY, symbol=symbol)
+        new = _run(f"{symbol}-new", NEW_BOUNDARY, symbol=symbol)
+        invalid = _run(
+            f"{symbol}-invalid", NEW_BOUNDARY + timedelta(minutes=15), symbol=symbol
+        )
+        _insert(sessions, old, _result(old))
+        _insert(sessions, new, _result(new))
+        _insert(
+            sessions,
+            invalid,
+            _result(
+                invalid,
+                payload=_analysis_payload(invalid, degraded=True),
+            ),
+        )
+
+    aggregate = adapter.list_latest_analyses(symbols)
+    singles = tuple(
+        value for symbol in symbols
+        if (value := adapter.get_analysis(symbol)) is not None
+    )
+
+    assert len(aggregate) == len(symbols) - 1
+    assert aggregate == tuple(sorted(singles, key=lambda item: item.symbol))
+    assert all(item.analysis_id.endswith("-new") for item in aggregate)
+    assert adapter.list_latest_analyses(symbols + ("EXTRAUSDT",)) == ()
