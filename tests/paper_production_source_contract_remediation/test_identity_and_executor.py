@@ -219,7 +219,11 @@ def test_readiness_reports_each_preparation_gap_and_never_false_positive():
 class ReportingRepository:
     def __init__(self, baseline):
         self.baseline = baseline
-    def schema_revision(self): return "0014_paper_canary_selection_policy"
+    def schema_revision(self): return "0015_trading_universe_activation"
+    def schema_revisions(self): return ("0015_trading_universe_activation",)
+    def paper_schema_contract(self):
+        from app.server_api.schema_compatibility import PaperSchemaContractResult
+        return PaperSchemaContractResult(True)
     def list_account_baselines(self, limit): return (self.baseline,)
     def list_closed_trade_facts(self, limit): return ()
 

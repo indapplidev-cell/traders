@@ -20,7 +20,9 @@ class PaperEnvelope(BaseModel, Generic[T]):
 class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
-    paper_schema_expected: Literal["0015_trading_universe_activation"] = "0015_trading_universe_activation"
+    paper_schema_expected: Literal[
+        "0015_trading_universe_activation..0016_control_mobile_device_security"
+    ] = "0015_trading_universe_activation..0016_control_mobile_device_security"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool

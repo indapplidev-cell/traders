@@ -47,9 +47,13 @@ from app.server_api.schemas.paper import (
     PaperJournalItem,
 )
 from app.engine_paper.trading_criteria import build_trading_criteria_snapshot
+from app.server_api.schema_compatibility import (
+    PAPER_SCHEMA_COMPATIBILITY_LABEL,
+    revision_is_supported,
+)
 
 
-PAPER_SCHEMA_EXPECTED = "0015_trading_universe_activation"
+PAPER_SCHEMA_EXPECTED = PAPER_SCHEMA_COMPATIBILITY_LABEL
 PAPER_REPORTING_API_VERSION = 1
 MAX_RECONCILIATION_CLOSED_TRADES = 10_000
 MAX_TRADE_DATE_RANGE = timedelta(days=365)
@@ -158,7 +162,23 @@ class PaperReadonlyReportingService:
             raise ApiError(422, "INVALID_FILTER", "A PAPER reporting filter is invalid.")
 
     def _schema_ready(self) -> bool:
-        return self._repo().schema_revision() == PAPER_SCHEMA_EXPECTED
+        try:
+            repository = self._repo()
+            revisions_source = getattr(repository, "schema_revisions", None)
+            revisions = (
+                tuple(revisions_source())
+                if callable(revisions_source)
+                else (repository.schema_revision(),)
+            )
+            contract_source = getattr(repository, "paper_schema_contract", None)
+            if not callable(contract_source):
+                return False
+            contract = contract_source()
+            return revision_is_supported(tuple(str(value) for value in revisions if value)) and bool(
+                getattr(contract, "compatible", False)
+            )
+        except Exception:
+            return False
 
     def _require_schema(self) -> None:
         if not self._schema_ready():

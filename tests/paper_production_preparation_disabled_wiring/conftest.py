@@ -13,6 +13,7 @@ from app.engine_paper.production_composition import (
     EXPECTED_SERVER_HEAD,
     EXPECTED_SERVER_TREE,
     EXPECTED_SCHEMA_BASE,
+    EXPECTED_SCHEMA_HEAD,
     REQUIRED_SOURCE_EVIDENCE_HASHES,
     PaperProductionComposition,
     PaperProductionPreparationRequest,
@@ -63,7 +64,7 @@ def current_request() -> PaperProductionPreparationRequest:
 def future_request(current_request):
     return replace(
         current_request,
-        schema_revision="0014_paper_canary_selection_policy",
+        schema_revision=EXPECTED_SCHEMA_HEAD,
         pitr_window_seconds=86_400,
         approval_boundary_readiness=PaperProductionApprovalReadiness.READY,
         eligible_approval_count=1,

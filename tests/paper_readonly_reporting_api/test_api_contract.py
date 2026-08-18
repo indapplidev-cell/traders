@@ -17,6 +17,7 @@ from app.server_api.repositories.records import (
 )
 from app.server_api.schemas.paper import PaperControlStatus
 from app.server_api.services import PaperRuntimeObservation
+from app.server_api.schema_compatibility import PaperSchemaContractResult
 from tests.paper_account_balance_trade_reporting.conftest import make_trade
 from tests.server_api.fakes import FakeReadRepository, NOW
 
@@ -40,12 +41,13 @@ def baseline():
 
 
 class FakePaperRepository:
-    def __init__(self, baseline: PaperAccountBaseline, *, revision="0015_trading_universe_activation", facts=()):
+    def __init__(self, baseline: PaperAccountBaseline, *, revision="0015_trading_universe_activation", facts=(), contract=True):
         self.revision = revision
         self.baselines = (baseline,)
         self.facts = tuple(facts)
         self.paper_calls = 0
         self.schema_calls = 0
+        self.contract = contract
         self.extra_positions = ()
         self.orders = ()
         self.fills = ()
@@ -54,6 +56,15 @@ class FakePaperRepository:
     def schema_revision(self):
         self.schema_calls += 1
         return self.revision
+
+    def schema_revisions(self):
+        self.schema_calls += 1
+        if isinstance(self.revision, tuple):
+            return self.revision
+        return () if self.revision is None else (self.revision,)
+
+    def paper_schema_contract(self):
+        return PaperSchemaContractResult(bool(self.contract))
 
     def list_account_baselines(self, limit=2):
         self.paper_calls += 1
@@ -148,6 +159,35 @@ def test_0008_readiness_and_zero_paper_relation_reads(baseline):
         assert response.status_code == 409
         assert response.json()["error"]["code"] == "PAPER_SCHEMA_NOT_DEPLOYED"
     assert repo.paper_calls == 0
+
+
+@pytest.mark.parametrize(
+    ("revision", "contract"),
+    (
+        ("0015_trading_universe_activation", True),
+        ("0016_control_mobile_device_security", True),
+        ("0016_control_mobile_device_security", False),
+        (("0015_trading_universe_activation", "0016_control_mobile_device_security"), True),
+        ("corrupt", True),
+    ),
+)
+def test_schema_revision_and_required_object_contract_fail_closed(
+    baseline, revision, contract
+):
+    paper = FakePaperRepository(baseline, revision=revision, contract=contract)
+    app = create_app(
+        repositories=replace(FakeReadRepository().api_repositories(), paper=paper),
+        clock=lambda: NOW,
+    )
+    data = TestClient(app).get("/api/v1/paper/readiness").json()["data"]
+    expected = revision in {
+        "0015_trading_universe_activation",
+        "0016_control_mobile_device_security",
+    } and contract
+    assert data["paper_schema_ready"] is expected
+    assert (data["status"] == "PAPER_SCHEMA_NOT_DEPLOYED") is (not expected)
+    if not expected:
+        assert paper.paper_calls == 0
 
 
 def test_0012_empty_missing_baseline_is_precise(baseline):

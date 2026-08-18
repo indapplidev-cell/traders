@@ -42,6 +42,8 @@ from app.engine_paper.production_preparation import (
     READONLY_ACCEPTED_GRANTS,
     READONLY_BASELINE_GRANTS,
     READONLY_GRANTS,
+    MOBILE_SECURITY_RUNTIME_GRANTS,
+    RUNTIME_ACCEPTED_GRANTS,
     RUNTIME_GRANTS,
     RUNTIME_ROLE_POLICY,
     DatabaseGrant,
@@ -697,7 +699,7 @@ class PostgresPaperProductionPreparationBackend:
             return "ABSENT"
         if tuple(row) != (True, False, False, False, False, False):
             return "BROADER_THAN_CONTRACT"
-        return "BROADER_THAN_CONTRACT" if self._extra_privileges(PRODUCTION_PAPER_RUNTIME_ROLE, RUNTIME_GRANTS) else "EXACT_OR_NARROWER"
+        return "BROADER_THAN_CONTRACT" if self._extra_privileges(PRODUCTION_PAPER_RUNTIME_ROLE, RUNTIME_ACCEPTED_GRANTS) else "EXACT_OR_NARROWER"
 
     def inspect_privilege_drift(self) -> bool:
         runtime = self.inspect_runtime_role()
@@ -747,7 +749,11 @@ class PostgresPaperProductionPreparationBackend:
         row = self._role_row(role)
         if row is None:
             raise PaperPreparationAdapterError("REQUIRED_DATABASE_ROLE_MISSING")
-        accepted = READONLY_ACCEPTED_GRANTS if role == PRODUCTION_READONLY_ROLE else grants
+        accepted = (
+            READONLY_ACCEPTED_GRANTS
+            if role == PRODUCTION_READONLY_ROLE
+            else RUNTIME_ACCEPTED_GRANTS
+        )
         if any(row[1:]) or self._extra_privileges(role, accepted):
             raise PaperPreparationAdapterError("EXISTING_ROLE_PRIVILEGE_DRIFT")
         changed = False
@@ -771,6 +777,11 @@ class PostgresPaperProductionPreparationBackend:
 
     def reconcile_runtime_grants(self) -> PaperPreparationOperationResult:
         return self._reconcile(PRODUCTION_PAPER_RUNTIME_ROLE, RUNTIME_GRANTS)
+
+    def reconcile_mobile_security_runtime_grants(self) -> PaperPreparationOperationResult:
+        return self._reconcile(
+            PRODUCTION_PAPER_RUNTIME_ROLE, MOBILE_SECURITY_RUNTIME_GRANTS
+        )
 
     def reconcile_readonly_grants(self) -> PaperPreparationOperationResult:
         return self._reconcile(PRODUCTION_READONLY_ROLE, READONLY_GRANTS)

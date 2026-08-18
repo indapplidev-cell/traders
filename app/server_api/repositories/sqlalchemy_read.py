@@ -765,8 +765,24 @@ class SqlAlchemyReadAdapter:
 
     def schema_revision(self) -> str | None:
         """Read only Alembic's singleton version; no PAPER relation is touched."""
+        revisions = self.schema_revisions()
+        return revisions[0] if len(revisions) == 1 else None
+
+    def schema_revisions(self) -> tuple[str, ...]:
+        """Read every Alembic head so missing/multiple/corrupt metadata fails closed."""
         with self._session() as session:
-            return session.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar_one_or_none()
+            return tuple(
+                str(value)
+                for value in session.execute(
+                    text("SELECT version_num FROM alembic_version ORDER BY version_num")
+                ).scalars()
+            )
+
+    def paper_schema_contract(self):
+        from app.server_api.schema_compatibility import inspect_required_paper_schema
+
+        with self._session() as session:
+            return inspect_required_paper_schema(session.connection())
 
     def list_account_baselines(self, limit: int = 2) -> tuple[PaperAccountBaseline, ...]:
         statement = select(PaperAccountBaselineRecord).order_by(

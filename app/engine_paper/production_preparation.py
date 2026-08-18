@@ -265,10 +265,20 @@ READONLY_BASELINE_TABLES: Final = (
     "candles_1d", "market_data_sync_state", "online_pipeline_results",
     "online_pipeline_runs",
 )
+# The existing Control process and the future TLS-only mobile profile share the
+# proven PAPER runtime binding. Ordinary signed-request authentication only
+# reads the registry and atomically inserts a replay claim. Enrollment,
+# rotation, revocation, and cleanup are separate operator/scheduled contracts
+# and are not pre-granted here.
+MOBILE_SECURITY_RUNTIME_GRANTS: Final = (
+    DatabaseGrant("control_mobile_devices", ("SELECT",)),
+    DatabaseGrant("control_mobile_replay_nonces", ("INSERT",)),
+)
 RUNTIME_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in RUNTIME_READ_TABLES) + tuple(
     DatabaseGrant(table, ("SELECT", "INSERT") + (("UPDATE",) if table in RUNTIME_UPDATE_TABLES else ()))
     for table in RUNTIME_WRITE_TABLES
 ) + (DatabaseGrant("trading_universe_runtime_state", ("UPDATE",)),)
+RUNTIME_ACCEPTED_GRANTS: Final = RUNTIME_GRANTS + MOBILE_SECURITY_RUNTIME_GRANTS
 READONLY_GRANTS: Final = tuple(DatabaseGrant(table, ("SELECT",)) for table in (
     READONLY_PAPER_TABLES + ("trading_universe_runtime_state",)
 ))
@@ -449,5 +459,6 @@ __all__ = [name for name in globals() if name.startswith("Paper") or name in {
     "EXPECTED_START_ALEMBIC", "SUPPORTED_PREPARATION_REVISIONS",
     "IDENTITY_KEYS", "PRODUCTION_PAPER_RUNTIME_ROLE", "PRODUCTION_READONLY_ROLE",
     "READONLY_ACCEPTED_GRANTS", "READONLY_BASELINE_GRANTS", "READONLY_BASELINE_TABLES",
-    "READONLY_GRANTS", "READONLY_PAPER_TABLES", "RUNTIME_GRANTS", "RUNTIME_ROLE_POLICY",
+    "READONLY_GRANTS", "READONLY_PAPER_TABLES", "MOBILE_SECURITY_RUNTIME_GRANTS",
+    "RUNTIME_ACCEPTED_GRANTS", "RUNTIME_GRANTS", "RUNTIME_ROLE_POLICY",
 }]
