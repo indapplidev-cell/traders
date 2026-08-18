@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 1dc4747b4b14b5d4cbd4b97e3772790fbe9f63be
+STATUS_AS_OF_COMMIT = 555837c440fb1bc89837645a5b78431ee7f5c549
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T15:26:53Z
-RECONCILED_BY_TASK = TRADERS_PARALLEL_5M_PROFILE_SCHEMA_CONTROLLED_DEPLOYMENT_01
-FILES_CHANGED = FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-18T16:33:28Z
+RECONCILED_BY_TASK = SEPARATE_READONLY_0017_RUNTIME_COMPATIBILITY_REMEDIATION
+FILES_CHANGED = app/server_api/repositories/protocols.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/runtime.py, app/server_api/schema_compatibility.py, app/server_api/services/paper_reporting.py, app/server_api/trading_funnel.py, tests/paper_readonly_reporting_api/test_api_contract.py, tests/paper_readonly_reporting_api/test_schema_compatibility.py, tests/server_api/test_dual_schema_capability.py, tests/server_api/test_runtime_entrypoint.py, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = BLOCKED_BEFORE_PRODUCTION_CURRENT_READONLY_IMAGE_EXPLICITLY_REJECTS_SCHEMA0017_ISOLATED_MIGRATION_REHEARSAL_PASS
+STATUS_CONFIDENCE = PASS_DUAL_SCHEMA_READONLY_IMAGE_ACCEPTED_ON_PRODUCTION0016_SAME_IMAGE_ISOLATED0016_AND0017
 
 # Состояние проекта traders-ml
 
@@ -22,12 +22,42 @@ STATUS_CONFIDENCE = BLOCKED_BEFORE_PRODUCTION_CURRENT_READONLY_IMAGE_EXPLICITLY_
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_HEALTHY_ON0016_27_GET_0_WRITE_23HTTP2XX_4EXPECTED404_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
+API_RUNTIME_STATUS = READONLY_DUAL_SCHEMA_IMAGE293063B2_HEALTHY_ON0016_27_GET_0_WRITE_23HTTP2XX_4EXPECTED404_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = SEPARATE_READONLY_0017_RUNTIME_COMPATIBILITY_REMEDIATION
-CURRENT_BLOCKER = CURRENT_READONLY_RUNTIME_NOT_COMPATIBLE_WITH_0017
-BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_DAEMON_RUNNING_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_629838_SECONDS_NO_PHYSICAL_GAP
+CURRENT_STAGE = TRADERS_PARALLEL_5M_PROFILE_SCHEMA_CONTROLLED_DEPLOYMENT_01
+CURRENT_BLOCKER = NONE_READONLY_BRIDGE_ACCEPTED_0017_PRODUCTION_MIGRATION_PENDING_SEPARATE_AUTHORIZATION
+BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_DAEMON_RUNNING_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_635239_SECONDS_NO_PHYSICAL_GAP
 ```
+
+## Readonly 0016/0017 runtime compatibility remediation
+
+```text
+TASK = SEPARATE_READONLY_0017_RUNTIME_COMPATIBILITY_REMEDIATION
+RESULT = PASS
+PROJECT_STATE_AUDIT_COMMIT = 555837c440fb1bc89837645a5b78431ee7f5c549
+SOURCE_COMMITS = b062dd44ab21410bf43c0e70bd0326af4f3a9691;0284ee97fab90d77608c880830c54db0c55e6da2
+CAPABILITY_MODEL = SINGLE_HEAD_PLUS_PHYSICAL_BASE_AND_PROFILE_SHAPE_FAIL_CLOSED
+SCHEMA0016 = BASE_CAPABILITIES_LEGACY15M_PROJECTION_NO_PROFILE_COLUMN_SQL_EXPLICIT5M_EMPTY
+SCHEMA0017 = BASE_PLUS_PARALLEL_PROFILE_CAPABILITY_SQL_PROFILE_FILTERING
+SAME_IMAGE_ISOLATED_ACCEPTANCE = SHA256_293063B23BE2F0E70F51CAFBDC068641C3CED6A1F40FF2C1964091AAB8717652_PASS0016_PASS0017
+NEGATIVE_SCHEMA_ACCEPTANCE = MISSING_BASE_COLUMN_PARTIAL0017_MISSING_PROFILE_INDEX_OLD_REVISION_ALL_FAIL_CLOSED
+MIGRATION_RECONFIRMATION = PASS_0016_TO0017_BACKFILL15M1_SYNTHETIC5M0_DECISION_HASH_UNCHANGED
+PRODUCTION_REPLACEMENT = EXACTLY1_READONLY_ONLY
+PRODUCTION_READONLY = HEALTHY_27GET_0WRITE_23HTTP200_4EXPECTED404_ZERO_UNEXPECTED
+PRODUCTION_SCHEMA = 0016_control_mobile_device_security_UNCHANGED
+PRODUCTION_PROFILE = OMITTED_AND_EXPLICIT15M_PASS_EXPLICIT5M_HONEST_EMPTY_INVALID422
+I18N = RU_EN_800_KEYS_EACH_PROFILE_KEYS_AND_PLACEHOLDERS_PARITY
+DESKTOP = SOURCE_UNCHANGED_FULL1449PASS2SKIP3029SUBTESTS_PRODUCTION_GET_ONLY_SMOKE_PASS
+INVARIANCE = NATURAL15M_BOUNDARY1787070600000_EXACT10_5M_INACTIVE_CONTROL_GEN6_CANARY0_0_LIVE_OFF_PRIVILEGES_UNCHANGED
+WAL_PITR_ACK = PASS_SAME_LINEAGE_BACKLOG0_PENDING0_UNRESOLVED0_NO_GAP_PID10488_HEALTHY
+NEXT_ACTION = TRADERS_PARALLEL_5M_PROFILE_SCHEMA_CONTROLLED_DEPLOYMENT_01
+```
+
+The capability bridge is not a revision allowlist. Startup validates the
+single Alembic head and the actual required base/profile columns, types, keys,
+index and constraint shape. The same image therefore stays valid across the
+later separate 0016-to-0017 migration, with zero Readonly replacements expected
+after that migration. Production remains on 0016 and 5m remains inactive.
 
 ## Parallel-profile schema controlled deployment gate
 
@@ -4574,10 +4604,10 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% deployed / 5m continuation fail-closed | Schema 0016 compatibility is accepted and the active 15m analytics path remains healthy; profile-aware continuation stays disabled until the separate controlled 0017 deployment |
+| Online analytics/paper pipeline | ≈98% deployed / 5m continuation fail-closed | Schema 0016 remains active, the dual-schema Readonly bridge is accepted, and the 15m path completed a natural postreplacement boundary; 0017 migration and 5m activation remain separate |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh recovery and post-commit reread show `wal_ready=true`, `pitr_ready=true`, zero active unresolved failure, zero export backlog and zero `.ready` statuses; all 39 recovered destination objects were 16 MiB and checksum-verified at publication, the same base anchor remains valid with at least 622780 contiguous seconds and no physical gap or reset |
-| Readonly Server API | Healthy and accepted on schema 0016 | Required-object compatibility is deployed; all 27 GET routes pass with 23 expected 2xx and four detail 404, zero write routes and zero unexpected 4xx/5xx. The historical three-over-one budget violation is preserved, while the already-running third runtime is separately accepted as a bounded deterministic remediation result |
+| Readonly Server API | Healthy dual-schema image accepted on production 0016 | Image `sha256:293063b2...` passed the same-artifact isolated 0016/0017 matrix and one production 0016 replacement; all 27 GET routes pass with 23 expected 2xx and four detail 404, zero write routes and zero unexpected 4xx/5xx |
 | Desktop Readonly client | Production Readonly RU/EN runtime acceptance PASS | The real `PRODUCTION_READONLY_HTTP` Tk consumer passed all nine pages in RU and EN; all ten Market rows propagated and humanized server `strategy_status`, the original `AttributeError` is retired, access-mode/raw-code/stale-loading leaks are zero, and full regression is 1447 passed plus 3029 subtests |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
@@ -4593,8 +4623,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = SEPARATE_READONLY_0017_RUNTIME_COMPATIBILITY_REMEDIATION
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_READONLY_SOURCE_TEST_AND_NARROW_RUNTIME_COMPATIBILITY_SCOPE_BEFORE_SCHEMA_RETRY
+RECOMMENDED_NEXT_TASK = TRADERS_PARALLEL_5M_PROFILE_SCHEMA_CONTROLLED_DEPLOYMENT_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_EXACT0016_TO0017_MIGRATION_ZERO_READONLY_REPLACEMENTS_AFTER_MIGRATION
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = COMPLETED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
