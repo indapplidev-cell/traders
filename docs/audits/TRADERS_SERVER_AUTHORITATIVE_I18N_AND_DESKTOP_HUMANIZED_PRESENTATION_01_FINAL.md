@@ -19,8 +19,8 @@ remained byte-for-byte at its original Git commit.
 
 | Repository | Branch | Before | Project-state commit |
 |---|---|---|---|
-| server | `feature/engine-platform` | `48ee2c2e874e528f28d4bde8581037e9faaa53bf` | `87ac12af0d900ed1d35baf09dd95294ed6fc1649` |
-| desktop | `main` | `e16e48fdb78e605d0c3c6232946537ee241a8708` | `e14ac27dc7f9b441c666a97bc7598f124e962311` |
+| server | `feature/engine-platform` | `48ee2c2e874e528f28d4bde8581037e9faaa53bf` | `87ac12af0d900ed1d35baf09dd95294ed6fc1649`, `5b7bd7c` |
+| desktop | `main` | `e16e48fdb78e605d0c3c6232946537ee241a8708` | `e14ac27dc7f9b441c666a97bc7598f124e962311`, `7737046` |
 | mobile | `main` | `013ff7327a3a2d2bfd9e1aa7b216bf6ccaa497db` | unchanged |
 
 All three roots were clean at the safety gate. No reset, clean, rebase,
@@ -28,13 +28,14 @@ worktree, repository copy or archive was used.
 
 ## Architecture and contract
 
-`app/i18n` owns 693 namespaced keys in each of RU and EN. Validation proves
+`app/i18n` owns 792 namespaced keys in each of RU and EN. Validation proves
 zero missing keys, exact placeholder parity, bounded schema content and a
 canonical public-content SHA-256. The proven catalog identity is
-`c4356256186a7062e9156ec40c912706dda1f06ec049c6fa7325d78fad8baad3` and
-version `i18n-c4356256186a7062`. Ninety-eight public enum values are enumerated
-from source registries and seven public funnel reasons are covered in both
-locales. Business APIs and objects keep raw machine values.
+`8792dfefd2e4e0fabd8251263c8d093282e372ba6d794d7b9a5df0cb7b101884` and
+version `i18n-8792dfefd2e4e0fa`. Ninety-eight public state enum values and all
+106 funnel reason values are covered in both locales. The reason gate derives
+102 values directly from the Setup, Strategy, Risk and Paper source enums and
+adds four projection-owned reasons. Business APIs and objects keep raw values.
 
 Exactly two source-only GET routes were added: manifest and locale catalog.
 The source contract moved from 25 GET / 0 write to 27 GET / 0 write. Static
