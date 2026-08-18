@@ -326,6 +326,7 @@ def test_per_device_revocation_and_key_rotation_do_not_touch_global_secret(tmp_p
 def test_ephemeral_https_instance_uses_normal_certificate_and_ip_validation(tmp_path: Path, identity):
     key, device = identity
     tls_key = ec.generate_private_key(ec.SECP256R1())
+    tls_now = datetime.now(timezone.utc)
     subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1")])
     certificate = (
         x509.CertificateBuilder()
@@ -333,8 +334,8 @@ def test_ephemeral_https_instance_uses_normal_certificate_and_ip_validation(tmp_
         .issuer_name(subject)
         .public_key(tls_key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(NOW - timedelta(minutes=1))
-        .not_valid_after(NOW + timedelta(days=1))
+        .not_valid_before(tls_now - timedelta(minutes=1))
+        .not_valid_after(tls_now + timedelta(days=1))
         .add_extension(
             x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address("127.0.0.1"))]),
             critical=False,
