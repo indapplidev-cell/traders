@@ -8,6 +8,11 @@ from pathlib import Path
 from app.engine_market_data.market_symbol import normalize_market_symbol
 from app.engine_market_data.timeframe import timeframe_to_milliseconds
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
+from app.engine_orchestrator.trade_profile import (
+    DEFAULT_TRADE_PROFILE_ID,
+    TradeSearchProfile,
+    resolve_trade_profile,
+)
 
 
 DEFAULT_MINIMUM_WINDOWS = {"1m": 240, "5m": 288, "15m": 480, "1h": 240, "4h": 180, "1d": 240}
@@ -16,6 +21,7 @@ DEFAULT_MINIMUM_WINDOWS = {"1m": 240, "5m": 288, "15m": 480, "1h": 240, "4h": 18
 @dataclass(frozen=True, slots=True)
 class OrchestratorConfig:
     symbols: tuple[str, ...] = PREPARED_NEXT_TRADING_UNIVERSE.symbols
+    trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID
     primary_timeframe: str = "15m"
     required_timeframes: tuple[str, ...] = ("1m", "5m", "15m", "1h", "4h", "1d")
     minimum_windows: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_MINIMUM_WINDOWS))
@@ -35,12 +41,13 @@ class OrchestratorConfig:
     waiting_batch_size: int = 100
 
     def __post_init__(self) -> None:
+        profile = resolve_trade_profile(self.trade_profile_id)
         symbols = tuple(dict.fromkeys(normalize_market_symbol(value) for value in self.symbols))
         timeframes = tuple(dict.fromkeys(self.required_timeframes))
         if not symbols:
             raise ValueError("at least one symbol is required")
-        if self.primary_timeframe != "15m":
-            raise ValueError("ENGINE-ORCHESTRATOR-01 triggers only on 15m windows")
+        if self.primary_timeframe != profile.trigger_timeframe:
+            raise ValueError("primary_timeframe must match trade-profile trigger_timeframe")
         if self.primary_timeframe not in timeframes:
             raise ValueError("primary_timeframe must be required")
         for timeframe in timeframes:
@@ -64,3 +71,7 @@ class OrchestratorConfig:
         object.__setattr__(self, "symbols", symbols)
         object.__setattr__(self, "required_timeframes", timeframes)
         object.__setattr__(self, "health_report_path", Path(self.health_report_path))
+
+    @property
+    def trade_profile(self) -> TradeSearchProfile:
+        return resolve_trade_profile(self.trade_profile_id)

@@ -17,6 +17,7 @@ from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.orchestrator_errors import SnapshotContractViolationError, SnapshotNotEnoughDataError
 from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters, json_safe
+from app.engine_orchestrator.trade_profile import TradeProfileMode
 from app.engine_paper.paper_runner import PaperRunner
 from app.engine_risk.risk_runner import RiskRunner
 from app.engine_setup.setup_detector import SetupDetector
@@ -40,6 +41,15 @@ def _attribute(value: object, *names: str) -> Any:
     for name in names:
         if hasattr(value, name):
             return getattr(value, name)
+    return None
+
+
+def _mapping_value(value: object, *names: str) -> Any:
+    if not isinstance(value, dict):
+        return None
+    for name in names:
+        if name in value:
+            return value[name]
     return None
 
 
@@ -181,12 +191,18 @@ class PipelineRunner:
         return FinalResult.NO_DECISION.value
 
     def run(self, symbol: str, closed_until_ms: int) -> PipelineResult:
+        identity = {
+            "trade_profile_id": self.config.trade_profile_id,
+            "trigger_timeframe": self.config.primary_timeframe,
+            "profile_mode": self.config.trade_profile.mode,
+        }
         try:
             snapshots = self.build_snapshots(symbol, closed_until_ms)
         except SnapshotContractViolationError as exc:
             return PipelineResult(
                 symbol=symbol.upper(), primary_timeframe=self.config.primary_timeframe,
                 closed_until_ms=closed_until_ms,
+                **identity,
                 status=PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value,
                 final_result=FinalResult.NO_ACTION.value,
                 final_reason=str(exc), error_code="SNAPSHOT_CONTRACT_VIOLATION",
@@ -195,6 +211,7 @@ class PipelineRunner:
             return PipelineResult(
                 symbol=symbol.upper(), primary_timeframe=self.config.primary_timeframe,
                 closed_until_ms=closed_until_ms,
+                **identity,
                 status=PipelineStatus.SKIPPED_NOT_ENOUGH_DATA.value,
                 final_result=FinalResult.NO_ACTION.value,
                 final_reason=str(exc), error_code="NOT_ENOUGH_DATA",
@@ -218,6 +235,7 @@ class PipelineRunner:
                     analysis_payload=json_safe(analysis), analysis_status=str(_attribute(analysis, "status")),
                     module_reasons={"analysis": _reasons(analysis)},
                     module_warnings={"analysis": _warnings(analysis)},
+                    **identity,
                 )
                 result.safety_counters = self._safety([analysis], snapshots)
                 return self._enforce_safety(result)
@@ -228,8 +246,40 @@ class PipelineRunner:
             outputs["strategy"] = strategy
             risk = self._invoke(self.risk_runner, "process_strategy_decision", strategy)
             outputs["risk"] = risk
-            paper = self._invoke(self.paper_runner, "process_risk_decision", risk)
-            outputs["paper"] = paper
+            if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
+                risk_status = str(_attribute(risk, "risk_status") or "")
+                outputs["paper"] = {
+                    "paper_status": "SHADOW_SEARCH",
+                    "trade_profile_id": self.config.trade_profile_id,
+                    "trigger_timeframe": self.config.primary_timeframe,
+                    "paper_command_creation_enabled": False,
+                    "position_opening_enabled": False,
+                    "causal_levels": {
+                        "entry": _attribute(setup, "hypothetical_entry_level", "entry_level"),
+                        "stop": _attribute(setup, "hypothetical_stop_level", "stop_level"),
+                        "target": _attribute(setup, "hypothetical_target_level", "target_level"),
+                        "stop_authority": "LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER",
+                        "target_authority": "OPPOSITE_CAUSAL_LEVEL",
+                    },
+                    "cost_efficiency_diagnostic": self._cost_efficiency_diagnostic(setup, risk),
+                    "validity_policy": {
+                        "source_close_ms": int(closed_until_ms),
+                        "valid_until_ms": int(closed_until_ms) + timeframe_to_milliseconds(self.config.primary_timeframe),
+                        "validity_boundaries": self.config.trade_profile.validity_boundaries,
+                    },
+                    "shadow_final_approval_candidate": {
+                        "candidate_id": (
+                            f"shadow:{self.config.trade_profile_id}:{symbol.upper()}:{int(closed_until_ms)}"
+                        ),
+                        "status": "CANDIDATE" if risk_status in {
+                            "RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"
+                        } else "NOT_ELIGIBLE",
+                        "execution_eligible": False,
+                        "persisted_final_approval_created": False,
+                    },
+                }
+            else:
+                outputs["paper"] = self._invoke(self.paper_runner, "process_risk_decision", risk)
         except Exception as exc:
             safety = self._safety(list(outputs.values()), snapshots)
             return self._enforce_safety(PipelineResult(
@@ -237,6 +287,7 @@ class PipelineRunner:
                 closed_until_ms=closed_until_ms, status=PipelineStatus.MODULE_ERROR.value,
                 final_result=FinalResult.ERROR.value, final_reason="safe pipeline module failed",
                 error_code="MODULE_ERROR", error_message=f"{type(exc).__name__}: {exc}",
+                **identity,
                 market_data_payload=self._market_summary(snapshots),
                 analysis_payload=json_safe(outputs.get("analysis", {})),
                 setup_payload=json_safe(outputs.get("setup", {})),
@@ -250,7 +301,7 @@ class PipelineRunner:
             "setup": str(_attribute(outputs["setup"], "status")),
             "strategy": str(_attribute(outputs["strategy"], "decision_status")),
             "risk": str(_attribute(outputs["risk"], "risk_status")),
-            "paper": str(_attribute(outputs["paper"], "paper_status")),
+            "paper": str(_attribute(outputs["paper"], "paper_status") or _mapping_value(outputs["paper"], "paper_status")),
         }
         module_error = any(value == "ERROR" for value in statuses.values())
         result = PipelineResult(
@@ -260,8 +311,10 @@ class PipelineRunner:
             final_result=FinalResult.ERROR.value if module_error else self._final_from(outputs),
             final_reason="module returned ERROR" if module_error else None,
             market_data_payload=self._market_summary(snapshots),
-            analysis_payload=json_safe(outputs["analysis"]), setup_payload=json_safe(outputs["setup"]),
-            strategy_payload=json_safe(outputs["strategy"]), risk_payload=json_safe(outputs["risk"]),
+            analysis_payload=self._profiled_payload(outputs["analysis"]),
+            setup_payload=self._profiled_payload(outputs["setup"]),
+            strategy_payload=self._profiled_payload(outputs["strategy"]),
+            risk_payload=self._profiled_payload(outputs["risk"]),
             paper_payload=json_safe(outputs["paper"]),
             analysis_status=statuses["analysis"], setup_status=statuses["setup"],
             strategy_status=statuses["strategy"], risk_status=statuses["risk"],
@@ -269,8 +322,47 @@ class PipelineRunner:
             module_reasons={name: _reasons(value) for name, value in outputs.items()},
             module_warnings={name: _warnings(value) for name, value in outputs.items()},
             safety_counters=self._safety(list(outputs.values()), snapshots),
+            **identity,
         )
         return self._enforce_safety(result)
+
+    def _profiled_payload(self, value: object) -> dict[str, Any]:
+        payload = json_safe(value)
+        if not isinstance(payload, dict):
+            payload = {"value": payload}
+        return {
+            **payload,
+            "trade_profile_id": self.config.trade_profile_id,
+            "trigger_timeframe": self.config.primary_timeframe,
+        }
+
+    def _cost_efficiency_diagnostic(self, *values: object) -> dict[str, object]:
+        payloads = [json_safe(value) for value in values]
+        entry = next((_mapping_value(payload, "hypothetical_entry_level", "entry_price", "entry")
+                      for payload in payloads if _mapping_value(payload, "hypothetical_entry_level", "entry_price", "entry") is not None), None)
+        target = next((_mapping_value(payload, "hypothetical_target_level", "target_price", "target")
+                       for payload in payloads if _mapping_value(payload, "hypothetical_target_level", "target_price", "target") is not None), None)
+        gross_move_bps = None
+        try:
+            if entry is not None and target is not None and float(entry) > 0:
+                gross_move_bps = abs(float(target) - float(entry)) / float(entry) * 10_000
+        except (TypeError, ValueError):
+            gross_move_bps = None
+        known_cost_floor_bps = 2 * (10.0 + 2.0) + self.config.trade_profile.cost_safety_margin_bps
+        return {
+            "expected_gross_move_bps": gross_move_bps,
+            "authoritative_spread_bps": None,
+            "spread_authority_available": False,
+            "fee_slippage_authority": "CURRENT_PAPER_FOUNDATION_POLICY",
+            "fee_bps_per_fill": 10.0,
+            "adverse_slippage_bps_per_fill": 2.0,
+            "safety_margin_bps": self.config.trade_profile.cost_safety_margin_bps,
+            "known_round_trip_cost_floor_bps": known_cost_floor_bps,
+            "gross_exceeds_known_cost_floor": (
+                None if gross_move_bps is None else gross_move_bps > known_cost_floor_bps
+            ),
+            "gate_enabled": False,
+        }
 
     @staticmethod
     def _enforce_safety(result: PipelineResult) -> PipelineResult:

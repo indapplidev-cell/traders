@@ -5,3 +5,10 @@ def test_cli_modes_and_lists_parse():
     args = build_parser().parse_args(["--symbols", "BTCUSDT,ETHUSDT", "--once", "--dry-run"])
     assert args.symbols == ("BTCUSDT", "ETHUSDT")
     assert args.once and args.dry_run
+    assert args.trade_profile == "trade-15m-v1"
+
+
+def test_cli_accepts_independent_5m_shadow_profile():
+    args = build_parser().parse_args(["--trade-profile", "trade-5m-v1", "--once"])
+    assert args.trade_profile == "trade-5m-v1"
+    assert args.primary_timeframe is None

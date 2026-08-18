@@ -234,6 +234,31 @@ def test_get_route_healthy_empty_and_write_methods_absent():
     assert client.post("/api/v1/trading/funnel").status_code == 405
 
 
+def test_get_route_explicit_profiles_are_isolated_and_invalid_is_4xx():
+    class Profiles:
+        def project(self, now_ms, trade_profile_id="trade-15m-v1"):
+            universe = SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS)
+            return build_projection((), universe, now_ms, {}, trade_profile_id)
+
+    repositories = replace(FakeReadRepository().api_repositories(), funnel=Profiles())
+    client = TestClient(create_app(
+        repositories=repositories,
+        clock=lambda: datetime.fromtimestamp(NOW_MS / 1000, tz=timezone.utc),
+    ))
+    fifteen = client.get("/api/v1/trading/funnel?trade_profile=trade-15m-v1")
+    five = client.get("/api/v1/trading/funnel?trade_profile=trade-5m-v1")
+    invalid = client.get("/api/v1/trading/funnel?trade_profile=unknown")
+    assert fifteen.status_code == five.status_code == 200
+    assert fifteen.json()["data"]["trade_profile_id"] == "trade-15m-v1"
+    assert fifteen.json()["data"]["expected_1h_cycle_count"] == 4
+    assert five.json()["data"]["trade_profile_id"] == "trade-5m-v1"
+    assert five.json()["data"]["profile_mode"] == "SHADOW_SEARCH"
+    assert five.json()["data"]["expected_1h_cycle_count"] == 12
+    assert five.json()["data"]["expected_4h_cycle_count"] == 48
+    assert five.json()["data"]["paper_command_creation_enabled"] is False
+    assert invalid.status_code == 422
+
+
 def test_get_route_db_error_is_not_empty_success():
     class Broken:
         def project(self, now_ms):

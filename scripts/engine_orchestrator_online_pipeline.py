@@ -21,6 +21,12 @@ from app.engine_orchestrator.orchestrator_config import DEFAULT_MINIMUM_WINDOWS,
 from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
+from app.engine_orchestrator.trade_profile import (
+    DEFAULT_TRADE_PROFILE_ID,
+    TRADE_5M_CONTEXT_MINIMUM_WINDOWS,
+    TRADE_PROFILES,
+    resolve_trade_profile,
+)
 
 
 def csv_values(value: str) -> tuple[str, ...]:
@@ -33,8 +39,9 @@ def csv_values(value: str) -> tuple[str, ...]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Online closed-candle safe pipeline orchestrator")
     parser.add_argument("--symbols", type=csv_values, default=csv_values("BTCUSDT,ETHUSDT,SOLUSDT"))
-    parser.add_argument("--primary-timeframe", default="15m")
-    parser.add_argument("--required-timeframes", type=csv_values, default=csv_values("1m,5m,15m,1h,4h,1d"))
+    parser.add_argument("--trade-profile", choices=tuple(TRADE_PROFILES), default=DEFAULT_TRADE_PROFILE_ID)
+    parser.add_argument("--primary-timeframe")
+    parser.add_argument("--required-timeframes", type=csv_values)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--continuous", action="store_true")
     mode.add_argument("--once", action="store_true")
@@ -68,13 +75,29 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    profile = resolve_trade_profile(args.trade_profile)
+    primary_timeframe = args.primary_timeframe or profile.trigger_timeframe
+    required_timeframes = args.required_timeframes or (
+        tuple(TRADE_5M_CONTEXT_MINIMUM_WINDOWS)
+        if profile.trade_profile_id == "trade-5m-v1"
+        else csv_values("1m,5m,15m,1h,4h,1d")
+    )
+    minimum_windows = (
+        dict(TRADE_5M_CONTEXT_MINIMUM_WINDOWS)
+        if profile.trade_profile_id == "trade-5m-v1"
+        else {timeframe: DEFAULT_MINIMUM_WINDOWS[timeframe] for timeframe in required_timeframes}
+    )
+    health_report = args.health_report
+    if profile.trade_profile_id == "trade-5m-v1" and health_report == Path("reports/engine_orchestrator/latest_health.json"):
+        health_report = Path("reports/engine_orchestrator/latest_health_trade_5m.json")
     config = OrchestratorConfig(
-        symbols=args.symbols, primary_timeframe=args.primary_timeframe,
-        required_timeframes=args.required_timeframes,
-        minimum_windows={timeframe: DEFAULT_MINIMUM_WINDOWS[timeframe] for timeframe in args.required_timeframes},
+        symbols=args.symbols, trade_profile_id=profile.trade_profile_id,
+        primary_timeframe=primary_timeframe,
+        required_timeframes=required_timeframes,
+        minimum_windows=minimum_windows,
         poll_interval_seconds=args.poll_interval_seconds,
         health_report_interval_seconds=args.health_report_interval_seconds,
-        health_report_path=args.health_report, max_catchup_windows=args.max_catchup_windows,
+        health_report_path=health_report, max_catchup_windows=args.max_catchup_windows,
         process_latest_only=args.process_latest_only,
         require_all_timeframes_ok=args.require_all_timeframes_ok,
         allow_stale_higher_timeframes=args.allow_stale_higher_timeframes,
@@ -88,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
     store = PipelineResultStore(sessions)
     detector = ClosedWindowDetector(
         candle_repository, store, primary_timeframe=config.primary_timeframe,
+        trade_profile_id=config.trade_profile_id,
         max_catchup_windows=config.max_catchup_windows,
         process_latest_only=config.process_latest_only,
     )
@@ -106,6 +130,8 @@ def main(argv: list[str] | None = None) -> int:
         "daemon_instance_id": daemon.daemon_instance_id,
         "effective_config": {
             "symbols": list(config.symbols),
+            "trade_profile_id": config.trade_profile_id,
+            "profile_mode": config.trade_profile.mode,
             "primary_timeframe": config.primary_timeframe,
             "required_timeframes": list(config.required_timeframes),
             "freshness_retry_interval_seconds": config.freshness_retry_interval_seconds,

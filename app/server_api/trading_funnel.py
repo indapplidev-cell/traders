@@ -21,10 +21,15 @@ from app.engine_paper.production_approval import (
     PaperProductionApprovalSourceAdapter,
 )
 from app.trading_universe.domain import TradingUniverseVersion
+from app.engine_orchestrator.trade_profile import (
+    DEFAULT_TRADE_PROFILE_ID,
+    TradeProfileMode,
+    resolve_trade_profile,
+)
 
 
 PROJECTION_VERSION: Final = "trading-funnel-v1"
-PRIMARY_TIMEFRAME: Final = "15m"
+PRIMARY_TIMEFRAME: Final = "15m"  # legacy exports retained for callers/tests
 BOUNDARY_MS: Final = 15 * 60 * 1000
 MAX_HORIZON_MS: Final = 4 * 60 * 60 * 1000 + BOUNDARY_MS
 TERMINAL_RUN_STATUSES: Final = frozenset({
@@ -161,35 +166,45 @@ class TradingFunnelReadRepository:
         self._session_factory = session_factory
         self._universe_source = universe_source
 
-    def project(self, now_ms: int) -> dict[str, Any]:
+    def project(self, now_ms: int, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
+        profile = resolve_trade_profile(trade_profile_id)
+        boundary_ms = 5 * 60 * 1000 if profile.trigger_timeframe == "5m" else BOUNDARY_MS
+        max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
         universe = self._universe_source()
-        start_ms = now_ms - MAX_HORIZON_MS
+        start_ms = now_ms - max_horizon_ms
         statement = (
             select(OnlinePipelineRun, OnlinePipelineResultRow)
             .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
             .where(
-                OnlinePipelineRun.primary_timeframe == PRIMARY_TIMEFRAME,
+                OnlinePipelineRun.trade_profile_id == profile.trade_profile_id,
+                OnlinePipelineRun.primary_timeframe == profile.trigger_timeframe,
                 OnlinePipelineRun.symbol.in_(universe.symbols),
                 OnlinePipelineRun.closed_until_ms >= start_ms,
                 OnlinePipelineRun.closed_until_ms <= now_ms,
             )
             .order_by(OnlinePipelineRun.closed_until_ms.desc(), OnlinePipelineRun.symbol.asc())
-            .limit(len(universe.symbols) * 18)
+            .limit(len(universe.symbols) * (50 if profile.trigger_timeframe == "5m" else 18))
         )
         with self._session_factory() as session:
             rows = tuple(session.execute(statement))
-        eligibility = PaperProductionApprovalSourceAdapter(self._session_factory).read(
-            PaperProductionApprovalRequest(
-                PaperProductionApprovalScope(symbols=universe.symbols, start_ms=start_ms),
-                request_id="readonly-funnel", as_of_ms=now_ms,
+        eligible_by_run: dict[str, object] = {}
+        if profile.mode != TradeProfileMode.SHADOW_SEARCH.value:
+            eligibility = PaperProductionApprovalSourceAdapter(self._session_factory).read(
+                PaperProductionApprovalRequest(
+                    PaperProductionApprovalScope(symbols=universe.symbols, start_ms=start_ms),
+                    request_id="readonly-funnel", as_of_ms=now_ms,
+                )
             )
-        )
-        eligible_by_run = {item.source_run_id: item.candidate for item in eligibility.symbol_results if item.candidate is not None}
-        return build_projection(rows, universe, now_ms, eligible_by_run)
+            eligible_by_run = {item.source_run_id: item.candidate for item in eligibility.symbol_results if item.candidate is not None}
+        return build_projection(rows, universe, now_ms, eligible_by_run, profile.trade_profile_id)
 
 
 def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None], ...], universe: TradingUniverseVersion,
-                     now_ms: int, eligible_by_run: Mapping[str, object] | None = None) -> dict[str, Any]:
+                     now_ms: int, eligible_by_run: Mapping[str, object] | None = None,
+                     trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
+    profile = resolve_trade_profile(trade_profile_id)
+    boundary_ms = 5 * 60 * 1000 if profile.trigger_timeframe == "5m" else BOUNDARY_MS
+    max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
     eligible_by_run = eligible_by_run or {}
     by_boundary: dict[int, list[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None]]] = {}
     for pair in rows:
@@ -260,7 +275,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         seen = {row.symbol for row, _ in pairs}
         processed = {row.symbol for row, _ in pairs if row.status in TERMINAL_RUN_STATUSES}
         return {
-            "boundary_close_ms": boundary, "boundary_start_ms": boundary - BOUNDARY_MS,
+            "boundary_close_ms": boundary, "boundary_start_ms": boundary - boundary_ms,
             "symbols_expected": len(universe.symbols), "symbols_seen": len(seen),
             "symbols_processed": len(processed), "cycle_complete": processed == set(universe.symbols),
             "stage_counts": {stage: counts[stage] for stage in STAGES},
@@ -294,13 +309,58 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
     current = cycle(current_boundary)
     latest = current["latest_pipeline_update_ms"] if current else None
     age = None if latest is None else max(0, now_ms - latest)
+    metric_stages = {
+        "analysis_count": "ANALYSIS",
+        "setup_count": "STRUCTURAL_SETUP",
+        "strategy_approval_count": "STRATEGY_ELIGIBLE",
+        "risk_approval_count": "RISK_APPROVED",
+        "paper_plan_count": "PAPER_TRADE_PLAN",
+        "quantity_approval_count": "QUANTITY_APPROVED",
+        "validity_approval_count": "VALIDITY_APPROVED",
+        "final_approval_count": "FINAL_APPROVAL",
+    }
+    metrics = Counter()
+    for row, result in (pair for pairs in by_boundary.values() for pair in pairs):
+        trace, _ = _stage_trace(row, result, now_ms)
+        for metric, stage in metric_stages.items():
+            metrics[metric] += int(trace[stage] == "PASS")
+        if result is not None:
+            shadow_candidate = _mapping(
+                _mapping(result.paper_payload_json).get("shadow_final_approval_candidate")
+            )
+            metrics["shadow_final_approval_candidate_count"] += int(
+                shadow_candidate.get("status") == "CANDIDATE"
+            )
+    freshness_state = "NOT_AVAILABLE" if age is None else "CURRENT" if age <= boundary_ms * 2 else "STALE"
     return {
-        "projection_version": PROJECTION_VERSION, "decision_timeframe": PRIMARY_TIMEFRAME,
+        "projection_version": PROJECTION_VERSION,
+        "trade_profile_id": profile.trade_profile_id,
+        "trigger_timeframe": profile.trigger_timeframe,
+        "profile_mode": profile.mode,
+        "decision_timeframe": profile.trigger_timeframe,
         "universe_id": universe.version_id, "selection_policy_version": MULTI_SYMBOL_SELECTION_POLICY_VERSION,
         "count_unit": {stage: "SYMBOL" for stage in STAGES},
         "current_cycle": current, "last_completed_cycle": cycle(last_completed_boundary),
         "rolling_1h": rolling(60 * 60 * 1000), "rolling_4h": rolling(4 * 60 * 60 * 1000),
         "projection_generated_at_ms": now_ms, "latest_pipeline_update_ms": latest,
-        "age_ms": age, "freshness_state": "NOT_AVAILABLE" if age is None else "CURRENT" if age <= BOUNDARY_MS * 2 else "STALE",
-        "query_time_horizon_ms": MAX_HORIZON_MS,
+        "age_ms": age, "freshness_state": freshness_state,
+        "query_time_horizon_ms": max_horizon_ms,
+        "expected_1h_cycle_count": 12 if profile.trigger_timeframe == "5m" else 4,
+        "expected_4h_cycle_count": 48 if profile.trigger_timeframe == "5m" else 16,
+        "paper_command_creation_enabled": profile.paper_command_creation_enabled,
+        "position_opening_enabled": profile.position_opening_enabled,
+        "profile_metrics": {
+            "trade_profile_id": profile.trade_profile_id,
+            "trigger_timeframe": profile.trigger_timeframe,
+            **{name: metrics[name] for name in metric_stages},
+            "shadow_final_approval_candidate_count": metrics["shadow_final_approval_candidate_count"],
+        },
+        "profile_health": {
+            "trade_profile_id": profile.trade_profile_id,
+            "trigger_timeframe": profile.trigger_timeframe,
+            "mode": profile.mode,
+            "last_completed_boundary_ms": complete_boundaries[0] if complete_boundaries else None,
+            "last_batch_size": current["symbols_processed"] if current else 0,
+            "health": freshness_state,
+        },
     }

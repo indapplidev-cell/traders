@@ -154,14 +154,19 @@ class ApiQueryService:
         )
         return TradingUniverseEnvelope(generated_at=self._generated_at(), data=data)
 
-    def trading_funnel(self) -> TradingFunnelEnvelope:
+    def trading_funnel(self, trade_profile_id: str = "trade-15m-v1") -> TradingFunnelEnvelope:
         repository = self._repos().funnel
         if repository is None:
             raise ApiError(503, "SERVICE_NOT_CONFIGURED", "Trading funnel projection is not configured.")
         generated = self._clock()
+        projected = (
+            repository.project(int(generated.timestamp() * 1000))
+            if trade_profile_id == "trade-15m-v1"
+            else repository.project(int(generated.timestamp() * 1000), trade_profile_id)
+        )
         return TradingFunnelEnvelope(
             generated_at=utc_text(generated),
-            data=repository.project(int(generated.timestamp() * 1000)),
+            data=projected,
         )
 
     def market(self, symbol: str) -> MarketDetailEnvelope:

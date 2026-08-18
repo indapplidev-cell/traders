@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Any
 
 from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineStatus
+from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID, resolve_trade_profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +59,9 @@ class PipelineResult:
     symbol: str
     primary_timeframe: str
     closed_until_ms: int
+    trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID
+    trigger_timeframe: str | None = None
+    profile_mode: str | None = None
     status: str = PipelineStatus.COMPLETED.value
     final_result: str = FinalResult.NO_DECISION.value
     final_reason: str | None = None
@@ -81,3 +85,10 @@ class PipelineResult:
     def __post_init__(self) -> None:
         PipelineStatus(self.status)
         FinalResult(self.final_result)
+        profile = resolve_trade_profile(self.trade_profile_id)
+        if self.trigger_timeframe is None:
+            self.trigger_timeframe = self.primary_timeframe
+        if self.trigger_timeframe != profile.trigger_timeframe or self.primary_timeframe != profile.trigger_timeframe:
+            raise ValueError("pipeline result trade-profile identity mismatch")
+        if self.profile_mode is None:
+            self.profile_mode = profile.mode

@@ -20,6 +20,7 @@ from app.engine_orchestrator.orchestrator_state import OrchestratorState
 from app.engine_orchestrator.orchestrator_status import FinalResult, OrchestratorHealthStatus, PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult
 from app.engine_orchestrator.pipeline_result_store import ClaimedWindow, aware_utc, utc_from_ms
+from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID
 
 
 LOGGER = logging.getLogger(__name__)
@@ -66,7 +67,12 @@ class OrchestratorDaemon:
         latest = getattr(self.result_store, "get_latest", None)
         if callable(latest):
             for symbol in self.config.symbols:
-                row = latest(symbol, self.config.primary_timeframe)
+                row = (
+                    latest(symbol, self.config.primary_timeframe)
+                    if self.config.trade_profile_id == DEFAULT_TRADE_PROFILE_ID
+                    else latest(symbol, self.config.primary_timeframe,
+                                trade_profile_id=self.config.trade_profile_id)
+                )
                 if row is not None:
                     self.state.last_processed[symbol] = {
                         "symbol": symbol, "closed_until_ms": row.closed_until_ms,
@@ -77,14 +83,22 @@ class OrchestratorDaemon:
                     }
         totals = getattr(self.result_store, "safety_totals", None)
         if callable(totals):
-            self.state.safety_totals.update(totals())
+            values = (
+                totals()
+                if self.config.trade_profile_id == DEFAULT_TRADE_PROFILE_ID
+                else totals(trade_profile_id=self.config.trade_profile_id)
+            )
+            self.state.safety_totals.update(values)
         self._refresh_waiting_metrics()
 
     def _refresh_waiting_metrics(self) -> None:
         metrics = getattr(self.result_store, "waiting_metrics", None)
         if not callable(metrics):
             return
-        values = metrics(now=self._now())
+        kwargs = {"now": self._now()}
+        if self.config.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
+            kwargs["trade_profile_id"] = self.config.trade_profile_id
+        values = metrics(**kwargs)
         for name, value in values.items():
             if isinstance(value, datetime):
                 value = self._iso(value)
@@ -210,10 +224,14 @@ class OrchestratorDaemon:
     def run_cycle(self, *, dry_run: bool = False) -> list[dict[str, Any]]:
         observations: list[dict[str, Any]] = []
         if not dry_run:
-            due = self.result_store.claim_due_waiting(
-                daemon_instance_id=self.daemon_instance_id,
-                limit=self.config.waiting_batch_size, now=self._now(),
-            )
+            due_kwargs = {
+                "daemon_instance_id": self.daemon_instance_id,
+                "limit": self.config.waiting_batch_size,
+                "now": self._now(),
+            }
+            if self.config.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
+                due_kwargs["trade_profile_id"] = self.config.trade_profile_id
+            due = self.result_store.claim_due_waiting(**due_kwargs)
             for claim in due:
                 if self._stop.is_set():
                     break
@@ -240,11 +258,16 @@ class OrchestratorDaemon:
                     continue
                 deadline = utc_from_ms(window.closed_until_ms) + timedelta(
                     seconds=self.config.freshness_grace_seconds)
+                reserve_kwargs = {
+                    "daemon_instance_id": self.daemon_instance_id,
+                    "trigger_source": self.config.trigger_source,
+                    "freshness_deadline_at": deadline,
+                }
+                if self.config.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
+                    reserve_kwargs["trade_profile_id"] = self.config.trade_profile_id
                 run_id = self.result_store.reserve(
                     symbol, window.timeframe, window.closed_until_ms,
-                    daemon_instance_id=self.daemon_instance_id,
-                    trigger_source=self.config.trigger_source,
-                    freshness_deadline_at=deadline,
+                    **reserve_kwargs,
                 )
                 if run_id is None:
                     self.state.duplicate_windows += 1

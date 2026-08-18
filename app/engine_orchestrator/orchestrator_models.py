@@ -33,13 +33,15 @@ class ClosedWindow:
 class OnlinePipelineRun(Base):
     __tablename__ = "online_pipeline_runs"
     __table_args__ = (
-        UniqueConstraint("symbol", "primary_timeframe", "closed_until_ms", name="uq_online_pipeline_window"),
+        UniqueConstraint("trade_profile_id", "symbol", "primary_timeframe", "closed_until_ms", name="uq_online_pipeline_profile_window"),
         CheckConstraint("status IN ('PENDING','RESERVED','CHECKING_FRESHNESS','WAITING_FOR_REQUIRED_BOUNDARY','READY_TO_RUN','RUNNING','COMPLETED','SKIPPED_DUPLICATE_WINDOW','SKIPPED_FRESHNESS_NOT_OK','SKIPPED_FRESHNESS_TIMEOUT','SKIPPED_NOT_ENOUGH_DATA','MODULE_ERROR','ERROR')", name="ck_online_pipeline_run_status"),
         Index("ix_online_pipeline_runs_status_next_retry", "status", "next_retry_at"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    trade_profile_id: Mapped[str] = mapped_column(String(32), default="trade-15m-v1", server_default="trade-15m-v1", nullable=False)
+    profile_mode: Mapped[str] = mapped_column(String(32), default="PRODUCTION_SEARCH", server_default="PRODUCTION_SEARCH", nullable=False)
     symbol: Mapped[str] = mapped_column(String(50), nullable=False)
     primary_timeframe: Mapped[str] = mapped_column(String(8), nullable=False)
     closed_until_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -87,6 +89,8 @@ class OnlinePipelineResultRow(Base):
 
     id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(String(80), ForeignKey("online_pipeline_runs.run_id", ondelete="CASCADE"), unique=True, nullable=False)
+    trade_profile_id: Mapped[str] = mapped_column(String(32), default="trade-15m-v1", server_default="trade-15m-v1", nullable=False)
+    profile_mode: Mapped[str] = mapped_column(String(32), default="PRODUCTION_SEARCH", server_default="PRODUCTION_SEARCH", nullable=False)
     symbol: Mapped[str] = mapped_column(String(50), nullable=False)
     primary_timeframe: Mapped[str] = mapped_column(String(8), nullable=False)
     closed_until_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)

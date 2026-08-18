@@ -70,8 +70,12 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
         return service.trading_universe()
 
     @router.get("/trading/funnel", response_model=TradingFunnelEnvelope, operation_id="getTradingFunnel", responses={500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}})
-    def get_trading_funnel() -> TradingFunnelEnvelope:
-        return service.trading_funnel()
+    def get_trading_funnel(
+        trade_profile: Annotated[
+            Literal["trade-15m-v1", "trade-5m-v1"], Query()
+        ] = "trade-15m-v1",
+    ) -> TradingFunnelEnvelope:
+        return service.trading_funnel(trade_profile)
 
     @router.get("/markets/{symbol}", response_model=MarketDetailEnvelope, operation_id="getMarket", responses=error_responses)
     def get_market(symbol: SymbolPath) -> MarketDetailEnvelope:

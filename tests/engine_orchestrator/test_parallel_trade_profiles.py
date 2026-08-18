@@ -1,0 +1,142 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
+
+from app.engine_orchestrator.closed_window_detector import ClosedWindowDetector
+from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
+from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
+from app.engine_orchestrator.parallel_profiles import ParallelTradeProfileCoordinator
+from app.engine_orchestrator.pipeline_result import PipelineResult
+from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
+from app.engine_orchestrator.pipeline_runner import PipelineRunner
+from app.engine_orchestrator.trade_profile import (
+    DEFAULT_TRADE_PROFILE_ID,
+    TRADE_15M_PROFILE,
+    TRADE_5M_PROFILE,
+)
+from tests.engine_orchestrator_01_helpers import BOUNDARY, CandleRepo, component, outputs
+
+
+def five_minute_config() -> OrchestratorConfig:
+    return OrchestratorConfig(
+        symbols=("BTCUSDT",), trade_profile_id="trade-5m-v1", primary_timeframe="5m",
+        required_timeframes=("5m", "15m", "1h", "4h"),
+        minimum_windows={"5m": 1, "15m": 1, "1h": 1, "4h": 1},
+    )
+
+
+def test_profiles_are_explicit_and_15m_default_is_unchanged():
+    config = OrchestratorConfig()
+    assert config.trade_profile_id == DEFAULT_TRADE_PROFILE_ID
+    assert config.primary_timeframe == "15m"
+    assert TRADE_15M_PROFILE.minimum_planned_rr == TRADE_5M_PROFILE.minimum_planned_rr == 1.5
+    assert TRADE_5M_PROFILE.analysis_history_candles != TRADE_15M_PROFILE.analysis_history_candles
+    assert TRADE_5M_PROFILE.atr_lookback_candles != TRADE_15M_PROFILE.atr_lookback_candles
+    assert TRADE_5M_PROFILE.paper_command_creation_enabled is False
+    assert TRADE_5M_PROFILE.position_opening_enabled is False
+
+
+def test_closed_5m_detector_uses_profile_in_dedupe_identity():
+    seen = []
+
+    class Store:
+        def has_window(self, symbol, timeframe, boundary, *, trade_profile_id):
+            seen.append((trade_profile_id, symbol, timeframe, boundary))
+            return False
+
+    detector = ClosedWindowDetector(
+        CandleRepo(), Store(), primary_timeframe="5m", trade_profile_id="trade-5m-v1"
+    )
+    windows = detector.get_unprocessed_closed_windows("BTCUSDT")
+    assert len(windows) == 1
+    assert seen[0][:3] == ("trade-5m-v1", "BTCUSDT", "5m")
+
+
+def test_5m_shadow_runner_never_invokes_paper_and_is_closed_only():
+    analysis, setup, strategy, risk, _paper = outputs(
+        setup_status="SETUP_CANDIDATE",
+        strategy_status="ALLOW_RESEARCH_TRADE_PLAN",
+        risk_status="RISK_PRE_APPROVED_RESEARCH",
+    )
+
+    class ForbiddenPaper:
+        def process_risk_decision(self, _value):
+            raise AssertionError("5m shadow must not invoke PAPER")
+
+    repository = CandleRepo()
+    runner = PipelineRunner(
+        five_minute_config(), repository,
+        analysis_runner=component(analysis), setup_runner=component(setup),
+        strategy_runner=component(strategy), risk_runner=component(risk),
+        paper_runner=ForbiddenPaper(),
+    )
+    result = runner.run("BTCUSDT", BOUNDARY)
+    assert result.trade_profile_id == "trade-5m-v1"
+    assert result.trigger_timeframe == "5m"
+    assert result.profile_mode == "SHADOW_SEARCH"
+    assert result.paper_status == "SHADOW_SEARCH"
+    assert result.paper_payload["paper_command_creation_enabled"] is False
+    assert result.paper_payload["position_opening_enabled"] is False
+    assert result.paper_payload["cost_efficiency_diagnostic"]["authoritative_spread_bps"] is None
+    assert all(call[2]["end_time_ms"] < BOUNDARY for call in repository.calls)
+
+
+def test_profile_cursor_and_shadow_materialization_are_isolated():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    OnlinePipelineRun.__table__.create(engine)
+    OnlinePipelineResultRow.__table__.create(engine)
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    now = datetime(2026, 8, 18, 12, 0, tzinfo=timezone.utc)
+    store = PipelineResultStore(sessions, clock=lambda: now)
+    fifteen_id = store.reserve(
+        "BTCUSDT", "15m", BOUNDARY, daemon_instance_id="15m", trigger_source="test"
+    )
+    five_id = store.reserve(
+        "BTCUSDT", "5m", BOUNDARY, daemon_instance_id="5m", trigger_source="test",
+        trade_profile_id="trade-5m-v1",
+    )
+    assert fifteen_id and five_id and fifteen_id != five_id
+    assert store.has_window("BTCUSDT", "15m", BOUNDARY)
+    assert store.has_window("BTCUSDT", "5m", BOUNDARY, trade_profile_id="trade-5m-v1")
+    claim = store.get_claim(five_id)
+    assert claim.trade_profile_id == "trade-5m-v1"
+    assert store.mark_running(claim, daemon_instance_id="5m", checked_at=now, payload={})
+    result = PipelineResult(
+        "BTCUSDT", "5m", BOUNDARY, trade_profile_id="trade-5m-v1",
+        paper_status="SHADOW_SEARCH", paper_payload={"paper_command_creation_enabled": False},
+    )
+    assert store.finish(five_id, result, freshness_status="READY")
+    with sessions() as session:
+        five = session.scalar(select(OnlinePipelineRun).where(OnlinePipelineRun.run_id == five_id))
+        fifteen = session.scalar(select(OnlinePipelineRun).where(OnlinePipelineRun.run_id == fifteen_id))
+        assert five.status == "COMPLETED"
+        assert fifteen.status == "CHECKING_FRESHNESS"
+        assert five.is_executable is False and five.order_approved is False
+
+
+def test_deterministic_5m_fault_is_contained_and_15m_completes():
+    calls = []
+
+    class Daemon:
+        def __init__(self, name, fails=False):
+            self.name, self.fails = name, fails
+
+        def run_cycle(self):
+            calls.append(self.name)
+            if self.fails:
+                raise RuntimeError("injected-5m-failure")
+            return [SimpleNamespace(symbol="BTCUSDT")]
+
+    result = ParallelTradeProfileCoordinator({
+        "trade-15m-v1": Daemon("15m"),
+        "trade-5m-v1": Daemon("5m", fails=True),
+    }).run_cycle()
+    assert set(calls) == {"15m", "5m"}
+    assert result["trade-15m-v1"].healthy is True
+    assert result["trade-15m-v1"].batch_size == 1
+    assert result["trade-5m-v1"].healthy is False
+    assert "injected-5m-failure" in result["trade-5m-v1"].error_code

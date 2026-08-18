@@ -772,6 +772,14 @@ RU.update({
     "funnel.winner": "Победитель", "funnel.no_winner": "нет",
     "funnel.symbol": "Символ", "funnel.stage": "Этап", "funnel.status": "Статус",
     "funnel.reason": "Причина", "funnel.eligible": "Допущен", "funnel.rank": "Ранг", "funnel.updated": "Обновлено",
+    "trading.profile.trade_15m.title": "Сделка 15м",
+    "trading.profile.trade_5m.title": "Сделка 5м",
+    "trading.profile.selector.label": "Профиль поиска",
+    "trading.profile.mode.SHADOW_SEARCH": "Теневой поиск",
+    "trading.profile.mode.PRODUCTION_SEARCH": "Рабочий поиск",
+    "trading.profile.trade_5m.empty": "Теневой поиск 5м ещё не дал данных",
+    "trading.profile.trade_5m.paper_disabled": "Теневой поиск — исполнение PAPER отключено",
+    "trading.profile.conflict.CROSS_TIMEFRAME_CONFLICT": "Конфликт направлений между профилями",
 })
 EN.update({
     "navigation.trading_funnel": "Trading Funnel",
@@ -784,6 +792,14 @@ EN.update({
     "funnel.winner": "Winner", "funnel.no_winner": "none",
     "funnel.symbol": "Symbol", "funnel.stage": "Stage", "funnel.status": "Status",
     "funnel.reason": "Reason", "funnel.eligible": "Eligible", "funnel.rank": "Rank", "funnel.updated": "Updated",
+    "trading.profile.trade_15m.title": "15m Trade",
+    "trading.profile.trade_5m.title": "5m Trade",
+    "trading.profile.selector.label": "Search profile",
+    "trading.profile.mode.SHADOW_SEARCH": "Shadow search",
+    "trading.profile.mode.PRODUCTION_SEARCH": "Production search",
+    "trading.profile.trade_5m.empty": "5m shadow search has no data yet",
+    "trading.profile.trade_5m.paper_disabled": "Shadow search — PAPER execution disabled",
+    "trading.profile.conflict.CROSS_TIMEFRAME_CONFLICT": "Cross-profile direction conflict",
 })
 _FUNNEL_STAGES_EN = {
     "ANALYSIS": "Analysis", "STRUCTURAL_SETUP": "Structural Setup", "STRATEGY_ELIGIBLE": "Strategy eligible",

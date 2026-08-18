@@ -82,3 +82,19 @@ def test_i18n_adds_exactly_two_get_routes_and_no_write_or_db_dependency():
 def test_generated_desktop_bootstrap_matches_server_catalog():
     path = Path(__file__).resolve().parents[3] / "traders-client" / "src" / "traders_client" / "i18n" / "generated_bootstrap.json"
     assert json.loads(path.read_text(encoding="utf-8")) == build_snapshot()
+
+
+def test_trade_profile_keys_are_server_owned_and_ru_en_complete():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    assert ru["trading.profile.trade_15m.title"] == "Сделка 15м"
+    assert en["trading.profile.trade_15m.title"] == "15m Trade"
+    assert ru["trading.profile.trade_5m.title"] == "Сделка 5м"
+    assert en["trading.profile.trade_5m.title"] == "5m Trade"
+    for key in (
+        "trading.profile.mode.SHADOW_SEARCH",
+        "trading.profile.trade_5m.empty",
+        "trading.profile.trade_5m.paper_disabled",
+        "trading.profile.conflict.CROSS_TIMEFRAME_CONFLICT",
+    ):
+        assert key in ru and key in en

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_orchestrator.orchestrator_status import PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult, json_safe
+from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID, TradeProfileMode, resolve_trade_profile
 from app.engine_paper.final_approval_materializer import (
     DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER,
     NaturalFinalApprovalMaterializer,
@@ -61,6 +62,7 @@ class ClaimedWindow:
     freshness_deadline_at: datetime
     freshness_attempt_count: int
     was_waiting: bool
+    trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID
 
 
 class PipelineResultStore:
@@ -96,6 +98,7 @@ class PipelineResultStore:
     def _claim_value(cls, row: OnlinePipelineRun, *, was_waiting: bool) -> ClaimedWindow:
         return ClaimedWindow(
             run_id=row.run_id,
+            trade_profile_id=row.trade_profile_id,
             symbol=row.symbol,
             primary_timeframe=row.primary_timeframe,
             closed_until_ms=int(row.closed_until_ms),
@@ -104,8 +107,10 @@ class PipelineResultStore:
             was_waiting=was_waiting,
         )
 
-    def has_window(self, symbol: str, timeframe: str, closed_until_ms: int) -> bool:
+    def has_window(self, symbol: str, timeframe: str, closed_until_ms: int, *,
+                   trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> bool:
         query = select(OnlinePipelineRun.id).where(
+            OnlinePipelineRun.trade_profile_id == resolve_trade_profile(trade_profile_id).trade_profile_id,
             OnlinePipelineRun.symbol == symbol.upper(),
             OnlinePipelineRun.primary_timeframe == timeframe,
             OnlinePipelineRun.closed_until_ms == int(closed_until_ms),
@@ -115,13 +120,18 @@ class PipelineResultStore:
 
     def reserve(self, symbol: str, timeframe: str, closed_until_ms: int, *,
                 daemon_instance_id: str, trigger_source: str,
+                trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID,
                 freshness_deadline_at: datetime | None = None) -> str | None:
         """Register and claim a new logical window exactly once."""
         run_id = f"orchestrator:{uuid4().hex}"
         now = self._now()
         deadline = aware_utc(freshness_deadline_at) if freshness_deadline_at else utc_from_ms(closed_until_ms)
+        profile = resolve_trade_profile(trade_profile_id)
+        if timeframe != profile.trigger_timeframe:
+            raise ValueError("reserved window timeframe/profile mismatch")
         row = OnlinePipelineRun(
             run_id=run_id, symbol=symbol.upper(), primary_timeframe=timeframe,
+            trade_profile_id=profile.trade_profile_id, profile_mode=profile.mode,
             closed_until_ms=int(closed_until_ms), closed_until_utc=utc_from_ms(closed_until_ms),
             status=PipelineStatus.CHECKING_FRESHNESS.value, started_at=now,
             trigger_source=trigger_source, daemon_instance_id=daemon_instance_id,
@@ -144,6 +154,7 @@ class PipelineResultStore:
             return self._claim_value(row, was_waiting=bool(row.first_wait_at))
 
     def claim_due_waiting(self, *, daemon_instance_id: str, limit: int,
+                          trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID,
                           now: datetime | None = None) -> list[ClaimedWindow]:
         """Atomically claim due waiting or stale active rows using compare-and-set."""
         if limit <= 0:
@@ -165,7 +176,10 @@ class PipelineResultStore:
                 ),
             ),
         )
-        query = select(OnlinePipelineRun).where(due).order_by(
+        profile_id = resolve_trade_profile(trade_profile_id).trade_profile_id
+        query = select(OnlinePipelineRun).where(
+            OnlinePipelineRun.trade_profile_id == profile_id, due
+        ).order_by(
             OnlinePipelineRun.next_retry_at.asc().nulls_last(),
             OnlinePipelineRun.closed_until_ms.asc(),
         ).limit(limit * 2)
@@ -324,10 +338,18 @@ class PipelineResultStore:
             run.execution_approved = counters.execution_approved_count > 0
             run.position_opened = counters.position_opened_count > 0
             run.position_size_approved = counters.position_size_approved_count > 0
-            materialized = self.final_approval_materializer.materialize(
-                session, run_id=run_id, result=result, evaluation_time=now
-            )
-            if materialized.final_approval_created:
+            if run.trade_profile_id == DEFAULT_TRADE_PROFILE_ID:
+                materialized = self.final_approval_materializer.materialize(
+                    session, run_id=run_id, result=result, evaluation_time=now
+                )
+                persisted_paper_payload = materialized.paper_payload
+                final_approval_created = materialized.final_approval_created
+            else:
+                if run.profile_mode != TradeProfileMode.SHADOW_SEARCH.value:
+                    raise ValueError("non-default profile must remain SHADOW_SEARCH")
+                persisted_paper_payload = json_safe(result.paper_payload)
+                final_approval_created = False
+            if final_approval_created:
                 run.is_trade_signal = True
                 run.is_executable = True
                 run.order_approved = True
@@ -335,13 +357,14 @@ class PipelineResultStore:
                 run.position_size_approved = True
             session.add(OnlinePipelineResultRow(
                 run_id=run_id, symbol=result.symbol, primary_timeframe=result.primary_timeframe,
+                trade_profile_id=result.trade_profile_id, profile_mode=result.profile_mode,
                 closed_until_ms=result.closed_until_ms,
                 market_data_payload_json=json_safe(result.market_data_payload),
                 analysis_payload_json=json_safe(result.analysis_payload),
                 setup_payload_json=json_safe(result.setup_payload),
                 strategy_payload_json=json_safe(result.strategy_payload),
                 risk_payload_json=json_safe(result.risk_payload),
-                paper_payload_json=json_safe(materialized.paper_payload),
+                paper_payload_json=json_safe(persisted_paper_payload),
                 module_reasons_json=json_safe(result.module_reasons),
                 module_warnings_json=json_safe(result.module_warnings),
                 safety_counters_json=json_safe(result.safety_counters),
@@ -353,28 +376,38 @@ class PipelineResultStore:
                 session.rollback()
                 return False
 
-    def get_latest(self, symbol: str, timeframe: str) -> OnlinePipelineRun | None:
+    def get_latest(self, symbol: str, timeframe: str, *,
+                   trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> OnlinePipelineRun | None:
         query = select(OnlinePipelineRun).where(
+            OnlinePipelineRun.trade_profile_id == resolve_trade_profile(trade_profile_id).trade_profile_id,
             OnlinePipelineRun.symbol == symbol.upper(),
             OnlinePipelineRun.primary_timeframe == timeframe,
         ).order_by(OnlinePipelineRun.closed_until_ms.desc()).limit(1)
         with self._session() as session:
             return session.scalar(query)
 
-    def count(self, symbol: str | None = None) -> int:
-        query = select(OnlinePipelineRun)
+    def count(self, symbol: str | None = None, *,
+              trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> int:
+        query = select(OnlinePipelineRun).where(
+            OnlinePipelineRun.trade_profile_id == resolve_trade_profile(trade_profile_id).trade_profile_id
+        )
         if symbol is not None:
             query = query.where(OnlinePipelineRun.symbol == symbol.upper())
         with self._session() as session:
             return len(list(session.scalars(query)))
 
-    def waiting_metrics(self, *, now: datetime | None = None) -> dict[str, Any]:
+    def waiting_metrics(self, *, now: datetime | None = None,
+                        trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
         observed_at = aware_utc(now) if now else self._now()
+        profile_id = resolve_trade_profile(trade_profile_id).trade_profile_id
         with self._session() as session:
             waiting = list(session.scalars(select(OnlinePipelineRun).where(
+                OnlinePipelineRun.trade_profile_id == profile_id,
                 OnlinePipelineRun.status == PipelineStatus.WAITING_FOR_REQUIRED_BOUNDARY.value
             )))
-            all_rows = list(session.scalars(select(OnlinePipelineRun)))
+            all_rows = list(session.scalars(select(OnlinePipelineRun).where(
+                OnlinePipelineRun.trade_profile_id == profile_id
+            )))
         by_timeframe: dict[str, int] = {}
         by_symbol: dict[str, int] = {}
         for row in waiting:
@@ -406,10 +439,12 @@ class PipelineResultStore:
             "last_freshness_timeout_at": max((persisted_utc(row.finished_at) for row in timeouts if row.finished_at), default=None),
         }
 
-    def safety_totals(self) -> dict[str, int]:
+    def safety_totals(self, *, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, int]:
         totals: dict[str, int] = {}
         with self._session() as session:
-            payloads = list(session.scalars(select(OnlinePipelineResultRow.safety_counters_json)))
+            payloads = list(session.scalars(select(OnlinePipelineResultRow.safety_counters_json).where(
+                OnlinePipelineResultRow.trade_profile_id == resolve_trade_profile(trade_profile_id).trade_profile_id
+            )))
         for payload in payloads:
             for name, value in dict(payload or {}).items():
                 totals[name] = totals.get(name, 0) + int(value or 0)

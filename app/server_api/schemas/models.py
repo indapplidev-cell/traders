@@ -345,7 +345,10 @@ class FunnelRollingSummary(ContractModel):
 
 class TradingFunnelSnapshot(ContractModel):
     projection_version: Literal["trading-funnel-v1"]
-    decision_timeframe: Literal["15m"]
+    trade_profile_id: Literal["trade-15m-v1", "trade-5m-v1"] = "trade-15m-v1"
+    trigger_timeframe: Literal["15m", "5m"] = "15m"
+    profile_mode: Literal["PRODUCTION_SEARCH", "SHADOW_SEARCH"] = "PRODUCTION_SEARCH"
+    decision_timeframe: Literal["15m", "5m"]
     universe_id: str
     selection_policy_version: Literal["eligible-approval-ranking-v1"]
     count_unit: dict[str, Literal["SYMBOL"]]
@@ -358,6 +361,12 @@ class TradingFunnelSnapshot(ContractModel):
     age_ms: int | None = Field(default=None, ge=0)
     freshness_state: Literal["CURRENT", "STALE", "NOT_AVAILABLE"]
     query_time_horizon_ms: int = Field(gt=0)
+    expected_1h_cycle_count: Literal[4, 12] = 4
+    expected_4h_cycle_count: Literal[16, 48] = 16
+    paper_command_creation_enabled: bool = True
+    position_opening_enabled: bool = True
+    profile_metrics: dict[str, Any] = Field(default_factory=dict)
+    profile_health: dict[str, Any] = Field(default_factory=dict)
 
 
 class TradingFunnelEnvelope(BaseModel):
