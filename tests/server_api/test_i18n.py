@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.i18n import CATALOG_VERSION, CONTENT_HASH, catalog_payload, manifest_payload, validate_catalogs
 from app.i18n.catalog import EN, RU
-from app.i18n.public_codes import PUBLIC_ENUM_NAMESPACES, PUBLIC_LITERAL_CODES, PUBLIC_REASON_CODES
+from app.i18n.public_codes import PUBLIC_ENUM_NAMESPACES, PUBLIC_LITERAL_CODES, PUBLIC_REASON_CODES, PUBLIC_REASON_ENUMS
 from app.server_api import create_app
 from scripts.generate_desktop_i18n_bootstrap import build_snapshot
 from pathlib import Path
@@ -34,6 +34,9 @@ def test_public_enum_and_reason_coverage_is_complete():
     for reason in PUBLIC_REASON_CODES:
         assert f"funnel.reason.{reason}" in RU
         assert f"funnel.reason.{reason}" in EN
+    assert PUBLIC_REASON_CODES.issuperset(
+        member.value for enum_type in PUBLIC_REASON_ENUMS for member in enum_type
+    )
     for namespace, codes in PUBLIC_LITERAL_CODES.items():
         for code in codes:
             assert f"{namespace}.{code}" in RU

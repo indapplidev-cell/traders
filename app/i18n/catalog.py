@@ -942,6 +942,119 @@ EN.update({
     "paper.field.mutation_readiness": "Next operator ARM transition readiness",
 })
 
+# Funnel reasons come from the authoritative pipeline enum registries.  The
+# phrase rules are server-owned translation data, ordered from semantic phrases
+# to individual words; explicit operator wording above remains authoritative
+# for the critical PAPER rejection cases.
+from app.engine_paper.paper_reason_codes import PaperReasonCode as _PipelinePaperReasonCode
+from app.engine_risk.risk_reason_codes import RiskReasonCode as _RiskReasonCode
+from app.engine_setup.setup_reason_codes import SetupReasonCode as _SetupReasonCode
+from app.engine_strategy.strategy_reason_codes import StrategyReasonCode as _StrategyReasonCode
+
+_PUBLIC_REASON_CODES = frozenset(
+    member.value
+    for enum_type in (_SetupReasonCode, _StrategyReasonCode, _RiskReasonCode, _PipelinePaperReasonCode)
+    for member in enum_type
+) | frozenset({
+    "PAPER_INPUT_IDENTITY_INVALID", "APPROVAL_EXPIRED",
+    "FINAL_APPROVAL_CREATED", "NOT_ELIGIBLE",
+})
+
+_RU_REASON_PHRASES = (
+    ("ANALYSIS_CONFIRMS", "Анализ подтверждает"),
+    ("ANALYSIS_SUPPORTS", "Анализ поддерживает"),
+    ("REQUIRES_CONFIRMATION", "требует подтверждения"),
+    ("AWAITING_STRUCTURAL_CONFIRMATION", "Ожидается структурное подтверждение"),
+    ("WAITING_FOR", "Ожидается"),
+    ("BREAKOUT_CONTINUATION", "продолжение после пробоя"),
+    ("PULLBACK_CONTINUATION", "продолжение после отката"),
+    ("RANGE_REJECTION_EVIDENCE", "Есть признаки отбоя от диапазона"),
+    ("FALSE_BREAKOUT_EVIDENCE", "Есть признаки ложного пробоя"),
+    ("MOMENTUM_EXHAUSTION_EVIDENCE", "Есть признаки истощения импульса"),
+    ("BREAKOUT_RETEST_EVIDENCE", "Есть подтверждение ретеста пробоя"),
+    ("NO_SETUP_PATTERN", "Подходящий сценарий не найден"),
+    ("NO_STRUCTURAL_SETUP", "Структурный сценарий не найден"),
+    ("NO_LEVEL_INTERACTION", "Нет взаимодействия с ключевым уровнем"),
+    ("NO_CONFIRMATION_REQUIREMENT", "Подтверждение не требуется"),
+    ("CHOP_WITHOUT_SETUP", "Неструктурный рынок без сценария"),
+    ("ANALYSIS_NO_ACTION_WITHOUT_SETUP_CONTEXT", "Анализ не даёт действия без контекста сценария"),
+    ("WEAK_CONTEXT_FILTERED_TO_NO_SETUP", "Слабый контекст: сценарий отфильтрован"),
+    ("RANGE_PRESENT_BUT_NO_EDGE_TOUCH", "Диапазон есть, но его граница не достигнута"),
+    ("DIRECTIONAL_CONTEXT_WITHOUT_SETUP_TRIGGER", "Направление есть, но триггер сценария отсутствует"),
+    ("INVALIDATED_EXISTING_SETUP_IDEA", "Текущая идея сценария отменена"),
+    ("RETEST_CONFIRMATION", "подтверждение ретеста"),
+    ("REJECTION_FOLLOW_THROUGH", "развитие отбоя"),
+    ("BREAKOUT_HOLD", "удержание пробоя"),
+    ("REVERSAL_CONFIRMATION", "подтверждение разворота"),
+    ("QUALITY_STRONG_STRUCTURE", "Качество: сильная структура"),
+    ("QUALITY_CONFIRMED_BY_ANALYSIS", "Качество подтверждено анализом"),
+    ("QUALITY_ALIGNED_DIRECTIONAL_CONTEXT", "Качество: согласованный направленный контекст"),
+    ("QUALITY_ACCEPTABLE_STRUCTURE", "Качество: приемлемая структура"),
+    ("QUALITY_WAITING_CONFIRMATION_CAP", "Качество ограничено до подтверждения"),
+    ("QUALITY_WEAK_STRUCTURE", "Качество: слабая структура"),
+    ("QUALITY_LOW_ANALYSIS_CONFIDENCE", "Качество: низкая уверенность анализа"),
+    ("QUALITY_CONFLICTING_CONTEXT", "Качество: противоречивый контекст"),
+    ("QUALITY_CAPPED_BY_ANALYSIS_ENTRY_QUALITY", "Качество ограничено оценкой точки входа"),
+    ("QUALITY_INVALIDATED_BY_CONTEXT", "Качество отменено рыночным контекстом"),
+    ("QUALITY_NOT_APPLICABLE_NO_SETUP", "Качество неприменимо: сценария нет"),
+    ("QUALITY_UNKNOWN_INSUFFICIENT_DIAGNOSTICS", "Качество неизвестно: недостаточно диагностики"),
+    ("QUALITY_NO_FUTURE_BARS_USED", "Качество рассчитано без будущих свечей"),
+    ("STRATEGY_ALLOW", "Стратегия допускает:"), ("STRATEGY_REJECT", "Стратегия отклонена:"),
+    ("STRATEGY_WAIT", "Стратегия ожидает:"), ("STRATEGY_NO_DECISION", "Стратегия: решение не принято,"),
+    ("STRATEGY_ERROR", "Ошибка стратегии:"), ("STRATEGY_", "Стратегия:"),
+    ("RISK_PREAPPROVE", "Риск предварительно одобрен:"), ("RISK_REJECT", "Риск отклонён:"),
+    ("RISK_WAIT", "Риск ожидает:"), ("RISK_NO_DECISION", "Риск: решение не принято,"),
+    ("RISK_POLICY", "Политика риска:"), ("RISK_", "Риск:"),
+    ("PAPER_PLAN_READY", "План PAPER готов:"), ("PAPER_REJECT", "План PAPER отклонён:"),
+    ("PAPER_WAIT", "План PAPER ожидает:"), ("PAPER_NO_PLAN", "План PAPER не создан:"),
+    ("PAPER_", "PAPER:"),
+    ("GOOD_SETUP", "хороший сценарий"), ("ACCEPTABLE_SETUP", "приемлемый сценарий"),
+    ("SOURCE_REJECTED", "исходное решение отклонено"), ("SOURCE_ERROR", "ошибка исходного решения"),
+    ("UNSAFE_SOURCE_DECISION", "небезопасное исходное решение"),
+    ("UNSAFE_SOURCE_RISK_DECISION", "небезопасное исходное решение по риску"),
+    ("SOURCE_WAITING", "ожидание исходного решения"), ("SOURCE_NO_DECISION", "исходного решения нет"),
+    ("NO_SETUP", "сценария нет"), ("SETUP_INVALID", "сценарий недействителен"),
+    ("WEAK_QUALITY", "слабое качество"), ("POOR_OR_INVALID_QUALITY", "низкое или недопустимое качество"),
+    ("UNKNOWN_QUALITY", "качество неизвестно"), ("NEUTRAL_DIRECTION", "нейтральное направление"),
+    ("UNSUPPORTED_SETUP_TYPE", "тип сценария не поддерживается"),
+    ("UNSUPPORTED_STRATEGY_TYPE", "тип стратегии не поддерживается"),
+    ("HARD_INVALIDATION", "сработало жёсткое условие отмены"),
+    ("CONFLICTING_CONTEXT", "противоречивый контекст"),
+    ("WEAK_BUT_STRUCTURED", "структура есть, но сигнал слабый"),
+    ("PROCESSING_FAILED", "ошибка обработки"), ("NO_FUTURE_BARS_USED", "будущие свечи не использованы"),
+    ("NOT_EXECUTABLE", "исполнение запрещено"), ("REQUIRES_RISK_REVIEW", "требуется проверка риска"),
+    ("NOT_REQUIRING_RISK_REVIEW", "проверка риска не запрошена"),
+    ("LOW_STRATEGY_QUALITY", "низкое качество стратегии"), ("LOW_STRATEGY_SCORE", "низкая оценка стратегии"),
+    ("RESEARCH_LIMIT_EXCEEDED", "исследовательский лимит превышен"), ("FUTURE_BARS", "обнаружены будущие свечи"),
+    ("NOT_MARKED_FOR_RISK_REVIEW", "не отмечено для проверки риска"),
+    ("LOW_RISK", "низкий риск"), ("MEDIUM_RISK", "средний риск"), ("HIGH_RISK", "высокий риск"),
+    ("BLOCKED_BY_POLICY", "заблокировано политикой"), ("NOT_ORDER_APPROVED", "ордер не одобрен"),
+    ("VALID_LEVELS", "уровни корректны"), ("MIN_RR_MET", "минимум прибыль/риск соблюдён"),
+    ("LOW_PLANNED_RR", "расчётное соотношение прибыль/риск ниже минимума"),
+    ("UNSUPPORTED_RISK_LEVEL", "уровень риска не поддерживается"),
+    ("INVALID_DIRECTION", "направление недопустимо"), ("INVALID_LEVEL_GEOMETRY", "геометрия уровней недопустима"),
+    ("NOT_RISK_PREAPPROVED", "нет предварительного одобрения риска"),
+    ("MISSING_CAUSAL_LEVELS", "нет исходных уровней"), ("MISSING_ENTRY_REFERENCE", "нет ориентира входа"),
+    ("MISSING_INVALIDATION_LEVEL", "нет уровня отмены"), ("MISSING_STOP_LEVEL", "нет стоп-уровня"),
+    ("MISSING_TARGET_LEVEL", "нет целевого уровня"), ("ONLY_NOT_EXECUTABLE", "только исследование, исполнение запрещено"),
+    ("NOT_POSITION_OPENED", "позиция не открыта"), ("ERROR_PROCESSING_FAILED", "ошибка обработки"),
+)
+
+def _ru_reason_label(code: str) -> str:
+    text = code
+    for source, target in _RU_REASON_PHRASES:
+        text = text.replace(source, target)
+    return " ".join(text.replace("_", " ").split()).strip().capitalize()
+
+def _en_reason_label(code: str) -> str:
+    text = code.replace("PAPER", "PAPER").replace("RR", "reward-to-risk")
+    return text.replace("_", " ").lower().capitalize().replace("paper", "PAPER")
+
+for _reason_code in sorted(_PUBLIC_REASON_CODES):
+    _key = f"funnel.reason.{_reason_code}"
+    RU.setdefault(_key, _ru_reason_label(_reason_code))
+    EN.setdefault(_key, _en_reason_label(_reason_code))
+
 from .help_source import catalog_entries as _help_catalog_entries
 
 RU.update(_help_catalog_entries("ru"))

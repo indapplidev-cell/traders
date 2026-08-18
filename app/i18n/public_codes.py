@@ -1,10 +1,14 @@
 """Registry of machine codes intentionally exposed in user-facing Readonly DTOs."""
 
 from app.engine_risk.risk_status import RiskStatus
+from app.engine_risk.risk_reason_codes import RiskReasonCode
 from app.engine_safety.paper_domain import PaperExitCause, PaperOrderState, PaperPositionState, PaperSide
 from app.engine_safety.paper_production_control import PersistentState
+from app.engine_paper.paper_reason_codes import PaperReasonCode as PipelinePaperReasonCode
+from app.engine_setup.setup_reason_codes import SetupReasonCode
 from app.engine_setup.setup_status import SetupStatus
 from app.engine_setup.setup_type import SetupType
+from app.engine_strategy.strategy_reason_codes import StrategyReasonCode
 from app.engine_strategy.strategy_status import StrategyStatus
 from app.server_api.schemas.models import (
     AnalysisStatus, Direction, HealthState, IncidentStatus, PipelineStatus, Severity,
@@ -30,9 +34,14 @@ PUBLIC_LITERAL_CODES = {
     ),
 }
 
-# Bounded reason vocabulary currently projected by trading-funnel-v1.  Raw
-# source module reason codes remain available only in the detail diagnostic.
-PUBLIC_REASON_CODES = frozenset({
+# Full source registries consumed by trading-funnel-v1, plus bounded projection
+# reasons produced by the funnel/materializer itself.
+PUBLIC_REASON_ENUMS = (
+    SetupReasonCode, StrategyReasonCode, RiskReasonCode, PipelinePaperReasonCode,
+)
+PUBLIC_REASON_CODES = frozenset(
+    member.value for enum_type in PUBLIC_REASON_ENUMS for member in enum_type
+) | frozenset({
     "PAPER_NO_PLAN_SOURCE_NO_DECISION",
     "PAPER_REJECT_SOURCE_REJECTED",
     "PAPER_REJECT_LOW_PLANNED_RR",
