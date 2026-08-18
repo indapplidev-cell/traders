@@ -21,7 +21,7 @@ from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow,
 
 READONLY_SCHEMA_0016: Final = "0016_control_mobile_device_security"
 READONLY_SCHEMA_0017: Final = "0017_parallel_trade_profiles"
-PAPER_SCHEMA_MINIMUM: Final = READONLY_SCHEMA_0016
+PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
 PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0017
 PAPER_SCHEMA_COMPATIBILITY_LABEL: Final = f"{PAPER_SCHEMA_MINIMUM}|{PAPER_SCHEMA_MAXIMUM}"
 
@@ -97,8 +97,10 @@ class ReadonlySchemaCapabilityBridge:
 
 
 def revision_is_supported(revisions: tuple[str, ...]) -> bool:
-    """Revision is necessary but never sufficient for compatibility."""
-    return len(revisions) == 1 and revisions[0] in {READONLY_SCHEMA_0016, READONLY_SCHEMA_0017}
+    """Retain the legacy PAPER contract; runtime startup uses stricter capabilities."""
+    return len(revisions) == 1 and revisions[0] in {
+        PAPER_SCHEMA_MINIMUM, READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
+    }
 
 
 def _type_signature(value: object) -> tuple[object, ...]:
@@ -147,7 +149,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         if len(revisions) != 1:
             return ReadonlySchemaCapabilityResult(False, None, issues=("AMBIGUOUS_ALEMBIC_STATE",))
         revision = revisions[0]
-        if not revision_is_supported(revisions):
+        if revision not in {READONLY_SCHEMA_0016, READONLY_SCHEMA_0017}:
             return ReadonlySchemaCapabilityResult(False, revision, issues=(f"UNSUPPORTED_REVISION:{revision}",))
         for model in BASE_REQUIRED_MODELS:
             _validate_model(inspector, tables, model, issues,
