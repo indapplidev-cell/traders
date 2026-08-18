@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = cdb428451260097f9e9e7953035d974b4605a624
+STATUS_AS_OF_COMMIT = d283f972253c512bac54195eba5417d7a665f989
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T03:34:34Z
-RECONCILED_BY_TASK = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01
-FILES_CHANGED = docs/audits/TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01_FINAL.md, online_trader.md; traders-mobile MOBILE_STATUS.md; external evidence inbox final report
+RECONCILED_AT_UTC = 2026-08-18T03:56:29Z
+RECONCILED_BY_TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
+FILES_CHANGED = docs/audits/TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01_FINAL.md, online_trader.md; external evidence inbox final report
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_BLOCKED_SCHEMA_DEPLOYMENT_AUDIT_AND_STATUS_RECONCILIATION
-STATUS_CONFIDENCE = SCHEMA_DEPLOYMENT_BLOCKED_BEFORE_MUTATION_FRESH_WAL_PITR_GATE_FALSE_SOURCE_0016_AND_ISOLATED_TESTS_PASS_PRODUCTION_REMAINS_0015
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_BLOCKED_WAL_ACK_RECOVERY_AUDIT_AND_STATUS_RECONCILIATION
+STATUS_CONFIDENCE = WAL_ACK_RECOVERY_BLOCKED_BEFORE_MUTATION_DAEMON_ABSENT_RESTART_FORBIDDEN_EXACT_WAL_PHYSICALLY_PRESENT_LINEAGE_VALID_NO_GAP_PRODUCTION_REMAINS_0015
 
 # Состояние проекта traders-ml
 
@@ -23,10 +23,39 @@ STATUS_CONFIDENCE = SCHEMA_DEPLOYMENT_BLOCKED_BEFORE_MUTATION_FRESH_WAL_PITR_GAT
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_HEALTHY_25_GET_0_WRITE_OPTIMIZED_ANALYSIS_AND_MARKETS_HTTP200_ACCEPTED_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
-CURRENT_STAGE = RECOVER_CURRENT_WAL_ACK_ARCHIVE_READINESS_THEN_RETRY_CONTROL_MOBILE_SCHEMA_DEPLOYMENT
-CURRENT_BLOCKER = CONTROL_MOBILE_SCHEMA_DEPLOYMENT_RECOVERY_PREREQUISITE_NOT_HEALTHY
-BACKGROUND_TIMED_GATE = BLOCKED_WAL_FALSE_PITR_FALSE_ACK_DAEMON_NOT_READY_EXPORT_BACKLOG1_PENDING_STATUS2_LINEAGE_VALID_NO_PHYSICAL_GAP
+CURRENT_STAGE = AUTHORIZE_BOUNDED_WAL_ACK_DAEMON_RECOVERY_THEN_RETRY_CURRENT_LINEAGE_RECONCILIATION
+CURRENT_BLOCKER = ARCHIVE_ACK_DAEMON_ABSENT_STALE_STATE_AND_LOCK_RESTART_NOT_AUTHORIZED
+BACKGROUND_TIMED_GATE = BLOCKED_WAL_FALSE_PITR_FALSE_ACK_DAEMON_PID_ABSENT_EXPORT_BACKLOG1_PENDING_STATUS4_AT_RECONCILIATION_LINEAGE_VALID_584469_SECONDS_NO_PHYSICAL_GAP
 ```
+
+## Current WAL ACK/archive readiness recovery
+
+```text
+TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
+RESULT = BLOCKED_BEFORE_PRODUCTION_MUTATION
+PROJECT_STATE_AUDIT_COMMIT = d283f972253c512bac54195eba5417d7a665f989
+BLOCKER_CODE = WAL_PITR_READINESS_STILL_BLOCKED_AFTER_ARCHIVE_RECONCILIATION
+SECONDARY_BLOCKER = ARCHIVE_ACK_DAEMON_ABSENT_STALE_STATE_AND_LOCK_RESTART_NOT_AUTHORIZED
+ROOT_CAUSE = CURRENT_BD_SEGMENT_EXPORTED_INTEGRITY_VALID_DESTINATION_AND_ACK_MISSING_DAEMON_STATE_STALE_PID1920_ABSENT
+CURRENT_OBJECTS = BD_FAILURE_BACKLOG_PENDING_PLUS_BE_BF_C0_PENDING_SOURCE_WAL_ALL_PHYSICALLY_PRESENT
+PRESERVED_LINEAGE = VALID_584469_SECONDS_NO_PHYSICAL_GAP_NO_RESET
+READINESS = WAL_FALSE_PITR_FALSE_ACTIVE_UNRESOLVED1_EXPORT_BACKLOG1_PENDING4_AT_RECONCILIATION
+RECOVERY_MECHANISM = CHECKSUM_VERIFIED_SYNC_WAL_AND_RUNNING_DAEMON_ATOMIC_STATE_PROJECTION
+STOP_REASON = DAEMON_START_WOULD_VIOLATE_EXPLICIT_NO_ARCHIVE_SERVICE_RESTART_GATE
+TASK_MUTATIONS = ZERO_ACK_ARCHIVE_DAEMON_DATABASE_SCHEMA_BUSINESS_GRANT_CONTROL_CANARY_TRADING_LIVE
+RESTART_DELTAS = ZERO_POSTGRES_MARKET_ORCHESTRATOR_READONLY_CONTROL
+PRODUCTION_SCHEMA = 0015_TRADING_UNIVERSE_ACTIVATION_UNCHANGED
+NEXT_ACTION = SEPARATELY_AUTHORIZE_BOUNDED_WAL_ACK_DAEMON_RECOVERY_THEN_RETRY_THIS_TASK
+```
+
+The prompt's expected two pending archive statuses was stale relative to the
+fresh runtime. The count grew from three to four during bounded read-only
+diagnosis because PostgreSQL continued producing 15-minute archive-ready
+segments while the ACK owner was absent. All four current source WAL segments
+were present, the exported first segment matched its source checksum, and the
+canonical preserved lineage remained valid without a physical gap. No archive
+publication or ACK was attempted because full readiness would still require a
+forbidden daemon start; no readiness flag or daemon state file was edited.
 
 ## Mobile Control schema controlled deployment attempt
 
@@ -4265,7 +4294,7 @@ LIVE.
 |---|---:|---|
 | Online analytics/paper pipeline | ≈98% deployed / natural quantity proof pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons are deployed from the current tree to orchestrator and Readonly API; three complete postdeploy cycles had zero natural plans, so the production long-identity quantity call remains unobserved |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate blocked | Fresh schema-deployment preflight and post-audit reread show `wal_ready=false`, `pitr_ready=false`, retry pending with one export backlog and two pending status items; the preserved 584469-second lineage remains valid with no physical gap or reset, but recovery readiness must be remediated before migration |
+| Production backup/PITR | Current gate blocked | Fresh WAL recovery diagnosis shows `wal_ready=false`, `pitr_ready=false`, one active derived failure, one exported backlog segment and four `.ready` statuses at reconciliation; all exact source segments are present and the preserved 584469-second lineage remains valid with no physical gap or reset, but the absent ACK daemon cannot be started under the task's no-restart gate |
 | Readonly Server API | 25 GET/0 write optimized runtime deployed and accepted | Analysis and Markets return bounded HTTP 200 responses; seven-request samples measured median/max 270.522/905.864 ms and 403.387/692.651 ms respectively, PAPER lists remain healthy, and the full GET matrix has zero unexpected 4xx/5xx |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | 0% operational / security source foundation implemented | Android Keystore P-256 identity, signed request, HTTPS-only URL, confirmation and network ambiguity contracts pass source tests; schema 0016 and the separate TLS runtime remain undeployed, no Control URL or LAN endpoint exists |
@@ -4281,12 +4310,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_REMEDIATION_THEN_RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_RECOVER_CURRENT_WAL_ACK_ARCHIVE_READINESS_WITHOUT_LINEAGE_RESET_THEN_RETRY_EXACT_0015_TO_0016
+RECOMMENDED_NEXT_TASK = SEPARATELY_AUTHORIZE_BOUNDED_WAL_ACK_DAEMON_RECOVERY_THEN_RETRY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_START_ABSENT_WAL_ACK_DAEMON_THEN_RECONCILE_ONLY_EXACT_CURRENT_OBJECTS_WITHOUT_LINEAGE_RESET
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
-CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_READY_BY_TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_ARCHIVE_RECOVERY_02
-CURRENT_WAL_PITR_GATE = FAIL_FRESH_PROJECTION_WAL_FALSE_PITR_FALSE_RETRY_PENDING_BACKLOG1_PENDING2_LINEAGE_VALID_584469_SECONDS_NO_PHYSICAL_GAP
+CURRENT_WAL_ACK_ARCHIVE_RECOVERY = BLOCKED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01_DAEMON_ABSENT_RESTART_NOT_AUTHORIZED
+CURRENT_WAL_PITR_GATE = FAIL_FRESH_PROJECTION_WAL_FALSE_PITR_FALSE_RETRY_PENDING_BACKLOG1_PENDING4_AT_RECONCILIATION_LINEAGE_VALID_584469_SECONDS_NO_PHYSICAL_GAP
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -4350,8 +4379,9 @@ deepest-reason remediation. Three complete postdeploy cycles produced zero
 natural PAPER plans and zero quantity decisions, so the long-identity production
 quantity path remains unobserved rather than failed. No natural approval,
 command, position or closed trade has occurred. The 72-hour soak remains open,
-current Market Data is 60/60 and WAL/PITR readiness is true with valid preserved
-lineage. LIVE stays disabled.
+current Market Data is 60/60, while WAL/PITR readiness is false because the ACK
+daemon is absent with one backlog and four pending statuses at reconciliation;
+the preserved lineage itself remains valid and gap-free. LIVE stays disabled.
 
 ## Правила актуализации
 
