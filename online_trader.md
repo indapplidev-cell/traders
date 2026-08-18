@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = b42fafbcba982d3196fbefbf0029fd0a8a286a9b
+STATUS_AS_OF_COMMIT = 9f5d258dfef3ff432aa9c2c13fa074a777355983
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T13:39:15Z
-RECONCILED_BY_TASK = RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01
-FILES_CHANGED = FINAL_DECISION.md, docs/audits/RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01_FINAL.md, tests/control_mobile_security/test_mobile_auth.py, online_trader.md
+RECONCILED_AT_UTC = 2026-08-18T14:35:20Z
+RECONCILED_BY_TASK = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_AND_RUNTIME_PRIVILEGE_REMEDIATION_01
+FILES_CHANGED = Dockerfile, FINAL_DECISION.md, app/engine_paper/production_preparation.py, app/engine_paper/production_preparation_backend.py, app/server_api/repositories/protocols.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/schema_compatibility.py, app/server_api/schemas/paper.py, app/server_api/services/paper_reporting.py, app/server_api/trading_funnel.py, tests/control_mobile_security/test_mobile_runtime_privilege_contract.py, tests/control_mobile_security/test_postgres_least_privilege.py, tests/paper_production_preparation_disabled_wiring/conftest.py, tests/paper_production_source_contract_remediation/test_identity_and_executor.py, tests/paper_readonly_reporting_api/test_api_contract.py, tests/paper_readonly_reporting_api/test_schema_compatibility.py, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = SCHEMA0016_PHYSICAL_METADATA_PASS_RUNTIME_ACCEPTANCE_BLOCKED_FAIL_CLOSED_WAL_PITR_FRESH_PASS_15M_CONTINUITY_EXACT10_CONTROL_CANARY_LIVE_UNCHANGED
+STATUS_CONFIDENCE = FUNCTIONAL_RUNTIME_PRIVILEGE_AND_SAFETY_ACCEPTANCE_PASS_TASK_BLOCKED_ONLY_BY_READONLY_REPLACEMENT_BUDGET3_GT1
 
 # Состояние проекта traders-ml
 
@@ -22,12 +22,42 @@ STATUS_CONFIDENCE = SCHEMA0016_PHYSICAL_METADATA_PASS_RUNTIME_ACCEPTANCE_BLOCKED
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_CORE_HEALTHY_27_GET_0_WRITE_ANALYSIS_AND_MARKETS_HTTP200_PAPER_READINESS_FAIL_CLOSED_EXPECTED0015_ACTUAL0016_CONTROL_HEALTHY_GENERATION_6_LIVE_OFF
+API_RUNTIME_STATUS = READONLY_HEALTHY_ON0016_27_GET_0_WRITE_23HTTP2XX_4EXPECTED404_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_AND_RUNTIME_PRIVILEGE_REMEDIATION_01
-CURRENT_BLOCKER = READONLY_EXACT_SCHEMA_EXPECTATION_0015_VS_PRODUCTION0016_AND_TRADERS_PAPER_RUNTIME_ZERO_0016_TABLE_PRIVILEGES
-BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_DAEMON_RUNNING_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_625336_SECONDS_NO_PHYSICAL_GAP
+CURRENT_STAGE = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_REMEDIATION_ACCEPTANCE_RECONCILIATION_02
+CURRENT_BLOCKER = READONLY_REPLACEMENT_BUDGET_EXCEEDED_3_GT1_FUNCTIONAL_STATE_ACCEPTED
+BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_DAEMON_RUNNING_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_628037_SECONDS_NO_PHYSICAL_GAP
 ```
+
+## Mobile-device auth schema compatibility and runtime privilege remediation
+
+```text
+TASK = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_AND_RUNTIME_PRIVILEGE_REMEDIATION_01
+RESULT = FUNCTIONAL_PASS_TASK_BLOCKED_REPLACEMENT_BUDGET_EXCEEDED
+PROJECT_STATE_AUDIT_COMMIT = 9f5d258dfef3ff432aa9c2c13fa074a777355983
+PRODUCTION_SCHEMA = 0016_control_mobile_device_security_UNCHANGED
+SOURCE_SCHEMA_HEAD = 0017_parallel_trade_profiles_NOT_APPLIED
+READONLY_COMPATIBILITY = LINEAR_RANGE0015_TO0016_PLUS_REQUIRED_OBJECT_COLUMN_TYPE_NULLABILITY_PK_CONTRACT
+READONLY_RUNTIME = HEALTHY_27_GET_0_WRITE_23HTTP2XX_4EXPECTED404_UNEXPECTED0
+READONLY_I18N = RU_EN_SAME_c987e45a_IDENTITY_800_KEYS_EACH
+MOBILE_SECURITY_PRINCIPAL = traders_paper_runtime_PROVEN_BY_BINDING_AND_current_user
+PRIVILEGES = device_registry_SELECT_replay_nonce_INSERT_ONLY_NON_GRANTABLE
+PRIVILEGE_NEGATIVE_PROOF = NO_DEVICE_DML_NO_REPLAY_READ_UPDATE_DELETE_NO_SCHEMA_CREATE_NO_DDL_NO_ROLE_ELEVATION
+SECURITY_TABLE_ROWS = DEVICES0_NONCES0
+VALIDATION = COMBINED7602_PASS2SKIP_ISOLATEDPG10PASS_SCANNER0
+REPLACEMENTS = 3_FIRST_0017_ORM_COLUMN_MISMATCH_SECOND_INSTALLED_PACKAGE_LINEAGE_ROOT_THIRD_ACCEPTED
+INVARIANCE = 15M_1415Z_AND1430Z_EXACT10_5M_ZERO_CONTROL_ARMED_GEN6_CANARY_COMMAND0_POSITION0_LIVE_OFF
+WAL_PITR_ACK = PASS_SAME_LINEAGE_BACKLOG0_PENDING0_UNRESOLVED0_NO_GAP_PID10488_HEALTHY
+BLOCKER = READONLY_REPLACEMENT_BUDGET3_EXCEEDED_TARGET1
+NEXT_ACTION = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_REMEDIATION_ACCEPTANCE_RECONCILIATION_02
+```
+
+The two original blockers are closed in the running system: Readonly accepts
+schema 0016 through its actual required-object contract, and the proven Control
+runtime principal has only the two authentication-path privileges. Full task
+PASS is intentionally withheld because the bounded deployment required three
+Readonly replacements. No other service restarted, schema 0017 remains
+pending, 5m remains inactive, and no Control or trading mutation occurred.
 
 ## Parallel 5m shadow-search and dual-profile foundation
 
@@ -4494,11 +4524,11 @@ LIVE.
 | Online analytics/paper pipeline | ≈98% deployed / PAPER continuation fail-closed | Schema 0016 is current; the active 15m analytics path remains healthy, but the deployed PAPER readiness projection expects exact 0015 and blocks new continuation commands until compatibility remediation |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh recovery and post-commit reread show `wal_ready=true`, `pitr_ready=true`, zero active unresolved failure, zero export backlog and zero `.ready` statuses; all 39 recovered destination objects were 16 MiB and checksum-verified at publication, the same base anchor remains valid with at least 622780 contiguous seconds and no physical gap or reset |
-| Readonly Server API | Core 27 GET/0 write healthy / PAPER readiness blocked | Health, Analysis, Markets and authoritative i18n remain available without restart, while `/paper/readiness` correctly fails closed because its deployed exact expectation is 0015 and production is now 0016 |
+| Readonly Server API | Healthy on schema 0016 / task acceptance governance blocked | Required-object compatibility is deployed; all 27 GET routes pass with 23 expected 2xx and four detail 404, zero write routes and zero unexpected 4xx/5xx. Three Readonly replacements exceeded the task target of one, so full task PASS is withheld |
 | Desktop Readonly client | Production Readonly RU/EN runtime acceptance PASS | The real `PRODUCTION_READONLY_HTTP` Tk consumer passed all nine pages in RU and EN; all ten Market rows propagated and humanized server `strategy_status`, the original `AttributeError` is retired, access-mode/raw-code/stale-loading leaks are zero, and full regression is 1447 passed plus 3029 subtests |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
-| Android Control client | Schema deployed / runtime acceptance blocked | Android Keystore P-256 identity and signed HTTPS request source tests pass; schema 0016 is deployed with empty registry/replay tables, but the runtime principal has no new-table grants and no TLS Control URL or LAN endpoint exists |
-| Readonly PAPER reporting API | Core deployed / schema compatibility blocked | The endpoint remains read-only and fail-closed, but reports `PAPER_SCHEMA_NOT_DEPLOYED` because the deployed exact expectation is 0015 while Alembic is 0016 |
+| Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
+| Readonly PAPER reporting API | Healthy on schema 0016 | Readiness and bounded PAPER GET routes accept 0016 through the reflected required-object contract; 0017 remains explicitly unsupported in production until its separate deployment |
 | PAPER Operator Control API | Healthy status boundary / continuation blocked | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; the Readonly readiness dependency prevents new continuation mutations under the schema mismatch |
 | First-canary correlation/readiness | Durable state preserved / advancement blocked | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions, and schema readiness now safely denies advancement |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
@@ -4510,7 +4540,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_AND_RUNTIME_PRIVILEGE_REMEDIATION_01
+RECOMMENDED_NEXT_TASK = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_REMEDIATION_ACCEPTANCE_RECONCILIATION_02
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_SOURCE_RUNTIME_ROLE_AND_CONTROLLED_REDEPLOY_SCOPE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
