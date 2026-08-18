@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2f16ee2e1500e7c0297742ee60dda39119df29fe
+STATUS_AS_OF_COMMIT = 1d45f8afc8f7f706b6474aa60187d3248a6c0d17
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T06:55:38Z
-RECONCILED_BY_TASK = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01
-FILES_CHANGED = docs/audits/TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01_FINAL.md, online_trader.md; desktop source/tests/docs in traders-client; external evidence inbox final report
+RECONCILED_AT_UTC = 2026-08-18T08:08:14Z
+RECONCILED_BY_TASK = RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+FILES_CHANGED = docs/audits/RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01_FINAL.md, online_trader.md; external evidence inbox final report
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_DESKTOP_REMEDIATION_AND_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = DESKTOP_STRATEGY_STATUS_DTO_PARSER_VIEW_SERVER_I18N_PASS_FULL_REGRESSION_AND_RU_EN_GUI_SERVER_RUNTIME_PRESERVED_RUNTIME_REACCEPTANCE_PENDING_SCHEMA_0015_LIVE_OFF
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_RUNTIME_ACCEPTANCE_AUDIT_AND_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = AUTHORITATIVE_I18N_RUNTIME_SOURCE_EXACT_MATCH_ACCEPTANCE_ONLY_27_GET_0_WRITE_DESKTOP_PRODUCTION_RU_EN_GUI_PASS_ATTRIBUTEERROR_RETIRED_FULL_REGRESSION_SCHEMA_0015_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -24,10 +24,46 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_HEALTHY_27_GET_0_WRITE_AUTHORITATIVE_RU_EN_I18N_EXACT_SOURCE_MATCH_ANALYSIS_AND_MARKETS_HTTP200_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
-CURRENT_BLOCKER = NONE_FOR_DESKTOP_SOURCE_REMEDIATION_RUNTIME_REACCEPTANCE_NOT_YET_RUN
+CURRENT_STAGE = TRADERS_MOBILE_SERVER_I18N_CONSUMER_MIGRATION_01
+CURRENT_BLOCKER = NONE_FOR_SERVER_DESKTOP_I18N_RUNTIME_ACCEPTANCE_MOBILE_MIGRATION_REQUIRES_SEPARATE_AUTHORIZATION
 BACKGROUND_TIMED_GATE = BLOCKED_WAL_FALSE_PITR_FALSE_ACK_DAEMON_PID_ABSENT_EXPORT_BACKLOG1_PENDING_STATUS4_AT_RECONCILIATION_LINEAGE_VALID_584469_SECONDS_NO_PHYSICAL_GAP
 ```
+
+## Authoritative i18n Readonly runtime re-acceptance
+
+```text
+TASK = RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+RESULT = PASS_ACCEPTANCE_ONLY
+PROJECT_STATE_AUDIT_COMMIT = 1d45f8afc8f7f706b6474aa60187d3248a6c0d17
+RUNTIME_SOURCE_MATCH = PASS_EXECUTABLE_I18N_ROUTES_EXACT_DOCUMENTATION_ONLY_GIT_DELTA
+ACCEPTANCE_ONLY_MODE = YES
+READONLY_REDEPLOYMENT = NO
+READONLY_CONTAINER_REPLACEMENTS = 0
+RUNTIME_IMAGE = SHA256_FAEB93D7209649F4352BAC41CA5F9A646C21017EAD418681037E4F86478E464E
+RUNTIME_ROUTES = 27_GET_0_WRITE
+I18N = MANIFEST_RU_EN_EXACT_SOURCE_MATCH_792_KEYS_EACH_PARITY_PLACEHOLDERS_PASS_UNKNOWN_LOCALE422
+CATALOG_VERSION = i18n-8792dfefd2e4e0fa
+CATALOG_HASH = 8792dfefd2e4e0fabd8251263c8d093282e372ba6d794d7b9a5df0cb7b101884
+ROUTE_MATRIX = 25_HTTP2XX_2_EXPECTED_DETAIL404_ZERO_UNEXPECTED4XX5XX
+MARKETS = HTTP200_10_OF10_strategy_status_PRESENT
+DESKTOP_HTTP_LKG = MANIFEST_RU_EN_FETCH_ATOMIC_LKG_SAME_IDENTITY_NO_CHURN_INVALID_CANDIDATE_REJECTED
+DESKTOP_GUI = PRODUCTION_READONLY_HTTP_RU_EN_9_PAGES_PASS_47_GET_0_POST
+MARKET_GATE = ATTRIBUTEERROR_NO_STRATEGY_PROPAGATED10_OF10_RU_EN_HUMANIZED_ACCESS_MODE_LEAK0
+PRESENTATION = OVERVIEW_UNIVERSE_ANALYSIS_SCENARIOS_FUNNEL_INCIDENTS_PAPER_PASS_RAW_CODE0_STALE_LOADING0
+REGRESSION = DESKTOP1447_PASS2_SKIP3029SUBTESTS_SERVER_API119_PASS
+INVARIANCE = SCHEMA0015_RESTART_DELTAS0_CONTROL_ARMED_GENERATION6_CANARY_WAITING_COMMAND0_POSITION0_LIVE_OFF
+MOBILE = SOURCE_UNCHANGED_ACCEPTED_READONLY_PORTPROXY_PRESERVED
+TASK_MUTATIONS = ZERO_DEPLOYMENT_DB_ROLE_CONTROL_TRADING_CANARY_WAL_PITR_BINANCE_LIVE_NETWORK
+NEXT_ACTION = TRADERS_MOBILE_SERVER_I18N_CONSUMER_MIGRATION_01
+```
+
+The retry proved the already-running image still represents current
+authoritative executable source: commits after its image revision changed only
+audit/status documentation. Production was therefore accepted without a build,
+container replacement or restart. The real desktop consumer loaded the same
+manifest and RU/EN catalogs, exercised all current pages, and rendered the ten
+production Market rows through the remediated `strategy_status` path. The
+original `AttributeError` is retired in production runtime acceptance.
 
 ## Desktop MarketSummary strategy-status runtime remediation
 
@@ -4388,8 +4424,8 @@ LIVE.
 | Online analytics/paper pipeline | ≈98% deployed / natural quantity proof pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons are deployed from the current tree to orchestrator and Readonly API; three complete postdeploy cycles had zero natural plans, so the production long-identity quantity call remains unobserved |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate blocked | Fresh WAL recovery diagnosis shows `wal_ready=false`, `pitr_ready=false`, one active derived failure, one exported backlog segment and four `.ready` statuses at reconciliation; all exact source segments are present and the preserved 584469-second lineage remains valid with no physical gap or reset, but the absent ACK daemon cannot be started under the task's no-restart gate |
-| Readonly Server API | 27 GET/0 write authoritative i18n runtime deployed and server-accepted | The exact current source image serves manifest plus RU/EN catalogs at 792 keys each with exact source identity, parity and placeholder PASS; Analysis, Markets and PAPER remain HTTP 200 and the 27-route matrix has zero unexpected 4xx/5xx |
-| Desktop Readonly client | Source remediation and local RU/EN GUI PASS; production runtime reacceptance pending | `MarketSummary.strategy_status` now preserves the optional nullable server value through parser/provider to the existing server-catalog presentation; focused/full regression and ten-symbol RU/EN Market/Overview GUI pass, while formal production-provider GUI reacceptance remains the next task |
+| Readonly Server API | 27 GET/0 write authoritative i18n runtime deployed and production re-accepted | The already-running image exactly matches current executable/i18n source; manifest plus RU/EN catalogs remain 792 keys each with parity and placeholder PASS, the full matrix is 25 HTTP 2xx plus two expected detail 404s with zero unexpected 4xx/5xx, and the retry performed no redeploy or restart |
+| Desktop Readonly client | Production Readonly RU/EN runtime acceptance PASS | The real `PRODUCTION_READONLY_HTTP` Tk consumer passed all nine pages in RU and EN; all ten Market rows propagated and humanized server `strategy_status`, the original `AttributeError` is retired, access-mode/raw-code/stale-loading leaks are zero, and full regression is 1447 passed plus 3029 subtests |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | 0% operational / security source foundation implemented | Android Keystore P-256 identity, signed request, HTTPS-only URL, confirmation and network ambiguity contracts pass source tests; schema 0016 and the separate TLS runtime remain undeployed, no Control URL or LAN endpoint exists |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
@@ -4404,8 +4440,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_RUNTIME_ACCEPTANCE_IS_SEPARATE_AND_MUST_USE_ACCEPTANCE_ONLY_MODE_IF_IDENTITY_MATCHES
+RECOMMENDED_NEXT_TASK = TRADERS_MOBILE_SERVER_I18N_CONSUMER_MIGRATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_MOBILE_SOURCE_AND_RUNTIME_MIGRATION_IS_SEPARATE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = BLOCKED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01_DAEMON_ABSENT_RESTART_NOT_AUTHORIZED
