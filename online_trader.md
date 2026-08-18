@@ -7,13 +7,13 @@ STATUS_AS_OF_COMMIT = 2f16ee2e1500e7c0297742ee60dda39119df29fe
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T06:00:03Z
-RECONCILED_BY_TASK = TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
-FILES_CHANGED = docs/audits/TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01_FINAL.md, online_trader.md; external evidence inbox final report
+RECONCILED_AT_UTC = 2026-08-18T06:55:38Z
+RECONCILED_BY_TASK = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01
+FILES_CHANGED = docs/audits/TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01_FINAL.md, online_trader.md; desktop source/tests/docs in traders-client; external evidence inbox final report
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_I18N_RUNTIME_AUDIT_AND_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = SERVER_I18N_RUNTIME_27_GET_0_WRITE_EXACT_SOURCE_MATCH_DESKTOP_HTTP_LKG_PASS_GUI_BLOCKED_MARKET_SUMMARY_STRATEGY_STATUS_SCHEMA_0015_LIVE_OFF
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_DESKTOP_REMEDIATION_AND_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = DESKTOP_STRATEGY_STATUS_DTO_PARSER_VIEW_SERVER_I18N_PASS_FULL_REGRESSION_AND_RU_EN_GUI_SERVER_RUNTIME_PRESERVED_RUNTIME_REACCEPTANCE_PENDING_SCHEMA_0015_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -24,10 +24,40 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_HEALTHY_27_GET_0_WRITE_AUTHORITATIVE_RU_EN_I18N_EXACT_SOURCE_MATCH_ANALYSIS_AND_MARKETS_HTTP200_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01
-CURRENT_BLOCKER = DESKTOP_PRODUCTION_I18N_CONSUMER_ACCEPTANCE_FAILED_MARKET_SUMMARY_PARSER_OMITS_STRATEGY_STATUS
+CURRENT_STAGE = RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+CURRENT_BLOCKER = NONE_FOR_DESKTOP_SOURCE_REMEDIATION_RUNTIME_REACCEPTANCE_NOT_YET_RUN
 BACKGROUND_TIMED_GATE = BLOCKED_WAL_FALSE_PITR_FALSE_ACK_DAEMON_PID_ABSENT_EXPORT_BACKLOG1_PENDING_STATUS4_AT_RECONCILIATION_LINEAGE_VALID_584469_SECONDS_NO_PHYSICAL_GAP
 ```
+
+## Desktop MarketSummary strategy-status runtime remediation
+
+```text
+TASK = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01
+RESULT = PASS_DESKTOP_SOURCE_TESTS_AND_LOCAL_GUI_RUNTIME_REACCEPTANCE_PENDING
+DESKTOP_IMPLEMENTATION_COMMITS = 079b80c43e7e23c294718d2a7f3ca9475794674f, 01344cac92f6cea67b1517807f3289481f7b461c
+DESKTOP_STATUS_COMMIT = f2db71bf6c62e0dbec3d0d2d7b98fcf378665524
+ROOT_CAUSE = PARSER_MODEL_CONTRACT_PROPAGATION_OMISSION
+SERVER_CONTRACT = OPTIONAL_NULLABLE_RAW_STRING_PUBLIC_VALUES_ALLOW_RESEARCH_TRADE_PLAN_REJECT_WAIT_NO_DECISION_ERROR
+FIX = MarketSummary_STR_OR_NONE_PLUS_EXACT_PARSER_PROPAGATION_NO_TRANSLATION_OR_ACCESS_MODE_FALLBACK
+MISSING = NONE_PLUS_EXISTING_SERVER_CATALOG_NOT_AVAILABLE_PRESENTATION
+UNKNOWN = GENERIC_LOCALIZED_UNKNOWN_RAW_CODE_RETAINED_FOR_DIAGNOSTICS
+PRESENTATION = EXISTING_SERVER_OWNED_strategy.status_NAMESPACE_NO_NEW_LOCAL_DICTIONARY
+VALIDATION = FOCUSED86_PLUS34SUBTESTS_FULL1447_PASS2_SKIP3029SUBTESTS_COMPILE_PASS_RU_EN_9_PAGE_GUI_PASS
+MATRIX = 10_SYMBOLS_ALL_8_MARKET_COLUMNS_AND_OVERVIEW_PASS
+RUNTIME_CORROBORATION = THREE_GET_ONLY_HEALTH_OK_MARKETS10_OF10_FIELD_PRESENT_CATALOG_IDENTITY_UNCHANGED
+SERVER_RUNTIME = PRESERVED_NO_REBUILD_REPLACE_RESTART_OR_MUTATION
+MOBILE = SOURCE_UNCHANGED
+RUNTIME_ACCEPTANCE = NOT_CLAIMED
+NEXT_ACTION = RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01_ACCEPTANCE_ONLY_IF_RUNTIME_IDENTITY_MATCHES
+```
+
+The production-discovered desktop omission is closed at the DTO/parser boundary.
+The per-symbol raw strategy code now reaches `MarketView`, which continues to
+use the existing server-authoritative catalog and never uses provider access
+mode as strategy. The server runtime remains the previously deployed healthy
+27 GET / 0 write image; this source task did not repeat formal production GUI
+acceptance, so the prior cross-component acceptance task remains to be retried
+in acceptance-only mode after identity verification.
 
 ## Authoritative i18n Readonly runtime deployment acceptance
 
@@ -4359,7 +4389,7 @@ LIVE.
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate blocked | Fresh WAL recovery diagnosis shows `wal_ready=false`, `pitr_ready=false`, one active derived failure, one exported backlog segment and four `.ready` statuses at reconciliation; all exact source segments are present and the preserved 584469-second lineage remains valid with no physical gap or reset, but the absent ACK daemon cannot be started under the task's no-restart gate |
 | Readonly Server API | 27 GET/0 write authoritative i18n runtime deployed and server-accepted | The exact current source image serves manifest plus RU/EN catalogs at 792 keys each with exact source identity, parity and placeholder PASS; Analysis, Markets and PAPER remain HTTP 200 and the 27-route matrix has zero unexpected 4xx/5xx |
-| Desktop Readonly client | Production i18n HTTP/LKG PASS; GUI runtime blocked | Manifest plus RU/EN catalogs validate and atomically cache with exact server identity, but the real production-provider GUI fails because its API-contract MarketSummary parser omits server `strategy_status` while MarketView requires that attribute |
+| Desktop Readonly client | Source remediation and local RU/EN GUI PASS; production runtime reacceptance pending | `MarketSummary.strategy_status` now preserves the optional nullable server value through parser/provider to the existing server-catalog presentation; focused/full regression and ten-symbol RU/EN Market/Overview GUI pass, while formal production-provider GUI reacceptance remains the next task |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | 0% operational / security source foundation implemented | Android Keystore P-256 identity, signed request, HTTPS-only URL, confirmation and network ambiguity contracts pass source tests; schema 0016 and the separate TLS runtime remain undeployed, no Control URL or LAN endpoint exists |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
@@ -4374,8 +4404,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01_THEN_RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_DESKTOP_SOURCE_REMEDIATION_IS_OUTSIDE_THIS_DEPLOYMENT_TASK
+RECOMMENDED_NEXT_TASK = RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_RUNTIME_ACCEPTANCE_IS_SEPARATE_AND_MUST_USE_ACCEPTANCE_ONLY_MODE_IF_IDENTITY_MATCHES
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = BLOCKED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01_DAEMON_ABSENT_RESTART_NOT_AUTHORIZED
