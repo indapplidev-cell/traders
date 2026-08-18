@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 275b807b6f1c411d80ccdcf98636ecc7c6c35e7e
+STATUS_AS_OF_COMMIT = 0376dd4abd3dd3680acea32acf9f651059276a0f
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T17:51:19Z
-RECONCILED_BY_TASK = TRADERS_PARALLEL_5M_PROFILE_SCHEMA_CONTROLLED_DEPLOYMENT_01
+RECONCILED_AT_UTC = 2026-08-18T18:51:43Z
+RECONCILED_BY_TASK = TRADERS_PARALLEL_5M_SEARCH_SHADOW_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
 FILES_CHANGED = FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = PASS_EXACT0016_TO0017_PRODUCTION_MIGRATION_SAME_READONLY_RUNTIME_ZERO_RESTARTS_15M_CONTINUOUS_5M_INACTIVE
+STATUS_CONFIDENCE = BLOCKED_PREACTIVATION_PARAMETERIZATION_NOT_WIRED_AND_NO_5M_SINGLETON_OWNER_ZERO_PRODUCTION_MUTATIONS_15M_CONTINUOUS
 
 # Состояние проекта traders-ml
 
@@ -24,10 +24,40 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_DUAL_SCHEMA_IMAGE293063B2_HEALTHY_ON0017_27_GET_0_WRITE_21HTTP2XX_6EXPECTED404_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = TRADERS_PARALLEL_5M_SEARCH_SHADOW_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
-CURRENT_BLOCKER = NONE_SCHEMA0017_ACCEPTED_5M_RUNTIME_ACTIVATION_PENDING_SEPARATE_AUTHORIZATION
+CURRENT_STAGE = TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01
+CURRENT_BLOCKER = 5M_PROFILE_PARAMETERS_DECLARED_NOT_RUNTIME_WIRED_AND_DUPLICATE_OWNER_PREVENTION_ABSENT
 BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_DAEMON_RUNNING_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_639739_SECONDS_NO_PHYSICAL_GAP
 ```
+
+## Parallel 5m SHADOW_SEARCH runtime deployment acceptance gate
+
+```text
+TASK = TRADERS_PARALLEL_5M_SEARCH_SHADOW_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+RESULT = BLOCKED_BEFORE_PRODUCTION_MUTATION
+PROJECT_STATE_AUDIT_COMMIT = 0376dd4abd3dd3680acea32acf9f651059276a0f
+PRIMARY_BLOCKER = 5M_PROFILE_PARAMETERIZATION_DECLARED_NOT_WIRED_TO_RUNTIME_EVALUATION
+SECONDARY_BLOCKER = 5M_DUPLICATE_RUNTIME_OWNER_PREVENTION_NOT_IMPLEMENTED
+SOURCE_CALL_GRAPH = PROFILE_CONFIG_TO_CLOSED5M_DETECTOR_TO_FRESHNESS_TO_ANALYSIS_SETUP_STRATEGY_RISK_SHADOW_PERSISTENCE_FUNNEL_TRACED
+PARAMETERIZATION_GAP = ATR_IMPULSE_STRUCTURE_CONFIRMATION_VOLUME_REGIME_FIELDS_REGISTRY_ONLY_GENERIC_RUNTIME_COMPONENT_DEFAULTS
+OWNER_GAP = PROFILE_WINDOW_DEDUPE_PRESENT_BUT_NO_PROFILE_SINGLETON_LEASE_ADVISORY_LOCK_OR_EQUIVALENT
+CURRENT_15M_IMAGE = NO_5M_SOURCE_trade_profile.py_ABSENT
+ACTIVATION = NOT_ATTEMPTED_START0_BUILD0_CURSOR0_5M_ROWS0
+PRODUCTION_SCHEMA = 0017_parallel_trade_profiles_UNCHANGED
+PRODUCTION_INVARIANCE = 15M_BOUNDARY1787078700000_EXACT10_READONLY27GET0WRITE_RESTARTS0
+PAPER = COMMAND0_ORDER0_FILL0_POSITION0_5M_DELTA0
+CONTROL = ARMED_GENERATION6_HEALTHY_CANARY_NO_ELIGIBLE_APPROVAL_COMMAND0_POSITION0_NO_POST
+WAL_PITR_ACK = PASS_BACKLOG0_PENDING0_UNRESOLVED0_SAME_PID10488
+VALIDATION = FOCUSED30PASS_SECURITY599PASS_SCANNER0
+NEXT_ACTION = TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01
+```
+
+The deployment task correctly stopped before building or starting a 5m
+artifact. Source-level closed-candle filtering, profile-aware dedupe and the
+SHADOW_SEARCH-to-PAPER firewall remain valid, but they do not satisfy the two
+failed activation gates. The declared 5m morphology parameters must be wired
+into the actual analysis/setup/strategy/risk evaluation path, and an explicit
+profile-level singleton owner guard must reject a second 5m runtime. The active
+15m runtime was not stopped, paused, restarted, replaced or reconfigured.
 
 ## Parallel-profile schema controlled deployment
 
@@ -4637,7 +4667,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% deployed / 5m shadow activation pending | Schema 0017 is accepted in production, the same dual-schema Readonly process survived with zero restart, and the 15m path completed the next natural exact-10 boundary; 5m runtime remains inactive |
+| Online analytics/paper pipeline | ≈98% deployed / 5m activation blocked at source preflight | Schema 0017 remains accepted and 15m remains exact-10, but effective 5m parameter wiring and profile-singleton ownership are not implemented; 5m runtime remains inactive |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh recovery and post-commit reread show `wal_ready=true`, `pitr_ready=true`, zero active unresolved failure, zero export backlog and zero `.ready` statuses; all 39 recovered destination objects were 16 MiB and checksum-verified at publication, the same base anchor remains valid with at least 622780 contiguous seconds and no physical gap or reset |
 | Readonly Server API | Healthy same dual-schema image on production 0017 | Image `sha256:293063b2...` passed isolated 0017 and survived the production migration with the same container/start time and zero restart; all 27 GET routes pass with 21 expected 2xx and six detail 404, zero write routes and zero unexpected 4xx/5xx |
@@ -4645,7 +4675,7 @@ LIVE.
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy on schema 0017 | Readiness and bounded PAPER GET routes accept the reflected 0017 capability; shared account remains 100 USDT and 5m remains honest empty/inactive |
-| PAPER Operator Control API | Healthy status boundary / 5m shadow activation pending | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; schema 0017 is ready, while 5m runtime activation remains a separately authorized task |
+| PAPER Operator Control API | Healthy status boundary / 5m inactive | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; this blocked preflight made no Control POST and granted no 5m execution authority |
 | First-canary correlation/readiness | Durable state preserved / advancement blocked | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions, and schema readiness now safely denies advancement |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
@@ -4656,8 +4686,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_PARALLEL_5M_SEARCH_SHADOW_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_ACTIVATE_trade-5m-v1_SHADOW_SEARCH_WITH_ZERO_5M_PAPER
+RECOMMENDED_NEXT_TASK = TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_SOURCE_REMEDIATION_ONLY_DO_NOT_ACTIVATE_5M
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = COMPLETED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
