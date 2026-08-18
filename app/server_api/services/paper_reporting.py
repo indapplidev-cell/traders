@@ -164,18 +164,16 @@ class PaperReadonlyReportingService:
     def _schema_ready(self) -> bool:
         try:
             repository = self._repo()
+            capabilities_source = getattr(repository, "readonly_schema_capabilities", None)
+            if callable(capabilities_source):
+                return bool(getattr(capabilities_source(), "compatible", False))
             revisions_source = getattr(repository, "schema_revisions", None)
-            revisions = (
-                tuple(revisions_source())
-                if callable(revisions_source)
-                else (repository.schema_revision(),)
-            )
+            revisions = tuple(revisions_source()) if callable(revisions_source) else (repository.schema_revision(),)
             contract_source = getattr(repository, "paper_schema_contract", None)
-            if not callable(contract_source):
-                return False
-            contract = contract_source()
-            return revision_is_supported(tuple(str(value) for value in revisions if value)) and bool(
-                getattr(contract, "compatible", False)
+            return bool(
+                callable(contract_source)
+                and revision_is_supported(tuple(str(value) for value in revisions if value))
+                and getattr(contract_source(), "compatible", False)
             )
         except Exception:
             return False

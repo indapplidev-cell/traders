@@ -26,6 +26,10 @@ from app.engine_orchestrator.trade_profile import (
     TradeProfileMode,
     resolve_trade_profile,
 )
+from app.server_api.schema_compatibility import (
+    ReadonlySchemaCapability,
+    ReadonlySchemaCapabilityBridge,
+)
 
 
 PROJECTION_VERSION: Final = "trading-funnel-v1"
@@ -162,9 +166,16 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
 class TradingFunnelReadRepository:
     """One bounded query plus the existing production eligibility adapter."""
 
-    def __init__(self, session_factory: Callable[[], Session], universe_source: Callable[[], TradingUniverseVersion]) -> None:
+    def __init__(
+        self,
+        session_factory: Callable[[], Session],
+        universe_source: Callable[[], TradingUniverseVersion],
+        *,
+        schema_capabilities: ReadonlySchemaCapabilityBridge | None = None,
+    ) -> None:
         self._session_factory = session_factory
         self._universe_source = universe_source
+        self._schema_capabilities = schema_capabilities
 
     def project(self, now_ms: int, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
         profile = resolve_trade_profile(trade_profile_id)
@@ -173,10 +184,15 @@ class TradingFunnelReadRepository:
         universe = self._universe_source()
         start_ms = now_ms - max_horizon_ms
         with self._session_factory() as session:
-            revisions = tuple(session.execute(text(
-                "SELECT version_num FROM alembic_version ORDER BY version_num"
-            )).scalars())
-            profile_schema_ready = revisions == ("0017_parallel_trade_profiles",)
+            if self._schema_capabilities is None:
+                revisions = tuple(session.execute(text(
+                    "SELECT version_num FROM alembic_version ORDER BY version_num"
+                )).scalars())
+                profile_schema_ready = revisions == ("0017_parallel_trade_profiles",)
+            else:
+                profile_schema_ready = self._schema_capabilities.snapshot().has(
+                    ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES
+                )
             if not profile_schema_ready and profile.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
                 rows = ()
             else:

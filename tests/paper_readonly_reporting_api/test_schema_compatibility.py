@@ -12,10 +12,10 @@ from app.server_api.schema_compatibility import (
 @pytest.mark.parametrize(
     ("revision", "expected"),
     (
-        ("0015_trading_universe_activation", True),
+        ("0015_trading_universe_activation", False),
         ("0016_control_mobile_device_security", True),
         ("0014_paper_canary_selection_policy", False),
-        ("0017_parallel_trade_profiles", False),
+        ("0017_parallel_trade_profiles", True),
         ("0016_corrupt_metadata", False),
     ),
 )

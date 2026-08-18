@@ -41,7 +41,7 @@ def baseline():
 
 
 class FakePaperRepository:
-    def __init__(self, baseline: PaperAccountBaseline, *, revision="0015_trading_universe_activation", facts=(), contract=True):
+    def __init__(self, baseline: PaperAccountBaseline, *, revision="0016_control_mobile_device_security", facts=(), contract=True):
         self.revision = revision
         self.baselines = (baseline,)
         self.facts = tuple(facts)
@@ -131,7 +131,7 @@ def control(state="DISABLED", generation=3):
         emergency_stop_available=True, audit_health="HEALTHY", state_audit_reconciliation="HEALTHY")
 
 
-def client_for(baseline, *, revision="0015_trading_universe_activation", facts=()):
+def client_for(baseline, *, revision="0016_control_mobile_device_security", facts=()):
     paper = FakePaperRepository(baseline, revision=revision, facts=facts)
     common = FakeReadRepository().api_repositories()
     app = create_app(repositories=replace(common, paper=paper), clock=lambda: NOW,
@@ -164,8 +164,9 @@ def test_0008_readiness_and_zero_paper_relation_reads(baseline):
 @pytest.mark.parametrize(
     ("revision", "contract"),
     (
-        ("0015_trading_universe_activation", True),
+        ("0015_trading_universe_activation", False),
         ("0016_control_mobile_device_security", True),
+        ("0017_parallel_trade_profiles", True),
         ("0016_control_mobile_device_security", False),
         (("0015_trading_universe_activation", "0016_control_mobile_device_security"), True),
         ("corrupt", True),
@@ -181,8 +182,8 @@ def test_schema_revision_and_required_object_contract_fail_closed(
     )
     data = TestClient(app).get("/api/v1/paper/readiness").json()["data"]
     expected = revision in {
-        "0015_trading_universe_activation",
         "0016_control_mobile_device_security",
+        "0017_parallel_trade_profiles",
     } and contract
     assert data["paper_schema_ready"] is expected
     assert (data["status"] == "PAPER_SCHEMA_NOT_DEPLOYED") is (not expected)

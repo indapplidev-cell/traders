@@ -17,6 +17,10 @@ from app.server_api.repositories.protocols import ApiRepositories
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
 from app.server_api.trading_funnel import TradingFunnelReadRepository
 from app.server_api.runtime_config import RuntimeConfig
+from app.server_api.schema_compatibility import (
+    ReadonlySchemaCapabilityBridge,
+    inspect_readonly_schema_capabilities,
+)
 from app.server_api.schemas.paper import PaperControlStatus
 from app.engine_safety.paper_production_control import PaperProductionSafetyControl
 from app.engine_safety.production_control_root import resolve_production_control_root
@@ -49,14 +53,18 @@ def _create_engine(config: RuntimeConfig) -> Engine:
     )
 
 
-def _repositories(engine: Engine) -> ApiRepositories:
+def _repositories(
+    engine: Engine, capabilities: ReadonlySchemaCapabilityBridge | None = None
+) -> ApiRepositories:
     sessions = sessionmaker(
         bind=engine,
         autoflush=False,
         expire_on_commit=False,
     )
-    adapter = SqlAlchemyReadAdapter(sessions)
-    funnel = TradingFunnelReadRepository(sessions, adapter.active_trading_universe)
+    adapter = SqlAlchemyReadAdapter(sessions, schema_capabilities=capabilities)
+    funnel = TradingFunnelReadRepository(
+        sessions, adapter.active_trading_universe, schema_capabilities=capabilities
+    )
     return ApiRepositories(
         health=adapter,
         markets=adapter,
@@ -126,7 +134,8 @@ def create_runtime_app() -> FastAPI:
     """Compose the production ASGI application without connecting at import."""
     config = RuntimeConfig.from_environment()
     engine = _create_engine(config)
-    repositories = _repositories(engine)
+    schema_capabilities = ReadonlySchemaCapabilityBridge()
+    repositories = _repositories(engine, schema_capabilities)
     sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     control = PaperProductionSafetyControl(
         resolve_production_control_root(),
@@ -154,6 +163,9 @@ def create_runtime_app() -> FastAPI:
                     raise RuntimeError(
                         "database session did not enforce the read-only boundary"
                     )
+                schema_capabilities.activate(
+                    inspect_readonly_schema_capabilities(connection)
+                )
             yield
         finally:
             engine.dispose()
@@ -168,6 +180,7 @@ def create_runtime_app() -> FastAPI:
     app.state.runtime_config = config
     app.state.runtime_engine = engine
     app.state.runtime_repositories = repositories
+    app.state.readonly_schema_capabilities = schema_capabilities
     return app
 
 

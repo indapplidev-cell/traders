@@ -30,6 +30,11 @@ from app.db.paper_models import (
 )
 from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity, PaperClosedTradeFacts
 from app.server_api.health_policy import evaluate_boundary_health
+from app.server_api.schema_compatibility import (
+    ReadonlySchemaCapability,
+    ReadonlySchemaCapabilityBridge,
+    inspect_readonly_schema_capabilities,
+)
 from app.server_api.mapping.contract import utc_text
 from app.server_api.repositories.records import (
     AnalysisRecord,
@@ -159,12 +164,22 @@ class SqlAlchemyReadAdapter:
         *,
         primary_timeframe: str = "15m",
         clock: Callable[[], datetime] | None = None,
+        schema_capabilities: ReadonlySchemaCapabilityBridge | None = None,
     ) -> None:
         if primary_timeframe not in CANDLE_MODELS:
             raise ValueError("unsupported primary timeframe")
         self._session_or_factory = session_or_factory
         self._primary_timeframe = primary_timeframe
         self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._schema_capabilities = schema_capabilities
+
+    def _default_profile_predicates(self, model=OnlinePipelineRun) -> tuple[Any, ...]:
+        if self._schema_capabilities is None:
+            return ()
+        capabilities = self._schema_capabilities.snapshot()
+        if capabilities.has(ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES):
+            return (model.trade_profile_id == "trade-15m-v1",)
+        return ()
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
@@ -179,7 +194,11 @@ class SqlAlchemyReadAdapter:
             select(OnlinePipelineRun, OnlinePipelineResultRow)
             .options(*_PIPELINE_0016_LOAD_OPTIONS)
             .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
-            .where(OnlinePipelineRun.symbol == symbol.upper())
+            .where(
+                OnlinePipelineRun.symbol == symbol.upper(),
+                OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
+                *self._default_profile_predicates(),
+            )
             .order_by(OnlinePipelineRun.closed_until_ms.desc(), OnlinePipelineRun.run_id.desc())
             .limit(1)
         )
@@ -213,6 +232,7 @@ class SqlAlchemyReadAdapter:
                 OnlinePipelineRun.symbol == symbol.upper(),
                 OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
                 OnlinePipelineRun.analysis_status == analyzed,
+                *self._default_profile_predicates(),
             )
             .order_by(
                 OnlinePipelineRun.closed_until_ms.desc(),
@@ -307,6 +327,7 @@ class SqlAlchemyReadAdapter:
                 select(OnlinePipelineRun)
                 .options(*_RUN_0016_LOAD_OPTIONS)
                 .where(OnlinePipelineRun.symbol.in_(symbols))
+                .where(*self._default_profile_predicates())
                 .order_by(
                     OnlinePipelineRun.symbol.asc(),
                     OnlinePipelineRun.closed_until_ms.desc(),
@@ -426,6 +447,7 @@ class SqlAlchemyReadAdapter:
                     OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
                     OnlinePipelineRun.analysis_status == analyzed,
                     eligible_result_id.is_not(None),
+                    *self._default_profile_predicates(),
                 )
                 # The schema uniquely identifies a run by symbol, timeframe,
                 # and boundary, and a result by run_id. Boundary order is
@@ -517,7 +539,10 @@ class SqlAlchemyReadAdapter:
                 OnlinePipelineResultRow,
                 OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
             )
-            .where(OnlinePipelineRun.setup_status.is_not(None))
+            .where(
+                OnlinePipelineRun.setup_status.is_not(None),
+                *self._default_profile_predicates(),
+            )
         )
         if query.symbol:
             candidates = candidates.where(
@@ -627,7 +652,10 @@ class SqlAlchemyReadAdapter:
                 OnlinePipelineResultRow,
                 OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
             )
-            .where(setup["setup_id"].as_string() == setup_id)
+            .where(
+                setup["setup_id"].as_string() == setup_id,
+                *self._default_profile_predicates(),
+            )
             .order_by(
                 OnlinePipelineRun.updated_at.desc(),
                 OnlinePipelineRun.run_id.desc(),
@@ -678,7 +706,10 @@ class SqlAlchemyReadAdapter:
         statement = (
             select(OnlinePipelineRun)
             .options(*_RUN_0016_LOAD_OPTIONS)
-            .where(OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES))
+            .where(
+                OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES),
+                *self._default_profile_predicates(),
+            )
         )
         if query is not None:
             if query.symbol:
@@ -716,6 +747,7 @@ class SqlAlchemyReadAdapter:
         statement = select(OnlinePipelineRun).options(*_RUN_0016_LOAD_OPTIONS).where(
             OnlinePipelineRun.run_id == run_id,
             OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES),
+            *self._default_profile_predicates(),
         )
         with self._session() as session:
             run = session.scalar(statement)
@@ -723,7 +755,8 @@ class SqlAlchemyReadAdapter:
 
     def count_active_incidents(self) -> int:
         statement = select(func.count()).select_from(OnlinePipelineRun).where(
-            OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES)
+            OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES),
+            *self._default_profile_predicates(),
         )
         with self._session() as session:
             return int(session.scalar(statement) or 0)
@@ -734,6 +767,7 @@ class SqlAlchemyReadAdapter:
             select(OnlinePipelineRun, result_count)
             .options(*_RUN_0016_LOAD_OPTIONS)
             .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
+            .where(*self._default_profile_predicates())
             .group_by(OnlinePipelineRun.id)
             .order_by(OnlinePipelineRun.closed_until_ms.desc(), OnlinePipelineRun.run_id.desc())
             .limit(limit)
@@ -759,6 +793,7 @@ class SqlAlchemyReadAdapter:
         run_statement = (
             select(OnlinePipelineRun)
             .options(*_RUN_0016_LOAD_OPTIONS)
+            .where(*self._default_profile_predicates())
             .order_by(OnlinePipelineRun.updated_at.desc())
             .limit(1)
         )
@@ -807,6 +842,12 @@ class SqlAlchemyReadAdapter:
 
         with self._session() as session:
             return inspect_required_paper_schema(session.connection())
+
+    def readonly_schema_capabilities(self):
+        if self._schema_capabilities is not None:
+            return self._schema_capabilities.snapshot()
+        with self._session() as session:
+            return inspect_readonly_schema_capabilities(session.connection())
 
     def list_account_baselines(self, limit: int = 2) -> tuple[PaperAccountBaseline, ...]:
         statement = select(PaperAccountBaselineRecord).order_by(

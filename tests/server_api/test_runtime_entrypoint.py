@@ -15,6 +15,10 @@ from uvicorn.importer import import_from_string
 from app.server_api import runtime
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
 from app.server_api.runtime_config import RuntimeConfig
+from app.server_api.schema_compatibility import (
+    BASE_READONLY_CAPABILITIES,
+    ReadonlySchemaCapabilityResult,
+)
 
 
 _RUNTIME_PASSWORD = os.urandom(12).hex()
@@ -66,6 +70,15 @@ def _composed(monkeypatch, *, mode: str = "on"):
         runtime.RuntimeConfig, "from_environment", classmethod(lambda cls: CONFIG)
     )
     monkeypatch.setattr(runtime, "_create_engine", lambda config: engine)
+    monkeypatch.setattr(
+        runtime,
+        "inspect_readonly_schema_capabilities",
+        lambda connection: ReadonlySchemaCapabilityResult(
+            True,
+            "0016_control_mobile_device_security",
+            BASE_READONLY_CAPABILITIES,
+        ),
+    )
     app = runtime.create_runtime_app()
     return app, engine
 
