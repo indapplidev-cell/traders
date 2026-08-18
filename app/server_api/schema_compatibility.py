@@ -71,7 +71,13 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
     if len(revisions) != 1 or not revisions[0]:
         return False
     try:
-        root = Path(__file__).resolve().parents[2]
+        roots = (Path.cwd(), Path(__file__).resolve().parents[2])
+        root = next(
+            candidate
+            for candidate in roots
+            if (candidate / "alembic.ini").is_file()
+            and (candidate / "alembic").is_dir()
+        )
         config = Config(str(root / "alembic.ini"))
         config.set_main_option("script_location", str(root / "alembic"))
         scripts = ScriptDirectory.from_config(config)
@@ -80,7 +86,7 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
             PAPER_SCHEMA_MINIMUM in _lineage(current, scripts)
             and current in _lineage(PAPER_SCHEMA_MAXIMUM, scripts)
         )
-    except (OSError, KeyError, TypeError, ValueError, CommandError):
+    except (OSError, KeyError, StopIteration, TypeError, ValueError, CommandError):
         return False
 
 
