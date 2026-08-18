@@ -7,8 +7,8 @@ from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from typing import Any, Final
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import select, text
+from sqlalchemy.orm import Session, defer
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_paper.eligible_approval_ranking import (
@@ -172,21 +172,48 @@ class TradingFunnelReadRepository:
         max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
         universe = self._universe_source()
         start_ms = now_ms - max_horizon_ms
-        statement = (
-            select(OnlinePipelineRun, OnlinePipelineResultRow)
-            .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
-            .where(
-                OnlinePipelineRun.trade_profile_id == profile.trade_profile_id,
-                OnlinePipelineRun.primary_timeframe == profile.trigger_timeframe,
-                OnlinePipelineRun.symbol.in_(universe.symbols),
-                OnlinePipelineRun.closed_until_ms >= start_ms,
-                OnlinePipelineRun.closed_until_ms <= now_ms,
-            )
-            .order_by(OnlinePipelineRun.closed_until_ms.desc(), OnlinePipelineRun.symbol.asc())
-            .limit(len(universe.symbols) * (50 if profile.trigger_timeframe == "5m" else 18))
-        )
         with self._session_factory() as session:
-            rows = tuple(session.execute(statement))
+            revisions = tuple(session.execute(text(
+                "SELECT version_num FROM alembic_version ORDER BY version_num"
+            )).scalars())
+            profile_schema_ready = revisions == ("0017_parallel_trade_profiles",)
+            if not profile_schema_ready and profile.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
+                rows = ()
+            else:
+                predicates = (
+                    OnlinePipelineRun.primary_timeframe == profile.trigger_timeframe,
+                    OnlinePipelineRun.symbol.in_(universe.symbols),
+                    OnlinePipelineRun.closed_until_ms >= start_ms,
+                    OnlinePipelineRun.closed_until_ms <= now_ms,
+                )
+                profile_predicates = (
+                    (OnlinePipelineRun.trade_profile_id == profile.trade_profile_id,)
+                    if profile_schema_ready
+                    else ()
+                )
+                statement = (
+                    select(OnlinePipelineRun, OnlinePipelineResultRow)
+                    .options(
+                        defer(OnlinePipelineRun.trade_profile_id),
+                        defer(OnlinePipelineRun.profile_mode),
+                        defer(OnlinePipelineResultRow.trade_profile_id),
+                        defer(OnlinePipelineResultRow.profile_mode),
+                    )
+                    .outerjoin(
+                        OnlinePipelineResultRow,
+                        OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+                    )
+                    .where(*profile_predicates, *predicates)
+                    .order_by(
+                        OnlinePipelineRun.closed_until_ms.desc(),
+                        OnlinePipelineRun.symbol.asc(),
+                    )
+                    .limit(
+                        len(universe.symbols)
+                        * (50 if profile.trigger_timeframe == "5m" else 18)
+                    )
+                )
+                rows = tuple(session.execute(statement))
         eligible_by_run: dict[str, object] = {}
         if profile.mode != TradeProfileMode.SHADOW_SEARCH.value:
             eligibility = PaperProductionApprovalSourceAdapter(self._session_factory).read(

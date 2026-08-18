@@ -14,7 +14,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import String, and_, cast, func, literal, or_, select, text, tuple_, union_all
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, defer
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_market_data.db.candle_tables import CANDLE_MODELS
@@ -59,6 +59,16 @@ ANOMALOUS_RUN_STATUSES = (
     "MODULE_ERROR",
     "ERROR",
 )
+
+_RUN_0016_LOAD_OPTIONS = (
+    defer(OnlinePipelineRun.trade_profile_id),
+    defer(OnlinePipelineRun.profile_mode),
+)
+_RESULT_0016_LOAD_OPTIONS = (
+    defer(OnlinePipelineResultRow.trade_profile_id),
+    defer(OnlinePipelineResultRow.profile_mode),
+)
+_PIPELINE_0016_LOAD_OPTIONS = _RUN_0016_LOAD_OPTIONS + _RESULT_0016_LOAD_OPTIONS
 
 
 def _aware(value: datetime | None) -> datetime:
@@ -167,6 +177,7 @@ class SqlAlchemyReadAdapter:
     def _latest_bundle(self, symbol: str) -> tuple[OnlinePipelineRun | None, OnlinePipelineResultRow | None]:
         statement = (
             select(OnlinePipelineRun, OnlinePipelineResultRow)
+            .options(*_PIPELINE_0016_LOAD_OPTIONS)
             .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
             .where(OnlinePipelineRun.symbol == symbol.upper())
             .order_by(OnlinePipelineRun.closed_until_ms.desc(), OnlinePipelineRun.run_id.desc())
@@ -193,6 +204,7 @@ class SqlAlchemyReadAdapter:
         )
         statement = (
             select(OnlinePipelineRun, OnlinePipelineResultRow)
+            .options(*_PIPELINE_0016_LOAD_OPTIONS)
             .join(
                 OnlinePipelineResultRow,
                 OnlinePipelineResultRow.id == eligible_result_id,
@@ -293,6 +305,7 @@ class SqlAlchemyReadAdapter:
                     counts[(str(symbol), timeframe)] = int(count)
             runs = tuple(session.scalars(
                 select(OnlinePipelineRun)
+                .options(*_RUN_0016_LOAD_OPTIONS)
                 .where(OnlinePipelineRun.symbol.in_(symbols))
                 .order_by(
                     OnlinePipelineRun.symbol.asc(),
@@ -430,6 +443,7 @@ class SqlAlchemyReadAdapter:
         latest = union_all(*latest_keys).subquery()
         statement = (
             select(OnlinePipelineRun, OnlinePipelineResultRow)
+            .options(*_PIPELINE_0016_LOAD_OPTIONS)
             .join(latest, latest.c.run_pk == OnlinePipelineRun.id)
             .join(OnlinePipelineResultRow, OnlinePipelineResultRow.id == latest.c.result_pk)
             .order_by(OnlinePipelineRun.symbol.asc()).limit(len(bounded))
@@ -661,7 +675,11 @@ class SqlAlchemyReadAdapter:
         )
 
     def _incident_rows(self, query: IncidentQuery | None = None, *, scan_limit: int = 5000):
-        statement = select(OnlinePipelineRun).where(OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES))
+        statement = (
+            select(OnlinePipelineRun)
+            .options(*_RUN_0016_LOAD_OPTIONS)
+            .where(OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES))
+        )
         if query is not None:
             if query.symbol:
                 statement = statement.where(OnlinePipelineRun.symbol == query.symbol.upper())
@@ -695,7 +713,7 @@ class SqlAlchemyReadAdapter:
         if not incident_id.startswith(prefix):
             return None
         run_id = incident_id[len(prefix):]
-        statement = select(OnlinePipelineRun).where(
+        statement = select(OnlinePipelineRun).options(*_RUN_0016_LOAD_OPTIONS).where(
             OnlinePipelineRun.run_id == run_id,
             OnlinePipelineRun.status.in_(ANOMALOUS_RUN_STATUSES),
         )
@@ -714,6 +732,7 @@ class SqlAlchemyReadAdapter:
         result_count = func.count(OnlinePipelineResultRow.id)
         statement = (
             select(OnlinePipelineRun, result_count)
+            .options(*_RUN_0016_LOAD_OPTIONS)
             .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
             .group_by(OnlinePipelineRun.id)
             .order_by(OnlinePipelineRun.closed_until_ms.desc(), OnlinePipelineRun.run_id.desc())
@@ -737,7 +756,12 @@ class SqlAlchemyReadAdapter:
     def get_health(self) -> HealthRecord:
         model = CANDLE_MODELS[self._primary_timeframe]
         candle_statement = select(func.max(model.updated_at_utc)).where(model.is_closed.is_(True))
-        run_statement = select(OnlinePipelineRun).order_by(OnlinePipelineRun.updated_at.desc()).limit(1)
+        run_statement = (
+            select(OnlinePipelineRun)
+            .options(*_RUN_0016_LOAD_OPTIONS)
+            .order_by(OnlinePipelineRun.updated_at.desc())
+            .limit(1)
+        )
         with self._session() as session:
             candle_observed = session.scalar(candle_statement)
             run = session.scalar(run_statement)
