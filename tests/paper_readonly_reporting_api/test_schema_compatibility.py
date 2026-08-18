@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from pathlib import Path
 
 from app.server_api.schema_compatibility import (
     PAPER_REQUIRED_SCHEMA_OBJECTS,
@@ -43,3 +44,14 @@ def test_required_object_inventory_is_explicit_and_excludes_unrelated_0016_table
     )
     assert "control_mobile_devices" not in PAPER_REQUIRED_SCHEMA_OBJECTS
     assert "control_mobile_replay_nonces" not in PAPER_REQUIRED_SCHEMA_OBJECTS
+
+
+def test_readonly_image_packages_the_lineage_metadata_used_by_runtime_guard():
+    dockerfile = (Path(__file__).resolve().parents[2] / "Dockerfile").read_text(
+        encoding="utf-8"
+    )
+    readonly_stage = dockerfile.split("FROM python:3.11-slim AS readonly-api", 1)[1].split(
+        "FROM python:3.11-slim AS operator-control-api", 1
+    )[0]
+    assert "COPY alembic.ini ./" in readonly_stage
+    assert "COPY alembic ./alembic" in readonly_stage

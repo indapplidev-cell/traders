@@ -40,6 +40,8 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY alembic.ini ./
+COPY alembic ./alembic
 RUN python -m pip install --no-cache-dir --no-deps . \
     && rm -rf build *.egg-info \
     && useradd --system --uid 10001 --create-home traders
