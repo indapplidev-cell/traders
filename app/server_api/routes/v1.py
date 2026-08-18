@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Path, Query
 
@@ -21,6 +21,8 @@ from app.server_api.schemas.models import (
     Severity,
 )
 from app.server_api.services import ApiQueryService
+from app.server_api.schemas.i18n import I18nCatalog, I18nManifest
+from app.i18n import catalog_payload, manifest_payload
 
 
 SymbolPath = Annotated[str, Path(pattern=r"^[A-Z0-9]{5,20}$")]
@@ -44,6 +46,20 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
     @router.get("/dashboard", response_model=DashboardEnvelope, operation_id="getDashboard", responses={500: {"model": ErrorEnvelope}})
     def get_dashboard() -> DashboardEnvelope:
         return service.dashboard()
+
+    @router.get(
+        "/i18n/manifest", response_model=I18nManifest,
+        operation_id="getI18nManifest", responses={500: {"model": ErrorEnvelope}},
+    )
+    def get_i18n_manifest() -> I18nManifest:
+        return I18nManifest.model_validate(manifest_payload())
+
+    @router.get(
+        "/i18n/catalog/{locale}", response_model=I18nCatalog,
+        operation_id="getI18nCatalog", responses={422: {"model": ErrorEnvelope}, 500: {"model": ErrorEnvelope}},
+    )
+    def get_i18n_catalog(locale: Literal["ru", "en"]) -> I18nCatalog:
+        return I18nCatalog.model_validate(catalog_payload(locale))
 
     @router.get("/markets", response_model=MarketListEnvelope, operation_id="listMarkets", responses={500: {"model": ErrorEnvelope}})
     def list_markets() -> MarketListEnvelope:
