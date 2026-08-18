@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 0e46e052f7c021c49661fa7a70172054797d3f69
+STATUS_AS_OF_COMMIT = b42fafbcba982d3196fbefbf0029fd0a8a286a9b
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T13:02:38Z
-RECONCILED_BY_TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
-FILES_CHANGED = FINAL_DECISION.md, docs/audits/TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01_FINAL.md, online_trader.md; external evidence inbox final report
+RECONCILED_AT_UTC = 2026-08-18T13:39:15Z
+RECONCILED_BY_TASK = RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01
+FILES_CHANGED = FINAL_DECISION.md, docs/audits/RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01_FINAL.md, tests/control_mobile_security/test_mobile_auth.py, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = WAL_PITR_FRESH_RUNTIME_AND_PHYSICAL_ARCHIVE_PASS_SAME_LINEAGE_SCHEMA0015_15M_CONTINUITY_EXACT10_5M_INACTIVE_CONTROL_CANARY_LIVE_UNCHANGED
+STATUS_CONFIDENCE = SCHEMA0016_PHYSICAL_METADATA_PASS_RUNTIME_ACCEPTANCE_BLOCKED_FAIL_CLOSED_WAL_PITR_FRESH_PASS_15M_CONTINUITY_EXACT10_CONTROL_CANARY_LIVE_UNCHANGED
 
 # Состояние проекта traders-ml
 
@@ -22,11 +22,11 @@ STATUS_CONFIDENCE = WAL_PITR_FRESH_RUNTIME_AND_PHYSICAL_ARCHIVE_PASS_SAME_LINEAG
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_HEALTHY_27_GET_0_WRITE_AUTHORITATIVE_RU_EN_I18N_EXACT_SOURCE_MATCH_ANALYSIS_AND_MARKETS_HTTP200_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
+API_RUNTIME_STATUS = READONLY_CORE_HEALTHY_27_GET_0_WRITE_ANALYSIS_AND_MARKETS_HTTP200_PAPER_READINESS_FAIL_CLOSED_EXPECTED0015_ACTUAL0016_CONTROL_HEALTHY_GENERATION_6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01
-CURRENT_BLOCKER = NONE_FOR_0016_RECOVERY_PREFLIGHT_SEPARATE_CONTROLLED_DEPLOYMENT_AUTHORIZATION_STILL_REQUIRED
-BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_DAEMON_RUNNING_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_622780_SECONDS_NO_PHYSICAL_GAP
+CURRENT_STAGE = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_AND_RUNTIME_PRIVILEGE_REMEDIATION_01
+CURRENT_BLOCKER = READONLY_EXACT_SCHEMA_EXPECTATION_0015_VS_PRODUCTION0016_AND_TRADERS_PAPER_RUNTIME_ZERO_0016_TABLE_PRIVILEGES
+BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_DAEMON_RUNNING_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_625336_SECONDS_NO_PHYSICAL_GAP
 ```
 
 ## Parallel 5m shadow-search and dual-profile foundation
@@ -50,9 +50,9 @@ FUNNEL = 15M_4_PER1H_16_PER4H_5M_12_PER1H_48_PER4H_NO_MIXING
 I18N = SERVER_OWNED_RU_EN_GENERATED_DESKTOP_BOOTSTRAP
 DESKTOP = DEFAULT15M_TABS_OVERVIEW_MARKET_ANALYSIS_SCENARIOS_FUNNEL_SHARED_PAIRS_INCIDENTS_ACCOUNT
 VALIDATION = FOCUSED30_IMPACTED2017_DESKTOP1449_PASS2_SKIP3029SUBTESTS_REPLAY120_UNIQUE_FUTURE0
-SCHEMA = SOURCE0017_DEPENDS_ON0016_PRODUCTION_REMAINS0015_NO_MIGRATION_APPLIED
-DEPLOYMENT = NOT_ATTEMPTED_NO_RESTART_NO_15M_INTERRUPTION
-PRODUCTION_INVARIANCE = READONLY27GET0WRITE_CONTROL_ARMED_GENERATION6_CANARY_UNCHANGED_COMMAND0_POSITION0_LIVE_OFF
+SCHEMA = SOURCE0017_DEPENDS_ON0016_PRODUCTION_NOW0016_0017_NOT_APPLIED
+DEPLOYMENT = 0016_APPLIED_BY_SEPARATE_TASK_5M_RUNTIME_NOT_ACTIVATED_NO_RESTART_NO_15M_INTERRUPTION
+PRODUCTION_INVARIANCE = 15M_EXACT10_CONTINUES_READONLY_CORE27GET0WRITE_PAPER_READINESS_FAIL_CLOSED_CONTROL_ARMED_GENERATION6_CANARY_UNCHANGED_COMMAND0_POSITION0_LIVE_OFF
 NEXT_ACTION = TRADERS_PARALLEL_5M_SEARCH_SHADOW_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
 ```
 
@@ -61,8 +61,8 @@ behind the new profile. Its trigger, thresholds, risk, validity, selector and
 PAPER eligibility were not changed. The 5m source path is independent of the
 15m search outcome, uses only already-closed context, and cannot enter current
 PAPER command ingestion. Production activation is intentionally separate:
-production remains at schema 0015 while the source profile migration is 0017
-after pending 0016, and activation must use an independently deployable worker
+production is now at schema 0016 while the source profile migration remains
+undeployed at 0017, and activation must use an independently deployable worker
 with explicit before/during/after 15m continuity acceptance.
 
 ## Authoritative i18n Readonly runtime re-acceptance
@@ -220,6 +220,41 @@ daemon drained the exact current queue through its checksum-verified atomic
 publication path. PostgreSQL consumed every real ACK. No readiness flag was
 patched, no base backup or lineage reset occurred, and the accumulated PITR
 clock increased rather than restarting.
+
+## Mobile Control schema deployment retry
+
+```text
+TASK = RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01
+RESULT = BLOCKED_AFTER_SUCCESSFUL_SCHEMA_DEPLOYMENT
+PROJECT_STATE_AUDIT_COMMIT = b42fafbcba982d3196fbefbf0029fd0a8a286a9b
+FINAL_VERDICT = BLOCKED_RUNTIME_ACCEPTANCE_AFTER_PASS_0015_TO_0016_SCHEMA_DEPLOYMENT
+BLOCKER_CODE = READONLY_PAPER_SCHEMA_EXPECTATION_REMAINS_0015
+SECONDARY_BLOCKER = MOBILE_RUNTIME_PRINCIPAL_HAS_NO_0016_TABLE_PRIVILEGES
+PRODUCTION_SCHEMA = 0016_CONTROL_MOBILE_DEVICE_SECURITY
+SOURCE_SCHEMA = 0017_PARALLEL_TRADE_PROFILES_UNDEPLOYED
+MIGRATION = EXACT_C5201259_TRANSACTIONAL_ADDITIVE_PASS_0017_NOT_APPLIED
+TABLES = CONTROL_MOBILE_DEVICES_AND_CONTROL_MOBILE_REPLAY_NONCES_EMPTY_METADATA_EXACT
+RUNTIME_PRINCIPAL = TRADERS_PAPER_RUNTIME_ZERO_PRIVILEGES_ON_BOTH_NEW_TABLES
+READONLY = CORE_HEALTH_OK_ANALYSIS200_MARKETS200_PAPER_READINESS_FAIL_CLOSED_EXPECTED0015_ACTUAL0016
+CONTROL = ARMED_GENERATION6_HEALTHY_AUDIT_PASS
+CANARY = WAITING_FOR_ELIGIBLE_APPROVAL_COMMAND0_POSITION0_MUTATION_AUTHORITY_BLOCKED
+WAL_PITR = PASS_TRUE_TRUE_LINEAGE_VALID_625336_SECONDS_NO_PHYSICAL_GAP_BACKLOG0_PENDING0_UNRESOLVED0
+TRADE_15M = UNINTERRUPTED_2026_08_18T13_30Z_EXACT10_COMPLETE
+RESTART_DELTAS = ZERO_POSTGRES_MARKET_ORCHESTRATOR_READONLY_CONTROL
+VALIDATION = FIRST24PASS1EXPIRED_FIXTURE_TEST_ONLY_REMEDIATION_FINAL25PASS_COMPILE_PASS
+TASK_MUTATIONS = ONE_SCHEMA_MIGRATION_ZERO_BUSINESS_ROWS_GRANTS_DEVICE_ENROLLMENT_REPLAY_CONTROL_CANARY_TRADING_LIVE_TLS_NETWORK
+NEXT_ACTION = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_AND_RUNTIME_PRIVILEGE_REMEDIATION_01
+```
+
+The authorized schema-only retry crossed the recovered WAL/PITR gate and
+deployed exactly revision 0016 without applying source revision 0017. Physical
+schema verification passed and both new tables remain empty. Cross-runtime
+acceptance is blocked rather than completed: the running Readonly PAPER
+projection requires exact revision 0015, and the future mobile runtime
+principal has no privileges on the new tables. The existing readiness authority
+therefore fails closed before any new canary command; no downgrade, stamp,
+GRANT, runtime restart, TLS listener, enrollment or trading mutation was
+performed.
 
 ## Mobile Control schema controlled deployment attempt
 
@@ -4456,16 +4491,16 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% deployed / natural quantity proof pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons are deployed from the current tree to orchestrator and Readonly API; three complete postdeploy cycles had zero natural plans, so the production long-identity quantity call remains unobserved |
+| Online analytics/paper pipeline | ≈98% deployed / PAPER continuation fail-closed | Schema 0016 is current; the active 15m analytics path remains healthy, but the deployed PAPER readiness projection expects exact 0015 and blocks new continuation commands until compatibility remediation |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh recovery and post-commit reread show `wal_ready=true`, `pitr_ready=true`, zero active unresolved failure, zero export backlog and zero `.ready` statuses; all 39 recovered destination objects were 16 MiB and checksum-verified at publication, the same base anchor remains valid with at least 622780 contiguous seconds and no physical gap or reset |
-| Readonly Server API | 27 GET/0 write authoritative i18n runtime deployed and production re-accepted | The already-running image exactly matches current executable/i18n source; manifest plus RU/EN catalogs remain 792 keys each with parity and placeholder PASS, the full matrix is 25 HTTP 2xx plus two expected detail 404s with zero unexpected 4xx/5xx, and the retry performed no redeploy or restart |
+| Readonly Server API | Core 27 GET/0 write healthy / PAPER readiness blocked | Health, Analysis, Markets and authoritative i18n remain available without restart, while `/paper/readiness` correctly fails closed because its deployed exact expectation is 0015 and production is now 0016 |
 | Desktop Readonly client | Production Readonly RU/EN runtime acceptance PASS | The real `PRODUCTION_READONLY_HTTP` Tk consumer passed all nine pages in RU and EN; all ten Market rows propagated and humanized server `strategy_status`, the original `AttributeError` is retired, access-mode/raw-code/stale-loading leaks are zero, and full regression is 1447 passed plus 3029 subtests |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
-| Android Control client | 0% operational / security source foundation implemented | Android Keystore P-256 identity, signed request, HTTPS-only URL, confirmation and network ambiguity contracts pass source tests; schema 0016 and the separate TLS runtime remain undeployed, no Control URL or LAN endpoint exists |
-| Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
-| PAPER Operator Control API | 100% PAPER mutation foundation and production deployment | Localhost-only authenticated 3 GET/5 POST boundary is healthy at ARMED generation 6; its continuation uses separate current infrastructure readiness plus the atomic mutation safety gate without a public route change |
-| First-canary correlation/readiness | 100% durable continuation deployment acceptance | Exact UUID and original START lineage survive the narrow owner recreate; the current canary remains WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and no second operator action |
+| Android Control client | Schema deployed / runtime acceptance blocked | Android Keystore P-256 identity and signed HTTPS request source tests pass; schema 0016 is deployed with empty registry/replay tables, but the runtime principal has no new-table grants and no TLS Control URL or LAN endpoint exists |
+| Readonly PAPER reporting API | Core deployed / schema compatibility blocked | The endpoint remains read-only and fail-closed, but reports `PAPER_SCHEMA_NOT_DEPLOYED` because the deployed exact expectation is 0015 while Alembic is 0016 |
+| PAPER Operator Control API | Healthy status boundary / continuation blocked | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; the Readonly readiness dependency prevents new continuation mutations under the schema mismatch |
+| First-canary correlation/readiness | Durable state preserved / advancement blocked | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions, and schema readiness now safely denies advancement |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -4475,12 +4510,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = RETRY_TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_CONTROLLED_DEPLOYMENT_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_0016_CONTROLLED_DEPLOYMENT_IS_SEPARATE
+RECOMMENDED_NEXT_TASK = TRADERS_CONTROL_MOBILE_DEVICE_AUTH_SCHEMA_COMPATIBILITY_AND_RUNTIME_PRIVILEGE_REMEDIATION_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_SOURCE_RUNTIME_ROLE_AND_CONTROLLED_REDEPLOY_SCOPE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = COMPLETED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
-CURRENT_WAL_PITR_GATE = PASS_FRESH_PROJECTION_WAL_TRUE_PITR_TRUE_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_622780_SECONDS_NO_PHYSICAL_GAP
+CURRENT_WAL_PITR_GATE = PASS_FRESH_PROJECTION_WAL_TRUE_PITR_TRUE_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_625336_SECONDS_NO_PHYSICAL_GAP
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
