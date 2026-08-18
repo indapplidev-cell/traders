@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 5b7bd7c6719c097eb7c3d51f77963e44aecc3684
+STATUS_AS_OF_COMMIT = 2f16ee2e1500e7c0297742ee60dda39119df29fe
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-18T05:13:08Z
-RECONCILED_BY_TASK = TRADERS_SERVER_AUTHORITATIVE_I18N_AND_DESKTOP_HUMANIZED_PRESENTATION_01
-FILES_CHANGED = app/i18n/*, app/server_api/routes/v1.py, app/server_api/schemas/i18n.py, scripts/generate_desktop_i18n_bootstrap.py, applicable server tests, docs/api/AUTHORITATIVE_I18N.md, docs/audits/TRADERS_SERVER_AUTHORITATIVE_I18N_AND_DESKTOP_HUMANIZED_PRESENTATION_01_FINAL.md, online_trader.md; desktop source/tests/docs in sibling repository; external evidence inbox final report
+RECONCILED_AT_UTC = 2026-08-18T06:00:03Z
+RECONCILED_BY_TASK = TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+FILES_CHANGED = docs/audits/TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01_FINAL.md, online_trader.md; external evidence inbox final report
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_I18N_SOURCE_IMPLEMENTATION_AND_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = I18N_SOURCE_AND_DESKTOP_REGRESSIONS_PASS_PRODUCTION_RUNTIME_UNCHANGED_25_GET_0_WRITE_SCHEMA_0015_LIVE_OFF
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_I18N_RUNTIME_AUDIT_AND_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = SERVER_I18N_RUNTIME_27_GET_0_WRITE_EXACT_SOURCE_MATCH_DESKTOP_HTTP_LKG_PASS_GUI_BLOCKED_MARKET_SUMMARY_STRATEGY_STATUS_SCHEMA_0015_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -22,12 +22,45 @@ STATUS_CONFIDENCE = I18N_SOURCE_AND_DESKTOP_REGRESSIONS_PASS_PRODUCTION_RUNTIME_
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_HEALTHY_25_GET_0_WRITE_OPTIMIZED_ANALYSIS_AND_MARKETS_HTTP200_ACCEPTED_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
-SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_27_GET_0_WRITE_NOT_DEPLOYED
-CURRENT_STAGE = TRADERS_MOBILE_SERVER_I18N_CONSUMER_MIGRATION_01
-CURRENT_BLOCKER = NONE_FOR_I18N_SOURCE_NEXT_TASK_RUNTIME_DEPLOYMENT_MAY_REQUIRE_SEPARATE_ACCEPTANCE
+API_RUNTIME_STATUS = READONLY_HEALTHY_27_GET_0_WRITE_AUTHORITATIVE_RU_EN_I18N_EXACT_SOURCE_MATCH_ANALYSIS_AND_MARKETS_HTTP200_CONTROL_HEALTHY_SCHEMA_0015_GENERATION_6_LIVE_OFF
+SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
+CURRENT_STAGE = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01
+CURRENT_BLOCKER = DESKTOP_PRODUCTION_I18N_CONSUMER_ACCEPTANCE_FAILED_MARKET_SUMMARY_PARSER_OMITS_STRATEGY_STATUS
 BACKGROUND_TIMED_GATE = BLOCKED_WAL_FALSE_PITR_FALSE_ACK_DAEMON_PID_ABSENT_EXPORT_BACKLOG1_PENDING_STATUS4_AT_RECONCILIATION_LINEAGE_VALID_584469_SECONDS_NO_PHYSICAL_GAP
 ```
+
+## Authoritative i18n Readonly runtime deployment acceptance
+
+```text
+TASK = TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+RESULT = BLOCKED_AFTER_SUCCESSFUL_NARROW_READONLY_DEPLOYMENT
+PROJECT_STATE_AUDIT_COMMIT = 2f16ee2e1500e7c0297742ee60dda39119df29fe
+BLOCKER_CODE = DESKTOP_PRODUCTION_I18N_CONSUMER_ACCEPTANCE_FAILED
+SECONDARY_BLOCKER = DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_PARSER_OMISSION
+RUNTIME_IMAGE = SHA256_FAEB93D7209649F4352BAC41CA5F9A646C21017EAD418681037E4F86478E464E
+RUNTIME_SOURCE = HEAD3E881FF_TREEBB0D470
+RUNTIME_ROUTES = 27_GET_0_WRITE_FROM_25_GET_0_WRITE
+I18N = MANIFEST_RU_EN_HTTP200_EXACT_CURRENT_SOURCE_MATCH_792_KEYS_EACH_PARITY_PLACEHOLDERS_PASS_UNKNOWN_LOCALE422
+CATALOG_VERSION = i18n-8792dfefd2e4e0fa
+CATALOG_HASH = 8792dfefd2e4e0fabd8251263c8d093282e372ba6d794d7b9a5df0cb7b101884
+LEGACY = 25_ROUTE_COMPATIBILITY_PASS_ANALYSIS_MARKETS_PAPER_HTTP200_ZERO_UNEXPECTED4XX5XX
+DESKTOP_HTTP_LKG = PRODUCTION_MANIFEST_RU_EN_FETCH_AND_ATOMIC_LKG_PASS_EXACT_IDENTITY
+DESKTOP_GUI = FAIL_RUNTIME_MARKETSUMMARY_PARSER_OMITS_SERVER_STRATEGY_STATUS_MARKETVIEW_ATTRIBUTEERROR
+DEPLOYMENT = ONE_READONLY_RECREATE_LOOPBACK_BIND_UNCHANGED_NO_OTHER_RESTART
+PRODUCTION_SCHEMA = 0015_TRADING_UNIVERSE_ACTIVATION_UNCHANGED
+CONTROL_CANARY_LIVE = ARMED_GENERATION6_WAITING_ZERO_COMMANDS_ZERO_POSITIONS_LIVE_OFF_UNCHANGED
+MOBILE = SOURCE_UNCHANGED_EXISTING_EXACT_READONLY_PORTPROXY_AND_FIREWALL_PRESERVED
+TASK_MUTATIONS = ONE_READONLY_RECREATE_ZERO_DB_CONTROL_TRADING_CANARY_LIVE_WAL_PITR_BINANCE
+NEXT_ACTION = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01_THEN_RETRY_THIS_ACCEPTANCE
+```
+
+The server portion is deployed and healthy, so production remains on the new
+27 GET / 0 write Readonly image. Full cross-component acceptance is not PASS:
+the real Tk production-provider smoke proved that the server response contains
+`strategy_status`, but the desktop API-contract dataclass/parser drops it while
+the Market view requires it. This deployment task did not patch desktop source
+or roll back the healthy additive server runtime. Mobile i18n migration is not
+yet authorized by this blocked result.
 
 ## Server-authoritative i18n and desktop humanized presentation
 
@@ -39,23 +72,24 @@ DESKTOP_PROJECT_STATE_COMMIT = 7737046180419479ff9948c4d165572977c05439
 SERVER_AUTHORITY = RU_EN_792_KEYS_EACH_NAMESPACED_DETERMINISTIC
 CATALOG_VERSION = i18n-8792dfefd2e4e0fa
 SOURCE_ROUTES = 27_GET_0_WRITE_FROM_25_GET_0_WRITE
-PRODUCTION_ROUTES = 25_GET_0_WRITE_UNCHANGED_NOT_DEPLOYED
+PRODUCTION_ROUTES = 27_GET_0_WRITE_DEPLOYED_BY_LATER_RUNTIME_ACCEPTANCE
 VALIDATION = RU_EN_KEY_PARITY_PLACEHOLDER_PARITY_ENUM98_AND_REASON106_FROM_FOUR_SOURCE_ENUMS_COVERAGE_PASS
 DESKTOP = SERVER_CATALOG_CONSUMER_LKG_ATOMIC_CACHE_GENERATED_BOOTSTRAP
-PRESENTATION = MARKET_STRATEGY_FIXED_OVERVIEW_TABLE_SCENARIOS_FUNNEL_PAPER_CONTROL_HUMANIZED_LOADING_COMPLETION_FIXED
+PRESENTATION = SOURCE_INTENT_HUMANIZED_BUT_RUNTIME_MARKET_STRATEGY_BLOCKED_BY_DESKTOP_PARSER_OMISSION
 SERVER_REGRESSION = 2563_PASS_2_SKIP
-DESKTOP_REGRESSION = 1441_PASS_2_SKIP_3020_SUBTESTS
+DESKTOP_REGRESSION = 1441_PASS_2_SKIP_3020_SUBTESTS_DID_NOT_COVER_REAL_MARKETSUMMARY_STRATEGY_STATUS_PATH
 MOBILE = SOURCE_UNCHANGED_PLATFORM_NEUTRAL_CONTRACT_READY
-PRODUCTION = NO_DEPLOYMENT_NO_RESTART_NO_DB_CONTROL_TRADING_CANARY_OR_LIVE_MUTATION
-NEXT_ACTION = TRADERS_MOBILE_SERVER_I18N_CONSUMER_MIGRATION_01
+PRODUCTION = SOURCE_TASK_MADE_NO_DEPLOYMENT_LATER_NARROW_READONLY_DEPLOYMENT_SUCCEEDED
+NEXT_ACTION = DESKTOP_STRATEGY_STATUS_PARSER_REMEDIATION_THEN_RUNTIME_REACCEPTANCE
 ```
 
 The server catalog is now the sole hand-maintained RU/EN product translation
 source. Business DTOs retain stable machine codes. Desktop keeps only a locale
 preference, validated last-known-good cache and generated bootstrap; its former
-domain dictionary and Help source are generated from the server. This is a
-source-only result: the two new Readonly GET routes are not part of the current
-production runtime until a separately authorized deployment acceptance.
+domain dictionary and Help source are generated from the server. That original
+task was source-only; the later runtime acceptance above deployed both routes,
+but exposed a separate desktop MarketSummary parser omission before full task
+acceptance could pass.
 
 ## Current WAL ACK/archive readiness recovery
 
@@ -4324,7 +4358,8 @@ LIVE.
 | Online analytics/paper pipeline | ≈98% deployed / natural quantity proof pending | Schema 0015 is current; deterministic bounded StrategyDecision lineage and authoritative materializer/Funnel reasons are deployed from the current tree to orchestrator and Readonly API; three complete postdeploy cycles had zero natural plans, so the production long-identity quantity call remains unobserved |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate blocked | Fresh WAL recovery diagnosis shows `wal_ready=false`, `pitr_ready=false`, one active derived failure, one exported backlog segment and four `.ready` statuses at reconciliation; all exact source segments are present and the preserved 584469-second lineage remains valid with no physical gap or reset, but the absent ACK daemon cannot be started under the task's no-restart gate |
-| Readonly Server API | 25 GET/0 write optimized runtime deployed and accepted | Analysis and Markets return bounded HTTP 200 responses; seven-request samples measured median/max 270.522/905.864 ms and 403.387/692.651 ms respectively, PAPER lists remain healthy, and the full GET matrix has zero unexpected 4xx/5xx |
+| Readonly Server API | 27 GET/0 write authoritative i18n runtime deployed and server-accepted | The exact current source image serves manifest plus RU/EN catalogs at 792 keys each with exact source identity, parity and placeholder PASS; Analysis, Markets and PAPER remain HTTP 200 and the 27-route matrix has zero unexpected 4xx/5xx |
+| Desktop Readonly client | Production i18n HTTP/LKG PASS; GUI runtime blocked | Manifest plus RU/EN catalogs validate and atomically cache with exact server identity, but the real production-provider GUI fails because its API-contract MarketSummary parser omits server `strategy_status` while MarketView requires that attribute |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | 0% operational / security source foundation implemented | Android Keystore P-256 identity, signed request, HTTPS-only URL, confirmation and network ambiguity contracts pass source tests; schema 0016 and the separate TLS runtime remain undeployed, no Control URL or LAN endpoint exists |
 | Readonly PAPER reporting API | 100% source/integration/production acceptance | Readonly schema preflight has exact SELECT-only access to `alembic_version`; database-backed PAPER endpoints pass, writes/DDL/grant option/ownership remain denied |
@@ -4339,8 +4374,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = SEPARATELY_AUTHORIZE_BOUNDED_WAL_ACK_DAEMON_RECOVERY_THEN_RETRY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_START_ABSENT_WAL_ACK_DAEMON_THEN_RECONCILE_ONLY_EXACT_CURRENT_OBJECTS_WITHOUT_LINEAGE_RESET
+RECOMMENDED_NEXT_TASK = TRADERS_DESKTOP_MARKET_SUMMARY_STRATEGY_STATUS_RUNTIME_REMEDIATION_01_THEN_RETRY_TRADERS_SERVER_AUTHORITATIVE_I18N_READONLY_RUNTIME_DEPLOYMENT_ACCEPTANCE_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_DESKTOP_SOURCE_REMEDIATION_IS_OUTSIDE_THIS_DEPLOYMENT_TASK
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = BLOCKED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01_DAEMON_ABSENT_RESTART_NOT_AUTHORIZED
