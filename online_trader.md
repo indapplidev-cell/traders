@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 1ccf111fa107d3a057d6a8b5ec2671bc1bf512f3
+STATUS_AS_OF_COMMIT = 91757e3abf6d54a53160989b4b69a3e495b4f4a1
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-20T10:04:18Z
-RECONCILED_BY_TASK = TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01
-FILES_CHANGED = FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-20T16:06:32Z
+RECONCILED_BY_TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
+FILES_CHANGED = docs/audits/TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02_FINAL.md, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = SOURCE_REMEDIATION_READY_BUT_TASK_BLOCKED_BY_FRESH_PRODUCTION_WAL_PITR_GATE_ZERO_5M_ACTIVATION_15M_CONTINUOUS
+STATUS_CONFIDENCE = PRODUCTION_WAL_PITR_ACK_ARCHIVE_GATE_PASS_EXISTING_LINEAGE_ZERO_5M_ACTIVATION_15M_CONTINUOUS
 
 # Состояние проекта traders-ml
 
@@ -24,10 +24,38 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_DUAL_SCHEMA_IMAGE293063B2_HEALTHY_ON0017_27_GET_0_WRITE_21HTTP2XX_6EXPECTED404_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
-CURRENT_BLOCKER = PRODUCTION_WAL_PITR_READINESS_NOT_PASS_ACK_DEGRADED_PID_NONE_BACKLOG1_PENDING24_UNRESOLVED1
-BACKGROUND_TIMED_GATE = FAIL_WAL_FALSE_PITR_FALSE_ACK_DEGRADED_BACKLOG1_PENDING24_UNRESOLVED1_LINEAGE_VALID_NO_PHYSICAL_GAP
+CURRENT_STAGE = RERUN_TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01_ACCEPTANCE
+CURRENT_BLOCKER = NONE_WAL_PITR_ACK_ARCHIVE_RECOVERED_5M_REMAINS_INACTIVE_PENDING_SEPARATE_ACCEPTANCE_RERUN
+BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_OWNER_IDENTITY_HEARTBEAT_PASS_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_NO_PHYSICAL_GAP
 ```
+
+## WAL/PITR/ACK/archive readiness recovery 02
+
+```text
+TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
+RESULT = PASS
+PROJECT_STATE_AUDIT_COMMIT = 91757e3abf6d54a53160989b4b69a3e495b4f4a1
+RECOVERY = EXISTING_CHECKSUM_VERIFIED_HOST_ACK_DAEMON_ONE_START
+ACK_OWNER = PID8872_EXECUTABLE_COMMAND_START_LOCK_STATE_HEARTBEAT_IDENTITY_PASS
+WAL_PITR = TRUE_TRUE_EXISTING_BASE_20260811T075419Z_F179B4E1_WINDOW806845PLUS
+ARCHIVE = INITIAL47_EXACT16MIB_CHECKSUM_LINEAGE_VERIFIED_AFTER_BACKLOG0_PENDING0_UNRESOLVED0
+LINEAGE = UNCHANGED_VALID_REQUIRED775_COVERAGE775_MISSING0_PHYSICAL_GAP_FALSE
+IDEMPOTENCY = PASS_RERUN_ATTEMPTS0_DUPLICATE_ACK0_NEW_OBJECT0
+TRADE_15M = NATURAL_BOUNDARY1787241600000_EXACT10_CONTINUITY_PASS_PARAMETERIZATION_UNCHANGED
+TRADE_5M = INACTIVE_RUN0_RESULT0_PAPER0_ORDER0_FILL0_POSITION0
+CONTROL = ARMED_GENERATION6_CANARY_WAITING_COMMAND0_POSITION0_LIVE_DISABLED
+RESTART_DELTAS = POSTGRES0_MARKET_DATA0_ORCHESTRATOR0_READONLY0_CONTROL0
+MUTATIONS = SCHEMA0_PRIVILEGE0_CONTROL0_TRADING0_BUSINESS0_BINANCE0
+VALIDATION = CURRENT_WAL_ACK_SCOPE1232PASS1SKIP1DESELECTED_OBSOLETE_HISTORICAL_GUARD_SEPARATELY_CLASSIFIED
+NEXT_ACTION = RERUN_TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01_ACCEPTANCE
+```
+
+The source ACK daemon was started only after the old state PID was proven
+absent and the lock proven absent. All 47 task-start pending segments were
+source-present, contiguous timeline-1 members and checksum-valid; the daemon
+published and ACKed them through the existing atomic protocol. The prompt's
+pending count 24 had naturally grown to 47 before task execution. No new base,
+lineage, migration, service restart, 5m runtime or trading mutation occurred.
 
 ## 5m runtime parameterization and singleton-owner remediation
 
@@ -50,8 +78,9 @@ ISOLATED = REAL_POSTGRESQL16_RACE1OF4_STALE_FENCE_CRASH_IDEMPOTENCY_EXACT10_15M_
 VALIDATION = FOCUSED17_POSTCOMMIT_SERVER354PLUS54_DESKTOP1449_SECURITY625_SCANNER0
 PRODUCTION = SCHEMA0017_5M_INACTIVE_RUN0_RESULT0_PAPER0_ORDER0_FILL0_POSITION0_RESTARTS0
 TRADE_15M = RECENT20_BOUNDARIES_EXACT10_EXACT900000MS_UNCHANGED
-PRODUCTION_SAFETY_BLOCKER = WAL_FALSE_PITR_FALSE_ACK_DEGRADED_PID_NONE_BACKLOG1_PENDING24_UNRESOLVED1
-NEXT_ACTION = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02_THEN_RERUN_THIS_ACCEPTANCE_GATE
+PRODUCTION_SAFETY_BLOCKER_AT_TASK = WAL_FALSE_PITR_FALSE_ACK_DEGRADED_PID_NONE_BACKLOG1_PENDING24_UNRESOLVED1
+CURRENT_WAL_PITR_GATE = RECOVERED_PASS_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
+NEXT_ACTION = RERUN_THIS_ACCEPTANCE_GATE
 ```
 
 The accepted 5m parameter values were wired without market calibration. The
@@ -60,7 +89,8 @@ analysis, strategy and risk defaults. The advisory lock requires neither a new
 schema nor a new privilege and does not serialize 15m. The source is ready,
 but this task is not completed: its mandatory production WAL/PITR corroboration
 failed during the final read-only reread, and production recovery was outside
-this task's authorized boundary. Production 5m was never started.
+that task's authorized boundary. The separate recovery is now PASS, so the
+acceptance gate is the next task. Production 5m was never started.
 
 ## Parallel 5m SHADOW_SEARCH runtime deployment acceptance gate
 
@@ -4700,9 +4730,9 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% deployed / 5m source remediation ready, activation still blocked | Schema 0017 remains accepted, authoritative 5m parameter flow and PostgreSQL singleton protection pass isolated acceptance, and 15m remains exact-10; production 5m remains inactive because the fresh WAL/PITR safety gate failed |
+| Online analytics/paper pipeline | ≈98% deployed / 5m source remediation ready, acceptance rerun pending | Schema 0017 remains accepted, authoritative 5m parameter flow and PostgreSQL singleton protection pass isolated acceptance, 15m remains exact-10, and the WAL/PITR blocker is recovered; production 5m remains inactive pending the separate acceptance rerun |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate FAIL / recovery required | Fresh read-only reread shows `wal_ready=false`, `pitr_ready=false`, ACK state DEGRADED with no PID, one active unresolved failure, export backlog 1 and 24 `.ready` statuses; lineage remains valid and no physical gap is reported, but a separate authorized recovery task is required |
+| Production backup/PITR | Current gate PASS | Fresh production projection shows `wal_ready=true`, `pitr_ready=true`, live checksum-verified ACK owner identity/heartbeat PASS, backlog/pending/unresolved `0/0/0`, the existing base lineage valid with 775/775 required archive coverage and no physical gap |
 | Readonly Server API | Healthy same dual-schema image on production 0017 | Image `sha256:293063b2...` passed isolated 0017 and survived the production migration with the same container/start time and zero restart; all 27 GET routes pass with 21 expected 2xx and six detail 404, zero write routes and zero unexpected 4xx/5xx |
 | Desktop Readonly client | Production Readonly RU/EN runtime acceptance PASS | The real `PRODUCTION_READONLY_HTTP` Tk consumer passed all nine pages in RU and EN; all ten Market rows propagated and humanized server `strategy_status`, the original `AttributeError` is retired, access-mode/raw-code/stale-loading leaks are zero, and full regression is 1447 passed plus 3029 subtests |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
@@ -4719,12 +4749,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_WAL_ACK_ARCHIVE_MUTATION
+RECOMMENDED_NEXT_TASK = RERUN_TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01_ACCEPTANCE
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_5M_ACCEPTANCE_SCOPE_REMAINS_SEPARATE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
-CURRENT_WAL_ACK_ARCHIVE_RECOVERY = COMPLETED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_01
-CURRENT_WAL_PITR_GATE = FAIL_FRESH_PROJECTION_WAL_FALSE_PITR_FALSE_ACK_DEGRADED_PID_NONE_BACKLOG1_PENDING24_UNRESOLVED1_LINEAGE_VALID_NO_PHYSICAL_GAP
+CURRENT_WAL_ACK_ARCHIVE_RECOVERY = COMPLETED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
+CURRENT_WAL_PITR_GATE = PASS_FRESH_PROJECTION_WAL_TRUE_PITR_TRUE_ACK_OWNER_IDENTITY_HEARTBEAT_PASS_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_NO_PHYSICAL_GAP
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -4788,11 +4818,12 @@ deepest-reason remediation. Three complete postdeploy cycles produced zero
 natural PAPER plans and zero quantity decisions, so the long-identity production
 quantity path remains unobserved rather than failed. No natural approval,
 command, position or closed trade has occurred. The 72-hour soak remains open
-and current Market Data is 60/60. The fresh post-remediation reread now finds
-WAL/PITR readiness false, ACK state degraded with no owner PID, backlog 1,
-pending 24 and unresolved failure 1. The lineage remains valid and no physical
-gap is reported, so recovery—not a new 24-hour wait—is the next governed task.
-LIVE stays disabled.
+and current Market Data is 60/60. The separate governed recovery started one
+valid checksum-verifying ACK owner and drained the task-start set of 47
+contiguous pending objects. The fresh projection now reports WAL/PITR ready,
+backlog/pending/unresolved `0/0/0`, the same lineage valid, and no physical gap.
+The 5m acceptance rerun is next; production 5m remains off and LIVE stays
+disabled.
 
 ## Правила актуализации
 
