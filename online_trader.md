@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = c53884ff714b2f0895b285972ac3fb6ccf6f0bf0
+STATUS_AS_OF_COMMIT = 3302a142d1d7117b24897c872a7eea4a5e70319c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-20T18:08:59Z
-RECONCILED_BY_TASK = TRADERS_DESKTOP_FUNNEL_CYCLE_TIMEFRAME_LABEL_REMEDIATION_03
-FILES_CHANGED = docs/audits/TRADERS_DESKTOP_FUNNEL_CYCLE_TIMEFRAME_LABEL_REMEDIATION_03_FINAL.md, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-20T19:01:28Z
+RECONCILED_BY_TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_ENABLEMENT_01
+FILES_CHANGED = FINAL_DECISION.md, app/engine_orchestrator/pipeline_result_store.py, app/engine_orchestrator/pipeline_runner.py, app/engine_paper/controlled_quantity_validity.py, app/engine_paper/shadow_approval_materializer.py, app/server_api/schemas/models.py, app/server_api/trading_funnel.py, tests/engine_orchestrator/test_5m_shadow_full_funnel.py, tests/engine_orchestrator/test_parallel_trade_profiles.py, docs/audits/TRADERS_5M_SHADOW_FULL_FUNNEL_ENABLEMENT_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = PRODUCTION_5M_SHADOW_ACTIVE_EXACT_PARAMETER_ID_SINGLE_OWNER_POSTFIX_EXACT10_ZERO_TRADING_MUTATIONS_15M_CONTINUOUS_DESKTOP_CYCLE_TIMEFRAME_RUNTIME_VISIBLE
+STATUS_CONFIDENCE = SOURCE_5M_SHADOW_FULL_NONEXECUTABLE_FUNNEL_PASS_PRODUCTION_PRIOR_ARTIFACT_ACTIVE_SCHEMA0017_ZERO_TRADING_MUTATIONS
 
 # Состояние проекта traders-ml
 
@@ -24,10 +24,42 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_DUAL_SCHEMA_IMAGE06F42A84_HEALTHY_ON0017_27_GET_0_WRITE_CATALOGCFF1C21C_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = TRADERS_PARALLEL_5M_SEARCH_SHADOW_RUNTIME_DEPLOYMENT_ACCEPTANCE_01_ACTIVE_OBSERVATION
-CURRENT_BLOCKER = NONE_5M_ACTIVE_SHADOW_SINGLE_OWNER_FAIL_CLOSED_PAPER_FIREWALL_ZERO
+CURRENT_STAGE = TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01_PENDING_AUTHORIZATION
+CURRENT_BLOCKER = PRODUCTION_DEPLOYMENT_NOT_AUTHORIZED_SOURCE_PASS_RUNTIME_PRIOR_ARTIFACT
 BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_OWNER_IDENTITY_HEARTBEAT_PASS_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_NO_PHYSICAL_GAP
 ```
+
+## 5m SHADOW full-funnel source enablement
+
+```text
+TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_ENABLEMENT_01
+RESULT = PASS_SOURCE_IMPLEMENTATION
+PROJECT_STATE_COMMIT = 3302a142d1d7117b24897c872a7eea4a5e70319c
+ROOT_CAUSE = SHADOW_BRANCH_BYPASSED_PAPER_PLANNER_AND_POST_RISK_APPROVAL_PROJECTION
+ROUTE = ANALYSIS_SETUP_STRATEGY_RISK_SHADOW_PLAN_QUANTITY_VALIDITY_FINAL_ELIGIBLE_WINNER
+PLANNER = EXISTING_PAPER_RUNNER_REUSED_WITHOUT_PAPER_AUTHORITY
+QUANTITY = SHARED_ACCOUNT_AND_INSTRUMENT_CONSTRAINT_MATH_WITHOUT_APPROVAL_AUTHORITY
+SELECTOR = SAME_DETERMINISTIC_RANKING_FOR_FULLY_ELIGIBLE_SHADOW_CANDIDATES
+EXECUTION_ELIGIBLE = FALSE
+PERSISTED_FINAL_APPROVAL_CREATED = FALSE
+PAPER_COMMAND_ORDER_FILL_POSITION = ZERO_BY_CONTRACT
+SCHEMA = 0017_UNCHANGED
+FOCUSED = 4_PASSED
+AFFECTED_REGRESSION = 258_PASSED_11_SKIPPED
+COMPILE = PASS
+PRODUCTION_DEPLOYMENT = NOT_PERFORMED_PRIOR_ARTIFACT_STILL_RUNNING
+FRESH_RUNTIME = POSTGRES_HEALTHY_SCHEMA0017_5M_RUNS340_LATEST_SHADOW_SEARCH_COMMAND0_ORDER0_FILL0_POSITION0
+NEXT_ACTION = SEPARATELY_AUTHORIZE_CONTROLLED_5M_SHADOW_FULL_FUNNEL_DEPLOYMENT_ACCEPTANCE_01
+```
+
+The source route can now represent a qualified 5m candidate through all ten
+funnel stages and select a SHADOW winner. This is measurement authority only:
+the shadow candidate remains non-executable and cannot create persisted PAPER
+approval authority, commands, orders, fills or positions. Existing RR, cost,
+spread and liquidity criteria were not lowered. Recent natural 5m candidates
+remain below the existing planned-RR threshold and will still be rejected
+honestly until market conditions or separately evidenced calibration support
+acceptance. No production image was built, restarted or deployed in this task.
 
 ## Desktop funnel selected-timeframe cycle-title remediation
 
@@ -4771,15 +4803,15 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% deployed / 5m source remediation ready, acceptance rerun pending | Schema 0017 remains accepted, authoritative 5m parameter flow and PostgreSQL singleton protection pass isolated acceptance, 15m remains exact-10, and the WAL/PITR blocker is recovered; production 5m remains inactive pending the separate acceptance rerun |
+| Online analytics/paper pipeline | ≈98% deployed / 5m full-funnel source ready, deployment pending | Schema 0017 remains accepted; the active production 5m SHADOW runtime retains the prior artifact, while source now proves the complete non-executable Analysis-to-Winner route with the same planner, quantity constraints and deterministic selector |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh production projection shows `wal_ready=true`, `pitr_ready=true`, live checksum-verified ACK owner identity/heartbeat PASS, backlog/pending/unresolved `0/0/0`, the existing base lineage valid with 775/775 required archive coverage and no physical gap |
 | Readonly Server API | Healthy same dual-schema image on production 0017 | Image `sha256:293063b2...` passed isolated 0017 and survived the production migration with the same container/start time and zero restart; all 27 GET routes pass with 21 expected 2xx and six detail 404, zero write routes and zero unexpected 4xx/5xx |
 | Desktop Readonly client | Production Readonly RU/EN runtime acceptance PASS | The real `PRODUCTION_READONLY_HTTP` Tk consumer passed all nine pages in RU and EN; all ten Market rows propagated and humanized server `strategy_status`, the original `AttributeError` is retired, access-mode/raw-code/stale-loading leaks are zero, and full regression is 1447 passed plus 3029 subtests |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
-| Readonly PAPER reporting API | Healthy on schema 0017 | Readiness and bounded PAPER GET routes accept the reflected 0017 capability; shared account remains 100 USDT and 5m remains honest empty/inactive |
-| PAPER Operator Control API | Healthy status boundary / 5m inactive | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; this blocked preflight made no Control POST and granted no 5m execution authority |
+| Readonly PAPER reporting API | Healthy on schema 0017 | Readiness and bounded PAPER GET routes accept the reflected 0017 capability; shared account remains 100 USDT and the active 5m profile remains SHADOW-only with zero command/order/fill/position rows |
+| PAPER Operator Control API | Healthy status boundary / 5m non-executable | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; this source task made no Control POST and granted no 5m execution authority |
 | First-canary correlation/readiness | Durable state preserved / advancement blocked | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions, and schema readiness now safely denies advancement |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
@@ -4790,8 +4822,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = RERUN_TRADERS_PARALLEL_5M_SHADOW_RUNTIME_PARAMETERIZATION_AND_SINGLETON_OWNER_REMEDIATION_01_ACCEPTANCE
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_5M_ACCEPTANCE_SCOPE_REMAINS_SEPARATE
+RECOMMENDED_NEXT_TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_BUILD_RESTART_AND_ACCEPTANCE_SCOPE_REMAINS_SEPARATE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = COMPLETED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
@@ -4863,8 +4895,9 @@ and current Market Data is 60/60. The separate governed recovery started one
 valid checksum-verifying ACK owner and drained the task-start set of 47
 contiguous pending objects. The fresh projection now reports WAL/PITR ready,
 backlog/pending/unresolved `0/0/0`, the same lineage valid, and no physical gap.
-The 5m acceptance rerun is next; production 5m remains off and LIVE stays
-disabled.
+The complete 5m SHADOW funnel source deployment acceptance is next. Production
+5m remains active on the prior artifact, its execution authority remains off,
+and LIVE stays disabled.
 
 ## Правила актуализации
 
