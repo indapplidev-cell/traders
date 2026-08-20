@@ -105,3 +105,12 @@ def test_trading_funnel_current_freshness_is_server_owned_and_bilingual():
     en = catalog_payload("en")["translations"]
     assert ru["market.data.CURRENT"] == "Данные актуальны"
     assert en["market.data.CURRENT"] == "Data current"
+
+
+def test_trading_funnel_cycle_titles_are_timeframe_parameterized_and_bilingual():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    assert ru["funnel.current_cycle"].format(timeframe="5m") == "ТЕКУЩИЙ 5m ЦИКЛ"
+    assert ru["funnel.last_completed_cycle"].format(timeframe="5m") == "ПОСЛЕДНИЙ ЗАВЕРШЁННЫЙ 5m ЦИКЛ"
+    assert en["funnel.current_cycle"].format(timeframe="5m") == "CURRENT 5m CYCLE"
+    assert en["funnel.last_completed_cycle"].format(timeframe="5m") == "LAST COMPLETED 5m CYCLE"
