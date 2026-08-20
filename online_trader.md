@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 3302a142d1d7117b24897c872a7eea4a5e70319c
+STATUS_AS_OF_COMMIT = fc6d12480c8f77bef267243ed502ca9583e50cfd
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-20T19:01:28Z
-RECONCILED_BY_TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_ENABLEMENT_01
-FILES_CHANGED = FINAL_DECISION.md, app/engine_orchestrator/pipeline_result_store.py, app/engine_orchestrator/pipeline_runner.py, app/engine_paper/controlled_quantity_validity.py, app/engine_paper/shadow_approval_materializer.py, app/server_api/schemas/models.py, app/server_api/trading_funnel.py, tests/engine_orchestrator/test_5m_shadow_full_funnel.py, tests/engine_orchestrator/test_parallel_trade_profiles.py, docs/audits/TRADERS_5M_SHADOW_FULL_FUNNEL_ENABLEMENT_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-20T19:42:00Z
+RECONCILED_BY_TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01
+FILES_CHANGED = FINAL_DECISION.md, app/engine_paper/production_preparation_backend.py, tests/paper_readonly_deployment_postcondition_remediation/test_deployment_adapter.py, docs/audits/TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = SOURCE_5M_SHADOW_FULL_NONEXECUTABLE_FUNNEL_PASS_PRODUCTION_PRIOR_ARTIFACT_ACTIVE_SCHEMA0017_ZERO_TRADING_MUTATIONS
+STATUS_CONFIDENCE = PRODUCTION_5M_FULL_SHADOW_FUNNEL_DEPLOYED_READONLY_DESKTOP_HTTP_ACCEPTED_NATURAL_NO_ACTION_OBSERVED_SCHEMA0017_ZERO_TRADING_MUTATIONS
 
 # Состояние проекта traders-ml
 
@@ -22,12 +22,47 @@ STATUS_CONFIDENCE = SOURCE_5M_SHADOW_FULL_NONEXECUTABLE_FUNNEL_PASS_PRODUCTION_P
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_DUAL_SCHEMA_IMAGE06F42A84_HEALTHY_ON0017_27_GET_0_WRITE_CATALOGCFF1C21C_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
+API_RUNTIME_STATUS = READONLY_IMAGE79DF542D_HEALTHY_ON0017_27_GET_0_WRITE_SOURCE_IDENTITY_MATCH_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01_PENDING_AUTHORIZATION
-CURRENT_BLOCKER = PRODUCTION_DEPLOYMENT_NOT_AUTHORIZED_SOURCE_PASS_RUNTIME_PRIOR_ARTIFACT
+CURRENT_STAGE = PASSIVE_NATURAL_5M_SHADOW_OBSERVATION_UNTIL_FIRST_ELIGIBLE_WINNER
+CURRENT_BLOCKER = NONE_DEPLOYMENT_ACCEPTED_NATURAL_ELIGIBLE_WINNER_NOT_YET_OBSERVED
 BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_OWNER_IDENTITY_HEARTBEAT_PASS_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_NO_PHYSICAL_GAP
 ```
+
+## 5m SHADOW full-funnel controlled deployment acceptance
+
+```text
+TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01
+RESULT = PASS_DEPLOYED_WITH_NATURAL_NO_ACTION_OBSERVATION
+PROJECT_STATE_COMMIT = fc6d12480c8f77bef267243ed502ca9583e50cfd
+SOURCE_FULL_FUNNEL_COMMIT = 3302a142d1d7117b24897c872a7eea4a5e70319c
+ROUTE = ANALYSIS_SETUP_STRATEGY_RISK_SHADOW_PLAN_QUANTITY_VALIDITY_FINAL_ELIGIBLE_WINNER
+PRODUCTION_5M = DEPLOYED_ACTIVE_SHADOW_SEARCH_IMAGE_C1EC9F08_OWNER_ACQUIRED_HEALTH_OK
+PRODUCTION_READONLY = IMAGE_79DF542D_HEALTHY_SOURCE_IDENTITY_MATCH_27_GET_0_WRITE
+DESKTOP_HTTP = REAL_SERVER_PROVIDER_5M_PASS
+NATURAL_ACCEPTANCE_SAMPLE = FIVE_BOUNDARIES_50_OF50_RESULTS_50_OF50_SHADOW_PAYLOADS
+NATURAL_SAMPLE_OUTCOME = SETUP0_RISK0_ELIGIBLE0_WINNER0_HONEST_NO_ACTION
+FRESH_RUNTIME = BOUNDARY1787254800000_EXACT10_COMPLETE_CURRENT_SETUP0_WINNER0
+EXECUTION_ELIGIBLE = FALSE
+PAPER_COMMAND_ORDER_FILL_POSITION = 0_0_0_0
+SCHEMA = 0017_UNCHANGED
+WAL_PITR = TRUE_TRUE
+CONTROL = ARMED_GENERATION6_UNCHANGED
+LIVE = DISABLED
+SERVER_REGRESSION = 490_PASSED_11_SKIPPED
+DESKTOP_REGRESSION = 1450_PASSED_2_SKIPPED_3029_SUBTESTS_WITH_KNOWN_POST_PYTEST_TCL_TEARDOWN_NONZERO
+NEXT_ACTION = CONTINUE_PASSIVE_NATURAL_5M_SHADOW_OBSERVATION_UNTIL_FIRST_ELIGIBLE_WINNER_WITHOUT_THRESHOLD_TUNING
+```
+
+The production 5m profile now executes the same complete non-executable funnel
+projection from Analysis through Winner as the source implementation. Five
+bounded postdeploy cycles proved exact ten-symbol persistence and both shadow
+payloads for every result. The fresh current cycle also remains complete 10/10.
+No winner has yet appeared because the observed market inputs produced no
+structural setup; this is a valid `NO_ACTION`, not a broken downstream route.
+Existing RR, commission, spread, slippage, liquidity and risk gates were not
+lowered. The desktop provider consumes the real 5m production response; visual
+Tk capture is not evidence because Windows capture failed with `0x80004002`.
 
 ## 5m SHADOW full-funnel source enablement
 
@@ -4803,15 +4838,15 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈98% deployed / 5m full-funnel source ready, deployment pending | Schema 0017 remains accepted; the active production 5m SHADOW runtime retains the prior artifact, while source now proves the complete non-executable Analysis-to-Winner route with the same planner, quantity constraints and deterministic selector |
+| Online analytics/paper pipeline | ≈99% deployed / 5m full-funnel production accepted | Schema 0017 remains accepted; production 5m now runs the complete non-executable Analysis-to-Winner SHADOW route with the same planner, quantity constraints and deterministic selector. Five natural postdeploy cycles were exact 10/10 but produced no structural setup or winner |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh production projection shows `wal_ready=true`, `pitr_ready=true`, live checksum-verified ACK owner identity/heartbeat PASS, backlog/pending/unresolved `0/0/0`, the existing base lineage valid with 775/775 required archive coverage and no physical gap |
-| Readonly Server API | Healthy same dual-schema image on production 0017 | Image `sha256:293063b2...` passed isolated 0017 and survived the production migration with the same container/start time and zero restart; all 27 GET routes pass with 21 expected 2xx and six detail 404, zero write routes and zero unexpected 4xx/5xx |
-| Desktop Readonly client | Production Readonly RU/EN runtime acceptance PASS | The real `PRODUCTION_READONLY_HTTP` Tk consumer passed all nine pages in RU and EN; all ten Market rows propagated and humanized server `strategy_status`, the original `AttributeError` is retired, access-mode/raw-code/stale-loading leaks are zero, and full regression is 1447 passed plus 3029 subtests |
+| Readonly Server API | Healthy current-tree image on production 0017 | Image `sha256:79df542d...` has exact source-identity match, health PASS, 27 GET and zero write routes; its deployment postcondition now tracks the authoritative current route catalog |
+| Desktop Readonly client | Production 15m/5m HTTP projection acceptance PASS | The real `ServerProvider` parses the deployed `trade-5m-v1` response with decision timeframe `5m`, complete exact-10 cycle and all funnel stages. Full regression reported 1450 passed, 2 skipped and 3029 subtests before the known post-pytest Tcl teardown; visual capture was unavailable |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
-| Readonly PAPER reporting API | Healthy on schema 0017 | Readiness and bounded PAPER GET routes accept the reflected 0017 capability; shared account remains 100 USDT and the active 5m profile remains SHADOW-only with zero command/order/fill/position rows |
-| PAPER Operator Control API | Healthy status boundary / 5m non-executable | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; this source task made no Control POST and granted no 5m execution authority |
+| Readonly PAPER reporting API | Healthy on schema 0017 | Readiness and all thirteen PAPER GET routes accept the reflected 0017 capability; shared account remains 100 USDT and the active 5m profile remains SHADOW-only with zero command/order/fill/position rows |
+| PAPER Operator Control API | Healthy status boundary / 5m non-executable | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; deployment made no Control POST and granted no 5m execution authority |
 | First-canary correlation/readiness | Durable state preserved / advancement blocked | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions, and schema readiness now safely denies advancement |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
@@ -4822,8 +4857,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = YES_PRODUCTION_BUILD_RESTART_AND_ACCEPTANCE_SCOPE_REMAINS_SEPARATE
+RECOMMENDED_NEXT_TASK = PASSIVE_NATURAL_5M_SHADOW_OBSERVATION_UNTIL_FIRST_ELIGIBLE_WINNER
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_READONLY_OBSERVATION_YES_FOR_ANY_TUNING_EXECUTION_OR_DEPLOYMENT
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = COMPLETED_BY_TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_02
@@ -4895,9 +4930,12 @@ and current Market Data is 60/60. The separate governed recovery started one
 valid checksum-verifying ACK owner and drained the task-start set of 47
 contiguous pending objects. The fresh projection now reports WAL/PITR ready,
 backlog/pending/unresolved `0/0/0`, the same lineage valid, and no physical gap.
-The complete 5m SHADOW funnel source deployment acceptance is next. Production
-5m remains active on the prior artifact, its execution authority remains off,
-and LIVE stays disabled.
+The complete 5m SHADOW funnel is now deployed and production-accepted as a
+non-executable measurement route. Five bounded natural cycles persisted 50/50
+results with the new shadow payloads, and the fresh current boundary remains
+exact 10/10. No natural structural setup, eligible approval or winner appeared
+in that window, so the next stage is passive observation without threshold
+tuning. Execution authority remains off and LIVE stays disabled.
 
 ## Правила актуализации
 
