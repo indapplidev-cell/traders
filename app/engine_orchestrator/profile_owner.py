@@ -125,6 +125,10 @@ class PostgresProfileOwner:
             ), {"class_id": class_id, "object_id": object_id}))
             if not held:
                 raise ProfileOwnershipLostError("profile advisory lock is no longer held")
+            # The authority is session-scoped, so ending this read-only
+            # verification transaction retains the lock while preventing a
+            # worker-lifetime idle transaction from pinning PostgreSQL state.
+            self._session.commit()
         except ProfileOwnershipLostError:
             self._state = "LOST"
             raise

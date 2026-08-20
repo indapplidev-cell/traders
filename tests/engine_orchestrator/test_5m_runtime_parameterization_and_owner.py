@@ -5,6 +5,7 @@ import threading
 from dataclasses import FrozenInstanceError
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, delete, select
@@ -12,6 +13,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.engine_market_data.candle import Candle
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
+from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
+from app.engine_orchestrator.freshness_gate import FreshnessClassification
 from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineResultRow,
     OnlinePipelineRun,
@@ -230,6 +233,47 @@ def test_5m_run_creation_and_progression_fail_closed_without_owner():
     assert store.count(trade_profile_id="trade-5m-v1") == 0
 
 
+def test_5m_retryable_freshness_is_deferred_before_authoritative_run_creation(tmp_path):
+    """A legacy 15m retry scanner must never see a claimable 5m WAITING row."""
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    OnlinePipelineRun.__table__.create(engine)
+    OnlinePipelineResultRow.__table__.create(engine)
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    store = PipelineResultStore(sessions, owner_guard=AcceptingOwner())
+
+    class Detector:
+        def get_unprocessed_closed_windows(self, _symbol):
+            return [SimpleNamespace(timeframe="5m", closed_until_ms=BOUNDARY)]
+
+    class WaitingGate:
+        def check(self, *_args, **_kwargs):
+            return SimpleNamespace(
+                status="BOUNDARY_NOT_READY",
+                classification=FreshnessClassification.WAITING_RETRYABLE.value,
+                reasons=("1h:BEHIND",),
+            )
+
+    daemon = OrchestratorDaemon(
+        OrchestratorConfig(
+            symbols=("BTCUSDT",), trade_profile_id="trade-5m-v1",
+            primary_timeframe="5m", required_timeframes=("5m",),
+            minimum_windows={"5m": 1},
+            health_report_path=tmp_path / "health-5m.json",
+        ),
+        Detector(), WaitingGate(), object(), store,
+    )
+    observations = daemon.run_cycle()
+    assert observations == [{
+        "symbol": "BTCUSDT", "timeframe": "5m",
+        "closed_until_ms": BOUNDARY,
+        "freshness_status": "BOUNDARY_NOT_READY",
+        "freshness_classification": FreshnessClassification.WAITING_RETRYABLE.value,
+        "freshness_reasons": ["1h:BEHIND"],
+        "pipeline_status": "DEFERRED_BEFORE_RESERVATION",
+    }]
+    assert store.count(trade_profile_id="trade-5m-v1") == 0
+
+
 @pytest.fixture
 def owner_postgres():
     raw = os.environ.get("ORCHESTRATOR_OWNER_TEST_DATABASE_URL")
@@ -259,6 +303,7 @@ def test_postgres_owner_lifecycle_second_denial_stale_fencing_and_takeover(owner
     assert status.heartbeat_model == "LIVE_DEDICATED_DB_SESSION"
     assert status.expiry_model == "SESSION_DEATH_RELEASES_LOCK"
     owner_a.assert_active()
+    assert owner_a.session.in_transaction() is False
     with pytest.raises(OwnerAlreadyActiveError, match="OWNER_ALREADY_ACTIVE"):
         owner_b_denied.acquire()
     with owner_postgres() as session:

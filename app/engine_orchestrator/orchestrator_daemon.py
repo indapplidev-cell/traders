@@ -278,6 +278,32 @@ class OrchestratorDaemon:
                     continue
                 deadline = utc_from_ms(window.closed_until_ms) + timedelta(
                     seconds=self.config.freshness_grace_seconds)
+                # A deployed legacy 15m retry worker predating profile-aware
+                # claims may still scan every WAITING row.  Non-default
+                # profiles therefore do not publish a retryable authoritative
+                # row until freshness is ready.  The closed-window detector
+                # will rediscover the unreserved boundary on the next cycle.
+                # This keeps 5m ownership exclusive without changing or
+                # restarting the production 15m worker.
+                if self.config.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
+                    preflight = self.freshness_gate.check(
+                        symbol, window.closed_until_ms,
+                        deadline_at=deadline, now=self._now(),
+                    )
+                    if (
+                        preflight.classification
+                        == FreshnessClassification.WAITING_RETRYABLE.value
+                    ):
+                        observations.append({
+                            "symbol": symbol,
+                            "timeframe": window.timeframe,
+                            "closed_until_ms": window.closed_until_ms,
+                            "freshness_status": preflight.status,
+                            "freshness_classification": preflight.classification,
+                            "freshness_reasons": list(preflight.reasons),
+                            "pipeline_status": "DEFERRED_BEFORE_RESERVATION",
+                        })
+                        continue
                 reserve_kwargs = {
                     "daemon_instance_id": self.daemon_instance_id,
                     "trigger_source": self.config.trigger_source,
@@ -300,6 +326,11 @@ class OrchestratorDaemon:
                 observations.append(self._process_claim(self.result_store.get_claim(run_id)))
         self.state.cycles += 1
         self._write_health()
+        if self.owner_guard is not None:
+            # Health/cursor reads share the pinned owner session.  Re-verify
+            # after every cycle so ownership loss is fenced after mutation and
+            # the read-only transaction is ended before the polling wait.
+            self.owner_guard.assert_active()
         return observations
 
     def run(self, *, continuous: bool, dry_run: bool = False,

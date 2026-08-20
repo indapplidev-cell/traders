@@ -10,6 +10,26 @@ docker compose --profile orchestrator up -d online-orchestrator
 
 It waits for PostgreSQL health and service startup of `market-data-sync`, while the runtime freshness gate remains the authoritative readiness check. Reports are persisted through the existing `./reports` bind mount.
 
+The production 5m shadow owner is a separate opt-in service and must be
+started independently of the unchanged 15m orchestrator:
+
+```bash
+docker compose --profile orchestrator-5m up -d --build --no-deps online-orchestrator-5m
+```
+
+`online-orchestrator-5m` resolves `trade-5m-v1` before startup, validates the
+exact `0017_parallel_trade_profiles` capability, and acquires its dedicated
+PostgreSQL session advisory lock before boundary evaluation. Its health is
+written to `reports/engine_orchestrator/latest_health_trade_5m.json`. A second
+owner exits with `OWNER_ALREADY_ACTIVE` and does not create or advance a run.
+
+For compatibility with a running legacy 15m image, retryable 5m freshness is
+checked before an authoritative run is reserved. Until the required context is
+ready there is no 5m `WAITING_FOR_REQUIRED_BOUNDARY` row for a legacy retry
+scanner to claim. Once ready, the 5m owner reserves and completes the boundary
+on its fenced session. This behavior is confined to non-default profiles and
+does not change or restart the 15m runtime.
+
 Apply migration `0008_engine_orchestrator_freshness_retry` before starting the
 new binary. The migration is additive and adds a `(status, next_retry_at)` due
 queue index; rollback requires stopping every orchestrator instance before

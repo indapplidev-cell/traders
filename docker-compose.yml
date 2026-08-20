@@ -73,5 +73,32 @@ services:
     volumes:
       - ./reports:/service/reports
 
+  online-orchestrator-5m:
+    build: .
+    profiles: ["orchestrator-5m"]
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      market-data-sync:
+        condition: service_started
+    command: >
+      python scripts/engine_orchestrator_online_pipeline.py
+      --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
+      --trade-profile trade-5m-v1
+      --continuous
+      --poll-interval-seconds 10
+      --max-catchup-windows 4
+      --health-report reports/engine_orchestrator/latest_health_trade_5m.json
+      --health-report-interval-seconds 60
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be provided by runtime secret injection}
+      ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS: ${ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS:-5}
+      ORCHESTRATOR_FRESHNESS_GRACE_SECONDS: ${ORCHESTRATOR_FRESHNESS_GRACE_SECONDS:-180}
+      ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS: ${ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS:-60}
+      ORCHESTRATOR_WAITING_BATCH_SIZE: ${ORCHESTRATOR_WAITING_BATCH_SIZE:-100}
+    volumes:
+      - ./reports:/service/reports
+
 volumes:
   traders_ml_postgres_data:
