@@ -305,6 +305,7 @@ class FunnelCandidateStatus(ContractModel):
     ui_reason_category: str
     final_approval_id: str | None
     eligible: bool
+    execution_eligible: bool = False
     selector_rank: int | None = Field(default=None, ge=1)
     selected_winner: bool
     updated_at_ms: int = Field(ge=0)

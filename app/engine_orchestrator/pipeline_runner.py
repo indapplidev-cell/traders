@@ -59,7 +59,7 @@ def _mapping_value(value: object, *names: str) -> Any:
 
 def _reasons(value: object) -> list[str]:
     for name in ("plan_reasons", "risk_reasons", "decision_reasons", "reason_codes"):
-        data = getattr(value, name, None)
+        data = _mapping_value(value, name) if isinstance(value, dict) else getattr(value, name, None)
         if data is not None:
             return [str(item) for item in data]
     return []
@@ -67,7 +67,7 @@ def _reasons(value: object) -> list[str]:
 
 def _warnings(value: object) -> list[str]:
     for name in ("plan_warnings", "risk_warnings", "decision_warnings", "quality_warnings"):
-        data = getattr(value, name, None)
+        data = _mapping_value(value, name) if isinstance(value, dict) else getattr(value, name, None)
         if data is not None:
             return [str(item) for item in data]
     return []
@@ -288,8 +288,25 @@ class PipelineRunner:
             outputs["risk"] = risk
             if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
                 risk_status = str(_attribute(risk, "risk_status") or "")
+                shadow_plan = self._invoke(
+                    self.paper_runner, "process_risk_decision", risk
+                )
+                shadow_plan_payload = json_safe(shadow_plan)
+                shadow_plan_status = str(
+                    _attribute(shadow_plan, "paper_status")
+                    or _mapping_value(shadow_plan_payload, "paper_status")
+                    or ""
+                )
                 outputs["paper"] = {
                     "paper_status": "SHADOW_SEARCH",
+                    "shadow_plan_status": shadow_plan_status,
+                    "shadow_plan": shadow_plan_payload,
+                    "plan_reasons": _mapping_value(shadow_plan_payload, "plan_reasons") or [],
+                    "plan_warnings": _mapping_value(shadow_plan_payload, "plan_warnings") or [],
+                    "rejection_reasons": _mapping_value(
+                        shadow_plan_payload, "rejection_reasons"
+                    ) or [],
+                    "wait_reasons": _mapping_value(shadow_plan_payload, "wait_reasons") or [],
                     "trade_profile_id": self.config.trade_profile_id,
                     "trigger_timeframe": self.config.primary_timeframe,
                     "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
@@ -305,7 +322,9 @@ class PipelineRunner:
                         "target_authority": self.runtime_parameters.target_policy_id,
                         "minimum_planned_rr": self.runtime_parameters.minimum_planned_rr,
                     },
-                    "cost_efficiency_diagnostic": self._cost_efficiency_diagnostic(setup, risk),
+                    "cost_efficiency_diagnostic": self._cost_efficiency_diagnostic(
+                        setup, risk, shadow_plan
+                    ),
                     "validity_policy": {
                         "source_close_ms": int(closed_until_ms),
                         "valid_until_ms": int(closed_until_ms) + (
@@ -319,9 +338,10 @@ class PipelineRunner:
                         "candidate_id": (
                             f"shadow:{self.config.trade_profile_id}:{symbol.upper()}:{int(closed_until_ms)}"
                         ),
-                        "status": "CANDIDATE" if risk_status in {
-                            "RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"
-                        } else "NOT_ELIGIBLE",
+                        "status": "PLAN_READY" if (
+                            risk_status in {"RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"}
+                            and shadow_plan_status == "PAPER_PLAN_READY"
+                        ) else "NOT_ELIGIBLE",
                         "execution_eligible": False,
                         "persisted_final_approval_created": False,
                     },
@@ -387,10 +407,18 @@ class PipelineRunner:
 
     def _cost_efficiency_diagnostic(self, *values: object) -> dict[str, object]:
         payloads = [json_safe(value) for value in values]
-        entry = next((_mapping_value(payload, "hypothetical_entry_level", "entry_price", "entry")
-                      for payload in payloads if _mapping_value(payload, "hypothetical_entry_level", "entry_price", "entry") is not None), None)
-        target = next((_mapping_value(payload, "hypothetical_target_level", "target_price", "target")
-                       for payload in payloads if _mapping_value(payload, "hypothetical_target_level", "target_price", "target") is not None), None)
+        entry = next((_mapping_value(
+            payload, "hypothetical_entry_reference", "hypothetical_entry_level",
+            "entry_price", "entry"
+        ) for payload in payloads if _mapping_value(
+            payload, "hypothetical_entry_reference", "hypothetical_entry_level",
+            "entry_price", "entry"
+        ) is not None), None)
+        target = next((_mapping_value(
+            payload, "hypothetical_target_level", "target_price", "target"
+        ) for payload in payloads if _mapping_value(
+            payload, "hypothetical_target_level", "target_price", "target"
+        ) is not None), None)
         gross_move_bps = None
         try:
             if entry is not None and target is not None and float(entry) > 0:

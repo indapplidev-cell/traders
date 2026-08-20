@@ -23,6 +23,10 @@ from app.engine_paper.final_approval_materializer import (
     DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER,
     NaturalFinalApprovalMaterializer,
 )
+from app.engine_paper.shadow_approval_materializer import (
+    DEFAULT_SHADOW_FINAL_APPROVAL_MATERIALIZER,
+    ShadowFinalApprovalMaterializer,
+)
 
 
 ACTIVE_CLAIM_STATUSES = (
@@ -73,7 +77,9 @@ class PipelineResultStore:
                  clock: Callable[[], datetime] = utc_now,
                  owner_guard: object | None = None,
                  final_approval_materializer: NaturalFinalApprovalMaterializer =
-                 DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER) -> None:
+                 DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER,
+                 shadow_approval_materializer: ShadowFinalApprovalMaterializer =
+                 DEFAULT_SHADOW_FINAL_APPROVAL_MATERIALIZER) -> None:
         if stale_run_after_seconds < 1:
             raise ValueError("stale_run_after_seconds must be positive")
         self._session_or_factory = session_or_factory
@@ -81,6 +87,7 @@ class PipelineResultStore:
         self.clock = clock
         self.owner_guard = owner_guard
         self.final_approval_materializer = final_approval_materializer
+        self.shadow_approval_materializer = shadow_approval_materializer
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
@@ -378,7 +385,10 @@ class PipelineResultStore:
             else:
                 if run.profile_mode != TradeProfileMode.SHADOW_SEARCH.value:
                     raise ValueError("non-default profile must remain SHADOW_SEARCH")
-                persisted_paper_payload = json_safe(result.paper_payload)
+                materialized = self.shadow_approval_materializer.materialize(
+                    session, run_id=run_id, result=result, evaluation_time=now
+                )
+                persisted_paper_payload = materialized.paper_payload
                 final_approval_created = False
             if final_approval_created:
                 run.is_trade_signal = True

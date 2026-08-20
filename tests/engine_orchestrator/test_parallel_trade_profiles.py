@@ -57,29 +57,28 @@ def test_closed_5m_detector_uses_profile_in_dedupe_identity():
     assert seen[0][:3] == ("trade-5m-v1", "BTCUSDT", "5m")
 
 
-def test_5m_shadow_runner_never_invokes_paper_and_is_closed_only():
-    analysis, setup, strategy, risk, _paper = outputs(
+def test_5m_shadow_runner_invokes_pure_plan_stage_and_is_closed_only():
+    analysis, setup, strategy, risk, paper = outputs(
         setup_status="SETUP_CANDIDATE",
         strategy_status="ALLOW_RESEARCH_TRADE_PLAN",
         risk_status="RISK_PRE_APPROVED_RESEARCH",
+        paper_status="PAPER_PLAN_READY",
     )
-
-    class ForbiddenPaper:
-        def process_risk_decision(self, _value):
-            raise AssertionError("5m shadow must not invoke PAPER")
 
     repository = CandleRepo()
     runner = PipelineRunner(
         five_minute_config(), repository,
         analysis_runner=component(analysis), setup_runner=component(setup),
         strategy_runner=component(strategy), risk_runner=component(risk),
-        paper_runner=ForbiddenPaper(),
+        paper_runner=component(paper),
     )
     result = runner.run("BTCUSDT", BOUNDARY)
     assert result.trade_profile_id == "trade-5m-v1"
     assert result.trigger_timeframe == "5m"
     assert result.profile_mode == "SHADOW_SEARCH"
     assert result.paper_status == "SHADOW_SEARCH"
+    assert result.paper_payload["shadow_plan_status"] == "PAPER_PLAN_READY"
+    assert result.paper_payload["shadow_plan"]["paper_status"] == "PAPER_PLAN_READY"
     assert result.paper_payload["paper_command_creation_enabled"] is False
     assert result.paper_payload["position_opening_enabled"] is False
     assert result.paper_payload["cost_efficiency_diagnostic"]["authoritative_spread_bps"] is None

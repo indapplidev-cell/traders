@@ -119,10 +119,33 @@ def calculate_controlled_quantity(
         fail(PaperReasonCode.PAPER_RISK_APPROVAL_MISSING, "authoritative PAPER inputs required", "strategy")
     if registry.version != REGISTRY_VERSION or strategy.symbol_constraints_id != registry.version:
         fail(PaperReasonCode.PAPER_INPUT_IDENTITY_INVALID, "instrument registry binding mismatch", "symbol_constraints_id")
-    constraint: InstrumentQuantityConstraint = registry.for_symbol(strategy.symbol)
-    equity = account.current_balance
-    entry = strategy.entry_reference_price
-    stop = strategy.stop_price
+    return calculate_quantity_sizing(
+        symbol=strategy.symbol,
+        equity=account.current_balance,
+        entry=strategy.entry_reference_price,
+        stop=strategy.stop_price,
+        registry=registry,
+    )
+
+
+def calculate_quantity_sizing(
+    *,
+    symbol: str,
+    equity: Decimal,
+    entry: Decimal,
+    stop: Decimal,
+    registry: InstrumentQuantityConstraintRegistry = ACTIVE_QUANTITY_CONSTRAINT_REGISTRY,
+) -> PaperQuantitySizingAudit:
+    """Apply the shared quantity math without granting PAPER authority.
+
+    This entry point lets SHADOW evaluation prove that a causal candidate is
+    sizeable under the same account and instrument constraints.  It returns
+    only a sizing audit; it cannot issue an approval or enable execution.
+    """
+    if registry.version != REGISTRY_VERSION:
+        fail(PaperReasonCode.PAPER_INPUT_IDENTITY_INVALID, "instrument registry binding mismatch", "symbol_constraints_id")
+    symbol = str(symbol).upper()
+    constraint: InstrumentQuantityConstraint = registry.for_symbol(symbol)
     if not isinstance(equity, Decimal) or not equity.is_finite() or equity <= 0:
         fail(PaperReasonCode.PAPER_INPUT_QUANTITY_INVALID, "PAPER equity must be positive", "current_balance")
     if entry <= 0 or stop <= 0:
@@ -147,7 +170,7 @@ def calculate_controlled_quantity(
     if normalized > capped or normalized * risk_per_unit > risk_budget or notional > equity:
         fail(PaperReasonCode.PAPER_INTERNAL_INVARIANT_VIOLATION, "quantity safety cap violated", "approved_quantity")
     return PaperQuantitySizingAudit(
-        QUANTITY_POLICY_VERSION, registry.version, registry.universe_id, strategy.symbol,
+        QUANTITY_POLICY_VERSION, registry.version, registry.universe_id, symbol,
         equity, entry, stop, risk_budget, risk_per_unit, raw, balance_cap,
         constraint.quantity_step, constraint.min_quantity, constraint.max_quantity,
         constraint.min_notional, constraint.max_notional, normalized,

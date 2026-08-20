@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any, Final
 
 from sqlalchemy import select, text
@@ -47,6 +49,30 @@ STAGES: Final = (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class _ShadowRanking:
+    risk_score: Decimal
+    planned_risk_reward: Decimal
+    strategy_score: Decimal
+    closed_until_ms: int
+    source_run_id: str
+    final_approval_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ShadowLineage:
+    source_run_id: str
+    final_approval_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ShadowEligibleCandidate:
+    candidate_id: str
+    symbol: str
+    ranking: _ShadowRanking
+    lineage: _ShadowLineage
+
+
 def _ms(value: datetime | None) -> int | None:
     if value is None:
         return None
@@ -69,6 +95,16 @@ def _first_reason(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None
     if row.error_code:
         return row.error_code
     if result is not None:
+        shadow_generation = _mapping(
+            _mapping(result.paper_payload_json).get("shadow_final_approval_generation")
+        )
+        if shadow_generation.get("outcome") not in (
+            None, "SHADOW_FINAL_APPROVAL_CREATED", "NOT_ELIGIBLE"
+        ):
+            return str(
+                shadow_generation.get("reason_code")
+                or shadow_generation["outcome"]
+            )
         generation = _mapping(_mapping(result.paper_payload_json).get("final_approval_generation"))
         if generation.get("outcome") not in (None, "FINAL_APPROVAL_CREATED", "NOT_ELIGIBLE"):
             return str(generation.get("reason_code") or generation["outcome"])
@@ -117,8 +153,69 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
     )
     if trace["RISK_APPROVED"] != "PASS":
         return trace, meta
-    trace["PAPER_TRADE_PLAN"] = "PASS" if str(row.paper_status or paper.get("paper_status") or "") == "PAPER_PLAN_READY" else "REJECTED"
+    shadow_plan = _mapping(paper.get("shadow_plan"))
+    shadow_mode = bool(shadow_plan) or str(paper.get("paper_status") or "") == "SHADOW_SEARCH"
+    plan_status = (
+        str(shadow_plan.get("paper_status") or paper.get("shadow_plan_status") or "")
+        if shadow_mode else str(row.paper_status or paper.get("paper_status") or "")
+    )
+    trace["PAPER_TRADE_PLAN"] = "PASS" if plan_status == "PAPER_PLAN_READY" else (
+        "DEFERRED" if plan_status == "WAIT" else
+        "ERROR" if plan_status == "ERROR" else "REJECTED"
+    )
     if trace["PAPER_TRADE_PLAN"] != "PASS":
+        return trace, meta
+    if shadow_mode:
+        approvals = _mapping(paper.get("shadow_approvals"))
+        quantity = _mapping(approvals.get("shadow_quantity_approval"))
+        validity = _mapping(approvals.get("shadow_validity_approval"))
+        final = _mapping(approvals.get("shadow_final_approval"))
+        generation = _mapping(paper.get("shadow_final_approval_generation"))
+        quantity_status = str(generation.get("quantity_authority_status") or "")
+        attempted_stage = str(generation.get("stage") or "")
+        outcome = generation.get("outcome")
+        failed = outcome not in (
+            None, "SHADOW_FINAL_APPROVAL_CREATED", "NOT_ELIGIBLE"
+        )
+        trace["QUANTITY_APPROVED"] = (
+            "PASS" if quantity.get("status") == "PASS" else
+            "REJECTED" if quantity_status == "REJECTED" else "NOT_REACHED"
+        )
+        if trace["QUANTITY_APPROVED"] != "PASS":
+            if failed and attempted_stage == "FINAL_APPROVAL":
+                trace["FINAL_APPROVAL"] = (
+                    "ERROR" if generation.get("status") == "ERROR" else "REJECTED"
+                )
+            return trace, meta
+        valid_until_ms = (
+            int(validity["valid_until_ms"])
+            if validity.get("valid_until_ms") is not None else None
+        )
+        trace["VALIDITY_APPROVED"] = (
+            "PASS" if validity.get("status") == "PASS"
+            and valid_until_ms is not None and valid_until_ms > now_ms
+            else "REJECTED"
+        )
+        trace["FINAL_APPROVAL"] = (
+            "PASS" if final.get("status") == "PASS"
+            and generation.get("outcome") == "SHADOW_FINAL_APPROVAL_CREATED"
+            else "ERROR" if generation.get("status") == "ERROR"
+            else "REJECTED" if failed else "NOT_REACHED"
+        )
+        candidate = _mapping(paper.get("shadow_final_approval_candidate"))
+        meta.update({
+            "final_approval_id": final.get("approval_id")
+            or generation.get("final_approval_id"),
+            "valid_until_ms": valid_until_ms,
+            "risk_score": candidate.get("risk_score") or risk.get("risk_score"),
+            "strategy_score": candidate.get("strategy_score")
+            or strategy.get("strategy_score"),
+            "planned_risk_reward": candidate.get("planned_risk_reward")
+            or shadow_plan.get("planned_rr"),
+            "shadow_execution_eligible": bool(candidate.get("execution_eligible")),
+        })
+        if valid_until_ms is not None and valid_until_ms <= now_ms:
+            meta["forced_reason"] = "SHADOW_APPROVAL_EXPIRED"
         return trace, meta
     approvals = _mapping(paper.get("persisted_final_approvals"))
     quantity = _mapping(approvals.get("paper_quantity_approval"))
@@ -161,6 +258,46 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
     if valid_until_ms is not None and valid_until_ms <= now_ms:
         meta["forced_reason"] = "APPROVAL_EXPIRED"
     return trace, meta
+
+
+def _shadow_candidate(
+    row: OnlinePipelineRun,
+    result: OnlinePipelineResultRow | None,
+    trace: Mapping[str, str],
+) -> _ShadowEligibleCandidate | None:
+    if result is None or trace.get("FINAL_APPROVAL") != "PASS" or trace.get(
+        "VALIDITY_APPROVED"
+    ) != "PASS":
+        return None
+    payload = _mapping(result.paper_payload_json)
+    candidate = _mapping(payload.get("shadow_final_approval_candidate"))
+    if (
+        candidate.get("status") != "ELIGIBLE"
+        or candidate.get("execution_eligible") is not False
+        or candidate.get("persisted_final_approval_created") is not False
+    ):
+        return None
+    try:
+        candidate_id = str(candidate["candidate_id"])
+        final_approval_id = str(candidate["final_approval_id"])
+        source_run_id = str(candidate["source_run_id"])
+        symbol = str(candidate["symbol"])
+        ranking = _ShadowRanking(
+            Decimal(str(candidate["risk_score"])),
+            Decimal(str(candidate["planned_risk_reward"])),
+            Decimal(str(candidate["strategy_score"])),
+            int(candidate["closed_until_ms"]),
+            source_run_id,
+            final_approval_id,
+        )
+        if source_run_id != row.run_id or symbol != row.symbol:
+            return None
+        return _ShadowEligibleCandidate(
+            candidate_id, symbol, ranking,
+            _ShadowLineage(source_run_id, final_approval_id),
+        )
+    except (ArithmeticError, KeyError, TypeError, ValueError):
+        return None
 
 
 class TradingFunnelReadRepository:
@@ -269,6 +406,8 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         for row, result in pairs:
             trace, meta = _stage_trace(row, result, now_ms)
             candidate = eligible_by_run.get(row.run_id)
+            if candidate is None and profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
+                candidate = _shadow_candidate(row, result, trace)
             if candidate is not None:
                 trace["ELIGIBLE"] = "PASS"
                 candidates.append(candidate)
@@ -292,6 +431,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 "source_reason_code": reason, "source_reason_detail_safe": reason_detail,
                 "ui_reason_category": current_stage, "final_approval_id": meta.get("final_approval_id"),
                 "eligible": candidate is not None, "selector_rank": None, "selected_winner": False,
+                "execution_eligible": (
+                    profile.mode != TradeProfileMode.SHADOW_SEARCH.value
+                    and candidate is not None
+                ),
                 "updated_at_ms": updated_ms, "stage_trace": trace,
                 "risk_score": meta.get("risk_score"), "strategy_score": meta.get("strategy_score"),
                 "planned_risk_reward": meta.get("planned_risk_reward"),
@@ -341,7 +484,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         counts = Counter()
         for row, result in selected:
             trace, _ = _stage_trace(row, result, now_ms)
-            if row.run_id in eligible_by_run:
+            if row.run_id in eligible_by_run or (
+                profile.mode == TradeProfileMode.SHADOW_SEARCH.value
+                and _shadow_candidate(row, result, trace) is not None
+            ):
                 trace["ELIGIBLE"] = "PASS"
             for stage, status in trace.items():
                 if status == "PASS": counts[stage] += 1
@@ -372,7 +518,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 _mapping(result.paper_payload_json).get("shadow_final_approval_candidate")
             )
             metrics["shadow_final_approval_candidate_count"] += int(
-                shadow_candidate.get("status") == "CANDIDATE"
+                shadow_candidate.get("status") in {"CANDIDATE", "PLAN_READY", "ELIGIBLE"}
             )
     freshness_state = "NOT_AVAILABLE" if age is None else "CURRENT" if age <= boundary_ms * 2 else "STALE"
     return {
