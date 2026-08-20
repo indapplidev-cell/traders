@@ -111,6 +111,7 @@ class ImpulseDiagnosticInput:
     final_action: str
     candles: Sequence[Mapping[str, Any] | object]
     lookback_bars: int = 96
+    minimum_required_bars: int = MIN_BARS
     confirmed_hypotheses: tuple[str, ...] = ()
     directional_confirmation_at: str | datetime | None = None
     breakout_status: str = "NO_BREAKOUT"
@@ -126,8 +127,10 @@ class ImpulseDiagnosticInput:
             raise ValueError("unsupported market_regime")
         if self.final_action not in {"NO_ACTION", "NOT_EVALUATED"}:
             raise ValueError("diagnostics cannot accept or create a trading action")
-        if self.lookback_bars < MIN_BARS:
-            raise ValueError(f"lookback_bars must be >= {MIN_BARS}")
+        if self.minimum_required_bars < 8:
+            raise ValueError("minimum_required_bars must be at least 8")
+        if self.lookback_bars < self.minimum_required_bars:
+            raise ValueError("lookback_bars must cover minimum_required_bars")
         if (self.range_lower is None) != (self.range_upper is None):
             raise ValueError("range_lower and range_upper must be provided together")
         if self.range_lower is not None and self.range_lower >= self.range_upper:
@@ -265,7 +268,7 @@ def diagnose_impulse_phase(data: ImpulseDiagnosticInput) -> dict[str, Any]:
     bars = _normalise_bars(data)
     cutoff = _datetime(data.cutoff)
     delta = _timeframe_delta(data.timeframe)
-    if len(bars) < MIN_BARS:
+    if len(bars) < data.minimum_required_bars:
         phase = ImpulsePhase.UNKNOWN_IMPULSE_PHASE
         quality = EntryQuality.NOT_EVALUATED
         direction = "UNKNOWN"

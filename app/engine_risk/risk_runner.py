@@ -15,9 +15,11 @@ from app.engine_strategy.strategy_decision import StrategyDecision
 
 
 class RiskRunner:
-    def __init__(self, policy: RiskPolicy | None = None, store: RiskStore | None = None) -> None:
+    def __init__(self, policy: RiskPolicy | None = None, store: RiskStore | None = None,
+                 runtime_parameters: object | None = None) -> None:
         self.policy = policy or RiskPolicy()
         self.store = store or RiskStore()
+        self.runtime_parameters = runtime_parameters
 
     def process_strategy_decision(self, strategy_decision: StrategyDecision) -> RiskDecision:
         if not isinstance(strategy_decision, StrategyDecision):

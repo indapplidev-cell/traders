@@ -17,6 +17,8 @@ from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow,
 from app.engine_orchestrator.orchestrator_status import PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult, json_safe
 from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID, TradeProfileMode, resolve_trade_profile
+from app.engine_orchestrator.profile_owner import ProfileOwnershipLostError
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.engine_paper.final_approval_materializer import (
     DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER,
     NaturalFinalApprovalMaterializer,
@@ -69,6 +71,7 @@ class PipelineResultStore:
     def __init__(self, session_or_factory: Session | Callable[[], Session], *,
                  stale_run_after_seconds: int = 300,
                  clock: Callable[[], datetime] = utc_now,
+                 owner_guard: object | None = None,
                  final_approval_materializer: NaturalFinalApprovalMaterializer =
                  DEFAULT_NATURAL_FINAL_APPROVAL_MATERIALIZER) -> None:
         if stale_run_after_seconds < 1:
@@ -76,6 +79,7 @@ class PipelineResultStore:
         self._session_or_factory = session_or_factory
         self.stale_run_after_seconds = stale_run_after_seconds
         self.clock = clock
+        self.owner_guard = owner_guard
         self.final_approval_materializer = final_approval_materializer
 
     @contextmanager
@@ -88,6 +92,20 @@ class PipelineResultStore:
 
     def _now(self) -> datetime:
         return aware_utc(self.clock())
+
+    def _require_owner(self, session: Session, trade_profile_id: str) -> None:
+        profile = resolve_trade_profile(trade_profile_id)
+        if profile.trade_profile_id == DEFAULT_TRADE_PROFILE_ID:
+            return
+        guard = self.owner_guard
+        if guard is None:
+            raise ProfileOwnershipLostError(
+                f"profile mutation requires active owner: {profile.trade_profile_id}"
+            )
+        checker = getattr(guard, "assert_active", None)
+        if not callable(checker):
+            raise ProfileOwnershipLostError("profile owner guard is invalid")
+        checker(session)
 
     @staticmethod
     def _deadline(row: OnlinePipelineRun) -> datetime:
@@ -138,6 +156,7 @@ class PipelineResultStore:
             freshness_deadline_at=deadline, freshness_claimed_at=now,
         )
         with self._session() as session:
+            self._require_owner(session, profile.trade_profile_id)
             try:
                 session.add(row)
                 session.commit()
@@ -185,6 +204,7 @@ class PipelineResultStore:
         ).limit(limit * 2)
         results: list[ClaimedWindow] = []
         with self._session() as session:
+            self._require_owner(session, profile_id)
             candidates = list(session.scalars(query))
             for row in candidates:
                 if len(results) >= limit:
@@ -231,6 +251,7 @@ class PipelineResultStore:
         checked_at = aware_utc(checked_at)
         next_retry_at = aware_utc(next_retry_at)
         with self._session() as session:
+            self._require_owner(session, claim.trade_profile_id)
             row = session.scalar(select(OnlinePipelineRun).where(
                 OnlinePipelineRun.run_id == claim.run_id,
                 OnlinePipelineRun.status == PipelineStatus.CHECKING_FRESHNESS.value,
@@ -256,6 +277,7 @@ class PipelineResultStore:
                      checked_at: datetime, payload: dict[str, Any]) -> bool:
         checked_at = aware_utc(checked_at)
         with self._session() as session:
+            self._require_owner(session, claim.trade_profile_id)
             row = session.scalar(select(OnlinePipelineRun).where(
                 OnlinePipelineRun.run_id == claim.run_id,
                 OnlinePipelineRun.status == PipelineStatus.CHECKING_FRESHNESS.value,
@@ -283,6 +305,7 @@ class PipelineResultStore:
                                 payload: dict[str, Any]) -> bool:
         checked_at = aware_utc(checked_at)
         with self._session() as session:
+            self._require_owner(session, claim.trade_profile_id)
             row = session.scalar(select(OnlinePipelineRun).where(
                 OnlinePipelineRun.run_id == claim.run_id,
                 OnlinePipelineRun.status == PipelineStatus.CHECKING_FRESHNESS.value,
@@ -311,6 +334,14 @@ class PipelineResultStore:
             run = session.scalar(select(OnlinePipelineRun).where(OnlinePipelineRun.run_id == run_id))
             if run is None:
                 raise KeyError(f"unknown run_id {run_id}")
+            self._require_owner(session, run.trade_profile_id)
+            if result.trade_profile_id != run.trade_profile_id:
+                raise ValueError("result/run trade-profile identity mismatch")
+            if run.trade_profile_id != DEFAULT_TRADE_PROFILE_ID and (
+                result.runtime_parameter_set_id
+                != resolve_runtime_parameters(run.trade_profile_id).parameter_set_id
+            ):
+                raise ValueError("runtime parameter identity changed or is missing")
             if session.scalar(select(OnlinePipelineResultRow.id).where(
                     OnlinePipelineResultRow.run_id == run_id)) is not None:
                 return False

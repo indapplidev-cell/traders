@@ -26,6 +26,11 @@ class AnalysisWindowConfig:
     context_candles: int = RECOMMENDED_CONTEXT_CANDLES
     decision_candles: int = 24
     confirmation_candles: int = 3
+    atr_lookback_candles: int = 14
+    impulse_lookback_candles: int = RECOMMENDED_CONTEXT_CANDLES
+    structure_lookback_candles: int = RECOMMENDED_CONTEXT_CANDLES
+    volume_baseline_candles: int = RECOMMENDED_CONTEXT_CANDLES - 3
+    breakout_volume_baseline_candles: int = 20
 
     def __post_init__(self) -> None:
         if self.minimum_candles < 8:
@@ -38,6 +43,16 @@ class AnalysisWindowConfig:
             raise ValueError("confirmation_candles must be positive")
         if self.decision_candles + self.confirmation_candles > self.context_candles:
             raise ValueError("decision and confirmation windows exceed context")
+        if min(
+            self.atr_lookback_candles,
+            self.impulse_lookback_candles,
+            self.structure_lookback_candles,
+            self.volume_baseline_candles,
+            self.breakout_volume_baseline_candles,
+        ) < 1:
+            raise ValueError("analysis runtime lookbacks must be positive")
+        if self.structure_lookback_candles > self.context_candles:
+            raise ValueError("structure lookback exceeds context")
 
     def to_dict(self) -> dict[str, int]:
         return {
@@ -45,6 +60,11 @@ class AnalysisWindowConfig:
             "context_candles": self.context_candles,
             "decision_candles": self.decision_candles,
             "confirmation_candles": self.confirmation_candles,
+            "atr_lookback_candles": self.atr_lookback_candles,
+            "impulse_lookback_candles": self.impulse_lookback_candles,
+            "structure_lookback_candles": self.structure_lookback_candles,
+            "volume_baseline_candles": self.volume_baseline_candles,
+            "breakout_volume_baseline_candles": self.breakout_volume_baseline_candles,
         }
 
 

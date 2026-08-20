@@ -139,7 +139,11 @@ class TechnicalIndicatorContext:
 
 def analyze_technical_indicators(
     candles: tuple[EngineAnalysisCandle, ...] | list[EngineAnalysisCandle],
+    *,
+    atr_period: int = 14,
 ) -> TechnicalIndicatorContext:
+    if atr_period < 1:
+        raise ValueError("atr_period must be positive")
     items = tuple(candles)
     closes = [float(item.close) for item in items]
     sma20 = _sma(closes, 20)
@@ -153,7 +157,7 @@ def analyze_technical_indicators(
     macd_signal = signal_series[-1] if len(closes) >= 34 else None
     rsi14 = _rsi(closes)
     true_ranges = _true_ranges(items)
-    atr14 = _sma(true_ranges, 14)
+    atr14 = _sma(true_ranges, atr_period)
     atr_ratio = atr14 / closes[-1] if atr14 is not None and closes[-1] > 0 else None
     adx14 = _adx(items)
     bollinger_mid = sma20

@@ -9,12 +9,16 @@ from app.engine_analysis.impulse_phase_diagnostics import (
     MIN_BARS,
     diagnose_impulse_phase,
 )
+from app.engine_analysis.analysis_contract import AnalysisWindowConfig
 from app.engine_analysis.market_hypothesis import HypothesisStatus
 from app.engine_analysis.regime_composer import RegimeComposerOutput
 from app.engine_analysis.schwager_range_context import ZoneType
 
 
-def build_analysis_quality_basis(output: RegimeComposerOutput) -> dict[str, Any] | None:
+def build_analysis_quality_basis(
+    output: RegimeComposerOutput,
+    config: AnalysisWindowConfig | None = None,
+) -> dict[str, Any] | None:
     """Build entry quality from the same closed candles used by the composer.
 
     Invalid/insufficient composer results have no matrix and therefore no honest
@@ -60,7 +64,14 @@ def build_analysis_quality_basis(output: RegimeComposerOutput) -> dict[str, Any]
         market_regime=output.result.market_regime.value,
         final_action="NO_ACTION",
         candles=context.candles,
-        lookback_bars=min(96, len(context.candles)),
+        lookback_bars=min(
+            (config.impulse_lookback_candles if config else 96),
+            len(context.candles),
+        ),
+        minimum_required_bars=min(
+            MIN_BARS,
+            (config.impulse_lookback_candles if config else 96),
+        ),
         confirmed_hypotheses=tuple(item.hypothesis_type.value for item in confirmed),
         directional_confirmation_at=confirmation_at,
         breakout_status=schwager.breakout_context.status.value,

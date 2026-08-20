@@ -21,9 +21,11 @@ from app.engine_strategy.strategy_type import StrategyType
 
 class StrategyRunner:
     def __init__(self, strategy_filter: StrategyFilter | None = None,
-                 store: StrategyStore | None = None) -> None:
+                 store: StrategyStore | None = None,
+                 runtime_parameters: object | None = None) -> None:
         self.strategy_filter = strategy_filter or StrategyFilter()
         self.store = store or StrategyStore()
+        self.runtime_parameters = runtime_parameters
 
     def process_setup_candidate(self, setup_candidate: SetupCandidate) -> StrategyDecision:
         if not isinstance(setup_candidate, SetupCandidate):

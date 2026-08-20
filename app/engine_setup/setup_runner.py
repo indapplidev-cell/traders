@@ -17,9 +17,11 @@ from app.engine_setup.setup_quality_diagnostics import diagnose_setup_quality
 
 
 class SetupRunner:
-    def __init__(self, detector: SetupDetector, store: SetupStore) -> None:
+    def __init__(self, detector: SetupDetector, store: SetupStore,
+                 runtime_parameters: object | None = None) -> None:
         self.detector = detector
         self.store = store
+        self.runtime_parameters = runtime_parameters
 
     def process_analysis_snapshot(self, analysis_snapshot: AnalysisSnapshot) -> SetupCandidate:
         if not isinstance(analysis_snapshot, AnalysisSnapshot):

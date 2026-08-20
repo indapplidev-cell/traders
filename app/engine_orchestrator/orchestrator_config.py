@@ -13,6 +13,10 @@ from app.engine_orchestrator.trade_profile import (
     TradeSearchProfile,
     resolve_trade_profile,
 )
+from app.engine_orchestrator.runtime_parameters import (
+    RuntimeProfileParameters,
+    resolve_runtime_parameters,
+)
 
 
 DEFAULT_MINIMUM_WINDOWS = {"1m": 240, "5m": 288, "15m": 480, "1h": 240, "4h": 180, "1d": 240}
@@ -75,3 +79,7 @@ class OrchestratorConfig:
     @property
     def trade_profile(self) -> TradeSearchProfile:
         return resolve_trade_profile(self.trade_profile_id)
+
+    @property
+    def runtime_parameters(self) -> RuntimeProfileParameters:
+        return resolve_runtime_parameters(self.trade_profile_id)

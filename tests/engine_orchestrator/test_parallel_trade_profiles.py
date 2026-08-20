@@ -18,6 +18,7 @@ from app.engine_orchestrator.trade_profile import (
     TRADE_15M_PROFILE,
     TRADE_5M_PROFILE,
 )
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from tests.engine_orchestrator_01_helpers import BOUNDARY, CandleRepo, component, outputs
 
 
@@ -91,7 +92,11 @@ def test_profile_cursor_and_shadow_materialization_are_isolated():
     OnlinePipelineResultRow.__table__.create(engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     now = datetime(2026, 8, 18, 12, 0, tzinfo=timezone.utc)
-    store = PipelineResultStore(sessions, clock=lambda: now)
+    class IsolatedOwner:
+        def assert_active(self, _session):
+            return None
+
+    store = PipelineResultStore(sessions, clock=lambda: now, owner_guard=IsolatedOwner())
     fifteen_id = store.reserve(
         "BTCUSDT", "15m", BOUNDARY, daemon_instance_id="15m", trigger_source="test"
     )
@@ -107,6 +112,7 @@ def test_profile_cursor_and_shadow_materialization_are_isolated():
     assert store.mark_running(claim, daemon_instance_id="5m", checked_at=now, payload={})
     result = PipelineResult(
         "BTCUSDT", "5m", BOUNDARY, trade_profile_id="trade-5m-v1",
+        runtime_parameter_set_id=resolve_runtime_parameters("trade-5m-v1").parameter_set_id,
         paper_status="SHADOW_SEARCH", paper_payload={"paper_command_creation_enabled": False},
     )
     assert store.finish(five_id, result, freshness_status="READY")

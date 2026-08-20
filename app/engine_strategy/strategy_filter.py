@@ -19,8 +19,10 @@ from app.engine_strategy.strategy_status import StrategyStatus
 
 
 class StrategyFilter:
-    def __init__(self, config: StrategyConfig | None = None) -> None:
+    def __init__(self, config: StrategyConfig | None = None,
+                 runtime_parameters: object | None = None) -> None:
         self.config = config or StrategyConfig()
+        self.runtime_parameters = runtime_parameters
 
     def evaluate(self, setup_candidate: SetupCandidate) -> StrategyDecision:
         if not isinstance(setup_candidate, SetupCandidate):
@@ -56,6 +58,14 @@ class StrategyFilter:
             requires_risk_review=allow,
             context={
                 **context.to_dict(),
+                **({
+                    "runtime_parameter_set_id": getattr(
+                        self.runtime_parameters, "parameter_set_id"
+                    ),
+                    "strategy_policy_id": getattr(
+                        self.runtime_parameters, "strategy_policy_id"
+                    ),
+                } if self.runtime_parameters is not None else {}),
                 "strategy_type": result.strategy_type,
                 "direction_hint": setup_candidate.direction_hint,
                 "canonical_strategy_decision_identity": canonical_strategy_decision_identity(

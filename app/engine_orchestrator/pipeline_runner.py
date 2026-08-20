@@ -20,10 +20,14 @@ from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounte
 from app.engine_orchestrator.trade_profile import TradeProfileMode
 from app.engine_paper.paper_runner import PaperRunner
 from app.engine_risk.risk_runner import RiskRunner
+from app.engine_risk.risk_config import RiskConfig
+from app.engine_risk.risk_policy import RiskPolicy
 from app.engine_setup.setup_detector import SetupDetector
 from app.engine_setup.setup_runner import SetupRunner
 from app.engine_setup.setup_store import SetupStore
 from app.engine_strategy.strategy_runner import StrategyRunner
+from app.engine_strategy.strategy_config import StrategyConfig
+from app.engine_strategy.strategy_filter import StrategyFilter
 
 
 SAFETY_FIELDS = {
@@ -77,17 +81,52 @@ class PipelineRunner:
                  strategy_runner: object | None = None, risk_runner: object | None = None,
                  paper_runner: object | None = None) -> None:
         self.config = config
+        self.runtime_parameters = config.runtime_parameters
         self.candle_repository = candle_repository
         self.analysis_runner = analysis_runner or OnlineAnalysisRunner(
             OnlineAnalysisConfig(
                 symbols=list(config.symbols), timeframes=[config.primary_timeframe],
-                required_history_candles=config.minimum_windows[config.primary_timeframe],
+                required_history_candles=self.runtime_parameters.analysis_history_candles,
+                runtime_parameter_set_id=self.runtime_parameters.parameter_set_id,
+                atr_lookback_candles=self.runtime_parameters.atr_lookback_candles,
+                impulse_lookback_candles=self.runtime_parameters.impulse_lookback_candles,
+                structure_lookback_candles=self.runtime_parameters.structure_lookback_candles,
+                analysis_decision_candles=
+                self.runtime_parameters.analysis_decision_candles,
+                confirmation_window_candles=self.runtime_parameters.confirmation_window_candles,
+                volume_baseline_candles=self.runtime_parameters.volume_baseline_candles,
+                breakout_volume_baseline_candles=
+                self.runtime_parameters.breakout_volume_baseline_candles,
+                regime_lookback_candles=self.runtime_parameters.regime_lookback_candles,
             ),
             MarketDataAdapter(), AnalysisSnapshotStore(),
         )
-        self.setup_runner = setup_runner or SetupRunner(SetupDetector(), SetupStore())
-        self.strategy_runner = strategy_runner or StrategyRunner()
-        self.risk_runner = risk_runner or RiskRunner()
+        self.setup_runner = setup_runner or SetupRunner(
+            SetupDetector(self.runtime_parameters), SetupStore(), self.runtime_parameters,
+        )
+        self.strategy_runner = strategy_runner or StrategyRunner(
+            StrategyFilter(
+                StrategyConfig(
+                    minimum_allowed_quality=
+                    self.runtime_parameters.strategy_minimum_allowed_quality,
+                ),
+                self.runtime_parameters,
+            ),
+            runtime_parameters=self.runtime_parameters,
+        )
+        self.risk_runner = risk_runner or RiskRunner(
+            RiskPolicy(
+                RiskConfig(
+                    policy_version=self.runtime_parameters.risk_shadow_policy_id,
+                    minimum_strategy_quality=
+                    self.runtime_parameters.risk_minimum_strategy_quality,
+                    minimum_strategy_score=
+                    self.runtime_parameters.risk_minimum_strategy_score,
+                ),
+                runtime_parameters=self.runtime_parameters,
+            ),
+            runtime_parameters=self.runtime_parameters,
+        )
         self.paper_runner = paper_runner or PaperRunner()
 
     @staticmethod
@@ -195,6 +234,7 @@ class PipelineRunner:
             "trade_profile_id": self.config.trade_profile_id,
             "trigger_timeframe": self.config.primary_timeframe,
             "profile_mode": self.config.trade_profile.mode,
+            "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
         }
         try:
             snapshots = self.build_snapshots(symbol, closed_until_ms)
@@ -252,20 +292,28 @@ class PipelineRunner:
                     "paper_status": "SHADOW_SEARCH",
                     "trade_profile_id": self.config.trade_profile_id,
                     "trigger_timeframe": self.config.primary_timeframe,
-                    "paper_command_creation_enabled": False,
-                    "position_opening_enabled": False,
+                    "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
+                    "paper_command_creation_enabled":
+                    self.runtime_parameters.paper_command_creation_enabled,
+                    "position_opening_enabled":
+                    self.runtime_parameters.position_opening_enabled,
                     "causal_levels": {
                         "entry": _attribute(setup, "hypothetical_entry_level", "entry_level"),
                         "stop": _attribute(setup, "hypothetical_stop_level", "stop_level"),
                         "target": _attribute(setup, "hypothetical_target_level", "target_level"),
-                        "stop_authority": "LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER",
-                        "target_authority": "OPPOSITE_CAUSAL_LEVEL",
+                        "stop_authority": self.runtime_parameters.stop_policy_id,
+                        "target_authority": self.runtime_parameters.target_policy_id,
+                        "minimum_planned_rr": self.runtime_parameters.minimum_planned_rr,
                     },
                     "cost_efficiency_diagnostic": self._cost_efficiency_diagnostic(setup, risk),
                     "validity_policy": {
                         "source_close_ms": int(closed_until_ms),
-                        "valid_until_ms": int(closed_until_ms) + timeframe_to_milliseconds(self.config.primary_timeframe),
-                        "validity_boundaries": self.config.trade_profile.validity_boundaries,
+                        "valid_until_ms": int(closed_until_ms) + (
+                            timeframe_to_milliseconds(self.config.primary_timeframe)
+                            * self.runtime_parameters.validity_boundaries
+                        ),
+                        "validity_boundaries": self.runtime_parameters.validity_boundaries,
+                        "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
                     },
                     "shadow_final_approval_candidate": {
                         "candidate_id": (
@@ -334,6 +382,7 @@ class PipelineRunner:
             **payload,
             "trade_profile_id": self.config.trade_profile_id,
             "trigger_timeframe": self.config.primary_timeframe,
+            "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
         }
 
     def _cost_efficiency_diagnostic(self, *values: object) -> dict[str, object]:
@@ -348,7 +397,7 @@ class PipelineRunner:
                 gross_move_bps = abs(float(target) - float(entry)) / float(entry) * 10_000
         except (TypeError, ValueError):
             gross_move_bps = None
-        known_cost_floor_bps = 2 * (10.0 + 2.0) + self.config.trade_profile.cost_safety_margin_bps
+        known_cost_floor_bps = 2 * (10.0 + 2.0) + self.runtime_parameters.cost_safety_margin_bps
         return {
             "expected_gross_move_bps": gross_move_bps,
             "authoritative_spread_bps": None,
@@ -356,7 +405,8 @@ class PipelineRunner:
             "fee_slippage_authority": "CURRENT_PAPER_FOUNDATION_POLICY",
             "fee_bps_per_fill": 10.0,
             "adverse_slippage_bps_per_fill": 2.0,
-            "safety_margin_bps": self.config.trade_profile.cost_safety_margin_bps,
+            "safety_margin_bps": self.runtime_parameters.cost_safety_margin_bps,
+            "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
             "known_round_trip_cost_floor_bps": known_cost_floor_bps,
             "gross_exceeds_known_cost_floor": (
                 None if gross_move_bps is None else gross_move_bps > known_cost_floor_bps

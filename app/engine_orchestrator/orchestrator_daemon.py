@@ -21,6 +21,7 @@ from app.engine_orchestrator.orchestrator_status import FinalResult, Orchestrato
 from app.engine_orchestrator.pipeline_result import PipelineResult
 from app.engine_orchestrator.pipeline_result_store import ClaimedWindow, aware_utc, utc_from_ms
 from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID
+from app.engine_orchestrator.profile_owner import ProfileOwnershipLostError
 
 
 LOGGER = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class OrchestratorDaemon:
     def __init__(self, config: OrchestratorConfig, detector: object, freshness_gate: object,
                  pipeline_runner: object, result_store: object, *,
                  daemon_instance_id: str | None = None,
+                 owner_guard: object | None = None,
                  health_reporter: OrchestratorHealthReporter | None = None,
                  clock: Callable[[], datetime] = utc_now) -> None:
         self.config = config
@@ -42,6 +44,7 @@ class OrchestratorDaemon:
         self.pipeline_runner = pipeline_runner
         self.result_store = result_store
         self.daemon_instance_id = daemon_instance_id or f"orchestrator-{uuid4().hex[:12]}"
+        self.owner_guard = owner_guard
         self.health_reporter = health_reporter or OrchestratorHealthReporter(config.health_report_path)
         self.clock = clock
         self.state = OrchestratorState()
@@ -139,6 +142,19 @@ class OrchestratorDaemon:
             primary_timeframe=self.config.primary_timeframe, state=self.state,
             overall_status=status,
         )
+        if self.owner_guard is not None:
+            payload["profile_owner"] = asdict(self.owner_guard.status())
+            payload["profile_owner"]["cursor"] = {
+                symbol: value.get("closed_until_ms")
+                for symbol, value in self.state.last_processed.items()
+            }
+            payload["profile_owner"]["last_completed_boundary"] = max(
+                (
+                    int(value.get("closed_until_ms") or 0)
+                    for value in self.state.last_processed.values()
+                ),
+                default=None,
+            )
         self.health_reporter.write(payload)
         self._last_health_monotonic = now
 
@@ -146,6 +162,8 @@ class OrchestratorDaemon:
         return PipelineResult(
             symbol=claim.symbol, primary_timeframe=claim.primary_timeframe,
             closed_until_ms=claim.closed_until_ms,
+            trade_profile_id=claim.trade_profile_id,
+            runtime_parameter_set_id=self.config.runtime_parameters.parameter_set_id,
             status=PipelineStatus.SKIPPED_FRESHNESS_NOT_OK.value,
             final_result=FinalResult.NO_ACTION.value, final_reason=reason,
         )
@@ -222,6 +240,8 @@ class OrchestratorDaemon:
         return observation
 
     def run_cycle(self, *, dry_run: bool = False) -> list[dict[str, Any]]:
+        if self.owner_guard is not None:
+            self.owner_guard.assert_active()
         observations: list[dict[str, Any]] = []
         if not dry_run:
             due_kwargs = {
@@ -293,6 +313,12 @@ class OrchestratorDaemon:
                 all_observations.extend(self.run_cycle(dry_run=dry_run))
                 self.state.last_error = None
                 backoff = self.config.initial_backoff_seconds
+            except ProfileOwnershipLostError as exc:
+                self.state.last_error = f"{type(exc).__name__}: {exc}"
+                self.state.error_windows += 1
+                self._stop.set()
+                self._write_health(force=True, status=OrchestratorHealthStatus.ERROR.value)
+                raise
             except Exception as exc:
                 self.state.last_error = f"{type(exc).__name__}: {exc}"
                 self.state.error_windows += 1

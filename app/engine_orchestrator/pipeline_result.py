@@ -62,6 +62,7 @@ class PipelineResult:
     trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID
     trigger_timeframe: str | None = None
     profile_mode: str | None = None
+    runtime_parameter_set_id: str | None = None
     status: str = PipelineStatus.COMPLETED.value
     final_result: str = FinalResult.NO_DECISION.value
     final_reason: str | None = None

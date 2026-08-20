@@ -34,9 +34,11 @@ def _with_causal_context(source: StrategyDecision, context: dict | None) -> dict
 
 class RiskPolicy:
     def __init__(self, config: RiskConfig | None = None,
-                 limits: ResearchRiskLimits | None = None) -> None:
+                 limits: ResearchRiskLimits | None = None,
+                 runtime_parameters: object | None = None) -> None:
         self.config = config or RiskConfig()
         self.limits = limits or ResearchRiskLimits()
+        self.runtime_parameters = runtime_parameters
 
     def evaluate(self, source: StrategyDecision) -> RiskDecision:
         if not isinstance(source, StrategyDecision):
@@ -176,6 +178,19 @@ class RiskPolicy:
                   wait_reasons: list[R] | None = None, context: dict | None = None,
                   risk_pre_approved: bool = False,
                   requires_execution_review: bool = False) -> RiskDecision:
+        enriched_context = _with_causal_context(source, context)
+        if self.runtime_parameters is not None:
+            enriched_context.update({
+                "runtime_parameter_set_id": getattr(
+                    self.runtime_parameters, "parameter_set_id"
+                ),
+                "risk_shadow_policy_id": getattr(
+                    self.runtime_parameters, "risk_shadow_policy_id"
+                ),
+                "minimum_planned_rr": getattr(
+                    self.runtime_parameters, "minimum_planned_rr"
+                ),
+            })
         return RiskDecision(
             risk_decision_id=risk_decision_id(source.symbol, source.timeframe,
                                               source.closed_until_ms, source.decision_id),
@@ -196,6 +211,6 @@ class RiskPolicy:
             risk_warnings=list(risk_warnings or []),
             rejection_reasons=[str(value) for value in (rejection_reasons or [])],
             wait_reasons=[str(value) for value in (wait_reasons or [])],
-            risk_context=_with_causal_context(source, context), risk_pre_approved=risk_pre_approved,
+            risk_context=enriched_context, risk_pre_approved=risk_pre_approved,
             requires_execution_review=requires_execution_review,
         )

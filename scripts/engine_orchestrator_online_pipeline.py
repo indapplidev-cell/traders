@@ -21,6 +21,11 @@ from app.engine_orchestrator.orchestrator_config import DEFAULT_MINIMUM_WINDOWS,
 from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
+from app.engine_orchestrator.profile_owner import (
+    OwnerAlreadyActiveError,
+    PostgresProfileOwner,
+)
+from sqlalchemy import text
 from app.engine_orchestrator.trade_profile import (
     DEFAULT_TRADE_PROFILE_ID,
     TRADE_5M_CONTEXT_MINIMUM_WINDOWS,
@@ -73,6 +78,22 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def validate_5m_schema_capabilities(sessions: object) -> None:
+    """Fail before owner election unless the deployed profile schema is exact 0017."""
+    with sessions() as session:
+        revision = session.scalar(text("SELECT version_num FROM alembic_version"))
+        if revision != "0017_parallel_trade_profiles":
+            raise RuntimeError("5m runtime requires schema 0017_parallel_trade_profiles")
+        columns = set(session.scalars(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = current_schema() "
+            "AND table_name = 'online_pipeline_runs'"
+        )))
+        required = {"trade_profile_id", "profile_mode"}
+        if not required.issubset(columns):
+            raise RuntimeError("5m runtime profile provenance columns are incomplete")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     profile = resolve_trade_profile(args.trade_profile)
@@ -106,9 +127,29 @@ def main(argv: list[str] | None = None) -> int:
         freshness_max_attempts=args.freshness_max_attempts,
         waiting_batch_size=args.waiting_batch_size,
     )
+    # Accessing the immutable object validates the complete parameter schema
+    # before any boundary detection or owner election.
+    runtime_parameters = config.runtime_parameters
     sessions = create_market_data_session_factory()
+    owner = None
+    if profile.trade_profile_id == "trade-5m-v1":
+        validate_5m_schema_capabilities(sessions)
+        owner = PostgresProfileOwner(sessions, profile.trade_profile_id)
+        try:
+            owner.acquire()
+        except OwnerAlreadyActiveError:
+            print(json.dumps({
+                "trade_profile_id": profile.trade_profile_id,
+                "runtime_parameter_set_id": runtime_parameters.parameter_set_id,
+                "owner_state": "OWNER_ALREADY_ACTIVE",
+                "evaluated_windows": 0,
+            }, sort_keys=True))
+            return 3
     candle_repository = CandleRepository(sessions)
-    store = PipelineResultStore(sessions)
+    store = PipelineResultStore(
+        owner.session if owner is not None else sessions,
+        owner_guard=owner,
+    )
     detector = ClosedWindowDetector(
         candle_repository, store, primary_timeframe=config.primary_timeframe,
         trade_profile_id=config.trade_profile_id,
@@ -120,18 +161,26 @@ def main(argv: list[str] | None = None) -> int:
         require_all_timeframes_ok=config.require_all_timeframes_ok,
         allow_stale_higher_timeframes=config.allow_stale_higher_timeframes,
     )
-    daemon = OrchestratorDaemon(config, detector, gate, PipelineRunner(config, candle_repository), store)
-    daemon.install_signal_handlers()
-    observations = daemon.run(
-        continuous=bool(args.continuous), dry_run=bool(args.dry_run),
-        stop_after_cycles=args.stop_after_cycles,
+    daemon = OrchestratorDaemon(
+        config, detector, gate, PipelineRunner(config, candle_repository), store,
+        owner_guard=owner,
     )
+    daemon.install_signal_handlers()
+    try:
+        observations = daemon.run(
+            continuous=bool(args.continuous), dry_run=bool(args.dry_run),
+            stop_after_cycles=args.stop_after_cycles,
+        )
+    finally:
+        if owner is not None:
+            owner.close()
     print(json.dumps({
         "daemon_instance_id": daemon.daemon_instance_id,
         "effective_config": {
             "symbols": list(config.symbols),
             "trade_profile_id": config.trade_profile_id,
             "profile_mode": config.trade_profile.mode,
+            "runtime_parameter_set_id": runtime_parameters.parameter_set_id,
             "primary_timeframe": config.primary_timeframe,
             "required_timeframes": list(config.required_timeframes),
             "freshness_retry_interval_seconds": config.freshness_retry_interval_seconds,

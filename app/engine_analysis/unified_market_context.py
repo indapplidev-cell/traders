@@ -95,6 +95,9 @@ def _average(values: tuple[float, ...] | list[float]) -> float:
 def _volume_context(
     candles: tuple[EngineAnalysisCandle, ...],
     schwager: SchwagerRangeContext,
+    *,
+    baseline_candles: int = 20,
+    breakout_baseline_candles: int = 20,
 ) -> VolumeContext:
     volumes = tuple(float(item.volume) for item in candles)
     positive_count = sum(value > 0.0 for value in volumes)
@@ -102,14 +105,17 @@ def _volume_context(
     average = _average(volumes) if available else 0.0
     recent_size = min(3, len(volumes))
     recent = _average(volumes[-recent_size:]) if available and recent_size else 0.0
-    baseline_values = volumes[:-recent_size] if len(volumes) > recent_size else volumes
+    available_baseline = volumes[:-recent_size] if len(volumes) > recent_size else volumes
+    baseline_values = available_baseline[-baseline_candles:]
     baseline = _average(baseline_values) if available else 0.0
     recent_ratio = recent / baseline if baseline > 0.0 else 0.0
 
     breakout_index = schwager.breakout_context.breakout_index
     breakout_ratio: float | None = None
     if available and breakout_index is not None:
-        prior = volumes[max(0, breakout_index - 20):breakout_index]
+        prior = volumes[
+            max(0, breakout_index - breakout_baseline_candles):breakout_index
+        ]
         prior_average = _average(prior)
         if prior_average > 0.0:
             breakout_ratio = volumes[breakout_index] / prior_average
@@ -139,9 +145,18 @@ def build_unified_market_context(
     items = all_items[resolved.context_start_index:]
     # Re-resolve indexes against the sliced context exported to consumers.
     resolved = resolve_analysis_window(len(items), contract)
-    raw_swings = detect_swing_points(items)
+    structure_items = items[-contract.structure_lookback_candles:]
+    structure_offset = len(items) - len(structure_items)
+    local_raw_swings = detect_swing_points(structure_items)
+    raw_swings = tuple(
+        SwingPoint(item.index + structure_offset, item.timestamp, item.price, item.point_type)
+        for item in local_raw_swings
+    )
     structural_candidates = (
-        detect_volatility_aware_swing_points(items)
+        tuple(
+            SwingPoint(item.index + structure_offset, item.timestamp, item.price, item.point_type)
+            for item in detect_volatility_aware_swing_points(structure_items)
+        )
         if production_contract and resolved.readiness is AnalysisReadiness.FULL
         else raw_swings
     )
@@ -159,7 +174,13 @@ def build_unified_market_context(
         nison_context=nison,
         altunina_context=altunina,
         schwager_context=schwager,
-        volume_context=_volume_context(items, schwager),
-        indicator_context=analyze_technical_indicators(items),
+        volume_context=_volume_context(
+            items, schwager,
+            baseline_candles=contract.volume_baseline_candles,
+            breakout_baseline_candles=contract.breakout_volume_baseline_candles,
+        ),
+        indicator_context=analyze_technical_indicators(
+            items, atr_period=contract.atr_lookback_candles,
+        ),
         analysis_window=resolved,
     )

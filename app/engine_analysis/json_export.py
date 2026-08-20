@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from app.engine_analysis.analysis_quality_basis import build_analysis_quality_basis
+from app.engine_analysis.analysis_contract import AnalysisWindowConfig
 from app.engine_analysis.causal_planning_context import build_causal_planning_context
 from app.engine_analysis.regime_composer import RegimeComposerOutput
 
@@ -36,9 +37,10 @@ def build_engine_analysis_preview(output: RegimeComposerOutput) -> dict[str, obj
 
 def build_engine_analysis_json_payload(
     output: RegimeComposerOutput,
+    config: AnalysisWindowConfig | None = None,
 ) -> dict[str, object]:
     """Build the standalone preview JSON contract."""
-    quality_basis = build_analysis_quality_basis(output)
+    quality_basis = build_analysis_quality_basis(output, config)
     payload: dict[str, object] = {
         "service": "ENGINE_ANALYSIS",
         "contract_version": "engine_analysis_preview_v2",

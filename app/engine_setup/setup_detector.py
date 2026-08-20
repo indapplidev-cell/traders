@@ -18,6 +18,9 @@ from app.engine_setup.setup_quality_diagnostics import diagnose_setup_quality
 
 
 class SetupDetector:
+    def __init__(self, runtime_parameters: object | None = None) -> None:
+        self.runtime_parameters = runtime_parameters
+
     def detect(self, analysis_snapshot: AnalysisSnapshot) -> SetupCandidate:
         if not isinstance(analysis_snapshot, AnalysisSnapshot):
             raise TypeError("analysis_snapshot must be an AnalysisSnapshot")
@@ -49,6 +52,25 @@ class SetupDetector:
             source_analysis_entry_quality=context.entry_quality, source_confidence=context.confidence,
             source_regime=context.regime, source_impulse_phase=context.impulse_phase,
         )
+        candidate_context = setup_causal_context(
+            dict(context.analysis_context), direction=result.direction_hint,
+            setup_type=result.setup_type,
+        )
+        if self.runtime_parameters is not None:
+            candidate_context.update({
+                "runtime_parameter_set_id": getattr(
+                    self.runtime_parameters, "parameter_set_id"
+                ),
+                "setup_policy_id": getattr(self.runtime_parameters, "setup_policy_id"),
+                "confirmation_window_candles": getattr(
+                    self.runtime_parameters, "confirmation_window_candles"
+                ),
+                "minimum_planned_rr": getattr(
+                    self.runtime_parameters, "minimum_planned_rr"
+                ),
+                "stop_policy_id": getattr(self.runtime_parameters, "stop_policy_id"),
+                "target_policy_id": getattr(self.runtime_parameters, "target_policy_id"),
+            })
         return SetupCandidate(
             setup_id=identity,
             symbol=snapshot.symbol.upper(),
@@ -73,10 +95,7 @@ class SetupDetector:
             reason_codes=result.reason_codes,
             invalidation_reasons=result.invalidation_reasons,
             diagnostics=result.diagnostics,
-            context=setup_causal_context(
-                dict(context.analysis_context), direction=result.direction_hint,
-                setup_type=result.setup_type,
-            ),
+            context=candidate_context,
         )
 
 

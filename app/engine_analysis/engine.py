@@ -102,7 +102,7 @@ def run_engine_analysis(
         interval=composer_output.result.interval,
         composer_output=composer_output,
         preview=build_engine_analysis_preview(composer_output),
-        json_payload=build_engine_analysis_json_payload(composer_output),
+        json_payload=build_engine_analysis_json_payload(composer_output, contract),
     )
 
 

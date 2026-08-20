@@ -10,6 +10,7 @@ from threading import RLock
 from typing import Any, Callable
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshot, AnalysisSnapshotStatus
+from app.engine_analysis.analysis_contract import AnalysisWindowConfig
 from app.engine_analysis.analysis_snapshot_store import AnalysisSnapshotStore
 from app.engine_analysis.engine import run_engine_analysis
 from app.engine_analysis.market_data_adapter import MarketDataAdapter
@@ -139,6 +140,18 @@ class OnlineAnalysisRunner:
                 snapshot.symbol,
                 snapshot.timeframe,
                 candles,
+                config=AnalysisWindowConfig(
+                    minimum_candles=min(64, self.config.regime_lookback_candles),
+                    context_candles=self.config.regime_lookback_candles,
+                    decision_candles=self.config.analysis_decision_candles,
+                    confirmation_candles=self.config.confirmation_window_candles,
+                    atr_lookback_candles=self.config.atr_lookback_candles,
+                    impulse_lookback_candles=self.config.impulse_lookback_candles,
+                    structure_lookback_candles=self.config.structure_lookback_candles,
+                    volume_baseline_candles=self.config.volume_baseline_candles,
+                    breakout_volume_baseline_candles=
+                    self.config.breakout_volume_baseline_candles,
+                ),
                 strict_market_series=not degraded,
             )
         target = getattr(pipeline, "analyze", pipeline)
@@ -294,6 +307,22 @@ class OnlineAnalysisRunner:
         try:
             output = self._invoke_pipeline(snapshot, candles, health.degraded)
             analysis = self._extract_analysis(output)
+            analysis_context = dict(analysis.get("analysis_context") or {})
+            analysis_context.update({
+                "runtime_parameter_set_id": self.config.runtime_parameter_set_id,
+                "analysis_runtime_parameters": {
+                    "atr_lookback_candles": self.config.atr_lookback_candles,
+                    "impulse_lookback_candles": self.config.impulse_lookback_candles,
+                    "structure_lookback_candles": self.config.structure_lookback_candles,
+                    "analysis_decision_candles": self.config.analysis_decision_candles,
+                    "confirmation_window_candles": self.config.confirmation_window_candles,
+                    "volume_baseline_candles": self.config.volume_baseline_candles,
+                    "breakout_volume_baseline_candles":
+                    self.config.breakout_volume_baseline_candles,
+                    "regime_lookback_candles": self.config.regime_lookback_candles,
+                },
+            })
+            analysis["analysis_context"] = analysis_context
             return self._build(
                 snapshot,
                 status=AnalysisSnapshotStatus.ANALYZED,
