@@ -100,7 +100,7 @@ WAL_READY = false
 PITR_READY = false
 ACTIVE_UNRESOLVED_FAILURES = 1
 EXPORT_BACKLOG = 1
-PENDING_ARCHIVE_STATUS = 23
+PENDING_ARCHIVE_STATUS = 24
 LINEAGE_VALID = true
 PHYSICAL_WAL_GAP = false
 ACK_OWNER_PROCESS_IDENTITY_MATCH = NO_ACK_STATE_DEGRADED_PID_NONE
@@ -221,7 +221,7 @@ ARMED generation 6, canary waiting, LIVE disabled, with all restart counts 0.
 
 However, the fresh authoritative readiness and diagnosis were not PASS:
 `wal_ready=false`, `pitr_ready=false`, active unresolved failure 1, export
-backlog 1, pending archive status 23, ACK state `DEGRADED`, PID absent. Physical
+backlog 1, pending archive status 24, ACK state `DEGRADED`, PID absent. Physical
 gap remained false and lineage remained valid. The task therefore stops without
 claiming completion and without starting production 5m. Recovery is a separate
 production mutation task; only after it passes may this acceptance gate be
