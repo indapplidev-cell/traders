@@ -831,7 +831,8 @@ _DOMAIN = {
         "FLAT": ("Боковой рынок", "Sideways market"), "UNKNOWN": ("Режим не определён", "Regime unavailable"),
     },
     "market.data": {
-        "OK": ("В норме", "Healthy"), "STALE": ("Данные устарели", "Stale data"),
+        "OK": ("В норме", "Healthy"), "CURRENT": ("Данные актуальны", "Data current"),
+        "STALE": ("Данные устарели", "Stale data"),
         "DEGRADED": ("Данные неполны", "Degraded data"), "NOT_AVAILABLE": ("Данных нет", "No data"),
         "ERROR": ("Ошибка данных", "Data error"), "OFFLINE": ("Источник отключён", "Source offline"),
         "UNKNOWN": ("Состояние данных не определено", "Data state unavailable"),

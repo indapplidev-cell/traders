@@ -98,3 +98,10 @@ def test_trade_profile_keys_are_server_owned_and_ru_en_complete():
         "trading.profile.conflict.CROSS_TIMEFRAME_CONFLICT",
     ):
         assert key in ru and key in en
+
+
+def test_trading_funnel_current_freshness_is_server_owned_and_bilingual():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    assert ru["market.data.CURRENT"] == "Данные актуальны"
+    assert en["market.data.CURRENT"] == "Data current"
