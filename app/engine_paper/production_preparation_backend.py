@@ -76,19 +76,28 @@ class PaperPreparationAdapterError(RuntimeError):
 READONLY_SOURCE_IDENTITY_LABEL: Final = "org.opencontainers.image.revision"
 READONLY_EXPECTED_GET_ROUTES: Final = frozenset({
     "/api/v1/health", "/api/v1/dashboard", "/api/v1/markets",
-    "/api/v1/markets/{symbol}", "/api/v1/analysis/{symbol}",
+    "/api/v1/markets/{symbol}", "/api/v1/analysis", "/api/v1/analysis/{symbol}",
     "/api/v1/setups", "/api/v1/setups/{setup_id}",
     "/api/v1/incidents", "/api/v1/incidents/{incident_id}",
+    "/api/v1/i18n/catalog/{locale}", "/api/v1/i18n/manifest",
+    "/api/v1/trading-universe", "/api/v1/trading/funnel",
     "/api/v1/paper/readiness", "/api/v1/paper/account",
     "/api/v1/paper/positions", "/api/v1/paper/positions/{position_id}",
     "/api/v1/paper/trades", "/api/v1/paper/trades/{position_id}/report",
     "/api/v1/paper/reconciliation", "/api/v1/paper/runtime/status",
-    "/api/v1/paper/control/status",
+    "/api/v1/paper/control/status", "/api/v1/paper/orders",
+    "/api/v1/paper/fills", "/api/v1/paper/journal",
+    "/api/v1/paper/trading-criteria",
 })
-READONLY_LEGACY_ROUTES: Final = frozenset(
-    path for path in READONLY_EXPECTED_GET_ROUTES if "/paper/" not in path
+READONLY_LEGACY_ROUTES: Final = frozenset({
+    "/api/v1/health", "/api/v1/dashboard", "/api/v1/markets",
+    "/api/v1/markets/{symbol}", "/api/v1/analysis/{symbol}",
+    "/api/v1/setups", "/api/v1/setups/{setup_id}",
+    "/api/v1/incidents", "/api/v1/incidents/{incident_id}",
+})
+READONLY_PAPER_ROUTES: Final = frozenset(
+    path for path in READONLY_EXPECTED_GET_ROUTES if "/paper/" in path
 )
-READONLY_PAPER_ROUTES: Final = READONLY_EXPECTED_GET_ROUTES - READONLY_LEGACY_ROUTES
 READONLY_STATIC_PAPER_HTTP_PATHS: Final = (
     "/api/v1/paper/readiness", "/api/v1/paper/account", "/api/v1/paper/positions",
     "/api/v1/paper/trades", "/api/v1/paper/reconciliation",

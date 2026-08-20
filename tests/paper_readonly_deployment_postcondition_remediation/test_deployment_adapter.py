@@ -77,7 +77,8 @@ def test_stale_nine_route_runtime_overrides_ready_marker_then_current_runtime_is
 
     assert len(stale.get_routes) == 9
     assert stale.write_route_count == 0
-    assert len(READONLY_PAPER_ROUTES) == 9
+    assert len(READONLY_EXPECTED_GET_ROUTES) == 27
+    assert len(READONLY_PAPER_ROUTES) == 13
     assert not deployment.readonly_api_narrow_ready()
 
     probe[0] = acceptance()
