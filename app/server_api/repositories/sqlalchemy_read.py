@@ -311,29 +311,48 @@ class SqlAlchemyReadAdapter:
 
         symbols = PREPARED_NEXT_TRADING_UNIVERSE.symbols
         counts: dict[tuple[str, str], int] = {}
+        count_statement = union_all(*(
+            select(
+                model.symbol.label("symbol"),
+                literal(timeframe).label("timeframe"),
+                func.count().label("candle_count"),
+            )
+            .where(model.symbol.in_(symbols), model.is_closed.is_(True))
+            .group_by(model.symbol)
+            for timeframe, model in CANDLE_MODELS.items()
+        ))
+        ranked_runs = (
+            select(
+                OnlinePipelineRun.id.label("run_pk"),
+                func.row_number().over(
+                    partition_by=OnlinePipelineRun.symbol,
+                    order_by=(
+                        OnlinePipelineRun.closed_until_ms.desc(),
+                        OnlinePipelineRun.id.desc(),
+                    ),
+                ).label("recency_rank"),
+            )
+            .where(
+                OnlinePipelineRun.symbol.in_(symbols),
+                OnlinePipelineRun.primary_timeframe == self._primary_timeframe,
+                *self._default_profile_predicates(),
+            )
+            .subquery()
+        )
+        latest_runs_statement = (
+            select(OnlinePipelineRun)
+            .options(*_RUN_0016_LOAD_OPTIONS)
+            .join(ranked_runs, ranked_runs.c.run_pk == OnlinePipelineRun.id)
+            .where(ranked_runs.c.recency_rank == 1)
+            .order_by(OnlinePipelineRun.symbol.asc())
+        )
         with self._session() as session:
             states = tuple(session.scalars(
                 select(MarketDataSyncState).where(MarketDataSyncState.symbol.in_(symbols))
             ))
-            for timeframe, model in CANDLE_MODELS.items():
-                rows = session.execute(
-                    select(model.symbol, func.count())
-                    .where(model.symbol.in_(symbols), model.is_closed.is_(True))
-                    .group_by(model.symbol)
-                )
-                for symbol, count in rows:
-                    counts[(str(symbol), timeframe)] = int(count)
-            runs = tuple(session.scalars(
-                select(OnlinePipelineRun)
-                .options(*_RUN_0016_LOAD_OPTIONS)
-                .where(OnlinePipelineRun.symbol.in_(symbols))
-                .where(*self._default_profile_predicates())
-                .order_by(
-                    OnlinePipelineRun.symbol.asc(),
-                    OnlinePipelineRun.closed_until_ms.desc(),
-                    OnlinePipelineRun.id.desc(),
-                )
-            ))
+            for symbol, timeframe, count in session.execute(count_statement):
+                counts[(str(symbol), str(timeframe))] = int(count)
+            runs = tuple(session.scalars(latest_runs_statement))
 
         state_by_key = {(row.symbol, row.timeframe): row for row in states}
         latest_run: dict[str, OnlinePipelineRun] = {}
