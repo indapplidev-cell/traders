@@ -48,6 +48,7 @@ def _create_engine(config: RuntimeConfig) -> Engine:
         config.connection_url,
         pool_pre_ping=True,
         pool_size=config.pool_size,
+        max_overflow=0,
         pool_timeout=config.pool_timeout_seconds,
         connect_args={"options": options},
     )

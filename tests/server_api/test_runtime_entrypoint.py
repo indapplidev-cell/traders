@@ -94,6 +94,22 @@ def test_module_import_does_not_connect(monkeypatch) -> None:
     assert calls == []
 
 
+def test_engine_pool_never_exceeds_the_configured_readonly_budget(monkeypatch) -> None:
+    captured = {}
+    marker = object()
+
+    def create_engine(connection_url, **options):
+        captured["connection_url"] = connection_url
+        captured.update(options)
+        return marker
+
+    monkeypatch.setattr(runtime, "create_engine", create_engine)
+    assert runtime._create_engine(CONFIG) is marker
+    assert captured["pool_size"] == CONFIG.pool_size
+    assert captured["max_overflow"] == 0
+    assert captured["pool_timeout"] == CONFIG.pool_timeout_seconds
+
+
 def test_composition_injects_one_exact_read_adapter(monkeypatch) -> None:
     app, engine = _composed(monkeypatch)
     repositories = app.state.runtime_repositories
