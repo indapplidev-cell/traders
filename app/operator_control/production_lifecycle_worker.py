@@ -60,7 +60,9 @@ from .continuation_worker import PostgresCanaryContinuationLock
 from .production_executor import ExistingCanaryRuntimeReadiness, _foundation_policy
 
 
-LOGGER = logging.getLogger("traders.paper.first_canary.lifecycle")
+# Uvicorn owns the production stderr handler; using its error logger keeps the
+# structured canary trail in ``docker logs`` without adding a second handler.
+LOGGER = logging.getLogger("uvicorn.error")
 DEFAULT_POLL_SECONDS = 10.0
 MIN_POLL_SECONDS = 5.0
 MAX_POLL_SECONDS = 60.0
@@ -369,10 +371,13 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         )
 
     def run_once(self) -> str:
-        with self._lock.claim() as claimed:
+        canary = self._canary_store.current()
+        if canary is None or canary.command_id is None:
+            return "NO_COMMAND_READY"
+        with self._lock.acquire(canary.canary_id) as claimed:
             if not claimed:
                 return "CLAIMED_BY_ANOTHER_WORKER"
-            canary = self._canary_store.current()
+            canary = self._canary_store.get(canary.canary_id)
             if canary is None or canary.command_id is None:
                 return "NO_COMMAND_READY"
             state = self._control.read_authoritative()

@@ -16,7 +16,8 @@ from app.operator_control.production_lifecycle_worker import (
 
 class _Lock:
     @contextmanager
-    def claim(self):
+    def acquire(self, canary_id):
+        assert canary_id
         yield True
 
 
@@ -26,6 +27,9 @@ class _Store:
         self.refreshed = None
 
     def current(self):
+        return self.value
+
+    def get(self, _canary_id):
         return self.value
 
     def refresh_terminal(self, canary_id, **values):
