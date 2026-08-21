@@ -114,3 +114,14 @@ def test_trading_funnel_cycle_titles_are_timeframe_parameterized_and_bilingual()
     assert ru["funnel.last_completed_cycle"].format(timeframe="5m") == "ПОСЛЕДНИЙ ЗАВЕРШЁННЫЙ 5m ЦИКЛ"
     assert en["funnel.current_cycle"].format(timeframe="5m") == "CURRENT 5m CYCLE"
     assert en["funnel.last_completed_cycle"].format(timeframe="5m") == "LAST COMPLETED 5m CYCLE"
+
+
+def test_trading_funnel_stage_labels_separate_historical_passage_from_current_eligibility():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    assert ru["funnel.stage.VALIDITY_APPROVED"] == "Срок проверен"
+    assert ru["funnel.stage.FINAL_APPROVAL"] == "Одобрение создано"
+    assert ru["funnel.stage.ELIGIBLE"] == "Допущен сейчас"
+    assert en["funnel.stage.VALIDITY_APPROVED"] == "Validity check passed"
+    assert en["funnel.stage.FINAL_APPROVAL"] == "Approval created"
+    assert en["funnel.stage.ELIGIBLE"] == "Currently eligible"

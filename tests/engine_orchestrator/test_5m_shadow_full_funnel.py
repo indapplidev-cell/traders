@@ -255,6 +255,20 @@ def test_shadow_projection_reaches_eligible_and_deterministic_winner_without_exe
     assert item["execution_eligible"] is False
     assert cycle["winner_symbol"] == "BTCUSDT"
 
+    expired = build_projection(
+        ((run, row),), universe, BOUNDARY + 300_001,
+        trade_profile_id="trade-5m-v1",
+    )
+    expired_item = expired["current_cycle"]["items"][0]
+    assert expired_item["stage_trace"]["VALIDITY_APPROVED"] == "PASS"
+    assert expired_item["stage_trace"]["FINAL_APPROVAL"] == "PASS"
+    assert expired_item["stage_trace"]["ELIGIBLE"] == "REJECTED"
+    assert expired_item["eligible"] is False
+    assert expired_item["selected_winner"] is False
+    assert expired_item["source_reason_code"] == "SHADOW_APPROVAL_EXPIRED"
+    assert expired["rolling_1h"]["stage_counts"]["VALIDITY_APPROVED"] == 1
+    assert expired["rolling_1h"]["stage_counts"]["FINAL_APPROVAL"] == 1
+
 
 def test_shadow_store_persists_full_funnel_but_never_promotes_execution_flags():
     engine = create_engine("sqlite+pysqlite:///:memory:")

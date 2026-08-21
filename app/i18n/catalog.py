@@ -804,13 +804,13 @@ EN.update({
 _FUNNEL_STAGES_EN = {
     "ANALYSIS": "Analysis", "STRUCTURAL_SETUP": "Structural Setup", "STRATEGY_ELIGIBLE": "Strategy eligible",
     "RISK_APPROVED": "Risk approved", "PAPER_TRADE_PLAN": "PaperTradePlan", "QUANTITY_APPROVED": "Quantity approved",
-    "VALIDITY_APPROVED": "Validity approved", "FINAL_APPROVAL": "Final Approval", "ELIGIBLE": "Eligible",
+    "VALIDITY_APPROVED": "Validity check passed", "FINAL_APPROVAL": "Approval created", "ELIGIBLE": "Currently eligible",
     "SELECTOR_WINNER": "Selector winner",
 }
 _FUNNEL_STAGES_RU = {
     "ANALYSIS": "Анализ", "STRUCTURAL_SETUP": "Структурный setup", "STRATEGY_ELIGIBLE": "Допуск стратегии",
     "RISK_APPROVED": "Допуск риска", "PAPER_TRADE_PLAN": "План PAPER", "QUANTITY_APPROVED": "Допуск количества",
-    "VALIDITY_APPROVED": "Допуск срока", "FINAL_APPROVAL": "Финальное одобрение", "ELIGIBLE": "Допущен",
+    "VALIDITY_APPROVED": "Срок проверен", "FINAL_APPROVAL": "Одобрение создано", "ELIGIBLE": "Допущен сейчас",
     "SELECTOR_WINNER": "Победитель селектора",
 }
 RU.update({f"funnel.stage.{key}": value for key, value in _FUNNEL_STAGES_RU.items()})

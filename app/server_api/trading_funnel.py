@@ -193,7 +193,7 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
         )
         trace["VALIDITY_APPROVED"] = (
             "PASS" if validity.get("status") == "PASS"
-            and valid_until_ms is not None and valid_until_ms > now_ms
+            and valid_until_ms is not None
             else "REJECTED"
         )
         trace["FINAL_APPROVAL"] = (
@@ -213,6 +213,7 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
             "planned_risk_reward": candidate.get("planned_risk_reward")
             or shadow_plan.get("planned_rr"),
             "shadow_execution_eligible": bool(candidate.get("execution_eligible")),
+            "validity_current": valid_until_ms is not None and valid_until_ms > now_ms,
         })
         if valid_until_ms is not None and valid_until_ms <= now_ms:
             meta["forced_reason"] = "SHADOW_APPROVAL_EXPIRED"
@@ -246,7 +247,7 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
     valid_values = [int(value["valid_until_ms"]) for value in approvals.values()
                     if isinstance(value, Mapping) and value.get("valid_until_ms") is not None]
     valid_until_ms = min(valid_values) if len(valid_values) == 3 else None
-    trace["VALIDITY_APPROVED"] = "PASS" if valid_until_ms is not None and valid_until_ms > now_ms else "REJECTED"
+    trace["VALIDITY_APPROVED"] = "PASS" if valid_until_ms is not None else "REJECTED"
     trace["FINAL_APPROVAL"] = "PASS" if len(approvals) == 3 else "NOT_REACHED"
     meta.update({
         "final_approval_id": generation.get("final_approval_id") or risk_approval.get("approval_id"),
@@ -254,6 +255,7 @@ def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None,
         "risk_score": risk.get("risk_score"),
         "strategy_score": strategy.get("strategy_score"),
         "planned_risk_reward": paper.get("planned_risk_reward"),
+        "validity_current": valid_until_ms is not None and valid_until_ms > now_ms,
     })
     if valid_until_ms is not None and valid_until_ms <= now_ms:
         meta["forced_reason"] = "APPROVAL_EXPIRED"
@@ -264,6 +266,7 @@ def _shadow_candidate(
     row: OnlinePipelineRun,
     result: OnlinePipelineResultRow | None,
     trace: Mapping[str, str],
+    now_ms: int,
 ) -> _ShadowEligibleCandidate | None:
     if result is None or trace.get("FINAL_APPROVAL") != "PASS" or trace.get(
         "VALIDITY_APPROVED"
@@ -275,6 +278,8 @@ def _shadow_candidate(
         candidate.get("status") != "ELIGIBLE"
         or candidate.get("execution_eligible") is not False
         or candidate.get("persisted_final_approval_created") is not False
+        or not isinstance(candidate.get("valid_until_ms"), int)
+        or int(candidate["valid_until_ms"]) <= now_ms
     ):
         return None
     try:
@@ -407,7 +412,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             trace, meta = _stage_trace(row, result, now_ms)
             candidate = eligible_by_run.get(row.run_id)
             if candidate is None and profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
-                candidate = _shadow_candidate(row, result, trace)
+                candidate = _shadow_candidate(row, result, trace, now_ms)
+            if candidate is not None and not meta.get("validity_current", False):
+                candidate = None
             if candidate is not None:
                 trace["ELIGIBLE"] = "PASS"
                 candidates.append(candidate)
@@ -486,7 +493,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             trace, _ = _stage_trace(row, result, now_ms)
             if row.run_id in eligible_by_run or (
                 profile.mode == TradeProfileMode.SHADOW_SEARCH.value
-                and _shadow_candidate(row, result, trace) is not None
+                and _shadow_candidate(row, result, trace, now_ms) is not None
             ):
                 trace["ELIGIBLE"] = "PASS"
             for stage, status in trace.items():

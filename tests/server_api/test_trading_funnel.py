@@ -123,16 +123,23 @@ def test_stage_reason_not_reached_error_and_expiry_semantics():
     assert second["stage_trace"]["STRUCTURAL_SETUP"] == "ERROR"
 
 
-def test_final_approval_exists_but_expired_is_not_eligible():
+def test_expired_final_approval_preserves_historical_funnel_but_is_not_eligible():
     run = _run("BTCUSDT")
     other = _run("ETHUSDT")
-    value = _project([(run, _result(run, valid_until=NOW_MS - 1)),
-                      (other, _result(other, setup="NO_SETUP", approvals=False))])
+    value = _project(
+        [(run, _result(run, valid_until=NOW_MS - 1)),
+         (other, _result(other, setup="NO_SETUP", approvals=False))],
+        {run.run_id: _candidate(run)},
+    )
     item = value["current_cycle"]["items"][0]
     assert item["stage_trace"]["FINAL_APPROVAL"] == "PASS"
-    assert item["stage_trace"]["VALIDITY_APPROVED"] == "REJECTED"
+    assert item["stage_trace"]["VALIDITY_APPROVED"] == "PASS"
     assert item["eligible"] is False
     assert item["source_reason_code"] == "APPROVAL_EXPIRED"
+    assert value["rolling_1h"]["stage_counts"]["VALIDITY_APPROVED"] == 1
+    assert value["rolling_1h"]["stage_counts"]["FINAL_APPROVAL"] == 1
+    assert value["rolling_4h"]["stage_counts"]["VALIDITY_APPROVED"] == 1
+    assert value["rolling_4h"]["stage_counts"]["FINAL_APPROVAL"] == 1
 
 
 def test_identity_failure_uses_authoritative_reason_and_quantity_not_reached():
