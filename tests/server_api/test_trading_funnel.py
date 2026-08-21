@@ -9,7 +9,11 @@ from fastapi.testclient import TestClient
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.server_api.app_factory import create_app
-from app.server_api.trading_funnel import MAX_HORIZON_MS, build_projection
+from app.server_api.trading_funnel import (
+    MAX_HORIZON_MS,
+    TradingFunnelReadRepository,
+    build_projection,
+)
 from app.trading_universe.domain import runtime_universe
 from tests.server_api.fakes import FakeReadRepository
 
@@ -274,3 +278,55 @@ def test_get_route_db_error_is_not_empty_success():
     repositories = replace(FakeReadRepository().api_repositories(), funnel=Broken())
     response = TestClient(create_app(repositories=repositories), raise_server_exceptions=False).get("/api/v1/trading/funnel")
     assert response.status_code == 500
+
+
+def test_5m_repository_reuses_bounded_rows_for_approval_classification():
+    run = _run("BTCUSDT")
+    run.id = 1
+    run.primary_timeframe = "5m"
+    run.trade_profile_id = "trade-5m-v1"
+    result = _result(run, approvals=False)
+    result.id = 1
+    result.primary_timeframe = "5m"
+    result.trade_profile_id = "trade-5m-v1"
+
+    class Session:
+        execute_count = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, _statement):
+            self.execute_count += 1
+            return ((run, result),)
+
+    sessions = []
+
+    def session_factory():
+        session = Session()
+        sessions.append(session)
+        return session
+
+    class Capabilities:
+        def snapshot(self):
+            return self
+
+        def has(self, _capability):
+            return True
+
+    universe = SimpleNamespace(
+        version_id="trading-universe-v2",
+        symbols=("BTCUSDT",),
+    )
+    projection = TradingFunnelReadRepository(
+        session_factory,
+        lambda: universe,
+        schema_capabilities=Capabilities(),
+    ).project(NOW_MS, "trade-5m-v1")
+
+    assert projection["trade_profile_id"] == "trade-5m-v1"
+    assert len(sessions) == 1
+    assert sessions[0].execute_count == 1

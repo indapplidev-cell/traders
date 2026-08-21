@@ -18,8 +18,7 @@ from app.engine_paper.eligible_approval_ranking import (
     ProductionEligibleApprovalSelector,
 )
 from app.engine_paper.production_approval import (
-    PaperProductionApprovalRequest,
-    PaperProductionApprovalScope,
+    MAX_RUN_LOOKBACK,
     PaperProductionApprovalSourceAdapter,
 )
 from app.trading_universe.domain import TradingUniverseVersion
@@ -306,7 +305,7 @@ def _shadow_candidate(
 
 
 class TradingFunnelReadRepository:
-    """One bounded query plus the existing production eligibility adapter."""
+    """One bounded query with authoritative in-memory eligibility classification."""
 
     def __init__(
         self,
@@ -368,6 +367,8 @@ class TradingFunnelReadRepository:
                     .order_by(
                         OnlinePipelineRun.closed_until_ms.desc(),
                         OnlinePipelineRun.symbol.asc(),
+                        OnlinePipelineRun.id.desc(),
+                        OnlinePipelineResultRow.id.desc(),
                     )
                     .limit(
                         len(universe.symbols)
@@ -377,17 +378,43 @@ class TradingFunnelReadRepository:
                 rows = tuple(session.execute(statement))
         eligible_by_run: dict[str, object] = {}
         if profile.mode != TradeProfileMode.SHADOW_SEARCH.value:
-            eligibility = PaperProductionApprovalSourceAdapter(self._session_factory).read(
-                PaperProductionApprovalRequest(
-                    PaperProductionApprovalScope(
-                        symbols=universe.symbols,
-                        primary_timeframe=profile.trigger_timeframe,
-                        start_ms=start_ms,
-                    ),
-                    request_id="readonly-funnel", as_of_ms=now_ms,
-                )
+            # The bounded funnel query has already loaded the exact persisted
+            # run/result pairs required by the production approval classifier.
+            # Reusing them avoids ten redundant per-symbol DB round trips on
+            # every 5m desktop refresh while retaining the authoritative
+            # lineage, quantity, validity and approval checks.
+            recent_by_symbol: dict[
+                str,
+                list[tuple[OnlinePipelineRun, OnlinePipelineResultRow]],
+            ] = {symbol: [] for symbol in universe.symbols}
+            for run, result in rows:
+                recent = recent_by_symbol.get(run.symbol)
+                if (
+                    recent is not None
+                    and len(recent) < MAX_RUN_LOOKBACK
+                    and result is not None
+                    and run.status == "COMPLETED"
+                ):
+                    recent.append((run, result))
+            classifier = PaperProductionApprovalSourceAdapter(
+                self._session_factory
             )
-            eligible_by_run = {item.source_run_id: item.candidate for item in eligibility.symbol_results if item.candidate is not None}
+            for recent in recent_by_symbol.values():
+                if not recent:
+                    continue
+                latest_rank = (recent[0][0].closed_until_ms, recent[0][0].id)
+                tied = [
+                    pair
+                    for pair in recent
+                    if (pair[0].closed_until_ms, pair[0].id) == latest_rank
+                ]
+                if len(tied) != 1:
+                    continue
+                classified = classifier.classify_loaded_decision(
+                    tied[0][0], tied[0][1], now_ms
+                )
+                if classified.candidate is not None:
+                    eligible_by_run[classified.source_run_id] = classified.candidate
         return build_projection(rows, universe, now_ms, eligible_by_run, profile.trade_profile_id)
 
 

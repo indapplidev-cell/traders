@@ -922,6 +922,18 @@ class PaperProductionApprovalSourceAdapter:
             candidate=candidate, lineage_valid=True, freshness="CURRENT",
         )
 
+    def classify_loaded_decision(
+        self,
+        run: OnlinePipelineRun,
+        result: OnlinePipelineResultRow,
+        as_of_ms: int,
+    ) -> PaperProductionApprovalSymbolResult:
+        """Classify an already loaded atomic run/result pair without another DB read."""
+        return self._classify(
+            SqlAlchemyPaperProductionApprovalReader._map(run, result),
+            as_of_ms,
+        )
+
     def read(
         self,
         request: PaperProductionApprovalRequest,
