@@ -22,6 +22,11 @@ from app.engine_paper.command_ingestion_service import PaperCommandIngestionServ
 from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_paper.production_preparation_backend import RUNTIME_DATABASE_KEY
+from app.engine_paper.controlled_worker import (
+    PaperControlledLifecycleWorker,
+    SqlAlchemyPaperLifecycleGraphLoader,
+)
+from app.engine_paper.production_market_data import PaperProductionMarketDataInputAdapter
 from app.engine_safety.paper_production_control import (
     PaperProductionMutationSafetyGate,
     PaperProductionSafetyControl,
@@ -45,6 +50,10 @@ from .continuation_worker import (
     PaperFirstCanaryEligibleApprovalContinuationWorker,
     PostgresCanaryContinuationLock,
     continuation_poll_seconds,
+)
+from .production_lifecycle_worker import (
+    ProductionPaperFirstCanaryLifecycleWorker,
+    lifecycle_poll_seconds,
 )
 
 
@@ -210,6 +219,7 @@ def create_runtime_app(
             ),
         )
     continuation_worker = None
+    lifecycle_worker = None
     universe_store = SqlAlchemyTradingUniverseStore(sessions) if sessions is not None else None
     if (
         require_production_store
@@ -223,6 +233,26 @@ def create_runtime_app(
             executor=executor,
             lock=PostgresCanaryContinuationLock(engine),
             poll_seconds=continuation_poll_seconds(),
+        )
+        lifecycle_worker = ProductionPaperFirstCanaryLifecycleWorker(
+            control=active_control,
+            canary_store=canary_store,
+            graph_loader=SqlAlchemyPaperLifecycleGraphLoader(
+                lambda: PaperUnitOfWork(sessions)
+            ),
+            lifecycle_worker=PaperControlledLifecycleWorker.from_factories(
+                lambda: PaperUnitOfWork(sessions), sessions
+            ),
+            market_data=PaperProductionMarketDataInputAdapter(sessions),
+            mutation_safety_gate=PaperProductionMutationSafetyGate(active_control),
+            runtime_readiness=ReadonlyExistingCanaryRuntimeReadinessSource(
+                os.environ.get(READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL)
+            ),
+            lock=PostgresCanaryContinuationLock(engine),
+            readonly_base_url=os.environ.get(
+                READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL
+            ),
+            poll_seconds=lifecycle_poll_seconds(),
         )
 
     from .service import PaperOperatorControlService
@@ -245,9 +275,13 @@ def create_runtime_app(
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         if continuation_worker is not None:
             continuation_worker.start()
+        if lifecycle_worker is not None:
+            lifecycle_worker.start()
         try:
             yield
         finally:
+            if lifecycle_worker is not None:
+                lifecycle_worker.stop()
             if continuation_worker is not None:
                 continuation_worker.stop()
             if engine is not None and hasattr(engine, "dispose"):
@@ -268,6 +302,7 @@ def create_runtime_app(
     app.state.runtime_engine = engine
     app.state.first_canary_executor = service.executor
     app.state.first_canary_continuation_worker = continuation_worker
+    app.state.first_canary_lifecycle_worker = lifecycle_worker
     app.state.trading_universe_store = universe_store
     return app
 
