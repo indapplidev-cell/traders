@@ -7,6 +7,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
+from threading import Lock
+from time import monotonic
 from typing import Any, Final
 
 from sqlalchemy import select, text
@@ -46,6 +48,7 @@ STAGES: Final = (
     "PAPER_TRADE_PLAN", "QUANTITY_APPROVED", "VALIDITY_APPROVED",
     "FINAL_APPROVAL", "ELIGIBLE", "SELECTOR_WINNER",
 )
+ROW_CACHE_TTL_SECONDS: Final = 30.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,10 +316,94 @@ class TradingFunnelReadRepository:
         universe_source: Callable[[], TradingUniverseVersion],
         *,
         schema_capabilities: ReadonlySchemaCapabilityBridge | None = None,
+        monotonic_clock: Callable[[], float] = monotonic,
     ) -> None:
         self._session_factory = session_factory
         self._universe_source = universe_source
         self._schema_capabilities = schema_capabilities
+        self._monotonic = monotonic_clock
+        self._cache_lock = Lock()
+        self._row_cache: dict[
+            str,
+            tuple[
+                float,
+                tuple[
+                    tuple[OnlinePipelineRun, OnlinePipelineResultRow | None],
+                    ...,
+                ],
+            ],
+        ] = {}
+
+    def _load_rows(
+        self,
+        profile: object,
+        universe: TradingUniverseVersion,
+        start_ms: int,
+        now_ms: int,
+    ) -> tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None], ...]:
+        profile_id = profile.trade_profile_id
+        with self._cache_lock:
+            current = self._monotonic()
+            cached_entry = self._row_cache.get(profile_id)
+            if (
+                cached_entry is not None
+                and current - cached_entry[0] < ROW_CACHE_TTL_SECONDS
+            ):
+                return cached_entry[1]
+            with self._session_factory() as session:
+                if self._schema_capabilities is None:
+                    revisions = tuple(session.execute(text(
+                        "SELECT version_num FROM alembic_version ORDER BY version_num"
+                    )).scalars())
+                    profile_schema_ready = revisions in {
+                        ("0017_parallel_trade_profiles",),
+                        ("0018_promote_5m_production_search",),
+                    }
+                else:
+                    profile_schema_ready = self._schema_capabilities.snapshot().has(
+                        ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES
+                    )
+                if not profile_schema_ready and profile_id != DEFAULT_TRADE_PROFILE_ID:
+                    rows = ()
+                else:
+                    predicates = (
+                        OnlinePipelineRun.primary_timeframe == profile.trigger_timeframe,
+                        OnlinePipelineRun.symbol.in_(universe.symbols),
+                        OnlinePipelineRun.closed_until_ms >= start_ms,
+                        OnlinePipelineRun.closed_until_ms <= now_ms,
+                    )
+                    profile_predicates = (
+                        (OnlinePipelineRun.trade_profile_id == profile_id,)
+                        if profile_schema_ready
+                        else ()
+                    )
+                    statement = (
+                        select(OnlinePipelineRun, OnlinePipelineResultRow)
+                        .options(
+                            defer(OnlinePipelineRun.trade_profile_id),
+                            defer(OnlinePipelineRun.profile_mode),
+                            defer(OnlinePipelineResultRow.trade_profile_id),
+                            defer(OnlinePipelineResultRow.profile_mode),
+                        )
+                        .outerjoin(
+                            OnlinePipelineResultRow,
+                            OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+                        )
+                        .where(*profile_predicates, *predicates)
+                        .order_by(
+                            OnlinePipelineRun.closed_until_ms.desc(),
+                            OnlinePipelineRun.symbol.asc(),
+                            OnlinePipelineRun.id.desc(),
+                            OnlinePipelineResultRow.id.desc(),
+                        )
+                        .limit(
+                            len(universe.symbols)
+                            * (50 if profile.trigger_timeframe == "5m" else 18)
+                        )
+                    )
+                    rows = tuple(session.execute(statement))
+            self._row_cache[profile_id] = (current, rows)
+            return rows
 
     def project(self, now_ms: int, trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
         profile = resolve_trade_profile(trade_profile_id)
@@ -324,58 +411,7 @@ class TradingFunnelReadRepository:
         max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
         universe = self._universe_source()
         start_ms = now_ms - max_horizon_ms
-        with self._session_factory() as session:
-            if self._schema_capabilities is None:
-                revisions = tuple(session.execute(text(
-                    "SELECT version_num FROM alembic_version ORDER BY version_num"
-                )).scalars())
-                profile_schema_ready = revisions in {
-                    ("0017_parallel_trade_profiles",),
-                    ("0018_promote_5m_production_search",),
-                }
-            else:
-                profile_schema_ready = self._schema_capabilities.snapshot().has(
-                    ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES
-                )
-            if not profile_schema_ready and profile.trade_profile_id != DEFAULT_TRADE_PROFILE_ID:
-                rows = ()
-            else:
-                predicates = (
-                    OnlinePipelineRun.primary_timeframe == profile.trigger_timeframe,
-                    OnlinePipelineRun.symbol.in_(universe.symbols),
-                    OnlinePipelineRun.closed_until_ms >= start_ms,
-                    OnlinePipelineRun.closed_until_ms <= now_ms,
-                )
-                profile_predicates = (
-                    (OnlinePipelineRun.trade_profile_id == profile.trade_profile_id,)
-                    if profile_schema_ready
-                    else ()
-                )
-                statement = (
-                    select(OnlinePipelineRun, OnlinePipelineResultRow)
-                    .options(
-                        defer(OnlinePipelineRun.trade_profile_id),
-                        defer(OnlinePipelineRun.profile_mode),
-                        defer(OnlinePipelineResultRow.trade_profile_id),
-                        defer(OnlinePipelineResultRow.profile_mode),
-                    )
-                    .outerjoin(
-                        OnlinePipelineResultRow,
-                        OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
-                    )
-                    .where(*profile_predicates, *predicates)
-                    .order_by(
-                        OnlinePipelineRun.closed_until_ms.desc(),
-                        OnlinePipelineRun.symbol.asc(),
-                        OnlinePipelineRun.id.desc(),
-                        OnlinePipelineResultRow.id.desc(),
-                    )
-                    .limit(
-                        len(universe.symbols)
-                        * (50 if profile.trigger_timeframe == "5m" else 18)
-                    )
-                )
-                rows = tuple(session.execute(statement))
+        rows = self._load_rows(profile, universe, start_ms, now_ms)
         eligible_by_run: dict[str, object] = {}
         if profile.mode != TradeProfileMode.SHADOW_SEARCH.value:
             # The bounded funnel query has already loaded the exact persisted

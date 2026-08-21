@@ -325,8 +325,12 @@ def test_5m_repository_reuses_bounded_rows_for_approval_classification():
         session_factory,
         lambda: universe,
         schema_capabilities=Capabilities(),
-    ).project(NOW_MS, "trade-5m-v1")
+        monotonic_clock=lambda: 10.0,
+    )
+    first = projection.project(NOW_MS, "trade-5m-v1")
+    second = projection.project(NOW_MS + 1_000, "trade-5m-v1")
 
-    assert projection["trade_profile_id"] == "trade-5m-v1"
+    assert first["trade_profile_id"] == "trade-5m-v1"
+    assert second["projection_generated_at_ms"] == NOW_MS + 1_000
     assert len(sessions) == 1
     assert sessions[0].execute_count == 1
