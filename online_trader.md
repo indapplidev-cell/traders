@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = fc6d12480c8f77bef267243ed502ca9583e50cfd
+STATUS_AS_OF_COMMIT = 3687aace4daf3f91ed3cd00313bcbb78c2e93d84
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-20T19:42:00Z
-RECONCILED_BY_TASK = TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01
-FILES_CHANGED = FINAL_DECISION.md, app/engine_paper/production_preparation_backend.py, tests/paper_readonly_deployment_postcondition_remediation/test_deployment_adapter.py, docs/audits/TRADERS_5M_SHADOW_FULL_FUNNEL_CONTROLLED_DEPLOYMENT_ACCEPTANCE_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-21T04:26:15Z
+RECONCILED_BY_TASK = TRADERS_FUNNEL_MONOTONIC_STAGE_SEMANTICS_REMEDIATION_01
+FILES_CHANGED = FINAL_DECISION.md, app/i18n/catalog.py, app/i18n/help_source.py, app/server_api/trading_funnel.py, tests/engine_orchestrator/test_5m_shadow_full_funnel.py, tests/server_api/test_i18n.py, tests/server_api/test_trading_funnel.py, docs/audits/TRADERS_FUNNEL_MONOTONIC_STAGE_SEMANTICS_REMEDIATION_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = PRODUCTION_5M_FULL_SHADOW_FUNNEL_DEPLOYED_READONLY_DESKTOP_HTTP_ACCEPTED_NATURAL_NO_ACTION_OBSERVED_SCHEMA0017_ZERO_TRADING_MUTATIONS
+STATUS_CONFIDENCE = PRODUCTION_FUNNEL_MONOTONIC_HISTORICAL_STAGES_CURRENT_ELIGIBILITY_SEPARATE_READONLY_DESKTOP_HTTP_ACCEPTED_SCHEMA0017_ZERO_TRADING_MUTATIONS
 
 # Состояние проекта traders-ml
 
@@ -22,12 +22,50 @@ STATUS_CONFIDENCE = PRODUCTION_5M_FULL_SHADOW_FUNNEL_DEPLOYED_READONLY_DESKTOP_H
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_IMAGE79DF542D_HEALTHY_ON0017_27_GET_0_WRITE_SOURCE_IDENTITY_MATCH_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
-SOURCE_API_STATUS = AUTHORITATIVE_I18N_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
+API_RUNTIME_STATUS = READONLY_IMAGE270A6D13_HEALTHY_ON0017_27_GET_0_WRITE_SOURCE_IDENTITY_MATCH_PAPER_READY_CONTROL_HEALTHY_GENERATION6_LIVE_OFF
+SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_C0E92A2A_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
 CURRENT_STAGE = PASSIVE_NATURAL_5M_SHADOW_OBSERVATION_UNTIL_FIRST_ELIGIBLE_WINNER
 CURRENT_BLOCKER = NONE_DEPLOYMENT_ACCEPTED_NATURAL_ELIGIBLE_WINNER_NOT_YET_OBSERVED
 BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_OWNER_IDENTITY_HEARTBEAT_PASS_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_NO_PHYSICAL_GAP
 ```
+
+## Trading Funnel monotonic stage semantics remediation
+
+```text
+TASK = TRADERS_FUNNEL_MONOTONIC_STAGE_SEMANTICS_REMEDIATION_01
+RESULT = PASS_SOURCE_DEPLOYMENT_AND_DESKTOP_HTTP_ACCEPTANCE
+PROJECT_STATE_COMMIT = 3687aace4daf3f91ed3cd00313bcbb78c2e93d84
+SERVER_IMPLEMENTATION_COMMIT = 4ebbf40e29fe417646edec2501ae18521a167f21
+CLIENT_IMPLEMENTATION_COMMIT = 84746ff143c5c14a8414d8b58e7e85964e626340
+CLIENT_STATUS_COMMIT = 2ed87fd1c8d01f7f8f0be9190846563f1a930a20
+ROOT_CAUSE = REQUEST_TIME_VALIDITY_MIXED_WITH_IMMUTABLE_FINAL_CREATION_IN_ORDERED_STAGE_COUNTS
+STAGE_SEMANTICS = VALIDITY_AND_FINAL_ARE_IMMUTABLE_HISTORICAL_PASSAGE_ELIGIBLE_IS_CURRENT_EXPIRY_AWARE
+BEFORE_ROLLING4 = PLAN1_QUANTITY1_VALIDITY0_FINAL1
+AFTER_ROLLING4 = PLAN1_QUANTITY1_VALIDITY1_FINAL1
+CURRENT_ELIGIBLE_WINNER = 0_NONE
+RU_LABELS = Срок проверен | Одобрение создано | Допущен сейчас
+EN_LABELS = Validity check passed | Approval created | Currently eligible
+CATALOG_VERSION = i18n-c0e92a2ae32c6425
+READONLY = IMAGE270A6D13_CONTAINER7E01DE5A_HEALTHY_27GET_0WRITE_SOURCE_IDENTITY_MATCH
+REAL_DESKTOP_PROVIDER = PASS_PROFILE15M_VALIDITY1_FINAL1_WINNER_NONE
+EXPIRED_CANDIDATE_SAFETY = NATURAL_AND_SHADOW_NOT_ELIGIBLE_NOT_RANKED_NOT_WINNER
+SCHEMA = 0017_UNCHANGED
+PAPER_COMMAND_ORDER_FILL_POSITION = 0_0_0_0
+WAL_PITR = TRUE_TRUE
+CONTROL = ARMED_GENERATION6_UNCHANGED
+LIVE = DISABLED
+SERVER_REGRESSION = 229_PASSED_11_SKIPPED
+CLIENT_REGRESSION = 1449_PASSED_2_SKIPPED_3029_SUBTESTS_1_SYSTEM_TCL_FAILURE
+NEXT_ACTION = CONTINUE_PASSIVE_NATURAL_SHADOW_OBSERVATION_WITH_MONOTONIC_FUNNEL_COUNTS
+```
+
+The ordered funnel now reports immutable stage passage monotonically while
+keeping expiry at the separate current eligibility gate. The exact production
+BNBUSDT record changed from the misleading `1 → 0 → 1` display to `1 → 1 → 1`
+without becoming eligible or a winner. The generated desktop bootstrap and
+deployed server catalog share the same version and labels. The desktop was
+restarted to one new instance; Windows Tk capture remained unavailable with
+`0x80004002`, so no blind GUI interaction was used.
 
 ## 5m SHADOW full-funnel controlled deployment acceptance
 
@@ -4841,8 +4879,8 @@ LIVE.
 | Online analytics/paper pipeline | ≈99% deployed / 5m full-funnel production accepted | Schema 0017 remains accepted; production 5m now runs the complete non-executable Analysis-to-Winner SHADOW route with the same planner, quantity constraints and deterministic selector. Five natural postdeploy cycles were exact 10/10 but produced no structural setup or winner |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh production projection shows `wal_ready=true`, `pitr_ready=true`, live checksum-verified ACK owner identity/heartbeat PASS, backlog/pending/unresolved `0/0/0`, the existing base lineage valid with 775/775 required archive coverage and no physical gap |
-| Readonly Server API | Healthy current-tree image on production 0017 | Image `sha256:79df542d...` has exact source-identity match, health PASS, 27 GET and zero write routes; its deployment postcondition now tracks the authoritative current route catalog |
-| Desktop Readonly client | Production 15m/5m HTTP projection acceptance PASS | The real `ServerProvider` parses the deployed `trade-5m-v1` response with decision timeframe `5m`, complete exact-10 cycle and all funnel stages. Full regression reported 1450 passed, 2 skipped and 3029 subtests before the known post-pytest Tcl teardown; visual capture was unavailable |
+| Readonly Server API | Healthy monotonic-funnel image on production 0017 | Image `sha256:270a6d13...` has exact source-identity match, health PASS, 27 GET and zero write routes. Rolling funnel stages now preserve historical passage monotonically while current eligibility remains expiry-aware |
+| Desktop Readonly client | Production monotonic 15m/5m projection acceptance PASS | The real `ServerProvider` parses production `VALIDITY=1, FINAL=1, winner=None`; server catalog and regenerated client bootstrap are both `i18n-c0e92a2ae32c6425` with labels «Срок проверен», «Одобрение создано», «Допущен сейчас» |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy on schema 0017 | Readiness and all thirteen PAPER GET routes accept the reflected 0017 capability; shared account remains 100 USDT and the active 5m profile remains SHADOW-only with zero command/order/fill/position rows |
