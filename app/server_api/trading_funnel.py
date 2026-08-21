@@ -1,4 +1,4 @@
-"""Bounded read-only projection of the persisted 15m trading funnel."""
+"""Bounded read-only projection of persisted 15m and 5m trading funnels."""
 
 from __future__ import annotations
 
@@ -376,7 +376,11 @@ class TradingFunnelReadRepository:
         if profile.mode != TradeProfileMode.SHADOW_SEARCH.value:
             eligibility = PaperProductionApprovalSourceAdapter(self._session_factory).read(
                 PaperProductionApprovalRequest(
-                    PaperProductionApprovalScope(symbols=universe.symbols, start_ms=start_ms),
+                    PaperProductionApprovalScope(
+                        symbols=universe.symbols,
+                        primary_timeframe=profile.trigger_timeframe,
+                        start_ms=start_ms,
+                    ),
                     request_id="readonly-funnel", as_of_ms=now_ms,
                 )
             )

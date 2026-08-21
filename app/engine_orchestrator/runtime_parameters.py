@@ -84,10 +84,11 @@ class RuntimeProfileParameters:
         ):
             if not str(value).strip():
                 raise ValueError("runtime parameter policy identifiers must not be empty")
-        if self.profile_id == TradeProfileId.TRADE_5M_V1.value and (
-            self.paper_command_creation_enabled or self.position_opening_enabled
+        if (
+            self.paper_command_creation_enabled != profile.paper_command_creation_enabled
+            or self.position_opening_enabled != profile.position_opening_enabled
         ):
-            raise ValueError("5m shadow runtime cannot enable execution")
+            raise ValueError("runtime execution authority/profile mismatch")
 
     @property
     def parameter_set_id(self) -> str:

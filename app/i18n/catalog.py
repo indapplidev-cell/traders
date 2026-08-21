@@ -777,8 +777,8 @@ RU.update({
     "trading.profile.selector.label": "Профиль поиска",
     "trading.profile.mode.SHADOW_SEARCH": "Теневой поиск",
     "trading.profile.mode.PRODUCTION_SEARCH": "Рабочий поиск",
-    "trading.profile.trade_5m.empty": "Теневой поиск 5м ещё не дал данных",
-    "trading.profile.trade_5m.paper_disabled": "Теневой поиск — исполнение PAPER отключено",
+    "trading.profile.trade_5m.empty": "Рабочий поиск 5м ещё не дал данных",
+    "trading.profile.trade_5m.paper_enabled": "Рабочий поиск — PAPER исполнение включено",
     "trading.profile.conflict.CROSS_TIMEFRAME_CONFLICT": "Конфликт направлений между профилями",
 })
 EN.update({
@@ -797,8 +797,8 @@ EN.update({
     "trading.profile.selector.label": "Search profile",
     "trading.profile.mode.SHADOW_SEARCH": "Shadow search",
     "trading.profile.mode.PRODUCTION_SEARCH": "Production search",
-    "trading.profile.trade_5m.empty": "5m shadow search has no data yet",
-    "trading.profile.trade_5m.paper_disabled": "Shadow search — PAPER execution disabled",
+    "trading.profile.trade_5m.empty": "5m production search has no data yet",
+    "trading.profile.trade_5m.paper_enabled": "Production search — PAPER execution enabled",
     "trading.profile.conflict.CROSS_TIMEFRAME_CONFLICT": "Cross-profile direction conflict",
 })
 _FUNNEL_STAGES_EN = {

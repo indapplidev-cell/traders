@@ -84,7 +84,7 @@ TRADE_15M_PROFILE: Final = TradeSearchProfile(
 TRADE_5M_PROFILE: Final = TradeSearchProfile(
     trade_profile_id=TradeProfileId.TRADE_5M_V1.value,
     trigger_timeframe="5m",
-    mode=TradeProfileMode.SHADOW_SEARCH.value,
+    mode=TradeProfileMode.PRODUCTION_SEARCH.value,
     analysis_history_candles=288,
     atr_lookback_candles=24,
     impulse_lookback_candles=12,
@@ -95,8 +95,8 @@ TRADE_5M_PROFILE: Final = TradeSearchProfile(
     validity_boundaries=1,
     minimum_planned_rr=1.5,
     cost_safety_margin_bps=3.0,
-    paper_command_creation_enabled=False,
-    position_opening_enabled=False,
+    paper_command_creation_enabled=True,
+    position_opening_enabled=True,
 )
 
 TRADE_PROFILES: Final = MappingProxyType({

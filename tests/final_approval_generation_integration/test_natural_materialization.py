@@ -15,6 +15,7 @@ from app.db.paper_models import PaperAccountBaselineRecord
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_orchestrator.pipeline_result import PipelineResult
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.engine_paper import production_approval as approval_adapter
 from app.engine_paper.accounting import PaperAccountSummary
 from app.engine_paper.controlled_quantity_validity import (
@@ -137,6 +138,25 @@ def natural_result(**changes) -> PipelineResult:
     )
     for name, replacement in changes.items():
         setattr(value, name, replacement)
+    return value
+
+
+def five_minute_natural_result() -> PipelineResult:
+    value = deepcopy(natural_result())
+    value.primary_timeframe = "5m"
+    value.trade_profile_id = "trade-5m-v1"
+    value.profile_mode = "PRODUCTION_SEARCH"
+    value.runtime_parameter_set_id = resolve_runtime_parameters(
+        "trade-5m-v1"
+    ).parameter_set_id
+    value.market_data_payload = {
+        "5m": {"last_close_time_ms": SOURCE_CLOSE, "closed_until_ms": BOUNDARY}
+    }
+    value.analysis_payload["timeframe"] = "5m"
+    value.setup_payload["timeframe"] = "5m"
+    value.strategy_payload = replace(strategy(), timeframe="5m").to_dict()
+    value.risk_payload = replace(risk(), timeframe="5m").to_dict()
+    value.paper_payload = replace(plan(), timeframe="5m").to_dict()
     return value
 
 
@@ -265,6 +285,58 @@ def test_valid_triplet_persists_final_approval_test():
     assert set(value.paper_payload["persisted_final_approvals"]) == {
         "paper_strategy_approval", "paper_quantity_approval", "paper_risk_approval"
     }
+
+
+def test_5m_valid_triplet_has_real_authority_and_one_5m_validity_window_test():
+    value = materialize(five_minute_natural_result())
+    assert value.final_approval_created
+    assert value.outcome == "FINAL_APPROVAL_CREATED"
+    assert value.paper_payload["approval_validity"]["source_timeframe"] == "5m"
+    assert value.paper_payload["final_approval_generation"]["source_timeframe"] == "5m"
+    approvals = value.paper_payload["persisted_final_approvals"]
+    assert min(int(item["valid_until_ms"]) for item in approvals.values()) == (
+        SOURCE_CLOSE + 300_000
+    )
+
+
+def test_5m_production_store_persists_executable_final_approval_test():
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+
+    class Owner:
+        def assert_active(self, _session):
+            return None
+
+    with sessions() as session:
+        session.add(OnlinePipelineRun(
+            run_id="orchestrator:5m:natural:1", symbol="BTCUSDT",
+            primary_timeframe="5m", trade_profile_id="trade-5m-v1",
+            profile_mode="PRODUCTION_SEARCH", closed_until_ms=BOUNDARY,
+            closed_until_utc=datetime.fromtimestamp(BOUNDARY / 1000, tz=timezone.utc),
+            status="RUNNING", started_at=EVALUATION, trigger_source="TEST",
+            daemon_instance_id="test",
+        ))
+        session.add(PaperAccountBaselineRecord(
+            baseline_id="baseline:test", account_id="account:production",
+            accounting_session_id="session:production", currency="USDT",
+            initial_balance=Decimal("100"), initialized_at=EVALUATION,
+            semantic_version="PAPER_ACCOUNTING/1.0",
+        ))
+        session.commit()
+    store = PipelineResultStore(
+        sessions, clock=lambda: EVALUATION, owner_guard=Owner()
+    )
+    source = five_minute_natural_result()
+    assert store.finish(
+        "orchestrator:5m:natural:1", source, freshness_status="READY"
+    )
+    with sessions() as session:
+        row = session.scalar(select(OnlinePipelineRun))
+        payload = session.scalar(select(OnlinePipelineResultRow)).paper_payload_json
+    assert row.is_trade_signal and row.is_executable and row.order_approved
+    assert row.execution_approved and row.position_size_approved
+    assert payload["persisted_final_approvals"]
 
 
 def test_final_approval_persisted_in_expected_json_path_and_pipeline_finish_retry_no_duplicate_test():

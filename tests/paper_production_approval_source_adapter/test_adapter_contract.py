@@ -236,6 +236,28 @@ def test_all_required_contracts_are_frozen():
         result.outcome = approval.PaperProductionApprovalOutcome.SAFE_FAILURE
 
 
+def test_5m_is_an_authorized_production_approval_scope():
+    source = eligible_row()
+    with_timeframe = lambda payload: {**payload, "timeframe": "5m"}
+    candidate = replace(
+        source, primary_timeframe="5m",
+        analysis=with_timeframe(source.analysis),
+        setup=with_timeframe(source.setup),
+        strategy=with_timeframe(source.strategy),
+        risk=with_timeframe(source.risk),
+        paper=with_timeframe(source.paper),
+    )
+    result = service({"BTCUSDT": (candidate,)})[0].read(
+        request(primary_timeframe="5m")
+    )
+    assert result.outcome is approval.PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL
+    assert result.candidates
+    rejected = service({"BTCUSDT": (candidate,)})[0].read(
+        request(primary_timeframe="1m")
+    )
+    assert rejected.outcome is approval.PaperProductionApprovalOutcome.TARGET_NOT_ALLOWED
+
+
 @pytest.mark.parametrize("case", range(1400))
 def test_1400_deterministic_no_trade_and_fail_closed_matrix(case):
     symbol = approval.SYMBOL_ALLOWLIST[case % 3]

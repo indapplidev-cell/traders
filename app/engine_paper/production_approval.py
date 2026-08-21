@@ -44,6 +44,7 @@ AUTHORITATIVE_FINAL_APPROVAL_SOURCE: Final = "paper_payload_json.persisted_final
 AUTHORITATIVE_QUANTITY_SOURCE: Final = "PaperQuantityApproval.CONTROLLED_PAPER_AUTHORITY"
 SYMBOL_ALLOWLIST: Final = PREPARED_NEXT_TRADING_UNIVERSE.symbols
 PRIMARY_TIMEFRAME: Final = "15m"
+EXECUTION_TIMEFRAMES: Final = ("15m", "5m")
 MAX_SYMBOLS_PER_REQUEST: Final = 10
 MAX_RUN_LOOKBACK: Final = 8
 MAX_RESULTS_PER_MODULE: Final = 8
@@ -581,7 +582,7 @@ class PaperProductionApprovalSourceAdapter:
             or any(value not in SYMBOL_ALLOWLIST for value in symbols)
         ):
             return PaperProductionApprovalOutcome.TARGET_NOT_ALLOWED
-        if scope.primary_timeframe != PRIMARY_TIMEFRAME:
+        if scope.primary_timeframe not in EXECUTION_TIMEFRAMES:
             return PaperProductionApprovalOutcome.TARGET_NOT_ALLOWED
         if (
             isinstance(scope.max_run_lookback, bool)
@@ -688,6 +689,15 @@ class PaperProductionApprovalSourceAdapter:
         )
         if any(value is not None and str(value).upper() != row.symbol for value in identities):
             return self._symbol_result(row, PaperProductionApprovalOutcome.SYMBOL_MISMATCH)
+        timeframes = (
+            analysis.get("timeframe"), setup.get("timeframe"),
+            strategy.get("timeframe"), risk.get("timeframe"), paper.get("timeframe"),
+        )
+        if any(
+            value is not None and str(value) != row.primary_timeframe
+            for value in timeframes
+        ):
+            return self._symbol_result(row, PaperProductionApprovalOutcome.CAUSALITY_MISMATCH)
         boundaries = (
             analysis.get("closed_until_ms"), setup.get("closed_until_ms"),
             strategy.get("closed_until_ms"), risk.get("closed_until_ms"),

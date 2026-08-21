@@ -259,10 +259,11 @@ def test_get_route_explicit_profiles_are_isolated_and_invalid_is_4xx():
     assert fifteen.json()["data"]["trade_profile_id"] == "trade-15m-v1"
     assert fifteen.json()["data"]["expected_1h_cycle_count"] == 4
     assert five.json()["data"]["trade_profile_id"] == "trade-5m-v1"
-    assert five.json()["data"]["profile_mode"] == "SHADOW_SEARCH"
+    assert five.json()["data"]["profile_mode"] == "PRODUCTION_SEARCH"
     assert five.json()["data"]["expected_1h_cycle_count"] == 12
     assert five.json()["data"]["expected_4h_cycle_count"] == 48
-    assert five.json()["data"]["paper_command_creation_enabled"] is False
+    assert five.json()["data"]["paper_command_creation_enabled"] is True
+    assert five.json()["data"]["position_opening_enabled"] is True
     assert invalid.status_code == 422
 
 

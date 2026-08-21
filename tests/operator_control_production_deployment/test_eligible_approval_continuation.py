@@ -236,11 +236,17 @@ def test_new_policy_continuation_ranks_multiple_eligible_and_ingests_exactly_onc
         ranking=replace(first.candidate.ranking, risk_score=first.candidate.ranking.risk_score - 1),
     )
     second = replace(first, symbol="ETHUSDT", candidate=second_candidate)
-    multiple = replace(base_result, symbol_results=(second, first))
-
     class ApprovalSource:
-        def read(self, _request):
-            return multiple
+        def __init__(self):
+            self.timeframes = []
+
+        def read(self, request):
+            timeframe = request.scope.primary_timeframe
+            self.timeframes.append(timeframe)
+            return replace(
+                base_result,
+                symbol_results=((second,) if timeframe == "15m" else (first,)),
+            )
 
     class Ingestion:
         def __init__(self): self.requests = []
@@ -254,8 +260,9 @@ def test_new_policy_continuation_ranks_multiple_eligible_and_ingests_exactly_onc
             return type("Result", (), {"successful": True})()
 
     ingestion = Ingestion()
+    approval_source = ApprovalSource()
     executor = ProductionPaperFirstCanaryExecutor(
-        control=Control(), canary_store=store, approval_source=ApprovalSource(),
+        control=Control(), canary_store=store, approval_source=approval_source,
         ingestion_service=ingestion, mutation_safety_gate=AllowMutationGate(),
         runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(True, True, True, True, True),
     )
@@ -263,6 +270,7 @@ def test_new_policy_continuation_ranks_multiple_eligible_and_ingests_exactly_onc
     assert len(ingestion.requests) == 1
     assert executor.last_selection_diagnostics.eligible_count == 2
     assert executor.last_selection_diagnostics.winner_symbol == "BTCUSDT"
+    assert approval_source.timeframes == ["15m", "5m"]
     assert store.value.command_count == 1 and store.value.position_count == 0
     assert worker(store, executor).run_once() == "NO_WAITING_CANARY"
     assert len(ingestion.requests) == 1

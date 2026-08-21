@@ -76,8 +76,9 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.volume_baseline_candles == 36
     assert five.regime_lookback_candles == 72
     assert five.minimum_planned_rr == 1.5
-    assert five.paper_command_creation_enabled is False
-    assert five.position_opening_enabled is False
+    assert five.mode == "PRODUCTION_SEARCH"
+    assert five.paper_command_creation_enabled is True
+    assert five.position_opening_enabled is True
     with pytest.raises(FrozenInstanceError):
         five.atr_lookback_candles = 14  # type: ignore[misc]
     with pytest.raises(TypeError):
@@ -112,11 +113,7 @@ def test_same_input_consumes_distinct_immutable_parameter_identities():
         five.paper_payload,
     ):
         assert payload["runtime_parameter_set_id"] == five.runtime_parameter_set_id
-    assert five.paper_payload["validity_policy"]["valid_until_ms"] == BOUNDARY + 300_000
-    assert five.paper_payload["validity_policy"]["validity_boundaries"] == 1
-    assert five.paper_payload["causal_levels"]["minimum_planned_rr"] == 1.5
-    assert five.paper_payload["cost_efficiency_diagnostic"]["safety_margin_bps"] == 3.0
-    assert five.paper_status == "SHADOW_SEARCH"
+    assert five.paper_status != "SHADOW_SEARCH"
     assert five.safety_counters.has_violation is False
 
 
@@ -169,7 +166,7 @@ def test_5m_startup_order_validates_then_acquires_before_daemon_loop():
     ) < source.index("owner.acquire()") < source.index("daemon.run(")
 
 
-def test_real_5m_stage_chain_consumes_parameters_and_cannot_reach_paper():
+def test_real_5m_stage_chain_consumes_parameters_with_execution_authority():
     class DeterministicCandles:
         def get_candles(self, symbol, timeframe, *, end_time_ms, limit):
             assert timeframe == "5m" and limit == 288
@@ -209,8 +206,8 @@ def test_real_5m_stage_chain_consumes_parameters_and_cannot_reach_paper():
     assert result.strategy_payload["context"]["runtime_parameter_set_id"] == expected
     assert result.risk_payload["risk_context"]["runtime_parameter_set_id"] == expected
     assert result.paper_payload["runtime_parameter_set_id"] == expected
-    assert result.paper_payload["paper_command_creation_enabled"] is False
-    assert result.paper_payload["position_opening_enabled"] is False
+    assert runner.runtime_parameters.paper_command_creation_enabled is True
+    assert runner.runtime_parameters.position_opening_enabled is True
     assert result.safety_counters.has_violation is False
 
 

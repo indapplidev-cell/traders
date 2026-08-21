@@ -24,7 +24,7 @@ from app.engine_paper.eligible_approval_ranking import (
     ProductionEligibleApprovalSelector,
 )
 from app.engine_paper.production_approval import (
-    PaperProductionApprovalOutcome,
+    EXECUTION_TIMEFRAMES,
     PaperProductionApprovalRequest,
     PaperProductionApprovalScope,
     PaperProductionApprovalSourceAdapter,
@@ -127,18 +127,28 @@ class ProductionPaperFirstCanaryExecutor:
             return None
         return canary
 
-    def _read_approval(self, canary, request_id: str):
-        return self._approval_source.read(PaperProductionApprovalRequest(
-            PaperProductionApprovalScope(
-                symbols=canary.allowed_symbols,
-                max_candidates=len(canary.allowed_symbols),
-            ),
-            request_id=request_id,
-        ))
+    def _read_approvals(self, canary, request_id: str):
+        """Read every executable profile at one causal wall-clock boundary."""
+        as_of_ms = None
+        results = []
+        for timeframe in EXECUTION_TIMEFRAMES:
+            result = self._approval_source.read(PaperProductionApprovalRequest(
+                PaperProductionApprovalScope(
+                    symbols=canary.allowed_symbols,
+                    primary_timeframe=timeframe,
+                    max_candidates=len(canary.allowed_symbols),
+                ),
+                request_id=f"{request_id}:{timeframe}",
+                as_of_ms=as_of_ms,
+            ))
+            results.append(result)
+            if as_of_ms is None:
+                as_of_ms = result.as_of_ms
+        return tuple(results)
 
-    def _select_candidate(self, canary, result) -> EligibleApprovalSelectionResult:
+    def _select_candidate(self, canary, results) -> EligibleApprovalSelectionResult:
         candidates = tuple(
-            value.candidate for value in result.symbol_results
+            value.candidate for result in results for value in result.symbol_results
             if value.candidate is not None
         )
         selection = self._selector.select(
@@ -147,20 +157,37 @@ class ProductionPaperFirstCanaryExecutor:
         self.last_selection_diagnostics = selection.diagnostics
         return selection
 
+    @staticmethod
+    def _approval_source_error(results) -> tuple[str, ...]:
+        unhealthy = tuple(
+            result for result in results
+            if result.readiness.value not in {"READY", "HEALTHY_NO_ELIGIBLE_APPROVAL"}
+        )
+        if unhealthy:
+            codes = tuple(dict.fromkeys(
+                finding.code.value for result in unhealthy for finding in result.findings
+            ))
+            return codes or ("APPROVAL_SOURCE_NOT_READY",)
+        if not any(
+            value.candidate is not None
+            for result in results for value in result.symbol_results
+        ):
+            return ("NO_ELIGIBLE_APPROVAL",)
+        return ()
+
     def preflight(self, *, transition_id: str, generation: int) -> tuple[str, ...]:
         canary = self._validate_boundary(transition_id, generation)
         if canary is None:
             return ("CANARY_NOT_ARMED",)
-        result = self._read_approval(canary, _id(canary.canary_id, "approval-preflight"))
-        if result.outcome is PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
-            selection = self._select_candidate(canary, result)
-            if selection.failure_code is not None or selection.winner is None:
-                return (selection.failure_code or "APPROVAL_SOURCE_NOT_READY",)
-            self._prepared = (canary.canary_id, transition_id, generation, selection.winner)
-            return ()
-        if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL":
-            return ("NO_ELIGIBLE_APPROVAL",)
-        return tuple(value.code.value for value in result.findings) or ("APPROVAL_SOURCE_NOT_READY",)
+        results = self._read_approvals(canary, _id(canary.canary_id, "approval-preflight"))
+        errors = self._approval_source_error(results)
+        if errors:
+            return errors
+        selection = self._select_candidate(canary, results)
+        if selection.failure_code is not None or selection.winner is None:
+            return (selection.failure_code or "APPROVAL_SOURCE_NOT_READY",)
+        self._prepared = (canary.canary_id, transition_id, generation, selection.winner)
+        return ()
 
     def start_bounded_canary(
         self, *, request_id: str, canary_id: str, transition_id: str, generation: int
@@ -172,10 +199,11 @@ class ProductionPaperFirstCanaryExecutor:
         if self._prepared is not None and self._prepared[:3] == (canary_id, transition_id, generation):
             candidate = self._prepared[3]
         if candidate is None:
-            result = self._read_approval(canary, _id(request_id, "approval-start"))
-            if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
-                return ("NO_ELIGIBLE_APPROVAL",) if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL" else ("APPROVAL_SOURCE_NOT_READY",)
-            selection = self._select_candidate(canary, result)
+            results = self._read_approvals(canary, _id(request_id, "approval-start"))
+            errors = self._approval_source_error(results)
+            if errors:
+                return errors
+            selection = self._select_candidate(canary, results)
             if selection.failure_code is not None or selection.winner is None:
                 return (selection.failure_code or "APPROVAL_SOURCE_NOT_READY",)
             candidate = selection.winner
@@ -201,17 +229,13 @@ class ProductionPaperFirstCanaryExecutor:
         )
         if validated is None or validated.canary_id != canary_id:
             return ("CANARY_NOT_ARMED",)
-        result = self._read_approval(
+        results = self._read_approvals(
             validated, _id(canary.start_request_id, "approval-continuation")
         )
-        if result.outcome is not PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL:
-            return (
-                ("NO_ELIGIBLE_APPROVAL",)
-                if result.readiness.value == "HEALTHY_NO_ELIGIBLE_APPROVAL"
-                else tuple(value.code.value for value in result.findings)
-                or ("APPROVAL_SOURCE_NOT_READY",)
-            )
-        selection = self._select_candidate(validated, result)
+        errors = self._approval_source_error(results)
+        if errors:
+            return errors
+        selection = self._select_candidate(validated, results)
         if selection.failure_code is not None or selection.winner is None:
             return (selection.failure_code or "APPROVAL_SOURCE_NOT_READY",)
         return self._ingest_candidate(

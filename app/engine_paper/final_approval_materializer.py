@@ -161,7 +161,7 @@ class NaturalFinalApprovalMaterializer:
         evaluation_time: datetime,
     ) -> FinalApprovalMaterialization:
         if (
-            result.primary_timeframe != "15m"
+            result.primary_timeframe not in {"5m", "15m"}
             or result.paper_status != "PAPER_PLAN_READY"
             or result.strategy_status != "ALLOW_RESEARCH_TRADE_PLAN"
             or result.risk_status != "RISK_PRE_APPROVED_RESEARCH"
@@ -184,6 +184,11 @@ class NaturalFinalApprovalMaterializer:
                 result.symbol != strategy.symbol
                 or result.symbol != research_risk.symbol
                 or result.symbol != plan.symbol
+                or analysis.get("timeframe") != result.primary_timeframe
+                or setup.get("timeframe") != result.primary_timeframe
+                or strategy.timeframe != result.primary_timeframe
+                or research_risk.timeframe != result.primary_timeframe
+                or plan.timeframe != result.primary_timeframe
                 or result.closed_until_ms != strategy.closed_until_ms
                 or result.closed_until_ms != research_risk.closed_until_ms
                 or result.closed_until_ms != plan.closed_until_ms
@@ -224,7 +229,8 @@ class NaturalFinalApprovalMaterializer:
             approved_at = datetime.fromtimestamp(prerequisite_ms / 1000, tz=timezone.utc)
             attempted_stage = "VALIDITY_APPROVED"
             valid_until_ms = derive_approval_valid_until_ms(
-                source_close_ms, evaluation_time_ms=evaluation_time_ms
+                source_close_ms, source_timeframe=result.primary_timeframe,
+                evaluation_time_ms=evaluation_time_ms
             )
             configuration_fingerprint = self._configuration_fingerprint_source(session, result)
             account = self._account_summary_source(session)
@@ -259,6 +265,7 @@ class NaturalFinalApprovalMaterializer:
                 approved_at=approved_at,
                 evaluation_time_ms=evaluation_time_ms,
                 source_candle_close_time_ms=source_close_ms,
+                source_timeframe=result.primary_timeframe,
             )
             quantity_authority_status = "PASS"
             attempted_stage = "FINAL_APPROVAL"
@@ -322,6 +329,7 @@ class NaturalFinalApprovalMaterializer:
                 "symbol": result.symbol,
                 "direction": plan.paper_direction,
                 "source_candle_close_time_ms": source_close_ms,
+                "source_timeframe": result.primary_timeframe,
                 "quantity_policy_version": QUANTITY_POLICY_VERSION,
                 "validity_policy_version": VALIDITY_POLICY_VERSION,
                 "instrument_registry_version": REGISTRY_VERSION,

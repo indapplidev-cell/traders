@@ -383,7 +383,7 @@ class PipelineRunner:
             setup_payload=self._profiled_payload(outputs["setup"]),
             strategy_payload=self._profiled_payload(outputs["strategy"]),
             risk_payload=self._profiled_payload(outputs["risk"]),
-            paper_payload=json_safe(outputs["paper"]),
+            paper_payload=self._profiled_payload(outputs["paper"]),
             analysis_status=statuses["analysis"], setup_status=statuses["setup"],
             strategy_status=statuses["strategy"], risk_status=statuses["risk"],
             paper_status=statuses["paper"],

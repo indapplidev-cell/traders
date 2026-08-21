@@ -99,7 +99,7 @@ def _result() -> PipelineResult:
     )
 
 
-def test_real_paper_planner_is_reused_as_non_executable_5m_shadow_plan():
+def test_real_paper_planner_is_reused_as_executable_5m_production_plan():
     analysis, setup, strategy, _risk, _paper = outputs(
         setup_status="SETUP_CANDIDATE",
         strategy_status="ALLOW_RESEARCH_TRADE_PLAN",
@@ -148,10 +148,9 @@ def test_real_paper_planner_is_reused_as_non_executable_5m_shadow_plan():
         risk_runner=component(risk),
         paper_runner=PaperRunner(),
     ).run("BTCUSDT", BOUNDARY)
-    assert result.paper_status == "SHADOW_SEARCH"
-    assert result.paper_payload["shadow_plan_status"] == "PAPER_PLAN_READY"
-    assert result.paper_payload["shadow_plan"]["planned_rr"] > 1.5
-    assert result.paper_payload["shadow_final_approval_candidate"]["status"] == "PLAN_READY"
+    assert result.profile_mode == "PRODUCTION_SEARCH"
+    assert result.paper_status == "PAPER_PLAN_READY"
+    assert result.paper_payload["planned_rr"] > 1.5
     assert result.safety_counters.has_violation is False
 
 
@@ -181,7 +180,7 @@ def test_shadow_materializer_completes_all_non_executable_approval_stages():
     assert payload["shadow_final_approval_candidate"]["execution_eligible"] is False
 
 
-def test_shadow_projection_reaches_eligible_and_deterministic_winner_without_execution():
+def test_legacy_shadow_projection_cannot_become_executable_after_5m_promotion():
     materialized = ShadowFinalApprovalMaterializer(
         account_summary_source=lambda _session: _account()
     ).materialize(
@@ -238,22 +237,12 @@ def test_shadow_projection_reaches_eligible_and_deterministic_winner_without_exe
     )
     cycle = projection["current_cycle"]
     item = cycle["items"][0]
-    assert item["stage_trace"] == {
-        "ANALYSIS": "PASS",
-        "STRUCTURAL_SETUP": "PASS",
-        "STRATEGY_ELIGIBLE": "PASS",
-        "RISK_APPROVED": "PASS",
-        "PAPER_TRADE_PLAN": "PASS",
-        "QUANTITY_APPROVED": "PASS",
-        "VALIDITY_APPROVED": "PASS",
-        "FINAL_APPROVAL": "PASS",
-        "ELIGIBLE": "PASS",
-        "SELECTOR_WINNER": "PASS",
-    }
-    assert item["selected_winner"] is True
-    assert item["eligible"] is True
+    assert item["stage_trace"]["FINAL_APPROVAL"] == "PASS"
+    assert item["stage_trace"]["ELIGIBLE"] == "REJECTED"
+    assert item["selected_winner"] is False
+    assert item["eligible"] is False
     assert item["execution_eligible"] is False
-    assert cycle["winner_symbol"] == "BTCUSDT"
+    assert cycle["winner_symbol"] is None
 
     expired = build_projection(
         ((run, row),), universe, BOUNDARY + 300_001,
@@ -270,7 +259,7 @@ def test_shadow_projection_reaches_eligible_and_deterministic_winner_without_exe
     assert expired["rolling_1h"]["stage_counts"]["FINAL_APPROVAL"] == 1
 
 
-def test_shadow_store_persists_full_funnel_but_never_promotes_execution_flags():
+def test_legacy_shadow_payload_never_promotes_execution_flags_in_production_profile():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     OnlinePipelineRun.__table__.create(engine)
     OnlinePipelineResultRow.__table__.create(engine)
@@ -310,7 +299,7 @@ def test_shadow_store_persists_full_funnel_but_never_promotes_execution_flags():
             OnlinePipelineResultRow.run_id == run_id
         ))
     assert run is not None and row is not None
-    assert row.paper_payload_json["shadow_final_approval_candidate"]["status"] == "ELIGIBLE"
+    assert row.paper_payload_json["shadow_final_approval_candidate"]["status"] == "PLAN_READY"
     assert "persisted_final_approvals" not in row.paper_payload_json
     assert run.is_trade_signal is False
     assert run.is_executable is False

@@ -94,7 +94,7 @@ def test_trade_profile_keys_are_server_owned_and_ru_en_complete():
     for key in (
         "trading.profile.mode.SHADOW_SEARCH",
         "trading.profile.trade_5m.empty",
-        "trading.profile.trade_5m.paper_disabled",
+        "trading.profile.trade_5m.paper_enabled",
         "trading.profile.conflict.CROSS_TIMEFRAME_CONFLICT",
     ):
         assert key in ru and key in en

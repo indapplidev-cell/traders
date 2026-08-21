@@ -37,8 +37,9 @@ def test_profiles_are_explicit_and_15m_default_is_unchanged():
     assert TRADE_15M_PROFILE.minimum_planned_rr == TRADE_5M_PROFILE.minimum_planned_rr == 1.5
     assert TRADE_5M_PROFILE.analysis_history_candles != TRADE_15M_PROFILE.analysis_history_candles
     assert TRADE_5M_PROFILE.atr_lookback_candles != TRADE_15M_PROFILE.atr_lookback_candles
-    assert TRADE_5M_PROFILE.paper_command_creation_enabled is False
-    assert TRADE_5M_PROFILE.position_opening_enabled is False
+    assert TRADE_5M_PROFILE.mode == "PRODUCTION_SEARCH"
+    assert TRADE_5M_PROFILE.paper_command_creation_enabled is True
+    assert TRADE_5M_PROFILE.position_opening_enabled is True
 
 
 def test_closed_5m_detector_uses_profile_in_dedupe_identity():
@@ -57,7 +58,7 @@ def test_closed_5m_detector_uses_profile_in_dedupe_identity():
     assert seen[0][:3] == ("trade-5m-v1", "BTCUSDT", "5m")
 
 
-def test_5m_shadow_runner_invokes_pure_plan_stage_and_is_closed_only():
+def test_5m_production_runner_invokes_plan_stage_and_is_closed_only():
     analysis, setup, strategy, risk, paper = outputs(
         setup_status="SETUP_CANDIDATE",
         strategy_status="ALLOW_RESEARCH_TRADE_PLAN",
@@ -75,17 +76,14 @@ def test_5m_shadow_runner_invokes_pure_plan_stage_and_is_closed_only():
     result = runner.run("BTCUSDT", BOUNDARY)
     assert result.trade_profile_id == "trade-5m-v1"
     assert result.trigger_timeframe == "5m"
-    assert result.profile_mode == "SHADOW_SEARCH"
-    assert result.paper_status == "SHADOW_SEARCH"
-    assert result.paper_payload["shadow_plan_status"] == "PAPER_PLAN_READY"
-    assert result.paper_payload["shadow_plan"]["paper_status"] == "PAPER_PLAN_READY"
-    assert result.paper_payload["paper_command_creation_enabled"] is False
-    assert result.paper_payload["position_opening_enabled"] is False
-    assert result.paper_payload["cost_efficiency_diagnostic"]["authoritative_spread_bps"] is None
+    assert result.profile_mode == "PRODUCTION_SEARCH"
+    assert result.paper_status == "PAPER_PLAN_READY"
+    assert result.paper_payload["paper_status"] == "PAPER_PLAN_READY"
+    assert result.paper_payload["runtime_parameter_set_id"] == result.runtime_parameter_set_id
     assert all(call[2]["end_time_ms"] < BOUNDARY for call in repository.calls)
 
 
-def test_profile_cursor_and_shadow_materialization_are_isolated():
+def test_profile_cursor_and_noneligible_materialization_are_isolated():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     OnlinePipelineRun.__table__.create(engine)
     OnlinePipelineResultRow.__table__.create(engine)
@@ -112,7 +110,7 @@ def test_profile_cursor_and_shadow_materialization_are_isolated():
     result = PipelineResult(
         "BTCUSDT", "5m", BOUNDARY, trade_profile_id="trade-5m-v1",
         runtime_parameter_set_id=resolve_runtime_parameters("trade-5m-v1").parameter_set_id,
-        paper_status="SHADOW_SEARCH", paper_payload={"paper_command_creation_enabled": False},
+        paper_status="NO_PLAN", paper_payload={},
     )
     assert store.finish(five_id, result, freshness_status="READY")
     with sessions() as session:

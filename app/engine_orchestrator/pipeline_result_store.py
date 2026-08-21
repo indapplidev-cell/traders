@@ -376,15 +376,13 @@ class PipelineResultStore:
             run.execution_approved = counters.execution_approved_count > 0
             run.position_opened = counters.position_opened_count > 0
             run.position_size_approved = counters.position_size_approved_count > 0
-            if run.trade_profile_id == DEFAULT_TRADE_PROFILE_ID:
+            if run.profile_mode != TradeProfileMode.SHADOW_SEARCH.value:
                 materialized = self.final_approval_materializer.materialize(
                     session, run_id=run_id, result=result, evaluation_time=now
                 )
                 persisted_paper_payload = materialized.paper_payload
                 final_approval_created = materialized.final_approval_created
             else:
-                if run.profile_mode != TradeProfileMode.SHADOW_SEARCH.value:
-                    raise ValueError("non-default profile must remain SHADOW_SEARCH")
                 materialized = self.shadow_approval_materializer.materialize(
                     session, run_id=run_id, result=result, evaluation_time=now
                 )

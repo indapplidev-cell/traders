@@ -28,6 +28,10 @@ QUANTITY_POLICY_VERSION: Final = "paper-quantity-policy-v1"
 VALIDITY_POLICY_VERSION: Final = "paper-approval-validity-policy-v1"
 RISK_FRACTION: Final = Decimal("0.01")
 DECISION_TIMEFRAME_MS: Final = 900_000
+SUPPORTED_DECISION_TIMEFRAMES_MS: Final = {
+    "5m": 300_000,
+    "15m": DECISION_TIMEFRAME_MS,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +67,7 @@ class ControlledPaperQuantityResult:
     audit: PaperQuantitySizingAudit
     validity_policy_version: str
     source_candle_close_time_ms: int
+    source_timeframe: str = "15m"
 
     def to_persisted_payload(self) -> Mapping[str, object]:
         """JSON-safe content for ``paper_payload_json`` at ``finish()``."""
@@ -74,7 +79,7 @@ class ControlledPaperQuantityResult:
             "quantity_sizing_audit": self.audit.to_dict(),
             "approval_validity": {
                 "policy_version": self.validity_policy_version,
-                "source_timeframe": "15m",
+                "source_timeframe": self.source_timeframe,
                 "source_candle_close_time_ms": self.source_candle_close_time_ms,
                 "valid_until_ms": self.approval.valid_until_ms,
             },
@@ -84,16 +89,20 @@ class ControlledPaperQuantityResult:
 def derive_approval_valid_until_ms(
     source_candle_close_time_ms: int,
     *,
+    source_timeframe: str = "15m",
     stricter_valid_until_ms: tuple[int, ...] = (),
     evaluation_time_ms: int | None = None,
 ) -> int:
-    """Return source close + one 15m candle, preserving stricter deadlines."""
+    """Return source close + one decision candle, preserving stricter deadlines."""
     if isinstance(source_candle_close_time_ms, bool) or source_candle_close_time_ms < 0:
         fail(PaperReasonCode.PAPER_INPUT_TIME_INVALID, "invalid source candle close", "closed_until_ms")
+    timeframe_ms = SUPPORTED_DECISION_TIMEFRAMES_MS.get(source_timeframe)
+    if timeframe_ms is None:
+        fail(PaperReasonCode.PAPER_INPUT_TIME_INVALID, "unsupported decision timeframe", "source_timeframe")
     # Binance kline closeTime is the final millisecond of its interval.
-    if (source_candle_close_time_ms + 1) % DECISION_TIMEFRAME_MS != 0:
-        fail(PaperReasonCode.PAPER_INPUT_TIME_INVALID, "source candle is not 15m aligned", "closed_until_ms")
-    causal_deadline = source_candle_close_time_ms + DECISION_TIMEFRAME_MS
+    if (source_candle_close_time_ms + 1) % timeframe_ms != 0:
+        fail(PaperReasonCode.PAPER_INPUT_TIME_INVALID, "source candle is not decision-timeframe aligned", "closed_until_ms")
+    causal_deadline = source_candle_close_time_ms + timeframe_ms
     deadlines = (causal_deadline, *stricter_valid_until_ms)
     if any(isinstance(value, bool) or value < source_candle_close_time_ms for value in deadlines):
         fail(PaperReasonCode.PAPER_INPUT_VALIDITY_INVALID, "invalid upstream validity", "valid_until_ms")
@@ -185,6 +194,7 @@ def issue_controlled_paper_quantity_approval(
     approved_at: datetime,
     evaluation_time_ms: int,
     source_candle_close_time_ms: int | None = None,
+    source_timeframe: str = "15m",
     registry: InstrumentQuantityConstraintRegistry = ACTIVE_QUANTITY_CONSTRAINT_REGISTRY,
 ) -> ControlledPaperQuantityResult:
     """Issue the deterministic immutable quantity approval for one causal run."""
@@ -196,6 +206,7 @@ def issue_controlled_paper_quantity_approval(
     )
     valid = derive_approval_valid_until_ms(
         source_close,
+        source_timeframe=source_timeframe,
         stricter_valid_until_ms=(strategy.valid_until_ms,),
         evaluation_time_ms=evaluation_time_ms,
     )
@@ -208,5 +219,5 @@ def issue_controlled_paper_quantity_approval(
         correlation_id=strategy.correlation_id, causation_id=strategy.approval_id,
     )
     return ControlledPaperQuantityResult(
-        approval, audit, VALIDITY_POLICY_VERSION, source_close,
+        approval, audit, VALIDITY_POLICY_VERSION, source_close, source_timeframe,
     )

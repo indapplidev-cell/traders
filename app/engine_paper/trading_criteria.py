@@ -17,7 +17,7 @@ from app.engine_paper.eligible_approval_ranking import (
     SELECTION_MODE,
 )
 from app.engine_paper.production_approval import (
-    PRIMARY_TIMEFRAME, SYMBOL_ALLOWLIST, _RISK_APPROVED, _SETUP_ELIGIBLE,
+    EXECUTION_TIMEFRAMES, SYMBOL_ALLOWLIST, _RISK_APPROVED, _SETUP_ELIGIBLE,
     _STRATEGY_ALLOWED,
 )
 from app.engine_paper.production_market_data import (
@@ -84,8 +84,9 @@ def build_trading_criteria_snapshot(
         "symbols": (_criterion("allowed_symbols", "symbols", C.ENUM_ALLOWLIST, symbols,
                     "app.trading_universe.TradingUniverseRuntimeState.active_version_id"),),
         "timeframes": (
-            _criterion("primary_timeframe", "timeframes", C.ENUM_ALLOWLIST, [PRIMARY_TIMEFRAME],
-                       "app.engine_paper.production_approval.PRIMARY_TIMEFRAME"),
+            _criterion("primary_timeframe", "timeframes", C.ENUM_ALLOWLIST,
+                       list(EXECUTION_TIMEFRAMES),
+                       "app.engine_paper.production_approval.EXECUTION_TIMEFRAMES"),
             _criterion("required_timeframes", "timeframes", C.ENUM_ALLOWLIST,
                        list(orchestrator.required_timeframes),
                        "app.engine_orchestrator.orchestrator_config.OrchestratorConfig.required_timeframes"),
