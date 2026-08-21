@@ -24,8 +24,8 @@ services:
       - no-new-privileges:true
     restart: unless-stopped
     init: true
-    cpus: "0.50"
-    mem_limit: 256m
+    cpus: "1.00"
+    mem_limit: 512m
     pids_limit: 64
     env_file:
       - ../../../.env.production.local

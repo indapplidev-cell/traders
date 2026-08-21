@@ -28,8 +28,8 @@ def test_service_is_hardened_bounded_and_independently_managed() -> None:
         "- ALL",
         "- no-new-privileges:true",
         "restart: unless-stopped",
-        'cpus: "0.50"',
-        "mem_limit: 256m",
+        'cpus: "1.00"',
+        "mem_limit: 512m",
         "pids_limit: 64",
         "- production",
     ):
