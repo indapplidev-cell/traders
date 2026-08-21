@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from sqlalchemy import create_engine, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from app.engine_orchestrator.closed_window_detector import ClosedWindowDetector
@@ -40,6 +41,23 @@ def test_profiles_are_explicit_and_15m_default_is_unchanged():
     assert TRADE_5M_PROFILE.mode == "PRODUCTION_SEARCH"
     assert TRADE_5M_PROFILE.paper_command_creation_enabled is True
     assert TRADE_5M_PROFILE.position_opening_enabled is True
+
+
+def test_reserve_only_classifies_the_profile_window_unique_constraint_as_duplicate():
+    duplicate = IntegrityError(
+        "insert", {},
+        SimpleNamespace(diag=SimpleNamespace(
+            constraint_name="uq_online_pipeline_profile_window"
+        )),
+    )
+    contract_failure = IntegrityError(
+        "insert", {},
+        SimpleNamespace(diag=SimpleNamespace(
+            constraint_name="ck_online_pipeline_trade_profile"
+        )),
+    )
+    assert PipelineResultStore._is_duplicate_window_error(duplicate) is True
+    assert PipelineResultStore._is_duplicate_window_error(contract_failure) is False
 
 
 def test_closed_5m_detector_uses_profile_in_dedupe_identity():

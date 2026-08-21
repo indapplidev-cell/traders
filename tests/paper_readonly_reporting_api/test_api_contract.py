@@ -167,6 +167,7 @@ def test_0008_readiness_and_zero_paper_relation_reads(baseline):
         ("0015_trading_universe_activation", True),
         ("0016_control_mobile_device_security", True),
         ("0017_parallel_trade_profiles", True),
+        ("0018_promote_5m_production_search", True),
         ("0016_control_mobile_device_security", False),
         (("0015_trading_universe_activation", "0016_control_mobile_device_security"), True),
         ("corrupt", True),
@@ -185,6 +186,7 @@ def test_schema_revision_and_required_object_contract_fail_closed(
         "0015_trading_universe_activation",
         "0016_control_mobile_device_security",
         "0017_parallel_trade_profiles",
+        "0018_promote_5m_production_search",
     } and contract
     assert data["paper_schema_ready"] is expected
     assert (data["status"] == "PAPER_SCHEMA_NOT_DEPLOYED") is (not expected)

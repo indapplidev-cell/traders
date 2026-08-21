@@ -330,7 +330,10 @@ class TradingFunnelReadRepository:
                 revisions = tuple(session.execute(text(
                     "SELECT version_num FROM alembic_version ORDER BY version_num"
                 )).scalars())
-                profile_schema_ready = revisions == ("0017_parallel_trade_profiles",)
+                profile_schema_ready = revisions in {
+                    ("0017_parallel_trade_profiles",),
+                    ("0018_promote_5m_production_search",),
+                }
             else:
                 profile_schema_ready = self._schema_capabilities.snapshot().has(
                     ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES

@@ -100,6 +100,19 @@ class PipelineResultStore:
     def _now(self) -> datetime:
         return aware_utc(self.clock())
 
+    @staticmethod
+    def _is_duplicate_window_error(exception: IntegrityError) -> bool:
+        constraint_name = getattr(getattr(exception, "orig", None), "diag", None)
+        constraint_name = getattr(constraint_name, "constraint_name", None)
+        if constraint_name is not None:
+            return constraint_name == "uq_online_pipeline_profile_window"
+        message = str(getattr(exception, "orig", exception)).casefold()
+        return (
+            "unique constraint failed" in message
+            and "online_pipeline_runs" in message
+            and "closed_until_ms" in message
+        )
+
     def _require_owner(self, session: Session, trade_profile_id: str) -> None:
         profile = resolve_trade_profile(trade_profile_id)
         if profile.trade_profile_id == DEFAULT_TRADE_PROFILE_ID:
@@ -168,9 +181,11 @@ class PipelineResultStore:
                 session.add(row)
                 session.commit()
                 return run_id
-            except IntegrityError:
+            except IntegrityError as exception:
                 session.rollback()
-                return None
+                if self._is_duplicate_window_error(exception):
+                    return None
+                raise
 
     def get_claim(self, run_id: str) -> ClaimedWindow:
         with self._session() as session:

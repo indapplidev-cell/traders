@@ -27,6 +27,7 @@ def _url(name: str) -> str:
     (
         ("READONLY_DUAL_SCHEMA_0016_URL", "0016_control_mobile_device_security", False),
         ("READONLY_DUAL_SCHEMA_0017_URL", "0017_parallel_trade_profiles", True),
+        ("READONLY_DUAL_SCHEMA_0018_URL", "0018_promote_5m_production_search", True),
     ),
 )
 def test_exact_postgres_schema_capabilities(variable, revision, parallel):
