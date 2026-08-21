@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 806ef67847f5bd056e8019d916bb3ce6935c0e9d
+STATUS_AS_OF_COMMIT = 4a9249f1a0179f06e3b05424a5af444cedbb306f
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-21T05:14:05Z
-RECONCILED_BY_TASK = TRADERS_PRODUCTION_PAPER_FIRST_CANARY_EXECUTION_ACTIVATION_01
-FILES_CHANGED = app/operator_control/production_lifecycle_worker.py, app/operator_control/runtime.py, tests/operator_control_production_deployment/test_production_lifecycle_worker.py, docs/audits/TRADERS_PRODUCTION_PAPER_FIRST_CANARY_EXECUTION_ACTIVATION_01_IN_PROGRESS.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-21T06:38:00Z
+RECONCILED_BY_TASK = TRADERS_5M_PRODUCTION_EXECUTION_COMPETITION_AND_DESKTOP_HEALTH_01
+FILES_CHANGED = app/engine_orchestrator/trade_profile.py, app/engine_orchestrator/runtime_parameters.py, app/engine_orchestrator/pipeline_runner.py, app/engine_orchestrator/pipeline_result_store.py, app/engine_paper/controlled_quantity_validity.py, app/engine_paper/final_approval_materializer.py, app/engine_paper/production_approval.py, app/operator_control/production_executor.py, app/server_api/trading_funnel.py, app/server_api/schema_compatibility.py, alembic/versions/0018_promote_5m_production_search.py, docs/audits/TRADERS_5M_PRODUCTION_EXECUTION_COMPETITION_AND_DESKTOP_HEALTH_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = PRODUCTION_FIRST_CANARY_EXECUTION_CONTOUR_DEPLOYED_HEALTHY_BOUNDED_ONE_COMMAND_ONE_POSITION_LIVE_OFF_WAITING_FOR_NATURAL_APPROVAL_ZERO_TRADING_ROWS
+STATUS_CONFIDENCE = DUAL_15M_5M_PRODUCTION_SEARCH_DEPLOYED_NATURAL_5M_ROWS_PROVEN_SHARED_SELECTOR_ARMED_BOUNDED_CANARY_WAITING_NO_ELIGIBLE_APPROVAL_ZERO_TRADING_ROWS_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -22,12 +22,49 @@ STATUS_CONFIDENCE = PRODUCTION_FIRST_CANARY_EXECUTION_CONTOUR_DEPLOYED_HEALTHY_B
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_IMAGE270A6D13_HEALTHY_ON0017_27_GET_0_WRITE_CONTROL_IMAGE0D069932_HEALTHY_SOURCE3BE22BD_GENERATION6_LIVE_OFF
+API_RUNTIME_STATUS = READONLY_IMAGE537145E3_HEALTHY_ON0018_27_GET_0_WRITE_CONTROL_IMAGEA4664FF5_HEALTHY_SOURCE9FE3A4F_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_C0E92A2A_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = CONTROLLED_PRODUCTION_PAPER_FIRST_CANARY_ACTIVE_WAITING_FOR_NATURAL_ELIGIBLE_APPROVAL
-CURRENT_BLOCKER = FIRST_CANARY_PASS_PENDING_NATURAL_ELIGIBLE_APPROVAL_COMMAND0_POSITION0
+CURRENT_STAGE = CONTROLLED_DUAL_PROFILE_PRODUCTION_PAPER_FIRST_CANARY_ACTIVE_WAITING_FOR_NATURAL_SELECTOR_WINNER
+CURRENT_BLOCKER = FIRST_CANARY_PASS_PENDING_NATURAL_15M_OR_5M_ELIGIBLE_APPROVAL_COMMAND0_POSITION0
 BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_ACK_OWNER_IDENTITY_HEARTBEAT_PASS_BACKLOG0_PENDING0_UNRESOLVED0_LINEAGE_VALID_NO_PHYSICAL_GAP
 ```
+
+## 5m production execution competition and desktop health
+
+```text
+TASK = TRADERS_5M_PRODUCTION_EXECUTION_COMPETITION_AND_DESKTOP_HEALTH_01
+RESULT = PASS_CONTROLLED_DEPLOYMENT_AND_NATURAL_5M_PRODUCTION_CYCLE
+PROJECT_STATE_AUDIT_COMMIT = 4a9249f1a0179f06e3b05424a5af444cedbb306f
+IMPLEMENTATION_COMMITS = 538d59255c9c478bb43f825a87987acb8d61fcc2,9fe3a4f1dba41c054cd5003e589ac72ba21394f5
+CLIENT_IMPLEMENTATION_COMMIT = 6aeeab660013cf100303d7ff1a907a46d15c39db
+SCHEMA = 0018_promote_5m_production_search
+PROFILE_15M = PRODUCTION_SEARCH_COMMAND_TRUE_POSITION_TRUE
+PROFILE_5M = PRODUCTION_SEARCH_COMMAND_TRUE_POSITION_TRUE
+5M_NATURAL_ROWS = 60_PRODUCTION_SEARCH_LATEST_BOUNDARY1787294100000
+5M_HISTORICAL_PROVENANCE = 1663_SHADOW_SEARCH_ROWS_PRESERVED
+CURRENT_CYCLES = 15M_10_OF10_COMPLETE_CURRENT_AND_5M_10_OF10_COMPLETE_CURRENT
+COMPETITION = SHARED_eligible-approval-ranking-v1_ACROSS_15M_AND_5M
+SELECTOR_ORDER = RISK_SCORE_DESC_RR_DESC_STRATEGY_SCORE_DESC_NEWEST_CLOSE_DETERMINISTIC_IDS
+DATABASE_DEFECT = SCHEMA0017_FORBADE_5M_PRODUCTION_AND_GENERIC_INTEGRITY_CATCH_MISREPORTED_CONSTRAINT_AS_DUPLICATE
+DATABASE_FIX = SCHEMA0018_ALLOWS_HISTORICAL_SHADOW_AND_NEW_PRODUCTION_ONLY_NAMED_UNIQUE_IS_DUPLICATE
+DESKTOP_UNKNOWN_ROOT_CAUSE = HEALTH_REFRESH_WAS_DASHBOARD_ONLY
+DESKTOP_FIX = GLOBAL_HEALTH_REQUEST_ON_EVERY_NON_DASHBOARD_PAGE_REFRESH
+READONLY = IMAGE537145E3_HEALTHY_RESTART0_SOURCE84B001A5
+CONTROL = IMAGEA4664FF5_HEALTHY_RESTART0_SOURCE9FE3A4F_ARMED_GENERATION6_AUDIT_PASS
+CANARY = 6F9858CD_WAITING_FOR_ELIGIBLE_APPROVAL_COMMAND0_POSITION0
+PAPER_ACCOUNT = BALANCE100_FEES0_NETPNL0
+PAPER_ROWS = COMMAND0_ORDER0_FILL0_POSITION0_JOURNAL0
+LIVE = DISABLED
+NEXT_ACTION = OBSERVE_FIRST_NATURAL_15M_OR_5M_WINNER_THEN_COMPLETE_COMMAND_TO_NET_PNL_CANARY
+```
+
+The existing competition module was present but the production executor read
+only 15m approvals. It now reads both executable timeframes at the same database
+clock boundary and applies one deterministic ranking. The latest natural 5m
+cycle completed all ten symbols but produced no PAPER plan, so no selector
+winner or command exists yet; this is a strategy outcome rather than a 5m
+authorization blocker. The bounded one-command/one-position canary remains
+armed and LIVE remains disabled.
 
 ## Controlled production PAPER first-canary execution activation
 
@@ -4919,16 +4956,16 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈99% deployed / 5m full-funnel production accepted | Schema 0017 remains accepted; production 5m now runs the complete non-executable Analysis-to-Winner SHADOW route with the same planner, quantity constraints and deterministic selector. Five natural postdeploy cycles were exact 10/10 but produced no structural setup or winner |
+| Online analytics/paper pipeline | ≈99% deployed / dual-profile execution competition accepted | Schema 0018 is deployed; both 15m and 5m run `PRODUCTION_SEARCH` through Analysis-to-Winner with command/position authority. Natural 5m production persistence and a complete 10/10 cycle are proven; the shared selector has no current eligible winner |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Fresh production projection shows `wal_ready=true`, `pitr_ready=true`, live checksum-verified ACK owner identity/heartbeat PASS, backlog/pending/unresolved `0/0/0`, the existing base lineage valid with 775/775 required archive coverage and no physical gap |
-| Readonly Server API | Healthy monotonic-funnel image on production 0017 | Image `sha256:270a6d13...` has exact source-identity match, health PASS, 27 GET and zero write routes. Rolling funnel stages now preserve historical passage monotonically while current eligibility remains expiry-aware |
-| Desktop Readonly client | Production monotonic 15m/5m projection acceptance PASS | The real `ServerProvider` parses production `VALIDITY=1, FINAL=1, winner=None`; server catalog and regenerated client bootstrap are both `i18n-c0e92a2ae32c6425` with labels «Срок проверен», «Одобрение создано», «Допущен сейчас» |
+| Readonly Server API | Healthy dual-profile image on production 0018 | Image `sha256:537145e3...` has exact source-identity match, health PASS, 27 GET and zero write routes. Both 15m and 5m projections are current, complete and executable for PAPER |
+| Desktop Readonly client | Production 15m/5m and global health acceptance PASS | The real `ServerProvider` parses health `OK` and the production 5m 10/10 response. Health refresh is page-independent, so opening Funnel no longer leaves the connection banner `Unknown` |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
-| Readonly PAPER reporting API | Healthy on schema 0017 | Readiness and all thirteen PAPER GET routes accept the reflected 0017 capability; shared account remains 100 USDT and the active 5m profile remains SHADOW-only with zero command/order/fill/position rows |
-| PAPER Operator Control API | Healthy status boundary / 5m non-executable | Localhost-only authenticated 3 GET/5 POST boundary remains ARMED generation 6 and healthy; deployment made no Control POST and granted no 5m execution authority |
-| First-canary correlation/readiness | Durable state preserved / advancement blocked | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions, and schema readiness now safely denies advancement |
+| Readonly PAPER reporting API | Healthy on schema 0018 | Readiness and all thirteen PAPER GET routes accept reflected schema 0018; shared account remains 100 USDT and command/order/fill/position rows remain zero |
+| PAPER Operator Control API | Healthy dual-profile selector boundary | Localhost-only authenticated 3 GET/5 POST boundary is ARMED generation 6, audit PASS, and reads both 15m and 5m eligible approvals under one bounded selector; LIVE is off |
+| First-canary correlation/readiness | Durable state preserved / waiting for natural winner | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and one-command/one-position limits unused |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -5011,12 +5048,12 @@ and current Market Data is 60/60. The separate governed recovery started one
 valid checksum-verifying ACK owner and drained the task-start set of 47
 contiguous pending objects. The fresh projection now reports WAL/PITR ready,
 backlog/pending/unresolved `0/0/0`, the same lineage valid, and no physical gap.
-The complete 5m SHADOW funnel is now deployed and production-accepted as a
-non-executable measurement route. Five bounded natural cycles persisted 50/50
-results with the new shadow payloads, and the fresh current boundary remains
-exact 10/10. No natural structural setup, eligible approval or winner appeared
-in that window, so the next stage is passive observation without threshold
-tuning. Execution authority remains off and LIVE stays disabled.
+The historical 5m SHADOW sample remains preserved as provenance, but it is no
+longer the active runtime mode. The active 5m profile is now executable PAPER
+`PRODUCTION_SEARCH`, has persisted natural production cycles, and competes with
+15m under the same deterministic selector. No current eligible winner exists,
+so the already authorized bounded canary remains waiting without commands or
+positions. LIVE stays disabled.
 
 ## Правила актуализации
 
