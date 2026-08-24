@@ -202,6 +202,16 @@ def evaluate_scalping_shadow(
         atr_buffer_multiplier=config.atr_buffer_multiplier,
         stop_envelope_bps=config.stop_envelope_bps,
         minimum_target_diagnostic_bps=config.minimum_target_diagnostic_bps,
+        entry_fee_bps=costs.entry_fee_bps,
+        exit_fee_bps=costs.exit_fee_bps,
+        entry_slippage_bps=costs.entry_slippage_bps,
+        exit_slippage_bps=costs.exit_slippage_bps,
+        safety_margin_bps=costs.safety_margin_bps,
+        spread_bps=costs.spread_bps,
+        depth_impact_bps=costs.depth_impact_bps,
+        fee_source=costs.fee_source,
+        spread_source=costs.spread_source,
+        depth_impact_source=costs.depth_impact_source,
     )
     invalidation = candidate.causal_invalidation
     if invalidation is None:
@@ -238,16 +248,6 @@ def evaluate_scalping_shadow(
     )
     result.gross_rr = round(result.gross_reward_bps / result.gross_risk_bps, 8)
 
-    result.entry_fee_bps = costs.entry_fee_bps
-    result.exit_fee_bps = costs.exit_fee_bps
-    result.entry_slippage_bps = costs.entry_slippage_bps
-    result.exit_slippage_bps = costs.exit_slippage_bps
-    result.safety_margin_bps = costs.safety_margin_bps
-    result.spread_bps = costs.spread_bps
-    result.depth_impact_bps = costs.depth_impact_bps
-    result.fee_source = costs.fee_source
-    result.spread_source = costs.spread_source
-    result.depth_impact_source = costs.depth_impact_source
     if costs.spread_bps is None or not costs.spread_authoritative:
         return result.reject(
             "NET_COST_GATE", R.PAPER_NO_PLAN_MISSING_AUTHORITATIVE_SPREAD.value

@@ -71,6 +71,11 @@ def test_stop_is_rejected_not_clipped_inside_causal_invalidation():
     assert row.final_stop == pytest.approx(99.25)
     assert row.final_stop < row.causal_invalidation
     assert row.stop_distance_bps == pytest.approx(75.0)
+    assert row.entry_fee_bps == 10.0 and row.exit_fee_bps == 10.0
+    assert row.entry_slippage_bps == 2.0 and row.exit_slippage_bps == 2.0
+    assert row.safety_margin_bps == 3.0
+    assert row.fee_source == "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
+    assert row.spread_bps == 1.0 and row.depth_impact_bps == 2.0
 
 
 def test_target_hierarchy_is_causal_local_then_structural_then_higher_tf():
@@ -327,4 +332,11 @@ def test_production_5m_runner_does_not_query_costs_before_geometry_is_valid():
     assert plan.paper_status == "NO_PLAN"
     assert diagnostic["rejection_reason"] == R.PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE
     assert diagnostic["final_stop"] < diagnostic["causal_invalidation"]
+    assert diagnostic["entry_fee_bps"] == 10.0
+    assert diagnostic["exit_fee_bps"] == 10.0
+    assert diagnostic["entry_slippage_bps"] == 2.0
+    assert diagnostic["exit_slippage_bps"] == 2.0
+    assert diagnostic["safety_margin_bps"] == 3.0
+    assert diagnostic["spread_bps"] is None
+    assert diagnostic["depth_impact_bps"] is None
     assert source.calls == []
