@@ -2,6 +2,8 @@
 
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Protocol
 
 import httpx
@@ -14,6 +16,32 @@ from app.engine_market_data.timeframe import timeframe_to_milliseconds
 
 class HttpTransport(Protocol):
     def get(self, url: str, *, params: dict[str, Any] | None = None) -> Any: ...
+
+
+@dataclass(frozen=True, slots=True)
+class PublicBookTicker:
+    symbol: str
+    bid_price: Decimal
+    bid_quantity: Decimal
+    ask_price: Decimal
+    ask_quantity: Decimal
+
+    @property
+    def spread_bps(self) -> float:
+        midpoint = (self.bid_price + self.ask_price) / Decimal("2")
+        return float((self.ask_price - self.bid_price) / midpoint * Decimal("10000"))
+
+
+@dataclass(frozen=True, slots=True)
+class PublicDepthEstimate:
+    symbol: str
+    reference_quantity: Decimal
+    buy_vwap: Decimal
+    sell_vwap: Decimal
+    entry_impact_bps: float
+    exit_impact_bps: float
+    depth_impact_bps: float
+    source: str = "BINANCE_PUBLIC_MARKET_DATA_DEPTH"
 
 
 class BinancePublicRestClient:
@@ -68,6 +96,72 @@ class BinancePublicRestClient:
         if not isinstance(payload, dict) or not isinstance(payload.get("serverTime"), int):
             raise PublicMarketDataError("Unexpected Binance time response")
         return payload["serverTime"]
+
+    def fetch_book_ticker(self, symbol: str) -> PublicBookTicker:
+        symbol = normalize_market_symbol(symbol)
+        payload = self._request_json("/api/v3/ticker/bookTicker", {"symbol": symbol})
+        if not isinstance(payload, dict):
+            raise PublicMarketDataError("Unexpected Binance book ticker response")
+        try:
+            ticker = PublicBookTicker(
+                symbol=symbol,
+                bid_price=Decimal(str(payload["bidPrice"])),
+                bid_quantity=Decimal(str(payload["bidQty"])),
+                ask_price=Decimal(str(payload["askPrice"])),
+                ask_quantity=Decimal(str(payload["askQty"])),
+            )
+        except (KeyError, ValueError, ArithmeticError) as exc:
+            raise PublicMarketDataError("Invalid Binance book ticker response") from exc
+        if ticker.bid_price <= 0 or ticker.ask_price <= ticker.bid_price:
+            raise PublicMarketDataError("Invalid Binance bid/ask geometry")
+        return ticker
+
+    def estimate_round_trip_depth_impact(
+        self, symbol: str, reference_quantity: Decimal | str, *, limit: int = 100
+    ) -> PublicDepthEstimate:
+        """Bounded diagnostic VWAP; it grants no execution quantity authority."""
+        symbol = normalize_market_symbol(symbol)
+        quantity = Decimal(str(reference_quantity))
+        if quantity <= 0 or limit not in {5, 10, 20, 50, 100, 500, 1000, 5000}:
+            raise ValueError("positive reference quantity and a Binance depth limit are required")
+        payload = self._request_json("/api/v3/depth", {"symbol": symbol, "limit": limit})
+        if not isinstance(payload, dict):
+            raise PublicMarketDataError("Unexpected Binance depth response")
+        asks = self._depth_levels(payload.get("asks"))
+        bids = self._depth_levels(payload.get("bids"))
+        buy_vwap = self._vwap(asks, quantity)
+        sell_vwap = self._vwap(bids, quantity)
+        best_ask, best_bid = asks[0][0], bids[0][0]
+        entry_impact = float((buy_vwap - best_ask) / best_ask * Decimal("10000"))
+        exit_impact = float((best_bid - sell_vwap) / best_bid * Decimal("10000"))
+        return PublicDepthEstimate(
+            symbol=symbol, reference_quantity=quantity, buy_vwap=buy_vwap,
+            sell_vwap=sell_vwap, entry_impact_bps=entry_impact,
+            exit_impact_bps=exit_impact, depth_impact_bps=entry_impact + exit_impact,
+        )
+
+    @staticmethod
+    def _depth_levels(payload: Any) -> list[tuple[Decimal, Decimal]]:
+        if not isinstance(payload, list) or not payload:
+            raise PublicMarketDataError("Missing Binance depth levels")
+        try:
+            levels = [(Decimal(str(row[0])), Decimal(str(row[1]))) for row in payload]
+        except (IndexError, TypeError, ValueError, ArithmeticError) as exc:
+            raise PublicMarketDataError("Invalid Binance depth level") from exc
+        if any(price <= 0 or quantity <= 0 for price, quantity in levels):
+            raise PublicMarketDataError("Non-positive Binance depth level")
+        return levels
+
+    @staticmethod
+    def _vwap(levels: list[tuple[Decimal, Decimal]], quantity: Decimal) -> Decimal:
+        remaining, notional = quantity, Decimal("0")
+        for price, available in levels:
+            taken = min(remaining, available)
+            notional += taken * price
+            remaining -= taken
+            if remaining == 0:
+                return notional / quantity
+        raise PublicMarketDataError("Insufficient bounded depth for reference quantity")
 
     @staticmethod
     def map_kline(symbol: str, timeframe: str, payload: list[Any]) -> Candle:

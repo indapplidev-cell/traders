@@ -107,6 +107,9 @@ class RiskPolicy:
         identity = source.decision_id
         allowed, context = self.limits.check_and_reserve(
             identity=identity, symbol=source.symbol, direction=source.direction_hint,
+            trade_profile_id=str(
+                getattr(self.runtime_parameters, "profile_id", "trade-15m-v1")
+            ),
             closed_until_ms=source.closed_until_ms, config=self.config,
         )
         if not allowed:
