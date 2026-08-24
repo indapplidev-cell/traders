@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 3ab2281328d5e6656e8135a6ca63cc0ce7247b51
+STATUS_AS_OF_COMMIT = 90e82ba543209cff28050cb1e7ed76832176c52b
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-24T18:47:20Z
-RECONCILED_BY_TASK = TRADERS_5M_SCALPING_PRODUCTION_OBSERVATION_AND_CALIBRATION_BASELINE_01_IN_PROGRESS_BOUNDARY_GATE
-FILES_CHANGED = app/engine_observation/scalping_calibration.py, scripts/observe_5m_scalping_calibration.py, tests/test_5m_scalping_calibration_baseline.py, FINAL_DECISION.md, docs/audits/TRADERS_5M_SCALPING_PRODUCTION_OBSERVATION_AND_CALIBRATION_BASELINE_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-24T22:38:30Z
+RECONCILED_BY_TASK = TRADERS_DESKTOP_FUNNEL_ANALYTICS_EXPORT_AND_REPORT_UI_01
+FILES_CHANGED = app/engine_observation/scalping_calibration.py, app/i18n/catalog.py, app/server_api/funnel_export.py, app/server_api/repositories/protocols.py, app/server_api/routes/v1.py, app/server_api/services/query_service.py, app/server_api/trading_funnel.py, tests/security_retry/test_safe_inspection_and_output_matrix.py, tests/server_api/test_contract_and_safety.py, tests/server_api/test_funnel_export.py, tests/server_api/test_i18n.py, tests/server_api/test_runtime_entrypoint.py, FINAL_DECISION.md, docs/audits/TRADERS_DESKTOP_FUNNEL_ANALYTICS_EXPORT_AND_REPORT_UI_01_FINAL.md, online_trader.md, ../traders-client/src/traders_client/api_contract/protocol.py, ../traders-client/src/traders_client/application/app_controller.py, ../traders-client/src/traders_client/funnel_export.py, ../traders-client/src/traders_client/i18n/generated_bootstrap.json, ../traders-client/src/traders_client/providers/mock_provider.py, ../traders-client/src/traders_client/providers/server_provider.py, ../traders-client/src/traders_client/transport/urllib_json.py, ../traders-client/src/traders_client/ui/funnel_export_dialog.py, ../traders-client/src/traders_client/ui/main_window.py, ../traders-client/src/traders_client/ui/trading_funnel_view.py, ../traders-client/tests/test_funnel_export.py, ../traders-client/tests/test_http_transport.py, ../traders-client/tests/test_i18n_gui.py, ../traders-client/client_status.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = 5M_CALIBRATION_OBSERVATION_IN_PROGRESS_9_OF144_EXACT10_SCHEMA0018_CANONICAL_WAL_PITR_PASS_CONTROL_GENERATION6_LIVE_OFF_NO_TUNING
+STATUS_CONFIDENCE = FUNNEL_EXPORT_PASS_5M_CALIBRATION_OBSERVER_PRESERVED_55_OF144_EXACT10_SCHEMA0018_CANONICAL_WAL_PITR_PASS_CONTROL_GENERATION6_LIVE_OFF_NO_TUNING
 
 # Состояние проекта traders-ml
 
@@ -22,12 +22,43 @@ STATUS_CONFIDENCE = 5M_CALIBRATION_OBSERVATION_IN_PROGRESS_9_OF144_EXACT10_SCHEM
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_IMAGEEC0F6ECA_HEALTHY_RESTART0_SOURCEE3842342_ON0018_27_GET_0_WRITE_1CPU_512MIB_CONTROL_IMAGEA4664FF5_HEALTHY_SOURCE9FE3A4F_GENERATION6_LIVE_OFF
-SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_C0E92A2A_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
+API_RUNTIME_STATUS = READONLY_IMAGE24EE3AB7_HEALTHY_RESTART0_SOURCE2CA5E9C8_ON0018_28_GET_0_WRITE_1CPU_512MIB_CONTROL_IMAGEA4664FF5_HEALTHY_SOURCE9FE3A4F_GENERATION6_LIVE_OFF
+SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_32CA1702_IMPLEMENTED_AND_DEPLOYED_28_GET_0_WRITE_BOUNDED_FUNNEL_EXPORT
 CURRENT_STAGE = 5M_SCALPING_PRODUCTION_OBSERVATION_AND_CALIBRATION_BASELINE
 CURRENT_BLOCKER = NONE_SAFETY_MINIMUM_HOMOGENEOUS_144_BOUNDARY_TIME_GATE_PENDING
 BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_NO_PHYSICAL_GAP_BACKLOG_PENDING_UNRESOLVED_ZERO_15M_5M_CONTINUITY_PASS
 ```
+
+## Desktop Funnel analytics export and report UI
+
+```text
+TASK = TRADERS_DESKTOP_FUNNEL_ANALYTICS_EXPORT_AND_REPORT_UI_01
+RESULT = PASS_COMPLETED
+PROJECT_STATE_AUDIT_COMMIT = 90e82ba543209cff28050cb1e7ed76832176c52b
+SERVER_SOURCE_COMMITS = 58b93af82476264d3e2b6f7783c5357151c26f11,8bdc1e11ba9f87aaf28e7237c1f17d45e4275e4a,2ca5e9c8533bdf4051c8307304f1420223810431
+DESKTOP_SOURCE_COMMIT = 94015329d0151092693c58ed5123b8b212da5421
+CONTRACT = GET_/api/v1/trading/funnel/export_24H_MAX_2880_ROWS_2_BULK_SELECTS_NO_WRITE_NO_N_PLUS_ONE
+FORMATS = JSONL_CSV_SUMMARY_JSON_SUMMARY_MD_NO_ZIP
+PROFILES = trade-15m-v1_AND_trade-5m-v1_EXPLICIT_NO_MIXING
+SCHEMA = trading-funnel-export-v1_PROVENANCE_ANALYSIS_CLOSED_MULTI_TF_CANONICAL11_TRACE_SETUP_STRATEGY_RISK_GEOMETRY_COST_RR_QUOTA_PAPER
+SUMMARY = FUNNEL_REASONS_P50_P90_GEOMETRY_COST_RR_NET_EDGE_BREAK_EVEN_QUOTA_CHURN_INSUFFICIENT_SAMPLE_EXPLICIT
+DESKTOP = ASYNC_OFF_MAIN_THREAD_OVERLAP_PREVENTED_REFRESH_INDEPENDENT_STANDARD_SAVE_HUMANIZED_ERRORS
+I18N = SERVER_CATALOG_i18n-32ca1702c73e2e56_RU_EN_GENERATED_BOOTSTRAP_RAW_CODES_PRESERVED
+SECURITY = ALLOWLISTED_RAW_REASONS_ZERO_SECRET_FIELDS_READONLY_NO_CONTROL_DEPENDENCY
+RUNTIME = IMAGE24EE3AB7_CONTAINER8D3C0C95_HEALTHY_RESTART0_SOURCE2CA5E9C8_28GET_0WRITE
+VALIDATION = SERVER26_FOCUSED_AND776_READONLY_SECURITY_PASS_DESKTOP68_FOCUSED_AND1461_COMPOSED_FULL_PASS
+OBSERVER = PID23308_IDENTITY_PRESERVED_BOUNDARIES50_TO55_ZERO_TASK_LOSS_SEALED_ARTIFACTS_UNCHANGED
+WAL_PITR_ACK = PASS_PASS_HEALTHY_PID4912_ZERO_BACKLOG_PENDING_UNRESOLVED_NO_PHYSICAL_GAP
+TRADING_CONTROL_LIVE = 15M_UNCHANGED_5M_UNCHANGED_MIN_RR1.5_UNCHANGED_CONTROL_GENERATION6_LIVE_DISABLED
+NEXT_ACTION = CONTINUE_TRADERS_5M_SCALPING_PRODUCTION_OBSERVATION_AND_CALIBRATION_BASELINE_01_UNTIL_144_HOMOGENEOUS_BOUNDARIES
+```
+
+The desktop selects filters and saves server-authoritative bytes; it performs
+no local trading calculation. Optional candles remain disabled. Three narrow
+readonly-only replacements incorporated the initial route and two repair-first
+DTO/trace corrections; protected runtimes and the calibration observer were
+not restarted. The concurrent calibration task remains in progress and its
+counting window was not restarted.
 
 ## 5m production observation and calibration baseline 01
 
@@ -36,7 +67,7 @@ TASK = TRADERS_5M_SCALPING_PRODUCTION_OBSERVATION_AND_CALIBRATION_BASELINE_01
 RESULT = IN_PROGRESS_MINIMUM_HOMOGENEOUS_WINDOW_PENDING
 PROJECT_STATE_AUDIT_COMMIT = 3ab2281328d5e6656e8135a6ca63cc0ce7247b51
 OBSERVATION_START_BOUNDARY = 1787594700000
-OBSERVATION_AT_RECONCILIATION = 9_OF144_BOUNDARIES_90_OF1440_EVALUATIONS_EXACT10
+OBSERVATION_AT_RECONCILIATION = 55_OF144_BOUNDARIES_550_OF1440_EVALUATIONS_EXACT10
 PARAMETER_SET = trade-5m-v1-runtime-v1-c141aece87c7f6a0
 RUNTIME_SOURCE = COMMIT6650F5F1_IMAGEB3928A80_CONTAINERBCE201E4
 OBSERVABILITY = BOUNDED288_JSONL_SUMMARY_SHA256_MANIFEST_WITH_NULL_UNKNOWN_RAW_REASON_PRESERVED
@@ -5121,8 +5152,8 @@ LIVE.
 | Online analytics/paper pipeline | ≈99% deployed / dual-profile execution competition and 5m economic admission accepted | Schema 0018 is deployed; both 15m and 5m run `PRODUCTION_SEARCH`. The 5m path now enforces causal stop/target geometry and fail-closed net costs before a plan; three final exact10 cycles and concurrent 15m exact10 passed. The shared selector has no current eligible winner |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS on schema 0018 | One canonical ACK owner is healthy; the existing lineage is unchanged and contiguous with `wal_ready=true`, `pitr_ready=true`, no physical gap, and backlog/pending/unresolved `0/0/0`. The schema-compatible retry verified and atomically ACKed 144 WAL objects |
-| Readonly Server API | Healthy dual-profile image on production 0018 | Image `sha256:537145e3...` has exact source-identity match, health PASS, 27 GET and zero write routes. Both 15m and 5m projections are current, complete and executable for PAPER |
-| Desktop Readonly client | Production 15m/5m and global health acceptance PASS | The real `ServerProvider` parses health `OK` and the production 5m 10/10 response. Health refresh is page-independent, so opening Funnel no longer leaves the connection banner `Unknown` |
+| Readonly Server API | Healthy dual-profile image on production 0018 with bounded Funnel export | Image `sha256:24ee3ab7...` has exact source `2ca5e9c8...`, health PASS, restart 0, 28 GET and zero write routes. JSONL, CSV, summary JSON and summary Markdown are bounded to 24h/2880 rows with no N+1 or write path |
+| Desktop Readonly client | Production Funnel export and global health acceptance PASS | The active-profile export dialog supports 15m/5m, all required periods/symbols/formats, asynchronous off-main-thread download, overlap prevention and standard atomic save with server-generated RU/EN strings |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy on schema 0018 | Readiness and all thirteen PAPER GET routes accept reflected schema 0018; shared account remains 100 USDT and command/order/fill/position rows remain zero |
