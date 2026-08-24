@@ -10,6 +10,7 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 from hashlib import sha256
 from pathlib import Path
 
@@ -85,13 +86,36 @@ def load_rows(start: int, limit: int) -> list[dict]:
     return [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
 
 
+def boundary_count(start: int, limit: int) -> int:
+    sql = (
+        "SELECT count(*) FROM (SELECT DISTINCT closed_until_ms "
+        "FROM online_pipeline_runs WHERE trade_profile_id='trade-5m-v1' "
+        f"AND closed_until_ms >= {start} ORDER BY closed_until_ms ASC LIMIT {limit}) q"
+    )
+    result = subprocess.run(
+        ["docker", "exec", "--user", "postgres", CONTAINER, "psql", "-U", "traders_ml",
+         "-d", "traders_ml", "-AtX", "-c", sql],
+        check=True, capture_output=True, text=True, encoding="utf-8",
+    )
+    return int(result.stdout.strip())
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--start-boundary", type=int, default=START_BOUNDARY)
     parser.add_argument("--max-boundaries", type=int, default=MAX_BOUNDARIES, choices=range(1, MAX_BOUNDARIES + 1))
     parser.add_argument("--min-boundaries", type=int, default=144)
+    parser.add_argument("--wait", action="store_true")
+    parser.add_argument("--poll-seconds", type=int, default=60, choices=range(30, 301))
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args(argv)
+    while args.wait:
+        observed = boundary_count(args.start_boundary, args.max_boundaries)
+        print(json.dumps({"event": "BOUNDARY_PROGRESS", "observed": observed,
+                          "required": args.min_boundaries}), flush=True)
+        if observed >= args.min_boundaries:
+            break
+        time.sleep(args.poll_seconds)
     rows = load_rows(args.start_boundary, args.max_boundaries)
     report = aggregate(rows)
     if report["parameter_set_id"] != PARAMETER_SET:
@@ -118,4 +142,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

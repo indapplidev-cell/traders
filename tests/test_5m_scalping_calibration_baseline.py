@@ -1,4 +1,5 @@
 from app.engine_observation.scalping_calibration import aggregate, export_record, percentile
+from scripts.observe_5m_scalping_calibration import boundary_count
 
 
 def row(boundary=1_800_000_000_000, symbol="BTCUSDT", direction="BULLISH", reason=None):
@@ -59,3 +60,18 @@ def test_repeat_opportunity_not_counted_as_independent_and_quota_free_rejection(
     assert value["risk_budget_reservation_leaks"] == 1
     assert value["rejection_histogram"]["NEGATIVE_NET_EDGE"]["count"] == 2
 
+
+def test_boundary_count_uses_fixed_read_only_bounded_query(monkeypatch):
+    class Result:
+        stdout = "144\n"
+
+    seen = {}
+    def run(command, **kwargs):
+        seen["command"] = command
+        return Result()
+
+    monkeypatch.setattr("subprocess.run", run)
+    assert boundary_count(1000, 288) == 144
+    sql = seen["command"][-1]
+    assert "SELECT count(*)" in sql and "LIMIT 288" in sql
+    assert all(token not in sql.upper() for token in ("UPDATE ", "DELETE ", "INSERT ", "ALTER "))
