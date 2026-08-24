@@ -127,6 +127,7 @@ def test_empty_summary_is_explicit_and_range_format_candles_are_bounded():
     })
     assert too_wide.status_code == 422
     assert _get(client, include_candles="true").status_code == 422
+    assert _get(client, include_candles="false").status_code == 200
     assert client.post("/api/v1/trading/funnel/export").status_code == 405
 
 

@@ -23,6 +23,7 @@ from app.server_api.schemas.models import (
 from app.server_api.services import ApiQueryService
 from app.server_api.schemas.i18n import I18nCatalog, I18nManifest
 from app.i18n import catalog_payload, manifest_payload
+from app.server_api.errors import ApiError
 
 
 SymbolPath = Annotated[str, Path(pattern=r"^[A-Z0-9]{5,20}$")]
@@ -87,9 +88,10 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
         to_value: Annotated[str, Query(alias="to")],
         format_name: Annotated[Literal["jsonl", "csv", "summary-json", "summary-md"], Query(alias="format")] = "jsonl",
         symbol: SymbolFilter = None,
-        include_candles: Annotated[Literal[False], Query()] = False,
+        include_candles: Annotated[bool, Query()] = False,
     ) -> Response:
-        del include_candles
+        if include_candles:
+            raise ApiError(422, "INVALID_REQUEST", "Candle export is not enabled.", {"field": "include_candles"})
         body, media_type, extension = service.trading_funnel_export(
             trade_profile_id, from_value, to_value, symbol, format_name,
         )
