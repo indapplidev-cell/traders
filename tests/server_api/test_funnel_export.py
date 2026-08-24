@@ -98,8 +98,12 @@ def test_jsonl_is_profile_isolated_deterministic_complete_and_null_preserving():
     assert [row["market_analysis"]["symbol"] for row in rows] == ["BTCUSDT", "ETHUSDT"]
     assert all(row["provenance"]["trade_profile_id"] == "trade-15m-v1" for row in rows)
     assert rows[0]["provenance"]["export_schema_version"] == EXPORT_SCHEMA_VERSION
-    assert rows[1]["funnel_trace"]["paper_trade_plan"]["status"] == "NO_PLAN"
-    assert rows[1]["funnel_trace"]["quantity_approved"]["status"] == "NOT_REACHED"
+    assert set(rows[1]["funnel_trace"]) == {
+        "analysis", "setup", "strategy", "geometry", "cost", "risk",
+        "paper_plan", "final_approval", "paper_command", "position", "exit",
+    }
+    assert rows[1]["funnel_trace"]["paper_plan"]["status"] == "NO_PLAN"
+    assert rows[1]["funnel_trace"]["paper_command"]["status"] == "NOT_REACHED"
     assert rows[1]["geometry"]["final_stop"] == 99.25
     assert rows[1]["paper_outcome"]["position_id"] is None
     assert repo.calls[0][-1] == MAX_EXPORT_ROWS

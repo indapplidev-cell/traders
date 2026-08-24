@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Final
 
-from app.engine_observation.scalping_calibration import aggregate, export_record
+from app.engine_observation.scalping_calibration import _stage_flags, aggregate, export_record
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.i18n import CATALOG_VERSION
@@ -101,6 +101,77 @@ def _trace_status(stage: str, value: str, paper: Mapping[str, object]) -> str:
     return value
 
 
+def _canonical_trace(
+    source: Mapping[str, Any],
+    legacy_trace: Mapping[str, str],
+    stage_reasons: Mapping[str, str | None],
+    diagnostic: Mapping[str, Any],
+    outcome: Mapping[str, object],
+) -> dict[str, dict[str, object]]:
+    """Project the persisted pipeline onto the stable analytics stage contract."""
+    flags = _stage_flags(source)
+    legacy_by_stage = {
+        "analysis": "ANALYSIS",
+        "setup": "STRUCTURAL_SETUP",
+        "strategy": "STRATEGY_ELIGIBLE",
+        "risk": "RISK_APPROVED",
+        "paper_plan": "PAPER_TRADE_PLAN",
+        "final_approval": "FINAL_APPROVAL",
+    }
+    flag_by_stage = {
+        "analysis": "analysis", "setup": "structural_setup",
+        "strategy": "strategy_admitted", "geometry": "geometry_valid",
+        "cost": "net_cost_viable", "risk": "risk_admitted",
+        "paper_plan": "paper_plan", "final_approval": "final_approval",
+        "paper_command": "paper_command", "position": "position", "exit": "exit",
+    }
+    reason_by_stage: dict[str, str | None] = {
+        name: stage_reasons.get(legacy) for name, legacy in legacy_by_stage.items()
+    }
+    diagnostic_reason = _safe_reason(
+        diagnostic.get("rejection_reason") or diagnostic.get("raw_reason")
+    )
+    rejection_stage = str(diagnostic.get("rejection_stage") or "").upper()
+    if rejection_stage in {"CAUSAL_INVALIDATION", "ATR_BUFFER", "STOP_ENVELOPE", "CAUSAL_TARGET", "GEOMETRY"}:
+        reason_by_stage["geometry"] = diagnostic_reason
+    if rejection_stage in {"COST", "ECONOMICS", "NET_COST"}:
+        reason_by_stage["cost"] = diagnostic_reason
+
+    output: dict[str, dict[str, object]] = {}
+    prior_reached = True
+    for name in (
+        "analysis", "setup", "strategy", "geometry", "cost", "risk",
+        "paper_plan", "final_approval", "paper_command", "position", "exit",
+    ):
+        passed = bool(flags[flag_by_stage[name]])
+        legacy_name = legacy_by_stage.get(name)
+        legacy_status = legacy_trace.get(legacy_name, "NOT_REACHED") if legacy_name else None
+        if name == "analysis" and legacy_status == "ERROR":
+            status = "ERROR"
+        elif passed:
+            status = "APPROVED"
+        elif legacy_status in {"DEFERRED", "PENDING"}:
+            status = "WAIT"
+        elif name == "paper_plan" and legacy_status == "REJECTED":
+            status = "NO_PLAN"
+        elif legacy_status in {"REJECTED", "ERROR"}:
+            status = legacy_status
+        elif name == "geometry" and prior_reached and diagnostic:
+            status = "REJECTED"
+        elif name == "cost" and prior_reached and diagnostic.get("economic_gate_pass") is False:
+            status = "REJECTED"
+        else:
+            status = "NOT_REACHED"
+        reached = status != "NOT_REACHED"
+        reason = reason_by_stage.get(name)
+        output[name] = {
+            "reached": reached, "status": status,
+            "reason_code": reason, "raw_reason": reason,
+        }
+        prior_reached = prior_reached and status == "APPROVED"
+    return output
+
+
 def build_export_record(
     run: OnlinePipelineRun,
     result: OnlinePipelineResultRow | None,
@@ -159,11 +230,7 @@ def build_export_record(
             "volume_state": analysis.get("volume_state"),
         },
         "multi_tf_closed_until_ms": _closed_context(result),
-        "funnel_trace": {stage.lower(): {
-            "reached": trace.get(stage) != "NOT_REACHED",
-            "status": _trace_status(stage, trace.get(stage, "NOT_REACHED"), paper),
-            "reason_code": stage_reasons.get(stage), "raw_reason": stage_reasons.get(stage),
-        } for stage in STAGES},
+        "funnel_trace": _canonical_trace(source, trace, stage_reasons, diagnostic, outcome),
         "setup": {
             "setup_type": setup.get("setup_type"), "status": setup.get("setup_status") or setup.get("status"),
             "direction": setup.get("direction_hint"), "quality": setup.get("quality"),
