@@ -33,6 +33,8 @@ from app.engine_orchestrator.runtime_parameters import (
     RuntimeProfileParameters,
     resolve_runtime_parameters,
 )
+from app.engine_paper.paper_runner import PaperRunner
+from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
 from app.engine_analysis.analysis_contract import AnalysisWindowConfig
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 from tests.engine_orchestrator_01_helpers import BOUNDARY, CandleRepo, component, outputs
@@ -138,6 +140,8 @@ def test_default_5m_components_receive_one_authoritative_object_stage_by_stage()
     assert runner.risk_runner.policy.runtime_parameters is parameters
     assert runner.strategy_runner.strategy_filter.config.minimum_allowed_quality == "ACCEPTABLE"
     assert runner.risk_runner.policy.config.minimum_strategy_score == 65.0
+    assert isinstance(runner.paper_runner, ScalpingPaperRunner)
+    assert runner.paper_runner.runtime_parameters is parameters
 
 
 def test_15m_effective_parameters_preserve_pre_remediation_engine_defaults():
@@ -157,6 +161,7 @@ def test_15m_effective_parameters_preserve_pre_remediation_engine_defaults():
     assert runner.strategy_runner.strategy_filter.config.minimum_allowed_quality == "ACCEPTABLE"
     assert runner.risk_runner.policy.config.policy_version == "ENGINE_RISK_01_RESEARCH_POLICY_V1"
     assert runner.risk_runner.policy.config.minimum_strategy_score == 65.0
+    assert type(runner.paper_runner) is PaperRunner
 
 
 def test_5m_startup_order_validates_then_acquires_before_daemon_loop():

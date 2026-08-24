@@ -5,6 +5,7 @@ import pytest
 
 from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
+from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
 from app.engine_paper.scalping_shadow import (
     CausalTarget,
     ShadowCostInputs,
@@ -249,3 +250,81 @@ def test_existing_public_client_boundary_provides_spread_and_depth_without_order
     assert depth.buy_vwap == Decimal("100.1333333333333333333333333")
     assert depth.sell_vwap == Decimal("99.86666666666666666666666667")
     assert depth.depth_impact_bps > 0
+
+
+class CostSource:
+    def __init__(self, value):
+        self.value = value
+        self.calls = []
+
+    def load(self, symbol, entry, *, safety_margin_bps):
+        self.calls.append((symbol, entry, safety_margin_bps))
+        return self.value
+
+
+def production_parameters():
+    return SimpleNamespace(minimum_planned_rr=1.5, cost_safety_margin_bps=3.0)
+
+
+def admitted_5m_risk(**context_changes):
+    context = {
+        "confirmation_close": 100.0,
+        "causal_support_level": 99.70,
+        "causal_resistance_level": 102.0,
+        "causal_invalidation_level": 99.70,
+        "causal_target_level": 102.0,
+        "nearest_opposite_level": 102.0,
+        "atr_value": 0.10,
+    }
+    context.update(context_changes)
+    return RiskPolicy(runtime_parameters=SimpleNamespace(
+        profile_id="trade-5m-v1", parameter_set_id="5m", risk_shadow_policy_id="risk",
+        minimum_planned_rr=1.5,
+    )).evaluate(strategy_decision(
+        decision_id="strategy:5m:production", timeframe="5m", context=context,
+    ))
+
+
+def test_production_5m_runner_enforces_cost_gate_and_preserves_diagnostics():
+    source = CostSource(costs())
+    plan = ScalpingPaperRunner(
+        runtime_parameters=production_parameters(), cost_source=source
+    ).process_risk_decision(admitted_5m_risk())
+    diagnostic = plan.paper_context["scalping_geometry_diagnostics"]
+
+    assert plan.paper_status == "PAPER_PLAN_READY"
+    assert plan.planned_rr == diagnostic["gross_rr"]
+    assert diagnostic["net_rr"] > 1.5
+    assert diagnostic["break_even_win_rate"] is not None
+    assert diagnostic["rr_cohorts_gross"] == {"1.00": True, "1.20": True, "1.50": True}
+    assert diagnostic["rr_cohorts_net"] == {"1.00": True, "1.20": True, "1.50": True}
+    assert plan.paper_context["economic_gate_enabled"] is True
+    assert len(source.calls) == 1
+
+
+def test_production_5m_runner_fails_closed_when_public_cost_data_is_missing():
+    source = CostSource(costs(spread_bps=None, spread_authoritative=False))
+    plan = ScalpingPaperRunner(
+        runtime_parameters=production_parameters(), cost_source=source
+    ).process_risk_decision(admitted_5m_risk())
+    diagnostic = plan.paper_context["scalping_geometry_diagnostics"]
+
+    assert plan.paper_status == "NO_PLAN"
+    assert diagnostic["rejection_reason"] == R.PAPER_NO_PLAN_MISSING_AUTHORITATIVE_SPREAD
+    assert diagnostic["entry"] == 100.0
+    assert diagnostic["final_stop"] is not None
+    assert diagnostic["causal_target"] == 102.0
+    assert diagnostic["spread_bps"] is None
+
+
+def test_production_5m_runner_does_not_query_costs_before_geometry_is_valid():
+    source = CostSource(costs())
+    plan = ScalpingPaperRunner(
+        runtime_parameters=production_parameters(), cost_source=source
+    ).process_risk_decision(admitted_5m_risk(causal_support_level=99.0, causal_invalidation_level=99.0))
+    diagnostic = plan.paper_context["scalping_geometry_diagnostics"]
+
+    assert plan.paper_status == "NO_PLAN"
+    assert diagnostic["rejection_reason"] == R.PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE
+    assert diagnostic["final_stop"] < diagnostic["causal_invalidation"]
+    assert source.calls == []

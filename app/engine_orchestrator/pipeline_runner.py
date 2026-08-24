@@ -19,6 +19,7 @@ from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineSta
 from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters, json_safe
 from app.engine_orchestrator.trade_profile import TradeProfileMode
 from app.engine_paper.paper_runner import PaperRunner
+from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
 from app.engine_risk.risk_runner import RiskRunner
 from app.engine_risk.risk_config import RiskConfig
 from app.engine_risk.risk_policy import RiskPolicy
@@ -127,7 +128,11 @@ class PipelineRunner:
             ),
             runtime_parameters=self.runtime_parameters,
         )
-        self.paper_runner = paper_runner or PaperRunner()
+        self.paper_runner = paper_runner or (
+            ScalpingPaperRunner(runtime_parameters=self.runtime_parameters)
+            if config.trade_profile_id == "trade-5m-v1"
+            else PaperRunner()
+        )
 
     @staticmethod
     def _context_boundary(timeframe: str, closed_until_ms: int) -> int:

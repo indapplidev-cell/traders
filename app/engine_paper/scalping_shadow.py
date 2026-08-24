@@ -1,4 +1,4 @@
-"""Causal 5m geometry and economics for isolated/shadow evaluation only.
+"""Causal 5m geometry and economics for shadow cohorts and production gating.
 
 The module has no command, order, fill, position, or private API dependency.
 """
@@ -41,7 +41,7 @@ class ShadowCostInputs:
     safety_margin_bps: float = 3.0
     spread_bps: float | None = None
     depth_impact_bps: float | None = None
-    fee_source: str = "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION"
+    fee_source: str = "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
     spread_source: str | None = None
     depth_impact_source: str | None = None
     spread_authoritative: bool = False
