@@ -104,5 +104,40 @@ def build_report() -> dict[str, object]:
     }
 
 
+def compact_markdown(report: dict[str, object]) -> str:
+    """Render 36 geometry rows; each row contains all three RR classifications."""
+    rows = report["configurations"]
+    grouped: dict[tuple[float, float, float], list[dict[str, object]]] = {}
+    for row in rows:  # type: ignore[assignment]
+        key = (
+            float(row["atr_buffer_multiplier"]), float(row["stop_envelope_bps"]),
+            float(row["minimum_target_diagnostic_bps"]),
+        )
+        grouped.setdefault(key, []).append(row)
+    lines = [
+        "| ATR | Env bps | Target bps | Geometry | Wide | Missing | Cost | Gross RR 1/1.2/1.5 | Net RR 1/1.2/1.5 | Valid/final | Med stop/P90/target/gross/net/edge/BE |",
+        "|---:|---:|---:|---:|---:|---:|---:|---|---|---|---|",
+    ]
+    def fmt(value: object) -> str:
+        return "NA" if value is None else f"{float(value):.4f}"
+    for key, values in grouped.items():
+        values.sort(key=lambda item: float(item["rr_shadow_threshold"]))
+        base = values[0]
+        gross = "/".join(str(item["gross_rr_ge_threshold"]) for item in values)
+        net = "/".join(str(item["net_rr_ge_threshold"]) for item in values)
+        stats = "/".join(fmt(base[name]) for name in (
+            "median_stop_distance_bps", "p90_stop_distance_bps",
+            "median_target_distance_bps", "median_gross_rr", "median_net_rr",
+            "median_expected_net_edge_bps", "median_break_even_win_rate",
+        ))
+        lines.append(
+            f"| {key[0]:.2f} | {key[1]:.0f} | {key[2]:.0f} | "
+            f"{base['geometry_valid']} | {base['stop_too_wide']} | "
+            f"{base['missing_target']} | {base['cost_gate_passed']} | {gross} | {net} | "
+            f"{base['valid_plans']}/{base['final_shadow_approvals']} | {stats} |"
+        )
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     print(json.dumps(build_report(), indent=2, sort_keys=True))
