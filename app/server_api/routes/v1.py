@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Path, Query, Response
 
 from app.server_api.schemas.models import (
     AnalysisEnvelope,
@@ -76,6 +76,27 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
         ] = "trade-15m-v1",
     ) -> TradingFunnelEnvelope:
         return service.trading_funnel(trade_profile)
+
+    @router.get(
+        "/trading/funnel/export", operation_id="exportTradingFunnel",
+        responses={422: {"model": ErrorEnvelope}, 500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}},
+    )
+    def export_trading_funnel(
+        trade_profile_id: Annotated[Literal["trade-15m-v1", "trade-5m-v1"], Query()],
+        from_value: Annotated[str, Query(alias="from")],
+        to_value: Annotated[str, Query(alias="to")],
+        format_name: Annotated[Literal["jsonl", "csv", "summary-json", "summary-md"], Query(alias="format")] = "jsonl",
+        symbol: SymbolFilter = None,
+        include_candles: Annotated[Literal[False], Query()] = False,
+    ) -> Response:
+        del include_candles
+        body, media_type, extension = service.trading_funnel_export(
+            trade_profile_id, from_value, to_value, symbol, format_name,
+        )
+        return Response(
+            content=body, media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="trading-funnel-{trade_profile_id}.{extension}"'},
+        )
 
     @router.get("/markets/{symbol}", response_model=MarketDetailEnvelope, operation_id="getMarket", responses=error_responses)
     def get_market(symbol: SymbolPath) -> MarketDetailEnvelope:

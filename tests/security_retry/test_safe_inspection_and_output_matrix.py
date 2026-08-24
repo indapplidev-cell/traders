@@ -237,9 +237,9 @@ def test_safe_http_inspector_returns_status_only(repeat: int) -> None:
     assert "http://127.0.0.1" not in result.render()
 
 
-def test_safe_route_inspector_has_twenty_seven_source_get_and_zero_write_routes() -> None:
+def test_safe_route_inspector_has_twenty_eight_source_get_and_zero_write_routes() -> None:
     result = inspect_tracked_route_counts()
-    assert result.get_routes == 27
+    assert result.get_routes == 28
     assert result.write_routes == 0
 
 

@@ -39,6 +39,14 @@ from app.server_api.schemas.models import (
 )
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 from app.server_api.settings import ApiSettings
+from app.server_api.funnel_export import (
+    EXPORT_FORMATS,
+    MAX_EXPORT_RANGE_MS,
+    MAX_EXPORT_ROWS,
+    build_export_record,
+    build_summary,
+    render_export,
+)
 
 
 def _utc_now() -> datetime:
@@ -168,6 +176,46 @@ class ApiQueryService:
             generated_at=utc_text(generated),
             data=projected,
         )
+
+    def trading_funnel_export(
+        self,
+        trade_profile_id: str,
+        from_value: str,
+        to_value: str,
+        symbol: str | None,
+        format_name: str,
+    ) -> tuple[bytes, str, str]:
+        repository = self._repos().funnel
+        if repository is None:
+            raise ApiError(503, "SERVICE_NOT_CONFIGURED", "Trading funnel projection is not configured.")
+        from_at = _parse_timestamp(from_value, "from")
+        to_at = _parse_timestamp(to_value, "to")
+        if from_at is None or to_at is None or from_at >= to_at:
+            raise ApiError(422, "INVALID_REQUEST", "The request parameters are invalid.", {"field": "from"})
+        from_ms, to_ms = int(from_at.timestamp() * 1000), int(to_at.timestamp() * 1000)
+        if to_ms - from_ms > MAX_EXPORT_RANGE_MS:
+            raise ApiError(422, "EXPORT_RANGE_EXCEEDED", "The export range exceeds the safe maximum.")
+        if format_name not in EXPORT_FORMATS:
+            raise ApiError(422, "INVALID_REQUEST", "The request parameters are invalid.", {"field": "format"})
+        pairs = repository.export_rows(trade_profile_id, from_ms, to_ms, symbol, MAX_EXPORT_ROWS)
+        if len(pairs) > MAX_EXPORT_ROWS:
+            raise ApiError(422, "EXPORT_ROW_LIMIT_EXCEEDED", "The export row limit was exceeded.")
+        pairs = tuple(sorted(
+            pairs,
+            key=lambda pair: (pair[0].closed_until_ms, pair[0].symbol, pair[0].id, pair[1].id if pair[1] is not None else -1),
+        ))
+        outcome_loader = getattr(repository, "export_outcomes", None)
+        outcomes = outcome_loader(tuple(pair[0].run_id for pair in pairs)) if outcome_loader is not None else {}
+        generated_at_ms = int(self._clock().timestamp() * 1000)
+        records = [build_export_record(
+            run, result, generated_at_ms=generated_at_ms, from_ms=from_ms, to_ms=to_ms,
+            outcome=outcomes.get(run.run_id),
+        ) for run, result in pairs]
+        summary = build_summary(
+            pairs, records, profile_id=trade_profile_id, from_ms=from_ms, to_ms=to_ms,
+            expected_symbols=1 if symbol else 10,
+        )
+        return render_export(records, summary, format_name)
 
     def market(self, symbol: str) -> MarketDetailEnvelope:
         record = self._repos().markets.get_market(symbol)

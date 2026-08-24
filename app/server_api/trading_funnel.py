@@ -33,6 +33,11 @@ from app.server_api.schema_compatibility import (
     ReadonlySchemaCapability,
     ReadonlySchemaCapabilityBridge,
 )
+from app.db.paper_models import (
+    PaperExecutionCommandRecord,
+    PaperOrderRecord,
+    PaperPositionRecord,
+)
 
 
 PROJECTION_VERSION: Final = "trading-funnel-v1"
@@ -452,6 +457,78 @@ class TradingFunnelReadRepository:
                 if classified.candidate is not None:
                     eligible_by_run[classified.source_run_id] = classified.candidate
         return build_projection(rows, universe, now_ms, eligible_by_run, profile.trade_profile_id)
+
+    def export_rows(
+        self,
+        trade_profile_id: str,
+        from_ms: int,
+        to_ms: int,
+        symbol: str | None,
+        limit: int,
+    ) -> tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None], ...]:
+        """Load one deterministic bounded export page without cache or per-row SQL."""
+        profile = resolve_trade_profile(trade_profile_id)
+        universe = self._universe_source()
+        predicates = (
+            OnlinePipelineRun.trade_profile_id == profile.trade_profile_id,
+            OnlinePipelineRun.primary_timeframe == profile.trigger_timeframe,
+            OnlinePipelineRun.symbol.in_(universe.symbols),
+            OnlinePipelineRun.closed_until_ms >= from_ms,
+            OnlinePipelineRun.closed_until_ms <= to_ms,
+        )
+        if symbol is not None:
+            predicates += (OnlinePipelineRun.symbol == symbol,)
+        statement = (
+            select(OnlinePipelineRun, OnlinePipelineResultRow)
+            .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
+            .where(*predicates)
+            .order_by(
+                OnlinePipelineRun.closed_until_ms.asc(), OnlinePipelineRun.symbol.asc(),
+                OnlinePipelineRun.id.asc(), OnlinePipelineResultRow.id.asc(),
+            )
+            .limit(limit + 1)
+        )
+        with self._session_factory() as session:
+            return tuple(session.execute(statement))
+
+    def export_outcomes(self, run_ids: tuple[str, ...]) -> dict[str, dict[str, object]]:
+        """Bulk-load PAPER lifecycle facts for the already bounded run identities."""
+        if not run_ids:
+            return {}
+        statement = (
+            select(
+                PaperExecutionCommandRecord.pipeline_run_id,
+                PaperExecutionCommandRecord.command_id,
+                PaperPositionRecord,
+            )
+            .outerjoin(
+                PaperOrderRecord,
+                (PaperOrderRecord.command_id == PaperExecutionCommandRecord.command_id)
+                & (PaperOrderRecord.order_role == "ENTRY"),
+            )
+            .outerjoin(PaperPositionRecord, PaperPositionRecord.entry_order_id == PaperOrderRecord.order_id)
+            .where(PaperExecutionCommandRecord.pipeline_run_id.in_(run_ids))
+            .order_by(PaperExecutionCommandRecord.pipeline_run_id.asc())
+            .limit(len(run_ids))
+        )
+        with self._session_factory() as session:
+            rows = tuple(session.execute(statement))
+        outcomes: dict[str, dict[str, object]] = {}
+        for run_id, command_id, position in rows:
+            outcomes[run_id] = {
+                "command_id": command_id,
+                "position_id": None if position is None else position.position_id,
+                "entry_time_utc": None if position is None else position.opened_at,
+                "exit_time_utc": None if position is None else position.closed_at,
+                "holding_time_seconds": (
+                    None if position is None or position.closed_at is None
+                    else (position.closed_at - position.opened_at).total_seconds()
+                ),
+                "exit_reason": None if position is None else position.reason_code,
+                "net_pnl": None if position is None else position.realized_pnl,
+                "fees": None if position is None else position.entry_fees + position.exit_fees,
+            }
+        return outcomes
 
 
 def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None], ...], universe: TradingUniverseVersion,

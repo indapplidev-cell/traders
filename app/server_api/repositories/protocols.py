@@ -60,6 +60,11 @@ class TradingUniverseReadRepository(Protocol):
 
 class TradingFunnelReadRepository(Protocol):
     def project(self, now_ms: int) -> dict[str, object]: ...
+    def export_rows(
+        self, trade_profile_id: str, from_ms: int, to_ms: int,
+        symbol: str | None, limit: int,
+    ) -> tuple[tuple[object, object | None], ...]: ...
+    def export_outcomes(self, run_ids: tuple[str, ...]) -> dict[str, dict[str, object]]: ...
 
 
 class PaperReportingReadRepository(Protocol):

@@ -188,7 +188,13 @@ def _stage_flags(row: Mapping[str, Any]) -> dict[str, bool]:
             "position": bool(row.get("paper_position_id")), "exit": row.get("paper_outcome") == "CLOSED"}
 
 
-def aggregate(rows: Iterable[Mapping[str, Any]], *, expected_symbols: int = 10) -> dict[str, Any]:
+def aggregate(
+    rows: Iterable[Mapping[str, Any]],
+    *,
+    expected_symbols: int = 10,
+    boundary_interval_ms: int = 300_000,
+    include_calibration_cohorts: bool = True,
+) -> dict[str, Any]:
     source = sorted((dict(row) for row in rows), key=lambda row: (int(row["boundary"]), str(row.get("symbol"))))
     if not source:
         raise ValueError("calibration sample is empty")
@@ -244,7 +250,7 @@ def aggregate(rows: Iterable[Mapping[str, Any]], *, expected_symbols: int = 10) 
         signature = sha256(raw.encode()).hexdigest()[:20]
         key = (str(record["symbol"]), str(record["direction"]))
         prior = signatures.get(key)
-        if prior and record["boundary"] - prior[0] == 300_000 and prior[1] == signature:
+        if prior and record["boundary"] - prior[0] == boundary_interval_ms and prior[1] == signature:
             repeats += 1
         else:
             unique.add((key, signature, record["boundary"]))
@@ -337,10 +343,13 @@ def aggregate(rows: Iterable[Mapping[str, Any]], *, expected_symbols: int = 10) 
                        "approval_rate": sum(v[1]["final_approval"] for v in values) / len(values)}
                 for name, values in sorted(buckets.items())}
 
-    cohorts = cohort_matrix()
+    cohorts = cohort_matrix() if include_calibration_cohorts else {
+        "atr_buffer": {}, "stop_envelope": {}, "minimum_target": {},
+        "same_source_candidate_count": 0,
+    }
     return {
         "observation_start_ms": boundaries[0], "observation_end_ms": boundaries[-1],
-        "duration_seconds": (boundaries[-1] - boundaries[0] + 300_000) // 1000,
+        "duration_seconds": (boundaries[-1] - boundaries[0] + boundary_interval_ms) // 1000,
         "parameter_set_id": next(iter(parameter_sets)), "boundaries_observed": len(boundaries),
         "expected_symbol_evaluations": len(boundaries) * expected_symbols, "actual_symbol_evaluations": len(source),
         "sample_completeness": len(source) / (len(boundaries) * expected_symbols),

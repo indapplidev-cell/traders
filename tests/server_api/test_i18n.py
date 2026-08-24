@@ -71,7 +71,7 @@ def test_readonly_i18n_routes_and_unknown_locale():
 def test_i18n_adds_exactly_two_get_routes_and_no_write_or_db_dependency():
     app = create_app()
     paths = app.openapi()["paths"]
-    assert len(paths) == 27
+    assert len(paths) == 28
     assert all(set(operations).intersection({"get", "post", "put", "patch", "delete"}) == {"get"} for operations in paths.values())
     assert {path for path in paths if "/i18n/" in path} == {
         "/api/v1/i18n/manifest", "/api/v1/i18n/catalog/{locale}",
