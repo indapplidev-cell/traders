@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 7b23b6107f3f0f703ed91acf4e85220fe4853f6d
+STATUS_AS_OF_COMMIT = 68d0be8db82d3c45857025c73701f9b212a5bace
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-24T16:24:18Z
-RECONCILED_BY_TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_03
-FILES_CHANGED = FINAL_DECISION.md, docs/audits/TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_03_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-24T17:08:16Z
+RECONCILED_BY_TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_03_SCHEMA_0018_COMPATIBLE_RETRY_01
+FILES_CHANGED = FINAL_DECISION.md, docs/audits/TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_03_SCHEMA_0018_COMPATIBLE_RETRY_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = RECOVERY_03_BLOCKED_AT_EXACT_SCHEMA_BASELINE_PRODUCTION0018_REQUIRED0017_ZERO_RECOVERY_MUTATIONS_WAL_FALSE_PITR_FALSE_LINEAGE_VALID_NO_PHYSICAL_GAP_PREEXISTING_5M_PRODUCTION_SEARCH_UNCHANGED_LIVE_OFF
+STATUS_CONFIDENCE = RECOVERY_SCHEMA0018_PASS_WAL_TRUE_PITR_TRUE_LINEAGE_UNCHANGED_VALID_NO_PHYSICAL_GAP_ACK_OWNER_HEALTHY_BACKLOG_PENDING_UNRESOLVED_ZERO_15M_5M_CONTINUITY_PASS_LIVE_OFF
 
 # Состояние проекта traders-ml
 
@@ -24,41 +24,45 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_IMAGEEC0F6ECA_HEALTHY_RESTART0_SOURCEE3842342_ON0018_27_GET_0_WRITE_1CPU_512MIB_CONTROL_IMAGEA4664FF5_HEALTHY_SOURCE9FE3A4F_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_C0E92A2A_IMPLEMENTED_AND_DEPLOYED_27_GET_0_WRITE
-CURRENT_STAGE = WAL_ACK_ARCHIVE_RECOVERY_BLOCKED_AT_EXACT_SCHEMA_BASELINE_BEFORE_DIAGNOSTICS_OR_MUTATION
-CURRENT_BLOCKER = RECOVERY_03_REQUIRED_SCHEMA0017_BUT_AUTHORITATIVE_PRODUCTION_SCHEMA_IS0018_REQUIRE_SCHEMA_COMPATIBLE_AUTHORIZATION
-BACKGROUND_TIMED_GATE = FAIL_WAL_FALSE_PITR_FALSE_LINEAGE_VALID_NO_PHYSICAL_GAP_ACK_BACKLOG_PENDING_UNPROVEN
+CURRENT_STAGE = 5M_SCALPING_SOURCE_INTEGRATION_ACCEPTANCE_RETRY_WITH_ACTUAL_RUNTIME_RECONCILIATION
+CURRENT_BLOCKER = NONE_FOR_WAL_PITR_ACK_ARCHIVE_READINESS
+BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_NO_PHYSICAL_GAP_BACKLOG_PENDING_UNRESOLVED_ZERO
 ```
 
-## WAL/PITR/ACK/archive readiness recovery 03
+## WAL/PITR/ACK/archive readiness recovery 03 schema-0018 retry
 
 ```text
-TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_03
-RESULT = BLOCKED_AT_MANDATORY_BASELINE
-PROJECT_STATE_AUDIT_COMMIT = 7b23b6107f3f0f703ed91acf4e85220fe4853f6d
-BLOCKER_CODE = WAL_ACK_ARCHIVE_RECOVERY_03_BASELINE_NOT_SAFE
-SECONDARY_BLOCKER = PRODUCTION_ALEMBIC_HEAD_0018_CONFLICTS_WITH_REQUIRED_EXACT_0017
+TASK = TRADERS_WAL_ACK_ARCHIVE_READINESS_RECOVERY_03_SCHEMA_0018_COMPATIBLE_RETRY_01
+RESULT = PASS_COMPLETED
+PROJECT_STATE_AUDIT_COMMIT = 68d0be8db82d3c45857025c73701f9b212a5bace
+BLOCKER_CODE = NONE
+SECONDARY_BLOCKER = NONE
 PRODUCTION_SCHEMA = 0018_promote_5m_production_search
-TASK_REQUIRED_SCHEMA = 0017_parallel_trade_profiles
-WAL_PITR = FALSE_FALSE
+WAL_PITR = TRUE_TRUE
 LINEAGE_VALID = TRUE
 PHYSICAL_WAL_GAP = FALSE
-RECOVERY_AUTHORITATIVE_QUEUE_AND_OWNER_STATE = NOT_EVALUATED_AFTER_MANDATORY_SCHEMA_STOP
-RECOVERY_MUTATION_TARGET_COUNT = 0
-ACK_DAEMON_START_COUNT_BY_TASK = 0
+PITR_LINEAGE_ID = base-20260811T075419Z-f179b4e1_UNCHANGED
+RECOVERY_ROOT_CAUSE = DEAD_PID8872_STALE_LOCK_STALE_HEARTBEAT_ZERO_VALID_OWNER
+RECOVERY_MUTATION_TARGET_COUNT = 144_CHECKSUM_VERIFIED_ATOMIC_ACK
+ACK_DAEMON_START_COUNT_BY_TASK = 1_VALID_OWNER_PID4912
+BACKLOG_PENDING_UNRESOLVED = 0_0_0
+IDEMPOTENT_RETRY_ATTEMPTS = 0
 PROTECTED_RESTART_DELTAS = ZERO
 SCHEMA_PRIVILEGE_BUSINESS_CONTROL_TRADING_MUTATIONS = ZERO
-PRODUCTION_5M = PREEXISTING_PRODUCTION_SEARCH_UNCHANGED
+PRODUCTION_15M = CONTINUITY_PASS_BOUNDARY1787590800000_BATCH10_UNCHANGED
+PRODUCTION_5M = PREEXISTING_PRODUCTION_SEARCH_CONTINUITY_PASS_BOUNDARY1787591100000_BATCH10_UNCHANGED
 PAPER_COMMAND_ORDER_FILL_POSITION_BY_TASK = 0_0_0_0
 LIVE = DISABLED_UNCHANGED
-NEXT_ACTION = AUTHORIZE_SCHEMA0018_COMPATIBLE_WAL_ACK_ARCHIVE_RECOVERY_OR_EXPLICITLY_REVISE_EXACT_SCHEMA_PREREQUISITE
+NEXT_ACTION = TRADERS_5M_SCALPING_GEOMETRY_RISK_QUOTA_AND_NET_COST_REMEDIATION_01_SOURCE_INTEGRATION_ACCEPTANCE_RETRY_01
 ```
 
-The exact production schema prerequisite failed before authoritative ACK-owner,
-queue, archive-inventory, integrity, daemon, drain, idempotency, or recovery
-test phases. The task did not reuse prior incident assumptions and did not make
-a partial PASS claim. Read-only runtime state showed both 15m and pre-existing
-5m `PRODUCTION_SEARCH` active, zero PAPER command/order/fill/position rows,
-Control ARMED generation 6, the bounded canary still waiting, and LIVE off.
+The schema-compatible retry identified the project-native recovery source and
+proved that the prior PID/lock/heartbeat named no live owner. All 143 initial
+pending objects and one newly arriving legitimate WAL object were contiguous,
+16 MiB and checksum-valid. One canonical owner drained them on the existing
+lineage; repeated diagnostics and an idempotent retry remain ready. Both 15m
+and pre-existing active 5m advanced naturally with exact batch 10 and unchanged
+parameterization; Control stayed ARMED generation 6 and LIVE stayed off.
 
 ## 5m scalping geometry, quota and net-cost source remediation
 
@@ -5052,7 +5056,7 @@ LIVE.
 |---|---:|---|
 | Online analytics/paper pipeline | ≈99% deployed / dual-profile execution competition accepted | Schema 0018 is deployed; both 15m and 5m run `PRODUCTION_SEARCH` through Analysis-to-Winner with command/position authority. Natural 5m production persistence and a complete 10/10 cycle are proven; the shared selector has no current eligible winner |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate FAIL / recovery blocked at prerequisite | Fresh bounded projection shows `wal_ready=false`, `pitr_ready=false`, lineage valid and no physical gap. Recovery 03 stopped because authoritative production schema is 0018 while its authorization required exact 0017; ACK-owner and queue internals were not reclassified from bounded DTOs or older incidents |
+| Production backup/PITR | Current gate PASS on schema 0018 | One canonical ACK owner is healthy; the existing lineage is unchanged and contiguous with `wal_ready=true`, `pitr_ready=true`, no physical gap, and backlog/pending/unresolved `0/0/0`. The schema-compatible retry verified and atomically ACKed 144 WAL objects |
 | Readonly Server API | Healthy dual-profile image on production 0018 | Image `sha256:537145e3...` has exact source-identity match, health PASS, 27 GET and zero write routes. Both 15m and 5m projections are current, complete and executable for PAPER |
 | Desktop Readonly client | Production 15m/5m and global health acceptance PASS | The real `ServerProvider` parses health `OK` and the production 5m 10/10 response. Health refresh is page-independent, so opening Funnel no longer leaves the connection banner `Unknown` |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
@@ -5069,12 +5073,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = AUTHORIZE_SCHEMA0018_COMPATIBLE_WAL_ACK_ARCHIVE_RECOVERY_OR_EXPLICITLY_REVISE_EXACT_SCHEMA_PREREQUISITE
+RECOMMENDED_NEXT_TASK = TRADERS_5M_SCALPING_GEOMETRY_RISK_QUOTA_AND_NET_COST_REMEDIATION_01_SOURCE_INTEGRATION_ACCEPTANCE_RETRY_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
-CURRENT_WAL_ACK_ARCHIVE_RECOVERY = RECOVERY_03_BLOCKED_AT_SCHEMA_BASELINE_ZERO_RECOVERY_MUTATIONS
-CURRENT_WAL_PITR_GATE = FAIL_FRESH_BOUNDED_PROJECTION_WAL_FALSE_PITR_FALSE_LINEAGE_VALID_NO_PHYSICAL_GAP_ACK_QUEUE_OWNER_INTERNALS_NOT_REREAD_AFTER_MANDATORY_SCHEMA_STOP
+CURRENT_WAL_ACK_ARCHIVE_RECOVERY = SCHEMA0018_COMPATIBLE_RETRY_PASS_ONE_HEALTHY_OWNER_144_VERIFIED_ACKS_ZERO_BACKLOG_PENDING_UNRESOLVED
+CURRENT_WAL_PITR_GATE = PASS_FRESH_PROJECTION_WAL_TRUE_PITR_TRUE_LINEAGE_UNCHANGED_VALID_NO_PHYSICAL_GAP
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -5138,10 +5142,12 @@ deepest-reason remediation. Three complete postdeploy cycles produced zero
 natural PAPER plans and zero quantity decisions, so the long-identity production
 quantity path remains unobserved rather than failed. No natural approval,
 command, position or closed trade has occurred. The 72-hour soak remains open
-and current Market Data is 60/60. The separate governed recovery started one
-valid checksum-verifying ACK owner and drained the task-start set of 47
-contiguous pending objects. The fresh projection now reports WAL/PITR ready,
-backlog/pending/unresolved `0/0/0`, the same lineage valid, and no physical gap.
+and current Market Data is 60/60. The schema-0018-compatible governed recovery
+proved the old PID/lock/heartbeat stale, started one valid checksum-verifying
+ACK owner, and drained 144 contiguous objects (143 at complete pre-repair
+inventory plus one legitimate arrival). The fresh projection reports WAL/PITR
+ready, backlog/pending/unresolved `0/0/0`, the same lineage valid, and no
+physical gap; the idempotent retry performed zero attempts.
 The historical 5m SHADOW sample remains preserved as provenance, but it is no
 longer the active runtime mode. The active 5m profile is now executable PAPER
 `PRODUCTION_SEARCH`, has persisted natural production cycles, and competes with
