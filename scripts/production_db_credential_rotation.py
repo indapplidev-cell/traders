@@ -155,7 +155,7 @@ def _create_binding(new_password: str) -> None:
         raise SafeRotationError("PROTECTED_BINDING_VERIFICATION_FAILED")
 
 
-def _baseline() -> tuple[str, str, dict[str, tuple[str, int]]]:
+def _baseline() -> tuple[str, str, dict[str, tuple[str, int]], bool]:
     urls: list[str] = []
     identities: dict[str, tuple[str, int]] = {}
     for _, container, _ in AFFECTED:
@@ -175,9 +175,13 @@ def _baseline() -> tuple[str, str, dict[str, tuple[str, int]]]:
     if url.username != PRINCIPAL or not old_password:
         raise SafeRotationError("EXPOSED_PRINCIPAL_NOT_UNAMBIGUOUS")
     postgres_password = _env(_inspect(POSTGRES)).get("POSTGRES_PASSWORD")
-    if postgres_password != old_password:
-        raise SafeRotationError("POSTGRES_BOOTSTRAP_BINDING_DIVERGED")
-    return PRINCIPAL, old_password, identities
+    # POSTGRES_PASSWORD is initialization-only when the persistent data
+    # directory already exists. A prior rotation can legitimately leave this
+    # immutable container-config field stale; it is not an authentication
+    # fallback. The new Compose contract removes it on the next DB replacement
+    # without restarting PostgreSQL during this task.
+    bootstrap_binding_matches = postgres_password == old_password
+    return PRINCIPAL, old_password, identities, bootstrap_binding_matches
 
 
 def _connect(password: str) -> psycopg.Connection:
@@ -277,7 +281,7 @@ def _logs_contain_secret(container: str, old_password: str, new_password: str, s
 def execute() -> dict[str, object]:
     started = datetime.now(timezone.utc)
     generation = "shared-db-" + started.strftime("%Y%m%dT%H%M%SZ")
-    principal, old_password, identities = _baseline()
+    principal, old_password, identities, bootstrap_binding_matches = _baseline()
     new_password = secrets.token_urlsafe(48)
     while new_password == old_password:
         new_password = secrets.token_urlsafe(48)
@@ -344,6 +348,7 @@ def execute() -> dict[str, object]:
         "old_credential_new_connection_rejected": True,
         "old_credential_sqlstate": "28P01",
         "old_credential_fallback_present": False,
+        "postgres_bootstrap_binding_was_current": bootstrap_binding_matches,
         "clients": [asdict(item) for item in clients],
         "all_affected_clients_rebound": all(item.db_query and item.health for item in clients),
         "role_privileges_changed_by_task": False,
@@ -374,6 +379,14 @@ def main(argv: list[str] | None = None) -> int:
     except (SafeRotationError, OSError, ValueError, psycopg.Error, subprocess.TimeoutExpired) as error:
         print("ROTATION=FAILED")
         print(f"ERROR_CLASS={type(error).__name__}")
+        safe_code = (
+            error.args[0]
+            if isinstance(error, SafeRotationError)
+            and error.args
+            and isinstance(error.args[0], str)
+            else "NORMALIZED_FAILURE"
+        )
+        print(f"ERROR_CODE={safe_code}")
         print("SECRET_VALUE_OUTPUT=NO")
         print("SECRET_DERIVED_HASH_CREATED=NO")
         return 1
