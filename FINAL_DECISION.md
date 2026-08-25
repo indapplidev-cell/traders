@@ -1,49 +1,40 @@
-# Final decision — arbitrary-range Funnel export timeout remediation
+# Final decision — 5m scalping analysis report export 01
+
+`TRADERS_5M_SCALPING_ANALYSIS_REPORT_EXPORT_01` completed with PASS for the
+reporting criterion. This verdict does not assert profitable trading.
+
+The stable Readonly API snapshot covers 2026-08-24T18:05:00Z through
+2026-08-25T07:45:00Z: 165 homogeneous 5m boundaries, 1,650 symbol evaluations,
+100% completeness, exact batches of ten, and zero missing/duplicate/cursor
+collisions. Nine bounded keyset pages were aggregated locally.
+
+The Funnel contains 170 structural setups, four strategy admits and four valid
+causal geometries. All four are consecutive observations of one SOLUSDT LONG
+opportunity. Gross RR median is 0.0433, expected net edge median is -24.9448
+bps, and RR 1.0/1.2/1.5 each pass 0. There are no plans, approvals, commands,
+positions or closed PAPER trades. Expert status is `NOT_READY`; profitability
+confidence is insufficient.
+
+Fresh post-commit safety evidence remains WAL/PITR true/true, lineage valid,
+physical gap false, backlog/pending/unresolved 0/0/0, Control ARMED generation
+6, LIVE disabled, schema 0018, and one 5m singleton owner. The Readonly runtime
+is healthy on the same container/image but its restart counter is now one;
+Docker reports exit code 0 and `OOMKilled=false`. This task issued no restart,
+recreate, Control, schema, trading, parameter, LIVE, or Binance order command.
 
 ```text
-TASK_STATUS = COMPLETED
-FINAL_VERDICT = PASS_TRADERS_DESKTOP_FUNNEL_ARBITRARY_RANGE_EXPORT_TIMEOUT_REMEDIATION_01_COMPLETED
-BLOCKER_CODE = NONE
-SECONDARY_BLOCKER = NONE
-STOP_CONDITION = NONE
-SERVER_SOURCE_COMMIT = 4d32db3c9c3f4b2b2de225468615e2903159a26a
-DESKTOP_SOURCE_COMMIT = 9983d8f039e5bb3bdd0db1d252dd9837fb4fa20c
-MOBILE_COMMIT = 013ff7327a3a2d2bfd9e1aa7b216bf6ccaa497db
-READONLY_CONTAINER = 7c9c376af2650eaa3332ebe237a739cd3dbe0ac6b9a8d1e08b2f8bd2732202be
-READONLY_IMAGE = sha256:4426ad3c4dd8cddbcfeec5eeca3fa6e99e42cf8645226a28fb0ac94fab721947
-READONLY_SOURCE = 4d32db3c9c3f4b2b2de225468615e2903159a26a
-ALEMBIC_VERSION = 0018_promote_5m_production_search
-READONLY_GET_WRITE = 28_0
-OBSERVER_PID = 23308_UNCHANGED
-OBSERVATION_AFTER = 132_OF144_BOUNDARIES_1320_OF1440_EVALUATIONS_EXACT10
-WAL_PITR = PASS_PASS_LINEAGE_VALID_NO_PHYSICAL_GAP_BACKLOG_PENDING_UNRESOLVED_ZERO
-CONTROL = ARMED_GENERATION6_UNCHANGED
-LIVE = DISABLED_UNCHANGED
+TASK_STATUS = PASS
+FINAL_VERDICT = PASS_COMPLETE_REPRODUCIBLE_HOMOGENEOUS_READONLY_REPORT
+EXPERT_STATUS = NOT_READY
+STATUS_AS_OF_COMMIT = 6a2df4ca70a0404978b1cb41cab0c4ffaa830a46
+DOCUMENTATION_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
+REPORT_FILE = D:\disk_E\game_projects\traders\evidence_inbox\TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md
+REPORT_FULL_SHA256 = aeb99e5fa77cd85137b3ea249ce9a80aac62c27abab5e929d4a2f2465f0fb4c4
+REPORT_BODY_SHA256 = 57854de94be5255882bd7e60e2bd508d2166afd89295af8851de1249efccaba5
+FOCUSED_TESTS = 16_PASSED
+PRODUCTION_5M_PARAMETER_CHANGES_BY_TASK = 0
+PRODUCTION_15M_PARAMETER_CHANGES_BY_TASK = 0
+PRODUCTION_TRADING_MUTATIONS_BY_TASK = 0
+BINANCE_ORDER_API_CALLS_BY_TASK = 0
 PUSHED = NO
-NEXT_ACTION = CONTINUE_TRADERS_5M_SCALPING_PRODUCTION_OBSERVATION_AND_CALIBRATION_BASELINE_01_UNTIL_144_HOMOGENEOUS_BOUNDARIES
-```
-
-The original desktop-provider 24-hour `trade-5m-v1` JSONL request reproduced
-as a 10.027-second read timeout with zero response bytes. The cause was the
-one-shot wide-row load/build/aggregate/serialize path, not N+1. The accepted
-path is now arbitrary-range, stable-snapshot keyset pagination with bounded
-200-row default pages (2000 maximum), no OFFSET, page-level retry, crash-safe
-resume, incremental JSONL/CSV, streaming presentation summary, `.part` fsync
-and atomic final replacement.
-
-Real production seven-day desktop loops completed 13,040 5m rows and 6,520
-15m rows across 99 pages with no server timeout, duplicate, gap or ordering
-drift. Production EXPLAIN measured 57.709 ms first-page and 22.809 ms keyset
-SQL, 185 KiB sort memory. Application peak allocation without page retention
-was 7.63 MiB. The measured wide-record page acceptance envelope is P95 <= 3s
-and max <= 6s; the unchanged per-page read timeout remains 10s.
-
-Only Readonly was replaced. The 5m/15m orchestrators, PostgreSQL, Market Data,
-Control and observer were not restarted. Full evidence is in
-`docs/audits/TRADERS_DESKTOP_FUNNEL_ARBITRARY_RANGE_EXPORT_TIMEOUT_REMEDIATION_01_FINAL.md`
-and the external evidence inbox copy. The external evidence SHA256 is resolved
-after the project-state audit commit and recorded in the final handoff.
-
-```text
-FILES_CHANGED = app/i18n/catalog.py, app/server_api/funnel_export.py, app/server_api/repositories/protocols.py, app/server_api/routes/v1.py, app/server_api/services/query_service.py, app/server_api/trading_funnel.py, tests/server_api/test_funnel_export.py, FINAL_DECISION.md, docs/audits/TRADERS_DESKTOP_FUNNEL_ARBITRARY_RANGE_EXPORT_TIMEOUT_REMEDIATION_01_FINAL.md, ../traders-client/src/traders_client/api_contract/protocol.py, ../traders-client/src/traders_client/application/app_controller.py, ../traders-client/src/traders_client/funnel_export.py, ../traders-client/src/traders_client/i18n/generated_bootstrap.json, ../traders-client/src/traders_client/providers/mock_provider.py, ../traders-client/src/traders_client/providers/server_provider.py, ../traders-client/src/traders_client/ui/funnel_export_dialog.py, ../traders-client/src/traders_client/ui/main_window.py, ../traders-client/src/traders_client/ui/trading_funnel_view.py, ../traders-client/tests/test_funnel_export.py, ../traders-client/client_status.md, online_trader.md
 ```
