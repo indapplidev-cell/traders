@@ -63,7 +63,11 @@ class TradingFunnelReadRepository(Protocol):
     def export_rows(
         self, trade_profile_id: str, from_ms: int, to_ms: int,
         symbol: str | None, limit: int,
+        after: tuple[int, str, str] | None = None,
     ) -> tuple[tuple[object, object | None], ...]: ...
+    def export_bounds(
+        self, trade_profile_id: str, symbol: str | None,
+    ) -> tuple[int | None, int | None]: ...
     def export_outcomes(self, run_ids: tuple[str, ...]) -> dict[str, dict[str, object]]: ...
 
 

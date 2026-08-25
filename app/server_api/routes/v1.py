@@ -86,12 +86,20 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
         trade_profile_id: Annotated[Literal["trade-15m-v1", "trade-5m-v1"], Query()],
         from_value: Annotated[str, Query(alias="from")],
         to_value: Annotated[str, Query(alias="to")],
-        format_name: Annotated[Literal["jsonl", "csv", "summary-json", "summary-md"], Query(alias="format")] = "jsonl",
+        format_name: Annotated[Literal["jsonl", "csv", "summary-json", "summary-md", "jsonl-records", "csv-records"], Query(alias="format")] = "jsonl",
         symbol: SymbolFilter = None,
         include_candles: Annotated[bool, Query()] = False,
-    ) -> Response:
+        page_size: Annotated[int, Query(ge=1, le=2000)] = 200,
+        cursor: Annotated[str | None, Query(max_length=4096)] = None,
+        snapshot_closed_until: Annotated[int | None, Query(ge=0)] = None,
+    ):
         if include_candles:
             raise ApiError(422, "INVALID_REQUEST", "Candle export is not enabled.", {"field": "include_candles"})
+        if format_name in {"jsonl-records", "csv-records"}:
+            return service.trading_funnel_export_page(
+                trade_profile_id, from_value, to_value, symbol, page_size,
+                cursor, snapshot_closed_until,
+            )
         body, media_type, extension = service.trading_funnel_export(
             trade_profile_id, from_value, to_value, symbol, format_name,
         )

@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
+import base64
 import csv
+import hashlib
+import hmac
 import io
 import json
 import re
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
 from decimal import Decimal
+from dataclasses import dataclass
 from typing import Any, Final
 
 from app.engine_observation.scalping_calibration import _stage_flags, aggregate, export_record
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.i18n import CATALOG_VERSION
+from app.server_api.errors import ApiError
 from app.server_api.trading_funnel import STAGES, _first_reason, _mapping, _stage_trace
 
 
@@ -22,8 +27,92 @@ EXPORT_SCHEMA_VERSION: Final = "trading-funnel-export-v1"
 MAX_EXPORT_RANGE_MS: Final = 24 * 60 * 60 * 1000
 MAX_EXPORT_ROWS: Final = 2_880
 EXPORT_FORMATS: Final = frozenset({"jsonl", "csv", "summary-json", "summary-md"})
+PAGED_EXPORT_FORMATS: Final = frozenset({"jsonl-records", "csv-records"})
+DEFAULT_EXPORT_PAGE_SIZE: Final = 200
+MAX_EXPORT_PAGE_SIZE: Final = 2_000
 _SAFE_REASON = re.compile(r"^[A-Za-z0-9_.:/() +,=\-]{1,240}$")
 _SECRET_TOKENS = ("api" + "_key", "apikey", "authorization", "bearer", "cookie", "password", "private" + "_key", "secret", "db" + "_uri")
+
+
+@dataclass(frozen=True, slots=True)
+class ExportCursor:
+    trade_profile_id: str
+    from_ms: int
+    to_ms: int
+    symbol: str | None
+    snapshot_closed_until: int
+    available_from: int | None
+    available_to: int | None
+    generated_at_ms: int
+    last_boundary_closed_at: int
+    last_symbol: str
+    last_run_id: str
+
+
+def encode_export_cursor(value: ExportCursor) -> str:
+    """Encode a bounded, non-secret cursor with the project's validation checksum."""
+    body = {
+        "v": 1,
+        "profile": value.trade_profile_id,
+        "from": value.from_ms,
+        "to": value.to_ms,
+        "symbol": value.symbol,
+        "snapshot": value.snapshot_closed_until,
+        "available_from": value.available_from,
+        "available_to": value.available_to,
+        "generated_at": value.generated_at_ms,
+        "last_boundary": value.last_boundary_closed_at,
+        "last_symbol": value.last_symbol,
+        "last_run_id": value.last_run_id,
+    }
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    body["check"] = hashlib.sha256(b"traders-funnel-export-v1\0" + canonical).hexdigest()[:24]
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def decode_export_cursor(value: str) -> ExportCursor:
+    """Decode and strictly validate all snapshot and keyset cursor fields."""
+    try:
+        if not value or len(value) > 4096:
+            raise ValueError
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        body = json.loads(raw)
+        expected = {
+            "v", "profile", "from", "to", "symbol", "snapshot",
+            "available_from", "available_to", "generated_at", "last_boundary", "last_symbol",
+            "last_run_id", "check",
+        }
+        if not isinstance(body, dict) or set(body) != expected:
+            raise ValueError
+        check = body.pop("check")
+        canonical = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        expected_check = hashlib.sha256(b"traders-funnel-export-v1\0" + canonical).hexdigest()[:24]
+        if not isinstance(check, str) or not hmac.compare_digest(check, expected_check):
+            raise ValueError
+        if body["v"] != 1 or body["profile"] not in {"trade-15m-v1", "trade-5m-v1"}:
+            raise ValueError
+        if body["symbol"] is not None and (
+            not isinstance(body["symbol"], str) or not body["symbol"].isalnum()
+        ):
+            raise ValueError
+        integers = ("from", "to", "snapshot", "generated_at", "last_boundary")
+        if any(isinstance(body[key], bool) or not isinstance(body[key], int) for key in integers):
+            raise ValueError
+        for key in ("available_from", "available_to"):
+            if body[key] is not None and (isinstance(body[key], bool) or not isinstance(body[key], int)):
+                raise ValueError
+        if not isinstance(body["last_symbol"], str) or not body["last_symbol"].isalnum():
+            raise ValueError
+        if not isinstance(body["last_run_id"], str) or not 1 <= len(body["last_run_id"]) <= 80:
+            raise ValueError
+        return ExportCursor(
+            body["profile"], body["from"], body["to"], body["symbol"],
+            body["snapshot"], body["available_from"], body["available_to"], body["generated_at"],
+            body["last_boundary"], body["last_symbol"], body["last_run_id"],
+        )
+    except (ValueError, TypeError, KeyError, json.JSONDecodeError, UnicodeDecodeError):
+        raise ApiError(422, "INVALID_CURSOR", "The export cursor is invalid.") from None
 
 
 def _safe_reason(value: object) -> str | None:

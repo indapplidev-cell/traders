@@ -11,7 +11,7 @@ from threading import Lock
 from time import monotonic
 from typing import Any, Final
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text, tuple_
 from sqlalchemy.orm import Session, defer
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
@@ -465,6 +465,7 @@ class TradingFunnelReadRepository:
         to_ms: int,
         symbol: str | None,
         limit: int,
+        after: tuple[int, str, str] | None = None,
     ) -> tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None], ...]:
         """Load one deterministic bounded export page without cache or per-row SQL."""
         profile = resolve_trade_profile(trade_profile_id)
@@ -478,18 +479,50 @@ class TradingFunnelReadRepository:
         )
         if symbol is not None:
             predicates += (OnlinePipelineRun.symbol == symbol,)
+        if after is not None:
+            predicates += (
+                tuple_(
+                    OnlinePipelineRun.closed_until_ms,
+                    OnlinePipelineRun.symbol,
+                    OnlinePipelineRun.run_id,
+                ) > after,
+            )
         statement = (
             select(OnlinePipelineRun, OnlinePipelineResultRow)
             .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
             .where(*predicates)
             .order_by(
                 OnlinePipelineRun.closed_until_ms.asc(), OnlinePipelineRun.symbol.asc(),
-                OnlinePipelineRun.id.asc(), OnlinePipelineResultRow.id.asc(),
+                OnlinePipelineRun.run_id.asc(),
             )
             .limit(limit + 1)
         )
         with self._session_factory() as session:
             return tuple(session.execute(statement))
+
+    def export_bounds(
+        self, trade_profile_id: str, symbol: str | None,
+    ) -> tuple[int | None, int | None]:
+        """Load retained authoritative bounds once, before a paged snapshot begins."""
+        profile = resolve_trade_profile(trade_profile_id)
+        universe = self._universe_source()
+        predicates = (
+            OnlinePipelineRun.trade_profile_id == profile.trade_profile_id,
+            OnlinePipelineRun.primary_timeframe == profile.trigger_timeframe,
+            OnlinePipelineRun.symbol.in_(universe.symbols),
+        )
+        if symbol is not None:
+            predicates += (OnlinePipelineRun.symbol == symbol,)
+        statement = select(
+            func.min(OnlinePipelineRun.closed_until_ms),
+            func.max(OnlinePipelineRun.closed_until_ms),
+        ).where(*predicates)
+        with self._session_factory() as session:
+            lower, upper = session.execute(statement).one()
+        return (
+            None if lower is None else int(lower),
+            None if upper is None else int(upper),
+        )
 
     def export_outcomes(self, run_ids: tuple[str, ...]) -> dict[str, dict[str, object]]:
         """Bulk-load PAPER lifecycle facts for the already bounded run identities."""

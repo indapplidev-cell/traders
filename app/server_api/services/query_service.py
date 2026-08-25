@@ -40,11 +40,17 @@ from app.server_api.schemas.models import (
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 from app.server_api.settings import ApiSettings
 from app.server_api.funnel_export import (
+    DEFAULT_EXPORT_PAGE_SIZE,
     EXPORT_FORMATS,
+    EXPORT_SCHEMA_VERSION,
+    MAX_EXPORT_PAGE_SIZE,
     MAX_EXPORT_RANGE_MS,
     MAX_EXPORT_ROWS,
+    ExportCursor,
     build_export_record,
     build_summary,
+    decode_export_cursor,
+    encode_export_cursor,
     render_export,
 )
 
@@ -216,6 +222,90 @@ class ApiQueryService:
             expected_symbols=1 if symbol else 10,
         )
         return render_export(records, summary, format_name)
+
+    def trading_funnel_export_page(
+        self,
+        trade_profile_id: str,
+        from_value: str,
+        to_value: str,
+        symbol: str | None,
+        page_size: int = DEFAULT_EXPORT_PAGE_SIZE,
+        cursor: str | None = None,
+        snapshot_closed_until: int | None = None,
+    ) -> dict[str, object]:
+        """Return one bounded keyset page from a stable authoritative snapshot."""
+        repository = self._repos().funnel
+        if repository is None:
+            raise ApiError(503, "SERVICE_NOT_CONFIGURED", "Trading funnel projection is not configured.")
+        from_at = _parse_timestamp(from_value, "from")
+        to_at = _parse_timestamp(to_value, "to")
+        if from_at is None or to_at is None or from_at >= to_at:
+            raise ApiError(422, "INVALID_REQUEST", "The request parameters are invalid.", {"field": "from"})
+        if isinstance(page_size, bool) or not 1 <= page_size <= MAX_EXPORT_PAGE_SIZE:
+            raise ApiError(422, "INVALID_REQUEST", "The request parameters are invalid.", {"field": "page_size"})
+        from_ms, to_ms = int(from_at.timestamp() * 1000), int(to_at.timestamp() * 1000)
+        position: tuple[int, str, str] | None = None
+        if cursor is None:
+            available_from, available_to = repository.export_bounds(trade_profile_id, symbol)
+            snapshot = min(to_ms, available_to if available_to is not None else to_ms)
+            if snapshot_closed_until is not None and snapshot_closed_until != snapshot:
+                raise ApiError(422, "INVALID_CURSOR", "The export snapshot is invalid.")
+            generated_at_ms = int(self._clock().timestamp() * 1000)
+        else:
+            decoded = decode_export_cursor(cursor)
+            if (
+                decoded.trade_profile_id != trade_profile_id
+                or decoded.from_ms != from_ms
+                or decoded.to_ms != to_ms
+                or decoded.symbol != symbol
+                or snapshot_closed_until != decoded.snapshot_closed_until
+            ):
+                raise ApiError(422, "INVALID_CURSOR", "The export cursor does not match the request.")
+            available_from, available_to = decoded.available_from, decoded.available_to
+            snapshot, generated_at_ms = decoded.snapshot_closed_until, decoded.generated_at_ms
+            position = (
+                decoded.last_boundary_closed_at,
+                decoded.last_symbol,
+                decoded.last_run_id,
+            )
+        pairs = repository.export_rows(
+            trade_profile_id, from_ms, snapshot, symbol, page_size, position,
+        )
+        has_more = len(pairs) > page_size
+        page_pairs = tuple(pairs[:page_size])
+        outcome_loader = getattr(repository, "export_outcomes", None)
+        outcomes = (
+            outcome_loader(tuple(pair[0].run_id for pair in page_pairs))
+            if outcome_loader is not None else {}
+        )
+        records = [
+            build_export_record(
+                run, result, generated_at_ms=generated_at_ms,
+                from_ms=from_ms, to_ms=to_ms, outcome=outcomes.get(run.run_id),
+            )
+            for run, result in page_pairs
+        ]
+        next_cursor = None
+        if has_more and page_pairs:
+            last = page_pairs[-1][0]
+            next_cursor = encode_export_cursor(ExportCursor(
+                trade_profile_id, from_ms, to_ms, symbol, snapshot,
+                available_from, available_to, generated_at_ms,
+                int(last.closed_until_ms), str(last.symbol), str(last.run_id),
+            ))
+        return {
+            "export_schema_version": EXPORT_SCHEMA_VERSION,
+            "trade_profile_id": trade_profile_id,
+            "requested_from": from_ms,
+            "requested_to": to_ms,
+            "available_from": available_from,
+            "available_to": available_to,
+            "snapshot_closed_until": snapshot,
+            "records": records,
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+            "page_row_count": len(records),
+        }
 
     def market(self, symbol: str) -> MarketDetailEnvelope:
         record = self._repos().markets.get_market(symbol)
