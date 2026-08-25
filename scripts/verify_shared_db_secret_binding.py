@@ -23,30 +23,46 @@ def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
 
 def _acl_restricted(path: Path) -> bool:
     literal = str(path.resolve()).replace("'", "''")
-    command = rf"""
-$ErrorActionPreference='Stop'
-$current=([System.Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
-$allowed=@($current,'S-1-5-18','S-1-5-32-544')
-$acl=Get-Acl -LiteralPath '{literal}'
-$rules=@($acl.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier]))
-$broad=@('S-1-1-0','S-1-5-11','S-1-5-32-545','S-1-5-32-546','S-1-5-7','S-1-5-20')
-$broadCount=@($rules|Where-Object {{$broad -contains $_.IdentityReference.Value}}).Count
-$unexpectedCount=@($rules|Where-Object {{$allowed -notcontains $_.IdentityReference.Value}}).Count
-$denyCount=@($rules|Where-Object {{$_.AccessControlType -ne [System.Security.AccessControl.AccessControlType]::Allow}}).Count
-$currentCount=@($rules|Where-Object {{$_.IdentityReference.Value -eq $current}}).Count
-$systemCount=@($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-18'}}).Count
-$adminCount=@($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-32-544'}}).Count
-$ok=($acl.AreAccessRulesProtected -and $broadCount -eq 0 -and $unexpectedCount -eq 0 -and $denyCount -eq 0 -and $currentCount -gt 0 -and $systemCount -gt 0 -and $adminCount -gt 0)
-if($ok){{'PASS'}}else{{'FAIL'}}
-"""
-    result = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+    sddl_result = subprocess.run(
+        [
+            "pwsh.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            f"(Get-Acl -LiteralPath '{literal}').Sddl",
+        ],
         check=False,
         capture_output=True,
         text=True,
         encoding="utf-8-sig",
     )
-    return result.returncode == 0 and result.stdout.strip() == "PASS"
+    sid_result = subprocess.run(
+        [
+            "pwsh.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "([System.Security.Principal.WindowsIdentity]::GetCurrent()).User.Value",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8-sig",
+    )
+    if sddl_result.returncode or sid_result.returncode:
+        return False
+    sddl = sddl_result.stdout.strip()
+    current_sid = sid_result.stdout.strip()
+    aces = sddl[sddl.find("D:") :] if "D:" in sddl else ""
+    return (
+        aces.startswith("D:P")
+        and aces.count("(") == 3
+        and "(D;" not in aces
+        and ";;;SY)" in aces
+        and ";;;BA)" in aces
+        and f";;;{current_sid})" in aces
+        and all(marker not in aces for marker in (";;;WD)", ";;;AU)", ";;;BU)", ";;;BG)", ";;;AN)", ";;;NS)"))
+    )
 
 
 def binding_errors(path: Path = BINDING) -> tuple[str, ...]:

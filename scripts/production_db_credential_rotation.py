@@ -109,7 +109,7 @@ def _identity(document: dict) -> tuple[str, int, bool]:
 
 def _restrict_acl(path: Path, *, directory: bool) -> None:
     identity = _run([
-        "powershell.exe",
+        "pwsh.exe",
         "-NoProfile",
         "-NonInteractive",
         "-Command",
