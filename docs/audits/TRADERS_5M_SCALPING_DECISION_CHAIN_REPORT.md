@@ -1,17 +1,52 @@
 # TRADERS 5m scalping decision-chain report
 
-Task: `TRADERS_5M_SCALPING_STRATEGY_QUALITY_AND_TARGET_ACTIONABILITY_SHADOW_CALIBRATION_01`
+Current task: `NARROW_CONTROLLED_5M_SOURCE_DEPLOYMENT_ACCEPTANCE_THEN_TRADERS_5M_SCALPING_EXTENDED_UNIQUE_OPPORTUNITY_SHADOW_OBSERVATION_01`
 
 ## Decision
 
-The source-level calibration work passes. Production deployment was intentionally
-withheld because the previously disclosed production DB credential has no proved
-rotation/invalidation/rebind closure. No credential value is stored here.
+The narrow 5m-only production deployment is accepted. The credential incident
+is closed, the new image ran nine exact10 5m boundaries beside three unchanged
+exact10 15m boundaries, and every operational safety gate passed. Stage B is
+still in progress because the homogeneous post-deployment window contains zero
+causal opportunities. The trading verdict remains `5M_READY_FOR_MORE_SHADOW`,
+not PAPER-ready, and no production parameter is promoted.
 
-The trading verdict is `5M_READY_FOR_MORE_SHADOW`, not PAPER-ready. The causal
-target hierarchy now traverses beyond a non-actionable micro-local level, but the
-offline completed sample is one unique opportunity and cannot support parameter
-promotion or an expectancy conclusion.
+## Current post-deployment acceptance and observation
+
+```text
+DEPLOYMENT_SOURCE = 390da4e05d402192a090469cd69c342d06b764c8
+FEATURE_SOURCE = 369c9494c347856b41e6df963794175bf1856a80
+DEPLOYED_IMAGE = sha256:1f2fc38588ad108c0a7cf71ae55e89aa8aced956570346ef28fcce68d74d4114
+DEPLOYED_CONTAINER = d1b137c4bc1999757abe62e1e4b90349ba6e46651afcd657232d77ba75e3b5c5
+REPLACEMENT_COUNT = 1
+SINGLETON_OWNER_COUNT = 1
+OBSERVATION_START = 2026-08-25T16:20:00Z
+OBSERVATION_END = 2026-08-25T17:00:00Z
+5M_BOUNDARIES = 9
+5M_EVALUATIONS = 90
+15M_BOUNDARIES = 3
+EXACT10_MISSING_DUPLICATE_ERROR = PASS_0_0_0
+PARAMETER_SET = trade-5m-v1-runtime-v1-4e257e4cff2a5b9a
+STRATEGY_THRESHOLD = 65.0_UNCHANGED
+MINIMUM_RR = 1.5_UNCHANGED
+RAW_SETUP_CANDIDATES = 0
+UNIQUE_CAUSAL_OPPORTUNITIES = 0
+REPEAT_OBSERVATIONS = 0
+ACTIONABLE_TARGETS = 0
+POSITIVE_NET_EDGE = 0
+COST_COMPLETENESS = NOT_APPLICABLE_ZERO_ECONOMICS_EVALUATIONS
+PROFITABILITY_CONFIDENCE = INSUFFICIENT_SAMPLE
+STAGE_A = PASS
+STAGE_B = IN_PROGRESS_CONTINUE_SAME_WINDOW
+```
+
+All 90 5m rows persisted the quantitative Strategy threshold and margin. No
+natural setup occurred, so target traversal, actionability, cost and
+opportunity identity had no applicable runtime event in this window. Their
+deployed paths passed the focused pre-deploy tests; no missing mandatory cost
+was converted to zero and no target was synthesized. The correct next action
+is to continue this exact homogeneous observation window until a meaningful
+unique-opportunity sample exists.
 
 ## Fresh homogeneous baseline
 
