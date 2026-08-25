@@ -67,3 +67,11 @@ def test_rotation_controller_uses_probe_connected_state() -> None:
     assert '"CONNECTED"' in source
     assert '"ACCEPTED"' not in source
     assert "sql.Literal(new_password)" in source
+
+
+def test_exact_secret_scanner_has_count_only_output_contract() -> None:
+    source = (ROOT / "scripts" / "scan_production_db_secret_exposure.py").read_text(encoding="utf-8")
+    assert "NEW_SECRET_EXPOSURE_FINDINGS=" in source
+    assert "SECRET_VALUE_OUTPUT=NO" in source
+    assert "SECRET_DERIVED_HASH_CREATED=NO" in source
+    assert "print(secret" not in source
