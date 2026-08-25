@@ -257,6 +257,17 @@ def _client_query(container: str) -> bool:
     return result.returncode == 0
 
 
+def _client_stable(container: str, observed_restarts: int) -> bool:
+    time.sleep(8)
+    document = _inspect(container)
+    _, current_restarts, running = _identity(document)
+    return (
+        running
+        and current_restarts == observed_restarts
+        and "DATABASE_URL" not in _env(document)
+    )
+
+
 def _logs_contain_secret(container: str, old_password: str, new_password: str, since: str) -> bool:
     result = _run(["docker", "logs", "--since", since, container], timeout=30)
     combined = result.stdout + result.stderr
@@ -282,7 +293,7 @@ def execute() -> dict[str, object]:
         _compose_rebind(service, profiles)
         image_unchanged, restart_after, loaded = _wait_client(container, expected_image)
         query = loaded and _client_query(container)
-        health = loaded and query
+        health = loaded and query and _client_stable(container, restart_after)
         clients.append(
             ClientResult(
                 service=service,
