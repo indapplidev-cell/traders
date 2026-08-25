@@ -30,13 +30,13 @@ $allowed=@($current,'S-1-5-18','S-1-5-32-544')
 $acl=Get-Acl -LiteralPath '{literal}'
 $rules=@($acl.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier]))
 $broad=@('S-1-1-0','S-1-5-11','S-1-5-32-545','S-1-5-32-546','S-1-5-7','S-1-5-20')
-$ok=$acl.AreAccessRulesProtected -and
-  @($rules|Where-Object {{$broad -contains $_.IdentityReference.Value}}).Count -eq 0 -and
-  @($rules|Where-Object {{$allowed -notcontains $_.IdentityReference.Value}}).Count -eq 0 -and
-  @($rules|Where-Object {{$_.AccessControlType -ne 'Allow'}}).Count -eq 0 -and
-  @($rules|Where-Object {{$_.IdentityReference.Value -eq $current}}).Count -gt 0 -and
-  @($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-18'}}).Count -gt 0 -and
-  @($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-32-544'}}).Count -gt 0
+$broadCount=@($rules|Where-Object {{$broad -contains $_.IdentityReference.Value}}).Count
+$unexpectedCount=@($rules|Where-Object {{$allowed -notcontains $_.IdentityReference.Value}}).Count
+$denyCount=@($rules|Where-Object {{$_.AccessControlType -ne [System.Security.AccessControl.AccessControlType]::Allow}}).Count
+$currentCount=@($rules|Where-Object {{$_.IdentityReference.Value -eq $current}}).Count
+$systemCount=@($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-18'}}).Count
+$adminCount=@($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-32-544'}}).Count
+$ok=($acl.AreAccessRulesProtected -and $broadCount -eq 0 -and $unexpectedCount -eq 0 -and $denyCount -eq 0 -and $currentCount -gt 0 -and $systemCount -gt 0 -and $adminCount -gt 0)
 if($ok){{'PASS'}}else{{'FAIL'}}
 """
     result = subprocess.run(

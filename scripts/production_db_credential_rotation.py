@@ -270,15 +270,30 @@ def _logs_contain_secret(container: str, old_password: str, new_password: str, s
     return old_password in combined or new_password in combined
 
 
-def execute() -> dict[str, object]:
+def execute(*, resume_prepared_binding: bool = False) -> dict[str, object]:
     started = datetime.now(timezone.utc)
     generation = "shared-db-" + started.strftime("%Y%m%dT%H%M%SZ")
     principal, old_password, identities, bootstrap_binding_matches = _baseline()
-    new_password = secrets.token_urlsafe(48)
-    while new_password == old_password:
+    if BINDING.exists():
+        if not resume_prepared_binding or binding_errors(BINDING):
+            raise SafeRotationError("PREPARED_BINDING_REQUIRES_EXPLICIT_RESUME")
+        new_password = BINDING.read_text(encoding="ascii").strip()
+    else:
+        if resume_prepared_binding:
+            raise SafeRotationError("PREPARED_BINDING_MISSING")
         new_password = secrets.token_urlsafe(48)
-    _create_binding(new_password)
-    _rotate_role(old_password, new_password)
+        while new_password == old_password:
+            new_password = secrets.token_urlsafe(48)
+        _create_binding(new_password)
+
+    old_before, old_before_sqlstate = _auth_probe(old_password)
+    new_before, new_before_sqlstate = _auth_probe(new_password)
+    if old_before == "ACCEPTED" and new_before == "DENIED" and new_before_sqlstate == "28P01":
+        _rotate_role(old_password, new_password)
+    elif old_before == "DENIED" and old_before_sqlstate == "28P01" and new_before == "ACCEPTED":
+        pass
+    else:
+        raise SafeRotationError("ROTATION_AUTH_STATE_AMBIGUOUS")
     new_connection, new_sqlstate = _auth_probe(new_password)
     if new_connection != "ACCEPTED" or new_sqlstate is not None:
         raise SafeRotationError("NEW_CREDENTIAL_POSITIVE_AUTH_FAILED")
@@ -361,13 +376,14 @@ def execute() -> dict[str, object]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--resume-prepared-binding", action="store_true")
     args = parser.parse_args(argv)
     if not args.execute:
         print("EXECUTION=NOT_REQUESTED")
         print("SECRET_VALUE_OUTPUT=NO")
         return 2
     try:
-        result = execute()
+        result = execute(resume_prepared_binding=args.resume_prepared_binding)
     except (
         SafeRotationError,
         OSError,
