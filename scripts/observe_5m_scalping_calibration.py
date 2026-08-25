@@ -19,11 +19,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.engine_observation.scalping_calibration import aggregate
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 
 CONTAINER = "traders-ml-postgres-1"
 START_BOUNDARY = 1787594700000
 PROFILE = "trade-5m-v1"
-PARAMETER_SET = "trade-5m-v1-runtime-v1-c141aece87c7f6a0"
+PARAMETER_SET = resolve_runtime_parameters(PROFILE).parameter_set_id
 MAX_BOUNDARIES = 288
 
 

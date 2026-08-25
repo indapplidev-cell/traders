@@ -29,11 +29,12 @@ from app.engine_paper.scalping_shadow import (
     ShadowGeometryConfig,
     evaluate_scalping_shadow,
 )
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 
 PROFILE = "trade-5m-v1"
-PARAMETER_SET = "trade-5m-v1-runtime-v1-c141aece87c7f6a0"
-RUNTIME_SOURCE_COMMIT = "6650f5f13e03342613518584633c90b020e945ed"
-RUNTIME_ARTIFACT_ID = "sha256:b3928a801238a21032fa53e1d34fde02a6036e902b41d23182a05aea5e00bee8"
+PARAMETER_SET = resolve_runtime_parameters(PROFILE).parameter_set_id
+RUNTIME_SOURCE_COMMIT = "0bacc0bad0567d3c228a243139bb96f773168bc8"
+RUNTIME_ARTIFACT_ID = "sha256:13b01d9e70cdd1abcb6149384749481de8f61a87ca7fb4db851b66fb9f9ca09c"
 ALEMBIC_HEAD = "0018_promote_5m_production_search"
 STAGE_SPECS = (
     ("ANALYSIS", "analysis"),
