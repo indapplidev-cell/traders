@@ -8,7 +8,6 @@ contain either value or a credential-bearing URI.
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import os
 import secrets
@@ -109,33 +108,17 @@ def _identity(document: dict) -> tuple[str, int, bool]:
 
 
 def _restrict_acl(path: Path, *, directory: bool) -> None:
-    literal = str(path.resolve()).replace("'", "''")
-    inheritance = (
-        "[System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor "
-        "[System.Security.AccessControl.InheritanceFlags]::ObjectInherit"
-        if directory
-        else "[System.Security.AccessControl.InheritanceFlags]::None"
-    )
-    script = rf"""
-$ErrorActionPreference = 'Stop'
-$path = '{literal}'
-$current = ([System.Security.Principal.WindowsIdentity]::GetCurrent()).User
-$system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-$admins = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
-$acl = [System.Security.AccessControl.DirectorySecurity]::new()
-$acl.SetAccessRuleProtection($true, $false)
-$inheritance = {inheritance}
-$propagation = [System.Security.AccessControl.PropagationFlags]::None
-$allow = [System.Security.AccessControl.AccessControlType]::Allow
-$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($current, [System.Security.AccessControl.FileSystemRights]::Modify, $inheritance, $propagation, $allow))
-$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($system, [System.Security.AccessControl.FileSystemRights]::FullControl, $inheritance, $propagation, $allow))
-$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($admins, [System.Security.AccessControl.FileSystemRights]::FullControl, $inheritance, $propagation, $allow))
-Set-Acl -LiteralPath $path -AclObject $acl
-"""
-    encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
-    result = _run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded]
-    )
+    current_sid = inspect_windows_acl(ROOT / ".env.production.local").current_user_sid
+    inherit = "(OI)(CI)" if directory else ""
+    result = _run([
+        "icacls.exe",
+        str(path.resolve()),
+        "/inheritance:r",
+        "/grant:r",
+        f"*{current_sid}:{inherit}M",
+        f"*S-1-5-18:{inherit}F",
+        f"*S-1-5-32-544:{inherit}F",
+    ])
     if result.returncode:
         raise SafeRotationError("ACL_APPLICATION_FAILED")
 
