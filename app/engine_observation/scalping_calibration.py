@@ -28,6 +28,7 @@ QUOTA_FREE_REASONS = {
     "PAPER_NO_PLAN_SOURCE_NO_DECISION",
     "PAPER_NO_PLAN_MISSING_INVALIDATION_LEVEL",
     "PAPER_NO_PLAN_MISSING_TARGET_LEVEL",
+    "PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE",
     "PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE",
     "PAPER_REJECT_NEGATIVE_NET_EDGE",
     "PAPER_REJECT_LOW_GROSS_RR",
@@ -102,6 +103,7 @@ def rejection_category(row: Mapping[str, Any]) -> str:
         ("CAUSAL_STOP_TOO_WIDE", "STOP_TOO_WIDE"),
         ("MISSING_TARGET", "MISSING_TARGET"),
         ("TARGET_TOO_CLOSE", "TARGET_TOO_CLOSE"),
+        ("TARGET_NOT_ECONOMICALLY_ACTIONABLE", "TARGET_NOT_ECONOMICALLY_ACTIONABLE"),
         ("NEGATIVE_NET_EDGE", "NEGATIVE_NET_EDGE"),
         ("LOW_GROSS_RR", "LOW_GROSS_RR"),
         ("LOW_NET_RR", "LOW_NET_RR"),
@@ -155,6 +157,10 @@ def export_record(row: Mapping[str, Any]) -> dict[str, Any]:
         "target_source": diagnostic.get("target_source_type") or paper.get("target_source"),
         "target_distance_bps": diagnostic.get("target_distance_bps"), "target_age_ms": diagnostic.get("target_age_ms"),
         "target_valid": diagnostic.get("target_available"), "entry_fee_bps": diagnostic.get("entry_fee_bps"),
+        "causal_target_exists": diagnostic.get("causal_target_exists"),
+        "economically_actionable_target_exists": diagnostic.get("economically_actionable_target_exists"),
+        "minimum_actionable_target_bps": diagnostic.get("minimum_actionable_target_bps"),
+        "target_considerations": diagnostic.get("target_considerations") or [],
         "exit_fee_bps": diagnostic.get("exit_fee_bps"), "spread_bps": diagnostic.get("spread_bps"),
         "entry_slippage_bps": diagnostic.get("entry_slippage_bps"), "exit_slippage_bps": diagnostic.get("exit_slippage_bps"),
         "depth_impact_bps": diagnostic.get("depth_impact_bps"), "safety_margin_bps": diagnostic.get("safety_margin_bps"),
@@ -180,10 +186,12 @@ def _stage_flags(row: Mapping[str, Any]) -> dict[str, bool]:
     risk_pre_pass = risk.get("risk_status") in {"RISK_APPROVED", "RISK_PRE_APPROVED_RESEARCH", "APPROVED"}
     geometry = diagnostic.get("rejection_stage") not in {None, "CAUSAL_INVALIDATION", "ATR_BUFFER", "STOP_ENVELOPE", "CAUSAL_TARGET"} if diagnostic else False
     cost = bool(diagnostic.get("economic_gate_pass"))
+    actionable_target = bool(diagnostic.get("economically_actionable_target_exists"))
     plan = paper.get("paper_status") == "PAPER_PLAN_READY"
     final = _mapping(paper.get("final_approval_generation")).get("outcome") in {"CREATED", "APPROVED", "ELIGIBLE"}
     return {"analysis": True, "structural_setup": structural, "strategy_admitted": strategy_pass,
-            "geometry_valid": geometry, "net_cost_viable": cost, "risk_admitted": risk_pre_pass and cost,
+            "geometry_valid": geometry, "actionable_target": actionable_target,
+            "net_cost_viable": cost, "risk_admitted": risk_pre_pass and actionable_target and cost,
             "paper_plan": plan, "final_approval": final, "paper_command": bool(row.get("paper_command_id")),
             "position": bool(row.get("paper_position_id")), "exit": row.get("paper_outcome") == "CLOSED"}
 
@@ -217,7 +225,7 @@ def aggregate(
         bucket["share"] = bucket["count"] / len(source)
         for key in ("symbols", "hours_utc", "raw_reasons"):
             bucket[key] = dict(bucket[key])
-    sequence = ("analysis", "structural_setup", "strategy_admitted", "geometry_valid", "net_cost_viable",
+    sequence = ("analysis", "structural_setup", "strategy_admitted", "geometry_valid", "actionable_target", "net_cost_viable",
                 "risk_admitted", "paper_plan", "final_approval", "paper_command", "position", "exit")
     funnel = {}
     previous = len(source)

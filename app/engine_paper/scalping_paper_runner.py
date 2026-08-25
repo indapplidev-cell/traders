@@ -68,6 +68,7 @@ class ScalpingPaperRunner(PaperRunner):
             atr_buffer_multiplier=0.25,
             stop_envelope_bps=80.0,
             minimum_target_diagnostic_bps=45.0,
+            minimum_positive_edge_bps=1.0,
             production_rr_floor=minimum_rr,
         )
 
@@ -107,6 +108,7 @@ class ScalpingPaperRunner(PaperRunner):
             causal_invalidation=invalidation,
             atr=context.atr_value,
             targets=tuple(targets),
+            setup_identity=context.setup_type or source.source_strategy_type,
         )
         unavailable_costs = ShadowCostInputs(
             safety_margin_bps=float(
@@ -129,6 +131,9 @@ class ScalpingPaperRunner(PaperRunner):
             "cost_data_query_bound": 2,
             "economic_gate_enabled": True,
             "production_rr_floor": self.geometry_config.production_rr_floor,
+            "minimum_positive_edge_bps": self.geometry_config.minimum_positive_edge_bps,
+            "minimum_actionable_target_bps": diagnostic.minimum_actionable_target_bps,
+            "target_policy_id": getattr(self.runtime_parameters, "target_policy_id", None),
         }
         common = dict(
             context=context,

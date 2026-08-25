@@ -27,6 +27,11 @@ class StrategyContext:
     source_future_bars_used: bool
     source_is_trade_signal: bool
     causal_primitives: dict[str, object]
+    structural_score: float | None
+    confirmation_score: float | None
+    context_score: float | None
+    conflict_penalty: float | None
+    invalidation_penalty: float | None
 
     @classmethod
     def from_setup_candidate(cls, candidate: SetupCandidate) -> "StrategyContext":
@@ -54,6 +59,11 @@ class StrategyContext:
             source_future_bars_used=bool(candidate.future_bars_used),
             source_is_trade_signal=bool(candidate.is_trade_signal),
             causal_primitives=select_causal_primitives(source_context),
+            structural_score=getattr(quality, "structural_score", None),
+            confirmation_score=getattr(quality, "confirmation_score", None),
+            context_score=getattr(quality, "context_score", None),
+            conflict_penalty=getattr(quality, "conflict_penalty", None),
+            invalidation_penalty=getattr(quality, "invalidation_penalty", None),
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -67,5 +77,12 @@ class StrategyContext:
             "analysis_confidence": self.analysis_confidence,
             "has_hard_invalidation": self.has_hard_invalidation,
             "has_conflict": self.has_conflict,
+            "setup_component_scores": {
+                "structure": self.structural_score,
+                "candle_confirmation": self.confirmation_score,
+                "context_alignment": self.context_score,
+                "conflict_penalty": self.conflict_penalty,
+                "invalidation_penalty": self.invalidation_penalty,
+            },
             **self.causal_primitives,
         }

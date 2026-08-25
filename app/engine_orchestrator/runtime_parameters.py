@@ -146,7 +146,11 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         minimum_planned_rr=profile.minimum_planned_rr,
         cost_safety_margin_bps=profile.cost_safety_margin_bps,
         stop_policy_id="LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER",
-        target_policy_id="OPPOSITE_CAUSAL_LEVEL",
+        target_policy_id=(
+            "CAUSAL_HIERARCHY_ECONOMIC_ACTIONABILITY_V2"
+            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            else "OPPOSITE_CAUSAL_LEVEL"
+        ),
         paper_command_creation_enabled=profile.paper_command_creation_enabled,
         position_opening_enabled=profile.position_opening_enabled,
     )

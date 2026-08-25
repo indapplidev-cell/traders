@@ -14,7 +14,7 @@ from app.engine_strategy.strategy_decision import (
     strategy_decision_id,
 )
 from app.engine_strategy.strategy_reason_codes import StrategyReasonCode
-from app.engine_strategy.strategy_rules import evaluate_strategy_rules
+from app.engine_strategy.strategy_rules import evaluate_strategy_rules, strategy_score_diagnostics
 from app.engine_strategy.strategy_status import StrategyStatus
 
 
@@ -29,6 +29,7 @@ class StrategyFilter:
             raise TypeError("setup_candidate must be a SetupCandidate")
         context = StrategyContext.from_setup_candidate(setup_candidate)
         result = evaluate_strategy_rules(context, self.config)
+        score_diagnostics = strategy_score_diagnostics(context, self.config)
         allow = result.status == StrategyStatus.ALLOW_RESEARCH_TRADE_PLAN.value
         reasons = list(result.reasons)
         reasons.extend([
@@ -52,6 +53,12 @@ class StrategyFilter:
             setup_quality=setup_candidate.setup_quality,
             setup_quality_score=setup_candidate.quality_score,
             strategy_score=result.score, strategy_quality=result.quality,
+            strategy_quality_threshold=score_diagnostics["strategy_quality_threshold"],
+            component_scores=score_diagnostics["component_scores"],
+            strategy_raw_score=score_diagnostics["strategy_raw_score"],
+            strategy_penalty_total=score_diagnostics["strategy_penalty_total"],
+            strategy_final_score=score_diagnostics["strategy_final_score"],
+            strategy_margin_to_threshold=score_diagnostics["strategy_margin_to_threshold"],
             decision_reasons=reasons, decision_warnings=result.warnings,
             rejection_reasons=result.rejection_reasons, wait_reasons=result.wait_reasons,
             required_next_layer="engine_risk" if allow else None,

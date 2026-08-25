@@ -62,6 +62,12 @@ class StrategyDecision:
     required_next_layer: str | None = None
     requires_risk_review: bool = False
     context: dict[str, Any] = field(default_factory=dict)
+    strategy_quality_threshold: float | None = None
+    component_scores: dict[str, float | None] = field(default_factory=dict)
+    strategy_raw_score: float | None = None
+    strategy_penalty_total: float | None = None
+    strategy_final_score: float | None = None
+    strategy_margin_to_threshold: float | None = None
     risk_approved: bool = field(default=False, init=False)
     is_executable: bool = field(default=False, init=False)
     is_trade_signal: bool = field(default=False, init=False)
@@ -87,6 +93,8 @@ class StrategyDecision:
             raise StrategyContractError("decision_id must not be empty")
         if self.strategy_score is not None and not 0.0 <= float(self.strategy_score) <= 100.0:
             raise StrategyContractError("strategy_score must be in the 0..100 range")
+        if self.strategy_final_score is not None and self.strategy_score != self.strategy_final_score:
+            raise StrategyContractError("strategy_final_score must equal strategy_score")
         allow = status == StrategyStatus.ALLOW_RESEARCH_TRADE_PLAN.value
         if bool(self.requires_risk_review) != allow:
             raise StrategyContractError("requires_risk_review is true only for allowed research plans")

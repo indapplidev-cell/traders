@@ -223,16 +223,24 @@ def _canonical_trace(
     rejection_stage = str(diagnostic.get("rejection_stage") or "").upper()
     if rejection_stage in {"CAUSAL_INVALIDATION", "ATR_BUFFER", "STOP_ENVELOPE", "CAUSAL_TARGET", "GEOMETRY"}:
         reason_by_stage["geometry"] = diagnostic_reason
-    if rejection_stage in {"COST", "ECONOMICS", "NET_COST"}:
+    if rejection_stage == "TARGET_ACTIONABILITY":
+        reason_by_stage["target_actionability"] = diagnostic_reason
+    if rejection_stage in {"COST", "ECONOMICS", "NET_COST", "NET_COST_GATE"}:
         reason_by_stage["cost"] = diagnostic_reason
 
     output: dict[str, dict[str, object]] = {}
     prior_reached = True
-    for name in (
-        "analysis", "setup", "strategy", "geometry", "cost", "risk",
-        "paper_plan", "final_approval", "paper_command", "position", "exit",
-    ):
-        passed = bool(flags[flag_by_stage[name]])
+    stage_order = ["analysis", "setup", "strategy", "geometry"]
+    if source.get("profile") == "trade-5m-v1":
+        stage_order.append("target_actionability")
+    stage_order.extend([
+        "cost", "risk", "paper_plan", "final_approval", "paper_command", "position", "exit",
+    ])
+    for name in stage_order:
+        passed = (
+            bool(diagnostic.get("economically_actionable_target_exists"))
+            if name == "target_actionability" else bool(flags[flag_by_stage[name]])
+        )
         legacy_name = legacy_by_stage.get(name)
         legacy_status = legacy_trace.get(legacy_name, "NOT_REACHED") if legacy_name else None
         if name == "analysis" and legacy_status == "ERROR":
@@ -246,6 +254,8 @@ def _canonical_trace(
         elif legacy_status in {"REJECTED", "ERROR"}:
             status = legacy_status
         elif name == "geometry" and prior_reached and diagnostic:
+            status = "REJECTED"
+        elif name == "target_actionability" and prior_reached and diagnostic:
             status = "REJECTED"
         elif name == "cost" and prior_reached and diagnostic.get("economic_gate_pass") is False:
             status = "REJECTED"
@@ -313,7 +323,7 @@ def build_export_record(
             "regime_confidence": analysis.get("regime_confidence") or analysis.get("confidence"),
             "direction": legacy.get("direction"),
             "direction_confidence": analysis.get("direction_confidence"),
-            "impulse_phase": analysis.get("impulse_phase"), "entry_quality": setup.get("quality"),
+            "impulse_phase": analysis.get("impulse_phase"), "entry_quality": analysis.get("entry_quality"),
             "atr": legacy.get("atr"), "atr_pct": analysis.get("atr_pct"),
             "structure_state": analysis.get("structure_state"), "liquidity_state": analysis.get("liquidity_state"),
             "volume_state": analysis.get("volume_state"),
@@ -322,8 +332,10 @@ def build_export_record(
         "funnel_trace": _canonical_trace(source, trace, stage_reasons, diagnostic, outcome),
         "setup": {
             "setup_type": setup.get("setup_type"), "status": setup.get("setup_status") or setup.get("status"),
-            "direction": setup.get("direction_hint"), "quality": setup.get("quality"),
-            "confidence": setup.get("confidence"), "entry_zone": setup.get("entry_zone"),
+            "direction": setup.get("direction_hint"), "quality": setup.get("setup_quality"),
+            "quality_score": setup.get("quality_score"),
+            "confidence": setup.get("source_confidence"), "entry_zone": setup.get("entry_zone"),
+            "setup_created_at": setup.get("created_at_ms"),
             "causal_invalidation": legacy.get("causal_invalidation"),
             "breakout_level": setup.get("breakout_level"), "support_level": setup.get("support_level"),
             "resistance_level": setup.get("resistance_level"), "liquidity_level": setup.get("liquidity_level"),
@@ -333,6 +345,13 @@ def build_export_record(
             "status": strategy.get("decision_status"), "reason": reasons[0] if reasons else None,
             "eligibility": meta.get("validity_current"), "selector_status": strategy.get("selector_status"),
             "selector_rank": strategy.get("selector_rank"), "selector_winner": strategy.get("selector_winner"),
+            "strategy_quality_score": strategy.get("strategy_score"),
+            "strategy_quality_threshold": strategy.get("strategy_quality_threshold"),
+            "component_scores": strategy.get("component_scores"),
+            "strategy_raw_score": strategy.get("strategy_raw_score"),
+            "strategy_penalty_total": strategy.get("strategy_penalty_total"),
+            "strategy_final_score": strategy.get("strategy_final_score"),
+            "strategy_margin_to_threshold": strategy.get("strategy_margin_to_threshold"),
         },
         "risk": {
             "status": risk.get("risk_status"), "reason": reasons[0] if reasons else None,
@@ -353,7 +372,14 @@ def build_export_record(
             "stop_envelope_bps": legacy.get("stop_envelope_bps"), "stop_envelope_pass": diagnostic.get("stop_envelope_pass"),
             "target_source_type": legacy.get("target_source"), "causal_target": legacy.get("target"),
             "target_distance_bps": legacy.get("target_distance_bps"), "target_available": legacy.get("target_valid"),
-            "gross_reward_bps": diagnostic.get("gross_reward_bps"), "gross_risk_bps": diagnostic.get("effective_risk_bps"),
+            "causal_target_exists": diagnostic.get("causal_target_exists"),
+            "economically_actionable_target_exists": diagnostic.get("economically_actionable_target_exists"),
+            "minimum_actionable_target_bps": diagnostic.get("minimum_actionable_target_bps"),
+            "minimum_positive_edge_bps": diagnostic.get("minimum_positive_edge_bps"),
+            "target_considerations": diagnostic.get("target_considerations") or [],
+            "next_target_considered": diagnostic.get("next_target_considered"),
+            "opportunity_id": diagnostic.get("opportunity_id"),
+            "gross_reward_bps": diagnostic.get("gross_reward_bps"), "gross_risk_bps": diagnostic.get("gross_risk_bps"),
             "gross_rr": legacy.get("gross_rr"),
         },
         "cost_economics": {
@@ -370,9 +396,9 @@ def build_export_record(
             "economic_gate_pass": diagnostic.get("economic_gate_pass"),
         },
         "rr_cohorts": {
-            "rr_1_0_pass": None if legacy.get("gross_rr") is None else legacy["gross_rr"] >= 1.0,
-            "rr_1_2_pass": None if legacy.get("gross_rr") is None else legacy["gross_rr"] >= 1.2,
-            "rr_1_5_pass": None if legacy.get("gross_rr") is None else legacy["gross_rr"] >= 1.5,
+            "rr_1_0_pass": _mapping(diagnostic.get("rr_cohorts_net")).get("1.00"),
+            "rr_1_2_pass": _mapping(diagnostic.get("rr_cohorts_net")).get("1.20"),
+            "rr_1_5_pass": _mapping(diagnostic.get("rr_cohorts_net")).get("1.50"),
         },
         "paper_outcome": {
             "planned_entry": planned.get("planned_entry") or legacy.get("entry"),

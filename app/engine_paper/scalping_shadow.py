@@ -66,6 +66,7 @@ class ShadowGeometryCandidate:
     causal_invalidation: float | None
     atr: float | None
     targets: tuple[CausalTarget, ...] = ()
+    setup_identity: str | None = None
     structural_setup: bool = True
     strategy_admitted: bool = True
     repeat_candidate: bool = False
@@ -85,12 +86,27 @@ class ShadowGeometryCandidate:
         raw = f"{self.trade_profile_id}:{self.symbol.upper()}:{self.boundary_ms}:{self.direction}"
         return f"shadow-geometry:{sha256(raw.encode()).hexdigest()[:20]}"
 
+    @property
+    def opportunity_id(self) -> str:
+        targets = ",".join(
+            f"{item.source_type}:{item.price:.12g}"
+            for item in sorted(self.targets, key=lambda value: (
+                TARGET_PRIORITY[value.source_type], abs(value.price - self.entry)
+            ))
+        )
+        raw = (
+            f"{self.trade_profile_id}:{self.symbol.upper()}:{self.direction}:"
+            f"{self.setup_identity or 'UNKNOWN_SETUP'}:{self.causal_invalidation}:{targets}"
+        )
+        return f"opportunity:{sha256(raw.encode()).hexdigest()[:24]}"
+
 
 @dataclass(frozen=True, slots=True)
 class ShadowGeometryConfig:
     atr_buffer_multiplier: float
     stop_envelope_bps: float
     minimum_target_diagnostic_bps: float
+    minimum_positive_edge_bps: float = 1.0
     production_rr_floor: float = 1.5
     max_depth_impact_bps: float = 20.0
 
@@ -101,6 +117,8 @@ class ShadowGeometryConfig:
             raise ValueError("stop envelope is outside the declared shadow cohorts")
         if self.minimum_target_diagnostic_bps not in {45.0, 60.0, 80.0}:
             raise ValueError("target diagnostic is outside the declared shadow cohorts")
+        if not isfinite(float(self.minimum_positive_edge_bps)) or self.minimum_positive_edge_bps <= 0:
+            raise ValueError("minimum positive edge must be finite and positive")
         if self.production_rr_floor != 1.5:
             raise ValueError("production RR floor must remain 1.5")
 
@@ -111,6 +129,7 @@ class ShadowGeometryDiagnostic:
     symbol: str
     boundary: int
     candidate_id: str
+    opportunity_id: str
     entry: float
     causal_invalidation: float | None = None
     causal_invalidation_distance_bps: float | None = None
@@ -126,6 +145,12 @@ class ShadowGeometryDiagnostic:
     causal_target: float | None = None
     target_distance_bps: float | None = None
     target_available: bool = False
+    causal_target_exists: bool = False
+    economically_actionable_target_exists: bool = False
+    minimum_positive_edge_bps: float | None = None
+    minimum_actionable_target_bps: float | None = None
+    target_considerations: list[dict[str, object]] = field(default_factory=list)
+    next_target_considered: str | None = None
     minimum_target_diagnostic_bps: float | None = None
     minimum_target_diagnostic_pass: bool | None = None
     gross_reward_bps: float | None = None
@@ -172,7 +197,7 @@ def _bps(distance: float, entry: float) -> float:
     return round(abs(distance) / entry * 10_000.0, 8)
 
 
-def _select_target(candidate: ShadowGeometryCandidate) -> CausalTarget | None:
+def _causal_targets(candidate: ShadowGeometryCandidate) -> list[CausalTarget]:
     def favorable(target: CausalTarget) -> bool:
         return target.price > candidate.entry if candidate.direction == "BULLISH" else target.price < candidate.entry
 
@@ -181,11 +206,15 @@ def _select_target(candidate: ShadowGeometryCandidate) -> CausalTarget | None:
         if target.known_at_ms <= candidate.boundary_ms
         and target.validated and target.relevant and target.achievable and favorable(target)
     ]
-    if not known:
-        return None
-    best_priority = min(TARGET_PRIORITY[target.source_type] for target in known)
-    same_tier = [target for target in known if TARGET_PRIORITY[target.source_type] == best_priority]
-    return min(same_tier, key=lambda target: abs(target.price - candidate.entry))
+    # One nearest target per causal tier is sufficient and keeps the lookup
+    # bounded. A farther level in the same tier must not be selected to improve
+    # RR artificially.
+    selected: list[CausalTarget] = []
+    for source_type in sorted(TARGET_PRIORITY, key=TARGET_PRIORITY.get):
+        same_tier = [target for target in known if target.source_type == source_type]
+        if same_tier:
+            selected.append(min(same_tier, key=lambda target: abs(target.price - candidate.entry)))
+    return selected
 
 
 def evaluate_scalping_shadow(
@@ -198,10 +227,12 @@ def evaluate_scalping_shadow(
         trade_profile_id=candidate.trade_profile_id,
         symbol=candidate.symbol.upper(), boundary=candidate.boundary_ms,
         candidate_id=candidate.candidate_id, entry=candidate.entry,
+        opportunity_id=candidate.opportunity_id,
         causal_invalidation=candidate.causal_invalidation, atr=candidate.atr,
         atr_buffer_multiplier=config.atr_buffer_multiplier,
         stop_envelope_bps=config.stop_envelope_bps,
         minimum_target_diagnostic_bps=config.minimum_target_diagnostic_bps,
+        minimum_positive_edge_bps=config.minimum_positive_edge_bps,
         entry_fee_bps=costs.entry_fee_bps,
         exit_fee_bps=costs.exit_fee_bps,
         entry_slippage_bps=costs.entry_slippage_bps,
@@ -235,18 +266,16 @@ def evaluate_scalping_shadow(
             "STOP_ENVELOPE", R.PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE.value
         )
 
-    target = _select_target(candidate)
-    if target is None:
+    targets = _causal_targets(candidate)
+    if not targets:
         return result.reject("CAUSAL_TARGET", R.PAPER_NO_PLAN_MISSING_TARGET_LEVEL.value)
+    result.causal_target_exists = True
     result.target_available = True
-    result.target_source_type = target.source_type
-    result.causal_target = target.price
-    result.target_distance_bps = _bps(target.price - candidate.entry, candidate.entry)
-    result.gross_reward_bps = result.target_distance_bps
-    result.minimum_target_diagnostic_pass = (
-        result.target_distance_bps >= config.minimum_target_diagnostic_bps
-    )
-    result.gross_rr = round(result.gross_reward_bps / result.gross_risk_bps, 8)
+    nearest = targets[0]
+    result.target_source_type = nearest.source_type
+    result.causal_target = nearest.price
+    result.target_distance_bps = _bps(nearest.price - candidate.entry, candidate.entry)
+    result.minimum_target_diagnostic_pass = result.target_distance_bps >= config.minimum_target_diagnostic_bps
 
     if costs.spread_bps is None or not costs.spread_authoritative:
         return result.reject(
@@ -265,22 +294,87 @@ def evaluate_scalping_shadow(
         + costs.safety_margin_bps
     )
     result.total_cost_bps = round(total_cost, 8)
-    result.expected_net_edge_bps = round(result.gross_reward_bps - total_cost, 8)
-    result.net_reward_bps = result.expected_net_edge_bps
+    result.minimum_actionable_target_bps = round(
+        total_cost + config.minimum_positive_edge_bps, 8
+    )
     result.effective_risk_bps = round(result.gross_risk_bps + total_cost, 8)
-    if result.net_reward_bps <= 0:
-        return result.reject("NET_COST_GATE", R.PAPER_REJECT_NEGATIVE_NET_EDGE.value)
-    result.net_rr = round(result.net_reward_bps / result.effective_risk_bps, 8)
+
+    selected: tuple[CausalTarget, float, float, float, float] | None = None
+    for index, target in enumerate(targets):
+        reward = _bps(target.price - candidate.entry, candidate.entry)
+        edge = round(reward - total_cost, 8)
+        gross_rr = round(reward / result.gross_risk_bps, 8)
+        net_rr = None if edge <= 0 else round(edge / result.effective_risk_bps, 8)
+        result.target_source_type = target.source_type
+        result.causal_target = target.price
+        result.target_distance_bps = reward
+        result.gross_reward_bps = reward
+        result.gross_rr = gross_rr
+        result.expected_net_edge_bps = edge
+        result.net_reward_bps = edge
+        result.net_rr = net_rr
+        result.break_even_win_rate = (
+            None if net_rr is None else round(
+                result.effective_risk_bps / (result.effective_risk_bps + edge), 8
+            )
+        )
+        result.economic_gate_pass = edge >= config.minimum_positive_edge_bps
+        result.rr_cohorts_gross = {f"{rr:.2f}": gross_rr >= rr for rr in RR_COHORTS}
+        result.rr_cohorts_net = {
+            f"{rr:.2f}": net_rr is not None and net_rr >= rr for rr in RR_COHORTS
+        }
+        actionable = (
+            reward >= result.minimum_actionable_target_bps
+            and edge > 0
+            and gross_rr >= config.production_rr_floor
+            and net_rr is not None and net_rr >= config.production_rr_floor
+        )
+        reason = None
+        if reward < result.minimum_actionable_target_bps or edge <= 0:
+            reason = "BELOW_ECONOMIC_FLOOR"
+        elif gross_rr < config.production_rr_floor:
+            reason = "BELOW_GROSS_RR_POLICY"
+        elif net_rr is None or net_rr < config.production_rr_floor:
+            reason = "BELOW_NET_RR_POLICY"
+        result.target_considerations.append({
+            "source_type": target.source_type,
+            "price": target.price,
+            "distance_bps": reward,
+            "causal": True,
+            "future_safe": True,
+            "directionally_valid": True,
+            "economically_actionable": actionable,
+            "rejection_reason": reason,
+        })
+        if index + 1 < len(targets):
+            result.target_considerations[-1]["next_target_considered"] = targets[index + 1].source_type
+        if actionable:
+            selected = (target, reward, edge, gross_rr, net_rr)
+            break
+
+    if selected is None:
+        result.next_target_considered = None
+        return result.reject(
+            "TARGET_ACTIONABILITY",
+            R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE.value,
+        )
+
+    target, reward, edge, gross_rr, net_rr = selected
+    result.economically_actionable_target_exists = True
+    result.target_source_type = target.source_type
+    result.causal_target = target.price
+    result.target_distance_bps = reward
+    result.gross_reward_bps = reward
+    result.gross_rr = gross_rr
+    result.expected_net_edge_bps = edge
+    result.net_reward_bps = edge
+    result.net_rr = net_rr
     result.break_even_win_rate = round(
         result.effective_risk_bps / (result.effective_risk_bps + result.net_reward_bps), 8
     )
     result.economic_gate_pass = True
     result.rr_cohorts_gross = {f"{rr:.2f}": result.gross_rr >= rr for rr in RR_COHORTS}
     result.rr_cohorts_net = {f"{rr:.2f}": result.net_rr >= rr for rr in RR_COHORTS}
-    if result.gross_rr < config.production_rr_floor:
-        return result.reject("GROSS_RR", R.PAPER_REJECT_LOW_GROSS_RR.value)
-    if result.net_rr < config.production_rr_floor:
-        return result.reject("NET_RR", R.PAPER_REJECT_LOW_NET_RR.value)
     result.valid_plan = True
     result.final_shadow_approval = True
     return result
@@ -305,8 +399,12 @@ def summarize_shadow_configuration(
         "structural_setups": len(rows),
         "strategy_admitted": len(rows),
         "geometry_valid": sum(row.stop_envelope_pass is True and row.target_available for row in rows),
+        "actionable_targets": sum(row.economically_actionable_target_exists for row in rows),
         "stop_too_wide": reasons.count(R.PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE.value),
         "missing_target": reasons.count(R.PAPER_NO_PLAN_MISSING_TARGET_LEVEL.value),
+        "no_actionable_target": reasons.count(
+            R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE.value
+        ),
         "cost_gate_passed": sum(row.economic_gate_pass for row in rows),
         "gross_rr_ge_threshold": sum(row.rr_cohorts_gross.get("1.50", False) for row in rows),
         "net_rr_ge_threshold": sum(row.rr_cohorts_net.get("1.50", False) for row in rows),

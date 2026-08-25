@@ -47,6 +47,38 @@ def diagnostic_strategy_score(context: StrategyContext) -> float | None:
     return round(max(low, min(high, score)), 3)
 
 
+def strategy_score_diagnostics(
+    context: StrategyContext, config: StrategyConfig,
+) -> dict[str, object]:
+    """Explain the existing score without changing the strategy decision."""
+    threshold_by_quality = {"GOOD": 80.0, "ACCEPTABLE": 65.0, "WEAK": 45.0}
+    threshold = threshold_by_quality[config.minimum_allowed_quality]
+    positive = (context.structural_score, context.confirmation_score, context.context_score)
+    raw_score = (
+        round(sum(float(value) for value in positive), 3)
+        if any(value is not None for value in positive)
+        else (float(context.quality_score) if context.quality_score is not None else None)
+    )
+    penalty_total = round(sum(float(value or 0.0) for value in (
+        context.conflict_penalty, context.invalidation_penalty
+    )), 3)
+    final_score = diagnostic_strategy_score(context)
+    return {
+        "strategy_quality_threshold": threshold,
+        "component_scores": {
+            "structure": context.structural_score,
+            "candle_confirmation": context.confirmation_score,
+            "context_alignment": context.context_score,
+        },
+        "strategy_raw_score": raw_score,
+        "strategy_penalty_total": penalty_total,
+        "strategy_final_score": final_score,
+        "strategy_margin_to_threshold": (
+            None if final_score is None else round(final_score - threshold, 3)
+        ),
+    }
+
+
 def evaluate_strategy_rules(context: StrategyContext, config: StrategyConfig) -> RuleResult:
     status = context.setup_status
     if status == "NO_SETUP":
@@ -54,6 +86,7 @@ def evaluate_strategy_rules(context: StrategyContext, config: StrategyConfig) ->
                        reason=R.STRATEGY_NO_DECISION_NO_SETUP.value)
     if status == "SETUP_INVALID":
         return _result(StrategyStatus.REJECT.value, quality=StrategyQuality.REJECTED.value,
+                       score=diagnostic_strategy_score(context),
                        reason=R.STRATEGY_REJECT_SETUP_INVALID.value)
     if status == "WAIT_FOR_CONFIRMATION":
         return _result(StrategyStatus.WAIT.value, quality=StrategyQuality.WAITING.value,
@@ -71,12 +104,14 @@ def evaluate_strategy_rules(context: StrategyContext, config: StrategyConfig) ->
             or context.has_hard_invalidation):
         return _result(StrategyStatus.REJECT.value, strategy_type=strategy_type,
                        quality=StrategyQuality.REJECTED.value,
+                       score=diagnostic_strategy_score(context),
                        reason=R.STRATEGY_REJECT_HARD_INVALIDATION.value,
                        warnings=context.quality_warnings)
     if ((config.reject_on_invalidation_reasons and context.invalidation_reasons)
             or context.has_conflict or severe_warning):
         return _result(StrategyStatus.REJECT.value, strategy_type=strategy_type,
                        quality=StrategyQuality.REJECTED.value,
+                       score=diagnostic_strategy_score(context),
                        reason=R.STRATEGY_REJECT_CONFLICTING_CONTEXT.value,
                        warnings=context.quality_warnings)
     if context.confirmation_state == "AWAITING_CONFIRMATION":
@@ -87,6 +122,7 @@ def evaluate_strategy_rules(context: StrategyContext, config: StrategyConfig) ->
     if context.confirmation_state in {"INVALIDATED_BY_CONTEXT", "REJECTED_BY_ANALYSIS"}:
         return _result(StrategyStatus.REJECT.value, strategy_type=strategy_type,
                        quality=StrategyQuality.REJECTED.value,
+                       score=diagnostic_strategy_score(context),
                        reason=R.STRATEGY_REJECT_CONFLICTING_CONTEXT.value)
     if context.confirmation_state == "NOT_APPLICABLE":
         return _result(StrategyStatus.NO_DECISION.value, quality=StrategyQuality.UNKNOWN.value,
@@ -99,10 +135,12 @@ def evaluate_strategy_rules(context: StrategyContext, config: StrategyConfig) ->
     if config.require_directional_hint and context.direction_hint not in {"BULLISH", "BEARISH"}:
         return _result(StrategyStatus.REJECT.value, strategy_type=strategy_type,
                        quality=StrategyQuality.REJECTED.value,
+                       score=diagnostic_strategy_score(context),
                        reason=R.STRATEGY_REJECT_NEUTRAL_DIRECTION.value)
     if context.setup_type not in config.allowed_setup_types or strategy_type == StrategyType.NO_STRATEGY.value:
         return _result(StrategyStatus.REJECT.value, strategy_type=strategy_type,
                        quality=StrategyQuality.REJECTED.value,
+                       score=diagnostic_strategy_score(context),
                        reason=R.STRATEGY_REJECT_UNSUPPORTED_SETUP_TYPE.value)
     score = diagnostic_strategy_score(context)
     if context.setup_quality == "WEAK":

@@ -121,7 +121,9 @@ def test_positive_gross_edge_but_negative_net_edge_rejects_with_raw_diagnostics(
     row = evaluate_scalping_shadow(candidate(targets=close), costs(spread_bps=5.0, depth_impact_bps=5.0), config())
     assert row.gross_reward_bps == pytest.approx(20.0)
     assert row.expected_net_edge_bps < 0
-    assert row.rejection_reason == R.PAPER_REJECT_NEGATIVE_NET_EDGE
+    assert row.rejection_reason == R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE
+    assert row.net_rr is None and row.break_even_win_rate is None
+    assert row.target_considerations[0]["rejection_reason"] == "BELOW_ECONOMIC_FLOOR"
 
 
 def test_gross_rr_pass_net_rr_fail_and_cohorts_cannot_bypass_cost_gate():
@@ -129,10 +131,53 @@ def test_gross_rr_pass_net_rr_fail_and_cohorts_cannot_bypass_cost_gate():
     row = evaluate_scalping_shadow(candidate(targets=target), costs(), config())
     assert row.gross_rr >= 1.5
     assert row.net_rr < 1.5
-    assert row.rejection_reason == R.PAPER_REJECT_LOW_NET_RR
+    assert row.rejection_reason == R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE
+    assert row.target_considerations[0]["rejection_reason"] == "BELOW_NET_RR_POLICY"
     assert row.rr_cohorts_gross["1.20"] is True
     assert row.rr_cohorts_net["1.20"] is False
     assert row.execution_eligible is False
+
+
+def test_non_actionable_local_target_falls_back_to_nearest_structural_causal_target():
+    targets = (
+        CausalTarget(100.20, "LOCAL_5M", BOUNDARY),
+        CausalTarget(102.00, "STRUCTURAL", BOUNDARY),
+        CausalTarget(103.00, "HIGHER_TF", BOUNDARY),
+    )
+    row = evaluate_scalping_shadow(candidate(targets=targets), costs(), config())
+    assert row.valid_plan is True
+    assert row.causal_target_exists is True
+    assert row.economically_actionable_target_exists is True
+    assert row.target_source_type == "STRUCTURAL"
+    assert row.causal_target == 102.00
+    assert row.target_considerations[0] == {
+        "source_type": "LOCAL_5M", "price": 100.20, "distance_bps": 20.0,
+        "causal": True, "future_safe": True, "directionally_valid": True,
+        "economically_actionable": False, "rejection_reason": "BELOW_ECONOMIC_FLOOR",
+        "next_target_considered": "STRUCTURAL",
+    }
+
+
+def test_farther_same_tier_target_is_not_selected_to_manufacture_rr():
+    targets = (
+        CausalTarget(100.20, "LOCAL_5M", BOUNDARY),
+        CausalTarget(102.00, "LOCAL_5M", BOUNDARY),
+    )
+    row = evaluate_scalping_shadow(candidate(targets=targets), costs(), config())
+    assert row.rejection_reason == R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE
+    assert len(row.target_considerations) == 1
+    assert row.causal_target == 100.20
+
+
+def test_opportunity_identity_is_stable_across_adjacent_boundaries_but_candidate_is_not():
+    first = evaluate_scalping_shadow(candidate(setup_identity="BREAKOUT_CONTINUATION"), costs(), config())
+    second = evaluate_scalping_shadow(candidate(
+        boundary_ms=BOUNDARY + 300_000,
+        targets=(CausalTarget(102.0, "LOCAL_5M", BOUNDARY),),
+        setup_identity="BREAKOUT_CONTINUATION",
+    ), costs(), config())
+    assert first.candidate_id != second.candidate_id
+    assert first.opportunity_id == second.opportunity_id
 
 
 def test_depth_impact_too_high_fails_before_rr_approval():
