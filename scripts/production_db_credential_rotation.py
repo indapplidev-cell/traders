@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -27,7 +28,6 @@ from psycopg import sql
 from sqlalchemy.engine import make_url
 
 from app.db.postgres_auth_probe import probe_postgres_authentication
-from scripts.verify_persistent_secret_binding import inspect_windows_acl
 from scripts.verify_shared_db_secret_binding import BINDING, binding_errors
 
 
@@ -108,7 +108,16 @@ def _identity(document: dict) -> tuple[str, int, bool]:
 
 
 def _restrict_acl(path: Path, *, directory: bool) -> None:
-    current_sid = inspect_windows_acl(ROOT / ".env.production.local").current_user_sid
+    identity = _run([
+        "powershell.exe",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "([System.Security.Principal.WindowsIdentity]::GetCurrent()).User.Value",
+    ])
+    current_sid = identity.stdout.strip()
+    if identity.returncode or not re.fullmatch(r"S-\d(?:-\d+)+", current_sid):
+        raise SafeRotationError("CURRENT_USER_SID_RESOLUTION_FAILED")
     inherit = "(OI)(CI)" if directory else ""
     result = _run([
         "icacls.exe",
@@ -359,7 +368,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         result = execute()
-    except (SafeRotationError, OSError, ValueError, psycopg.Error, subprocess.TimeoutExpired) as error:
+    except (
+        SafeRotationError,
+        OSError,
+        RuntimeError,
+        ValueError,
+        psycopg.Error,
+        subprocess.TimeoutExpired,
+    ) as error:
         print("ROTATION=FAILED")
         print(f"ERROR_CLASS={type(error).__name__}")
         safe_code = (

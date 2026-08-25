@@ -10,9 +10,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.verify_persistent_secret_binding import inspect_windows_acl
-
-
 BINDING = ROOT / ".secrets.production.local" / "shared-db-password"
 GITIGNORE_RULE = "/.secrets.production.local/"
 DOCKERIGNORE_RULE = ".secrets.production.local"
@@ -24,13 +21,41 @@ def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
     )
 
 
+def _acl_restricted(path: Path) -> bool:
+    literal = str(path.resolve()).replace("'", "''")
+    command = rf"""
+$ErrorActionPreference='Stop'
+$current=([System.Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
+$allowed=@($current,'S-1-5-18','S-1-5-32-544')
+$acl=Get-Acl -LiteralPath '{literal}'
+$rules=@($acl.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier]))
+$broad=@('S-1-1-0','S-1-5-11','S-1-5-32-545','S-1-5-32-546','S-1-5-7','S-1-5-20')
+$ok=$acl.AreAccessRulesProtected -and
+  @($rules|Where-Object {{$broad -contains $_.IdentityReference.Value}}).Count -eq 0 -and
+  @($rules|Where-Object {{$allowed -notcontains $_.IdentityReference.Value}}).Count -eq 0 -and
+  @($rules|Where-Object {{$_.AccessControlType -ne 'Allow'}}).Count -eq 0 -and
+  @($rules|Where-Object {{$_.IdentityReference.Value -eq $current}}).Count -gt 0 -and
+  @($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-18'}}).Count -gt 0 -and
+  @($rules|Where-Object {{$_.IdentityReference.Value -eq 'S-1-5-32-544'}}).Count -gt 0
+if($ok){{'PASS'}}else{{'FAIL'}}
+"""
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8-sig",
+    )
+    return result.returncode == 0 and result.stdout.strip() == "PASS"
+
+
 def binding_errors(path: Path = BINDING) -> tuple[str, ...]:
     errors: list[str] = []
     if not path.is_file():
         return ("BINDING_FILE_MISSING",)
     try:
         value = path.read_bytes()
-        acl = inspect_windows_acl(path)
+        acl_restricted = _acl_restricted(path)
         gitignore = {
             line.strip()
             for line in (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
@@ -49,7 +74,7 @@ def binding_errors(path: Path = BINDING) -> tuple[str, ...]:
         errors.append("CREDENTIAL_FORMAT_INVALID")
     if value not in {token, token + b"\n", token + b"\r\n"}:
         errors.append("CREDENTIAL_FILE_CONTENT_INVALID")
-    if not acl.restricted:
+    if not acl_restricted:
         errors.append("ACL_CONTRACT_FAILED")
     if GITIGNORE_RULE not in gitignore:
         errors.append("GIT_IGNORE_CONTRACT_FAILED")
