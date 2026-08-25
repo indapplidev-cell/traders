@@ -288,14 +288,14 @@ def execute(*, resume_prepared_binding: bool = False) -> dict[str, object]:
 
     old_before, old_before_sqlstate = _auth_probe(old_password)
     new_before, new_before_sqlstate = _auth_probe(new_password)
-    if old_before == "ACCEPTED" and new_before == "DENIED" and new_before_sqlstate == "28P01":
+    if old_before == "CONNECTED" and new_before == "DENIED" and new_before_sqlstate == "28P01":
         _rotate_role(old_password, new_password)
-    elif old_before == "DENIED" and old_before_sqlstate == "28P01" and new_before == "ACCEPTED":
+    elif old_before == "DENIED" and old_before_sqlstate == "28P01" and new_before == "CONNECTED":
         pass
     else:
         raise SafeRotationError("ROTATION_AUTH_STATE_AMBIGUOUS")
     new_connection, new_sqlstate = _auth_probe(new_password)
-    if new_connection != "ACCEPTED" or new_sqlstate is not None:
+    if new_connection != "CONNECTED" or new_sqlstate is not None:
         raise SafeRotationError("NEW_CREDENTIAL_POSITIVE_AUTH_FAILED")
 
     clients: list[ClientResult] = []

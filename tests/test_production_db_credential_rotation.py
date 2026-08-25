@@ -60,3 +60,9 @@ def test_rotation_controller_never_renders_exception_values() -> None:
     assert "str(error)" not in source
     assert "print(error)" not in source
     assert "SECRET_DERIVED_HASH_CREATED=NO" in source
+
+
+def test_rotation_controller_uses_probe_connected_state() -> None:
+    source = (ROOT / "scripts" / "production_db_credential_rotation.py").read_text(encoding="utf-8")
+    assert '"CONNECTED"' in source
+    assert '"ACCEPTED"' not in source
