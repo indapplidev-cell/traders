@@ -1,40 +1,42 @@
-# Final decision — 5m scalping analysis report export 01
+# Final decision — 5m target/strategy/economics remediation 01
 
-`TRADERS_5M_SCALPING_ANALYSIS_REPORT_EXPORT_01` completed with PASS for the
-reporting criterion. This verdict does not assert profitable trading.
-
-The stable Readonly API snapshot covers 2026-08-24T18:05:00Z through
-2026-08-25T07:45:00Z: 165 homogeneous 5m boundaries, 1,650 symbol evaluations,
-100% completeness, exact batches of ten, and zero missing/duplicate/cursor
-collisions. Nine bounded keyset pages were aggregated locally.
-
-The Funnel contains 170 structural setups, four strategy admits and four valid
-causal geometries. All four are consecutive observations of one SOLUSDT LONG
-opportunity. Gross RR median is 0.0433, expected net edge median is -24.9448
-bps, and RR 1.0/1.2/1.5 each pass 0. There are no plans, approvals, commands,
-positions or closed PAPER trades. Expert status is `NOT_READY`; profitability
-confidence is insufficient.
-
-Fresh post-commit safety evidence remains WAL/PITR true/true, lineage valid,
-physical gap false, backlog/pending/unresolved 0/0/0, Control ARMED generation
-6, LIVE disabled, schema 0018, and one 5m singleton owner. The Readonly runtime
-is healthy on the same container/image but its restart counter is now one;
-Docker reports exit code 0 and `OOMKilled=false`. This task issued no restart,
-recreate, Control, schema, trading, parameter, LIVE, or Binance order command.
+The decision-chain engineering remediation is implemented, tested and narrowly
+deployed. Overall task PASS is withheld because a predeploy diagnostic exposed
+a production DB credential in the tool transcript. The value is not copied
+into Git/evidence. Rotation/invalidation and shared-client rebind require
+separate authority and may affect 15m.
 
 ```text
-TASK_STATUS = PASS
-FINAL_VERDICT = PASS_COMPLETE_REPRODUCIBLE_HOMOGENEOUS_READONLY_REPORT
-EXPERT_STATUS = NOT_READY
-STATUS_AS_OF_COMMIT = 6a2df4ca70a0404978b1cb41cab0c4ffaa830a46
-DOCUMENTATION_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
-REPORT_FILE = D:\disk_E\game_projects\traders\evidence_inbox\TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md
-REPORT_FULL_SHA256 = aeb99e5fa77cd85137b3ea249ce9a80aac62c27abab5e929d4a2f2465f0fb4c4
-REPORT_BODY_SHA256 = 57854de94be5255882bd7e60e2bd508d2166afd89295af8851de1249efccaba5
-FOCUSED_TESTS = 16_PASSED
-PRODUCTION_5M_PARAMETER_CHANGES_BY_TASK = 0
-PRODUCTION_15M_PARAMETER_CHANGES_BY_TASK = 0
-PRODUCTION_TRADING_MUTATIONS_BY_TASK = 0
-BINANCE_ORDER_API_CALLS_BY_TASK = 0
+TASK_STATUS = BLOCKED
+FINAL_VERDICT = BLOCKED_SECRET_EXPOSURE_REQUIRES_AUTHORIZED_ROTATION_TECHNICAL_REMEDIATION_PASS
+BLOCKER_CODE = PRODUCTION_DB_CREDENTIAL_EXPOSED_IN_TOOL_TRANSCRIPT_ROTATION_REQUIRED
+PRODUCTION_ALEMBIC_HEAD = 0018_promote_5m_production_search
+5M_PARAMETER_SET_ID_BEFORE = trade-5m-v1-runtime-v1-c141aece87c7f6a0
+5M_PARAMETER_SET_ID_AFTER = trade-5m-v1-runtime-v1-4e257e4cff2a5b9a
+5M_RUNTIME_SOURCE_COMMIT = 8a2413f00dc0ba6ba398faa8d08ac98e1cacf58a
+5M_RUNTIME_IMAGE = sha256:41f836ed3ecc41b8f5e323b49c39ce06d17059c2b0152a0751100e5e1b9efc9b
+5M_RUNTIME_CONTAINER = 0612503423fca3fdcd4a4e2c759e3f231b966388f8cd19c629aa08e7a44fdbf7
+READONLY_IMAGE = sha256:f249f1211e3d9c4ab0921525fccb3b20b4eb762a8e420db6f091b126c1a77d59
+BASELINE = 165_BOUNDARIES_1650_ROWS_235_SETUPS_7_STRATEGY_2_UNIQUE_4_GEOMETRY_0_ACTIONABLE_0_COST_0_PLAN
+STRATEGY = WEAK194_CONFLICT34_SCORE_P50_64.999_MARGIN_P50_MINUS0.001_THRESHOLD65_UNCHANGED
+ECONOMICS = TARGET3.0383BPS_COST27.9831BPS_EDGE_MINUS24.9448BPS_NETRR_NULL
+POSTDEPLOY_5M = 6_BOUNDARIES_60_ROWS_EXACT10_ZERO_DUPLICATE_ERROR_LATENCY_P50_98.5_P90_127.2_MAX146MS
+POSTDEPLOY_15M = 3_BOUNDARIES_30_ROWS_EXACT10_UNCHANGED_PARAMETER_CONTAINER_IMAGE
+WAL_PITR_ACK = PASS_PASS_RUNNING_PID4912_BACKLOG_PENDING_UNRESOLVED_0_0_0_NO_PHYSICAL_GAP
+CONTROL_LIVE = ARMED_GENERATION6_LIVE_DISABLED_COMMANDS0_POSITIONS0
+TESTS = SERVER294_PASS5SKIP_SECURITY_READONLY_I18N835_PASS7SKIP_DESKTOP1465_PASS2SKIP3029SUBTESTS
+DECISION_CHAIN_INTEGRITY = PASS_TECHNICAL
+TARGET_ACTIONABILITY_FIXED = YES
+STRATEGY_DIAGNOSTICS_COMPLETE = YES
+COST_GATE_VALID = YES
+RISK_QUOTA_VALID = YES
+15M_UNCHANGED = YES
+TRADING_VERDICT = 5M_NOT_READY
 PUSHED = NO
+EVIDENCE_FILE = D:\disk_E\game_projects\traders\evidence_inbox\TRADERS_5M_SCALPING_DECISION_CHAIN_TARGET_STRATEGY_AND_ECONOMICS_REMEDIATION_01_FINAL.md
+EVIDENCE_SHA256 = 285e9dcec15bb61821362933a2c56f41584057131f3d2bb8780fc8f7627911eb
+DECISION_CHAIN_REPORT = D:\disk_E\game_projects\traders\evidence_inbox\TRADERS_5M_SCALPING_DECISION_CHAIN_REPORT.md
+DECISION_CHAIN_REPORT_SHA256 = 5804a7d1c39f3fb18be4f2f4a599b7569ec2a10dba17cc267639795b3e32e04e
+NEXT_ACTION = AUTHORIZE_PRODUCTION_DB_CREDENTIAL_ROTATION_INVALIDATION_AND_SAFE_SHARED_CLIENT_REBIND
+AFTER_BLOCKER = TRADERS_5M_SCALPING_STRATEGY_QUALITY_AND_TARGET_ACTIONABILITY_SHADOW_CALIBRATION_01
 ```
