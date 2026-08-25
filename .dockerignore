@@ -64,6 +64,7 @@ Thumbs.db
 .env.*
 !.env.example
 .env.production.local
+.secrets.production.local
 *.pem
 *.key
 secrets/

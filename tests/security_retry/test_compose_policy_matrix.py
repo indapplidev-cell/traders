@@ -190,7 +190,7 @@ def test_actual_tracked_compose_has_required_reference() -> None:
     )
     assert inspection.file_exists
     assert inspection.key_exists
-    assert inspection.value_class is ValueClass.REQUIRED_ENV_REFERENCE
+    assert inspection.value_class is ValueClass.APPROVED_EXTERNAL_SECRET_REFERENCE
     assert inspection.policy_result is PolicyResult.PASS
 
 

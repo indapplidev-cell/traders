@@ -24,8 +24,27 @@ from app.db.postgres_auth_probe import PostgresAuthenticationProbe
 
 
 PROTECTED_BINDING_NAME = ".env.production.local"
-POSTGRES_PASSWORD_KEY_PATH = "services.postgres.environment.POSTGRES_PASSWORD"
+POSTGRES_PASSWORD_KEY_PATH = "services.postgres.environment.POSTGRES_PASSWORD_FILE"
 POSTGRES_PASSWORD_REFERENCE_KEY = "TRADERS_ML_POSTGRES_PASSWORD"
+_APPROVED_SHARED_DB_SECRET_REFERENCES = {
+    (
+        "services.postgres.environment.POSTGRES_PASSWORD_FILE",
+        "/run/secrets/traders_shared_db_password",
+    ),
+    (
+        "secrets.traders_shared_db_password.file",
+        "./.secrets.production.local/shared-db-password",
+    ),
+    *(
+        (f"services.{service}.secrets.[]", "traders_shared_db_password")
+        for service in (
+            "postgres",
+            "market-data-sync",
+            "online-orchestrator",
+            "online-orchestrator-5m",
+        )
+    ),
+}
 _SENSITIVE_KEY_PARTS = (
     "password",
     "passwd",
@@ -293,6 +312,8 @@ def classify_tracked_value(
     *,
     example_file: bool = False,
 ) -> ValueClass:
+    if (key_path, value) in _APPROVED_SHARED_DB_SECRET_REFERENCES:
+        return ValueClass.APPROVED_EXTERNAL_SECRET_REFERENCE
     if _CREDENTIAL_URL.match(value):
         return ValueClass.CREDENTIAL_BEARING_URL
     if _SECRET_ASSIGNMENT.search(value):
@@ -403,6 +424,10 @@ def inspect_tracked_compose_key(
     correct_reference = bool(
         required and required.group("name") == POSTGRES_PASSWORD_REFERENCE_KEY
     )
+    approved_file = (
+        key_path,
+        matches[0].value,
+    ) in _APPROVED_SHARED_DB_SECRET_REFERENCES
     return SafeTrackedFileInspection(
         file=file,
         file_exists=True,
@@ -410,7 +435,13 @@ def inspect_tracked_compose_key(
         value_class=value_class,
         policy_result=(
             PolicyResult.PASS
-            if value_class is ValueClass.REQUIRED_ENV_REFERENCE and correct_reference
+            if (
+                value_class is ValueClass.REQUIRED_ENV_REFERENCE
+                and correct_reference
+            ) or (
+                value_class is ValueClass.APPROVED_EXTERNAL_SECRET_REFERENCE
+                and approved_file
+            )
             else PolicyResult.FAIL
         ),
     )
