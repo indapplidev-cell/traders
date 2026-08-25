@@ -68,6 +68,7 @@ class StrategyDecision:
     strategy_penalty_total: float | None = None
     strategy_final_score: float | None = None
     strategy_margin_to_threshold: float | None = None
+    shadow_quality_cohorts: dict[str, bool | float] = field(default_factory=dict)
     risk_approved: bool = field(default=False, init=False)
     is_executable: bool = field(default=False, init=False)
     is_trade_signal: bool = field(default=False, init=False)

@@ -352,6 +352,7 @@ def build_export_record(
             "strategy_penalty_total": strategy.get("strategy_penalty_total"),
             "strategy_final_score": strategy.get("strategy_final_score"),
             "strategy_margin_to_threshold": strategy.get("strategy_margin_to_threshold"),
+            "shadow_quality_cohorts": strategy.get("shadow_quality_cohorts") or {},
         },
         "risk": {
             "status": risk.get("risk_status"), "reason": reasons[0] if reasons else None,

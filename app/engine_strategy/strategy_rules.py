@@ -79,6 +79,19 @@ def strategy_score_diagnostics(
     }
 
 
+def strategy_shadow_threshold_cohorts(final_score: float | None) -> dict[str, bool | float]:
+    """Bounded diagnostic-only 5m cohorts; never consulted by decision rules."""
+    if final_score is None:
+        return {}
+    return {
+        "production_threshold": 65.0,
+        "delta_minus_0_10": final_score >= 64.90,
+        "delta_minus_0_25": final_score >= 64.75,
+        "delta_minus_0_50": final_score >= 64.50,
+        "diagnostic_only": True,
+    }
+
+
 def evaluate_strategy_rules(context: StrategyContext, config: StrategyConfig) -> RuleResult:
     status = context.setup_status
     if status == "NO_SETUP":

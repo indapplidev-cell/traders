@@ -1,4 +1,5 @@
 import pytest
+from types import SimpleNamespace
 
 from app.engine_strategy.strategy_filter import StrategyFilter
 
@@ -26,3 +27,17 @@ def test_conflicting_context_reject_keeps_score_and_penalty_decomposition(candid
     assert decision.strategy_final_score == decision.strategy_score
     assert decision.strategy_raw_score is not None
     assert decision.strategy_penalty_total is not None
+
+
+def test_bounded_5m_shadow_threshold_cohorts_are_diagnostic_only(candidate_factory):
+    decision = StrategyFilter(runtime_parameters=SimpleNamespace(
+        profile_id="trade-5m-v1", parameter_set_id="5m", strategy_policy_id="strategy",
+    )).evaluate(candidate_factory(setup_quality="WEAK", quality_score=64.6))
+    assert decision.decision_status == "REJECT"
+    assert decision.shadow_quality_cohorts == {
+        "production_threshold": 65.0,
+        "delta_minus_0_10": True,
+        "delta_minus_0_25": True,
+        "delta_minus_0_50": True,
+        "diagnostic_only": True,
+    }

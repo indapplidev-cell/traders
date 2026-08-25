@@ -14,7 +14,11 @@ from app.engine_strategy.strategy_decision import (
     strategy_decision_id,
 )
 from app.engine_strategy.strategy_reason_codes import StrategyReasonCode
-from app.engine_strategy.strategy_rules import evaluate_strategy_rules, strategy_score_diagnostics
+from app.engine_strategy.strategy_rules import (
+    evaluate_strategy_rules,
+    strategy_score_diagnostics,
+    strategy_shadow_threshold_cohorts,
+)
 from app.engine_strategy.strategy_status import StrategyStatus
 
 
@@ -59,6 +63,11 @@ class StrategyFilter:
             strategy_penalty_total=score_diagnostics["strategy_penalty_total"],
             strategy_final_score=score_diagnostics["strategy_final_score"],
             strategy_margin_to_threshold=score_diagnostics["strategy_margin_to_threshold"],
+            shadow_quality_cohorts=(
+                strategy_shadow_threshold_cohorts(result.score)
+                if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1"
+                else {}
+            ),
             decision_reasons=reasons, decision_warnings=result.warnings,
             rejection_reasons=result.rejection_reasons, wait_reasons=result.wait_reasons,
             required_next_layer="engine_risk" if allow else None,
