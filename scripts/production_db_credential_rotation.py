@@ -195,8 +195,10 @@ def _rotate_role(old_password: str, new_password: str) -> None:
             if cursor.fetchone() != (PRINCIPAL,):
                 raise SafeRotationError("ADMIN_CONNECTION_IDENTITY_MISMATCH")
             cursor.execute(
-                sql.SQL("ALTER ROLE {} PASSWORD %s").format(sql.Identifier(PRINCIPAL)),
-                (new_password,),
+                sql.SQL("ALTER ROLE {} PASSWORD {}").format(
+                    sql.Identifier(PRINCIPAL),
+                    sql.Literal(new_password),
+                )
             )
 
 

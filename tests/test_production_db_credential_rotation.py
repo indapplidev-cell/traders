@@ -66,3 +66,4 @@ def test_rotation_controller_uses_probe_connected_state() -> None:
     source = (ROOT / "scripts" / "production_db_credential_rotation.py").read_text(encoding="utf-8")
     assert '"CONNECTED"' in source
     assert '"ACCEPTED"' not in source
+    assert "sql.Literal(new_password)" in source
