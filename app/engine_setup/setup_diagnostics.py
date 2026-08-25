@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from app.engine_setup.setup_status import SetupStatus
 
@@ -41,6 +42,12 @@ class SetupDiagnostics:
     is_actionable_setup_candidate: bool = False
     semantic_bucket: str = SetupSemanticBucket.NO_STRUCTURAL_SETUP.value
     diagnostic_reasons: list[str] = field(default_factory=list)
+    distance_to_setup_condition: int | None = None
+    missing_setup_conditions: list[str] = field(default_factory=list)
+    breakout_strength: float | str | None = None
+    pullback_quality: str | None = None
+    liquidity_presence: bool | None = None
+    volatility_suitability: str | None = None
 
     def __post_init__(self) -> None:
         bucket = SetupSemanticBucket(self.semantic_bucket).value

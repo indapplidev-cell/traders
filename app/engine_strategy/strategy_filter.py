@@ -34,6 +34,28 @@ class StrategyFilter:
         context = StrategyContext.from_setup_candidate(setup_candidate)
         result = evaluate_strategy_rules(context, self.config)
         score_diagnostics = strategy_score_diagnostics(context, self.config)
+        conflict_trace = []
+        for warning in context.quality_warnings:
+            conflict_trace.append({
+                "conflict_component": warning,
+                "conflict_severity": (
+                    "HARD" if context.has_hard_invalidation else "CONFLICT"
+                ),
+                "source_timeframe": setup_candidate.timeframe,
+                "source": (
+                    "analysis_confidence" if warning == "LOW_CONFIDENCE"
+                    else "setup_quality_diagnostics"
+                ),
+                "valid_at_decision_boundary": not context.source_future_bars_used,
+            })
+        if context.has_conflict and not conflict_trace:
+            conflict_trace.append({
+                "conflict_component": "UNSPECIFIED_EXISTING_CONTEXT_CONFLICT",
+                "conflict_severity": "CONFLICT",
+                "source_timeframe": setup_candidate.timeframe,
+                "source": "setup_context",
+                "valid_at_decision_boundary": not context.source_future_bars_used,
+            })
         allow = result.status == StrategyStatus.ALLOW_RESEARCH_TRADE_PLAN.value
         reasons = list(result.reasons)
         reasons.extend([
@@ -59,6 +81,11 @@ class StrategyFilter:
             strategy_score=result.score, strategy_quality=result.quality,
             strategy_quality_threshold=score_diagnostics["strategy_quality_threshold"],
             component_scores=score_diagnostics["component_scores"],
+            raw_component_values=score_diagnostics["raw_component_values"],
+            normalized_component_scores=score_diagnostics["normalized_component_scores"],
+            positive_contributions=score_diagnostics["positive_contributions"],
+            negative_penalties=score_diagnostics["negative_penalties"],
+            conflict_trace=conflict_trace,
             strategy_raw_score=score_diagnostics["strategy_raw_score"],
             strategy_penalty_total=score_diagnostics["strategy_penalty_total"],
             strategy_final_score=score_diagnostics["strategy_final_score"],

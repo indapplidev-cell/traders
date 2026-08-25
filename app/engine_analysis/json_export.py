@@ -73,6 +73,7 @@ def build_engine_analysis_json_payload(
     if output.matrix:
         payload["analysis_context"].update(build_causal_planning_context(
             output.matrix.unified_context, output.matrix.hypothesis_result,
+            timeframe=output.result.interval,
         ))
     return payload
 

@@ -17,6 +17,9 @@ def test_weak_quality_reject_has_quantitative_threshold_margin(candidate_factory
     assert set(decision.component_scores) == {
         "structure", "candle_confirmation", "context_alignment",
     }
+    assert decision.raw_component_values == decision.component_scores
+    assert set(decision.normalized_component_scores) == set(decision.component_scores)
+    assert set(decision.negative_penalties) == {"conflict", "invalidation"}
 
 
 def test_conflicting_context_reject_keeps_score_and_penalty_decomposition(candidate_factory):
@@ -27,6 +30,8 @@ def test_conflicting_context_reject_keeps_score_and_penalty_decomposition(candid
     assert decision.strategy_final_score == decision.strategy_score
     assert decision.strategy_raw_score is not None
     assert decision.strategy_penalty_total is not None
+    assert decision.conflict_trace
+    assert decision.conflict_trace[0]["valid_at_decision_boundary"] is True
 
 
 def test_bounded_5m_shadow_threshold_cohorts_are_diagnostic_only(candidate_factory):
@@ -39,5 +44,6 @@ def test_bounded_5m_shadow_threshold_cohorts_are_diagnostic_only(candidate_facto
         "delta_minus_0_10": True,
         "delta_minus_0_25": True,
         "delta_minus_0_50": True,
+        "delta_minus_1_00": True,
         "diagnostic_only": True,
     }

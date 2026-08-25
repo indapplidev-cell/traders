@@ -64,6 +64,11 @@ class StrategyDecision:
     context: dict[str, Any] = field(default_factory=dict)
     strategy_quality_threshold: float | None = None
     component_scores: dict[str, float | None] = field(default_factory=dict)
+    raw_component_values: dict[str, float | None] = field(default_factory=dict)
+    normalized_component_scores: dict[str, float | None] = field(default_factory=dict)
+    positive_contributions: dict[str, float | None] = field(default_factory=dict)
+    negative_penalties: dict[str, float | None] = field(default_factory=dict)
+    conflict_trace: list[dict[str, Any]] = field(default_factory=list)
     strategy_raw_score: float | None = None
     strategy_penalty_total: float | None = None
     strategy_final_score: float | None = None

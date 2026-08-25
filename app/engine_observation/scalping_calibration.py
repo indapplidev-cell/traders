@@ -146,8 +146,20 @@ def export_record(row: Mapping[str, Any]) -> dict[str, Any]:
         "boundary": boundary, "symbol": row.get("symbol"), "profile": row.get("profile"),
         "parameter_set_id": row.get("parameter_set_id"), "regime": analysis.get("regime"),
         "direction": direction, "setup": setup.get("setup_type"),
+        "setup_quality_score": setup.get("quality_score"),
+        "setup_diagnostics": setup.get("diagnostics") or {},
         "scenario": setup.get("scenario") or setup.get("setup_type"),
         "strategy_result": strategy.get("decision_status"),
+        "strategy_score": strategy.get("strategy_score"),
+        "strategy_quality_threshold": strategy.get("strategy_quality_threshold"),
+        "strategy_margin_to_threshold": strategy.get("strategy_margin_to_threshold"),
+        "strategy_raw_score": strategy.get("strategy_raw_score"),
+        "strategy_penalty_total": strategy.get("strategy_penalty_total"),
+        "strategy_component_scores": strategy.get("component_scores") or {},
+        "strategy_context": strategy.get("context") or {},
+        "strategy_warnings": strategy.get("decision_warnings") or [],
+        "strategy_rejection_reasons": strategy.get("rejection_reasons") or [],
+        "strategy_shadow_quality_cohorts": strategy.get("shadow_quality_cohorts") or {},
         "entry": diagnostic.get("entry") or paper.get("hypothetical_entry_reference"),
         "atr": diagnostic.get("atr") or primitives.get("atr_value"),
         "causal_invalidation": diagnostic.get("causal_invalidation") or paper.get("hypothetical_invalidation_level"),
@@ -161,6 +173,7 @@ def export_record(row: Mapping[str, Any]) -> dict[str, Any]:
         "economically_actionable_target_exists": diagnostic.get("economically_actionable_target_exists"),
         "minimum_actionable_target_bps": diagnostic.get("minimum_actionable_target_bps"),
         "target_considerations": diagnostic.get("target_considerations") or [],
+        "opportunity_family_id": diagnostic.get("opportunity_id"),
         "exit_fee_bps": diagnostic.get("exit_fee_bps"), "spread_bps": diagnostic.get("spread_bps"),
         "entry_slippage_bps": diagnostic.get("entry_slippage_bps"), "exit_slippage_bps": diagnostic.get("exit_slippage_bps"),
         "depth_impact_bps": diagnostic.get("depth_impact_bps"), "safety_margin_bps": diagnostic.get("safety_margin_bps"),
@@ -182,7 +195,10 @@ def _stage_flags(row: Mapping[str, Any]) -> dict[str, bool]:
     paper = _mapping(row.get("paper"))
     diagnostic = _diagnostic(row)
     structural = setup.get("setup_status") not in {None, "NO_SETUP", "ERROR", "SKIPPED"}
-    strategy_pass = strategy.get("decision_status") in {"APPROVED", "PRE_APPROVED", "STRATEGY_APPROVED", "DECISION"}
+    strategy_pass = strategy.get("decision_status") in {
+        "APPROVED", "PRE_APPROVED", "STRATEGY_APPROVED", "DECISION",
+        "ALLOW_RESEARCH_TRADE_PLAN",
+    }
     risk_pre_pass = risk.get("risk_status") in {"RISK_APPROVED", "RISK_PRE_APPROVED_RESEARCH", "APPROVED"}
     geometry = diagnostic.get("rejection_stage") not in {None, "CAUSAL_INVALIDATION", "ATR_BUFFER", "STOP_ENVELOPE", "CAUSAL_TARGET"} if diagnostic else False
     cost = bool(diagnostic.get("economic_gate_pass"))
@@ -213,6 +229,27 @@ def aggregate(
     stages = Counter()
     reason_histogram: dict[str, dict[str, Any]] = {}
     exported = [export_record(row) for row in source]
+    episode_state: dict[tuple[str, str], tuple[int, str, int, str]] = {}
+    for record in exported:
+        if not record["direction"]:
+            record["opportunity_id"] = None
+            continue
+        key = (str(record["symbol"]), str(record["direction"]))
+        family = str(record.get("opportunity_family_id") or sha256(
+            f"{record['profile']}|{record['symbol']}|{record['direction']}|{record['setup']}".encode()
+        ).hexdigest()[:24])
+        prior = episode_state.get(key)
+        if prior and record["boundary"] - prior[0] == boundary_interval_ms and prior[1] == family:
+            first_seen = prior[2]
+            opportunity_id = prior[3]
+        else:
+            first_seen = int(record["boundary"])
+            opportunity_id = "opportunity-episode:" + sha256(
+                f"{family}|{first_seen}".encode()
+            ).hexdigest()[:24]
+        record["opportunity_family_id"] = family
+        record["opportunity_id"] = opportunity_id
+        episode_state[key] = (int(record["boundary"]), family, first_seen, opportunity_id)
     for row, record in zip(source, exported):
         stages.update(name for name, passed in _stage_flags(row).items() if passed)
         category = record["reason_category"]
@@ -263,6 +300,123 @@ def aggregate(
         else:
             unique.add((key, signature, record["boundary"]))
         signatures[key] = (record["boundary"], signature)
+
+    def unique_opportunities(records: list[dict[str, Any]]) -> int:
+        # Cohorts must reuse the already assigned contiguous episode identity.
+        # Stop/target evolution is diagnostic state, not a new opportunity.
+        return len({
+            str(record["opportunity_id"])
+            for record in records
+            if record.get("opportunity_id")
+        })
+
+    weak = [record for record in exported if "STRATEGY_REJECT_WEAK_QUALITY" in record["strategy_rejection_reasons"]]
+    conflicts = [record for record in exported if "STRATEGY_REJECT_CONFLICTING_CONTEXT" in record["strategy_rejection_reasons"]]
+    margins = [_number(record["strategy_margin_to_threshold"]) for record in weak]
+    strategy_margin_bins = {
+        "[-0.10,0)": sum(value is not None and -.10 <= value < 0 for value in margins),
+        "[-0.25,-0.10)": sum(value is not None and -.25 <= value < -.10 for value in margins),
+        "[-0.50,-0.25)": sum(value is not None and -.50 <= value < -.25 for value in margins),
+        "[-1.00,-0.50)": sum(value is not None and -1.00 <= value < -.50 for value in margins),
+        "<-1.00": sum(value is not None and value < -1.00 for value in margins),
+    }
+    strategy_cohorts: dict[str, dict[str, Any]] = {}
+    for threshold in (65.0, 64.9, 64.75, 64.5, 64.0):
+        admitted = [
+            record for record in exported
+            if record["strategy_result"] == "ALLOW_RESEARCH_TRADE_PLAN"
+            or (
+                "STRATEGY_REJECT_WEAK_QUALITY" in record["strategy_rejection_reasons"]
+                and (_number(record["strategy_score"]) or -1) >= threshold
+            )
+        ]
+        replayed: list[object] = []
+        for record in admitted:
+            context = _mapping(record["strategy_context"])
+            entry = _number(context.get("confirmation_close") or context.get("reference_close"))
+            invalidation = _number(context.get("causal_invalidation_level"))
+            atr = _number(context.get("atr_value"))
+            target_price = _number(context.get("causal_target_level"))
+            if entry is None or record["direction"] not in {"LONG", "SHORT"}:
+                continue
+            target_values = () if target_price is None else (
+                CausalTarget(target_price, "LOCAL_5M", int(record["boundary"])),
+            )
+            replayed.append(evaluate_scalping_shadow(
+                ShadowGeometryCandidate(
+                    trade_profile_id="trade-5m-v1", symbol=str(record["symbol"]),
+                    boundary_ms=int(record["boundary"]),
+                    direction="BULLISH" if record["direction"] == "LONG" else "BEARISH",
+                    entry=entry, causal_invalidation=invalidation, atr=atr,
+                    targets=target_values, setup_identity=str(record["setup"]),
+                ),
+                ShadowCostInputs(),
+                ShadowGeometryConfig(.25, 80.0, 45.0),
+            ))
+        observed_downstream = [record for record in admitted if record["stop_distance_bps"] is not None]
+        strategy_cohorts[str(threshold)] = {
+            "setup_count": stages["structural_setup"],
+            "strategy_admits": len(admitted),
+            "unique_opportunities": unique_opportunities(admitted),
+            "causal_stops": sum(getattr(item, "final_stop") is not None for item in replayed),
+            "target_candidates": sum(getattr(item, "target_candidates_considered") for item in replayed),
+            "geometry_valid": sum(
+                getattr(item, "stop_envelope_pass") is True and getattr(item, "target_available")
+                for item in replayed
+            ),
+            "actionable_targets": sum(getattr(item, "economically_actionable_target_exists") for item in replayed),
+            "net_cost_pass": sum(
+                record["expected_net_edge_bps"] is not None
+                and (_number(record["expected_net_edge_bps"]) or 0) > 0
+                for record in observed_downstream
+            ),
+            "risk_pass": sum(record["risk_result"] in {"RISK_APPROVED", "RISK_PRE_APPROVED_RESEARCH"} for record in observed_downstream),
+            "paper_eligible": sum(record["plan_status"] == "PAPER_PLAN_READY" for record in observed_downstream),
+            "downstream_missing_for_shadow_admits": len(admitted) - len(replayed),
+            "authoritative_cost_inputs_missing": sum(
+                getattr(item, "rejection_stage") == "NET_COST_GATE" for item in replayed
+            ),
+        }
+
+    no_setup = [record for record in exported if record["reason_category"] == "NO_SETUP"]
+    near_miss = Counter()
+    for record in no_setup:
+        diagnostic = _mapping(record["setup_diagnostics"])
+        missing = 0
+        for field, reason in (
+            ("has_structural_trigger", "MISSING_STRUCTURAL_TRIGGER"),
+            ("has_directional_context", "MISSING_DIRECTIONAL_CONTEXT"),
+            ("has_level_context", "MISSING_LIQUIDITY_OR_LEVEL_CONTEXT"),
+        ):
+            if not diagnostic.get(field):
+                missing += 1
+                near_miss[reason] += 1
+        near_miss[f"DISTANCE_{missing}"] += 1
+    opportunity_timelines: dict[str, dict[str, Any]] = {}
+    for record in exported:
+        opportunity_id = record.get("opportunity_id")
+        if not opportunity_id:
+            continue
+        timeline = opportunity_timelines.setdefault(str(opportunity_id), {
+            "symbol": record["symbol"], "direction": record["direction"],
+            "setup": record["setup"], "first_seen": record["boundary"],
+            "last_seen": record["boundary"], "boundaries_seen": 0,
+            "strategy_scores_over_time": [], "target_candidates_over_time": [],
+            "stop_evolution": [],
+        })
+        timeline["last_seen"] = record["boundary"]
+        timeline["boundaries_seen"] += 1
+        timeline["strategy_scores_over_time"].append({
+            "boundary": record["boundary"], "score": record["strategy_score"],
+            "margin": record["strategy_margin_to_threshold"],
+        })
+        timeline["target_candidates_over_time"].append({
+            "boundary": record["boundary"], "targets": record["target_considerations"],
+        })
+        timeline["stop_evolution"].append({
+            "boundary": record["boundary"], "stop": record["stop"],
+            "stop_distance_bps": record["stop_distance_bps"],
+        })
     quota_leaks = sum(bool(row.get("risk_budget_reserved")) and any(reason in QUOTA_FREE_REASONS for reason in _reasons(row)) for row in source)
     per_symbol = {}
     for symbol in sorted({str(row["symbol"]) for row in source}):
@@ -362,6 +516,19 @@ def aggregate(
         "expected_symbol_evaluations": len(boundaries) * expected_symbols, "actual_symbol_evaluations": len(source),
         "sample_completeness": len(source) / (len(boundaries) * expected_symbols),
         "funnel": funnel, "rejection_histogram": reason_histogram, "per_symbol": per_symbol,
+        "strategy_quality": {
+            "weak_count": len(weak),
+            "conflicting_context_count": len(conflicts),
+            "weak_score_distribution": distribution(record["strategy_score"] for record in weak),
+            "weak_margin_distribution": distribution(record["strategy_margin_to_threshold"] for record in weak),
+            "margin_bins": strategy_margin_bins,
+            "conflict_components": dict(Counter(
+                warning for record in conflicts for warning in record["strategy_warnings"]
+            )),
+        },
+        "strategy_shadow_cohorts": strategy_cohorts,
+        "setup_near_miss": {"no_setup_count": len(no_setup), "histogram": dict(near_miss)},
+        "opportunity_timelines": opportunity_timelines,
         "directions": directions, "stop_distance": distribution(r["stop_distance_bps"] for r in exported),
         "target_distance": distribution(r["target_distance_bps"] for r in exported),
         "spread_bps": distribution(r["spread_bps"] for r in exported),
@@ -375,7 +542,9 @@ def aggregate(
         "same_source_cohort_candidates": cohorts["same_source_candidate_count"],
         "temporal_hour_utc": grouped(("hour_utc",)), "regime": grouped(("regime",)),
         "setup_scenario": grouped(("setup", "scenario")),
-        "raw_candidates": sum(bool(r["direction"]) for r in exported), "unique_causal_opportunities": len(unique),
-        "repeat_observations": repeats, "risk_budget_reservation_leaks": quota_leaks,
+        "raw_candidates": sum(bool(r["direction"]) for r in exported),
+        "unique_causal_opportunities": len(opportunity_timelines),
+        "repeat_observations": sum(bool(r["direction"]) for r in exported) - len(opportunity_timelines),
+        "risk_budget_reservation_leaks": quota_leaks,
         "cycle_latency_ms": distribution(row.get("duration_ms") for row in source), "export_rows": exported,
     }

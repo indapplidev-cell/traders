@@ -7,6 +7,8 @@ from typing import Any
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_analysis.analysis_snapshot_store import AnalysisSnapshotStore
+from app.engine_analysis.analysis_contract import AnalysisWindowConfig
+from app.engine_analysis.engine import run_engine_analysis
 from app.engine_analysis.market_data_adapter import MarketDataAdapter
 from app.engine_analysis.online_config import OnlineAnalysisConfig
 from app.engine_analysis.online_runner import OnlineAnalysisRunner
@@ -179,6 +181,76 @@ class PipelineRunner:
             raise SnapshotNotEnoughDataError(counts, self.config.minimum_windows)
         return snapshots
 
+    def _enrich_5m_target_context(
+        self,
+        analysis: object,
+        snapshots: dict[str, MarketDataSnapshot],
+    ) -> None:
+        """Attach closed-boundary 15m/1h levels only to the 5m pipeline."""
+        if self.config.trade_profile_id != "trade-5m-v1":
+            return
+        context = getattr(analysis, "analysis_context", None)
+        if not isinstance(context, dict):
+            return
+        higher: list[dict[str, object]] = []
+        diagnostics: list[dict[str, object]] = []
+        for timeframe in ("15m", "1h"):
+            snapshot = snapshots.get(timeframe)
+            if snapshot is None:
+                diagnostics.append({"timeframe": timeframe, "status": "MISSING_SNAPSHOT"})
+                continue
+            try:
+                candles = MarketDataAdapter().adapt(snapshot)
+                output = run_engine_analysis(
+                    snapshot.symbol,
+                    timeframe,
+                    candles,
+                    config=AnalysisWindowConfig(
+                        minimum_candles=min(64, len(candles)),
+                        context_candles=min(
+                            len(candles), self.runtime_parameters.regime_lookback_candles
+                        ),
+                        decision_candles=self.runtime_parameters.analysis_decision_candles,
+                        confirmation_candles=self.runtime_parameters.confirmation_window_candles,
+                        atr_lookback_candles=self.runtime_parameters.atr_lookback_candles,
+                        impulse_lookback_candles=self.runtime_parameters.impulse_lookback_candles,
+                        structure_lookback_candles=self.runtime_parameters.structure_lookback_candles,
+                        volume_baseline_candles=self.runtime_parameters.volume_baseline_candles,
+                        breakout_volume_baseline_candles=
+                        self.runtime_parameters.breakout_volume_baseline_candles,
+                    ),
+                )
+            except (TypeError, ValueError) as exc:
+                diagnostics.append({
+                    "timeframe": timeframe, "status": "TARGET_CONTEXT_UNAVAILABLE",
+                    "error_class": type(exc).__name__,
+                })
+                continue
+            source = output.json_payload.get("analysis_context", {})
+            if not isinstance(source, dict):
+                continue
+            atr = (source.get("technical_indicators") or {}).get("atr_14")
+            for side in ("support", "resistance"):
+                values = source.get(f"causal_{side}_candidates", [])
+                if not isinstance(values, list):
+                    continue
+                for value in values:
+                    if isinstance(value, dict):
+                        higher.append({
+                            **value,
+                            "side": side,
+                            "known_at_ms": int(analysis.closed_until_ms),
+                            "reachability_atr": atr,
+                        })
+            diagnostics.append({
+                "timeframe": timeframe, "status": "PASS",
+                "candidate_count": sum(
+                    item.get("timeframe") == timeframe for item in higher
+                ),
+            })
+        context["higher_timeframe_target_candidates"] = higher
+        context["higher_timeframe_target_diagnostics"] = diagnostics
+
     @staticmethod
     def _invoke(target: object, method: str, value: object) -> object:
         function = getattr(target, method, target)
@@ -284,6 +356,8 @@ class PipelineRunner:
                 )
                 result.safety_counters = self._safety([analysis], snapshots)
                 return self._enforce_safety(result)
+
+            self._enrich_5m_target_context(analysis, snapshots)
 
             setup = self._invoke(self.setup_runner, "process_analysis_snapshot", analysis)
             outputs["setup"] = setup

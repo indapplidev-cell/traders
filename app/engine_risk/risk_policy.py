@@ -17,6 +17,8 @@ _CAUSAL_PRIMITIVES = frozenset({
     "reference_close", "confirmation_close", "current_closed_candle_close",
     "causal_support_level", "causal_resistance_level", "causal_invalidation_level",
     "causal_target_level", "nearest_opposite_level", "atr_value", "volatility_buffer",
+    "causal_target_candidates", "causal_support_candidates",
+    "causal_resistance_candidates", "higher_timeframe_target_candidates",
     "setup_type", "strategy_type", "direction_hint",
 })
 

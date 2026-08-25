@@ -131,7 +131,8 @@ def test_gross_rr_pass_net_rr_fail_and_cohorts_cannot_bypass_cost_gate():
     row = evaluate_scalping_shadow(candidate(targets=target), costs(), config())
     assert row.gross_rr >= 1.5
     assert row.net_rr < 1.5
-    assert row.rejection_reason == R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE
+    assert row.rejection_reason == R.PAPER_REJECT_LOW_NET_RR
+    assert row.economically_actionable_target_exists is True
     assert row.target_considerations[0]["rejection_reason"] == "BELOW_NET_RR_POLICY"
     assert row.rr_cohorts_gross["1.20"] is True
     assert row.rr_cohorts_net["1.20"] is False
@@ -150,23 +151,63 @@ def test_non_actionable_local_target_falls_back_to_nearest_structural_causal_tar
     assert row.economically_actionable_target_exists is True
     assert row.target_source_type == "STRUCTURAL"
     assert row.causal_target == 102.00
-    assert row.target_considerations[0] == {
-        "source_type": "LOCAL_5M", "price": 100.20, "distance_bps": 20.0,
-        "causal": True, "future_safe": True, "directionally_valid": True,
-        "economically_actionable": False, "rejection_reason": "BELOW_ECONOMIC_FLOOR",
-        "next_target_considered": "STRUCTURAL",
-    }
+    first = row.target_considerations[0]
+    assert first["source_type"] == "LOCAL_5M"
+    assert first["price"] == 100.20
+    assert first["distance_bps"] == pytest.approx(20.0)
+    assert first["causal"] is True and first["future_safe"] is True
+    assert first["directionally_valid"] is True
+    assert first["economically_actionable"] is False
+    assert first["rejection_reason"] == "BELOW_ECONOMIC_FLOOR"
+    assert first["next_target_considered"] == "STRUCTURAL"
 
 
-def test_farther_same_tier_target_is_not_selected_to_manufacture_rr():
+def test_non_actionable_nearest_local_traverses_to_next_validated_local():
     targets = (
         CausalTarget(100.20, "LOCAL_5M", BOUNDARY),
         CausalTarget(102.00, "LOCAL_5M", BOUNDARY),
     )
     row = evaluate_scalping_shadow(candidate(targets=targets), costs(), config())
-    assert row.rejection_reason == R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE
-    assert len(row.target_considerations) == 1
-    assert row.causal_target == 100.20
+    assert row.valid_plan is True
+    assert len(row.target_considerations) == 2
+    assert row.causal_target == 102.00
+    assert row.first_causal_target["target_price"] == 100.20
+    assert row.first_actionable_target["target_price"] == 102.00
+
+
+def test_first_actionable_target_stops_traversal_before_farther_rr_manufacturing():
+    targets = (
+        CausalTarget(100.70, "LOCAL_5M", BOUNDARY),
+        CausalTarget(102.00, "LOCAL_5M", BOUNDARY),
+    )
+    row = evaluate_scalping_shadow(candidate(targets=targets), costs(), config())
+    assert row.economically_actionable_target_exists is True
+    assert row.causal_target == 100.70
+    assert row.rejection_reason == R.PAPER_REJECT_LOW_NET_RR
+    assert row.target_considerations[1]["gross_rr"] is None
+
+
+def test_target_trace_preserves_invalid_future_wrong_side_and_unreachable_1h():
+    targets = (
+        CausalTarget(99.0, "LOCAL_5M", BOUNDARY),
+        CausalTarget(102.0, "15M", BOUNDARY + 1, timeframe="15m"),
+        CausalTarget(103.0, "1H", BOUNDARY, achievable=False, timeframe="1h"),
+        CausalTarget(102.0, "STRUCTURAL", BOUNDARY, timeframe="5m"),
+    )
+    row = evaluate_scalping_shadow(candidate(targets=targets), costs(), config())
+    reasons = {item["reject_reason"] for item in row.target_considerations}
+    assert {"WRONG_DIRECTION", "FUTURE_TARGET", "TARGET_NOT_REACHABLE_WITHIN_SCALP_HORIZON"} <= reasons
+    assert row.causal_target == 102.0
+    assert row.target_candidates_considered == 4
+
+
+@pytest.mark.parametrize("minimum,expected", [(0.0, True), (5.0, True), (10.0, False)])
+def test_minimum_positive_edge_shadow_cohorts(minimum, expected):
+    target = (CausalTarget(100.35, "LOCAL_5M", BOUNDARY),)
+    row = evaluate_scalping_shadow(
+        candidate(targets=target), costs(), config(minimum_positive_edge_bps=minimum)
+    )
+    assert row.economically_actionable_target_exists is expected
 
 
 def test_opportunity_identity_is_stable_across_adjacent_boundaries_but_candidate_is_not():

@@ -1,187 +1,282 @@
 # TRADERS 5m scalping decision-chain report
 
-Task: `TRADERS_5M_SCALPING_DECISION_CHAIN_TARGET_STRATEGY_AND_ECONOMICS_REMEDIATION_01`
+Task: `TRADERS_5M_SCALPING_STRATEGY_QUALITY_AND_TARGET_ACTIONABILITY_SHADOW_CALIBRATION_01`
 
-## Production baseline used by this task
+## Decision
 
-The current homogeneous predeploy snapshot is 2026-08-24T21:50:00Z through
-2026-08-25T11:30:00Z. It supersedes the older 170-setup/4-admit snapshot for
-task decisions.
+The source-level calibration work passes. Production deployment was intentionally
+withheld because the previously disclosed production DB credential has no proved
+rotation/invalidation/rebind closure. No credential value is stored here.
+
+The trading verdict is `5M_READY_FOR_MORE_SHADOW`, not PAPER-ready. The causal
+target hierarchy now traverses beyond a non-actionable micro-local level, but the
+offline completed sample is one unique opportunity and cannot support parameter
+promotion or an expectancy conclusion.
+
+## Fresh homogeneous baseline
+
+Only the current parameter set is used for the fresh funnel and Strategy cohorts.
+The older 165-boundary sample is used separately as a historical causal replay;
+the two datasets are not merged.
 
 ```text
 PRODUCTION_ALEMBIC_HEAD = 0018_promote_5m_production_search
-5M_PARAMETER_SET_ID_BEFORE = trade-5m-v1-runtime-v1-c141aece87c7f6a0
-5M_RUNTIME_SOURCE_COMMIT_BEFORE = 6650f5f13e03342613518584633c90b020e945ed
-5M_RUNTIME_ARTIFACT_ID_BEFORE = sha256:b3928a801238a21032fa53e1d34fde02a6036e902b41d23182a05aea5e00bee8
-5M_SINGLETON_OWNER_COUNT_BEFORE = 1
-WAL_READY_BEFORE = true
-PITR_READY_BEFORE = true
-CONTROL_STATE_BEFORE = ARMED
-CONTROL_GENERATION_BEFORE = 6
-LIVE_STATE_BEFORE = DISABLED
-BOUNDARIES = 165
-EVALUATIONS = 1650
+5M_PARAMETER_SET_ID = trade-5m-v1-runtime-v1-4e257e4cff2a5b9a
+5M_RUNTIME_SOURCE_COMMIT = 8a2413f00dc0ba6ba398faa8d08ac98e1cacf58a
+5M_RUNTIME_ARTIFACT_ID = sha256:41f836ed3ecc41b8f5e323b49c39ce06d17059c2b0152a0751100e5e1b9efc9b
+5M_SINGLETON_OWNER_COUNT = 1
+WAL_READY = true
+PITR_READY = true
+CONTROL_STATE = ARMED
+CONTROL_GENERATION = 6
+LIVE_STATE = DISABLED
+OBSERVATION_BOUNDARIES = 22
+SYMBOL_EVALUATIONS = 220
+EXPECTED_SYMBOL_EVALUATIONS = 220
 PARAMETER_HOMOGENEOUS = YES
-EXACT10 = YES
-MISSING_BOUNDARIES = 0
-DUPLICATE_BOUNDARIES = 0
 ```
 
-| module | decision | key inputs | authoritative threshold/policy | pass | reject | top reason | suspected issue |
-|---|---|---|---|---:|---:|---|---|
-| market data | closed-only snapshots | persisted 5m/15m/1h/4h candles | profile minimum windows, no future/unclosed candle | 1650 | 0 | none | none |
-| analysis | regime, confidence, impulse, entry quality | closed 5m primary snapshot | 5m runtime windows in parameter set | 1650 | 0 | none | no threshold bottleneck proved |
-| setup | structural candidate and direction | analysis plus causal levels | setup causal policy v1 | 235 | 1415 | `NO_STRUCTURAL_SETUP` 1412 | market mostly had no structural trigger; no null score defect |
-| strategy | research-plan admission | setup quality/components/context | minimum quality `ACCEPTABLE`, numeric boundary 65 | 7 | 228 | weak 194; conflict 34 | weak score tier cap creates a large boundary cohort; calibrate only in SHADOW |
-| geometry | causal stop and target evidence | risk context, ATR, causal levels | ATR .25; stop envelope 80 bps, reject not clip | 4 | 3 | causal stop too wide 3 | no stop mutation required |
-| target actionability | causal target becomes trade target only if economic | ordered causal levels plus mandatory costs | cost floor + 1 bps positive edge + gross/net RR 1.5 | 0 | 4 | target not economically actionable | previous runtime stopped at the 3.0383 bps local level and never considered another tier |
-| cost | fail-closed net economics | fee, slippage, spread, depth, margin | all seven cost components mandatory | 0 | 4 | old code: negative net edge | current median total cost 27.9831 bps |
-| risk | preapproval and downstream shared authority | strategy decision and profile counter | separate research counters; shared account authority | 0 | 0 | not reached monotonically | no leak |
-| paper plan | immutable plan | valid geometry/actionable target/cost/risk | production min RR 1.5 | 0 | 0 | not reached | correct NO_PLAN outcome |
-| final approval/execution/position | bounded PAPER lifecycle | valid unexpired plan and existing authorities | existing global authority and Control | 0 | 0 | not reached | unchanged |
-| exit | stop/target/validity/time/invalidation | persisted OPEN position and closed candles | existing profile-aware exit evaluator | 0 | 0 | no positions | source and isolated tests only; no policy change |
+| stage | input | pass | reject | principal reason/policy |
+|---|---:|---:|---:|---|
+| analysis | 220 | 220 | 0 | closed-boundary analysis |
+| setup | 220 | 37 | 183 | `NO_SETUP` |
+| Strategy current 65 | 37 | 0 | 37 | weak quality 36; conflicting context 1 |
+| geometry | 0 | 0 | 0 | not reached by current production admission |
+| actionable target | 0 | 0 | 0 | not reached |
+| cost | 0 | 0 | 0 | not reached |
+| risk | 0 | 0 | 0 | not reached |
+| PAPER plan | 0 | 0 | 0 | not reached |
+| approval / position | 0 | 0 | 0 | no authority mutation |
 
-## Module contracts
+The 37 raw setup observations collapse to 11 opportunity episodes; 26 are
+adjacent-boundary repeats. Opportunity identity is based on symbol, direction,
+setup family and a contiguous episode, while score, stop and target evolution
+remain diagnostics rather than identity inputs.
 
-| module | INPUTS | AUTHORITATIVE_CONFIG | PROFILE_SPECIFIC_PARAMETERS | DECISION_OUTPUT | REJECTION_CODES | PERSISTED_DIAGNOSTICS | NEXT_STAGE_CONTRACT |
-|---|---|---|---|---|---|---|---|
-| `engine_market_data` | public closed candles | snapshot boundary contract | minimum window map | `MarketDataSnapshot` | gap/freshness/not-enough-data | counts, source, first/last close, gaps | analysis receives one closed primary snapshot |
-| `engine_analysis` | primary snapshot | `AnalysisConfig` | 24 ATR, 12 impulse, 48 structure, 72 regime, 36 volume | `AnalysisSnapshot` | degraded/invalid/error reasons | regime, confidence, impulse, entry quality, causal context | setup receives non-actionable analysis evidence |
-| `engine_setup` | analysis snapshot | causal setup detector | `engine-setup-01-causal-v1` | `SetupCandidate` | no setup, invalidation, confirmation waits | type, direction, quality score/components, causal levels | strategy consumes one setup candidate |
-| `engine_strategy` | setup plus quality diagnostics | `StrategyConfig` | threshold 65/ACCEPTABLE; policy `engine-strategy-01-shadow-v1` | `StrategyDecision` | weak, conflict, hard invalidation, neutral, unsupported | raw/component/penalty/final/threshold/margin; diagnostic-only deltas | only production ALLOW reaches risk |
-| `engine_risk` | strategy decision | risk policy v1 | separate 5m research key; minimum score 65 | `RiskDecision` | quality, score, exposure/quota | attempt counts, no execution reservation | preapproved research candidate reaches geometry |
-| `engine_paper` | risk decision and causal primitives | 5m scalping runner | ATR .25, stop 80 bps, min positive edge 1 bps, RR 1.5 | ready plan or NO_PLAN/REJECT | missing invalidation/target/cost; stop wide; target non-actionable | complete stop/target consideration/cost/net metrics/opportunity id | only valid plan may enter approval authority |
-| `engine_execution` | final approval | immutable PAPER command policy | none changed | command/order | existing fail-safe codes | command lineage | position service |
-| `engine_position` | fills/orders | existing PAPER domain | none changed | OPEN/CLOSING/CLOSED | existing state-machine codes | position/journal lineage | exit evaluator |
-| `engine_exit` | OPEN position and closed candles | existing exit policy | existing timeframe-aware validity | exit decision | stop/target/time/validity/invalidation | causal exit boundary | fill/accounting |
-| orchestrator/profile | closed boundary and symbols | explicit registry lookup | `trade-5m-v1-runtime-v1-4e257e4cff2a5b9a` after | persisted per-module payloads | module error/freshness | parameter id on every payload | readonly export |
-| readonly export | persisted run/results | allowlisted GET-only schema | explicit profile required | canonical Funnel record | safe raw reason codes | all task diagnostics | offline audit only |
+## Strategy quality decomposition
+
+The implementation persists the actual project components: raw values,
+normalized values, positive contributions, negative penalties, final score,
+threshold, margin, status and reason. Conflict diagnostics include component,
+severity, source/timeframe and whether the conflict remained valid at the
+decision boundary. No synthetic scoring factor was added.
+
+For `STRATEGY_REJECT_WEAK_QUALITY` (36 observations):
+
+| statistic | score | margin to 65 |
+|---|---:|---:|
+| P10 | 64.999 | -0.001 |
+| P25 | 64.999 | -0.001 |
+| P50 | 64.999 | -0.001 |
+| P75 | 64.999 | -0.001 |
+| P90 | 64.999 | -0.001 |
+| P95 | 64.999 | -0.001 |
 
 ```text
-5M_SILENT_FALLBACK_TO_15M = NO
-5M_SILENT_FALLBACK_TO_DEFAULT = NO
+SCORE_MIN_MAX = 64.666 / 64.999
+MARGIN_MIN_MAX = -0.334 / -0.001
+[-0.10, 0) = 34
+[-0.25, -0.10) = 1
+[-0.50, -0.25) = 1
+[-1.00, -0.50) = 0
+< -1.00 = 0
 ```
 
-`resolve_runtime_parameters()` indexes the exact profile and fails on a missing
-or mismatched identity. The pipeline chooses `ScalpingPaperRunner` only for
-`trade-5m-v1`; the 15m runner and its parameter identity remain unchanged.
+The single conflicting-context rejection is `LOW_CONFIDENCE`. The new trace
+records contemporaneous conflict evidence rather than inferring it later. This
+proves a dense boundary cluster caused by the existing tier cap, but it does not
+prove that the gate is economically too strict.
 
-## Analysis and setup findings
+## Same-dataset Strategy SHADOW cohorts
 
-`regime` is a market-state description, not a trade direction. `UP` can coexist
-with direction `UNKNOWN/NONE` when no confirmed structural setup establishes a
-directional hypothesis. LONG/SHORT appears only after setup evidence yields a
-`BULLISH/BEARISH` direction and strategy/risk preserve it. Confidence is a
-0..1 contemporaneous evidence value. In setup scoring it contributes at most
-15 context points; strategy's existing diagnostic adjustment is `(confidence -
-0.5) * 4`, bounded by the setup quality tier. No analysis threshold was changed.
+| threshold | setups | admits | unique | stops | targets | geometry | costs missing | actionable | cost/risk/PAPER |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 65.00 control | 37 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 64.90 shadow | 37 | 34 | 9 | 34 | 20 | 20 | 20 | 0 | 0 |
+| 64.75 shadow | 37 | 35 | 9 | 35 | 21 | 21 | 21 | 0 | 0 |
+| 64.50 shadow | 37 | 36 | 10 | 36 | 21 | 21 | 21 | 0 | 0 |
+| 64.00 diagnostic | 37 | 36 | 10 | 36 | 21 | 21 | 21 | 0 | 0 |
 
-For all 235 structural setup records, persisted `quality_score` and
-`source_confidence` were non-null (`0/235` null for each). The setup score is
-the actual sum of structure, confirmation and context less conflict/invalidation
-penalties, capped by source analysis entry quality. The data supports a market
-without a trigger in 1412/1650 evaluations, not a parser/DTO null defect.
+Historical boundary records did not persist authoritative spread/depth costs
+for candidates rejected at Strategy. These cohorts therefore fail closed at
+economics. Lowering the production threshold is not justified. If further
+diagnostic observation is run, 64.90 is the narrowest evidence-bounded cohort;
+it is not a promotion recommendation.
 
-## Strategy decomposition
+## Setup coverage and symmetry
+
+The 183 `NO_SETUP` records are not a mass one-predicate near miss:
 
 ```text
-STRATEGY_WEAK_QUALITY_COUNT = 194
-STRATEGY_CONFLICTING_CONTEXT_COUNT = 34
-WEAK_QUALITY_SCORE_MIN = 64.466
-WEAK_QUALITY_SCORE_P50 = 64.999
-WEAK_QUALITY_SCORE_P90 = 64.999
-WEAK_QUALITY_MARGIN_TO_THRESHOLD_P50 = -0.001
-WEAK_QUALITY_MARGIN_TO_THRESHOLD_P90 = -0.001
-CONFLICTING_CONTEXT_COMPONENTS = LOW_CONFIDENCE:34
-SHADOW_DELTA_MINUS_0_10_COUNT = 146
-SHADOW_DELTA_MINUS_0_25_COUNT = 155
-SHADOW_DELTA_MINUS_0_50_COUNT = 185
-PRODUCTION_THRESHOLD_CHANGED = NO
+missing structural trigger = 183
+missing liquidity/level context = 183
+missing directional context = 105
+distance 2 missing predicates = 78
+distance 3 missing predicates = 105
 ```
 
-The narrow margin is largely a semantic tier cap (`WEAK <= 64.999`), so count
-alone is not evidence for promotion. New rows persist the actual structure,
-candle-confirmation and context-alignment components, penalties, raw/final
-score, threshold and margin. Breakout strength, volume, liquidity, volatility,
-entry location and shadow/exhaustion are not falsely synthesized as independent
-numeric components where the existing Strategy model has no such score.
+No setup-threshold cohort is justified. Setup observations contain 36 SHORT and
+1 LONG candidates; this is market evidence, not a fabricated symmetry fix. The
+tested LONG and SHORT traversal paths are direction-aware.
 
-## Target, stop and economics
+## Causal target hierarchy
 
-The remediation separates `causal_target_exists` from
-`economically_actionable_target_exists`. It inspects only the nearest favorable,
-validated, future-safe target in each tier: LOCAL_5M, STRUCTURAL, HIGHER_TF. A
-farther target from the same tier is deliberately ignored so RR cannot be
-manufactured. Every considered target records its distance, actionability,
-reason and next tier.
+The 5m path now exports and traverses distinct causal candidates in this order:
 
 ```text
-minimum_actionable_target_bps = entry_fee + exit_fee + entry_slippage
-                              + exit_slippage + spread + depth_impact
-                              + safety_margin + minimum_positive_edge_bps
-minimum_positive_edge_bps = 1.0 (explicit 5m diagnostic/economic profile value)
-production_min_rr = 1.5 (unchanged)
+nearest LOCAL_5M
+next validated LOCAL_5M
+STRUCTURAL
+15M
+reachable 1H
 ```
 
-The stop remains causal invalidation plus the profile ATR buffer. It is never
-clipped toward entry. ATR `.25/.50/.75/1.00`, stop `50/65/80` bps and RR
-`1.0/1.2/1.5` remain SHADOW cohorts. Missing spread or depth fails closed and
-never becomes zero. If net reward is non-positive, net RR and break-even win
-rate remain null.
+The nearest causal level is retained in the trace even when non-actionable.
+Traversal never constructs a fixed-percent, ATR-derived or stop/RR-derived
+target and never uses candles after the decision boundary. Each trace records
+source/timeframe/price/distance, causal/future/direction/relevance flags, cost
+floor, gross RR, expected edge, net RR, actionability and reject reason.
 
-## Same-data replay
+The historical 165-boundary dataset is a separate read-only causal replay of
+the four previously admitted SOLUSDT observations (one contiguous unique
+opportunity). Only candles closed before each decision construct targets;
+later candles are read only by the offline outcome evaluator.
 
-| semantics | analyses | setups | strategy admits | unique opportunities | geometry | actionable targets | cost pass | risk/plans/final | stop P50/P90 bps | target P50/P90 bps | gross RR P50 | net RR P50 | edge P50 bps | BE win rate P50 |
-|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|---:|---:|---:|---:|
-| A current production evidence | 1650 | 235 | 7 | 2 | 4 | 0 | 0 | 0/0/0 | 70.5451/257.218 | 3.0383/3.0383 | .0433 | null | -24.9448 | null |
-| B target-actionability remediation | 1650 | 235 | 7 | 2 | 4 | 0 | 0 | 0/0/0 | 70.5451/257.218 | 3.0383/3.0383 | .0433 | null | -24.9448 | null |
-| C bounded Strategy diagnostic cohorts | 1650 | 235 | 146/155/185 diagnostic hits | not promoted | not evaluated | not evaluated | not evaluated | 0/0/0 | null | null | null | null | null | null |
-| D combined remediation + Strategy cohort | 1650 | 235 | diagnostic only | not promoted | not evaluated | not evaluated | not evaluated | 0/0/0 | null | null | null | null | null | null |
+| replay metric | value |
+|---|---:|
+| candidates considered | 74 |
+| first micro-local non-actionable | 4 |
+| next LOCAL_5M selected/actionable | 2 |
+| STRUCTURAL selected/actionable | 2 |
+| 15m selected/actionable | 0 |
+| 1h selected/actionable | 0 |
+| no actionable causal target | 0 |
+| actionable / cost pass / positive edge | 4 raw, 1 unique |
 
-B converts all four prior negative-edge rows from a cost-style reject into the
-causally correct `TARGET_NOT_ECONOMICALLY_ACTIONABLE` NO_PLAN and preserves the
-3.0383 bps local level as evidence. No distinct structural/higher-TF level was
-present in these four persisted candidates, so fallback counts are zero. C/D
-fail closed downstream: rejected setup records did not have authoritative
-market cost/geometry generated, and the task does not invent it. No
-configuration is selected by signal count.
+The 74 includes rejected wrong-direction and unreachable candidates so the trace
+is auditable. Direction-valid causal candidates by source were LOCAL_5M 6,
+STRUCTURAL 8 and 15M 4.
 
-## Opportunity, quota, validity and exit
+## Economics, stops and RR
 
-The runtime now persists a stable `opportunity_id` over symbol, direction,
-setup identity, causal invalidation and causal target identities; adjacent
-boundary candidate IDs remain distinct while the opportunity ID remains the
-same. The homogeneous report groups only contiguous equal identities and found
-7 raw candidates, 2 unique opportunities and 5 repeats (71.4286%).
+Cost actionability is evaluated before RR:
 
-Execution quota remains downstream of a valid plan. The sample has reservation
-leaks 0, NO_PLAN quota consumption 0 and cross-profile contamination 0.
-Validity remains one profile boundary: setup creation, decision boundary and
-plan/final-approval deadline are persisted; no expired plan or approval exists.
-The exit policy was source-audited and isolated-tested only because there are
-no closed 5m PAPER outcomes.
+```text
+minimum_actionable_target_bps = fees + spread + slippage + depth impact
+                              + safety margin + minimum_positive_edge_bps
+```
 
-## Performance and safety contract
+Minimum-edge diagnostics are 0, 5 and 10 bps; production minimum edge is not
+changed. Spread and depth remain mandatory. The fee is explicitly a conservative
+configured assumption until an account-authoritative integration exists.
 
-Snapshot building remains four bounded DB reads per symbol with no new N+1.
-Cost acquisition remains zero calls before valid geometry and at most two
-public market-data calls afterward (book ticker plus depth limit 100). The
-target hierarchy is bounded to three tiers. There is no private/order API
-dependency.
+| distribution | P50 | P90 |
+|---|---:|---:|
+| stop distance, bps | 70.1970 | 70.4850 |
+| target distance, bps | 329.1473 | 384.4440 |
+| total costs, bps | 27.9831 | 28.2753 |
+| net edge, bps | 301.1649 | 356.4632 |
 
-Postdeploy six-boundary latency, exact10/concurrency, WAL/PITR and final runtime
-fields are recorded in the task final report after the natural-window gate.
+All four replay rows pass net RR 1.0, 1.2 and 1.5. They are repeated boundaries
+of one opportunity, so no RR cohort can be declared superior by expectancy.
+The selected stop is causal and near the 80 bps envelope; it is not clipped.
+The earlier full admitted sample's P90 around 257 bps remains evidence that wide
+causal stops must be rejected, not reshaped to manufacture RR.
 
-## Safety incident affecting the task verdict
+## Offline outcome and holding horizon
 
-A predeploy metadata diagnostic used an unrestricted container-inspection
-format and emitted the complete container environment into the tool transcript,
-including a production database credential. The credential value is not copied
-into this report, source, evidence artifacts or Git. Subsequent inspection used
-only the project allowlisted safe inspector, and repository security scanners
-pass. Nevertheless, this violates the task's no-secret-exposure condition.
-Rotation/rebind would affect shared database clients and may require protected
-runtime restarts, so it is outside this task's 5m-only authority. The technical
-decision-chain remediation can be accepted as implemented, but the overall task
-cannot receive PASS until separately authorized credential rotation and
-invalidation are proven.
+The sole unique opportunity hit its target before its stop in 5 minutes. The
+result is identical for diagnostic 15, 30 and 60 minute horizons:
+
+```text
+completed unique opportunities = 1
+win rate = 1.0
+loss rate = 0.0
+profit factor = undefined (no loss observations)
+MFE = 408.1426 bps
+MAE = 0 bps
+estimated net outcome / expectancy = +300.7476 bps
+sample classification = INSUFFICIENT_SAMPLE
+```
+
+Future candles do not feed the decision path. This result is not a production
+entry, execution, or credible profitability estimate.
+
+## Invariants and operational state
+
+```text
+RISK_BUDGET_RESERVATION_LEAKS = 0
+NO_PLAN_CONSUMED_EXECUTION_QUOTA = 0
+PROFILE_RESEARCH_COUNTERS_SEPARATE = YES
+GLOBAL_ACCOUNT_RISK_AUTHORITY_SHARED = YES
+TRADE_15M_PARAMETERIZATION_CHANGED_BY_TASK = NO
+TRADE_15M_PRODUCTION_BEHAVIOR_CHANGED_BY_TASK = NO
+TRADE_15M_SEARCH_CONTINUITY = PASS (3 boundaries, exact10, no incomplete rows)
+PRODUCTION_5M_STRATEGY_THRESHOLD_CHANGED_BY_TASK = NO
+PRODUCTION_5M_MIN_RR_CHANGED_BY_TASK = NO
+PRODUCTION_5M_STOP_OR_VALIDITY_CHANGED_BY_TASK = NO
+PRODUCTION_TRADING_MUTATIONS_BY_TASK = 0
+BINANCE_ORDER_API_CALLS_BY_TASK = 0
+CONTROL_POSTS_BY_TASK = 0
+LIVE = DISABLED
+```
+
+WAL and PITR remained ready, no physical gap was reported, Control remained
+`ARMED` generation 6, and no command or position was created. Production source
+deployment and natural-boundary acceptance were not attempted because the
+credential incident gate is open.
+
+## Validation
+
+```text
+focused post-final-change = 81 passed
+affected server/security = 854 passed, 5 skipped
+invariant/i18n = 50 passed, 5 skipped
+desktop = 1465 passed, 2 skipped, 3029 subtests
+compileall = PASS
+git diff --check = PASS (line-ending warnings only)
+CHANGED_PATH_REGRESSION_FAILURES = 0
+```
+
+## Scalping readiness scorecard
+
+| criterion | status | evidence |
+|---|---|---|
+| 5m profile isolation | PASS | explicit 5m enrichment; 15m equivalence tests and continuity |
+| Strategy explainability | PASS | components, penalties, score, margin and conflict trace |
+| unique opportunity semantics | PASS | 37 observations collapse to 11 episodes |
+| causal stop | PASS | causal authority preserved; no clipping |
+| actionable causal target | EARLY_SIGNAL | traversal passes; 1 unique historical opportunity |
+| positive net edge | EARLY_SIGNAL | 1 unique historical opportunity |
+| bounded transaction cost | PASS | mandatory spread/depth and fail-closed missing costs |
+| RR viability | EARLY_SIGNAL | all cohorts pass same single opportunity |
+| risk quota integrity | PASS | zero leaks; no-plan consumes no quota |
+| short validity | EARLY_SIGNAL | 5-minute outcome, but one sample |
+| PAPER expectancy | INSUFFICIENT_SAMPLE | 1 completed unique versus desired >=30 |
+
+## Expert answers
+
+1. Do not weaken the production Strategy threshold now.
+2. 64.90 is suitable only as the next narrow SHADOW cohort because it captures
+   the boundary cluster; downstream costs must be captured prospectively.
+3. It adds 9 unique opportunities versus the current cohort in this snapshot.
+4. Zero additional opportunities have proved actionable targets because their
+   authoritative boundary costs are absent; fail-closed is intentional.
+5. Zero additional opportunities have proved positive net edge. Separately, the
+   historical traversal replay has one positive-edge unique opportunity.
+6. At row level, next LOCAL_5M and STRUCTURAL split 2/2; the first unique episode
+   selected next LOCAL_5M.
+7. Selected P50/P90 near 70 bps is near the envelope, while the earlier 257 bps
+   P90 confirms that many causal stops are unsuitable for a scalp.
+8. No RR cohort is superior: 1.0/1.2/1.5 see the same single winning opportunity.
+9. The sample is insufficient for production parameter promotion.
+10. The profile is not ready for PAPER validation; it is ready for more SHADOW.
+
+```text
+FINAL_VERDICT = PASS_SOURCE_AND_SHADOW_CALIBRATION_DEPLOYMENT_WITHHELD
+BLOCKER_CODE = PRODUCTION_DB_CREDENTIAL_ROTATION_PENDING_FOR_DEPLOYMENT
+TRADING_VERDICT = 5M_READY_FOR_MORE_SHADOW
+PROFITABILITY_CONFIDENCE = INSUFFICIENT_SAMPLE
+NEXT_ACTION = PRODUCTION_DB_CREDENTIAL_ROTATION_INVALIDATION_AND_SAFE_SHARED_CLIENT_REBIND
+AFTER_SECURITY_GATE = TRADERS_5M_SCALPING_EXTENDED_UNIQUE_OPPORTUNITY_SHADOW_OBSERVATION_01
+```

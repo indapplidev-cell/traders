@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshot, AnalysisSnapshotStatus
 from app.engine_setup.setup_candidate import SetupCandidate, setup_candidate_id
@@ -43,6 +44,55 @@ class SetupDetector:
 
     def _build(self, snapshot: AnalysisSnapshot, context: SetupContext,
                result: SetupRuleResult) -> SetupCandidate:
+        missing = []
+        for present, name in (
+            (result.diagnostics.has_structural_trigger, "STRUCTURAL_TRIGGER"),
+            (result.diagnostics.has_directional_context, "DIRECTIONAL_CONTEXT"),
+            (result.diagnostics.has_level_context, "LIQUIDITY_OR_LEVEL_CONTEXT"),
+        ):
+            if not present:
+                missing.append(name)
+
+        def nested_value(value: object, key: str) -> object | None:
+            if isinstance(value, dict):
+                if key in value:
+                    return value[key]
+                for nested in value.values():
+                    found = nested_value(nested, key)
+                    if found is not None:
+                        return found
+            return None
+
+        breakout = nested_value(context.analysis_context, "breakout_volume_ratio")
+        atr = nested_value(context.analysis_context, "atr_value")
+        result = SetupRuleResult(
+            status=result.status,
+            setup_type=result.setup_type,
+            direction_hint=result.direction_hint,
+            confirmation_state=result.confirmation_state,
+            setup_quality=result.setup_quality,
+            reason_codes=result.reason_codes,
+            invalidation_reasons=result.invalidation_reasons,
+            diagnostics=replace(
+                result.diagnostics,
+                distance_to_setup_condition=len(missing),
+                missing_setup_conditions=missing,
+                breakout_strength=(
+                    float(breakout) if isinstance(breakout, (int, float)) else None
+                ),
+                pullback_quality=(
+                    context.impulse_phase
+                    if context.impulse_phase and "PULLBACK" in context.impulse_phase
+                    else "NO_CAUSAL_PULLBACK_EVIDENCE"
+                ),
+                liquidity_presence=result.diagnostics.has_level_context,
+                volatility_suitability=(
+                    "OBSERVED_NOT_THRESHOLD_CLASSIFIED"
+                    if isinstance(atr, (int, float)) and float(atr) > 0
+                    else "UNKNOWN"
+                ),
+            ),
+        )
         identity = setup_candidate_id(snapshot.symbol, snapshot.timeframe, snapshot.closed_until_ms,
                                       result.setup_type, result.status)
         quality = diagnose_setup_quality(

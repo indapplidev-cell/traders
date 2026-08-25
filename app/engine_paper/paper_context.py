@@ -12,6 +12,8 @@ ALLOWED_PRIMITIVES = frozenset({
     "reference_close", "confirmation_close", "current_closed_candle_close",
     "causal_support_level", "causal_resistance_level", "causal_invalidation_level",
     "causal_target_level", "nearest_opposite_level", "atr_value", "volatility_buffer",
+    "causal_target_candidates", "causal_support_candidates",
+    "causal_resistance_candidates", "higher_timeframe_target_candidates",
     "setup_type", "strategy_type", "direction_hint",
 })
 _FORBIDDEN_CONTAINER_TOKENS = ("future", "outcome", "realized", "fill", "pnl", "execution",
@@ -52,6 +54,7 @@ class PaperContext:
     causal_invalidation_level: float | None = None
     causal_target_level: float | None = None
     nearest_opposite_level: float | None = None
+    causal_target_candidates: tuple[dict[str, Any], ...] = ()
     atr_value: float | None = None
     volatility_buffer: float | None = None
     setup_type: str | None = None
@@ -66,7 +69,21 @@ class PaperContext:
         values: dict[str, Any] = {}
         for name in ALLOWED_PRIMITIVES:
             raw = _find_value(source, name)
-            values[name] = raw if name in {"setup_type", "strategy_type", "direction_hint"} else _number(raw)
+            if name == "causal_target_candidates":
+                values[name] = tuple(
+                    dict(item) for item in raw or () if isinstance(item, dict)
+                )
+            else:
+                values[name] = raw if name in {
+                    "setup_type", "strategy_type", "direction_hint",
+                    "causal_support_candidates", "causal_resistance_candidates",
+                    "higher_timeframe_target_candidates",
+                } else _number(raw)
+        for extra in (
+            "causal_support_candidates", "causal_resistance_candidates",
+            "higher_timeframe_target_candidates",
+        ):
+            values.pop(extra, None)
         values["strategy_type"] = values["strategy_type"] or decision.source_strategy_type
         direction = str(values["direction_hint"] or decision.direction_hint).upper()
         values["direction_hint"] = direction if direction in {

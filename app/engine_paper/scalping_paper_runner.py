@@ -88,16 +88,36 @@ class ScalpingPaperRunner(PaperRunner):
             else context.causal_resistance_level or context.causal_invalidation_level
         )
         targets: list[CausalTarget] = []
-        if context.causal_target_level is not None:
+        for raw in context.causal_target_candidates:
+            price = raw.get("price")
+            source_type = str(raw.get("source_type") or "").upper()
+            timeframe = str(raw.get("timeframe") or "").lower() or None
+            if price is None or source_type not in {"LOCAL_5M", "STRUCTURAL", "15M", "1H"}:
+                continue
+            reachability_atr = raw.get("reachability_atr")
+            achievable = bool(raw.get("achievable", True))
+            if source_type == "1H":
+                try:
+                    achievable = achievable and float(reachability_atr) > 0 and (
+                        abs(float(price) - float(entry)) <= float(reachability_atr)
+                    )
+                except (TypeError, ValueError):
+                    achievable = False
             targets.append(CausalTarget(
-                context.causal_target_level, "LOCAL_5M", source.closed_until_ms
+                float(price), source_type, int(raw.get("known_at_ms") or source.closed_until_ms),
+                validated=bool(raw.get("validated", False)),
+                relevant=bool(raw.get("still_relevant", True)),
+                achievable=achievable,
+                timeframe=timeframe,
+                source_detail=(
+                    str(raw.get("source_detail"))
+                    if raw.get("source_detail") is not None else None
+                ),
             ))
-        if (
-            context.nearest_opposite_level is not None
-            and context.nearest_opposite_level != context.causal_target_level
-        ):
+        if not targets and context.causal_target_level is not None:
             targets.append(CausalTarget(
-                context.nearest_opposite_level, "STRUCTURAL", source.closed_until_ms
+                context.causal_target_level, "LOCAL_5M", source.closed_until_ms,
+                timeframe="5m", source_detail="legacy_nearest_opposite_level",
             ))
         candidate = ShadowGeometryCandidate(
             trade_profile_id="trade-5m-v1",

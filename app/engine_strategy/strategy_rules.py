@@ -63,15 +63,36 @@ def strategy_score_diagnostics(
         context.conflict_penalty, context.invalidation_penalty
     )), 3)
     final_score = diagnostic_strategy_score(context)
+    confidence_adjustment = (
+        None if context.analysis_confidence is None
+        else round((max(0.0, min(1.0, context.analysis_confidence)) - 0.5) * 4.0, 3)
+    )
+    maximums = {"structure": 35.0, "candle_confirmation": 30.0, "context_alignment": 35.0}
+    components = {
+        "structure": context.structural_score,
+        "candle_confirmation": context.confirmation_score,
+        "context_alignment": context.context_score,
+    }
+    normalized = {
+        name: (None if value is None else round(float(value) / maximums[name] * 100.0, 3))
+        for name, value in components.items()
+    }
     return {
         "strategy_quality_threshold": threshold,
-        "component_scores": {
-            "structure": context.structural_score,
-            "candle_confirmation": context.confirmation_score,
-            "context_alignment": context.context_score,
+        "component_scores": components,
+        "raw_component_values": components,
+        "normalized_component_scores": normalized,
+        "positive_contributions": {
+            **components,
+            "analysis_confidence_adjustment": confidence_adjustment,
+        },
+        "negative_penalties": {
+            "conflict": context.conflict_penalty,
+            "invalidation": context.invalidation_penalty,
         },
         "strategy_raw_score": raw_score,
         "strategy_penalty_total": penalty_total,
+        "strategy_confidence_adjustment": confidence_adjustment,
         "strategy_final_score": final_score,
         "strategy_margin_to_threshold": (
             None if final_score is None else round(final_score - threshold, 3)
@@ -88,6 +109,7 @@ def strategy_shadow_threshold_cohorts(final_score: float | None) -> dict[str, bo
         "delta_minus_0_10": final_score >= 64.90,
         "delta_minus_0_25": final_score >= 64.75,
         "delta_minus_0_50": final_score >= 64.50,
+        "delta_minus_1_00": final_score >= 64.00,
         "diagnostic_only": True,
     }
 
