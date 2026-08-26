@@ -94,6 +94,8 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.economics_minimum_net_edge_shadow_cohorts_bps == (10.0, 15.0, 20.0)
     assert five.rr_shadow_cohorts == (1.0, 1.2, 1.5)
     assert five.risk_per_trade_shadow_cohorts_bps == (10.0, 15.0, 20.0, 25.0)
+    assert five.portfolio_max_concurrent_shadow_cohorts == (2, 3, 4)
+    assert five.portfolio_total_open_risk_shadow_cohorts_bps == (50.0, 75.0)
     assert five.minimum_planned_rr == 1.5
     assert five.mode == "PRODUCTION_SEARCH"
     assert five.paper_command_creation_enabled is True

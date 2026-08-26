@@ -54,6 +54,10 @@ class RuntimeProfileParameters:
     rr_shadow_cohorts: tuple[float, ...]
     risk_per_trade_bps: float
     risk_per_trade_shadow_cohorts_bps: tuple[float, ...]
+    portfolio_max_concurrent_positions: int
+    portfolio_max_concurrent_shadow_cohorts: tuple[int, ...]
+    portfolio_max_total_open_risk_bps: float
+    portfolio_total_open_risk_shadow_cohorts_bps: tuple[float, ...]
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -117,6 +121,10 @@ class RuntimeProfileParameters:
             raise ValueError("invalid risk-per-trade cohorts")
         if self.risk_per_trade_bps not in self.risk_per_trade_shadow_cohorts_bps:
             raise ValueError("production risk per trade must use a declared cohort")
+        if self.portfolio_max_concurrent_shadow_cohorts != (2, 3, 4):
+            raise ValueError("invalid max concurrent-position cohorts")
+        if self.portfolio_total_open_risk_shadow_cohorts_bps != (50.0, 75.0):
+            raise ValueError("invalid total open-risk cohorts")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -187,6 +195,10 @@ class RuntimeProfileParameters:
                 "rr_shadow_cohorts",
                 "risk_per_trade_bps",
                 "risk_per_trade_shadow_cohorts_bps",
+                "portfolio_max_concurrent_positions",
+                "portfolio_max_concurrent_shadow_cohorts",
+                "portfolio_max_total_open_risk_bps",
+                "portfolio_total_open_risk_shadow_cohorts_bps",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -279,6 +291,10 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         rr_shadow_cohorts=(1.0, 1.2, 1.5),
         risk_per_trade_bps=10.0,
         risk_per_trade_shadow_cohorts_bps=(10.0, 15.0, 20.0, 25.0),
+        portfolio_max_concurrent_positions=3,
+        portfolio_max_concurrent_shadow_cohorts=(2, 3, 4),
+        portfolio_max_total_open_risk_bps=50.0,
+        portfolio_total_open_risk_shadow_cohorts_bps=(50.0, 75.0),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(
