@@ -78,6 +78,8 @@ class ShadowCostInputs:
     economic_capture_started_at_ms: int | None = None
     decision_cutoff_timestamp_ms: int | None = None
     economic_input_source: str | None = None
+    reference_quantity: float | None = None
+    reference_notional: float | None = None
     maximum_age_ms: int = 5_000
     require_causal_timestamp: bool = False
 
@@ -88,7 +90,10 @@ class ShadowCostInputs:
         )
         if any(not isfinite(float(value)) or float(value) < 0 for value in values):
             raise ValueError("cost components must be finite and non-negative")
-        optional_prices = (self.bid, self.ask, self.buy_vwap, self.sell_vwap)
+        optional_prices = (
+            self.bid, self.ask, self.buy_vwap, self.sell_vwap,
+            self.reference_quantity, self.reference_notional,
+        )
         if any(value is not None and (not isfinite(float(value)) or float(value) <= 0)
                for value in optional_prices):
             raise ValueError("economic prices must be positive and finite")
@@ -162,6 +167,7 @@ class ShadowGeometryConfig:
     minimum_positive_edge_bps: float = 1.0
     production_rr_floor: float = 1.5
     max_depth_impact_bps: float = 20.0
+    minimum_net_edge_shadow_cohorts_bps: tuple[float, ...] = (10.0, 15.0, 20.0)
 
     def __post_init__(self) -> None:
         if self.atr_buffer_multiplier not in {0.25, 0.5, 0.75, 1.0}:
@@ -174,6 +180,8 @@ class ShadowGeometryConfig:
             raise ValueError("minimum positive edge must be finite and non-negative")
         if self.production_rr_floor != 1.5:
             raise ValueError("production RR floor must remain 1.5")
+        if self.minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
+            raise ValueError("minimum net-edge cohorts must be 10/15/20 bps")
 
 
 @dataclass(slots=True)
@@ -237,10 +245,13 @@ class ShadowGeometryDiagnostic:
     decision_cutoff_timestamp_ms: int | None = None
     economic_input_age_ms: int | None = None
     economic_input_source: str | None = None
+    reference_quantity: float | None = None
+    reference_notional: float | None = None
     economic_gate_enabled: bool = True
     economic_gate_pass: bool = False
     rr_cohorts_gross: dict[str, bool] = field(default_factory=dict)
     rr_cohorts_net: dict[str, bool] = field(default_factory=dict)
+    net_edge_cohorts: dict[str, bool] = field(default_factory=dict)
     rejection_stage: str | None = None
     rejection_reason: str | None = None
     raw_reason: str | None = None
@@ -376,6 +387,8 @@ def evaluate_scalping_shadow(
         decision_cutoff_timestamp_ms=costs.decision_cutoff_timestamp_ms,
         economic_input_age_ms=costs.economic_input_age_ms,
         economic_input_source=costs.economic_input_source,
+        reference_quantity=costs.reference_quantity,
+        reference_notional=costs.reference_notional,
     )
     invalidation = candidate.causal_invalidation
     if invalidation is None:
@@ -476,6 +489,10 @@ def evaluate_scalping_shadow(
         result.rr_cohorts_gross = {f"{rr:.2f}": gross_rr >= rr for rr in RR_COHORTS}
         result.rr_cohorts_net = {
             f"{rr:.2f}": net_rr is not None and net_rr >= rr for rr in RR_COHORTS
+        }
+        result.net_edge_cohorts = {
+            f"{threshold:.2f}": edge > threshold
+            for threshold in config.minimum_net_edge_shadow_cohorts_bps
         }
         edge_pass = (
             edge > 0

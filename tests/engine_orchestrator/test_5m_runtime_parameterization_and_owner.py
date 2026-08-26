@@ -91,6 +91,7 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.geometry_atr_buffer_shadow_cohorts == (0.25, 0.5, 0.75)
     assert five.geometry_stop_envelope_shadow_cohorts_bps == (50.0, 65.0, 80.0)
     assert five.geometry_minimum_target_shadow_cohorts_bps == (45.0, 60.0, 80.0)
+    assert five.economics_minimum_net_edge_shadow_cohorts_bps == (10.0, 15.0, 20.0)
     assert five.minimum_planned_rr == 1.5
     assert five.mode == "PRODUCTION_SEARCH"
     assert five.paper_command_creation_enabled is True

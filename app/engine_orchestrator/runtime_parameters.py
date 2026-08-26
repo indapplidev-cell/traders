@@ -44,6 +44,13 @@ class RuntimeProfileParameters:
     geometry_stop_envelope_shadow_cohorts_bps: tuple[float, ...]
     geometry_minimum_target_bps: float
     geometry_minimum_target_shadow_cohorts_bps: tuple[float, ...]
+    economics_entry_fee_bps: float
+    economics_exit_fee_bps: float
+    economics_entry_slippage_bps: float
+    economics_exit_slippage_bps: float
+    economics_minimum_net_edge_bps: float
+    economics_minimum_net_edge_shadow_cohorts_bps: tuple[float, ...]
+    economics_max_depth_impact_bps: float
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -99,6 +106,8 @@ class RuntimeProfileParameters:
             raise ValueError("invalid stop-envelope cohorts")
         if self.geometry_minimum_target_shadow_cohorts_bps != (45.0, 60.0, 80.0):
             raise ValueError("invalid minimum-target cohorts")
+        if self.economics_minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
+            raise ValueError("invalid minimum net-edge cohorts")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -159,6 +168,13 @@ class RuntimeProfileParameters:
                 "geometry_stop_envelope_shadow_cohorts_bps",
                 "geometry_minimum_target_bps",
                 "geometry_minimum_target_shadow_cohorts_bps",
+                "economics_entry_fee_bps",
+                "economics_exit_fee_bps",
+                "economics_entry_slippage_bps",
+                "economics_exit_slippage_bps",
+                "economics_minimum_net_edge_bps",
+                "economics_minimum_net_edge_shadow_cohorts_bps",
+                "economics_max_depth_impact_bps",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -241,6 +257,13 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         geometry_stop_envelope_shadow_cohorts_bps=(50.0, 65.0, 80.0),
         geometry_minimum_target_bps=45.0,
         geometry_minimum_target_shadow_cohorts_bps=(45.0, 60.0, 80.0),
+        economics_entry_fee_bps=10.0,
+        economics_exit_fee_bps=10.0,
+        economics_entry_slippage_bps=2.0,
+        economics_exit_slippage_bps=2.0,
+        economics_minimum_net_edge_bps=1.0,
+        economics_minimum_net_edge_shadow_cohorts_bps=(10.0, 15.0, 20.0),
+        economics_max_depth_impact_bps=20.0,
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(

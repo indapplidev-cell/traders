@@ -359,6 +359,11 @@ def production_parameters():
         geometry_atr_buffer_multiplier=.25,
         geometry_stop_envelope_bps=80.0,
         geometry_minimum_target_bps=45.0,
+        economics_entry_fee_bps=10.0, economics_exit_fee_bps=10.0,
+        economics_entry_slippage_bps=2.0, economics_exit_slippage_bps=2.0,
+        economics_minimum_net_edge_bps=1.0,
+        economics_minimum_net_edge_shadow_cohorts_bps=(10.0, 15.0, 20.0),
+        economics_max_depth_impact_bps=20.0,
     )
 
 
@@ -394,6 +399,11 @@ def test_production_5m_runner_enforces_cost_gate_and_preserves_diagnostics():
     assert diagnostic["break_even_win_rate"] is not None
     assert diagnostic["rr_cohorts_gross"] == {"1.00": True, "1.20": True, "1.50": True}
     assert diagnostic["rr_cohorts_net"] == {"1.00": True, "1.20": True, "1.50": True}
+    assert diagnostic["total_cost_bps"] == 30.0
+    assert diagnostic["net_reward_bps"] == diagnostic["gross_reward_bps"] - 30.0
+    assert diagnostic["net_edge_cohorts"] == {
+        "10.00": True, "15.00": True, "20.00": True,
+    }
     assert plan.paper_context["economic_gate_enabled"] is True
     assert len(source.calls) == 1
 

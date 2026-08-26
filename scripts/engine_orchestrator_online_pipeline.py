@@ -168,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
             reference_notional=runtime_parameters.vwap_reference_notional,
             depth_limit=runtime_parameters.bounded_book_depth_limit,
             maximum_age_ms=runtime_parameters.microstructure_max_age_ms,
+            entry_fee_bps=runtime_parameters.economics_entry_fee_bps,
+            exit_fee_bps=runtime_parameters.economics_exit_fee_bps,
+            entry_slippage_bps=runtime_parameters.economics_entry_slippage_bps,
+            exit_slippage_bps=runtime_parameters.economics_exit_slippage_bps,
         )
         if args.strategy_cap_shadow_economic_capture and profile.trade_profile_id == "trade-5m-v1"
         else None

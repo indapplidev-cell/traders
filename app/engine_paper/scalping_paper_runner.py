@@ -34,11 +34,19 @@ class BinancePublicScalpingCostSource:
         reference_notional: float = 100.0,
         depth_limit: int = 100,
         maximum_age_ms: int = 5_000,
+        entry_fee_bps: float = 10.0,
+        exit_fee_bps: float = 10.0,
+        entry_slippage_bps: float = 2.0,
+        exit_slippage_bps: float = 2.0,
     ) -> None:
         self.client = client or BinancePublicRestClient()
         self.reference_notional = Decimal(str(reference_notional))
         self.depth_limit = int(depth_limit)
         self.maximum_age_ms = int(maximum_age_ms)
+        self.entry_fee_bps = float(entry_fee_bps)
+        self.exit_fee_bps = float(exit_fee_bps)
+        self.entry_slippage_bps = float(entry_slippage_bps)
+        self.exit_slippage_bps = float(exit_slippage_bps)
         if self.reference_notional <= 0 or self.maximum_age_ms <= 0:
             raise ValueError("Scalping cost-source bounds must be positive")
         if self.depth_limit not in {5, 10, 20, 50, 100, 500, 1000, 5000}:
@@ -53,6 +61,10 @@ class BinancePublicScalpingCostSource:
         )
         captured_at_ms = time.time_ns() // 1_000_000
         return ShadowCostInputs(
+            entry_fee_bps=self.entry_fee_bps,
+            exit_fee_bps=self.exit_fee_bps,
+            entry_slippage_bps=self.entry_slippage_bps,
+            exit_slippage_bps=self.exit_slippage_bps,
             safety_margin_bps=safety_margin_bps,
             spread_bps=ticker.spread_bps,
             depth_impact_bps=depth.depth_impact_bps,
@@ -71,6 +83,8 @@ class BinancePublicScalpingCostSource:
             economic_input_source="BINANCE_PUBLIC_REST_RECEIPT_BOUNDED_BOOK_AND_DEPTH",
             maximum_age_ms=self.maximum_age_ms,
             require_causal_timestamp=True,
+            reference_quantity=float(reference_quantity),
+            reference_notional=float(self.reference_notional),
         )
 
 
@@ -91,6 +105,10 @@ class ScalpingPaperRunner(PaperRunner):
             reference_notional=float(runtime_parameters.vwap_reference_notional),
             depth_limit=int(runtime_parameters.bounded_book_depth_limit),
             maximum_age_ms=int(runtime_parameters.microstructure_max_age_ms),
+            entry_fee_bps=float(runtime_parameters.economics_entry_fee_bps),
+            exit_fee_bps=float(runtime_parameters.economics_exit_fee_bps),
+            entry_slippage_bps=float(runtime_parameters.economics_entry_slippage_bps),
+            exit_slippage_bps=float(runtime_parameters.economics_exit_slippage_bps),
         )
         self.geometry_config = ShadowGeometryConfig(
             atr_buffer_multiplier=float(runtime_parameters.geometry_atr_buffer_multiplier),
@@ -98,8 +116,12 @@ class ScalpingPaperRunner(PaperRunner):
             minimum_target_diagnostic_bps=float(
                 runtime_parameters.geometry_minimum_target_bps
             ),
-            minimum_positive_edge_bps=1.0,
+            minimum_positive_edge_bps=float(runtime_parameters.economics_minimum_net_edge_bps),
             production_rr_floor=minimum_rr,
+            max_depth_impact_bps=float(runtime_parameters.economics_max_depth_impact_bps),
+            minimum_net_edge_shadow_cohorts_bps=tuple(
+                runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
+            ),
         )
 
     def _process(self, source: RiskDecision):
@@ -161,6 +183,10 @@ class ScalpingPaperRunner(PaperRunner):
             setup_identity=context.setup_type or source.source_strategy_type,
         )
         unavailable_costs = ShadowCostInputs(
+            entry_fee_bps=float(self.runtime_parameters.economics_entry_fee_bps),
+            exit_fee_bps=float(self.runtime_parameters.economics_exit_fee_bps),
+            entry_slippage_bps=float(self.runtime_parameters.economics_entry_slippage_bps),
+            exit_slippage_bps=float(self.runtime_parameters.economics_exit_slippage_bps),
             safety_margin_bps=float(
                 getattr(self.runtime_parameters, "cost_safety_margin_bps")
             ),
@@ -241,6 +267,10 @@ class ScalpingPaperRunner(PaperRunner):
             )
         except Exception:
             return ShadowCostInputs(
+                entry_fee_bps=float(self.runtime_parameters.economics_entry_fee_bps),
+                exit_fee_bps=float(self.runtime_parameters.economics_exit_fee_bps),
+                entry_slippage_bps=float(self.runtime_parameters.economics_entry_slippage_bps),
+                exit_slippage_bps=float(self.runtime_parameters.economics_exit_slippage_bps),
                 safety_margin_bps=float(
                     getattr(self.runtime_parameters, "cost_safety_margin_bps")
                 ),
