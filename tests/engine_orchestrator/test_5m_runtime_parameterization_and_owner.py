@@ -100,6 +100,22 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.exit_time_stop_shadow_cohorts_minutes == (15, 30, 45)
     assert five.exit_adaptive_rules_production_enabled is False
     assert five.opportunity_reentry_enabled is False
+
+
+def test_scalping_parameter_source_is_single_sectioned_immutable_and_has_no_15m_fallback():
+    parameters = resolve_runtime_parameters("trade-5m-v1")
+    five = parameters
+    fifteen = resolve_runtime_parameters("trade-15m-v1")
+    sections = parameters.sectioned_public_config()
+    assert set(sections) == {
+        "market_data", "analysis", "setup", "strategy", "geometry",
+        "economics", "rr", "risk", "portfolio", "execution", "position", "exit",
+    }
+    assert sections["execution"]["execution_entry_ttl_seconds"] == 60
+    with pytest.raises(TypeError):
+        sections["execution"]["execution_entry_ttl_seconds"] = 30
+    with pytest.raises(ValueError, match="runtime parameter set missing"):
+        resolve_runtime_parameters("unknown-profile")
     assert five.minimum_planned_rr == 1.5
     assert five.mode == "PRODUCTION_SEARCH"
     assert five.paper_command_creation_enabled is True

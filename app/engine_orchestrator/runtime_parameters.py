@@ -234,6 +234,44 @@ class RuntimeProfileParameters:
             "runtime_parameter_profile_id": self.profile_id,
         }
 
+    def sectioned_public_config(self) -> Mapping[str, Mapping[str, object]]:
+        """Expose one reconstructible source grouped by domain ownership."""
+        values = asdict(self)
+        sections = {
+            "market_data": (
+                "market_data_required_timeframes", "market_data_context_windows",
+                "bounded_book_depth_limit", "microstructure_max_age_ms",
+                "vwap_reference_notional",
+            ),
+            "analysis": tuple(name for name in values if name.startswith("analysis_")) + (
+                "atr_lookback_candles", "impulse_lookback_candles",
+                "structure_lookback_candles", "confirmation_window_candles",
+                "volume_baseline_candles", "breakout_volume_baseline_candles",
+                "regime_lookback_candles",
+            ),
+            "setup": ("scalping_setup_families", "setup_policy_id"),
+            "strategy": tuple(name for name in values if name.startswith("strategy_")),
+            "geometry": tuple(name for name in values if name.startswith("geometry_")) + (
+                "stop_policy_id", "target_policy_id",
+            ),
+            "economics": tuple(name for name in values if name.startswith("economics_")) + (
+                "cost_safety_margin_bps",
+            ),
+            "rr": ("minimum_planned_rr", "rr_shadow_cohorts"),
+            "risk": tuple(name for name in values if name.startswith("risk_")),
+            "portfolio": tuple(name for name in values if name.startswith("portfolio_")),
+            "execution": tuple(name for name in values if name.startswith("execution_")) + (
+                "paper_command_creation_enabled", "position_opening_enabled",
+                "validity_boundaries",
+            ),
+            "position": ("opportunity_reentry_enabled",),
+            "exit": tuple(name for name in values if name.startswith("exit_")),
+        }
+        return MappingProxyType({
+            name: MappingProxyType({key: values[key] for key in keys})
+            for name, keys in sections.items()
+        })
+
 
 def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters:
     if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value:
