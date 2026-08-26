@@ -3,11 +3,11 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d81a1e85b96037a4a5348f83d7ad155c684602ec
+STATUS_AS_OF_COMMIT = a460606dadd721ede139946af136eada1b00ea7b
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-26T16:20:01Z
+RECONCILED_AT_UTC = 2026-08-26T16:24:38Z
 RECONCILED_BY_TASK = TRADERS_5M_SCALPING_MODE_FULL_MODULAR_REFACTOR_01
 FILES_CHANGED = app/engine_analysis/scalping_semantics.py, app/engine_exit/scalping_exit_policy.py, app/engine_observation/scalping_*.py, app/engine_orchestrator/pipeline_runner.py, app/engine_orchestrator/runtime_parameters.py, app/engine_orchestrator/trade_profile.py, app/engine_paper/scalping_*.py, app/engine_position/scalping_monitor.py, app/engine_risk/cross_profile_arbiter.py, app/engine_risk/risk_policy.py, app/engine_risk/risk_runner.py, app/engine_risk/scalping_sizing.py, app/engine_setup/setup_candidate.py, app/engine_setup/setup_detector.py, app/engine_setup/setup_type.py, app/engine_strategy/strategy_*.py, app/i18n/catalog.py, app/server_api/funnel_export.py, app/server_api/schemas/models.py, app/server_api/trading_funnel.py, docker-compose.yml, scripts/benchmark_scalping_modules.py, scripts/engine_orchestrator_online_pipeline.py, tests/*scalping*, tests/engine_*/test_*scalping*, tests/server_api/test_i18n.py, tests/server_api/test_trading_funnel.py, FINAL_DECISION.md, online_trader.md, ../traders-client/src/traders_client/i18n/generated_bootstrap.json, ../evidence_inbox/TRADERS_5M_SCALPING_MODE_FULL_MODULAR_REFACTOR_01_FINAL.md
 
@@ -35,7 +35,7 @@ BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_NO_PHYSICAL_GAP_AC
 ```text
 TASK = TRADERS_5M_SCALPING_MODE_FULL_MODULAR_REFACTOR_01
 RESULT = PASS_SOURCE_CLIENT_DEPLOYMENT_AND_RUNTIME_ACCEPTANCE_PROFITABILITY_CALIBRATION_PENDING
-PROJECT_STATE_COMMIT = d81a1e85b96037a4a5348f83d7ad155c684602ec
+PROJECT_STATE_COMMIT = a460606dadd721ede139946af136eada1b00ea7b
 DOMAIN = trade-5m-v1_LEGACY_ID_COMPATIBLE_TRADE_MODE_SCALPING_PRIMARY5M_ENTRY1M5M_CONTEXT15M1H
 I18N = SERVER_AUTHORITY_CATALOG9CAF8512_RU_SCALPING_EN_SCALPING_PARITY859_CLIENT_INDEPENDENT_DOMAIN_MAP0
 PARAMETERS = SINGLE_IMMUTABLE_VERSIONED_SOURCE_trade-5m-v1-runtime-v1-87b8a882d06b3539_NO_15M_FALLBACK
@@ -57,7 +57,7 @@ CONTROL_LIVE = ARMED_GENERATION6_HEALTHY_LIVE_DISABLED_MUTATION_FALSE_COMMAND_OR
 PRODUCTION_PROMOTION = NO_AUTOMATIC_COHORT_PROMOTION_NO_LIVE_CHANGE
 BUSINESS_RESULT = ARCHITECTURE_READY_FREQUENCY_AND_POSITIVE_NET_EXPECTANCY_NOT_YET_PROVEN
 NEXT_ACTION = PAPER_ONLY_PROSPECTIVE_SCALPING_CALIBRATION_OBSERVATION_THEN_SEPARATE_PARAMETER_PROMOTION_DECISION
-EVIDENCE = ../evidence_inbox/TRADERS_5M_SCALPING_MODE_FULL_MODULAR_REFACTOR_01_FINAL.md_SHA256_E9E9CA74F78662BBAB667EF51F052358C42D5A4D33FEB5AE8584585B866C4DD6
+EVIDENCE = ../evidence_inbox/TRADERS_5M_SCALPING_MODE_FULL_MODULAR_REFACTOR_01_FINAL.md_SHA256_839C90DBC1044D3841975731E389A0C2CF0960DE72AA054DD34EB47F4E85F1D4
 ```
 
 ## Production DB credential exposure rotation and diagnostic hardening 01
