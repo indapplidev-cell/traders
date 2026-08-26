@@ -93,9 +93,11 @@ class ScalpingPaperRunner(PaperRunner):
             maximum_age_ms=int(runtime_parameters.microstructure_max_age_ms),
         )
         self.geometry_config = ShadowGeometryConfig(
-            atr_buffer_multiplier=0.25,
-            stop_envelope_bps=80.0,
-            minimum_target_diagnostic_bps=45.0,
+            atr_buffer_multiplier=float(runtime_parameters.geometry_atr_buffer_multiplier),
+            stop_envelope_bps=float(runtime_parameters.geometry_stop_envelope_bps),
+            minimum_target_diagnostic_bps=float(
+                runtime_parameters.geometry_minimum_target_bps
+            ),
             minimum_positive_edge_bps=1.0,
             production_rr_floor=minimum_rr,
         )

@@ -67,7 +67,7 @@ def test_stop_is_rejected_not_clipped_inside_causal_invalidation():
     row = evaluate_scalping_shadow(
         candidate(causal_invalidation=99.30, atr=0.20), costs(), config(stop_envelope_bps=50.0)
     )
-    assert row.rejection_reason == R.PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE
+    assert row.rejection_reason == R.SCALP_REJECT_CAUSAL_STOP_TOO_WIDE
     assert row.final_stop == pytest.approx(99.25)
     assert row.final_stop < row.causal_invalidation
     assert row.stop_distance_bps == pytest.approx(75.0)
@@ -354,7 +354,12 @@ class CostSource:
 
 
 def production_parameters():
-    return SimpleNamespace(minimum_planned_rr=1.5, cost_safety_margin_bps=3.0)
+    return SimpleNamespace(
+        minimum_planned_rr=1.5, cost_safety_margin_bps=3.0,
+        geometry_atr_buffer_multiplier=.25,
+        geometry_stop_envelope_bps=80.0,
+        geometry_minimum_target_bps=45.0,
+    )
 
 
 def admitted_5m_risk(**context_changes):
@@ -415,8 +420,8 @@ def test_production_5m_runner_does_not_query_costs_before_geometry_is_valid():
     ).process_risk_decision(admitted_5m_risk(causal_support_level=99.0, causal_invalidation_level=99.0))
     diagnostic = plan.paper_context["scalping_geometry_diagnostics"]
 
-    assert plan.paper_status == "NO_PLAN"
-    assert diagnostic["rejection_reason"] == R.PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE
+    assert plan.paper_status == "REJECT"
+    assert diagnostic["rejection_reason"] == R.SCALP_REJECT_CAUSAL_STOP_TOO_WIDE
     assert diagnostic["final_stop"] < diagnostic["causal_invalidation"]
     assert diagnostic["entry_fee_bps"] == 10.0
     assert diagnostic["exit_fee_bps"] == 10.0

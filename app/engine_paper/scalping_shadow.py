@@ -15,11 +15,14 @@ from app.engine_paper.paper_reason_codes import PaperReasonCode as R
 
 
 TARGET_PRIORITY = {
-    "LOCAL_5M": 0,
-    "STRUCTURAL": 1,
-    "15M": 2,
-    "HIGHER_TF": 2,  # compatibility alias; timeframe resolves the exact tier
-    "1H": 3,
+    "LOCAL_5M_LIQUIDITY": 0,
+    "LOCAL_5M": 0,  # compatibility alias
+    "RECENT_5M_SWING": 1,
+    "LOCAL_RANGE_BOUNDARY": 2,
+    "STRUCTURAL": 3,
+    "15M": 4,
+    "HIGHER_TF": 4,  # compatibility alias; timeframe resolves the exact tier
+    "1H": 5,
 }
 RR_COHORTS = (1.0, 1.2, 1.5)
 
@@ -46,7 +49,9 @@ class CausalTarget:
         if self.timeframe:
             return self.timeframe.lower()
         return {
+            "LOCAL_5M_LIQUIDITY": "5m",
             "LOCAL_5M": "5m", "STRUCTURAL": "5m", "15M": "15m",
+            "RECENT_5M_SWING": "5m", "LOCAL_RANGE_BOUNDARY": "5m",
             "1H": "1h", "HIGHER_TF": "unknown",
         }[self.source_type]
 
@@ -391,7 +396,7 @@ def evaluate_scalping_shadow(
     result.stop_envelope_pass = result.stop_distance_bps <= config.stop_envelope_bps
     if not result.stop_envelope_pass:
         return result.reject(
-            "STOP_ENVELOPE", R.PAPER_NO_PLAN_CAUSAL_STOP_TOO_WIDE_FOR_PROFILE.value
+            "STOP_ENVELOPE", R.SCALP_REJECT_CAUSAL_STOP_TOO_WIDE.value
         )
 
     trace_targets = sorted(

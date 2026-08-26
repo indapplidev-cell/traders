@@ -38,6 +38,12 @@ class RuntimeProfileParameters:
     strategy_allowed_setup_types: tuple[str, ...]
     strategy_shadow_thresholds: tuple[float, ...]
     strategy_not_evaluated_handling: str
+    geometry_atr_buffer_multiplier: float
+    geometry_atr_buffer_shadow_cohorts: tuple[float, ...]
+    geometry_stop_envelope_bps: float
+    geometry_stop_envelope_shadow_cohorts_bps: tuple[float, ...]
+    geometry_minimum_target_bps: float
+    geometry_minimum_target_shadow_cohorts_bps: tuple[float, ...]
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -87,6 +93,12 @@ class RuntimeProfileParameters:
             "LEGACY_WEAK_CAP", "SCORE_FROM_EVALUATED_COMPONENTS",
         }:
             raise ValueError("unsupported NOT_EVALUATED strategy handling")
+        if self.geometry_atr_buffer_shadow_cohorts != (0.25, 0.5, 0.75):
+            raise ValueError("invalid ATR buffer cohorts")
+        if self.geometry_stop_envelope_shadow_cohorts_bps != (50.0, 65.0, 80.0):
+            raise ValueError("invalid stop-envelope cohorts")
+        if self.geometry_minimum_target_shadow_cohorts_bps != (45.0, 60.0, 80.0):
+            raise ValueError("invalid minimum-target cohorts")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -141,6 +153,12 @@ class RuntimeProfileParameters:
                 "strategy_allowed_setup_types",
                 "strategy_shadow_thresholds",
                 "strategy_not_evaluated_handling",
+                "geometry_atr_buffer_multiplier",
+                "geometry_atr_buffer_shadow_cohorts",
+                "geometry_stop_envelope_bps",
+                "geometry_stop_envelope_shadow_cohorts_bps",
+                "geometry_minimum_target_bps",
+                "geometry_minimum_target_shadow_cohorts_bps",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -217,6 +235,12 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
             if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
             else "LEGACY_WEAK_CAP"
         ),
+        geometry_atr_buffer_multiplier=0.25,
+        geometry_atr_buffer_shadow_cohorts=(0.25, 0.5, 0.75),
+        geometry_stop_envelope_bps=80.0,
+        geometry_stop_envelope_shadow_cohorts_bps=(50.0, 65.0, 80.0),
+        geometry_minimum_target_bps=45.0,
+        geometry_minimum_target_shadow_cohorts_bps=(45.0, 60.0, 80.0),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(
