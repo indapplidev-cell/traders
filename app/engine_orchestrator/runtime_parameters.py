@@ -52,6 +52,8 @@ class RuntimeProfileParameters:
     economics_minimum_net_edge_shadow_cohorts_bps: tuple[float, ...]
     economics_max_depth_impact_bps: float
     rr_shadow_cohorts: tuple[float, ...]
+    risk_per_trade_bps: float
+    risk_per_trade_shadow_cohorts_bps: tuple[float, ...]
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -111,6 +113,10 @@ class RuntimeProfileParameters:
             raise ValueError("invalid minimum net-edge cohorts")
         if self.rr_shadow_cohorts != (1.0, 1.2, 1.5):
             raise ValueError("invalid RR cohorts")
+        if self.risk_per_trade_shadow_cohorts_bps != (10.0, 15.0, 20.0, 25.0):
+            raise ValueError("invalid risk-per-trade cohorts")
+        if self.risk_per_trade_bps not in self.risk_per_trade_shadow_cohorts_bps:
+            raise ValueError("production risk per trade must use a declared cohort")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -179,6 +185,8 @@ class RuntimeProfileParameters:
                 "economics_minimum_net_edge_shadow_cohorts_bps",
                 "economics_max_depth_impact_bps",
                 "rr_shadow_cohorts",
+                "risk_per_trade_bps",
+                "risk_per_trade_shadow_cohorts_bps",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -269,6 +277,8 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         economics_minimum_net_edge_shadow_cohorts_bps=(10.0, 15.0, 20.0),
         economics_max_depth_impact_bps=20.0,
         rr_shadow_cohorts=(1.0, 1.2, 1.5),
+        risk_per_trade_bps=10.0,
+        risk_per_trade_shadow_cohorts_bps=(10.0, 15.0, 20.0, 25.0),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(

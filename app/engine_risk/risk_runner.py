@@ -31,6 +31,20 @@ class RiskRunner:
         self.store.save(decision)
         return decision
 
+    def preview_strategy_decision(self, strategy_decision: StrategyDecision) -> RiskDecision:
+        """Evaluate risk gates without reserving a research-flow slot.
+
+        Scalping uses this preview to build and economically validate geometry
+        before the authoritative reservation step.
+        """
+        if not isinstance(strategy_decision, StrategyDecision):
+            raise TypeError("strategy_decision must be a StrategyDecision")
+        try:
+            decision = self.policy.evaluate_shadow(strategy_decision)
+        except Exception as exc:
+            decision = self._error_decision(strategy_decision, exc)
+        return decision
+
     async def run_on_strategy_decisions(
         self, decisions: AsyncIterable[StrategyDecision] | Iterable[StrategyDecision],
     ) -> AsyncIterator[RiskDecision]:

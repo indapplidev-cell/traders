@@ -432,13 +432,36 @@ class PipelineRunner:
             strategy_cap_economics = self._capture_strategy_cap_economics(setup)
             strategy = self._invoke(self.strategy_runner, "process_setup_candidate", setup)
             outputs["strategy"] = strategy
-            risk = self._invoke(self.risk_runner, "process_strategy_decision", strategy)
-            outputs["risk"] = risk
             if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
-                risk_status = str(_attribute(risk, "risk_status") or "")
-                shadow_plan = self._invoke(
-                    self.paper_runner, "process_risk_decision", risk
+                # Scalping order is intentionally Strategy -> Geometry/Net Cost
+                # -> Risk reservation. A preview applies every risk gate but
+                # cannot consume the profile research counter.
+                preview = self._invoke(
+                    self.risk_runner, "preview_strategy_decision", strategy
                 )
+                shadow_plan = self._invoke(
+                    self.paper_runner, "process_risk_decision", preview
+                )
+                shadow_plan_status = str(
+                    _attribute(shadow_plan, "paper_status")
+                    or _mapping_value(json_safe(shadow_plan), "paper_status")
+                    or ""
+                )
+                if shadow_plan_status == "PAPER_PLAN_READY":
+                    risk = self._invoke(
+                        self.risk_runner, "process_strategy_decision", strategy
+                    )
+                    risk_status = str(_attribute(risk, "risk_status") or "")
+                    if risk_status not in {
+                        "RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"
+                    }:
+                        shadow_plan = self._invoke(
+                            self.paper_runner, "process_risk_decision", risk
+                        )
+                else:
+                    risk = preview
+                outputs["risk"] = risk
+                risk_status = str(_attribute(risk, "risk_status") or "")
                 shadow_plan_payload = json_safe(shadow_plan)
                 shadow_plan_status = str(
                     _attribute(shadow_plan, "paper_status")
@@ -495,6 +518,10 @@ class PipelineRunner:
                     },
                 }
             else:
+                risk = self._invoke(
+                    self.risk_runner, "process_strategy_decision", strategy
+                )
+                outputs["risk"] = risk
                 outputs["paper"] = self._invoke(self.paper_runner, "process_risk_decision", risk)
         except Exception as exc:
             safety = self._safety(list(outputs.values()), snapshots)
