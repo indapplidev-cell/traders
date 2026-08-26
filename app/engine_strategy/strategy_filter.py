@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 
 from app.engine_setup.setup_candidate import SetupCandidate
 from app.engine_strategy.strategy_config import StrategyConfig
@@ -17,6 +18,7 @@ from app.engine_strategy.strategy_reason_codes import StrategyReasonCode
 from app.engine_strategy.strategy_rules import (
     evaluate_strategy_rules,
     strategy_score_diagnostics,
+    scalping_strategy_score_decomposition,
     strategy_gate_diagnostics,
     strategy_shadow_threshold_cohorts,
 )
@@ -33,6 +35,37 @@ class StrategyFilter:
         if not isinstance(setup_candidate, SetupCandidate):
             raise TypeError("setup_candidate must be a SetupCandidate")
         context = StrategyContext.from_setup_candidate(setup_candidate)
+        source_setup_quality = context.setup_quality
+        source_quality_reasons = context.quality_reasons
+        if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1":
+            if context.analysis_entry_evidence_strength == "UNKNOWN":
+                context = replace(context, setup_quality="UNKNOWN", quality_score=None)
+            elif context.analysis_entry_evidence_strength == "CONFLICTING":
+                context = replace(context, has_conflict=True)
+            elif context.analysis_entry_evidence_strength == "INVALID":
+                context = replace(
+                    context, setup_quality="INVALID", quality_score=0.0,
+                    has_hard_invalidation=True,
+                )
+        if (
+            getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1"
+            and getattr(self.runtime_parameters, "strategy_not_evaluated_handling", None)
+            == "SCORE_FROM_EVALUATED_COMPONENTS"
+            and context.analysis_entry_evidence_strength == "NOT_EVALUATED"
+        ):
+            raw = sum(float(value or 0.0) for value in (
+                context.structural_score, context.confirmation_score, context.context_score,
+            )) - float(context.conflict_penalty or 0.0) - float(context.invalidation_penalty or 0.0)
+            from app.engine_setup.setup_quality_diagnostics import quality_from_score
+            context = replace(
+                context,
+                setup_quality=quality_from_score(raw),
+                quality_score=max(0.0, min(100.0, raw)),
+                quality_reasons=tuple(
+                    reason for reason in context.quality_reasons
+                    if reason != "QUALITY_CAPPED_BY_ANALYSIS_ENTRY_QUALITY"
+                ),
+            )
         result = evaluate_strategy_rules(context, self.config)
         score_diagnostics = strategy_score_diagnostics(context, self.config)
         gate_diagnostics = strategy_gate_diagnostics(result)
@@ -78,8 +111,8 @@ class StrategyFilter:
             decision_status=result.status, strategy_type=result.strategy_type,
             direction_hint=setup_candidate.direction_hint,
             setup_status=setup_candidate.status, setup_type=setup_candidate.setup_type,
-            setup_quality=setup_candidate.setup_quality,
-            setup_quality_score=setup_candidate.quality_score,
+            setup_quality=context.setup_quality,
+            setup_quality_score=context.quality_score,
             strategy_score=result.score, strategy_quality=result.quality,
             strategy_quality_threshold=score_diagnostics["strategy_quality_threshold"],
             component_scores=score_diagnostics["component_scores"],
@@ -104,7 +137,10 @@ class StrategyFilter:
             strategy_final_score=score_diagnostics["strategy_final_score"],
             strategy_margin_to_threshold=score_diagnostics["strategy_margin_to_threshold"],
             shadow_quality_cohorts=(
-                strategy_shadow_threshold_cohorts(result.score)
+                strategy_shadow_threshold_cohorts(
+                    result.score,
+                    tuple(self.runtime_parameters.strategy_shadow_thresholds),
+                )
                 if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1"
                 else {}
             ),
@@ -123,6 +159,13 @@ class StrategyFilter:
                     ),
                 } if self.runtime_parameters is not None else {}),
                 "strategy_type": result.strategy_type,
+                "source_setup_quality": source_setup_quality,
+                "source_quality_reasons": list(source_quality_reasons),
+                "scalping_score_decomposition": (
+                    scalping_strategy_score_decomposition(context)
+                    if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1"
+                    else None
+                ),
                 "direction_hint": setup_candidate.direction_hint,
                 "canonical_strategy_decision_identity": canonical_strategy_decision_identity(
                     setup_candidate.symbol,

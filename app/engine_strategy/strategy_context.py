@@ -32,12 +32,14 @@ class StrategyContext:
     context_score: float | None
     conflict_penalty: float | None
     invalidation_penalty: float | None
+    analysis_entry_evidence_strength: str | None
 
     @classmethod
     def from_setup_candidate(cls, candidate: SetupCandidate) -> "StrategyContext":
         diagnostics = candidate.diagnostics
         quality = candidate.quality_diagnostics
         source_context = dict(candidate.context or {})
+        scalping = source_context.get("scalping") or {}
         return cls(
             setup_status=candidate.status, setup_type=candidate.setup_type,
             direction_hint=candidate.direction_hint, setup_quality=candidate.setup_quality,
@@ -64,6 +66,11 @@ class StrategyContext:
             context_score=getattr(quality, "context_score", None),
             conflict_penalty=getattr(quality, "conflict_penalty", None),
             invalidation_penalty=getattr(quality, "invalidation_penalty", None),
+            analysis_entry_evidence_strength=(
+                str(scalping.get("entry_evidence_strength"))
+                if isinstance(scalping, dict) and scalping.get("entry_evidence_strength")
+                else candidate.source_entry_quality
+            ),
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -75,6 +82,7 @@ class StrategyContext:
             "invalidation_reasons": list(self.invalidation_reasons),
             "diagnostic_reasons": list(self.diagnostic_reasons),
             "analysis_confidence": self.analysis_confidence,
+            "analysis_entry_evidence_strength": self.analysis_entry_evidence_strength,
             "has_hard_invalidation": self.has_hard_invalidation,
             "has_conflict": self.has_conflict,
             "setup_component_scores": {

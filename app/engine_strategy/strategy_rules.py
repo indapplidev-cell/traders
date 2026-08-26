@@ -149,6 +149,34 @@ def strategy_score_diagnostics(
     }
 
 
+def scalping_strategy_score_decomposition(context: StrategyContext) -> dict[str, object]:
+    """Lossless mapping of the proven 35/30/35 model into the 25/15/15/15/10/10/10 contract."""
+    structure = float(context.structural_score or 0.0)
+    confirmation = float(context.confirmation_score or 0.0)
+    alignment = float(context.context_score or 0.0)
+    components = {
+        "structure": structure * 25.0 / 35.0,
+        "context": alignment * 15.0 / 35.0,
+        "momentum": confirmation * 10.0 / 30.0 + alignment * 5.0 / 35.0,
+        "volume": confirmation * 10.0 / 30.0 + alignment * 5.0 / 35.0,
+        "entry_quality": alignment * 10.0 / 35.0,
+        "liquidity": structure * 10.0 / 35.0,
+        "confirmation": confirmation * 10.0 / 30.0,
+    }
+    return {
+        "model": "scalping-strategy-score-v1",
+        "target_weights": {
+            "structure": 25.0, "context": 15.0, "momentum": 15.0,
+            "volume": 15.0, "entry_quality": 10.0, "liquidity": 10.0,
+            "confirmation": 10.0,
+        },
+        "components": {name: round(value, 6) for name, value in components.items()},
+        "mapped_total": round(sum(components.values()), 6),
+        "source_total": round(structure + confirmation + alignment, 6),
+        "mapping_provenance": "LOSSLESS_SPLIT_OF_PROVEN_STRUCTURE35_CONFIRMATION30_CONTEXT35",
+    }
+
+
 _TERMINAL_GATE_BY_REASON = {
     R.STRATEGY_NO_DECISION_NO_SETUP.value: "SOURCE_SETUP_STATUS",
     R.STRATEGY_REJECT_SETUP_INVALID.value: "SOURCE_SETUP_STATUS",
@@ -185,16 +213,16 @@ def strategy_gate_diagnostics(result: RuleResult) -> dict[str, object]:
     }
 
 
-def strategy_shadow_threshold_cohorts(final_score: float | None) -> dict[str, bool | float]:
+def strategy_shadow_threshold_cohorts(
+    final_score: float | None,
+    thresholds: tuple[float, ...] = (55.0, 60.0, 65.0),
+) -> dict[str, bool | float]:
     """Bounded diagnostic-only 5m cohorts; never consulted by decision rules."""
     if final_score is None:
         return {}
     return {
         "production_threshold": 65.0,
-        "delta_minus_0_10": final_score >= 64.90,
-        "delta_minus_0_25": final_score >= 64.75,
-        "delta_minus_0_50": final_score >= 64.50,
-        "delta_minus_1_00": final_score >= 64.00,
+        **{f"threshold_{value:g}": final_score >= value for value in thresholds},
         "diagnostic_only": True,
     }
 

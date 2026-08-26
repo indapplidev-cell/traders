@@ -35,6 +35,9 @@ class RuntimeProfileParameters:
     analysis_compression_ratio: float
     analysis_expansion_ratio: float
     scalping_setup_families: tuple[str, ...]
+    strategy_allowed_setup_types: tuple[str, ...]
+    strategy_shadow_thresholds: tuple[float, ...]
+    strategy_not_evaluated_handling: str
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -78,6 +81,12 @@ class RuntimeProfileParameters:
             self.scalping_setup_families
         ) != 7:
             raise ValueError("Scalping requires all seven setup families")
+        if not self.strategy_allowed_setup_types:
+            raise ValueError("strategy requires explicit allowed setup types")
+        if self.strategy_not_evaluated_handling not in {
+            "LEGACY_WEAK_CAP", "SCORE_FROM_EVALUATED_COMPONENTS",
+        }:
+            raise ValueError("unsupported NOT_EVALUATED strategy handling")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -129,6 +138,9 @@ class RuntimeProfileParameters:
                 "analysis_compression_ratio",
                 "analysis_expansion_ratio",
                 "scalping_setup_families",
+                "strategy_allowed_setup_types",
+                "strategy_shadow_thresholds",
+                "strategy_not_evaluated_handling",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -189,6 +201,21 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
                 "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
             )
             if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value else ()
+        ),
+        strategy_allowed_setup_types=(
+            (
+                "SCALP_TREND_PULLBACK", "SCALP_BREAKOUT", "SCALP_BREAKOUT_RETEST",
+                "SCALP_RANGE_BOUNCE", "SCALP_LIQUIDITY_SWEEP",
+                "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
+            )
+            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            else ("BREAKOUT_CONTINUATION", "TREND_CONTINUATION")
+        ),
+        strategy_shadow_thresholds=(55.0, 60.0, 65.0),
+        strategy_not_evaluated_handling=(
+            "SCORE_FROM_EVALUATED_COMPONENTS"
+            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            else "LEGACY_WEAK_CAP"
         ),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,

@@ -116,7 +116,10 @@ class PipelineRunner:
             StrategyFilter(
                 StrategyConfig(
                     minimum_allowed_quality=
-                    self.runtime_parameters.strategy_minimum_allowed_quality,
+                        self.runtime_parameters.strategy_minimum_allowed_quality,
+                    allowed_setup_types=frozenset(
+                        self.runtime_parameters.strategy_allowed_setup_types
+                    ),
                 ),
                 self.runtime_parameters,
             ),
