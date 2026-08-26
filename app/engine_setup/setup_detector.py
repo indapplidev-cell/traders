@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import replace
+from hashlib import sha256
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshot, AnalysisSnapshotStatus
 from app.engine_setup.setup_candidate import SetupCandidate, setup_candidate_id
@@ -44,6 +45,7 @@ class SetupDetector:
 
     def _build(self, snapshot: AnalysisSnapshot, context: SetupContext,
                result: SetupRuleResult) -> SetupCandidate:
+        result = self._scalping_family(result, context)
         missing = []
         for present, name in (
             (result.diagnostics.has_structural_trigger, "STRUCTURAL_TRIGGER"),
@@ -121,6 +123,25 @@ class SetupDetector:
                 "stop_policy_id": getattr(self.runtime_parameters, "stop_policy_id"),
                 "target_policy_id": getattr(self.runtime_parameters, "target_policy_id"),
             })
+        entry = next((
+            candidate_context.get(name)
+            for name in ("confirmation_close", "reference_close", "current_closed_candle_close")
+            if candidate_context.get(name) is not None
+        ), None)
+        invalidation = candidate_context.get("causal_invalidation_level")
+        targets = [
+            dict(item) for item in candidate_context.get("causal_target_candidates", [])
+            if isinstance(item, dict)
+        ]
+        opportunity_id = None
+        if result.status == SetupStatus.SETUP_CANDIDATE.value:
+            anchor = invalidation if invalidation is not None else entry
+            identity_source = (
+                f"{snapshot.symbol.upper()}|{result.setup_type}|{result.direction_hint}|{anchor}"
+            )
+            opportunity_id = "opportunity:" + sha256(
+                identity_source.encode("utf-8")
+            ).hexdigest()[:24]
         return SetupCandidate(
             setup_id=identity,
             symbol=snapshot.symbol.upper(),
@@ -146,7 +167,41 @@ class SetupDetector:
             invalidation_reasons=result.invalidation_reasons,
             diagnostics=result.diagnostics,
             context=candidate_context,
+            opportunity_id=opportunity_id,
+            entry_zone=(
+                {"lower": float(entry), "upper": float(entry)}
+                if isinstance(entry, (int, float)) else None
+            ),
+            causal_invalidation=(
+                float(invalidation) if isinstance(invalidation, (int, float)) else None
+            ),
+            target_candidates=targets,
+            regime=str(
+                ((context.analysis_context.get("scalping") or {}).get("market_regime"))
+                or context.regime or "UNKNOWN"
+            ),
         )
+
+    def _scalping_family(
+        self, result: SetupRuleResult, context: SetupContext
+    ) -> SetupRuleResult:
+        if getattr(self.runtime_parameters, "profile_id", None) != "trade-5m-v1":
+            return result
+        regime = str(
+            ((context.analysis_context.get("scalping") or {}).get("market_regime")) or ""
+        )
+        family = {
+            SetupType.PULLBACK_CONTINUATION.value: SetupType.SCALP_TREND_PULLBACK,
+            SetupType.BREAKOUT_CONTINUATION.value: (
+                SetupType.SCALP_COMPRESSION_BREAK
+                if regime == "COMPRESSION" else SetupType.SCALP_BREAKOUT
+            ),
+            SetupType.BREAKOUT_RETEST.value: SetupType.SCALP_BREAKOUT_RETEST,
+            SetupType.RANGE_REJECTION.value: SetupType.SCALP_RANGE_BOUNCE,
+            SetupType.FALSE_BREAKOUT_REVERSAL.value: SetupType.SCALP_LIQUIDITY_SWEEP,
+            SetupType.TREND_CONTINUATION.value: SetupType.SCALP_MOMENTUM_CONTINUATION,
+        }.get(result.setup_type)
+        return replace(result, setup_type=family.value) if family is not None else result
 
 
 def _no_setup(reason: InvalidationReason) -> SetupRuleResult:

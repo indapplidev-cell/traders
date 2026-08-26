@@ -57,6 +57,11 @@ class SetupCandidate:
     invalidation_reasons: list[str] = field(default_factory=list)
     diagnostics: SetupDiagnostics = field(default_factory=SetupDiagnostics)
     context: dict[str, Any] = field(default_factory=dict)
+    opportunity_id: str | None = None
+    entry_zone: dict[str, float] | None = None
+    causal_invalidation: float | None = None
+    target_candidates: list[dict[str, Any]] = field(default_factory=list)
+    regime: str | None = None
     future_bars_used: bool = field(default=False, init=False)
     is_trade_signal: bool = field(default=False, init=False)
 
@@ -80,6 +85,8 @@ class SetupCandidate:
             object.__setattr__(self, "source_action", None)
         if not self.setup_id:
             raise ValueError("setup_id must not be empty")
+        if self.opportunity_id is not None and not self.opportunity_id.startswith("opportunity:"):
+            raise ValueError("opportunity identity is invalid")
         if status == SetupStatus.SETUP_INVALID.value and not self.invalidation_reasons:
             raise ValueError("invalidation_reasons are required for SETUP_INVALID")
         if status == SetupStatus.ERROR.value and SetupReasonCode.SETUP_PROCESSING_ERROR.value not in self.reason_codes:

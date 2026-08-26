@@ -10,6 +10,7 @@ from app.engine_setup.setup_detector import SetupDetector
 from app.engine_setup.setup_diagnostics import SetupDiagnostics, SetupSemanticBucket
 from app.engine_setup.setup_quality_diagnostics import SetupQualityDiagnostics, diagnose_setup_quality, quality_from_score
 from app.engine_setup.setup_rules import evaluate_setup_rules
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 
 
 def test_detector_propagates_analysis_boundary_without_mutation(analysis_snapshot_factory):
@@ -21,6 +22,33 @@ def test_detector_propagates_analysis_boundary_without_mutation(analysis_snapsho
     assert candidate.closed_until_ms == snapshot.closed_until_ms
     assert candidate.source_analysis_snapshot_id == snapshot.snapshot_id
     assert candidate.future_bars_used is False
+
+
+def test_scalping_candidate_has_first_class_family_geometry_and_stable_opportunity(
+    analysis_snapshot_factory,
+):
+    parameters = resolve_runtime_parameters("trade-5m-v1")
+    detector = SetupDetector(parameters)
+    analysis = analysis_snapshot_factory(
+        timeframe="5m",
+        impulse_phase="IMPULSE_EXTENSION",
+        reason_codes=["BREAKOUT_HELD_WITH_FOLLOW_THROUGH"],
+        analysis_context={
+            "scalping": {"market_regime": "UP"},
+            "confirmation_close": 100.0,
+            "causal_support_level": 99.5,
+            "causal_resistance_level": 101.0,
+            "causal_resistance_candidates": [{"price": 101.0, "source_type": "LOCAL_5M"}],
+        },
+    )
+    first = detector.detect(analysis)
+    second = detector.detect(analysis)
+    assert first.setup_type == "SCALP_BREAKOUT"
+    assert first.opportunity_id == second.opportunity_id
+    assert first.entry_zone == {"lower": 100.0, "upper": 100.0}
+    assert first.causal_invalidation == 99.5
+    assert first.target_candidates == [{"price": 101.0, "source_type": "LOCAL_5M"}]
+    assert first.regime == "UP"
 
 
 def test_freshness_or_degraded_failure_never_creates_setup(analysis_snapshot_factory):

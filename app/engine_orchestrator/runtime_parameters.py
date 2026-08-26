@@ -34,6 +34,7 @@ class RuntimeProfileParameters:
     vwap_reference_notional: float
     analysis_compression_ratio: float
     analysis_expansion_ratio: float
+    scalping_setup_families: tuple[str, ...]
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -73,6 +74,10 @@ class RuntimeProfileParameters:
             raise ValueError("runtime microstructure/profile identity mismatch")
         if not 0 < self.analysis_compression_ratio < 1 < self.analysis_expansion_ratio:
             raise ValueError("invalid analysis volatility-regime thresholds")
+        if self.profile_id == TradeProfileId.TRADE_5M_V1.value and len(
+            self.scalping_setup_families
+        ) != 7:
+            raise ValueError("Scalping requires all seven setup families")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -123,6 +128,7 @@ class RuntimeProfileParameters:
                 "vwap_reference_notional",
                 "analysis_compression_ratio",
                 "analysis_expansion_ratio",
+                "scalping_setup_families",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -176,9 +182,21 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         vwap_reference_notional=profile.vwap_reference_notional,
         analysis_compression_ratio=0.75,
         analysis_expansion_ratio=1.35,
+        scalping_setup_families=(
+            (
+                "SCALP_TREND_PULLBACK", "SCALP_BREAKOUT", "SCALP_BREAKOUT_RETEST",
+                "SCALP_RANGE_BOUNCE", "SCALP_LIQUIDITY_SWEEP",
+                "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
+            )
+            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value else ()
+        ),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
-        setup_policy_id="engine-setup-01-causal-v1",
+        setup_policy_id=(
+            "scalping-setup-families-v1"
+            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            else "engine-setup-01-causal-v1"
+        ),
         strategy_policy_id="engine-strategy-01-shadow-v1",
         strategy_minimum_allowed_quality="ACCEPTABLE",
         risk_shadow_policy_id="ENGINE_RISK_01_RESEARCH_POLICY_V1",

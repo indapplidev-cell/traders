@@ -5,6 +5,7 @@ import pytest
 from app.engine_setup.setup_rules import evaluate_setup_rules
 from app.engine_setup.setup_status import SetupStatus
 from app.engine_setup.setup_type import SetupType
+from app.engine_setup.setup_detector import SetupDetector
 
 
 @pytest.mark.parametrize(
@@ -63,3 +64,12 @@ def test_legacy_family_labels_are_not_current_public_enums():
     assert "TRAP_REVERSAL" not in values
     assert "RANGE_REJECTION" in values
     assert "FALSE_BREAKOUT_REVERSAL" in values
+
+
+def test_all_first_class_scalping_families_are_public_and_profile_owned():
+    expected = {
+        "SCALP_TREND_PULLBACK", "SCALP_BREAKOUT", "SCALP_BREAKOUT_RETEST",
+        "SCALP_RANGE_BOUNCE", "SCALP_LIQUIDITY_SWEEP",
+        "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
+    }
+    assert expected <= {item.value for item in SetupType}
