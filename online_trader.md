@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = a460606dadd721ede139946af136eada1b00ea7b
+STATUS_AS_OF_COMMIT = cdd2145716af67d18d991d315f4a58b25f42f017
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-26T16:24:38Z
-RECONCILED_BY_TASK = TRADERS_5M_SCALPING_MODE_FULL_MODULAR_REFACTOR_01
-FILES_CHANGED = app/engine_analysis/scalping_semantics.py, app/engine_exit/scalping_exit_policy.py, app/engine_observation/scalping_*.py, app/engine_orchestrator/pipeline_runner.py, app/engine_orchestrator/runtime_parameters.py, app/engine_orchestrator/trade_profile.py, app/engine_paper/scalping_*.py, app/engine_position/scalping_monitor.py, app/engine_risk/cross_profile_arbiter.py, app/engine_risk/risk_policy.py, app/engine_risk/risk_runner.py, app/engine_risk/scalping_sizing.py, app/engine_setup/setup_candidate.py, app/engine_setup/setup_detector.py, app/engine_setup/setup_type.py, app/engine_strategy/strategy_*.py, app/i18n/catalog.py, app/server_api/funnel_export.py, app/server_api/schemas/models.py, app/server_api/trading_funnel.py, docker-compose.yml, scripts/benchmark_scalping_modules.py, scripts/engine_orchestrator_online_pipeline.py, tests/*scalping*, tests/engine_*/test_*scalping*, tests/server_api/test_i18n.py, tests/server_api/test_trading_funnel.py, FINAL_DECISION.md, online_trader.md, ../traders-client/src/traders_client/i18n/generated_bootstrap.json, ../evidence_inbox/TRADERS_5M_SCALPING_MODE_FULL_MODULAR_REFACTOR_01_FINAL.md
+RECONCILED_AT_UTC = 2026-08-26T22:03:45Z
+RECONCILED_BY_TASK = TRADERS_SCALPING_PROSPECTIVE_CALIBRATION_COLLECTOR_AND_DURABLE_OBSERVER_01
+FILES_CHANGED = app/engine_observation/scalping_prospective_collector.py, scripts/scalping_prospective_collector.py, docker-compose.yml, scripts/production_db_credential_rotation.py, scripts/security_retry_controls.py, tests/test_scalping_prospective_collector.py, tests/test_production_db_credential_rotation.py, FINAL_DECISION.md, online_trader.md, ../evidence_inbox/TRADERS_SCALPING_PROSPECTIVE_CALIBRATION_COLLECTOR_AND_DURABLE_OBSERVER_01_FINAL.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = SCALPING_FIRST_CLASS_SOURCE_CLIENT_DEPLOYMENT_PASS_5M7_15M2_EXACT10_ERRORS0_DUPLICATES0_SINGLETON1_PARAMETERS87B8_READONLY859_PARITY_28GET0WRITE_WAL_PITR_ACK_PASS_CONTROL6_LIVE_OFF_PAPER0_SECURITY0_PROFITABILITY_PENDING
+STATUS_CONFIDENCE = SCALPING_DURABLE_PROSPECTIVE_COLLECTOR_RUNNING_RESTART_SAFE_SEGMENT_A724_5M3_EXACT10_RECORDS30_MISSING0_DUPLICATES0_FUTURE0_MICRO30_PERCENT_PENDING9_COLLECTOR_OWNER1_5M_OWNER1_15M_EXACT10_UNCHANGED_WAL_PITR_ACK_PASS_CONTROL6_LIVE_OFF_TRADING0_SECURITY0_PROFITABILITY_PENDING
 
 # Состояние проекта traders-ml
 
@@ -24,10 +24,38 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_IMAGE9E9217E6_CONTAINER3CDEB614_HEALTHY_RESTART0_ON0018_CONTROL_IMAGEA4664FF5_CONTAINERE2AD3A92_HEALTHY_RESTART0_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_9CAF8512_IMPLEMENTED_AND_DEPLOYED_28_GET_0_WRITE_ARBITRARY_RANGE_STABLE_SNAPSHOT_KEYSET_FUNNEL_EXPORT
-CURRENT_STAGE = SCALPING_PAPER_ONLY_PROSPECTIVE_CALIBRATION_OBSERVATION
+CURRENT_STAGE = SCALPING_CALIBRATION_OBSERVATION_IN_PROGRESS_AUTONOMOUS
 CURRENT_BLOCKER = NONE
-CURRENT_PREREQUISITE = COLLECT_COST_COMPLETE_UNIQUE_CAUSAL_PAPER_SAMPLE_BEFORE_ANY_SEPARATE_PARAMETER_PROMOTION_DECISION
-BACKGROUND_TIMED_GATE = PASS_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_NO_PHYSICAL_GAP_ACCEPTANCE_15M2_5M7_EXACT10_5M_SINGLETON1_READONLY_SCALPING_I18N_CONTROL_GENERATION6_LIVE_OFF
+CURRENT_PREREQUISITE = WAIT_FOR_288_OR_864_HOMOGENEOUS_5M_BOUNDARIES_AND_SUFFICIENT_COMPLETED_PAPER_EQUIVALENT_OUTCOMES_BEFORE_OFFLINE_REPLAY
+BACKGROUND_TIMED_GATE = COLLECTOR_RUNNING_SEGMENT_A724_BOUNDARIES3_OF288_OUTCOMES0_OF30_RECORDS30_EXACT10_MISSING0_DUPLICATE0_FUTURE0_OWNER1_WAL_TRUE_PITR_TRUE_LINEAGE_VALID_NO_PHYSICAL_GAP_CONTROL_GENERATION6_LIVE_OFF
+```
+
+## Prospective Scalping calibration collector and durable observer 01
+
+```text
+TASK = TRADERS_SCALPING_PROSPECTIVE_CALIBRATION_COLLECTOR_AND_DURABLE_OBSERVER_01
+RESULT = PASS_STARTED_AND_DURABLE_AUTONOMOUS_OBSERVATION_IN_PROGRESS
+PROJECT_STATE_COMMIT = cdd2145716af67d18d991d315f4a58b25f42f017
+SCALPING_CALIBRATION_COLLECTOR = RUNNING
+SCALPING_CALIBRATION_OBSERVATION = IN_PROGRESS_AUTONOMOUS
+CODEX_LONG_WAIT_REQUIRED = NO
+ARCHITECTURE = READONLY_PRODUCTION_PROJECTION_TO_CAUSAL_NORMALIZATION_TO_APPEND_ONLY_JSONL_ATOMIC_CHECKPOINT_TO_DELAYED_CLOSED1M_OUTCOME_PATH_TO_OFFLINE_REPLAY
+STORAGE = reports/calibration/scalping-prospective_MANIFEST_CHECKPOINT_HEALTH_OBSERVATION_DIAGNOSTIC_OUTCOME_PARTS_DATE_AND64MIB_ROTATION
+IDENTITY = PROFILE_trade-5m-v1_PARAMETERS_87B8_SOURCE_3AAD387_ARTIFACT_728E369_SCHEMA0018_UNIVERSE_EXACT10_DECISION_SEMANTICS_V1_COLLECTOR_SCHEMA_V1
+SEGMENT = scalping-calibration-segment-a7245351ff4a18b81d644e39_PROCESS_RESTART_PRESERVED_SEMANTIC_CHANGE_SPLITS
+CHECKPOINT = FSYNC_APPEND_THEN_ATOMIC_TEMP_FSYNC_REPLACE_RESTART_SCAN_DEDUPE
+OWNERSHIP = SEPARATE_POSTGRES_SESSION_ADVISORY_LOCK_OWNER1_SECOND_DENIED_STALE_SESSION_RECOVERY_PASS
+MICROSTRUCTURE = RUNTIME_PRE_DECISION_PUBLIC_BOOK_DEPTH_ONLY_TIMESTAMP_LE_CUTOFF_STALE_OR_LATER_NULL_FUTURE0_COVERAGE9_OF30
+OUTCOMES = MAX47M_CLOSED1M_PATH_TP_SL_SAME_CANDLE_EXPIRY_MFE_MAE_IMPLEMENTED_PENDING9
+ACCEPTANCE = 3_CONSECUTIVE_5M_BOUNDARIES30_OF30_EXACT10_MISSING0_DUPLICATE0_ERROR0_PLUS1_NATURAL_15M_BOUNDARY10_OF10_ERROR0
+RESTART = INSTANCE_CHANGED_SEGMENT_AND_CHECKPOINT_PRESERVED_RECORDS10_TO10_NEXT2_BOUNDARIES_CAPTURED_OWNER_REACQUIRED
+PERFORMANCE = 5M_P50_193_TO183_5MS_P95_1579_35_TO1554_55MS_NO_MATERIAL_REGRESSION_15M_SUBSECOND_CONTAINER_UNCHANGED_COLLECTOR_CPU0_40_MEMORY52_93MIB_NPLUSONE_FALSE
+SAFETY = TRADING_MUTATIONS0_BINANCE_ORDER_CALLS0_PARAMETER_PROMOTIONS0_COMMAND_ORDER_FILL_POSITION0_SECRET0_SECURITY0
+WAL_PITR_ACK = TRUE_TRUE_LINEAGE_VALID_DURATION1346800S_PHYSICAL_GAP_FALSE_ACK_PID4912_HEALTHY_BACKLOG0_PENDING0
+CONTROL_LIVE = ARMED_GENERATION6_LIVE_DISABLED
+GATES = BOUNDARIES3_OF288_3_OF864_OUTCOMES0_OF30_0_OF100_CONTINUE_AUTONOMOUSLY
+EVIDENCE = ../evidence_inbox/TRADERS_SCALPING_PROSPECTIVE_CALIBRATION_COLLECTOR_AND_DURABLE_OBSERVER_01_FINAL.md_SHA256_e8af25579e0002510b9617d65cd87605d4b6d008d0fb3bd2ff32ea4a061eba2c
+NEXT_ACTION = TRADERS_SCALPING_OFFLINE_COHORT_REPLAY_AND_PARAMETER_CALIBRATION_ANALYSIS_01_AFTER_SUFFICIENT_HOMOGENEOUS_GATE
 ```
 
 ## Full first-class Scalping mode modular refactor 01
@@ -5372,7 +5400,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈99% deployed / 5m technical chain accepted but security-blocked | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. The 5m path now separates causal targets from economic actionability, persists quantitative strategy decomposition, fails closed on costs, and passed six exact10 cycles with concurrent unchanged 15m. No eligible winner exists; credential rotation blocks further operational readiness |
+| Online analytics/paper pipeline | ≈99% deployed / Scalping calibration observation autonomous | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. The passive restart-safe collector is running with one owner and one homogeneous segment; startup acceptance persisted 3 exact10 5m boundaries/30 records with zero missing, duplicate or future-leakage records while 15m remained exact10 and unchanged. Profitability and parameter promotion remain pending |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS on schema 0018 | One canonical ACK owner is healthy; the existing lineage is unchanged and contiguous with `wal_ready=true`, `pitr_ready=true`, no physical gap, and backlog/pending/unresolved `0/0/0`. The schema-compatible retry verified and atomically ACKed 144 WAL objects |
 | Readonly Server API | Healthy dual-profile image on production 0018 with bounded Funnel export | Image `sha256:24ee3ab7...` has exact source `2ca5e9c8...`, health PASS, restart 0, 28 GET and zero write routes. JSONL, CSV, summary JSON and summary Markdown are bounded to 24h/2880 rows with no N+1 or write path |
@@ -5391,7 +5419,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_5M_STRATEGY_CAP_SHADOW_CALIBRATION_EXPERIMENT_01
+RECOMMENDED_NEXT_TASK = TRADERS_SCALPING_OFFLINE_COHORT_REPLAY_AND_PARAMETER_CALIBRATION_ANALYSIS_01_AFTER_SUFFICIENT_HOMOGENEOUS_GATE
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
@@ -5473,6 +5501,17 @@ longer the active runtime mode. The active 5m profile is now executable PAPER
 15m under the same deterministic selector. No current eligible winner exists,
 so the already authorized bounded canary remains waiting without commands or
 positions. LIVE stays disabled.
+
+The prospective Scalping calibration collector now runs as a separate
+`restart: always` Compose service. It reads completed production projections and
+closed candles without trading authority, persists one causal snapshot per
+evaluation in a homogeneous append-only segment, checkpoints atomically, and
+tracks delayed closed-1m outcome paths. Its accepted startup window contains
+three exact10 5m boundaries with zero missing/duplicate/future-leakage records;
+one concurrent 15m boundary remained exact10. The collector continues
+autonomously toward the 24h/72h and outcome gates, so no Codex long wait is
+required. Profitability calibration and any parameter promotion remain future
+separate work.
 
 ## Правила актуализации
 
