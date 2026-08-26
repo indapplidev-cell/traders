@@ -36,12 +36,17 @@ WITH selected_boundaries AS (
   ORDER BY closed_until_ms ASC LIMIT {limit}
 ), rows AS (
  SELECT jsonb_build_object(
-   'run_id',r.run_id,'boundary',r.closed_until_ms,'symbol',r.symbol,
+   'run_id',r.run_id,'result_id',res.id,'boundary',r.closed_until_ms,'symbol',r.symbol,
    'profile',r.trade_profile_id,'parameter_set_id',
       coalesce(res.paper_payload_json::jsonb->>'runtime_parameter_set_id',
                res.analysis_payload_json::jsonb->>'runtime_parameter_set_id'),
    'duration_ms',r.duration_ms,'final_reason',r.final_reason,
-   'analysis',jsonb_build_object('regime',res.analysis_payload_json::jsonb->'regime'),
+   'analysis',jsonb_build_object('regime',res.analysis_payload_json::jsonb->'regime',
+      'entry_quality',res.analysis_payload_json::jsonb->'entry_quality',
+      'entry_quality_reason_codes',res.analysis_payload_json::jsonb#>'{{entry_quality_diagnostics,reason_codes}}',
+      'impulse_phase',res.analysis_payload_json::jsonb->'impulse_phase',
+      'impulse_direction',res.analysis_payload_json::jsonb->'impulse_direction',
+      'impulse_context',res.analysis_payload_json::jsonb->'impulse_context'),
    'setup',jsonb_build_object('setup_status',coalesce(res.setup_payload_json::jsonb->'setup_status',res.setup_payload_json::jsonb->'status'),
       'setup_type',res.setup_payload_json::jsonb->'setup_type','scenario',res.setup_payload_json::jsonb->'scenario',
       'direction_hint',res.setup_payload_json::jsonb->'direction_hint',
@@ -70,7 +75,8 @@ WITH selected_boundaries AS (
       'strategy_failed_gate',res.strategy_payload_json::jsonb->'strategy_failed_gate',
       'strategy_failed_gate_reason',res.strategy_payload_json::jsonb->'strategy_failed_gate_reason',
       'component_scores',res.strategy_payload_json::jsonb->'component_scores',
-      'context',res.strategy_payload_json::jsonb->'context',
+      'context',CASE WHEN res.setup_payload_json::jsonb->>'status'='SETUP_CANDIDATE'
+         THEN res.strategy_payload_json::jsonb->'context' ELSE NULL END,
       'decision_warnings',res.strategy_payload_json::jsonb->'decision_warnings',
       'rejection_reasons',res.strategy_payload_json::jsonb->'rejection_reasons',
       'shadow_quality_cohorts',res.strategy_payload_json::jsonb->'shadow_quality_cohorts'),
@@ -85,8 +91,12 @@ WITH selected_boundaries AS (
       'target_source',res.paper_payload_json::jsonb->'target_source',
       'final_approval_generation',res.paper_payload_json::jsonb->'final_approval_generation',
       'paper_context',jsonb_build_object(
-         'causal_primitives',res.paper_payload_json::jsonb#>'{{paper_context,causal_primitives}}',
-         'scalping_geometry_diagnostics',res.paper_payload_json::jsonb#>'{{paper_context,scalping_geometry_diagnostics}}')),
+         'causal_primitives',CASE WHEN res.setup_payload_json::jsonb->>'status'='SETUP_CANDIDATE'
+            THEN res.paper_payload_json::jsonb#>'{{paper_context,causal_primitives}}' ELSE NULL END,
+         'scalping_geometry_diagnostics',CASE WHEN res.setup_payload_json::jsonb->>'status'='SETUP_CANDIDATE'
+            THEN res.paper_payload_json::jsonb#>'{{paper_context,scalping_geometry_diagnostics}}' ELSE NULL END,
+         'strategy_cap_shadow_economic_snapshot',CASE WHEN res.setup_payload_json::jsonb->>'status'='SETUP_CANDIDATE'
+            THEN res.paper_payload_json::jsonb#>'{{paper_context,strategy_cap_shadow_economic_snapshot}}' ELSE NULL END)),
    'module_reasons',res.module_reasons_json::jsonb,
    'paper_command_id',cmd.command_id,'paper_position_id',pos.position_id,
    'paper_outcome',CASE WHEN pos.state='CLOSED' THEN 'CLOSED' ELSE pos.state END,
@@ -111,7 +121,18 @@ def load_rows(start: int, limit: int) -> list[dict]:
          "-d", "traders_ml", "-AtX", "-c", _sql(start, limit)],
         check=True, capture_output=True, text=True, encoding="utf-8",
     )
-    return [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+    rows = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+    # Historical JSON payloads include a bounded legacy serializer variant
+    # that wrapped the otherwise identical parameter identity in apostrophes.
+    # Normalize identity representation only; sample semantics are unchanged.
+    for row in rows:
+        value = row.get("parameter_set_id")
+        if isinstance(value, str):
+            normalized = value.strip().strip("'\"")
+            if PARAMETER_SET in normalized:
+                normalized = PARAMETER_SET
+            row["parameter_set_id"] = normalized
+    return rows
 
 
 def boundary_count(start: int, limit: int) -> int:

@@ -21,6 +21,7 @@ from app.engine_orchestrator.orchestrator_config import DEFAULT_MINIMUM_WINDOWS,
 from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
+from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSource
 from app.engine_orchestrator.profile_owner import (
     OwnerAlreadyActiveError,
     PostgresProfileOwner,
@@ -57,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--health-report", type=Path, default=Path("reports/engine_orchestrator/latest_health.json"))
     parser.add_argument("--health-report-interval-seconds", type=float, default=60)
     parser.add_argument("--stop-after-cycles", type=int)
+    parser.add_argument("--strategy-cap-shadow-economic-capture", action="store_true")
     parser.add_argument("--require-all-timeframes-ok", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--allow-stale-higher-timeframes", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument(
@@ -161,8 +163,15 @@ def main(argv: list[str] | None = None) -> int:
         require_all_timeframes_ok=config.require_all_timeframes_ok,
         allow_stale_higher_timeframes=config.allow_stale_higher_timeframes,
     )
+    calibration_cost_source = (
+        BinancePublicScalpingCostSource()
+        if args.strategy_cap_shadow_economic_capture and profile.trade_profile_id == "trade-5m-v1"
+        else None
+    )
     daemon = OrchestratorDaemon(
-        config, detector, gate, PipelineRunner(config, candle_repository), store,
+        config, detector, gate, PipelineRunner(
+            config, candle_repository, strategy_cap_cost_source=calibration_cost_source,
+        ), store,
         owner_guard=owner,
     )
     daemon.install_signal_handlers()
@@ -187,6 +196,7 @@ def main(argv: list[str] | None = None) -> int:
             "freshness_grace_seconds": config.freshness_grace_seconds,
             "freshness_max_attempts": config.freshness_max_attempts,
             "waiting_batch_size": config.waiting_batch_size,
+            "strategy_cap_shadow_economic_capture": bool(calibration_cost_source),
         },
         "cycles": daemon.state.cycles,
         "observations": observations,

@@ -92,6 +92,7 @@ services:
       exec python scripts/engine_orchestrator_online_pipeline.py
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
       --trade-profile trade-5m-v1
+      --strategy-cap-shadow-economic-capture
       --continuous
       --poll-interval-seconds 10
       --max-catchup-windows 4

@@ -197,7 +197,7 @@ def _targets(context: Mapping[str, Any], boundary: int) -> tuple[CausalTarget, .
     return tuple(output)
 
 
-def _geometry(row: Mapping[str, Any]):
+def _geometry(row: Mapping[str, Any], costs: ShadowCostInputs | None = None):
     strategy = _mapping(row.get("strategy"))
     context = _mapping(strategy.get("context"))
     entry = _number(context.get("confirmation_close") or context.get("reference_close"))
@@ -215,7 +215,7 @@ def _geometry(row: Mapping[str, Any]):
     )
     return evaluate_scalping_shadow(
         candidate,
-        ShadowCostInputs(safety_margin_bps=3.0),
+        costs or ShadowCostInputs(safety_margin_bps=3.0),
         ShadowGeometryConfig(.25, 80.0, 45.0, production_rr_floor=1.5),
     )
 

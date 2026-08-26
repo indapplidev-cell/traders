@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import time
 from typing import Protocol
 
 from app.engine_market_data.binance_public_rest import BinancePublicRestClient
@@ -33,11 +34,13 @@ class BinancePublicScalpingCostSource:
         self.client = client or BinancePublicRestClient()
 
     def load(self, symbol: str, entry: float, *, safety_margin_bps: float) -> ShadowCostInputs:
+        capture_started_at_ms = time.time_ns() // 1_000_000
         ticker = self.client.fetch_book_ticker(symbol)
         reference_quantity = self.DIAGNOSTIC_QUOTE_NOTIONAL / Decimal(str(entry))
         depth = self.client.estimate_round_trip_depth_impact(
             symbol, reference_quantity, limit=self.DEPTH_LIMIT
         )
+        captured_at_ms = time.time_ns() // 1_000_000
         return ShadowCostInputs(
             safety_margin_bps=safety_margin_bps,
             spread_bps=ticker.spread_bps,
@@ -47,6 +50,15 @@ class BinancePublicScalpingCostSource:
             depth_impact_source=depth.source,
             spread_authoritative=True,
             depth_authoritative=True,
+            bid=float(ticker.bid_price),
+            ask=float(ticker.ask_price),
+            buy_vwap=float(depth.buy_vwap),
+            sell_vwap=float(depth.sell_vwap),
+            economic_input_timestamp_ms=captured_at_ms,
+            economic_capture_started_at_ms=capture_started_at_ms,
+            decision_cutoff_timestamp_ms=captured_at_ms,
+            economic_input_source="BINANCE_PUBLIC_REST_RECEIPT_BOUNDED_BOOK_AND_DEPTH",
+            require_causal_timestamp=True,
         )
 
 

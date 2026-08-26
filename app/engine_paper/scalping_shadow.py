@@ -65,6 +65,16 @@ class ShadowCostInputs:
     depth_impact_source: str | None = None
     spread_authoritative: bool = False
     depth_authoritative: bool = False
+    bid: float | None = None
+    ask: float | None = None
+    buy_vwap: float | None = None
+    sell_vwap: float | None = None
+    economic_input_timestamp_ms: int | None = None
+    economic_capture_started_at_ms: int | None = None
+    decision_cutoff_timestamp_ms: int | None = None
+    economic_input_source: str | None = None
+    maximum_age_ms: int = 5_000
+    require_causal_timestamp: bool = False
 
     def __post_init__(self) -> None:
         values = (
@@ -73,6 +83,28 @@ class ShadowCostInputs:
         )
         if any(not isfinite(float(value)) or float(value) < 0 for value in values):
             raise ValueError("cost components must be finite and non-negative")
+        optional_prices = (self.bid, self.ask, self.buy_vwap, self.sell_vwap)
+        if any(value is not None and (not isfinite(float(value)) or float(value) <= 0)
+               for value in optional_prices):
+            raise ValueError("economic prices must be positive and finite")
+        if self.bid is not None and self.ask is not None and self.ask <= self.bid:
+            raise ValueError("economic bid/ask geometry is invalid")
+        if self.maximum_age_ms <= 0:
+            raise ValueError("maximum_age_ms must be positive")
+
+    @property
+    def economic_input_age_ms(self) -> int | None:
+        if self.economic_input_timestamp_ms is None or self.decision_cutoff_timestamp_ms is None:
+            return None
+        return self.decision_cutoff_timestamp_ms - self.economic_input_timestamp_ms
+
+    @property
+    def causally_usable(self) -> bool:
+        age = self.economic_input_age_ms
+        return bool(
+            self.spread_authoritative and self.depth_authoritative
+            and age is not None and 0 <= age <= self.maximum_age_ms
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,6 +223,15 @@ class ShadowGeometryDiagnostic:
     fee_source: str | None = None
     spread_source: str | None = None
     depth_impact_source: str | None = None
+    bid: float | None = None
+    ask: float | None = None
+    buy_vwap: float | None = None
+    sell_vwap: float | None = None
+    economic_input_timestamp_ms: int | None = None
+    economic_capture_started_at_ms: int | None = None
+    decision_cutoff_timestamp_ms: int | None = None
+    economic_input_age_ms: int | None = None
+    economic_input_source: str | None = None
     economic_gate_enabled: bool = True
     economic_gate_pass: bool = False
     rr_cohorts_gross: dict[str, bool] = field(default_factory=dict)
@@ -321,6 +362,15 @@ def evaluate_scalping_shadow(
         fee_source=costs.fee_source,
         spread_source=costs.spread_source,
         depth_impact_source=costs.depth_impact_source,
+        bid=costs.bid,
+        ask=costs.ask,
+        buy_vwap=costs.buy_vwap,
+        sell_vwap=costs.sell_vwap,
+        economic_input_timestamp_ms=costs.economic_input_timestamp_ms,
+        economic_capture_started_at_ms=costs.economic_capture_started_at_ms,
+        decision_cutoff_timestamp_ms=costs.decision_cutoff_timestamp_ms,
+        economic_input_age_ms=costs.economic_input_age_ms,
+        economic_input_source=costs.economic_input_source,
     )
     invalidation = candidate.causal_invalidation
     if invalidation is None:
@@ -380,6 +430,8 @@ def evaluate_scalping_shadow(
         )
     if costs.depth_impact_bps is None or not costs.depth_authoritative:
         return result.reject("NET_COST_GATE", R.PAPER_NO_PLAN_MISSING_DEPTH_IMPACT.value)
+    if costs.require_causal_timestamp and not costs.causally_usable:
+        return result.reject("NET_COST_GATE", "PAPER_NO_PLAN_STALE_OR_FUTURE_ECONOMIC_INPUT")
     if costs.spread_bps < 0 or costs.depth_impact_bps < 0:
         return result.reject("NET_COST_GATE", R.PAPER_REJECT_INVALID_LEVEL_GEOMETRY.value)
     if costs.depth_impact_bps > config.max_depth_impact_bps:

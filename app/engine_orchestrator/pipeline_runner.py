@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import fields, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from typing import Any
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
@@ -21,7 +21,10 @@ from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineSta
 from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters, json_safe
 from app.engine_orchestrator.trade_profile import TradeProfileMode
 from app.engine_paper.paper_runner import PaperRunner
-from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
+from app.engine_paper.scalping_paper_runner import (
+    BinancePublicScalpingCostSource,
+    ScalpingPaperRunner,
+)
 from app.engine_risk.risk_runner import RiskRunner
 from app.engine_risk.risk_config import RiskConfig
 from app.engine_risk.risk_policy import RiskPolicy
@@ -82,7 +85,8 @@ class PipelineRunner:
     def __init__(self, config: OrchestratorConfig, candle_repository: object, *,
                  analysis_runner: object | None = None, setup_runner: object | None = None,
                  strategy_runner: object | None = None, risk_runner: object | None = None,
-                 paper_runner: object | None = None) -> None:
+                 paper_runner: object | None = None,
+                 strategy_cap_cost_source: object | None = None) -> None:
         self.config = config
         self.runtime_parameters = config.runtime_parameters
         self.candle_repository = candle_repository
@@ -135,6 +139,46 @@ class PipelineRunner:
             if config.trade_profile_id == "trade-5m-v1"
             else PaperRunner()
         )
+        self.strategy_cap_cost_source = strategy_cap_cost_source
+
+    def _capture_strategy_cap_economics(self, setup: object) -> dict[str, Any] | None:
+        """Capture a versioned 5m diagnostic before Strategy decides.
+
+        Failure is diagnostic-only and cannot change the production decision.
+        """
+        if self.strategy_cap_cost_source is None or self.config.trade_profile_id != "trade-5m-v1":
+            return None
+        if _attribute(setup, "status") != "SETUP_CANDIDATE":
+            return None
+        context = _attribute(setup, "context")
+        context = context if isinstance(context, dict) else {}
+        entry = _mapping_value(
+            context, "confirmation_close", "reference_close", "current_closed_candle_close"
+        )
+        if entry is None:
+            return {"dataset_id": "5M_STRATEGY_CAP_CALIBRATION_V1",
+                    "capture_status": "ENTRY_REFERENCE_UNAVAILABLE", "causally_usable": False}
+        try:
+            costs = self.strategy_cap_cost_source.load(
+                str(_attribute(setup, "symbol")), float(entry),
+                safety_margin_bps=float(self.runtime_parameters.cost_safety_margin_bps),
+            )
+            payload = asdict(costs)
+            payload.update({
+                "dataset_id": "5M_STRATEGY_CAP_CALIBRATION_V1",
+                "capture_status": "CAPTURED_BEFORE_STRATEGY_DECISION",
+                "causally_usable": bool(costs.causally_usable),
+                "economic_input_age_ms": costs.economic_input_age_ms,
+                "decision_boundary_ms": int(_attribute(setup, "closed_until_ms")),
+                "setup_id": _attribute(setup, "setup_id"),
+            })
+            return payload
+        except Exception as exc:
+            return {
+                "dataset_id": "5M_STRATEGY_CAP_CALIBRATION_V1",
+                "capture_status": "CAPTURE_FAILED_CLOSED",
+                "failure_type": type(exc).__name__, "causally_usable": False,
+            }
 
     @staticmethod
     def _context_boundary(timeframe: str, closed_until_ms: int) -> int:
@@ -336,6 +380,7 @@ class PipelineRunner:
             )
 
         outputs: dict[str, object] = {}
+        strategy_cap_economics: dict[str, Any] | None = None
         try:
             analysis = self._invoke(self.analysis_runner, "analyze_market_data_snapshot",
                                     snapshots[self.config.primary_timeframe])
@@ -361,6 +406,7 @@ class PipelineRunner:
 
             setup = self._invoke(self.setup_runner, "process_analysis_snapshot", analysis)
             outputs["setup"] = setup
+            strategy_cap_economics = self._capture_strategy_cap_economics(setup)
             strategy = self._invoke(self.strategy_runner, "process_setup_candidate", setup)
             outputs["strategy"] = strategy
             risk = self._invoke(self.risk_runner, "process_strategy_decision", strategy)
@@ -451,6 +497,12 @@ class PipelineRunner:
             "paper": str(_attribute(outputs["paper"], "paper_status") or _mapping_value(outputs["paper"], "paper_status")),
         }
         module_error = any(value == "ERROR" for value in statuses.values())
+        paper_payload = self._profiled_payload(outputs["paper"])
+        if strategy_cap_economics is not None:
+            paper_context = paper_payload.get("paper_context")
+            paper_context = dict(paper_context) if isinstance(paper_context, dict) else {}
+            paper_context["strategy_cap_shadow_economic_snapshot"] = strategy_cap_economics
+            paper_payload["paper_context"] = paper_context
         result = PipelineResult(
             symbol=symbol.upper(), primary_timeframe=self.config.primary_timeframe,
             closed_until_ms=closed_until_ms,
@@ -462,7 +514,7 @@ class PipelineRunner:
             setup_payload=self._profiled_payload(outputs["setup"]),
             strategy_payload=self._profiled_payload(outputs["strategy"]),
             risk_payload=self._profiled_payload(outputs["risk"]),
-            paper_payload=self._profiled_payload(outputs["paper"]),
+            paper_payload=paper_payload,
             analysis_status=statuses["analysis"], setup_status=statuses["setup"],
             strategy_status=statuses["strategy"], risk_status=statuses["risk"],
             paper_status=statuses["paper"],
