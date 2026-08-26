@@ -18,13 +18,23 @@ class TradeProfileMode(StrEnum):
     SHADOW_SEARCH = "SHADOW_SEARCH"
 
 
+class TradeMode(StrEnum):
+    TRADE_15M = "TRADE_15M"
+    SCALPING = "SCALPING"
+
+
 DEFAULT_TRADE_PROFILE_ID: Final = TradeProfileId.TRADE_15M_V1.value
 
 
 @dataclass(frozen=True, slots=True)
 class TradeSearchProfile:
     trade_profile_id: str
+    trade_mode: str
+    display_i18n_key: str
     trigger_timeframe: str
+    primary_timeframe: str
+    entry_timeframes: tuple[str, ...]
+    context_timeframes: tuple[str, ...]
     mode: str
     analysis_history_candles: int
     atr_lookback_candles: int
@@ -41,7 +51,16 @@ class TradeSearchProfile:
 
     def __post_init__(self) -> None:
         TradeProfileId(self.trade_profile_id)
+        TradeMode(self.trade_mode)
         TradeProfileMode(self.mode)
+        if not self.display_i18n_key.startswith("trading.profile."):
+            raise ValueError("trade-profile display i18n key is invalid")
+        if self.primary_timeframe != self.trigger_timeframe:
+            raise ValueError("primary timeframe must match the trigger timeframe")
+        if self.primary_timeframe not in self.entry_timeframes:
+            raise ValueError("entry timeframes must include the primary timeframe")
+        if set(self.entry_timeframes).intersection(self.context_timeframes):
+            raise ValueError("entry and context timeframe roles must be distinct")
         if self.trigger_timeframe not in {"15m", "5m"}:
             raise ValueError("unsupported trade-profile trigger timeframe")
         if min(
@@ -65,7 +84,12 @@ class TradeSearchProfile:
 
 TRADE_15M_PROFILE: Final = TradeSearchProfile(
     trade_profile_id=TradeProfileId.TRADE_15M_V1.value,
+    trade_mode=TradeMode.TRADE_15M.value,
+    display_i18n_key="trading.profile.trade_15m.title",
     trigger_timeframe="15m",
+    primary_timeframe="15m",
+    entry_timeframes=("15m",),
+    context_timeframes=("1h", "4h"),
     mode=TradeProfileMode.PRODUCTION_SEARCH.value,
     analysis_history_candles=480,
     atr_lookback_candles=14,
@@ -83,7 +107,12 @@ TRADE_15M_PROFILE: Final = TradeSearchProfile(
 
 TRADE_5M_PROFILE: Final = TradeSearchProfile(
     trade_profile_id=TradeProfileId.TRADE_5M_V1.value,
+    trade_mode=TradeMode.SCALPING.value,
+    display_i18n_key="trading.profile.trade_5m.title",
     trigger_timeframe="5m",
+    primary_timeframe="5m",
+    entry_timeframes=("1m", "5m"),
+    context_timeframes=("15m", "1h"),
     mode=TradeProfileMode.PRODUCTION_SEARCH.value,
     analysis_history_candles=288,
     atr_lookback_candles=24,

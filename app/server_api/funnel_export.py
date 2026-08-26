@@ -18,6 +18,7 @@ from typing import Any, Final
 from app.engine_observation.scalping_calibration import _stage_flags, aggregate, export_record
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
+from app.engine_orchestrator.trade_profile import resolve_trade_profile
 from app.i18n import CATALOG_VERSION
 from app.server_api.errors import ApiError
 from app.server_api.trading_funnel import STAGES, _first_reason, _mapping, _stage_trace
@@ -316,6 +317,7 @@ def build_export_record(
     if first_stage is not None and first_reason is not None:
         stage_reasons.setdefault(first_stage, first_reason)
     runtime = resolve_runtime_parameters(run.trade_profile_id)
+    profile = resolve_trade_profile(run.trade_profile_id)
     planned = _mapping(paper.get("shadow_plan")) or paper
     canonical_trace = _canonical_trace(
         source, trace, stage_reasons, diagnostic, outcome
@@ -327,6 +329,8 @@ def build_export_record(
             "export_schema_version": EXPORT_SCHEMA_VERSION,
             "catalog_version": CATALOG_VERSION,
             "trade_profile_id": run.trade_profile_id,
+            "trade_mode": profile.trade_mode,
+            "display_i18n_key": profile.display_i18n_key,
             "parameter_set_id": source.get("parameter_set_id") or runtime.parameter_set_id,
             "parameter_set_version": runtime.contract_version,
             "parameter_set_hash": runtime.parameter_set_id.rsplit("-", 1)[-1],

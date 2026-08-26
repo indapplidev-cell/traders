@@ -347,6 +347,11 @@ class FunnelRollingSummary(ContractModel):
 class TradingFunnelSnapshot(ContractModel):
     projection_version: Literal["trading-funnel-v1"]
     trade_profile_id: Literal["trade-15m-v1", "trade-5m-v1"] = "trade-15m-v1"
+    trade_mode: Literal["TRADE_15M", "SCALPING"] = "TRADE_15M"
+    display_i18n_key: str = "trading.profile.trade_15m.title"
+    primary_timeframe: Literal["15m", "5m"] = "15m"
+    entry_timeframes: list[str] = Field(default_factory=lambda: ["15m"])
+    context_timeframes: list[str] = Field(default_factory=lambda: ["1h", "4h"])
     trigger_timeframe: Literal["15m", "5m"] = "15m"
     profile_mode: Literal["PRODUCTION_SEARCH", "SHADOW_SEARCH"] = "PRODUCTION_SEARCH"
     decision_timeframe: Literal["15m", "5m"]

@@ -711,6 +711,11 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
     return {
         "projection_version": PROJECTION_VERSION,
         "trade_profile_id": profile.trade_profile_id,
+        "trade_mode": profile.trade_mode,
+        "display_i18n_key": profile.display_i18n_key,
+        "primary_timeframe": profile.primary_timeframe,
+        "entry_timeframes": list(profile.entry_timeframes),
+        "context_timeframes": list(profile.context_timeframes),
         "trigger_timeframe": profile.trigger_timeframe,
         "profile_mode": profile.mode,
         "decision_timeframe": profile.trigger_timeframe,
@@ -727,12 +732,14 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         "position_opening_enabled": profile.position_opening_enabled,
         "profile_metrics": {
             "trade_profile_id": profile.trade_profile_id,
+            "trade_mode": profile.trade_mode,
             "trigger_timeframe": profile.trigger_timeframe,
             **{name: metrics[name] for name in metric_stages},
             "shadow_final_approval_candidate_count": metrics["shadow_final_approval_candidate_count"],
         },
         "profile_health": {
             "trade_profile_id": profile.trade_profile_id,
+            "trade_mode": profile.trade_mode,
             "trigger_timeframe": profile.trigger_timeframe,
             "mode": profile.mode,
             "last_completed_boundary_ms": complete_boundaries[0] if complete_boundaries else None,

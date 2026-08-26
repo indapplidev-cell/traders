@@ -41,6 +41,13 @@ def test_profiles_are_explicit_and_15m_default_is_unchanged():
     assert TRADE_5M_PROFILE.mode == "PRODUCTION_SEARCH"
     assert TRADE_5M_PROFILE.paper_command_creation_enabled is True
     assert TRADE_5M_PROFILE.position_opening_enabled is True
+    assert TRADE_5M_PROFILE.trade_profile_id == "trade-5m-v1"
+    assert TRADE_5M_PROFILE.trade_mode == "SCALPING"
+    assert TRADE_5M_PROFILE.display_i18n_key == "trading.profile.trade_5m.title"
+    assert TRADE_5M_PROFILE.primary_timeframe == "5m"
+    assert TRADE_5M_PROFILE.entry_timeframes == ("1m", "5m")
+    assert TRADE_5M_PROFILE.context_timeframes == ("15m", "1h")
+    assert TRADE_15M_PROFILE.trade_mode == "TRADE_15M"
 
 
 def test_reserve_only_classifies_the_profile_window_unique_constraint_as_duplicate():

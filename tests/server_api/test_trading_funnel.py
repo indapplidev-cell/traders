@@ -263,6 +263,11 @@ def test_get_route_explicit_profiles_are_isolated_and_invalid_is_4xx():
     assert fifteen.json()["data"]["trade_profile_id"] == "trade-15m-v1"
     assert fifteen.json()["data"]["expected_1h_cycle_count"] == 4
     assert five.json()["data"]["trade_profile_id"] == "trade-5m-v1"
+    assert five.json()["data"]["trade_mode"] == "SCALPING"
+    assert five.json()["data"]["display_i18n_key"] == "trading.profile.trade_5m.title"
+    assert five.json()["data"]["primary_timeframe"] == "5m"
+    assert five.json()["data"]["entry_timeframes"] == ["1m", "5m"]
+    assert five.json()["data"]["context_timeframes"] == ["15m", "1h"]
     assert five.json()["data"]["profile_mode"] == "PRODUCTION_SEARCH"
     assert five.json()["data"]["expected_1h_cycle_count"] == 12
     assert five.json()["data"]["expected_4h_cycle_count"] == 48
