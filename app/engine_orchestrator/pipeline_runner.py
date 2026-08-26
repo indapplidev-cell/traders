@@ -6,6 +6,7 @@ from dataclasses import asdict, fields, is_dataclass
 from typing import Any
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
+from app.engine_analysis.scalping_semantics import project_scalping_analysis_semantics
 from app.engine_analysis.analysis_snapshot_store import AnalysisSnapshotStore
 from app.engine_analysis.analysis_contract import AnalysisWindowConfig
 from app.engine_analysis.engine import run_engine_analysis
@@ -295,6 +296,22 @@ class PipelineRunner:
         context["higher_timeframe_target_candidates"] = higher
         context["higher_timeframe_target_diagnostics"] = diagnostics
 
+    def _enrich_5m_analysis_semantics(
+        self,
+        analysis: object,
+        snapshot: MarketDataSnapshot,
+    ) -> None:
+        if self.config.trade_profile_id != "trade-5m-v1":
+            return
+        context = getattr(analysis, "analysis_context", None)
+        if isinstance(context, dict):
+            context["scalping"] = project_scalping_analysis_semantics(
+                analysis,
+                snapshot,
+                compression_ratio=self.runtime_parameters.analysis_compression_ratio,
+                expansion_ratio=self.runtime_parameters.analysis_expansion_ratio,
+            )
+
     @staticmethod
     def _invoke(target: object, method: str, value: object) -> object:
         function = getattr(target, method, target)
@@ -402,6 +419,9 @@ class PipelineRunner:
                 result.safety_counters = self._safety([analysis], snapshots)
                 return self._enforce_safety(result)
 
+            self._enrich_5m_analysis_semantics(
+                analysis, snapshots[self.config.primary_timeframe]
+            )
             self._enrich_5m_target_context(analysis, snapshots)
 
             setup = self._invoke(self.setup_runner, "process_analysis_snapshot", analysis)

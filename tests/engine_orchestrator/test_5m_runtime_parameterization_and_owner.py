@@ -86,6 +86,8 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.bounded_book_depth_limit == 100
     assert five.microstructure_max_age_ms == 5_000
     assert five.vwap_reference_notional == 100.0
+    assert five.analysis_compression_ratio == 0.75
+    assert five.analysis_expansion_ratio == 1.35
     assert five.minimum_planned_rr == 1.5
     assert five.mode == "PRODUCTION_SEARCH"
     assert five.paper_command_creation_enabled is True

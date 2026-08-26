@@ -32,6 +32,8 @@ class RuntimeProfileParameters:
     bounded_book_depth_limit: int
     microstructure_max_age_ms: int
     vwap_reference_notional: float
+    analysis_compression_ratio: float
+    analysis_expansion_ratio: float
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -69,6 +71,8 @@ class RuntimeProfileParameters:
             or self.vwap_reference_notional != profile.vwap_reference_notional
         ):
             raise ValueError("runtime microstructure/profile identity mismatch")
+        if not 0 < self.analysis_compression_ratio < 1 < self.analysis_expansion_ratio:
+            raise ValueError("invalid analysis volatility-regime thresholds")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -117,6 +121,8 @@ class RuntimeProfileParameters:
                 "bounded_book_depth_limit",
                 "microstructure_max_age_ms",
                 "vwap_reference_notional",
+                "analysis_compression_ratio",
+                "analysis_expansion_ratio",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -168,6 +174,8 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         bounded_book_depth_limit=profile.book_depth_limit,
         microstructure_max_age_ms=profile.microstructure_max_age_ms,
         vwap_reference_notional=profile.vwap_reference_notional,
+        analysis_compression_ratio=0.75,
+        analysis_expansion_ratio=1.35,
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id="engine-setup-01-causal-v1",
