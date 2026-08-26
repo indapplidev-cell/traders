@@ -25,9 +25,12 @@ if str(ROOT) not in sys.path:
 
 import psycopg
 from psycopg import sql
-from sqlalchemy.engine import make_url
-
 from app.db.postgres_auth_probe import probe_postgres_authentication
+from scripts.safe_docker_inspection import (
+    SafeContainerInspection,
+    SafeDockerInspectionError,
+    safe_inspect_container,
+)
 from scripts.verify_shared_db_secret_binding import BINDING, binding_errors
 
 
@@ -40,6 +43,7 @@ AFFECTED = (
     ("online-orchestrator", "traders-ml-online-orchestrator-1", ("orchestrator",)),
 )
 REPORT = ROOT / "reports" / "security" / "production_db_credential_rotation.json"
+PREPARED_BINDING = BINDING.with_name(BINDING.name + ".next")
 
 
 class SafeRotationError(RuntimeError):
@@ -78,35 +82,6 @@ def _run(args: list[str], *, input_text: str | None = None, timeout: int = 120) 
     )
 
 
-def _inspect(name: str) -> dict:
-    result = _run(["docker", "inspect", name])
-    if result.returncode:
-        raise SafeRotationError("CONTAINER_INSPECTION_FAILED")
-    try:
-        payload = json.loads(result.stdout)
-        return payload[0]
-    except (json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
-        raise SafeRotationError("CONTAINER_INSPECTION_REJECTED") from error
-
-
-def _env(document: dict) -> dict[str, str]:
-    values: dict[str, str] = {}
-    for item in document.get("Config", {}).get("Env", ()) or ():
-        if isinstance(item, str) and "=" in item:
-            key, value = item.split("=", 1)
-            values[key] = value
-    return values
-
-
-def _identity(document: dict) -> tuple[str, int, bool]:
-    state = document.get("State", {})
-    return (
-        str(document.get("Image") or ""),
-        int(document.get("RestartCount") or 0),
-        bool(state.get("Running")),
-    )
-
-
 def _restrict_acl(path: Path, *, directory: bool) -> None:
     identity = _run([
         "pwsh.exe",
@@ -132,48 +107,50 @@ def _restrict_acl(path: Path, *, directory: bool) -> None:
         raise SafeRotationError("ACL_APPLICATION_FAILED")
 
 
-def _create_binding(new_password: str) -> None:
-    if BINDING.exists():
+def _create_binding(path: Path, new_password: str) -> None:
+    if path.exists():
         raise SafeRotationError("PROTECTED_BINDING_ALREADY_EXISTS")
-    BINDING.parent.mkdir(exist_ok=True)
-    _restrict_acl(BINDING.parent, directory=True)
-    descriptor = os.open(BINDING, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    path.parent.mkdir(exist_ok=True)
+    _restrict_acl(path.parent, directory=True)
+    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     os.close(descriptor)
-    _restrict_acl(BINDING, directory=False)
-    with BINDING.open("wb", buffering=0) as stream:
+    _restrict_acl(path, directory=False)
+    with path.open("wb", buffering=0) as stream:
         stream.write(new_password.encode("ascii") + b"\n")
         os.fsync(stream.fileno())
-    if binding_errors(BINDING):
+    if binding_errors(path):
         raise SafeRotationError("PROTECTED_BINDING_VERIFICATION_FAILED")
 
 
+def _safe_inspect(name: str) -> SafeContainerInspection:
+    try:
+        return safe_inspect_container(name)
+    except SafeDockerInspectionError as error:
+        raise SafeRotationError("CONTAINER_INSPECTION_REJECTED") from None
+
+
 def _baseline() -> tuple[str, str, dict[str, tuple[str, int]], bool]:
-    urls: list[str] = []
+    if binding_errors(BINDING):
+        raise SafeRotationError("CURRENT_PROTECTED_BINDING_INVALID")
+    old_password = BINDING.read_text(encoding="ascii").strip()
     identities: dict[str, tuple[str, int]] = {}
     for _, container, _ in AFFECTED:
-        document = _inspect(container)
-        image, restarts, running = _identity(document)
-        if not running:
+        inspection = _safe_inspect(container)
+        if inspection.state != "running":
             raise SafeRotationError("AFFECTED_CLIENT_NOT_RUNNING")
-        value = _env(document).get("DATABASE_URL")
-        if not value:
+        if "runtime-secret:traders_shared_db_password" not in inspection.secret_binding_source_identity:
             raise SafeRotationError("AFFECTED_CLIENT_BINDING_MISSING")
-        urls.append(value)
-        identities[container] = (image, restarts)
-    if len(set(urls)) != 1:
-        raise SafeRotationError("AFFECTED_CLIENT_BINDINGS_DIVERGED")
-    url = make_url(urls[0])
-    old_password = url.password or ""
-    if url.username != PRINCIPAL or not old_password:
+        if "DATABASE_URL" in inspection.env_keys_only:
+            raise SafeRotationError("AFFECTED_CLIENT_ENV_CREDENTIAL_PRESENT")
+        identities[container] = (inspection.image_id, inspection.restart_count)
+    if not old_password:
         raise SafeRotationError("EXPOSED_PRINCIPAL_NOT_UNAMBIGUOUS")
-    postgres_password = _env(_inspect(POSTGRES)).get("POSTGRES_PASSWORD")
-    # POSTGRES_PASSWORD is initialization-only when the persistent data
-    # directory already exists. A prior rotation can legitimately leave this
-    # immutable container-config field stale; it is not an authentication
-    # fallback. The new Compose contract removes it on the next DB replacement
-    # without restarting PostgreSQL during this task.
-    bootstrap_binding_matches = postgres_password == old_password
-    return PRINCIPAL, old_password, identities, bootstrap_binding_matches
+    postgres = _safe_inspect(POSTGRES)
+    if postgres.state != "running" or "POSTGRES_PASSWORD" in postgres.env_keys_only:
+        raise SafeRotationError("POSTGRES_SECRET_BINDING_CONTRACT_FAILED")
+    if "runtime-secret:traders_shared_db_password" not in postgres.secret_binding_source_identity:
+        raise SafeRotationError("POSTGRES_SECRET_BINDING_MISSING")
+    return PRINCIPAL, old_password, identities, True
 
 
 def _connect(password: str) -> psycopg.Connection:
@@ -227,17 +204,11 @@ def _compose_rebind(service: str, profiles: tuple[str, ...]) -> None:
 def _wait_client(container: str, expected_image: str) -> tuple[bool, int, bool]:
     deadline = time.monotonic() + 90
     while time.monotonic() < deadline:
-        document = _inspect(container)
-        image, restarts, running = _identity(document)
-        env_safe = "DATABASE_URL" not in _env(document)
-        mounts = document.get("Mounts", ()) or ()
-        secret_loaded = any(
-            item.get("Destination") == "/run/secrets/traders_shared_db_password"
-            for item in mounts
-            if isinstance(item, dict)
-        )
-        if running and env_safe and secret_loaded:
-            return image == expected_image, restarts, True
+        inspection = _safe_inspect(container)
+        env_safe = "DATABASE_URL" not in inspection.env_keys_only
+        secret_loaded = "runtime-secret:traders_shared_db_password" in inspection.secret_binding_source_identity
+        if inspection.state == "running" and env_safe and secret_loaded:
+            return inspection.image_id == expected_image, inspection.restart_count, True
         time.sleep(2)
     return False, -1, False
 
@@ -257,12 +228,11 @@ def _client_query(container: str) -> bool:
 
 def _client_stable(container: str, observed_restarts: int) -> bool:
     time.sleep(8)
-    document = _inspect(container)
-    _, current_restarts, running = _identity(document)
+    inspection = _safe_inspect(container)
     return (
-        running
-        and current_restarts == observed_restarts
-        and "DATABASE_URL" not in _env(document)
+        inspection.state == "running"
+        and inspection.restart_count == observed_restarts
+        and "DATABASE_URL" not in inspection.env_keys_only
     )
 
 
@@ -276,17 +246,17 @@ def execute(*, resume_prepared_binding: bool = False) -> dict[str, object]:
     started = datetime.now(timezone.utc)
     generation = "shared-db-" + started.strftime("%Y%m%dT%H%M%SZ")
     principal, old_password, identities, bootstrap_binding_matches = _baseline()
-    if BINDING.exists():
-        if not resume_prepared_binding or binding_errors(BINDING):
-            raise SafeRotationError("PREPARED_BINDING_REQUIRES_EXPLICIT_RESUME")
-        new_password = BINDING.read_text(encoding="ascii").strip()
+    if resume_prepared_binding:
+        if binding_errors(PREPARED_BINDING):
+            raise SafeRotationError("PREPARED_BINDING_MISSING_OR_INVALID")
+        new_password = PREPARED_BINDING.read_text(encoding="ascii").strip()
     else:
-        if resume_prepared_binding:
-            raise SafeRotationError("PREPARED_BINDING_MISSING")
+        if PREPARED_BINDING.exists():
+            raise SafeRotationError("PREPARED_BINDING_REQUIRES_EXPLICIT_RESUME")
         new_password = secrets.token_urlsafe(48)
         while new_password == old_password:
             new_password = secrets.token_urlsafe(48)
-        _create_binding(new_password)
+        _create_binding(PREPARED_BINDING, new_password)
 
     old_before, old_before_sqlstate = _auth_probe(old_password)
     new_before, new_before_sqlstate = _auth_probe(new_password)
@@ -299,6 +269,10 @@ def execute(*, resume_prepared_binding: bool = False) -> dict[str, object]:
     new_connection, new_sqlstate = _auth_probe(new_password)
     if new_connection != "CONNECTED" or new_sqlstate is not None:
         raise SafeRotationError("NEW_CREDENTIAL_POSITIVE_AUTH_FAILED")
+    os.replace(PREPARED_BINDING, BINDING)
+    _restrict_acl(BINDING, directory=False)
+    if binding_errors(BINDING):
+        raise SafeRotationError("ACTIVE_PROTECTED_BINDING_VERIFICATION_FAILED")
 
     clients: list[ClientResult] = []
     for service, container, profiles in AFFECTED:

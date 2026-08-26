@@ -24,6 +24,10 @@ from scripts.security_retry_controls import (
     inspect_readonly_health_http,
     inspect_tracked_route_counts,
 )
+from scripts.safe_docker_inspection import (
+    SafeDockerInspectionError,
+    safe_inspect_container,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,6 +36,15 @@ def main(argv: list[str] | None = None) -> int:
         "container",
         nargs="*",
         help="Exact container names to inspect through the fixed allowlist.",
+    )
+    parser.add_argument(
+        "--extended-container",
+        action="append",
+        default=[],
+        help=(
+            "Inspect one exact container through the secret-safe JSON reducer; "
+            "may be repeated."
+        ),
     )
     parser.add_argument("--health", action="store_true")
     parser.add_argument("--routes", action="store_true")
@@ -42,6 +55,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--postgres-archive-health-container")
     args = parser.parse_args(argv)
     status = 0
+    for name in args.extended_container:
+        try:
+            inspection = safe_inspect_container(name)
+        except SafeDockerInspectionError:
+            print(f"container_name={name}")
+            print("inspection=FAILED")
+            print("error_class=SAFE_DOCKER_INSPECTION_FAILED")
+            status = 1
+            continue
+        print(inspection.render())
     for name in args.container:
         identity = inspect_container_identity(name)
         if identity is None:
@@ -59,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
         print(routes.render())
         status = max(
             status,
-            int(routes.get_routes != 9 or routes.write_routes != 0),
+            int(routes.get_routes != 28 or routes.write_routes != 0),
         )
     if args.alembic_container:
         alembic = inspect_alembic_status(args.alembic_container)

@@ -35,6 +35,18 @@ _APPROVED_SHARED_DB_SECRET_REFERENCES = {
         "secrets.traders_shared_db_password.file",
         "./.secrets.production.local/shared-db-password",
     ),
+    (
+        "services.operator-control-api.environment.TRADERS_ML_POSTGRES_PASSWORD",
+        "",
+    ),
+    (
+        "services.operator-control-api.secrets.[]",
+        "traders_control_api_token",
+    ),
+    (
+        "secrets.traders_control_api_token.file",
+        "../../../.control-api.token",
+    ),
     *(
         (f"services.{service}.secrets.[]", "traders_shared_db_password")
         for service in (

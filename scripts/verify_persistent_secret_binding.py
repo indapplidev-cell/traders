@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -134,7 +134,7 @@ def docker_context_excluded() -> bool:
 
 
 def _powershell_executable() -> str:
-    for candidate in ("powershell.exe", "powershell", "pwsh.exe", "pwsh"):
+    for candidate in ("pwsh.exe", "pwsh", "powershell.exe", "powershell"):
         try:
             result = subprocess.run(
                 [candidate, "-NoProfile", "-NonInteractive", "-Command", "$PSVersionTable.PSVersion.Major"],
@@ -153,47 +153,21 @@ def _powershell_executable() -> str:
 def inspect_windows_acl(path: Path) -> AclState:
     if os.name != "nt":
         raise RuntimeError("Windows ACL contract is unavailable on this platform")
-    literal_path = str(path.resolve()).replace("'", "''")
-    script = rf"""
-$ErrorActionPreference = 'Stop'
-$path = '{literal_path}'
-$currentSid = ([System.Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
-$systemSid = 'S-1-5-18'
-$adminSid = 'S-1-5-32-544'
-$allowedSids = @($currentSid, $systemSid, $adminSid)
-$broadSids = @('S-1-1-0','S-1-5-11','S-1-5-32-545','S-1-5-32-546','S-1-5-7','S-1-5-20')
-$acl = Get-Acl -LiteralPath $path
-$rules = @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]))
-$modify = [System.Security.AccessControl.FileSystemRights]::Modify
-$full = [System.Security.AccessControl.FileSystemRights]::FullControl
-function Has-AllowRight([string]$sid, $required) {{
-  return @($rules | Where-Object {{
-    $_.IdentityReference.Value -eq $sid -and
-    $_.AccessControlType -eq [System.Security.AccessControl.AccessControlType]::Allow -and
-    (($_.FileSystemRights -band $required) -eq $required)
-  }}).Count -gt 0
-}}
-$result = [ordered]@{{
-  inheritance_disabled = [bool]$acl.AreAccessRulesProtected
-  current_user_sid = $currentSid
-  current_user_allowed = [bool](Has-AllowRight $currentSid $modify)
-  system_allowed = [bool](Has-AllowRight $systemSid $full)
-  administrators_allowed = [bool](Has-AllowRight $adminSid $full)
-  broad_principals = @($rules | Where-Object {{ $broadSids -contains $_.IdentityReference.Value }}).Count
-  unexpected_principals = @($rules | Where-Object {{ $allowedSids -notcontains $_.IdentityReference.Value }}).Count
-  deny_rules = @($rules | Where-Object {{ $_.AccessControlType -eq [System.Security.AccessControl.AccessControlType]::Deny }}).Count
-}}
-$result | ConvertTo-Json -Compress
-"""
-    encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    script = (
+        "$a=Get-Acl -LiteralPath $env:ACL_TARGET;"
+        "$s=([System.Security.Principal.WindowsIdentity]::GetCurrent()).User.Value;"
+        "[ordered]@{sddl=[string]$a.Sddl;protected=[bool]$a.AreAccessRulesProtected;"
+        "current_sid=[string]$s}|ConvertTo-Json -Compress"
+    )
     result = subprocess.run(
         [
             _powershell_executable(),
             "-NoProfile",
             "-NonInteractive",
-            "-EncodedCommand",
-            encoded,
+            "-Command",
+            script,
         ],
+        env={**os.environ, "ACL_TARGET": str(path.resolve())},
         check=False,
         capture_output=True,
         text=True,
@@ -202,7 +176,21 @@ $result | ConvertTo-Json -Compress
     if result.returncode != 0:
         raise RuntimeError("Windows ACL inspection failed")
     payload = json.loads(result.stdout.strip())
-    return AclState(**payload)
+    sddl = str(payload["sddl"])
+    current_sid = str(payload["current_sid"])
+    identities = tuple(re.findall(r";;;([^\)]+)\)", sddl))
+    allowed = {current_sid, "SY", "BA", "S-1-5-18", "S-1-5-32-544"}
+    broad = {"WD", "AU", "BU", "BG", "AN", "NS", "S-1-1-0", "S-1-5-11"}
+    return AclState(
+        inheritance_disabled=bool(payload["protected"]),
+        current_user_sid=current_sid,
+        current_user_allowed=current_sid in identities,
+        system_allowed=bool({"SY", "S-1-5-18"} & set(identities)),
+        administrators_allowed=bool({"BA", "S-1-5-32-544"} & set(identities)),
+        broad_principals=sum(identity in broad for identity in identities),
+        unexpected_principals=sum(identity not in allowed for identity in identities),
+        deny_rules=sddl.count("(D;"),
+    )
 
 
 def _parser() -> argparse.ArgumentParser:

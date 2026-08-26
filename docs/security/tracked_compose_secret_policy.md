@@ -21,3 +21,37 @@ count, running and health states, safe port bindings, Alembic status, HTTP
 status, and route counts. Full Docker objects, environment fields, rendered
 Compose configuration, environment dumps, and secret-bearing arguments are
 forbidden.
+
+For an extended production container diagnostic use only:
+
+```powershell
+python scripts/safe_production_inspector.py `
+  --extended-container <exact-container-name>
+```
+
+The extended inspector reduces the captured Docker document in memory before
+returning. It may emit environment key names, non-secret DB principal names,
+runtime-secret binding identities, executable basenames, image/container IDs,
+restart count, state, health, and a validated source revision. It never emits
+environment values, mount source paths, arguments, raw labels, or the raw
+Docker document. Structured diagnostics that may contain passwords, tokens,
+authorization values, database URLs, or DSNs must pass through
+`redact_diagnostic`; credential-bearing URI userinfo must pass through
+`redact_uri` before serialization.
+
+The following production diagnostic forms are forbidden, including in task
+evidence and troubleshooting instructions:
+
+```text
+docker inspect <production-container>
+docker container inspect <production-container>
+docker inspect --format '{{json .Config.Env}}' <production-container>
+docker compose config
+docker exec <production-container> env
+docker exec <production-container> printenv
+```
+
+Terminal redaction after one of these commands has emitted output is not an
+acceptable control. Failures from the safe inspectors must be reported only as
+normalized error classes; raw stdout, stderr, configuration, and exception
+messages are not diagnostic output.
