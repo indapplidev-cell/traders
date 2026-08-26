@@ -20,7 +20,7 @@ from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.orchestrator_errors import SnapshotContractViolationError, SnapshotNotEnoughDataError
 from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters, json_safe
-from app.engine_orchestrator.trade_profile import TradeProfileMode
+from app.engine_orchestrator.trade_profile import TradeProfileId, TradeProfileMode
 from app.engine_paper.paper_runner import PaperRunner
 from app.engine_paper.scalping_paper_runner import (
     BinancePublicScalpingCostSource,
@@ -434,7 +434,7 @@ class PipelineRunner:
             strategy_cap_economics = self._capture_strategy_cap_economics(setup)
             strategy = self._invoke(self.strategy_runner, "process_setup_candidate", setup)
             outputs["strategy"] = strategy
-            if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
+            if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V1.value:
                 # Scalping order is intentionally Strategy -> Geometry/Net Cost
                 # -> Risk reservation. A preview applies every risk gate but
                 # cannot consume the profile research counter.
@@ -470,7 +470,7 @@ class PipelineRunner:
                     or _mapping_value(shadow_plan_payload, "paper_status")
                     or ""
                 )
-                outputs["paper"] = {
+                shadow_payload = {
                     "paper_status": "SHADOW_SEARCH",
                     "shadow_plan_status": shadow_plan_status,
                     "shadow_plan": shadow_plan_payload,
@@ -556,6 +556,11 @@ class PipelineRunner:
                         ),
                     ).to_dict(),
                 }
+                outputs["paper"] = (
+                    shadow_payload
+                    if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value
+                    else shadow_plan
+                )
             else:
                 risk = self._invoke(
                     self.risk_runner, "process_strategy_decision", strategy
@@ -592,7 +597,7 @@ class PipelineRunner:
             paper_context = dict(paper_context) if isinstance(paper_context, dict) else {}
             paper_context["strategy_cap_shadow_economic_snapshot"] = strategy_cap_economics
             paper_payload["paper_context"] = paper_context
-        if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
+        if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V1.value:
             paper_payload["scalping_evaluation_journal"] = build_scalping_evaluation_journal(
                 profile=self.config.trade_profile_id,
                 parameter_set_id=self.runtime_parameters.parameter_set_id,

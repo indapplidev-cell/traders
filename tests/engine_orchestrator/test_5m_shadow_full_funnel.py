@@ -162,6 +162,48 @@ def test_real_paper_planner_is_reused_as_executable_5m_production_plan():
     assert result.safety_counters.has_violation is False
 
 
+def test_production_scalping_does_not_reserve_risk_for_invalid_geometry():
+    analysis, setup, strategy, risk, paper = outputs(
+        setup_status="SETUP_CANDIDATE",
+        strategy_status="ALLOW_RESEARCH_TRADE_PLAN",
+        risk_status="RISK_PRE_APPROVED_RESEARCH",
+        paper_status="NO_PLAN",
+    )
+
+    class RiskSpy:
+        preview_calls = 0
+        reserve_calls = 0
+
+        def preview_strategy_decision(self, _source):
+            self.preview_calls += 1
+            return risk
+
+        def process_strategy_decision(self, _source):
+            self.reserve_calls += 1
+            return risk
+
+    class InvalidGeometry:
+        def process_risk_decision(self, _source):
+            return paper
+
+    risk_spy = RiskSpy()
+    config = OrchestratorConfig(
+        symbols=("BTCUSDT",), trade_profile_id="trade-5m-v1",
+        primary_timeframe="5m", required_timeframes=("5m",),
+        minimum_windows={"5m": 1},
+    )
+    result = PipelineRunner(
+        config, CandleRepo(), analysis_runner=component(analysis),
+        setup_runner=component(setup), strategy_runner=component(strategy),
+        risk_runner=risk_spy, paper_runner=InvalidGeometry(),
+    ).run("BTCUSDT", BOUNDARY)
+
+    assert result.profile_mode == "PRODUCTION_SEARCH"
+    assert result.paper_status == "NO_PLAN"
+    assert risk_spy.preview_calls == 1
+    assert risk_spy.reserve_calls == 0
+
+
 def test_shadow_materializer_completes_all_non_executable_approval_stages():
     materializer = ShadowFinalApprovalMaterializer(
         account_summary_source=lambda _session: _account()

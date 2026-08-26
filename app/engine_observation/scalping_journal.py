@@ -15,7 +15,7 @@ def build_scalping_evaluation_journal(
     strategy: Mapping[str, object], risk: Mapping[str, object],
     paper: Mapping[str, object],
 ) -> dict[str, object]:
-    shadow_plan = _map(paper.get("shadow_plan"))
+    shadow_plan = _map(paper.get("shadow_plan")) or paper
     context = _map(shadow_plan.get("paper_context"))
     diagnostic = _map(context.get("scalping_geometry_diagnostics"))
     strategy_context = _map(strategy.get("context"))
