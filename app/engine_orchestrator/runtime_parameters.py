@@ -27,6 +27,11 @@ class RuntimeProfileParameters:
     profile_id: str
     trigger_timeframe: str
     mode: str
+    market_data_required_timeframes: tuple[str, ...]
+    market_data_context_windows: tuple[tuple[str, int], ...]
+    bounded_book_depth_limit: int
+    microstructure_max_age_ms: int
+    vwap_reference_notional: float
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -54,6 +59,16 @@ class RuntimeProfileParameters:
         profile = resolve_trade_profile(self.profile_id)
         if self.trigger_timeframe != profile.trigger_timeframe or self.mode != profile.mode:
             raise ValueError("runtime parameter identity/profile mismatch")
+        if self.market_data_required_timeframes != tuple(
+            timeframe for timeframe, _ in profile.market_data_windows
+        ) or self.market_data_context_windows != profile.market_data_windows:
+            raise ValueError("runtime market-data/profile identity mismatch")
+        if (
+            self.bounded_book_depth_limit != profile.book_depth_limit
+            or self.microstructure_max_age_ms != profile.microstructure_max_age_ms
+            or self.vwap_reference_notional != profile.vwap_reference_notional
+        ):
+            raise ValueError("runtime microstructure/profile identity mismatch")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -92,7 +107,19 @@ class RuntimeProfileParameters:
 
     @property
     def parameter_set_id(self) -> str:
-        canonical = json.dumps(asdict(self), sort_keys=True, separators=(",", ":"))
+        identity = asdict(self)
+        if self.profile_id == TradeProfileId.TRADE_15M_V1.value:
+            # Preserve the deployed 15m parameter identity: these new fields
+            # only make its already-existing market-data contract explicit.
+            for name in (
+                "market_data_required_timeframes",
+                "market_data_context_windows",
+                "bounded_book_depth_limit",
+                "microstructure_max_age_ms",
+                "vwap_reference_notional",
+            ):
+                identity.pop(name)
+        canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
         return f"{self.profile_id}-runtime-v1-{digest}"
 
@@ -134,6 +161,13 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         profile_id=profile.trade_profile_id,
         trigger_timeframe=profile.trigger_timeframe,
         mode=profile.mode,
+        market_data_required_timeframes=tuple(
+            timeframe for timeframe, _ in profile.market_data_windows
+        ),
+        market_data_context_windows=profile.market_data_windows,
+        bounded_book_depth_limit=profile.book_depth_limit,
+        microstructure_max_age_ms=profile.microstructure_max_age_ms,
+        vwap_reference_notional=profile.vwap_reference_notional,
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id="engine-setup-01-causal-v1",

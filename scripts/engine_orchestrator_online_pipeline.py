@@ -164,7 +164,11 @@ def main(argv: list[str] | None = None) -> int:
         allow_stale_higher_timeframes=config.allow_stale_higher_timeframes,
     )
     calibration_cost_source = (
-        BinancePublicScalpingCostSource()
+        BinancePublicScalpingCostSource(
+            reference_notional=runtime_parameters.vwap_reference_notional,
+            depth_limit=runtime_parameters.bounded_book_depth_limit,
+            maximum_age_ms=runtime_parameters.microstructure_max_age_ms,
+        )
         if args.strategy_cap_shadow_economic_capture and profile.trade_profile_id == "trade-5m-v1"
         else None
     )

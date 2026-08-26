@@ -69,6 +69,7 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     fifteen = resolve_runtime_parameters("trade-15m-v1")
     five = resolve_runtime_parameters("trade-5m-v1")
     assert fifteen.parameter_set_id != five.parameter_set_id
+    assert fifteen.parameter_set_id == "trade-15m-v1-runtime-v1-44aa91202a60146c"
     assert fifteen.profile_id == "trade-15m-v1"
     assert five.profile_id == "trade-5m-v1"
     assert five.atr_lookback_candles == 24
@@ -77,6 +78,14 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.confirmation_window_candles == 3
     assert five.volume_baseline_candles == 36
     assert five.regime_lookback_candles == 72
+    assert five.analysis_history_candles == 120
+    assert five.market_data_required_timeframes == ("1m", "5m", "15m", "1h")
+    assert dict(five.market_data_context_windows) == {
+        "1m": 60, "5m": 120, "15m": 64, "1h": 50,
+    }
+    assert five.bounded_book_depth_limit == 100
+    assert five.microstructure_max_age_ms == 5_000
+    assert five.vwap_reference_notional == 100.0
     assert five.minimum_planned_rr == 1.5
     assert five.mode == "PRODUCTION_SEARCH"
     assert five.paper_command_creation_enabled is True

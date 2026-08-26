@@ -35,6 +35,10 @@ class TradeSearchProfile:
     primary_timeframe: str
     entry_timeframes: tuple[str, ...]
     context_timeframes: tuple[str, ...]
+    market_data_windows: tuple[tuple[str, int], ...]
+    book_depth_limit: int
+    microstructure_max_age_ms: int
+    vwap_reference_notional: float
     mode: str
     analysis_history_candles: int
     atr_lookback_candles: int
@@ -61,6 +65,17 @@ class TradeSearchProfile:
             raise ValueError("entry timeframes must include the primary timeframe")
         if set(self.entry_timeframes).intersection(self.context_timeframes):
             raise ValueError("entry and context timeframe roles must be distinct")
+        window_map = dict(self.market_data_windows)
+        if len(window_map) != len(self.market_data_windows):
+            raise ValueError("market-data timeframes must be unique")
+        if not set(self.entry_timeframes + self.context_timeframes).issubset(window_map):
+            raise ValueError("every semantic timeframe role requires a market-data window")
+        if min(window_map.values()) <= 0:
+            raise ValueError("market-data windows must be positive")
+        if self.book_depth_limit not in {5, 10, 20, 50, 100, 500, 1000, 5000}:
+            raise ValueError("unsupported bounded book depth limit")
+        if self.microstructure_max_age_ms <= 0 or self.vwap_reference_notional <= 0:
+            raise ValueError("microstructure bounds must be positive")
         if self.trigger_timeframe not in {"15m", "5m"}:
             raise ValueError("unsupported trade-profile trigger timeframe")
         if min(
@@ -90,6 +105,11 @@ TRADE_15M_PROFILE: Final = TradeSearchProfile(
     primary_timeframe="15m",
     entry_timeframes=("15m",),
     context_timeframes=("1h", "4h"),
+    market_data_windows=(("1m", 240), ("5m", 288), ("15m", 480),
+                         ("1h", 240), ("4h", 180), ("1d", 240)),
+    book_depth_limit=100,
+    microstructure_max_age_ms=5_000,
+    vwap_reference_notional=100.0,
     mode=TradeProfileMode.PRODUCTION_SEARCH.value,
     analysis_history_candles=480,
     atr_lookback_candles=14,
@@ -113,8 +133,12 @@ TRADE_5M_PROFILE: Final = TradeSearchProfile(
     primary_timeframe="5m",
     entry_timeframes=("1m", "5m"),
     context_timeframes=("15m", "1h"),
+    market_data_windows=(("1m", 60), ("5m", 120), ("15m", 64), ("1h", 50)),
+    book_depth_limit=100,
+    microstructure_max_age_ms=5_000,
+    vwap_reference_notional=100.0,
     mode=TradeProfileMode.PRODUCTION_SEARCH.value,
-    analysis_history_candles=288,
+    analysis_history_candles=120,
     atr_lookback_candles=24,
     impulse_lookback_candles=12,
     structure_lookback_candles=48,
@@ -139,12 +163,9 @@ IDENTICAL_VALUE_JUSTIFICATIONS: Final = MappingProxyType({
     "validity_boundaries": "Each profile expires at its own next trigger boundary.",
 })
 
-TRADE_5M_CONTEXT_MINIMUM_WINDOWS: Final = MappingProxyType({
-    "5m": 288,
-    "15m": 160,
-    "1h": 120,
-    "4h": 90,
-})
+TRADE_5M_CONTEXT_MINIMUM_WINDOWS: Final = MappingProxyType(
+    dict(TRADE_5M_PROFILE.market_data_windows)
+)
 
 
 def resolve_trade_profile(value: str | TradeProfileId | None = None) -> TradeSearchProfile:

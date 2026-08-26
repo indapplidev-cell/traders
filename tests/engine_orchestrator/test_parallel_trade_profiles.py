@@ -17,6 +17,7 @@ from app.engine_orchestrator.pipeline_runner import PipelineRunner
 from app.engine_orchestrator.trade_profile import (
     DEFAULT_TRADE_PROFILE_ID,
     TRADE_15M_PROFILE,
+    TRADE_5M_CONTEXT_MINIMUM_WINDOWS,
     TRADE_5M_PROFILE,
 )
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
@@ -47,6 +48,15 @@ def test_profiles_are_explicit_and_15m_default_is_unchanged():
     assert TRADE_5M_PROFILE.primary_timeframe == "5m"
     assert TRADE_5M_PROFILE.entry_timeframes == ("1m", "5m")
     assert TRADE_5M_PROFILE.context_timeframes == ("15m", "1h")
+    assert dict(TRADE_5M_PROFILE.market_data_windows) == {
+        "1m": 60, "5m": 120, "15m": 64, "1h": 50,
+    }
+    assert TRADE_5M_PROFILE.analysis_history_candles == 120
+    assert TRADE_5M_PROFILE.book_depth_limit == 100
+    assert TRADE_5M_PROFILE.microstructure_max_age_ms == 5_000
+    assert dict(TRADE_5M_CONTEXT_MINIMUM_WINDOWS) == dict(
+        TRADE_5M_PROFILE.market_data_windows
+    )
     assert TRADE_15M_PROFILE.trade_mode == "TRADE_15M"
 
 

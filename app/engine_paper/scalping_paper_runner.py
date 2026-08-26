@@ -27,18 +27,29 @@ class ScalpingCostSource(Protocol):
 class BinancePublicScalpingCostSource:
     """Two bounded public requests; the diagnostic quantity grants no authority."""
 
-    DIAGNOSTIC_QUOTE_NOTIONAL = Decimal("100")
-    DEPTH_LIMIT = 100
-
-    def __init__(self, client: BinancePublicRestClient | None = None) -> None:
+    def __init__(
+        self,
+        client: BinancePublicRestClient | None = None,
+        *,
+        reference_notional: float = 100.0,
+        depth_limit: int = 100,
+        maximum_age_ms: int = 5_000,
+    ) -> None:
         self.client = client or BinancePublicRestClient()
+        self.reference_notional = Decimal(str(reference_notional))
+        self.depth_limit = int(depth_limit)
+        self.maximum_age_ms = int(maximum_age_ms)
+        if self.reference_notional <= 0 or self.maximum_age_ms <= 0:
+            raise ValueError("Scalping cost-source bounds must be positive")
+        if self.depth_limit not in {5, 10, 20, 50, 100, 500, 1000, 5000}:
+            raise ValueError("unsupported bounded depth limit")
 
     def load(self, symbol: str, entry: float, *, safety_margin_bps: float) -> ShadowCostInputs:
         capture_started_at_ms = time.time_ns() // 1_000_000
         ticker = self.client.fetch_book_ticker(symbol)
-        reference_quantity = self.DIAGNOSTIC_QUOTE_NOTIONAL / Decimal(str(entry))
+        reference_quantity = self.reference_notional / Decimal(str(entry))
         depth = self.client.estimate_round_trip_depth_impact(
-            symbol, reference_quantity, limit=self.DEPTH_LIMIT
+            symbol, reference_quantity, limit=self.depth_limit
         )
         captured_at_ms = time.time_ns() // 1_000_000
         return ShadowCostInputs(
@@ -54,10 +65,11 @@ class BinancePublicScalpingCostSource:
             ask=float(ticker.ask_price),
             buy_vwap=float(depth.buy_vwap),
             sell_vwap=float(depth.sell_vwap),
-            economic_input_timestamp_ms=captured_at_ms,
+            economic_input_timestamp_ms=capture_started_at_ms,
             economic_capture_started_at_ms=capture_started_at_ms,
             decision_cutoff_timestamp_ms=captured_at_ms,
             economic_input_source="BINANCE_PUBLIC_REST_RECEIPT_BOUNDED_BOOK_AND_DEPTH",
+            maximum_age_ms=self.maximum_age_ms,
             require_causal_timestamp=True,
         )
 
@@ -75,7 +87,11 @@ class ScalpingPaperRunner(PaperRunner):
         minimum_rr = float(getattr(runtime_parameters, "minimum_planned_rr"))
         super().__init__(PaperConfig(minimum_planned_rr=minimum_rr), store=store)
         self.runtime_parameters = runtime_parameters
-        self.cost_source = cost_source or BinancePublicScalpingCostSource()
+        self.cost_source = cost_source or BinancePublicScalpingCostSource(
+            reference_notional=float(runtime_parameters.vwap_reference_notional),
+            depth_limit=int(runtime_parameters.bounded_book_depth_limit),
+            maximum_age_ms=int(runtime_parameters.microstructure_max_age_ms),
+        )
         self.geometry_config = ShadowGeometryConfig(
             atr_buffer_multiplier=0.25,
             stop_envelope_bps=80.0,
