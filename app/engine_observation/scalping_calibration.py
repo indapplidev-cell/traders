@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Iterable, Mapping
 
+from app.engine_observation.scalping_expectancy import calculate_scalping_expectancy
 from app.engine_paper.scalping_shadow import (
     CausalTarget,
     ShadowCostInputs,
@@ -184,7 +185,8 @@ def export_record(row: Mapping[str, Any]) -> dict[str, Any]:
         "reason_category": rejection_category(row), "raw_reasons": _reasons(row),
         "paper_command_id": row.get("paper_command_id"), "paper_position_id": row.get("paper_position_id"),
         "paper_outcome": row.get("paper_outcome"), "holding_time_seconds": row.get("holding_time_seconds"),
-        "mfe_bps": row.get("mfe_bps"), "mae_bps": row.get("mae_bps"), "net_pnl": row.get("net_pnl"),
+        "mfe_bps": row.get("mfe_bps"), "mae_bps": row.get("mae_bps"),
+        "gross_pnl": row.get("gross_pnl"), "net_pnl": row.get("net_pnl"),
     }
 
 
@@ -509,6 +511,58 @@ def aggregate(
         "atr_buffer": {}, "stop_envelope": {}, "minimum_target": {},
         "same_source_candidate_count": 0,
     }
+    closed = [
+        row for row in exported
+        if row["paper_outcome"] == "CLOSED" and row["net_pnl"] is not None
+    ]
+    duration_days = (
+        boundaries[-1] - boundaries[0] + boundary_interval_ms
+    ) / 86_400_000
+    expectancy = calculate_scalping_expectancy(
+        (float(row["net_pnl"]) for row in closed), observation_days=duration_days
+    )
+    net_values = [float(row["net_pnl"]) for row in closed]
+    positive_pnl = sum(value for value in net_values if value > 0)
+    negative_pnl = -sum(value for value in net_values if value < 0)
+    equity_curve = peak = max_drawdown = 0.0
+    consecutive = max_consecutive_losses = 0
+    for value in net_values:
+        equity_curve += value
+        peak = max(peak, equity_curve)
+        max_drawdown = max(max_drawdown, peak - equity_curve)
+        consecutive = consecutive + 1 if value < 0 else 0
+        max_consecutive_losses = max(max_consecutive_losses, consecutive)
+    gross_outcomes = [
+        float(row["gross_pnl"]) for row in closed if row["gross_pnl"] is not None
+    ]
+    known_cost = (
+        sum(gross_outcomes) - sum(net_values)
+        if len(gross_outcomes) == len(closed) else None
+    )
+    business_kpis = {
+        "trades_per_day": expectancy.observed_trades_per_day,
+        "unique_opportunities_per_day": len(opportunity_timelines) / duration_days,
+        "net_expectancy_per_trade": expectancy.net_expectancy_per_trade,
+        "net_expectancy_per_day": expectancy.net_expectancy_per_day,
+        "net_pnl_per_day": sum(net_values) / duration_days if closed else None,
+        "win_rate": expectancy.win_probability,
+        "profit_factor": positive_pnl / negative_pnl if negative_pnl > 0 else None,
+        "average_win": expectancy.average_net_win,
+        "average_loss": expectancy.average_net_loss,
+        "holding_time_seconds": distribution(row["holding_time_seconds"] for row in closed),
+        "mfe_bps": distribution(row["mfe_bps"] for row in closed),
+        "mae_bps": distribution(row["mae_bps"] for row in closed),
+        "cost_to_gross_profit": (
+            known_cost / sum(gross_outcomes)
+            if known_cost is not None and sum(gross_outcomes) > 0 else None
+        ),
+        "max_drawdown": max_drawdown if closed else None,
+        "max_consecutive_losses": max_consecutive_losses if closed else None,
+        "business_frequency_envelope": {
+            "minimum_desirable": 10, "working": [15, 20], "upper": 30,
+        },
+        "forced_quota": False,
+    }
     return {
         "observation_start_ms": boundaries[0], "observation_end_ms": boundaries[-1],
         "duration_seconds": (boundaries[-1] - boundaries[0] + boundary_interval_ms) // 1000,
@@ -546,5 +600,6 @@ def aggregate(
         "unique_causal_opportunities": len(opportunity_timelines),
         "repeat_observations": sum(bool(r["direction"]) for r in exported) - len(opportunity_timelines),
         "risk_budget_reservation_leaks": quota_leaks,
+        "business_kpis": business_kpis,
         "cycle_latency_ms": distribution(row.get("duration_ms") for row in source), "export_rows": exported,
     }

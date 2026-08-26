@@ -61,6 +61,22 @@ def test_repeat_opportunity_not_counted_as_independent_and_quota_free_rejection(
     assert value["rejection_histogram"]["NEGATIVE_NET_EDGE"]["count"] == 2
 
 
+def test_business_kpis_use_closed_net_outcomes_without_forcing_frequency():
+    rows = [row(), row(symbol="ETHUSDT")]
+    rows[0].update(paper_outcome="CLOSED", net_pnl=2, gross_pnl=2.5,
+                   holding_time_seconds=600, mfe_bps=50, mae_bps=20)
+    rows[1].update(paper_outcome="CLOSED", net_pnl=-1, gross_pnl=-.5,
+                   holding_time_seconds=900, mfe_bps=30, mae_bps=40)
+    value = aggregate(rows, expected_symbols=2)
+    kpi = value["business_kpis"]
+    assert kpi["net_expectancy_per_trade"] == .5
+    assert kpi["net_expectancy_per_day"] > 0
+    assert kpi["profit_factor"] == 2
+    assert kpi["max_drawdown"] == 1
+    assert kpi["max_consecutive_losses"] == 1
+    assert kpi["forced_quota"] is False
+
+
 def test_boundary_count_uses_fixed_read_only_bounded_query(monkeypatch):
     class Result:
         stdout = "144\n"
