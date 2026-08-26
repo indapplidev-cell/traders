@@ -89,8 +89,8 @@ def test_trade_profile_keys_are_server_owned_and_ru_en_complete():
     en = catalog_payload("en")["translations"]
     assert ru["trading.profile.trade_15m.title"] == "Сделка 15м"
     assert en["trading.profile.trade_15m.title"] == "15m Trade"
-    assert ru["trading.profile.trade_5m.title"] == "Сделка 5м"
-    assert en["trading.profile.trade_5m.title"] == "5m Trade"
+    assert ru["trading.profile.trade_5m.title"] == "Скальпинг"
+    assert en["trading.profile.trade_5m.title"] == "Scalping"
     for key in (
         "trading.profile.mode.SHADOW_SEARCH",
         "trading.profile.trade_5m.empty",
