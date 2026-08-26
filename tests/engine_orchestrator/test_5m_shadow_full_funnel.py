@@ -81,8 +81,8 @@ def _result() -> PipelineResult:
                 "authority_valid": True, "passed": True,
             },
             "validity_policy": {
-                "valid_until_ms": BOUNDARY + 300_000,
-                "validity_boundaries": 1,
+                "valid_until_ms": BOUNDARY + 60_000,
+                "entry_ttl_ms": 60_000,
             },
             "shadow_plan": {
                 "paper_status": "PAPER_PLAN_READY",
@@ -253,7 +253,7 @@ def test_legacy_shadow_projection_cannot_become_executable_after_5m_promotion():
     assert cycle["winner_symbol"] is None
 
     expired = build_projection(
-        ((run, row),), universe, BOUNDARY + 300_001,
+        ((run, row),), universe, BOUNDARY + 60_001,
         trade_profile_id="trade-5m-v1",
     )
     expired_item = expired["current_cycle"]["items"][0]

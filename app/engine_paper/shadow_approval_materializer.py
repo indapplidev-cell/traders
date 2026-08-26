@@ -11,7 +11,6 @@ from typing import Any, Final
 
 from sqlalchemy.orm import Session
 
-from app.engine_market_data.timeframe import timeframe_to_milliseconds
 from app.engine_orchestrator.pipeline_result import PipelineResult, json_safe
 from app.engine_paper.accounting import PaperAccountSummary
 from app.engine_paper.controlled_quantity_validity import calculate_quantity_sizing
@@ -149,8 +148,7 @@ class ShadowFinalApprovalMaterializer:
             validity = _mapping(payload.get("validity_policy"))
             valid_until_ms = int(validity.get("valid_until_ms", -1))
             expected_valid_until_ms = result.closed_until_ms + (
-                timeframe_to_milliseconds(result.primary_timeframe)
-                * int(validity.get("validity_boundaries", 0))
+                int(validity.get("entry_ttl_ms", 0))
             )
             evaluation_time_ms = int(evaluation_time.timestamp() * 1000)
             if valid_until_ms != expected_valid_until_ms or evaluation_time_ms > valid_until_ms:

@@ -58,6 +58,9 @@ class RuntimeProfileParameters:
     portfolio_max_concurrent_shadow_cohorts: tuple[int, ...]
     portfolio_max_total_open_risk_bps: float
     portfolio_total_open_risk_shadow_cohorts_bps: tuple[float, ...]
+    execution_entry_ttl_seconds: int
+    execution_entry_ttl_shadow_cohorts_seconds: tuple[int, ...]
+    execution_max_price_drift_bps: float
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -125,6 +128,10 @@ class RuntimeProfileParameters:
             raise ValueError("invalid max concurrent-position cohorts")
         if self.portfolio_total_open_risk_shadow_cohorts_bps != (50.0, 75.0):
             raise ValueError("invalid total open-risk cohorts")
+        if self.execution_entry_ttl_shadow_cohorts_seconds != (30, 60, 120):
+            raise ValueError("invalid entry TTL cohorts")
+        if self.execution_entry_ttl_seconds not in self.execution_entry_ttl_shadow_cohorts_seconds:
+            raise ValueError("production entry TTL must use a declared cohort")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -199,6 +206,9 @@ class RuntimeProfileParameters:
                 "portfolio_max_concurrent_shadow_cohorts",
                 "portfolio_max_total_open_risk_bps",
                 "portfolio_total_open_risk_shadow_cohorts_bps",
+                "execution_entry_ttl_seconds",
+                "execution_entry_ttl_shadow_cohorts_seconds",
+                "execution_max_price_drift_bps",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -295,6 +305,9 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         portfolio_max_concurrent_shadow_cohorts=(2, 3, 4),
         portfolio_max_total_open_risk_bps=50.0,
         portfolio_total_open_risk_shadow_cohorts_bps=(50.0, 75.0),
+        execution_entry_ttl_seconds=60,
+        execution_entry_ttl_shadow_cohorts_seconds=(30, 60, 120),
+        execution_max_price_drift_bps=10.0,
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(

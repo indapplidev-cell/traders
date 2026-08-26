@@ -500,10 +500,14 @@ class PipelineRunner:
                     "validity_policy": {
                         "source_close_ms": int(closed_until_ms),
                         "valid_until_ms": int(closed_until_ms) + (
-                            timeframe_to_milliseconds(self.config.primary_timeframe)
-                            * self.runtime_parameters.validity_boundaries
+                            int(self.runtime_parameters.execution_entry_ttl_seconds) * 1_000
                         ),
-                        "validity_boundaries": self.runtime_parameters.validity_boundaries,
+                        "entry_ttl_ms": int(
+                            self.runtime_parameters.execution_entry_ttl_seconds
+                        ) * 1_000,
+                        "entry_ttl_shadow_cohorts_seconds": list(
+                            self.runtime_parameters.execution_entry_ttl_shadow_cohorts_seconds
+                        ),
                         "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
                     },
                     "shadow_final_approval_candidate": {
