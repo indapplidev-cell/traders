@@ -26,6 +26,7 @@ from app.engine_paper.scalping_paper_runner import (
     BinancePublicScalpingCostSource,
     ScalpingPaperRunner,
 )
+from app.engine_paper.scalping_final_checklist import evaluate_scalping_final_checklist
 from app.engine_risk.risk_runner import RiskRunner
 from app.engine_risk.risk_config import RiskConfig
 from app.engine_risk.risk_policy import RiskPolicy
@@ -516,6 +517,39 @@ class PipelineRunner:
                         "execution_eligible": False,
                         "persisted_final_approval_created": False,
                     },
+                    "final_approval_checklist": evaluate_scalping_final_checklist(
+                        market_data_fresh=True,
+                        setup_valid=str(_attribute(setup, "status") or "") == "SETUP_CANDIDATE",
+                        strategy_admitted=str(
+                            _attribute(strategy, "decision_status") or ""
+                        ) == "ALLOW_RESEARCH_TRADE_PLAN",
+                        geometry_valid=bool(_mapping_value(
+                            _mapping_value(shadow_plan_payload, "paper_context") or {},
+                            "scalping_geometry_diagnostics",
+                        ) and _mapping_value(
+                            _mapping_value(
+                                _mapping_value(shadow_plan_payload, "paper_context") or {},
+                                "scalping_geometry_diagnostics",
+                            ) or {}, "valid_plan"
+                        )),
+                        target_valid=_attribute(shadow_plan, "hypothetical_target_level") is not None,
+                        cost_gate_pass=bool(_mapping_value(
+                            _mapping_value(shadow_plan_payload, "paper_context") or {},
+                            "economic_gate_enabled",
+                        ) and shadow_plan_status == "PAPER_PLAN_READY"),
+                        risk_pass=risk_status in {
+                            "RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"
+                        },
+                        opportunity_not_duplicate=bool(
+                            _attribute(setup, "opportunity_id", "setup_id")
+                        ),
+                        singleton_valid=True,
+                        entry_still_valid=shadow_plan_status == "PAPER_PLAN_READY",
+                        authority_valid=(
+                            not self.runtime_parameters.paper_command_creation_enabled
+                            and not self.runtime_parameters.position_opening_enabled
+                        ),
+                    ).to_dict(),
                 }
             else:
                 risk = self._invoke(

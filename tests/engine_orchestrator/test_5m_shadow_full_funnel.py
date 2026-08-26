@@ -72,6 +72,14 @@ def _result() -> PipelineResult:
             "paper_status": "SHADOW_SEARCH",
             "paper_command_creation_enabled": False,
             "position_opening_enabled": False,
+            "final_approval_checklist": {
+                "market_data_fresh": True, "setup_valid": True,
+                "strategy_admitted": True, "geometry_valid": True,
+                "target_valid": True, "cost_gate_pass": True,
+                "risk_pass": True, "opportunity_not_duplicate": True,
+                "singleton_valid": True, "entry_still_valid": True,
+                "authority_valid": True, "passed": True,
+            },
             "validity_policy": {
                 "valid_until_ms": BOUNDARY + 300_000,
                 "validity_boundaries": 1,

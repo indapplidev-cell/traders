@@ -93,11 +93,13 @@ class ShadowFinalApprovalMaterializer:
     ) -> FinalApprovalMaterialization:
         payload = dict(result.paper_payload)
         plan = _mapping(payload.get("shadow_plan"))
+        checklist = _mapping(payload.get("final_approval_checklist"))
         if (
             result.profile_mode != "SHADOW_SEARCH"
             or result.strategy_status != "ALLOW_RESEARCH_TRADE_PLAN"
             or result.risk_status not in {"RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"}
             or plan.get("paper_status") != "PAPER_PLAN_READY"
+            or checklist.get("passed") is not True
         ):
             return self._generation(
                 payload,
