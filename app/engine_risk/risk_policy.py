@@ -20,6 +20,7 @@ _CAUSAL_PRIMITIVES = frozenset({
     "causal_target_candidates", "causal_support_candidates",
     "causal_resistance_candidates", "higher_timeframe_target_candidates",
     "setup_type", "strategy_type", "direction_hint",
+    "opportunity_id",
 })
 
 

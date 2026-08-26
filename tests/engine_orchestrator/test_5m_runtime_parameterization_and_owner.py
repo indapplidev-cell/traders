@@ -99,6 +99,7 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.execution_entry_ttl_shadow_cohorts_seconds == (30, 60, 120)
     assert five.exit_time_stop_shadow_cohorts_minutes == (15, 30, 45)
     assert five.exit_adaptive_rules_production_enabled is False
+    assert five.opportunity_reentry_enabled is False
     assert five.minimum_planned_rr == 1.5
     assert five.mode == "PRODUCTION_SEARCH"
     assert five.paper_command_creation_enabled is True

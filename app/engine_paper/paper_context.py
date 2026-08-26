@@ -15,6 +15,7 @@ ALLOWED_PRIMITIVES = frozenset({
     "causal_target_candidates", "causal_support_candidates",
     "causal_resistance_candidates", "higher_timeframe_target_candidates",
     "setup_type", "strategy_type", "direction_hint",
+    "opportunity_id",
 })
 _FORBIDDEN_CONTAINER_TOKENS = ("future", "outcome", "realized", "fill", "pnl", "execution",
                                "position", "order")
@@ -60,6 +61,7 @@ class PaperContext:
     setup_type: str | None = None
     strategy_type: str | None = None
     direction_hint: str | None = None
+    opportunity_id: str | None = None
 
     @classmethod
     def from_risk_decision(cls, decision: RiskDecision) -> "PaperContext":
@@ -76,6 +78,7 @@ class PaperContext:
             else:
                 values[name] = raw if name in {
                     "setup_type", "strategy_type", "direction_hint",
+                    "opportunity_id",
                     "causal_support_candidates", "causal_resistance_candidates",
                     "higher_timeframe_target_candidates",
                 } else _number(raw)

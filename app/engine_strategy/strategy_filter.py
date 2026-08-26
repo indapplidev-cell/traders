@@ -167,6 +167,7 @@ class StrategyFilter:
                     else None
                 ),
                 "direction_hint": setup_candidate.direction_hint,
+                "opportunity_id": setup_candidate.opportunity_id,
                 "canonical_strategy_decision_identity": canonical_strategy_decision_identity(
                     setup_candidate.symbol,
                     setup_candidate.timeframe,

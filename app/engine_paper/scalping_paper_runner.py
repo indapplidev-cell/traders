@@ -18,6 +18,7 @@ from app.engine_paper.scalping_shadow import (
     evaluate_scalping_shadow,
 )
 from app.engine_risk.risk_decision import RiskDecision
+from app.engine_paper.scalping_opportunity_registry import ScalpingOpportunityRegistry
 
 
 class ScalpingCostSource(Protocol):
@@ -96,11 +97,13 @@ class ScalpingPaperRunner(PaperRunner):
         *,
         runtime_parameters: object,
         cost_source: ScalpingCostSource | None = None,
+        opportunity_registry: ScalpingOpportunityRegistry | None = None,
         store: object | None = None,
     ) -> None:
         minimum_rr = float(getattr(runtime_parameters, "minimum_planned_rr"))
         super().__init__(PaperConfig(minimum_planned_rr=minimum_rr), store=store)
         self.runtime_parameters = runtime_parameters
+        self.opportunity_registry = opportunity_registry or ScalpingOpportunityRegistry()
         self.cost_source = cost_source or BinancePublicScalpingCostSource(
             reference_notional=float(runtime_parameters.vwap_reference_notional),
             depth_limit=int(runtime_parameters.bounded_book_depth_limit),
@@ -181,7 +184,9 @@ class ScalpingPaperRunner(PaperRunner):
             causal_invalidation=invalidation,
             atr=context.atr_value,
             targets=tuple(targets),
-            setup_identity=context.setup_type or source.source_strategy_type,
+            # The setup detector identity is stable across adjacent boundaries.
+            # Legacy fixtures without it retain the prior family-level fallback.
+            setup_identity=context.opportunity_id or context.setup_type or source.source_strategy_type,
         )
         unavailable_costs = ShadowCostInputs(
             entry_fee_bps=float(self.runtime_parameters.economics_entry_fee_bps),
@@ -224,7 +229,22 @@ class ScalpingPaperRunner(PaperRunner):
             stop_source="causal_invalidation_plus_profile_atr_buffer",
             target_source=diagnostic.target_source_type,
         )
+        unique_opportunity = True
         if diagnostic.valid_plan:
+            unique_opportunity = self.opportunity_registry.observe_and_claim(
+                diagnostic.opportunity_id,
+                reentry_enabled=bool(
+                    getattr(self.runtime_parameters, "opportunity_reentry_enabled", False)
+                ),
+            )
+            paper_context["opportunity_observation"] = (
+                "UNIQUE_CAUSAL_OPPORTUNITY" if unique_opportunity
+                else "REPEAT_CAUSAL_OPPORTUNITY"
+            )
+            paper_context["opportunity_observation_count"] = (
+                self.opportunity_registry.observation_count(diagnostic.opportunity_id)
+            )
+        if diagnostic.valid_plan and unique_opportunity:
             plan = self._base_plan(
                 source,
                 status="PAPER_PLAN_READY",
@@ -236,7 +256,11 @@ class ScalpingPaperRunner(PaperRunner):
                 **common,
             )
         else:
-            reason = str(diagnostic.rejection_reason or R.PAPER_ERROR_PROCESSING_FAILED.value)
+            reason = str(
+                R.SCALP_REJECT_DUPLICATE_OPPORTUNITY.value
+                if diagnostic.valid_plan and not unique_opportunity
+                else diagnostic.rejection_reason or R.PAPER_ERROR_PROCESSING_FAILED.value
+            )
             missing = reason.startswith("PAPER_NO_PLAN_")
             plan = self._base_plan(
                 source,

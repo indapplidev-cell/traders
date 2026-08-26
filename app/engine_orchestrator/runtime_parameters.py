@@ -64,6 +64,7 @@ class RuntimeProfileParameters:
     exit_time_stop_minutes: int
     exit_time_stop_shadow_cohorts_minutes: tuple[int, ...]
     exit_adaptive_rules_production_enabled: bool
+    opportunity_reentry_enabled: bool
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -219,6 +220,7 @@ class RuntimeProfileParameters:
                 "exit_time_stop_minutes",
                 "exit_time_stop_shadow_cohorts_minutes",
                 "exit_adaptive_rules_production_enabled",
+                "opportunity_reentry_enabled",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -321,6 +323,7 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         exit_time_stop_minutes=30,
         exit_time_stop_shadow_cohorts_minutes=(15, 30, 45),
         exit_adaptive_rules_production_enabled=False,
+        opportunity_reentry_enabled=False,
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(
