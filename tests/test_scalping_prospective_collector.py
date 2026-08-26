@@ -227,6 +227,8 @@ def test_boundary_append_checkpoint_missing_and_crash_replay_dedupe(tmp_path):
     checkpoint["persisted_boundaries"] = []
     (tmp_path / "checkpoint.json").write_text(json.dumps(checkpoint), encoding="utf-8")
     restarted = ProspectiveCalibrationCollector(config(tmp_path), FakeRepository(rows), FakeOwner())
+    assert restarted.micro_total == 1 and restarted.micro_available == 1
+    assert restarted.missing_records == 1 and restarted.boundary_diagnostics == 1
     assert restarted.process_boundary(boundary)
     assert len(restarted.store.observation_ids) == 1
     assert restarted.duplicate_records == 0

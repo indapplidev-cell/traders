@@ -501,6 +501,28 @@ class AppendOnlyStore:
                     completed += 1
         return completed
 
+    def segment_stats(self) -> dict[str, int]:
+        stats = {"micro_total": 0, "micro_available": 0, "missing": 0, "duplicates": 0, "errors": 0,
+                 "boundary_diagnostics": 0}
+        for part in self.manifest.get("parts", []):
+            if part.get("observation_segment_id") != self.identity.segment_id:
+                continue
+            path = self.root / str(part["path"])
+            if not path.exists():
+                continue
+            for line in path.read_text(encoding="utf-8").splitlines():
+                record = json.loads(line)
+                if part.get("kind") == "observations":
+                    stats["micro_total"] += 1
+                    if _mapping(record.get("microstructure")).get("microstructure_status") == "AVAILABLE":
+                        stats["micro_available"] += 1
+                elif part.get("kind") == "diagnostics":
+                    stats["boundary_diagnostics"] += 1
+                    stats["missing"] += len(record.get("missing_symbols") or [])
+                    stats["duplicates"] += len(record.get("duplicate_symbols") or [])
+                    stats["errors"] += len(record.get("error_codes") or [])
+        return stats
+
 
 @dataclass(slots=True)
 class CollectorConfig:
@@ -532,19 +554,20 @@ class ProspectiveCalibrationCollector:
         self.store = AppendOnlyStore(config.output_directory, config.identity, max_part_bytes=config.max_part_bytes)
         self.started_at = iso_utc()
         self.stop_requested = False
-        self.errors_count = 0
-        self.missing_records = 0
-        self.duplicate_records = 0
-        self.micro_available = 0
-        self.micro_total = 0
-        self.boundary_diagnostics = 0
+        stats = self.store.segment_stats()
+        self.errors_count = stats["errors"]
+        self.missing_records = stats["missing"]
+        self.duplicate_records = stats["duplicates"]
+        self.micro_available = stats["micro_available"]
+        self.micro_total = stats["micro_total"]
+        self.boundary_diagnostics = stats["boundary_diagnostics"]
         self.boundaries: set[int] = set()
         self.runtime_daemon_instance_id: str | None = None
         checkpoint = self.store.load_checkpoint()
         if checkpoint:
             self.last_seen_boundary = int(checkpoint.get("last_seen_boundary") or 0)
             self.last_persisted_boundary = int(checkpoint.get("last_persisted_boundary") or 0)
-            self.records_written = int(checkpoint.get("records_written") or len(self.store.observation_ids))
+            self.records_written = len(self.store.observation_ids)
             self.boundaries = set(int(value) for value in checkpoint.get("persisted_boundaries", []))
             self.runtime_daemon_instance_id = checkpoint.get("runtime_daemon_instance_id")
         else:
