@@ -17,6 +17,7 @@ from app.engine_strategy.strategy_reason_codes import StrategyReasonCode
 from app.engine_strategy.strategy_rules import (
     evaluate_strategy_rules,
     strategy_score_diagnostics,
+    strategy_gate_diagnostics,
     strategy_shadow_threshold_cohorts,
 )
 from app.engine_strategy.strategy_status import StrategyStatus
@@ -34,6 +35,7 @@ class StrategyFilter:
         context = StrategyContext.from_setup_candidate(setup_candidate)
         result = evaluate_strategy_rules(context, self.config)
         score_diagnostics = strategy_score_diagnostics(context, self.config)
+        gate_diagnostics = strategy_gate_diagnostics(result)
         conflict_trace = []
         for warning in context.quality_warnings:
             conflict_trace.append({
@@ -88,6 +90,17 @@ class StrategyFilter:
             conflict_trace=conflict_trace,
             strategy_raw_score=score_diagnostics["strategy_raw_score"],
             strategy_penalty_total=score_diagnostics["strategy_penalty_total"],
+            strategy_penalties=score_diagnostics["strategy_penalties"],
+            strategy_pre_cap_score=score_diagnostics["strategy_pre_cap_score"],
+            strategy_cap_applied=score_diagnostics["strategy_cap_applied"],
+            strategy_cap_type=score_diagnostics["strategy_cap_type"],
+            strategy_cap_reason=score_diagnostics["strategy_cap_reason"],
+            strategy_cap_value=score_diagnostics["strategy_cap_value"],
+            strategy_post_cap_score=score_diagnostics["strategy_post_cap_score"],
+            strategy_caps=score_diagnostics["strategy_caps"],
+            strategy_gate_results=gate_diagnostics["strategy_gate_results"],
+            strategy_failed_gate=gate_diagnostics["strategy_failed_gate"],
+            strategy_failed_gate_reason=gate_diagnostics["strategy_failed_gate_reason"],
             strategy_final_score=score_diagnostics["strategy_final_score"],
             strategy_margin_to_threshold=score_diagnostics["strategy_margin_to_threshold"],
             shadow_quality_cohorts=(

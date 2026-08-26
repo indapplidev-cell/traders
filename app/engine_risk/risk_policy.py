@@ -43,6 +43,13 @@ class RiskPolicy:
         self.runtime_parameters = runtime_parameters
 
     def evaluate(self, source: StrategyDecision) -> RiskDecision:
+        return self._evaluate(source, reserve=True)
+
+    def evaluate_shadow(self, source: StrategyDecision) -> RiskDecision:
+        """Run the exact pre-risk rules without reserving research quota."""
+        return self._evaluate(source, reserve=False)
+
+    def _evaluate(self, source: StrategyDecision, *, reserve: bool) -> RiskDecision:
         if not isinstance(source, StrategyDecision):
             raise TypeError("source must be a StrategyDecision")
         safety = self._safety_reasons(source)
@@ -107,7 +114,11 @@ class RiskPolicy:
             )
 
         identity = source.decision_id
-        allowed, context = self.limits.check_and_reserve(
+        check = (
+            self.limits.check_and_reserve if reserve
+            else self.limits.check_without_reservation
+        )
+        allowed, context = check(
             identity=identity, symbol=source.symbol, direction=source.direction_hint,
             trade_profile_id=str(
                 getattr(self.runtime_parameters, "profile_id", "trade-15m-v1")

@@ -71,6 +71,17 @@ class StrategyDecision:
     conflict_trace: list[dict[str, Any]] = field(default_factory=list)
     strategy_raw_score: float | None = None
     strategy_penalty_total: float | None = None
+    strategy_penalties: list[dict[str, Any]] = field(default_factory=list)
+    strategy_pre_cap_score: float | None = None
+    strategy_cap_applied: bool = False
+    strategy_cap_type: str | None = None
+    strategy_cap_reason: str | None = None
+    strategy_cap_value: float | None = None
+    strategy_post_cap_score: float | None = None
+    strategy_caps: list[dict[str, Any]] = field(default_factory=list)
+    strategy_gate_results: list[dict[str, Any]] = field(default_factory=list)
+    strategy_failed_gate: str | None = None
+    strategy_failed_gate_reason: str | None = None
     strategy_final_score: float | None = None
     strategy_margin_to_threshold: float | None = None
     shadow_quality_cohorts: dict[str, bool | float] = field(default_factory=dict)

@@ -175,9 +175,15 @@ def _source_row(run: OnlinePipelineRun, result: OnlinePipelineResultRow | None) 
     }
 
 
-def _first_rejection(trace: Mapping[str, str], reasons: list[str]) -> tuple[str | None, str | None]:
+def _first_rejection(
+    trace: Mapping[str, str], stage_reasons: Mapping[str, str | None],
+    reasons: list[str],
+) -> tuple[str | None, str | None]:
     stage = next((name for name in STAGES if trace.get(name) in {"REJECTED", "ERROR", "DEFERRED"}), None)
-    return stage, reasons[0] if reasons else None
+    if stage is None:
+        return None, None
+    terminal = _safe_reason(stage_reasons.get(stage))
+    return stage, terminal or (reasons[0] if reasons else None)
 
 
 def _trace_status(stage: str, value: str, paper: Mapping[str, object]) -> str:
@@ -249,6 +255,13 @@ def _canonical_trace(
             status = "APPROVED"
         elif legacy_status in {"DEFERRED", "PENDING"}:
             status = "WAIT"
+        elif name == "paper_plan" and (
+            _mapping(source.get("strategy")).get("decision_status")
+            != "ALLOW_RESEARCH_TRADE_PLAN"
+            or _mapping(source.get("risk")).get("risk_status")
+            not in {"RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED", "APPROVED"}
+        ):
+            status = "NOT_REACHED"
         elif name == "paper_plan" and legacy_status == "REJECTED":
             status = "NO_PLAN"
         elif legacy_status in {"REJECTED", "ERROR"}:
@@ -288,7 +301,6 @@ def build_export_record(
     diagnostic = _mapping(_mapping(paper.get("paper_context")).get("scalping_geometry_diagnostics"))
     trace, meta = _stage_trace(run, result, generated_at_ms)
     reasons = _reason_codes(run, result)
-    first_stage, first_reason = _first_rejection(trace, reasons)
     module_reason_stage = {
         "analysis": "ANALYSIS", "setup": "STRUCTURAL_SETUP", "strategy": "STRATEGY_ELIGIBLE",
         "risk": "RISK_APPROVED", "paper": "PAPER_TRADE_PLAN",
@@ -300,10 +312,15 @@ def build_export_record(
             items = values if isinstance(values, (list, tuple)) else (values,)
             if stage is not None:
                 stage_reasons[stage] = next((reason for item in items if (reason := _safe_reason(item))), None)
+    first_stage, first_reason = _first_rejection(trace, stage_reasons, reasons)
     if first_stage is not None and first_reason is not None:
         stage_reasons.setdefault(first_stage, first_reason)
     runtime = resolve_runtime_parameters(run.trade_profile_id)
     planned = _mapping(paper.get("shadow_plan")) or paper
+    canonical_trace = _canonical_trace(
+        source, trace, stage_reasons, diagnostic, outcome
+    )
+    paper_trace_status = _mapping(canonical_trace.get("paper_plan")).get("status")
     return {
         "provenance": {
             "export_generated_at_utc": datetime.fromtimestamp(generated_at_ms / 1000, timezone.utc).isoformat(),
@@ -329,7 +346,7 @@ def build_export_record(
             "volume_state": analysis.get("volume_state"),
         },
         "multi_tf_closed_until_ms": _closed_context(result),
-        "funnel_trace": _canonical_trace(source, trace, stage_reasons, diagnostic, outcome),
+        "funnel_trace": canonical_trace,
         "setup": {
             "setup_type": setup.get("setup_type"), "status": setup.get("setup_status") or setup.get("status"),
             "direction": setup.get("direction_hint"), "quality": setup.get("setup_quality"),
@@ -342,7 +359,8 @@ def build_export_record(
             "swing_level": setup.get("swing_level"),
         },
         "strategy": {
-            "status": strategy.get("decision_status"), "reason": reasons[0] if reasons else None,
+            "status": strategy.get("decision_status"),
+            "reason": stage_reasons.get("STRATEGY_ELIGIBLE"),
             "eligibility": meta.get("validity_current"), "selector_status": strategy.get("selector_status"),
             "selector_rank": strategy.get("selector_rank"), "selector_winner": strategy.get("selector_winner"),
             "strategy_quality_score": strategy.get("strategy_score"),
@@ -355,9 +373,28 @@ def build_export_record(
             "conflict_trace": strategy.get("conflict_trace") or [],
             "strategy_raw_score": strategy.get("strategy_raw_score"),
             "strategy_penalty_total": strategy.get("strategy_penalty_total"),
+            "strategy_penalties": strategy.get("strategy_penalties") or [],
+            "strategy_pre_cap_score": strategy.get("strategy_pre_cap_score"),
+            "strategy_cap_applied": strategy.get("strategy_cap_applied"),
+            "strategy_cap_type": strategy.get("strategy_cap_type"),
+            "strategy_cap_reason": strategy.get("strategy_cap_reason"),
+            "strategy_cap_value": strategy.get("strategy_cap_value"),
+            "strategy_post_cap_score": strategy.get("strategy_post_cap_score"),
+            "strategy_caps": strategy.get("strategy_caps") or [],
+            "strategy_gate_results": strategy.get("strategy_gate_results") or [],
+            "strategy_failed_gate": strategy.get("strategy_failed_gate"),
+            "strategy_failed_gate_reason": strategy.get("strategy_failed_gate_reason"),
             "strategy_final_score": strategy.get("strategy_final_score"),
             "strategy_margin_to_threshold": strategy.get("strategy_margin_to_threshold"),
             "shadow_quality_cohorts": strategy.get("shadow_quality_cohorts") or {},
+            "shadow_no_cap_strategy_pass": _mapping(strategy.get("shadow_forensic")).get("strategy_pass"),
+            "shadow_no_cap_geometry_pass": _mapping(strategy.get("shadow_forensic")).get("geometry_pass"),
+            "shadow_no_cap_cost_pass": _mapping(strategy.get("shadow_forensic")).get("cost_pass"),
+            "shadow_no_cap_risk_pass": _mapping(strategy.get("shadow_forensic")).get("risk_pass"),
+            "shadow_no_cap_rr_1_0_pass": _mapping(strategy.get("shadow_forensic")).get("rr_1_0_pass"),
+            "shadow_no_cap_rr_1_2_pass": _mapping(strategy.get("shadow_forensic")).get("rr_1_2_pass"),
+            "shadow_no_cap_rr_1_5_pass": _mapping(strategy.get("shadow_forensic")).get("rr_1_5_pass"),
+            "shadow_no_cap_paper_plan_eligible": _mapping(strategy.get("shadow_forensic")).get("paper_plan_eligible"),
         },
         "risk": {
             "status": risk.get("risk_status"), "reason": reasons[0] if reasons else None,
@@ -415,7 +452,16 @@ def build_export_record(
             "planned_target": planned.get("planned_target") or legacy.get("target"),
             "planned_rr": planned.get("planned_rr") or legacy.get("gross_rr"), "net_rr": legacy.get("net_rr"),
             "valid_until_ms": planned.get("valid_until_ms") or meta.get("valid_until_ms"),
-            "paper_no_plan_reason": None if legacy.get("plan_status") == "PAPER_PLAN_READY" else first_reason,
+            "paper_plan_status": (
+                "PAPER_PLAN_READY" if legacy.get("plan_status") == "PAPER_PLAN_READY"
+                else "NO_PLAN" if paper_trace_status == "NO_PLAN"
+                else "NOT_REACHED"
+            ),
+            "paper_no_plan_reason": (
+                stage_reasons.get("PAPER_TRADE_PLAN")
+                if paper_trace_status == "NO_PLAN"
+                else None
+            ),
             "command_id": outcome.get("command_id"), "position_id": outcome.get("position_id"),
             "entry_time_utc": _json_scalar(outcome.get("entry_time_utc")), "exit_time_utc": _json_scalar(outcome.get("exit_time_utc")),
             "holding_time_seconds": outcome.get("holding_time_seconds"), "exit_reason": outcome.get("exit_reason"),
@@ -423,6 +469,8 @@ def build_export_record(
             "slippage": None, "mfe_bps": None, "mae_bps": None,
         },
         "first_rejection_stage": first_stage, "first_rejection_reason_code": first_reason,
+        "analysis_evidence": list(_mapping(source.get("module_reasons")).get("analysis") or []),
+        "strategy_evidence": list(_mapping(source.get("module_reasons")).get("strategy") or []),
         "raw_reason_codes": reasons,
     }
 

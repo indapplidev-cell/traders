@@ -157,6 +157,36 @@ def test_secret_like_raw_reason_is_dropped():
     assert "do-not-export" not in rendered and "bearer hidden" not in rendered
 
 
+def test_strategy_terminal_reason_and_paper_not_reached_are_not_analysis_evidence():
+    run, result = _pair(profile="trade-5m-v1")
+    run.strategy_status = "REJECT"
+    run.risk_status = "REJECT"
+    run.paper_status = "NO_PLAN"
+    run.final_reason = None
+    result.strategy_payload_json = {
+        "decision_status": "REJECT", "direction_hint": "BULLISH",
+        "rejection_reasons": ["STRATEGY_REJECT_WEAK_QUALITY"],
+    }
+    result.risk_payload_json = {"risk_status": "REJECT"}
+    result.paper_payload_json = {
+        "paper_status": "NO_PLAN",
+        "runtime_parameter_set_id": "trade-5m-v1-runtime-v1-testhash",
+    }
+    result.module_reasons_json = {
+        "analysis": ["LONG_LOWER_SHADOW_REJECTION"],
+        "strategy": ["STRATEGY_REJECT_WEAK_QUALITY"],
+        "risk": ["RISK_REJECT_SOURCE_REJECTED"],
+        "paper": ["PAPER_NO_PLAN_SOURCE_NO_DECISION"],
+    }
+    row = json.loads(_get(_client(ExportRepo(((run, result),))), trade_profile_id="trade-5m-v1").text)
+    assert row["first_rejection_stage"] == "STRATEGY_ELIGIBLE"
+    assert row["first_rejection_reason_code"] == "STRATEGY_REJECT_WEAK_QUALITY"
+    assert row["analysis_evidence"] == ["LONG_LOWER_SHADOW_REJECTION"]
+    assert row["strategy_evidence"] == ["STRATEGY_REJECT_WEAK_QUALITY"]
+    assert row["paper_outcome"]["paper_plan_status"] == "NOT_REACHED"
+    assert row["paper_outcome"]["paper_no_plan_reason"] is None
+
+
 def test_repository_uses_one_bounded_statement_and_no_profile_mixing():
     pair = _pair(profile="trade-5m-v1")
 
