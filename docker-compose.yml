@@ -115,8 +115,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      online-orchestrator-5m:
-        condition: service_started
     command: >
       sh -c 'export DATABASE_URL="postgresql://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
       exec python scripts/scalping_prospective_collector.py
