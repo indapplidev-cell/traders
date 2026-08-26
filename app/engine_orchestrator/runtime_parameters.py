@@ -61,6 +61,9 @@ class RuntimeProfileParameters:
     execution_entry_ttl_seconds: int
     execution_entry_ttl_shadow_cohorts_seconds: tuple[int, ...]
     execution_max_price_drift_bps: float
+    exit_time_stop_minutes: int
+    exit_time_stop_shadow_cohorts_minutes: tuple[int, ...]
+    exit_adaptive_rules_production_enabled: bool
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -132,6 +135,10 @@ class RuntimeProfileParameters:
             raise ValueError("invalid entry TTL cohorts")
         if self.execution_entry_ttl_seconds not in self.execution_entry_ttl_shadow_cohorts_seconds:
             raise ValueError("production entry TTL must use a declared cohort")
+        if self.exit_time_stop_shadow_cohorts_minutes != (15, 30, 45):
+            raise ValueError("invalid time-stop cohorts")
+        if self.exit_time_stop_minutes not in self.exit_time_stop_shadow_cohorts_minutes:
+            raise ValueError("time stop must use a declared cohort")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -209,6 +216,9 @@ class RuntimeProfileParameters:
                 "execution_entry_ttl_seconds",
                 "execution_entry_ttl_shadow_cohorts_seconds",
                 "execution_max_price_drift_bps",
+                "exit_time_stop_minutes",
+                "exit_time_stop_shadow_cohorts_minutes",
+                "exit_adaptive_rules_production_enabled",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -308,6 +318,9 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         execution_entry_ttl_seconds=60,
         execution_entry_ttl_shadow_cohorts_seconds=(30, 60, 120),
         execution_max_price_drift_bps=10.0,
+        exit_time_stop_minutes=30,
+        exit_time_stop_shadow_cohorts_minutes=(15, 30, 45),
+        exit_adaptive_rules_production_enabled=False,
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(
