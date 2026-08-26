@@ -108,6 +108,30 @@ services:
     secrets:
       - traders_shared_db_password
 
+  scalping-calibration-collector:
+    build: .
+    profiles: ["calibration"]
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      online-orchestrator-5m:
+        condition: service_started
+    command: >
+      sh -c 'export DATABASE_URL="postgresql://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
+      exec python scripts/scalping_prospective_collector.py
+      --output-dir reports/calibration/scalping-prospective
+      --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
+      --parameter-set-id trade-5m-v1-runtime-v1-87b8a882d06b3539
+      --runtime-source-commit 3aad38787a0ccb0af760a0ac7796913d965f2368
+      --runtime-artifact-id sha256:728e369dfe3b7983d44eea2e4cac6304fc29ed04f25122237baca0b3e5883ea8
+      --poll-seconds 10
+      --boundary-wait-seconds 240'
+    volumes:
+      - ./reports:/service/reports
+    secrets:
+      - traders_shared_db_password
+
 volumes:
   traders_ml_postgres_data:
 

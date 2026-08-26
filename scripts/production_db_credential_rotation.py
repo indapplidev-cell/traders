@@ -41,6 +41,7 @@ AFFECTED = (
     ("market-data-sync", "traders-ml-market-data-sync-1", ()),
     ("online-orchestrator-5m", "traders-ml-online-orchestrator-5m-1", ("orchestrator-5m",)),
     ("online-orchestrator", "traders-ml-online-orchestrator-1", ("orchestrator",)),
+    ("scalping-calibration-collector", "traders-ml-scalping-calibration-collector-1", ("calibration",)),
 )
 REPORT = ROOT / "reports" / "security" / "production_db_credential_rotation.json"
 PREPARED_BINDING = BINDING.with_name(BINDING.name + ".next")

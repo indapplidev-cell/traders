@@ -18,8 +18,8 @@ def test_shared_clients_use_one_protected_password_file_not_config_env() -> None
     assert "DATABASE_URL: ${" not in compose
     for service, _, _ in AFFECTED:
         assert f"  {service}:" in compose
-    assert compose.count("      - traders_shared_db_password") == 4
-    assert compose.count("/run/secrets/traders_shared_db_password") == 4
+    assert compose.count("      - traders_shared_db_password") == len(AFFECTED) + 1
+    assert compose.count("/run/secrets/traders_shared_db_password") == len(AFFECTED) + 1
 
 
 def test_postgres_uses_password_file_contract() -> None:

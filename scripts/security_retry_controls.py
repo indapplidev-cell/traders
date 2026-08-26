@@ -54,6 +54,7 @@ _APPROVED_SHARED_DB_SECRET_REFERENCES = {
             "market-data-sync",
             "online-orchestrator",
             "online-orchestrator-5m",
+            "scalping-calibration-collector",
         )
     ),
 }
