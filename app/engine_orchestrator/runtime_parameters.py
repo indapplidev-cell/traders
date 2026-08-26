@@ -51,6 +51,7 @@ class RuntimeProfileParameters:
     economics_minimum_net_edge_bps: float
     economics_minimum_net_edge_shadow_cohorts_bps: tuple[float, ...]
     economics_max_depth_impact_bps: float
+    rr_shadow_cohorts: tuple[float, ...]
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
@@ -108,6 +109,8 @@ class RuntimeProfileParameters:
             raise ValueError("invalid minimum-target cohorts")
         if self.economics_minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
             raise ValueError("invalid minimum net-edge cohorts")
+        if self.rr_shadow_cohorts != (1.0, 1.2, 1.5):
+            raise ValueError("invalid RR cohorts")
         positive = (
             self.analysis_history_candles,
             self.atr_lookback_candles,
@@ -175,6 +178,7 @@ class RuntimeProfileParameters:
                 "economics_minimum_net_edge_bps",
                 "economics_minimum_net_edge_shadow_cohorts_bps",
                 "economics_max_depth_impact_bps",
+                "rr_shadow_cohorts",
             ):
                 identity.pop(name)
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
@@ -264,6 +268,7 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         economics_minimum_net_edge_bps=1.0,
         economics_minimum_net_edge_shadow_cohorts_bps=(10.0, 15.0, 20.0),
         economics_max_depth_impact_bps=20.0,
+        rr_shadow_cohorts=(1.0, 1.2, 1.5),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(

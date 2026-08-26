@@ -24,9 +24,6 @@ TARGET_PRIORITY = {
     "HIGHER_TF": 4,  # compatibility alias; timeframe resolves the exact tier
     "1H": 5,
 }
-RR_COHORTS = (1.0, 1.2, 1.5)
-
-
 @dataclass(frozen=True, slots=True)
 class CausalTarget:
     price: float
@@ -168,6 +165,7 @@ class ShadowGeometryConfig:
     production_rr_floor: float = 1.5
     max_depth_impact_bps: float = 20.0
     minimum_net_edge_shadow_cohorts_bps: tuple[float, ...] = (10.0, 15.0, 20.0)
+    rr_shadow_cohorts: tuple[float, ...] = (1.0, 1.2, 1.5)
 
     def __post_init__(self) -> None:
         if self.atr_buffer_multiplier not in {0.25, 0.5, 0.75, 1.0}:
@@ -182,6 +180,8 @@ class ShadowGeometryConfig:
             raise ValueError("production RR floor must remain 1.5")
         if self.minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
             raise ValueError("minimum net-edge cohorts must be 10/15/20 bps")
+        if self.rr_shadow_cohorts != (1.0, 1.2, 1.5):
+            raise ValueError("RR cohorts must be 1.0/1.2/1.5")
 
 
 @dataclass(slots=True)
@@ -486,9 +486,12 @@ def evaluate_scalping_shadow(
             )
         )
         result.economic_gate_pass = edge >= config.minimum_positive_edge_bps
-        result.rr_cohorts_gross = {f"{rr:.2f}": gross_rr >= rr for rr in RR_COHORTS}
+        result.rr_cohorts_gross = {
+            f"{rr:.2f}": gross_rr >= rr for rr in config.rr_shadow_cohorts
+        }
         result.rr_cohorts_net = {
-            f"{rr:.2f}": net_rr is not None and net_rr >= rr for rr in RR_COHORTS
+            f"{rr:.2f}": net_rr is not None and net_rr >= rr
+            for rr in config.rr_shadow_cohorts
         }
         result.net_edge_cohorts = {
             f"{threshold:.2f}": edge > threshold
@@ -544,8 +547,12 @@ def evaluate_scalping_shadow(
         result.effective_risk_bps / (result.effective_risk_bps + result.net_reward_bps), 8
     )
     result.economic_gate_pass = True
-    result.rr_cohorts_gross = {f"{rr:.2f}": result.gross_rr >= rr for rr in RR_COHORTS}
-    result.rr_cohorts_net = {f"{rr:.2f}": result.net_rr >= rr for rr in RR_COHORTS}
+    result.rr_cohorts_gross = {
+        f"{rr:.2f}": result.gross_rr >= rr for rr in config.rr_shadow_cohorts
+    }
+    result.rr_cohorts_net = {
+        f"{rr:.2f}": result.net_rr >= rr for rr in config.rr_shadow_cohorts
+    }
     if result.gross_rr < config.production_rr_floor or result.net_rr < config.production_rr_floor:
         rr_reason = (
             "BELOW_GROSS_RR_POLICY"

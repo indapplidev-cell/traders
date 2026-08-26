@@ -364,6 +364,7 @@ def production_parameters():
         economics_minimum_net_edge_bps=1.0,
         economics_minimum_net_edge_shadow_cohorts_bps=(10.0, 15.0, 20.0),
         economics_max_depth_impact_bps=20.0,
+        rr_shadow_cohorts=(1.0, 1.2, 1.5),
     )
 
 

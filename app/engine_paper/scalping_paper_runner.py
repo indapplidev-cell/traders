@@ -122,6 +122,7 @@ class ScalpingPaperRunner(PaperRunner):
             minimum_net_edge_shadow_cohorts_bps=tuple(
                 runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
             ),
+            rr_shadow_cohorts=tuple(runtime_parameters.rr_shadow_cohorts),
         )
 
     def _process(self, source: RiskDecision):
