@@ -121,8 +121,8 @@ services:
       --output-dir reports/calibration/scalping-prospective
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
       --parameter-set-id trade-5m-v1-runtime-v1-87b8a882d06b3539
-      --runtime-source-commit 3aad38787a0ccb0af760a0ac7796913d965f2368
-      --runtime-artifact-id sha256:728e369dfe3b7983d44eea2e4cac6304fc29ed04f25122237baca0b3e5883ea8
+      --runtime-source-commit c30dd05ab55a102f787be3e9ec1fac6c78d71619
+      --runtime-artifact-id sha256:cfaa97127236222cef0476acc099b10257f2abaad9ca3ca82890b24746db81c6
       --poll-seconds 10
       --boundary-wait-seconds 240'
     volumes:
