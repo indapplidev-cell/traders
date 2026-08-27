@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2a85c6603c03b93fdcb13221514ee745c3dff309
+STATUS_AS_OF_COMMIT = 0e8188d3b292ccf2d82b9cea219e59af1b9dc56b
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-27T04:30:25Z
-RECONCILED_BY_TASK = TRADERS_SERVER_5M_FUNNEL_READONLY_MEMORY_REMEDIATION_01
-FILES_CHANGED = app/server_api/trading_funnel.py, tests/server_api/test_trading_funnel.py, FINAL_DECISION.md, docs/audits/TRADERS_SERVER_5M_FUNNEL_READONLY_MEMORY_REMEDIATION_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-27T14:56:53Z
+RECONCILED_BY_TASK = TRADERS_DESKTOP_24H_DUAL_PROFILE_FUNNEL_EXPORT_FAILURE_DIAGNOSIS_01
+FILES_CHANGED = FINAL_DECISION.md, docs/audits/TRADERS_DESKTOP_24H_DUAL_PROFILE_FUNNEL_EXPORT_FAILURE_DIAGNOSIS_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = 5M_FUNNEL_TIMEOUT_CLOSED_COLD4_48S_EXPIRED4_01S_READONLY_HEALTHY_RESTART0_MEMORY429_9_OF512_15M0_59S_PROTECTED_CONTAINER_IDS_UNCHANGED_RESTART0_COLLECTOR_RUNNING_SEGMENT_A724_BOUNDARIES81_RECORDS810_MISSING0_DUPLICATES0_ERRORS0_FUTURE0_OWNER1_CONTROL6_LIVE_OFF_TRADING0_PROFITABILITY_PENDING
+STATUS_CONFIDENCE = DUAL_PROFILE_24H_DESKTOP_EXPORT_BLOCKED_PAGE200_5M3515001B_15M3991244B_CLIENT_LIMIT2000000B_EXACT_CLIENT_PROVIDER_CONTRACT_ERROR_PAGE50_CANARY_PASS_READONLY_HEALTHY_RESTART0_CONTROL6_LIVE_OFF_TRADING0_SCALPING_CALIBRATION_CONTINUES_AUTONOMOUSLY
 
 # Состояние проекта traders-ml
 
@@ -24,10 +24,29 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_IMAGE6CF2399B_CONTAINERA1D46644_HEALTHY_RESTART0_SOURCEE07185F_ON0018_CONTROL_IMAGEA4664FF5_CONTAINERE2AD3A92_HEALTHY_RESTART0_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_9CAF8512_IMPLEMENTED_AND_DEPLOYED_28_GET_0_WRITE_ARBITRARY_RANGE_STABLE_SNAPSHOT_KEYSET_FUNNEL_EXPORT
-CURRENT_STAGE = SCALPING_CALIBRATION_OBSERVATION_IN_PROGRESS_AUTONOMOUS
-CURRENT_BLOCKER = NONE
+CURRENT_STAGE = DUAL_PROFILE_FUNNEL_EXPORT_BYTE_BUDGET_AND_TIMEOUT_CONTRACT_REMEDIATION_REQUIRED
+CURRENT_BLOCKER = PRODUCTION_DESKTOP_24H_EXPORT_FAILS_BOTH_5M_AND15M_PAGE200_EXCEEDS_CLIENT_2000000_BYTE_LIMIT
 CURRENT_PREREQUISITE = WAIT_FOR_288_OR_864_HOMOGENEOUS_5M_BOUNDARIES_AND_SUFFICIENT_COMPLETED_PAPER_EQUIVALENT_OUTCOMES_BEFORE_OFFLINE_REPLAY
 BACKGROUND_TIMED_GATE = COLLECTOR_RUNNING_SEGMENT_A724_BOUNDARIES81_OF288_OUTCOMES0_OF30_RECORDS810_EXACT10_MISSING0_DUPLICATE0_ERROR0_FUTURE0_OWNER1_CONTROL_GENERATION6_LIVE_OFF
+```
+
+## Desktop 24h dual-profile Funnel export failure diagnosis 01
+
+```text
+TASK = TRADERS_DESKTOP_24H_DUAL_PROFILE_FUNNEL_EXPORT_FAILURE_DIAGNOSIS_01
+RESULT = FAIL_PRODUCTION_DESKTOP_EXPORT_ACCEPTANCE_BLOCKED
+PROJECT_STATE_AUDIT_COMMIT = 0e8188d3b292ccf2d82b9cea219e59af1b9dc56b
+ROOT_CAUSE = SERVER_PAGE200_VALID_JSON_EXCEEDS_CLIENT_MAX_RESPONSE_BYTES2000000_BEFORE_PAGE_PARSE
+SCALPING_5M = HTTP200_SCHEMA_PROFILE_MATCH_ROWS200_3515001B_OVER1515001B_EXACT_CLIENT_ProviderContractError
+TRADE_15M = HTTP200_SCHEMA_PROFILE_MATCH_ROWS200_3991244B_OVER1991244B_EXACT_CLIENT_ProviderContractError
+SCREENSHOT_CORRELATION = 5M_REQUEST_FROM14_46_23_657Z_SERVER_HTTP200_AT14_46_41_728Z_CLIENT_VISIBLE_errors_contract
+SECONDARY_TIMEOUT_RISK = EXPORT_FIXED_PAGE_TIMEOUT10S_VS_SCREENSHOT_COLD_SERVER18_071S_WHILE_GENERAL_CLIENT_TIMEOUT60S
+BOUNDED_DIAGNOSTIC = PAGE50_5M_PASS1_188S_15M_PASS0_937S_NOT_FULL_EXPORT_ACCEPTANCE
+READONLY = IMAGE6CF2399B_CONTAINERA1D46644_HEALTHY_RESTART0
+SAFETY = IMPLEMENTATION0_DEPLOYMENT0_SCHEMA0_BUSINESS0_TRADING0_LIVE_DISABLED
+BACKGROUND = SCALPING_CALIBRATION_CONTINUES_AUTONOMOUSLY_UNCHANGED
+EVIDENCE = docs/audits/TRADERS_DESKTOP_24H_DUAL_PROFILE_FUNNEL_EXPORT_FAILURE_DIAGNOSIS_01_FINAL.md
+NEXT_ACTION = REMEDIATE_CROSS_REPOSITORY_PAGE_BYTE_BUDGET_AND_PAGE_TIMEOUT_THEN_REAL_24H_5M_AND15M_DESKTOP_SAVE_ACCEPTANCE
 ```
 
 ## Server 5m Funnel Readonly memory remediation 01
@@ -5428,8 +5447,8 @@ LIVE.
 | Online analytics/paper pipeline | ≈99% deployed / Scalping calibration observation autonomous | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. The passive restart-safe collector is running with one owner and one homogeneous segment; startup acceptance persisted 3 exact10 5m boundaries/30 records with zero missing, duplicate or future-leakage records while 15m remained exact10 and unchanged. Profitability and parameter promotion remain pending |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS on schema 0018 | One canonical ACK owner is healthy; the existing lineage is unchanged and contiguous with `wal_ready=true`, `pitr_ready=true`, no physical gap, and backlog/pending/unresolved `0/0/0`. The schema-compatible retry verified and atomically ACKed 144 WAL objects |
-| Readonly Server API | Healthy dual-profile image on production 0018 with bounded Funnel export | Image `sha256:24ee3ab7...` has exact source `2ca5e9c8...`, health PASS, restart 0, 28 GET and zero write routes. JSONL, CSV, summary JSON and summary Markdown are bounded to 24h/2880 rows with no N+1 or write path |
-| Desktop Readonly client | Production Funnel export and global health acceptance PASS | The active-profile export dialog supports 15m/5m, all required periods/symbols/formats, asynchronous off-main-thread download, overlap prevention and standard atomic save with server-generated RU/EN strings |
+| Readonly Server API | Healthy dual-profile image on production 0018; desktop export contract blocked | Image `sha256:6cf2399b...` is healthy with restart 0, 28 GET and zero write routes. Export pages are bounded by rows, but current 200-row payloads are 3.52 MB for 5m and 3.99 MB for 15m, above the desktop 2.00 MB response ceiling |
+| Desktop Readonly client | Export UI implemented / production 24h dual-profile acceptance FAIL | The active-profile export dialog supports 15m/5m and asynchronous atomic save, but the exact production client rejects the first 200-row page for both profiles as `ProviderContractError`; no 24h file is saved |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy on schema 0018 | Readiness and all thirteen PAPER GET routes accept reflected schema 0018; shared account remains 100 USDT and command/order/fill/position rows remain zero |
@@ -5444,7 +5463,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_SCALPING_OFFLINE_COHORT_REPLAY_AND_PARAMETER_CALIBRATION_ANALYSIS_01_AFTER_SUFFICIENT_HOMOGENEOUS_GATE
+RECOMMENDED_NEXT_TASK = TRADERS_DESKTOP_DUAL_PROFILE_FUNNEL_EXPORT_BYTE_BUDGET_AND_TIMEOUT_CONTRACT_REMEDIATION_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
