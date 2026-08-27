@@ -7,7 +7,9 @@ import pytest
 
 from app.engine_observation.scalping_prospective_collector import (
     AppendOnlyStore,
+    ANALYSIS_SEMANTICS_VERSION,
     CollectorConfig,
+    DECISION_SEMANTICS_VERSION,
     HomogeneityIdentity,
     ProspectiveCalibrationCollector,
     evaluate_outcome,
@@ -92,7 +94,7 @@ def row(symbol: str, boundary: int, result_id: int = 1, *, candidate: bool = Tru
         "symbol": symbol, "setup_type": "SCALP_BREAKOUT", "direction_hint": "BULLISH",
         "opportunity_id": f"opportunity:{symbol}:{boundary}", "quality_score": 75,
         "context": {
-            "scalping": {"semantics_version": "scalping-analysis-v1"},
+            "scalping": {"semantics_version": ANALYSIS_SEMANTICS_VERSION},
             "confirmation_close": 100, "atr_value": 1,
             "causal_target_candidates": [{"price": 102, "source_type": "LOCAL_5M"}],
         },
@@ -210,6 +212,12 @@ def test_semantic_change_starts_new_segment(tmp_path):
     changed = AppendOnlyStore(tmp_path, identity("sha256:" + "8" * 64))
     assert first.identity.segment_id != changed.identity.segment_id
     assert len(json.loads((tmp_path / "manifest.json").read_text())["segments"]) == 2
+
+
+def test_current_risk_contract_semantics_has_an_explicit_segment_identity():
+    current = identity()
+    assert current.decision_semantics_version == "scalping-risk-type-contract-v2"
+    assert current.segment_id.startswith("scalping-calibration-segment-")
 
 
 def test_boundary_append_checkpoint_missing_and_crash_replay_dedupe(tmp_path):

@@ -26,7 +26,8 @@ TRADE_MODE = "SCALPING"
 COLLECTOR_SCHEMA_REVISION = "scalping-prospective-collector-v1"
 OBSERVATION_SCHEMA_REVISION = "scalping-calibration-observation-v1"
 OUTCOME_SCHEMA_REVISION = "scalping-calibration-outcome-v1"
-DECISION_SEMANTICS_VERSION = "scalping-analysis-v1"
+ANALYSIS_SEMANTICS_VERSION = "scalping-analysis-v1"
+DECISION_SEMANTICS_VERSION = "scalping-risk-type-contract-v2"
 OWNER_NAMESPACE = 1_937_830_411
 OWNER_KEY = 527_115_001
 DEFAULT_MAX_PART_BYTES = 64 * 1024 * 1024
@@ -589,9 +590,13 @@ class ProspectiveCalibrationCollector:
         parameter_id = str(_first(paper, "runtime_parameter_set_id") or _first(strategy, "runtime_parameter_set_id") or _first(analysis, "runtime_parameter_set_id") or "")
         if parameter_id != self.config.parameter_set_id:
             raise RuntimeError("RUNTIME_PARAMETER_IDENTITY_CHANGED")
-        semantic = str(_mapping(setup_context.get("scalping")).get("semantics_version") or DECISION_SEMANTICS_VERSION)
-        if semantic != self.config.identity.decision_semantics_version:
-            raise RuntimeError("DECISION_SEMANTICS_IDENTITY_CHANGED")
+        analysis_semantic = str(
+            _mapping(setup_context.get("scalping")).get("semantics_version")
+            or ANALYSIS_SEMANTICS_VERSION
+        )
+        if analysis_semantic != ANALYSIS_SEMANTICS_VERSION:
+            raise RuntimeError("ANALYSIS_SEMANTICS_IDENTITY_CHANGED")
+        semantic = self.config.identity.decision_semantics_version
         cutoff = _integer(_first(strategy, "created_at_ms")) or _integer(_first(paper, "created_at_ms"))
         micro = normalize_microstructure(paper, cutoff)
         boundary = int(row["closed_until_ms"])
@@ -621,6 +626,7 @@ class ProspectiveCalibrationCollector:
                 "schema_revision": self.config.schema_revision,
                 "market_universe_id": self.config.identity.market_universe_id,
                 "decision_semantics_version": semantic,
+                "analysis_semantics_version": analysis_semantic,
                 "boundary_time_ms": boundary,
                 "boundary_time": datetime.fromtimestamp(boundary / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z"),
                 "symbol": row["symbol"], "run_id": row["run_id"], "result_id": row["result_id"],

@@ -10,6 +10,11 @@ from app.engine_risk.risk_level import RiskLevel
 from app.engine_risk.risk_limits import ResearchRiskLimits
 from app.engine_risk.risk_reason_codes import RiskReasonCode as R
 from app.engine_risk.risk_status import RiskStatus
+from app.engine_risk.strategy_type_contract import risk_supports_strategy_type
+from app.engine_orchestrator.trade_profile import (
+    DEFAULT_TRADE_PROFILE_ID,
+    resolve_trade_profile,
+)
 from app.engine_strategy.strategy_decision import StrategyDecision
 
 
@@ -97,7 +102,16 @@ class RiskPolicy:
         ):
             return self._blocked(source, R.RISK_REJECT_LOW_STRATEGY_SCORE,
                                  score=self._risk_score(source))
-        if source.strategy_type not in self.config.allowed_strategy_types:
+        profile_id = str(getattr(
+            self.runtime_parameters, "profile_id", DEFAULT_TRADE_PROFILE_ID
+        ))
+        profile = resolve_trade_profile(profile_id)
+        trade_mode = str(getattr(
+            self.runtime_parameters, "trade_mode", profile.trade_mode
+        ))
+        if not risk_supports_strategy_type(
+            profile_id, trade_mode, source.strategy_type
+        ):
             return self._blocked(source, R.RISK_REJECT_UNSUPPORTED_STRATEGY_TYPE,
                                  score=self._risk_score(source))
         if source.direction_hint not in {"BULLISH", "BEARISH"}:

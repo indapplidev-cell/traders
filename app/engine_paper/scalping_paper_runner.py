@@ -18,6 +18,7 @@ from app.engine_paper.scalping_shadow import (
     evaluate_scalping_shadow,
 )
 from app.engine_risk.risk_decision import RiskDecision
+from app.engine_risk.strategy_type_contract import SCALPING_RISK_STRATEGY_TYPES
 from app.engine_paper.scalping_opportunity_registry import ScalpingOpportunityRegistry
 
 
@@ -101,7 +102,10 @@ class ScalpingPaperRunner(PaperRunner):
         store: object | None = None,
     ) -> None:
         minimum_rr = float(getattr(runtime_parameters, "minimum_planned_rr"))
-        super().__init__(PaperConfig(minimum_planned_rr=minimum_rr), store=store)
+        super().__init__(PaperConfig(
+            minimum_planned_rr=minimum_rr,
+            allowed_strategy_types=SCALPING_RISK_STRATEGY_TYPES,
+        ), store=store)
         self.runtime_parameters = runtime_parameters
         self.opportunity_registry = opportunity_registry or ScalpingOpportunityRegistry()
         self.cost_source = cost_source or BinancePublicScalpingCostSource(

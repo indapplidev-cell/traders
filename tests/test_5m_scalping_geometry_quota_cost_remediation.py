@@ -288,7 +288,10 @@ def test_research_counters_are_profile_separate_while_execution_budget_is_shared
     second = RiskPolicy(restrictive, limits, SimpleNamespace(
         profile_id="trade-5m-v1", parameter_set_id="5", risk_shadow_policy_id="risk",
         minimum_planned_rr=1.5,
-    )).evaluate(strategy_decision(decision_id="strategy:5m"))
+    )).evaluate(strategy_decision(
+        decision_id="strategy:5m", timeframe="5m", setup_type="SCALP_BREAKOUT",
+        strategy_type="SCALP_BREAKOUT_RESEARCH",
+    ))
     assert first.risk_pre_approved and second.risk_pre_approved
     assert limits.profile_attempts("trade-15m-v1", decision.closed_until_ms) == 1
     assert limits.profile_attempts("trade-5m-v1", decision.closed_until_ms) == 1
@@ -384,7 +387,9 @@ def admitted_5m_risk(**context_changes):
         profile_id="trade-5m-v1", parameter_set_id="5m", risk_shadow_policy_id="risk",
         minimum_planned_rr=1.5,
     )).evaluate(strategy_decision(
-        decision_id="strategy:5m:production", timeframe="5m", context=context,
+        decision_id="strategy:5m:production", timeframe="5m",
+        setup_type="SCALP_BREAKOUT", strategy_type="SCALP_BREAKOUT_RESEARCH",
+        context=context,
     ))
 
 
