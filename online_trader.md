@@ -7,7 +7,7 @@ STATUS_AS_OF_COMMIT = afd6e670f50a81aa3cefa2ac1277965d19617c7d
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-27T17:22:57Z
+RECONCILED_AT_UTC = 2026-08-27T17:26:19Z
 RECONCILED_BY_TASK = TRADERS_SCALPING_RISK_UNSUPPORTED_STRATEGY_TYPE_CONTRACT_REMEDIATION_01
 FILES_CHANGED = app/engine_risk/strategy_type_contract.py, app/engine_risk/risk_policy.py, app/engine_paper/scalping_paper_runner.py, app/engine_observation/scalping_prospective_collector.py, tests/test_scalping_risk_strategy_type_contract.py, tests/test_5m_scalping_geometry_quota_cost_remediation.py, tests/test_scalping_prospective_collector.py, docker-compose.yml, FINAL_DECISION.md, docs/audits/TRADERS_SCALPING_RISK_UNSUPPORTED_STRATEGY_TYPE_CONTRACT_REMEDIATION_01_FINAL.md, online_trader.md
 
