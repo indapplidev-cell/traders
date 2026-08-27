@@ -339,3 +339,52 @@ def test_5m_repository_reuses_bounded_rows_for_approval_classification():
     assert second["projection_generated_at_ms"] == NOW_MS + 1_000
     assert len(sessions) == 1
     assert sessions[0].execute_count == 1
+
+
+def test_expired_5m_cache_is_released_before_replacement_query():
+    run = _run("BTCUSDT")
+    run.id = 1
+    run.primary_timeframe = "5m"
+    run.trade_profile_id = "trade-5m-v1"
+    result = _result(run, approvals=False)
+    result.id = 1
+    result.primary_timeframe = "5m"
+    result.trade_profile_id = "trade-5m-v1"
+    clock = iter((10.0, 41.0))
+    repository = None
+
+    class Session:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, _statement):
+            assert repository is not None
+            assert "trade-5m-v1" not in repository._row_cache
+            return ((run, result),)
+
+    class Capabilities:
+        def snapshot(self):
+            return self
+
+        def has(self, _capability):
+            return True
+
+    universe = SimpleNamespace(
+        version_id="trading-universe-v2",
+        symbols=("BTCUSDT",),
+    )
+    repository = TradingFunnelReadRepository(
+        Session,
+        lambda: universe,
+        schema_capabilities=Capabilities(),
+        monotonic_clock=lambda: next(clock),
+    )
+
+    repository.project(NOW_MS, "trade-5m-v1")
+    first_rows = repository._row_cache["trade-5m-v1"][1]
+    repository.project(NOW_MS + 31_000, "trade-5m-v1")
+
+    assert repository._row_cache["trade-5m-v1"][1] is not first_rows

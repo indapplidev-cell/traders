@@ -12,7 +12,7 @@ from time import monotonic
 from typing import Any, Final
 
 from sqlalchemy import func, select, text, tuple_
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import Session, load_only
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_paper.eligible_approval_ranking import (
@@ -355,6 +355,14 @@ class TradingFunnelReadRepository:
                 and current - cached_entry[0] < ROW_CACHE_TTL_SECONDS
             ):
                 return cached_entry[1]
+            # Release the expired ORM/JSON graph before materializing its
+            # replacement.  The 5m horizon contains 490 run/result pairs and
+            # retaining both generations at once can exceed the bounded
+            # Readonly container memory limit.  The lock preserves single-
+            # flight loading, so removing the stale value cannot create a
+            # duplicate query or expose an empty result to another request.
+            self._row_cache.pop(profile_id, None)
+            cached_entry = None
             with self._session_factory() as session:
                 if self._schema_capabilities is None:
                     revisions = tuple(session.execute(text(
@@ -385,10 +393,41 @@ class TradingFunnelReadRepository:
                     statement = (
                         select(OnlinePipelineRun, OnlinePipelineResultRow)
                         .options(
-                            defer(OnlinePipelineRun.trade_profile_id),
-                            defer(OnlinePipelineRun.profile_mode),
-                            defer(OnlinePipelineResultRow.trade_profile_id),
-                            defer(OnlinePipelineResultRow.profile_mode),
+                            load_only(
+                                OnlinePipelineRun.id,
+                                OnlinePipelineRun.run_id,
+                                OnlinePipelineRun.symbol,
+                                OnlinePipelineRun.primary_timeframe,
+                                OnlinePipelineRun.closed_until_ms,
+                                OnlinePipelineRun.status,
+                                OnlinePipelineRun.finished_at,
+                                OnlinePipelineRun.freshness_deadline_at,
+                                OnlinePipelineRun.future_bars_used,
+                                OnlinePipelineRun.is_trade_signal,
+                                OnlinePipelineRun.is_executable,
+                                OnlinePipelineRun.order_approved,
+                                OnlinePipelineRun.execution_approved,
+                                OnlinePipelineRun.position_opened,
+                                OnlinePipelineRun.position_size_approved,
+                                OnlinePipelineRun.analysis_status,
+                                OnlinePipelineRun.setup_status,
+                                OnlinePipelineRun.strategy_status,
+                                OnlinePipelineRun.risk_status,
+                                OnlinePipelineRun.paper_status,
+                                OnlinePipelineRun.error_code,
+                                OnlinePipelineRun.final_reason,
+                                OnlinePipelineRun.updated_at,
+                            ),
+                            load_only(
+                                OnlinePipelineResultRow.id,
+                                OnlinePipelineResultRow.analysis_payload_json,
+                                OnlinePipelineResultRow.setup_payload_json,
+                                OnlinePipelineResultRow.strategy_payload_json,
+                                OnlinePipelineResultRow.risk_payload_json,
+                                OnlinePipelineResultRow.paper_payload_json,
+                                OnlinePipelineResultRow.module_reasons_json,
+                                OnlinePipelineResultRow.created_at,
+                            ),
                         )
                         .outerjoin(
                             OnlinePipelineResultRow,
