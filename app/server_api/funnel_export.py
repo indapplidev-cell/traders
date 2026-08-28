@@ -334,6 +334,7 @@ def build_export_record(
         result,
         trace,
         scalping=run.trade_profile_id == "trade-5m-v1",
+        now_ms=generated_at_ms,
     )
     terminal_reason = _safe_reason(
         _specific_terminal_reason(run, result, downstream_trace)
@@ -347,6 +348,27 @@ def build_export_record(
         "ANALYSIS_QUALIFIED",
     )
     paper_trace_status = _mapping(canonical_trace.get("paper_plan")).get("status")
+    math_fields = (
+        "entry_price", "entry_source", "stop_price", "stop_source",
+        "stop_distance_absolute", "stop_distance_percent", "stop_distance_bps",
+        "target_price", "target_source", "target_distance_absolute",
+        "target_distance_percent", "target_distance_bps", "atr",
+        "atr_buffer_multiplier", "atr_buffer_bps", "spread_bps",
+        "depth_impact_bps", "entry_fee_bps", "exit_fee_bps",
+        "fee_estimate_bps", "entry_slippage_bps", "exit_slippage_bps",
+        "slippage_estimate_bps", "safety_margin_bps",
+        "total_modeled_cost_bps", "gross_rr", "net_rr", "required_rr",
+        "expected_net_edge_bps", "break_even_win_rate", "risk_percent",
+        "risk_amount", "paper_equity_basis", "planned_quantity",
+        "quantity_status", "quantity_step", "quantity_minimum",
+        "quantity_maximum", "notional_minimum", "notional_maximum",
+        "planned_notional", "plan_created_at_ms", "valid_from",
+        "valid_until_ms", "ttl_ms", "expiry_status",
+        "source_boundary_close_ms", "economic_input_timestamp_ms",
+        "economic_input_source", "geometry_status", "geometry_reason",
+        "target_status", "rr_status", "rr_reason", "authoritative_risk",
+        "portfolio", "final_approval", "paper_plan",
+    )
     return {
         "profile": run.trade_profile_id,
         "timestamp": datetime.fromtimestamp(
@@ -366,6 +388,10 @@ def build_export_record(
         "portfolio_status": downstream_trace["PORTFOLIO_ADMITTED"],
         "final_approval": downstream_trace["FINAL_APPROVAL"],
         "downstream_stage_trace": downstream_trace,
+        "trade_math": {
+            key: _json_scalar(_downstream_detail.get(key))
+            for key in math_fields
+        },
         "provenance": {
             "export_generated_at_utc": datetime.fromtimestamp(generated_at_ms / 1000, timezone.utc).isoformat(),
             "export_schema_version": EXPORT_SCHEMA_VERSION,

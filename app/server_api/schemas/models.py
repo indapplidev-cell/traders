@@ -372,6 +372,7 @@ class TradingFunnelSnapshot(ContractModel):
     downstream_count_unit: dict[str, Literal["SYMBOL"]] = Field(default_factory=dict)
     current_cycle: FunnelCycle | None
     last_completed_cycle: FunnelCycle | None
+    detail_candidates: list[FunnelCandidateStatus] = Field(default_factory=list)
     rolling_1h: FunnelRollingSummary
     rolling_4h: FunnelRollingSummary
     projection_generated_at_ms: int = Field(ge=0)

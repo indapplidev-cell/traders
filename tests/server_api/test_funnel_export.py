@@ -57,7 +57,21 @@ def _pair(profile="trade-15m-v1", symbol="BTCUSDT", boundary=1_900_000_200_000, 
         paper_payload_json={
             "paper_status": "NO_PLAN" if rejected else "PAPER_PLAN_READY", "paper_direction": "BULLISH",
             "runtime_parameter_set_id": f"{profile}-runtime-v1-testhash",
-            "paper_context": {"scalping_geometry_diagnostics": diagnostic},
+            "hypothetical_entry_reference": "100",
+            "hypothetical_stop_level": "99.25",
+            "hypothetical_target_level": "101.5",
+            "quantity_sizing_audit": {
+                "paper_equity_at_approval": "100", "risk_budget": "1",
+                "normalized_quantity": "1", "applicable_quantity_step": "0.1",
+            },
+            "approval_validity": {
+                "source_candle_close_time_ms": boundary,
+                "valid_until_ms": boundary + 300_000,
+            },
+            "paper_context": {
+                "production_rr_floor": "1.5",
+                "scalping_geometry_diagnostics": diagnostic,
+            },
         },
         module_reasons_json={"paper": ["PAPER_REJECT_LOW_NET_RR"]} if rejected else {},
         module_warnings_json={}, safety_counters_json={}, created_at=stamp,
@@ -158,6 +172,17 @@ def test_scalping_export_includes_additive_downstream_observability_fields():
     assert row["net_cost_status"] == "PASS"
     assert row["rr_status"] == "PASS"
     assert row["portfolio_status"] == "UNAVAILABLE"
+    assert row["trade_math"]["entry_price"] == "100"
+    assert row["trade_math"]["stop_price"] == "99.25"
+    assert row["trade_math"]["target_price"] == "101.5"
+    assert row["trade_math"]["required_rr"] == "1.5"
+    assert row["trade_math"]["fee_estimate_bps"] == "20"
+    assert row["trade_math"]["slippage_estimate_bps"] == "4"
+    assert row["trade_math"]["expected_net_edge_bps"] == 121
+    assert row["trade_math"]["risk_percent"] == "1.00"
+    assert row["trade_math"]["planned_quantity"] == "1"
+    assert row["trade_math"]["planned_notional"] == "100"
+    assert row["trade_math"]["ttl_ms"] == 300_000
 
 
 def test_15m_export_marks_downstream_only_stages_not_applicable():

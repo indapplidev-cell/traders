@@ -112,6 +112,53 @@ def _reasons(value: object) -> list[str]:
     return [str(value)] if value else []
 
 
+def _decimal(value: object) -> Decimal | None:
+    try:
+        number = Decimal(str(value))
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+    return number if number.is_finite() else None
+
+
+def _first_present(*values: object) -> object | None:
+    return next((value for value in values if value is not None), None)
+
+
+def _decimal_text(value: Decimal | None) -> str | None:
+    return None if value is None else format(value, "f")
+
+
+def _absolute_distance(left: object, right: object) -> str | None:
+    first, second = _decimal(left), _decimal(right)
+    return _decimal_text(abs(first - second)) if first is not None and second is not None else None
+
+
+def _sum_decimals(*values: object) -> str | None:
+    numbers = tuple(_decimal(value) for value in values)
+    return (
+        _decimal_text(sum((value for value in numbers if value is not None), Decimal("0")))
+        if numbers and all(value is not None for value in numbers)
+        else None
+    )
+
+
+def _percent_from_bps(value: object) -> str | None:
+    number = _decimal(value)
+    return _decimal_text(number / Decimal("100")) if number is not None else None
+
+
+def _ratio_percent(numerator: object, denominator: object) -> str | None:
+    top, bottom = _decimal(numerator), _decimal(denominator)
+    if top is None or bottom is None or bottom == 0:
+        return None
+    return _decimal_text(top / bottom * Decimal("100"))
+
+
+def _product(left: object, right: object) -> str | None:
+    first, second = _decimal(left), _decimal(right)
+    return _decimal_text(first * second) if first is not None and second is not None else None
+
+
 def _first_reason(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None) -> str | None:
     if row.error_code:
         return row.error_code
@@ -152,6 +199,7 @@ def _downstream_trace(
     legacy_trace: Mapping[str, str],
     *,
     scalping: bool,
+    now_ms: int | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     """Return the server-authoritative downstream observability projection.
 
@@ -192,6 +240,18 @@ def _downstream_trace(
     approvals = _mapping(paper.get("persisted_final_approvals"))
     shadow_approvals = _mapping(paper.get("shadow_approvals"))
     planned = _mapping(paper.get("shadow_plan")) or paper
+    quantity_approval = (
+        _mapping(approvals.get("paper_quantity_approval"))
+        or _mapping(paper.get("controlled_quantity_approval"))
+        or _mapping(shadow_approvals.get("shadow_quantity_approval"))
+    )
+    sizing = (
+        _mapping(paper.get("quantity_sizing_audit"))
+        or _mapping(quantity_approval.get("sizing_audit"))
+    )
+    validity = _mapping(paper.get("approval_validity")) or _mapping(
+        paper.get("validity_policy")
+    )
 
     compatibility_pass = trace["RISK_COMPATIBILITY_ADMITTED"] == "PASS"
     if compatibility_pass:
@@ -243,29 +303,132 @@ def _downstream_trace(
     )
 
     geometry_reason = diagnostic.get("rejection_reason") or diagnostic.get("raw_reason")
+    entry = _first_present(
+        planned.get("hypothetical_entry_reference"), diagnostic.get("entry")
+    )
+    stop = _first_present(
+        planned.get("hypothetical_stop_level"), diagnostic.get("final_stop")
+    )
+    target = _first_present(
+        planned.get("hypothetical_target_level"), diagnostic.get("causal_target")
+    )
+    valid_values = [
+        int(value["valid_until_ms"])
+        for value in (*approvals.values(), *shadow_approvals.values())
+        if isinstance(value, Mapping) and value.get("valid_until_ms") is not None
+    ]
+    valid_until_ms = validity.get("valid_until_ms")
+    if valid_until_ms is None and valid_values:
+        valid_until_ms = min(valid_values)
+    source_close_ms = (
+        validity.get("source_candle_close_time_ms")
+        or validity.get("source_close_ms")
+        or planned.get("closed_until_ms")
+    )
+    ttl_ms = validity.get("entry_ttl_ms")
+    if ttl_ms is None and valid_until_ms is not None and source_close_ms is not None:
+        ttl_ms = int(valid_until_ms) - int(source_close_ms)
+    approved_quantity = _first_present(
+        quantity_approval.get("approved_quantity"),
+        sizing.get("normalized_quantity"),
+    )
+    paper_equity = sizing.get("paper_equity_at_approval")
+    risk_amount = sizing.get("risk_budget")
+    required_rr = _first_present(
+        context.get("production_rr_floor"),
+        context.get("minimum_planned_rr"),
+        _mapping(paper.get("causal_levels")).get("minimum_planned_rr"),
+    )
     detail.update({
+        "opportunity_id": diagnostic.get("opportunity_id") or setup.get("setup_id"),
+        "paper_plan_id": planned.get("paper_plan_id"),
         "setup_type": setup.get("setup_type"),
         "strategy_type": strategy.get("strategy_type") or strategy.get("source_strategy_type"),
         "strategy_score": strategy.get("strategy_final_score") or strategy.get("strategy_score"),
+        "strategy_admission": trace["STRATEGY_ADMITTED"],
         "risk_compatibility": risk.get("risk_status"),
+        "entry_price": entry,
+        "entry_source": planned.get("entry_reference_source"),
+        "stop_price": stop,
+        "stop_source": planned.get("stop_source"),
+        "stop_distance_absolute": _absolute_distance(entry, stop),
         "geometry_status": trace["GEOMETRY_VALID"],
         "geometry_reason": geometry_reason,
         "stop_distance_bps": diagnostic.get("stop_distance_bps"),
+        "stop_distance_percent": _percent_from_bps(diagnostic.get("stop_distance_bps")),
+        "atr": diagnostic.get("atr"),
+        "atr_buffer_multiplier": diagnostic.get("atr_buffer_multiplier"),
+        "atr_buffer_bps": diagnostic.get("atr_buffer_bps"),
+        "target_price": target,
+        "target_distance_absolute": _absolute_distance(entry, target),
         "target_status": trace["TARGET_VALID"],
         "target_distance_bps": diagnostic.get("target_distance_bps"),
+        "target_distance_percent": _percent_from_bps(diagnostic.get("target_distance_bps")),
         "target_source": diagnostic.get("target_source_type"),
         "spread_bps": diagnostic.get("spread_bps"),
+        "depth_impact_bps": diagnostic.get("depth_impact_bps"),
+        "entry_fee_bps": diagnostic.get("entry_fee_bps"),
+        "exit_fee_bps": diagnostic.get("exit_fee_bps"),
+        "fee_estimate_bps": _sum_decimals(
+            diagnostic.get("entry_fee_bps"), diagnostic.get("exit_fee_bps")
+        ),
+        "entry_slippage_bps": diagnostic.get("entry_slippage_bps"),
+        "exit_slippage_bps": diagnostic.get("exit_slippage_bps"),
+        "slippage_estimate_bps": _sum_decimals(
+            diagnostic.get("entry_slippage_bps"),
+            diagnostic.get("exit_slippage_bps"),
+        ),
+        "safety_margin_bps": diagnostic.get("safety_margin_bps"),
         "total_modeled_cost_bps": diagnostic.get("total_cost_bps"),
-        "gross_rr": diagnostic.get("gross_rr") or planned.get("planned_rr"),
+        "gross_rr": _first_present(
+            diagnostic.get("gross_rr"), planned.get("planned_rr")
+        ),
         "net_rr": diagnostic.get("net_rr"),
+        "required_rr": required_rr,
+        "expected_net_edge_bps": diagnostic.get("expected_net_edge_bps"),
+        "break_even_win_rate": diagnostic.get("break_even_win_rate"),
+        "rr_status": trace["RR_PASS"],
+        "rr_reason": geometry_reason if trace["RR_PASS"] == "REJECTED" else None,
         "authoritative_risk": (
             authoritative_risk.get("status") or "PASS"
             if authoritative_risk else None
         ),
+        "risk_percent": _ratio_percent(risk_amount, paper_equity),
+        "risk_amount": risk_amount,
+        "paper_equity_basis": paper_equity,
+        "planned_quantity": approved_quantity,
+        "quantity_status": (
+            quantity_approval.get("status")
+            or _mapping(paper.get("final_approval_generation")).get(
+                "quantity_authority_status"
+            )
+        ),
+        "quantity_step": sizing.get("applicable_quantity_step"),
+        "quantity_minimum": sizing.get("applicable_min_quantity"),
+        "quantity_maximum": sizing.get("applicable_max_quantity"),
+        "notional_minimum": sizing.get("applicable_min_notional"),
+        "notional_maximum": sizing.get("applicable_max_notional"),
+        "planned_notional": _product(approved_quantity, entry),
         "portfolio": None,
         "final_approval": trace["FINAL_APPROVAL"],
         "paper_plan": trace["PAPER_PLAN"],
+        "plan_created_at_ms": planned.get("created_at_ms"),
+        "valid_from": quantity_approval.get("approved_at"),
+        "valid_until_ms": valid_until_ms,
+        "ttl_ms": ttl_ms,
+        "expiry_status": (
+            None if valid_until_ms is None or now_ms is None
+            else "VALID" if int(valid_until_ms) > now_ms else "EXPIRED"
+        ),
+        "source_boundary_close_ms": planned.get("closed_until_ms"),
+        "economic_input_timestamp_ms": diagnostic.get("economic_input_timestamp_ms"),
+        "economic_input_source": diagnostic.get("economic_input_source"),
+        "spread_source": diagnostic.get("spread_source"),
+        "depth_impact_source": diagnostic.get("depth_impact_source"),
+        "fee_source": diagnostic.get("fee_source"),
         "checklist_risk_pass": checklist.get("risk_pass"),
+        "checklist_cost_gate_pass": checklist.get("cost_gate_pass"),
+        "checklist_final_pass": checklist.get("passed"),
         "shadow_final_approval": _mapping(
             shadow_approvals.get("shadow_final_approval")
         ).get("status"),
@@ -802,10 +965,13 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         row.symbol for row, _ in by_boundary[boundary] if row.status in TERMINAL_RUN_STATUSES
     } == set(universe.symbols)]
     last_completed_boundary = next((value for value in complete_boundaries if value != current_boundary), None)
+    cycle_cache: dict[int, dict[str, Any]] = {}
 
     def cycle(boundary: int | None) -> dict[str, Any] | None:
         if boundary is None:
             return None
+        if boundary in cycle_cache:
+            return cycle_cache[boundary]
         pairs = by_boundary[boundary]
         items, counts = [], Counter()
         downstream_counts, downstream_rejected = Counter(), Counter()
@@ -818,7 +984,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         for row, result in pairs:
             trace, meta = _stage_trace(row, result, now_ms)
             downstream_trace, downstream_detail = _downstream_trace(
-                result, trace, scalping=profile.trigger_timeframe == "5m"
+                result,
+                trace,
+                scalping=profile.trigger_timeframe == "5m",
+                now_ms=now_ms,
             )
             candidate = eligible_by_run.get(row.run_id)
             if candidate is None and profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
@@ -881,6 +1050,14 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     **downstream_detail,
                     "terminal_reason": reason,
                     "updated_at_ms": updated_ms,
+                    "plan_status": downstream_trace["PAPER_PLAN"],
+                    "quantity_approval_status": trace["QUANTITY_APPROVED"],
+                    "final_approval_status": downstream_trace["FINAL_APPROVAL"],
+                    "order_status": "UNAVAILABLE",
+                    "fill_status": "UNAVAILABLE",
+                    "position_status": (
+                        "OPENED" if row.position_opened else "NOT_OPENED"
+                    ),
                 },
                 "risk_score": meta.get("risk_score"), "strategy_score": meta.get("strategy_score"),
                 "planned_risk_reward": meta.get("planned_risk_reward"),
@@ -906,7 +1083,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 item["stage_status"] = "PASS"
         seen = {row.symbol for row, _ in pairs}
         processed = {row.symbol for row, _ in pairs if row.status in TERMINAL_RUN_STATUSES}
-        return {
+        value = {
             "boundary_close_ms": boundary, "boundary_start_ms": boundary - boundary_ms,
             "symbols_expected": len(universe.symbols), "symbols_seen": len(seen),
             "symbols_processed": len(processed), "cycle_complete": processed == set(universe.symbols),
@@ -938,6 +1115,8 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             "winner_candidate_id": selection.winner.candidate_id if selection.winner else None,
             "latest_pipeline_update_ms": latest_update,
         }
+        cycle_cache[boundary] = value
+        return value
 
     def rolling(window_ms: int) -> dict[str, Any]:
         selected = [pair for boundary, pairs in by_boundary.items() if now_ms - window_ms <= boundary <= now_ms for pair in pairs]
@@ -955,7 +1134,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         for row, result in selected:
             trace, _ = _stage_trace(row, result, now_ms)
             downstream_trace, _ = _downstream_trace(
-                result, trace, scalping=profile.trigger_timeframe == "5m"
+                result,
+                trace,
+                scalping=profile.trigger_timeframe == "5m",
+                now_ms=now_ms,
             )
             if row.run_id in eligible_by_run or (
                 profile.mode == TradeProfileMode.SHADOW_SEARCH.value
@@ -993,6 +1175,23 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 }}
 
     current = cycle(current_boundary)
+    detail_by_symbol: dict[str, tuple[tuple[int, int], dict[str, Any]]] = {}
+    for detail_boundary in boundaries:
+        detail_cycle = cycle(detail_boundary)
+        if detail_cycle is None:
+            continue
+        for item in detail_cycle["items"]:
+            downstream = item["downstream_stage_trace"]
+            priority = (
+                3 if downstream.get("PAPER_PLAN") == "PASS"
+                else 2 if downstream.get("RR_PASS") == "REJECTED"
+                else 1 if downstream.get("STRATEGY_ADMITTED") == "PASS"
+                else 0
+            )
+            rank = (priority, detail_boundary)
+            previous = detail_by_symbol.get(item["symbol"])
+            if previous is None or rank > previous[0]:
+                detail_by_symbol[item["symbol"]] = (rank, item)
     latest = current["latest_pipeline_update_ms"] if current else None
     age = None if latest is None else max(0, now_ms - latest)
     metric_stages = {
@@ -1036,6 +1235,11 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             stage: "SYMBOL" for stage in CANONICAL_DOWNSTREAM_STAGES
         },
         "current_cycle": current, "last_completed_cycle": cycle(last_completed_boundary),
+        "detail_candidates": [
+            detail_by_symbol[symbol][1]
+            for symbol in universe.symbols
+            if symbol in detail_by_symbol
+        ],
         "rolling_1h": rolling(60 * 60 * 1000), "rolling_4h": rolling(4 * 60 * 60 * 1000),
         "projection_generated_at_ms": now_ms, "latest_pipeline_update_ms": latest,
         "age_ms": age, "freshness_state": freshness_state,

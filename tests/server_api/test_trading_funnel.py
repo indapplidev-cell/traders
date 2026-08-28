@@ -254,7 +254,11 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     })
     result.setup_payload_json["setup_type"] = "SCALP_BREAKOUT"
     result.paper_payload_json["paper_context"] = {
+        "production_rr_floor": "1.5",
         "scalping_geometry_diagnostics": {
+            "entry": "100.25",
+            "final_stop": "99.75",
+            "causal_target": "101.30",
             "stop_envelope_pass": True,
             "causal_target_exists": True,
             "economic_gate_pass": True,
@@ -263,11 +267,39 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
             "target_distance_bps": "90",
             "target_source_type": "LOCAL_5M",
             "spread_bps": "0.8",
+            "depth_impact_bps": "1.2",
+            "entry_fee_bps": "10",
+            "exit_fee_bps": "10",
+            "entry_slippage_bps": "2",
+            "exit_slippage_bps": "2",
+            "safety_margin_bps": "3",
             "total_cost_bps": "27.8",
             "gross_rr": "2.1",
             "net_rr": "1.6",
+            "expected_net_edge_bps": "62.2",
+            "break_even_win_rate": "0.38461538",
         }
     }
+    result.paper_payload_json.update({
+        "hypothetical_entry_reference": "100.25",
+        "hypothetical_stop_level": "99.75",
+        "hypothetical_target_level": "101.30",
+        "entry_reference_source": "confirmation_or_reference_closed_candle",
+        "stop_source": "causal_invalidation_plus_profile_atr_buffer",
+        "target_source": "LOCAL_5M",
+        "created_at_ms": BOUNDARY + 100,
+        "closed_until_ms": BOUNDARY,
+        "quantity_sizing_audit": {
+            "paper_equity_at_approval": "100",
+            "risk_budget": "1",
+            "normalized_quantity": "0.9",
+            "applicable_quantity_step": "0.1",
+        },
+        "approval_validity": {
+            "source_candle_close_time_ms": BOUNDARY,
+            "valid_until_ms": BOUNDARY + 300_000,
+        },
+    })
     other = _run("ETHUSDT")
     other_result = _result(
         other, setup="NO_SETUP", strategy="NO_DECISION",
@@ -282,6 +314,19 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     assert item["downstream_stage_trace"]["PORTFOLIO_ADMITTED"] == "UNAVAILABLE"
     assert item["downstream_detail"]["strategy_type"] == "SCALP_BREAKOUT_RESEARCH"
     assert item["downstream_detail"]["net_rr"] == "1.6"
+    assert item["downstream_detail"]["entry_price"] == "100.25"
+    assert item["downstream_detail"]["stop_price"] == "99.75"
+    assert item["downstream_detail"]["target_price"] == "101.30"
+    assert item["downstream_detail"]["stop_distance_absolute"] == "0.50"
+    assert item["downstream_detail"]["target_distance_absolute"] == "1.05"
+    assert item["downstream_detail"]["required_rr"] == "1.5"
+    assert item["downstream_detail"]["fee_estimate_bps"] == "20"
+    assert item["downstream_detail"]["slippage_estimate_bps"] == "4"
+    assert item["downstream_detail"]["expected_net_edge_bps"] == "62.2"
+    assert item["downstream_detail"]["risk_percent"] == "1.00"
+    assert item["downstream_detail"]["planned_quantity"] == "0.9"
+    assert item["downstream_detail"]["planned_notional"] == "90.225"
+    assert item["downstream_detail"]["ttl_ms"] == 300_000
     assert value["current_cycle"]["downstream_stage_counts"]["RR_PASS"] == 1
     assert value["current_cycle"]["downstream_stage_counts"]["PORTFOLIO_ADMITTED"] is None
     assert value["rolling_1h"]["downstream_stage_counts"]["NET_COST_PASS"] == 1
@@ -312,6 +357,43 @@ def test_scalping_geometry_terminal_reason_and_null_are_not_zero():
     assert item["downstream_detail"]["target_distance_bps"] is None
     assert item["downstream_detail"]["spread_bps"] is None
     assert value["current_cycle"]["stage_rejected_count"]["GEOMETRY_VALID"] == 1
+
+
+def test_detail_candidate_prefers_historical_plan_then_latest_rr_reject():
+    current = _run("BTCUSDT")
+    current_result = _result(current, setup="NO_SETUP", approvals=False)
+    other_current = _run("ETHUSDT")
+    other_current_result = _result(other_current, setup="NO_SETUP", approvals=False)
+    old_boundary = BOUNDARY - 300_000
+    plan = _run("BTCUSDT", old_boundary)
+    plan_result = _result(plan)
+    plan_result.paper_payload_json["paper_context"] = {
+        "production_rr_floor": "1.5",
+        "scalping_geometry_diagnostics": {
+            "stop_envelope_pass": True, "causal_target_exists": True,
+            "economic_gate_pass": True, "valid_plan": True,
+            "gross_rr": "2", "net_rr": "1.6",
+        },
+    }
+    rr = _run("ETHUSDT", old_boundary)
+    rr_result = _result(rr, paper="REJECT", approvals=False)
+    rr_result.paper_payload_json["paper_context"] = {
+        "production_rr_floor": "1.5",
+        "scalping_geometry_diagnostics": {
+            "stop_envelope_pass": True, "causal_target_exists": True,
+            "economic_gate_pass": True, "valid_plan": False,
+            "gross_rr": "1.4", "net_rr": "1.1",
+            "rejection_stage": "RR_GATE",
+            "rejection_reason": "PAPER_REJECT_LOW_NET_RR",
+        },
+    }
+    value = _project_5m(((current, current_result), (other_current, other_current_result),
+                         (plan, plan_result), (rr, rr_result)))
+    details = {item["symbol"]: item for item in value["detail_candidates"]}
+    assert details["BTCUSDT"]["source_run_id"] == plan.run_id
+    assert details["BTCUSDT"]["downstream_stage_trace"]["PAPER_PLAN"] == "PASS"
+    assert details["ETHUSDT"]["source_run_id"] == rr.run_id
+    assert details["ETHUSDT"]["downstream_stage_trace"]["RR_PASS"] == "REJECTED"
 
 
 def test_15m_downstream_is_explicitly_not_applicable_and_legacy_is_unchanged():
