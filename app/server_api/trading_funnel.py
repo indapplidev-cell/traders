@@ -826,9 +826,19 @@ class TradingFunnelReadRepository:
                             .limit(len(universe.symbols) * 10)
                         )
                         known_run_ids = {row.run_id for row, _ in rows}
+                        latest_plan_by_symbol: dict[
+                            str,
+                            tuple[OnlinePipelineRun, OnlinePipelineResultRow | None],
+                        ] = {}
+                        for pair in session.execute(detail_statement):
+                            plan_run = pair[0]
+                            if (
+                                plan_run.run_id not in known_run_ids
+                                and plan_run.symbol not in latest_plan_by_symbol
+                            ):
+                                latest_plan_by_symbol[plan_run.symbol] = pair
                         historical_plans = tuple(
-                            pair for pair in session.execute(detail_statement)
-                            if pair[0].run_id not in known_run_ids
+                            latest_plan_by_symbol.values()
                         )
                         rows = (*rows, *historical_plans)
             self._row_cache[profile_id] = (current, rows)
