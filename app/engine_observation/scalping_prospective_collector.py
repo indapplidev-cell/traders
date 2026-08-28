@@ -26,12 +26,22 @@ TRADE_MODE = "SCALPING"
 COLLECTOR_SCHEMA_REVISION = "scalping-prospective-collector-v1"
 OBSERVATION_SCHEMA_REVISION = "scalping-calibration-observation-v1"
 OUTCOME_SCHEMA_REVISION = "scalping-calibration-outcome-v1"
+INCIDENT_SCHEMA_REVISION = "scalping-calibration-boundary-incident-v1"
 ANALYSIS_SEMANTICS_VERSION = "scalping-analysis-v1"
 DECISION_SEMANTICS_VERSION = "scalping-risk-type-contract-v2"
 OWNER_NAMESPACE = 1_937_830_411
 OWNER_KEY = 527_115_001
 DEFAULT_MAX_PART_BYTES = 64 * 1024 * 1024
 DEFAULT_OUTCOME_HORIZON_MS = (45 * 60 + 120) * 1000
+
+
+class MixedRuntimeLineageWithinBoundary(RuntimeError):
+    """A boundary rejected after its immutable incident evidence is durable."""
+
+    def __init__(self, boundary_ms: int, incident_id: str) -> None:
+        super().__init__("MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY")
+        self.boundary_ms = int(boundary_ms)
+        self.incident_id = incident_id
 
 
 def utc_now() -> datetime:
@@ -407,7 +417,8 @@ class AppendOnlyStore:
         if self.manifest_path.exists():
             manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         else:
-            manifest = {"schema_revision": "scalping-calibration-manifest-v1", "storage_type": "APPEND_ONLY_JSONL", "segments": [], "parts": []}
+            manifest = {"schema_revision": "scalping-calibration-manifest-v1", "storage_type": "APPEND_ONLY_JSONL", "segments": [], "parts": [], "exclusions": []}
+        manifest.setdefault("exclusions", [])
         if not any(item.get("observation_segment_id") == self.identity.segment_id for item in manifest["segments"]):
             manifest["segments"].append({
                 "observation_segment_id": self.identity.segment_id,
@@ -416,6 +427,21 @@ class AppendOnlyStore:
             })
             atomic_write_json(self.manifest_path, manifest)
         return manifest
+
+    def register_exclusion(self, incident: Mapping[str, Any]) -> None:
+        incident_id = str(incident["incident_id"])
+        boundary_ms = int(incident["boundary_time_ms"])
+        self.append("incidents", incident)
+        if not any(item.get("incident_id") == incident_id for item in self.manifest["exclusions"]):
+            self.manifest["exclusions"].append({
+                "incident_id": incident_id,
+                "observation_segment_id": self.identity.segment_id,
+                "boundary_time_ms": boundary_ms,
+                "reason": "MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY",
+                "calibration_eligible": False,
+                "raw_records_mutated": False,
+            })
+            atomic_write_json(self.manifest_path, self.manifest)
 
     def _scan_identities(self) -> dict[str, set[str]]:
         identities: dict[str, set[str]] = {}
@@ -563,14 +589,25 @@ class ProspectiveCalibrationCollector:
         self.micro_total = stats["micro_total"]
         self.boundary_diagnostics = stats["boundary_diagnostics"]
         self.boundaries: set[int] = set()
+        self.excluded_boundaries: set[int] = {
+            int(item["boundary_time_ms"])
+            for item in self.store.manifest.get("exclusions", [])
+            if item.get("observation_segment_id") == self.config.identity.segment_id
+            and item.get("boundary_time_ms") is not None
+        }
         self.runtime_daemon_instance_id: str | None = None
+        self.last_persisted_run_id: str | None = None
         checkpoint = self.store.load_checkpoint()
         if checkpoint:
             self.last_seen_boundary = int(checkpoint.get("last_seen_boundary") or 0)
             self.last_persisted_boundary = int(checkpoint.get("last_persisted_boundary") or 0)
             self.records_written = len(self.store.observation_ids)
             self.boundaries = set(int(value) for value in checkpoint.get("persisted_boundaries", []))
+            self.excluded_boundaries.update(
+                int(value) for value in checkpoint.get("excluded_boundaries", [])
+            )
             self.runtime_daemon_instance_id = checkpoint.get("runtime_daemon_instance_id")
+            self.last_persisted_run_id = checkpoint.get("last_persisted_run_id")
         else:
             latest = repository.latest_boundary()
             self.last_seen_boundary = self.last_persisted_boundary = int(latest or 0)
@@ -703,6 +740,8 @@ class ProspectiveCalibrationCollector:
         return observation
 
     def _checkpoint(self, last_run_id: str | None) -> None:
+        if last_run_id is not None:
+            self.last_persisted_run_id = last_run_id
         self.store.write_checkpoint({
             "schema_revision": "scalping-calibration-checkpoint-v1",
             "collector_instance_id": self.instance_id,
@@ -710,9 +749,10 @@ class ProspectiveCalibrationCollector:
             "started_at": self.started_at,
             "last_seen_boundary": self.last_seen_boundary,
             "last_persisted_boundary": self.last_persisted_boundary,
-            "last_persisted_run_id": last_run_id,
+            "last_persisted_run_id": self.last_persisted_run_id,
             "records_written": self.records_written,
             "persisted_boundaries": sorted(self.boundaries),
+            "excluded_boundaries": sorted(self.excluded_boundaries),
             "homogeneity_identity": asdict(self.config.identity),
             "runtime_source_identity": self.config.runtime_source_commit,
             "runtime_artifact_identity": self.config.runtime_artifact_id,
@@ -720,6 +760,91 @@ class ProspectiveCalibrationCollector:
             "market_universe_id": self.config.identity.market_universe_id,
             "runtime_daemon_instance_id": self.runtime_daemon_instance_id,
         })
+
+    def _preserve_mixed_lineage_incident(
+        self, boundary_ms: int, rows: Sequence[Mapping[str, Any]], daemon_ids: set[str]
+    ) -> str:
+        members: list[dict[str, Any]] = []
+        distribution: dict[str, int] = {}
+        result_offsets: list[int] = []
+        for row in rows:
+            daemon_id = str(row.get("daemon_instance_id") or "UNKNOWN")
+            distribution[daemon_id] = distribution.get(daemon_id, 0) + 1
+            result_id = _integer(row.get("result_id"))
+            if result_id is not None:
+                result_offsets.append(result_id)
+            member = {
+                "symbol": str(row.get("symbol") or ""),
+                "run_id": str(row.get("run_id") or ""),
+                "result_id": result_id,
+                "daemon_instance_id": daemon_id,
+                "pipeline_status": row.get("pipeline_status"),
+                "final_result": row.get("final_result"),
+                "final_reason": row.get("final_reason"),
+                "error_code": row.get("error_code"),
+                "future_bars_used": bool(row.get("future_bars_used")),
+            }
+            member["record_reference_sha256"] = sha256(
+                canonical_json(member).encode("utf-8")
+            ).hexdigest()
+            members.append(member)
+        members.sort(key=lambda item: (item["symbol"], item["run_id"]))
+        lineage_membership = {
+            daemon_id: sorted(
+                item["symbol"] for item in members
+                if item["daemon_instance_id"] == daemon_id
+            )
+            for daemon_id in sorted(daemon_ids)
+        }
+        incident_id = "mixed-lineage-" + sha256(
+            f"{self.config.identity.segment_id}|{boundary_ms}|{canonical_json(lineage_membership)}".encode("utf-8")
+        ).hexdigest()[:24]
+        incident = {
+            "schema_revision": INCIDENT_SCHEMA_REVISION,
+            "observation_id": incident_id,
+            "incident_id": incident_id,
+            "observation_segment_id": self.config.identity.segment_id,
+            "collector_instance_id": self.instance_id,
+            "captured_at": iso_utc(),
+            "boundary_time_ms": int(boundary_ms),
+            "boundary_start_ms": int(boundary_ms) - 300_000,
+            "boundary_end_ms": int(boundary_ms),
+            "closed_until_ms": int(boundary_ms),
+            "profile_id": PROFILE_ID,
+            "parameter_set_id": self.config.parameter_set_id,
+            "expected_runtime_lineage": {
+                "runtime_daemon_instance_id": self.runtime_daemon_instance_id,
+                "runtime_source_commit": self.config.runtime_source_commit,
+                "runtime_artifact_id": self.config.runtime_artifact_id,
+                "schema_revision": self.config.schema_revision,
+                "decision_semantics_version": self.config.identity.decision_semantics_version,
+            },
+            "distinct_runtime_lineage_count": len(daemon_ids),
+            "runtime_lineage_distribution": distribution,
+            "runtime_lineage_membership": lineage_membership,
+            "record_count": len(members),
+            "record_references": members,
+            "source": {
+                "type": "PRODUCTION_DATABASE_APPEND_ONLY_RUN_ROWS",
+                "relation": "online_pipeline_runs+online_pipeline_results",
+                "first_result_id_offset": min(result_offsets) if result_offsets else None,
+                "last_result_id_offset": max(result_offsets) if result_offsets else None,
+            },
+            "exclusion": {
+                "reason": "MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY",
+                "calibration_eligible": False,
+                "outcome_followup_eligible": False,
+                "raw_records_mutated": False,
+            },
+        }
+        incident["record_set_sha256"] = sha256(
+            canonical_json(members).encode("utf-8")
+        ).hexdigest()
+        self.store.register_exclusion(incident)
+        self.excluded_boundaries.add(int(boundary_ms))
+        self.last_seen_boundary = int(boundary_ms)
+        self._checkpoint(None)
+        return incident_id
 
     def process_boundary(self, boundary_ms: int) -> bool:
         rows = self.repository.load_boundary(boundary_ms)
@@ -730,7 +855,10 @@ class ProspectiveCalibrationCollector:
             return False
         daemon_ids = {str(row["daemon_instance_id"]) for row in rows if row.get("daemon_instance_id")}
         if len(daemon_ids) > 1:
-            raise RuntimeError("MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY")
+            incident_id = self._preserve_mixed_lineage_incident(
+                boundary_ms, rows, daemon_ids
+            )
+            raise MixedRuntimeLineageWithinBoundary(boundary_ms, incident_id)
         daemon_id = next(iter(daemon_ids), None)
         if self.runtime_daemon_instance_id is None:
             self.runtime_daemon_instance_id = daemon_id
@@ -835,6 +963,8 @@ class ProspectiveCalibrationCollector:
             "errors_count": self.errors_count, "missing_records": self.missing_records,
             "duplicate_records": self.duplicate_records, "db_query_count": getattr(self.repository, "query_count", None),
             "boundary_diagnostics_written": self.boundary_diagnostics,
+            "excluded_boundary_count": len(self.excluded_boundaries),
+            "excluded_boundaries": sorted(self.excluded_boundaries),
             "gates": {
                 "gate_24h": {"required_boundaries": 288, "observed_boundaries": len(self.boundaries), "reached": len(self.boundaries) >= 288},
                 "gate_72h": {"required_boundaries": 864, "observed_boundaries": len(self.boundaries), "reached": len(self.boundaries) >= 864},
@@ -855,10 +985,16 @@ class ProspectiveCalibrationCollector:
         try:
             self.health()
             while not self.stop_requested:
-                boundary = self.repository.next_boundary(self.last_persisted_boundary)
+                boundary = self.repository.next_boundary(self.last_seen_boundary)
                 if boundary is not None:
                     self.last_seen_boundary = boundary
-                    self.process_boundary(boundary)
+                    try:
+                        self.process_boundary(boundary)
+                    except MixedRuntimeLineageWithinBoundary:
+                        self.health("RUNNING", "MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_EXCLUDED")
+                        if once:
+                            return 0
+                        continue
                 self.process_outcomes()
                 self.health()
                 if once:
@@ -877,6 +1013,6 @@ class ProspectiveCalibrationCollector:
 
 __all__ = [
     "AppendOnlyStore", "CollectorConfig", "HomogeneityIdentity", "PostgresCollectorOwner",
-    "PostgresRepository", "ProspectiveCalibrationCollector", "evaluate_outcome",
+    "PostgresRepository", "ProspectiveCalibrationCollector", "MixedRuntimeLineageWithinBoundary", "evaluate_outcome",
     "market_universe_id", "normalize_microstructure",
 ]

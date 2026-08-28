@@ -11,6 +11,7 @@ from app.engine_observation.scalping_prospective_collector import (
     CollectorConfig,
     DECISION_SEMANTICS_VERSION,
     HomogeneityIdentity,
+    MixedRuntimeLineageWithinBoundary,
     ProspectiveCalibrationCollector,
     evaluate_outcome,
     market_universe_id,
@@ -86,7 +87,8 @@ def config(root: Path, symbols=("BTCUSDT", "ETHUSDT")) -> CollectorConfig:
 
 
 def row(symbol: str, boundary: int, result_id: int = 1, *, candidate: bool = True,
-        timestamp: int | None = None, cutoff: int | None = None) -> dict:
+        timestamp: int | None = None, cutoff: int | None = None,
+        daemon_instance_id: str = "runtime-one") -> dict:
     timestamp = timestamp if timestamp is not None else boundary + 10
     cutoff = cutoff if cutoff is not None else boundary + 20
     setup = {
@@ -117,7 +119,7 @@ def row(symbol: str, boundary: int, result_id: int = 1, *, candidate: bool = Tru
         "strategy_status": "ALLOW_RESEARCH_TRADE_PLAN" if candidate else "NO_DECISION",
         "risk_status": "REJECT", "paper_status": "NO_PLAN", "final_result": "NO_PLAN",
         "final_reason": "TEST", "error_code": None, "future_bars_used": False,
-        "daemon_instance_id": "runtime-one", "result_id": result_id,
+        "daemon_instance_id": daemon_instance_id, "result_id": result_id,
         "market": {"1m": {"first_open_time_ms": boundary - 60_000, "last_open_time_ms": boundary - 60_000},
                    "5m": {"first_open_time_ms": boundary - 300_000, "last_open_time_ms": boundary - 300_000},
                    "15m": {}, "1h": {}},
@@ -240,6 +242,72 @@ def test_boundary_append_checkpoint_missing_and_crash_replay_dedupe(tmp_path):
     assert restarted.process_boundary(boundary)
     assert len(restarted.store.observation_ids) == 1
     assert restarted.duplicate_records == 0
+
+
+def test_mixed_boundary_fails_closed_preserves_incident_and_recovers_next_clean(tmp_path):
+    good = 2_000
+    mixed = 3_000
+    recovered = 4_000
+    rows = {
+        good: [row("BTCUSDT", good, 1), row("ETHUSDT", good, 2)],
+        mixed: [
+            row("BTCUSDT", mixed, 3),
+            row("ETHUSDT", mixed, 4, daemon_instance_id="runtime-two"),
+        ],
+        recovered: [row("BTCUSDT", recovered, 5), row("ETHUSDT", recovered, 6)],
+    }
+    collector = ProspectiveCalibrationCollector(
+        config(tmp_path), FakeRepository(rows), FakeOwner()
+    )
+    assert collector.process_boundary(good)
+    good_observation_ids = set(collector.store.observation_ids)
+    pending_before = set(collector.pending)
+
+    with pytest.raises(
+        MixedRuntimeLineageWithinBoundary,
+        match="MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY",
+    ):
+        collector.process_boundary(mixed)
+
+    checkpoint = json.loads((tmp_path / "checkpoint.json").read_text())
+    manifest = json.loads((tmp_path / "manifest.json").read_text())
+    assert checkpoint["last_seen_boundary"] == mixed
+    assert checkpoint["last_persisted_boundary"] == good
+    assert checkpoint["excluded_boundaries"] == [mixed]
+    assert set(collector.store.observation_ids) == good_observation_ids
+    assert set(collector.pending) == pending_before
+    assert manifest["exclusions"] == [{
+        "incident_id": manifest["exclusions"][0]["incident_id"],
+        "observation_segment_id": identity().segment_id,
+        "boundary_time_ms": mixed,
+        "reason": "MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY",
+        "calibration_eligible": False,
+        "raw_records_mutated": False,
+    }]
+    incident_part = next(
+        item for item in manifest["parts"] if item["kind"] == "incidents"
+    )
+    incident = json.loads((tmp_path / incident_part["path"]).read_text())
+    assert incident["distinct_runtime_lineage_count"] == 2
+    assert incident["runtime_lineage_distribution"] == {
+        "runtime-one": 1,
+        "runtime-two": 1,
+    }
+    assert incident["exclusion"]["calibration_eligible"] is False
+    assert incident["exclusion"]["outcome_followup_eligible"] is False
+
+    restarted = ProspectiveCalibrationCollector(
+        config(tmp_path), FakeRepository(rows), FakeOwner()
+    )
+    assert restarted.last_seen_boundary == mixed
+    assert restarted.last_persisted_boundary == good
+    assert restarted.runtime_daemon_instance_id == "runtime-one"
+    assert restarted.process_boundary(recovered)
+    final_checkpoint = json.loads((tmp_path / "checkpoint.json").read_text())
+    assert final_checkpoint["last_seen_boundary"] == recovered
+    assert final_checkpoint["last_persisted_boundary"] == recovered
+    assert final_checkpoint["excluded_boundaries"] == [mixed]
+    assert len(restarted.store.observation_ids) == 4
 
 
 def test_single_owner_second_denied_and_stale_recovery():
