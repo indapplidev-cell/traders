@@ -968,6 +968,49 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         row.symbol for row, _ in by_boundary[boundary] if row.status in TERMINAL_RUN_STATUSES
     } == set(universe.symbols)]
     last_completed_boundary = next((value for value in complete_boundaries if value != current_boundary), None)
+    detail_source_by_symbol: dict[str, tuple[tuple[int, int], str, int]] = {}
+    if profile.trigger_timeframe == "5m":
+        for detail_row, detail_result in rows:
+            if detail_result is None:
+                continue
+            detail_paper = _mapping(detail_result.paper_payload_json)
+            detail_diagnostic = _mapping(
+                _mapping(detail_paper.get("paper_context")).get(
+                    "scalping_geometry_diagnostics"
+                )
+            )
+            detail_setup = _mapping(detail_result.setup_payload_json)
+            detail_strategy = _mapping(detail_result.strategy_payload_json)
+            detail_risk = _mapping(detail_result.risk_payload_json)
+            detail_admitted = (
+                (detail_row.setup_status or detail_setup.get("status"))
+                == "SETUP_CANDIDATE"
+                and (
+                    detail_row.strategy_status
+                    or detail_strategy.get("decision_status")
+                ) == "ALLOW_RESEARCH_TRADE_PLAN"
+                and (detail_row.risk_status or detail_risk.get("risk_status"))
+                in {"RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"}
+            )
+            detail_priority = (
+                3 if detail_admitted and detail_paper.get("paper_status") == "PAPER_PLAN_READY"
+                else 2 if detail_admitted and detail_diagnostic.get("rejection_stage") == "RR_GATE"
+                else 1 if detail_admitted
+                else 0
+            )
+            if detail_priority == 0:
+                continue
+            detail_rank = (detail_priority, int(detail_row.closed_until_ms))
+            detail_previous = detail_source_by_symbol.get(detail_row.symbol)
+            if detail_previous is None or detail_rank > detail_previous[0]:
+                detail_source_by_symbol[detail_row.symbol] = (
+                    detail_rank,
+                    detail_row.run_id,
+                    int(detail_row.closed_until_ms),
+                )
+    detail_boundaries = {
+        value[2] for value in detail_source_by_symbol.values()
+    }
     cycle_cache: dict[int, dict[str, Any]] = {}
 
     def cycle(boundary: int | None) -> dict[str, Any] | None:
@@ -993,7 +1036,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 now_ms=now_ms,
                 include_detail=boundary in {
                     current_boundary, last_completed_boundary
-                },
+                } or boundary in detail_boundaries,
             )
             candidate = eligible_by_run.get(row.run_id)
             if candidate is None and profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
@@ -1182,41 +1225,22 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 }}
 
     current = cycle(current_boundary)
-    detail_by_symbol: dict[str, tuple[tuple[int, int], dict[str, Any]]] = {}
-    for detail_boundary in boundaries:
+    detail_by_symbol: dict[str, dict[str, Any]] = {}
+    for detail_symbol, (_rank, detail_run_id, detail_boundary) in (
+        detail_source_by_symbol.items()
+    ):
         detail_cycle = cycle(detail_boundary)
         if detail_cycle is None:
             continue
-        for item in detail_cycle["items"]:
-            downstream = item["downstream_stage_trace"]
-            priority = (
-                3 if downstream.get("PAPER_PLAN") == "PASS"
-                else 2 if downstream.get("RR_PASS") == "REJECTED"
-                else 1 if downstream.get("STRATEGY_ADMITTED") == "PASS"
-                else 0
-            )
-            if priority == 0:
-                continue
-            rank = (priority, detail_boundary)
-            previous = detail_by_symbol.get(item["symbol"])
-            if previous is None or rank > previous[0]:
-                detail_by_symbol[item["symbol"]] = (rank, item)
-    pair_by_run = {row.run_id: (row, result) for row, result in rows}
-    for _rank, item in detail_by_symbol.values():
-        if "entry_price" in item["downstream_detail"]:
-            continue
-        source_pair = pair_by_run.get(item["source_run_id"])
-        if source_pair is None:
-            continue
-        source_row, source_result = source_pair
-        source_trace, _meta = _stage_trace(source_row, source_result, now_ms)
-        _source_downstream, source_detail = _downstream_trace(
-            source_result,
-            source_trace,
-            scalping=profile.trigger_timeframe == "5m",
-            now_ms=now_ms,
+        detail_item = next(
+            (
+                item for item in detail_cycle["items"]
+                if item["source_run_id"] == detail_run_id
+            ),
+            None,
         )
-        item["downstream_detail"].update(source_detail)
+        if detail_item is not None:
+            detail_by_symbol[detail_symbol] = detail_item
     latest = current["latest_pipeline_update_ms"] if current else None
     age = None if latest is None else max(0, now_ms - latest)
     metric_stages = {
@@ -1261,7 +1285,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         },
         "current_cycle": current, "last_completed_cycle": cycle(last_completed_boundary),
         "detail_candidates": [
-            detail_by_symbol[symbol][1]
+            detail_by_symbol[symbol]
             for symbol in universe.symbols
             if symbol in detail_by_symbol
         ],
