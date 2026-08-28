@@ -466,7 +466,7 @@ def test_get_route_db_error_is_not_empty_success():
     assert response.status_code == 500
 
 
-def test_5m_repository_reuses_bounded_rows_for_approval_classification():
+def test_5m_repository_uses_bounded_cycle_and_historical_plan_queries():
     run = _run("BTCUSDT")
     run.id = 1
     run.primary_timeframe = "5m"
@@ -519,7 +519,9 @@ def test_5m_repository_reuses_bounded_rows_for_approval_classification():
     assert first["trade_profile_id"] == "trade-5m-v1"
     assert second["projection_generated_at_ms"] == NOW_MS + 1_000
     assert len(sessions) == 1
-    assert sessions[0].execute_count == 1
+    # One rolling-window query plus one set-based historical PAPER-plan query;
+    # neither path issues per-symbol/N+1 reads, and both are cached together.
+    assert sessions[0].execute_count == 2
 
 
 def test_expired_5m_cache_is_released_before_replacement_query():

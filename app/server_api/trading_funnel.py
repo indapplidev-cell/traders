@@ -795,6 +795,42 @@ class TradingFunnelReadRepository:
                         )
                     )
                     rows = tuple(session.execute(statement))
+                    if profile.trigger_timeframe == "5m":
+                        # Keep the latest persisted successful PAPER plans
+                        # selectable after they age out of the rolling 4h
+                        # funnel window.  This is one bounded set query (never
+                        # one query per symbol); its causal payload is rendered
+                        # unchanged and is not mixed with current quotes.
+                        detail_statement = (
+                            select(OnlinePipelineRun, OnlinePipelineResultRow)
+                            .outerjoin(
+                                OnlinePipelineResultRow,
+                                OnlinePipelineResultRow.run_id
+                                == OnlinePipelineRun.run_id,
+                            )
+                            .where(
+                                *profile_predicates,
+                                OnlinePipelineRun.primary_timeframe
+                                == profile.trigger_timeframe,
+                                OnlinePipelineRun.symbol.in_(universe.symbols),
+                                OnlinePipelineRun.closed_until_ms
+                                >= now_ms - 7 * 24 * 60 * 60 * 1000,
+                                OnlinePipelineRun.closed_until_ms <= now_ms,
+                                OnlinePipelineRun.paper_status
+                                == "PAPER_PLAN_READY",
+                            )
+                            .order_by(
+                                OnlinePipelineRun.closed_until_ms.desc(),
+                                OnlinePipelineRun.symbol.asc(),
+                            )
+                            .limit(len(universe.symbols) * 10)
+                        )
+                        known_run_ids = {row.run_id for row, _ in rows}
+                        historical_plans = tuple(
+                            pair for pair in session.execute(detail_statement)
+                            if pair[0].run_id not in known_run_ids
+                        )
+                        rows = (*rows, *historical_plans)
             self._row_cache[profile_id] = (current, rows)
             return rows
 
