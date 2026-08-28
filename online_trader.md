@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = afd6e670f50a81aa3cefa2ac1277965d19617c7d
+STATUS_AS_OF_COMMIT = f0eaaa1fc29d0133ff8684d75e6e9becc6537740
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-27T17:26:19Z
-RECONCILED_BY_TASK = TRADERS_SCALPING_RISK_UNSUPPORTED_STRATEGY_TYPE_CONTRACT_REMEDIATION_01
-FILES_CHANGED = app/engine_risk/strategy_type_contract.py, app/engine_risk/risk_policy.py, app/engine_paper/scalping_paper_runner.py, app/engine_observation/scalping_prospective_collector.py, tests/test_scalping_risk_strategy_type_contract.py, tests/test_5m_scalping_geometry_quota_cost_remediation.py, tests/test_scalping_prospective_collector.py, docker-compose.yml, FINAL_DECISION.md, docs/audits/TRADERS_SCALPING_RISK_UNSUPPORTED_STRATEGY_TYPE_CONTRACT_REMEDIATION_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-28T05:00:47Z
+RECONCILED_BY_TASK = TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02
+FILES_CHANGED = FINAL_DECISION.md, docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = SCALPING_RISK_TYPE_CONTRACT_PASS_KNOWN7_SUPPORTED7_UNKNOWN_FAILCLOSED_OLDSEGMENT2320_STRATEGY261_UNSUPPORTED261_NEWSEGMENT_NATURAL3X5M_1X15M_EXACT10_STRATEGY1_UNSUPPORTED0_GEOMETRY1_COLLECTOR_OWNER1_ERROR0_MISSING0_DUPLICATE0_FUTURE0_CONTROL6_LIVE_OFF_WAL_PITR_PASS
+STATUS_CONFIDENCE = SCALPING_NEWSEGMENT139X5M_EXACT10_1390OF1390_STRATEGY114_UNSUPPORTED0_GEOMETRY49_COST34_RR1_FINAL1_PAPER0_UNIQUE46_DEDUPFINAL2_071942PER24H_COLLECTOR_OWNER1_ERROR0_MISSING0_DUPLICATE0_FUTURE0_CONTROL6_LIVE_OFF_WAL_PITR_FALSE_ACK_ABSENT_PHYSICAL_GAP_FALSE
 
 # Состояние проекта traders-ml
 
@@ -24,11 +24,12 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_IMAGE6CF2399B_CONTAINERA1D46644_HEALTHY_RESTART0_SOURCEE07185F_ON0018_CONTROL_IMAGEA4664FF5_CONTAINERE2AD3A92_HEALTHY_RESTART0_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_I18N_CATALOG_9CAF8512_IMPLEMENTED_AND_DEPLOYED_28_GET_0_WRITE_ARBITRARY_RANGE_STABLE_SNAPSHOT_KEYSET_FUNNEL_EXPORT
-CURRENT_STAGE = DUAL_PROFILE_FUNNEL_EXPORT_BYTE_BUDGET_AND_TIMEOUT_CONTRACT_REMEDIATION_REQUIRED
-CURRENT_BLOCKER = PRODUCTION_DESKTOP_24H_EXPORT_FAILS_BOTH_5M_AND15M_PAGE200_EXCEEDS_CLIENT_2000000_BYTE_LIMIT
-CURRENT_PREREQUISITE = CONTINUE_NEW_HOMOGENEOUS_5M_SEGMENT_UNTIL_SUFFICIENT_SAMPLE_BEFORE_OFFLINE_REPLAY
-BACKGROUND_TIMED_GATE = COLLECTOR_RUNNING_SEGMENT_D8A4_FROM_POST_SEMANTIC_BOUNDARY_EXACT10_MISSING0_DUPLICATE0_ERROR0_FUTURE0_OWNER1_CONTROL_GENERATION6_LIVE_OFF
-BACKGROUND_SCALPING_BLOCKER = CLOSED_KNOWN_SCALPING_TYPES_REACH_COMPATIBILITY_AND_GEOMETRY_UNKNOWN_TYPES_REMAIN_FAIL_CLOSED
+CURRENT_STAGE = WAL_ACK_OWNER_RECOVERY_REQUIRED_BEFORE_FURTHER_PRODUCTION_FACING_ACTIONS
+CURRENT_BLOCKER = WAL_ARCHIVE_RETRY_PENDING_ACK_OWNER_ABSENT_UNRESOLVED1_BACKLOG1_PENDING13_WAL_PITR_FALSE_PHYSICAL_GAP_FALSE
+CURRENT_PREREQUISITE = RESTORE_CANONICAL_ACK_OWNER_SEPARATELY_AND_CONTINUE_NEW_HOMOGENEOUS_5M_SEGMENT_TO_24H_BEFORE_OFFLINE_REPLAY
+SECONDARY_BLOCKER = PRODUCTION_DESKTOP_24H_EXPORT_FAILS_BOTH_5M_AND15M_PAGE200_EXCEEDS_CLIENT_2000000_BYTE_LIMIT
+BACKGROUND_TIMED_GATE = COLLECTOR_RUNNING_SEGMENT_D8A4_FRESH143_BOUNDARIES_44_TERMINAL_OUTCOMES_EXACT10_MISSING0_DUPLICATE0_ERROR0_FUTURE0_OWNER1_CONTROL_GENERATION6_LIVE_OFF
+BACKGROUND_SCALPING_BLOCKER = ABSOLUTE_SETUP_LOSS1228_POST_ADMISSION_GEOMETRY_LOSS65_AND_RR1_OF34_COST_PASS_PROFITABILITY_SAMPLE_INSUFFICIENT
 ```
 
 ## Scalping Risk unsupported strategy type contract remediation 01
@@ -62,6 +63,45 @@ type gate and reached Geometry, where the existing real geometry policy
 rejected it. This establishes the intended observability of the next genuine
 bottleneck. The old segment remains comparison-only; offline replay must wait
 for a sufficient sample in the new segment.
+
+## Scalping new-segment interim diagnostic snapshot report 02
+
+```text
+TASK = TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02
+RESULT = PASS_READONLY_INTERIM_REPORT_COMPLETED_NOT_PROFITABILITY_PASS
+PROJECT_STATE_AUDIT_COMMIT = f0eaaa1fc29d0133ff8684d75e6e9becc6537740
+SNAPSHOT = 2026_08_27T17_05Z_TO_2026_08_28T04_35Z_BOUNDARIES139_EVALUATIONS1390_OF1390_COMPLETE100PCT_NEWSEGMENT_ONLY
+OLD_VS_NEW = OLD2320_STRATEGY261_UNSUPPORTED261_GEOMETRY0__NEW1390_STRATEGY114_UNSUPPORTED0_GEOMETRY_REACHED114_VALID49_COST34_RR1_FINAL1
+FUNNEL = MARKET1390_ANALYSIS1390_SETUP162_STRATEGY114_COMPAT114_GEOMETRY114_VALID49_TARGET48_COST34_RR1_RISK1_PORTFOLIO1_FINAL1_PLAN1_ORDER_FILL_POSITION_CLOSED0
+DOMINANT_BOTTLENECK = ABSOLUTE_SETUP_LOSS1228_CONVERSION11_654676PCT_CLASS_INSUFFICIENT_SAMPLE_POST_ADMISSION_GEOMETRY_LOSS65_CONVERSION42_982456PCT_WIDESTOP55_INVALIDLEVEL10_CLASS_LIKELY_PARAMETER_CALIBRATION_ISSUE
+OPPORTUNITIES = RAW162_IDENTITY_BEARING150_UNIQUE46_REPEATS104_CHURN69_333333PCT
+FREQUENCY_DEDUPLICATED = UNIQUE95_309353_STRATEGY70_446043_GEOMETRY47_654676_COST37_294964_RR2_071942_FINAL2_071942_PAPER0_PER24H_FAR_BELOW_TARGET
+ECONOMICS = SPREAD_P50_0_87999976_P90_1_3334578_TOTAL_COST_P50_27_92408764_P90_28_33448989_NET_EDGE_P50_13_88834317_P90_70_83345187_NET_RR_P50_0_29820753_P90_0_92670003_BPS_WHERE_APPLICABLE
+OUTCOMES = RECORDS148_TERMINAL44_TP6_SL19_TIME_EXPIRED19_ENTRY_EXPIRED27_NO_BASELINE77_PENDING2_PAPER_CLOSED0_PROFITABILITY_INSUFFICIENT_SAMPLE
+MICROSTRUCTURE = ALL150_OF1390_10_791367PCT_APPLICABLE150_OF150_100PCT_STALE0_FUTURE0
+15M = SAME_WINDOW46_BOUNDARIES460_ROWS_EXACT10_ERROR0_DUPLICATE0_FUTURE0_OWNER1_UNCHANGED
+COLLECTOR = RUNNING_OWNER1_RESTART0_MISSING0_DUPLICATE0_ERROR0_FUTURE0_PENDING2_CPU0_MEMORY53_01MIB_STORAGE688152190B
+SAFETY = ALEMBIC0018_CONTROL_ARMED6_LIVE_DISABLED_TRADING_MUTATION0_PARAMETER_PROMOTION0_BINANCE_ORDER0
+FRESH_WAL_PITR_ACK = FALSE_FALSE_ACK_OWNER_ABSENT_RETRY_PENDING_UNRESOLVED1_BACKLOG1_PENDING13_COVERAGE1487_OF1487_PHYSICAL_GAP_FALSE
+VALIDATION = JSON_PARSE_PASS_ARITHMETIC_PASS_FOCUSED31_PASS_DIFF_CHECK_PASS
+EVIDENCE = docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md_AND_../evidence_inbox/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_MD_JSON
+NEXT_ACTION = CONTINUE_COLLECTOR_UNCHANGED_RESTORE_ACK_OWNER_IN_SEPARATE_OPERATIONAL_TASK_REASSESS_AFTER_24H_GATE
+```
+
+The Risk compatibility defect remains closed: all 114 admitted known-type
+observations passed preview and zero unsupported-type rejection recurred. Raw
+candidate volume is high, but opportunity-deduplicated after-cost output is
+only 2.071942 final approvals per 24 hours and no real PAPER trade exists, so
+the present funnel is far below the 10--20--30 quality-trade target and cannot
+support a profitability claim. Setup dominates absolute loss; Geometry is the
+first real post-admission bottleneck. The collector remains autonomous and the
+segment is still below its 24-hour replay gate.
+
+Fresh final verification also superseded the prior healthy ACK snapshot. The
+canonical owner is absent after a bounded Docker query timeout. WAL coverage is
+still physically contiguous with no gap, but retry-pending/backlog state makes
+current WAL/PITR readiness false. No recovery was attempted inside this
+read-only task.
 
 ## Scalping interim diagnostic snapshot report 01
 
@@ -137,7 +177,7 @@ COLLECTOR_CONTINUITY = RUNNING_OWNER1_SEGMENT_A724_BOUNDARIES81_RECORDS810_MISSI
 VALIDATION = FUNNEL24_PASS_SERVER_API140_PASS7SKIP_APPROVAL_RANKING1472_PASS_COMPILE_PASS
 FULL_SUITE_BASELINE = 30803_PASS30_SKIP_REMAINING_UNRELATED_MISSING_DEDICATED_TEST_DB_URLS_AND_LEGACY_SCHEMA0014_EXPECTATION
 SAFETY = SCHEMA0_BUSINESS_MUTATION0_TRADING_MUTATION0_BINANCE_ORDER0_CONTROL_ARMED6_LIVE_DISABLED
-CURRENT_STAGE = SCALPING_CALIBRATION_OBSERVATION_IN_PROGRESS_AUTONOMOUS
+TASK_HANDOFF_STAGE = SCALPING_CALIBRATION_OBSERVATION_IN_PROGRESS_AUTONOMOUS
 EVIDENCE = docs/audits/TRADERS_SERVER_5M_FUNNEL_READONLY_MEMORY_REMEDIATION_01_FINAL.md
 NEXT_ACTION = CONTINUE_AUTONOMOUS_SCALPING_CALIBRATION_UNTIL_SUFFICIENT_HOMOGENEOUS_GATE
 ```
@@ -5514,7 +5554,7 @@ LIVE.
 |---|---:|---|
 | Online analytics/paper pipeline | ≈99% deployed / Scalping calibration observation autonomous | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. The passive restart-safe collector is running with one owner and one homogeneous segment; startup acceptance persisted 3 exact10 5m boundaries/30 records with zero missing, duplicate or future-leakage records while 15m remained exact10 and unchanged. Profitability and parameter promotion remain pending |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate PASS on schema 0018 | One canonical ACK owner is healthy; the existing lineage is unchanged and contiguous with `wal_ready=true`, `pitr_ready=true`, no physical gap, and backlog/pending/unresolved `0/0/0`. The schema-compatible retry verified and atomically ACKed 144 WAL objects |
+| Production backup/PITR | Current gate FAIL on schema 0018; physical chain remains gap-free | The canonical ACK owner is absent after a bounded Docker query timeout. Fresh hardened diagnosis reports `wal_ready=false`, `pitr_ready=false`, retry pending, unresolved/backlog/pending `1/1/13`, and required archive coverage 1487/1487 with no physical gap. Recovery requires a separate operational task |
 | Readonly Server API | Healthy dual-profile image on production 0018; desktop export contract blocked | Image `sha256:6cf2399b...` is healthy with restart 0, 28 GET and zero write routes. Export pages are bounded by rows, but current 200-row payloads are 3.52 MB for 5m and 3.99 MB for 15m, above the desktop 2.00 MB response ceiling |
 | Desktop Readonly client | Export UI implemented / production 24h dual-profile acceptance FAIL | The active-profile export dialog supports 15m/5m and asynchronous atomic save, but the exact production client rejects the first 200-row page for both profiles as `ProviderContractError`; no 24h file is saved |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
@@ -5531,12 +5571,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = TRADERS_DESKTOP_DUAL_PROFILE_FUNNEL_EXPORT_BYTE_BUDGET_AND_TIMEOUT_CONTRACT_REMEDIATION_01
+RECOMMENDED_NEXT_TASK = TRADERS_WAL_ACK_OWNER_RECOVERY_AFTER_DOCKER_QUERY_TIMEOUT_01
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
-CURRENT_WAL_ACK_ARCHIVE_RECOVERY = SCHEMA0018_COMPATIBLE_RETRY_PASS_ONE_HEALTHY_OWNER_144_VERIFIED_ACKS_ZERO_BACKLOG_PENDING_UNRESOLVED
-CURRENT_WAL_PITR_GATE = PASS_FRESH_PROJECTION_WAL_TRUE_PITR_TRUE_LINEAGE_UNCHANGED_VALID_NO_PHYSICAL_GAP
+CURRENT_WAL_ACK_ARCHIVE_RECOVERY = REGRESSED_ACK_OWNER_ABSENT_AFTER_DOCKER_QUERY_TIMEOUT_RETRY_PENDING_UNRESOLVED1_BACKLOG1_PENDING13
+CURRENT_WAL_PITR_GATE = FAIL_FRESH_PROJECTION_WAL_FALSE_PITR_FALSE_REQUIRED_COVERAGE1487_OF1487_PHYSICAL_GAP_FALSE
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -5604,9 +5644,10 @@ command, position or closed trade has occurred. The 72-hour soak remains open
 and current Market Data is 60/60. The schema-0018-compatible governed recovery
 proved the old PID/lock/heartbeat stale, started one valid checksum-verifying
 ACK owner, and drained 144 contiguous objects (143 at complete pre-repair
-inventory plus one legitimate arrival). The fresh projection reports WAL/PITR
-ready, backlog/pending/unresolved `0/0/0`, the same lineage valid, and no
-physical gap; the idempotent retry performed zero attempts.
+inventory plus one legitimate arrival). That recovery-time projection reported
+WAL/PITR ready, backlog/pending/unresolved `0/0/0`, the same lineage valid, and
+no physical gap; the idempotent retry performed zero attempts. It is historical
+evidence and is superseded by the current ACK-owner failure below.
 The historical 5m SHADOW sample remains preserved as provenance, but it is no
 longer the active runtime mode. The active 5m profile is now executable PAPER
 `PRODUCTION_SEARCH`, has persisted natural production cycles, and competes with
@@ -5618,12 +5659,19 @@ The prospective Scalping calibration collector now runs as a separate
 `restart: always` Compose service. It reads completed production projections and
 closed candles without trading authority, persists one causal snapshot per
 evaluation in a homogeneous append-only segment, checkpoints atomically, and
-tracks delayed closed-1m outcome paths. Its accepted startup window contains
-three exact10 5m boundaries with zero missing/duplicate/future-leakage records;
-one concurrent 15m boundary remained exact10. The collector continues
-autonomously toward the 24h/72h and outcome gates, so no Codex long wait is
-required. Profitability calibration and any parameter promotion remain future
-separate work.
+tracks delayed closed-1m outcome paths. The fresh post-task runtime contains
+143 exact10 5m boundaries in the new segment with zero missing, duplicate,
+error or future-leakage records, one owner and 44 terminal follow-ups; concurrent
+15m remains exact10 and independent. The collector continues autonomously
+toward the 24h/72h and outcome gates, so no Codex long wait is required.
+Profitability calibration and any parameter promotion remain future separate
+work.
+
+The canonical WAL ACK owner is currently absent after its PostgreSQL read
+timed out through Docker. Hardened diagnosis is retry-pending with one active
+unresolved failure, export backlog one and 13 pending archive statuses.
+Required coverage remains 1487/1487 and the physical chain has no gap, but
+`wal_ready` and `pitr_ready` are false until a separately authorized recovery.
 
 ## Правила актуализации
 
