@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2a35b2dce5148f91b68e84c75e887c4f01e46d19
+STATUS_AS_OF_COMMIT = 8db8af52ba782fe44ba7a082e9dcd3a5fc4411f3
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-28T20:52:00Z
-RECONCILED_BY_TASK = TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01
-FILES_CHANGED = app/server_api/trading_funnel.py, app/server_api/funnel_export.py, app/server_api/schemas/models.py, app/i18n/catalog.py, app/i18n/help_source.py, tests/server_api/test_trading_funnel.py, tests/server_api/test_funnel_export.py, FINAL_DECISION.md, docs/audits/TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-28T22:43:26Z
+RECONCILED_BY_TASK = TRADERS_SCALPING_COLLECTOR_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_RECOVERY_01
+FILES_CHANGED = app/engine_observation/scalping_prospective_collector.py, tests/test_scalping_prospective_collector.py, FINAL_DECISION.md, docs/audits/TRADERS_SCALPING_COLLECTOR_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_RECOVERY_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9
 PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_COMMITS_PRESENT
-STATUS_CONFIDENCE = PLAN_MATH_AND_EXACT10_IMPLEMENTATION_NATURAL_ACCEPTANCE_PASS_DESKTOP1480PASS_SERVERFOCUSED40PASS_WAL_PITR_TRUE_ACK_OWNER_HEALTHY_GAP_FALSE_SECRET0_CONTROL6_LIVE_OFF_BUT_COLLECTOR_CONTINUITY_BLOCKED_MIXED_RUNTIME_LINEAGE
+STATUS_CONFIDENCE = COLLECTOR_RECOVERY_PASS_ROOTCAUSE_PROVEN_BOUNDARY1787936400000_QUARANTINED_RAWMUTATION0_OWNER1_RESTART0_3NATURAL_EXACT10_WALPITRTRUE_GAPFALSE_CONTROL6_LIVEOFF_SECRET0
 
 # Состояние проекта traders-ml
 
@@ -24,19 +24,42 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_IMAGE78D53E6_CONTAINER19E3D76_HEALTHY_RESTART0_SOURCE6AC8B53_ON0018_CONTROL_IMAGEA4664FF5_CONTAINERE2AD3A92_HEALTHY_RESTART0_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_PLAN_MATH_DETAIL_AND_EXPORT_DEPLOYED_28_GET_0_WRITE_CANONICAL12_EXACT10_CAUSAL_HISTORICAL_PLAN_AND_RR_REJECT
-CURRENT_STAGE = RESTORE_SCALPING_COLLECTOR_LINEAGE_CONTINUITY_THEN_RERUN_PLAN_MATH_EXACT10_FINAL_ACCEPTANCE
-CURRENT_BLOCKER = SCALPING_CALIBRATION_COLLECTOR_RESTART_LOOP_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY
-CURRENT_PREREQUISITE = SEPARATE_BOUNDED_COLLECTOR_LINEAGE_DIAGNOSIS_WITHOUT_TRADING_ALGORITHM_OR_PARAMETER_CHANGE
-SECONDARY_BLOCKER = SCALPING_24H_GATE_NOT_YET_REACHED_AND_PROFITABILITY_SAMPLE_INSUFFICIENT
-BACKGROUND_TIMED_GATE = PAUSED_BY_COLLECTOR_FAIL_CLOSED_RESTART_LOOP_SAME_CONTAINER_ID_RUNTIME_RESTART_COUNT_AT_LEAST207_CONTROL_GENERATION6_LIVE_OFF
+CURRENT_STAGE = CONTINUE_SAME_HOMOGENEOUS_SCALPING_SEGMENT_WITH_INCIDENT_BOUNDARY_EXCLUDED_AND_REASSESS_CALIBRATION_GATE
+CURRENT_BLOCKER = NONE_FOR_COLLECTOR_CONTINUITY_RECOVERY
+CURRENT_PREREQUISITE = CONTINUE_PASSIVE_COLLECTION_WITHOUT_COHORT_MIXING_OR_PARAMETER_PROMOTION
+SECONDARY_BLOCKER = SCALPING_72H_GATE_NOT_YET_REACHED_AND_PROFITABILITY_SAMPLE_REMAINS_INSUFFICIENT
+BACKGROUND_TIMED_GATE = ACTIVE_COLLECTOR_OWNER1_RESTART0_BOUNDARIES355_RECORDS5870_GATE24H_TRUE_GATE72H_FALSE_CONTROL_GENERATION6_LIVE_OFF
 BACKGROUND_SCALPING_BLOCKER = ABSOLUTE_SETUP_LOSS1228_POST_ADMISSION_GEOMETRY_LOSS65_AND_RR1_OF34_COST_PASS_PROFITABILITY_SAMPLE_INSUFFICIENT
+```
+
+## Scalping collector mixed runtime lineage recovery 01
+
+```text
+TASK = TRADERS_SCALPING_COLLECTOR_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_RECOVERY_01
+RESULT = PASS_COMPLETED
+PROJECT_STATE_AUDIT_COMMIT = 8db8af52ba782fe44ba7a082e9dcd3a5fc4411f3
+IMPLEMENTATION_COMMIT = 8eb97ad5f70c672ead3abbe72e258151059991ee
+ROOT_CAUSE = LEGACY_15M_DAEMON_CROSS_PROFILE_STALE_ACTIVE_CLAIM_CREATED_ONE_5M_DUPLICATE_WINDOW_ROW
+AFFECTED_BOUNDARY = 1787936400000_2026-08-28T17:00:00Z_EXACT10_LINEAGES2_DISTRIBUTION9_1
+CONTAMINATION = ONE_BOUNDARY_ONLY_LASTGOOD1787936100000_FIRSTCLEAN1787936700000
+PRESERVATION = INCIDENTmixed-lineage-b379c8030476d03683b70a3d_APPEND_ONLY_MANIFEST_EXCLUDED_RAW_REWRITE0_DELETE0
+RECOVERY = SAME_SEGMENT_D8A498357AF94AE584B3B691_NO_GENUINE_5M_RUNTIME_TRANSITION_SEPARATE_SCAN_CURSOR_CANONICAL_CHECKPOINT
+GUARD = MIXED_LINEAGE_REJECT_PRESERVED_BOUNDARY_ATOMIC_INCIDENT_QUARANTINE_PREVENTS_COHORT_MIX_AND_RESTART_STORM
+COLLECTOR = INSTANCEEB422DAC_CONTAINER334720AF_IMAGE8454D15_OWNER1_RESTART0_HEALTHY_ERRORS0_MISSING0_DUPLICATE0_FUTURE0
+NATURAL_ACCEPTANCE = 1787956200000_1787956500000_1787956800000_ALL_EXACT10_SINGLELINEAGE_CLOSED_CANDLES
+CONTINUITY = 15M_PASS_5M_PASS_PROTECTED_RUNTIME_RESTARTS0_PARAMETER_CHANGE0_BEHAVIOR_CHANGE0
+SAFETY = ALEMBIC0018_WAL_TRUE_PITR_TRUE_GAP_FALSE_ACK_PID27564_PASS_CONTROL_ARMED6_LIVE_DISABLED_BINANCE_ORDER0_SECRET0_SECURITY0
+TESTS = COLLECTOR13PASS_FOCUSED259PASS5SKIP_BROADER145PASS5SKIP1_PREEXISTING_RISK_FIXTURE_DESKTOP249PASS2SKIP
+UI_RERUN = PASS_RU_EN_1000X680_EXACT10_NO_UI_REWORK
+EVIDENCE = docs/audits/TRADERS_SCALPING_COLLECTOR_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_RECOVERY_01_FINAL.md_AND_../evidence_inbox/TRADERS_SCALPING_COLLECTOR_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_RECOVERY_01_FINAL.md
+NEXT_ACTION = CONTINUE_SAME_HOMOGENEOUS_SCALPING_SEGMENT_WITH_INCIDENT_BOUNDARY_EXCLUDED_AND_REASSESS_CALIBRATION_GATE
 ```
 
 ## Scalping PAPER Plan math and exact10 symbol view refactor 01
 
 ```text
 TASK = TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01
-RESULT = IMPLEMENTATION_AND_NATURAL_UI_ACCEPTANCE_PASS_OVERALL_TASK_BLOCKED_BY_COLLECTOR_CONTINUITY
+RESULT = PASS_COMPLETED_AFTER_COLLECTOR_CONTINUITY_RECOVERY_AND_FINAL_ACCEPTANCE_RERUN
 PROJECT_STATE_AUDIT_COMMIT = 2a35b2dce5148f91b68e84c75e887c4f01e46d19
 SERVER_IMPLEMENTATION_COMMITS = 96be866_FAD2D4F_1EAA958_ED74563_817E64E_6AC8B53
 DESKTOP_IMPLEMENTATION_COMMIT = C965DD65B6386D1B562AE4911B5C42E300135341
@@ -50,9 +73,9 @@ TESTS = SERVER_FOCUSED40PASS_DESKTOP1480PASS2SKIP3029SUBTESTS_BROADER201PASS12SK
 PERFORMANCE = FINAL_PAYLOAD121382B_WARM_MEDIAN153MS_NO_PER_SYMBOL_HTTP_OR_SQL_MATERIAL_REFRESH_REGRESSION_NO
 DEPLOYMENT = READONLY_ONLY_FINAL_IMAGE78D53E6_CONTAINER19E3D76_RESTART0_REPLACEMENTS7_PROTECTED_RUNTIME_RESTARTS_BY_TASK0
 SAFETY = ALEMBIC0018_WAL_TRUE_PITR_TRUE_GAP_FALSE_ACK_PASS_CONTROL_ARMED6_LIVE_DISABLED_BINANCE_ORDER0_SECRET0_SECURITY0
-BLOCKER = COLLECTOR_SAME_ID_UNMODIFIED_BY_TASK_BUT_FAIL_CLOSED_RESTART_LOOP_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY
+BLOCKER = NONE_CLOSED_BY_TRADERS_SCALPING_COLLECTOR_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_RECOVERY_01
 EVIDENCE = docs/audits/TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01_FINAL.md_AND_../evidence_inbox/TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01_FINAL.md
-NEXT_ACTION = DIAGNOSE_AND_RESTORE_SCALPING_COLLECTOR_LINEAGE_WITHOUT_CHANGING_TRADING_ALGORITHM_THEN_RERUN_FINAL_ACCEPTANCE
+NEXT_ACTION = RETAIN_ACCEPTED_UI_IMPLEMENTATION_AND_CONTINUE_SCALPING_COLLECTION
 ```
 
 ## Scalping Funnel operational UX refinement 01
@@ -5656,7 +5679,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈99% deployed / Scalping calibration observation autonomous | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. The passive restart-safe collector is running with one owner and one homogeneous segment; startup acceptance persisted 3 exact10 5m boundaries/30 records with zero missing, duplicate or future-leakage records while 15m remained exact10 and unchanged. Profitability and parameter promotion remain pending |
+| Online analytics/paper pipeline | ≈99% deployed / Scalping calibration observation autonomous | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. Mixed boundary `1787936400000` is immutable incident evidence and calibration-ineligible; the same valid 5m lineage continues in segment `d8a498...`. The recovered collector has one owner, restart 0, and three post-start natural exact10 boundaries with zero missing, duplicate or future leakage while 15m remains unchanged. Profitability and parameter promotion remain pending |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS on schema 0018; existing lineage preserved | Exactly one canonical ACK owner is healthy with matching PID/lock/state and fresh heartbeat. Backlog/pending/unresolved are `0/0/0`; canonical and GET-only readiness are `wal_ready=true`, `pitr_ready=true`; archive coverage is 1525/1525 with no physical gap. Existing base `base-20260811T075419Z-f179b4e1` and recovery window were preserved |
 | Readonly Server API | Healthy dual-profile image on production 0018; desktop export contract blocked | Image `sha256:6cf2399b...` is healthy with restart 0, 28 GET and zero write routes. Export pages are bounded by rows, but current 200-row payloads are 3.52 MB for 5m and 3.99 MB for 15m, above the desktop 2.00 MB response ceiling |
@@ -5675,7 +5698,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = CONTINUE_SCALPING_COLLECTION_WITH_WAL_PITR_READY_AND_REASSESS_AFTER_NEXT_CALIBRATION_GATE
+RECOMMENDED_NEXT_TASK = CONTINUE_SAME_HOMOGENEOUS_SCALPING_SEGMENT_WITH_INCIDENT_BOUNDARY_EXCLUDED_AND_REASSESS_CALIBRATION_GATE
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
@@ -5751,7 +5774,7 @@ ACK owner, and drained 144 contiguous objects (143 at complete pre-repair
 inventory plus one legitimate arrival). That recovery-time projection reported
 WAL/PITR ready, backlog/pending/unresolved `0/0/0`, the same lineage valid, and
 no physical gap; the idempotent retry performed zero attempts. It is historical
-evidence and is superseded by the current ACK-owner failure below.
+evidence and is superseded by the healthy ACK-owner state below.
 The historical 5m SHADOW sample remains preserved as provenance, but it is no
 longer the active runtime mode. The active 5m profile is now executable PAPER
 `PRODUCTION_SEARCH`, has persisted natural production cycles, and competes with
@@ -5763,19 +5786,21 @@ The prospective Scalping calibration collector now runs as a separate
 `restart: always` Compose service. It reads completed production projections and
 closed candles without trading authority, persists one causal snapshot per
 evaluation in a homogeneous append-only segment, checkpoints atomically, and
-tracks delayed closed-1m outcome paths. The fresh post-task runtime contains
-143 exact10 5m boundaries in the new segment with zero missing, duplicate,
-error or future-leakage records, one owner and 44 terminal follow-ups; concurrent
-15m remains exact10 and independent. The collector continues autonomously
-toward the 24h/72h and outcome gates, so no Codex long wait is required.
-Profitability calibration and any parameter promotion remain future separate
-work.
+tracks delayed closed-1m outcome paths. Boundary `1787936400000` was rejected
+before observation append because one legacy 15m daemon stale-claimed a 5m
+row. Its ten source references are preserved in an append-only incident part
+and manifest exclusion; the 5m runtime before and after is the same, so the
+canonical recovery continues segment `d8a498...` without cohort mixing. The
+fresh post-recovery runtime has one owner, Docker restart count zero, 355
+accepted boundaries/5870 records, and three post-start natural exact10
+boundaries with zero missing, duplicate, error or future leakage. The 24h count
+gate is reached; the 72h and profitability gates remain future work.
 
-The canonical WAL ACK owner is currently absent after its PostgreSQL read
-timed out through Docker. Hardened diagnosis is retry-pending with one active
-unresolved failure, export backlog one and 13 pending archive statuses.
-Required coverage remains 1487/1487 and the physical chain has no gap, but
-`wal_ready` and `pitr_ready` are false until a separately authorized recovery.
+The canonical WAL ACK owner is healthy and singleton at PID 27564 with matching
+lock/state/identity and fresh heartbeat. Export backlog and pending archive
+statuses are zero. Canonical read-only readiness reports `wal_ready=true`,
+`pitr_ready=true`, valid preserved lineage `base-20260811T075419Z-f179b4e1`
+and no physical gap.
 
 ## Правила актуализации
 
