@@ -200,6 +200,7 @@ def _downstream_trace(
     *,
     scalping: bool,
     now_ms: int | None = None,
+    include_detail: bool = True,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     """Return the server-authoritative downstream observability projection.
 
@@ -301,6 +302,8 @@ def _downstream_trace(
     trace["PAPER_PLAN"] = _status_from_legacy(
         legacy_trace.get("PAPER_TRADE_PLAN", "NOT_REACHED")
     )
+    if not include_detail:
+        return trace, detail
 
     geometry_reason = diagnostic.get("rejection_reason") or diagnostic.get("raw_reason")
     entry = _first_present(
@@ -988,6 +991,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 trace,
                 scalping=profile.trigger_timeframe == "5m",
                 now_ms=now_ms,
+                include_detail=boundary in {
+                    current_boundary, last_completed_boundary
+                },
             )
             candidate = eligible_by_run.get(row.run_id)
             if candidate is None and profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
@@ -1138,6 +1144,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 trace,
                 scalping=profile.trigger_timeframe == "5m",
                 now_ms=now_ms,
+                include_detail=False,
             )
             if row.run_id in eligible_by_run or (
                 profile.mode == TradeProfileMode.SHADOW_SEARCH.value
@@ -1188,10 +1195,28 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 else 1 if downstream.get("STRATEGY_ADMITTED") == "PASS"
                 else 0
             )
+            if priority == 0:
+                continue
             rank = (priority, detail_boundary)
             previous = detail_by_symbol.get(item["symbol"])
             if previous is None or rank > previous[0]:
                 detail_by_symbol[item["symbol"]] = (rank, item)
+    pair_by_run = {row.run_id: (row, result) for row, result in rows}
+    for _rank, item in detail_by_symbol.values():
+        if "entry_price" in item["downstream_detail"]:
+            continue
+        source_pair = pair_by_run.get(item["source_run_id"])
+        if source_pair is None:
+            continue
+        source_row, source_result = source_pair
+        source_trace, _meta = _stage_trace(source_row, source_result, now_ms)
+        _source_downstream, source_detail = _downstream_trace(
+            source_result,
+            source_trace,
+            scalping=profile.trigger_timeframe == "5m",
+            now_ms=now_ms,
+        )
+        item["downstream_detail"].update(source_detail)
     latest = current["latest_pipeline_update_ms"] if current else None
     age = None if latest is None else max(0, now_ms - latest)
     metric_stages = {
