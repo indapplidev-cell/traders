@@ -21,7 +21,15 @@ from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameter
 from app.engine_orchestrator.trade_profile import resolve_trade_profile
 from app.i18n import CATALOG_VERSION
 from app.server_api.errors import ApiError
-from app.server_api.trading_funnel import STAGES, _first_reason, _mapping, _stage_trace
+from app.server_api.trading_funnel import (
+    CANONICAL_DOWNSTREAM_STAGES,
+    STAGES,
+    _downstream_trace,
+    _first_reason,
+    _mapping,
+    _specific_terminal_reason,
+    _stage_trace,
+)
 
 
 EXPORT_SCHEMA_VERSION: Final = "trading-funnel-export-v1"
@@ -322,8 +330,42 @@ def build_export_record(
     canonical_trace = _canonical_trace(
         source, trace, stage_reasons, diagnostic, outcome
     )
+    downstream_trace, _downstream_detail = _downstream_trace(
+        result,
+        trace,
+        scalping=run.trade_profile_id == "trade-5m-v1",
+    )
+    terminal_reason = _safe_reason(
+        _specific_terminal_reason(run, result, downstream_trace)
+    )
+    terminal_stage = next(
+        (
+            stage for stage in reversed(CANONICAL_DOWNSTREAM_STAGES)
+            if downstream_trace[stage]
+            not in {"NOT_REACHED", "NOT_APPLICABLE", "UNAVAILABLE"}
+        ),
+        "ANALYSIS_QUALIFIED",
+    )
     paper_trace_status = _mapping(canonical_trace.get("paper_plan")).get("status")
     return {
+        "profile": run.trade_profile_id,
+        "timestamp": datetime.fromtimestamp(
+            run.closed_until_ms / 1000, timezone.utc
+        ).isoformat(),
+        "symbol": run.symbol,
+        "stage": terminal_stage,
+        "stage_status": downstream_trace[terminal_stage],
+        "terminal_reason": terminal_reason,
+        "strategy_score": strategy.get("strategy_final_score") or strategy.get("strategy_score"),
+        "risk_compatibility_status": downstream_trace["RISK_COMPATIBILITY_ADMITTED"],
+        "geometry_status": downstream_trace["GEOMETRY_VALID"],
+        "target_status": downstream_trace["TARGET_VALID"],
+        "net_cost_status": downstream_trace["NET_COST_PASS"],
+        "rr_status": downstream_trace["RR_PASS"],
+        "risk_status": downstream_trace["RISK_ADMITTED"],
+        "portfolio_status": downstream_trace["PORTFOLIO_ADMITTED"],
+        "final_approval": downstream_trace["FINAL_APPROVAL"],
+        "downstream_stage_trace": downstream_trace,
         "provenance": {
             "export_generated_at_utc": datetime.fromtimestamp(generated_at_ms / 1000, timezone.utc).isoformat(),
             "export_schema_version": EXPORT_SCHEMA_VERSION,

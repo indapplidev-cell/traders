@@ -44,6 +44,7 @@ def _pair(profile="trade-15m-v1", symbol="BTCUSDT", boundary=1_900_000_200_000, 
         "total_cost_bps": 29, "gross_rr": 2, "net_rr": 1.16,
         "expected_net_edge_bps": 121, "break_even_win_rate": .463,
         "economic_gate_enabled": True, "economic_gate_pass": not rejected,
+        "causal_target_exists": True, "valid_plan": not rejected,
     }
     result = OnlinePipelineResultRow(
         id=1, run_id=run.run_id, trade_profile_id=profile, profile_mode="PRODUCTION_SEARCH",
@@ -134,6 +135,34 @@ def test_symbol_filter_csv_and_summary_formats():
     assert "stop_distance" in summary and "rr_cohorts" in summary
     markdown = _get(client, format="summary-md")
     assert markdown.status_code == 200 and "# Trading Funnel report" in markdown.text
+
+
+def test_scalping_export_includes_additive_downstream_observability_fields():
+    response = _get(
+        _client(ExportRepo((_pair(profile="trade-5m-v1"),))),
+        trade_profile_id="trade-5m-v1",
+    )
+    assert response.status_code == 200
+    row = json.loads(response.text)
+    required = {
+        "profile", "timestamp", "symbol", "stage", "stage_status",
+        "terminal_reason", "strategy_score", "geometry_status",
+        "target_status", "net_cost_status", "rr_status", "risk_status",
+        "portfolio_status", "final_approval",
+    }
+    assert required <= row.keys()
+    assert row["profile"] == "trade-5m-v1"
+    assert row["risk_compatibility_status"] == "PASS"
+    assert row["geometry_status"] == "PASS"
+    assert row["target_status"] == "PASS"
+    assert row["net_cost_status"] == "PASS"
+    assert row["rr_status"] == "PASS"
+    assert row["portfolio_status"] == "UNAVAILABLE"
+
+
+def test_15m_export_marks_downstream_only_stages_not_applicable():
+    row = json.loads(_get(_client(ExportRepo((_pair(),)))).text)
+    assert set(row["downstream_stage_trace"].values()) == {"NOT_APPLICABLE"}
 
 
 def test_empty_summary_is_explicit_and_range_format_candles_are_bounded():

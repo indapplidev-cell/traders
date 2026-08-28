@@ -53,6 +53,20 @@ STAGES: Final = (
     "PAPER_TRADE_PLAN", "QUANTITY_APPROVED", "VALIDITY_APPROVED",
     "FINAL_APPROVAL", "ELIGIBLE", "SELECTOR_WINNER",
 )
+CANONICAL_DOWNSTREAM_STAGES: Final = (
+    "ANALYSIS_QUALIFIED",
+    "STRUCTURAL_SETUP",
+    "STRATEGY_ADMITTED",
+    "RISK_COMPATIBILITY_ADMITTED",
+    "GEOMETRY_VALID",
+    "TARGET_VALID",
+    "NET_COST_PASS",
+    "RR_PASS",
+    "RISK_ADMITTED",
+    "PORTFOLIO_ADMITTED",
+    "FINAL_APPROVAL",
+    "PAPER_PLAN",
+)
 ROW_CACHE_TTL_SECONDS: Final = 30.0
 
 
@@ -121,6 +135,175 @@ def _first_reason(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None
             if values:
                 return values[0]
     return row.final_reason
+
+
+def _status_from_legacy(value: str) -> str:
+    return {
+        "PASS": "PASS",
+        "PENDING": "PENDING",
+        "DEFERRED": "DEFERRED",
+        "ERROR": "ERROR",
+        "REJECTED": "REJECTED",
+    }.get(value, "NOT_REACHED")
+
+
+def _downstream_trace(
+    result: OnlinePipelineResultRow | None,
+    legacy_trace: Mapping[str, str],
+    *,
+    scalping: bool,
+) -> tuple[dict[str, str], dict[str, Any]]:
+    """Return the server-authoritative downstream observability projection.
+
+    The projection deliberately does not reinterpret missing historical facts as
+    failures.  In particular, Portfolio has no independent persisted decision in
+    the current pipeline and therefore remains UNAVAILABLE instead of a false 0.
+    """
+    if not scalping:
+        return (
+            {stage: "NOT_APPLICABLE" for stage in CANONICAL_DOWNSTREAM_STAGES},
+            {},
+        )
+
+    trace = {stage: "NOT_REACHED" for stage in CANONICAL_DOWNSTREAM_STAGES}
+    detail: dict[str, Any] = {}
+    trace["ANALYSIS_QUALIFIED"] = _status_from_legacy(
+        legacy_trace.get("ANALYSIS", "NOT_REACHED")
+    )
+    trace["STRUCTURAL_SETUP"] = _status_from_legacy(
+        legacy_trace.get("STRUCTURAL_SETUP", "NOT_REACHED")
+    )
+    trace["STRATEGY_ADMITTED"] = _status_from_legacy(
+        legacy_trace.get("STRATEGY_ELIGIBLE", "NOT_REACHED")
+    )
+    trace["RISK_COMPATIBILITY_ADMITTED"] = _status_from_legacy(
+        legacy_trace.get("RISK_APPROVED", "NOT_REACHED")
+    )
+    if result is None:
+        return trace, detail
+
+    setup = _mapping(result.setup_payload_json)
+    strategy = _mapping(result.strategy_payload_json)
+    risk = _mapping(result.risk_payload_json)
+    paper = _mapping(result.paper_payload_json)
+    context = _mapping(paper.get("paper_context"))
+    diagnostic = _mapping(context.get("scalping_geometry_diagnostics"))
+    checklist = _mapping(paper.get("final_approval_checklist"))
+    approvals = _mapping(paper.get("persisted_final_approvals"))
+    shadow_approvals = _mapping(paper.get("shadow_approvals"))
+    planned = _mapping(paper.get("shadow_plan")) or paper
+
+    compatibility_pass = trace["RISK_COMPATIBILITY_ADMITTED"] == "PASS"
+    if compatibility_pass:
+        if diagnostic:
+            trace["GEOMETRY_VALID"] = (
+                "PASS" if diagnostic.get("stop_envelope_pass") is True
+                else "REJECTED"
+            )
+        else:
+            trace["GEOMETRY_VALID"] = "UNAVAILABLE"
+    if trace["GEOMETRY_VALID"] == "PASS":
+        if diagnostic.get("causal_target_exists") is True:
+            trace["TARGET_VALID"] = "PASS"
+        elif diagnostic:
+            trace["TARGET_VALID"] = "REJECTED"
+        else:
+            trace["TARGET_VALID"] = "UNAVAILABLE"
+    if trace["TARGET_VALID"] == "PASS":
+        if diagnostic.get("economic_gate_pass") is True:
+            trace["NET_COST_PASS"] = "PASS"
+        elif diagnostic:
+            trace["NET_COST_PASS"] = "REJECTED"
+        else:
+            trace["NET_COST_PASS"] = "UNAVAILABLE"
+    if trace["NET_COST_PASS"] == "PASS":
+        if diagnostic.get("valid_plan") is True:
+            trace["RR_PASS"] = "PASS"
+        elif diagnostic:
+            trace["RR_PASS"] = "REJECTED"
+        else:
+            trace["RR_PASS"] = "UNAVAILABLE"
+
+    authoritative_risk = _mapping(approvals.get("paper_risk_approval"))
+    if authoritative_risk:
+        trace["RISK_ADMITTED"] = "PASS"
+    elif trace["RR_PASS"] == "PASS":
+        # A missing approval is not proof of an authoritative rejection.
+        trace["RISK_ADMITTED"] = "UNAVAILABLE"
+
+    # Portfolio is not independently serialized by the current pipeline.  A
+    # final approval proves the full final materialization succeeded, but it
+    # does not justify inventing a distinct Portfolio decision.
+    trace["PORTFOLIO_ADMITTED"] = "UNAVAILABLE"
+    trace["FINAL_APPROVAL"] = _status_from_legacy(
+        legacy_trace.get("FINAL_APPROVAL", "NOT_REACHED")
+    )
+    trace["PAPER_PLAN"] = _status_from_legacy(
+        legacy_trace.get("PAPER_TRADE_PLAN", "NOT_REACHED")
+    )
+
+    geometry_reason = diagnostic.get("rejection_reason") or diagnostic.get("raw_reason")
+    detail.update({
+        "setup_type": setup.get("setup_type"),
+        "strategy_type": strategy.get("strategy_type") or strategy.get("source_strategy_type"),
+        "strategy_score": strategy.get("strategy_final_score") or strategy.get("strategy_score"),
+        "risk_compatibility": risk.get("risk_status"),
+        "geometry_status": trace["GEOMETRY_VALID"],
+        "geometry_reason": geometry_reason,
+        "stop_distance_bps": diagnostic.get("stop_distance_bps"),
+        "target_status": trace["TARGET_VALID"],
+        "target_distance_bps": diagnostic.get("target_distance_bps"),
+        "target_source": diagnostic.get("target_source_type"),
+        "spread_bps": diagnostic.get("spread_bps"),
+        "total_modeled_cost_bps": diagnostic.get("total_cost_bps"),
+        "gross_rr": diagnostic.get("gross_rr") or planned.get("planned_rr"),
+        "net_rr": diagnostic.get("net_rr"),
+        "authoritative_risk": (
+            authoritative_risk.get("status") or "PASS"
+            if authoritative_risk else None
+        ),
+        "portfolio": None,
+        "final_approval": trace["FINAL_APPROVAL"],
+        "paper_plan": trace["PAPER_PLAN"],
+        "checklist_risk_pass": checklist.get("risk_pass"),
+        "shadow_final_approval": _mapping(
+            shadow_approvals.get("shadow_final_approval")
+        ).get("status"),
+    })
+    return trace, detail
+
+
+def _specific_terminal_reason(
+    row: OnlinePipelineRun,
+    result: OnlinePipelineResultRow | None,
+    downstream_trace: Mapping[str, str],
+) -> str | None:
+    if result is None:
+        return row.error_code or row.final_reason
+    reasons = _mapping(result.module_reasons_json)
+    paper = _mapping(result.paper_payload_json)
+    diagnostic = _mapping(
+        _mapping(paper.get("paper_context")).get("scalping_geometry_diagnostics")
+    )
+    diagnostic_reason = diagnostic.get("rejection_reason") or diagnostic.get("raw_reason")
+    if diagnostic_reason and any(
+        downstream_trace.get(stage) == "REJECTED"
+        for stage in ("GEOMETRY_VALID", "TARGET_VALID", "NET_COST_PASS", "RR_PASS")
+    ):
+        return str(diagnostic_reason)
+    module_by_stage = (
+        ("STRATEGY_ADMITTED", "strategy"),
+        ("STRUCTURAL_SETUP", "setup"),
+        ("ANALYSIS_QUALIFIED", "analysis"),
+        ("RISK_COMPATIBILITY_ADMITTED", "risk"),
+        ("PAPER_PLAN", "paper"),
+    )
+    for stage, module in module_by_stage:
+        if downstream_trace.get(stage) in {"REJECTED", "ERROR", "DEFERRED"}:
+            values = _reasons(reasons.get(module))
+            if values:
+                return values[0]
+    return _first_reason(row, result)
 
 
 def _stage_trace(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None, now_ms: int) -> tuple[dict[str, str], dict[str, Any]]:
@@ -625,10 +808,18 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             return None
         pairs = by_boundary[boundary]
         items, counts = [], Counter()
+        downstream_counts, downstream_rejected = Counter(), Counter()
+        downstream_observed = Counter()
+        downstream_reasons: dict[str, Counter[str]] = {
+            stage: Counter() for stage in CANONICAL_DOWNSTREAM_STAGES
+        }
         candidates = []
         latest_update = boundary
         for row, result in pairs:
             trace, meta = _stage_trace(row, result, now_ms)
+            downstream_trace, downstream_detail = _downstream_trace(
+                result, trace, scalping=profile.trigger_timeframe == "5m"
+            )
             candidate = eligible_by_run.get(row.run_id)
             if candidate is None and profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
                 candidate = _shadow_candidate(row, result, trace, now_ms)
@@ -642,9 +833,21 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             for stage, status in trace.items():
                 if status == "PASS":
                     counts[stage] += 1
+            for stage, status in downstream_trace.items():
+                if status not in {"NOT_APPLICABLE", "UNAVAILABLE"}:
+                    downstream_observed[stage] += 1
+                if status == "PASS":
+                    downstream_counts[stage] += 1
+                elif status in {"REJECTED", "ERROR", "DEFERRED"}:
+                    downstream_rejected[stage] += 1
             updated_ms = max(filter(None, (_ms(row.updated_at), _ms(row.finished_at), _ms(result.created_at) if result else None)), default=boundary)
             latest_update = max(latest_update, updated_ms)
-            reason = meta.get("forced_reason") or _first_reason(row, result)
+            reason = meta.get("forced_reason") or _specific_terminal_reason(
+                row, result, downstream_trace
+            )
+            for stage, status in downstream_trace.items():
+                if status in {"REJECTED", "ERROR", "DEFERRED"} and reason:
+                    downstream_reasons[stage][str(reason)] += 1
             generation = _mapping(
                 _mapping(result.paper_payload_json).get("final_approval_generation")
             ) if result is not None else {}
@@ -662,6 +865,23 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     and candidate is not None
                 ),
                 "updated_at_ms": updated_ms, "stage_trace": trace,
+                "downstream_stage_trace": downstream_trace,
+                "downstream_current_stage": next(
+                    (
+                        stage for stage in reversed(CANONICAL_DOWNSTREAM_STAGES)
+                        if downstream_trace[stage]
+                        not in {"NOT_REACHED", "NOT_APPLICABLE", "UNAVAILABLE"}
+                    ),
+                    "ANALYSIS_QUALIFIED",
+                ),
+                "terminal_reason_code": reason,
+                "downstream_detail": {
+                    "profile": profile.trade_profile_id,
+                    "cycle_boundary_ms": boundary,
+                    **downstream_detail,
+                    "terminal_reason": reason,
+                    "updated_at_ms": updated_ms,
+                },
                 "risk_score": meta.get("risk_score"), "strategy_score": meta.get("strategy_score"),
                 "planned_risk_reward": meta.get("planned_risk_reward"),
             })
@@ -691,6 +911,25 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             "symbols_expected": len(universe.symbols), "symbols_seen": len(seen),
             "symbols_processed": len(processed), "cycle_complete": processed == set(universe.symbols),
             "stage_counts": {stage: counts[stage] for stage in STAGES},
+            "downstream_stage_counts": {
+                stage: (
+                    downstream_counts[stage]
+                    if downstream_observed[stage] else None
+                )
+                for stage in CANONICAL_DOWNSTREAM_STAGES
+            },
+            "stage_rejected_count": {
+                stage: downstream_rejected[stage]
+                for stage in CANONICAL_DOWNSTREAM_STAGES
+                if downstream_observed[stage]
+            },
+            "dominant_rejection_reason": {
+                stage: (
+                    downstream_reasons[stage].most_common(1)[0][0]
+                    if downstream_reasons[stage] else None
+                )
+                for stage in CANONICAL_DOWNSTREAM_STAGES
+            },
             "items": sorted(items, key=lambda value: value["symbol"]),
             "eligible_competitors": [{"rank": ranks[item.lineage.source_run_id], "symbol": item.symbol,
                                       "candidate_id": item.candidate_id, "final_approval_id": item.lineage.final_approval_id}
@@ -708,8 +947,16 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             if {row.symbol for row, _ in by_boundary[boundary] if row.status in TERMINAL_RUN_STATUSES} == set(universe.symbols)
         )
         counts = Counter()
+        downstream_counts, downstream_rejected = Counter(), Counter()
+        downstream_observed = Counter()
+        downstream_reasons: dict[str, Counter[str]] = {
+            stage: Counter() for stage in CANONICAL_DOWNSTREAM_STAGES
+        }
         for row, result in selected:
             trace, _ = _stage_trace(row, result, now_ms)
+            downstream_trace, _ = _downstream_trace(
+                result, trace, scalping=profile.trigger_timeframe == "5m"
+            )
             if row.run_id in eligible_by_run or (
                 profile.mode == TradeProfileMode.SHADOW_SEARCH.value
                 and _shadow_candidate(row, result, trace, now_ms) is not None
@@ -717,9 +964,33 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 trace["ELIGIBLE"] = "PASS"
             for stage, status in trace.items():
                 if status == "PASS": counts[stage] += 1
+            reason = _specific_terminal_reason(row, result, downstream_trace)
+            for stage, status in downstream_trace.items():
+                if status not in {"NOT_APPLICABLE", "UNAVAILABLE"}:
+                    downstream_observed[stage] += 1
+                if status == "PASS":
+                    downstream_counts[stage] += 1
+                elif status in {"REJECTED", "ERROR", "DEFERRED"}:
+                    downstream_rejected[stage] += 1
+                    if reason:
+                        downstream_reasons[stage][str(reason)] += 1
         return {"window_ms": window_ms, "boundary_count": len(selected_boundaries),
                 "completed_cycle_count": completed,
-                "stage_counts": {stage: counts[stage] for stage in STAGES[:-2]}}
+                "stage_counts": {stage: counts[stage] for stage in STAGES[:-2]},
+                "downstream_stage_counts": {
+                    stage: downstream_counts[stage] if downstream_observed[stage] else None
+                    for stage in CANONICAL_DOWNSTREAM_STAGES
+                },
+                "stage_rejected_count": {
+                    stage: downstream_rejected[stage]
+                    for stage in CANONICAL_DOWNSTREAM_STAGES
+                    if downstream_observed[stage]
+                },
+                "dominant_rejection_reason": {
+                    stage: downstream_reasons[stage].most_common(1)[0][0]
+                    if downstream_reasons[stage] else None
+                    for stage in CANONICAL_DOWNSTREAM_STAGES
+                }}
 
     current = cycle(current_boundary)
     latest = current["latest_pipeline_update_ms"] if current else None
@@ -760,6 +1031,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         "decision_timeframe": profile.trigger_timeframe,
         "universe_id": universe.version_id, "selection_policy_version": MULTI_SYMBOL_SELECTION_POLICY_VERSION,
         "count_unit": {stage: "SYMBOL" for stage in STAGES},
+        "downstream_stage_order": list(CANONICAL_DOWNSTREAM_STAGES),
+        "downstream_count_unit": {
+            stage: "SYMBOL" for stage in CANONICAL_DOWNSTREAM_STAGES
+        },
         "current_cycle": current, "last_completed_cycle": cycle(last_completed_boundary),
         "rolling_1h": rolling(60 * 60 * 1000), "rolling_4h": rolling(4 * 60 * 60 * 1000),
         "projection_generated_at_ms": now_ms, "latest_pipeline_update_ms": latest,

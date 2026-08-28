@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.server_api.app_factory import create_app
 from app.server_api.trading_funnel import (
+    CANONICAL_DOWNSTREAM_STAGES,
     MAX_HORIZON_MS,
     TradingFunnelReadRepository,
     build_projection,
@@ -74,6 +75,19 @@ def _candidate(run: OnlinePipelineRun):
 def _project(pairs, eligible=None):
     universe = SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS)
     return build_projection(tuple(pairs), universe, NOW_MS, eligible or {})
+
+
+def _project_5m(pairs, eligible=None):
+    universe = SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS)
+    for run, result in pairs:
+        run.primary_timeframe = "5m"
+        run.trade_profile_id = "trade-5m-v1"
+        if result is not None:
+            result.primary_timeframe = "5m"
+            result.trade_profile_id = "trade-5m-v1"
+    return build_projection(
+        tuple(pairs), universe, NOW_MS, eligible or {}, "trade-5m-v1"
+    )
 
 
 def test_current_cycle_empty_or_startup():
@@ -229,6 +243,91 @@ def test_rolling_inclusion_boundaries_and_query_contract():
     assert value["rolling_1h"]["stage_counts"]["ANALYSIS"] == 2
     assert value["rolling_4h"]["stage_counts"]["ANALYSIS"] == 4
     assert value["query_time_horizon_ms"] == MAX_HORIZON_MS
+
+
+def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
+    run = _run("BTCUSDT")
+    result = _result(run)
+    result.strategy_payload_json.update({
+        "strategy_type": "SCALP_BREAKOUT_RESEARCH",
+        "strategy_final_score": "88.75",
+    })
+    result.setup_payload_json["setup_type"] = "SCALP_BREAKOUT"
+    result.paper_payload_json["paper_context"] = {
+        "scalping_geometry_diagnostics": {
+            "stop_envelope_pass": True,
+            "causal_target_exists": True,
+            "economic_gate_pass": True,
+            "valid_plan": True,
+            "stop_distance_bps": "42.5",
+            "target_distance_bps": "90",
+            "target_source_type": "LOCAL_5M",
+            "spread_bps": "0.8",
+            "total_cost_bps": "27.8",
+            "gross_rr": "2.1",
+            "net_rr": "1.6",
+        }
+    }
+    other = _run("ETHUSDT")
+    other_result = _result(
+        other, setup="NO_SETUP", strategy="NO_DECISION",
+        risk="NO_DECISION", paper="NO_PLAN", approvals=False,
+        reasons={"setup": ["NO_STRUCTURAL_SETUP"], "paper": ["PAPER_NO_PLAN_SOURCE_NO_DECISION"]},
+    )
+    value = _project_5m(((run, result), (other, other_result)))
+    item = value["current_cycle"]["items"][0]
+    assert tuple(value["downstream_stage_order"]) == CANONICAL_DOWNSTREAM_STAGES
+    assert item["downstream_stage_trace"]["RISK_COMPATIBILITY_ADMITTED"] == "PASS"
+    assert item["downstream_stage_trace"]["RISK_ADMITTED"] == "PASS"
+    assert item["downstream_stage_trace"]["PORTFOLIO_ADMITTED"] == "UNAVAILABLE"
+    assert item["downstream_detail"]["strategy_type"] == "SCALP_BREAKOUT_RESEARCH"
+    assert item["downstream_detail"]["net_rr"] == "1.6"
+    assert value["current_cycle"]["downstream_stage_counts"]["RR_PASS"] == 1
+    assert value["current_cycle"]["downstream_stage_counts"]["PORTFOLIO_ADMITTED"] is None
+    assert value["rolling_1h"]["downstream_stage_counts"]["NET_COST_PASS"] == 1
+    assert value["rolling_4h"]["downstream_stage_counts"]["NET_COST_PASS"] == 1
+    rejected = value["current_cycle"]["items"][1]
+    assert rejected["terminal_reason_code"] == "NO_STRUCTURAL_SETUP"
+
+
+def test_scalping_geometry_terminal_reason_and_null_are_not_zero():
+    run = _run("BTCUSDT")
+    result = _result(run, paper="NO_PLAN", approvals=False)
+    result.paper_payload_json["paper_context"] = {
+        "scalping_geometry_diagnostics": {
+            "stop_envelope_pass": False,
+            "stop_distance_bps": "254.1",
+            "rejection_stage": "STOP_ENVELOPE",
+            "rejection_reason": "GEOMETRY_STOP_TOO_WIDE",
+            "target_distance_bps": None,
+            "spread_bps": None,
+        }
+    }
+    other = _run("ETHUSDT")
+    other_result = _result(other, setup="NO_SETUP", approvals=False)
+    value = _project_5m(((run, result), (other, other_result)))
+    item = value["current_cycle"]["items"][0]
+    assert item["downstream_stage_trace"]["GEOMETRY_VALID"] == "REJECTED"
+    assert item["terminal_reason_code"] == "GEOMETRY_STOP_TOO_WIDE"
+    assert item["downstream_detail"]["target_distance_bps"] is None
+    assert item["downstream_detail"]["spread_bps"] is None
+    assert value["current_cycle"]["stage_rejected_count"]["GEOMETRY_VALID"] == 1
+
+
+def test_15m_downstream_is_explicitly_not_applicable_and_legacy_is_unchanged():
+    run = _run("BTCUSDT")
+    other = _run("ETHUSDT")
+    value = _project(((run, _result(run)), (other, _result(other))))
+    item = value["current_cycle"]["items"][0]
+    assert all(
+        status == "NOT_APPLICABLE"
+        for status in item["downstream_stage_trace"].values()
+    )
+    assert all(
+        count is None
+        for count in value["current_cycle"]["downstream_stage_counts"].values()
+    )
+    assert value["current_cycle"]["stage_counts"]["RISK_APPROVED"] == 2
 
 
 class _Funnel:

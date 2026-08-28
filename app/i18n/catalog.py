@@ -772,6 +772,17 @@ RU.update({
     "funnel.winner": "Победитель", "funnel.no_winner": "нет",
     "funnel.symbol": "Символ", "funnel.stage": "Этап", "funnel.status": "Статус",
     "funnel.reason": "Причина", "funnel.eligible": "Допущен", "funnel.rank": "Ранг", "funnel.updated": "Обновлено",
+    "funnel.rolling.stage": "Этап", "funnel.rolling.one_hour": "1ч", "funnel.rolling.four_hours": "4ч",
+    "funnel.not_applicable": "N/A", "funnel.unavailable": "Недоступно",
+    "funnel.detail.profile": "Профиль", "funnel.detail.cycle": "Цикл",
+    "funnel.detail.setup_type": "Тип setup", "funnel.detail.strategy_type": "Тип стратегии",
+    "funnel.detail.strategy_score": "Оценка стратегии", "funnel.detail.risk_compatibility": "Совместимость риска",
+    "funnel.detail.geometry_reason": "Причина Geometry", "funnel.detail.stop_distance": "Дистанция стопа",
+    "funnel.detail.target_distance": "Дистанция цели", "funnel.detail.target_source": "Источник цели",
+    "funnel.detail.spread": "Спред", "funnel.detail.total_cost": "Общие модельные издержки",
+    "funnel.detail.gross_rr": "Gross RR", "funnel.detail.net_rr": "Net RR",
+    "funnel.detail.authoritative_risk": "Итоговый риск", "funnel.detail.portfolio": "Портфель",
+    "funnel.detail.final_approval": "Финальное одобрение", "funnel.detail.terminal_reason": "Терминальная причина",
     "trading.profile.trade_15m.title": "Сделка 15м",
     "trading.profile.trade_5m.title": "Скальпинг",
     "funnel.export.button": "Выгрузить отчёт", "funnel.export.title": "Выгрузить отчёт",
@@ -815,6 +826,17 @@ EN.update({
     "funnel.winner": "Winner", "funnel.no_winner": "none",
     "funnel.symbol": "Symbol", "funnel.stage": "Stage", "funnel.status": "Status",
     "funnel.reason": "Reason", "funnel.eligible": "Eligible", "funnel.rank": "Rank", "funnel.updated": "Updated",
+    "funnel.rolling.stage": "Stage", "funnel.rolling.one_hour": "1h", "funnel.rolling.four_hours": "4h",
+    "funnel.not_applicable": "N/A", "funnel.unavailable": "Unavailable",
+    "funnel.detail.profile": "Profile", "funnel.detail.cycle": "Cycle",
+    "funnel.detail.setup_type": "Setup type", "funnel.detail.strategy_type": "Strategy type",
+    "funnel.detail.strategy_score": "Strategy score", "funnel.detail.risk_compatibility": "Risk compatibility",
+    "funnel.detail.geometry_reason": "Geometry reason", "funnel.detail.stop_distance": "Stop distance",
+    "funnel.detail.target_distance": "Target distance", "funnel.detail.target_source": "Target source",
+    "funnel.detail.spread": "Spread", "funnel.detail.total_cost": "Total modeled cost",
+    "funnel.detail.gross_rr": "Gross RR", "funnel.detail.net_rr": "Net RR",
+    "funnel.detail.authoritative_risk": "Authoritative Risk", "funnel.detail.portfolio": "Portfolio",
+    "funnel.detail.final_approval": "Final approval", "funnel.detail.terminal_reason": "Terminal reason",
     "trading.profile.trade_15m.title": "15m Trade",
     "trading.profile.trade_5m.title": "Scalping",
     "funnel.export.button": "Export report", "funnel.export.title": "Export report",
@@ -852,19 +874,29 @@ _FUNNEL_STAGES_EN = {
     "RISK_APPROVED": "Risk approved", "PAPER_TRADE_PLAN": "PaperTradePlan", "QUANTITY_APPROVED": "Quantity approved",
     "VALIDITY_APPROVED": "Validity check passed", "FINAL_APPROVAL": "Approval created", "ELIGIBLE": "Currently eligible",
     "SELECTOR_WINNER": "Selector winner",
+    "ANALYSIS_QUALIFIED": "Analysis", "STRATEGY_ADMITTED": "Strategy admitted",
+    "RISK_COMPATIBILITY_ADMITTED": "Risk compatibility", "GEOMETRY_VALID": "Geometry",
+    "TARGET_VALID": "Target", "NET_COST_PASS": "Net Cost", "RR_PASS": "RR",
+    "RISK_ADMITTED": "Authoritative Risk", "PORTFOLIO_ADMITTED": "Portfolio",
+    "PAPER_PLAN": "PAPER plan",
 }
 _FUNNEL_STAGES_RU = {
     "ANALYSIS": "Анализ", "STRUCTURAL_SETUP": "Структурный setup", "STRATEGY_ELIGIBLE": "Допуск стратегии",
     "RISK_APPROVED": "Допуск риска", "PAPER_TRADE_PLAN": "План PAPER", "QUANTITY_APPROVED": "Допуск количества",
     "VALIDITY_APPROVED": "Срок проверен", "FINAL_APPROVAL": "Одобрение создано", "ELIGIBLE": "Допущен сейчас",
     "SELECTOR_WINNER": "Победитель селектора",
+    "ANALYSIS_QUALIFIED": "Анализ", "STRATEGY_ADMITTED": "Допуск стратегии",
+    "RISK_COMPATIBILITY_ADMITTED": "Совместимость риска", "GEOMETRY_VALID": "Геометрия",
+    "TARGET_VALID": "Цель", "NET_COST_PASS": "Издержки", "RR_PASS": "RR",
+    "RISK_ADMITTED": "Итоговый риск", "PORTFOLIO_ADMITTED": "Портфель",
+    "PAPER_PLAN": "План PAPER",
 }
 RU.update({f"funnel.stage.{key}": value for key, value in _FUNNEL_STAGES_RU.items()})
 EN.update({f"funnel.stage.{key}": value for key, value in _FUNNEL_STAGES_EN.items()})
 _FUNNEL_STATUS_EN = {"PENDING": "Pending", "PASS": "Pass", "REJECTED": "Rejected", "DEFERRED": "Deferred",
-                     "NOT_REACHED": "Not reached", "NOT_APPLICABLE": "Not applicable", "ERROR": "Error"}
+                     "NOT_REACHED": "Not reached", "NOT_APPLICABLE": "N/A", "UNAVAILABLE": "Unavailable", "ERROR": "Error"}
 _FUNNEL_STATUS_RU = {"PENDING": "Ожидает", "PASS": "Пройден", "REJECTED": "Отклонён", "DEFERRED": "Отложен",
-                     "NOT_REACHED": "Не достигнут", "NOT_APPLICABLE": "Не применимо", "ERROR": "Ошибка"}
+                     "NOT_REACHED": "Не достигнут", "NOT_APPLICABLE": "N/A", "UNAVAILABLE": "Недоступно", "ERROR": "Ошибка"}
 RU.update({f"funnel.status.{key}": value for key, value in _FUNNEL_STATUS_RU.items()})
 EN.update({f"funnel.status.{key}": value for key, value in _FUNNEL_STATUS_EN.items()})
 

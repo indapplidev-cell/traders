@@ -310,6 +310,10 @@ class FunnelCandidateStatus(ContractModel):
     selected_winner: bool
     updated_at_ms: int = Field(ge=0)
     stage_trace: dict[str, str]
+    downstream_stage_trace: dict[str, str] = Field(default_factory=dict)
+    downstream_current_stage: str | None = None
+    terminal_reason_code: str | None = None
+    downstream_detail: dict[str, Any] = Field(default_factory=dict)
     risk_score: Any | None = None
     strategy_score: Any | None = None
     planned_risk_reward: Any | None = None
@@ -330,6 +334,9 @@ class FunnelCycle(ContractModel):
     symbols_processed: int = Field(ge=0, le=10)
     cycle_complete: bool
     stage_counts: dict[str, int]
+    downstream_stage_counts: dict[str, int | None] = Field(default_factory=dict)
+    stage_rejected_count: dict[str, int] = Field(default_factory=dict)
+    dominant_rejection_reason: dict[str, str | None] = Field(default_factory=dict)
     items: list[FunnelCandidateStatus]
     eligible_competitors: list[FunnelEligibleCompetitor]
     winner_symbol: Symbol | None
@@ -342,6 +349,9 @@ class FunnelRollingSummary(ContractModel):
     boundary_count: int = Field(ge=0)
     completed_cycle_count: int = Field(ge=0)
     stage_counts: dict[str, int]
+    downstream_stage_counts: dict[str, int | None] = Field(default_factory=dict)
+    stage_rejected_count: dict[str, int] = Field(default_factory=dict)
+    dominant_rejection_reason: dict[str, str | None] = Field(default_factory=dict)
 
 
 class TradingFunnelSnapshot(ContractModel):
@@ -358,6 +368,8 @@ class TradingFunnelSnapshot(ContractModel):
     universe_id: str
     selection_policy_version: Literal["eligible-approval-ranking-v1"]
     count_unit: dict[str, Literal["SYMBOL"]]
+    downstream_stage_order: list[str] = Field(default_factory=list)
+    downstream_count_unit: dict[str, Literal["SYMBOL"]] = Field(default_factory=dict)
     current_cycle: FunnelCycle | None
     last_completed_cycle: FunnelCycle | None
     rolling_1h: FunnelRollingSummary
