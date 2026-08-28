@@ -1028,9 +1028,35 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 and (detail_row.risk_status or detail_risk.get("risk_status"))
                 in {"RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"}
             )
+            detail_validity = _mapping(
+                detail_paper.get("approval_validity")
+            ) or _mapping(detail_paper.get("validity_policy"))
+            detail_approvals = _mapping(
+                detail_paper.get("persisted_final_approvals")
+            )
+            detail_shadow_approvals = _mapping(
+                detail_paper.get("shadow_approvals")
+            )
+            detail_valid_values = [
+                int(value["valid_until_ms"])
+                for value in (
+                    *detail_approvals.values(),
+                    *detail_shadow_approvals.values(),
+                )
+                if isinstance(value, Mapping)
+                and value.get("valid_until_ms") is not None
+            ]
+            detail_valid_until_ms = detail_validity.get("valid_until_ms")
+            if detail_valid_until_ms is None and detail_valid_values:
+                detail_valid_until_ms = min(detail_valid_values)
+            detail_plan_current = (
+                detail_valid_until_ms is not None
+                and int(detail_valid_until_ms) > now_ms
+            )
             detail_priority = (
-                3 if detail_admitted and detail_paper.get("paper_status") == "PAPER_PLAN_READY"
-                else 2 if detail_admitted and detail_diagnostic.get("rejection_stage") == "RR_GATE"
+                4 if detail_admitted and detail_paper.get("paper_status") == "PAPER_PLAN_READY" and detail_plan_current
+                else 3 if detail_admitted and detail_diagnostic.get("rejection_stage") == "RR_GATE"
+                else 2 if detail_admitted and detail_paper.get("paper_status") == "PAPER_PLAN_READY"
                 else 1 if detail_admitted
                 else 0
             )
