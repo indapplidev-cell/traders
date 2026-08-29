@@ -253,6 +253,17 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
         "strategy_final_score": "88.75",
     })
     result.setup_payload_json["setup_type"] = "SCALP_BREAKOUT"
+    result.setup_payload_json.update({
+        "setup_status": "SETUP_CANDIDATE", "setup_quality": "GOOD",
+        "quality_score": 0.91, "entry_zone": {"lower": "100.25", "upper": "100.30"},
+        "support_level": "99.50", "resistance_level": "101.30",
+    })
+    result.analysis_payload_json.update({
+        "regime": "UP", "confidence": 0.82, "impulse_phase": "IMPULSE_DETECTED",
+        "entry_quality": "GOOD", "analysis_context": {
+            "scalping": {"market_regime": "EXPANSION", "entry_evidence_strength": "STRONG"}
+        },
+    })
     result.paper_payload_json["paper_context"] = {
         "production_rr_floor": "1.5",
         "scalping_geometry_diagnostics": {
@@ -327,6 +338,15 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     assert item["downstream_detail"]["planned_quantity"] == "0.9"
     assert item["downstream_detail"]["planned_notional"] == "90.225"
     assert item["downstream_detail"]["ttl_ms"] == 300_000
+    assert value["universe_symbols"] == list(SYMBOLS)
+    assert item["profile_market"]["profile_id"] == "trade-5m-v1"
+    assert item["profile_market"]["primary_timeframe"] == "5m"
+    assert item["profile_market"]["reference_price"] == "100.25"
+    assert item["profile_market"]["market_state"] == "EXPANSION"
+    assert item["profile_analysis"]["entry_evidence_strength"] == "STRONG"
+    assert item["profile_analysis"]["confidence"] == 0.82
+    assert item["profile_scenario"]["scenario_type"] == "SCALP_BREAKOUT"
+    assert item["profile_scenario"]["quality_score"] == 0.91
     assert value["current_cycle"]["downstream_stage_counts"]["RR_PASS"] == 1
     assert value["current_cycle"]["downstream_stage_counts"]["PORTFOLIO_ADMITTED"] is None
     assert value["rolling_1h"]["downstream_stage_counts"]["NET_COST_PASS"] == 1

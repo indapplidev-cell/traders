@@ -159,6 +159,114 @@ def _product(left: object, right: object) -> str | None:
     return _decimal_text(first * second) if first is not None and second is not None else None
 
 
+def _profile_screen_contexts(
+    row: OnlinePipelineRun,
+    result: OnlinePipelineResultRow | None,
+    *,
+    terminal_reason: str | None,
+) -> dict[str, dict[str, Any]]:
+    """Project allowlisted facts for profile-aware read-only screens."""
+    if result is None:
+        unavailable = {
+            "profile_id": row.trade_profile_id,
+            "symbol": row.symbol,
+            "primary_timeframe": row.primary_timeframe,
+            "boundary_closed_at_ms": row.closed_until_ms,
+            "updated_at_ms": _ms(row.updated_at) or row.closed_until_ms,
+            "availability_state": "UNAVAILABLE",
+            "no_data_reason": row.error_code or row.final_reason or "PROFILE_DATA_UNAVAILABLE",
+        }
+        return {
+            "profile_market": dict(unavailable),
+            "profile_analysis": dict(unavailable),
+            "profile_scenario": dict(unavailable),
+        }
+
+    analysis = _mapping(result.analysis_payload_json)
+    analysis_context = _mapping(analysis.get("analysis_context"))
+    scalping = _mapping(analysis_context.get("scalping"))
+    setup = _mapping(result.setup_payload_json)
+    strategy = _mapping(result.strategy_payload_json)
+    risk = _mapping(result.risk_payload_json)
+    paper = _mapping(result.paper_payload_json)
+    diagnostic = _mapping(
+        _mapping(paper.get("paper_context")).get("scalping_geometry_diagnostics")
+    )
+    planned = _mapping(paper.get("shadow_plan")) or paper
+    entry_zone = _mapping(setup.get("entry_zone"))
+    reference_price = _first_present(
+        planned.get("hypothetical_entry_reference"), diagnostic.get("entry"),
+        entry_zone.get("lower"), entry_zone.get("upper"),
+    )
+    direction = _first_present(
+        setup.get("direction_hint"), strategy.get("direction_hint"),
+        paper.get("paper_direction"),
+    )
+    updated_at_ms = _ms(result.created_at) or _ms(row.updated_at) or row.closed_until_ms
+    base = {
+        "profile_id": row.trade_profile_id,
+        "symbol": row.symbol,
+        "primary_timeframe": row.primary_timeframe,
+        "boundary_closed_at_ms": row.closed_until_ms,
+        "updated_at_ms": updated_at_ms,
+        "availability_state": "AVAILABLE",
+        "no_data_reason": None,
+    }
+    profile_market = {
+        **base,
+        "reference_price": reference_price,
+        "market_state": scalping.get("market_regime") or analysis.get("regime"),
+        "scenario_summary": setup.get("setup_type"),
+        "strategy_summary": strategy.get("decision_status"),
+        "risk_summary": risk.get("risk_status"),
+        "geometry_summary": (
+            "PASS" if diagnostic.get("stop_envelope_pass") is True
+            else "REJECTED" if diagnostic else "NOT_REACHED"
+        ),
+        "terminal_reason": terminal_reason,
+    }
+    profile_analysis = {
+        **base,
+        "status": analysis.get("status") or row.analysis_status,
+        "regime": scalping.get("market_regime") or analysis.get("regime"),
+        "direction": direction,
+        "confidence": analysis.get("confidence"),
+        "structure_state": analysis.get("structure_state") or analysis_context.get("structure_state"),
+        "impulse_phase": analysis.get("impulse_phase"),
+        "entry_evidence_strength": scalping.get("entry_evidence_strength"),
+        "entry_quality": analysis.get("entry_quality"),
+        "support_level": setup.get("support_level"),
+        "resistance_level": setup.get("resistance_level"),
+        "breakout_level": setup.get("breakout_level"),
+        "invalidation_level": _first_present(
+            diagnostic.get("causal_invalidation"), paper.get("hypothetical_invalidation_level"),
+        ),
+        "terminal_reason": terminal_reason,
+    }
+    setup_status = setup.get("setup_status") or setup.get("status")
+    profile_scenario = {
+        **base,
+        "scenario_type": setup.get("scenario") or setup.get("setup_type"),
+        "status": setup_status,
+        "quality": setup.get("setup_quality"),
+        "quality_score": setup.get("quality_score"),
+        "direction": direction,
+        "terminal_reason": terminal_reason,
+        "entry_context": setup.get("entry_zone"),
+        "invalidation_level": _first_present(
+            diagnostic.get("causal_invalidation"), paper.get("hypothetical_invalidation_level"),
+        ),
+        "target_source": diagnostic.get("target_source_type"),
+    }
+    if setup_status in {None, "NO_SETUP"}:
+        profile_scenario["no_data_reason"] = terminal_reason or "NO_STRUCTURAL_SCENARIO"
+    return {
+        "profile_market": profile_market,
+        "profile_analysis": profile_analysis,
+        "profile_scenario": profile_scenario,
+    }
+
+
 def _first_reason(row: OnlinePipelineRun, result: OnlinePipelineResultRow | None) -> str | None:
     if row.error_code:
         return row.error_code
@@ -1142,6 +1250,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 _mapping(result.paper_payload_json).get("final_approval_generation")
             ) if result is not None else {}
             reason_detail = generation.get("safe_reason_detail") or reason
+            profile_contexts = _profile_screen_contexts(
+                row, result, terminal_reason=reason
+            )
             current_stage = next((stage for stage in reversed(STAGES[:-1]) if trace[stage] != "NOT_REACHED"), "ANALYSIS")
             items.append({
                 "symbol": row.symbol, "source_run_id": row.run_id,
@@ -1182,6 +1293,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 },
                 "risk_score": meta.get("risk_score"), "strategy_score": meta.get("strategy_score"),
                 "planned_risk_reward": meta.get("planned_risk_reward"),
+                **profile_contexts,
             })
         selection = ProductionEligibleApprovalSelector().select(candidates, policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION)
         ordered = sorted(candidates, key=lambda c: (
@@ -1349,7 +1461,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         "trigger_timeframe": profile.trigger_timeframe,
         "profile_mode": profile.mode,
         "decision_timeframe": profile.trigger_timeframe,
-        "universe_id": universe.version_id, "selection_policy_version": MULTI_SYMBOL_SELECTION_POLICY_VERSION,
+        "universe_id": universe.version_id,
+        "universe_symbols": list(universe.symbols),
+        "selection_policy_version": MULTI_SYMBOL_SELECTION_POLICY_VERSION,
         "count_unit": {stage: "SYMBOL" for stage in STAGES},
         "downstream_stage_order": list(CANONICAL_DOWNSTREAM_STAGES),
         "downstream_count_unit": {

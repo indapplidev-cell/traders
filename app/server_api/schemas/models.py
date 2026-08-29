@@ -317,6 +317,9 @@ class FunnelCandidateStatus(ContractModel):
     risk_score: Any | None = None
     strategy_score: Any | None = None
     planned_risk_reward: Any | None = None
+    profile_market: dict[str, Any] = Field(default_factory=dict)
+    profile_analysis: dict[str, Any] = Field(default_factory=dict)
+    profile_scenario: dict[str, Any] = Field(default_factory=dict)
 
 
 class FunnelEligibleCompetitor(ContractModel):
@@ -366,6 +369,7 @@ class TradingFunnelSnapshot(ContractModel):
     profile_mode: Literal["PRODUCTION_SEARCH", "SHADOW_SEARCH"] = "PRODUCTION_SEARCH"
     decision_timeframe: Literal["15m", "5m"]
     universe_id: str
+    universe_symbols: list[Symbol] = Field(default_factory=list, max_length=10)
     selection_policy_version: Literal["eligible-approval-ranking-v1"]
     count_unit: dict[str, Literal["SYMBOL"]]
     downstream_stage_order: list[str] = Field(default_factory=list)
