@@ -853,6 +853,7 @@ class TradingFunnelReadRepository:
                             load_only(
                                 OnlinePipelineRun.id,
                                 OnlinePipelineRun.run_id,
+                                OnlinePipelineRun.trade_profile_id,
                                 OnlinePipelineRun.symbol,
                                 OnlinePipelineRun.primary_timeframe,
                                 OnlinePipelineRun.closed_until_ms,
