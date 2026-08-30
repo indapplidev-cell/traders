@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = fbcb46cec928b22c2c5e987e5ad66ad4c231cf6d
+STATUS_AS_OF_COMMIT = f2b5075970b6d65f6523625f8040154d9bd9368f
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-30T11:17:56Z
-RECONCILED_BY_TASK = TRADERS_PAPER_NATURAL_EXECUTION_POSTGRES_E2E_01
-FILES_CHANGED = app/server_api/repositories/records.py, app/server_api/repositories/sqlalchemy_read.py, app/server_api/schemas/paper.py, app/server_api/services/paper_reporting.py, tests/integration/paper_natural_execution_e2e/conftest.py, tests/integration/paper_natural_execution_e2e/test_natural_approval_opens_position.py, docs/audits/TRADERS_PAPER_NATURAL_EXECUTION_POSTGRES_E2E_01_FINAL.md, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-30T11:45:07Z
+RECONCILED_BY_TASK = TRADERS_PAPER_PRODUCTION_DEPLOYMENT_ACCEPTANCE_01
+FILES_CHANGED = docs/audits/TRADERS_PAPER_PRODUCTION_DEPLOYMENT_ACCEPTANCE_01_PARTIAL.md, FINAL_DECISION.md, online_trader.md
 
-REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74e1188cc11b813e9d4bfa3c07d496003fe7126c_READONLY_IMAGE_PAPER_PRODUCER_IMAGES_UNCHANGED
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD450_BEHIND0
-STATUS_CONFIDENCE = NATURAL_PAPER_POSTGRES16_E2E_OPENPASS_PROJECTFBCB46C_PRODUCTIONNOTDEPLOYED_COMMAND0_POSITION0_WALPITRTRUE_CONTROL6_LIVEOFF
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9_ORIGIN_FEATURE_ENGINE_PLATFORM_UNCHANGED_DEPLOY_USED_LOCAL_IMMUTABLE_ARTIFACT
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_LOCAL_AHEAD452_BEHIND0
+STATUS_CONFIDENCE = PAPER_WATERMARK_DEPLOYPASS_RUNNINGD7D072D_POSTSTARTNATURAL9_WATERMARK9_PLAN0_APPROVAL0_COMMAND0_POSITION0_WALPITRTRUE_CONTROL6_LIVEOFF
 
 # Состояние проекта traders-ml
 
@@ -24,9 +24,9 @@ ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_IMAGEEC83272_CONTAINER2908ED01_HEALTHY_RESTART0_SOURCE74E1188_ON0018_CONTROL_IMAGEA4664FF5_CONTAINERE2AD3A92_HEALTHY_RESTART0_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = AUTHORITATIVE_PROFILE_AWARE_MARKET_ANALYSIS_SCENARIO_PROJECTIONS_DEPLOYED_28_GET_0_WRITE_CANONICAL12_EXACT10_CAUSAL_HISTORICAL_PLAN_AND_RR_REJECT
-CURRENT_STAGE = BUILD_AND_DEPLOY_TESTED_PAPER_SOURCE_THEN_ACCEPT_ONLY_A_FRESH_NATURAL_APPROVAL
-CURRENT_BLOCKER = PRODUCTION_ACCEPTANCE_NOT_STARTED_SOURCE_FBCB46C_NOT_PUSHED_NOT_BUILT_NOT_DEPLOYED
-CURRENT_PREREQUISITE = EXPLICIT_DEPLOY_AUTHORIZATION_AND_EXACT_SOURCE_PROVENANCE_WITHOUT_BACKFILL_OR_HISTORICAL_REPLAY
+CURRENT_STAGE = WAIT_READONLY_FOR_FRESH_NATURAL_APPROVAL_THEN_TRACE_PAPER_EXECUTION_AND_UI_VISIBILITY
+CURRENT_BLOCKER = NO_POSTDEPLOY_NATURAL_PAPER_PLAN_OR_FINAL_APPROVAL_YET_DEPLOYMENT_HEALTHY
+CURRENT_PREREQUISITE = FRESH_NATURAL_MARKET_RESULT_MUST_REACH_PAPER_PLAN_WITHOUT_FILTER_WEAKENING_BACKFILL_OR_HISTORICAL_REPLAY
 SECONDARY_BLOCKER = SCALPING_72H_GATE_NOT_YET_REACHED_AND_PROFITABILITY_SAMPLE_REMAINS_INSUFFICIENT
 BACKGROUND_TIMED_GATE = ACTIVE_COLLECTOR_OWNER1_RESTART0_BOUNDARIES644_RECORDS6440_GATE24H_TRUE_GATE72H_FALSE_CONTROL_GENERATION6_LIVE_OFF
 BACKGROUND_SCALPING_BLOCKER = ABSOLUTE_SETUP_LOSS1228_POST_ADMISSION_GEOMETRY_LOSS65_AND_RR1_OF34_COST_PASS_PROFITABILITY_SAMPLE_INSUFFICIENT
@@ -35,9 +35,13 @@ BACKGROUND_SCALPING_BLOCKER = ABSOLUTE_SETUP_LOSS1228_POST_ADMISSION_GEOMETRY_LO
 ## PAPER natural execution PostgreSQL E2E 01
 
 ```text
-TASK = TRADERS_PAPER_NATURAL_EXECUTION_POSTGRES_E2E_01
-RESULT = CLOSED_ISOLATED_POSTGRES_E2E_PRODUCTION_ACCEPTANCE_PENDING
+TASK = TRADERS_PAPER_PRODUCTION_DEPLOYMENT_ACCEPTANCE_01
+RESULT = DEPLOYMENT_PASS_PRODUCTION_ACCEPTANCE_WAITING_FOR_FRESH_NATURAL_APPROVAL
 PROJECT_STATE_COMMIT = fbcb46cec928b22c2c5e987e5ad66ad4c231cf6d
+DEPLOYMENT_PROJECT_STATE_COMMIT = f2b5075970b6d65f6523625f8040154d9bd9368f
+TESTED_SHA = fbcb46cec928b22c2c5e987e5ad66ad4c231cf6d
+DEPLOY_SHA = d7d072df4b924d675c4bb1de447635f0b6b0e41d
+EXECUTABLE_DIFF_TESTED_TO_DEPLOY = NO
 ROOT_CAUSE = MARKET_DATA_SNAPSHOT_NO_OWNED_IDENTITY_ANALYSIS_WATERMARK_NULL_MATERIALIZER_FALSE_FINAL_APPROVAL_ADAPTER_REJECT
 IDENTITY = market-data-snapshot:v1:SHA256_CANONICAL_JSON_SYMBOL_TIMEFRAME_BOUNDARY_SOURCE_ORDERED_CANDLES
 NON_CAUSAL_EXCLUSIONS = RECEIVED_AT_PIPELINE_TIME_HEALTH_ENOUGH_DATA_GAPS_HOST_PROCESS_TRANSIENT_METADATA
@@ -55,10 +59,14 @@ IDEMPOTENCY_RESTART = RETRY_AND_NEW_WORKER_INSTANCES_COUNTS1_1_1_1_PASS
 EXPIRY_BOUNDS_LIVE = EXPIRED_COMMAND0_MAXCOMMAND1_MAXPOSITION1_LIVEFALSE_PASS
 READONLY_PROJECTION = ACTIVEPOSITIONS1_COMMANDID_POSITIONID_ENTRYPRICE_STATEOPEN_PASS
 PREEXISTING_FAILURES = LEGACY_RISK_FIXTURE_UNSUPPORTED_STRATEGY_AND_LEGACY_ALEMBIC0014_EXPECTATION_UNCHANGED_NONBLOCKING
-DEPLOYMENT = NOT_PERFORMED_PRODUCTION_IMAGES_UNCHANGED
-FRESH_RUNTIME = READONLY_HEALTHY_SCHEMAREADY_WALTRUE_PITRTRUE_CONTROLARMED6_CANARYWAITING_COMMAND0_POSITION0_LIVEFALSE
+DEPLOYMENT = PASS_ORCHESTRATOR15M_AND5M_IMAGE85C36E2_CONTROLIMAGEB7D50BE_READONLYIMAGE96EF677_RUNNINGD7D072D_RESTART0_PROTECTEDSERVICESUNCHANGED
+FRESH_RUNTIME = READY_SCHEMA0018_HEAD1_WALTRUE_PITRTRUE_GAPFALSE_CONTROLARMED6_CANARYWAITING_POSTSTARTRESULT9_VALIDWATERMARK9_PLAN0_APPROVAL0_COMMAND0_POSITION0_LIVEFALSE
+ROLLBACK = FOUR_PREVIOUS_LOCAL_IMMUTABLE_TAGS_VERIFIED_NO_DB_DOWNGRADE_REQUIRED
+HISTORICAL_APPROVAL = 37_UNCHANGED_NULLWATERMARK37_NO_BACKFILL_NO_REPLAY
+POSTDEPLOY_CONTRACT = MARKETDATA5M_SNAPSHOT_ID_EQUALS_ANALYSIS_SOURCE_MARKET_DATA_SNAPSHOT_ID_PASS
+DEPLOYMENT_EVIDENCE = docs/audits/TRADERS_PAPER_PRODUCTION_DEPLOYMENT_ACCEPTANCE_01_PARTIAL.md
 EVIDENCE = docs/audits/TRADERS_PAPER_NATURAL_EXECUTION_POSTGRES_E2E_01_FINAL.md
-NEXT_ACTION = BUILD_AND_DEPLOY_EXACT_FBCB46C_ONLY_AFTER_AUTHORIZATION_THEN_WAIT_FOR_NEW_NATURAL_APPROVAL_WITHOUT_EXECUTING_37_HISTORICAL_ROWS
+NEXT_ACTION = WAIT_READONLY_FOR_NEW_NATURAL_PAPER_PLAN_AND_FINAL_APPROVAL_THEN_REQUIRE_ELIGIBLE_CANDIDATE_WINNER_COMMAND_ENTRYORDER_FILL_OPENPOSITION_AND_READONLY_VISIBILITY
 ```
 
 ## First-class Scalping Market, Analysis and Scenarios profile awareness 01
@@ -5732,15 +5740,15 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈99% deployed / Scalping calibration observation autonomous | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. Mixed boundary `1787936400000` is immutable incident evidence and calibration-ineligible; the same valid 5m lineage continues in segment `d8a498...`. The recovered collector has one owner, restart 0, and three post-start natural exact10 boundaries with zero missing, duplicate or future leakage while 15m remains unchanged. Profitability and parameter promotion remain pending |
+| Online analytics/paper pipeline | ≈99% deployed / PAPER acceptance waiting | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. Both production orchestrators now run image `sha256:85c36e2...` from source `d7d072d...`, whose executable tree is identical to tested `fbcb46c...`. Nine natural post-start 5m results persisted valid versioned market-data watermarks, with exact MarketData-to-Analysis equality; none reached a PAPER plan yet. Mixed boundary `1787936400000` remains immutable incident evidence and calibration-ineligible. Profitability and parameter promotion remain pending |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS on schema 0018; existing lineage preserved | Exactly one canonical ACK owner is healthy with matching PID/lock/state and fresh heartbeat. Backlog/pending/unresolved are `0/0/0`; canonical and GET-only readiness are `wal_ready=true`, `pitr_ready=true`; archive coverage is 1525/1525 with no physical gap. Existing base `base-20260811T075419Z-f179b4e1` and recovery window were preserved |
-| Readonly Server API | Healthy dual-profile/profile-aware image on production 0018 | Image `sha256:ec832722...`, source `74e1188...`, is healthy with restart 0, 28 GET and zero write routes. The existing Funnel GET now additively exposes the authoritative exact10 universe and persisted profile-specific Market, Analysis and Scenario contexts without per-symbol queries |
+| Readonly Server API | Healthy dual-profile/profile-aware image on production 0018 | Image `sha256:96ef6773...`, source `d7d072d...`, is healthy with restart 0, 28 GET and zero write routes. It contains the tested PAPER watermark adapter and active-position `command_id` projection while preserving the authoritative exact10 Market, Analysis and Scenario contexts |
 | Desktop Readonly client | Profile-aware core screens accepted in production RU/EN | Scalping Market renders the server exact10 and 5m context; Analysis uses the same exact10 selector and preserves selected/rendered identity through rapid ETH/BTC/SOL/ADA, F5 and auto-refresh; Scenarios renders ten server-authored rows/reasons. Switching back to 15m restores the original semantics with no cross-profile contamination |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
-| Readonly PAPER reporting API | Healthy on schema 0018 | Readiness and all thirteen PAPER GET routes accept reflected schema 0018; shared account remains 100 USDT and command/order/fill/position rows remain zero |
-| PAPER Operator Control API | Healthy dual-profile selector boundary | Localhost-only authenticated 3 GET/5 POST boundary is ARMED generation 6, audit PASS, and reads both 15m and 5m eligible approvals under one bounded selector; LIVE is off |
+| Readonly PAPER reporting API | Healthy on schema 0018 / acceptance waiting | Source `d7d072d...` reports schema, market adapter, approval adapter, WAL, PITR and reconciliation ready. Shared account remains 100 USDT and command/order/fill/position rows remain zero because no fresh natural postdeploy approval exists yet |
+| PAPER Operator Control API | Healthy dual-profile selector boundary | Image `sha256:b7d50bee...`, source `d7d072d...`, is healthy with restart 0. The localhost-only authenticated 3 GET/5 POST boundary retained ARMED generation 6, audit PASS, one-command/one-position limits unused, and LIVE off |
 | First-canary correlation/readiness | Durable state preserved / waiting for natural winner | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and one-command/one-position limits unused |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
@@ -5751,7 +5759,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = CONTINUE_SCALPING_COLLECTION_AND_USE_PROFILE_AWARE_MARKET_ANALYSIS_SCENARIO_SCREENS_FOR_OPERATIONAL_OBSERVABILITY
+RECOMMENDED_NEXT_TASK = WAIT_READONLY_FOR_FRESH_NATURAL_PAPER_APPROVAL_AND_CLOSE_EXECUTION_ACCEPTANCE_ONLY_AFTER_OPEN_POSITION_IS_VISIBLE
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
