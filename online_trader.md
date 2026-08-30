@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 1038f4a3d9584dc9e8f14d6c76edb3016f9d36c7
+STATUS_AS_OF_COMMIT = 0a729d606f8b63279030c990f3275e5b2b2c0b36
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-30T17:31:54Z
-RECONCILED_BY_TASK = TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01
-FILES_CHANGED = docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md, ../evidence_inbox/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-08-30T17:37:41Z
+RECONCILED_BY_TASK = TRADERS_PAPER_PRODUCTION_DEPLOYMENT_ACCEPTANCE_01_TERMINAL_ROLLBACK
+FILES_CHANGED = docs/audits/TRADERS_PAPER_PRODUCTION_DEPLOYMENT_ACCEPTANCE_01_PARTIAL.md, FINAL_DECISION.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 74db6518d2a144fcf8814323c55e4224a71700e9_ORIGIN_FEATURE_ENGINE_PLATFORM_UNCHANGED_DEPLOY_USED_LOCAL_IMMUTABLE_ARTIFACT
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_PROJECT_STATE_AHEAD454_BEHIND0_DOCUMENTATION_RECONCILIATION_COMMIT_ADDS_ONE
-STATUS_CONFIDENCE = FORENSIC_PASS_15M_FIRSTCLASSPARTIAL_EXACT96X10_FUTURE0_RRQUANTITYMATCH_COSTGATEOFF_PORTFOLIOABSENT_CROSSPROFILE1_COMMAND0_POSITION0_WALPITRTRUE_CONTROLARMED6_DOCKERUNHEALTHY_LIVEOFF_COLLECTORFAILEDRESTART139
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_PROJECT_STATE_AHEAD456_BEHIND0_DOCUMENTATION_RECONCILIATION_COMMIT_ADDS_ONE
+STATUS_CONFIDENCE = PAPER_ACCEPTANCE_ROLLEDBACK_CONTROL9FE3A4F_HEALTHPROBEFLAPPING_ORCHESTRATORSREADONLYD7D072D_COMMAND0_POSITION0_SCHEMA0018_WALPITRTRUE_CONTROLARMED6_LIVEOFF
 
 # Состояние проекта traders-ml
 
@@ -22,14 +22,42 @@ STATUS_CONFIDENCE = FORENSIC_PASS_15M_FIRSTCLASSPARTIAL_EXACT96X10_FUTURE0_RRQUA
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_IMAGE96EF677_HEALTHY_RESTART0_SOURCED7D072D_ON0018_CONTROL_IMAGEB7D50BE_RUNNING_DOCKERUNHEALTHY_RESTART0_SEMANTICARMED_GENERATION6_LIVE_OFF
+API_RUNTIME_STATUS = READONLY_IMAGE96EF677_HEALTHY_RESTART0_SOURCED7D072D_ON0018_CONTROL_ROLLEDBACK_IMAGEA4664FF_SOURCE9FE3A4F_DOCKERHEALTHFLAPPING_RESTART0_SEMANTICARMED_GENERATION6_LIVE_OFF
 SOURCE_API_STATUS = DEPLOYED_28_GET_0_WRITE_15M_EXACT10_LEGACY_FUNNEL_CANONICAL12_EXPLICIT_NOT_APPLICABLE_COST_GATE_DISABLED_PORTFOLIO_GATE_ABSENT_5M_FIRST_CLASS_SEPARATE
-CURRENT_STAGE = PREPARE_SEPARATE_BOUNDED_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_REMEDIATION_FROM_PROVEN_FINDINGS
-CURRENT_BLOCKER = 15M_FIRST_CLASS_DOMAIN_PARTIAL_CANONICAL12_NOT_APPLICABLE_COST_GATE_DISABLED_PORTFOLIO_GATE_ABSENT_REJECTED_ECONOMICS_NOT_DURABLE_READONLY_DESKTOP_MOBILE_PARTIAL
-CURRENT_PREREQUISITE = SEPARATELY_AUTHORIZE_REPAIR_FIRST_REMEDIATION_WITHOUT_ALGORITHM_REDESIGN_OR_SILENT_SCALPING_BACKPORT
-SECONDARY_BLOCKER = SCALPING_COLLECTOR_FAILED_OWNER0_RESTART139_SECOND_MIXED_BOUNDARY_EXCLUDED_AND_CONTROL_DOCKER_HEALTH_UNHEALTHY_WHILE_SEMANTIC_STATE_ARMED6
+CURRENT_STAGE = DIAGNOSE_CROSS_ARTIFACT_OPERATOR_CONTROL_HEALTH_PROBE_LATENCY_THEN_REDEPLOY_TESTED_PAPER_CONTROL_FIX_WITH_STABLE_READINESS
+CURRENT_BLOCKER = PAPER_FIX_NOT_FULLY_DEPLOYED_OPERATOR_CONTROL_ROLLEDBACK_TO9FE3A4F_AFTER_RECURRING_DOCKER_HEALTH_TIMEOUTS_AND_OLD_ARTIFACT_ALSO_FLAPS
+CURRENT_PREREQUISITE = PROVE_STABLE_OPERATOR_CONTROL_HEALTH_WITHOUT_WEAKENING_PROBE_OR_SAFETY_THEN_REDEPLOY_D7D072D_CONTROL_ARTIFACT
+SECONDARY_BLOCKER = 15M_FIRST_CLASS_DOMAIN_PARTIAL_AND_SCALPING_COLLECTOR_FAILED_OWNER0_RESTART139_SECOND_MIXED_BOUNDARY_EXCLUDED
 BACKGROUND_TIMED_GATE = BLOCKED_COLLECTOR_FAILED_OWNER0_RESTART139_BOUNDARIES630_RECORDS8620_GATE24H_TRUE_GATE72H_FALSE_SEGMENTD8A498_EXCLUSIONS2_CONTROL_GENERATION6_LIVE_OFF
 BACKGROUND_SCALPING_BLOCKER = COLLECTOR_RESTART_STORM_AND_SECOND_MIXED_RUNTIME_BOUNDARY_PREVENT_ACTIVE_72H_SOAK_PROFITABILITY_SAMPLE_REMAINS_INSUFFICIENT
+```
+
+## PAPER production deployment acceptance 01 terminal rollback
+
+```text
+TASK_STATUS = TERMINAL
+FINAL_VERDICT = ROLLED_BACK
+PROJECT_STATE_COMMIT = 0a729d606f8b63279030c990f3275e5b2b2c0b36
+DEPLOY_SHA = d7d072df4b924d675c4bb1de447635f0b6b0e41d
+ROLLBACK_TRIGGER = RECURRING_OPERATOR_CONTROL_DOCKER_HEALTH_PROBE_TIMEOUT
+ROLLBACK_SCOPE = OPERATOR_CONTROL_ONLY
+CONTROL_FROM = d7d072df4b924d675c4bb1de447635f0b6b0e41d_SHA256B7D50BEE
+CONTROL_TO = 9fe3a4f1dba41c054cd5003e589ac72ba21394f5_SHA256A4664FF5
+CONTROL_AFTER = SEMANTIC_HEALTHY_ARMED_GENERATION6_AUDITPASS_DOCKER_HEALTH_FLAPPING_RESTART0
+ORCHESTRATORS_AFTER = d7d072df4b924d675c4bb1de447635f0b6b0e41d_SHA25685C36E2_RESTART0
+READONLY_AFTER = d7d072df4b924d675c4bb1de447635f0b6b0e41d_SHA25696EF677_HEALTHY_RESTART0
+FRESH_POSTDEPLOY_RESULTS_AT_EVIDENCE_CUTOFF = 959
+VERSIONED_MARKET_DATA_SNAPSHOTS = 959
+PAPER_PLAN_READY = 0
+FRESH_FINAL_APPROVAL = 0
+COMMAND_ORDER_FILL_POSITION_OPEN = 0_0_0_0_0
+HISTORICAL_DEFECTIVE_APPROVALS = 37_UNCHANGED_NOT_BACKFILLED_NOT_REPLAYED
+SCHEMA = 0018_promote_5m_production_search_HEAD1_NO_DOWNGRADE
+WAL_PITR = TRUE_TRUE_PHYSICAL_GAP_FALSE_BACKLOG0_PENDING0_UNRESOLVED0
+CANARY = GENERATION6_LIMITS1_1_USED0_0_UNCHANGED
+LIVE = false
+PRODUCTION_ACCEPTANCE_CLOSED = NO
+NEXT_ACTION = SEPARATELY_DIAGNOSE_CONTROL_HEALTH_PROBE_LATENCY_AND_REDEPLOY_TESTED_CONTROL_FIX_ONLY_AFTER_STABLE_READINESS
 ```
 
 ## 15m first-class domain execution funnel and architecture forensic audit 01
@@ -5769,16 +5797,16 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈99% deployed / PAPER acceptance waiting | Schema 0018 is deployed; both profiles remain in `PRODUCTION_SEARCH`. Both production orchestrators now run image `sha256:85c36e2...` from source `d7d072d...`, whose executable tree is identical to tested `fbcb46c...`. Nine natural post-start 5m results persisted valid versioned market-data watermarks, with exact MarketData-to-Analysis equality; none reached a PAPER plan yet. Mixed boundary `1787936400000` remains immutable incident evidence and calibration-ineligible. Profitability and parameter promotion remain pending |
+| Online analytics/paper pipeline | ≈99% producer deployment / PAPER acceptance rolled back | Schema 0018 is deployed and both production orchestrators remain on tested executable source `d7d072d...` with valid versioned market-data snapshots. Operator Control was rolled back to `9fe3a4f...` after recurring Docker health timeouts, so the complete PAPER fix is no longer deployed across every required component. At the rollback cutoff 959 fresh results existed, with zero PAPER plans or fresh final approvals |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS on schema 0018; existing lineage preserved | Exactly one canonical ACK owner is healthy with matching PID/lock/state and fresh heartbeat. Backlog/pending/unresolved are `0/0/0`; canonical and GET-only readiness are `wal_ready=true`, `pitr_ready=true`; archive coverage is 1525/1525 with no physical gap. Existing base `base-20260811T075419Z-f179b4e1` and recovery window were preserved |
 | Readonly Server API | Healthy dual-profile/profile-aware image on production 0018 | Image `sha256:96ef6773...`, source `d7d072d...`, is healthy with restart 0, 28 GET and zero write routes. It contains the tested PAPER watermark adapter and active-position `command_id` projection while preserving the authoritative exact10 Market, Analysis and Scenario contexts |
 | Desktop Readonly client | Profile-aware core screens accepted in production RU/EN | Scalping Market renders the server exact10 and 5m context; Analysis uses the same exact10 selector and preserves selected/rendered identity through rapid ETH/BTC/SOL/ADA, F5 and auto-refresh; Scenarios renders ten server-authored rows/reasons. Switching back to 15m restores the original semantics with no cross-profile contamination |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
-| Readonly PAPER reporting API | Healthy on schema 0018 / acceptance waiting | Source `d7d072d...` reports schema, market adapter, approval adapter, WAL, PITR and reconciliation ready. Shared account remains 100 USDT and command/order/fill/position rows remain zero because no fresh natural postdeploy approval exists yet |
-| PAPER Operator Control API | Healthy dual-profile selector boundary | Image `sha256:b7d50bee...`, source `d7d072d...`, is healthy with restart 0. The localhost-only authenticated 3 GET/5 POST boundary retained ARMED generation 6, audit PASS, one-command/one-position limits unused, and LIVE off |
-| First-canary correlation/readiness | Durable state preserved / waiting for natural winner | Exact UUID and original START lineage remain intact; the canary is WAITING_FOR_ELIGIBLE_APPROVAL with 0 commands/positions and one-command/one-position limits unused |
+| Readonly PAPER reporting API | Healthy on schema 0018 / acceptance not closed | Source `d7d072d...` remains healthy and read-only. Shared account remains 100 USDT and command/order/fill/position rows remain zero; UI acceptance has no OPEN position to project |
+| PAPER Operator Control API | Rolled back / health-probe latency unresolved | The service now runs rollback image `sha256:a4664ff5...`, source `9fe3a4f...`, with restart 0. Semantic status remains ARMED generation 6 and audit PASS, but intermittent ten-second Docker health-probe timeouts also occur on the rollback artifact |
+| First-canary correlation/readiness | Durable state preserved / execution unavailable pending remediation | Exact UUID and original START lineage remain intact; limits remain one command and one open position with 0/0 used. No reset, expansion, historical replay, or LIVE activation occurred |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -5788,7 +5816,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = WAIT_READONLY_FOR_FRESH_NATURAL_PAPER_APPROVAL_AND_CLOSE_EXECUTION_ACCEPTANCE_ONLY_AFTER_OPEN_POSITION_IS_VISIBLE
+RECOMMENDED_NEXT_TASK = DIAGNOSE_OPERATOR_CONTROL_HEALTH_PROBE_LATENCY_ACROSS_BOTH_ARTIFACTS_THEN_REDEPLOY_TESTED_CONTROL_FIX_AND_RESTART_NATURAL_ACCEPTANCE
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
