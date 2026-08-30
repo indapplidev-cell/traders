@@ -238,6 +238,7 @@ class PaperPositionRecordView:
     position: object
     entry_time: datetime
     updated_at: datetime
+    command_id: str | None = None
     exit_reason: str | None = None
     entry_order_id: str | None = None
     entry_fill_id: str | None = None

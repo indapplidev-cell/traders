@@ -96,6 +96,7 @@ class PaperAccount(BaseModel):
 
 class PaperPositionItem(BaseModel):
     position_id: SafeIdentifier
+    command_id: SafeIdentifier | None = None
     symbol: Symbol
     side: str
     state: str

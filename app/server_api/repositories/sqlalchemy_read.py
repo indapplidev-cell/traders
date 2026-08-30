@@ -917,16 +917,25 @@ class SqlAlchemyReadAdapter:
             return self._facts_for_rows(session, rows)
 
     @staticmethod
-    def _position_view(row: PaperPositionRecord) -> PaperPositionRecordView:
+    def _position_view(
+        row: PaperPositionRecord, command_id: str | None = None
+    ) -> PaperPositionRecordView:
         return PaperPositionRecordView(
             position=orm_values_to_paper_position(row), entry_time=_aware(row.opened_at), updated_at=_aware(row.updated_at),
+            command_id=command_id,
             exit_reason=row.reason_code if row.state in {"CLOSED", "FAILED"} else None,
             entry_order_id=row.entry_order_id, entry_fill_id=row.entry_fill_id,
             close_fill_id=row.exit_fill_id,
         )
 
     def list_paper_positions(self, query: PaperPositionQuery) -> RecordPage:
-        statement = select(PaperPositionRecord)
+        statement = (
+            select(PaperPositionRecord, PaperOrderRecord.command_id)
+            .outerjoin(
+                PaperOrderRecord,
+                PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id,
+            )
+        )
         if query.state:
             statement = statement.where(PaperPositionRecord.state == query.state)
         if query.symbol:
@@ -936,9 +945,12 @@ class SqlAlchemyReadAdapter:
                 (query.cursor.updated_at, query.cursor.identifier))
         statement = statement.order_by(PaperPositionRecord.updated_at.desc(), PaperPositionRecord.position_id.desc()).limit(query.limit + 1)
         with self._session() as session:
-            rows = tuple(session.scalars(statement))
+            rows = tuple(session.execute(statement))
         selected = rows[:query.limit]
-        return RecordPage(tuple(self._position_view(row) for row in selected), len(rows) > query.limit)
+        return RecordPage(
+            tuple(self._position_view(row, command_id) for row, command_id in selected),
+            len(rows) > query.limit,
+        )
 
     def get_paper_position(self, position_id: str) -> PaperPositionRecordView | None:
         with self._session() as session:
@@ -960,9 +972,12 @@ class SqlAlchemyReadAdapter:
             events = tuple(session.scalars(select(PaperJournalEntryRecord).where(
                 PaperJournalEntryRecord.position_id == position_id)
                 .order_by(PaperJournalEntryRecord.occurred_at.desc(), PaperJournalEntryRecord.journal_entry_id.desc()).limit(50)))
-        base = self._position_view(row)
+        base = self._position_view(
+            row, None if entry_order is None else entry_order.command_id
+        )
         return PaperPositionRecordView(
             position=base.position, entry_time=base.entry_time, updated_at=base.updated_at,
+            command_id=base.command_id,
             exit_reason=(decision.cause if decision is not None else base.exit_reason),
             entry_order_id=base.entry_order_id, entry_fill_id=base.entry_fill_id,
             close_order_id=None if close_order is None else close_order.order_id,

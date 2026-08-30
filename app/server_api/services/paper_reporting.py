@@ -334,7 +334,8 @@ class PaperReadonlyReportingService:
         item = value.position
         closed = getattr(item.state, "value", item.state) == "CLOSED"
         return PaperPositionItem(
-            position_id=item.position_id, symbol=item.symbol, side=getattr(item.side, "value", item.side),
+            position_id=item.position_id, command_id=value.command_id,
+            symbol=item.symbol, side=getattr(item.side, "value", item.side),
             state=getattr(item.state, "value", item.state), quantity=decimal_text(item.entry_quantity),
             entry_price=decimal_text(item.average_entry_price), entry_time=utc_text(value.entry_time),
             stop_price=decimal_text(item.stop_price), target_price=decimal_text(item.target_price),
