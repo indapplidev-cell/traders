@@ -6,6 +6,7 @@ VERDICT = CLOSED_ISOLATED_POSTGRES_E2E
 PRODUCTION_ACCEPTANCE = NOT_STARTED_NOT_DEPLOYED
 RECONCILED_AT_UTC = 2026-08-30T11:15:01Z
 SOURCE_BASE_BEFORE_TASK = 24f0855585aebf413b9abb309060264f15a31909
+TESTED_PROJECT_STATE_COMMIT = fbcb46cec928b22c2c5e987e5ad66ad4c231cf6d
 BRANCH = feature/engine-platform
 LIVE = FALSE
 PRODUCTION_MUTATIONS = 0
@@ -37,14 +38,14 @@ The final isolated run produced:
 snapshot_id = market-data-snapshot:v1:b82529da698f56ee91ee9fc4e02c643e04de4dc21f027e71835c0903cbd66fc2
 analysis_id = analysis:BTCUSDT:5m:1800000000000:e9bd5bd131a104dc
 paper_plan_id = paper:BTCUSDT:5m:1800000000000:risk:BTCUSDT:5m:1800000000000:strategy:v2:620b93362441269d4c1f40b0d6d011d7150a50933b2d4d3b895d7b1f0658144a:834ae396a3ac6bc4:833aaa476ea40cf8
-approval_id = paper:risk-approval:v1:1d830b1a4160c2d5361193bd1b4954cdcece064c4387f20fc869bfadc5b7d8ca
+approval_id = paper:risk-approval:v1:5b51c554b3461b94e5afbcb1219564a4b7568b4a96f98645907bfaef5eb2122b
 adapter_outcome = ELIGIBLE_APPROVAL
-candidate_id = paper:production-approval-candidate:v1:7eaf172349dce72729f765d58297728485368aef681e32ff3a515939deb599b0
-winner = paper:production-approval-candidate:v1:7eaf172349dce72729f765d58297728485368aef681e32ff3a515939deb599b0
-command_id = paper:ingestion-command:v1:752a982942bdf7e5734c844f625723f1302b3a2903d1a8b90fbbbccab0111b0a
+candidate_id = paper:production-approval-candidate:v1:e28c92781ccc8cf165d408e8c87727e9b3a2fe154f48b40fb51d72d64c4e2553
+winner = paper:production-approval-candidate:v1:e28c92781ccc8cf165d408e8c87727e9b3a2fe154f48b40fb51d72d64c4e2553
+command_id = paper:ingestion-command:v1:bd947e3b63251014ea65d997eb5c717606d46e2bab7e467067873f5d382e70b2
 entry_order_id = paper:first-canary:entry-order:5263d047b23af9cc81504e818582febbb06ba50242fe3e3ef5e253bb074e9c51
 fill_id = paper:fill-id:v1:6442fea734cb06dabd2f5505b202a39ca33fc70211044f5daea6930fdf32c96d
-position_id = paper:first-canary:position:8a9f62da1b35ff48257974cb8b9ed1d86b48b6c3605e910d8856bd25ee0ee115
+position_id = paper:first-canary:position:2bcd5d966749affb34891de3464e9da0ffedca2ad9a5e4dd57c91bc21900b4b9
 position_state = OPEN
 ```
 
@@ -118,8 +119,8 @@ tests additionally cover terminal or consumed bounds and executor recovery.
 
 ```text
 active_positions = 1
-command_id = paper:ingestion-command:v1:752a982942bdf7e5734c844f625723f1302b3a2903d1a8b90fbbbccab0111b0a
-position_id = paper:first-canary:position:8a9f62da1b35ff48257974cb8b9ed1d86b48b6c3605e910d8856bd25ee0ee115
+command_id = paper:ingestion-command:v1:bd947e3b63251014ea65d997eb5c717606d46e2bab7e467067873f5d382e70b2
+position_id = paper:first-canary:position:2bcd5d966749affb34891de3464e9da0ffedca2ad9a5e4dd57c91bc21900b4b9
 symbol = BTCUSDT
 state = OPEN
 entry_price = 100.72014
@@ -189,7 +190,6 @@ explicitly authorized build/deploy from the tested project-state commit:
 
 ## Deployment provenance
 
-The tested working tree is the tree to be captured by the project-state commit;
-its exact SHA is recorded by the subsequent status reconciliation. No image was
-built, no tag or digest was created, no push occurred, and no deployment ran.
-
+The E2E was rerun after commit on exact source
+`fbcb46cec928b22c2c5e987e5ad66ad4c231cf6d`. No image was built, no tag or
+digest was created, no push occurred, and no deployment ran.
