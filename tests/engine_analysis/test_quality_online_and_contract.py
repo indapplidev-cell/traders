@@ -83,6 +83,7 @@ def test_online_adapter_propagates_identity_boundary_and_serialization(market_sn
     output = runner.analyze_market_data_snapshot(snapshot)
     assert pipeline_calls == [(snapshot.symbol, snapshot.timeframe, 4)]
     assert output.closed_until_ms == snapshot.closed_until_ms
+    assert output.source_market_data_snapshot_id == snapshot.snapshot_id
     assert output.status == AnalysisSnapshotStatus.ANALYZED.value
     json.loads(json.dumps(output.__dict__ if hasattr(output, "__dict__") else {name: getattr(output, name) for name in output.__slots__}))
 

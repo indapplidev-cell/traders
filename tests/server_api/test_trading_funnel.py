@@ -72,9 +72,12 @@ def _candidate(run: OnlinePipelineRun):
     return SimpleNamespace(candidate_id=f"candidate:{run.symbol}", symbol=run.symbol, ranking=ranking, lineage=lineage)
 
 
-def _project(pairs, eligible=None):
+def _project(pairs, eligible=None, production_eligibility=None):
     universe = SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS)
-    return build_projection(tuple(pairs), universe, NOW_MS, eligible or {})
+    return build_projection(
+        tuple(pairs), universe, NOW_MS, eligible or {},
+        production_eligibility_by_run=production_eligibility or {},
+    )
 
 
 def _project_5m(pairs, eligible=None):
@@ -88,6 +91,28 @@ def _project_5m(pairs, eligible=None):
     return build_projection(
         tuple(pairs), universe, NOW_MS, eligible or {}, "trade-5m-v1"
     )
+
+
+def test_projection_distinguishes_upstream_final_approval_from_production_eligibility():
+    run = _run("BTCUSDT")
+    result = _result(run)
+    diagnostic = SimpleNamespace(
+        outcome=SimpleNamespace(value="MARKET_DATA_WATERMARK_MISMATCH"),
+        candidate=None,
+        classified_at_ms=NOW_MS,
+        source_market_data_snapshot_id=None,
+        valid_until_ms=NOW_MS + 60_000,
+    )
+    value = _project(
+        ((run, result),),
+        production_eligibility={run.run_id: diagnostic},
+    )
+    item = value["current_cycle"]["items"][0]
+    assert item["stage_trace"]["FINAL_APPROVAL"] == "PASS"
+    assert item["execution_eligible"] is False
+    assert item["production_eligibility_outcome"] == "MARKET_DATA_WATERMARK_MISMATCH"
+    assert item["production_eligibility_first_rejection_reason"] == "MARKET_DATA_WATERMARK_MISMATCH"
+    assert item["production_eligibility_classified_at_ms"] == NOW_MS
 
 
 def test_current_cycle_empty_or_startup():

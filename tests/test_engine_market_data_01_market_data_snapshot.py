@@ -26,3 +26,40 @@ def test_snapshot_reports_internal_gap() -> None:
     snapshot = MarketDataSnapshot.from_store(store, "BTCUSDT", "1m")
     assert snapshot.has_gaps is True
     assert snapshot.health_status == "DEGRADED"
+
+
+def test_snapshot_identity_is_versioned_deterministic_and_causal() -> None:
+    first = MarketDataSnapshot(
+        "BTCUSDT", "1m", 120_000, [make(0), make(60_000)], "websocket",
+        False, False, "OK", True,
+    )
+    same = MarketDataSnapshot(
+        "btcusdt", "1m", 120_000,
+        [replace(make(0), received_at_ms=10), replace(make(60_000), received_at_ms=20)],
+        "websocket", False, False, "DEGRADED", False,
+    )
+    changed = replace(
+        first,
+        candles=[make(0), replace(make(60_000), close=Decimal("11.5"))],
+    )
+    assert first.snapshot_id.startswith("market-data-snapshot:v1:")
+    assert len(first.snapshot_id.rsplit(":", 1)[1]) == 64
+    assert first.snapshot_id == same.snapshot_id
+    assert first.snapshot_id != changed.snapshot_id
+
+
+def test_snapshot_identity_rejects_noncanonical_candle_order_and_duplicates() -> None:
+    with pytest.raises(ValueError, match="strictly ordered and unique"):
+        MarketDataSnapshot(
+            "BTCUSDT", "1m", 120_000, [make(60_000), make(0)], "websocket",
+            False, False, "OK", True,
+        )
+    with pytest.raises(ValueError, match="strictly ordered and unique"):
+        MarketDataSnapshot(
+            "BTCUSDT", "1m", 120_000, [make(0), make(0)], "websocket",
+            False, False, "OK", True,
+        )
+from dataclasses import replace
+from decimal import Decimal
+
+import pytest

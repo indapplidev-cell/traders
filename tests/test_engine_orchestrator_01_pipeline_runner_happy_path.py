@@ -11,4 +11,7 @@ def test_pipeline_preserves_all_module_outputs():
     assert result.status == "COMPLETED"
     assert result.final_result == "PAPER_PLAN_READY"
     assert result.paper_payload["paper_status"] == "PAPER_PLAN_READY"
+    assert result.market_data_payload["15m"]["snapshot_id"].startswith(
+        "market-data-snapshot:v1:"
+    )
     assert all(call[2]["end_time_ms"] < BOUNDARY for call in runner.candle_repository.calls)

@@ -306,6 +306,11 @@ class FunnelCandidateStatus(ContractModel):
     final_approval_id: str | None
     eligible: bool
     execution_eligible: bool = False
+    production_eligibility_outcome: str = "NOT_CLASSIFIED"
+    production_eligibility_classified_at_ms: int | None = Field(default=None, ge=0)
+    production_eligibility_first_rejection_reason: str | None = None
+    source_market_data_snapshot_id: str | None = None
+    approval_valid_until_ms: int | None = Field(default=None, ge=0)
     selector_rank: int | None = Field(default=None, ge=1)
     selected_winner: bool
     updated_at_ms: int = Field(ge=0)

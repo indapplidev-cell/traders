@@ -11,12 +11,14 @@ objects, which is a healthy, fail-closed outcome.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from hashlib import sha256
 import json
+import logging
+from threading import Lock
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
 from sqlalchemy import Select, select, text
@@ -63,6 +65,7 @@ _FINAL_APPROVAL_KEYS: Final = (
     "paper_quantity_approval",
     "paper_risk_approval",
 )
+_LOG = logging.getLogger("traders.paper.production_approval")
 
 
 class PaperProductionApprovalOutcome(StrEnum):
@@ -91,6 +94,16 @@ class PaperProductionApprovalOutcome(StrEnum):
     READ_ONLY_POLICY_VIOLATION = "READ_ONLY_POLICY_VIOLATION"
     CANCELLED = "CANCELLED"
     SAFE_FAILURE = "SAFE_FAILURE"
+
+
+_DIAGNOSTIC_PRIORITY: Final = {
+    PaperProductionApprovalOutcome.MARKET_DATA_WATERMARK_MISMATCH: 100,
+    PaperProductionApprovalOutcome.CAUSALITY_MISMATCH: 90,
+    PaperProductionApprovalOutcome.AMBIGUOUS_APPROVAL: 80,
+    PaperProductionApprovalOutcome.SYMBOL_MISMATCH: 70,
+    PaperProductionApprovalOutcome.SIDE_MISMATCH: 70,
+    PaperProductionApprovalOutcome.FUTURE_DECISION: 60,
+}
 
 
 class PaperProductionApprovalReadiness(StrEnum):
@@ -259,6 +272,12 @@ class PaperProductionApprovalSymbolResult:
     freshness_class: str
     source_run_id: str | None
     candidate: PaperProductionApprovalCandidate | None = None
+    primary_timeframe: str | None = None
+    approval_id: str | None = None
+    setup_id: str | None = None
+    source_market_data_snapshot_id: str | None = None
+    valid_until_ms: int | None = None
+    classified_at_ms: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -301,6 +320,12 @@ class PaperProductionApprovalResult:
                     "freshness_class": value.freshness_class,
                     "source_run_id": value.source_run_id,
                     "candidate_semantic_id": value.candidate.candidate_id if value.candidate else None,
+                    "primary_timeframe": value.primary_timeframe,
+                    "approval_id": value.approval_id,
+                    "setup_id": value.setup_id,
+                    "source_market_data_snapshot_id": value.source_market_data_snapshot_id,
+                    "valid_until_ms": value.valid_until_ms,
+                    "classified_at_ms": value.classified_at_ms,
                 }
                 for value in self.symbol_results
             ],
@@ -569,6 +594,8 @@ class PaperProductionApprovalSourceAdapter:
         self._session_factory = session_factory
         self._reader = reader or SqlAlchemyPaperProductionApprovalReader()
         self._monotonic = monotonic
+        self._diagnostic_lock = Lock()
+        self._last_diagnostic_by_scope: dict[tuple[str, str], tuple[object, ...]] = {}
 
     @staticmethod
     def _validate_scope(request: PaperProductionApprovalRequest) -> tuple[str, ...] | PaperProductionApprovalOutcome:
@@ -665,6 +692,20 @@ class PaperProductionApprovalSourceAdapter:
         lineage_valid: bool = False,
         freshness: str = "NOT_APPLICABLE",
     ) -> PaperProductionApprovalSymbolResult:
+        generation = row.paper.get("final_approval_generation")
+        generation = generation if isinstance(generation, Mapping) else {}
+        approvals = row.paper.get("persisted_final_approvals")
+        approvals = approvals if isinstance(approvals, Mapping) else {}
+        final_approval = approvals.get("paper_risk_approval")
+        final_approval = final_approval if isinstance(final_approval, Mapping) else {}
+        valid_until = (
+            generation.get("final_valid_until_ms")
+            or final_approval.get("valid_until_ms")
+        )
+        try:
+            valid_until_ms = int(valid_until) if valid_until is not None else None
+        except (TypeError, ValueError):
+            valid_until_ms = None
         return PaperProductionApprovalSymbolResult(
             row.symbol, outcome,
             "TRADE_SIGNAL" if row.is_trade_signal else "NO_TRADE_SIGNAL",
@@ -673,7 +714,56 @@ class PaperProductionApprovalSourceAdapter:
             "FINAL" if candidate else "NOT_FINAL",
             "APPROVED" if candidate else "NOT_APPROVED",
             lineage_valid, freshness, row.run_id, candidate,
+            row.primary_timeframe,
+            str(
+                generation.get("final_approval_id")
+                or final_approval.get("approval_id")
+                or ""
+            ) or None,
+            str(row.setup.get("setup_id") or generation.get("candidate_id") or "") or None,
+            str(row.analysis.get("source_market_data_snapshot_id") or "") or None,
+            valid_until_ms,
         )
+
+    def _observe_classification(
+        self,
+        row: _PersistedDecision,
+        result: PaperProductionApprovalSymbolResult,
+        classified_at_ms: int,
+    ) -> PaperProductionApprovalSymbolResult:
+        observed = replace(result, classified_at_ms=classified_at_ms)
+        fields = {
+            "event": "paper_production_approval_classified",
+            "run_id": row.run_id or None,
+            "approval_id": observed.approval_id,
+            "candidate_id": observed.setup_id,
+            "symbol": row.symbol,
+            "timeframe": row.primary_timeframe,
+            "adapter_outcome": observed.outcome.value,
+            "source_market_data_snapshot_id": observed.source_market_data_snapshot_id,
+            "valid_until_ms": observed.valid_until_ms,
+            "classified_at_ms": classified_at_ms,
+        }
+        fingerprint = (
+            row.run_id,
+            observed.approval_id,
+            observed.setup_id,
+            observed.outcome.value,
+            observed.source_market_data_snapshot_id,
+            observed.valid_until_ms,
+        )
+        scope = (row.symbol, row.primary_timeframe)
+        with self._diagnostic_lock:
+            changed = self._last_diagnostic_by_scope.get(scope) != fingerprint
+            self._last_diagnostic_by_scope[scope] = fingerprint
+        message = json.dumps(fields, sort_keys=True, separators=(",", ":"))
+        (_LOG.info if changed else _LOG.debug)(message)
+        return observed
+
+    def _classify_observed(
+        self, row: _PersistedDecision, as_of_ms: int
+    ) -> PaperProductionApprovalSymbolResult:
+        return self._observe_classification(row, self._classify(row, as_of_ms), as_of_ms)
 
     def _classify(
         self, row: _PersistedDecision, as_of_ms: int
@@ -929,10 +1019,8 @@ class PaperProductionApprovalSourceAdapter:
         as_of_ms: int,
     ) -> PaperProductionApprovalSymbolResult:
         """Classify an already loaded atomic run/result pair without another DB read."""
-        return self._classify(
-            SqlAlchemyPaperProductionApprovalReader._map(run, result),
-            as_of_ms,
-        )
+        row = SqlAlchemyPaperProductionApprovalReader._map(run, result)
+        return self._classify_observed(row, as_of_ms)
 
     def read(
         self,
@@ -995,7 +1083,7 @@ class PaperProductionApprovalSourceAdapter:
                                     complete[0], PaperProductionApprovalOutcome.AMBIGUOUS_APPROVAL
                                 )
                             else:
-                                result = self._classify(complete[0], as_of_ms)
+                                result = self._classify_observed(complete[0], as_of_ms)
                         results.append(result)
                         findings.append(PaperProductionApprovalFinding(
                             _FINDING_BY_OUTCOME[result.outcome], symbol, result.source_run_id
@@ -1009,11 +1097,20 @@ class PaperProductionApprovalSourceAdapter:
                             rows_read=rows_read, started=started,
                         )
                     outcomes = {value.outcome for value in results}
-                    overall = (
-                        PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL
-                        if eligible else next(iter(outcomes))
-                        if len(outcomes) == 1 else PaperProductionApprovalOutcome.NO_ELIGIBLE_APPROVAL
-                    )
+                    if eligible:
+                        overall = PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL
+                    elif len(outcomes) == 1:
+                        overall = next(iter(outcomes))
+                    else:
+                        diagnostic = max(
+                            outcomes,
+                            key=lambda value: _DIAGNOSTIC_PRIORITY.get(value, 0),
+                        )
+                        overall = (
+                            diagnostic
+                            if _DIAGNOSTIC_PRIORITY.get(diagnostic, 0) > 0
+                            else PaperProductionApprovalOutcome.NO_ELIGIBLE_APPROVAL
+                        )
                     return PaperProductionApprovalResult(
                         overall, self._readiness(overall), request.request_id,
                         as_of_ms, tuple(results), tuple(findings), executor.query_count,

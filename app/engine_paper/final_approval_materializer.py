@@ -13,6 +13,7 @@ from typing import Any, Final
 from sqlalchemy.orm import Session
 
 from app.engine_orchestrator.pipeline_result import PipelineResult, json_safe
+from app.engine_market_data.market_data_snapshot import is_market_data_snapshot_id
 from app.engine_paper.accounting import (
     PaperAccountAccountingService,
     PaperAccountSummary,
@@ -170,6 +171,19 @@ class NaturalFinalApprovalMaterializer:
 
         attempted_stage = "FINAL_APPROVAL"
         quantity_authority_status = "NOT_REACHED"
+        source_market_data_snapshot_id = result.analysis_payload.get(
+            "source_market_data_snapshot_id"
+        )
+        if not is_market_data_snapshot_id(source_market_data_snapshot_id):
+            return self._not_created(
+                result,
+                "MISSING_MARKET_DATA_WATERMARK",
+                attempted_stage=attempted_stage,
+                stage_status="REJECTED",
+                safe_reason_detail=(
+                    "natural final approval requires a valid causal market-data watermark"
+                ),
+            )
         try:
             strategy = _typed(StrategyDecision, result.strategy_payload)
             research_risk = _typed(RiskDecision, result.risk_payload)
@@ -292,6 +306,7 @@ class NaturalFinalApprovalMaterializer:
 
             idempotency_key = "paper:final-approval:v1:" + _canonical_hash((
                 run_id,
+                source_market_data_snapshot_id,
                 analysis.get("snapshot_id"),
                 setup.get("setup_id"),
                 strategy.decision_id,
@@ -325,6 +340,7 @@ class NaturalFinalApprovalMaterializer:
                 "idempotency_key": idempotency_key,
                 "final_approval_id": risk_approval.approval_id,
                 "source_run_id": run_id,
+                "source_market_data_snapshot_id": source_market_data_snapshot_id,
                 "candidate_id": setup.get("setup_id"),
                 "symbol": result.symbol,
                 "direction": plan.paper_direction,

@@ -342,6 +342,7 @@ class PipelineRunner:
     def _market_summary(snapshots: dict[str, MarketDataSnapshot]) -> dict[str, Any]:
         return {
             timeframe: {
+                "snapshot_id": snapshot.snapshot_id,
                 "candle_count": len(snapshot.candles), "source": snapshot.source,
                 "has_gaps": snapshot.has_gaps, "enough_data": snapshot.enough_data,
                 "first_open_time_ms": snapshot.candles[0].open_time_ms if snapshot.candles else None,

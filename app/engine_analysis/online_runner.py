@@ -64,9 +64,11 @@ class OnlineAnalysisRunner:
         return time.time_ns() // 1_000_000
 
     @staticmethod
-    def _source_id(snapshot: object) -> str | None:
-        value = getattr(snapshot, "snapshot_id", None)
-        return str(value) if value is not None else None
+    def _source_id(snapshot: MarketDataSnapshot) -> str:
+        value = snapshot.snapshot_id
+        if not value:
+            raise ValueError("MarketDataSnapshot.snapshot_id must not be empty")
+        return value
 
     def _build(
         self,
@@ -94,7 +96,11 @@ class OnlineAnalysisRunner:
             future_bars_used=False,
             status=status.value,
             skip_reason=skip_reason,
-            source_market_data_snapshot_id=self._source_id(snapshot),
+            source_market_data_snapshot_id=(
+                self._source_id(snapshot)
+                if isinstance(snapshot, MarketDataSnapshot)
+                else None
+            ),
             analysis_error=analysis_error,
             **analysis,
         )

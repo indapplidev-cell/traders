@@ -13,9 +13,16 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.db.paper_models import PaperAccountBaselineRecord
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
-from app.engine_orchestrator.pipeline_result import PipelineResult
+from app.engine_orchestrator.pipeline_result import PipelineResult, json_safe
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
+from app.engine_market_data.candle import Candle
+from app.engine_market_data.market_data_snapshot import MarketDataSnapshot
+from app.engine_market_data.timeframe import timeframe_to_milliseconds
+from app.engine_analysis.analysis_snapshot_store import AnalysisSnapshotStore
+from app.engine_analysis.market_data_adapter import MarketDataAdapter
+from app.engine_analysis.online_config import OnlineAnalysisConfig
+from app.engine_analysis.online_runner import OnlineAnalysisRunner
 from app.engine_paper import production_approval as approval_adapter
 from app.engine_paper.accounting import PaperAccountSummary
 from app.engine_paper.controlled_quantity_validity import (
@@ -45,6 +52,36 @@ BOUNDARY = 1_800_000_000_000
 SOURCE_CLOSE = BOUNDARY - 1
 EVALUATION_MS = BOUNDARY + 5_000
 EVALUATION = datetime.fromtimestamp(EVALUATION_MS / 1000, tz=timezone.utc)
+
+
+def natural_market_snapshot(
+    symbol: str = "BTCUSDT", timeframe: str = "15m"
+) -> MarketDataSnapshot:
+    duration = timeframe_to_milliseconds(timeframe)
+    candle = Candle(
+        symbol=symbol,
+        timeframe=timeframe,
+        open_time_ms=BOUNDARY - duration,
+        close_time_ms=SOURCE_CLOSE,
+        open=Decimal("100"),
+        high=Decimal("102"),
+        low=Decimal("99"),
+        close=Decimal("101"),
+        volume=Decimal("10"),
+        is_closed=True,
+        source="natural-test-market-data",
+    )
+    return MarketDataSnapshot(
+        symbol=symbol,
+        timeframe=timeframe,
+        closed_until_ms=BOUNDARY,
+        candles=[candle],
+        source=candle.source,
+        has_gaps=False,
+        future_bars_used=False,
+        health_status="OK",
+        enough_data=True,
+    )
 
 
 def account(equity: Decimal = Decimal("100")) -> PaperAccountSummary:
@@ -122,7 +159,7 @@ def natural_result(**changes) -> PipelineResult:
         },
         analysis_payload={
             "snapshot_id": "analysis:natural:1",
-            "source_market_data_snapshot_id": "market:natural:1",
+            "source_market_data_snapshot_id": natural_market_snapshot().snapshot_id,
             "symbol": "BTCUSDT", "timeframe": "15m", "closed_until_ms": BOUNDARY,
             "created_at_ms": BOUNDARY + 100, "future_bars_used": False,
         },
@@ -153,6 +190,9 @@ def five_minute_natural_result() -> PipelineResult:
         "5m": {"last_close_time_ms": SOURCE_CLOSE, "closed_until_ms": BOUNDARY}
     }
     value.analysis_payload["timeframe"] = "5m"
+    value.analysis_payload["source_market_data_snapshot_id"] = (
+        natural_market_snapshot(timeframe="5m").snapshot_id
+    )
     value.setup_payload["timeframe"] = "5m"
     value.strategy_payload = replace(strategy(), timeframe="5m").to_dict()
     value.risk_payload = replace(risk(), timeframe="5m").to_dict()
@@ -212,6 +252,9 @@ def long_production_shape_result() -> PipelineResult:
     )
     value.symbol = symbol
     value.analysis_payload["symbol"] = symbol
+    value.analysis_payload["source_market_data_snapshot_id"] = (
+        natural_market_snapshot(symbol=symbol).snapshot_id
+    )
     value.setup_payload.update({"setup_id": setup_id, "symbol": symbol})
     value.strategy_payload = strategy_value.to_dict()
     value.risk_payload = risk_value.to_dict()
@@ -285,6 +328,16 @@ def test_valid_triplet_persists_final_approval_test():
     assert set(value.paper_payload["persisted_final_approvals"]) == {
         "paper_strategy_approval", "paper_quantity_approval", "paper_risk_approval"
     }
+
+
+def test_missing_market_watermark_rejects_before_final_approval_creation_test():
+    defective = natural_result()
+    defective.analysis_payload["source_market_data_snapshot_id"] = None
+    value = materialize(defective)
+    assert not value.final_approval_created
+    assert value.outcome == "MISSING_MARKET_DATA_WATERMARK"
+    assert "persisted_final_approvals" not in value.paper_payload
+    assert value.paper_payload["final_approval_generation"]["status"] == "REJECTED"
 
 
 def test_5m_valid_triplet_has_real_authority_and_one_5m_validity_window_test():
@@ -389,6 +442,79 @@ def _persisted_decision(payload):
 def _classify(payload):
     adapter = object.__new__(approval_adapter.PaperProductionApprovalSourceAdapter)
     return adapter._classify(_persisted_decision(payload), EVALUATION_MS)
+
+
+def test_real_snapshot_online_analysis_persisted_natural_approval_is_adapter_eligible_test():
+    market_snapshot = natural_market_snapshot()
+    analysis_store = AnalysisSnapshotStore()
+    online = OnlineAnalysisRunner(
+        OnlineAnalysisConfig(required_history_candles=1, max_snapshot_age_ms=0),
+        MarketDataAdapter(),
+        analysis_store,
+        lambda *_: {
+            "regime": "UP",
+            "confidence": 0.9,
+            "action": "RESEARCH_ONLY",
+            "reason_codes": ["NATURAL_INTEGRATION"],
+        },
+    )
+    online._now_ms = lambda: BOUNDARY + 100
+    analysis = online.analyze_market_data_snapshot(market_snapshot)
+    assert analysis_store.get_by_window("BTCUSDT", "15m", BOUNDARY) == analysis
+    assert analysis.source_market_data_snapshot_id == market_snapshot.snapshot_id
+
+    strategy_value = replace(
+        strategy(), source_analysis_snapshot_id=analysis.snapshot_id
+    )
+    risk_value = replace(risk(), source_analysis_snapshot_id=analysis.snapshot_id)
+    plan_value = replace(plan(), source_analysis_snapshot_id=analysis.snapshot_id)
+    result = natural_result()
+    result.analysis_payload = json_safe(analysis)
+    result.setup_payload = {
+        **result.setup_payload,
+        "source_analysis_snapshot_id": analysis.snapshot_id,
+    }
+    result.strategy_payload = strategy_value.to_dict()
+    result.risk_payload = risk_value.to_dict()
+    result.paper_payload = plan_value.to_dict()
+
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    run_id = "orchestrator:natural:real-snapshot:1"
+    with sessions() as session:
+        session.add(OnlinePipelineRun(
+            run_id=run_id, symbol="BTCUSDT", primary_timeframe="15m",
+            closed_until_ms=BOUNDARY,
+            closed_until_utc=datetime.fromtimestamp(BOUNDARY / 1000, tz=timezone.utc),
+            status="RUNNING", started_at=EVALUATION, trigger_source="TEST",
+            daemon_instance_id="test",
+        ))
+        session.add(PaperAccountBaselineRecord(
+            baseline_id="baseline:real-snapshot", account_id="account:production",
+            accounting_session_id="session:production", currency="USDT",
+            initial_balance=Decimal("100"), initialized_at=EVALUATION,
+            semantic_version="PAPER_ACCOUNTING/1.0",
+        ))
+        session.commit()
+    assert PipelineResultStore(sessions, clock=lambda: EVALUATION).finish(
+        run_id, result, freshness_status="READY"
+    )
+    with sessions() as session:
+        persisted_run = session.scalar(select(OnlinePipelineRun))
+        persisted_result = session.scalar(select(OnlinePipelineResultRow))
+    classified = approval_adapter.PaperProductionApprovalSourceAdapter(
+        sessions
+    ).classify_loaded_decision(persisted_run, persisted_result, EVALUATION_MS)
+    assert persisted_result.analysis_payload_json[
+        "source_market_data_snapshot_id"
+    ] == market_snapshot.snapshot_id
+    assert persisted_result.paper_payload_json["final_approval_generation"][
+        "outcome"
+    ] == "FINAL_APPROVAL_CREATED"
+    assert classified.outcome is approval_adapter.PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL
+    assert classified.candidate is not None
+    assert classified.candidate.watermark.source_market_data_snapshot_id == market_snapshot.snapshot_id
 
 
 def test_final_approval_adapter_reads_new_natural_approval_and_selector_accepts_single_valid_test():

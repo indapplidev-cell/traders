@@ -341,6 +341,56 @@ def test_symbol_side_lineage_watermark_and_future_mismatches_fail_closed():
         assert not result.candidates
 
 
+def test_mixed_outcomes_preserve_specific_hard_rejection_and_per_symbol_details():
+    defective = eligible_row()
+    defective = replace(
+        defective,
+        analysis={**defective.analysis, "source_market_data_snapshot_id": ""},
+    )
+    no_setup = row(
+        run_pk=2,
+        run_id="run:eth",
+        symbol="ETHUSDT",
+        is_trade_signal=False,
+        analysis={**row().analysis, "symbol": "ETHUSDT"},
+        setup={**row().setup, "symbol": "ETHUSDT"},
+        strategy={**row().strategy, "symbol": "ETHUSDT"},
+        risk={**row().risk, "symbol": "ETHUSDT"},
+        paper={**row().paper, "symbol": "ETHUSDT"},
+    )
+    result = service({"BTCUSDT": (defective,), "ETHUSDT": (no_setup,)})[0].read(
+        request(("BTCUSDT", "ETHUSDT"))
+    )
+    assert result.outcome is approval.PaperProductionApprovalOutcome.MARKET_DATA_WATERMARK_MISMATCH
+    assert result.readiness is approval.PaperProductionApprovalReadiness.NOT_READY
+    assert {item.symbol: item.outcome for item in result.symbol_results} == {
+        "BTCUSDT": approval.PaperProductionApprovalOutcome.MARKET_DATA_WATERMARK_MISMATCH,
+        "ETHUSDT": approval.PaperProductionApprovalOutcome.NO_TRADE_SIGNAL,
+    }
+    assert not result.candidates
+
+
+def test_structured_rejection_log_is_info_once_then_debug(caplog):
+    defective = eligible_row()
+    defective = replace(
+        defective,
+        analysis={**defective.analysis, "source_market_data_snapshot_id": ""},
+    )
+    adapter, _ = service(
+        {"BTCUSDT": (defective,)}, ticks=(1.0, 1.001, 2.0, 2.001)
+    )
+    with caplog.at_level("DEBUG", logger="traders.paper.production_approval"):
+        adapter.read(request())
+        adapter.read(request())
+    records = [
+        record for record in caplog.records
+        if "paper_production_approval_classified" in record.message
+    ]
+    assert [record.levelname for record in records] == ["INFO", "DEBUG"]
+    assert all('"adapter_outcome":"MARKET_DATA_WATERMARK_MISMATCH"' in record.message for record in records)
+    assert all('"run_id":"run:1"' in record.message for record in records)
+
+
 def test_stale_approval_is_healthy_no_candidate():
     result = service({"BTCUSDT": (eligible_row(),)})[0].read(
         approval.PaperProductionApprovalRequest(request().scope, "stale", VALID + 1)

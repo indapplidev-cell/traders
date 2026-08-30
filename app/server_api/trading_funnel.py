@@ -961,6 +961,7 @@ class TradingFunnelReadRepository:
         start_ms = now_ms - max_horizon_ms
         rows = self._load_rows(profile, universe, start_ms, now_ms)
         eligible_by_run: dict[str, object] = {}
+        production_eligibility_by_run: dict[str, object] = {}
         if profile.mode != TradeProfileMode.SHADOW_SEARCH.value:
             # The bounded funnel query has already loaded the exact persisted
             # run/result pairs required by the production approval classifier.
@@ -997,9 +998,18 @@ class TradingFunnelReadRepository:
                 classified = classifier.classify_loaded_decision(
                     tied[0][0], tied[0][1], now_ms
                 )
+                if classified.source_run_id:
+                    production_eligibility_by_run[classified.source_run_id] = classified
                 if classified.candidate is not None:
                     eligible_by_run[classified.source_run_id] = classified.candidate
-        return build_projection(rows, universe, now_ms, eligible_by_run, profile.trade_profile_id)
+        return build_projection(
+            rows,
+            universe,
+            now_ms,
+            eligible_by_run,
+            profile.trade_profile_id,
+            production_eligibility_by_run,
+        )
 
     def export_rows(
         self,
@@ -1109,11 +1119,13 @@ class TradingFunnelReadRepository:
 
 def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None], ...], universe: TradingUniverseVersion,
                      now_ms: int, eligible_by_run: Mapping[str, object] | None = None,
-                     trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID) -> dict[str, Any]:
+                     trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID,
+                     production_eligibility_by_run: Mapping[str, object] | None = None) -> dict[str, Any]:
     profile = resolve_trade_profile(trade_profile_id)
     boundary_ms = 5 * 60 * 1000 if profile.trigger_timeframe == "5m" else BOUNDARY_MS
     max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
     eligible_by_run = eligible_by_run or {}
+    production_eligibility_by_run = production_eligibility_by_run or {}
     by_boundary: dict[int, list[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None]]] = {}
     for pair in rows:
         by_boundary.setdefault(int(pair[0].closed_until_ms), []).append(pair)
@@ -1220,6 +1232,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 } or boundary in detail_boundaries,
             )
             candidate = eligible_by_run.get(row.run_id)
+            production_eligibility = production_eligibility_by_run.get(row.run_id)
             if candidate is None and profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
                 candidate = _shadow_candidate(row, result, trace, now_ms)
             if candidate is not None and not meta.get("validity_current", False):
@@ -1265,6 +1278,34 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 "execution_eligible": (
                     profile.mode != TradeProfileMode.SHADOW_SEARCH.value
                     and candidate is not None
+                ),
+                "production_eligibility_outcome": (
+                    "NOT_APPLICABLE"
+                    if profile.mode == TradeProfileMode.SHADOW_SEARCH.value
+                    else getattr(
+                        getattr(production_eligibility, "outcome", None),
+                        "value",
+                        "NOT_CLASSIFIED",
+                    )
+                ),
+                "production_eligibility_classified_at_ms": getattr(
+                    production_eligibility, "classified_at_ms", None
+                ),
+                "production_eligibility_first_rejection_reason": (
+                    None
+                    if production_eligibility is None
+                    or getattr(production_eligibility, "candidate", None) is not None
+                    else getattr(
+                        getattr(production_eligibility, "outcome", None),
+                        "value",
+                        None,
+                    )
+                ),
+                "source_market_data_snapshot_id": getattr(
+                    production_eligibility, "source_market_data_snapshot_id", None
+                ),
+                "approval_valid_until_ms": getattr(
+                    production_eligibility, "valid_until_ms", None
                 ),
                 "updated_at_ms": updated_ms, "stage_trace": trace,
                 "downstream_stage_trace": downstream_trace,
