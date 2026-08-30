@@ -109,11 +109,11 @@ activation, or push occurred.
 ## 5. Deployment result
 
 ```text
-DEPLOYMENT_RESULT = DEPLOYED
-RUNNING_ARTIFACT_MATCH = PASS
-RUNTIME_HEALTH = PASS
-POST_DEPLOY_SMOKE = PASS
-ROLLBACK = NOT_REQUIRED
+DEPLOYMENT_RESULT = ROLLED_BACK
+RUNNING_ARTIFACT_MATCH = PARTIAL_AFTER_OPERATOR_CONTROL_ROLLBACK
+RUNTIME_HEALTH = FAILED_RECURRING_OPERATOR_CONTROL_DOCKER_HEALTH_PROBE_TIMEOUT
+POST_DEPLOY_SMOKE = INITIAL_PASS_LATER_REGRESSION
+ROLLBACK = OPERATOR_CONTROL_ONLY
 ```
 
 Operator Control retained `ARMED` generation 6 and reported 3 GET/5 POST routes,
@@ -253,11 +253,61 @@ SERIALIZATION_OR_SCHEMA_INCOMPATIBILITY = NONE
 ## 12. Final verdict
 
 ```text
-FINAL_VERDICT = DEPLOY_SUCCESS_WAITING_FOR_NATURAL_APPROVAL
+FINAL_VERDICT = ROLLED_BACK
 ```
 
-Production acceptance remains open. It may close only after one fresh natural
-post-deploy approval reaches `ELIGIBLE_APPROVAL`, selector winner, command,
-ENTRY order, simulated fill, persisted OPEN PAPER position, and visibility of
-that same position through the Readonly projection. Strategic filters must not
-be weakened and no artificial production trade may be created.
+Production acceptance did not close. The terminal rollback evidence below
+supersedes the earlier waiting state.
+
+## 13. Terminal Operator Control rollback
+
+At `2026-08-30T17:33:44.958677576Z`, Operator Control alone was replaced by
+the pre-verified rollback artifact after recurring Docker health failures. The
+health command repeatedly exceeded its ten-second timeout, including an
+eleven-failure episode and a later nine-failure episode. The authenticated
+GET-only status remained semantically healthy throughout, but Docker readiness
+was not stable, which is an explicit rollback condition.
+
+```text
+ROLLBACK_SCOPE = operator-control-api only
+ROLLED_BACK_FROM_SHA = d7d072df4b924d675c4bb1de447635f0b6b0e41d
+ROLLED_BACK_FROM_DIGEST = sha256:b7d50beeb5e9286bf2582216dd0d575335e8f0bdf37047e02ce9ffe57d95b80c
+ROLLED_BACK_TO_SHA = 9fe3a4f1dba41c054cd5003e589ac72ba21394f5
+ROLLED_BACK_TO_DIGEST = sha256:a4664ff5c34844c59f89224369cda859b72d30c27663b7b2ff1a128626590f39
+ROLLBACK_TAG = traders-operator-control-api:rollback-paper-watermark-9fe3a4f1
+ROLLBACK_METHOD = canonical Compose --no-build --no-deps narrow replacement
+DB_DOWNGRADE = NO
+SCHEMA_MUTATION = NO
+BUSINESS_DATA_MUTATION = NO
+HISTORICAL_APPROVAL_MUTATION = NO
+HISTORICAL_APPROVAL_REPLAY = NO
+CANARY_RESET_OR_EXPANSION = NO
+LIVE = false
+```
+
+The rollback container reached Docker `healthy` with restart count zero and
+retained `ARMED` generation 6, audit PASS, and unused one-command/one-position
+budgets. Schema remained the single head
+`0018_promote_5m_production_search`; canonical WAL/PITR remained PASS with no
+physical gap, backlog, pending archive status, or unresolved failure. Commands,
+orders, fills, positions, and OPEN positions remained `0/0/0/0/0`. All 37
+historical defective approvals remained unchanged.
+
+The old artifact also showed intermittent timeout probes after rollback. This
+demonstrates that the latency signal crosses the two application artifacts and
+requires a separate operational diagnosis; it does not justify restoring the
+new control artifact inside this failed acceptance. The orchestrators and
+Readonly remain on `d7d072d...`, while Operator Control now runs `9fe3a4f...`.
+Therefore the complete PAPER fix is no longer deployed across every required
+runtime component.
+
+At the rollback evidence cutoff, 959 natural post-deploy results had valid
+versioned MarketDataSnapshot identifiers, while zero had reached
+`PAPER_PLAN_READY` or a fresh final approval. No production PAPER execution
+chain existed to accept, and no artificial trade was created.
+
+```text
+FINAL_VERDICT = ROLLED_BACK
+PRODUCTION_ACCEPTANCE_CLOSED = NO
+NEXT_ACTION = separately diagnose Operator Control health-probe latency, then redeploy the tested control artifact only after stable readiness is proven
+```
