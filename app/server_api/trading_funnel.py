@@ -313,15 +313,9 @@ def _downstream_trace(
     """Return the server-authoritative downstream observability projection.
 
     The projection deliberately does not reinterpret missing historical facts as
-    failures.  In particular, Portfolio has no independent persisted decision in
-    the current pipeline and therefore remains UNAVAILABLE instead of a false 0.
+    failures. Missing historical gate evidence remains UNAVAILABLE instead of a
+    false zero or a fabricated pass/rejection.
     """
-    if not scalping:
-        return (
-            {stage: "NOT_APPLICABLE" for stage in CANONICAL_DOWNSTREAM_STAGES},
-            {},
-        )
-
     trace = {stage: "NOT_REACHED" for stage in CANONICAL_DOWNSTREAM_STAGES}
     detail: dict[str, Any] = {}
     trace["ANALYSIS_QUALIFIED"] = _status_from_legacy(
@@ -344,7 +338,16 @@ def _downstream_trace(
     risk = _mapping(result.risk_payload_json)
     paper = _mapping(result.paper_payload_json)
     context = _mapping(paper.get("paper_context"))
-    diagnostic = _mapping(context.get("scalping_geometry_diagnostics"))
+    diagnostic = (
+        _mapping(context.get("scalping_geometry_diagnostics"))
+        or _mapping(context.get("canonical_domain_evaluation"))
+    )
+    net_cost_gate = _mapping(context.get("net_cost_gate"))
+    portfolio_gate = _mapping(paper.get("portfolio_gate"))
+    portfolio_measured = _mapping(portfolio_gate.get("measured"))
+    portfolio_limits = _mapping(portfolio_gate.get("limits"))
+    target_provenance = _mapping(diagnostic.get("target_provenance"))
+    stop_provenance = _mapping(diagnostic.get("stop_provenance"))
     checklist = _mapping(paper.get("final_approval_checklist"))
     approvals = _mapping(paper.get("persisted_final_approvals"))
     shadow_approvals = _mapping(paper.get("shadow_approvals"))
@@ -366,27 +369,39 @@ def _downstream_trace(
     if compatibility_pass:
         if diagnostic:
             trace["GEOMETRY_VALID"] = (
-                "PASS" if diagnostic.get("stop_envelope_pass") is True
+                "PASS" if (
+                    diagnostic.get("stop_envelope_pass") is True
+                    or diagnostic.get("geometry_pass") is True
+                )
                 else "REJECTED"
             )
         else:
             trace["GEOMETRY_VALID"] = "UNAVAILABLE"
     if trace["GEOMETRY_VALID"] == "PASS":
-        if diagnostic.get("causal_target_exists") is True:
+        if (
+            diagnostic.get("causal_target_exists") is True
+            or diagnostic.get("target_pass") is True
+        ):
             trace["TARGET_VALID"] = "PASS"
         elif diagnostic:
             trace["TARGET_VALID"] = "REJECTED"
         else:
             trace["TARGET_VALID"] = "UNAVAILABLE"
     if trace["TARGET_VALID"] == "PASS":
-        if diagnostic.get("economic_gate_pass") is True:
+        if (
+            diagnostic.get("economic_gate_pass") is True
+            or net_cost_gate.get("gate_decision") == "PASS"
+        ):
             trace["NET_COST_PASS"] = "PASS"
-        elif diagnostic:
+        elif diagnostic or net_cost_gate:
             trace["NET_COST_PASS"] = "REJECTED"
         else:
             trace["NET_COST_PASS"] = "UNAVAILABLE"
     if trace["NET_COST_PASS"] == "PASS":
-        if diagnostic.get("valid_plan") is True:
+        if (
+            diagnostic.get("valid_plan") is True
+            or diagnostic.get("rr_pass") is True
+        ):
             trace["RR_PASS"] = "PASS"
         elif diagnostic:
             trace["RR_PASS"] = "REJECTED"
@@ -396,14 +411,23 @@ def _downstream_trace(
     authoritative_risk = _mapping(approvals.get("paper_risk_approval"))
     if authoritative_risk:
         trace["RISK_ADMITTED"] = "PASS"
+    elif (
+        trace["RR_PASS"] == "PASS"
+        and risk.get("risk_status") in {
+            "RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"
+        }
+    ):
+        trace["RISK_ADMITTED"] = "PASS"
     elif trace["RR_PASS"] == "PASS":
         # A missing approval is not proof of an authoritative rejection.
         trace["RISK_ADMITTED"] = "UNAVAILABLE"
 
-    # Portfolio is not independently serialized by the current pipeline.  A
-    # final approval proves the full final materialization succeeded, but it
-    # does not justify inventing a distinct Portfolio decision.
-    trace["PORTFOLIO_ADMITTED"] = "UNAVAILABLE"
+    if trace["RISK_ADMITTED"] == "PASS":
+        trace["PORTFOLIO_ADMITTED"] = (
+            "PASS" if portfolio_gate.get("decision") == "PASS"
+            else "REJECTED" if portfolio_gate.get("decision") == "REJECT"
+            else "UNAVAILABLE"
+        )
     trace["FINAL_APPROVAL"] = _status_from_legacy(
         legacy_trace.get("FINAL_APPROVAL", "NOT_REACHED")
     )
@@ -418,10 +442,12 @@ def _downstream_trace(
         planned.get("hypothetical_entry_reference"), diagnostic.get("entry")
     )
     stop = _first_present(
-        planned.get("hypothetical_stop_level"), diagnostic.get("final_stop")
+        planned.get("hypothetical_stop_level"), diagnostic.get("final_stop"),
+        diagnostic.get("stop")
     )
     target = _first_present(
-        planned.get("hypothetical_target_level"), diagnostic.get("causal_target")
+        planned.get("hypothetical_target_level"), diagnostic.get("causal_target"),
+        diagnostic.get("target")
     )
     valid_values = [
         int(value["valid_until_ms"])
@@ -451,7 +477,11 @@ def _downstream_trace(
         _mapping(paper.get("causal_levels")).get("minimum_planned_rr"),
     )
     detail.update({
-        "opportunity_id": diagnostic.get("opportunity_id") or setup.get("setup_id"),
+        "opportunity_id": (
+            diagnostic.get("opportunity_id")
+            or _mapping(context.get("causal_primitives")).get("opportunity_id")
+            or setup.get("opportunity_id") or setup.get("setup_id")
+        ),
         "paper_plan_id": planned.get("paper_plan_id"),
         "setup_type": setup.get("setup_type"),
         "strategy_type": strategy.get("strategy_type") or strategy.get("source_strategy_type"),
@@ -461,7 +491,10 @@ def _downstream_trace(
         "entry_price": entry,
         "entry_source": planned.get("entry_reference_source"),
         "stop_price": stop,
-        "stop_source": planned.get("stop_source"),
+        "stop_source": planned.get("stop_source") or diagnostic.get("stop_source"),
+        "stop_provenance": diagnostic.get("stop_provenance"),
+        "stop_source_timeframe": stop_provenance.get("source_timeframe"),
+        "stop_rule_version": stop_provenance.get("derived_rule_version"),
         "stop_distance_absolute": _absolute_distance(entry, stop),
         "geometry_status": trace["GEOMETRY_VALID"],
         "geometry_reason": geometry_reason,
@@ -475,28 +508,53 @@ def _downstream_trace(
         "target_status": trace["TARGET_VALID"],
         "target_distance_bps": diagnostic.get("target_distance_bps"),
         "target_distance_percent": _percent_from_bps(diagnostic.get("target_distance_bps")),
-        "target_source": diagnostic.get("target_source_type"),
+        "target_source": diagnostic.get("target_source_type") or diagnostic.get("target_source"),
+        "target_provenance": diagnostic.get("target_provenance"),
+        "target_source_timeframe": target_provenance.get("source_timeframe"),
+        "target_source_window": target_provenance.get("source_candle_or_window"),
+        "target_rule_version": target_provenance.get("derived_rule_version"),
         "spread_bps": diagnostic.get("spread_bps"),
         "depth_impact_bps": diagnostic.get("depth_impact_bps"),
         "entry_fee_bps": diagnostic.get("entry_fee_bps"),
         "exit_fee_bps": diagnostic.get("exit_fee_bps"),
-        "fee_estimate_bps": _sum_decimals(
-            diagnostic.get("entry_fee_bps"), diagnostic.get("exit_fee_bps")
+        "fee_estimate_bps": _first_present(
+            net_cost_gate.get("estimated_trading_fees_bps"),
+            _sum_decimals(
+                diagnostic.get("entry_fee_bps"), diagnostic.get("exit_fee_bps")
+            ),
         ),
         "entry_slippage_bps": diagnostic.get("entry_slippage_bps"),
         "exit_slippage_bps": diagnostic.get("exit_slippage_bps"),
-        "slippage_estimate_bps": _sum_decimals(
-            diagnostic.get("entry_slippage_bps"),
-            diagnostic.get("exit_slippage_bps"),
+        "slippage_estimate_bps": _first_present(
+            net_cost_gate.get("estimated_slippage_bps"),
+            _sum_decimals(
+                diagnostic.get("entry_slippage_bps"),
+                diagnostic.get("exit_slippage_bps"),
+            ),
         ),
-        "safety_margin_bps": diagnostic.get("safety_margin_bps"),
-        "total_modeled_cost_bps": diagnostic.get("total_cost_bps"),
+        "safety_margin_bps": _first_present(
+            net_cost_gate.get("safety_margin_bps"),
+            diagnostic.get("safety_margin_bps"),
+        ),
+        "total_modeled_cost_bps": _first_present(
+            net_cost_gate.get("total_estimated_cost_bps"),
+            diagnostic.get("total_cost_bps"),
+        ),
         "gross_rr": _first_present(
-            diagnostic.get("gross_rr"), planned.get("planned_rr")
+            diagnostic.get("gross_rr"), diagnostic.get("raw_rr"),
+            planned.get("planned_rr")
         ),
-        "net_rr": diagnostic.get("net_rr"),
+        "net_rr": _first_present(
+            diagnostic.get("net_rr"), diagnostic.get("effective_rr")
+        ),
         "required_rr": required_rr,
-        "expected_net_edge_bps": diagnostic.get("expected_net_edge_bps"),
+        "expected_net_edge_bps": _first_present(
+            net_cost_gate.get("net_expected_outcome_bps"),
+            diagnostic.get("expected_net_edge_bps"),
+        ),
+        "cost_gate_decision": net_cost_gate.get("gate_decision"),
+        "cost_gate_reason": net_cost_gate.get("gate_reason"),
+        "cost_model_version": net_cost_gate.get("model_version"),
         "break_even_win_rate": diagnostic.get("break_even_win_rate"),
         "rr_status": trace["RR_PASS"],
         "rr_reason": geometry_reason if trace["RR_PASS"] == "REJECTED" else None,
@@ -520,7 +578,17 @@ def _downstream_trace(
         "notional_minimum": sizing.get("applicable_min_notional"),
         "notional_maximum": sizing.get("applicable_max_notional"),
         "planned_notional": _product(approved_quantity, entry),
-        "portfolio": None,
+        "portfolio": portfolio_gate or None,
+        "portfolio_decision": portfolio_gate.get("decision"),
+        "portfolio_reason": portfolio_gate.get("reason_code"),
+        "portfolio_policy_version": portfolio_gate.get("policy_version"),
+        "portfolio_active_positions": portfolio_measured.get("active_position_count"),
+        "portfolio_projected_risk_bps": portfolio_measured.get(
+            "projected_total_open_risk_bps"
+        ),
+        "portfolio_max_positions": portfolio_limits.get("max_concurrent_positions"),
+        "portfolio_max_risk_bps": portfolio_limits.get("max_total_open_risk_bps"),
+        "geometry_calculation_version": diagnostic.get("calculation_version"),
         "final_approval": trace["FINAL_APPROVAL"],
         "paper_plan": trace["PAPER_PLAN"],
         "plan_created_at_ms": planned.get("created_at_ms"),
@@ -779,11 +847,13 @@ class TradingFunnelReadRepository:
         *,
         schema_capabilities: ReadonlySchemaCapabilityBridge | None = None,
         monotonic_clock: Callable[[], float] = monotonic,
+        load_lifecycle: bool = True,
     ) -> None:
         self._session_factory = session_factory
         self._universe_source = universe_source
         self._schema_capabilities = schema_capabilities
         self._monotonic = monotonic_clock
+        self._load_lifecycle_enabled = load_lifecycle
         self._cache_lock = Lock()
         self._row_cache: dict[
             str,
@@ -828,6 +898,7 @@ class TradingFunnelReadRepository:
                     profile_schema_ready = revisions in {
                         ("0017_parallel_trade_profiles",),
                         ("0018_promote_5m_production_search",),
+                        ("0019_first_class_15m_domain",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -891,7 +962,14 @@ class TradingFunnelReadRepository:
                         )
                         .outerjoin(
                             OnlinePipelineResultRow,
-                            OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id,
+                            (
+                                (OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
+                                & (OnlinePipelineResultRow.trade_profile_id == OnlinePipelineRun.trade_profile_id)
+                                & (OnlinePipelineResultRow.profile_mode == OnlinePipelineRun.profile_mode)
+                                & (OnlinePipelineResultRow.symbol == OnlinePipelineRun.symbol)
+                                & (OnlinePipelineResultRow.primary_timeframe == OnlinePipelineRun.primary_timeframe)
+                                & (OnlinePipelineResultRow.closed_until_ms == OnlinePipelineRun.closed_until_ms)
+                            ),
                         )
                         .where(*profile_predicates, *predicates)
                         .order_by(
@@ -916,8 +994,14 @@ class TradingFunnelReadRepository:
                             select(OnlinePipelineRun, OnlinePipelineResultRow)
                             .outerjoin(
                                 OnlinePipelineResultRow,
-                                OnlinePipelineResultRow.run_id
-                                == OnlinePipelineRun.run_id,
+                                (
+                                    (OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
+                                    & (OnlinePipelineResultRow.trade_profile_id == OnlinePipelineRun.trade_profile_id)
+                                    & (OnlinePipelineResultRow.profile_mode == OnlinePipelineRun.profile_mode)
+                                    & (OnlinePipelineResultRow.symbol == OnlinePipelineRun.symbol)
+                                    & (OnlinePipelineResultRow.primary_timeframe == OnlinePipelineRun.primary_timeframe)
+                                    & (OnlinePipelineResultRow.closed_until_ms == OnlinePipelineRun.closed_until_ms)
+                                ),
                             )
                             .where(
                                 *profile_predicates,
@@ -1004,6 +1088,10 @@ class TradingFunnelReadRepository:
                     production_eligibility_by_run[classified.source_run_id] = classified
                 if classified.candidate is not None:
                     eligible_by_run[classified.source_run_id] = classified.candidate
+        lifecycle_by_run = (
+            self._load_lifecycle(tuple(row.run_id for row, _ in rows))
+            if self._load_lifecycle_enabled else {}
+        )
         return build_projection(
             rows,
             universe,
@@ -1011,7 +1099,52 @@ class TradingFunnelReadRepository:
             eligible_by_run,
             profile.trade_profile_id,
             production_eligibility_by_run,
+            lifecycle_by_run,
         )
+
+    def _load_lifecycle(self, run_ids: tuple[str, ...]) -> dict[str, dict[str, Any]]:
+        """Load the complete bounded PAPER lifecycle in one aggregate query."""
+        if not run_ids:
+            return {}
+        statement = (
+            select(
+                PaperExecutionCommandRecord.pipeline_run_id,
+                PaperExecutionCommandRecord.command_id,
+                PaperExecutionCommandRecord.processing_status,
+                PaperOrderRecord.order_id,
+                PaperOrderRecord.state,
+                PaperOrderRecord.applied_fill_id,
+                PaperPositionRecord.position_id,
+                PaperPositionRecord.state,
+                PaperPositionRecord.reason_code,
+            )
+            .outerjoin(
+                PaperOrderRecord,
+                (PaperOrderRecord.command_id == PaperExecutionCommandRecord.command_id)
+                & (PaperOrderRecord.order_role == "ENTRY"),
+            )
+            .outerjoin(
+                PaperPositionRecord,
+                PaperPositionRecord.entry_order_id == PaperOrderRecord.order_id,
+            )
+            .where(PaperExecutionCommandRecord.pipeline_run_id.in_(run_ids))
+            .order_by(PaperExecutionCommandRecord.pipeline_run_id.asc())
+            .limit(len(run_ids))
+        )
+        with self._session_factory() as session:
+            rows = tuple(session.execute(statement))
+        return {
+            str(row[0]): {
+                "execution_intent": "PAPER_COMMAND_CREATED",
+                "command_id": row[1], "command_status": row[2],
+                "order_id": row[3], "order_status": row[4],
+                "fill_id": row[5],
+                "fill_status": "FILLED" if row[5] is not None else "NOT_REACHED",
+                "position_id": row[6], "position_status": row[7],
+                "terminal_result": row[8],
+            }
+            for row in rows
+        }
 
     def export_rows(
         self,
@@ -1044,7 +1177,15 @@ class TradingFunnelReadRepository:
             )
         statement = (
             select(OnlinePipelineRun, OnlinePipelineResultRow)
-            .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
+            .outerjoin(
+                OnlinePipelineResultRow,
+                (OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
+                & (OnlinePipelineResultRow.trade_profile_id == OnlinePipelineRun.trade_profile_id)
+                & (OnlinePipelineResultRow.profile_mode == OnlinePipelineRun.profile_mode)
+                & (OnlinePipelineResultRow.symbol == OnlinePipelineRun.symbol)
+                & (OnlinePipelineResultRow.primary_timeframe == OnlinePipelineRun.primary_timeframe)
+                & (OnlinePipelineResultRow.closed_until_ms == OnlinePipelineRun.closed_until_ms),
+            )
             .where(*predicates)
             .order_by(
                 OnlinePipelineRun.closed_until_ms.asc(), OnlinePipelineRun.symbol.asc(),
@@ -1122,12 +1263,14 @@ class TradingFunnelReadRepository:
 def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None], ...], universe: TradingUniverseVersion,
                      now_ms: int, eligible_by_run: Mapping[str, object] | None = None,
                      trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID,
-                     production_eligibility_by_run: Mapping[str, object] | None = None) -> dict[str, Any]:
+                     production_eligibility_by_run: Mapping[str, object] | None = None,
+                     lifecycle_by_run: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any]:
     profile = resolve_trade_profile(trade_profile_id)
     boundary_ms = 5 * 60 * 1000 if profile.trigger_timeframe == "5m" else BOUNDARY_MS
     max_horizon_ms = 4 * 60 * 60 * 1000 + boundary_ms
     eligible_by_run = eligible_by_run or {}
     production_eligibility_by_run = production_eligibility_by_run or {}
+    lifecycle_by_run = lifecycle_by_run or {}
     by_boundary: dict[int, list[tuple[OnlinePipelineRun, OnlinePipelineResultRow | None]]] = {}
     for pair in rows:
         by_boundary.setdefault(int(pair[0].closed_until_ms), []).append(pair)
@@ -1269,6 +1412,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             profile_contexts = _profile_screen_contexts(
                 row, result, terminal_reason=reason
             )
+            lifecycle = dict(lifecycle_by_run.get(row.run_id, {}))
             current_stage = next((stage for stage in reversed(STAGES[:-1]) if trace[stage] != "NOT_REACHED"), "ANALYSIS")
             items.append({
                 "symbol": row.symbol, "source_run_id": row.run_id,
@@ -1329,15 +1473,87 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "plan_status": downstream_trace["PAPER_PLAN"],
                     "quantity_approval_status": trace["QUANTITY_APPROVED"],
                     "final_approval_status": downstream_trace["FINAL_APPROVAL"],
-                    "order_status": "UNAVAILABLE",
-                    "fill_status": "UNAVAILABLE",
-                    "position_status": (
-                        "OPENED" if row.position_opened else "NOT_OPENED"
+                    "execution_intent": lifecycle.get(
+                        "execution_intent", "NOT_REACHED"
                     ),
+                    "command_id": lifecycle.get("command_id"),
+                    "command_status": lifecycle.get("command_status", "NOT_REACHED"),
+                    "order_id": lifecycle.get("order_id"),
+                    "order_status": lifecycle.get("order_status", "NOT_REACHED"),
+                    "fill_id": lifecycle.get("fill_id"),
+                    "fill_status": lifecycle.get("fill_status", "NOT_REACHED"),
+                    "position_id": lifecycle.get("position_id"),
+                    "position_status": (
+                        lifecycle.get("position_status")
+                        or ("OPENED" if row.position_opened else "NOT_REACHED")
+                    ),
+                    "execution_terminal_result": lifecycle.get("terminal_result"),
                 },
                 "risk_score": meta.get("risk_score"), "strategy_score": meta.get("strategy_score"),
                 "planned_risk_reward": meta.get("planned_risk_reward"),
                 **profile_contexts,
+            })
+        materialized_symbols = {item["symbol"] for item in items}
+        for symbol in universe.symbols:
+            if symbol in materialized_symbols:
+                continue
+            trace = {stage: "NOT_REACHED" for stage in STAGES}
+            downstream_trace = {
+                stage: "NOT_REACHED" for stage in CANONICAL_DOWNSTREAM_STAGES
+            }
+            placeholder_id = (
+                f"not-reached:{profile.trade_profile_id}:{symbol}:{boundary}"
+            )
+            items.append({
+                "symbol": symbol,
+                "source_run_id": placeholder_id,
+                "candidate_id": None,
+                "direction": None,
+                "current_stage": "ANALYSIS",
+                "stage_status": "NOT_REACHED",
+                "source_reason_code": "SYMBOL_NOT_REACHED_AT_BOUNDARY",
+                "source_reason_detail_safe": "no pipeline run exists for this symbol and boundary",
+                "ui_reason_category": "ANALYSIS",
+                "final_approval_id": None,
+                "eligible": False,
+                "selector_rank": None,
+                "selected_winner": False,
+                "execution_eligible": False,
+                "production_eligibility_outcome": "NOT_CLASSIFIED",
+                "production_eligibility_classified_at_ms": None,
+                "production_eligibility_first_rejection_reason": None,
+                "source_market_data_snapshot_id": None,
+                "approval_valid_until_ms": None,
+                "updated_at_ms": boundary,
+                "stage_trace": trace,
+                "downstream_stage_trace": downstream_trace,
+                "downstream_current_stage": "ANALYSIS_QUALIFIED",
+                "terminal_reason_code": "SYMBOL_NOT_REACHED_AT_BOUNDARY",
+                "downstream_detail": {
+                    "profile": profile.trade_profile_id,
+                    "cycle_boundary_ms": boundary,
+                    "terminal_reason": "SYMBOL_NOT_REACHED_AT_BOUNDARY",
+                    "updated_at_ms": boundary,
+                    "plan_status": "NOT_REACHED",
+                    "quantity_approval_status": "NOT_REACHED",
+                    "final_approval_status": "NOT_REACHED",
+                    "execution_intent": "NOT_REACHED",
+                    "command_id": None,
+                    "command_status": "NOT_REACHED",
+                    "order_id": None,
+                    "order_status": "NOT_REACHED",
+                    "fill_id": None,
+                    "fill_status": "NOT_REACHED",
+                    "position_id": None,
+                    "position_status": "NOT_REACHED",
+                    "execution_terminal_result": None,
+                },
+                "risk_score": None,
+                "strategy_score": None,
+                "planned_risk_reward": None,
+                "profile_market": {},
+                "profile_analysis": {},
+                "profile_scenario": {},
             })
         selection = ProductionEligibleApprovalSelector().select(candidates, policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION)
         ordered = sorted(candidates, key=lambda c: (
@@ -1384,7 +1600,13 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 )
                 for stage in CANONICAL_DOWNSTREAM_STAGES
             },
-            "items": sorted(items, key=lambda value: value["symbol"]),
+            "items": sorted(
+                items,
+                key=lambda value: (
+                    str(value["source_run_id"]).startswith("not-reached:"),
+                    value["symbol"],
+                ),
+            ),
             "eligible_competitors": [{"rank": ranks[item.lineage.source_run_id], "symbol": item.symbol,
                                       "candidate_id": item.candidate_id, "final_approval_id": item.lineage.final_approval_id}
                                      for item in ordered],

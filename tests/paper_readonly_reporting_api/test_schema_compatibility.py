@@ -36,6 +36,7 @@ def test_required_object_inventory_is_explicit_and_excludes_unrelated_0016_table
     assert PAPER_REQUIRED_SCHEMA_OBJECTS == (
         "alembic_version",
         "paper_account_baselines",
+        "paper_execution_commands",
         "paper_positions",
         "paper_orders",
         "paper_fills",

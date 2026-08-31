@@ -11,6 +11,7 @@ from sqlalchemy.engine import Connection
 
 from app.db.paper_models import (
     PaperAccountBaselineRecord, PaperExitDecisionRecord,
+    PaperExecutionCommandRecord,
     PaperExitEvaluationCursorRecord, PaperFillRecord, PaperJournalEntryRecord,
     PaperOrderRecord, PaperPositionRecord, TradingUniverseRuntimeStateRecord,
 )
@@ -22,8 +23,9 @@ from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow,
 READONLY_SCHEMA_0016: Final = "0016_control_mobile_device_security"
 READONLY_SCHEMA_0017: Final = "0017_parallel_trade_profiles"
 READONLY_SCHEMA_0018: Final = "0018_promote_5m_production_search"
+READONLY_SCHEMA_0019: Final = "0019_first_class_15m_domain"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0018
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0019
 PAPER_SCHEMA_COMPATIBILITY_LABEL: Final = f"{PAPER_SCHEMA_MINIMUM}|{PAPER_SCHEMA_MAXIMUM}"
 
 
@@ -44,7 +46,8 @@ BASE_READONLY_CAPABILITIES: Final = frozenset({
     ReadonlySchemaCapability.I18N_READONLY,
 })
 PAPER_REQUIRED_MODELS: Final = (
-    PaperAccountBaselineRecord, PaperPositionRecord, PaperOrderRecord,
+    PaperAccountBaselineRecord, PaperExecutionCommandRecord,
+    PaperPositionRecord, PaperOrderRecord,
     PaperFillRecord, PaperExitEvaluationCursorRecord, PaperExitDecisionRecord,
     PaperJournalEntryRecord,
 )
@@ -101,7 +104,7 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
     """Retain the legacy PAPER contract; runtime startup uses stricter capabilities."""
     return len(revisions) == 1 and revisions[0] in {
         PAPER_SCHEMA_MINIMUM, READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
-        READONLY_SCHEMA_0018,
+        READONLY_SCHEMA_0018, READONLY_SCHEMA_0019,
     }
 
 
@@ -151,7 +154,10 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         if len(revisions) != 1:
             return ReadonlySchemaCapabilityResult(False, None, issues=("AMBIGUOUS_ALEMBIC_STATE",))
         revision = revisions[0]
-        if revision not in {READONLY_SCHEMA_0016, READONLY_SCHEMA_0017, READONLY_SCHEMA_0018}:
+        if revision not in {
+            READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
+            READONLY_SCHEMA_0018, READONLY_SCHEMA_0019,
+        }:
             return ReadonlySchemaCapabilityResult(False, revision, issues=(f"UNSUPPORTED_REVISION:{revision}",))
         for model in BASE_REQUIRED_MODELS:
             _validate_model(inspector, tables, model, issues,
@@ -185,7 +191,9 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
     except Exception:
         return ReadonlySchemaCapabilityResult(False, revision, issues=("SCHEMA_METADATA_UNREADABLE",))
     capabilities = BASE_READONLY_CAPABILITIES
-    if revision in {READONLY_SCHEMA_0017, READONLY_SCHEMA_0018} and not issues:
+    if revision in {
+        READONLY_SCHEMA_0017, READONLY_SCHEMA_0018, READONLY_SCHEMA_0019,
+    } and not issues:
         capabilities = capabilities | {ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES}
     return ReadonlySchemaCapabilityResult(not issues, revision,
         frozenset(capabilities) if not issues else frozenset(), tuple(issues))
@@ -205,7 +213,7 @@ def inspect_required_paper_schema(connection: Connection) -> PaperSchemaContract
 __all__ = [
     "BASE_READONLY_CAPABILITIES", "PAPER_REQUIRED_SCHEMA_OBJECTS",
     "PAPER_SCHEMA_COMPATIBILITY_LABEL", "PAPER_SCHEMA_MAXIMUM", "PAPER_SCHEMA_MINIMUM",
-    "READONLY_SCHEMA_0018",
+    "READONLY_SCHEMA_0018", "READONLY_SCHEMA_0019",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",

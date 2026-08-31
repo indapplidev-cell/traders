@@ -185,9 +185,14 @@ def test_scalping_export_includes_additive_downstream_observability_fields():
     assert row["trade_math"]["ttl_ms"] == 300_000
 
 
-def test_15m_export_marks_downstream_only_stages_not_applicable():
+def test_15m_export_marks_applicable_stages_and_historical_unknowns_honestly():
     row = json.loads(_get(_client(ExportRepo((_pair(),)))).text)
-    assert set(row["downstream_stage_trace"].values()) == {"NOT_APPLICABLE"}
+    trace = row["downstream_stage_trace"]
+    assert trace["ANALYSIS_QUALIFIED"] == "PASS"
+    assert trace["GEOMETRY_VALID"] == "PASS"
+    assert trace["NET_COST_PASS"] == "PASS"
+    assert trace["PORTFOLIO_ADMITTED"] == "UNAVAILABLE"
+    assert "NOT_APPLICABLE" not in trace.values()
 
 
 def test_empty_summary_is_explicit_and_range_format_candles_are_bounded():

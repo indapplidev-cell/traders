@@ -31,7 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--parameter-set-id", required=True)
     parser.add_argument("--runtime-source-commit", required=True)
     parser.add_argument("--runtime-artifact-id", required=True)
-    parser.add_argument("--schema-revision", default="0018_promote_5m_production_search")
+    parser.add_argument("--schema-revision", default="0019_first_class_15m_domain")
     parser.add_argument("--poll-seconds", type=float, default=10.0)
     parser.add_argument("--boundary-wait-seconds", type=int, default=240)
     parser.add_argument("--max-part-bytes", type=int, default=64 * 1024 * 1024)

@@ -135,6 +135,14 @@ def test_current_partial_complete_and_last_completed_are_distinct():
     value = _project(pairs)
     assert value["current_cycle"]["symbols_processed"] == 1
     assert value["current_cycle"]["cycle_complete"] is False
+    assert len(value["current_cycle"]["items"]) == len(SYMBOLS)
+    missing = next(
+        item for item in value["current_cycle"]["items"]
+        if item["symbol"] == "ETHUSDT"
+    )
+    assert set(missing["stage_trace"].values()) == {"NOT_REACHED"}
+    assert set(missing["downstream_stage_trace"].values()) == {"NOT_REACHED"}
+    assert missing["source_reason_code"] == "SYMBOL_NOT_REACHED_AT_BOUNDARY"
     assert value["last_completed_cycle"]["boundary_close_ms"] == old
     assert value["current_cycle"]["boundary_close_ms"] != value["last_completed_cycle"]["boundary_close_ms"]
 
@@ -375,7 +383,7 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     assert item["profile_scenario"]["scenario_type"] == "SCALP_BREAKOUT"
     assert item["profile_scenario"]["quality_score"] == 0.91
     assert value["current_cycle"]["downstream_stage_counts"]["RR_PASS"] == 1
-    assert value["current_cycle"]["downstream_stage_counts"]["PORTFOLIO_ADMITTED"] is None
+    assert value["current_cycle"]["downstream_stage_counts"]["PORTFOLIO_ADMITTED"] == 0
     assert value["rolling_1h"]["downstream_stage_counts"]["NET_COST_PASS"] == 1
     assert value["rolling_4h"]["downstream_stage_counts"]["NET_COST_PASS"] == 1
     rejected = value["current_cycle"]["items"][1]
@@ -443,20 +451,82 @@ def test_detail_candidate_prefers_historical_plan_then_latest_rr_reject():
     assert details["ETHUSDT"]["downstream_stage_trace"]["RR_PASS"] == "REJECTED"
 
 
-def test_15m_downstream_is_explicitly_not_applicable_and_legacy_is_unchanged():
+def test_15m_downstream_is_first_class_and_historical_unknowns_are_honest():
     run = _run("BTCUSDT")
     other = _run("ETHUSDT")
     value = _project(((run, _result(run)), (other, _result(other))))
     item = value["current_cycle"]["items"][0]
-    assert all(
-        status == "NOT_APPLICABLE"
-        for status in item["downstream_stage_trace"].values()
-    )
-    assert all(
-        count is None
-        for count in value["current_cycle"]["downstream_stage_counts"].values()
-    )
+    trace = item["downstream_stage_trace"]
+    assert trace["ANALYSIS_QUALIFIED"] == "PASS"
+    assert trace["STRUCTURAL_SETUP"] == "PASS"
+    assert trace["STRATEGY_ADMITTED"] == "PASS"
+    assert trace["RISK_COMPATIBILITY_ADMITTED"] == "PASS"
+    assert trace["GEOMETRY_VALID"] == "UNAVAILABLE"
+    assert trace["TARGET_VALID"] == "NOT_REACHED"
+    assert trace["NET_COST_PASS"] == "NOT_REACHED"
+    assert trace["PORTFOLIO_ADMITTED"] == "UNAVAILABLE"
+    assert "NOT_APPLICABLE" not in trace.values()
+    counts = value["current_cycle"]["downstream_stage_counts"]
+    assert counts["ANALYSIS_QUALIFIED"] == 2
+    assert counts["GEOMETRY_VALID"] is None
+    assert counts["NET_COST_PASS"] == 0
+    assert counts["PORTFOLIO_ADMITTED"] is None
     assert value["current_cycle"]["stage_counts"]["RISK_APPROVED"] == 2
+
+
+def test_15m_canonical_evidence_projects_cost_portfolio_geometry_and_provenance():
+    run = _run("BTCUSDT")
+    result = _result(run)
+    result.paper_payload_json["paper_context"] = {
+        "causal_primitives": {"opportunity_id": "opportunity:15m:natural"},
+        "canonical_domain_evaluation": {
+            "entry": "100", "stop": "99", "target": "102",
+            "risk_distance": "1", "reward_distance": "2",
+            "raw_rr": "2", "effective_rr": "1.7", "rr_threshold": "1.5",
+            "geometry_pass": True, "target_pass": True, "rr_pass": True,
+            "calculation_version": "paper-level-geometry-v2",
+            "stop_source": "causal_support_level+volatility_buffer",
+            "target_source": "causal_target_level",
+            "stop_provenance": {
+                "source_timeframe": "15m",
+                "derived_rule_version": "causal-invalidation-volatility-buffer-v1",
+            },
+            "target_provenance": {
+                "source_timeframe": "15m", "source_candle_or_window": BOUNDARY,
+                "derived_rule_version": "opposite-causal-level-v1",
+            },
+        },
+        "net_cost_gate": {
+            "gate_decision": "PASS", "gate_reason": "NET_EXPECTED_OUTCOME_MEETS_THRESHOLD",
+            "model_version": "PAPER_CANONICAL_NET_COST_V1",
+            "estimated_trading_fees_bps": "20", "estimated_slippage_bps": "4",
+            "safety_margin_bps": "3", "total_estimated_cost_bps": "27",
+            "net_expected_outcome_bps": "173", "gate_threshold_bps": "1",
+        },
+    }
+    result.paper_payload_json["portfolio_gate"] = {
+        "decision": "PASS", "reason_code": "PORTFOLIO_ADMITTED",
+        "policy_version": "paper-portfolio-admission-v1",
+        "measured": {
+            "active_position_count": 0,
+            "projected_total_open_risk_bps": "10",
+        },
+        "limits": {
+            "max_concurrent_positions": 3,
+            "max_total_open_risk_bps": "50",
+        },
+    }
+    item = _project(((run, result),))["current_cycle"]["items"][0]
+    trace = item["downstream_stage_trace"]
+    assert all(trace[stage] == "PASS" for stage in CANONICAL_DOWNSTREAM_STAGES)
+    detail = item["downstream_detail"]
+    assert detail["opportunity_id"] == "opportunity:15m:natural"
+    assert detail["geometry_calculation_version"] == "paper-level-geometry-v2"
+    assert detail["target_source_timeframe"] == "15m"
+    assert detail["stop_source_timeframe"] == "15m"
+    assert detail["cost_gate_decision"] == "PASS"
+    assert detail["portfolio_decision"] == "PASS"
+    assert detail["portfolio_projected_risk_bps"] == "10"
 
 
 class _Funnel:
@@ -559,6 +629,7 @@ def test_5m_repository_uses_bounded_cycle_and_historical_plan_queries():
         lambda: universe,
         schema_capabilities=Capabilities(),
         monotonic_clock=lambda: 10.0,
+        load_lifecycle=False,
     )
     first = projection.project(NOW_MS, "trade-5m-v1")
     second = projection.project(NOW_MS + 1_000, "trade-5m-v1")
@@ -598,6 +669,7 @@ def test_repository_eager_loads_classifier_identity_before_session_closes(tmp_pa
         factory,
         lambda: universe,
         schema_capabilities=Capabilities(),
+        load_lifecycle=False,
     )
 
     projection = repository.project(NOW_MS, "trade-15m-v1")
@@ -646,6 +718,7 @@ def test_expired_5m_cache_is_released_before_replacement_query():
         lambda: universe,
         schema_capabilities=Capabilities(),
         monotonic_clock=lambda: next(clock),
+        load_lifecycle=False,
     )
 
     repository.project(NOW_MS, "trade-5m-v1")
