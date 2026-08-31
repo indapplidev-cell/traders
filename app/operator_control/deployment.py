@@ -41,6 +41,8 @@ class ControlApiRuntimeAcceptance:
     service_enabled: bool
     production_mutation_enabled: bool
     secret_output: bool
+    control_health: str = "HEALTHY"
+    audit_health: str = "PASS"
 
     def accepted_for(self, identity: str) -> bool:
         return (
@@ -51,8 +53,11 @@ class ControlApiRuntimeAcceptance:
             and self.valid_safe_read
             and self.unauthenticated_mutation_rejected
             and self.invalid_token_mutation_rejected
-            and self.control_state == "DISABLED"
-            and self.control_generation == 3
+            and self.control_state in {"DISABLED", "ARMED", "EMERGENCY_STOP"}
+            and isinstance(self.control_generation, int)
+            and self.control_generation >= 1
+            and self.control_health == "HEALTHY"
+            and self.audit_health == "PASS"
             and self.foundation_mode == "PRODUCTION_PAPER"
             and self.service_enabled
             and self.production_mutation_enabled

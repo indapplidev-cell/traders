@@ -139,10 +139,20 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         self.poll_seconds = float(poll_seconds)
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._ticks = 0
+        self._last_result = "NOT_STARTED"
 
     @property
     def active(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
+
+    @property
+    def ticks(self) -> int:
+        return self._ticks
+
+    @property
+    def last_result(self) -> str:
+        return self._last_result
 
     def start(self) -> None:
         if self.active:
@@ -453,9 +463,12 @@ class ProductionPaperFirstCanaryLifecycleWorker:
     def _run(self) -> None:
         while not self._stop.is_set():
             try:
-                self.run_once()
+                self._last_result = self.run_once()
             except Exception as error:
+                self._last_result = f"SAFE_FAILURE:{type(error).__name__}"
                 _safe_log("paper_canary_lifecycle_fault", error_type=type(error).__name__)
+            finally:
+                self._ticks += 1
             self._stop.wait(self.poll_seconds)
 
 

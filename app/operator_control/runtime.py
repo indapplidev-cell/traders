@@ -55,6 +55,7 @@ from .production_lifecycle_worker import (
     ProductionPaperFirstCanaryLifecycleWorker,
     lifecycle_poll_seconds,
 )
+from .runtime_health import PaperRuntimeHealthPublisher
 
 
 APPLICATION_NAME = "traders-operator-control-api"
@@ -220,6 +221,7 @@ def create_runtime_app(
         )
     continuation_worker = None
     lifecycle_worker = None
+    runtime_health_publisher = None
     universe_store = SqlAlchemyTradingUniverseStore(sessions) if sessions is not None else None
     if (
         require_production_store
@@ -254,6 +256,12 @@ def create_runtime_app(
             ),
             poll_seconds=lifecycle_poll_seconds(),
         )
+        runtime_health_publisher = PaperRuntimeHealthPublisher(
+            resolve_production_control_root(),
+            approval_loop=continuation_worker,
+            lifecycle_loop=lifecycle_worker,
+            mutation_enabled=active_config.mutation_foundation_enabled,
+        )
 
     from .service import PaperOperatorControlService
     service = PaperOperatorControlService(
@@ -277,9 +285,13 @@ def create_runtime_app(
             continuation_worker.start()
         if lifecycle_worker is not None:
             lifecycle_worker.start()
+        if runtime_health_publisher is not None:
+            runtime_health_publisher.start()
         try:
             yield
         finally:
+            if runtime_health_publisher is not None:
+                runtime_health_publisher.stop()
             if lifecycle_worker is not None:
                 lifecycle_worker.stop()
             if continuation_worker is not None:
@@ -303,6 +315,7 @@ def create_runtime_app(
     app.state.first_canary_executor = service.executor
     app.state.first_canary_continuation_worker = continuation_worker
     app.state.first_canary_lifecycle_worker = lifecycle_worker
+    app.state.paper_runtime_health_publisher = runtime_health_publisher
     app.state.trading_universe_store = universe_store
     return app
 

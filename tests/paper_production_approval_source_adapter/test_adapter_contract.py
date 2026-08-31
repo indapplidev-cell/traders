@@ -241,6 +241,9 @@ def test_5m_is_an_authorized_production_approval_scope():
     with_timeframe = lambda payload: {**payload, "timeframe": "5m"}
     candidate = replace(
         source, primary_timeframe="5m",
+        trade_profile_id="trade-5m-v1",
+        result_trade_profile_id="trade-5m-v1",
+        result_primary_timeframe="5m",
         analysis=with_timeframe(source.analysis),
         setup=with_timeframe(source.setup),
         strategy=with_timeframe(source.strategy),
@@ -256,6 +259,20 @@ def test_5m_is_an_authorized_production_approval_scope():
         request(primary_timeframe="1m")
     )
     assert rejected.outcome is approval.PaperProductionApprovalOutcome.TARGET_NOT_ALLOWED
+
+
+@pytest.mark.parametrize(
+    "changes",
+    (
+        {"trade_profile_id": "trade-5m-v1"},
+        {"result_trade_profile_id": "trade-5m-v1"},
+        {"result_primary_timeframe": "5m"},
+    ),
+)
+def test_cross_profile_or_result_identity_contamination_fails_closed(changes):
+    result = service({"BTCUSDT": (replace(eligible_row(), **changes),)})[0].read(request())
+    assert result.outcome is approval.PaperProductionApprovalOutcome.CAUSALITY_MISMATCH
+    assert result.candidates == ()
 
 
 @pytest.mark.parametrize("case", range(1400))

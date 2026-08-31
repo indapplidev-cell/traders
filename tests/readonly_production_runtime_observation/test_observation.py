@@ -151,12 +151,13 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
     source = observation.ProductionPaperRuntimeObservationSource(
         lambda: None,
         lambda: PaperControlStatus(
-            state="DISABLED", effective_state="DISABLED", generation=3,
+            state="ARMED", effective_state="ARMED", generation=6,
             health="HEALTHY", emergency_stop_available=True,
             audit_health="PASS", state_audit_reconciliation="PASS",
         ),
         runtime_root=tmp_path,
         recovery_root=tmp_path,
+        runtime_health_root=tmp_path,
     )
     source._approval = SimpleNamespace(read=lambda request: SimpleNamespace(
         readiness=PaperProductionApprovalReadiness.HEALTHY_NO_ELIGIBLE_APPROVAL,
@@ -169,6 +170,12 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
         wal_ready=True, pitr_ready=True, lineage_valid=True,
     ))
     monkeypatch.setattr(observation, "_runtime_principal_ready", lambda sessions: True)
+    monkeypatch.setattr(observation, "read_paper_runtime_health", lambda root, now: {
+        "runtime_enabled": True, "daemon_enabled": True, "scheduler_enabled": True,
+        "mutation_enabled": True, "approval_watcher_active": True,
+        "selector_active": True, "execution_worker_active": True,
+        "approval_ticks": 2, "execution_ticks": 3,
+    })
 
     value = source()
 
@@ -178,10 +185,11 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
     assert value.current_approval_availability == "NO_TRADE_SIGNAL"
     assert value.wal_ready is value.pitr_ready is True
     assert value.runtime_enabled is value.runtime_config_ready is True
-    assert value.daemon_enabled is value.scheduler_enabled is False
+    assert value.daemon_enabled is value.scheduler_enabled is True
     assert value.paper_principal_ready is value.kill_switch_ready is True
     assert value.canary_scope_valid is True
-    assert value.mutation_enabled is value.live_enabled is False
+    assert value.mutation_enabled is True and value.live_enabled is False
+    assert value.worker_running is True
 
 
 @pytest.mark.parametrize("failure", ("market", "approval", "control", "runtime", "pitr", "principal"))
@@ -197,6 +205,7 @@ def test_each_authoritative_failure_remains_fail_closed(monkeypatch, tmp_path: P
 
     source = observation.ProductionPaperRuntimeObservationSource(
         lambda: None, control, runtime_root=tmp_path, recovery_root=tmp_path,
+        runtime_health_root=tmp_path,
     )
     source._approval = SimpleNamespace(read=lambda request: (_ for _ in ()).throw(RuntimeError()) if failure == "approval" else SimpleNamespace(readiness=PaperProductionApprovalReadiness.READY, outcome=PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL))
     monkeypatch.setattr(observation, "_runtime_configuration_ready", lambda root: failure != "runtime")
@@ -204,6 +213,16 @@ def test_each_authoritative_failure_remains_fail_closed(monkeypatch, tmp_path: P
     monkeypatch.setattr(observation, "load_production_identity", lambda root: object())
     monkeypatch.setattr(observation, "_pitr_readiness", lambda root, now: (failure != "pitr", failure != "pitr"))
     monkeypatch.setattr(observation, "_runtime_principal_ready", lambda sessions: failure != "principal")
+    monkeypatch.setattr(
+        observation,
+        "read_paper_runtime_health",
+        lambda root, now: None if failure == "runtime" else {
+            "runtime_enabled": True, "daemon_enabled": True, "scheduler_enabled": True,
+            "mutation_enabled": True, "approval_watcher_active": True,
+            "selector_active": True, "execution_worker_active": True,
+            "approval_ticks": 1, "execution_ticks": 1,
+        },
+    )
 
     value = source()
     checks = {

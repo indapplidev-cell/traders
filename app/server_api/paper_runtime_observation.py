@@ -36,6 +36,8 @@ from app.engine_paper.production_preparation import (
 from app.engine_safety.production_wal_archive import inspect_wal_continuity, wal_segment_identity
 from app.server_api.schemas.paper import PaperControlStatus
 from app.server_api.services.paper_reporting import PaperRuntimeObservation
+from app.engine_safety.production_control_root import resolve_production_control_root
+from app.operator_control.runtime_health import read_paper_runtime_health
 
 
 PRODUCTION_RUNTIME_ROOT: Final = Path("/run/traders-paper-runtime")
@@ -268,6 +270,7 @@ class ProductionPaperRuntimeObservationSource:
         identity_root: Path = PRODUCTION_IDENTITY_ROOT,
         recovery_root: Path = PRODUCTION_RECOVERY_ROOT,
         market_health_root: Path = PRODUCTION_MARKET_HEALTH_ROOT,
+        runtime_health_root: Path | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._session_factory = session_factory
@@ -276,6 +279,7 @@ class ProductionPaperRuntimeObservationSource:
         self._identity_root = identity_root
         self._recovery_root = recovery_root
         self._market_health_root = market_health_root
+        self._runtime_health_root = runtime_health_root or resolve_production_control_root()
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._approval = PaperProductionApprovalSourceAdapter(session_factory)
 
@@ -305,26 +309,36 @@ class ProductionPaperRuntimeObservationSource:
         try:
             control = self._control_status()
             kill_switch_ready = (
-                control.state == "DISABLED"
-                and control.effective_state == "DISABLED"
+                control.state in {"DISABLED", "ARMED"}
+                and control.effective_state == control.state
                 and control.health == "HEALTHY"
                 and control.audit_health == "PASS"
                 and control.state_audit_reconciliation == "PASS"
+                and control.emergency_stop_available
             )
         except Exception:
             kill_switch_ready = False
         principal_ready = _runtime_principal_ready(self._session_factory)
+        automatic_runtime = read_paper_runtime_health(self._runtime_health_root, now=now)
+        automatic_ready = automatic_runtime is not None
         return PaperRuntimeObservation(
             environment="production",
             # This is readiness of the bounded operator runtime artifact, not a
             # daemon/process flag.  The authoritative deployed configuration
             # remains disabled until the separate ARM transition.
-            runtime_enabled=runtime_config_ready,
-            daemon_enabled=False,
-            scheduler_enabled=False,
-            dry_run=True,
-            mutation_enabled=False,
-            worker_running=False,
+            runtime_enabled=automatic_ready and automatic_runtime.get("runtime_enabled") is True,
+            daemon_enabled=automatic_ready and automatic_runtime.get("daemon_enabled") is True,
+            scheduler_enabled=automatic_ready and automatic_runtime.get("scheduler_enabled") is True,
+            dry_run=not automatic_ready,
+            mutation_enabled=automatic_ready and automatic_runtime.get("mutation_enabled") is True,
+            worker_running=(
+                automatic_ready
+                and automatic_runtime.get("approval_watcher_active") is True
+                and automatic_runtime.get("selector_active") is True
+                and automatic_runtime.get("execution_worker_active") is True
+                and int(automatic_runtime.get("approval_ticks", 0)) > 0
+                and int(automatic_runtime.get("execution_ticks", 0)) > 0
+            ),
             operator_runner_running=False,
             market_data_adapter_ready=market_ready,
             approval_source_adapter_ready=approval_ready,
@@ -338,7 +352,7 @@ class ProductionPaperRuntimeObservationSource:
             current_approval_availability=approval_availability,
             paper_principal_ready=principal_ready,
             production_identity_binding_ready=identity_ready,
-            runtime_config_ready=runtime_config_ready,
+            runtime_config_ready=runtime_config_ready and automatic_ready,
             kill_switch_ready=kill_switch_ready,
             canary_scope_valid=MARKET_SYMBOLS == APPROVAL_SYMBOLS,
             live_enabled=False,

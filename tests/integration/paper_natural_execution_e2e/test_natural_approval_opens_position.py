@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -425,6 +426,12 @@ def test_natural_approval_opens_paper_position_end_to_end(
     assert classified.candidate is not None
     candidate = classified.candidate
     assert candidate.watermark.source_market_data_snapshot_id == snapshot_id
+    assert executor._ingest_candidate(
+        candidate=replace(candidate, trade_profile_id="trade-15m-v1"),
+        request_id="paper-natural-e2e-profile-contamination",
+        canary_id=canary_id,
+    ) == ("APPROVAL_PROFILE_IDENTITY_MISMATCH",)
+    assert store.get(canary_id).command_count == 0
     selection = ProductionEligibleApprovalSelector().select(
         (candidate,), policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION
     )

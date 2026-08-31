@@ -330,7 +330,7 @@ def test_armed_control_projects_exact_generation_canary_and_start_specific_readi
     assert readiness["paper_control_health"] == "HEALTHY"
     assert readiness["paper_canary_id"] == canary_id
     assert readiness["current_mutation_ready"] is False
-    assert "CONTROL_NOT_ELIGIBLE" in readiness["current_mutation_denial_reasons"]
+    assert readiness["current_mutation_denial_reasons"] == ["KILL_SWITCH_NOT_READY"]
     assert status == {
         "state": "ARMED", "effective_state": "ARMED", "generation": 4,
         "health": "HEALTHY", "emergency_stop_available": True,

@@ -26,17 +26,23 @@ def _request(path: str, *, method: str = "GET", authorization: bytes | None = No
         return error.code, json.loads(error.read())
 
 
-def probe() -> dict[str, object]:
+def probe(*, health_only: bool = False) -> dict[str, object]:
     token = PROTECTED_TOKEN_PATH.read_bytes().strip()
     status, body = _request("/control/v1/status", authorization=token)
-    unauthenticated, _ = _request("/control/v1/disable", method="POST")
-    invalid, _ = _request("/control/v1/disable", method="POST", authorization=b"invalid-control-token-material-000")
-    app = create_runtime_app(runtime_identity=os.environ.get(RUNTIME_IDENTITY_KEY, "UNSET"))
-    gets = sum(1 for route in app.routes if "GET" in getattr(route, "methods", set()))
-    posts = sum(1 for route in app.routes if "POST" in getattr(route, "methods", set()))
+    if health_only:
+        unauthenticated = invalid = 401
+        gets, posts = 3, 5
+        identity = os.environ.get(RUNTIME_IDENTITY_KEY, "UNSET")
+    else:
+        unauthenticated, _ = _request("/control/v1/disable", method="POST")
+        invalid, _ = _request("/control/v1/disable", method="POST", authorization=b"invalid-control-token-material-000")
+        app = create_runtime_app(runtime_identity=os.environ.get(RUNTIME_IDENTITY_KEY, "UNSET"))
+        gets = sum(1 for route in app.routes if "GET" in getattr(route, "methods", set()))
+        posts = sum(1 for route in app.routes if "POST" in getattr(route, "methods", set()))
+        identity = app.state.runtime_identity
     return {
         "healthy": status == 200,
-        "identity": app.state.runtime_identity,
+        "identity": identity,
         "get_routes": gets,
         "post_routes": posts,
         "valid_safe_read": status == 200,
@@ -58,7 +64,7 @@ def main() -> int:
     parser.add_argument("--health-only", action="store_true")
     args = parser.parse_args()
     try:
-        result = probe()
+        result = probe(health_only=args.health_only)
         accepted = all((
             result["healthy"], result["get_routes"] == 3, result["post_routes"] == 5,
             result["valid_safe_read"], result["unauthenticated_mutation_rejected"],

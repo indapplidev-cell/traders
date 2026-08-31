@@ -33,6 +33,7 @@ class Runner:
                 "invalid_token_mutation_rejected": True, "control_state": "DISABLED",
                 "control_generation": 3, "foundation_mode": "PRODUCTION_PAPER",
                 "service_enabled": True, "production_mutation_enabled": True,
+                "control_health": "HEALTHY", "audit_health": "PASS",
                 "secret_output": False,
             }
             return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")

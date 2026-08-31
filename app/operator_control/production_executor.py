@@ -24,6 +24,7 @@ from app.engine_paper.eligible_approval_ranking import (
     ProductionEligibleApprovalSelector,
 )
 from app.engine_paper.production_approval import (
+    EXECUTION_PROFILE_BY_TIMEFRAME,
     EXECUTION_TIMEFRAMES,
     PaperProductionApprovalRequest,
     PaperProductionApprovalScope,
@@ -248,6 +249,16 @@ class ProductionPaperFirstCanaryExecutor:
         canary = self._canary_store.get(canary_id)
         if canary is None:
             return ("CANARY_NOT_ARMED",)
+        expected_profile = EXECUTION_PROFILE_BY_TIMEFRAME.get(
+            getattr(candidate, "primary_timeframe", "")
+        )
+        if (
+            expected_profile is None
+            or getattr(candidate, "trade_profile_id", "") != expected_profile
+            or candidate.watermark.primary_timeframe != candidate.primary_timeframe
+            or candidate.lineage.source_run_id != candidate.ranking.source_run_id
+        ):
+            return ("APPROVAL_PROFILE_IDENTITY_MISMATCH",)
         readiness = self._runtime_readiness()
         command_id = paper_ingestion_command_id(
             candidate.paper_strategy_approval.approval_id,

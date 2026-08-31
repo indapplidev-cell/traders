@@ -47,6 +47,10 @@ AUTHORITATIVE_QUANTITY_SOURCE: Final = "PaperQuantityApproval.CONTROLLED_PAPER_A
 SYMBOL_ALLOWLIST: Final = PREPARED_NEXT_TRADING_UNIVERSE.symbols
 PRIMARY_TIMEFRAME: Final = "15m"
 EXECUTION_TIMEFRAMES: Final = ("15m", "5m")
+EXECUTION_PROFILE_BY_TIMEFRAME: Final = {
+    "15m": "trade-15m-v1",
+    "5m": "trade-5m-v1",
+}
 MAX_SYMBOLS_PER_REQUEST: Final = 10
 MAX_RUN_LOOKBACK: Final = 8
 MAX_RESULTS_PER_MODULE: Final = 8
@@ -250,6 +254,8 @@ class PaperProductionApprovalCandidate:
     paper_quantity_approval: PaperQuantityApproval
     paper_risk_approval: PaperRiskApproval
     ranking: PaperProductionApprovalRankingInputs
+    trade_profile_id: str
+    primary_timeframe: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -379,6 +385,9 @@ class _PersistedDecision:
     strategy: Mapping[str, Any]
     risk: Mapping[str, Any]
     paper: Mapping[str, Any]
+    trade_profile_id: str = "trade-15m-v1"
+    result_trade_profile_id: str | None = "trade-15m-v1"
+    result_primary_timeframe: str | None = "15m"
 
 
 class _ReadOnlyExecutor:
@@ -466,6 +475,9 @@ class SqlAlchemyPaperProductionApprovalReader:
             mapping(result.strategy_payload_json) if result else {},
             mapping(result.risk_payload_json) if result else {},
             mapping(result.paper_payload_json) if result else {},
+            str(run.trade_profile_id),
+            str(result.trade_profile_id) if result is not None else None,
+            str(result.primary_timeframe) if result is not None else None,
         )
 
 
@@ -771,6 +783,23 @@ class PaperProductionApprovalSourceAdapter:
         analysis, setup, strategy, risk, paper = (
             row.analysis, row.setup, row.strategy, row.risk, row.paper
         )
+        expected_profile = EXECUTION_PROFILE_BY_TIMEFRAME.get(row.primary_timeframe)
+        if (
+            expected_profile is None
+            or row.trade_profile_id != expected_profile
+            or row.result_trade_profile_id not in (None, expected_profile)
+            or row.result_primary_timeframe not in (None, row.primary_timeframe)
+        ):
+            return self._symbol_result(row, PaperProductionApprovalOutcome.CAUSALITY_MISMATCH)
+        profile_identities = tuple(
+            value.get("trade_profile_id", value.get("profile_id"))
+            for value in (analysis, setup, strategy, risk, paper)
+        )
+        if any(
+            value is not None and str(value) != expected_profile
+            for value in profile_identities
+        ):
+            return self._symbol_result(row, PaperProductionApprovalOutcome.CAUSALITY_MISMATCH)
         if row.future_bars_used or bool(analysis.get("future_bars_used")):
             return self._symbol_result(row, PaperProductionApprovalOutcome.FUTURE_DECISION)
         identities = (
@@ -1006,6 +1035,8 @@ class PaperProductionApprovalSourceAdapter:
             quantity_approval,
             risk_approval,
             ranking,
+            row.trade_profile_id,
+            row.primary_timeframe,
         )
         return self._symbol_result(
             row, PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL,

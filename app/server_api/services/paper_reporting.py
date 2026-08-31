@@ -256,7 +256,15 @@ class PaperReadonlyReportingService:
             ("RUNTIME_CONFIG_NOT_READY", runtime.runtime_config_ready),
             ("PAPER_RUNTIME_DISABLED", runtime.runtime_enabled),
             ("KILL_SWITCH_NOT_READY", runtime.kill_switch_ready),
-            ("CONTROL_NOT_ELIGIBLE", control.state == "DISABLED" and control.effective_state == "DISABLED" and control.health == "HEALTHY"),
+            (
+                "CONTROL_NOT_ELIGIBLE",
+                control.state in {"DISABLED", "ARMED"}
+                and control.effective_state == control.state
+                and control.health == "HEALTHY"
+                and control.audit_health == "PASS"
+                and control.state_audit_reconciliation == "PASS"
+                and control.emergency_stop_available,
+            ),
             ("CANARY_SCOPE_INVALID", runtime.canary_scope_valid),
             ("LIVE_NOT_DENIED", not runtime.live_enabled),
         )
