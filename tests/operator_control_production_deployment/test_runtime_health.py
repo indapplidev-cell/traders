@@ -81,6 +81,8 @@ def test_runtime_health_exposes_scheduler_not_ready_when_a_loop_is_down(tmp_path
 
 
 def test_docker_health_probe_does_not_compose_a_second_database_runtime(monkeypatch) -> None:
+    import builtins
+
     monkeypatch.setattr(
         control_api_runtime_probe,
         "PROTECTED_TOKEN_PATH",
@@ -96,11 +98,12 @@ def test_docker_health_probe_does_not_compose_a_second_database_runtime(monkeypa
             "production_mutation_enabled": True,
         }),
     )
-    monkeypatch.setattr(
-        control_api_runtime_probe,
-        "create_runtime_app",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("full app composition called")),
-    )
+    original_import = builtins.__import__
+    def guarded_import(name, *args, **kwargs):
+        if name == "app.operator_control.runtime":
+            raise AssertionError("full app composition imported")
+        return original_import(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
 
     value = control_api_runtime_probe.probe(health_only=True)
 

@@ -105,8 +105,6 @@ class ReadonlyPaperArmReadinessSource:
 class ReadonlyExistingCanaryRuntimeReadinessSource:
     """Fail closed over current non-control gates for the already-ARMED runtime."""
 
-    _EXPECTED_CONTROL_DENIALS = {"KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"}
-
     def __init__(self, base_url: str = DEFAULT_READONLY_INTERNAL_URL) -> None:
         self._url = base_url.rstrip("/") + "/api/v1/paper/readiness"
 
@@ -132,8 +130,8 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 and payload.get("paper_control_health") == "HEALTHY"
                 and payload.get("live_allowed") is False
                 and isinstance(denials, list)
-                and set(denials) == self._EXPECTED_CONTROL_DENIALS
-                and payload.get("current_mutation_ready") is False
+                and denials == []
+                and payload.get("current_mutation_ready") is True
             )
             if not common_ready:
                 return ExistingCanaryRuntimeReadiness(live_disabled=False)

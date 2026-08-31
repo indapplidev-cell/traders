@@ -155,7 +155,7 @@ def test_readonly_readiness_source_consumes_authoritative_envelope(monkeypatch):
     assert readiness.binance_order_authority_absent is True
 
 
-def test_armed_existing_runtime_accepts_only_the_two_precontrol_denials(monkeypatch):
+def test_armed_existing_runtime_accepts_active_mutation_readiness(monkeypatch):
     payload = {
         "data": {
             "status": "READY", "paper_schema_ready": True,
@@ -165,10 +165,8 @@ def test_armed_existing_runtime_accepts_only_the_two_precontrol_denials(monkeypa
             "paper_control_state": "ARMED", "paper_control_effective_state": "ARMED",
             "paper_control_health": "HEALTHY", "live_allowed": False,
             "market_data_adapter_ready": True, "approval_source_adapter_ready": True,
-            "wal_ready": True, "pitr_ready": True, "current_mutation_ready": False,
-            "current_mutation_denial_reasons": [
-                "KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"
-            ],
+            "wal_ready": True, "pitr_ready": True, "current_mutation_ready": True,
+            "current_mutation_denial_reasons": [],
         }
     }
 
@@ -194,8 +192,8 @@ def test_existing_runtime_readiness_fails_closed_on_wal_pitr_or_extra_denial(mon
         "paper_control_state": "ARMED", "paper_control_effective_state": "ARMED",
         "paper_control_health": "HEALTHY", "live_allowed": False,
         "market_data_adapter_ready": True, "approval_source_adapter_ready": True,
-        "wal_ready": True, "pitr_ready": True, "current_mutation_ready": False,
-        "current_mutation_denial_reasons": ["KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"],
+        "wal_ready": True, "pitr_ready": True, "current_mutation_ready": True,
+        "current_mutation_denial_reasons": [],
     }
 
     class Response:
@@ -206,9 +204,9 @@ def test_existing_runtime_readiness_fails_closed_on_wal_pitr_or_extra_denial(mon
 
     source = ReadonlyExistingCanaryRuntimeReadinessSource()
     for changes in (
-        {"wal_ready": False, "current_mutation_denial_reasons": ["WAL_NOT_READY", "KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"]},
-        {"pitr_ready": False, "current_mutation_denial_reasons": ["PITR_NOT_READY", "KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE"]},
-        {"current_mutation_denial_reasons": ["KILL_SWITCH_NOT_READY", "CONTROL_NOT_ELIGIBLE", "CANARY_SCOPE_INVALID"]},
+        {"wal_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["WAL_NOT_READY"]},
+        {"pitr_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["PITR_NOT_READY"]},
+        {"current_mutation_ready": False, "current_mutation_denial_reasons": ["CANARY_SCOPE_INVALID"]},
         {"paper_control_state": "EMERGENCY_STOP", "paper_control_effective_state": "EMERGENCY_STOP"},
     ):
         current = {**base, **changes}

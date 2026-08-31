@@ -7,11 +7,11 @@ import json
 import os
 import urllib.error
 import urllib.request
-
-from app.operator_control.runtime import PROTECTED_TOKEN_PATH, RUNTIME_IDENTITY_KEY, create_runtime_app
-
+from pathlib import Path
 
 BASE = "http://127.0.0.1:8766"
+PROTECTED_TOKEN_PATH = Path("/run/secrets/traders_control_api_token")
+RUNTIME_IDENTITY_KEY = "TRADERS_CONTROL_SOURCE_IDENTITY"
 
 
 def _request(path: str, *, method: str = "GET", authorization: bytes | None = None) -> tuple[int, dict]:
@@ -34,6 +34,8 @@ def probe(*, health_only: bool = False) -> dict[str, object]:
         gets, posts = 3, 5
         identity = os.environ.get(RUNTIME_IDENTITY_KEY, "UNSET")
     else:
+        from app.operator_control.runtime import create_runtime_app
+
         unauthenticated, _ = _request("/control/v1/disable", method="POST")
         invalid, _ = _request("/control/v1/disable", method="POST", authorization=b"invalid-control-token-material-000")
         app = create_runtime_app(runtime_identity=os.environ.get(RUNTIME_IDENTITY_KEY, "UNSET"))
