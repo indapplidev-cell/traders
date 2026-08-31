@@ -148,6 +148,11 @@ def test_market_health_accepts_exact_current_and_existing_grace_semantics(tmp_pa
 
 
 def test_production_observation_populates_authoritative_sources(monkeypatch, tmp_path: Path) -> None:
+    clock_values = iter((
+        datetime(2026, 8, 31, 12, 0, tzinfo=timezone.utc),
+        datetime(2026, 8, 31, 12, 0, 15, tzinfo=timezone.utc),
+    ))
+    heartbeat_read_at = []
     source = observation.ProductionPaperRuntimeObservationSource(
         lambda: None,
         lambda: PaperControlStatus(
@@ -158,6 +163,7 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
         runtime_root=tmp_path,
         recovery_root=tmp_path,
         runtime_health_root=tmp_path,
+        clock=lambda: next(clock_values),
     )
     source._approval = SimpleNamespace(read=lambda request: SimpleNamespace(
         readiness=PaperProductionApprovalReadiness.HEALTHY_NO_ELIGIBLE_APPROVAL,
@@ -170,12 +176,15 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
         wal_ready=True, pitr_ready=True, lineage_valid=True,
     ))
     monkeypatch.setattr(observation, "_runtime_principal_ready", lambda sessions: True)
-    monkeypatch.setattr(observation, "read_paper_runtime_health", lambda root, now: {
-        "runtime_enabled": True, "daemon_enabled": True, "scheduler_enabled": True,
-        "mutation_enabled": True, "approval_watcher_active": True,
-        "selector_active": True, "execution_worker_active": True,
-        "approval_ticks": 2, "execution_ticks": 3,
-    })
+    def runtime_health(root, now):
+        heartbeat_read_at.append(now)
+        return {
+            "runtime_enabled": True, "daemon_enabled": True, "scheduler_enabled": True,
+            "mutation_enabled": True, "approval_watcher_active": True,
+            "selector_active": True, "execution_worker_active": True,
+            "approval_ticks": 2, "execution_ticks": 3,
+        }
+    monkeypatch.setattr(observation, "read_paper_runtime_health", runtime_health)
 
     value = source()
 
@@ -190,6 +199,7 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
     assert value.canary_scope_valid is True
     assert value.mutation_enabled is True and value.live_enabled is False
     assert value.worker_running is True
+    assert heartbeat_read_at == [datetime(2026, 8, 31, 12, 0, 15, tzinfo=timezone.utc)]
 
 
 @pytest.mark.parametrize("failure", ("market", "approval", "control", "runtime", "pitr", "principal"))

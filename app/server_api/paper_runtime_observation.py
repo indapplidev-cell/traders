@@ -319,7 +319,13 @@ class ProductionPaperRuntimeObservationSource:
         except Exception:
             kill_switch_ready = False
         principal_ready = _runtime_principal_ready(self._session_factory)
-        automatic_runtime = read_paper_runtime_health(self._runtime_health_root, now=now)
+        # PITR inspection above may take longer than one publisher interval.
+        # Compare the heartbeat with a clock sampled at the actual read point;
+        # using the call-entry timestamp can misclassify a newly published
+        # heartbeat as coming from the future.
+        automatic_runtime = read_paper_runtime_health(
+            self._runtime_health_root, now=self._clock()
+        )
         automatic_ready = automatic_runtime is not None
         return PaperRuntimeObservation(
             environment="production",
