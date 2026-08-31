@@ -143,7 +143,7 @@ class PipelineRunner:
         self.paper_runner = paper_runner or (
             ScalpingPaperRunner(runtime_parameters=self.runtime_parameters)
             if config.trade_profile_id == "trade-5m-v1"
-            else PaperRunner()
+            else PaperRunner(runtime_parameters=self.runtime_parameters)
         )
         self.strategy_cap_cost_source = strategy_cap_cost_source
 
@@ -563,11 +563,29 @@ class PipelineRunner:
                     else shadow_plan
                 )
             else:
-                risk = self._invoke(
-                    self.risk_runner, "process_strategy_decision", strategy
+                # Geometry, net costs and RR are evaluated before the durable
+                # research quota reservation. Terminal rejections therefore
+                # cannot retain a quota they do not canonically own.
+                preview = self._invoke(
+                    self.risk_runner, "preview_strategy_decision", strategy
                 )
+                paper = self._invoke(
+                    self.paper_runner, "process_risk_decision", preview
+                )
+                if str(_attribute(paper, "paper_status") or "") == "PAPER_PLAN_READY":
+                    risk = self._invoke(
+                        self.risk_runner, "process_strategy_decision", strategy
+                    )
+                    if str(_attribute(risk, "risk_status") or "") not in {
+                        "RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"
+                    }:
+                        paper = self._invoke(
+                            self.paper_runner, "process_risk_decision", risk
+                        )
+                else:
+                    risk = preview
                 outputs["risk"] = risk
-                outputs["paper"] = self._invoke(self.paper_runner, "process_risk_decision", risk)
+                outputs["paper"] = paper
         except Exception as exc:
             safety = self._safety(list(outputs.values()), snapshots)
             return self._enforce_safety(PipelineResult(

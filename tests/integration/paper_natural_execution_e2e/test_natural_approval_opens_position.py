@@ -4,7 +4,9 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+import pytest
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
@@ -22,6 +24,11 @@ from app.engine_market_data.timeframe import timeframe_to_milliseconds
 from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
+from app.engine_orchestrator.orchestrator_models import (
+    OnlinePipelineResultRow,
+    OnlinePipelineRun,
+)
 from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity
 from app.engine_paper.controlled_worker import (
     PaperControlledLifecycleWorker,
@@ -45,6 +52,7 @@ from app.engine_paper.production_market_data import (
     SqlAlchemyPaperProductionMarketDataReader,
 )
 from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
+from app.engine_paper.paper_runner import PaperRunner
 from app.engine_paper.scalping_shadow import ShadowCostInputs
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_safety.paper_production_control import (
@@ -75,6 +83,12 @@ from app.operator_control.service import (
 )
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
 from app.server_api.services.paper_reporting import PaperReadonlyReportingService
+from app.server_api.trading_funnel import build_projection
+from app.trading_universe.domain import runtime_universe
+from tests.final_approval_generation_integration.test_natural_materialization import (
+    natural_result,
+    risk,
+)
 
 
 SYMBOL = "BTCUSDT"
@@ -265,11 +279,11 @@ def _persist_natural_approval(factory, result):
     store = PipelineResultStore(factory, clock=lambda: at, owner_guard=_Owner())
     run_id = store.reserve(
         SYMBOL,
-        "5m",
+        result.primary_timeframe,
         BOUNDARY,
         daemon_instance_id="paper-natural-e2e",
         trigger_source="DETERMINISTIC_POSTGRES_E2E",
-        trade_profile_id="trade-5m-v1",
+        trade_profile_id=result.trade_profile_id,
         freshness_deadline_at=at,
     )
     assert run_id is not None
@@ -282,6 +296,86 @@ def _persist_natural_approval(factory, result):
     )
     assert store.finish(run_id, result, freshness_status="READY")
     return run_id
+
+
+def test_15m_first_class_gates_persist_and_project_on_fresh_postgres(
+    natural_e2e_sessions,
+):
+    """Exercise the real 15m gate/materialization/projection path on PG16."""
+    factory = natural_e2e_sessions
+    _seed_foundation(factory)
+    risk_value = replace(risk(), risk_context={
+        "confirmation_close": 100.0,
+        "causal_support_level": 99.5,
+        "causal_invalidation_level": 99.5,
+        "causal_target_level": 102.0,
+        "volatility_buffer": 0.5,
+        "opportunity_id": "opportunity:natural:15m:postgres",
+        "causal_target_candidates": [{
+            "price": 102.0,
+            "timeframe": "15m",
+            "known_at_ms": BOUNDARY - 1,
+            "source_detail": "natural_postgres_resistance_window",
+        }],
+    })
+    paper = PaperRunner(
+        runtime_parameters=resolve_runtime_parameters("trade-15m-v1")
+    ).process_risk_decision(risk_value)
+    assert paper.paper_status == "PAPER_PLAN_READY"
+    assert paper.paper_context["net_cost_gate"]["gate_decision"] == "PASS"
+
+    result = natural_result()
+    result.risk_payload = risk_value.to_dict()
+    result.paper_payload = paper.to_dict()
+    result.paper_status = paper.paper_status
+    run_id = _persist_natural_approval(factory, result)
+
+    with factory() as session:
+        run = session.scalar(select(OnlinePipelineRun).where(
+            OnlinePipelineRun.run_id == run_id
+        ))
+        row = session.scalar(select(OnlinePipelineResultRow).where(
+            OnlinePipelineResultRow.run_id == run_id
+        ))
+    assert run is not None and row is not None
+    persisted = row.paper_payload_json
+    assert persisted["paper_context"]["canonical_domain_evaluation"]["raw_rr"] == 2.0
+    assert persisted["paper_context"]["net_cost_gate"]["gate_decision"] == "PASS"
+    assert persisted["portfolio_gate"]["decision"] == "PASS"
+    assert persisted["portfolio_gate"]["measured"]["active_position_count"] == 0
+    assert persisted["persisted_final_approvals"]["paper_quantity_approval"]
+
+    with factory() as session:
+        with pytest.raises(IntegrityError):
+            session.execute(
+                text(
+                    "UPDATE online_pipeline_results "
+                    "SET trade_profile_id = 'trade-5m-v1' WHERE run_id = :run_id"
+                ),
+                {"run_id": run_id},
+            )
+            session.commit()
+        session.rollback()
+        assert session.scalar(select(OnlinePipelineResultRow.trade_profile_id).where(
+            OnlinePipelineResultRow.run_id == run_id
+        )) == "trade-15m-v1"
+
+    projection = build_projection(
+        ((run, row),), runtime_universe("trading-universe-v2"), EVALUATION_MS,
+        trade_profile_id="trade-15m-v1",
+    )
+    cycle = projection["current_cycle"]
+    assert cycle["symbols_expected"] == 10
+    assert len(cycle["items"]) == 10
+    item = next(value for value in cycle["items"] if value["symbol"] == SYMBOL)
+    assert tuple(item["downstream_stage_trace"]) == tuple(
+        projection["downstream_stage_order"]
+    )
+    assert all(
+        status == "PASS" for status in item["downstream_stage_trace"].values()
+    )
+    assert item["downstream_detail"]["target_source_timeframe"] == "15m"
+    assert item["downstream_detail"]["portfolio_decision"] == "PASS"
 
 
 def _approval_source(factory, at_ms=EVALUATION_MS):

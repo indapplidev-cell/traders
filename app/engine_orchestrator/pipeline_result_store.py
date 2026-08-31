@@ -357,8 +357,14 @@ class PipelineResultStore:
             if run is None:
                 raise KeyError(f"unknown run_id {run_id}")
             self._require_owner(session, run.trade_profile_id)
-            if result.trade_profile_id != run.trade_profile_id:
-                raise ValueError("result/run trade-profile identity mismatch")
+            if (
+                result.trade_profile_id != run.trade_profile_id
+                or result.profile_mode != run.profile_mode
+                or result.symbol.upper() != run.symbol.upper()
+                or result.primary_timeframe != run.primary_timeframe
+                or int(result.closed_until_ms) != int(run.closed_until_ms)
+            ):
+                raise ValueError("result/run execution-domain identity mismatch")
             if run.trade_profile_id != DEFAULT_TRADE_PROFILE_ID and (
                 result.runtime_parameter_set_id
                 != resolve_runtime_parameters(run.trade_profile_id).parameter_set_id

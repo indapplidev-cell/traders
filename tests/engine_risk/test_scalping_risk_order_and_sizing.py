@@ -19,7 +19,11 @@ def runtime():
 def test_preview_does_not_reserve_but_authoritative_risk_does():
     limits = ResearchRiskLimits()
     runner = RiskRunner(RiskPolicy(limits=limits, runtime_parameters=runtime()))
-    source = strategy_decision(decision_id="strategy:scalping:risk-order")
+    source = strategy_decision(
+        decision_id="strategy:scalping:risk-order",
+        timeframe="5m",
+        strategy_type="SCALP_BREAKOUT_RESEARCH",
+    )
 
     preview = runner.preview_strategy_decision(source)
     assert preview.risk_pre_approved

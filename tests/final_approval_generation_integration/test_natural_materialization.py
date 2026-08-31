@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
@@ -204,6 +206,11 @@ def materializer(equity: Decimal = Decimal("100")) -> NaturalFinalApprovalMateri
     return NaturalFinalApprovalMaterializer(
         account_summary_source=lambda _: account(equity),
         configuration_fingerprint_source=lambda _session, _result: "paper:approval-config:test:v1",
+        portfolio_gate_source=lambda *_args, **_kwargs: {
+            "policy_version": "paper-portfolio-admission-v1",
+            "decision": "PASS", "reason_code": "PORTFOLIO_ADMITTED",
+            "measured": {}, "limits": {}, "deterministic": True,
+        },
     )
 
 
@@ -421,6 +428,51 @@ def test_final_approval_persisted_in_expected_json_path_and_pipeline_finish_retr
     assert rows[0].paper_payload_json["persisted_final_approvals"]
     assert run.is_trade_signal and run.is_executable and run.order_approved
     assert run.execution_approved and run.position_size_approved
+
+
+def test_cross_profile_and_cross_boundary_result_associations_fail_closed():
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+
+    class Owner:
+        def assert_active(self, _session):
+            return None
+
+    def add_run(run_id, profile, timeframe):
+        with sessions.begin() as session:
+            session.add(OnlinePipelineRun(
+                run_id=run_id, symbol="BTCUSDT", primary_timeframe=timeframe,
+                trade_profile_id=profile, profile_mode="PRODUCTION_SEARCH",
+                closed_until_ms=BOUNDARY, closed_until_utc=EVALUATION,
+                status="RUNNING", started_at=EVALUATION,
+                trigger_source="TEST", daemon_instance_id="test",
+            ))
+
+    store = PipelineResultStore(
+        sessions, clock=lambda: EVALUATION, owner_guard=Owner()
+    )
+    add_run("orchestrator:5m:reject-15m", "trade-5m-v1", "5m")
+    with pytest.raises(ValueError, match="execution-domain identity mismatch"):
+        store.finish(
+            "orchestrator:5m:reject-15m", natural_result(),
+            freshness_status="READY",
+        )
+
+    add_run("orchestrator:15m:reject-5m", "trade-15m-v1", "15m")
+    with pytest.raises(ValueError, match="execution-domain identity mismatch"):
+        store.finish(
+            "orchestrator:15m:reject-5m", five_minute_natural_result(),
+            freshness_status="READY",
+        )
+
+    boundary_mismatch = natural_result()
+    boundary_mismatch.closed_until_ms += 900_000
+    with pytest.raises(ValueError, match="execution-domain identity mismatch"):
+        store.finish(
+            "orchestrator:15m:reject-5m", boundary_mismatch,
+            freshness_status="READY",
+        )
 
 
 def _persisted_decision(payload):
@@ -667,7 +719,12 @@ def test_policy_and_registry_versions_are_locked_test():
     assert metadata["validity_policy_version"] == VALIDITY_POLICY_VERSION
     assert metadata["instrument_registry_version"] == REGISTRY_VERSION
     default_fingerprint = NaturalFinalApprovalMaterializer(
-        account_summary_source=lambda _: account()
+        account_summary_source=lambda _: account(),
+        portfolio_gate_source=lambda *_args, **_kwargs: {
+            "policy_version": "paper-portfolio-admission-v1",
+            "decision": "PASS", "reason_code": "PORTFOLIO_ADMITTED",
+            "measured": {}, "limits": {}, "deterministic": True,
+        },
     ).materialize(
         SimpleNamespace(), run_id="orchestrator:natural:1",
         result=natural_result(), evaluation_time=EVALUATION,

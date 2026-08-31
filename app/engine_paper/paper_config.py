@@ -15,6 +15,13 @@ class PaperConfig:
     require_risk_pre_approved: bool = True
     require_execution_review_flag: bool = True
     minimum_planned_rr: float = 1.5
+    entry_fee_bps: float = 10.0
+    exit_fee_bps: float = 10.0
+    entry_slippage_bps: float = 2.0
+    exit_slippage_bps: float = 2.0
+    cost_safety_margin_bps: float = 3.0
+    minimum_net_edge_bps: float = 1.0
+    economic_policy_version: str = "PAPER_CANONICAL_NET_COST_V1"
     maximum_stop_distance_pct: float | None = None
     maximum_target_distance_pct: float | None = None
     allow_fallback_target: bool = False
@@ -38,6 +45,15 @@ class PaperConfig:
             raise ValueError("RR values must be positive")
         if float(self.default_stop_buffer_pct) < 0:
             raise ValueError("default_stop_buffer_pct must not be negative")
+        costs = (
+            self.entry_fee_bps, self.exit_fee_bps, self.entry_slippage_bps,
+            self.exit_slippage_bps, self.cost_safety_margin_bps,
+            self.minimum_net_edge_bps,
+        )
+        if any(float(value) < 0 for value in costs):
+            raise ValueError("economic gate inputs must not be negative")
+        if not self.economic_policy_version:
+            raise ValueError("economic policy version must not be empty")
         for value in (self.maximum_stop_distance_pct, self.maximum_target_distance_pct):
             if value is not None and float(value) <= 0:
                 raise ValueError("maximum distance percentages must be positive")

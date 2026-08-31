@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0018_promote_5m_production_search"
+EXPECTED_HEAD = "0019_first_class_15m_domain"
 
 
 @pytest.fixture(scope="session")

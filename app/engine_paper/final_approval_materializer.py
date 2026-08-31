@@ -31,6 +31,7 @@ from app.engine_paper.paper_approvals import (
     map_final_approvals_to_command_compatibility,
 )
 from app.engine_paper.paper_trade_plan import PaperTradePlan
+from app.engine_paper.portfolio_gate import evaluate_paper_portfolio_gate
 from app.engine_risk.risk_decision import RiskDecision
 from app.engine_safety.paper_domain import (
     ExecutionMode,
@@ -121,9 +122,12 @@ class NaturalFinalApprovalMaterializer:
         account_summary_source: Callable[[Session], PaperAccountSummary] = _default_account_summary,
         configuration_fingerprint_source: Callable[[Session, PipelineResult], str] =
         _default_configuration_fingerprint,
+        portfolio_gate_source: Callable[..., Mapping[str, Any]] =
+        evaluate_paper_portfolio_gate,
     ) -> None:
         self._account_summary_source = account_summary_source
         self._configuration_fingerprint_source = configuration_fingerprint_source
+        self._portfolio_gate_source = portfolio_gate_source
 
     @staticmethod
     def _not_created(
@@ -282,6 +286,26 @@ class NaturalFinalApprovalMaterializer:
                 source_timeframe=result.primary_timeframe,
             )
             quantity_authority_status = "PASS"
+            portfolio_gate = self._portfolio_gate_source(
+                session,
+                result=result,
+                candidate_direction=plan.paper_direction,
+                account_equity=account.current_balance,
+                evaluation_time=evaluation_time,
+            )
+            result.paper_payload = {
+                **result.paper_payload,
+                "portfolio_gate": portfolio_gate,
+            }
+            if portfolio_gate["decision"] != "PASS":
+                return self._not_created(
+                    result,
+                    str(portfolio_gate["reason_code"]),
+                    attempted_stage="PORTFOLIO_ADMITTED",
+                    stage_status="REJECTED",
+                    quantity_authority_status=quantity_authority_status,
+                    safe_reason_detail="candidate rejected by canonical PAPER portfolio policy",
+                )
             attempted_stage = "FINAL_APPROVAL"
             risk_approval = finalize_paper_risk_approval(
                 strategy_approval,

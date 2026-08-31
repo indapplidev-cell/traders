@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
@@ -309,7 +310,7 @@ def test_legacy_shadow_projection_cannot_become_executable_after_5m_promotion():
     assert expired["rolling_1h"]["stage_counts"]["FINAL_APPROVAL"] == 1
 
 
-def test_legacy_shadow_payload_never_promotes_execution_flags_in_production_profile():
+def test_legacy_shadow_payload_cannot_cross_into_production_profile():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     OnlinePipelineRun.__table__.create(engine)
     OnlinePipelineResultRow.__table__.create(engine)
@@ -340,7 +341,11 @@ def test_legacy_shadow_payload_never_promotes_execution_flags_in_production_prof
         payload={},
     )
     source = _result()
-    assert store.finish(run_id, source, freshness_status="READY")
+    with pytest.raises(
+        ValueError,
+        match="result/run execution-domain identity mismatch",
+    ):
+        store.finish(run_id, source, freshness_status="READY")
     with sessions() as session:
         run = session.scalar(select(OnlinePipelineRun).where(
             OnlinePipelineRun.run_id == run_id
@@ -348,9 +353,7 @@ def test_legacy_shadow_payload_never_promotes_execution_flags_in_production_prof
         row = session.scalar(select(OnlinePipelineResultRow).where(
             OnlinePipelineResultRow.run_id == run_id
         ))
-    assert run is not None and row is not None
-    assert row.paper_payload_json["shadow_final_approval_candidate"]["status"] == "PLAN_READY"
-    assert "persisted_final_approvals" not in row.paper_payload_json
+    assert run is not None and row is None
     assert run.is_trade_signal is False
     assert run.is_executable is False
     assert run.order_approved is False
