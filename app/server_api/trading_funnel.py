@@ -878,6 +878,8 @@ class TradingFunnelReadRepository:
                             ),
                             load_only(
                                 OnlinePipelineResultRow.id,
+                                OnlinePipelineResultRow.trade_profile_id,
+                                OnlinePipelineResultRow.primary_timeframe,
                                 OnlinePipelineResultRow.analysis_payload_json,
                                 OnlinePipelineResultRow.setup_payload_json,
                                 OnlinePipelineResultRow.strategy_payload_json,

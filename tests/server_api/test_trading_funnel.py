@@ -6,6 +6,8 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.server_api.app_factory import create_app
@@ -567,6 +569,41 @@ def test_5m_repository_uses_bounded_cycle_and_historical_plan_queries():
     # One rolling-window query plus one set-based historical PAPER-plan query;
     # neither path issues per-symbol/N+1 reads, and both are cached together.
     assert sessions[0].execute_count == 2
+
+
+def test_repository_eager_loads_classifier_identity_before_session_closes(tmp_path):
+    """Cached ORM rows must remain classifiable after their read session exits."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'funnel.db'}")
+    OnlinePipelineRun.__table__.create(engine)
+    OnlinePipelineResultRow.__table__.create(engine)
+    factory = sessionmaker(bind=engine)
+
+    run = _run("BTCUSDT")
+    result = _result(run, approvals=False)
+    with factory.begin() as session:
+        session.add_all((run, result))
+
+    class Capabilities:
+        def snapshot(self):
+            return self
+
+        def has(self, _capability):
+            return True
+
+    universe = SimpleNamespace(
+        version_id="trading-universe-v2",
+        symbols=("BTCUSDT",),
+    )
+    repository = TradingFunnelReadRepository(
+        factory,
+        lambda: universe,
+        schema_capabilities=Capabilities(),
+    )
+
+    projection = repository.project(NOW_MS, "trade-15m-v1")
+
+    assert projection["trade_profile_id"] == "trade-15m-v1"
+    assert projection["current_cycle"]["items"][0]["symbol"] == "BTCUSDT"
 
 
 def test_expired_5m_cache_is_released_before_replacement_query():
