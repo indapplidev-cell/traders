@@ -1,5 +1,30 @@
 # PITR WAL ACK daemon and safe inspector recovery
 
+## Persistent owner startup
+
+Install the canonical owner for the current Windows operator at logon:
+
+```powershell
+python scripts/production_wal_archive_remediation.py install-daemon-autostart `
+  --root D:\traders_ml_recovery\postgres --interval-seconds 3
+```
+
+The installer prefers a LIMITED scheduled task and uses the current-user
+Startup folder when Task Scheduler registration is denied to a non-elevated
+session. Both paths launch `pythonw` without an interactive window. The daemon
+lock replaces a stale PID only after proving that PID is not alive, so an
+unclean logout or process termination cannot permanently suppress recovery.
+It never replaces a live owner.
+
+Validate the active owner and archive continuity without exposing command
+lines or protected bindings:
+
+```powershell
+python scripts/safe_wal_ack_inspector.py
+python scripts/production_wal_archive_remediation.py diagnose `
+  --root D:\traders_ml_recovery\postgres
+```
+
 Task: `TRADERS_ML_PITR_WAL_ACK_DAEMON_AND_SAFE_INSPECTOR_RECOVERY_01`
 
 Observed and recovered at: `2026-08-12T12:33:14Z`

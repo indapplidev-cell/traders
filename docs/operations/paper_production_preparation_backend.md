@@ -20,11 +20,17 @@ DELETE, or baseline write privilege fail closed; dry-run never revokes drift.
 `PaperProductionPreparationTargetBinding` is the production administrator
 capability boundary. In canonical production mode it accepts no caller URL,
 password, target environment variable, or secret argument. It reads exactly
-the protected `TRADERS_ML_POSTGRES_PASSWORD` capability internally from the
-existing `.env.production.local`, combines it with the fixed tracked
+the Compose-owned `.secrets.production.local/shared-db-password` capability
+used by the PostgreSQL container, combines it with the fixed tracked
 localhost PostgreSQL contract, constructs the hidden-parameter engine, and
 returns only composed dependencies. Missing, malformed, mismatched, or
 unreachable targets fail with fixed reason codes.
+
+The deployment migrator accepts every proven linear production revision from
+`0008` and `0014` through the current `0020` head. It upgrades forward to
+`0020_paper_plan_execution_outcomes`, then reconciles the exact runtime and
+Readonly grants. This avoids depending on the redundant administrator copy in
+`.env.production.local`, which can become stale after shared-secret rotation.
 
 `ProtectedPaperRuntimeBindingAdapter` remains the runtime credential boundary. Public
 executor/backend calls accept and return no password, URI, token, or secret.

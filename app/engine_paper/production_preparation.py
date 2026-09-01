@@ -19,10 +19,17 @@ from app.engine_paper.accounting import PaperAccountIdentity
 PRODUCTION_PAPER_RUNTIME_ROLE: Final = "traders_paper_runtime"
 PRODUCTION_READONLY_ROLE: Final = "traders_readonly_api"
 EXPECTED_START_ALEMBIC: Final = "0008_engine_orchestrator_freshness_retry"
-EXPECTED_PREVIOUS_ALEMBIC: Final = "0014_paper_canary_selection_policy"
-EXPECTED_FINAL_ALEMBIC: Final = "0015_trading_universe_activation"
+EXPECTED_PREVIOUS_ALEMBIC: Final = "0019_first_class_15m_domain"
+EXPECTED_FINAL_ALEMBIC: Final = "0020_paper_plan_execution_outcomes"
 SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
-    EXPECTED_START_ALEMBIC, EXPECTED_PREVIOUS_ALEMBIC, EXPECTED_FINAL_ALEMBIC,
+    EXPECTED_START_ALEMBIC,
+    "0014_paper_canary_selection_policy",
+    "0015_trading_universe_activation",
+    "0016_control_mobile_device_security",
+    "0017_parallel_trade_profiles",
+    "0018_promote_5m_production_search",
+    EXPECTED_PREVIOUS_ALEMBIC,
+    EXPECTED_FINAL_ALEMBIC,
 })
 IDENTITY_KEYS: Final = (
     "PAPER_PRODUCTION_ACCOUNT_ID",

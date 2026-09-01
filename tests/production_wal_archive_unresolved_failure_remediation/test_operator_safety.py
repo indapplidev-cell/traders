@@ -79,6 +79,80 @@ def test_daemon_state_publication_exhaustion_does_not_terminate_owner(
     )
 
 
+def test_daemon_lock_recovers_only_proven_dead_owner(tmp_path, monkeypatch) -> None:
+    lock = tmp_path / "wal_ack_daemon.pid"
+    lock.write_text("4321", encoding="ascii")
+    monkeypatch.setattr(remediation, "_process_is_alive", lambda _pid: False)
+
+    descriptor = remediation._acquire_daemon_lock(lock)
+    try:
+        assert descriptor >= 0
+    finally:
+        remediation.os.close(descriptor)
+
+
+def test_daemon_lock_never_replaces_live_owner(tmp_path, monkeypatch) -> None:
+    lock = tmp_path / "wal_ack_daemon.pid"
+    lock.write_text("4321", encoding="ascii")
+    monkeypatch.setattr(remediation, "_process_is_alive", lambda _pid: True)
+
+    with pytest.raises(production_backup.OperationFailure, match="ACK_DAEMON_ALREADY_RUNNING"):
+        remediation._acquire_daemon_lock(lock)
+    assert lock.read_text(encoding="ascii") == "4321"
+
+
+def test_windows_autostart_is_bounded_and_verified(tmp_path, monkeypatch) -> None:
+    archive = tmp_path / "wal_archive"
+    archive.mkdir()
+    python = tmp_path / "python.exe"
+    python.write_bytes(b"")
+    (tmp_path / "pythonw.exe").write_bytes(b"")
+    calls: list[list[str]] = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(remediation.os, "name", "nt")
+    monkeypatch.setattr(remediation, "SAFE_ROOT", tmp_path)
+    monkeypatch.setattr(remediation.sys, "executable", str(python))
+    monkeypatch.setattr(remediation.subprocess, "run", fake_run)
+
+    assert remediation.install_windows_daemon_autostart(tmp_path, interval_seconds=3)
+    assert calls[0][0:4] == ["schtasks.exe", "/Create", "/TN", remediation.WINDOWS_AUTOSTART_TASK]
+    assert calls[1] == ["schtasks.exe", "/Query", "/TN", remediation.WINDOWS_AUTOSTART_TASK]
+    assert "ONLOGON" in calls[0]
+    assert "LIMITED" in calls[0]
+
+
+def test_windows_autostart_falls_back_to_current_user_startup(tmp_path, monkeypatch) -> None:
+    archive = tmp_path / "wal_archive"
+    archive.mkdir()
+    python = tmp_path / "python.exe"
+    python.write_bytes(b"")
+    (tmp_path / "pythonw.exe").write_bytes(b"")
+    appdata = tmp_path / "appdata"
+    startup = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+    startup.mkdir(parents=True)
+
+    monkeypatch.setattr(remediation.os, "name", "nt")
+    monkeypatch.setattr(remediation, "SAFE_ROOT", tmp_path)
+    monkeypatch.setattr(remediation.sys, "executable", str(python))
+    monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.setattr(
+        remediation.subprocess, "run",
+        lambda command, **_kwargs: subprocess.CompletedProcess(command, 5, "", "denied"),
+    )
+
+    assert remediation.install_windows_daemon_autostart(tmp_path, interval_seconds=3)
+    launcher = startup / remediation.WINDOWS_STARTUP_LAUNCHER
+    content = launcher.read_text(encoding="utf-8")
+    assert "pythonw.exe" in content
+    assert "production_wal_archive_remediation.py" in content
+    assert "--interval-seconds 3" in content
+    assert "WScript.Shell" in content
+
+
 def test_foundation_and_market_data_adapter_unchanged() -> None:
     changed = subprocess.run(
         ["git", "diff", "--name-only", "ba8d19d099d7bafcdc3d643125898a3e7a7240c2"],

@@ -36,6 +36,7 @@ from app.engine_paper.production_preparation import (
     EXPECTED_FINAL_ALEMBIC,
     EXPECTED_PREVIOUS_ALEMBIC,
     EXPECTED_START_ALEMBIC,
+    SUPPORTED_PREPARATION_REVISIONS,
     IDENTITY_KEYS,
     PRODUCTION_PAPER_RUNTIME_ROLE,
     PRODUCTION_READONLY_ROLE,
@@ -59,6 +60,9 @@ from app.engine_paper.production_preparation import (
 PRODUCTION_ADMIN_PASSWORD_KEY: Final = "TRADERS_ML_POSTGRES_PASSWORD"
 PRODUCTION_TARGET_ID: Final = "traders-production-primary"
 PRODUCTION_PROTECTED_SOURCE: Final = Path(__file__).resolve().parents[2] / ".env.production.local"
+PRODUCTION_SHARED_ADMIN_SOURCE: Final = (
+    Path(__file__).resolve().parents[2] / ".secrets.production.local" / "shared-db-password"
+)
 RUNTIME_DATABASE_KEY: Final = "TRADERS_PAPER_RUNTIME_DATABASE_URL"
 _ALLOWED_BINDING_KEYS: Final = frozenset({
     "DATABASE_URL", "MARKET_DATA_DATABASE_URL",
@@ -621,7 +625,7 @@ class PostgresPaperProductionPreparationBackend:
         from app.engine_paper.production_preparation import EXPECTED_FINAL_ALEMBIC
         if self.current_revision() == EXPECTED_FINAL_ALEMBIC:
             return PaperPreparationOperationResult(False, True)
-        if self.current_revision() not in {EXPECTED_START_ALEMBIC, EXPECTED_PREVIOUS_ALEMBIC}:
+        if self.current_revision() not in SUPPORTED_PREPARATION_REVISIONS:
             raise PaperPreparationAdapterError("SCHEMA_REVISION_MISMATCH")
         import app.config.settings as settings
         original = settings.get_settings
@@ -948,6 +952,17 @@ class PaperProductionPreparationTargetBinding:
             raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_UNAVAILABLE")
         return found
 
+    @staticmethod
+    def _read_shared_admin_password(path: Path) -> str:
+        """Read the exact Compose secret that owns the production admin login."""
+        try:
+            value = path.read_text(encoding="ascii").strip()
+        except Exception:
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_UNAVAILABLE") from None
+        if not value or "\n" in value or "\r" in value:
+            raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID")
+        return value
+
     def build_engine(self) -> Engine:
         if (not self._target_id or self._admin_host != "127.0.0.1"
                 or not isinstance(self._admin_port, int) or not 1 <= self._admin_port <= 65535
@@ -1007,13 +1022,17 @@ def compose_production_preparation(
             raise PaperPreparationAdapterError("PRODUCTION_TARGET_BINDING_INVALID")
     elif target_id == PRODUCTION_TARGET_ID:
         raise PaperPreparationAdapterError("PRODUCTION_TARGET_MISMATCH")
+    admin_source = PRODUCTION_SHARED_ADMIN_SOURCE if production_mode else protected_source
+    admin_value_provider = protected_value_provider
+    if production_mode and admin_value_provider is None:
+        admin_value_provider = PaperProductionPreparationTargetBinding._read_shared_admin_password
     target_binding = PaperProductionPreparationTargetBinding(
-        protected_source, target_id,
+        admin_source, target_id,
         admin_host=str(config.get("admin_host", "127.0.0.1")),
         admin_port=int(config.get("admin_port", 5433)),
         admin_database=str(config.get("admin_database", "traders_ml")),
         admin_user=str(config.get("admin_user", "traders_ml")),
-        protected_value_provider=protected_value_provider,
+        protected_value_provider=admin_value_provider,
         engine_factory=engine_factory,
     )
     engine = target_binding.build_engine()
@@ -1051,7 +1070,8 @@ def validate_production_preparation_config(config: Mapping[str, object]) -> None
 
 
 __all__ = [name for name in globals() if name.startswith("Paper") or name.startswith("Postgres") or name in {
-    "PRODUCTION_ADMIN_PASSWORD_KEY", "PRODUCTION_PROTECTED_SOURCE", "PRODUCTION_TARGET_ID",
+    "PRODUCTION_ADMIN_PASSWORD_KEY", "PRODUCTION_PROTECTED_SOURCE", "PRODUCTION_SHARED_ADMIN_SOURCE",
+    "PRODUCTION_TARGET_ID",
     "RUNTIME_DATABASE_KEY",
     "compose_production_preparation",
     "validate_production_preparation_config",

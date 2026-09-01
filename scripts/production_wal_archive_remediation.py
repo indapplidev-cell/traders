@@ -45,6 +45,8 @@ HOST_ACK_ARCHIVE_COMMAND = (
 )
 DAEMON_STATE_WRITE_ATTEMPTS = 5
 DAEMON_STATE_WRITE_RETRY_SECONDS = 0.2
+WINDOWS_AUTOSTART_TASK = "TradersML-WALAckDaemon"
+WINDOWS_STARTUP_LAUNCHER = "TradersML-WALAckDaemon.vbs"
 
 
 @dataclass(frozen=True, slots=True)
@@ -271,6 +273,91 @@ def _publish_daemon_state(
     return False
 
 
+def _process_is_alive(pid: int) -> bool:
+    if pid < 1:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def _acquire_daemon_lock(lock: Path) -> int:
+    """Acquire the owner lock, recovering only a proven-dead stale PID."""
+    for attempt in range(2):
+        try:
+            return os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError as error:
+            if attempt or _process_is_alive(_read_lock_pid(lock)):
+                raise OperationFailure("ACK_DAEMON_ALREADY_RUNNING_OR_STALE_LOCK") from error
+            try:
+                lock.unlink()
+            except OSError as unlink_error:
+                raise OperationFailure("ACK_DAEMON_STALE_LOCK_RECOVERY_FAILED") from unlink_error
+    raise OperationFailure("ACK_DAEMON_LOCK_ACQUISITION_FAILED")
+
+
+def _read_lock_pid(lock: Path) -> int:
+    try:
+        return int(lock.read_text(encoding="ascii").strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bool:
+    """Install the canonical daemon as a current-user logon task on Windows."""
+    if os.name != "nt":
+        raise OperationFailure("WINDOWS_AUTOSTART_UNAVAILABLE")
+    if interval_seconds < 1 or interval_seconds > 30:
+        raise OperationFailure("INVALID_ACK_DAEMON_INTERVAL")
+    if root.resolve() != SAFE_ROOT.resolve() or not (root / "wal_archive").is_dir():
+        raise OperationFailure("UNAPPROVED_STORAGE_ROOT")
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    if not pythonw.is_file():
+        raise OperationFailure("PYTHONW_UNAVAILABLE")
+    script = Path(__file__).resolve()
+    task_action = (
+        f'"{pythonw}" "{script}" daemon --root "{root.resolve()}" '
+        f"--interval-seconds {interval_seconds}"
+    )
+    created = subprocess.run(
+        ["schtasks.exe", "/Create", "/TN", WINDOWS_AUTOSTART_TASK, "/SC", "ONLOGON",
+         "/RL", "LIMITED", "/TR", task_action, "/F"],
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+    if not created.returncode:
+        verified = subprocess.run(
+            ["schtasks.exe", "/Query", "/TN", WINDOWS_AUTOSTART_TASK],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+        if verified.returncode:
+            raise OperationFailure("ACK_DAEMON_AUTOSTART_VERIFY_FAILED")
+        return True
+
+    # Non-elevated Windows sessions may not create even a LIMITED scheduled
+    # task. The current-user Startup folder is the bounded, privilege-free
+    # fallback and pythonw keeps the owner non-interactive and hidden.
+    appdata = os.environ.get("APPDATA")
+    if not appdata:
+        raise OperationFailure("ACK_DAEMON_AUTOSTART_INSTALL_FAILED")
+    startup = (Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup")
+    if not startup.is_dir():
+        raise OperationFailure("WINDOWS_STARTUP_DIRECTORY_UNAVAILABLE")
+    launcher = startup / WINDOWS_STARTUP_LAUNCHER
+    vbs_action = task_action.replace('"', '""')
+    content = f'CreateObject("WScript.Shell").Run "{vbs_action}", 0, False\n'
+    pending = launcher.with_suffix(".vbs.pending")
+    try:
+        pending.write_text(content, encoding="utf-8")
+        os.replace(pending, launcher)
+        if launcher.read_text(encoding="utf-8") != content:
+            raise OperationFailure("ACK_DAEMON_AUTOSTART_VERIFY_FAILED")
+    except OSError as error:
+        raise OperationFailure("ACK_DAEMON_AUTOSTART_INSTALL_FAILED") from error
+    return True
+
+
 def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
     """Continuously service the existing fail-closed host ACK protocol."""
     if interval_seconds < 1 or interval_seconds > 30:
@@ -279,10 +366,7 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
         raise OperationFailure("UNAPPROVED_STORAGE_ROOT")
     lock = root / "catalog" / "wal_ack_daemon.pid"
     state = root / "catalog" / "wal_ack_daemon_state.json"
-    try:
-        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError as error:
-        raise OperationFailure("ACK_DAEMON_ALREADY_RUNNING_OR_STALE_LOCK") from error
+    descriptor = _acquire_daemon_lock(lock)
     try:
         os.write(descriptor, str(os.getpid()).encode("ascii"))
         os.close(descriptor)
@@ -325,7 +409,9 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=("diagnose", "retry", "install-host-ack-command", "daemon"))
+    parser.add_argument("operation", choices=(
+        "diagnose", "retry", "install-host-ack-command", "install-daemon-autostart", "daemon",
+    ))
     parser.add_argument("--root", type=Path, default=SAFE_ROOT)
     parser.add_argument("--timeout-seconds", type=int, default=600)
     parser.add_argument("--interval-seconds", type=int, default=3)
@@ -338,6 +424,10 @@ def main(argv: list[str] | None = None) -> int:
             result = {**asdict(snapshot), "archive_retry_attempts": attempts}
         elif args.operation == "install-host-ack-command":
             result = {"archive_command_restored": install_host_ack_archive_command(args.root), "reload": "PASS"}
+        elif args.operation == "install-daemon-autostart":
+            result = {"autostart_installed": install_windows_daemon_autostart(
+                args.root, interval_seconds=args.interval_seconds),
+                "autostart_scope": "CURRENT_USER_LOGON"}
         else:
             run_host_ack_daemon(args.root, interval_seconds=args.interval_seconds)
             result = {"status": "STOPPED"}
