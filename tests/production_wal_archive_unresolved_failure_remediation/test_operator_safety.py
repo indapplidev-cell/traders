@@ -88,10 +88,14 @@ def test_daemon_cycle_publishes_post_sync_zero_backlog(monkeypatch) -> None:
         "export_backlog_count": 0,
         "pending_archive_status_count": 0,
     })()
-    snapshots = iter((before, after))
-    monkeypatch.setattr(remediation, "capture_snapshot", lambda _root: next(snapshots))
+    monkeypatch.setattr(remediation, "capture_snapshot", lambda _root: before)
     monkeypatch.setattr(
         remediation, "sync_wal", lambda _root: {"published_segment_count": 1}
+    )
+    monkeypatch.setattr(
+        remediation,
+        "bounded_retry",
+        lambda _root, timeout_seconds: (after, 0),
     )
 
     payload = remediation._host_ack_daemon_cycle(Path("unused"), process_id=4321)

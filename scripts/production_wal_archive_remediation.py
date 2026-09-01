@@ -366,7 +366,10 @@ def _host_ack_daemon_cycle(root: Path, *, process_id: int) -> dict[str, object]:
     if snapshot.export_backlog_count:
         result = sync_wal(root)
         published = int(result["published_segment_count"])
-        snapshot = capture_snapshot(root)
+        # The PostgreSQL archive command observes the host ACK asynchronously.
+        # Do not publish its short-lived .ready/export state as a readiness
+        # failure after the archive bytes have already been durably synced.
+        snapshot, _ = bounded_retry(root, timeout_seconds=30)
     return {
         "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
         "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
