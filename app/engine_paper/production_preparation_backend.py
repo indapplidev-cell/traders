@@ -587,10 +587,8 @@ class PaperPreparationDeploymentAdapter:
 
     def readonly_api_narrow_ready(self) -> bool:
         try:
-            payload = json.loads((self._root / "readonly-api.narrow.json").read_text(encoding="utf-8"))
-            source_identity = payload.get("source_identity")
-            return (isinstance(source_identity, str)
-                    and self._marker_matches(source_identity)
+            source_identity = self._source_identity_provider()
+            return (self._marker_matches(source_identity)
                     and self._probe(source_identity).accepted_for(source_identity))
         except Exception:
             return False

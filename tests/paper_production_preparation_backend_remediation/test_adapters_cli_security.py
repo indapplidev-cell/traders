@@ -17,8 +17,11 @@ from app.engine_paper.production_preparation_backend import (
     PRODUCTION_TARGET_ID,
     RUNTIME_DATABASE_KEY,
     READONLY_EXPECTED_GET_ROUTES,
+    READONLY_LEGACY_ROUTES,
+    READONLY_STATIC_PAPER_HTTP_PATHS,
     PaperPreparationAdapterError,
     PaperPreparationDeploymentAdapter,
+    ReadonlyRuntimeAcceptance,
     PaperProductionPreparationTargetBinding,
     PaperProductionIdentityConfigurationAdapter,
     ProtectedPaperRuntimeBindingAdapter,
@@ -186,6 +189,32 @@ def test_readonly_acceptance_includes_funnel_export_and_retries_timeout(monkeypa
     )
     assert PaperPreparationDeploymentAdapter._http_json("/api/v1/health") == (200, {"ok": True})
     assert calls == 2
+
+
+def test_readonly_ready_rejects_stale_marker_even_when_stale_runtime_is_healthy(tmp_path):
+    current = "sha256:" + "a" * 64
+    acceptance = lambda identity: ReadonlyRuntimeAcceptance(
+        identity, True, READONLY_EXPECTED_GET_ROUTES, 0,
+        (200,) * len(READONLY_LEGACY_ROUTES),
+        (200,) * len(READONLY_STATIC_PAPER_HTTP_PATHS),
+    )
+    adapter = PaperPreparationDeploymentAdapter(
+        tmp_path, source_identity_provider=lambda: current, runtime_probe=acceptance,
+    )
+    marker = {
+        "deployment": "NARROW", "service": "readonly-api", "schema": 2,
+        "source_identity": "sha256:" + "b" * 64, "runtime_health": "PASS",
+        "get_routes": len(READONLY_EXPECTED_GET_ROUTES), "write_routes": 0,
+        "legacy_endpoints": len(READONLY_LEGACY_ROUTES),
+        "paper_endpoints": len(tuple(
+            path for path in READONLY_EXPECTED_GET_ROUTES if "/paper/" in path
+        )),
+    }
+    (tmp_path / "readonly-api.narrow.json").write_text(json.dumps(marker), encoding="utf-8")
+    assert not adapter.readonly_api_narrow_ready()
+    marker["source_identity"] = current
+    (tmp_path / "readonly-api.narrow.json").write_text(json.dumps(marker), encoding="utf-8")
+    assert adapter.readonly_api_narrow_ready()
 
 
 def test_target_binding_is_safe_and_never_returns_protected_value(tmp_path):
