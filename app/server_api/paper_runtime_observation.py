@@ -43,6 +43,7 @@ from app.engine_paper.production_preparation import (
 from app.engine_safety.production_wal_archive import inspect_wal_continuity, wal_segment_identity
 from app.server_api.schemas.paper import PaperControlStatus
 from app.server_api.services.paper_reporting import PaperRuntimeObservation
+from app.server_api.mapping.contract import utc_text
 from app.engine_safety.production_control_root import resolve_production_control_root
 from app.operator_control.runtime_health import read_paper_runtime_health
 
@@ -346,8 +347,8 @@ class ProductionPaperRuntimeObservationSource:
                 "approval_valid_until_ms": outcome.approval_valid_until_ms,
                 "selector_state": outcome.selector_state,
                 "selector_rank": outcome.selector_rank,
-                "selected_at": outcome.first_observed_at,
-                "scheduler_last_observed_at": outcome.updated_at,
+                "selected_at": utc_text(outcome.first_observed_at),
+                "scheduler_last_observed_at": utc_text(outcome.updated_at),
                 "lifecycle_state": outcome.lifecycle_state,
                 "command_status": command_status,
                 "command_id": outcome.command_id,

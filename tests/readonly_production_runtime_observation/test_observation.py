@@ -235,6 +235,8 @@ def test_selected_execution_projection_is_identity_bound_and_terminal_visible() 
     assert value["approval_id"] == outcome.final_approval_id
     assert value["command_status"] == "EXPIRED"
     assert value["terminal_reason"] == "EXPIRED_BEFORE_EXECUTION"
+    assert value["selected_at"] == "2026-09-01T16:20:58.000Z"
+    assert value["scheduler_last_observed_at"] == "2026-09-01T16:25:31.000Z"
 
 
 @pytest.mark.parametrize("failure", ("market", "approval", "control", "runtime", "pitr", "principal"))
