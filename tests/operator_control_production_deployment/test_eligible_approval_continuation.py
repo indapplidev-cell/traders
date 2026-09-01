@@ -333,6 +333,59 @@ def test_first_command_preserves_extra_readonly_policy_reason_without_ingestion(
     assert ingestion.requests == [] and store.value.command_count == 0
 
 
+def test_unavailable_snapshot_reports_only_its_authoritative_blocker():
+    store = Store(waiting_canary())
+    approval_source = PaperProductionApprovalSourceAdapter(
+        lambda: FakeSession(), reader=FakeReader({"BTCUSDT": (eligible_row(),)}),
+        monotonic=lambda: 1.0,
+    )
+
+    class Ingestion:
+        requests = []
+        def ingest_and_create_entry_order(self, request):
+            self.requests.append(request)
+            return type("Result", (), {"successful": True})()
+
+    ingestion = Ingestion()
+    executor = ProductionPaperFirstCanaryExecutor(
+        control=Control(), canary_store=store, approval_source=approval_source,
+        ingestion_service=ingestion, mutation_safety_gate=AllowMutationGate(),
+        runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(
+            policy_blockers=("READONLY_RUNTIME_NOT_READY",),
+            snapshot_authoritative=False,
+        ),
+    )
+
+    assert worker(store, executor).run_once() == "SAFE_FAILURE:READONLY_RUNTIME_NOT_READY"
+    assert ingestion.requests == []
+
+
+def test_stale_readiness_generation_is_rejected_before_ingestion():
+    store = Store(waiting_canary())
+    approval_source = PaperProductionApprovalSourceAdapter(
+        lambda: FakeSession(), reader=FakeReader({"BTCUSDT": (eligible_row(),)}),
+        monotonic=lambda: 1.0,
+    )
+
+    class Ingestion:
+        requests = []
+        def ingest_and_create_entry_order(self, request):
+            self.requests.append(request)
+            return type("Result", (), {"successful": True})()
+
+    ingestion = Ingestion()
+    executor = ProductionPaperFirstCanaryExecutor(
+        control=Control(), canary_store=store, approval_source=approval_source,
+        ingestion_service=ingestion, mutation_safety_gate=AllowMutationGate(),
+        runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(
+            True, True, True, True, True, control_generation=3,
+        ),
+    )
+
+    assert worker(store, executor).run_once() == "SAFE_FAILURE:READINESS_CONTROL_GENERATION_MISMATCH"
+    assert ingestion.requests == []
+
+
 def test_two_concurrent_workers_obtain_one_database_claim():
     store = Store(waiting_canary())
     entered, release = Event(), Event()

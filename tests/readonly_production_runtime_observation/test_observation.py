@@ -213,7 +213,7 @@ def test_selected_execution_projection_is_identity_bound_and_terminal_visible() 
         updated_at=datetime(2026, 9, 1, 16, 25, 31, tzinfo=timezone.utc),
         lifecycle_state="EXPIRED_BEFORE_EXECUTION", command_id=None,
         terminal_reason="EXPIRED_BEFORE_EXECUTION", selector_reason=None,
-        attempt_count=8,
+        attempt_count=8, control_generation=6,
     )
 
     class Result:
@@ -237,6 +237,8 @@ def test_selected_execution_projection_is_identity_bound_and_terminal_visible() 
     assert value["terminal_reason"] == "EXPIRED_BEFORE_EXECUTION"
     assert value["selected_at"] == "2026-09-01T16:20:58.000Z"
     assert value["scheduler_last_observed_at"] == "2026-09-01T16:25:31.000Z"
+    assert value["policy_generation"] == 6
+    assert value["policy_reason_source"] == "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT"
 
 
 @pytest.mark.parametrize("failure", ("market", "approval", "control", "runtime", "pitr", "principal"))

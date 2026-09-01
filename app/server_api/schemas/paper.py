@@ -181,6 +181,10 @@ class PaperExecutionLifecycle(BaseModel):
     selector_rank: int | None = Field(default=None, ge=1)
     selected_at: UtcTimestamp
     scheduler_last_observed_at: UtcTimestamp
+    policy_evaluated_at: UtcTimestamp | None = None
+    policy_generation: int | None = Field(default=None, ge=1)
+    policy_reason_source: Literal["READONLY_PAPER_READINESS_CURRENT_SNAPSHOT"] | None = None
+    policy_source_timestamp: UtcTimestamp | None = None
     lifecycle_state: str
     command_status: str
     command_id: SafeIdentifier | None = None

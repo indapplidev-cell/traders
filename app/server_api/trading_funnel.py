@@ -1213,6 +1213,10 @@ class TradingFunnelReadRepository:
                 "lifecycle_state": outcome.lifecycle_state,
                 "attempt_count": outcome.attempt_count,
                 "control_generation": outcome.control_generation,
+                "policy_evaluated_at": outcome.updated_at,
+                "policy_generation": outcome.control_generation,
+                "policy_reason_source": "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT",
+                "policy_source_timestamp": outcome.updated_at,
             })
         return values
 
@@ -1588,6 +1592,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "execution_lifecycle_state": execution_lifecycle_state,
                     "execution_attempt_count": lifecycle.get("attempt_count", 0),
                     "control_generation": lifecycle.get("control_generation"),
+                    "policy_evaluated_at": lifecycle.get("policy_evaluated_at"),
+                    "policy_generation": lifecycle.get("policy_generation"),
+                    "policy_reason_source": lifecycle.get("policy_reason_source"),
+                    "policy_source_timestamp": lifecycle.get("policy_source_timestamp"),
                 },
                 "risk_score": meta.get("risk_score"), "strategy_score": meta.get("strategy_score"),
                 "planned_risk_reward": meta.get("planned_risk_reward"),

@@ -81,6 +81,9 @@ class ExistingCanaryRuntimeReadiness:
     pitr_ready: bool = False
     live_disabled: bool = True
     policy_blockers: tuple[str, ...] = ()
+    snapshot_authoritative: bool = True
+    control_generation: int | None = None
+    reason_source: str = "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT"
 
     @property
     def backup_pitr_pass(self) -> bool:
@@ -319,6 +322,26 @@ class ProductionPaperFirstCanaryExecutor:
             new_commands_before=canary.command_count,
             open_positions_before=canary.position_count,
         )
+        snapshot_blockers = tuple(dict.fromkeys(readiness.policy_blockers))
+        if not readiness.snapshot_authoritative:
+            blockers = snapshot_blockers or ("READONLY_RUNTIME_NOT_READY",)
+            if self._outcome_store is not None:
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    blocker_codes=blockers,
+                )
+            return blockers
+        if (
+            readiness.control_generation is not None
+            and readiness.control_generation != canary.current_control_generation
+        ):
+            blockers = ("READINESS_CONTROL_GENERATION_MISMATCH",)
+            if self._outcome_store is not None:
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    blocker_codes=blockers,
+                )
+            return blockers
         prerequisites = MutationPrerequisites(
             market_data_ready=(
                 readiness.market_data_ready and readiness.approval_source_ready
@@ -337,9 +360,7 @@ class ProductionPaperFirstCanaryExecutor:
                 ("LIVE_NOT_DISABLED", readiness.live_disabled),
             ) if not passed
         )
-        policy_blockers = tuple(dict.fromkeys(
-            direct_blockers + readiness.policy_blockers
-        ))
+        policy_blockers = tuple(dict.fromkeys(direct_blockers + snapshot_blockers))
         attempt_recorded = False
         if self._outcome_store is not None and policy_blockers:
             self._outcome_store.record_attempt(

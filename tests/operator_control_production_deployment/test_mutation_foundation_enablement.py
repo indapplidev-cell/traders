@@ -163,7 +163,8 @@ def test_armed_existing_runtime_accepts_active_mutation_readiness(monkeypatch):
             "accounting_reconciliation_status": "HEALTHY",
             "paper_reconciliation_status": "HEALTHY", "paper_runtime_enabled": True,
             "paper_control_state": "ARMED", "paper_control_effective_state": "ARMED",
-            "paper_control_health": "HEALTHY", "live_allowed": False,
+            "paper_control_health": "HEALTHY", "paper_control_generation": 6,
+            "live_allowed": False,
             "market_data_adapter_ready": True, "approval_source_adapter_ready": True,
             "wal_ready": True, "pitr_ready": True, "current_mutation_ready": True,
             "current_mutation_denial_reasons": [],
@@ -181,6 +182,8 @@ def test_armed_existing_runtime_accepts_active_mutation_readiness(monkeypatch):
     assert readiness.market_data_ready and readiness.approval_source_ready
     assert readiness.wal_ready and readiness.pitr_ready and readiness.backup_pitr_pass
     assert readiness.live_disabled
+    assert readiness.snapshot_authoritative
+    assert readiness.control_generation == 6
 
 
 def test_existing_runtime_readiness_preserves_exact_wal_pitr_or_extra_denial(monkeypatch):
@@ -190,7 +193,8 @@ def test_existing_runtime_readiness_preserves_exact_wal_pitr_or_extra_denial(mon
         "accounting_reconciliation_status": "HEALTHY",
         "paper_reconciliation_status": "HEALTHY", "paper_runtime_enabled": True,
         "paper_control_state": "ARMED", "paper_control_effective_state": "ARMED",
-        "paper_control_health": "HEALTHY", "live_allowed": False,
+        "paper_control_health": "HEALTHY", "paper_control_generation": 6,
+        "live_allowed": False,
         "market_data_adapter_ready": True, "approval_source_adapter_ready": True,
         "wal_ready": True, "pitr_ready": True, "current_mutation_ready": True,
         "current_mutation_denial_reasons": [],
@@ -229,7 +233,8 @@ def test_existing_runtime_readiness_preserves_exact_wal_pitr_or_extra_denial(mon
     monkeypatch.setattr("app.operator_control.runtime.urllib.request.urlopen", lambda *_a, **_k: Response())
     readiness = source()
     assert readiness.policy_blockers == ("READONLY_RUNTIME_NOT_READY",)
-    assert not readiness.live_disabled
+    assert readiness.live_disabled
+    assert not readiness.snapshot_authoritative
 
 
 def test_runtime_database_binding_translates_only_exact_host_endpoint(monkeypatch):

@@ -780,7 +780,7 @@ def test_selected_identity_mismatch_is_durable_and_creates_no_command(
         ) == 0
 
 
-def test_valid_selected_plan_blocked_by_backup_gate_expires_with_durable_reason(
+def test_real_backup_blocker_is_durable_then_fixed_candidate_opens_position(
     natural_e2e_sessions, natural_e2e_engine, tmp_path
 ):
     factory = natural_e2e_sessions
@@ -788,18 +788,26 @@ def test_valid_selected_plan_blocked_by_backup_gate_expires_with_durable_reason(
     source = _approval_source(factory)
     control = PaperProductionSafetyControl(tmp_path / "blocked-paper-control")
     control.initialize_disabled(acknowledge=True)
-    store, _executor, continuation, _lifecycle, service = _runtime(
+    readiness = {"value": ExistingCanaryRuntimeReadiness(
+        True, True, False, False, True
+    )}
+    store, _executor, continuation, lifecycle, service = _runtime(
         factory,
         natural_e2e_engine,
         control,
         source,
-        readiness=lambda: ExistingCanaryRuntimeReadiness(
-            True, True, False, False, True
-        ),
+        readiness=lambda: readiness["value"],
     )
     canary_id = _arm_and_wait(service)
     result = _pipeline(factory)
     run_id = _persist_natural_approval(factory, result)
+    classified = source.read(PaperProductionApprovalRequest(
+        PaperProductionApprovalScope((SYMBOL,), "5m", max_candidates=1),
+        request_id="paper-blocker-recovery-policy-proof",
+        as_of_ms=EVALUATION_MS,
+    )).symbol_results[0]
+    assert classified.candidate is not None
+    _seed_simulation_policy(factory, classified.candidate)
 
     assert continuation.run_once() == "SAFE_FAILURE:INDEPENDENT_READINESS_GATE_DENIED"
     assert store.get(canary_id).command_count == 0
@@ -812,13 +820,19 @@ def test_valid_selected_plan_blocked_by_backup_gate_expires_with_durable_reason(
         assert outcome.selector_reason == "WAL_NOT_READY,PITR_NOT_READY"
         assert outcome.command_id is None
 
-    outcomes = PaperPlanExecutionOutcomeStore(factory)
-    assert outcomes.expire_due(BOUNDARY + 300_001) == 1
-    assert continuation.run_once().startswith("SAFE_FAILURE:")
+    readiness["value"] = ExistingCanaryRuntimeReadiness(
+        True, True, True, True, True,
+        control_generation=store.get(canary_id).current_control_generation,
+    )
+    assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"
+    assert lifecycle.run_once().endswith(":POSITION_OPEN_CURSOR_READY")
     with factory() as session:
         outcome = session.get(PaperPlanExecutionOutcomeRecord, run_id)
-        assert outcome.lifecycle_state == "EXPIRED_BEFORE_EXECUTION"
-        assert outcome.terminal_reason == "EXPIRED_BEFORE_EXECUTION"
+        assert outcome.lifecycle_state == "COMMAND_CREATED"
+        assert outcome.selector_reason is None
         assert session.scalar(
             select(func.count()).select_from(PaperExecutionCommandRecord)
-        ) == 0
+        ) == 1
+        assert session.scalar(
+            select(func.count()).select_from(PaperPositionRecord)
+        ) == 1

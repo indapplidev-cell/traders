@@ -129,12 +129,13 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 and payload.get("paper_control_state") == "ARMED"
                 and payload.get("paper_control_effective_state") == "ARMED"
                 and payload.get("paper_control_health") == "HEALTHY"
+                and isinstance(payload.get("paper_control_generation"), int)
                 and isinstance(denials, list)
             )
             if not envelope_ready:
                 return ExistingCanaryRuntimeReadiness(
-                    live_disabled=False,
                     policy_blockers=("READONLY_RUNTIME_NOT_READY",),
+                    snapshot_authoritative=False,
                 )
             mapped_denials = {
                 "MARKET_DATA_NOT_READY", "APPROVAL_SOURCE_NOT_READY",
@@ -152,11 +153,12 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 pitr_ready=payload.get("pitr_ready") is True,
                 live_disabled=payload.get("live_allowed") is False,
                 policy_blockers=policy_blockers,
+                control_generation=payload["paper_control_generation"],
             )
         except Exception:
             return ExistingCanaryRuntimeReadiness(
-                live_disabled=False,
                 policy_blockers=("READONLY_RUNTIME_NOT_READY",),
+                snapshot_authoritative=False,
             )
 
 
