@@ -276,6 +276,15 @@ class ProductionPaperFirstCanaryExecutor:
             or candidate.watermark.primary_timeframe != candidate.primary_timeframe
             or candidate.lineage.source_run_id != candidate.ranking.source_run_id
         ):
+            if self._outcome_store is not None:
+                try:
+                    self._outcome_store.record_attempt(
+                        candidate.lineage.source_run_id,
+                        failure_code="NOT_CREATED_IDENTITY_MISMATCH",
+                    )
+                except ValueError as error:
+                    if str(error) != "PAPER_PLAN_OUTCOME_NOT_OBSERVED":
+                        raise
             return ("APPROVAL_PROFILE_IDENTITY_MISMATCH",)
         readiness = self._runtime_readiness()
         command_id = paper_ingestion_command_id(

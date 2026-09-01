@@ -745,6 +745,41 @@ def test_expired_natural_approval_does_not_create_command(
         ) == 0
 
 
+def test_selected_identity_mismatch_is_durable_and_creates_no_command(
+    natural_e2e_sessions, natural_e2e_engine, tmp_path
+):
+    factory = natural_e2e_sessions
+    _seed_foundation(factory)
+    source = _approval_source(factory)
+    control = PaperProductionSafetyControl(tmp_path / "identity-paper-control")
+    control.initialize_disabled(acknowledge=True)
+    store, executor, _continuation, _lifecycle, service = _runtime(
+        factory, natural_e2e_engine, control, source
+    )
+    canary_id = _arm_and_wait(service)
+    result = _pipeline(factory)
+    run_id = _persist_natural_approval(factory, result)
+    canary = store.get(canary_id)
+    results = executor._read_approvals(canary, "identity-mismatch-read")
+    selection = executor._select_candidate(canary, results)
+    assert selection.winner is not None
+
+    findings = executor._ingest_candidate(
+        candidate=replace(selection.winner, trade_profile_id="trade-15m-v1"),
+        request_id="identity-mismatch-ingest",
+        canary_id=canary_id,
+    )
+    assert findings == ("APPROVAL_PROFILE_IDENTITY_MISMATCH",)
+    with factory() as session:
+        outcome = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+        assert outcome.lifecycle_state == "EXECUTION_FAILED"
+        assert outcome.terminal_reason == "NOT_CREATED_IDENTITY_MISMATCH"
+        assert outcome.selector_state == "SELECTED" and outcome.selector_rank == 1
+        assert session.scalar(
+            select(func.count()).select_from(PaperExecutionCommandRecord)
+        ) == 0
+
+
 def test_valid_selected_plan_blocked_by_backup_gate_expires_with_durable_reason(
     natural_e2e_sessions, natural_e2e_engine, tmp_path
 ):

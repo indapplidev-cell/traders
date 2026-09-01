@@ -202,6 +202,41 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
     assert heartbeat_read_at == [datetime(2026, 8, 31, 12, 0, 15, tzinfo=timezone.utc)]
 
 
+def test_selected_execution_projection_is_identity_bound_and_terminal_visible() -> None:
+    outcome = SimpleNamespace(
+        pipeline_run_id="orchestrator:run-sui", symbol="SUIUSDT",
+        trade_profile_id="trade-5m-v1", boundary_closed_at_ms=1788279600000,
+        candidate_id="candidate:sui", final_approval_id="approval:sui",
+        paper_plan_id="plan:sui", approval_valid_until_ms=1788279899999,
+        selector_state="SELECTED", selector_rank=1,
+        first_observed_at=datetime(2026, 9, 1, 16, 20, 58, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 9, 1, 16, 25, 31, tzinfo=timezone.utc),
+        lifecycle_state="EXPIRED_BEFORE_EXECUTION", command_id=None,
+        terminal_reason="EXPIRED_BEFORE_EXECUTION", selector_reason=None,
+        attempt_count=8,
+    )
+
+    class Result:
+        def one_or_none(self):
+            return outcome, None, None, None
+
+    class FakeSession:
+        def __enter__(self): return self
+        def __exit__(self, *_): return None
+        def execute(self, _statement): return Result()
+
+    source = observation.ProductionPaperRuntimeObservationSource(
+        lambda: FakeSession(), lambda: None
+    )
+    value = source._current_execution()
+    assert value is not None
+    assert value["source_run_id"] == outcome.pipeline_run_id
+    assert value["candidate_id"] == outcome.candidate_id
+    assert value["approval_id"] == outcome.final_approval_id
+    assert value["command_status"] == "EXPIRED"
+    assert value["terminal_reason"] == "EXPIRED_BEFORE_EXECUTION"
+
+
 @pytest.mark.parametrize("failure", ("market", "approval", "control", "runtime", "pitr", "principal"))
 def test_each_authoritative_failure_remains_fail_closed(monkeypatch, tmp_path: Path, failure: str) -> None:
     def control():

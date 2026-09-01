@@ -168,6 +168,28 @@ class PaperReconciliation(BaseModel):
     accounting_reconciliation: PaperReconciliationSection
 
 
+class PaperExecutionLifecycle(BaseModel):
+    source_run_id: SafeIdentifier
+    symbol: Symbol
+    trade_profile_id: str
+    boundary_closed_at_ms: int = Field(ge=0)
+    candidate_id: SafeIdentifier
+    approval_id: SafeIdentifier
+    plan_id: str = Field(min_length=1, max_length=512)
+    approval_valid_until_ms: int = Field(ge=0)
+    selector_state: str
+    selector_rank: int | None = Field(default=None, ge=1)
+    selected_at: UtcTimestamp
+    scheduler_last_observed_at: UtcTimestamp
+    lifecycle_state: str
+    command_status: str
+    command_id: SafeIdentifier | None = None
+    position_status: str
+    position_id: SafeIdentifier | None = None
+    terminal_reason: str | None = None
+    attempt_count: int = Field(ge=0)
+
+
 class PaperRuntimeStatus(BaseModel):
     mode: Literal["PAPER"] = "PAPER"
     runtime_enabled: bool
@@ -178,6 +200,7 @@ class PaperRuntimeStatus(BaseModel):
     live_allowed: Literal[False] = False
     worker_running: bool | None
     operator_runner_running: bool | None
+    current_execution: PaperExecutionLifecycle | None = None
 
 
 class PaperControlStatus(BaseModel):

@@ -1197,9 +1197,16 @@ class TradingFunnelReadRepository:
                 "selector_reason": outcome.selector_reason,
                 "selector_rank": outcome.selector_rank,
                 "selected_winner": outcome.selected_winner,
+                "candidate_id": outcome.candidate_id,
                 "command_id": lifecycle.get("command_id") or outcome.command_id,
                 "command_status": lifecycle.get("command_status") or (
-                    "NOT_CREATED" if outcome.command_id is None else "PENDING"
+                    {
+                        "PLAN_OBSERVED": "PENDING_CREATE",
+                        "BLOCKED_BY_POLICY": "BLOCKED",
+                        "EXECUTION_FAILED": "FAILED",
+                        "EXPIRED_BEFORE_EXECUTION": "EXPIRED",
+                    }.get(outcome.lifecycle_state, "NOT_CREATED")
+                    if outcome.command_id is None else "PENDING"
                 ),
                 "terminal_result": lifecycle.get("terminal_result") or outcome.terminal_reason,
                 "lifecycle_state": outcome.lifecycle_state,
@@ -1654,11 +1661,22 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             c.candidate_id, c.symbol,
         )) if not selection.failure_code else []
         ranks = {item.lineage.source_run_id: index + 1 for index, item in enumerate(ordered)}
-        winner_run = selection.winner.lineage.source_run_id if selection.winner else None
+        projected_winner = None
         for item in items:
-            item["selector_rank"] = ranks.get(item["source_run_id"])
-            item["selected_winner"] = item["source_run_id"] == winner_run
+            lifecycle = lifecycle_by_run.get(item["source_run_id"], {})
+            if profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
+                item["selector_rank"] = ranks.get(item["source_run_id"])
+                item["selected_winner"] = bool(
+                    selection.winner
+                    and item["source_run_id"] == selection.winner.lineage.source_run_id
+                )
+            else:
+                # Production SELECTED is the executor's persisted selection,
+                # never a decorative historical replay of the ranker.
+                item["selector_rank"] = lifecycle.get("selector_rank")
+                item["selected_winner"] = lifecycle.get("selected_winner") is True
             if item["selected_winner"]:
+                projected_winner = item
                 item["stage_trace"]["SELECTOR_WINNER"] = "PASS"
                 counts["SELECTOR_WINNER"] += 1
                 item["current_stage"] = "SELECTOR_WINNER"
@@ -1702,8 +1720,11 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             "eligible_competitors": [{"rank": ranks[item.lineage.source_run_id], "symbol": item.symbol,
                                       "candidate_id": item.candidate_id, "final_approval_id": item.lineage.final_approval_id}
                                      for item in ordered],
-            "winner_symbol": selection.winner.symbol if selection.winner else None,
-            "winner_candidate_id": selection.winner.candidate_id if selection.winner else None,
+            "winner_symbol": projected_winner["symbol"] if projected_winner else None,
+            "winner_candidate_id": (
+                lifecycle_by_run.get(projected_winner["source_run_id"], {}).get("candidate_id")
+                if projected_winner else None
+            ) or (projected_winner["candidate_id"] if projected_winner else None),
             "latest_pipeline_update_ms": latest_update,
         }
         cycle_cache[boundary] = value

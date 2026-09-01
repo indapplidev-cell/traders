@@ -10,8 +10,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
+
+from app.db.paper_models import (
+    PaperExecutionCommandRecord,
+    PaperOrderRecord,
+    PaperPlanExecutionOutcomeRecord,
+    PaperPositionRecord,
+)
 
 from app.engine_paper.production_approval import (
     PaperProductionApprovalReadiness,
@@ -283,6 +290,75 @@ class ProductionPaperRuntimeObservationSource:
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._approval = PaperProductionApprovalSourceAdapter(session_factory)
 
+    def _current_execution(self) -> dict[str, object] | None:
+        """Project the latest persisted SELECTED lifecycle by exact run/command identity."""
+        try:
+            with self._session_factory() as session:
+                row = session.execute(
+                    select(
+                        PaperPlanExecutionOutcomeRecord,
+                        PaperExecutionCommandRecord.processing_status,
+                        PaperPositionRecord.position_id,
+                        PaperPositionRecord.state,
+                    )
+                    .outerjoin(
+                        PaperExecutionCommandRecord,
+                        PaperExecutionCommandRecord.command_id
+                        == PaperPlanExecutionOutcomeRecord.command_id,
+                    )
+                    .outerjoin(
+                        PaperOrderRecord,
+                        (PaperOrderRecord.command_id
+                         == PaperPlanExecutionOutcomeRecord.command_id)
+                        & (PaperOrderRecord.order_role == "ENTRY"),
+                    )
+                    .outerjoin(
+                        PaperPositionRecord,
+                        PaperPositionRecord.entry_order_id == PaperOrderRecord.order_id,
+                    )
+                    .where(PaperPlanExecutionOutcomeRecord.selected_winner.is_(True))
+                    .order_by(
+                        PaperPlanExecutionOutcomeRecord.first_observed_at.desc(),
+                        PaperPlanExecutionOutcomeRecord.pipeline_run_id.desc(),
+                    )
+                    .limit(1)
+                ).one_or_none()
+            if row is None:
+                return None
+            outcome, processing_status, position_id, position_state = row
+            if outcome.command_id is not None:
+                command_status = processing_status or "CREATED"
+            else:
+                command_status = {
+                    "PLAN_OBSERVED": "PENDING_CREATE",
+                    "BLOCKED_BY_POLICY": "BLOCKED",
+                    "EXPIRED_BEFORE_EXECUTION": "EXPIRED",
+                    "EXECUTION_FAILED": "FAILED",
+                }.get(outcome.lifecycle_state, "NOT_CREATED")
+            return {
+                "source_run_id": outcome.pipeline_run_id,
+                "symbol": outcome.symbol,
+                "trade_profile_id": outcome.trade_profile_id,
+                "boundary_closed_at_ms": outcome.boundary_closed_at_ms,
+                "candidate_id": outcome.candidate_id,
+                "approval_id": outcome.final_approval_id,
+                "plan_id": outcome.paper_plan_id,
+                "approval_valid_until_ms": outcome.approval_valid_until_ms,
+                "selector_state": outcome.selector_state,
+                "selector_rank": outcome.selector_rank,
+                "selected_at": outcome.first_observed_at,
+                "scheduler_last_observed_at": outcome.updated_at,
+                "lifecycle_state": outcome.lifecycle_state,
+                "command_status": command_status,
+                "command_id": outcome.command_id,
+                "position_status": position_state or "NOT_REACHED",
+                "position_id": position_id,
+                "terminal_reason": outcome.terminal_reason or outcome.selector_reason,
+                "attempt_count": outcome.attempt_count,
+            }
+        except Exception:
+            return None
+
     def __call__(self) -> PaperRuntimeObservation:
         now = self._clock()
         market_ready = _market_data_readiness(self._market_health_root, now)
@@ -346,6 +422,7 @@ class ProductionPaperRuntimeObservationSource:
                 and int(automatic_runtime.get("execution_ticks", 0)) > 0
             ),
             operator_runner_running=False,
+            current_execution=self._current_execution(),
             market_data_adapter_ready=market_ready,
             approval_source_adapter_ready=approval_ready,
             wal_ready=pitr.wal_ready,

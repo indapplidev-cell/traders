@@ -254,6 +254,40 @@ def test_runtime_and_control_are_read_only_fail_closed(baseline):
     assert status["state"] == "DISABLED" and status["generation"] == 3
 
 
+def test_runtime_projects_exact_selected_plan_execution_lifecycle(baseline):
+    paper = FakePaperRepository(baseline)
+    app = create_app(
+        repositories=replace(FakeReadRepository().api_repositories(), paper=paper),
+        clock=lambda: NOW,
+        paper_runtime=PaperRuntimeObservation(current_execution={
+            "source_run_id": "orchestrator:run-sui",
+            "symbol": "SUIUSDT",
+            "trade_profile_id": "trade-5m-v1",
+            "boundary_closed_at_ms": 1788279600000,
+            "candidate_id": "candidate:sui",
+            "approval_id": "approval:sui",
+            "plan_id": "plan:sui",
+            "approval_valid_until_ms": 1788279899999,
+            "selector_state": "SELECTED",
+            "selector_rank": 1,
+            "selected_at": "2026-09-01T16:20:58.794697Z",
+            "scheduler_last_observed_at": "2026-09-01T16:25:31.684645Z",
+            "lifecycle_state": "EXPIRED_BEFORE_EXECUTION",
+            "command_status": "EXPIRED",
+            "command_id": None,
+            "position_status": "NOT_REACHED",
+            "position_id": None,
+            "terminal_reason": "EXPIRED_BEFORE_EXECUTION",
+            "attempt_count": 8,
+        }),
+    )
+    lifecycle = TestClient(app).get("/api/v1/paper/runtime/status").json()["data"]["current_execution"]
+    assert lifecycle["source_run_id"] == "orchestrator:run-sui"
+    assert lifecycle["selector_state"] == "SELECTED" and lifecycle["selector_rank"] == 1
+    assert lifecycle["command_status"] == "EXPIRED"
+    assert lifecycle["terminal_reason"] == "EXPIRED_BEFORE_EXECUTION"
+
+
 def test_no_eligible_approval_is_healthy_no_trade_semantic(baseline):
     paper = FakePaperRepository(baseline)
     app = create_app(repositories=replace(FakeReadRepository().api_repositories(), paper=paper), clock=lambda: NOW,

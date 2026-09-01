@@ -79,11 +79,12 @@ def _candidate(run: OnlinePipelineRun):
     return SimpleNamespace(candidate_id=f"candidate:{run.symbol}", symbol=run.symbol, ranking=ranking, lineage=lineage)
 
 
-def _project(pairs, eligible=None, production_eligibility=None):
+def _project(pairs, eligible=None, production_eligibility=None, lifecycle=None):
     universe = SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS)
     return build_projection(
         tuple(pairs), universe, NOW_MS, eligible or {},
         production_eligibility_by_run=production_eligibility or {},
+        lifecycle_by_run=lifecycle or {},
     )
 
 
@@ -292,17 +293,28 @@ def test_plan_ready_without_materializer_attempt_stays_at_plan_ready():
     assert item["source_reason_code"] == "PAPER_PLAN_READY_LOW_RISK"
 
 
-def test_zero_one_multiple_eligible_ranking_and_winner():
+def test_production_winner_is_only_the_executor_persisted_selection():
     runs = [_run(symbol) for symbol in SYMBOLS]
     pairs = [(run, _result(run)) for run in runs]
     zero = _project(pairs)
     assert zero["current_cycle"]["winner_symbol"] is None
     one = _project(pairs, {runs[0].run_id: _candidate(runs[0])})
-    assert one["current_cycle"]["winner_symbol"] == "BTCUSDT"
+    assert one["current_cycle"]["winner_symbol"] is None
+    persisted = _project(
+        pairs,
+        {runs[0].run_id: _candidate(runs[0])},
+        lifecycle={runs[0].run_id: {
+            "selector_rank": 1,
+            "selected_winner": True,
+            "candidate_id": "candidate:BTCUSDT",
+        }},
+    )
+    assert persisted["current_cycle"]["winner_symbol"] == "BTCUSDT"
+    assert persisted["current_cycle"]["winner_candidate_id"] == "candidate:BTCUSDT"
     high = _candidate(runs[1])
     high.ranking.risk_score = Decimal("90")
     multiple = _project(pairs, {runs[0].run_id: _candidate(runs[0]), runs[1].run_id: high})
-    assert multiple["current_cycle"]["winner_symbol"] == "ETHUSDT"
+    assert multiple["current_cycle"]["winner_symbol"] is None
     assert multiple["current_cycle"]["eligible_competitors"][0]["rank"] == 1
 
 

@@ -90,6 +90,7 @@ class PaperRuntimeObservation:
     kill_switch_ready: bool = False
     canary_scope_valid: bool = False
     live_enabled: bool = False
+    current_execution: dict[str, object] | None = None
 
 
 def _default_control_status() -> PaperControlStatus:
@@ -440,7 +441,8 @@ class PaperReadonlyReportingService:
         value = self._runtime()
         return PaperRuntimeStatus(runtime_enabled=value.runtime_enabled, daemon_enabled=value.daemon_enabled,
             scheduler_enabled=value.scheduler_enabled, dry_run=value.dry_run, mutation_enabled=value.mutation_enabled,
-            worker_running=value.worker_running, operator_runner_running=value.operator_runner_running)
+            worker_running=value.worker_running, operator_runner_running=value.operator_runner_running,
+            current_execution=value.current_execution)
 
     def control_status(self) -> PaperControlStatus:
         try:
