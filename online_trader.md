@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = f299eab0b463281b909988ce444fcc677ef382dc
+STATUS_AS_OF_COMMIT = 09043036b48ecabee2224f19e17fb5ad2d110f37
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-08-31T14:56:44Z
-RECONCILED_BY_TASK = TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_REMEDIATION_01
-FILES_CHANGED = alembic/versions/0019_first_class_15m_domain.py, app/engine_orchestrator, app/engine_paper, app/server_api, app/i18n/catalog.py, tests, docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_REMEDIATION_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-09-01T02:10:02Z
+RECONCILED_BY_TASK = TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01
+FILES_CHANGED = alembic/versions/0020_paper_plan_execution_outcomes.py, app/db/paper_models.py, app/engine_paper, app/operator_control, app/server_api, app/i18n/catalog.py, scripts, tests, docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md, ../traders-client/src, ../traders-client/tests, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 69f697f267e02a7ab9b805203ef24095f1f409ce_ORIGIN_FEATURE_ENGINE_PLATFORM
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_PROJECT_STATE_AHEAD5_BEHIND0_DOCUMENTATION_RECONCILIATION_COMMIT_ADDS_ONE
-STATUS_CONFIDENCE = LOCAL15M_CODE_F299EAB_DESKTOP85266D2_APPLICABLESERVER2163PASS_POSTGRES3PASS_DESKTOP1471PASS3015SUBTEST_MOBILE220PASS_BUT_PRODUCTION0018_WALFALSE_PITRFALSE_COLLECTORRESTART751_MOBILEDIRTY11_SECRETOUTPUT1_LIVEFALSE
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_PROJECT_STATE_AHEAD7_BEHIND0_DOCUMENTATION_RECONCILIATION_COMMIT_ADDS_ONE_DESKTOP_LOCAL_COMMIT_A3F3388_NO_REMOTE
+STATUS_CONFIDENCE = LOCAL_PAPER_OUTCOME_CODE0904303_DESKTOPA3F3388_TARGETED65PASS_APPROVAL1750PASS_POSTGRES4PASS_DESKTOP1482PASS3029SUBTEST_ONE_EXTERNAL_TCL_FAILURE_BUT_PRODUCTION0018_WALFALSE_PITRFALSE_ARCHIVEUNRESOLVED_COMMAND0_POSITION0_LIVEFALSE_SECRETOUTPUT0
 
 # Состояние проекта traders-ml
 
@@ -22,11 +22,11 @@ STATUS_CONFIDENCE = LOCAL15M_CODE_F299EAB_DESKTOP85266D2_APPLICABLESERVER2163PAS
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = READONLY_SOURCE4EBD0A6E9C314E684334E1110559948FFF11F965_AND_OPERATOR_CONTROL_SOURCE16F75C98D1191BE6A49132FC9AD5003BA8157810_BOTH_HEALTHY_RESTART0_ON0018_RUNTIME_DAEMON_SCHEDULER_PAPER_MUTATION_TRUE_WORKERTRUE_CONTROLARMED_GENERATION6_LIVE_OFF
-SOURCE_API_STATUS = LOCAL15M_FIRSTCLASS_REMEDIATION_CODE_COMPLETE_FOR_FUNNEL_COST_PORTFOLIO_GEOMETRY_PROVENANCE_IDENTITY_READONLY_DESKTOP_NOT_DEPLOYED_PRODUCTION_REMAINS_0018_LEGACY15M_NOT_APPLICABLE
-CURRENT_STAGE = BLOCKED_PREDEPLOY_RESTORE_SAFETY_AND_CROSS_REPOSITORY_RELEASE_PREREQUISITES
-CURRENT_BLOCKER = WAL_READY_FALSE_PITR_READY_FALSE_PLUS_MOBILE_FIRSTCLASS_PARITY_IN_PREEXISTING_UNCOMMITTED_DIRTY_STATE
-CURRENT_PREREQUISITE = RESTORE_WAL_PITR_RESOLVE_MOBILE_DIRTY_OWNERSHIP_CLOSE_RISK_QUOTA_TERMINAL_RELEASE_AND_REPEAT_SECRET_CLEAN_ACCEPTANCE
+API_RUNTIME_STATUS = READONLY_SOURCE4EBD0A6E9C314E684334E1110559948FFF11F965_HEALTHY_RESTART1_AND_OPERATOR_CONTROL_SOURCE16F75C98D1191BE6A49132FC9AD5003BA8157810_HEALTHY_RESTART0_ON0018_RUNTIME_DAEMON_SCHEDULER_PAPER_MUTATION_TRUE_WORKERTRUE_CONTROLARMED_GENERATION6_WALFALSE_PITRFALSE_LIVE_OFF
+SOURCE_API_STATUS = LOCAL0020_PLAN_EXECUTION_OUTCOME_CODE0904303_AND_DESKTOPA3F3388_COMPLETE_NOT_DEPLOYED_PRODUCTION_REMAINS_0018_WITHOUT_DURABLE_PLAN_OUTCOMES
+CURRENT_STAGE = CODE_FIXED_DEPLOYMENT_BLOCKED_RESTORE_WAL_PITR_THEN_MIGRATE_0019_0020_AND_DEPLOY_ESTABLISHED_RELEASE
+CURRENT_BLOCKER = WAL_READY_FALSE_PITR_READY_FALSE_ARCHIVE_UNRESOLVED_FAILURE_YES_PRODUCTION_MIGRATION_AND_DEPLOYMENT_FORBIDDEN
+CURRENT_PREREQUISITE = RESTORE_CANONICAL_WAL_ACK_AND_PITR_THEN_REPEAT_SAFETY_INSPECTION_MIGRATE_DEPLOY_VERIFY_RUNNING_COMMITS_AND_OBSERVE_NEXT_NATURAL_PLAN
 SECONDARY_BLOCKER = COLLECTOR_RUNNING_RESTART_STORM751_AND_RISK_QUOTA_POST_PLAN_TERMINAL_RELEASE_NOT_CLOSED
 BACKGROUND_TIMED_GATE = BLOCKED_COLLECTOR_RESTART751_RUNTIME_RUNNING_NO_DOCKER_HEALTH_GATE72H_NOT_ACCEPTED_CONTROL_GENERATION6_LIVE_OFF
 BACKGROUND_SCALPING_BLOCKER = COLLECTOR_RESTART_STORM_AND_SECOND_MIXED_RUNTIME_BOUNDARY_PREVENT_ACTIVE_72H_SOAK_PROFITABILITY_SAMPLE_REMAINS_INSUFFICIENT
@@ -76,6 +76,32 @@ SAFETY = LIVE_DISABLED_BINANCE_ORDER_API_CALLS_BY_TASK0_SECRET0_SECURITY0
 SECONDARY = COLLECTOR_RUNNING_RESTART455_NO_DOCKER_HEALTH_NOT_DIRECT_PAPER_EXECUTION_PREREQUISITE
 EVIDENCE = docs/audits/TRADERS_PAPER_EXECUTION_ACTIVATION_AND_RUNTIME_ENABLEMENT_01_FINAL.md_AND_../evidence_inbox/TRADERS_PAPER_EXECUTION_ACTIVATION_AND_RUNTIME_ENABLEMENT_01_FINAL.md_SHA256_15F69B18D9B96575F217BCCE3F051DA86FC8A91343B4A5062E7B9C3C6A362E11
 NEXT_ACTION = WAIT_FOR_NATURAL_ELIGIBLE_APPROVAL_THEN_CAPTURE_APPROVAL_CANDIDATE_SOURCE_RUN_PROFILE_COMMAND_POSITION_SYMBOL_BOUNDARY_WITHOUT_TUNING
+```
+
+## PAPER plan-to-execution diagnostic and fix 01
+
+```text
+TASK = TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01
+RESULT = CODE_FIXED_DEPLOYMENT_BLOCKED
+PROJECT_STATE_COMMIT = 09043036b48ecabee2224f19e17fb5ad2d110f37
+DESKTOP_COMMIT = a3f33886601534fd39b82e0e2b4108e7238103b3
+THREE_HISTORICAL_PLANS = SOLUSDT_AT_2026_08_31T12_40Z_13_05Z_13_15Z_EXACT_RUN_PLAN_APPROVAL_IDENTITIES_PROVEN
+AGGREGATE_SEMANTICS = PERSISTED_PROFILE_FILTERED_SYMBOL_RUN_PER_5M_BOUNDARY_IN_ROLLING_WINDOW_PLAN_OBJECT_CREATED_NOT_CURRENT_EXECUTION_ELIGIBILITY
+SELECTOR_REPLAY = ALL3_ELIGIBLE_APPROVAL_SINGLE_COMPETITOR_WINNER_RANK1_DURING_VALIDITY
+APPROVAL_VALIDITY = ALL3_NEXT_5M_TRIGGER_BOUNDARY_MINUS1MS
+ROOT_CAUSE = WAL_ACK_HEARTBEAT_STALE_SINCE_2026_08_31T10_41_25Z_GATE_FALSE_BEFORE_ALL3_SO_COMMAND_INGESTION_CORRECTLY_DENIED
+OBSERVABILITY_DEFECT = POLICY_DENIAL_EXPIRY_NOT_DURABLE_CANARY_REMAINED_NO_ELIGIBLE_APPROVAL_AND_FUNNEL_DETAIL_DEDUPED_BY_SYMBOL
+FIX = SCHEMA0020_DURABLE_SELECTOR_POLICY_COMMAND_FAILURE_EXPIRY_OUTCOMES_PLUS_SERVER_HISTORICAL_PLAN_IDENTITY_DRILLDOWN_AND_DESKTOP_VISIBILITY
+NO_REPLAY = EXPIRED_APPROVALS_REMAIN_TERMINAL_AND_ARE_NOT_TRADED_RETROACTIVELY
+TESTS = TARGETED65PASS_APPROVAL1750PASS_RUNNER51PASS5SKIP_DESKTOP1482PASS2SKIP3029SUBTEST_WITH_ONE_EXTERNAL_TCL_FAILURE
+POSTGRES_E2E = HEAD0020_4PASS_COMMAND_POSITION_READONLY_AND_POLICY_BLOCK_EXPIRY_IDEMPOTENT
+PRODUCTION = SCHEMA0018_SOURCE_UNCHANGED_COMMAND0_POSITION0_CLOSED0_WALFALSE_PITRFALSE_ARCHIVEUNRESOLVED
+DEPLOYMENT = NO_BLOCKED_BY_EXISTING_PRODUCTION_SAFETY_GATE
+LIVE = DISABLED
+BINANCE_ORDER_API_CALLS_BY_TASK = 0
+SECRET_OUTPUT = 0
+EVIDENCE = docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md
+NEXT_ACTION = RESTORE_WAL_PITR_THEN_MIGRATE0019_0020_DEPLOY_ESTABLISHED_PROCESS_VERIFY_RUNNING_COMMITS_AND_OBSERVE_NEXT_NATURAL_PLAN_OUTCOME
 ```
 
 ## PAPER production deployment acceptance 01 terminal rollback
@@ -5871,16 +5897,16 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈99% producer deployment / PAPER acceptance rolled back | Schema 0018 is deployed and both production orchestrators remain on tested executable source `d7d072d...` with valid versioned market-data snapshots. Operator Control was rolled back to `9fe3a4f...` after recurring Docker health timeouts, so the complete PAPER fix is no longer deployed across every required component. At the rollback cutoff 959 fresh results existed, with zero PAPER plans or fresh final approvals |
+| Online analytics/paper pipeline | ≈99% producer deployment / PAPER acceptance blocked | Schema 0018 is deployed; production produced three valid historical 5m PAPER approvals. Operator Control source `16f75c9...` is healthy, but WAL/PITR readiness denied all three command mutations. Local outcome persistence requires schema 0020 and is not deployed |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate PASS on schema 0018; existing lineage preserved | Exactly one canonical ACK owner is healthy with matching PID/lock/state and fresh heartbeat. Backlog/pending/unresolved are `0/0/0`; canonical and GET-only readiness are `wal_ready=true`, `pitr_ready=true`; archive coverage is 1525/1525 with no physical gap. Existing base `base-20260811T075419Z-f179b4e1` and recovery window were preserved |
-| Readonly Server API | Healthy dual-profile/profile-aware image on production 0018 | Image `sha256:d87e380e...`, source `4ebd0a6...`, is healthy with restart 0, 28 GET and zero write routes. Both 5m and 15m funnel endpoints are recovered from the detached ORM identity failure and pass current-client parsing while preserving the authoritative exact10 Market, Analysis and Scenario contexts |
-| Desktop Readonly client | Profile-aware core screens accepted in production RU/EN | Scalping Market renders the server exact10 and 5m context; Analysis uses the same exact10 selector and preserves selected/rendered identity through rapid ETH/BTC/SOL/ADA, F5 and auto-refresh; Scenarios renders ten server-authored rows/reasons. Switching back to 15m restores the original semantics with no cross-profile contamination |
+| Production backup/PITR | Current gate FAIL on schema 0018; preserved lineage is not current readiness | Fresh readonly projection reports `wal_ready=false`, `pitr_ready=false`, and `current_mutation_ready=false`; archive inspection reports unresolved failure with failed count 716. Existing lineage has no physical gap, but the stale ACK heartbeat makes production migration/execution forbidden |
+| Readonly Server API | Healthy deployed schema-0018 image; local 0020 observability not deployed | Image `sha256:d87e380e...`, source `4ebd0a6...`, is healthy with restart 1, 28 GET and zero write routes. Local source `0904303...` adds exact historical PAPER-plan drilldown but production cannot expose it before migration/deployment |
+| Desktop Readonly client | Local plan-outcome visibility complete / not deployed | Commit `a3f3388...` preserves three same-symbol run/plan identities and shows candidate, approval, plan, selector, command, position and terminal outcome. Focused tests pass; production remains on its earlier client artifact |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
-| Readonly PAPER reporting API | Healthy on schema 0018 / acceptance not closed | Source `d7d072d...` remains healthy and read-only. Shared account remains 100 USDT and command/order/fill/position rows remain zero; UI acceptance has no OPEN position to project |
-| PAPER Operator Control API | Rolled back / health-probe latency unresolved | The service now runs rollback image `sha256:a4664ff5...`, source `9fe3a4f...`, with restart 0. Semantic status remains ARMED generation 6 and audit PASS, but intermittent ten-second Docker health-probe timeouts also occur on the rollback artifact |
-| First-canary correlation/readiness | Durable state preserved / execution unavailable pending remediation | Exact UUID and original START lineage remain intact; limits remain one command and one open position with 0/0 used. No reset, expansion, historical replay, or LIVE activation occurred |
+| Readonly PAPER reporting API | Healthy on schema 0018 / acceptance not closed | Source `4ebd0a6...` remains healthy and read-only. Shared account remains 100 USDT and command/order/fill/position rows remain zero; deployed UI cannot yet show the local schema-0020 terminal outcome projection |
+| PAPER Operator Control API | Healthy deployed source / independent readiness denied | Source `16f75c9...` is healthy with restart 0, runtime/daemon/scheduler/mutation true, ARMED generation 6 and LIVE false. Independent readiness denies command ingestion because WAL/PITR are false |
+| First-canary correlation/readiness | Durable state preserved / waiting with 0/0 | Exact UUID and original START lineage remain intact; limits remain one command and one open position with 0/0 used. Three historical valid approvals were safety-blocked and expired; no reset, replay, or LIVE activation occurred |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -5890,12 +5916,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = DIAGNOSE_OPERATOR_CONTROL_HEALTH_PROBE_LATENCY_ACROSS_BOTH_ARTIFACTS_THEN_REDEPLOY_TESTED_CONTROL_FIX_AND_RESTART_NATURAL_ACCEPTANCE
+RECOMMENDED_NEXT_TASK = RESTORE_CANONICAL_WAL_ACK_AND_PITR_THEN_MIGRATE0019_0020_DEPLOY_SERVER_CONTROL_DESKTOP_WITH_ESTABLISHED_PROCESS_AND_OBSERVE_NEXT_NATURAL_PLAN
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
-WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = COMPLETED_BY_TRADERS_ML_WAL_ARCHIVE_AND_CURRENT_MUTATION_READINESS_REMEDIATION_01
-CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_OWNER1_PID27564_HEARTBEAT_PASS_UNRESOLVED0_BACKLOG0_PENDING0
-CURRENT_WAL_PITR_GATE = PASS_FRESH_PROJECTION_WAL_TRUE_PITR_TRUE_REQUIRED_COVERAGE1525_OF1525_PHYSICAL_GAP_FALSE
+WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = REOPENED_CURRENT_ACK_HEARTBEAT_STALE_AND_ARCHIVE_UNRESOLVED_FAILURE_YES
+CURRENT_WAL_ACK_ARCHIVE_RECOVERY = FAIL_FRESH_PROJECTION_WALFALSE_ARCHIVE_FAILED716
+CURRENT_WAL_PITR_GATE = FAIL_WALFALSE_PITRFALSE_MUTATIONREADYFALSE_PHYSICAL_GAPFALSE_PRESERVED_LINEAGE_NOT_SUFFICIENT
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -5955,12 +5981,14 @@ closed-trade accounting/reporting projection now consumes the persisted
 revision 0012 immutable account/session baseline, and isolated reconciliation
 passes without a second ledger. Production preparation and the existing
 canary continuation remain deployed. The natural final-approval producer and
-Trading Funnel now run current-tree images containing the bounded identity and
-deepest-reason remediation. Three complete postdeploy cycles produced zero
-natural PAPER plans and zero quantity decisions, so the long-identity production
-quantity path remains unobserved rather than failed. No natural approval,
-command, position or closed trade has occurred. The 72-hour soak remains open
-and current Market Data is 60/60. The schema-0018-compatible governed recovery
+Trading Funnel produced three historical `trade-5m-v1` SOLUSDT PAPER plans and
+final approvals at 12:40Z, 13:05Z and 13:15Z on 2026-08-31. All three were
+eligible selector winners during their canonical validity windows, but the
+independent WAL/PITR readiness gate correctly prevented command ingestion.
+Commands, positions and closed trades remain zero. Local revision 0020 now
+persists selector, policy, command/failure and expiry outcomes and the Desktop
+shows every run/plan identity; neither change is deployed. The 72-hour soak
+remains open. The schema-0018-compatible governed recovery
 proved the old PID/lock/heartbeat stale, started one valid checksum-verifying
 ACK owner, and drained 144 contiguous objects (143 at complete pre-repair
 inventory plus one legitimate arrival). That recovery-time projection reported
@@ -5988,11 +6016,13 @@ accepted boundaries/5870 records, and three post-start natural exact10
 boundaries with zero missing, duplicate, error or future leakage. The 24h count
 gate is reached; the 72h and profitability gates remain future work.
 
-The canonical WAL ACK owner is healthy and singleton at PID 27564 with matching
-lock/state/identity and fresh heartbeat. Export backlog and pending archive
-statuses are zero. Canonical read-only readiness reports `wal_ready=true`,
-`pitr_ready=true`, valid preserved lineage `base-20260811T075419Z-f179b4e1`
-and no physical gap.
+The earlier canonical WAL ACK owner recovery is historical evidence only. The
+fresh post-task projection reports `wal_ready=false`, `pitr_ready=false`, and
+`current_mutation_ready=false`; archive inspection reports an unresolved
+failure and failed count 716. The preserved lineage still has no physical gap,
+but production migration, deployment and PAPER command mutation remain
+forbidden until the heartbeat/archive readiness is restored. LIVE remains
+disabled.
 
 ## Правила актуализации
 
