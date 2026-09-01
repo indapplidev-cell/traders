@@ -16,7 +16,9 @@ from app.engine_paper.production_preparation_backend import (
     PRODUCTION_PROTECTED_SOURCE,
     PRODUCTION_TARGET_ID,
     RUNTIME_DATABASE_KEY,
+    READONLY_EXPECTED_GET_ROUTES,
     PaperPreparationAdapterError,
+    PaperPreparationDeploymentAdapter,
     PaperProductionPreparationTargetBinding,
     PaperProductionIdentityConfigurationAdapter,
     ProtectedPaperRuntimeBindingAdapter,
@@ -159,6 +161,31 @@ def test_cli_has_no_default_or_secret_arguments_and_no_trading_modes():
     help_text = parser.format_help().lower()
     forbidden = ("--password", "--secret", "--token", "database-url", " arm", " start", " trade", " live")
     assert not any(item in help_text for item in forbidden)
+
+
+def test_readonly_acceptance_includes_funnel_export_and_retries_timeout(monkeypatch):
+    assert "/api/v1/trading/funnel/export" in READONLY_EXPECTED_GET_ROUTES
+    calls = 0
+
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *_args): return False
+        def read(self, _limit): return b'{"ok":true}'
+
+    def urlopen(_request, *, timeout):
+        nonlocal calls
+        calls += 1
+        assert timeout == 15
+        if calls == 1:
+            raise TimeoutError
+        return Response()
+
+    monkeypatch.setattr(
+        "app.engine_paper.production_preparation_backend.urllib.request.urlopen", urlopen,
+    )
+    assert PaperPreparationDeploymentAdapter._http_json("/api/v1/health") == (200, {"ok": True})
+    assert calls == 2
 
 
 def test_target_binding_is_safe_and_never_returns_protected_value(tmp_path):

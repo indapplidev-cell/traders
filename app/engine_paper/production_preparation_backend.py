@@ -85,6 +85,7 @@ READONLY_EXPECTED_GET_ROUTES: Final = frozenset({
     "/api/v1/incidents", "/api/v1/incidents/{incident_id}",
     "/api/v1/i18n/catalog/{locale}", "/api/v1/i18n/manifest",
     "/api/v1/trading-universe", "/api/v1/trading/funnel",
+    "/api/v1/trading/funnel/export",
     "/api/v1/paper/readiness", "/api/v1/paper/account",
     "/api/v1/paper/positions", "/api/v1/paper/positions/{position_id}",
     "/api/v1/paper/trades", "/api/v1/paper/trades/{position_id}/report",
@@ -491,15 +492,18 @@ class PaperPreparationDeploymentAdapter:
     @staticmethod
     def _http_json(path: str) -> tuple[int, object | None]:
         request = urllib.request.Request(f"http://127.0.0.1:8765{path}", method="GET")
-        try:
-            with urllib.request.urlopen(request, timeout=8) as response:
-                raw = response.read(2_000_000)
-                return int(response.status), json.loads(raw) if raw else None
-        except urllib.error.HTTPError as error:
-            error.read(2_000_000)
-            return int(error.code), None
-        except Exception:
-            return 0, None
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    raw = response.read(2_000_000)
+                    return int(response.status), json.loads(raw) if raw else None
+            except urllib.error.HTTPError as error:
+                error.read(2_000_000)
+                return int(error.code), None
+            except Exception:
+                if attempt:
+                    return 0, None
+        return 0, None
 
     @staticmethod
     def _first_identifier(payload: object, key: str) -> str | None:

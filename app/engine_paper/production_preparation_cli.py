@@ -110,8 +110,15 @@ def _execute(composition, actions: tuple[PaperPreparationAction, ...], *, orches
              balance: str | None):
     budget = PaperProductionPreparationMutationBudget()
     if not orchestrate:
+        current_revision = composition.backend.current_revision()
+        if current_revision not in SUPPORTED_PREPARATION_REVISIONS:
+            raise PaperPreparationAdapterError("TARGET_MISMATCH")
+        current_target = PaperProductionTargetGuard(
+            database_target_id=composition.target.database_target_id,
+            expected_start_alembic=current_revision,
+        )
         authorization = PaperProductionExecutionAuthorization(ACKNOWLEDGEMENT, actions)
-        return composition.executor.execute(composition.identity, composition.target, budget, authorization)
+        return composition.executor.execute(composition.identity, current_target, budget, authorization)
     if balance != "100.00":
         raise PaperPreparationAdapterError("EXPLICIT_100_USDT_BASELINE_REQUIRED")
     current_revision = composition.backend.current_revision()

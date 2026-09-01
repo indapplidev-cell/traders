@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from app.engine_paper.production_preparation import (
@@ -23,6 +25,7 @@ from app.engine_paper.production_preparation import (
     normalize_database_grants,
     required_database_privileges_present,
 )
+from app.engine_paper.production_preparation_cli import _execute
 
 
 def _rows(grants):
@@ -80,6 +83,23 @@ def test_production_upgrade_contract_accepts_deployed_0018_through_0020() -> Non
     assert "0018_promote_5m_production_search" in SUPPORTED_PREPARATION_REVISIONS
     assert "0019_first_class_15m_domain" in SUPPORTED_PREPARATION_REVISIONS
     assert EXPECTED_FINAL_ALEMBIC == "0020_paper_plan_execution_outcomes"
+
+
+def test_non_orchestrated_resume_targets_the_current_supported_revision() -> None:
+    captured = []
+    backend = SimpleNamespace(current_revision=lambda: EXPECTED_FINAL_ALEMBIC)
+    executor = SimpleNamespace(execute=lambda identity, target, budget, authorization:
+                               captured.append(target) or "PASS")
+    composition = SimpleNamespace(
+        backend=backend, executor=executor, identity=object(),
+        target=PaperProductionTargetGuard("production-primary"),
+    )
+    result = _execute(
+        composition, (PaperPreparationAction.DEPLOY_READONLY_API_NARROW,),
+        orchestrate=False, balance=None,
+    )
+    assert result == "PASS"
+    assert captured[0].expected_start_alembic == EXPECTED_FINAL_ALEMBIC
 
 
 class ResumeBackend:
