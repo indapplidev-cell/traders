@@ -6,6 +6,7 @@ The module has no command, order, fill, position, or private API dependency.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
 from hashlib import sha256
 from math import isfinite
 from statistics import median
@@ -13,6 +14,12 @@ from typing import Iterable
 
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
 
+
+GEOMETRY_CALCULATION_VERSION = "scalping-cost-aware-geometry-v2"
+COST_MODEL_VERSION = "scalping-round-trip-net-pnl-v2"
+RR_POLICY_VERSION = "scalping-required-net-rr-v2"
+TARGET_POLICY_VERSION = "scalping-causal-cost-aware-target-v2"
+PAPER_PRICE_QUANTUM = Decimal("0.00000001")
 
 TARGET_PRIORITY = {
     "LOCAL_5M_LIQUIDITY": 0,
@@ -210,6 +217,9 @@ class ShadowGeometryDiagnostic:
     economically_actionable_target_exists: bool = False
     minimum_positive_edge_bps: float | None = None
     minimum_actionable_target_bps: float | None = None
+    minimum_economically_valid_target_bps: float | None = None
+    minimum_economically_valid_target_price: float | None = None
+    geometry_feasibility_result: str | None = None
     target_considerations: list[dict[str, object]] = field(default_factory=list)
     target_candidates_considered: int = 0
     first_causal_target: dict[str, object] | None = None
@@ -258,6 +268,12 @@ class ShadowGeometryDiagnostic:
     valid_plan: bool = False
     final_shadow_approval: bool = False
     execution_eligible: bool = False
+    required_rr: float | None = None
+    geometry_calculation_version: str = GEOMETRY_CALCULATION_VERSION
+    cost_model_version: str = COST_MODEL_VERSION
+    rr_policy_version: str = RR_POLICY_VERSION
+    target_policy_version: str = TARGET_POLICY_VERSION
+    price_normalization_quantum: str = str(PAPER_PRICE_QUANTUM)
 
     def reject(self, stage: str, reason: str) -> "ShadowGeometryDiagnostic":
         self.rejection_stage = stage
@@ -271,6 +287,69 @@ class ShadowGeometryDiagnostic:
 
 def _bps(distance: float, entry: float) -> float:
     return round(abs(distance) / entry * 10_000.0, 8)
+
+
+def _normalized_price(
+    price: float, *, direction: str, role: str
+) -> float:
+    """Normalize conservatively to the PAPER execution storage quantum.
+
+    Stop rounding may only move away from entry; target rounding may only move
+    toward entry.  Neither operation can manufacture a better RR.
+    """
+
+    value = Decimal(str(price))
+    if role == "STOP":
+        rounding = ROUND_DOWN if direction == "BULLISH" else ROUND_UP
+    elif role == "TARGET":
+        rounding = ROUND_DOWN if direction == "BULLISH" else ROUND_UP
+    else:
+        raise ValueError("unsupported price normalization role")
+    return float(value.quantize(PAPER_PRICE_QUANTUM, rounding=rounding))
+
+
+def compute_net_economics(
+    *, gross_reward_bps: float, gross_risk_bps: float, total_cost_bps: float
+) -> tuple[float, float, float | None]:
+    """Authoritative round-trip net-PnL semantics used by construction/gate."""
+
+    values = (gross_reward_bps, gross_risk_bps, total_cost_bps)
+    if any(not isfinite(float(value)) or float(value) < 0 for value in values):
+        raise ValueError("invalid cost-model input")
+    if gross_risk_bps <= 0:
+        raise ValueError("gross risk must be positive")
+    net_reward = round(gross_reward_bps - total_cost_bps, 8)
+    net_risk = round(gross_risk_bps + total_cost_bps, 8)
+    net_rr = None if net_reward <= 0 else round(net_reward / net_risk, 8)
+    return net_reward, net_risk, net_rr
+
+
+def minimum_reward_bps_for_net_rr(
+    *, gross_risk_bps: float, total_cost_bps: float, required_net_rr: float
+) -> float:
+    """Return the gross target distance required by the net-PnL equation."""
+
+    if (
+        not isfinite(float(required_net_rr))
+        or required_net_rr <= 0
+        or not isfinite(float(gross_risk_bps))
+        or gross_risk_bps <= 0
+        or not isfinite(float(total_cost_bps))
+        or total_cost_bps < 0
+    ):
+        raise ValueError("invalid minimum-target input")
+    return round(
+        total_cost_bps + required_net_rr * (gross_risk_bps + total_cost_bps),
+        8,
+    )
+
+
+def minimum_target_price_for_net_rr(
+    *, entry: float, direction: str, minimum_reward_bps: float
+) -> float:
+    distance = entry * minimum_reward_bps / 10_000.0
+    raw = entry + distance if direction == "BULLISH" else entry - distance
+    return _normalized_price(raw, direction=direction, role="TARGET")
 
 
 def _causal_targets(candidate: ShadowGeometryCandidate) -> list[CausalTarget]:
@@ -389,6 +468,7 @@ def evaluate_scalping_shadow(
         economic_input_source=costs.economic_input_source,
         reference_quantity=costs.reference_quantity,
         reference_notional=costs.reference_notional,
+        required_rr=config.production_rr_floor,
     )
     invalidation = candidate.causal_invalidation
     if invalidation is None:
@@ -403,8 +483,12 @@ def evaluate_scalping_shadow(
     result.atr_buffer_bps = _bps(buffer, candidate.entry)
     stop = invalidation - buffer if candidate.direction == "BULLISH" else invalidation + buffer
     result.raw_stop = stop
-    result.final_stop = stop  # never clipped toward entry to satisfy an envelope
-    result.stop_distance_bps = _bps(stop - candidate.entry, candidate.entry)
+    result.final_stop = _normalized_price(
+        stop, direction=candidate.direction, role="STOP"
+    )  # never clipped toward entry to satisfy an envelope
+    result.stop_distance_bps = _bps(
+        result.final_stop - candidate.entry, candidate.entry
+    )
     result.gross_risk_bps = result.stop_distance_bps
     result.stop_envelope_pass = result.stop_distance_bps <= config.stop_envelope_bps
     if not result.stop_envelope_pass:
@@ -464,16 +548,42 @@ def evaluate_scalping_shadow(
     result.minimum_actionable_target_bps = round(
         total_cost + config.minimum_positive_edge_bps, 8
     )
-    result.effective_risk_bps = round(result.gross_risk_bps + total_cost, 8)
+    try:
+        result.minimum_economically_valid_target_bps = (
+            minimum_reward_bps_for_net_rr(
+                gross_risk_bps=result.gross_risk_bps,
+                total_cost_bps=total_cost,
+                required_net_rr=config.production_rr_floor,
+            )
+        )
+        result.minimum_economically_valid_target_price = (
+            minimum_target_price_for_net_rr(
+                entry=candidate.entry,
+                direction=candidate.direction,
+                minimum_reward_bps=result.minimum_economically_valid_target_bps,
+            )
+        )
+    except ValueError:
+        return result.reject("COST_MODEL", R.COST_MODEL_INVALID.value)
 
-    selected: tuple[CausalTarget, float, float, float, float] | None = None
+    selected: tuple[CausalTarget, float, float, float, float, float] | None = None
     for index, target in enumerate(targets):
-        reward = _bps(target.price - candidate.entry, candidate.entry)
-        edge = round(reward - total_cost, 8)
+        normalized_target = _normalized_price(
+            target.price, direction=candidate.direction, role="TARGET"
+        )
+        reward = _bps(normalized_target - candidate.entry, candidate.entry)
         gross_rr = round(reward / result.gross_risk_bps, 8)
-        net_rr = None if edge <= 0 else round(edge / result.effective_risk_bps, 8)
+        try:
+            edge, effective_risk, net_rr = compute_net_economics(
+                gross_reward_bps=reward,
+                gross_risk_bps=result.gross_risk_bps,
+                total_cost_bps=total_cost,
+            )
+        except ValueError:
+            return result.reject("COST_MODEL", R.COST_MODEL_INVALID.value)
+        result.effective_risk_bps = effective_risk
         result.target_source_type = target.source_type
-        result.causal_target = target.price
+        result.causal_target = normalized_target
         result.target_distance_bps = reward
         result.gross_reward_bps = reward
         result.gross_rr = gross_rr
@@ -502,10 +612,17 @@ def evaluate_scalping_shadow(
             if config.minimum_positive_edge_bps == 0
             else edge >= config.minimum_positive_edge_bps
         )
-        actionable = reward > total_cost and edge_pass
+        actionable = (
+            reward > total_cost
+            and edge_pass
+            and net_rr is not None
+            and net_rr >= config.production_rr_floor
+        )
         reason = None
         if reward <= total_cost or not edge_pass:
             reason = "BELOW_ECONOMIC_FLOOR"
+        elif net_rr is None or net_rr < config.production_rr_floor:
+            reason = "BELOW_REQUIRED_NET_RR"
         trace = trace_by_identity[(target.source_type, target.resolved_timeframe, target.price)]
         trace.update({
             "transaction_cost_floor_bps": result.minimum_actionable_target_bps,
@@ -523,20 +640,24 @@ def evaluate_scalping_shadow(
             trace["next_target_considered"] = targets[index + 1].source_type
         if actionable:
             result.first_actionable_target = dict(trace)
-            selected = (target, reward, edge, gross_rr, net_rr)
+            selected = (
+                target, normalized_target, reward, edge, gross_rr, net_rr
+            )
             break
 
     if selected is None:
         result.next_target_considered = None
+        result.geometry_feasibility_result = "INFEASIBLE"
         return result.reject(
-            "TARGET_ACTIONABILITY",
-            R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE.value,
+            "ECONOMIC_GEOMETRY",
+            R.ECONOMIC_GEOMETRY_NOT_FEASIBLE.value,
         )
 
-    target, reward, edge, gross_rr, net_rr = selected
+    target, normalized_target, reward, edge, gross_rr, net_rr = selected
     result.economically_actionable_target_exists = True
+    result.geometry_feasibility_result = "FEASIBLE"
     result.target_source_type = target.source_type
-    result.causal_target = target.price
+    result.causal_target = normalized_target
     result.target_distance_bps = reward
     result.gross_reward_bps = reward
     result.gross_rr = gross_rr
@@ -553,12 +674,9 @@ def evaluate_scalping_shadow(
     result.rr_cohorts_net = {
         f"{rr:.2f}": result.net_rr >= rr for rr in config.rr_shadow_cohorts
     }
-    if result.gross_rr < config.production_rr_floor or result.net_rr < config.production_rr_floor:
-        rr_reason = (
-            "BELOW_GROSS_RR_POLICY"
-            if result.gross_rr < config.production_rr_floor
-            else "BELOW_NET_RR_POLICY"
-        )
+    # Residual gate recomputes exactly the same economics after normalization.
+    if result.net_rr < config.production_rr_floor:
+        rr_reason = "POST_NORMALIZATION_NET_RR_BELOW_POLICY"
         if result.first_actionable_target is not None:
             result.first_actionable_target["reject_reason"] = rr_reason
             result.first_actionable_target["rejection_reason"] = rr_reason
@@ -568,9 +686,7 @@ def evaluate_scalping_shadow(
                 trace["rejection_reason"] = rr_reason
         return result.reject(
             "RR_GATE",
-            (R.PAPER_REJECT_LOW_GROSS_RR.value
-             if result.gross_rr < config.production_rr_floor
-             else R.PAPER_REJECT_LOW_NET_RR.value),
+            R.PRECISION_NORMALIZATION_INVALIDATED_RR.value,
         )
     result.valid_plan = True
     result.final_shadow_approval = True

@@ -379,7 +379,7 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         cost_safety_margin_bps=profile.cost_safety_margin_bps,
         stop_policy_id="LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER",
         target_policy_id=(
-            "CAUSAL_HIERARCHY_ECONOMIC_ACTIONABILITY_V2"
+            "CAUSAL_HIERARCHY_COST_AWARE_NET_RR_V3"
             if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
             else "OPPOSITE_CAUSAL_LEVEL"
         ),

@@ -139,6 +139,12 @@ class _DeterministicCostSource:
         )
 
 
+class _EconomicallyInfeasibleCostSource(_DeterministicCostSource):
+    def load(self, symbol: str, entry: float, *, safety_margin_bps: float):
+        value = super().load(symbol, entry, safety_margin_bps=safety_margin_bps)
+        return replace(value, spread_bps=200.0)
+
+
 class _ApprovalReaderAt(SqlAlchemyPaperProductionApprovalReader):
     def __init__(self, at_ms: int) -> None:
         self.at_ms = at_ms
@@ -250,7 +256,7 @@ def _seed_foundation(factory) -> None:
     ))
 
 
-def _pipeline(factory):
+def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_READY"):
     config = OrchestratorConfig(
         symbols=(SYMBOL,),
         trade_profile_id="trade-5m-v1",
@@ -263,7 +269,7 @@ def _pipeline(factory):
         CandleRepository(factory),
         paper_runner=ScalpingPaperRunner(
             runtime_parameters=config.runtime_parameters,
-            cost_source=_DeterministicCostSource(),
+            cost_source=cost_source or _DeterministicCostSource(),
             clock_ms=lambda: BOUNDARY + 1_000,
         ),
     )
@@ -273,11 +279,70 @@ def _pipeline(factory):
     assert result.setup_status == "SETUP_CANDIDATE"
     assert result.strategy_status == "ALLOW_RESEARCH_TRADE_PLAN"
     assert result.risk_status == "RISK_PRE_APPROVED_RESEARCH"
-    assert result.paper_status == "PAPER_PLAN_READY"
+    assert result.paper_status == expected_paper_status
     assert result.analysis_payload["source_market_data_snapshot_id"] == (
         result.market_data_payload["5m"]["snapshot_id"]
     )
     return result
+
+
+def test_infeasible_scalping_geometry_is_durable_and_readonly_reconstructable(
+    natural_e2e_sessions,
+):
+    factory = natural_e2e_sessions
+    _seed_foundation(factory)
+    result = _pipeline(
+        factory,
+        cost_source=_EconomicallyInfeasibleCostSource(),
+        expected_paper_status="REJECT",
+    )
+    diagnostic = result.paper_payload["paper_context"][
+        "scalping_geometry_diagnostics"
+    ]
+    assert diagnostic["rejection_reason"] == "ECONOMIC_GEOMETRY_NOT_FEASIBLE"
+    assert diagnostic["geometry_feasibility_result"] == "INFEASIBLE"
+    assert diagnostic["minimum_economically_valid_target_bps"] > 0
+    assert diagnostic["target_considerations"]
+    assert diagnostic["cost_model_version"] == "scalping-round-trip-net-pnl-v2"
+    assert diagnostic["rr_policy_version"] == "scalping-required-net-rr-v2"
+
+    run_id = _persist_natural_approval(factory, result)
+    with factory() as session:
+        run = session.scalar(select(OnlinePipelineRun).where(
+            OnlinePipelineRun.run_id == run_id
+        ))
+        row = session.scalar(select(OnlinePipelineResultRow).where(
+            OnlinePipelineResultRow.run_id == run_id
+        ))
+        command_count = session.scalar(
+            select(func.count()).select_from(PaperExecutionCommandRecord)
+        )
+        position_count = session.scalar(
+            select(func.count()).select_from(PaperPositionRecord)
+        )
+    assert run is not None and row is not None
+    persisted = row.paper_payload_json["paper_context"][
+        "scalping_geometry_diagnostics"
+    ]
+    assert persisted["rejection_reason"] == "ECONOMIC_GEOMETRY_NOT_FEASIBLE"
+    assert persisted["target_considerations"] == diagnostic["target_considerations"]
+    assert command_count == position_count == 0
+
+    projection = build_projection(
+        ((run, row),), runtime_universe("trading-universe-v2"), EVALUATION_MS,
+        trade_profile_id="trade-5m-v1",
+    )
+    item = next(
+        value for value in projection["current_cycle"]["items"]
+        if value["symbol"] == SYMBOL
+    )
+    assert item["downstream_stage_trace"]["GEOMETRY_VALID"] == "PASS"
+    assert item["downstream_stage_trace"]["TARGET_VALID"] == "REJECTED"
+    assert item["downstream_stage_trace"]["RR_PASS"] == "NOT_REACHED"
+    detail = item["downstream_detail"]
+    assert detail["geometry_feasibility_result"] == "INFEASIBLE"
+    assert detail["minimum_economically_valid_target_bps"] > 0
+    assert detail["cost_model_version"] == "scalping-round-trip-net-pnl-v2"
 
 
 def _persist_natural_approval(factory, result):

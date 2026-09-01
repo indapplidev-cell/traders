@@ -379,7 +379,9 @@ def _downstream_trace(
         else:
             trace["GEOMETRY_VALID"] = "UNAVAILABLE"
     if trace["GEOMETRY_VALID"] == "PASS":
-        if (
+        if diagnostic.get("rejection_stage") == "ECONOMIC_GEOMETRY":
+            trace["TARGET_VALID"] = "REJECTED"
+        elif (
             diagnostic.get("causal_target_exists") is True
             or diagnostic.get("target_pass") is True
         ):
@@ -514,6 +516,18 @@ def _downstream_trace(
         "target_source_timeframe": target_provenance.get("source_timeframe"),
         "target_source_window": target_provenance.get("source_candle_or_window"),
         "target_rule_version": target_provenance.get("derived_rule_version"),
+        "minimum_economically_valid_target_bps": diagnostic.get(
+            "minimum_economically_valid_target_bps"
+        ),
+        "minimum_economically_valid_target_price": diagnostic.get(
+            "minimum_economically_valid_target_price"
+        ),
+        "geometry_feasibility_result": diagnostic.get(
+            "geometry_feasibility_result"
+        ),
+        "target_candidates_considered": diagnostic.get(
+            "target_candidates_considered"
+        ),
         "spread_bps": diagnostic.get("spread_bps"),
         "depth_impact_bps": diagnostic.get("depth_impact_bps"),
         "entry_fee_bps": diagnostic.get("entry_fee_bps"),
@@ -555,7 +569,15 @@ def _downstream_trace(
         ),
         "cost_gate_decision": net_cost_gate.get("gate_decision"),
         "cost_gate_reason": net_cost_gate.get("gate_reason"),
-        "cost_model_version": net_cost_gate.get("model_version"),
+        "cost_model_version": (
+            diagnostic.get("cost_model_version")
+            or net_cost_gate.get("model_version")
+        ),
+        "rr_policy_version": diagnostic.get("rr_policy_version"),
+        "target_policy_version": diagnostic.get("target_policy_version"),
+        "price_normalization_quantum": diagnostic.get(
+            "price_normalization_quantum"
+        ),
         "break_even_win_rate": diagnostic.get("break_even_win_rate"),
         "rr_status": trace["RR_PASS"],
         "rr_reason": geometry_reason if trace["RR_PASS"] == "REJECTED" else None,
@@ -589,7 +611,10 @@ def _downstream_trace(
         ),
         "portfolio_max_positions": portfolio_limits.get("max_concurrent_positions"),
         "portfolio_max_risk_bps": portfolio_limits.get("max_total_open_risk_bps"),
-        "geometry_calculation_version": diagnostic.get("calculation_version"),
+        "geometry_calculation_version": (
+            diagnostic.get("geometry_calculation_version")
+            or diagnostic.get("calculation_version")
+        ),
         "final_approval": trace["FINAL_APPROVAL"],
         "paper_plan": trace["PAPER_PLAN"],
         "plan_created_at_ms": planned.get("created_at_ms"),

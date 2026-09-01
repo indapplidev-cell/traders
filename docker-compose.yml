@@ -120,7 +120,7 @@ services:
       exec python scripts/scalping_prospective_collector.py
       --output-dir reports/calibration/scalping-prospective
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
-      --parameter-set-id trade-5m-v1-runtime-v1-87b8a882d06b3539
+      --parameter-set-id trade-5m-v1-runtime-v1-af11b65b74275bf3
       --runtime-source-commit c30dd05ab55a102f787be3e9ec1fac6c78d71619
       --runtime-artifact-id sha256:cfaa97127236222cef0476acc099b10257f2abaad9ca3ca82890b24746db81c6
       --poll-seconds 10

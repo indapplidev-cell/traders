@@ -11,7 +11,10 @@ from app.engine_paper.scalping_shadow import (
     ShadowCostInputs,
     ShadowGeometryCandidate,
     ShadowGeometryConfig,
+    compute_net_economics,
     evaluate_scalping_shadow,
+    minimum_reward_bps_for_net_rr,
+    minimum_target_price_for_net_rr,
 )
 from app.engine_risk.execution_budget import SharedAccountExecutionBudget
 from app.engine_risk.risk_config import RiskConfig
@@ -121,7 +124,7 @@ def test_positive_gross_edge_but_negative_net_edge_rejects_with_raw_diagnostics(
     row = evaluate_scalping_shadow(candidate(targets=close), costs(spread_bps=5.0, depth_impact_bps=5.0), config())
     assert row.gross_reward_bps == pytest.approx(20.0)
     assert row.expected_net_edge_bps < 0
-    assert row.rejection_reason == R.PAPER_NO_PLAN_TARGET_NOT_ECONOMICALLY_ACTIONABLE
+    assert row.rejection_reason == R.ECONOMIC_GEOMETRY_NOT_FEASIBLE
     assert row.net_rr is None and row.break_even_win_rate is None
     assert row.target_considerations[0]["rejection_reason"] == "BELOW_ECONOMIC_FLOOR"
 
@@ -131,9 +134,9 @@ def test_gross_rr_pass_net_rr_fail_and_cohorts_cannot_bypass_cost_gate():
     row = evaluate_scalping_shadow(candidate(targets=target), costs(), config())
     assert row.gross_rr >= 1.5
     assert row.net_rr < 1.5
-    assert row.rejection_reason == R.PAPER_REJECT_LOW_NET_RR
-    assert row.economically_actionable_target_exists is True
-    assert row.target_considerations[0]["rejection_reason"] == "BELOW_NET_RR_POLICY"
+    assert row.rejection_reason == R.ECONOMIC_GEOMETRY_NOT_FEASIBLE
+    assert row.economically_actionable_target_exists is False
+    assert row.target_considerations[0]["rejection_reason"] == "BELOW_REQUIRED_NET_RR"
     assert row.rr_cohorts_gross["1.20"] is True
     assert row.rr_cohorts_net["1.20"] is False
     assert row.execution_eligible is False
@@ -175,16 +178,18 @@ def test_non_actionable_nearest_local_traverses_to_next_validated_local():
     assert row.first_actionable_target["target_price"] == 102.00
 
 
-def test_first_actionable_target_stops_traversal_before_farther_rr_manufacturing():
+def test_cost_aware_construction_selects_next_strategy_valid_target():
     targets = (
         CausalTarget(100.70, "LOCAL_5M", BOUNDARY),
         CausalTarget(102.00, "LOCAL_5M", BOUNDARY),
     )
     row = evaluate_scalping_shadow(candidate(targets=targets), costs(), config())
     assert row.economically_actionable_target_exists is True
-    assert row.causal_target == 100.70
-    assert row.rejection_reason == R.PAPER_REJECT_LOW_NET_RR
-    assert row.target_considerations[1]["gross_rr"] is None
+    assert row.causal_target == 102.00
+    assert row.rejection_reason is None
+    assert row.valid_plan is True
+    assert row.target_considerations[0]["rejection_reason"] == "BELOW_REQUIRED_NET_RR"
+    assert row.target_considerations[1]["economically_actionable"] is True
 
 
 def test_target_trace_preserves_invalid_future_wrong_side_and_unreachable_1h():
@@ -201,13 +206,94 @@ def test_target_trace_preserves_invalid_future_wrong_side_and_unreachable_1h():
     assert row.target_candidates_considered == 4
 
 
-@pytest.mark.parametrize("minimum,expected", [(0.0, True), (5.0, True), (10.0, False)])
-def test_minimum_positive_edge_shadow_cohorts(minimum, expected):
+@pytest.mark.parametrize("minimum", [0.0, 5.0, 10.0])
+def test_positive_edge_alone_cannot_bypass_required_net_rr(minimum):
     target = (CausalTarget(100.35, "LOCAL_5M", BOUNDARY),)
     row = evaluate_scalping_shadow(
         candidate(targets=target), costs(), config(minimum_positive_edge_bps=minimum)
     )
-    assert row.economically_actionable_target_exists is expected
+    assert row.economically_actionable_target_exists is False
+    assert row.rejection_reason == R.ECONOMIC_GEOMETRY_NOT_FEASIBLE
+
+
+@pytest.mark.parametrize("direction", ["BULLISH", "BEARISH"])
+def test_authoritative_net_rr_and_minimum_target_are_symmetric(direction):
+    net_reward, net_risk, net_rr = compute_net_economics(
+        gross_reward_bps=120.0, gross_risk_bps=40.0, total_cost_bps=30.0
+    )
+    assert net_reward == 90.0
+    assert net_risk == 70.0
+    assert net_rr == pytest.approx(90.0 / 70.0)
+    required = minimum_reward_bps_for_net_rr(
+        gross_risk_bps=40.0, total_cost_bps=30.0, required_net_rr=1.5
+    )
+    assert required == 135.0
+    target = minimum_target_price_for_net_rr(
+        entry=100.0, direction=direction, minimum_reward_bps=required
+    )
+    assert target == (101.35 if direction == "BULLISH" else 98.65)
+
+
+def test_no_feasible_structural_target_persists_causal_economics():
+    row = evaluate_scalping_shadow(
+        candidate(targets=(
+            CausalTarget(100.35, "LOCAL_5M", BOUNDARY),
+            CausalTarget(100.70, "STRUCTURAL", BOUNDARY),
+        )),
+        costs(),
+        config(),
+    )
+    assert row.rejection_reason == R.ECONOMIC_GEOMETRY_NOT_FEASIBLE
+    assert row.geometry_feasibility_result == "INFEASIBLE"
+    assert row.minimum_economically_valid_target_bps == pytest.approx(123.75)
+    assert row.required_rr == 1.5
+    assert len(row.target_considerations) == 2
+    assert all(item["gross_rr"] is not None for item in row.target_considerations)
+
+
+@pytest.mark.parametrize(
+    ("direction", "target_price"),
+    [("BULLISH", 101.2375), ("BEARISH", 98.7625)],
+)
+def test_required_net_rr_boundary_equality_passes(direction, target_price):
+    row = evaluate_scalping_shadow(
+        candidate(
+            direction=direction,
+            causal_invalidation=(99.70 if direction == "BULLISH" else 100.30),
+            targets=(CausalTarget(target_price, "LOCAL_5M", BOUNDARY),),
+        ),
+        costs(),
+        config(),
+    )
+    assert row.net_rr == 1.5
+    assert row.geometry_feasibility_result == "FEASIBLE"
+    assert row.valid_plan is True
+
+
+def test_conservative_target_normalization_cannot_manufacture_net_rr():
+    row = evaluate_scalping_shadow(
+        candidate(
+            targets=(
+                CausalTarget(101.237499999, "LOCAL_5M", BOUNDARY),
+            )
+        ),
+        costs(),
+        config(),
+    )
+    assert row.causal_target == 101.23749999
+    assert row.net_rr < 1.5
+    assert row.rejection_reason == R.ECONOMIC_GEOMETRY_NOT_FEASIBLE
+    assert row.valid_plan is False
+
+
+def test_nonfinite_authoritative_cost_rejects_as_cost_model_invalid():
+    row = evaluate_scalping_shadow(
+        candidate(targets=(CausalTarget(102.00, "LOCAL_5M", BOUNDARY),)),
+        costs(spread_bps=float("nan")),
+        config(),
+    )
+    assert row.rejection_reason == R.COST_MODEL_INVALID
+    assert row.rejection_stage == "COST_MODEL"
 
 
 def test_opportunity_identity_is_stable_across_adjacent_boundaries_but_candidate_is_not():
