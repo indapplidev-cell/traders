@@ -310,6 +310,36 @@ def test_mixed_boundary_fails_closed_preserves_incident_and_recovers_next_clean(
     assert len(restarted.store.observation_ids) == 4
 
 
+def test_clean_boundary_owner_restart_is_durable_and_does_not_restart_loop(tmp_path):
+    first_boundary = 2_000
+    next_boundary = 3_000
+    rows = {
+        first_boundary: [
+            row("BTCUSDT", first_boundary, 1, daemon_instance_id="runtime-one"),
+            row("ETHUSDT", first_boundary, 2, daemon_instance_id="runtime-one"),
+        ],
+        next_boundary: [
+            row("BTCUSDT", next_boundary, 3, daemon_instance_id="runtime-two"),
+            row("ETHUSDT", next_boundary, 4, daemon_instance_id="runtime-two"),
+        ],
+    }
+    collector = ProspectiveCalibrationCollector(
+        config(tmp_path), FakeRepository(rows), FakeOwner(),
+    )
+    assert collector.process_boundary(first_boundary)
+    assert collector.process_boundary(next_boundary)
+    assert collector.runtime_daemon_instance_id == "runtime-two"
+    assert collector.runtime_lineage_transition_count == 1
+    assert len(collector.store.identities["lineage"]) == 1
+
+    restarted = ProspectiveCalibrationCollector(
+        config(tmp_path), FakeRepository(rows), FakeOwner(),
+    )
+    assert restarted.runtime_daemon_instance_id == "runtime-two"
+    assert restarted.runtime_lineage_transition_count == 1
+    assert restarted.health()["runtime_lineage_transition_count"] == 1
+
+
 def test_single_owner_second_denied_and_stale_recovery():
     registry: dict[str, bool] = {}
     first, second = FakeOwner(registry), FakeOwner(registry)

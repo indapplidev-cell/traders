@@ -588,6 +588,9 @@ class ProspectiveCalibrationCollector:
         self.micro_available = stats["micro_available"]
         self.micro_total = stats["micro_total"]
         self.boundary_diagnostics = stats["boundary_diagnostics"]
+        self.runtime_lineage_transition_count = len(
+            self.store.identities.setdefault("lineage", set())
+        )
         self.boundaries: set[int] = set()
         self.excluded_boundaries: set[int] = {
             int(item["boundary_time_ms"])
@@ -759,7 +762,28 @@ class ProspectiveCalibrationCollector:
             "parameter_set_id": self.config.parameter_set_id,
             "market_universe_id": self.config.identity.market_universe_id,
             "runtime_daemon_instance_id": self.runtime_daemon_instance_id,
+            "runtime_lineage_transition_count": self.runtime_lineage_transition_count,
         })
+
+    def _record_runtime_lineage_transition(
+        self, boundary_ms: int, previous_daemon_id: str, daemon_id: str,
+    ) -> None:
+        transition_id = "runtime-lineage-" + sha256(
+            f"{self.config.identity.segment_id}|{boundary_ms}|{previous_daemon_id}|{daemon_id}".encode("utf-8")
+        ).hexdigest()[:24]
+        if self.store.append("lineage", {
+            "schema_revision": "scalping-runtime-lineage-transition-v1",
+            "observation_id": transition_id,
+            "observation_segment_id": self.config.identity.segment_id,
+            "captured_at": iso_utc(),
+            "boundary_time_ms": boundary_ms,
+            "previous_runtime_daemon_instance_id": previous_daemon_id,
+            "runtime_daemon_instance_id": daemon_id,
+            "reason": "CLEAN_BOUNDARY_RUNTIME_OWNER_CHANGED",
+            "mixed_lineage_within_boundary": False,
+            "calibration_eligible": True,
+        }):
+            self.runtime_lineage_transition_count += 1
 
     def _preserve_mixed_lineage_incident(
         self, boundary_ms: int, rows: Sequence[Mapping[str, Any]], daemon_ids: set[str]
@@ -863,7 +887,10 @@ class ProspectiveCalibrationCollector:
         if self.runtime_daemon_instance_id is None:
             self.runtime_daemon_instance_id = daemon_id
         elif daemon_id and daemon_id != self.runtime_daemon_instance_id:
-            raise RuntimeError("RUNTIME_LINEAGE_CHANGED_RESTART_WITH_EXACT_IDENTITY_REQUIRED")
+            self._record_runtime_lineage_transition(
+                boundary_ms, self.runtime_daemon_instance_id, daemon_id,
+            )
+            self.runtime_daemon_instance_id = daemon_id
         last_run_id = None
         for row in rows:
             if row.get("result_id") is None:
@@ -963,6 +990,7 @@ class ProspectiveCalibrationCollector:
             "errors_count": self.errors_count, "missing_records": self.missing_records,
             "duplicate_records": self.duplicate_records, "db_query_count": getattr(self.repository, "query_count", None),
             "boundary_diagnostics_written": self.boundary_diagnostics,
+            "runtime_lineage_transition_count": self.runtime_lineage_transition_count,
             "excluded_boundary_count": len(self.excluded_boundaries),
             "excluded_boundaries": sorted(self.excluded_boundaries),
             "gates": {
