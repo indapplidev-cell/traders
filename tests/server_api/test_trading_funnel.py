@@ -307,10 +307,16 @@ def test_production_winner_is_only_the_executor_persisted_selection():
             "selector_rank": 1,
             "selected_winner": True,
             "candidate_id": "candidate:BTCUSDT",
+            "approval_valid_until_ms": NOW_MS + 60_000,
         }},
     )
     assert persisted["current_cycle"]["winner_symbol"] == "BTCUSDT"
     assert persisted["current_cycle"]["winner_candidate_id"] == "candidate:BTCUSDT"
+    selected = next(
+        item for item in persisted["current_cycle"]["items"]
+        if item["selected_winner"]
+    )
+    assert selected["approval_valid_until_ms"] == NOW_MS + 60_000
     high = _candidate(runs[1])
     high.ranking.risk_score = Decimal("90")
     multiple = _project(pairs, {runs[0].run_id: _candidate(runs[0]), runs[1].run_id: high})

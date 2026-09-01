@@ -1198,6 +1198,7 @@ class TradingFunnelReadRepository:
                 "selector_rank": outcome.selector_rank,
                 "selected_winner": outcome.selected_winner,
                 "candidate_id": outcome.candidate_id,
+                "approval_valid_until_ms": outcome.approval_valid_until_ms,
                 "command_id": lifecycle.get("command_id") or outcome.command_id,
                 "command_status": lifecycle.get("command_status") or (
                     {
@@ -1541,7 +1542,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 ),
                 "approval_valid_until_ms": getattr(
                     production_eligibility, "valid_until_ms", None
-                ),
+                ) or lifecycle.get("approval_valid_until_ms"),
                 "updated_at_ms": updated_ms, "stage_trace": trace,
                 "downstream_stage_trace": downstream_trace,
                 "downstream_current_stage": next(
