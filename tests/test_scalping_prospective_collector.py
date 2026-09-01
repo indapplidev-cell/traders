@@ -73,7 +73,7 @@ def identity(artifact: str = ARTIFACT) -> HomogeneityIdentity:
     return HomogeneityIdentity(
         profile_id="trade-5m-v1", parameter_set_id=PARAMETERS,
         runtime_source_commit=SOURCE, runtime_artifact_id=artifact,
-        schema_revision="0019_first_class_15m_domain",
+        schema_revision="0020_paper_plan_execution_outcomes",
         market_universe_id=market_universe_id(("BTCUSDT", "ETHUSDT")),
     )
 

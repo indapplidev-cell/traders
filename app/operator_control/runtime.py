@@ -20,6 +20,7 @@ from uvicorn import run as run_server
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
 from app.engine_paper.command_ingestion_service import PaperCommandIngestionService
 from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
+from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_paper.production_preparation_backend import RUNTIME_DATABASE_KEY
 from app.engine_paper.controlled_worker import (
@@ -216,6 +217,7 @@ def create_runtime_app(
             runtime_readiness=ReadonlyExistingCanaryRuntimeReadinessSource(
                 os.environ.get(READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL)
             ),
+            outcome_store=PaperPlanExecutionOutcomeStore(sessions),
         )
     continuation_worker = None
     lifecycle_worker = None

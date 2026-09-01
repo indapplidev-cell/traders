@@ -77,6 +77,14 @@ INTRABAR_CONFLICT_POLICIES = ("STOP_FIRST_CONSERVATIVE",)
 ORDER_ROLES = ("ENTRY", "EXIT")
 FILL_ROLES = ("ENTRY", "EXIT")
 PROCESSING_STATUSES = ("PENDING", "PROCESSING", "COMPLETED", "FAILED")
+PLAN_EXECUTION_STATES = (
+    "PLAN_OBSERVED",
+    "NOT_SELECTED",
+    "BLOCKED_BY_POLICY",
+    "COMMAND_CREATED",
+    "EXECUTION_FAILED",
+    "EXPIRED_BEFORE_EXECUTION",
+)
 FIRST_CANARY_STATES = (
     "RESERVED",
     "ARMED",
@@ -448,6 +456,60 @@ class PaperExecutionCommandRecord(Base):
     processing_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="PENDING", server_default=text("'PENDING'")
     )
+
+
+class PaperPlanExecutionOutcomeRecord(Base):
+    """Durable scheduler/selector outcome for one persisted PAPER plan."""
+
+    __tablename__ = "paper_plan_execution_outcomes"
+    __table_args__ = (
+        UniqueConstraint("paper_plan_id", name="uq_paper_plan_execution_outcome_plan"),
+        CheckConstraint("length(trim(pipeline_run_id)) BETWEEN 1 AND 128", name="ck_plan_outcome_run"),
+        CheckConstraint("length(trim(paper_plan_id)) BETWEEN 1 AND 512", name="ck_plan_outcome_plan"),
+        CheckConstraint("length(trim(final_approval_id)) BETWEEN 1 AND 128", name="ck_plan_outcome_approval"),
+        CheckConstraint("length(trim(candidate_id)) BETWEEN 1 AND 128", name="ck_plan_outcome_candidate"),
+        CheckConstraint("length(trim(symbol)) BETWEEN 2 AND 32", name="ck_plan_outcome_symbol"),
+        CheckConstraint("boundary_closed_at_ms >= 0", name="ck_plan_outcome_boundary"),
+        CheckConstraint("plan_created_at_ms >= boundary_closed_at_ms", name="ck_plan_outcome_created"),
+        CheckConstraint("approval_valid_until_ms >= boundary_closed_at_ms", name="ck_plan_outcome_validity"),
+        CheckConstraint(
+            f"lifecycle_state IN ({_values(PLAN_EXECUTION_STATES)})",
+            name="ck_plan_outcome_state",
+        ),
+        CheckConstraint("selector_rank IS NULL OR selector_rank >= 1", name="ck_plan_outcome_rank"),
+        CheckConstraint("attempt_count >= 0", name="ck_plan_outcome_attempts"),
+        CheckConstraint("live_enabled = false", name="ck_plan_outcome_live_disabled"),
+        Index("ix_plan_outcome_profile_boundary", "trade_profile_id", "boundary_closed_at_ms"),
+        Index("ix_plan_outcome_terminal", "lifecycle_state", "approval_valid_until_ms"),
+    )
+
+    pipeline_run_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    paper_plan_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    final_approval_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    candidate_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    symbol: Mapped[str] = mapped_column(String(SYMBOL_LENGTH), nullable=False)
+    trade_profile_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    universe_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), nullable=False)
+    boundary_closed_at_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    plan_created_at_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    approval_valid_until_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    selector_state: Mapped[str] = mapped_column(String(40), nullable=False)
+    selector_reason: Mapped[str | None] = mapped_column(String(160))
+    selector_rank: Mapped[int | None] = mapped_column(Integer)
+    selected_winner: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    lifecycle_state: Mapped[str] = mapped_column(String(40), nullable=False)
+    terminal_reason: Mapped[str | None] = mapped_column(String(160))
+    command_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    control_generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    runtime_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    daemon_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    scheduler_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    mutation_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    live_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    first_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    terminal_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PaperOrderRecord(Base):

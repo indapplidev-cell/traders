@@ -43,7 +43,12 @@ def _result(run: OnlinePipelineRun, *, setup="SETUP_CANDIDATE", strategy="ALLOW_
         "final_paper_approval": True, "order_approved": True,
         "execution_approved": True, "position_size_approved": True,
     }
-    payload = {"paper_status": paper, "planned_risk_reward": "2"}
+    payload = {
+        "paper_status": paper,
+        "planned_risk_reward": "2",
+        "paper_plan_id": f"paper:{run.run_id}",
+        "created_at_ms": run.closed_until_ms + 1,
+    }
     if approvals:
         payload["persisted_final_approvals"] = {
             "paper_strategy_approval": dict(approval),
@@ -193,6 +198,38 @@ def test_expired_final_approval_preserves_historical_funnel_but_is_not_eligible(
     assert value["rolling_1h"]["stage_counts"]["FINAL_APPROVAL"] == 1
     assert value["rolling_4h"]["stage_counts"]["VALIDITY_APPROVED"] == 1
     assert value["rolling_4h"]["stage_counts"]["FINAL_APPROVAL"] == 1
+
+
+def test_rolling_4h_plan_count_maps_to_every_persisted_plan_identity_without_symbol_deduplication():
+    pairs = []
+    run_ids = []
+    for index in range(3):
+        boundary = NOW_MS - (index + 1) * 300_000
+        plan = _run("BTCUSDT", boundary, run_id=f"run:plan:{index}")
+        other = _run("ETHUSDT", boundary, run_id=f"run:other:{index}")
+        run_ids.append(plan.run_id)
+        pairs.extend((
+            (plan, _result(plan, valid_until=boundary + 299_999)),
+            (other, _result(other, setup="NO_SETUP", approvals=False)),
+        ))
+    value = _project_5m(pairs)
+    historical = value["historical_paper_plans_4h"]
+    assert value["rolling_4h"]["stage_counts"]["PAPER_TRADE_PLAN"] == 3
+    assert [item["source_run_id"] for item in historical] == run_ids
+    assert [item["symbol"] for item in historical] == ["BTCUSDT"] * 3
+    assert len({item["downstream_detail"]["paper_plan_id"] for item in historical}) == 3
+    assert {item["terminal_reason_code"] for item in historical} == {
+        "EXPIRED_BEFORE_EXECUTION"
+    }
+    assert all(
+        item["downstream_detail"]["selector_state"] == "LEGACY_NOT_OBSERVED"
+        for item in historical
+    )
+    assert all(
+        item["downstream_detail"]["execution_lifecycle_state"]
+        == "EXPIRED_BEFORE_EXECUTION"
+        for item in historical
+    )
 
 
 def test_identity_failure_uses_authoritative_reason_and_quantity_not_reached():

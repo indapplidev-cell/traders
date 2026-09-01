@@ -13,6 +13,7 @@ from app.db.paper_models import (
     PaperFillRecord,
     PaperJournalEntryRecord,
     PaperOrderRecord,
+    PaperPlanExecutionOutcomeRecord,
     PaperPositionRecord,
     PaperSimulationPolicyRecord,
 )
@@ -40,6 +41,7 @@ from app.engine_paper.eligible_approval_ranking import (
     ProductionEligibleApprovalSelector,
 )
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
+from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
 from app.engine_paper.production_approval import (
     PaperProductionApprovalOutcome,
     PaperProductionApprovalRequest,
@@ -92,6 +94,9 @@ from tests.final_approval_generation_integration.test_natural_materialization im
 
 
 SYMBOL = "BTCUSDT"
+# Keep the deterministic boundary permanently in the past.  PipelineRunner
+# stamps the plan with the real wall clock, and revision 0020 deliberately
+# rejects impossible plan_created_at < closed_boundary identities.
 BOUNDARY = 1_800_000_000_000
 EVALUATION_MS = BOUNDARY + 5_000
 ENTRY_MARKET_AS_OF_MS = BOUNDARY + 60_001
@@ -259,6 +264,7 @@ def _pipeline(factory):
         paper_runner=ScalpingPaperRunner(
             runtime_parameters=config.runtime_parameters,
             cost_source=_DeterministicCostSource(),
+            clock_ms=lambda: BOUNDARY + 1_000,
         ),
     )
     result = runner.run(SYMBOL, BOUNDARY)
@@ -319,7 +325,8 @@ def test_15m_first_class_gates_persist_and_project_on_fresh_postgres(
         }],
     })
     paper = PaperRunner(
-        runtime_parameters=resolve_runtime_parameters("trade-15m-v1")
+        runtime_parameters=resolve_runtime_parameters("trade-15m-v1"),
+        clock_ms=lambda: BOUNDARY + 1_000,
     ).process_risk_decision(risk_value)
     assert paper.paper_status == "PAPER_PLAN_READY"
     assert paper.paper_context["net_cost_gate"]["gate_decision"] == "PASS"
@@ -409,7 +416,7 @@ def _seed_simulation_policy(factory, candidate) -> None:
         ))
 
 
-def _runtime(factory, engine, control, source):
+def _runtime(factory, engine, control, source, *, readiness=None):
     store = SqlAlchemyPaperFirstCanaryStore(factory)
     gate = PaperProductionMutationSafetyGate(control)
     uow = lambda: PaperUnitOfWork(factory)
@@ -419,9 +426,10 @@ def _runtime(factory, engine, control, source):
         approval_source=source,
         ingestion_service=PaperCommandIngestionService(uow, factory),
         mutation_safety_gate=gate,
-        runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(
+        runtime_readiness=readiness or (lambda: ExistingCanaryRuntimeReadiness(
             True, True, True, True, True
-        ),
+        )),
+        outcome_store=PaperPlanExecutionOutcomeStore(factory),
     )
     lock = PostgresCanaryContinuationLock(engine)
     continuation = PaperFirstCanaryEligibleApprovalContinuationWorker(
@@ -667,6 +675,50 @@ def test_expired_natural_approval_does_not_create_command(
     canary_id = _arm_and_wait(service)
     assert store.get(canary_id).command_count == 0
     with factory() as session:
+        assert session.scalar(
+            select(func.count()).select_from(PaperExecutionCommandRecord)
+        ) == 0
+
+
+def test_valid_selected_plan_blocked_by_backup_gate_expires_with_durable_reason(
+    natural_e2e_sessions, natural_e2e_engine, tmp_path
+):
+    factory = natural_e2e_sessions
+    _seed_foundation(factory)
+    source = _approval_source(factory)
+    control = PaperProductionSafetyControl(tmp_path / "blocked-paper-control")
+    control.initialize_disabled(acknowledge=True)
+    store, _executor, continuation, _lifecycle, service = _runtime(
+        factory,
+        natural_e2e_engine,
+        control,
+        source,
+        readiness=lambda: ExistingCanaryRuntimeReadiness(
+            True, True, False, False, True
+        ),
+    )
+    canary_id = _arm_and_wait(service)
+    result = _pipeline(factory)
+    run_id = _persist_natural_approval(factory, result)
+
+    assert continuation.run_once() == "SAFE_FAILURE:INDEPENDENT_READINESS_GATE_DENIED"
+    assert store.get(canary_id).command_count == 0
+    with factory() as session:
+        outcome = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+        assert outcome is not None
+        assert outcome.selector_state == "SELECTED"
+        assert outcome.selector_rank == 1
+        assert outcome.lifecycle_state == "BLOCKED_BY_POLICY"
+        assert outcome.selector_reason == "WAL_NOT_READY,PITR_NOT_READY"
+        assert outcome.command_id is None
+
+    outcomes = PaperPlanExecutionOutcomeStore(factory)
+    assert outcomes.expire_due(BOUNDARY + 300_001) == 1
+    assert continuation.run_once().startswith("SAFE_FAILURE:")
+    with factory() as session:
+        outcome = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+        assert outcome.lifecycle_state == "EXPIRED_BEFORE_EXECUTION"
+        assert outcome.terminal_reason == "EXPIRED_BEFORE_EXECUTION"
         assert session.scalar(
             select(func.count()).select_from(PaperExecutionCommandRecord)
         ) == 0

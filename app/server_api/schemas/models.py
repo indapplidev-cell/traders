@@ -382,6 +382,7 @@ class TradingFunnelSnapshot(ContractModel):
     current_cycle: FunnelCycle | None
     last_completed_cycle: FunnelCycle | None
     detail_candidates: list[FunnelCandidateStatus] = Field(default_factory=list)
+    historical_paper_plans_4h: list[FunnelCandidateStatus] = Field(default_factory=list)
     rolling_1h: FunnelRollingSummary
     rolling_4h: FunnelRollingSummary
     projection_generated_at_ms: int = Field(ge=0)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from decimal import Decimal
 import time
 from typing import Protocol
@@ -100,12 +101,13 @@ class ScalpingPaperRunner(PaperRunner):
         cost_source: ScalpingCostSource | None = None,
         opportunity_registry: ScalpingOpportunityRegistry | None = None,
         store: object | None = None,
+        clock_ms: Callable[[], int] | None = None,
     ) -> None:
         minimum_rr = float(getattr(runtime_parameters, "minimum_planned_rr"))
         super().__init__(PaperConfig(
             minimum_planned_rr=minimum_rr,
             allowed_strategy_types=SCALPING_RISK_STRATEGY_TYPES,
-        ), store=store)
+        ), store=store, clock_ms=clock_ms)
         self.runtime_parameters = runtime_parameters
         self.opportunity_registry = opportunity_registry or ScalpingOpportunityRegistry()
         self.cost_source = cost_source or BinancePublicScalpingCostSource(

@@ -248,11 +248,12 @@ RUNTIME_WRITE_TABLES: Final = (
     "paper_simulation_policies", "paper_execution_commands", "paper_orders",
     "paper_order_events", "paper_fills", "paper_positions",
     "paper_exit_evaluation_cursors", "paper_exit_decisions", "paper_journal_entries",
-    "paper_first_canary_sessions",
+    "paper_first_canary_sessions", "paper_plan_execution_outcomes",
 )
 RUNTIME_UPDATE_TABLES: Final = (
     "paper_execution_commands", "paper_orders", "paper_positions",
     "paper_exit_evaluation_cursors", "paper_first_canary_sessions",
+    "paper_plan_execution_outcomes",
 )
 READONLY_PAPER_TABLES: Final = (
     "alembic_version", "paper_account_baselines",

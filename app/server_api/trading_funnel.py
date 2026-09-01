@@ -36,6 +36,7 @@ from app.server_api.schema_compatibility import (
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
     PaperOrderRecord,
+    PaperPlanExecutionOutcomeRecord,
     PaperPositionRecord,
 )
 
@@ -899,6 +900,7 @@ class TradingFunnelReadRepository:
                         ("0017_parallel_trade_profiles",),
                         ("0018_promote_5m_production_search",),
                         ("0019_first_class_15m_domain",),
+                        ("0020_paper_plan_execution_outcomes",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -1131,9 +1133,23 @@ class TradingFunnelReadRepository:
             .order_by(PaperExecutionCommandRecord.pipeline_run_id.asc())
             .limit(len(run_ids))
         )
+        outcome_capable = (
+            self._schema_capabilities is None
+            or self._schema_capabilities.snapshot().has(
+                ReadonlySchemaCapability.PAPER_PLAN_EXECUTION_OUTCOMES
+            )
+        )
         with self._session_factory() as session:
             rows = tuple(session.execute(statement))
-        return {
+            outcome_rows = (
+                tuple(session.execute(
+                    select(PaperPlanExecutionOutcomeRecord).where(
+                        PaperPlanExecutionOutcomeRecord.pipeline_run_id.in_(run_ids)
+                    ).limit(len(run_ids))
+                ).scalars())
+                if outcome_capable else ()
+            )
+        values = {
             str(row[0]): {
                 "execution_intent": "PAPER_COMMAND_CREATED",
                 "command_id": row[1], "command_status": row[2],
@@ -1145,6 +1161,27 @@ class TradingFunnelReadRepository:
             }
             for row in rows
         }
+        for outcome in outcome_rows:
+            lifecycle = values.setdefault(outcome.pipeline_run_id, {})
+            lifecycle.update({
+                "execution_intent": (
+                    "PAPER_COMMAND_CREATED" if lifecycle.get("command_id")
+                    else "PAPER_PLAN_OBSERVED"
+                ),
+                "selector_state": outcome.selector_state,
+                "selector_reason": outcome.selector_reason,
+                "selector_rank": outcome.selector_rank,
+                "selected_winner": outcome.selected_winner,
+                "command_id": lifecycle.get("command_id") or outcome.command_id,
+                "command_status": lifecycle.get("command_status") or (
+                    "NOT_CREATED" if outcome.command_id is None else "PENDING"
+                ),
+                "terminal_result": lifecycle.get("terminal_result") or outcome.terminal_reason,
+                "lifecycle_state": outcome.lifecycle_state,
+                "attempt_count": outcome.attempt_count,
+                "control_generation": outcome.control_generation,
+            })
+        return values
 
     def export_rows(
         self,
@@ -1349,6 +1386,12 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
     detail_boundaries = {
         value[2] for value in detail_source_by_symbol.values()
     }
+    historical_plan_boundaries_4h = {
+        int(row.closed_until_ms)
+        for row, _result in rows
+        if now_ms - 4 * 60 * 60 * 1000 <= int(row.closed_until_ms) <= now_ms
+        and _stage_trace(row, _result, now_ms)[0]["PAPER_TRADE_PLAN"] == "PASS"
+    }
     cycle_cache: dict[int, dict[str, Any]] = {}
 
     def cycle(boundary: int | None) -> dict[str, Any] | None:
@@ -1374,7 +1417,8 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 now_ms=now_ms,
                 include_detail=boundary in {
                     current_boundary, last_completed_boundary
-                } or boundary in detail_boundaries,
+                } or boundary in detail_boundaries
+                or boundary in historical_plan_boundaries_4h,
             )
             candidate = eligible_by_run.get(row.run_id)
             production_eligibility = production_eligibility_by_run.get(row.run_id)
@@ -1413,6 +1457,19 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 row, result, terminal_reason=reason
             )
             lifecycle = dict(lifecycle_by_run.get(row.run_id, {}))
+            execution_terminal = lifecycle.get("terminal_result")
+            if (
+                execution_terminal is None
+                and trace["FINAL_APPROVAL"] == "PASS"
+                and not meta.get("validity_current", False)
+                and lifecycle.get("command_id") is None
+            ):
+                execution_terminal = "EXPIRED_BEFORE_EXECUTION"
+            execution_lifecycle_state = lifecycle.get("lifecycle_state")
+            if lifecycle.get("position_id") is not None:
+                execution_lifecycle_state = "EXECUTED_TO_PAPER_POSITION"
+            elif execution_lifecycle_state is None and execution_terminal:
+                execution_lifecycle_state = execution_terminal
             current_stage = next((stage for stage in reversed(STAGES[:-1]) if trace[stage] != "NOT_REACHED"), "ANALYSIS")
             items.append({
                 "symbol": row.symbol, "source_run_id": row.run_id,
@@ -1463,12 +1520,12 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     ),
                     "ANALYSIS_QUALIFIED",
                 ),
-                "terminal_reason_code": reason,
+                "terminal_reason_code": execution_terminal or reason,
                 "downstream_detail": {
                     "profile": profile.trade_profile_id,
                     "cycle_boundary_ms": boundary,
                     **downstream_detail,
-                    "terminal_reason": reason,
+                    "terminal_reason": execution_terminal or reason,
                     "updated_at_ms": updated_ms,
                     "plan_status": downstream_trace["PAPER_PLAN"],
                     "quantity_approval_status": trace["QUANTITY_APPROVED"],
@@ -1476,6 +1533,13 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "execution_intent": lifecycle.get(
                         "execution_intent", "NOT_REACHED"
                     ),
+                    "selector_state": lifecycle.get(
+                        "selector_state",
+                        "LEGACY_NOT_OBSERVED" if execution_terminal else "NOT_REACHED",
+                    ),
+                    "selector_reason": lifecycle.get("selector_reason"),
+                    "selector_rank": lifecycle.get("selector_rank"),
+                    "selected_winner": lifecycle.get("selected_winner"),
                     "command_id": lifecycle.get("command_id"),
                     "command_status": lifecycle.get("command_status", "NOT_REACHED"),
                     "order_id": lifecycle.get("order_id"),
@@ -1487,7 +1551,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                         lifecycle.get("position_status")
                         or ("OPENED" if row.position_opened else "NOT_REACHED")
                     ),
-                    "execution_terminal_result": lifecycle.get("terminal_result"),
+                    "execution_terminal_result": execution_terminal,
+                    "execution_lifecycle_state": execution_lifecycle_state,
+                    "execution_attempt_count": lifecycle.get("attempt_count", 0),
+                    "control_generation": lifecycle.get("control_generation"),
                 },
                 "risk_score": meta.get("risk_score"), "strategy_score": meta.get("strategy_score"),
                 "planned_risk_reward": meta.get("planned_risk_reward"),
@@ -1692,6 +1759,21 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         if detail_item is not None:
             detail_by_symbol[detail_symbol] = detail_item
     latest = current["latest_pipeline_update_ms"] if current else None
+    historical_paper_plans_4h: list[dict[str, Any]] = []
+    for boundary, pairs in sorted(by_boundary.items(), reverse=True):
+        if not now_ms - 4 * 60 * 60 * 1000 <= boundary <= now_ms:
+            continue
+        plan_run_ids = {
+            row.run_id for row, result in pairs
+            if _stage_trace(row, result, now_ms)[0]["PAPER_TRADE_PLAN"] == "PASS"
+        }
+        if not plan_run_ids:
+            continue
+        plan_cycle = cycle(boundary)
+        historical_paper_plans_4h.extend(
+            item for item in plan_cycle["items"]
+            if item["source_run_id"] in plan_run_ids
+        )
     age = None if latest is None else max(0, now_ms - latest)
     metric_stages = {
         "analysis_count": "ANALYSIS",
@@ -1741,6 +1823,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             for symbol in universe.symbols
             if symbol in detail_by_symbol
         ],
+        "historical_paper_plans_4h": historical_paper_plans_4h,
         "rolling_1h": rolling(60 * 60 * 1000), "rolling_4h": rolling(4 * 60 * 60 * 1000),
         "projection_generated_at_ms": now_ms, "latest_pipeline_update_ms": latest,
         "age_ms": age, "freshness_state": freshness_state,

@@ -19,6 +19,7 @@ from app.engine_paper.fill_policy import (
     PaperIntrabarConflictPolicy,
 )
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
+from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
 from app.engine_paper.eligible_approval_ranking import (
     EligibleApprovalSelectionResult,
     ProductionEligibleApprovalSelector,
@@ -98,6 +99,7 @@ class ProductionPaperFirstCanaryExecutor:
         mutation_safety_gate: PaperProductionMutationSafetyGate,
         runtime_readiness: Callable[[], ExistingCanaryRuntimeReadiness],
         selector: ProductionEligibleApprovalSelector | None = None,
+        outcome_store: PaperPlanExecutionOutcomeStore | None = None,
     ) -> None:
         self._control = control
         self._canary_store = canary_store
@@ -106,6 +108,7 @@ class ProductionPaperFirstCanaryExecutor:
         self._mutation_safety_gate = mutation_safety_gate
         self._runtime_readiness = runtime_readiness
         self._selector = selector or ProductionEligibleApprovalSelector()
+        self._outcome_store = outcome_store
         self._prepared = None
         self.last_selection_diagnostics = None
 
@@ -156,7 +159,21 @@ class ProductionPaperFirstCanaryExecutor:
             candidates, policy_version=canary.selection_policy_version
         )
         self.last_selection_diagnostics = selection.diagnostics
+        if self._outcome_store is not None and selection.failure_code is None and candidates:
+            self._outcome_store.observe_selection(
+                candidates,
+                selection,
+                universe_id=canary.universe_version_id,
+                control_generation=canary.current_control_generation,
+            )
         return selection
+
+    def expire_due_outcomes(self) -> int:
+        if self._outcome_store is None:
+            return 0
+        return self._outcome_store.expire_due(
+            int(datetime.now(timezone.utc).timestamp() * 1000)
+        )
 
     @staticmethod
     def _approval_source_error(results) -> tuple[str, ...]:
@@ -301,6 +318,22 @@ class ProductionPaperFirstCanaryExecutor:
             paper_target_authorized=True,
             live_disabled=readiness.live_disabled,
         )
+        policy_blockers = tuple(
+            code for code, passed in (
+                ("MARKET_DATA_NOT_READY", readiness.market_data_ready),
+                ("APPROVAL_SOURCE_NOT_READY", readiness.approval_source_ready),
+                ("WAL_NOT_READY", readiness.wal_ready),
+                ("PITR_NOT_READY", readiness.pitr_ready),
+                ("LIVE_NOT_DISABLED", readiness.live_disabled),
+            ) if not passed
+        )
+        attempt_recorded = False
+        if self._outcome_store is not None and policy_blockers:
+            self._outcome_store.record_attempt(
+                candidate.lineage.source_run_id,
+                blocker_codes=policy_blockers,
+            )
+            attempt_recorded = True
         try:
             with self._mutation_safety_gate.authorize_mutation(
                 MutationStage.COMMAND_INGESTION, target, prerequisites
@@ -315,8 +348,24 @@ class ProductionPaperFirstCanaryExecutor:
                 "OPEN_POSITION_BUDGET_EXHAUSTED", "INVALID_MUTATION_COUNTER",
                 "INVALID_CANDIDATE_IDENTITY", "LIVE_OR_NON_PRODUCTION_TARGET_DENIED",
             }:
+                if self._outcome_store is not None and not attempt_recorded:
+                    self._outcome_store.record_attempt(
+                        candidate.lineage.source_run_id,
+                        blocker_codes=(code,),
+                    )
                 return (code,)
             raise
+        if self._outcome_store is not None:
+            if result.successful:
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    command_id=command_id,
+                )
+            else:
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    failure_code=str(result.reason_code),
+                )
         return () if result.successful else (str(result.reason_code),)
 
     def status(self) -> PaperOperatorCanaryStatus:

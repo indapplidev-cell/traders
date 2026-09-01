@@ -110,6 +110,9 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
         return self._ticks
 
     def run_once(self) -> str:
+        expire = getattr(self._executor, "expire_due_outcomes", None)
+        if expire is not None:
+            expire()
         canary = self._canary_store.current()
         if canary is None or canary.state is not PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL:
             return "NO_WAITING_CANARY"

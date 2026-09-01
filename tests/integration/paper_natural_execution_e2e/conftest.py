@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0019_first_class_15m_domain"
+EXPECTED_HEAD = "0020_paper_plan_execution_outcomes"
 
 
 @pytest.fixture(scope="session")
@@ -80,6 +80,7 @@ def natural_e2e_engine() -> Iterator[Engine]:
 def natural_e2e_sessions(natural_e2e_engine: Engine) -> sessionmaker:
     tables = (
         "paper_first_canary_sessions",
+        "paper_plan_execution_outcomes",
         "paper_account_baselines",
         "paper_exit_evaluation_cursors",
         "paper_journal_entries",

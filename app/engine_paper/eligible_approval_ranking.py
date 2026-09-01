@@ -107,6 +107,22 @@ def _key(candidate: EligibleCandidate) -> tuple[object, ...]:
     )
 
 
+def rank_eligible_candidates(
+    candidates: Sequence[EligibleCandidate],
+) -> tuple[EligibleCandidate, ...]:
+    """Return the canonical deterministic order after identity de-duplication."""
+
+    by_identity: dict[str, EligibleCandidate] = {}
+    for candidate in candidates:
+        if not candidate.candidate_id:
+            raise ValueError("missing candidate identity")
+        previous = by_identity.get(candidate.candidate_id)
+        if previous is not None and previous != candidate:
+            raise ValueError("conflicting logical approval duplicate")
+        by_identity.setdefault(candidate.candidate_id, candidate)
+    return tuple(sorted(by_identity.values(), key=_key))
+
+
 class ProductionEligibleApprovalSelector:
     """Pure total-order selector; input eligibility is established upstream."""
 
@@ -204,5 +220,6 @@ __all__ = (
     "MULTI_SYMBOL_SELECTION_POLICY_VERSION",
     "ProductionEligibleApprovalSelector",
     "RANKING_FIELDS",
+    "rank_eligible_candidates",
     "SELECTION_MODE",
 )

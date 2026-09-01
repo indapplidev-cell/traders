@@ -84,8 +84,8 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
     """Fail before owner election unless the deployed profile schema is exact 0017."""
     with sessions() as session:
         revision = session.scalar(text("SELECT version_num FROM alembic_version"))
-        if revision != "0019_first_class_15m_domain":
-            raise RuntimeError("online runtime requires schema 0019_first_class_15m_domain")
+        if revision != "0020_paper_plan_execution_outcomes":
+            raise RuntimeError("online runtime requires schema 0020_paper_plan_execution_outcomes")
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
             "WHERE table_schema = current_schema() "

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections.abc import AsyncIterable, AsyncIterator, Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
 from decimal import Decimal
 
 from app.engine_paper.paper_config import PaperConfig
@@ -19,7 +19,8 @@ from app.engine_risk.risk_decision import RiskDecision
 
 class PaperRunner:
     def __init__(self, config: PaperConfig | None = None, store: PaperStore | None = None,
-                 runtime_parameters: object | None = None) -> None:
+                 runtime_parameters: object | None = None,
+                 clock_ms: Callable[[], int] | None = None) -> None:
         if config is None and runtime_parameters is not None:
             config = PaperConfig(
                 minimum_planned_rr=float(runtime_parameters.minimum_planned_rr),
@@ -35,6 +36,7 @@ class PaperRunner:
         self.policy = PaperPlanPolicy(self.config)
         self.level_builder = PaperLevelBuilder(self.config)
         self.store = store or PaperStore()
+        self._clock_ms = clock_ms or (lambda: time.time_ns() // 1_000_000)
 
     def process_risk_decision(self, risk_decision: RiskDecision) -> PaperTradePlan:
         if not isinstance(risk_decision, RiskDecision):
@@ -151,7 +153,7 @@ class PaperRunner:
         return PaperTradePlan(
             paper_plan_id=paper_plan_id(source.symbol, source.timeframe, source.closed_until_ms,
                                         source.risk_decision_id),
-            created_at_ms=time.time_ns() // 1_000_000,
+            created_at_ms=self._clock_ms(),
             source_risk_decision_id=source.risk_decision_id,
             source_strategy_decision_id=source.source_strategy_decision_id,
             source_setup_id=source.source_setup_id,
