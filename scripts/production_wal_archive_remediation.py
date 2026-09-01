@@ -358,6 +358,27 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
     return True
 
 
+def _host_ack_daemon_cycle(root: Path, *, process_id: int) -> dict[str, object]:
+    """Service one ACK cycle and publish only the post-sync durable state."""
+
+    snapshot = capture_snapshot(root)
+    published = 0
+    if snapshot.export_backlog_count:
+        result = sync_wal(root)
+        published = int(result["published_segment_count"])
+        snapshot = capture_snapshot(root)
+    return {
+        "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
+        "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "process_id": process_id,
+        "status": "RUNNING",
+        "pending_archive_status_count": snapshot.pending_archive_status_count,
+        "export_backlog_count": snapshot.export_backlog_count,
+        "published_segment_count_last_cycle": published,
+        "error_class": "NONE",
+    }
+
+
 def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
     """Continuously service the existing fail-closed host ACK protocol."""
     if interval_seconds < 1 or interval_seconds > 30:
@@ -372,21 +393,7 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
         os.close(descriptor)
         while True:
             try:
-                snapshot = capture_snapshot(root)
-                published = 0
-                if snapshot.export_backlog_count:
-                    result = sync_wal(root)
-                    published = int(result["published_segment_count"])
-                payload: dict[str, object] = {
-                    "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
-                    "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                    "process_id": os.getpid(),
-                    "status": "RUNNING",
-                    "pending_archive_status_count": snapshot.pending_archive_status_count,
-                    "export_backlog_count": snapshot.export_backlog_count,
-                    "published_segment_count_last_cycle": published,
-                    "error_class": "NONE",
-                }
+                payload = _host_ack_daemon_cycle(root, process_id=os.getpid())
             except (OSError, ValueError, json.JSONDecodeError, OperationFailure) as error:
                 payload = {
                     "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
