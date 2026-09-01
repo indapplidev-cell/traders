@@ -116,7 +116,7 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 document = json.loads(response.read())
             payload = document.get("data") if isinstance(document, dict) else None
             denials = payload.get("current_mutation_denial_reasons") if isinstance(payload, dict) else None
-            common_ready = (
+            envelope_ready = (
                 response.status == 200
                 and isinstance(payload, dict)
                 and payload.get("status") == "READY"
@@ -129,22 +129,35 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 and payload.get("paper_control_state") == "ARMED"
                 and payload.get("paper_control_effective_state") == "ARMED"
                 and payload.get("paper_control_health") == "HEALTHY"
-                and payload.get("live_allowed") is False
                 and isinstance(denials, list)
-                and denials == []
-                and payload.get("current_mutation_ready") is True
             )
-            if not common_ready:
-                return ExistingCanaryRuntimeReadiness(live_disabled=False)
+            if not envelope_ready:
+                return ExistingCanaryRuntimeReadiness(
+                    live_disabled=False,
+                    policy_blockers=("READONLY_RUNTIME_NOT_READY",),
+                )
+            mapped_denials = {
+                "MARKET_DATA_NOT_READY", "APPROVAL_SOURCE_NOT_READY",
+                "WAL_NOT_READY", "PITR_NOT_READY", "LIVE_NOT_DENIED",
+            }
+            policy_blockers = tuple(
+                dict.fromkeys(str(code) for code in denials if str(code) not in mapped_denials)
+            )
+            if payload.get("current_mutation_ready") is not True and not denials:
+                policy_blockers += ("READONLY_MUTATION_NOT_READY",)
             return ExistingCanaryRuntimeReadiness(
                 market_data_ready=payload.get("market_data_adapter_ready") is True,
                 approval_source_ready=payload.get("approval_source_adapter_ready") is True,
                 wal_ready=payload.get("wal_ready") is True,
                 pitr_ready=payload.get("pitr_ready") is True,
-                live_disabled=True,
+                live_disabled=payload.get("live_allowed") is False,
+                policy_blockers=policy_blockers,
             )
         except Exception:
-            return ExistingCanaryRuntimeReadiness(live_disabled=False)
+            return ExistingCanaryRuntimeReadiness(
+                live_disabled=False,
+                policy_blockers=("READONLY_RUNTIME_NOT_READY",),
+            )
 
 
 def _production_canary_store() -> tuple[SqlAlchemyPaperFirstCanaryStore, Engine]:

@@ -183,7 +183,7 @@ def test_armed_existing_runtime_accepts_active_mutation_readiness(monkeypatch):
     assert readiness.live_disabled
 
 
-def test_existing_runtime_readiness_fails_closed_on_wal_pitr_or_extra_denial(monkeypatch):
+def test_existing_runtime_readiness_preserves_exact_wal_pitr_or_extra_denial(monkeypatch):
     base = {
         "status": "READY", "paper_schema_ready": True,
         "account_baseline_exists": True, "account_baseline_valid": True,
@@ -203,17 +203,33 @@ def test_existing_runtime_readiness_fails_closed_on_wal_pitr_or_extra_denial(mon
         def read(self): return json.dumps({"data": current}).encode()
 
     source = ReadonlyExistingCanaryRuntimeReadinessSource()
-    for changes in (
-        {"wal_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["WAL_NOT_READY"]},
-        {"pitr_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["PITR_NOT_READY"]},
-        {"current_mutation_ready": False, "current_mutation_denial_reasons": ["CANARY_SCOPE_INVALID"]},
-        {"paper_control_state": "EMERGENCY_STOP", "paper_control_effective_state": "EMERGENCY_STOP"},
-    ):
+    cases = (
+        (
+            {"wal_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["WAL_NOT_READY"]},
+            (False, True, ()),
+        ),
+        (
+            {"pitr_ready": False, "current_mutation_ready": False, "current_mutation_denial_reasons": ["PITR_NOT_READY"]},
+            (True, False, ()),
+        ),
+        (
+            {"current_mutation_ready": False, "current_mutation_denial_reasons": ["CANARY_SCOPE_INVALID"]},
+            (True, True, ("CANARY_SCOPE_INVALID",)),
+        ),
+    )
+    for changes, expected in cases:
         current = {**base, **changes}
         monkeypatch.setattr("app.operator_control.runtime.urllib.request.urlopen", lambda *_a, **_k: Response())
         readiness = source()
-        assert not readiness.backup_pitr_pass
-        assert not readiness.live_disabled
+        assert (readiness.wal_ready, readiness.pitr_ready, readiness.policy_blockers) == expected
+        assert readiness.market_data_ready and readiness.approval_source_ready
+        assert readiness.live_disabled
+
+    current = {**base, "paper_control_state": "EMERGENCY_STOP", "paper_control_effective_state": "EMERGENCY_STOP"}
+    monkeypatch.setattr("app.operator_control.runtime.urllib.request.urlopen", lambda *_a, **_k: Response())
+    readiness = source()
+    assert readiness.policy_blockers == ("READONLY_RUNTIME_NOT_READY",)
+    assert not readiness.live_disabled
 
 
 def test_runtime_database_binding_translates_only_exact_host_endpoint(monkeypatch):

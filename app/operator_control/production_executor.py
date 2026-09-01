@@ -80,6 +80,7 @@ class ExistingCanaryRuntimeReadiness:
     wal_ready: bool = False
     pitr_ready: bool = False
     live_disabled: bool = True
+    policy_blockers: tuple[str, ...] = ()
 
     @property
     def backup_pitr_pass(self) -> bool:
@@ -318,7 +319,7 @@ class ProductionPaperFirstCanaryExecutor:
             paper_target_authorized=True,
             live_disabled=readiness.live_disabled,
         )
-        policy_blockers = tuple(
+        direct_blockers = tuple(
             code for code, passed in (
                 ("MARKET_DATA_NOT_READY", readiness.market_data_ready),
                 ("APPROVAL_SOURCE_NOT_READY", readiness.approval_source_ready),
@@ -327,6 +328,9 @@ class ProductionPaperFirstCanaryExecutor:
                 ("LIVE_NOT_DISABLED", readiness.live_disabled),
             ) if not passed
         )
+        policy_blockers = tuple(dict.fromkeys(
+            direct_blockers + readiness.policy_blockers
+        ))
         attempt_recorded = False
         if self._outcome_store is not None and policy_blockers:
             self._outcome_store.record_attempt(
@@ -334,6 +338,8 @@ class ProductionPaperFirstCanaryExecutor:
                 blocker_codes=policy_blockers,
             )
             attempt_recorded = True
+        if readiness.policy_blockers:
+            return policy_blockers
         try:
             with self._mutation_safety_gate.authorize_mutation(
                 MutationStage.COMMAND_INGESTION, target, prerequisites

@@ -307,6 +307,32 @@ def test_first_command_fails_closed_on_current_runtime_infrastructure(readiness)
     assert ingestion.requests == [] and store.value.command_count == 0
 
 
+def test_first_command_preserves_extra_readonly_policy_reason_without_ingestion():
+    store = Store(waiting_canary())
+    approval_source = PaperProductionApprovalSourceAdapter(
+        lambda: FakeSession(), reader=FakeReader({"BTCUSDT": (eligible_row(),)}),
+        monotonic=lambda: 1.0,
+    )
+
+    class Ingestion:
+        def __init__(self): self.requests = []
+        def ingest_and_create_entry_order(self, request):
+            self.requests.append(request)
+            return type("Result", (), {"successful": True})()
+
+    ingestion = Ingestion()
+    executor = ProductionPaperFirstCanaryExecutor(
+        control=Control(), canary_store=store, approval_source=approval_source,
+        ingestion_service=ingestion, mutation_safety_gate=AllowMutationGate(),
+        runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(
+            True, True, True, True, True, ("CANARY_SCOPE_INVALID",)
+        ),
+    )
+
+    assert worker(store, executor).run_once() == "SAFE_FAILURE:CANARY_SCOPE_INVALID"
+    assert ingestion.requests == [] and store.value.command_count == 0
+
+
 def test_two_concurrent_workers_obtain_one_database_claim():
     store = Store(waiting_canary())
     entered, release = Event(), Event()
