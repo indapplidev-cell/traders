@@ -155,8 +155,8 @@ def test_same_candidate_set_produces_same_winner_for_independent_workers():
     assert first.winner.candidate_id == second.winner.candidate_id
 
 
-def test_deployment_accepts_only_the_exact_0014_predecessor_for_incremental_0015_migration():
-    assert EXPECTED_PREVIOUS_ALEMBIC == "0014_paper_canary_selection_policy"
+def test_deployment_accepts_only_the_current_exact_predecessor_for_incremental_migration():
+    assert EXPECTED_PREVIOUS_ALEMBIC == "0019_first_class_15m_domain"
     assert classify_preparation_phase(
         EXPECTED_PREVIOUS_ALEMBIC, preparation_complete=False
     ) is PaperPreparationPhase.PARTIAL_RESUMABLE
