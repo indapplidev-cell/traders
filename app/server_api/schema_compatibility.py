@@ -26,8 +26,9 @@ READONLY_SCHEMA_0017: Final = "0017_parallel_trade_profiles"
 READONLY_SCHEMA_0018: Final = "0018_promote_5m_production_search"
 READONLY_SCHEMA_0019: Final = "0019_first_class_15m_domain"
 READONLY_SCHEMA_0020: Final = "0020_paper_plan_execution_outcomes"
+READONLY_SCHEMA_0021: Final = "0021_independent_scalping_profile_v2"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0020
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0021
 PAPER_SCHEMA_COMPATIBILITY_LABEL: Final = f"{PAPER_SCHEMA_MINIMUM}|{PAPER_SCHEMA_MAXIMUM}"
 
 
@@ -108,6 +109,7 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
     return len(revisions) == 1 and revisions[0] in {
         PAPER_SCHEMA_MINIMUM, READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
         READONLY_SCHEMA_0018, READONLY_SCHEMA_0019, READONLY_SCHEMA_0020,
+        READONLY_SCHEMA_0021,
     }
 
 
@@ -160,12 +162,13 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         if revision not in {
             READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
             READONLY_SCHEMA_0018, READONLY_SCHEMA_0019, READONLY_SCHEMA_0020,
+            READONLY_SCHEMA_0021,
         }:
             return ReadonlySchemaCapabilityResult(False, revision, issues=(f"UNSUPPORTED_REVISION:{revision}",))
         for model in BASE_REQUIRED_MODELS:
             _validate_model(inspector, tables, model, issues,
                             excluded=frozenset(PROFILE_COLUMNS.get(model.__table__.name, ())))
-        if revision == READONLY_SCHEMA_0020:
+        if revision in {READONLY_SCHEMA_0020, READONLY_SCHEMA_0021}:
             _validate_model(
                 inspector, tables, PaperPlanExecutionOutcomeRecord, issues
             )
@@ -200,10 +203,10 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
     capabilities = BASE_READONLY_CAPABILITIES
     if revision in {
         READONLY_SCHEMA_0017, READONLY_SCHEMA_0018, READONLY_SCHEMA_0019,
-        READONLY_SCHEMA_0020,
+        READONLY_SCHEMA_0020, READONLY_SCHEMA_0021,
     } and not issues:
         capabilities = capabilities | {ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES}
-    if revision == READONLY_SCHEMA_0020 and not issues:
+    if revision in {READONLY_SCHEMA_0020, READONLY_SCHEMA_0021} and not issues:
         capabilities = capabilities | {
             ReadonlySchemaCapability.PAPER_PLAN_EXECUTION_OUTCOMES
         }
@@ -225,7 +228,7 @@ def inspect_required_paper_schema(connection: Connection) -> PaperSchemaContract
 __all__ = [
     "BASE_READONLY_CAPABILITIES", "PAPER_REQUIRED_SCHEMA_OBJECTS",
     "PAPER_SCHEMA_COMPATIBILITY_LABEL", "PAPER_SCHEMA_MAXIMUM", "PAPER_SCHEMA_MINIMUM",
-    "READONLY_SCHEMA_0018", "READONLY_SCHEMA_0019", "READONLY_SCHEMA_0020",
+    "READONLY_SCHEMA_0018", "READONLY_SCHEMA_0019", "READONLY_SCHEMA_0020", "READONLY_SCHEMA_0021",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",

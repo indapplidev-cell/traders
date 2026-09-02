@@ -51,6 +51,10 @@ EXECUTION_PROFILE_BY_TIMEFRAME: Final = {
     "15m": "trade-15m-v1",
     "5m": "trade-5m-v1",
 }
+EXECUTION_PROFILES_BY_TIMEFRAME: Final = {
+    "15m": frozenset({"trade-15m-v1"}),
+    "5m": frozenset({"trade-5m-v1", "trade-5m-v2"}),
+}
 MAX_SYMBOLS_PER_REQUEST: Final = 10
 MAX_RUN_LOOKBACK: Final = 8
 MAX_RESULTS_PER_MODULE: Final = 8
@@ -783,10 +787,11 @@ class PaperProductionApprovalSourceAdapter:
         analysis, setup, strategy, risk, paper = (
             row.analysis, row.setup, row.strategy, row.risk, row.paper
         )
-        expected_profile = EXECUTION_PROFILE_BY_TIMEFRAME.get(row.primary_timeframe)
+        expected_profiles = EXECUTION_PROFILES_BY_TIMEFRAME.get(row.primary_timeframe)
+        expected_profile = row.trade_profile_id
         if (
-            expected_profile is None
-            or row.trade_profile_id != expected_profile
+            expected_profiles is None
+            or row.trade_profile_id not in expected_profiles
             or row.result_trade_profile_id not in (None, expected_profile)
             or row.result_primary_timeframe not in (None, row.primary_timeframe)
         ):

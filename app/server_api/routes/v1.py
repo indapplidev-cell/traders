@@ -73,7 +73,7 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
     @router.get("/trading/funnel", response_model=TradingFunnelEnvelope, operation_id="getTradingFunnel", responses={500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}})
     def get_trading_funnel(
         trade_profile: Annotated[
-            Literal["trade-15m-v1", "trade-5m-v1"], Query()
+            Literal["trade-15m-v1", "trade-5m-v1", "trade-5m-v2"], Query()
         ] = "trade-15m-v1",
     ) -> TradingFunnelEnvelope:
         return service.trading_funnel(trade_profile)
@@ -83,7 +83,7 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
         responses={422: {"model": ErrorEnvelope}, 500: {"model": ErrorEnvelope}, 503: {"model": ErrorEnvelope}},
     )
     def export_trading_funnel(
-        trade_profile_id: Annotated[Literal["trade-15m-v1", "trade-5m-v1"], Query()],
+        trade_profile_id: Annotated[Literal["trade-15m-v1", "trade-5m-v1", "trade-5m-v2"], Query()],
         from_value: Annotated[str, Query(alias="from")],
         to_value: Annotated[str, Query(alias="to")],
         format_name: Annotated[Literal["jsonl", "csv", "summary-json", "summary-md", "jsonl-records", "csv-records"], Query(alias="format")] = "jsonl",

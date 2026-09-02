@@ -20,7 +20,7 @@ from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.orchestrator_errors import SnapshotContractViolationError, SnapshotNotEnoughDataError
 from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineStatus
 from app.engine_orchestrator.pipeline_result import PipelineResult, SafetyCounters, json_safe
-from app.engine_orchestrator.trade_profile import TradeProfileId, TradeProfileMode
+from app.engine_orchestrator.trade_profile import SCALPING_PROFILE_IDS, TradeProfileId, TradeProfileMode
 from app.engine_paper.paper_runner import PaperRunner
 from app.engine_paper.scalping_paper_runner import (
     BinancePublicScalpingCostSource,
@@ -134,7 +134,19 @@ class PipelineRunner:
                     minimum_strategy_quality=
                     self.runtime_parameters.risk_minimum_strategy_quality,
                     minimum_strategy_score=
-                    self.runtime_parameters.risk_minimum_strategy_score,
+                        self.runtime_parameters.risk_minimum_strategy_score,
+                    max_research_preapprovals_per_symbol_per_day=(
+                        3 if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
+                        else 20
+                    ),
+                    max_research_preapprovals_total_per_day=(
+                        10 if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
+                        else 50
+                    ),
+                    max_research_preapprovals_per_direction_per_day=(
+                        6 if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
+                        else 30
+                    ),
                 ),
                 runtime_parameters=self.runtime_parameters,
             ),
@@ -142,7 +154,7 @@ class PipelineRunner:
         )
         self.paper_runner = paper_runner or (
             ScalpingPaperRunner(runtime_parameters=self.runtime_parameters)
-            if config.trade_profile_id == "trade-5m-v1"
+            if config.trade_profile_id in SCALPING_PROFILE_IDS
             else PaperRunner(runtime_parameters=self.runtime_parameters)
         )
         self.strategy_cap_cost_source = strategy_cap_cost_source
@@ -152,7 +164,7 @@ class PipelineRunner:
 
         Failure is diagnostic-only and cannot change the production decision.
         """
-        if self.strategy_cap_cost_source is None or self.config.trade_profile_id != "trade-5m-v1":
+        if self.strategy_cap_cost_source is None or self.config.trade_profile_id not in SCALPING_PROFILE_IDS:
             return None
         if _attribute(setup, "status") != "SETUP_CANDIDATE":
             return None
@@ -237,7 +249,7 @@ class PipelineRunner:
         snapshots: dict[str, MarketDataSnapshot],
     ) -> None:
         """Attach closed-boundary 15m/1h levels only to the 5m pipeline."""
-        if self.config.trade_profile_id != "trade-5m-v1":
+        if self.config.trade_profile_id not in SCALPING_PROFILE_IDS:
             return
         context = getattr(analysis, "analysis_context", None)
         if not isinstance(context, dict):
@@ -306,7 +318,7 @@ class PipelineRunner:
         analysis: object,
         snapshot: MarketDataSnapshot,
     ) -> None:
-        if self.config.trade_profile_id != "trade-5m-v1":
+        if self.config.trade_profile_id not in SCALPING_PROFILE_IDS:
             return
         context = getattr(analysis, "analysis_context", None)
         if isinstance(context, dict):

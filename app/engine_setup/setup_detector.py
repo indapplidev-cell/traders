@@ -45,6 +45,7 @@ class SetupDetector:
 
     def _build(self, snapshot: AnalysisSnapshot, context: SetupContext,
                result: SetupRuleResult) -> SetupCandidate:
+        result = self._scalping_v2_micro_setup(result, context)
         result = self._scalping_family(result, context)
         missing = []
         for present, name in (
@@ -185,7 +186,7 @@ class SetupDetector:
     def _scalping_family(
         self, result: SetupRuleResult, context: SetupContext
     ) -> SetupRuleResult:
-        if getattr(self.runtime_parameters, "profile_id", None) != "trade-5m-v1":
+        if getattr(self.runtime_parameters, "profile_id", None) not in {"trade-5m-v1", "trade-5m-v2"}:
             return result
         regime = str(
             ((context.analysis_context.get("scalping") or {}).get("market_regime")) or ""
@@ -202,6 +203,86 @@ class SetupDetector:
             SetupType.TREND_CONTINUATION.value: SetupType.SCALP_MOMENTUM_CONTINUATION,
         }.get(result.setup_type)
         return replace(result, setup_type=family.value) if family is not None else result
+
+    def _scalping_v2_micro_setup(
+        self, result: SetupRuleResult, context: SetupContext
+    ) -> SetupRuleResult:
+        """Admit a causal short-horizon momentum trigger without 15m geometry.
+
+        V1 and 15m continue through the legacy structural classifier unchanged.
+        The v2 trigger requires directional 5m context plus independently
+        projected normal/strong entry evidence and expansion/impulse evidence.
+        """
+        if getattr(self.runtime_parameters, "profile_id", None) != "trade-5m-v2":
+            return result
+        scalping = context.analysis_context.get("scalping") or {}
+        indicators = context.analysis_context.get("technical_indicators") or {}
+        quality_basis = context.analysis_context.get("quality_basis") or {}
+        impulse_context = quality_basis.get("impulse_context") or {}
+        evidence = str(
+            ((scalping.get("entry_evidence_evaluation") or {}).get("status"))
+            or scalping.get("entry_evidence_strength") or ""
+        ).upper()
+        regime = str(scalping.get("market_regime") or context.regime or "").upper()
+        direction_regime = str(scalping.get("base_regime") or context.regime or "").upper()
+        direction = {
+            "UP": DirectionHint.BULLISH.value,
+            "DOWN": DirectionHint.BEARISH.value,
+        }.get(direction_regime)
+        bullish_votes = int(indicators.get("bullish_votes") or 0)
+        bearish_votes = int(indicators.get("bearish_votes") or 0)
+        indicator_direction = (
+            DirectionHint.BULLISH.value if bullish_votes >= bearish_votes + 2
+            else DirectionHint.BEARISH.value if bearish_votes >= bullish_votes + 2
+            else None
+        )
+        direction = direction or indicator_direction
+        impulse_move_pct = float(impulse_context.get("impulse_move_pct") or 0.0)
+        volatility_ratio = float(
+            ((scalping.get("volatility_state") or {}).get(
+                "recent_to_baseline_range_ratio"
+            )) or 0.0
+        )
+        indicator_momentum = (
+            direction is not None
+            and impulse_move_pct >= 0.25
+            and volatility_ratio >= 0.9
+        )
+        momentum = regime == "EXPANSION" or context.impulse_phase in {
+            "IMPULSE_EXTENSION", "CONTROLLED_PULLBACK", "CONTROLLED_PULLBACK_CONTINUATION",
+        } or indicator_momentum
+        entry_evidence = evidence in {"STRONG", "NORMAL"} or (
+            evidence == "NOT_EVALUATED" and indicator_momentum
+        )
+        if (
+            result.status != SetupStatus.SETUP_CANDIDATE.value
+            and direction is not None and momentum
+            and entry_evidence
+            and context.entry_quality not in {"POOR", "INVALID"}
+        ):
+            return SetupRuleResult(
+                status=SetupStatus.SETUP_CANDIDATE.value,
+                setup_type=SetupType.TREND_CONTINUATION.value,
+                direction_hint=direction,
+                confirmation_state=ConfirmationState.CONFIRMED_BY_ANALYSIS.value,
+                setup_quality=context.entry_quality or SetupQuality.ACCEPTABLE.value,
+                reason_codes=[SetupReasonCode.ANALYSIS_CONFIRMS_BREAKOUT_CONTINUATION.value],
+                invalidation_reasons=[],
+                diagnostics=SetupDiagnostics(
+                    has_structural_trigger=True,
+                    has_directional_context=True,
+                    # The v2 family defines the completed decision-window micro
+                    # range as its causal level and ATR stop anchor.  It does
+                    # not depend on a remote 15m structural target.
+                    has_level_context=True,
+                    has_confirmation_requirement=False,
+                    has_invalidation_context=True,
+                    is_actionable_setup_candidate=True,
+                    semantic_bucket=SetupSemanticBucket.CANDIDATE_STRUCTURE.value,
+                    diagnostic_reasons=["SCALPING_V2_MICRO_MOMENTUM_TRIGGER"],
+                ),
+            )
+        return result
 
 
 def _no_setup(reason: InvalidationReason) -> SetupRuleResult:

@@ -13,6 +13,13 @@ from statistics import median
 from typing import Iterable
 
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
+from app.engine_paper.scalping_policy_v2 import (
+    PROFILE_ID as V2_PROFILE_ID,
+    RR_EV_POLICY_VERSION as V2_RR_EV_POLICY_VERSION,
+    TARGET_POLICY_VERSION as V2_TARGET_POLICY_VERSION,
+    EmpiricalSetupBucket,
+    evaluate_expectancy,
+)
 
 
 GEOMETRY_CALCULATION_VERSION = "scalping-cost-aware-geometry-v2"
@@ -139,8 +146,8 @@ class ShadowGeometryCandidate:
     direction_consistent: bool = True
 
     def __post_init__(self) -> None:
-        if self.trade_profile_id != "trade-5m-v1":
-            raise ValueError("scalping shadow evaluator accepts only trade-5m-v1")
+        if self.trade_profile_id not in {"trade-5m-v1", V2_PROFILE_ID}:
+            raise ValueError("scalping evaluator accepts only versioned 5m profiles")
         if self.direction not in {"BULLISH", "BEARISH"}:
             raise ValueError("direction must be BULLISH or BEARISH")
         if not isfinite(float(self.entry)) or self.entry <= 0:
@@ -173,6 +180,10 @@ class ShadowGeometryConfig:
     max_depth_impact_bps: float = 20.0
     minimum_net_edge_shadow_cohorts_bps: tuple[float, ...] = (10.0, 15.0, 20.0)
     rr_shadow_cohorts: tuple[float, ...] = (1.0, 1.2, 1.5)
+    profile_id: str = "trade-5m-v1"
+    empirical_bucket: EmpiricalSetupBucket | None = None
+    minimum_empirical_samples: int = 20
+    minimum_expected_value_bps: float = 0.0
 
     def __post_init__(self) -> None:
         if self.atr_buffer_multiplier not in {0.25, 0.5, 0.75, 1.0}:
@@ -183,8 +194,10 @@ class ShadowGeometryConfig:
             raise ValueError("target diagnostic is outside the declared shadow cohorts")
         if not isfinite(float(self.minimum_positive_edge_bps)) or self.minimum_positive_edge_bps < 0:
             raise ValueError("minimum positive edge must be finite and non-negative")
-        if self.production_rr_floor != 1.5:
-            raise ValueError("production RR floor must remain 1.5")
+        if self.profile_id == "trade-5m-v1" and self.production_rr_floor != 1.5:
+            raise ValueError("v1 production RR floor must remain 1.5")
+        if self.profile_id == V2_PROFILE_ID and self.production_rr_floor not in {0.2, 0.4, 0.6}:
+            raise ValueError("v2 RR floor must be a declared dynamic cohort")
         if self.minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
             raise ValueError("minimum net-edge cohorts must be 10/15/20 bps")
         if self.rr_shadow_cohorts != (1.0, 1.2, 1.5):
@@ -243,6 +256,9 @@ class ShadowGeometryDiagnostic:
     effective_risk_bps: float | None = None
     net_rr: float | None = None
     break_even_win_rate: float | None = None
+    empirical_win_probability: float | None = None
+    expected_value_bps: float | None = None
+    expectancy_gate_reason: str | None = None
     fee_source: str | None = None
     spread_source: str | None = None
     depth_impact_source: str | None = None
@@ -469,6 +485,8 @@ def evaluate_scalping_shadow(
         reference_quantity=costs.reference_quantity,
         reference_notional=costs.reference_notional,
         required_rr=config.production_rr_floor,
+        rr_policy_version=(V2_RR_EV_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else RR_POLICY_VERSION),
+        target_policy_version=(V2_TARGET_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else TARGET_POLICY_VERSION),
     )
     invalidation = candidate.causal_invalidation
     if invalidation is None:
@@ -667,6 +685,21 @@ def evaluate_scalping_shadow(
     result.break_even_win_rate = round(
         result.effective_risk_bps / (result.effective_risk_bps + result.net_reward_bps), 8
     )
+    expectancy = evaluate_expectancy(
+        net_win_bps=result.net_reward_bps,
+        net_loss_bps=result.effective_risk_bps,
+        bucket=config.empirical_bucket,
+        minimum_samples=config.minimum_empirical_samples,
+        minimum_expected_value_bps=config.minimum_expected_value_bps,
+        static_net_rr=result.net_rr,
+        static_minimum_net_rr=config.production_rr_floor,
+    ) if config.profile_id == V2_PROFILE_ID else None
+    if expectancy is not None:
+        result.empirical_win_probability = expectancy.probability
+        result.expected_value_bps = expectancy.expected_value_bps
+        result.expectancy_gate_reason = expectancy.reason
+        if not expectancy.admitted:
+            return result.reject("EXPECTANCY_GATE", "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED")
     result.economic_gate_pass = True
     result.rr_cohorts_gross = {
         f"{rr:.2f}": result.gross_rr >= rr for rr in config.rr_shadow_cohorts

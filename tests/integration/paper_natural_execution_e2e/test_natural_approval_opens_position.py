@@ -256,10 +256,11 @@ def _seed_foundation(factory) -> None:
     ))
 
 
-def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_READY"):
+def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_READY",
+              profile_id="trade-5m-v1"):
     config = OrchestratorConfig(
         symbols=(SYMBOL,),
-        trade_profile_id="trade-5m-v1",
+        trade_profile_id=profile_id,
         primary_timeframe="5m",
         required_timeframes=("1m", "5m", "15m", "1h"),
         minimum_windows={"1m": 60, "5m": 120, "15m": 64, "1h": 50},
@@ -274,20 +275,29 @@ def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_RE
         ),
     )
     result = runner.run(SYMBOL, BOUNDARY)
-    assert result.status == "COMPLETED"
+    assert result.status == "COMPLETED", repr((
+        result.analysis_status, result.setup_status, result.strategy_status,
+        result.risk_status, result.paper_status, result.error_code,
+        result.error_message, result.analysis_payload, result.setup_payload,
+    ))
     assert result.analysis_status == "ANALYZED"
-    assert result.setup_status == "SETUP_CANDIDATE"
+    assert result.setup_status == "SETUP_CANDIDATE", repr(
+        (result.analysis_payload, result.setup_payload)
+    )
     assert result.strategy_status == "ALLOW_RESEARCH_TRADE_PLAN"
-    assert result.risk_status == "RISK_PRE_APPROVED_RESEARCH"
-    assert result.paper_status == expected_paper_status
+    assert result.risk_status == "RISK_PRE_APPROVED_RESEARCH", repr(
+        result.risk_payload
+    )
+    assert result.paper_status == expected_paper_status, repr(result.paper_payload)
     assert result.analysis_payload["source_market_data_snapshot_id"] == (
         result.market_data_payload["5m"]["snapshot_id"]
     )
     return result
 
 
+@pytest.mark.parametrize("profile_id", ("trade-5m-v1", "trade-5m-v2"))
 def test_infeasible_scalping_geometry_is_durable_and_readonly_reconstructable(
-    natural_e2e_sessions,
+    natural_e2e_sessions, profile_id,
 ):
     factory = natural_e2e_sessions
     _seed_foundation(factory)
@@ -295,6 +305,7 @@ def test_infeasible_scalping_geometry_is_durable_and_readonly_reconstructable(
         factory,
         cost_source=_EconomicallyInfeasibleCostSource(),
         expected_paper_status="REJECT",
+        profile_id=profile_id,
     )
     diagnostic = result.paper_payload["paper_context"][
         "scalping_geometry_diagnostics"
@@ -304,7 +315,11 @@ def test_infeasible_scalping_geometry_is_durable_and_readonly_reconstructable(
     assert diagnostic["minimum_economically_valid_target_bps"] > 0
     assert diagnostic["target_considerations"]
     assert diagnostic["cost_model_version"] == "scalping-round-trip-net-pnl-v2"
-    assert diagnostic["rr_policy_version"] == "scalping-required-net-rr-v2"
+    assert diagnostic["rr_policy_version"] == (
+        "scalping-empirical-ev-v1"
+        if profile_id == "trade-5m-v2"
+        else "scalping-required-net-rr-v2"
+    )
 
     run_id = _persist_natural_approval(factory, result)
     with factory() as session:
@@ -330,7 +345,7 @@ def test_infeasible_scalping_geometry_is_durable_and_readonly_reconstructable(
 
     projection = build_projection(
         ((run, row),), runtime_universe("trading-universe-v2"), EVALUATION_MS,
-        trade_profile_id="trade-5m-v1",
+        trade_profile_id=profile_id,
     )
     item = next(
         value for value in projection["current_cycle"]["items"]
@@ -558,8 +573,9 @@ def _arm_and_wait(service):
     return armed.canary_id
 
 
+@pytest.mark.parametrize("profile_id", ("trade-5m-v1", "trade-5m-v2"))
 def test_natural_approval_opens_paper_position_end_to_end(
-    natural_e2e_sessions, natural_e2e_engine, tmp_path
+    natural_e2e_sessions, natural_e2e_engine, tmp_path, profile_id
 ):
     factory = natural_e2e_sessions
     _seed_foundation(factory)
@@ -577,10 +593,27 @@ def test_natural_approval_opens_paper_position_end_to_end(
     assert control.read_authoritative().state is PersistentState.ARMED
     assert not hasattr(PersistentState, "LIVE")
 
-    result = _pipeline(factory)
+    result = _pipeline(factory, profile_id=profile_id)
     snapshot_id = result.market_data_payload["5m"]["snapshot_id"]
     analysis_id = result.analysis_payload["snapshot_id"]
     plan_id = result.paper_payload["paper_plan_id"]
+    diagnostic = result.paper_payload["paper_context"]["scalping_geometry_diagnostics"]
+    if profile_id == "trade-5m-v2":
+        assert diagnostic["rr_policy_version"] == "scalping-empirical-ev-v1"
+        assert diagnostic["target_policy_version"] == "scalping-nearest-viable-target-v3"
+        assert diagnostic["expectancy_gate_reason"] == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
+        provenance = result.paper_payload["paper_context"]["scalping_policy_provenance"]
+        assert provenance == {
+            "scalping_profile_version": "trade-5m-v2",
+            "setup_policy_version": "scalping-micro-setup-v2",
+            "entry_policy_version": "scalping-next-closed-1m-entry-v2",
+            "stop_policy_version": "scalping-causal-volatility-stop-v2",
+            "target_policy_version": "scalping-nearest-viable-target-v3",
+            "rr_ev_policy_version": "scalping-empirical-ev-v1",
+            "cost_policy_version": "scalping-round-trip-net-pnl-v2",
+            "ttl_policy_version": "scalping-short-lifecycle-v2",
+            "risk_policy_version": "scalping-risk-capped-v2",
+        }
     run_id = _persist_natural_approval(factory, result)
 
     adapter = source.read(PaperProductionApprovalRequest(

@@ -11,6 +11,7 @@ from typing import Final
 class TradeProfileId(StrEnum):
     TRADE_15M_V1 = "trade-15m-v1"
     TRADE_5M_V1 = "trade-5m-v1"
+    TRADE_5M_V2 = "trade-5m-v2"
 
 
 class TradeProfileMode(StrEnum):
@@ -89,8 +90,9 @@ class TradeSearchProfile:
             self.validity_boundaries,
         ) <= 0:
             raise ValueError("trade-profile windows must be positive")
-        if self.minimum_planned_rr < 1.5:
-            raise ValueError("trade-profile planned RR must not weaken the 1.5 floor")
+        minimum_rr = 1.5 if self.trade_mode == TradeMode.TRADE_15M.value else 0.2
+        if self.minimum_planned_rr < minimum_rr:
+            raise ValueError(f"trade-profile planned RR must preserve the {minimum_rr:g} profile floor")
         if self.mode == TradeProfileMode.SHADOW_SEARCH.value and (
             self.paper_command_creation_enabled or self.position_opening_enabled
         ):
@@ -152,14 +154,49 @@ TRADE_5M_PROFILE: Final = TradeSearchProfile(
     position_opening_enabled=True,
 )
 
+# V2 is a separate policy identity, not a mutation of either deployed profile.
+# It remains available for isolated PAPER validation until positive OOS
+# economics justify changing the active Compose profile.
+TRADE_5M_V2_PROFILE: Final = TradeSearchProfile(
+    trade_profile_id=TradeProfileId.TRADE_5M_V2.value,
+    trade_mode=TradeMode.SCALPING.value,
+    display_i18n_key="trading.profile.trade_5m.title",
+    trigger_timeframe="5m",
+    primary_timeframe="5m",
+    entry_timeframes=("1m", "5m"),
+    context_timeframes=("15m", "1h"),
+    market_data_windows=(("1m", 60), ("5m", 120), ("15m", 64), ("1h", 50)),
+    book_depth_limit=100,
+    microstructure_max_age_ms=5_000,
+    vwap_reference_notional=100.0,
+    mode=TradeProfileMode.PRODUCTION_SEARCH.value,
+    analysis_history_candles=120,
+    atr_lookback_candles=12,
+    impulse_lookback_candles=8,
+    structure_lookback_candles=12,
+    confirmation_window_candles=1,
+    volume_baseline_candles=12,
+    regime_lookback_candles=24,
+    validity_boundaries=1,
+    minimum_planned_rr=0.4,
+    cost_safety_margin_bps=3.0,
+    paper_command_creation_enabled=True,
+    position_opening_enabled=True,
+)
+
 TRADE_PROFILES: Final = MappingProxyType({
     TRADE_15M_PROFILE.trade_profile_id: TRADE_15M_PROFILE,
     TRADE_5M_PROFILE.trade_profile_id: TRADE_5M_PROFILE,
+    TRADE_5M_V2_PROFILE.trade_profile_id: TRADE_5M_V2_PROFILE,
+})
+SCALPING_PROFILE_IDS: Final = frozenset({
+    TradeProfileId.TRADE_5M_V1.value,
+    TradeProfileId.TRADE_5M_V2.value,
 })
 
 # Identical values are deliberate safety invariants, not copied timeframe tuning.
 IDENTICAL_VALUE_JUSTIFICATIONS: Final = MappingProxyType({
-    "minimum_planned_rr": "The global quality floor is 1.5 for every profile.",
+    "minimum_planned_rr": "The 15m floor remains 1.5; Scalping policy owns its independent floor.",
     "validity_boundaries": "Each profile expires at its own next trigger boundary.",
 })
 

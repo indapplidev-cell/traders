@@ -11,6 +11,7 @@ from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 from app.engine_paper.paper_config import PaperConfig
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
 from app.engine_paper.paper_runner import PaperRunner
+from app.engine_paper.scalping_policy_v2 import policy_provenance
 from app.engine_paper.scalping_shadow import (
     CausalTarget,
     ShadowCostInputs,
@@ -132,6 +133,7 @@ class ScalpingPaperRunner(PaperRunner):
                 runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
             ),
             rr_shadow_cohorts=tuple(runtime_parameters.rr_shadow_cohorts),
+            profile_id=str(getattr(runtime_parameters, "profile_id", "trade-5m-v1")),
         )
 
     def _process(self, source: RiskDecision):
@@ -149,6 +151,12 @@ class ScalpingPaperRunner(PaperRunner):
             if source.direction_hint == "BULLISH"
             else context.causal_resistance_level or context.causal_invalidation_level
         )
+        is_v2 = str(
+            getattr(self.runtime_parameters, "profile_id", "trade-5m-v1")
+        ) == "trade-5m-v2"
+        if is_v2 and invalidation is None and context.atr_value:
+            direction_sign = 1.0 if source.direction_hint == "BULLISH" else -1.0
+            invalidation = float(entry) - direction_sign * 0.5 * float(context.atr_value)
         targets: list[CausalTarget] = []
         for raw in context.causal_target_candidates:
             price = raw.get("price")
@@ -181,8 +189,15 @@ class ScalpingPaperRunner(PaperRunner):
                 context.causal_target_level, "LOCAL_5M", source.closed_until_ms,
                 timeframe="5m", source_detail="legacy_nearest_opposite_level",
             ))
+        if is_v2 and context.atr_value:
+            direction_sign = 1.0 if source.direction_hint == "BULLISH" else -1.0
+            targets.append(CausalTarget(
+                float(entry) + direction_sign * 2.0 * float(context.atr_value),
+                "LOCAL_RANGE_BOUNDARY", source.closed_until_ms,
+                timeframe="5m", source_detail="scalping_v2_two_atr_short_target",
+            ))
         candidate = ShadowGeometryCandidate(
-            trade_profile_id="trade-5m-v1",
+            trade_profile_id=str(getattr(self.runtime_parameters, "profile_id", "trade-5m-v1")),
             symbol=source.symbol,
             boundary_ms=source.closed_until_ms,
             direction=source.direction_hint,
@@ -222,7 +237,12 @@ class ScalpingPaperRunner(PaperRunner):
             "minimum_positive_edge_bps": self.geometry_config.minimum_positive_edge_bps,
             "minimum_actionable_target_bps": diagnostic.minimum_actionable_target_bps,
             "target_policy_id": getattr(self.runtime_parameters, "target_policy_id", None),
+            "rr_policy_version": diagnostic.rr_policy_version,
+            "expected_value_bps": diagnostic.expected_value_bps,
+            "expectancy_gate_reason": diagnostic.expectancy_gate_reason,
         }
+        if is_v2:
+            paper_context["scalping_policy_provenance"] = policy_provenance()
         common = dict(
             context=context,
             entry=diagnostic.entry,

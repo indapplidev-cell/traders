@@ -1,0 +1,768 @@
+{
+  "best_rejected_diagnostic": {
+    "calibration": {
+      "max_drawdown_bps": 22949.412265659514,
+      "max_loss_streak": 34,
+      "net_expectancy_per_hour_bps": -956.2255110691435,
+      "net_expectancy_per_trade_bps": -21.835787122416217,
+      "opportunities": 1051,
+      "opportunities_per_hour": 43.791666666666664,
+      "outcomes": {
+        "STOP": 552,
+        "TARGET": 156,
+        "TIME": 343
+      },
+      "plan_paper_per_hour": 43.791666666666664,
+      "profit_factor": 0.2430952638245607,
+      "symbols": 10,
+      "win_rate": 0.20456707897240722
+    },
+    "configuration": {
+      "breakout_lookback": 3,
+      "ev_gate": false,
+      "extreme_z": 1.5,
+      "holding_minutes": 15,
+      "maximum_stop_bps": 40.0,
+      "minimum_net_edge_bps": 1.0,
+      "minimum_net_rr": 0.2,
+      "momentum_bps": 10.0,
+      "setup_set": "MOMENTUM",
+      "stop_atr": 0.25,
+      "target_atr": 2.0,
+      "volume_ratio": 0.8
+    },
+    "empirical_buckets": {
+      "MOMENTUM_CONTINUATION|BEARISH": {
+        "p_win_laplace": 0.10070257611241218,
+        "samples": 425
+      },
+      "MOMENTUM_CONTINUATION|BULLISH": {
+        "p_win_laplace": 0.17939609236234458,
+        "samples": 561
+      }
+    },
+    "holdout": {
+      "max_drawdown_bps": 73608.15669176004,
+      "max_loss_streak": 51,
+      "net_expectancy_per_hour_bps": -1022.3355096077973,
+      "net_expectancy_per_trade_bps": -25.900125507305212,
+      "opportunities": 2842,
+      "opportunities_per_hour": 39.47222222222222,
+      "outcomes": {
+        "STOP": 1495,
+        "TARGET": 400,
+        "TIME": 947
+      },
+      "plan_paper_per_hour": 39.47222222222222,
+      "profit_factor": 0.12101708227773368,
+      "symbols": 10,
+      "win_rate": 0.1836734693877551
+    },
+    "selection_role": "DIAGNOSTIC_ONLY_NOT_PROMOTABLE",
+    "validation": {
+      "max_drawdown_bps": 19216.735111289265,
+      "max_loss_streak": 76,
+      "net_expectancy_per_hour_bps": -800.6972963037189,
+      "net_expectancy_per_trade_bps": -29.70129074387829,
+      "opportunities": 647,
+      "opportunities_per_hour": 26.958333333333332,
+      "outcomes": {
+        "STOP": 260,
+        "TARGET": 43,
+        "TIME": 344
+      },
+      "plan_paper_per_hour": 26.958333333333332,
+      "profit_factor": 0.023682423706071452,
+      "symbols": 10,
+      "win_rate": 0.07882534775888717
+    }
+  },
+  "calibration_survivors": 0,
+  "configurations": 576,
+  "costs": {
+    "fixed_fee_slippage_margin_bps": 27.0,
+    "observed_spread_depth_median_by_symbol": {
+      "ADAUSDT": 4.968004434924973,
+      "AVAXUSDT": 1.3829346467036834,
+      "BNBUSDT": 0.14377526694138176,
+      "BTCUSDT": 0.0012710483670379902,
+      "ETHUSDT": 0.040123661123582885,
+      "LINKUSDT": 0.8732102941878612,
+      "SOLUSDT": 0.9552466924583274,
+      "SUIUSDT": 1.3405724244252295,
+      "XRPUSDT": 0.713725004035525
+    }
+  },
+  "holdout_was_used_for_selection": false,
+  "profile_id": "trade-5m-v2",
+  "safety": {
+    "binance_order_api_calls": 0,
+    "database_writes": 0,
+    "live_enabled": false
+  },
+  "schema_version": "scalping-v2-candle-replay-v1",
+  "selected": null,
+  "top_calibration_including_rejected": [
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 22949.412265659514,
+        "max_loss_streak": 34,
+        "net_expectancy_per_hour_bps": -956.2255110691435,
+        "net_expectancy_per_trade_bps": -21.835787122416217,
+        "opportunities": 1051,
+        "opportunities_per_hour": 43.791666666666664,
+        "outcomes": {
+          "STOP": 552,
+          "TARGET": 156,
+          "TIME": 343
+        },
+        "plan_paper_per_hour": 43.791666666666664,
+        "profit_factor": 0.2430952638245607,
+        "symbols": 10,
+        "win_rate": 0.20456707897240722
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 22949.412265659514,
+        "max_loss_streak": 34,
+        "net_expectancy_per_hour_bps": -956.2255110691435,
+        "net_expectancy_per_trade_bps": -21.835787122416217,
+        "opportunities": 1051,
+        "opportunities_per_hour": 43.791666666666664,
+        "outcomes": {
+          "STOP": 552,
+          "TARGET": 156,
+          "TIME": 343
+        },
+        "plan_paper_per_hour": 43.791666666666664,
+        "profit_factor": 0.2430952638245607,
+        "symbols": 10,
+        "win_rate": 0.20456707897240722
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 22632.478768327564,
+        "max_loss_streak": 29,
+        "net_expectancy_per_hour_bps": -943.0199486803116,
+        "net_expectancy_per_trade_bps": -21.951967767533926,
+        "opportunities": 1031,
+        "opportunities_per_hour": 42.958333333333336,
+        "outcomes": {
+          "STOP": 515,
+          "TARGET": 160,
+          "TIME": 356
+        },
+        "plan_paper_per_hour": 42.958333333333336,
+        "profit_factor": 0.25103317165272016,
+        "symbols": 10,
+        "win_rate": 0.2162948593598448
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 23125.12375932719,
+        "max_loss_streak": 50,
+        "net_expectancy_per_hour_bps": -963.5468233052966,
+        "net_expectancy_per_trade_bps": -22.00297217823703,
+        "opportunities": 1051,
+        "opportunities_per_hour": 43.791666666666664,
+        "outcomes": {
+          "STOP": 554,
+          "TARGET": 134,
+          "TIME": 363
+        },
+        "plan_paper_per_hour": 43.791666666666664,
+        "profit_factor": 0.2414332398824039,
+        "symbols": 10,
+        "win_rate": 0.19314938154138916
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 23125.12375932719,
+        "max_loss_streak": 50,
+        "net_expectancy_per_hour_bps": -963.5468233052966,
+        "net_expectancy_per_trade_bps": -22.00297217823703,
+        "opportunities": 1051,
+        "opportunities_per_hour": 43.791666666666664,
+        "outcomes": {
+          "STOP": 554,
+          "TARGET": 134,
+          "TIME": 363
+        },
+        "plan_paper_per_hour": 43.791666666666664,
+        "profit_factor": 0.2414332398824039,
+        "symbols": 10,
+        "win_rate": 0.19314938154138916
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 22808.19026199524,
+        "max_loss_streak": 50,
+        "net_expectancy_per_hour_bps": -950.3412609164646,
+        "net_expectancy_per_trade_bps": -22.122395986416247,
+        "opportunities": 1031,
+        "opportunities_per_hour": 42.958333333333336,
+        "outcomes": {
+          "STOP": 517,
+          "TARGET": 138,
+          "TIME": 376
+        },
+        "plan_paper_per_hour": 42.958333333333336,
+        "profit_factor": 0.24932241735230493,
+        "symbols": 10,
+        "win_rate": 0.2046556741028128
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 24478.999743875032,
+        "max_loss_streak": 36,
+        "net_expectancy_per_hour_bps": -1019.9583226614562,
+        "net_expectancy_per_trade_bps": -22.173007014379483,
+        "opportunities": 1104,
+        "opportunities_per_hour": 46.0,
+        "outcomes": {
+          "STOP": 573,
+          "TARGET": 158,
+          "TIME": 373
+        },
+        "plan_paper_per_hour": 46.0,
+        "profit_factor": 0.22790844819643388,
+        "symbols": 10,
+        "win_rate": 0.20018115942028986
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 24478.999743875032,
+        "max_loss_streak": 36,
+        "net_expectancy_per_hour_bps": -1019.9583226614562,
+        "net_expectancy_per_trade_bps": -22.173007014379483,
+        "opportunities": 1104,
+        "opportunities_per_hour": 46.0,
+        "outcomes": {
+          "STOP": 573,
+          "TARGET": 158,
+          "TIME": 373
+        },
+        "plan_paper_per_hour": 46.0,
+        "profit_factor": 0.22790844819643388,
+        "symbols": 10,
+        "win_rate": 0.20018115942028986
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 23400.951242009392,
+        "max_loss_streak": 29,
+        "net_expectancy_per_hour_bps": -975.0396350837209,
+        "net_expectancy_per_trade_bps": -22.265415073272408,
+        "opportunities": 1051,
+        "opportunities_per_hour": 43.791666666666664,
+        "outcomes": {
+          "STOP": 529,
+          "TARGET": 161,
+          "TIME": 361
+        },
+        "plan_paper_per_hour": 43.791666666666664,
+        "profit_factor": 0.252163167479237,
+        "symbols": 10,
+        "win_rate": 0.2159847764034253
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 24159.289715162264,
+        "max_loss_streak": 32,
+        "net_expectancy_per_hour_bps": -1006.6370714650903,
+        "net_expectancy_per_trade_bps": -22.28716763391344,
+        "opportunities": 1084,
+        "opportunities_per_hour": 45.166666666666664,
+        "outcomes": {
+          "STOP": 535,
+          "TARGET": 162,
+          "TIME": 387
+        },
+        "plan_paper_per_hour": 45.166666666666664,
+        "profit_factor": 0.23547031120890327,
+        "symbols": 10,
+        "win_rate": 0.21125461254612546
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 24617.388348645596,
+        "max_loss_streak": 39,
+        "net_expectancy_per_hour_bps": -1025.724514526896,
+        "net_expectancy_per_trade_bps": -22.298359011454263,
+        "opportunities": 1104,
+        "opportunities_per_hour": 46.0,
+        "outcomes": {
+          "STOP": 575,
+          "TARGET": 135,
+          "TIME": 394
+        },
+        "plan_paper_per_hour": 46.0,
+        "profit_factor": 0.22724131568725445,
+        "symbols": 10,
+        "win_rate": 0.19021739130434784
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 24617.388348645596,
+        "max_loss_streak": 39,
+        "net_expectancy_per_hour_bps": -1025.724514526896,
+        "net_expectancy_per_trade_bps": -22.298359011454263,
+        "opportunities": 1104,
+        "opportunities_per_hour": 46.0,
+        "outcomes": {
+          "STOP": 575,
+          "TARGET": 135,
+          "TIME": 394
+        },
+        "plan_paper_per_hour": 46.0,
+        "profit_factor": 0.22724131568725445,
+        "symbols": 10,
+        "win_rate": 0.19021739130434784
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 24297.678319932827,
+        "max_loss_streak": 39,
+        "net_expectancy_per_hour_bps": -1012.4032633305302,
+        "net_expectancy_per_trade_bps": -22.414832398461925,
+        "opportunities": 1084,
+        "opportunities_per_hour": 45.166666666666664,
+        "outcomes": {
+          "STOP": 537,
+          "TARGET": 139,
+          "TIME": 408
+        },
+        "plan_paper_per_hour": 45.166666666666664,
+        "profit_factor": 0.23476485009027845,
+        "symbols": 10,
+        "win_rate": 0.2011070110701107
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "MOMENTUM",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 23576.662735677073,
+        "max_loss_streak": 50,
+        "net_expectancy_per_hour_bps": -982.360947319874,
+        "net_expectancy_per_trade_bps": -22.43260012909322,
+        "opportunities": 1051,
+        "opportunities_per_hour": 43.791666666666664,
+        "outcomes": {
+          "STOP": 531,
+          "TARGET": 139,
+          "TIME": 381
+        },
+        "plan_paper_per_hour": 43.791666666666664,
+        "profit_factor": 0.2505048469128584,
+        "symbols": 10,
+        "win_rate": 0.20456707897240722
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 24927.762188844084,
+        "max_loss_streak": 32,
+        "net_expectancy_per_hour_bps": -1038.6567578684997,
+        "net_expectancy_per_trade_bps": -22.579494736271734,
+        "opportunities": 1104,
+        "opportunities_per_hour": 46.0,
+        "outcomes": {
+          "STOP": 549,
+          "TARGET": 163,
+          "TIME": 392
+        },
+        "plan_paper_per_hour": 46.0,
+        "profit_factor": 0.2370637207788508,
+        "symbols": 10,
+        "win_rate": 0.21105072463768115
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "ALL",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 25066.150793614648,
+        "max_loss_streak": 39,
+        "net_expectancy_per_hour_bps": -1044.4229497339395,
+        "net_expectancy_per_trade_bps": -22.704846733346514,
+        "opportunities": 1104,
+        "opportunities_per_hour": 46.0,
+        "outcomes": {
+          "STOP": 551,
+          "TARGET": 140,
+          "TIME": 413
+        },
+        "plan_paper_per_hour": 46.0,
+        "profit_factor": 0.23637396098576918,
+        "symbols": 10,
+        "win_rate": 0.20108695652173914
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "BREAKOUT",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 14064.494550591491,
+        "max_loss_streak": 36,
+        "net_expectancy_per_hour_bps": -586.0194810911403,
+        "net_expectancy_per_trade_bps": -22.83192783471975,
+        "opportunities": 616,
+        "opportunities_per_hour": 25.666666666666668,
+        "outcomes": {
+          "STOP": 291,
+          "TARGET": 89,
+          "TIME": 236
+        },
+        "plan_paper_per_hour": 25.666666666666668,
+        "profit_factor": 0.20450986607070432,
+        "symbols": 10,
+        "win_rate": 0.20454545454545456
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.4,
+        "momentum_bps": 10.0,
+        "setup_set": "BREAKOUT",
+        "stop_atr": 0.5,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 14193.772641364745,
+        "max_loss_streak": 36,
+        "net_expectancy_per_hour_bps": -591.284553653038,
+        "net_expectancy_per_trade_bps": -23.037060531936543,
+        "opportunities": 616,
+        "opportunities_per_hour": 25.666666666666668,
+        "outcomes": {
+          "STOP": 293,
+          "TARGET": 73,
+          "TIME": 250
+        },
+        "plan_paper_per_hour": 25.666666666666668,
+        "profit_factor": 0.20313627322981737,
+        "symbols": 10,
+        "win_rate": 0.19318181818181818
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 40.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "BREAKOUT",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 14672.88749230999,
+        "max_loss_streak": 36,
+        "net_expectancy_per_hour_bps": -611.3691869960766,
+        "net_expectancy_per_trade_bps": -23.364427528512483,
+        "opportunities": 628,
+        "opportunities_per_hour": 26.166666666666668,
+        "outcomes": {
+          "STOP": 319,
+          "TARGET": 86,
+          "TIME": 223
+        },
+        "plan_paper_per_hour": 26.166666666666668,
+        "profit_factor": 0.18721337475951152,
+        "symbols": 10,
+        "win_rate": 0.18789808917197454
+      }
+    },
+    {
+      "configuration": {
+        "breakout_lookback": 3,
+        "ev_gate": false,
+        "extreme_z": 1.5,
+        "holding_minutes": 15,
+        "maximum_stop_bps": 60.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 0.2,
+        "momentum_bps": 10.0,
+        "setup_set": "BREAKOUT",
+        "stop_atr": 0.25,
+        "target_atr": 2.0,
+        "volume_ratio": 0.8
+      },
+      "metrics": {
+        "max_drawdown_bps": 14672.88749230999,
+        "max_loss_streak": 36,
+        "net_expectancy_per_hour_bps": -611.3691869960766,
+        "net_expectancy_per_trade_bps": -23.364427528512483,
+        "opportunities": 628,
+        "opportunities_per_hour": 26.166666666666668,
+        "outcomes": {
+          "STOP": 319,
+          "TARGET": 86,
+          "TIME": 223
+        },
+        "plan_paper_per_hour": 26.166666666666668,
+        "profit_factor": 0.18721337475951152,
+        "symbols": 10,
+        "win_rate": 0.18789808917197454
+      }
+    }
+  ],
+  "validation_survivors": 0
+}

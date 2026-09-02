@@ -23,6 +23,7 @@ from app.engine_strategy.strategy_rules import (
     strategy_shadow_threshold_cohorts,
 )
 from app.engine_strategy.strategy_status import StrategyStatus
+from app.engine_orchestrator.trade_profile import SCALPING_PROFILE_IDS
 
 
 class StrategyFilter:
@@ -37,7 +38,7 @@ class StrategyFilter:
         context = StrategyContext.from_setup_candidate(setup_candidate)
         source_setup_quality = context.setup_quality
         source_quality_reasons = context.quality_reasons
-        if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1":
+        if getattr(self.runtime_parameters, "profile_id", None) in SCALPING_PROFILE_IDS:
             if context.analysis_entry_evidence_strength == "UNKNOWN":
                 context = replace(context, setup_quality="UNKNOWN", quality_score=None)
             elif context.analysis_entry_evidence_strength == "CONFLICTING":
@@ -48,7 +49,7 @@ class StrategyFilter:
                     has_hard_invalidation=True,
                 )
         if (
-            getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1"
+            getattr(self.runtime_parameters, "profile_id", None) in SCALPING_PROFILE_IDS
             and getattr(self.runtime_parameters, "strategy_not_evaluated_handling", None)
             == "SCORE_FROM_EVALUATED_COMPONENTS"
             and context.analysis_entry_evidence_strength == "NOT_EVALUATED"
@@ -141,7 +142,7 @@ class StrategyFilter:
                     result.score,
                     tuple(self.runtime_parameters.strategy_shadow_thresholds),
                 )
-                if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1"
+                if getattr(self.runtime_parameters, "profile_id", None) in SCALPING_PROFILE_IDS
                 else {}
             ),
             decision_reasons=reasons, decision_warnings=result.warnings,
@@ -163,7 +164,7 @@ class StrategyFilter:
                 "source_quality_reasons": list(source_quality_reasons),
                 "scalping_score_decomposition": (
                     scalping_strategy_score_decomposition(context)
-                    if getattr(self.runtime_parameters, "profile_id", None) == "trade-5m-v1"
+                    if getattr(self.runtime_parameters, "profile_id", None) in SCALPING_PROFILE_IDS
                     else None
                 ),
                 "direction_hint": setup_candidate.direction_hint,

@@ -33,6 +33,8 @@ RISK_STRATEGY_TYPE_REGISTRY: Final = MappingProxyType({
         TRADE_15M_RISK_STRATEGY_TYPES,
     (TradeProfileId.TRADE_5M_V1.value, TradeMode.SCALPING.value):
         SCALPING_RISK_STRATEGY_TYPES,
+    (TradeProfileId.TRADE_5M_V2.value, TradeMode.SCALPING.value):
+        SCALPING_RISK_STRATEGY_TYPES,
 })
 
 

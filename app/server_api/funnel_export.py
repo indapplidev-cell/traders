@@ -99,7 +99,7 @@ def decode_export_cursor(value: str) -> ExportCursor:
         expected_check = hashlib.sha256(b"traders-funnel-export-v1\0" + canonical).hexdigest()[:24]
         if not isinstance(check, str) or not hmac.compare_digest(check, expected_check):
             raise ValueError
-        if body["v"] != 1 or body["profile"] not in {"trade-15m-v1", "trade-5m-v1"}:
+        if body["v"] != 1 or body["profile"] not in {"trade-15m-v1", "trade-5m-v1", "trade-5m-v2"}:
             raise ValueError
         if body["symbol"] is not None and (
             not isinstance(body["symbol"], str) or not body["symbol"].isalnum()
@@ -246,7 +246,7 @@ def _canonical_trace(
     output: dict[str, dict[str, object]] = {}
     prior_reached = True
     stage_order = ["analysis", "setup", "strategy", "geometry"]
-    if source.get("profile") == "trade-5m-v1":
+    if source.get("profile") in {"trade-5m-v1", "trade-5m-v2"}:
         stage_order.append("target_actionability")
     stage_order.extend([
         "cost", "risk", "paper_plan", "final_approval", "paper_command", "position", "exit",
@@ -333,7 +333,7 @@ def build_export_record(
     downstream_trace, _downstream_detail = _downstream_trace(
         result,
         trace,
-        scalping=run.trade_profile_id == "trade-5m-v1",
+        scalping=run.trade_profile_id in {"trade-5m-v1", "trade-5m-v2"},
         now_ms=generated_at_ms,
     )
     terminal_reason = _safe_reason(
@@ -593,7 +593,7 @@ def build_summary(
         }
     value = aggregate(
         _summary_source(pairs), expected_symbols=expected_symbols,
-        boundary_interval_ms=300_000 if profile_id == "trade-5m-v1" else 900_000,
+        boundary_interval_ms=300_000 if profile_id in {"trade-5m-v1", "trade-5m-v2"} else 900_000,
         include_calibration_cohorts=False,
     )
     value.pop("export_rows", None)

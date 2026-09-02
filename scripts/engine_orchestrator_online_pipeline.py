@@ -31,6 +31,7 @@ from app.engine_orchestrator.trade_profile import (
     DEFAULT_TRADE_PROFILE_ID,
     TRADE_5M_CONTEXT_MINIMUM_WINDOWS,
     TRADE_PROFILES,
+    SCALPING_PROFILE_IDS,
     resolve_trade_profile,
 )
 
@@ -84,8 +85,11 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
     """Fail before owner election unless the deployed profile schema is exact 0017."""
     with sessions() as session:
         revision = session.scalar(text("SELECT version_num FROM alembic_version"))
-        if revision != "0020_paper_plan_execution_outcomes":
-            raise RuntimeError("online runtime requires schema 0020_paper_plan_execution_outcomes")
+        if revision not in {
+            "0020_paper_plan_execution_outcomes",
+            "0021_independent_scalping_profile_v2",
+        }:
+            raise RuntimeError("online runtime requires schema 0020 or 0021")
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
             "WHERE table_schema = current_schema() "
@@ -102,16 +106,16 @@ def main(argv: list[str] | None = None) -> int:
     primary_timeframe = args.primary_timeframe or profile.trigger_timeframe
     required_timeframes = args.required_timeframes or (
         tuple(TRADE_5M_CONTEXT_MINIMUM_WINDOWS)
-        if profile.trade_profile_id == "trade-5m-v1"
+        if profile.trade_profile_id in SCALPING_PROFILE_IDS
         else csv_values("1m,5m,15m,1h,4h,1d")
     )
     minimum_windows = (
         dict(TRADE_5M_CONTEXT_MINIMUM_WINDOWS)
-        if profile.trade_profile_id == "trade-5m-v1"
+        if profile.trade_profile_id in SCALPING_PROFILE_IDS
         else {timeframe: DEFAULT_MINIMUM_WINDOWS[timeframe] for timeframe in required_timeframes}
     )
     health_report = args.health_report
-    if profile.trade_profile_id == "trade-5m-v1" and health_report == Path("reports/engine_orchestrator/latest_health.json"):
+    if profile.trade_profile_id in SCALPING_PROFILE_IDS and health_report == Path("reports/engine_orchestrator/latest_health.json"):
         health_report = Path("reports/engine_orchestrator/latest_health_trade_5m.json")
     config = OrchestratorConfig(
         symbols=args.symbols, trade_profile_id=profile.trade_profile_id,
@@ -134,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     runtime_parameters = config.runtime_parameters
     sessions = create_market_data_session_factory()
     owner = None
-    if profile.trade_profile_id == "trade-5m-v1":
+    if profile.trade_profile_id in SCALPING_PROFILE_IDS:
         validate_5m_schema_capabilities(sessions)
         owner = PostgresProfileOwner(sessions, profile.trade_profile_id)
         try:
@@ -173,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             entry_slippage_bps=runtime_parameters.economics_entry_slippage_bps,
             exit_slippage_bps=runtime_parameters.economics_exit_slippage_bps,
         )
-        if args.strategy_cap_shadow_economic_capture and profile.trade_profile_id == "trade-5m-v1"
+        if args.strategy_cap_shadow_economic_capture and profile.trade_profile_id in SCALPING_PROFILE_IDS
         else None
     )
     daemon = OrchestratorDaemon(

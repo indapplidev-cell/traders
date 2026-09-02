@@ -10,6 +10,12 @@ from typing import Mapping
 from app.engine_orchestrator.trade_profile import TradeProfileId
 
 
+DEPLOYED_PARALLEL_PROFILE_IDS = frozenset({
+    TradeProfileId.TRADE_15M_V1.value,
+    TradeProfileId.TRADE_5M_V1.value,
+})
+
+
 @dataclass(frozen=True, slots=True)
 class ProfileCycleObservation:
     trade_profile_id: str
@@ -23,7 +29,9 @@ class ParallelTradeProfileCoordinator:
     """Run exactly two independent profile cycles without unbounded fan-out."""
 
     def __init__(self, daemons: Mapping[str, object]) -> None:
-        required = {item.value for item in TradeProfileId}
+        # Candidate profile identities are not activated merely by existing in
+        # the registry.  Activation remains an explicit deployment decision.
+        required = DEPLOYED_PARALLEL_PROFILE_IDS
         if set(daemons) != required:
             raise ValueError("parallel coordinator requires exactly the 15m and 5m profiles")
         self._daemons = dict(daemons)

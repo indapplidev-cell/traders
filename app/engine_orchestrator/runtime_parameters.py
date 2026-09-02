@@ -104,7 +104,7 @@ class RuntimeProfileParameters:
             raise ValueError("runtime microstructure/profile identity mismatch")
         if not 0 < self.analysis_compression_ratio < 1 < self.analysis_expansion_ratio:
             raise ValueError("invalid analysis volatility-regime thresholds")
-        if self.profile_id == TradeProfileId.TRADE_5M_V1.value and len(
+        if profile.trade_mode == "SCALPING" and len(
             self.scalping_setup_families
         ) != 7:
             raise ValueError("Scalping requires all seven setup families")
@@ -158,8 +158,9 @@ class RuntimeProfileParameters:
             raise ValueError("analysis history must cover the regime window")
         if self.regime_lookback_candles < self.structure_lookback_candles:
             raise ValueError("regime window must cover the structure window")
-        if self.minimum_planned_rr < 1.5:
-            raise ValueError("runtime planned RR must preserve the 1.5 floor")
+        minimum_rr = 1.5 if self.profile_id == TradeProfileId.TRADE_15M_V1.value else 0.2
+        if self.minimum_planned_rr < minimum_rr:
+            raise ValueError(f"runtime planned RR must preserve the {minimum_rr:g} profile floor")
         for value in (
             self.contract_version,
             self.setup_policy_id,
@@ -274,7 +275,9 @@ class RuntimeProfileParameters:
 
 
 def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters:
-    if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value:
+    is_scalping = profile.trade_mode == "SCALPING"
+    is_v2 = profile.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
+    if is_scalping:
         analysis = {
             "atr_lookback_candles": profile.atr_lookback_candles,
             "impulse_lookback_candles": profile.impulse_lookback_candles,
@@ -318,7 +321,7 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
                 "SCALP_RANGE_BOUNCE", "SCALP_LIQUIDITY_SWEEP",
                 "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
             )
-            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value else ()
+            if is_scalping else ()
         ),
         strategy_allowed_setup_types=(
             (
@@ -326,18 +329,18 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
                 "SCALP_RANGE_BOUNCE", "SCALP_LIQUIDITY_SWEEP",
                 "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
             )
-            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            if is_scalping
             else ("BREAKOUT_CONTINUATION", "TREND_CONTINUATION")
         ),
         strategy_shadow_thresholds=(55.0, 60.0, 65.0),
         strategy_not_evaluated_handling=(
             "SCORE_FROM_EVALUATED_COMPONENTS"
-            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            if is_scalping
             else "LEGACY_WEAK_CAP"
         ),
         geometry_atr_buffer_multiplier=0.25,
         geometry_atr_buffer_shadow_cohorts=(0.25, 0.5, 0.75),
-        geometry_stop_envelope_bps=80.0,
+        geometry_stop_envelope_bps=50.0 if is_v2 else 80.0,
         geometry_stop_envelope_shadow_cohorts_bps=(50.0, 65.0, 80.0),
         geometry_minimum_target_bps=45.0,
         geometry_minimum_target_shadow_cohorts_bps=(45.0, 60.0, 80.0),
@@ -351,36 +354,40 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         rr_shadow_cohorts=(1.0, 1.2, 1.5),
         risk_per_trade_bps=10.0,
         risk_per_trade_shadow_cohorts_bps=(10.0, 15.0, 20.0, 25.0),
-        portfolio_max_concurrent_positions=3,
+        portfolio_max_concurrent_positions=2 if is_v2 else 3,
         portfolio_max_concurrent_shadow_cohorts=(2, 3, 4),
         portfolio_max_total_open_risk_bps=50.0,
         portfolio_total_open_risk_shadow_cohorts_bps=(50.0, 75.0),
-        execution_entry_ttl_seconds=60,
+        execution_entry_ttl_seconds=30 if is_v2 else 60,
         execution_entry_ttl_shadow_cohorts_seconds=(30, 60, 120),
         execution_max_price_drift_bps=10.0,
-        exit_time_stop_minutes=30,
+        exit_time_stop_minutes=15 if is_v2 else 30,
         exit_time_stop_shadow_cohorts_minutes=(15, 30, 45),
         exit_adaptive_rules_production_enabled=False,
         opportunity_reentry_enabled=False,
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(
-            "scalping-setup-families-v1"
-            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            "scalping-micro-setup-v2" if is_v2 else "scalping-setup-families-v1"
+            if is_scalping
             else "engine-setup-01-causal-v1"
         ),
-        strategy_policy_id="engine-strategy-01-shadow-v1",
+        strategy_policy_id=("scalping-short-horizon-entry-v2" if is_v2 else "engine-strategy-01-shadow-v1"),
         strategy_minimum_allowed_quality="ACCEPTABLE",
-        risk_shadow_policy_id="ENGINE_RISK_01_RESEARCH_POLICY_V1",
+        risk_shadow_policy_id=(
+            "scalping-risk-capped-v2" if is_v2
+            else "ENGINE_RISK_01_RESEARCH_POLICY_V1"
+        ),
         risk_minimum_strategy_quality="ACCEPTABLE",
-        risk_minimum_strategy_score=65.0,
+        risk_minimum_strategy_score=55.0 if is_v2 else 65.0,
         validity_boundaries=profile.validity_boundaries,
         minimum_planned_rr=profile.minimum_planned_rr,
         cost_safety_margin_bps=profile.cost_safety_margin_bps,
-        stop_policy_id="LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER",
+        stop_policy_id=("SCALPING_CAUSAL_VOLATILITY_STOP_V2" if is_v2 else "LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER"),
         target_policy_id=(
-            "CAUSAL_HIERARCHY_COST_AWARE_NET_RR_V3"
-            if profile.trade_profile_id == TradeProfileId.TRADE_5M_V1.value
+            "SCALPING_NEAREST_VIABLE_TARGET_V3" if is_v2
+            else "CAUSAL_HIERARCHY_COST_AWARE_NET_RR_V3"
+            if is_scalping
             else "OPPOSITE_CAUSAL_LEVEL"
         ),
         paper_command_creation_enabled=profile.paper_command_creation_enabled,
@@ -393,6 +400,7 @@ RUNTIME_PROFILE_PARAMETERS: Final = MappingProxyType({
     for profile_id in (
         TradeProfileId.TRADE_15M_V1.value,
         TradeProfileId.TRADE_5M_V1.value,
+        TradeProfileId.TRADE_5M_V2.value,
     )
 })
 
