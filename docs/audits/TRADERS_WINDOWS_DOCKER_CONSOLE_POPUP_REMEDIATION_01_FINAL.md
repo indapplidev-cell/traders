@@ -6,9 +6,9 @@
 
 ## Proven root cause
 
-- The current-user Startup launcher `TradersML-WALAckDaemon.vbs` started two
-  concurrent `pythonw.exe` WAL ACK daemons after Windows logon.
-- Each daemon polled Docker through the console-subsystem `docker.exe` roughly
+- The current-user Startup launcher `TradersML-WALAckDaemon.vbs` started the
+  `pythonw.exe` WAL ACK daemon after Windows logon.
+- The daemon polled Docker through the console-subsystem `docker.exe` roughly
   once per second without Windows no-console creation flags.
 - Every poll therefore created a short-lived `conhost.exe`; these were the
   repeatedly appearing terminal windows.
@@ -21,12 +21,12 @@
   backup helper now set `CREATE_NO_WINDOW`.
 - The daemon lock writes its owner PID before returning the newly created lock,
   closing the simultaneous-start empty-lock race.
-- The duplicate pre-fix daemons were stopped.
-- Docker Desktop's integrated terminal was disabled and its dashboard was
-  closed; the engine and containers were not stopped.
+- The pre-fix daemon was stopped and the remediated hidden daemon was started.
+- Docker Desktop's dashboard was closed; the engine and containers were not
+  stopped. The durable fix does not depend on the dashboard or integrated
+  terminal preference.
 - Current-user Startup fallback was regenerated from the remediated source for
-  the next Windows logon. No daemon is intentionally left running in the
-  current Codex process job.
+  subsequent Windows logons.
 
 ## Verification
 
@@ -36,6 +36,11 @@
   `docker.exe` processes in 20 seconds.
 - Remediated daemon child `conhost.exe` instances were observed only with
   `MainWindowHandle=0` (no visible console).
+- Fresh post-commit observation captured 13 new `docker.exe` calls and their
+  console hosts in 10 seconds with zero visible windows.
+- The two `pythonw.exe` processes in the fresh process tree are one virtualenv
+  launcher/interpreter chain. The daemon PID file and running-state snapshot
+  identify only the interpreter PID; this is not a duplicate daemon.
 - Focused Windows daemon tests: `9 passed, 7 deselected`.
 - Compile check: PASS for both changed scripts.
 - The full historical operator-safety file produced `15 passed, 1 failed`; the
@@ -50,5 +55,6 @@
 - LIVE remains disabled.
 - No database, schema, trading, control, command, order, fill, position, or
   balance mutation was performed.
-- The host WAL ACK daemon is stopped for the current Windows session and will
-  be started from the remediated hidden Startup launcher at the next logon.
+- The host WAL ACK daemon is running for the current Windows session through
+  the remediated hidden launcher; the same launcher remains active for later
+  Windows logons.
