@@ -1,0 +1,1054 @@
+{
+  "baseline": {
+    "calibration": {
+      "average_loss_bps": 40.93787886868134,
+      "average_win_bps": 53.19845491637104,
+      "configuration": {
+        "atr_buffer_multiplier": 0.25,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 931.4257801659686,
+      "max_loss_streak": 12,
+      "net_expectancy_per_hour_bps": -29.775058281124764,
+      "net_expectancy_per_trade_bps": -21.2349252857634,
+      "opportunities": 43,
+      "opportunities_per_hour": 1.4021739130434783,
+      "outcomes": {
+        "STOP": 16,
+        "TARGET": 3,
+        "TIME": 24
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 11,
+          "expectancy_bps": -37.66499723376962
+        },
+        "2026-08-28": {
+          "count": 32,
+          "expectancy_bps": -15.58708805363626
+        }
+      },
+      "plan_paper_per_hour": 1.4021739130434783,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge1-score65-atr0.25-stop80",
+      "profit_factor": 0.3439832335627983,
+      "risk_adjusted_return": -16.086595969086808,
+      "symbols": 8,
+      "win_rate": 0.20930232558139536
+    },
+    "holdout": {
+      "average_loss_bps": 42.082816845936605,
+      "average_win_bps": null,
+      "configuration": {
+        "atr_buffer_multiplier": 0.25,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 462.9109853053027,
+      "max_loss_streak": 11,
+      "net_expectancy_per_hour_bps": -5.549382441222409,
+      "net_expectancy_per_trade_bps": -42.082816845936605,
+      "opportunities": 11,
+      "opportunities_per_hour": 0.13186813186813187,
+      "outcomes": {
+        "STOP": 8,
+        "TIME": 3
+      },
+      "per_day": {
+        "2026-09-01": {
+          "count": 8,
+          "expectancy_bps": -44.914729984627584
+        },
+        "2026-09-02": {
+          "count": 3,
+          "expectancy_bps": -34.531048476094
+        }
+      },
+      "plan_paper_per_hour": 0.13186813186813187,
+      "positive_days": 0,
+      "positive_symbols": 0,
+      "profile_version": "rr1.5-edge1-score65-atr0.25-stop80",
+      "profit_factor": 0.0,
+      "risk_adjusted_return": -9.481956459762836,
+      "symbols": 6,
+      "win_rate": 0.0
+    },
+    "validation": {
+      "average_loss_bps": 33.60315900514506,
+      "average_win_bps": null,
+      "configuration": {
+        "atr_buffer_multiplier": 0.25,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 1,
+      "max_drawdown_bps": 235.2221130360154,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -9.800921376500641,
+      "net_expectancy_per_trade_bps": -33.60315900514506,
+      "opportunities": 7,
+      "opportunities_per_hour": 0.2916666666666667,
+      "outcomes": {
+        "STOP": 1,
+        "TIME": 6
+      },
+      "per_day": {
+        "2026-08-29": {
+          "count": 7,
+          "expectancy_bps": -33.60315900514506
+        }
+      },
+      "plan_paper_per_hour": 0.2916666666666667,
+      "positive_days": 0,
+      "positive_symbols": 0,
+      "profile_version": "rr1.5-edge1-score65-atr0.25-stop80",
+      "profit_factor": 0.0,
+      "risk_adjusted_return": -4.084809580363296,
+      "symbols": 4,
+      "win_rate": 0.0
+    }
+  },
+  "cost_model": {
+    "depth_impact": "OBSERVED",
+    "entry_exit_fee_bps": 20.0,
+    "entry_exit_slippage_bps": 4.0,
+    "safety_margin_bps": 3.0,
+    "spread": "OBSERVED"
+  },
+  "holdout_was_used_for_selection": false,
+  "load": {
+    "observation_rows_scanned": 8130,
+    "outcome_rows": 624,
+    "replayable_outcomes": 531,
+    "unreplayable_outcomes": 93
+  },
+  "profile_id": "trade-5m-v1",
+  "safety": {
+    "binance_order_api_calls": 0,
+    "live_enabled": false,
+    "parameter_promotions": 0,
+    "production_mutations": 0
+  },
+  "schema_version": "scalping-opportunity-cadence-search-v1",
+  "search_space": {
+    "atr_buffer_multiplier": [
+      0.25,
+      0.5,
+      0.75
+    ],
+    "configurations": 648,
+    "maximum_stop_bps": [
+      50.0,
+      65.0,
+      80.0
+    ],
+    "minimum_net_edge_bps": [
+      1.0,
+      10.0,
+      15.0,
+      20.0
+    ],
+    "minimum_net_rr": [
+      0.4,
+      0.6,
+      0.8,
+      1.0,
+      1.2,
+      1.5
+    ],
+    "minimum_strategy_score": [
+      55.0,
+      60.0,
+      65.0
+    ]
+  },
+  "selected": null,
+  "top_calibration_configurations_including_rejected": [
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 55.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge1-score55-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 60.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge1-score60-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge1-score65-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 10.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 55.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge10-score55-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 10.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 60.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge10-score60-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 10.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge10-score65-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 15.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 55.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge15-score55-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 15.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 60.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge15-score60-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 15.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge15-score65-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 20.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 55.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge20-score55-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 20.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 60.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge20-score60-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 34.722198769805956,
+      "average_win_bps": 55.078216177167974,
+      "configuration": {
+        "atr_buffer_multiplier": 0.75,
+        "maximum_stop_bps": 80.0,
+        "minimum_net_edge_bps": 20.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 406.3358814351176,
+      "max_loss_streak": 7,
+      "net_expectancy_per_hour_bps": -10.541173158208283,
+      "net_expectancy_per_trade_bps": -10.77542145061291,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 6,
+        "TARGET": 2,
+        "TIME": 22
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -24.435748468001613
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -7.3603396962657355
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge20-score65-atr0.75-stop80",
+      "profit_factor": 0.5768195262927709,
+      "risk_adjusted_return": -6.602243421841865,
+      "symbols": 8,
+      "win_rate": 0.26666666666666666
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 55.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge1-score55-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 60.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge1-score60-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 1.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge1-score65-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 10.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 55.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge10-score55-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 10.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 60.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge10-score60-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 10.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 65.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge10-score65-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 15.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 55.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge15-score55-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    },
+    {
+      "average_loss_bps": 36.733327388745735,
+      "average_win_bps": 52.48957369267279,
+      "configuration": {
+        "atr_buffer_multiplier": 0.5,
+        "maximum_stop_bps": 65.0,
+        "minimum_net_edge_bps": 15.0,
+        "minimum_net_rr": 1.5,
+        "minimum_strategy_score": 60.0
+      },
+      "days": 2,
+      "max_drawdown_bps": 495.76350697058473,
+      "max_loss_streak": 8,
+      "net_expectancy_per_hour_bps": -15.568679807362251,
+      "net_expectancy_per_trade_bps": -15.914650469748079,
+      "opportunities": 30,
+      "opportunities_per_hour": 0.9782608695652174,
+      "outcomes": {
+        "STOP": 8,
+        "TARGET": 2,
+        "TIME": 20
+      },
+      "per_day": {
+        "2026-08-27": {
+          "count": 6,
+          "expectancy_bps": -30.834834973791466
+        },
+        "2026-08-28": {
+          "count": 24,
+          "expectancy_bps": -12.184604343737231
+        }
+      },
+      "plan_paper_per_hour": 0.9782608695652174,
+      "positive_days": 0,
+      "positive_symbols": 1,
+      "profile_version": "rr1.5-edge15-score60-atr0.5-stop65",
+      "profit_factor": 0.4348935634535106,
+      "risk_adjusted_return": -9.080194485542552,
+      "symbols": 8,
+      "win_rate": 0.23333333333333334
+    }
+  ],
+  "validation_survivors": 0,
+  "viable_calibration_configurations": 0,
+  "windows": {
+    "calibration": {
+      "days": [
+        "2026-08-27",
+        "2026-08-28"
+      ],
+      "hours": 30.666666666666668,
+      "rows": 400,
+      "symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ]
+    },
+    "holdout": {
+      "days": [
+        "2026-08-30",
+        "2026-09-01",
+        "2026-09-02"
+      ],
+      "hours": 83.41666666666667,
+      "rows": 93,
+      "symbols": [
+        "AVAXUSDT",
+        "BTCUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ]
+    },
+    "validation": {
+      "days": [
+        "2026-08-29"
+      ],
+      "hours": 24.0,
+      "rows": 38,
+      "symbols": [
+        "AVAXUSDT",
+        "BNBUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ]
+    }
+  }
+}
