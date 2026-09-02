@@ -118,7 +118,7 @@ services:
     command: >
       sh -c 'export DATABASE_URL="postgresql://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
       exec python scripts/scalping_prospective_collector.py
-      --output-dir reports/calibration/scalping-prospective
+      --output-dir reports/calibration/scalping-v2-prospective
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
       --parameter-set-id trade-5m-v2-runtime-v1-2b79734d55b752c2
       --runtime-source-commit ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
