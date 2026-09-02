@@ -584,6 +584,51 @@ def test_15m_canonical_evidence_projects_cost_portfolio_geometry_and_provenance(
     assert detail["portfolio_projected_risk_bps"] == "10"
 
 
+def test_scalping_v2_reached_fields_derive_explicit_persisted_provenance():
+    run = _run("BTCUSDT")
+    run.trade_profile_id = "trade-5m-v2"
+    run.primary_timeframe = "5m"
+    result = _result(run)
+    result.trade_profile_id = "trade-5m-v2"
+    result.primary_timeframe = "5m"
+    result.paper_payload_json["paper_context"] = {
+        "production_rr_floor": 0.4,
+        "scalping_policy_provenance": {
+            "setup_policy_version": "scalping-micro-setup-v2",
+            "entry_policy_version": "scalping-next-closed-1m-entry-v2",
+            "stop_policy_version": "scalping-causal-volatility-stop-v2",
+            "target_policy_version": "scalping-nearest-viable-target-v3",
+        },
+        "scalping_geometry_diagnostics": {
+            "entry": 100.0, "causal_invalidation": 99.5, "final_stop": 99.4,
+            "causal_target": 101.0, "target_source_type": "LOCAL_RANGE_BOUNDARY",
+            "stop_envelope_pass": True, "causal_target_exists": True,
+            "economic_gate_pass": True, "valid_plan": True,
+            "expectancy_gate_reason": "INSUFFICIENT_BUCKET_STATIC_RR_PASS",
+            "target_considerations": [{
+                "economically_actionable": True, "target_timeframe": "5m",
+                "source_detail": "scalping_v2_two_atr_long_target",
+                "target_price": 101.0,
+            }],
+        },
+    }
+    item = build_projection(
+        ((run, result),),
+        SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS),
+        NOW_MS, {}, "trade-5m-v2",
+    )["current_cycle"]["items"][0]
+    detail = item["downstream_detail"]
+    assert detail["setup_policy_version"] == "scalping-micro-setup-v2"
+    assert detail["stop_source_timeframe"] == "5m"
+    assert detail["stop_rule_version"] == "scalping-causal-volatility-stop-v2"
+    assert detail["target_source_timeframe"] == "5m"
+    assert detail["target_rule_version"] == "scalping-nearest-viable-target-v3"
+    assert detail["geometry_reason"] == "GEOMETRY_VALID"
+    assert detail["cost_gate_decision"] == "PASS"
+    assert detail["cost_gate_reason"] == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
+    assert detail["rr_reason"] == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
+
+
 class _Funnel:
     def project(self, now_ms):
         return _project([])

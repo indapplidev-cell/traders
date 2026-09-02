@@ -339,6 +339,7 @@ def _downstream_trace(
     risk = _mapping(result.risk_payload_json)
     paper = _mapping(result.paper_payload_json)
     context = _mapping(paper.get("paper_context"))
+    scalping_policy = _mapping(context.get("scalping_policy_provenance"))
     diagnostic = (
         _mapping(context.get("scalping_geometry_diagnostics"))
         or _mapping(context.get("canonical_domain_evaluation"))
@@ -452,6 +453,38 @@ def _downstream_trace(
         planned.get("hypothetical_target_level"), diagnostic.get("causal_target"),
         diagnostic.get("target")
     )
+    # Scalping v2 persists the causal primitives and policy lineage directly in
+    # paper_context.  Older funnel projection code only understood the 15m
+    # nested provenance shape, which made reached PASS fields look unavailable.
+    # Derive the display shape exclusively from those persisted v2 facts; this
+    # is observability enrichment and does not alter the trading decision.
+    if scalping_policy and not stop_provenance:
+        stop_provenance = {
+            "source_timeframe": "5m",
+            "source_candle_or_window": planned.get("closed_until_ms"),
+            "source_signal_or_model_output": "causal_invalidation",
+            "derived_rule_version": scalping_policy.get("stop_policy_version"),
+            "raw_source_value": diagnostic.get("causal_invalidation"),
+            "final_normalized_value": stop,
+        }
+    if scalping_policy and not target_provenance:
+        chosen_target = next((
+            _mapping(value)
+            for value in diagnostic.get("target_considerations", ())
+            if isinstance(value, Mapping)
+            and value.get("economically_actionable") is True
+        ), {})
+        target_provenance = {
+            "source_timeframe": chosen_target.get("target_timeframe"),
+            "source_candle_or_window": planned.get("closed_until_ms"),
+            "source_signal_or_model_output": (
+                chosen_target.get("source_detail")
+                or diagnostic.get("target_source_type")
+            ),
+            "derived_rule_version": scalping_policy.get("target_policy_version"),
+            "raw_source_value": chosen_target.get("target_price"),
+            "final_normalized_value": target,
+        }
     valid_values = [
         int(value["valid_until_ms"])
         for value in (*approvals.values(), *shadow_approvals.values())
@@ -486,6 +519,8 @@ def _downstream_trace(
             or setup.get("opportunity_id") or setup.get("setup_id")
         ),
         "paper_plan_id": planned.get("paper_plan_id"),
+        "setup_policy_version": scalping_policy.get("setup_policy_version"),
+        "entry_policy_version": scalping_policy.get("entry_policy_version"),
         "setup_type": setup.get("setup_type"),
         "strategy_type": strategy.get("strategy_type") or strategy.get("source_strategy_type"),
         "strategy_score": strategy.get("strategy_final_score") or strategy.get("strategy_score"),
@@ -495,12 +530,15 @@ def _downstream_trace(
         "entry_source": planned.get("entry_reference_source"),
         "stop_price": stop,
         "stop_source": planned.get("stop_source") or diagnostic.get("stop_source"),
-        "stop_provenance": diagnostic.get("stop_provenance"),
+        "stop_provenance": stop_provenance or None,
         "stop_source_timeframe": stop_provenance.get("source_timeframe"),
         "stop_rule_version": stop_provenance.get("derived_rule_version"),
         "stop_distance_absolute": _absolute_distance(entry, stop),
         "geometry_status": trace["GEOMETRY_VALID"],
-        "geometry_reason": geometry_reason,
+        "geometry_reason": (
+            geometry_reason
+            or ("GEOMETRY_VALID" if trace["GEOMETRY_VALID"] == "PASS" else None)
+        ),
         "stop_distance_bps": diagnostic.get("stop_distance_bps"),
         "stop_distance_percent": _percent_from_bps(diagnostic.get("stop_distance_bps")),
         "atr": diagnostic.get("atr"),
@@ -512,7 +550,7 @@ def _downstream_trace(
         "target_distance_bps": diagnostic.get("target_distance_bps"),
         "target_distance_percent": _percent_from_bps(diagnostic.get("target_distance_bps")),
         "target_source": diagnostic.get("target_source_type") or diagnostic.get("target_source"),
-        "target_provenance": diagnostic.get("target_provenance"),
+        "target_provenance": target_provenance or None,
         "target_source_timeframe": target_provenance.get("source_timeframe"),
         "target_source_window": target_provenance.get("source_candle_or_window"),
         "target_rule_version": target_provenance.get("derived_rule_version"),
@@ -567,8 +605,18 @@ def _downstream_trace(
             net_cost_gate.get("net_expected_outcome_bps"),
             diagnostic.get("expected_net_edge_bps"),
         ),
-        "cost_gate_decision": net_cost_gate.get("gate_decision"),
-        "cost_gate_reason": net_cost_gate.get("gate_reason"),
+        "cost_gate_decision": _first_present(
+            net_cost_gate.get("gate_decision"),
+            "PASS" if diagnostic.get("economic_gate_pass") is True else None,
+            "REJECT" if diagnostic.get("economic_gate_pass") is False else None,
+        ),
+        "cost_gate_reason": _first_present(
+            net_cost_gate.get("gate_reason"),
+            diagnostic.get("expectancy_gate_reason"),
+            "ECONOMIC_GATE_PASS"
+            if diagnostic.get("economic_gate_pass") is True else None,
+            diagnostic.get("rejection_reason"),
+        ),
         "cost_model_version": (
             diagnostic.get("cost_model_version")
             or net_cost_gate.get("model_version")
@@ -580,7 +628,11 @@ def _downstream_trace(
         ),
         "break_even_win_rate": diagnostic.get("break_even_win_rate"),
         "rr_status": trace["RR_PASS"],
-        "rr_reason": geometry_reason if trace["RR_PASS"] == "REJECTED" else None,
+        "rr_reason": (
+            geometry_reason if trace["RR_PASS"] == "REJECTED"
+            else diagnostic.get("expectancy_gate_reason")
+            or ("RR_AND_EXPECTANCY_PASS" if trace["RR_PASS"] == "PASS" else None)
+        ),
         "authoritative_risk": (
             authoritative_risk.get("status") or "PASS"
             if authoritative_risk else None
