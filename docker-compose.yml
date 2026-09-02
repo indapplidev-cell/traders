@@ -79,7 +79,10 @@ services:
       - traders_shared_db_password
 
   online-orchestrator-5m:
-    build: .
+    build:
+      context: .
+      args:
+        TRADERS_RUNTIME_SOURCE_IDENTITY: ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
     profiles: ["orchestrator-5m"]
     restart: always
     depends_on:
@@ -109,7 +112,10 @@ services:
       - traders_shared_db_password
 
   scalping-calibration-collector:
-    build: .
+    build:
+      context: .
+      args:
+        TRADERS_RUNTIME_SOURCE_IDENTITY: ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
     profiles: ["calibration"]
     restart: always
     depends_on:
