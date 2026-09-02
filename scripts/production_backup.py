@@ -48,12 +48,24 @@ class OperationFailure(RuntimeError):
     pass
 
 
+def _subprocess_creationflags() -> int:
+    """Keep console helpers invisible when called by the Windows daemon."""
+    return subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
+
 def run(command: list[str], *, timeout: int = 3600) -> subprocess.CompletedProcess[str]:
     rendered = " ".join(command)
     if "://" in rendered:
         raise OperationFailure("PROTECTED_BINDING_OR_URI_IN_COMMAND")
     try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            creationflags=_subprocess_creationflags(),
+        )
     except (OSError, subprocess.TimeoutExpired) as error:
         raise OperationFailure("COMMAND_EXECUTION_FAILED") from error
     if result.returncode:

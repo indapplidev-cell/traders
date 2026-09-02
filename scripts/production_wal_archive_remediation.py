@@ -83,7 +83,14 @@ class SafeWalSnapshot:
 def _run(command: list[str], *, timeout: int = 30) -> str:
     if any("://" in part for part in command):
         raise OperationFailure("PROTECTED_BINDING_OR_URI_IN_COMMAND")
-    result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=False)
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
     if result.returncode:
         raise OperationFailure("SAFE_WAL_INSPECTION_COMMAND_FAILED")
     return result.stdout.strip()
@@ -287,7 +294,19 @@ def _acquire_daemon_lock(lock: Path) -> int:
     """Acquire the owner lock, recovering only a proven-dead stale PID."""
     for attempt in range(2):
         try:
-            return os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            try:
+                # Publish the owner before another simultaneous launcher can
+                # misclassify a newly created, still-empty lock as stale.
+                os.write(descriptor, str(os.getpid()).encode("ascii"))
+                return descriptor
+            except OSError:
+                os.close(descriptor)
+                try:
+                    lock.unlink()
+                except OSError:
+                    pass
+                raise
         except FileExistsError as error:
             if attempt or _process_is_alive(_read_lock_pid(lock)):
                 raise OperationFailure("ACK_DAEMON_ALREADY_RUNNING_OR_STALE_LOCK") from error
@@ -392,7 +411,6 @@ def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
     state = root / "catalog" / "wal_ack_daemon_state.json"
     descriptor = _acquire_daemon_lock(lock)
     try:
-        os.write(descriptor, str(os.getpid()).encode("ascii"))
         os.close(descriptor)
         while True:
             try:

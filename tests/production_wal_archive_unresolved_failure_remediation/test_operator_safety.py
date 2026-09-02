@@ -114,8 +114,25 @@ def test_daemon_lock_recovers_only_proven_dead_owner(tmp_path, monkeypatch) -> N
     descriptor = remediation._acquire_daemon_lock(lock)
     try:
         assert descriptor >= 0
+        assert lock.read_text(encoding="ascii") == str(remediation.os.getpid())
     finally:
         remediation.os.close(descriptor)
+
+
+def test_windows_daemon_docker_calls_do_not_create_console(monkeypatch) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(kwargs)
+        return subprocess.CompletedProcess(command, 0, "ok", "")
+
+    monkeypatch.setattr(remediation.os, "name", "nt")
+    monkeypatch.setattr(remediation.subprocess, "run", fake_run)
+
+    assert remediation._run(["docker", "version"]) == "ok"
+    assert production_backup.run(["docker", "version"]).stdout == "ok"
+    assert calls[0]["creationflags"] == subprocess.CREATE_NO_WINDOW
+    assert calls[1]["creationflags"] == subprocess.CREATE_NO_WINDOW
 
 
 def test_daemon_lock_never_replaces_live_owner(tmp_path, monkeypatch) -> None:
