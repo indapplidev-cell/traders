@@ -104,6 +104,9 @@ class ScalpingPaperRunner(PaperRunner):
         store: object | None = None,
         clock_ms: Callable[[], int] | None = None,
     ) -> None:
+        profile_id = str(getattr(runtime_parameters, "profile_id", ""))
+        if profile_id not in {"trade-5m-v1", "trade-5m-v2"}:
+            raise ValueError("Scalping PAPER reconstruction requires a 5m identity")
         minimum_rr = float(getattr(runtime_parameters, "minimum_planned_rr"))
         super().__init__(PaperConfig(
             minimum_planned_rr=minimum_rr,
@@ -133,7 +136,7 @@ class ScalpingPaperRunner(PaperRunner):
                 runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
             ),
             rr_shadow_cohorts=tuple(runtime_parameters.rr_shadow_cohorts),
-            profile_id=str(getattr(runtime_parameters, "profile_id", "trade-5m-v1")),
+            profile_id=profile_id,
         )
 
     def _process(self, source: RiskDecision):
@@ -151,9 +154,7 @@ class ScalpingPaperRunner(PaperRunner):
             if source.direction_hint == "BULLISH"
             else context.causal_resistance_level or context.causal_invalidation_level
         )
-        is_v2 = str(
-            getattr(self.runtime_parameters, "profile_id", "trade-5m-v1")
-        ) == "trade-5m-v2"
+        is_v2 = str(getattr(self.runtime_parameters, "profile_id", "")) == "trade-5m-v2"
         if is_v2 and invalidation is None and context.atr_value:
             direction_sign = 1.0 if source.direction_hint == "BULLISH" else -1.0
             invalidation = float(entry) - direction_sign * 0.5 * float(context.atr_value)
@@ -197,7 +198,7 @@ class ScalpingPaperRunner(PaperRunner):
                 timeframe="5m", source_detail="scalping_v2_two_atr_short_target",
             ))
         candidate = ShadowGeometryCandidate(
-            trade_profile_id=str(getattr(self.runtime_parameters, "profile_id", "trade-5m-v1")),
+            trade_profile_id=str(getattr(self.runtime_parameters, "profile_id", "")),
             symbol=source.symbol,
             boundary_ms=source.closed_until_ms,
             direction=source.direction_hint,

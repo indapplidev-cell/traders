@@ -444,6 +444,7 @@ class CostSource:
 
 def production_parameters():
     return SimpleNamespace(
+        profile_id="trade-5m-v1",
         minimum_planned_rr=1.5, cost_safety_margin_bps=3.0,
         geometry_atr_buffer_multiplier=.25,
         geometry_stop_envelope_bps=80.0,

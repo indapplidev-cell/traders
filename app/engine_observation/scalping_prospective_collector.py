@@ -21,7 +21,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 
-PROFILE_ID = "trade-5m-v1"
+PROFILE_ID = "trade-5m-v2"
 TRADE_MODE = "SCALPING"
 COLLECTOR_SCHEMA_REVISION = "scalping-prospective-collector-v1"
 OBSERVATION_SCHEMA_REVISION = "scalping-calibration-observation-v1"
@@ -558,7 +558,7 @@ class CollectorConfig:
     parameter_set_id: str
     runtime_source_commit: str
     runtime_artifact_id: str
-    schema_revision: str = "0020_paper_plan_execution_outcomes"
+    schema_revision: str = "0021_independent_scalping_profile_v2"
     poll_seconds: float = 10.0
     boundary_wait_seconds: int = 240
     max_part_bytes: int = DEFAULT_MAX_PART_BYTES

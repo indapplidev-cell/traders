@@ -91,7 +91,7 @@ services:
       sh -c 'export DATABASE_URL="postgresql+psycopg://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
       exec python scripts/engine_orchestrator_online_pipeline.py
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
-      --trade-profile trade-5m-v1
+      --trade-profile trade-5m-v2
       --strategy-cap-shadow-economic-capture
       --continuous
       --poll-interval-seconds 10
@@ -120,9 +120,10 @@ services:
       exec python scripts/scalping_prospective_collector.py
       --output-dir reports/calibration/scalping-prospective
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
-      --parameter-set-id trade-5m-v1-runtime-v1-af11b65b74275bf3
-      --runtime-source-commit daa8312eabeb632937b7d7d09b8c33b73b6cb0a7
-      --runtime-artifact-id sha256:cfaa97127236222cef0476acc099b10257f2abaad9ca3ca82890b24746db81c6
+      --parameter-set-id trade-5m-v2-runtime-v1-2b79734d55b752c2
+      --runtime-source-commit ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
+      --runtime-artifact-id ${TRADERS_SCALPING_V2_ARTIFACT_ID:-UNSET}
+      --schema-revision 0021_independent_scalping_profile_v2
       --poll-seconds 10
       --boundary-wait-seconds 240'
     volumes:

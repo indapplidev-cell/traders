@@ -28,9 +28,9 @@ from app.engine_orchestrator.profile_owner import (
 )
 from sqlalchemy import text
 from app.engine_orchestrator.trade_profile import (
+    ACTIVE_RUNTIME_PROFILE_IDS,
     DEFAULT_TRADE_PROFILE_ID,
     TRADE_5M_CONTEXT_MINIMUM_WINDOWS,
-    TRADE_PROFILES,
     SCALPING_PROFILE_IDS,
     resolve_trade_profile,
 )
@@ -46,7 +46,10 @@ def csv_values(value: str) -> tuple[str, ...]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Online closed-candle safe pipeline orchestrator")
     parser.add_argument("--symbols", type=csv_values, default=csv_values("BTCUSDT,ETHUSDT,SOLUSDT"))
-    parser.add_argument("--trade-profile", choices=tuple(TRADE_PROFILES), default=DEFAULT_TRADE_PROFILE_ID)
+    parser.add_argument(
+        "--trade-profile", choices=tuple(sorted(ACTIVE_RUNTIME_PROFILE_IDS)),
+        default=DEFAULT_TRADE_PROFILE_ID,
+    )
     parser.add_argument("--primary-timeframe")
     parser.add_argument("--required-timeframes", type=csv_values)
     mode = parser.add_mutually_exclusive_group()

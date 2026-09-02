@@ -12,7 +12,7 @@ from app.engine_orchestrator.trade_profile import TradeProfileId
 
 DEPLOYED_PARALLEL_PROFILE_IDS = frozenset({
     TradeProfileId.TRADE_15M_V1.value,
-    TradeProfileId.TRADE_5M_V1.value,
+    TradeProfileId.TRADE_5M_V2.value,
 })
 
 

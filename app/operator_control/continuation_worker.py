@@ -26,7 +26,7 @@ from .production_executor import ProductionPaperFirstCanaryExecutor
 
 LOG = logging.getLogger(__name__)
 POLL_SECONDS_ENV = "TRADERS_FIRST_CANARY_CONTINUATION_POLL_SECONDS"
-DEFAULT_POLL_SECONDS = 30.0
+DEFAULT_POLL_SECONDS = 5.0
 MIN_POLL_SECONDS = 5.0
 MAX_POLL_SECONDS = 3600.0
 

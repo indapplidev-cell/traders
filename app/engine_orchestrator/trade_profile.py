@@ -25,6 +25,7 @@ class TradeMode(StrEnum):
 
 
 DEFAULT_TRADE_PROFILE_ID: Final = TradeProfileId.TRADE_15M_V1.value
+ACTIVE_SCALPING_PROFILE_ID: Final = TradeProfileId.TRADE_5M_V2.value
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,9 +155,8 @@ TRADE_5M_PROFILE: Final = TradeSearchProfile(
     position_opening_enabled=True,
 )
 
-# V2 is a separate policy identity, not a mutation of either deployed profile.
-# It remains available for isolated PAPER validation until positive OOS
-# economics justify changing the active Compose profile.
+# V2 is the sole active Scalping runtime identity.  V1 remains registered only
+# so immutable historical rows can still be reconstructed by readonly tools.
 TRADE_5M_V2_PROFILE: Final = TradeSearchProfile(
     trade_profile_id=TradeProfileId.TRADE_5M_V2.value,
     trade_mode=TradeMode.SCALPING.value,
@@ -192,6 +192,10 @@ TRADE_PROFILES: Final = MappingProxyType({
 SCALPING_PROFILE_IDS: Final = frozenset({
     TradeProfileId.TRADE_5M_V1.value,
     TradeProfileId.TRADE_5M_V2.value,
+})
+ACTIVE_RUNTIME_PROFILE_IDS: Final = frozenset({
+    TradeProfileId.TRADE_15M_V1.value,
+    ACTIVE_SCALPING_PROFILE_ID,
 })
 
 # Identical values are deliberate safety invariants, not copied timeframe tuning.

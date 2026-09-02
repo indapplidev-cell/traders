@@ -257,7 +257,7 @@ def _seed_foundation(factory) -> None:
 
 
 def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_READY",
-              profile_id="trade-5m-v1"):
+              profile_id="trade-5m-v2"):
     config = OrchestratorConfig(
         symbols=(SYMBOL,),
         trade_profile_id=profile_id,
@@ -295,10 +295,10 @@ def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_RE
     return result
 
 
-@pytest.mark.parametrize("profile_id", ("trade-5m-v1", "trade-5m-v2"))
 def test_infeasible_scalping_geometry_is_durable_and_readonly_reconstructable(
-    natural_e2e_sessions, profile_id,
+    natural_e2e_sessions,
 ):
+    profile_id = "trade-5m-v2"
     factory = natural_e2e_sessions
     _seed_foundation(factory)
     result = _pipeline(
@@ -573,10 +573,10 @@ def _arm_and_wait(service):
     return armed.canary_id
 
 
-@pytest.mark.parametrize("profile_id", ("trade-5m-v1", "trade-5m-v2"))
 def test_natural_approval_opens_paper_position_end_to_end(
-    natural_e2e_sessions, natural_e2e_engine, tmp_path, profile_id
+    natural_e2e_sessions, natural_e2e_engine, tmp_path
 ):
+    profile_id = "trade-5m-v2"
     factory = natural_e2e_sessions
     _seed_foundation(factory)
     source = _approval_source(factory)
