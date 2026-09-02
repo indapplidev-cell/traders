@@ -11,6 +11,7 @@ from app.engine_paper.production_approval import (
     EXECUTION_PROFILES_BY_TIMEFRAME,
 )
 from app.operator_control.continuation_worker import DEFAULT_POLL_SECONDS
+from app.operator_control.runtime import READONLY_CURRENT_SNAPSHOT_TIMEOUT_SECONDS
 from scripts.engine_orchestrator_online_pipeline import build_parser
 
 
@@ -34,3 +35,4 @@ def test_v2_short_ttl_has_bounded_dispatch_margin():
     assert parameters.execution_entry_ttl_seconds == 30
     assert DEFAULT_POLL_SECONDS == 5
     assert DEFAULT_POLL_SECONDS * 2 < parameters.execution_entry_ttl_seconds
+    assert READONLY_CURRENT_SNAPSHOT_TIMEOUT_SECONDS == 10

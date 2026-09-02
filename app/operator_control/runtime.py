@@ -66,6 +66,7 @@ RUNTIME_IDENTITY_KEY = "TRADERS_CONTROL_SOURCE_IDENTITY"
 CONTAINER_LISTENER_KEY = "TRADERS_CONTROL_CONTAINER_LISTENER"
 READONLY_INTERNAL_URL_KEY = "TRADERS_READONLY_API_INTERNAL_URL"
 DEFAULT_READONLY_INTERNAL_URL = "http://readonly-api:8765"
+READONLY_CURRENT_SNAPSHOT_TIMEOUT_SECONDS = 10
 RUNTIME_DATABASE_HOST_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_HOST"
 RUNTIME_DATABASE_PORT_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_PORT"
 MOBILE_BIND_HOST_KEY = "TRADERS_CONTROL_MOBILE_BIND_HOST"
@@ -85,7 +86,9 @@ class ReadonlyPaperArmReadinessSource:
     def __call__(self) -> PaperOperatorArmReadiness:
         try:
             request = urllib.request.Request(self._url, method="GET")
-            with urllib.request.urlopen(request, timeout=3) as response:
+            with urllib.request.urlopen(
+                request, timeout=READONLY_CURRENT_SNAPSHOT_TIMEOUT_SECONDS
+            ) as response:
                 document = json.loads(response.read())
             payload = document.get("data") if isinstance(document, dict) else None
             ready = (
@@ -112,7 +115,9 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
     def __call__(self) -> ExistingCanaryRuntimeReadiness:
         try:
             request = urllib.request.Request(self._url, method="GET")
-            with urllib.request.urlopen(request, timeout=3) as response:
+            with urllib.request.urlopen(
+                request, timeout=READONLY_CURRENT_SNAPSHOT_TIMEOUT_SECONDS
+            ) as response:
                 document = json.loads(response.read())
             payload = document.get("data") if isinstance(document, dict) else None
             denials = payload.get("current_mutation_denial_reasons") if isinstance(payload, dict) else None
