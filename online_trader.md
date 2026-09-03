@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = ee8ec9869c0df516db434bb8ffe3222ef54a88d8
+STATUS_AS_OF_COMMIT = a46c95105026f34ec96335451e4850bd84b03747
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-02T22:27:46Z
+RECONCILED_AT_UTC = 2026-09-03T07:55:02Z
 RECONCILED_BY_TASK = TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01
-FILES_CHANGED = Dockerfile, app/engine_observation/scalping_prospective_collector.py, app/engine_orchestrator/parallel_profiles.py, app/engine_orchestrator/trade_profile.py, app/engine_paper/production_approval.py, app/engine_paper/scalping_paper_runner.py, app/i18n/help_source.py, app/operator_control/continuation_worker.py, app/operator_control/runtime.py, app/server_api/trading_funnel.py, docker-compose.yml, scripts/engine_orchestrator_online_pipeline.py, scripts/scalping_prospective_collector.py, tests/integration/paper_natural_execution_e2e/test_natural_approval_opens_position.py, tests/operator_control_production_deployment/test_multi_symbol_eligible_approval_ranking.py, tests/server_api/test_trading_funnel.py, tests/test_5m_scalping_geometry_quota_cost_remediation.py, tests/test_scalping_v2_production_authority.py, docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_PARTIAL.md, online_trader.md
+FILES_CHANGED = alembic/versions/0022_scalping_v2_paper_simulation_policy.py, alembic/versions/0023_scalping_v2_journal_causality.py, app/engine_observation/scalping_prospective_collector.py, app/engine_paper/order_execution_service.py, app/engine_strategy/strategy_filter.py, app/operator_control/production_executor.py, app/operator_control/production_lifecycle_worker.py, app/server_api/schema_compatibility.py, app/server_api/trading_funnel.py, docker-compose.yml, scripts/engine_orchestrator_online_pipeline.py, scripts/scalping_prospective_collector.py, tests/engine_strategy/test_score_diagnostics.py, tests/integration/paper_natural_execution_e2e/conftest.py, tests/integration/paper_natural_execution_e2e/test_natural_approval_opens_position.py, tests/paper_order_execution_service/test_service_contract_and_mapping.py, tests/server_api/test_trading_funnel.py, docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md, online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = be5b1cb14bdbb2654c8852271ceb6ab683f79a5c_ORIGIN_FEATURE_ENGINE_PLATFORM
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_AHEAD31_BEHIND0
-STATUS_CONFIDENCE = SCALPINGV2_AUTHORITATIVE_DEPLOYED_READINESS_FIXED_POSTGRESE2E6PASS_FOCUSED78PASS_15MFROZEN_NATURAL_POSITION_OPEN_PENDING_LIVEFALSE
+PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_AHEAD38_BEHIND0
+STATUS_CONFIDENCE = SCALPINGV2_AUTHORITATIVE_DEPLOYED_NATURALPOSITIONOPENPASS_TWO_NATURALCLOSES_HEALTHY_POSTGRESE2E6PASS_FOCUSED197PASS_15MFROZEN_PAPERARMED10_LIVEFALSE
 
 # Состояние проекта traders-ml
 
@@ -22,13 +22,13 @@ STATUS_CONFIDENCE = SCALPINGV2_AUTHORITATIVE_DEPLOYED_READINESS_FIXED_POSTGRESE2
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = SCALPINGV2_SOURCE033F573_IMAGE8D86C2C8_COLLECTORA959D66F_READONLYC8665330_CONTROlF49225E4_HEALTHY_SCHEMA0021_RUNTIME_DAEMON_SCHEDULER_PAPER_MUTATION_TRUE_CONTROLARMED_GENERATION6_WALTRUE_PITRTRUE_LIVE_OFF
+API_RUNTIME_STATUS = SCALPINGV2_SOURCE6BE591A_5MIMAGE10166D38_COLLECTORD4E5567F_READONLY205E405F_CONTROLCBA3B248_HEALTHY_SCHEMA0023_RUNTIME_DAEMON_SCHEDULER_WORKER_PAPER_MUTATION_TRUE_CONTROLARMED_GENERATION10_WALTRUE_PITRTRUE_ACCOUNTINGHEALTHY_LIVE_OFF
 SOURCE_API_STATUS = TRADE5MV2_ONLY_NEW_RUNTIME_PERSISTED_EXECUTION_LIFECYCLE_SHARED_BY_FUNNEL_AND_PAPER_READONLY_DESKTOP78F124A_CONSUMER_UNCHANGED
-CURRENT_STAGE = SCALPING_V2_NATURAL_PAPER_POSITION_OPEN_VALIDATION
-CURRENT_BLOCKER = NONE_TECHNICAL_WAITING_FOR_NEXT_NATURAL_V2_PAPER_PLAN
-CURRENT_PREREQUISITE = NATURAL_V2_FINAL_APPROVAL_BEFORE_COMMAND_AND_OPEN_ACCEPTANCE
+CURRENT_STAGE = SCALPING_V2_CONTINUOUS_PAPER_CANARY_OPERATION_AND_OBSERVATION
+CURRENT_BLOCKER = NONE
+CURRENT_PREREQUISITE = NONE_FOR_PAPER_OPERATION_LIVE_REMAINS_SEPARATELY_FORBIDDEN
 SECONDARY_BLOCKER = NONE
-BACKGROUND_TIMED_GATE = ACTIVE_5MIN_HEARTBEAT_SCALPING_V2_NATURAL_PAPER_ACCEPTANCE_CONTROL_GENERATION6_LIVE_OFF
+BACKGROUND_TIMED_GATE = STOPPED_TASK_COMPLETED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
 
@@ -36,28 +36,28 @@ BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANC
 
 ```text
 TASK = TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01
-RESULT = IN_PROGRESS_NATURAL_VALIDATION_PENDING
-PROJECT_STATE_AUDIT_COMMIT = ee8ec9869c0df516db434bb8ffe3222ef54a88d8
-IMPLEMENTATION_COMMITS = 9e3418d777f54cb02745766b5f853f4cc48762c4_43c69aac248b7b7993585d2d72b33146a06fa321_fff3fba893a34e5e3b1153252545efd4d4853c42_83b849f0910b0122589bad8d0d204171ffad16b2_033f57335628375eb52f1ab0f59a81702e8495c4
+RESULT = COMPLETED_PASS_NATURAL_SCALPING_V2_PAPER_POSITION_OPEN
+PROJECT_STATE_AUDIT_COMMIT = a46c95105026f34ec96335451e4850bd84b03747
+IMPLEMENTATION_COMMITS = f10b427_e1b51eb_b760cd7_6be591a6231f6250b99efeb5ee9f20e2998010fe
 AUTHORITY = trade-5m-v2_ONLY_NEW_SCALPING_RUNTIME; trade-5m-v1_HISTORICAL_READONLY_ONLY
 V1_AFTER_V2_CUTOVER = 0
 SELECTOR = eligible-approval-ranking-v1_MAXCOMMANDS1_MAXOPENPOSITIONS1_DETERMINISTIC_ONE_WINNER_CANONICAL_RANKING_UNCHANGED
-ROOT_CAUSE = CONTROL_CONSUMER_3SECOND_TIMEOUT_ON_AUTHORITATIVE_READONLY_SNAPSHOT_PLUS_OLD_V1_RUNTIME_AUTHORITY_AND_V2_PROVENANCE_PROJECTION_GAPS
-FIX = V2_ONLY_RUNTIME_APPROVAL_SELECTOR_EXECUTION_IDENTITY_CONTINUATION5SECONDS_READINESS_TIMEOUT10SECONDS_REACHED_PROVENANCE_EXPLICIT
-READINESS = READY_MARKETTRUE_APPROVALTRUE_WALTRUE_PITRTRUE_MUTATIONTRUE_DENIALSEMPTY_CONTROLARMED6_LIVEFALSE
-SCHEMA = 0021_independent_scalping_profile_v2_SINGLE_HEAD
-DEPLOYMENT = SOURCE033F573_5MIMAGE8D86C2C8_COLLECTORA959D66F_READONLYC8665330_CONTROLF49225E4_HEALTHY
+ROOT_CAUSE = STALE_READINESS_TIMEOUT_AND_DISPATCH_CADENCE_PLUS_MISSING_V2_SIMULATION_POLICY_PLUS_V2_SCORE_CONTRACT_MISMATCH_PLUS_FUNNEL_LIFECYCLE_PRECEDENCE_PLUS_V2_JOURNAL_CAUSALITY
+FIX = V2_ONLY_END_TO_END_IDENTITY_CONTINUATION5SECONDS_READINESS_TIMEOUT10SECONDS_POLICY0022_SCORECONTRACT_LIFECYCLEAUTHORITY_JOURNALCAUSALITY0023
+READINESS = READY_MARKETTRUE_APPROVALTRUE_WALTRUE_PITRTRUE_MUTATIONTRUE_ACCOUNTINGHEALTHY_PAPERRECONCILIATIONHEALTHY_DENIALSEMPTY_CONTROLARMED10_WAITING_LIVEFALSE
+SCHEMA = 0023_scalping_v2_journal_causality_SINGLE_HEAD
+DEPLOYMENT = SOURCE6BE591A_5MIMAGE10166D38_COLLECTORD4E5567F_READONLY205E405F_CONTROLCBA3B248_HEALTHY
 TRADE_15M = trade-15m-v1_CONFIGUNCHANGED_BEHAVIORUNCHANGED_CONTAINER_NOT_RESTARTED_REGRESSIONPASS
-TESTS = FOCUSED78PASS_POSTGRES16E2E6PASS_COMPILEPASS_DIFFCHECKPASS
+TESTS = FOCUSED197PASS_POSTGRES16E2E6PASS_COMPILEPASS_DIFFCHECKPASS
 POSTGRES_E2E = V2_PLAN_APPROVAL_RANKING_COMMAND_FILL_POSITIONOPEN_IDENTITYPASS_V1NEGATIVEPASS_15MREGRESSIONPASS
 NATURAL_PRE_FIX = LINKUSDT_BOUNDARY1788385800000_SELECTEDRANK1_ATTEMPTS11_EXPIRED_READONLY_RUNTIME_NOT_READY_NO_REPLAY
-NATURAL_POST_FIX = FIVE_COMPLETE_BOUNDARIES_2200_TO2225UTC_NO_PLAN_OR_REJECT_NO_NEW_APPROVAL_COMMAND0_POSITION0
+NATURAL_POST_FIX = LINKUSDT_BOUNDARY1788405900000_RUN2A31AB_SELECTEDRANK1_COMMAND_F0B7ECB_POSITION_DA114D_OPEN_AT0326UTC_THEN_NATURAL_CLOSE_POSITIVE_PAPER_PNL; EARLIER_DOGE_NATURAL_OPEN_AND_CLOSE_RECONCILED
 UI = READONLY_REQUIRED_REACHED_V2_FIELDS_GENERICUNAVAILABLE0_DESKTOP_CAPTURE_TOOL_UNSUPPORTED0X80004002_NO_BLIND_INPUT
 CLIENTS = DESKTOP78F124AA_UNCHANGED_MOBILE013FF732_UNAFFECTED_PREEXISTINGDIRTYPRESERVED
 SAFETY = LIVEFALSE_BINANCEORDER0_SECRETOUTPUT0
-EVIDENCE = docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_PARTIAL.md
-REMAINING_BLOCKERS = NONE_TECHNICAL_NATURAL_V2_SIGNAL_PENDING
-NEXT_ACTION = HEARTBEAT_UNTIL_NEW_V2_WINNER_SELECTED_COMMANDCREATED_POSITIONOPEN_THEN_FINAL_EVIDENCE_AND_RECONCILIATION
+EVIDENCE = docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md
+REMAINING_BLOCKERS = NONE_FOR_PAPER_EXECUTION
+NEXT_ACTION = CONTINUE_NORMAL_V2_PAPER_CANARY_OBSERVATION; LIVE_REQUIRES_SEPARATE_AUTHORIZATION
 ```
 
 ## Independent Scalping policy profile redesign 01
@@ -6142,16 +6142,16 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | ≈99% producer deployment / PAPER acceptance blocked | Schema 0018 is deployed; production produced three valid historical 5m PAPER approvals. Operator Control source `16f75c9...` is healthy, but WAL/PITR readiness denied all three command mutations. Local outcome persistence requires schema 0020 and is not deployed |
+| Online analytics/paper pipeline | PAPER execution accepted | Scalping v2 is the sole authority for new 5m decisions on schema 0023. Two natural v2 winners created commands, opened positions and completed PAPER lifecycles; the next bounded canary is waiting |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
-| Production backup/PITR | Current gate FAIL on schema 0018; preserved lineage is not current readiness | Fresh readonly projection reports `wal_ready=false`, `pitr_ready=false`, and `current_mutation_ready=false`; archive inspection reports unresolved failure with failed count 716. Existing lineage has no physical gap, but the stale ACK heartbeat makes production migration/execution forbidden |
-| Readonly Server API | Healthy deployed schema-0018 image; local 0020 observability not deployed | Image `sha256:d87e380e...`, source `4ebd0a6...`, is healthy with restart 1, 28 GET and zero write routes. Local source `0904303...` adds exact historical PAPER-plan drilldown but production cannot expose it before migration/deployment |
+| Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
+| Readonly Server API | Healthy deployed schema-0023 image | Image `sha256:205e405f...`, source `6be591a...`, exposes authoritative v2 lifecycle and healthy PAPER/accounting reconciliation |
 | Desktop Readonly client | Local plan-outcome visibility complete / not deployed | Commit `a3f3388...` preserves three same-symbol run/plan identities and shows candidate, approval, plan, selector, command, position and terminal outcome. Focused tests pass; production remains on its earlier client artifact |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
-| Readonly PAPER reporting API | Healthy on schema 0018 / acceptance not closed | Source `4ebd0a6...` remains healthy and read-only. Shared account remains 100 USDT and command/order/fill/position rows remain zero; deployed UI cannot yet show the local schema-0020 terminal outcome projection |
-| PAPER Operator Control API | Healthy deployed source / independent readiness denied | Source `16f75c9...` is healthy with restart 0, runtime/daemon/scheduler/mutation true, ARMED generation 6 and LIVE false. Independent readiness denies command ingestion because WAL/PITR are false |
-| First-canary correlation/readiness | Durable state preserved / waiting with 0/0 | Exact UUID and original START lineage remain intact; limits remain one command and one open position with 0/0 used. Three historical valid approvals were safety-blocked and expired; no reset, replay, or LIVE activation occurred |
+| Readonly PAPER reporting API | Healthy and production-accepted | Natural DOGEUSDT and LINKUSDT v2 positions are durably visible with exact command/position identities; both closed naturally and reconciliation scans two rows as HEALTHY |
+| PAPER Operator Control API | Healthy deployed source / ARMED | Source `6be591a...` is healthy with runtime/daemon/scheduler/worker/mutation true, ARMED generation 10, bounded 1/1 scope and LIVE false |
+| First-canary correlation/readiness | Natural execution accepted / next canary waiting | Generation-10 canary has exact UUID, zero commands and positions used, and waits for the next eligible v2 approval. The accepted LINK winner opened before expiry under generation 8 |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -6161,12 +6161,12 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = RESTORE_CANONICAL_WAL_ACK_AND_PITR_THEN_MIGRATE0019_0020_DEPLOY_SERVER_CONTROL_DESKTOP_WITH_ESTABLISHED_PROCESS_AND_OBSERVE_NEXT_NATURAL_PLAN
+RECOMMENDED_NEXT_TASK = CONTINUE_NORMAL_SCALPING_V2_PAPER_CANARY_OBSERVATION_AND_REVIEW_CLOSED_TRADE_PERFORMANCE_BEFORE_ANY_LIVE_DECISION
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
-WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = REOPENED_CURRENT_ACK_HEARTBEAT_STALE_AND_ARCHIVE_UNRESOLVED_FAILURE_YES
-CURRENT_WAL_ACK_ARCHIVE_RECOVERY = FAIL_FRESH_PROJECTION_WALFALSE_ARCHIVE_FAILED716
-CURRENT_WAL_PITR_GATE = FAIL_WALFALSE_PITRFALSE_MUTATIONREADYFALSE_PHYSICAL_GAPFALSE_PRESERVED_LINEAGE_NOT_SUFFICIENT
+WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = NO
+CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_OWNER_HEALTHY_BACKLOG0_PENDING0_UNRESOLVED0
+CURRENT_WAL_PITR_GATE = PASS_WALTRUE_PITRTRUE_MUTATIONREADYTRUE_PHYSICAL_GAPFALSE
 OPERATOR_PROVIDED_PAPER_INITIAL_BALANCE_USDT = 100.00_USDT_RETAINED
 AFTER_SOURCE_REMEDIATION = COMPLETED_READONLY_RUNTIME_ACCEPTED_DO_NOT_RERUN_PRODUCTION_PAPER_PREPARATION
 AFTER_BACKEND_ADAPTER_REMEDIATION = COMPLETED
@@ -6240,12 +6240,12 @@ inventory plus one legitimate arrival). That recovery-time projection reported
 WAL/PITR ready, backlog/pending/unresolved `0/0/0`, the same lineage valid, and
 no physical gap; the idempotent retry performed zero attempts. It is historical
 evidence and is superseded by the healthy ACK-owner state below.
-The historical 5m SHADOW sample remains preserved as provenance, but it is no
-longer the active runtime mode. The active 5m profile is now executable PAPER
-`PRODUCTION_SEARCH`, has persisted natural production cycles, and competes with
-15m under the same deterministic selector. No current eligible winner exists,
-so the already authorized bounded canary remains waiting without commands or
-positions. LIVE stays disabled.
+The historical 5m SHADOW and v1 records remain preserved as readonly provenance,
+but neither is an active source of new Scalping decisions. Scalping v2 is the
+only active 5m `PRODUCTION_SEARCH` identity. Its canonical selector opened
+natural DOGEUSDT and LINKUSDT PAPER positions; both later closed naturally and
+their accounting/PAPER reconciliation is healthy. A fresh authorized bounded
+canary remains waiting for the next eligible v2 approval. LIVE stays disabled.
 
 The prospective Scalping calibration collector now runs as a separate
 `restart: always` Compose service. It reads completed production projections and
@@ -6261,13 +6261,14 @@ accepted boundaries/5870 records, and three post-start natural exact10
 boundaries with zero missing, duplicate, error or future leakage. The 24h count
 gate is reached; the 72h and profitability gates remain future work.
 
-The earlier WAL failure snapshot is historical evidence only. The fresh
+The earlier WAL failure snapshots are historical evidence only. The fresh
 post-task read-only readiness projection reports `status=READY`,
 `wal_ready=true`, `pitr_ready=true`, a contiguous physical lineage,
-`current_mutation_ready=true`, and `live_allowed=false`. Control generation 6
-remains ARMED for the already-authorized bounded PAPER canary, waiting with zero
-commands and zero positions. This task did not mutate production, deploy schema
-0021, or replace active `trade-5m-v1`; LIVE remains disabled.
+`current_mutation_ready=true`, accounting/PAPER reconciliation `HEALTHY`, and
+`live_allowed=false`. Control generation 10 is ARMED for the already-authorized
+bounded PAPER canary, waiting with zero commands and zero positions used. Schema
+0023 and source `6be591a...` are deployed; `trade-5m-v2` is authoritative for
+new Scalping decisions, while `trade-5m-v1` is historical readonly only.
 
 ## Правила актуализации
 
