@@ -92,8 +92,9 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
             "0020_paper_plan_execution_outcomes",
             "0021_independent_scalping_profile_v2",
             "0022_scalping_v2_paper_simulation_policy",
+            "0023_scalping_v2_journal_causality",
         }:
-            raise RuntimeError("online runtime requires schema 0020, 0021, or 0022")
+            raise RuntimeError("online runtime requires schema 0020, 0021, 0022, or 0023")
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
             "WHERE table_schema = current_schema() "

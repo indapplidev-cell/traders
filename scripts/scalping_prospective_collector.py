@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runtime-artifact-id", required=True)
     parser.add_argument(
         "--schema-revision",
-        default="0022_scalping_v2_paper_simulation_policy",
+        default="0023_scalping_v2_journal_causality",
     )
     parser.add_argument("--poll-seconds", type=float, default=10.0)
     parser.add_argument("--boundary-wait-seconds", type=int, default=240)

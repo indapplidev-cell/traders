@@ -1124,12 +1124,18 @@ class PaperOrderExecutionService:
             correlation_id=request.correlation_id,
             causation_id=request.causation_id,
         )
+        position_causation_id = (
+            position_event.causation_id
+            if request.simulation_policy.simulation_policy_id
+            == "simulation:scalping-v2:foundation:v1"
+            else request.causation_id
+        )
         position_persisted = replace(
             position_event,
             event_id=request.position_event_id,
             occurred_at=request.operation_at,
             correlation_id=request.correlation_id,
-            causation_id=request.causation_id,
+            causation_id=position_causation_id,
         )
         journal = (
             replace(order_persisted, event_id=request.journal_entry_ids[0]),

@@ -22,6 +22,8 @@ from app.engine_paper.order_execution_service import (
 )
 from app.engine_paper.repository_results import RepositoryOutcome
 from app.engine_paper.repository_results import result as repository_result
+from app.engine_execution.paper_state_machine import fill_order
+from app.engine_position.paper_state_machine import apply_entry_fill
 from app.engine_safety import (
     ExecutionMode,
     PaperOrderState,
@@ -71,6 +73,37 @@ def test_entry_happy_path_calls_simulator_atomic_operation_and_commit_once(entry
     assert len(calls) == 1
     assert entry_context.repositories.atomic_calls == 1
     assert entry_context.uow.commit_calls == 1
+
+
+def test_scalping_v2_position_journal_preserves_fill_causation(entry_context):
+    order_change = fill_order(
+        entry_context.order,
+        entry_context.fill,
+        expected_version=entry_context.order.version,
+        event_id="event:scalping-v2:order",
+    )
+    position_change = apply_entry_fill(
+        None,
+        entry_context.command,
+        order_change.order,
+        entry_context.fill,
+        position_id="position:scalping-v2",
+        event_id="event:scalping-v2:position",
+    )
+    request = replace(
+        entry_context.request,
+        simulation_policy=make_policy(
+            simulation_policy_id="simulation:scalping-v2:foundation:v1"
+        ),
+    )
+
+    order_event, position_event, journal = PaperOrderExecutionService._events(
+        request, order_change.events[0], position_change.events[0]
+    )
+
+    assert order_event.causation_id == request.causation_id
+    assert position_event.causation_id == entry_context.fill.fill_id
+    assert journal[1].causation_id == entry_context.fill.fill_id
 
 
 def test_close_happy_path_closes_once_and_uses_role_action(close_context):
