@@ -50,10 +50,16 @@ def _id(request_id: str, role: str) -> str:
     return f"paper:first-canary:{role}:{digest}"
 
 
-def _foundation_policy() -> PaperFillSimulationPolicy:
+FOUNDATION_SIMULATION_POLICY_ID = "simulation:foundation:v1"
+SCALPING_V2_SIMULATION_POLICY_ID = "simulation:scalping-v2:foundation:v1"
+
+
+def _foundation_policy(
+    simulation_policy_id: str = FOUNDATION_SIMULATION_POLICY_ID,
+) -> PaperFillSimulationPolicy:
     quantum = Decimal("0.00000001")
     return PaperFillSimulationPolicy(
-        simulation_policy_id="simulation:foundation:v1",
+        simulation_policy_id=simulation_policy_id,
         fee_policy_id="fee:quote:10bps:v1",
         slippage_policy_id="slippage:adverse:2bps:v1",
         latency_policy_id="latency:one-closed-1m:v1",
@@ -296,11 +302,17 @@ class ProductionPaperFirstCanaryExecutor:
             candidate.paper_risk_approval.approval_id,
         )
         created_at = candidate.paper_risk_approval.approved_at
+        simulation_policy_id = (
+            SCALPING_V2_SIMULATION_POLICY_ID
+            if candidate.trade_profile_id == "trade-5m-v2"
+            else FOUNDATION_SIMULATION_POLICY_ID
+        )
         request = PaperCommandIngestionRequest(
             paper_strategy_approval=candidate.paper_strategy_approval,
             paper_quantity_approval=candidate.paper_quantity_approval,
             paper_risk_approval=candidate.paper_risk_approval,
-            simulation_policy=_foundation_policy(), execution_mode=ExecutionMode.PAPER,
+            simulation_policy=_foundation_policy(simulation_policy_id),
+            execution_mode=ExecutionMode.PAPER,
             explicit_paper_authorization=True, command_id=command_id,
             order_id=_id(request_id, "entry-order"),
             command_event_id=_id(request_id, "command-event"),
@@ -425,4 +437,9 @@ class ProductionPaperFirstCanaryExecutor:
         )
 
 
-__all__ = ("ExistingCanaryRuntimeReadiness", "ProductionPaperFirstCanaryExecutor")
+__all__ = (
+    "ExistingCanaryRuntimeReadiness",
+    "FOUNDATION_SIMULATION_POLICY_ID",
+    "ProductionPaperFirstCanaryExecutor",
+    "SCALPING_V2_SIMULATION_POLICY_ID",
+)

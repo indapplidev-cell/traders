@@ -558,7 +558,7 @@ class CollectorConfig:
     parameter_set_id: str
     runtime_source_commit: str
     runtime_artifact_id: str
-    schema_revision: str = "0021_independent_scalping_profile_v2"
+    schema_revision: str = "0022_scalping_v2_paper_simulation_policy"
     poll_seconds: float = 10.0
     boundary_wait_seconds: int = 240
     max_part_bytes: int = DEFAULT_MAX_PART_BYTES

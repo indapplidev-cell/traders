@@ -129,7 +129,7 @@ services:
       --parameter-set-id trade-5m-v2-runtime-v1-2b79734d55b752c2
       --runtime-source-commit ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
       --runtime-artifact-id ${TRADERS_SCALPING_V2_ARTIFACT_ID:-UNSET}
-      --schema-revision 0021_independent_scalping_profile_v2
+      --schema-revision 0022_scalping_v2_paper_simulation_policy
       --poll-seconds 10
       --boundary-wait-seconds 240'
     volumes:

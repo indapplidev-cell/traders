@@ -70,6 +70,7 @@ from app.operator_control.continuation_worker import (
 from app.operator_control.production_executor import (
     ExistingCanaryRuntimeReadiness,
     ProductionPaperFirstCanaryExecutor,
+    SCALPING_V2_SIMULATION_POLICY_ID,
     _foundation_policy,
 )
 from app.operator_control.production_lifecycle_worker import (
@@ -474,7 +475,11 @@ def _approval_source(factory, at_ms=EVALUATION_MS):
 
 
 def _seed_simulation_policy(factory, candidate) -> None:
-    policy = _foundation_policy()
+    policy = _foundation_policy(
+        SCALPING_V2_SIMULATION_POLICY_ID
+        if candidate.trade_profile_id == "trade-5m-v2"
+        else "simulation:foundation:v1"
+    )
     with factory.begin() as session:
         session.add(PaperSimulationPolicyRecord(
             policy_id=policy.simulation_policy_id,
@@ -688,7 +693,7 @@ def test_natural_approval_opens_paper_position_end_to_end(
     assert positions[0].average_entry_price == fills[0].price
     assert journal_count == 6
 
-    policy = _foundation_policy()
+    policy = _foundation_policy(command.simulation_policy_id)
     expected_price = (
         Decimal("100.70") * (Decimal("1") + policy.slippage_bps / Decimal("10000"))
     ).quantize(policy.price_quantum)

@@ -31,7 +31,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--parameter-set-id", required=True)
     parser.add_argument("--runtime-source-commit", required=True)
     parser.add_argument("--runtime-artifact-id", required=True)
-    parser.add_argument("--schema-revision", default="0021_independent_scalping_profile_v2")
+    parser.add_argument(
+        "--schema-revision",
+        default="0022_scalping_v2_paper_simulation_policy",
+    )
     parser.add_argument("--poll-seconds", type=float, default=10.0)
     parser.add_argument("--boundary-wait-seconds", type=int, default=240)
     parser.add_argument("--max-part-bytes", type=int, default=64 * 1024 * 1024)

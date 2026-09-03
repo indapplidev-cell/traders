@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0021_independent_scalping_profile_v2"
+EXPECTED_HEAD = "0022_scalping_v2_paper_simulation_policy"
 
 
 @pytest.fixture(scope="session")

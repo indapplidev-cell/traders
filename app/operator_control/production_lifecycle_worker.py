@@ -254,7 +254,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         if not eligible:
             return None, "WAITING_FOR_ENTRY_CANDLE"
         selected = eligible[0]
-        policy = _foundation_policy()
+        policy = _foundation_policy(command.simulation_policy_id)
         fill_id = simulated_fill_id(
             contract_version=policy.contract_version,
             order_id=entry.order_id,
@@ -320,8 +320,9 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 _id(canary_id, "close-filled-journal"),
                 _id(canary_id, "position-closed-journal"),
             ),
-            price_quantum=_foundation_policy().price_quantum,
-            fee_quantum=_foundation_policy().fee_quantum, quote_asset="USDT",
+            price_quantum=_foundation_policy(command.simulation_policy_id).price_quantum,
+            fee_quantum=_foundation_policy(command.simulation_policy_id).fee_quantum,
+            quote_asset="USDT",
             created_at=_at(eligible[-1].close_boundary_ms), correlation_id=correlation,
             causation_id=position.position_id,
         )
@@ -334,7 +335,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         if not eligible:
             return None, "WAITING_FOR_CLOSE_CANDLE"
         selected = eligible[0]
-        policy = _foundation_policy()
+        policy = _foundation_policy(command.simulation_policy_id)
         fill_id = simulated_close_fill_id(
             fill_contract_version=PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
             order_id=close_order.order_id, exit_decision_id=decision.exit_decision_id,

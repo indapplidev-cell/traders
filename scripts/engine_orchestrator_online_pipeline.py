@@ -91,8 +91,9 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
         if revision not in {
             "0020_paper_plan_execution_outcomes",
             "0021_independent_scalping_profile_v2",
+            "0022_scalping_v2_paper_simulation_policy",
         }:
-            raise RuntimeError("online runtime requires schema 0020 or 0021")
+            raise RuntimeError("online runtime requires schema 0020, 0021, or 0022")
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
             "WHERE table_schema = current_schema() "
