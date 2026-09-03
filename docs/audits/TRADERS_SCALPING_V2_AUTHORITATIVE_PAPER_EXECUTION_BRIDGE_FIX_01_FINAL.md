@@ -31,7 +31,7 @@ TIE_BREAK = candidate_id_asc_then_symbol_asc
 ROOT_CAUSE = STALE_READINESS_HTTP_TIMEOUT_AND_DISPATCH_CADENCE; MISSING_PRODUCTION_V2_SIMULATION_POLICY; V2_SCORE_CONTRACT_MISMATCH; OPENED_LIFECYCLE_OVERWRITTEN_BY_LATER_APPROVAL_EXPIRY_IN_FUNNEL; V2_POSITION_JOURNAL_CAUSATION_OVERWRITTEN_BY_REQUEST_CAUSATION
 ROOT_CAUSE_FIXED = YES
 
-READINESS_STATE = READY_CONTROL_ARMED_GENERATION8_MUTATION_READY_ACCOUNTING_HEALTHY_LIVE_FALSE
+READINESS_STATE = READY_CONTROL_ARMED_GENERATION10_WAITING_FOR_ELIGIBLE_APPROVAL_MUTATION_READY_ACCOUNTING_HEALTHY_LIVE_FALSE
 READINESS_REASONS = NONE
 
 NATURAL_WINNER_SYMBOL = LINKUSDT
@@ -45,7 +45,7 @@ COMMAND_ID = paper:ingestion-command:v1:f0b7ecb26a44b532c494a541af5e0af47e40de34
 COMMAND_STATUS = CREATED_PERSISTED_QUEUE_STATE_PENDING_ENTRY_ORDER_FILLED
 
 POSITION_ID = paper:first-canary:position:da114d344a74676d896fd2908daed69cf3c67caa6fb1fc69bf63e530ee807cdc
-POSITION_STATUS = OPEN
+POSITION_STATUS = OPEN_AT_ACCEPTANCE_NATURALLY_CLOSED_AFTER_ACCEPTANCE
 
 EXPIRY_RACE_FIXED = PASS
 READINESS_REGRESSION_FIXED = PASS
@@ -64,7 +64,7 @@ BINANCE_ORDER_API_CALLS_BY_TASK = 0
 SECRET_OUTPUT = 0
 
 REMAINING_BLOCKERS = NONE
-NEXT_ACTION = OBSERVE_NORMAL_PAPER_CANARY_LIFECYCLE_AND_CLOSE_WITHOUT_ENABLING_LIVE
+NEXT_ACTION = CONTINUE_NORMAL_SCALPING_V2_PAPER_CANARY_OPERATION_WITHOUT_ENABLING_LIVE
 ```
 
 ## Natural production acceptance
@@ -96,6 +96,10 @@ request causation instead of the execution fill causation. Forward migration
 `0023_scalping_v2_journal_causality` repaired only v2 PAPER journal rows, and
 the execution service now persists fill causation for all future v2 position
 events. Post-migration accounting and PAPER reconciliation are `HEALTHY`.
+The LINK position later closed naturally with positive realized PAPER PnL. A
+fresh bounded PAPER-only canary is ARMED at generation 10 and is waiting for the
+next eligible v2 approval with command/open-position budgets `0/1`; LIVE is
+still disabled.
 
 ## Fixes shipped
 
@@ -137,7 +141,8 @@ events. Post-migration accounting and PAPER reconciliation are `HEALTHY`.
 - Required reached winner fields checked in the readonly funnel: setup, entry,
   stop and target policy/provenance; geometry, cost and RR decisions; selector,
   command and position states. Generic `Недоступно`, `UNKNOWN`, or `N/A`: zero.
-- Current readiness: READY, control ARMED generation 8, market-data/approval/
+- Current readiness: READY, control ARMED generation 10 and waiting for an
+  eligible approval, market-data/approval/
   WAL/PITR true, mutation ready, accounting/PAPER reconciliation healthy,
   denial reasons empty, runtime worker running, LIVE false.
 - All four mutable Scalping/PAPER services run images labeled with source commit
