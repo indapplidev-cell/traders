@@ -156,3 +156,67 @@ LIVE remained disabled. No real Binance order endpoint was called. Production
 credentials were neither printed nor changed. A temporary isolated-test role
 credential was rotated after a failed local test invocation and was not reused;
 it has no production authority.
+
+## 2026-09-03 operational continuation: WAL/PITR readiness recovery
+
+A fresh post-task reread found a new operational readiness flap after the
+original acceptance: the canonical host WAL ACK owner state still named PID
+`15516`, but the process was absent and its heartbeat was stale. PostgreSQL had
+one recoverable export backlog item and nine pending archive-status entries.
+The archive itself remained continuous: all 2,132 required segments were
+available, the base-backup chain was contiguous, and there was no physical or
+unrecoverable WAL gap.
+
+The existing project-native single-owner daemon was restarted through
+`production_wal_archive_remediation.py daemon`. Its stale-lock path removed the
+lock only after proving the recorded PID dead. The recovered owner PID `1860`
+drained the backlog through the checksum/ACK protocol and published a current
+atomic state. No schema, business-data, PAPER lifecycle, Control, container, or
+LIVE transition was used to force readiness.
+
+Fresh post-recovery evidence:
+
+```text
+ACK_OWNER = RUNNING_IDENTITY_MATCHED_PID_1860
+ACK_HEARTBEAT = HEALTHY
+ACK_ERROR_CLASS = NONE
+PENDING_ARCHIVE_STATUS_COUNT = 0
+EXPORT_BACKLOG_COUNT = 0
+ACTIVE_UNRESOLVED_FAILURE_COUNT = 0
+ARCHIVE_ARTIFACT_COVERAGE = 2141
+REQUIRED_WAL_SEGMENTS = 2141
+MISSING_REQUIRED_SEGMENTS = 0
+SOURCE_RECOVERABLE_MISSING_SEGMENTS = 0
+BASE_BACKUP_CHAIN_CONTIGUOUS = YES
+PHYSICAL_WAL_GAP = NO
+PITR_CONTIGUOUS_WINDOW_SECONDS = 2030969
+WAL_ARCHIVE_HEALTH = PASS
+READONLY_WAL_READY = true
+READONLY_PITR_READY = true
+READONLY_CURRENT_MUTATION_READY = true
+READONLY_MUTATION_DENIAL_REASONS = []
+CONTROL = ARMED_GENERATION_10_WAITING_FOR_ELIGIBLE_APPROVAL
+ALEMBIC_HEAD = 0023_scalping_v2_journal_causality
+LIVE_STATE = DISABLED
+BINANCE_ORDER_API_CALLS_BY_CONTINUATION = 0
+SECRET_OUTPUT = 0
+```
+
+The historical WAL regression suite contained one assertion coupled to a
+repository-wide diff from commit `ba8d19d...`. Later legitimate PAPER work made
+that assertion fail even though the WAL remediator remained isolated. The test
+now directly verifies that the remediator has no dependency on PAPER
+foundation, market-data adapter, or foundation migrations. This changes no
+runtime code or strategy semantics.
+
+Validation after the correction:
+
+```text
+WAL_SECURITY_REGRESSION = 1451 passed, 1 platform skip
+SCALPING_V2_BRIDGE_FUNNEL_EXECUTION_REGRESSION = 173 passed, 6 PostgreSQL opt-in skips
+COMPILEALL = PASS
+GIT_DIFF_CHECK = PASS
+TRADE_15M_CONFIG_CHANGED = NO
+TRADE_15M_BEHAVIOR_CHANGED = NO
+NATURAL_V2_POSITION_OPEN = PASS_PRESERVED
+```
