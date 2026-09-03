@@ -1549,6 +1549,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             )
             lifecycle = dict(lifecycle_by_run.get(row.run_id, {}))
             execution_terminal = lifecycle.get("terminal_result")
+            persisted_execution_terminal = execution_terminal
             if (
                 execution_terminal is None
                 and trace["FINAL_APPROVAL"] == "PASS"
@@ -1556,6 +1557,15 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 and lifecycle.get("command_id") is None
             ):
                 execution_terminal = "EXPIRED_BEFORE_EXECUTION"
+            if persisted_execution_terminal is not None:
+                # A persisted execution result is authoritative after selection.
+                # Approval TTL may elapse later, but it must not overwrite an
+                # already-created command/position with APPROVAL_EXPIRED in UI.
+                reason = execution_terminal
+                reason_detail = execution_terminal
+                profile_contexts = _profile_screen_contexts(
+                    row, result, terminal_reason=reason
+                )
             execution_lifecycle_state = lifecycle.get("lifecycle_state")
             if lifecycle.get("position_id") is not None:
                 execution_lifecycle_state = "EXECUTED_TO_PAPER_POSITION"

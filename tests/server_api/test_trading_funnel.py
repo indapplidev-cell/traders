@@ -201,6 +201,29 @@ def test_expired_final_approval_preserves_historical_funnel_but_is_not_eligible(
     assert value["rolling_4h"]["stage_counts"]["FINAL_APPROVAL"] == 1
 
 
+def test_open_position_terminal_state_overrides_later_approval_expiry():
+    run = _run("BTCUSDT")
+    value = _project(
+        [(run, _result(run, valid_until=NOW_MS - 1))],
+        lifecycle={run.run_id: {
+            "selector_state": "SELECTED",
+            "selector_rank": 1,
+            "selected_winner": True,
+            "command_id": "command:BTCUSDT",
+            "command_status": "PENDING",
+            "position_id": "position:BTCUSDT",
+            "position_status": "OPEN",
+            "terminal_result": "PAPER_POSITION_OPENED",
+            "lifecycle_state": "COMMAND_CREATED",
+        }},
+    )
+
+    item = value["current_cycle"]["items"][0]
+    assert item["source_reason_code"] == "PAPER_POSITION_OPENED"
+    assert item["terminal_reason_code"] == "PAPER_POSITION_OPENED"
+    assert item["downstream_detail"]["position_status"] == "OPEN"
+
+
 def test_rolling_4h_plan_count_maps_to_every_persisted_plan_identity_without_symbol_deduplication():
     pairs = []
     run_ids = []
