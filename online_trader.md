@@ -7,12 +7,12 @@ STATUS_AS_OF_COMMIT = a46c95105026f34ec96335451e4850bd84b03747
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-03T07:55:02Z
+RECONCILED_AT_UTC = 2026-09-03T08:08:20Z
 RECONCILED_BY_TASK = TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01
 FILES_CHANGED = alembic/versions/0022_scalping_v2_paper_simulation_policy.py, alembic/versions/0023_scalping_v2_journal_causality.py, app/engine_observation/scalping_prospective_collector.py, app/engine_paper/order_execution_service.py, app/engine_strategy/strategy_filter.py, app/operator_control/production_executor.py, app/operator_control/production_lifecycle_worker.py, app/server_api/schema_compatibility.py, app/server_api/trading_funnel.py, docker-compose.yml, scripts/engine_orchestrator_online_pipeline.py, scripts/scalping_prospective_collector.py, tests/engine_strategy/test_score_diagnostics.py, tests/integration/paper_natural_execution_e2e/conftest.py, tests/integration/paper_natural_execution_e2e/test_natural_approval_opens_position.py, tests/paper_order_execution_service/test_service_contract_and_mapping.py, tests/server_api/test_trading_funnel.py, docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md, online_trader.md
 
-REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = be5b1cb14bdbb2654c8852271ceb6ab683f79a5c_ORIGIN_FEATURE_ENGINE_PLATFORM
-PUSH_STATE_AT_RECONCILIATION = NOT_PUSHED_AHEAD38_BEHIND0
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 32efbc04e654ca85f93d3973d1a774720f8001dd_ORIGIN_FEATURE_ENGINE_PLATFORM
+PUSH_STATE_AT_RECONCILIATION = PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_BEFORE_THIS_DOCUMENTATION_RECONCILIATION
 STATUS_CONFIDENCE = SCALPINGV2_AUTHORITATIVE_DEPLOYED_NATURALPOSITIONOPENPASS_TWO_NATURALCLOSES_HEALTHY_POSTGRESE2E6PASS_FOCUSED197PASS_15MFROZEN_PAPERARMED10_LIVEFALSE
 
 # Состояние проекта traders-ml
