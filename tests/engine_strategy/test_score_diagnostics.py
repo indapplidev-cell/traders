@@ -117,3 +117,24 @@ def test_scalping_analysis_semantics_are_not_collapsed_to_weak(
     ).evaluate(candidate)
     assert decision.rejection_reasons == [expected_reason]
     assert decision.context["analysis_entry_evidence_strength"] == strength
+
+
+def test_scalping_v2_unknown_no_setup_preserves_final_score_contract(candidate_factory):
+    parameters = resolve_runtime_parameters("trade-5m-v2")
+    candidate = candidate_factory(
+        timeframe="5m",
+        status="NO_SETUP",
+        setup_type="NO_SETUP",
+        setup_quality="UNKNOWN",
+        quality_score=None,
+        context={"scalping": {"entry_evidence_strength": "UNKNOWN"}},
+    )
+
+    decision = StrategyFilter(
+        StrategyConfig(allowed_setup_types=frozenset(parameters.strategy_allowed_setup_types)),
+        parameters,
+    ).evaluate(candidate)
+
+    assert decision.decision_status == "NO_DECISION"
+    assert decision.strategy_score == decision.strategy_final_score
+    assert "STRATEGY_ERROR_PROCESSING_FAILED" not in decision.decision_reasons

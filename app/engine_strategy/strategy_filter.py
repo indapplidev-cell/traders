@@ -69,6 +69,12 @@ class StrategyFilter:
             )
         result = evaluate_strategy_rules(context, self.config)
         score_diagnostics = strategy_score_diagnostics(context, self.config)
+        profile_id = getattr(self.runtime_parameters, "profile_id", None)
+        decision_score = (
+            score_diagnostics["strategy_final_score"]
+            if profile_id == "trade-5m-v2"
+            else result.score
+        )
         gate_diagnostics = strategy_gate_diagnostics(result)
         conflict_trace = []
         for warning in context.quality_warnings:
@@ -114,7 +120,7 @@ class StrategyFilter:
             setup_status=setup_candidate.status, setup_type=setup_candidate.setup_type,
             setup_quality=context.setup_quality,
             setup_quality_score=context.quality_score,
-            strategy_score=result.score, strategy_quality=result.quality,
+            strategy_score=decision_score, strategy_quality=result.quality,
             strategy_quality_threshold=score_diagnostics["strategy_quality_threshold"],
             component_scores=score_diagnostics["component_scores"],
             raw_component_values=score_diagnostics["raw_component_values"],
