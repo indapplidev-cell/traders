@@ -123,6 +123,36 @@ def test_numeric_and_quota_rejection_paths_remain_after_compatibility():
     assert rejected.rejection_reasons == ["RISK_REJECT_RESEARCH_LIMIT_EXCEEDED"]
 
 
+def test_v2_production_compatibility_does_not_turn_research_frequency_into_risk():
+    parameters = resolve_runtime_parameters("trade-5m-v2")
+    limits = ResearchRiskLimits()
+    risk = RiskPolicy(
+        RiskConfig(
+            policy_version=parameters.risk_shadow_policy_id,
+            minimum_strategy_quality=parameters.risk_minimum_strategy_quality,
+            minimum_strategy_score=parameters.risk_minimum_strategy_score,
+            max_research_preapprovals_per_symbol_per_day=1,
+            max_research_preapprovals_total_per_day=1,
+            max_research_preapprovals_per_direction_per_day=1,
+            enforce_research_preapproval_limits=False,
+        ),
+        limits,
+        parameters,
+    )
+
+    for index in range(12):
+        source = replace(
+            admitted("SCALP_BREAKOUT_RESEARCH"),
+            decision_id=f"strategy:v2:production:{index}",
+        )
+        decision = risk.evaluate(source)
+        assert decision.risk_status == "RISK_PRE_APPROVED_RESEARCH"
+        assert decision.rejection_reasons == []
+        assert decision.risk_context["research_preapproval_limits_enforced"] is False
+
+    assert limits.profile_attempts("trade-5m-v2", source.closed_until_ms) == 0
+
+
 class DeterministicCostSource:
     def load(self, symbol, entry, *, safety_margin_bps):
         return ShadowCostInputs(

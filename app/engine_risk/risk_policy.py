@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 from app.engine_risk.risk_config import RiskConfig
+from app.engine_risk.risk_context import RiskContext
 from app.engine_risk.risk_decision import RiskDecision, risk_decision_id
 from app.engine_risk.risk_level import RiskLevel
 from app.engine_risk.risk_limits import ResearchRiskLimits
@@ -129,17 +130,29 @@ class RiskPolicy:
             )
 
         identity = source.decision_id
-        check = (
-            self.limits.check_and_reserve if reserve
-            else self.limits.check_without_reservation
-        )
-        allowed, context = check(
-            identity=identity, symbol=source.symbol, direction=source.direction_hint,
-            trade_profile_id=str(
-                getattr(self.runtime_parameters, "profile_id", "trade-15m-v1")
-            ),
-            closed_until_ms=source.closed_until_ms, config=self.config,
-        )
+        if self.config.enforce_research_preapproval_limits:
+            check = (
+                self.limits.check_and_reserve if reserve
+                else self.limits.check_without_reservation
+            )
+            allowed, context = check(
+                identity=identity, symbol=source.symbol, direction=source.direction_hint,
+                trade_profile_id=str(
+                    getattr(self.runtime_parameters, "profile_id", "trade-15m-v1")
+                ),
+                closed_until_ms=source.closed_until_ms, config=self.config,
+            )
+        else:
+            # A production-search profile is governed by the downstream
+            # quantity/portfolio/final-approval authorities.  A research-flow
+            # frequency counter must not masquerade as account risk and stop
+            # evaluation for the rest of the UTC day.
+            allowed = True
+            context = RiskContext(
+                utc_day=self.limits.utc_day(source.closed_until_ms),
+                trade_profile_id=profile_id,
+                research_preapproval_limits_enforced=False,
+            )
         if not allowed:
             return self._decision(
                 source, RiskStatus.REJECT, RiskLevel.BLOCKED, risk_score=score,

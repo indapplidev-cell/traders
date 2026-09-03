@@ -147,6 +147,9 @@ class PipelineRunner:
                         6 if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
                         else 30
                     ),
+                    enforce_research_preapproval_limits=(
+                        self.config.trade_profile_id != TradeProfileId.TRADE_5M_V2.value
+                    ),
                 ),
                 runtime_parameters=self.runtime_parameters,
             ),

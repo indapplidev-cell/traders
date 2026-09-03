@@ -102,6 +102,18 @@ def test_parameter_resolution_is_explicit_immutable_and_has_no_fallback():
     assert five.opportunity_reentry_enabled is False
 
 
+def test_v2_pipeline_disables_research_frequency_as_a_production_risk_gate():
+    config = OrchestratorConfig(
+        symbols=("BTCUSDT",), trade_profile_id="trade-5m-v2",
+        primary_timeframe="5m", required_timeframes=("5m",),
+        minimum_windows={"5m": 1},
+    )
+    runner = PipelineRunner(config, CandleRepo())
+
+    assert runner.risk_runner.policy.config.enforce_research_preapproval_limits is False
+    assert runner.risk_runner.policy.config.max_research_preapprovals_total_per_day == 10
+
+
 def test_scalping_parameter_source_is_single_sectioned_immutable_and_has_no_15m_fallback():
     parameters = resolve_runtime_parameters("trade-5m-v1")
     five = parameters

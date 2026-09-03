@@ -24,6 +24,7 @@ class RiskConfig:
     max_research_preapprovals_per_symbol_per_day: int = 20
     max_research_preapprovals_total_per_day: int = 50
     max_research_preapprovals_per_direction_per_day: int = 30
+    enforce_research_preapproval_limits: bool = True
     allow_medium_risk: bool = False
 
     def __post_init__(self) -> None:
