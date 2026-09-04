@@ -49,9 +49,9 @@ def canary_pg_engine() -> Iterator[Engine]:
                 "(baseline_id,account_id,accounting_session_id,currency,initial_balance,initialized_at,semantic_version) "
                 "VALUES ('baseline:canary','paper-primary','session-001','USDT',100,:now,'PAPER_ACCOUNTING/1.0')"
             ), {"now": datetime(2026, 8, 12, tzinfo=timezone.utc)})
-        command.upgrade(config, "0014_paper_canary_selection_policy")
+        command.upgrade(config, "head")
         with engine.connect() as connection:
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0014_paper_canary_selection_policy"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0024_continuous_paper_authority"
             assert connection.execute(text("SELECT count(*) FROM paper_account_baselines")).scalar_one() == 1
             assert connection.execute(text("SELECT count(*) FROM paper_first_canary_sessions")).scalar_one() == 0
         yield engine

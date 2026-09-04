@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from app.server_api.runtime import _budget_semantics
+from app.engine_safety.paper_production_control import PersistentState
+from app.server_api.runtime import _budget_semantics, _paper_control_status
 from app.server_api.schemas.paper import PaperControlStatus
 
 
@@ -46,3 +47,39 @@ def test_budget_semantics_are_part_of_the_readonly_control_contract():
         budget_semantics=semantics,
     )
     assert model.model_dump(mode="json")["budget_semantics"] == semantics
+
+
+def test_risk_pause_is_the_effective_state_while_continuous_authority_persists():
+    now = datetime(2026, 9, 4, tzinfo=timezone.utc)
+    budget = SimpleNamespace(
+        generation=12,
+        control_mode="CONTINUOUS",
+        control_state="PAUSED_BY_RISK",
+        effective_state="PAUSED_BY_RISK",
+        mode_version=1,
+        budget_day=now.date(),
+        daily_command_budget=10,
+        commands_used=4,
+        daily_realized_loss_budget=1,
+        realized_pnl=-1,
+        realized_loss=1,
+        daily_risk_budget_bps=50,
+        risk_used_bps=40,
+        max_consecutive_losses=None,
+        loss_streak=1,
+        pause_reason="DAILY_LOSS_BUDGET_EXHAUSTED",
+        updated_at=now,
+    )
+    control = SimpleNamespace(
+        read_authoritative=lambda: SimpleNamespace(
+            state=PersistentState.CONTINUOUS_ARMED, generation=12
+        )
+    )
+    status = _paper_control_status(
+        control,
+        canaries=SimpleNamespace(current=lambda: None),
+        continuous=SimpleNamespace(read=lambda: budget),
+    )
+    assert status.state == "CONTINUOUS_ARMED"
+    assert status.effective_state == "PAUSED_BY_RISK"
+    assert status.risk_pause_reason == "DAILY_LOSS_BUDGET_EXHAUSTED"

@@ -149,7 +149,7 @@ def _paper_control_status(
         )
     return PaperControlStatus(
         state=state.state.value,
-        effective_state=state.state.value,
+        effective_state=(state.state.value if budget is None else budget.effective_state),
         generation=state.generation,
         health="HEALTHY",
         emergency_stop_available=True,

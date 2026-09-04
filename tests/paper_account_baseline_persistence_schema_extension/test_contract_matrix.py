@@ -63,7 +63,7 @@ def test_repository_is_create_get_only_and_transaction_owner_safe(repeat):
 def test_preparation_head_phases_canary_and_principal_policy(repeat):
     assert repeat >= 0
     assert ACCOUNT_BASELINE_PERSISTENCE_CAPABILITY == "READY_REVISION_0012"
-    assert EXPECTED_SCHEMA_HEAD == "0014_paper_canary_selection_policy"
+    assert EXPECTED_SCHEMA_HEAD == "0015_trading_universe_activation"
     assert PaperProductionMigrationPlan().revisions[-3:] == (
         "0012_paper_account_baseline",
         "0013_paper_first_canary_correlation",

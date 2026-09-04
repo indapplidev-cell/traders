@@ -49,15 +49,9 @@ def repository_postgres_engine() -> Iterator[Engine]:
             text("SELECT to_regclass('public.alembic_version')")
         ).scalar_one()
     if revision is None:
-        command.upgrade(
-            config,
-            "0014_paper_canary_selection_policy",
-        )
+        command.upgrade(config, "head")
     else:
-        command.upgrade(
-            config,
-            "0014_paper_canary_selection_policy",
-        )
+        command.upgrade(config, "head")
     yield engine
     engine.dispose()
     get_settings.cache_clear()
