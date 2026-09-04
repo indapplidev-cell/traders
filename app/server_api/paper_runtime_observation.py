@@ -365,7 +365,11 @@ class ProductionPaperRuntimeObservationSource:
                 "command_id": outcome.command_id,
                 "position_status": position_state or "NOT_REACHED",
                 "position_id": position_id,
-                "terminal_reason": outcome.terminal_reason or outcome.selector_reason,
+                "terminal_reason": (
+                    outcome.terminal_reason
+                    or outcome.selector_reason
+                    or ("POSITION_CLOSED" if position_state == "CLOSED" else "NOT_REACHED")
+                ),
                 "attempt_count": outcome.attempt_count,
             }
         except Exception:

@@ -100,8 +100,8 @@ def _default_control_status() -> PaperControlStatus:
         generation=None,
         health="FAIL_CLOSED",
         emergency_stop_available=False,
-        audit_health="NOT_AVAILABLE",
-        state_audit_reconciliation="NOT_AVAILABLE",
+        audit_health="NOT_APPLICABLE",
+        state_audit_reconciliation="NOT_APPLICABLE",
     )
 
 

@@ -58,6 +58,13 @@ from app.server_api.repositories.records import (
 )
 
 
+def canonical_paper_exit_reason(
+    position_reason: str, decision_reason: str | None
+) -> str:
+    """Prefer the persisted exit decision over the generic close transition."""
+    return decision_reason or position_reason
+
+
 ANOMALOUS_RUN_STATUSES = (
     "SKIPPED_FRESHNESS_NOT_OK",
     "SKIPPED_FRESHNESS_TIMEOUT",
@@ -900,11 +907,24 @@ class SqlAlchemyReadAdapter:
         for row in journals:
             if row.position_id in event_map:
                 event_map[row.position_id].append(orm_values_to_paper_event(row))
+        decisions = tuple(session.scalars(
+            select(PaperExitDecisionRecord)
+            .where(PaperExitDecisionRecord.position_id.in_(position_ids))
+            .order_by(
+                PaperExitDecisionRecord.decided_at.desc(),
+                PaperExitDecisionRecord.exit_decision_id.desc(),
+            )
+        ))
+        decision_reason: dict[str, str] = {}
+        for decision in decisions:
+            decision_reason.setdefault(decision.position_id, decision.cause)
         return tuple(PaperClosedTradeFacts(
             position=orm_values_to_paper_position(row),
             entry_fill=fill_map.get(row.entry_fill_id),
             exit_fill=fill_map.get(row.exit_fill_id),
-            exit_reason=row.reason_code,
+            exit_reason=canonical_paper_exit_reason(
+                row.reason_code, decision_reason.get(row.position_id)
+            ),
             journal_events=tuple(event_map[row.position_id]),
         ) for row in rows)
 
@@ -918,12 +938,14 @@ class SqlAlchemyReadAdapter:
 
     @staticmethod
     def _position_view(
-        row: PaperPositionRecord, command_id: str | None = None
+        row: PaperPositionRecord, command_id: str | None = None,
+        exit_reason: str | None = None,
     ) -> PaperPositionRecordView:
         return PaperPositionRecordView(
             position=orm_values_to_paper_position(row), entry_time=_aware(row.opened_at), updated_at=_aware(row.updated_at),
             command_id=command_id,
-            exit_reason=row.reason_code if row.state in {"CLOSED", "FAILED"} else None,
+            exit_reason=canonical_paper_exit_reason(row.reason_code, exit_reason)
+            if row.state in {"CLOSED", "FAILED"} else None,
             entry_order_id=row.entry_order_id, entry_fill_id=row.entry_fill_id,
             close_fill_id=row.exit_fill_id,
         )
@@ -947,8 +969,24 @@ class SqlAlchemyReadAdapter:
         with self._session() as session:
             rows = tuple(session.execute(statement))
         selected = rows[:query.limit]
+        with self._session() as session:
+            decisions = tuple(session.scalars(
+                select(PaperExitDecisionRecord)
+                .where(PaperExitDecisionRecord.position_id.in_(
+                    tuple(row.position_id for row, _command_id in selected)
+                ))
+                .order_by(
+                    PaperExitDecisionRecord.decided_at.desc(),
+                    PaperExitDecisionRecord.exit_decision_id.desc(),
+                )
+            )) if selected else ()
+        decision_reason: dict[str, str] = {}
+        for decision in decisions:
+            decision_reason.setdefault(decision.position_id, decision.cause)
         return RecordPage(
-            tuple(self._position_view(row, command_id) for row, command_id in selected),
+            tuple(self._position_view(
+                row, command_id, decision_reason.get(row.position_id)
+            ) for row, command_id in selected),
             len(rows) > query.limit,
         )
 
