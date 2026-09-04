@@ -67,6 +67,17 @@ class ContinuousAuthoritySnapshot:
     version: int
 
     @property
+    def effective_state(self) -> str:
+        """Expose the fail-closed state consumed by runtime projections.
+
+        Normal position finalization never creates a derived disabled state:
+        the persisted control state remains authoritative across a restart.
+        """
+        if not self.enabled and self.control_state == ACTIVE_STATE:
+            return "DISABLED"
+        return self.control_state
+
+    @property
     def budget_reason(self) -> str | None:
         if self.commands_used >= self.daily_command_budget:
             return "DAILY_COMMAND_BUDGET_EXHAUSTED"
@@ -321,6 +332,8 @@ class PaperContinuousAuthorityStore:
             row = session.get(PaperContinuousControlRecord, "PRODUCTION", with_for_update=True)
             if row is None:
                 raise ContinuousAuthorityError("CONTINUOUS_CONTROL_NOT_CONFIGURED")
+            if row.control_mode != CONTROL_MODE:
+                raise ContinuousAuthorityError("CONTINUOUS_CONTROL_MODE_MISMATCH")
             if not reconciliation_healthy:
                 raise ContinuousAuthorityError("CONTINUOUS_RECONCILIATION_UNHEALTHY")
             event_id = _event_id("POSITION_CLOSED", position_id)
@@ -336,6 +349,10 @@ class PaperContinuousAuthorityStore:
                 row.last_successful_reconciliation = current
                 row.updated_at = current
                 row.version += 1
+                # A normal PAPER close releases capacity through the position
+                # state.  It must not mutate continuous operator authority.
+                # Only an operator stop or a risk-budget reconciliation may
+                # leave CONTINUOUS_ARMED.
                 self._append_event(
                     session, event_type="POSITION_CLOSED", identity=position_id, row=row,
                     reason="POSITION_CLOSED_RECONCILED", source="continuous-worker",

@@ -714,7 +714,15 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert control.read_authoritative().state is PersistentState.CONTINUOUS_ARMED
     after_close = authority.read()
     assert after_close is not None and after_close.control_state == "CONTINUOUS_ARMED"
+    assert after_close.effective_state == "CONTINUOUS_ARMED"
+    assert after_close.generation == armed.generation
+    assert after_close.enabled is True
     assert after_close.commands_used == 1 and after_close.loss_streak == 1
+    restarted_authority = PaperContinuousAuthorityStore(factory).read()
+    assert restarted_authority is not None
+    assert restarted_authority.control_state == "CONTINUOUS_ARMED"
+    assert restarted_authority.effective_state == "CONTINUOUS_ARMED"
+    assert restarted_authority.generation == armed.generation
 
     # No arm/start call occurs here. The normal polling worker selects the
     # remaining natural fixture approval and creates the second v2 graph.
