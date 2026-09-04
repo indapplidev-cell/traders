@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from decimal import Decimal
+from datetime import datetime, timedelta, timezone
+import json
+import os
+from pathlib import Path
 import time
 from typing import Protocol
 
@@ -26,6 +31,42 @@ from app.engine_paper.scalping_opportunity_registry import ScalpingOpportunityRe
 
 class ScalpingCostSource(Protocol):
     def load(self, symbol: str, entry: float, *, safety_margin_bps: float) -> ShadowCostInputs: ...
+
+
+@dataclass(frozen=True, slots=True)
+class BinanceCommissionSnapshot:
+    symbol: str
+    snapshot_id: str
+    fetched_at: str
+    entry_taker_bps: float
+    exit_taker_bps: float
+    bnb_discount_state: str
+    special_commission_state: str
+    tax_commission_state: str
+
+
+def load_binance_commission_snapshot(symbol: str) -> BinanceCommissionSnapshot | None:
+    """Read a secret-free snapshot produced by an authenticated ops boundary."""
+    raw_path = os.environ.get("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH")
+    if not raw_path:
+        return None
+    try:
+        payload = json.loads(Path(raw_path).read_text(encoding="utf-8"))
+        row = payload["symbols"][symbol.upper()]
+        fetched = datetime.fromisoformat(str(payload["fetched_at"]).replace("Z", "+00:00"))
+        if fetched.tzinfo is None or datetime.now(timezone.utc) - fetched > timedelta(hours=24):
+            return None
+        return BinanceCommissionSnapshot(
+            symbol=symbol.upper(), snapshot_id=str(payload["snapshot_id"]),
+            fetched_at=fetched.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            entry_taker_bps=float(row["taker_bps"]),
+            exit_taker_bps=float(row["taker_bps"]),
+            bnb_discount_state=str(payload.get("bnb_discount_state", "NOT_APPLICABLE")),
+            special_commission_state=str(row.get("special_commission_state", "NOT_APPLICABLE")),
+            tax_commission_state=str(row.get("tax_commission_state", "NOT_APPLICABLE")),
+        )
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None
 
 
 class BinancePublicScalpingCostSource:
@@ -64,15 +105,26 @@ class BinancePublicScalpingCostSource:
             symbol, reference_quantity, limit=self.depth_limit
         )
         captured_at_ms = time.time_ns() // 1_000_000
+        commission = load_binance_commission_snapshot(symbol)
         return ShadowCostInputs(
-            entry_fee_bps=self.entry_fee_bps,
-            exit_fee_bps=self.exit_fee_bps,
+            entry_fee_bps=(commission.entry_taker_bps if commission else self.entry_fee_bps),
+            exit_fee_bps=(commission.exit_taker_bps if commission else self.exit_fee_bps),
             entry_slippage_bps=self.entry_slippage_bps,
             exit_slippage_bps=self.exit_slippage_bps,
             safety_margin_bps=safety_margin_bps,
             spread_bps=ticker.spread_bps,
             depth_impact_bps=depth.depth_impact_bps,
-            fee_source="CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE",
+            fee_source=(
+                "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT"
+                if commission else "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
+            ),
+            commission_authoritative=commission is not None,
+            commission_symbol=None if commission is None else commission.symbol,
+            commission_snapshot_id=None if commission is None else commission.snapshot_id,
+            commission_fetched_at=None if commission is None else commission.fetched_at,
+            bnb_discount_state=("NOT_APPLICABLE" if commission is None else commission.bnb_discount_state),
+            special_commission_state=("NOT_APPLICABLE" if commission is None else commission.special_commission_state),
+            tax_commission_state=("NOT_APPLICABLE" if commission is None else commission.tax_commission_state),
             spread_source="BINANCE_PUBLIC_BOOK_TICKER",
             depth_impact_source=depth.source,
             spread_authoritative=True,

@@ -1,11 +1,16 @@
 from decimal import Decimal
+from datetime import datetime, timezone
+import json
 from types import SimpleNamespace
 
 import pytest
 
 from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 from app.engine_paper.paper_reason_codes import PaperReasonCode as R
-from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
+from app.engine_paper.scalping_paper_runner import (
+    BinancePublicScalpingCostSource,
+    ScalpingPaperRunner,
+)
 from app.engine_paper.scalping_shadow import (
     CausalTarget,
     ShadowCostInputs,
@@ -324,6 +329,30 @@ def test_net_edge_rr_and_break_even_are_computed_not_hardcoded():
     assert row.execution_eligible is False
 
 
+def test_v2_requires_authoritative_commission_and_exposes_provenance():
+    rejected = evaluate_scalping_shadow(
+        candidate(trade_profile_id="trade-5m-v2"), costs(),
+        config(profile_id="trade-5m-v2", production_rr_floor=0.4),
+    )
+    assert rejected.rejection_reason == "PAPER_NO_PLAN_NON_AUTHORITATIVE_COMMISSION"
+    accepted = evaluate_scalping_shadow(
+        candidate(trade_profile_id="trade-5m-v2"),
+        costs(
+            commission_authoritative=True,
+            commission_symbol="SUIUSDT",
+            commission_snapshot_id="commission:snapshot:1",
+            commission_fetched_at="2026-09-04T00:00:00Z",
+            fee_source="BINANCE_ACCOUNT_COMMISSION_SNAPSHOT",
+        ),
+        config(profile_id="trade-5m-v2", production_rr_floor=0.4),
+    )
+    assert accepted.valid_plan
+    assert accepted.commission_authoritative is True
+    assert accepted.commission_symbol == "SUIUSDT"
+    assert accepted.round_trip_commission_bps == 20
+    assert accepted.cost_policy_version == "scalping-round-trip-net-pnl-v2"
+
+
 @pytest.mark.parametrize("reason", ["NO_PLAN", "MISSING_TARGET", "STOP_TOO_WIDE", "NEGATIVE_NET_EDGE", "LOW_RR"])
 def test_invalid_plan_never_touches_execution_budget(reason):
     budget = SharedAccountExecutionBudget(max_approved_plans=1, max_risk_bps=100)
@@ -420,6 +449,37 @@ class Transport:
         if url.endswith("bookTicker"):
             return Response({"bidPrice": "99.9", "bidQty": "2", "askPrice": "100.1", "askQty": "2"})
         return Response({"bids": [["99.9", "1"], ["99.8", "1"]], "asks": [["100.1", "1"], ["100.2", "1"]]})
+
+
+def test_dynamic_account_commission_snapshot_drives_costs(monkeypatch, tmp_path):
+    snapshot = tmp_path / "commission.json"
+    snapshot.write_text(json.dumps({
+        "snapshot_id": "binance:commission:20260904",
+        "fetched_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "bnb_discount_state": "DISABLED",
+        "symbols": {"BTCUSDT": {
+            "taker_bps": 8.5,
+            "special_commission_state": "NONE",
+            "tax_commission_state": "NONE",
+        }},
+    }), encoding="utf-8")
+    monkeypatch.setenv("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", str(snapshot))
+    source = BinancePublicScalpingCostSource(
+        client=BinancePublicRestClient(transport=Transport(), max_retries=0)
+    )
+    value = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+    assert value.commission_authoritative is True
+    assert value.fee_source == "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT"
+    assert value.entry_fee_bps == value.exit_fee_bps == 8.5
+    assert value.commission_symbol == "BTCUSDT"
+    assert value.commission_snapshot_id == "binance:commission:20260904"
+    result = evaluate_scalping_shadow(
+        candidate(trade_profile_id="trade-5m-v2", symbol="BTCUSDT"), value,
+        config(profile_id="trade-5m-v2", production_rr_floor=0.4),
+    )
+    assert result.valid_plan
+    assert result.total_cost_bps is not None
+    assert result.round_trip_commission_bps == 17.0
 
 
 def test_existing_public_client_boundary_provides_spread_and_depth_without_orders():

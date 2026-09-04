@@ -77,6 +77,16 @@ class ShadowCostInputs:
     spread_bps: float | None = None
     depth_impact_bps: float | None = None
     fee_source: str = "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
+    commission_authoritative: bool = False
+    commission_symbol: str | None = None
+    commission_snapshot_id: str | None = None
+    commission_fetched_at: str | None = None
+    entry_liquidity_role: str = "TAKER"
+    exit_liquidity_role: str = "TAKER"
+    bnb_discount_state: str = "NOT_APPLICABLE"
+    special_commission_state: str = "NOT_APPLICABLE"
+    tax_commission_state: str = "NOT_APPLICABLE"
+    cost_policy_version: str = "scalping-round-trip-net-pnl-v2"
     spread_source: str | None = None
     depth_impact_source: str | None = None
     spread_authoritative: bool = False
@@ -260,6 +270,17 @@ class ShadowGeometryDiagnostic:
     expected_value_bps: float | None = None
     expectancy_gate_reason: str | None = None
     fee_source: str | None = None
+    commission_authoritative: bool = False
+    commission_symbol: str | None = None
+    commission_snapshot_id: str | None = None
+    commission_fetched_at: str | None = None
+    entry_liquidity_role: str | None = None
+    exit_liquidity_role: str | None = None
+    round_trip_commission_bps: float | None = None
+    bnb_discount_state: str | None = None
+    special_commission_state: str | None = None
+    tax_commission_state: str | None = None
+    cost_policy_version: str | None = None
     spread_source: str | None = None
     depth_impact_source: str | None = None
     bid: float | None = None
@@ -471,6 +492,17 @@ def evaluate_scalping_shadow(
         spread_bps=costs.spread_bps,
         depth_impact_bps=costs.depth_impact_bps,
         fee_source=costs.fee_source,
+        commission_authoritative=costs.commission_authoritative,
+        commission_symbol=costs.commission_symbol,
+        commission_snapshot_id=costs.commission_snapshot_id,
+        commission_fetched_at=costs.commission_fetched_at,
+        entry_liquidity_role=costs.entry_liquidity_role,
+        exit_liquidity_role=costs.exit_liquidity_role,
+        round_trip_commission_bps=costs.entry_fee_bps + costs.exit_fee_bps,
+        bnb_discount_state=costs.bnb_discount_state,
+        special_commission_state=costs.special_commission_state,
+        tax_commission_state=costs.tax_commission_state,
+        cost_policy_version=costs.cost_policy_version,
         spread_source=costs.spread_source,
         depth_impact_source=costs.depth_impact_source,
         bid=costs.bid,
@@ -550,6 +582,10 @@ def evaluate_scalping_shadow(
         )
     if costs.depth_impact_bps is None or not costs.depth_authoritative:
         return result.reject("NET_COST_GATE", R.PAPER_NO_PLAN_MISSING_DEPTH_IMPACT.value)
+    if candidate.trade_profile_id == V2_PROFILE_ID and not costs.commission_authoritative:
+        return result.reject(
+            "NET_COST_GATE", "PAPER_NO_PLAN_NON_AUTHORITATIVE_COMMISSION"
+        )
     if costs.require_causal_timestamp and not costs.causally_usable:
         return result.reject("NET_COST_GATE", "PAPER_NO_PLAN_STALE_OR_FUTURE_ECONOMIC_INPUT")
     if costs.spread_bps < 0 or costs.depth_impact_bps < 0:

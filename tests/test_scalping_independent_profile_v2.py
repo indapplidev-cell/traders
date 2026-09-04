@@ -105,6 +105,10 @@ def test_v2_target_rr_ev_path_is_profile_scoped_and_cost_complete():
     costs = ShadowCostInputs(
         spread_bps=1.0, depth_impact_bps=1.0,
         spread_authoritative=True, depth_authoritative=True,
+        commission_authoritative=True,
+        commission_symbol="BTCUSDT",
+        commission_snapshot_id="fixture:commission:v1",
+        commission_fetched_at="2026-09-04T00:00:00Z",
     )
     result = evaluate_scalping_shadow(candidate, costs, ShadowGeometryConfig(
         atr_buffer_multiplier=0.25, stop_envelope_bps=50.0,
