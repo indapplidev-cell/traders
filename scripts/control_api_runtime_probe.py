@@ -71,7 +71,10 @@ def main() -> int:
             result["healthy"], result["get_routes"] == 3, result["post_routes"] == 5,
             result["valid_safe_read"], result["unauthenticated_mutation_rejected"],
             result["invalid_token_mutation_rejected"],
-            result["control_state"] in {"DISABLED", "ARMED", "EMERGENCY_STOP"},
+            result["control_state"] in {
+                "DISABLED", "ARMED", "CONTINUOUS_ARMED", "PAUSED_BY_RISK",
+                "EMERGENCY_STOP", "EMERGENCY_STOPPED",
+            },
             isinstance(result["control_generation"], int),
             result["control_health"] == "HEALTHY",
             result["audit_health"] == "PASS",
