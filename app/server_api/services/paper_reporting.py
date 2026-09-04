@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 import re
 
 from app.engine_paper.accounting import (
@@ -47,6 +48,7 @@ from app.server_api.schemas.paper import (
     PaperJournalItem,
 )
 from app.engine_paper.trading_criteria import build_trading_criteria_snapshot
+from app.engine_paper.performance import scalp_v2_performance
 from app.server_api.schema_compatibility import (
     PAPER_SCHEMA_COMPATIBILITY_LABEL,
     revision_is_supported,
@@ -335,6 +337,14 @@ class PaperReadonlyReportingService:
         open_count_source = getattr(self._repo(), "count_open_paper_positions", None)
         unrealized = unrealized_source() if callable(unrealized_source) else None
         open_count = open_count_source() if callable(open_count_source) else None
+        profile_source = getattr(self._repo(), "paper_trade_profile_context", None)
+        profile_context = profile_source(
+            tuple(report.position_id for report in result.reports)
+        ) if callable(profile_source) else {}
+        performance = {
+            key: decimal_text(metric) if isinstance(metric, Decimal) else metric
+            for key, metric in scalp_v2_performance(result.reports, profile_context).items()
+        }
         return PaperAccount(
             account_id=value.account_id, accounting_session_id=value.accounting_session_id,
             currency=value.currency, baseline_id=baseline.baseline_id,
@@ -351,6 +361,7 @@ class PaperReadonlyReportingService:
             largest_loss=decimal_text(value.largest_loss), accounting_reconciliation_status=result.outcome.value,
             unrealized_pnl=decimal_text(unrealized),
             global_open_position_count=open_count,
+            scalping_v2_performance=performance,
         )
 
     @staticmethod

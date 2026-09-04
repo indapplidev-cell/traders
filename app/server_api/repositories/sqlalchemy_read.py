@@ -25,7 +25,8 @@ from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow,
 from app.db.paper_mappings import orm_values_to_paper_event, orm_values_to_paper_fill, orm_values_to_paper_position
 from app.db.paper_models import (
     PaperAccountBaselineRecord, PaperExitDecisionRecord, PaperExitEvaluationCursorRecord,
-    PaperFillRecord, PaperJournalEntryRecord, PaperOrderRecord, PaperPositionRecord,
+    PaperExecutionCommandRecord, PaperFillRecord, PaperJournalEntryRecord,
+    PaperOrderRecord, PaperPositionRecord,
     TradingUniverseRuntimeStateRecord,
 )
 from app.engine_paper.accounting import PaperAccountBaseline, PaperAccountIdentity, PaperClosedTradeFacts
@@ -935,6 +936,34 @@ class SqlAlchemyReadAdapter:
         with self._session() as session:
             rows = tuple(session.scalars(statement))
             return self._facts_for_rows(session, rows)
+
+    def paper_trade_profile_context(
+        self, position_ids: tuple[str, ...]
+    ) -> dict[str, dict[str, object]]:
+        if not position_ids:
+            return {}
+        statement = (
+            select(
+                PaperPositionRecord.position_id,
+                OnlinePipelineRun.trade_profile_id,
+                PaperPositionRecord.average_entry_price,
+                PaperPositionRecord.stop_price,
+                PaperPositionRecord.entry_quantity,
+            )
+            .join(PaperOrderRecord, PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id)
+            .join(PaperExecutionCommandRecord, PaperExecutionCommandRecord.command_id == PaperOrderRecord.command_id)
+            .join(OnlinePipelineRun, OnlinePipelineRun.run_id == PaperExecutionCommandRecord.pipeline_run_id)
+            .where(PaperPositionRecord.position_id.in_(position_ids))
+        )
+        with self._session() as session:
+            rows = tuple(session.execute(statement))
+        return {
+            position_id: {
+                "trade_profile_id": profile_id,
+                "risk_amount": abs(entry - stop) * quantity,
+            }
+            for position_id, profile_id, entry, stop, quantity in rows
+        }
 
     @staticmethod
     def _position_view(

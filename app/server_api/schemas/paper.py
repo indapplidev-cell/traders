@@ -105,6 +105,7 @@ class PaperAccount(BaseModel):
     accounting_reconciliation_status: str
     unrealized_pnl: DecimalString | None = None
     global_open_position_count: int | None = Field(default=None, ge=0)
+    scalping_v2_performance: dict[str, Any] = Field(default_factory=dict)
 
 
 class PaperPositionItem(BaseModel):
