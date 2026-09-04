@@ -31,8 +31,9 @@ READONLY_SCHEMA_0021: Final = "0021_independent_scalping_profile_v2"
 READONLY_SCHEMA_0022: Final = "0022_scalping_v2_paper_simulation_policy"
 READONLY_SCHEMA_0023: Final = "0023_scalping_v2_journal_causality"
 READONLY_SCHEMA_0024: Final = "0024_continuous_paper_authority"
+READONLY_SCHEMA_0025: Final = "0025_paper_budget_policy"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0024
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0025
 PAPER_SCHEMA_COMPATIBILITY_LABEL: Final = f"{PAPER_SCHEMA_MINIMUM}|{PAPER_SCHEMA_MAXIMUM}"
 
 
@@ -114,6 +115,7 @@ def revision_is_supported(revisions: tuple[str, ...]) -> bool:
         PAPER_SCHEMA_MINIMUM, READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
         READONLY_SCHEMA_0018, READONLY_SCHEMA_0019, READONLY_SCHEMA_0020,
         READONLY_SCHEMA_0021, READONLY_SCHEMA_0022, READONLY_SCHEMA_0023, READONLY_SCHEMA_0024,
+        READONLY_SCHEMA_0025,
     }
 
 
@@ -167,6 +169,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
             READONLY_SCHEMA_0016, READONLY_SCHEMA_0017,
             READONLY_SCHEMA_0018, READONLY_SCHEMA_0019, READONLY_SCHEMA_0020,
             READONLY_SCHEMA_0021, READONLY_SCHEMA_0022, READONLY_SCHEMA_0023, READONLY_SCHEMA_0024,
+            READONLY_SCHEMA_0025,
         }:
             return ReadonlySchemaCapabilityResult(False, revision, issues=(f"UNSUPPORTED_REVISION:{revision}",))
         for model in BASE_REQUIRED_MODELS:
@@ -174,18 +177,30 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
                             excluded=frozenset(PROFILE_COLUMNS.get(model.__table__.name, ())))
         if revision in {
             READONLY_SCHEMA_0020, READONLY_SCHEMA_0021, READONLY_SCHEMA_0022,
-            READONLY_SCHEMA_0023, READONLY_SCHEMA_0024,
+            READONLY_SCHEMA_0023, READONLY_SCHEMA_0024, READONLY_SCHEMA_0025,
         }:
             _validate_model(
                 inspector, tables, PaperPlanExecutionOutcomeRecord, issues
             )
-        if revision == READONLY_SCHEMA_0024:
+        if revision in {READONLY_SCHEMA_0024, READONLY_SCHEMA_0025}:
             for model in (
                 PaperFirstCanarySessionRecord,
                 PaperContinuousControlRecord,
                 PaperContinuousControlEventRecord,
             ):
-                _validate_model(inspector, tables, model, issues)
+                _validate_model(
+                    inspector, tables, model, issues,
+                    excluded=(
+                        frozenset({
+                            "budget_policy_version", "budget_policy_source",
+                            "budget_enforcement_mode", "budget_reset_at",
+                            "daily_command_budget_unit", "daily_risk_budget_unit",
+                            "daily_realized_loss_budget_unit", "loss_streak_unit",
+                        })
+                        if revision == READONLY_SCHEMA_0024 and model is PaperContinuousControlRecord
+                        else frozenset()
+                    ),
+                )
         actual_profiles = {}
         for table_name, names in PROFILE_COLUMNS.items():
             columns = {str(col["name"]): col for col in inspector.get_columns(table_name, schema="public")}
@@ -218,12 +233,12 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
     if revision in {
         READONLY_SCHEMA_0017, READONLY_SCHEMA_0018, READONLY_SCHEMA_0019,
         READONLY_SCHEMA_0020, READONLY_SCHEMA_0021, READONLY_SCHEMA_0022,
-        READONLY_SCHEMA_0023, READONLY_SCHEMA_0024,
+        READONLY_SCHEMA_0023, READONLY_SCHEMA_0024, READONLY_SCHEMA_0025,
     } and not issues:
         capabilities = capabilities | {ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES}
     if revision in {
         READONLY_SCHEMA_0020, READONLY_SCHEMA_0021, READONLY_SCHEMA_0022,
-        READONLY_SCHEMA_0023, READONLY_SCHEMA_0024,
+        READONLY_SCHEMA_0023, READONLY_SCHEMA_0024, READONLY_SCHEMA_0025,
     } and not issues:
         capabilities = capabilities | {
             ReadonlySchemaCapability.PAPER_PLAN_EXECUTION_OUTCOMES
@@ -248,6 +263,7 @@ __all__ = [
     "PAPER_SCHEMA_COMPATIBILITY_LABEL", "PAPER_SCHEMA_MAXIMUM", "PAPER_SCHEMA_MINIMUM",
     "READONLY_SCHEMA_0018", "READONLY_SCHEMA_0019", "READONLY_SCHEMA_0020", "READONLY_SCHEMA_0021",
     "READONLY_SCHEMA_0022", "READONLY_SCHEMA_0023", "READONLY_SCHEMA_0024",
+    "READONLY_SCHEMA_0025",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",

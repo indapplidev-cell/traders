@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0024_continuous_paper_authority"
+EXPECTED_HEAD = "0025_paper_budget_policy"
 
 
 @pytest.fixture(scope="session")

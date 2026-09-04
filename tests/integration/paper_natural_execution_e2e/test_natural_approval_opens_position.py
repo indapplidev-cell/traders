@@ -820,13 +820,15 @@ def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
             )
         ) == 1
 
-    paused = restarted.reconcile(
+    reconciled = restarted.reconcile(
         generation=12, now=activated_at + timedelta(hours=1)
     )
-    assert paused.control_state == "PAUSED_BY_RISK"
-    assert paused.pause_reason == "DAILY_RISK_BUDGET_EXHAUSTED"
-    assert paused.commands_used == 5
-    assert paused.risk_used_bps == Decimal("50")
+    assert reconciled.control_state == "CONTINUOUS_ARMED"
+    assert reconciled.pause_reason is None
+    assert reconciled.budget_enforcement_mode == "PAPER_STATISTICS_ONLY"
+    assert reconciled.budget_reason is None
+    assert reconciled.commands_used == 5
+    assert reconciled.risk_used_bps == Decimal("50")
 
     reset = restarted.reconcile(
         generation=12, now=activated_at + timedelta(days=1)

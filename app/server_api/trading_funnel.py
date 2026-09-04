@@ -981,6 +981,7 @@ class TradingFunnelReadRepository:
                         ("0021_independent_scalping_profile_v2",),
                         ("0023_scalping_v2_journal_causality",),
                         ("0024_continuous_paper_authority",),
+                        ("0025_paper_budget_policy",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -1630,6 +1631,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "terminal_reason": execution_terminal or reason,
                     "updated_at_ms": updated_ms,
                     "plan_status": downstream_trace["PAPER_PLAN"],
+                    "plan_state": downstream_trace["PAPER_PLAN"],
                     "quantity_approval_status": trace["QUANTITY_APPROVED"],
                     "final_approval_status": downstream_trace["FINAL_APPROVAL"],
                     "execution_intent": lifecycle.get(
@@ -1644,6 +1646,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "selected_winner": lifecycle.get("selected_winner"),
                     "command_id": lifecycle.get("command_id"),
                     "command_status": lifecycle.get("command_status", "NOT_REACHED"),
+                    "command_state": lifecycle.get("command_status", "NOT_REACHED"),
                     "order_id": lifecycle.get("order_id"),
                     "order_status": lifecycle.get("order_status", "NOT_REACHED"),
                     "fill_id": lifecycle.get("fill_id"),
@@ -1652,6 +1655,25 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "position_status": (
                         lifecycle.get("position_status")
                         or ("OPENED" if row.position_opened else "NOT_REACHED")
+                    ),
+                    "position_state": (
+                        lifecycle.get("position_status")
+                        or ("OPENED" if row.position_opened else "NOT_REACHED")
+                    ),
+                    "execution_block_reason": (
+                        execution_terminal
+                        if execution_lifecycle_state == "BLOCKED_BY_POLICY"
+                        else None
+                    ),
+                    "budget_state": (
+                        f"BLOCKED:{execution_terminal}"
+                        if execution_terminal in {
+                            "DAILY_COMMAND_BUDGET_EXHAUSTED",
+                            "DAILY_LOSS_BUDGET_EXHAUSTED",
+                            "DAILY_RISK_BUDGET_EXHAUSTED",
+                            "MAX_CONSECUTIVE_LOSSES_REACHED",
+                        }
+                        else "NOT_BLOCKED"
                     ),
                     "execution_terminal_result": execution_terminal,
                     "execution_lifecycle_state": execution_lifecycle_state,

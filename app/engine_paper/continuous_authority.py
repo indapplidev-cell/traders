@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from hashlib import sha256
 
@@ -19,16 +19,25 @@ from app.db.paper_models import (
     PaperFirstCanarySessionRecord,
     PaperPositionRecord,
 )
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 
 
 CONTROL_MODE = "CONTINUOUS"
 CONTROL_MODE_VERSION = 1
 TRADING_DAY_TIMEZONE = "UTC"
+# These v1 values are retained only so the migration can explain and audit the
+# historical state.  They are not authoritative Scalping v2 risk policy.
 DAILY_COMMAND_BUDGET = 10
 DAILY_REALIZED_LOSS_BUDGET = Decimal("0.500000000000000000")
 DAILY_RISK_BUDGET_BPS = Decimal("50.0000000000")
-SCALPING_V2_RISK_PER_TRADE_BPS = Decimal("10.0000000000")
+SCALPING_V2_RISK_PER_TRADE_BPS = Decimal(str(
+    resolve_runtime_parameters("trade-5m-v2").risk_per_trade_bps
+))
 MAX_CONSECUTIVE_LOSSES: int | None = None
+PAPER_BUDGET_POLICY_VERSION = "scalping-v2-continuous-paper-statistics-v2"
+PAPER_BUDGET_POLICY_SOURCE = "USER_AUTHORIZED_VIRTUAL_PAPER_STATISTICS_POLICY"
+PAPER_BUDGET_ENFORCEMENT_MODE = "PAPER_STATISTICS_ONLY"
+LIMITED_BUDGET_ENFORCEMENT_MODE = "REAL_MONEY_LIMITED"
 ACTIVE_STATE = "CONTINUOUS_ARMED"
 PAUSED_STATE = "PAUSED_BY_RISK"
 
@@ -48,7 +57,15 @@ class ContinuousAuthoritySnapshot:
     updated_at: datetime
     activation_source: str | None
     activation_reason: str | None
+    budget_policy_version: str
+    budget_policy_source: str
+    budget_enforcement_mode: str
+    daily_command_budget_unit: str
+    daily_risk_budget_unit: str
+    daily_realized_loss_budget_unit: str
+    loss_streak_unit: str
     budget_day: date
+    budget_reset_at: datetime
     daily_command_budget: int
     daily_realized_loss_budget: Decimal
     daily_risk_budget_bps: Decimal
@@ -79,6 +96,8 @@ class ContinuousAuthoritySnapshot:
 
     @property
     def budget_reason(self) -> str | None:
+        if self.budget_enforcement_mode == PAPER_BUDGET_ENFORCEMENT_MODE:
+            return None
         if self.commands_used >= self.daily_command_budget:
             return "DAILY_COMMAND_BUDGET_EXHAUSTED"
         if self.realized_loss >= self.daily_realized_loss_budget:
@@ -129,7 +148,15 @@ class PaperContinuousAuthorityStore:
             generation=row.generation, mode_version=row.mode_version,
             activated_at=row.activated_at, updated_at=row.updated_at,
             activation_source=row.activation_source, activation_reason=row.activation_reason,
-            budget_day=row.budget_day, daily_command_budget=row.daily_command_budget,
+            budget_policy_version=row.budget_policy_version,
+            budget_policy_source=row.budget_policy_source,
+            budget_enforcement_mode=row.budget_enforcement_mode,
+            daily_command_budget_unit=row.daily_command_budget_unit,
+            daily_risk_budget_unit=row.daily_risk_budget_unit,
+            daily_realized_loss_budget_unit=row.daily_realized_loss_budget_unit,
+            loss_streak_unit=row.loss_streak_unit,
+            budget_day=row.budget_day, budget_reset_at=row.budget_reset_at,
+            daily_command_budget=row.daily_command_budget,
             daily_realized_loss_budget=row.daily_realized_loss_budget,
             daily_risk_budget_bps=row.daily_risk_budget_bps,
             max_consecutive_losses=row.max_consecutive_losses,
@@ -174,7 +201,17 @@ class PaperContinuousAuthorityStore:
                         control_state=ACTIVE_STATE, enabled=True, generation=generation,
                         mode_version=CONTROL_MODE_VERSION, activated_at=current, updated_at=current,
                         activation_source=source, activation_reason=reason,
+                        budget_policy_version=PAPER_BUDGET_POLICY_VERSION,
+                        budget_policy_source=PAPER_BUDGET_POLICY_SOURCE,
+                        budget_enforcement_mode=PAPER_BUDGET_ENFORCEMENT_MODE,
+                        daily_command_budget_unit="trade_count",
+                        daily_risk_budget_unit="equity_basis_points",
+                        daily_realized_loss_budget_unit="USDT",
+                        loss_streak_unit="closed_trade_count",
                         trading_day_timezone=TRADING_DAY_TIMEZONE, budget_day=current.date(),
+                        budget_reset_at=datetime.combine(
+                            current.date() + timedelta(days=1), time.min, timezone.utc
+                        ),
                         daily_command_budget=DAILY_COMMAND_BUDGET,
                         daily_realized_loss_budget=DAILY_REALIZED_LOSS_BUDGET,
                         daily_risk_budget_bps=DAILY_RISK_BUDGET_BPS,
@@ -220,6 +257,9 @@ class PaperContinuousAuthorityStore:
             if row.budget_day != current.date():
                 old_day = row.budget_day.isoformat()
                 row.budget_day = current.date()
+                row.budget_reset_at = datetime.combine(
+                    current.date() + timedelta(days=1), time.min, timezone.utc
+                )
                 row.commands_used = 0
                 row.realized_pnl = Decimal("0")
                 row.realized_loss = Decimal("0")
@@ -234,6 +274,29 @@ class PaperContinuousAuthorityStore:
                     reason="TRADING_DAY_BUDGET_RESET", source="continuous-worker",
                     details={"previous_budget_day": old_day, "timezone": TRADING_DAY_TIMEZONE}, now=current,
                 )
+            if row.budget_enforcement_mode == PAPER_BUDGET_ENFORCEMENT_MODE:
+                if row.control_state == PAUSED_STATE and row.pause_reason in {
+                    "DAILY_COMMAND_BUDGET_EXHAUSTED",
+                    "DAILY_LOSS_BUDGET_EXHAUSTED",
+                    "DAILY_RISK_BUDGET_EXHAUSTED",
+                    "MAX_CONSECUTIVE_LOSSES_REACHED",
+                }:
+                    previous_reason = row.pause_reason
+                    row.control_state = ACTIVE_STATE
+                    row.enabled = True
+                    row.pause_reason = None
+                    row.version += 1
+                    self._append_event(
+                        session, event_type="BUDGET_POLICY_RECONCILED",
+                        identity=PAPER_BUDGET_POLICY_VERSION, row=row,
+                        reason="PAPER_DAILY_LIMITS_DISABLED", source="continuous-worker",
+                        details={
+                            "previous_pause_reason": previous_reason,
+                            "policy_version": row.budget_policy_version,
+                            "policy_source": row.budget_policy_source,
+                            "enforcement_mode": row.budget_enforcement_mode,
+                        }, now=current,
+                    )
             reason = row.pause_reason
             snapshot = self._snapshot(session, row)
             computed = snapshot.budget_reason
@@ -365,6 +428,8 @@ class PaperContinuousAuthorityStore:
 __all__ = (
     "ACTIVE_STATE", "CONTROL_MODE", "CONTROL_MODE_VERSION", "ContinuousAuthorityError",
     "ContinuousAuthoritySnapshot", "DAILY_COMMAND_BUDGET", "DAILY_REALIZED_LOSS_BUDGET",
-    "DAILY_RISK_BUDGET_BPS", "MAX_CONSECUTIVE_LOSSES", "PAUSED_STATE",
+    "DAILY_RISK_BUDGET_BPS", "LIMITED_BUDGET_ENFORCEMENT_MODE",
+    "MAX_CONSECUTIVE_LOSSES", "PAPER_BUDGET_ENFORCEMENT_MODE",
+    "PAPER_BUDGET_POLICY_SOURCE", "PAPER_BUDGET_POLICY_VERSION", "PAUSED_STATE",
     "PaperContinuousAuthorityStore", "SCALPING_V2_RISK_PER_TRADE_BPS",
 )

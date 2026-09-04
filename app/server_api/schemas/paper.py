@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0024_continuous_paper_authority"
-    ] = "0024_continuous_paper_authority"
+        "0025_paper_budget_policy"
+    ] = "0025_paper_budget_policy"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool
@@ -71,7 +71,32 @@ class PaperReadiness(BaseModel):
     current_mutation_denial_reasons: list[str]
     authority_mode: str = "FIRST_CANARY_HISTORICAL"
     control_mode_version: int | None = Field(default=None, ge=1)
+    budget_policy_version: str | None = None
+    budget_policy_source: str | None = None
+    budget_enforcement_mode: str | None = None
+    risk_per_trade_value: DecimalString | None = None
+    risk_per_trade_unit: str | None = None
+    risk_per_trade_source: str | None = None
+    daily_loss_formula: str | None = None
+    daily_risk_formula: str | None = None
     budget_day: str | None = None
+    budget_reset_at: UtcTimestamp | None = None
+    daily_command_budget_value: int | None = Field(default=None, ge=0)
+    daily_command_budget_limit: int | None = Field(default=None, ge=1)
+    daily_command_budget_unit: str | None = None
+    daily_command_budget_source: str | None = None
+    daily_risk_used: DecimalString | None = None
+    daily_risk_limit: DecimalString | None = None
+    daily_risk_unit: str | None = None
+    daily_risk_source: str | None = None
+    daily_realized_loss_used: DecimalString | None = None
+    daily_realized_loss_limit: DecimalString | None = None
+    daily_realized_loss_unit: str | None = None
+    daily_realized_loss_source: str | None = None
+    loss_streak_used: int | None = Field(default=None, ge=0)
+    loss_streak_limit: int | None = Field(default=None, ge=1)
+    loss_streak_source: str | None = None
+    risk_pause: bool | None = None
     daily_command_budget: int | None = Field(default=None, ge=1)
     commands_used_today: int | None = Field(default=None, ge=0)
     daily_realized_loss_budget: DecimalString | None = None
@@ -251,7 +276,32 @@ class PaperControlStatus(BaseModel):
     canary_closed_trade_count: int | None = Field(default=None, ge=0)
     authority_mode: str = "FIRST_CANARY_HISTORICAL"
     control_mode_version: int | None = Field(default=None, ge=1)
+    budget_policy_version: str | None = None
+    budget_policy_source: str | None = None
+    budget_enforcement_mode: str | None = None
+    risk_per_trade_value: DecimalString | None = None
+    risk_per_trade_unit: str | None = None
+    risk_per_trade_source: str | None = None
+    daily_loss_formula: str | None = None
+    daily_risk_formula: str | None = None
     budget_day: str | None = None
+    budget_reset_at: UtcTimestamp | None = None
+    daily_command_budget_value: int | None = Field(default=None, ge=0)
+    daily_command_budget_limit: int | None = Field(default=None, ge=1)
+    daily_command_budget_unit: str | None = None
+    daily_command_budget_source: str | None = None
+    daily_risk_used: DecimalString | None = None
+    daily_risk_limit: DecimalString | None = None
+    daily_risk_unit: str | None = None
+    daily_risk_source: str | None = None
+    daily_realized_loss_used: DecimalString | None = None
+    daily_realized_loss_limit: DecimalString | None = None
+    daily_realized_loss_unit: str | None = None
+    daily_realized_loss_source: str | None = None
+    loss_streak_used: int | None = Field(default=None, ge=0)
+    loss_streak_limit: int | None = Field(default=None, ge=1)
+    loss_streak_source: str | None = None
+    risk_pause: bool | None = None
     daily_command_budget: int | None = Field(default=None, ge=1)
     commands_used_today: int | None = Field(default=None, ge=0)
     daily_realized_loss_budget: DecimalString | None = None

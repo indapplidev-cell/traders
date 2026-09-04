@@ -265,6 +265,10 @@ class PaperContinuousControlRecord(Base):
             name="ck_paper_continuous_state",
         ),
         CheckConstraint("trading_day_timezone = 'UTC'", name="ck_paper_continuous_timezone"),
+        CheckConstraint(
+            "budget_enforcement_mode IN ('PAPER_STATISTICS_ONLY','REAL_MONEY_LIMITED')",
+            name="ck_paper_continuous_budget_enforcement_mode",
+        ),
         CheckConstraint("generation >= 1 AND mode_version >= 1 AND version >= 0", name="ck_paper_continuous_versions"),
         CheckConstraint("daily_command_budget >= 1 AND commands_used >= 0", name="ck_paper_continuous_command_budget"),
         CheckConstraint("daily_realized_loss_budget >= 0 AND realized_loss >= 0", name="ck_paper_continuous_loss_budget"),
@@ -284,8 +288,16 @@ class PaperContinuousControlRecord(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     activation_source: Mapped[str | None] = mapped_column(String(128))
     activation_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    budget_policy_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    budget_policy_source: Mapped[str] = mapped_column(String(128), nullable=False)
+    budget_enforcement_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    daily_command_budget_unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    daily_risk_budget_unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    daily_realized_loss_budget_unit: Mapped[str] = mapped_column(String(32), nullable=False)
+    loss_streak_unit: Mapped[str] = mapped_column(String(32), nullable=False)
     trading_day_timezone: Mapped[str] = mapped_column(String(16), nullable=False)
     budget_day: Mapped[date] = mapped_column(nullable=False)
+    budget_reset_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     daily_command_budget: Mapped[int] = mapped_column(Integer, nullable=False)
     daily_realized_loss_budget: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
     daily_risk_budget_bps: Mapped[Decimal] = mapped_column(Numeric(RATIO_PRECISION, RATIO_SCALE), nullable=False)

@@ -29,7 +29,9 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanaryState,
     SqlAlchemyPaperFirstCanaryStore,
 )
-from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
+from app.engine_paper.continuous_authority import (
+    PaperContinuousAuthorityStore, SCALPING_V2_RISK_PER_TRADE_BPS,
+)
 from app.server_api.paper_runtime_observation import (
     ProductionPaperRuntimeObservationSource,
     load_production_identity,
@@ -50,15 +52,15 @@ def _budget_semantics(budget) -> dict[str, dict[str, str]]:
         "updated_at": updated_at,
     }
     sources = {
-        "daily_command_budget": ("commands", "PAPER_CONTINUOUS_CONTROL_POLICY"),
-        "commands_used_today": ("commands", "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER"),
-        "daily_realized_loss_budget": ("USDT", "PAPER_CONTINUOUS_CONTROL_POLICY"),
+        "daily_command_budget": (budget.daily_command_budget_unit, budget.budget_policy_source),
+        "commands_used_today": (budget.daily_command_budget_unit, "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER"),
+        "daily_realized_loss_budget": (budget.daily_realized_loss_budget_unit, budget.budget_policy_source),
         "realized_pnl_today": ("USDT", "CLOSED_PAPER_TRADE_NET_PNL"),
-        "realized_loss_today": ("USDT", "CLOSED_PAPER_TRADE_NET_LOSS"),
-        "daily_risk_budget_bps": ("bps", "PAPER_CONTINUOUS_CONTROL_POLICY"),
-        "risk_used_today_bps": ("bps", "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER"),
-        "max_consecutive_losses": ("closed_trades", "PAPER_CONTINUOUS_CONTROL_POLICY"),
-        "loss_streak": ("closed_trades", "CLOSED_PAPER_TRADE_NET_PNL"),
+        "realized_loss_today": (budget.daily_realized_loss_budget_unit, "CLOSED_PAPER_TRADE_NET_LOSS"),
+        "daily_risk_budget_bps": (budget.daily_risk_budget_unit, budget.budget_policy_source),
+        "risk_used_today_bps": (budget.daily_risk_budget_unit, "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER"),
+        "max_consecutive_losses": (budget.loss_streak_unit, budget.budget_policy_source),
+        "loss_streak": (budget.loss_streak_unit, "CLOSED_PAPER_TRADE_NET_PNL"),
     }
     return {
         field: {"unit": unit, "source": source, **daily}
@@ -147,6 +149,9 @@ def _paper_control_status(
             if canary.state is PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL
             else canary.state.value
         )
+    limits_enforced = (
+        budget is not None and budget.budget_enforcement_mode == "REAL_MONEY_LIMITED"
+    )
     return PaperControlStatus(
         state=state.state.value,
         effective_state=(state.state.value if budget is None else budget.effective_state),
@@ -168,15 +173,58 @@ def _paper_control_status(
         canary_closed_trade_count=None if canary is None else int(canary.trade_report_available),
         authority_mode=("CONTINUOUS" if budget is not None else "FIRST_CANARY_HISTORICAL"),
         control_mode_version=None if budget is None else budget.mode_version,
+        budget_policy_version=None if budget is None else budget.budget_policy_version,
+        budget_policy_source=None if budget is None else budget.budget_policy_source,
+        budget_enforcement_mode=None if budget is None else budget.budget_enforcement_mode,
+        risk_per_trade_value=(None if budget is None else format(SCALPING_V2_RISK_PER_TRADE_BPS, "f")),
+        risk_per_trade_unit=None if budget is None else "equity_basis_points",
+        risk_per_trade_source=(
+            None if budget is None else
+            "SCALPING_V2_RUNTIME_PARAMETERS/risk_per_trade_bps"
+        ),
+        daily_loss_formula=(
+            None if budget is None else
+            "SUM(ABS(net_pnl)) WHERE closed_trade AND net_pnl < 0; UNIQUE(position_id)"
+        ),
+        daily_risk_formula=(
+            None if budget is None else
+            "SUM(scalping_v2.risk_per_trade_bps) PER UNIQUE(command_id)"
+        ),
         budget_day=None if budget is None else budget.budget_day.isoformat(),
-        daily_command_budget=None if budget is None else budget.daily_command_budget,
+        budget_reset_at=(
+            None if budget is None else
+            budget.budget_reset_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        ),
+        daily_command_budget_value=None if budget is None else budget.commands_used,
+        daily_command_budget_limit=(budget.daily_command_budget if limits_enforced else None),
+        daily_command_budget_unit=None if budget is None else budget.daily_command_budget_unit,
+        daily_command_budget_source=None if budget is None else budget.budget_policy_source,
+        daily_risk_used=None if budget is None else format(budget.risk_used_bps, "f"),
+        daily_risk_limit=(format(budget.daily_risk_budget_bps, "f") if limits_enforced else None),
+        daily_risk_unit=None if budget is None else budget.daily_risk_budget_unit,
+        daily_risk_source=None if budget is None else budget.budget_policy_source,
+        daily_realized_loss_used=None if budget is None else format(budget.realized_loss, "f"),
+        daily_realized_loss_limit=(
+            format(budget.daily_realized_loss_budget, "f") if limits_enforced else None
+        ),
+        daily_realized_loss_unit=(None if budget is None else budget.daily_realized_loss_budget_unit),
+        daily_realized_loss_source=None if budget is None else budget.budget_policy_source,
+        loss_streak_used=None if budget is None else budget.loss_streak,
+        loss_streak_limit=(budget.max_consecutive_losses if limits_enforced else None),
+        loss_streak_source=None if budget is None else budget.budget_policy_source,
+        risk_pause=(None if budget is None else budget.control_state == "PAUSED_BY_RISK"),
+        daily_command_budget=(budget.daily_command_budget if limits_enforced else None),
         commands_used_today=None if budget is None else budget.commands_used,
-        daily_realized_loss_budget=None if budget is None else format(budget.daily_realized_loss_budget, "f"),
+        daily_realized_loss_budget=(
+            format(budget.daily_realized_loss_budget, "f") if limits_enforced else None
+        ),
         realized_pnl_today=None if budget is None else format(budget.realized_pnl, "f"),
         realized_loss_today=None if budget is None else format(budget.realized_loss, "f"),
-        daily_risk_budget_bps=None if budget is None else format(budget.daily_risk_budget_bps, "f"),
+        daily_risk_budget_bps=(
+            format(budget.daily_risk_budget_bps, "f") if limits_enforced else None
+        ),
         risk_used_today_bps=None if budget is None else format(budget.risk_used_bps, "f"),
-        max_consecutive_losses=None if budget is None else budget.max_consecutive_losses,
+        max_consecutive_losses=(budget.max_consecutive_losses if limits_enforced else None),
         loss_streak=None if budget is None else budget.loss_streak,
         risk_pause_reason=None if budget is None else budget.pause_reason,
         budget_semantics=_budget_semantics(budget),

@@ -98,7 +98,12 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps({
         "status": "CONTINUOUS_ARMED", "generation": after.generation,
         "transition_id": after.transition_id, "mode": snapshot.control_mode,
-        "mode_version": snapshot.mode_version, "budget_day": snapshot.budget_day.isoformat(),
+        "mode_version": snapshot.mode_version,
+        "budget_policy_version": snapshot.budget_policy_version,
+        "budget_policy_source": snapshot.budget_policy_source,
+        "budget_enforcement_mode": snapshot.budget_enforcement_mode,
+        "budget_day": snapshot.budget_day.isoformat(),
+        "budget_reset_at": snapshot.budget_reset_at.isoformat(),
         "live_allowed": False, "binance_order_calls": 0,
     }, sort_keys=True))
     engine.dispose()
