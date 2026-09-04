@@ -77,6 +77,27 @@ def test_every_valid_nonempty_multi_candidate_set_has_exactly_one_winner(count):
     assert result.diagnostics.ranking_fields == RANKING_FIELDS
 
 
+def test_rank_one_is_selected_and_lower_ranks_have_canonical_reason():
+    values = [candidate(SYMBOL_ALLOWLIST[index], index) for index in range(3)]
+    ordered = sorted(values, key=lambda item: item.ranking.source_run_id)
+    result = select(tuple(reversed(values)))
+    assert result.winner is ordered[0]
+    outcomes = {
+        item.candidate_id: (
+            "SELECTED", None
+        ) if item is result.winner else (
+            "NOT_SELECTED", "LOWER_SELECTOR_RANK"
+        )
+        for item in values
+    }
+    assert sum(state == "SELECTED" for state, _reason in outcomes.values()) == 1
+    assert all(
+        reason == "LOWER_SELECTOR_RANK"
+        for state, reason in outcomes.values()
+        if state == "NOT_SELECTED"
+    )
+
+
 @pytest.mark.parametrize(
     "field,lower,higher",
     (

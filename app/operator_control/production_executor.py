@@ -316,8 +316,10 @@ class ProductionPaperFirstCanaryExecutor:
             return (budget.pause_reason or "CONTINUOUS_CONTROL_NOT_ARMED",)
         if budget.budget_reason is not None:
             return (budget.budget_reason,)
-        if budget.open_positions >= 1 or budget.in_flight_commands >= 1:
-            return ("OPEN_POSITION_BUDGET_EXHAUSTED",)
+        if budget.open_positions >= 1:
+            return ("MAX_OPEN_POSITIONS_REACHED",)
+        if budget.in_flight_commands >= 1:
+            return ("MAX_NEW_COMMANDS_PER_CYCLE_REACHED",)
         authority = SimpleNamespace(
             allowed_symbols=state.arming_scope.allowed_symbols,
             selection_policy_version="eligible-approval-ranking-v1",

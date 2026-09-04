@@ -646,7 +646,7 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert cycle_a.position_id is not None
     with factory() as session:
         first_symbol = session.get(PaperPositionRecord, cycle_a.position_id).symbol
-    assert continuation.run_once() == "ACTIVE_CONTINUOUS_CYCLE"
+    assert continuation.run_once() == "CAPACITY_BLOCKED:MAX_OPEN_POSITIONS_REACHED"
     with factory() as session:
         assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord)) == 1
         assert session.scalar(select(func.count()).select_from(PaperPositionRecord).where(PaperPositionRecord.state == "OPEN")) == 1
