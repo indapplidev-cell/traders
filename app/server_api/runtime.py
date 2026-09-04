@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from datetime import timezone
 
 from fastapi import FastAPI
 from sqlalchemy import create_engine
@@ -37,6 +38,32 @@ from app.server_api.paper_runtime_observation import (
 
 APPLICATION_NAME = "traders-readonly-api"
 FACTORY_REFERENCE = "app.server_api.runtime:create_runtime_app"
+
+
+def _budget_semantics(budget) -> dict[str, dict[str, str]]:
+    if budget is None:
+        return {}
+    updated_at = budget.updated_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    daily = {
+        "window": "UTC_TRADING_DAY",
+        "reset_boundary": "00:00:00Z",
+        "updated_at": updated_at,
+    }
+    sources = {
+        "daily_command_budget": ("commands", "PAPER_CONTINUOUS_CONTROL_POLICY"),
+        "commands_used_today": ("commands", "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER"),
+        "daily_realized_loss_budget": ("USDT", "PAPER_CONTINUOUS_CONTROL_POLICY"),
+        "realized_pnl_today": ("USDT", "CLOSED_PAPER_TRADE_NET_PNL"),
+        "realized_loss_today": ("USDT", "CLOSED_PAPER_TRADE_NET_LOSS"),
+        "daily_risk_budget_bps": ("bps", "PAPER_CONTINUOUS_CONTROL_POLICY"),
+        "risk_used_today_bps": ("bps", "PAPER_CONTINUOUS_COMMAND_EVENT_LEDGER"),
+        "max_consecutive_losses": ("closed_trades", "PAPER_CONTINUOUS_CONTROL_POLICY"),
+        "loss_streak": ("closed_trades", "CLOSED_PAPER_TRADE_NET_PNL"),
+    }
+    return {
+        field: {"unit": unit, "source": source, **daily}
+        for field, (unit, source) in sources.items()
+    }
 
 
 def _create_engine(config: RuntimeConfig) -> Engine:
@@ -152,6 +179,7 @@ def _paper_control_status(
         max_consecutive_losses=None if budget is None else budget.max_consecutive_losses,
         loss_streak=None if budget is None else budget.loss_streak,
         risk_pause_reason=None if budget is None else budget.pause_reason,
+        budget_semantics=_budget_semantics(budget),
     )
 
 

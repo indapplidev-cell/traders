@@ -374,9 +374,23 @@ def test_armed_control_projects_exact_generation_canary_and_start_specific_readi
         "canary_command_limit": None, "canary_command_count": None,
         "canary_command_remaining": None, "canary_command_budget_exhausted": None,
         "canary_open_position_limit": None, "canary_open_position_count": None,
-        "canary_open_position_remaining": None, "canary_open_position_budget_exhausted": None,
-        "canary_closed_trade_count": None,
-    }
+            "canary_open_position_remaining": None, "canary_open_position_budget_exhausted": None,
+            "canary_closed_trade_count": None,
+            "authority_mode": "FIRST_CANARY_HISTORICAL",
+            "control_mode_version": None,
+            "budget_day": None,
+            "daily_command_budget": None,
+            "commands_used_today": None,
+            "daily_realized_loss_budget": None,
+            "realized_pnl_today": None,
+            "realized_loss_today": None,
+            "daily_risk_budget_bps": None,
+            "risk_used_today_bps": None,
+            "max_consecutive_losses": None,
+            "loss_streak": None,
+            "risk_pause_reason": None,
+            "budget_semantics": {},
+        }
 
 
 def test_trade_pagination_100_plus_one_has_no_duplicate_or_missing_rows(baseline):

@@ -327,6 +327,7 @@ class PaperReadonlyReportingService:
             max_consecutive_losses=control.max_consecutive_losses,
             loss_streak=control.loss_streak,
             risk_pause_reason=control.risk_pause_reason,
+            budget_semantics=control.budget_semantics,
         )
 
     def account(self) -> PaperAccount:

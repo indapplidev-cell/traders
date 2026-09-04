@@ -17,6 +17,14 @@ class PaperEnvelope(BaseModel, Generic[T]):
     data: T
 
 
+class PaperBudgetMetricSemantics(BaseModel):
+    unit: str
+    source: str
+    window: str
+    reset_boundary: str
+    updated_at: UtcTimestamp
+
+
 class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
@@ -74,6 +82,7 @@ class PaperReadiness(BaseModel):
     max_consecutive_losses: int | None = Field(default=None, ge=1)
     loss_streak: int | None = Field(default=None, ge=0)
     risk_pause_reason: str | None = None
+    budget_semantics: dict[str, PaperBudgetMetricSemantics] = Field(default_factory=dict)
 
 
 class PaperAccount(BaseModel):
@@ -253,6 +262,7 @@ class PaperControlStatus(BaseModel):
     max_consecutive_losses: int | None = Field(default=None, ge=1)
     loss_streak: int | None = Field(default=None, ge=0)
     risk_pause_reason: str | None = None
+    budget_semantics: dict[str, PaperBudgetMetricSemantics] = Field(default_factory=dict)
 
 
 class PaperOrderItem(BaseModel):
