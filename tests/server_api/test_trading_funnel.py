@@ -358,6 +358,45 @@ def test_rolling_inclusion_boundaries_and_query_contract():
     assert value["query_time_horizon_ms"] == MAX_HORIZON_MS
 
 
+def test_scalping_v2_cadence_separates_stage_winner_and_trade_counts():
+    first = _run("BTCUSDT", run_id="run:btc:v2")
+    second = _run("ETHUSDT", run_id="run:eth:v2")
+    for run in (first, second):
+        run.primary_timeframe = "5m"
+        run.trade_profile_id = "trade-5m-v2"
+    pairs = ((first, _result(first)), (second, _result(second)))
+    for _run_value, result in pairs:
+        result.primary_timeframe = "5m"
+        result.trade_profile_id = "trade-5m-v2"
+    lifecycle = {
+        first.run_id: {
+            "selected_winner": True, "command_id": "command:btc",
+            "position_id": "position:btc", "position_status": "CLOSED",
+        },
+        second.run_id: {
+            "selected_winner": False, "command_id": None,
+            "position_id": None, "position_status": None,
+        },
+    }
+    value = build_projection(
+        pairs,
+        SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS),
+        NOW_MS,
+        trade_profile_id="trade-5m-v2",
+        lifecycle_by_run=lifecycle,
+    )
+    cadence = value["rolling_1h"]["cadence"]
+    assert cadence["profile_id"] == "trade-5m-v2"
+    assert cadence["profile_version"] == "v2"
+    assert cadence["stage_passage_count"]["plan"] == 2
+    assert cadence["selector_winner_count"] == 1
+    assert cadence["trade_count"] == 1
+    assert cadence["position_closed_count"] == 1
+    assert cadence["per_hour"]["plan"] == 2
+    assert cadence["per_hour"]["selected"] == 1
+    assert value["profile_metrics"]["profile_version"] == "v2"
+
+
 def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     run = _run("BTCUSDT")
     result = _result(run)

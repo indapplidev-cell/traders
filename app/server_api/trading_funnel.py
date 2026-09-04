@@ -1843,6 +1843,37 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     downstream_rejected[stage] += 1
                     if reason:
                         downstream_reasons[stage][str(reason)] += 1
+        selected_run_ids = {row.run_id for row, _result in selected}
+        execution = tuple(
+            lifecycle_by_run[run_id]
+            for run_id in selected_run_ids
+            if run_id in lifecycle_by_run
+        )
+        selector_winner_count = sum(
+            bool(value.get("selected_winner")) for value in execution
+        )
+        command_count = sum(value.get("command_id") is not None for value in execution)
+        position_open_count = sum(value.get("position_id") is not None for value in execution)
+        position_closed_count = sum(
+            value.get("position_status") == "CLOSED" for value in execution
+        )
+        stage_passage_count = {
+            "analysis": counts["ANALYSIS"],
+            "setup": counts["STRUCTURAL_SETUP"],
+            "geometry": downstream_counts["GEOMETRY_VALID"],
+            "target": downstream_counts["TARGET_VALID"],
+            "final_pick": downstream_counts["FINAL_CHECK_PASS"],
+            "approval": counts["FINAL_APPROVAL"],
+            "plan": counts["PAPER_TRADE_PLAN"],
+        }
+        scale = (60 * 60 * 1000) / window_ms
+        per_hour = {
+            **{name: value * scale for name, value in stage_passage_count.items()},
+            "selected": selector_winner_count * scale,
+            "command": command_count * scale,
+            "position_open": position_open_count * scale,
+            "position_closed": position_closed_count * scale,
+        }
         return {"window_ms": window_ms, "boundary_count": len(selected_boundaries),
                 "completed_cycle_count": completed,
                 "stage_counts": {stage: counts[stage] for stage in STAGES[:-2]},
@@ -1859,6 +1890,17 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     stage: downstream_reasons[stage].most_common(1)[0][0]
                     if downstream_reasons[stage] else None
                     for stage in CANONICAL_DOWNSTREAM_STAGES
+                },
+                "cadence": {
+                    "profile_id": profile.trade_profile_id,
+                    "profile_version": profile.trade_profile_id.rsplit("-", 1)[-1],
+                    "window_ms": window_ms,
+                    "per_hour": per_hour,
+                    "stage_passage_count": stage_passage_count,
+                    "selector_winner_count": selector_winner_count,
+                    "command_count": command_count,
+                    "trade_count": position_open_count,
+                    "position_closed_count": position_closed_count,
                 }}
 
     current = cycle(current_boundary)
@@ -1954,6 +1996,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         "position_opening_enabled": profile.position_opening_enabled,
         "profile_metrics": {
             "trade_profile_id": profile.trade_profile_id,
+            "profile_version": profile.trade_profile_id.rsplit("-", 1)[-1],
             "trade_mode": profile.trade_mode,
             "trigger_timeframe": profile.trigger_timeframe,
             **{name: metrics[name] for name in metric_stages},
