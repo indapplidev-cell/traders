@@ -745,7 +745,11 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert len(commands) == len(positions) == 2
     assert profiles == ("trade-5m-v2",)
     assert positions[-1].state == "OPEN"
-    assert authority.read().commands_used == 2
+    final_authority = authority.read()
+    assert final_authority is not None
+    assert final_authority.commands_used == 2
+    assert final_authority.generation == armed.generation
+    assert final_authority.control_state == "CONTINUOUS_ARMED"
 
 
 def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
