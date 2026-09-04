@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 0cc95e52157ce94ec6692f4f88fe2ba924fb6c37
+STATUS_AS_OF_COMMIT = cfeb8596a210833b72b9992d363e5f9867821e8a
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-04T04:40:27Z
-RECONCILED_BY_TASK = TRADERS_PAPER_CANDIDATE_EXECUTION_AND_CLIENT_LATENCY_AUDIT_01
-FILES_CHANGED = app/i18n/catalog.py, tests/server_api/test_i18n.py, docs/audits/TRADERS_PAPER_CANDIDATE_EXECUTION_AND_CLIENT_LATENCY_AUDIT_01_FINAL.md, online_trader.md, ../traders-client/src/traders_client/i18n/generated_bootstrap.json, ../traders-client/src/traders_client/ui/main_window.py, ../traders-client/src/traders_client/ui/trading_funnel_view.py, ../traders-client/tests/test_auto_refresh.py, ../traders-client/tests/test_i18n_gui.py, ../traders-client/docs/audits/TRADERS_CLIENT_REFRESH_LATENCY_AND_PAPER_FUNNEL_SEMANTICS_AUDIT_01_FINAL.md, ../traders-client/client_status.md
+RECONCILED_AT_UTC = 2026-09-04T14:43:11Z
+RECONCILED_BY_TASK = TRADERS_CONTINUOUS_PAPER_AUTHORITY_DEPLOYMENT_01
+FILES_CHANGED = alembic/versions/0024_continuous_paper_authority.py, app/db/paper_models.py, app/engine_paper/continuous_authority.py, app/engine_paper/first_canary_correlation.py, app/operator_control, app/server_api, scripts/control_api_runtime_probe.py, tests, docs/audits/TRADERS_CONTINUOUS_PAPER_AUTHORITY_DEPLOYMENT_01_FINAL.md, online_trader.md, ../traders-client/src, ../traders-client/tests, ../traders-client/docs/audits/TRADERS_CLIENT_CONTINUOUS_PAPER_AUTHORITY_PARITY_01_FINAL.md, ../traders-client/client_status.md
 
-REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 0cc95e52157ce94ec6692f4f88fe2ba924fb6c37_ORIGIN_FEATURE_ENGINE_PLATFORM
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = cfeb8596a210833b72b9992d363e5f9867821e8a_ORIGIN_FEATURE_ENGINE_PLATFORM
 PUSH_STATE_AT_RECONCILIATION = PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_BEFORE_THIS_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = PAPERPLANS21_WINNERS0_COMMAND0_POSITION0_EXPIREDBEFOREEXECUTION_FIRSTCANARYAUTODISABLED11_THREETRADESNATURAL_CLIENTFULL1486PASS_SERVER64PASS_READONLYHEALTHYRESTART0_LIVEFALSE
+STATUS_CONFIDENCE = CONTINUOUSARMED12_SCHEMA0024_OPERATORHEALTHY_READONLYHEALTHY_V2ONLY_1OPEN_1OF10COMMAND_10OF50BPS_POSTGRES2PASS_DEPLOY8PASS_LIVEFALSE
 
 # Состояние проекта traders-ml
 
@@ -22,14 +22,41 @@ STATUS_CONFIDENCE = PAPERPLANS21_WINNERS0_COMMAND0_POSITION0_EXPIREDBEFOREEXECUT
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = SCALPINGV2_SOURCEFC06BB5_5MIMAGEDE4BD063_COLLECTORD4E5567F_READONLYED16B941_SOURCE043968E_CONTROLCBA3B248_HEALTHY_SCHEMA0023_RUNTIME_DAEMON_SCHEDULER_WORKER_PAPER_MUTATION_TRUE_CONTROLDISABLED_GENERATION11_WALTRUE_PITRTRUE_ACCOUNTINGHEALTHY_LIVE_OFF
-SOURCE_API_STATUS = TRADE5MV2_ONLY_NEW_RUNTIME_PERSISTED_EXECUTION_LIFECYCLE_SHARED_BY_FUNNEL_AND_PAPER_READONLY_CLIENTB3E80A4_ACTIVEPAGE_RENDER
-CURRENT_STAGE = CONTINUOUS_PAPER_AUTHORITY_DESIGN
-CURRENT_BLOCKER = EXISTING_PRODUCTION_EXECUTOR_IS_FIRST_CANARY_ONLY_MAX1COMMAND_MAX1POSITION_AND_AUTO_DISABLES_AFTER_CLOSE
-CURRENT_PREREQUISITE = SEPARATE_RESTART_SAFE_CONTINUOUS_PAPER_AUTHORITY_WITH_DURABLE_BUDGETS_AND_UNCHANGED_LIVE_PROHIBITION
+API_RUNTIME_STATUS = SCALPINGV2_ONLY_NEW_5M_READONLYSOURCED3615B0_OPERATORSOURCEA122963_BOTHHEALTHY_SCHEMA0024_RUNTIME_DAEMON_SCHEDULER_WORKER_MUTATION_TRUE_CONTINUOUSARMED12_WALTRUE_PITRTRUE_ACCOUNTINGHEALTHY_LIVE_OFF
+SOURCE_API_STATUS = CONTINUOUS_PAPER_DURABLE_CONTROL_BUDGETS_RECONCILIATION_EXACT_RESERVED_CANDIDATE_RECOVERY_READONLY_CLIENT8070EF2
+CURRENT_STAGE = CONTINUOUS_PAPER_NATURAL_OBSERVATION
+CURRENT_BLOCKER = NONE_FOR_CONTINUOUS_PAPER_DEPLOYMENT; SECOND_NATURAL_PRODUCTION_CYCLE_PROOF_PENDING_WITHOUT_FORCED_CLOSE
+CURRENT_PREREQUISITE = NONE_FOR_AUTHORIZED_PAPER; SEPARATE_AUTHORIZATION_REQUIRED_FOR_TUNING_OR_LIVE
 SECONDARY_BLOCKER = NONE
 BACKGROUND_TIMED_GATE = STOPPED_TASK_COMPLETED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
+```
+
+## Continuous PAPER authority deployment 01
+
+```text
+TASK = TRADERS_CONTINUOUS_PAPER_AUTHORITY_DEPLOYMENT_01
+RESULT = PASS_DEPLOYED_CONTINUOUS_PAPER
+PROJECT_STATE_AUDIT_COMMIT = cfeb8596a210833b72b9992d363e5f9867821e8a
+IMPLEMENTATION_COMMIT = d591adcf14ccba6482968687603f3f313e05bf04
+READINESS_SERIALIZATION_FIX = d3615b093e600080b794d55a80a05bc6efa0a3bc
+RESERVED_CYCLE_RECOVERY_FIX = ed84a649521f816560eb7c5ccd478e5007df3887
+DEPLOYMENT_HEALTH_FIX = a122963a7d3e2c746adf652807d2be87c1675ee4
+CLIENT_IMPLEMENTATION_COMMIT = 8070ef289f5431afa82feee7a2aa23a240441617
+AUTHORITY = CONTINUOUS_ARMED_GENERATION12_MODEVERSION1_PERSISTENT
+SCHEMA = 0024_continuous_paper_authority_SINGLE_HEAD
+BUDGETS = UTC_DAY_COMMAND10_RISK50BPS_REALIZEDLOSS0.5USDT_MAXOPEN1_NEWCOMMANDSPERCYCLE1
+PROFILE_SCOPE = trade-5m-v2_ONLY_NEW_CONTINUOUS_ENTRY; trade-5m-v1_HISTORICAL_READONLY; trade-15m-v1_UNCHANGED
+RESTART_IDEMPOTENCY = DURABLE_BUDGETS_LASTIDS_EXACT_DETERMINISTIC_RESERVED_CANDIDATE_RECOVERY
+RISK_STATES = DISABLED_CONTINUOUS_ARMED_PAUSED_BY_RISK_EMERGENCY_STOPPED
+TESTS = POSTGRES16_CONTINUOUS2PASS_DEPLOYMENTHEALTH8PASS_COMPILEPASS_EARLIERSERVER1730PASS_CLIENT73PASS2SKIP1634SUBTESTS
+DEPLOYMENT = READONLYSOURCED3615B0_IMAGE620362C6_HEALTHY_OPERATORSOURCEA122963_IMAGEDEFBD7A5_HEALTHY
+NATURAL_RUNTIME = CYCLE2_AVAXUSDT_trade-5m-v2_5m_POSITION_OPEN_COMMANDS1OF10_RISK10OF50BPS
+15M = CONTAINER1E05EDEA0C65_UP2DAYS_NOT_RESTARTED
+USER_BOUNDARY = NO_WAIT_FOR_CLOSE_NO_ARTIFICIAL_SIGNAL_NO_VARIANT_SEARCH
+LIVE = FORBIDDEN
+EVIDENCE = docs/audits/TRADERS_CONTINUOUS_PAPER_AUTHORITY_DEPLOYMENT_01_FINAL.md
+NEXT_ACTION = OBSERVE_NATURAL_CLOSE_AND_LATER_CYCLE_WITHOUT_BLOCKING_DEPLOYMENT_OR_FORCING_MARKET_INPUT
 ```
 
 ## PAPER candidate execution and client latency audit 01
@@ -6190,16 +6217,16 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | PAPER execution accepted | Scalping v2 is the sole authority for new 5m decisions on schema 0023. Its production risk compatibility no longer confuses research-frequency quotas with account risk; the first natural post-fix boundary passed 2/2 strategy candidates into downstream model gates. Two earlier natural v2 winners completed PAPER lifecycles; the next bounded canary is waiting |
+| Online analytics/paper pipeline | Continuous PAPER deployed | Scalping v2 is the sole authority for new 5m decisions on schema 0024. Continuous generation 12 is active with durable UTC budgets and one natural AVAXUSDT PAPER position OPEN; no close was forced |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
-| Readonly Server API | Healthy deployed schema-0023 image | Image `sha256:205e405f...`, source `6be591a...`, exposes authoritative v2 lifecycle and healthy PAPER/accounting reconciliation |
-| Desktop Readonly client | Local plan-outcome visibility complete / not deployed | Commit `a3f3388...` preserves three same-symbol run/plan identities and shows candidate, approval, plan, selector, command, position and terminal outcome. Focused tests pass; production remains on its earlier client artifact |
+| Readonly Server API | Healthy deployed schema-0024 image | Image `sha256:620362c6...`, source `d3615b0...`, exposes continuous state, durable budgets, current v2 lifecycle and healthy PAPER/accounting reconciliation |
+| Desktop Readonly client | Source client deployed | Commit `8070ef2...` projects server-owned continuous state and budgets; source-tree PID 9764 is responding and LIVE remains absent |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy and production-accepted | Natural DOGEUSDT and LINKUSDT v2 positions are durably visible with exact command/position identities; both closed naturally and reconciliation scans two rows as HEALTHY |
-| PAPER Operator Control API | Healthy deployed source / ARMED | Source `6be591a...` is healthy with runtime/daemon/scheduler/worker/mutation true, ARMED generation 10, bounded 1/1 scope and LIVE false |
-| First-canary correlation/readiness | Natural execution accepted / next canary waiting | Generation-10 canary has exact UUID, zero commands and positions used, and waits for the next eligible v2 approval. The accepted LINK winner opened before expiry under generation 8 |
+| PAPER Operator Control API | Healthy deployed source / CONTINUOUS_ARMED | Source `a122963...` is healthy with selector/watcher/execution workers active, generation 12, durable daily budgets, max one open position and LIVE false |
+| Continuous correlation/readiness | Natural continuous cycle active | Exact recovery safely retired an expired pre-command reservation; cycle 2 opened one natural v2/5m AVAXUSDT position and consumed one command plus 10 bps without re-arm |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
 
@@ -6209,8 +6236,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = CONTINUE_NORMAL_SCALPING_V2_PAPER_CANARY_OBSERVATION_AND_REVIEW_CLOSED_TRADE_PERFORMANCE_BEFORE_ANY_LIVE_DECISION
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_BOUNDED_FIRST_CANARY_AND_POST_PASS_CONTINUOUS_PAPER_ENABLEMENT_YES_FOR_TUNING_OR_LIVE
+RECOMMENDED_NEXT_TASK = CONTINUE_NORMAL_CONTINUOUS_SCALPING_V2_PAPER_OBSERVATION_WITHOUT_FORCING_CLOSES_OR_SEARCHING_VARIANTS
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_AUTHORIZED_CONTINUOUS_PAPER_OBSERVATION_YES_FOR_TUNING_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = NO
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_OWNER_HEALTHY_BACKLOG0_PENDING0_UNRESOLVED0
@@ -6290,10 +6317,10 @@ no physical gap; the idempotent retry performed zero attempts. It is historical
 evidence and is superseded by the healthy ACK-owner state below.
 The historical 5m SHADOW and v1 records remain preserved as readonly provenance,
 but neither is an active source of new Scalping decisions. Scalping v2 is the
-only active 5m `PRODUCTION_SEARCH` identity. Its canonical selector opened
-natural DOGEUSDT and LINKUSDT PAPER positions; both later closed naturally and
-their accounting/PAPER reconciliation is healthy. A fresh authorized bounded
-canary remains waiting for the next eligible v2 approval. LIVE stays disabled.
+only active 5m `PRODUCTION_SEARCH` identity. Continuous PAPER generation 12 now
+owns new v2 execution with durable UTC budgets and a global one-position cap.
+Its first post-deployment natural cycle opened AVAXUSDT and remains OPEN at this
+snapshot; closure was deliberately not forced. LIVE stays disabled.
 
 The prospective Scalping calibration collector now runs as a separate
 `restart: always` Compose service. It reads completed production projections and
@@ -6313,10 +6340,11 @@ The earlier WAL failure snapshots are historical evidence only. The fresh
 post-task read-only readiness projection reports `status=READY`,
 `wal_ready=true`, `pitr_ready=true`, a contiguous physical lineage,
 `current_mutation_ready=true`, accounting/PAPER reconciliation `HEALTHY`, and
-`live_allowed=false`. Control generation 10 is ARMED for the already-authorized
-bounded PAPER canary, waiting with zero commands and zero positions used. Schema
-0023 and source `6be591a...` are deployed; `trade-5m-v2` is authoritative for
-new Scalping decisions, while `trade-5m-v1` is historical readonly only.
+`live_allowed=false`. Control generation 12 is `CONTINUOUS_ARMED`; one of ten
+daily commands and 10 of 50 daily risk bps are consumed by the current OPEN
+position. Schema 0024, readonly source `d3615b0...`, and operator source
+`a122963...` are deployed; `trade-5m-v2` is authoritative for new Scalping
+decisions, while `trade-5m-v1` is historical readonly only.
 
 ## Правила актуализации
 
