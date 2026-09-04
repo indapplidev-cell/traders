@@ -10,9 +10,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -84,6 +84,8 @@ class PaperFirstCanarySession:
     version: int
     selection_policy_version: str = LEGACY_EXACTLY_ONE_POLICY_VERSION
     universe_version_id: str = "trading-universe-v1"
+    authority_mode: str = "FIRST_CANARY_HISTORICAL"
+    continuous_cycle_number: int | None = None
 
 def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
     try:
@@ -139,6 +141,8 @@ def _snapshot(row: PaperFirstCanarySessionRecord) -> PaperFirstCanarySession:
         version=row.version,
         selection_policy_version=row.selection_policy_version,
         universe_version_id=row.universe_version_id,
+        authority_mode=row.authority_mode,
+        continuous_cycle_number=row.continuous_cycle_number,
     )
 
 
@@ -223,6 +227,7 @@ class PaperFirstCanaryRepository:
             position_id=None, trade_report_available=False, paper_reconciliation_status="NOT_STARTED",
             accounting_reconciliation_status="NOT_STARTED", reconciliation_checked_at=None,
             terminal_reason=None, finding_codes=[], version=0,
+            authority_mode="FIRST_CANARY_HISTORICAL", continuous_cycle_number=None,
         )
         self.session.add(row)
         try:
@@ -308,6 +313,59 @@ class PaperFirstCanaryRepository:
         row.completed_at = now or datetime.now(timezone.utc)
         row.version += 1
         self.session.flush()
+        return _snapshot(row)
+
+    def reserve_continuous_cycle(
+        self,
+        *,
+        candidate_identity: str,
+        generation: int,
+        control_transition_id: str,
+        allowed_symbols: tuple[str, ...],
+        now: datetime,
+    ) -> PaperFirstCanarySession:
+        """Create or recover one v2-only execution cycle under continuous authority."""
+
+        active = self.current()
+        deterministic_id = str(uuid5(NAMESPACE_URL, f"traders:paper:continuous:{generation}:{candidate_identity}"))
+        if active is not None:
+            if active.canary_id == deterministic_id and active.authority_mode == "CONTINUOUS":
+                return active
+            raise CanaryCorrelationError("CONTINUOUS_CYCLE_ALREADY_ACTIVE")
+        existing = self.get(deterministic_id, for_update=True)
+        if existing is not None:
+            return existing
+        cycle_number = int(self.session.scalar(
+            select(func.coalesce(func.max(PaperFirstCanarySessionRecord.continuous_cycle_number), 0))
+        ) or 0) + 1
+        request_identity = f"continuous:{generation}:{candidate_identity}"[:128]
+        row = PaperFirstCanarySessionRecord(
+            canary_id=deterministic_id, environment="PRODUCTION", mode="PAPER", state="ARMED",
+            created_at=now, armed_at=now, started_at=now, completed_at=None,
+            arm_request_id=request_identity,
+            arm_request_fingerprint=f"continuous:{candidate_identity}"[:64],
+            arming_transition_id=str(uuid5(NAMESPACE_URL, f"{control_transition_id}:{candidate_identity}")),
+            arming_generation=generation, start_request_id=request_identity,
+            start_request_fingerprint=f"continuous:{candidate_identity}"[:64],
+            current_control_generation=generation,
+            max_new_commands=1, max_open_positions=1, allowed_symbols=list(allowed_symbols),
+            universe_version_id="trading-universe-v2",
+            selection_policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION,
+            approval_id=None, command_count=0, command_id=None, position_count=0,
+            position_id=None, trade_report_available=False,
+            paper_reconciliation_status="NOT_STARTED",
+            accounting_reconciliation_status="NOT_STARTED", reconciliation_checked_at=None,
+            terminal_reason=None, finding_codes=[], version=0,
+            authority_mode="CONTINUOUS", continuous_cycle_number=cycle_number,
+        )
+        self.session.add(row)
+        try:
+            self.session.flush()
+        except IntegrityError as exc:
+            recovered = self.get(deterministic_id, for_update=True)
+            if recovered is not None:
+                return recovered
+            raise CanaryCorrelationError("CONTINUOUS_CYCLE_ALREADY_ACTIVE") from exc
         return _snapshot(row)
 
     def stop_waiting(
@@ -419,7 +477,10 @@ class PaperFirstCanaryRepository:
             elif position.state == "CLOSED":
                 row.state = "POSITION_CLOSED"
                 healthy = paper_reconciliation_status == "HEALTHY" and accounting_reconciliation_status == "HEALTHY"
-                if not report_available or not healthy or control_state != "DISABLED":
+                expected_control = (
+                    "CONTINUOUS_ARMED" if row.authority_mode == "CONTINUOUS" else "DISABLED"
+                )
+                if not report_available or not healthy or control_state != expected_control:
                     row.state = "RECONCILIATION_PENDING"
                     row.finding_codes = ["CANARY_RECONCILIATION_PENDING"]
                 else:
@@ -482,6 +543,9 @@ class SqlAlchemyPaperFirstCanaryStore:
 
     def refresh_terminal(self, *args, **kwargs) -> PaperFirstCanarySession:
         return self._write(lambda repo: repo.refresh_terminal(*args, **kwargs))
+
+    def reserve_continuous_cycle(self, **kwargs) -> PaperFirstCanarySession:
+        return self._write(lambda repo: repo.reserve_continuous_cycle(**kwargs))
 
 
 __all__ = (

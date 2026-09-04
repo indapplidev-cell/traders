@@ -47,13 +47,19 @@ class SafetyControlError(RuntimeError):
 class PersistentState(StrEnum):
     DISABLED = "DISABLED"
     ARMED = "ARMED"
+    CONTINUOUS_ARMED = "CONTINUOUS_ARMED"
+    PAUSED_BY_RISK = "PAUSED_BY_RISK"
     EMERGENCY_STOP = "EMERGENCY_STOP"
+    EMERGENCY_STOPPED = "EMERGENCY_STOPPED"
 
 
 class EffectiveState(StrEnum):
     DISABLED = "DISABLED"
     ARMED = "ARMED"
+    CONTINUOUS_ARMED = "CONTINUOUS_ARMED"
+    PAUSED_BY_RISK = "PAUSED_BY_RISK"
     EMERGENCY_STOP = "EMERGENCY_STOP"
+    EMERGENCY_STOPPED = "EMERGENCY_STOPPED"
     FAIL_CLOSED = "FAIL_CLOSED"
 
 
@@ -71,6 +77,12 @@ class ReasonCode(StrEnum):
     OPERATOR_EMERGENCY_STOP = "OPERATOR_EMERGENCY_STOP"
     CLEAR_EMERGENCY_STOP = "CLEAR_EMERGENCY_STOP"
     PREPARATION_CANARY = "PREPARATION_CANARY"
+    CONTINUOUS_PAPER_ACTIVATION = "CONTINUOUS_PAPER_ACTIVATION"
+    DAILY_COMMAND_BUDGET_EXHAUSTED = "DAILY_COMMAND_BUDGET_EXHAUSTED"
+    DAILY_LOSS_BUDGET_EXHAUSTED = "DAILY_LOSS_BUDGET_EXHAUSTED"
+    DAILY_RISK_BUDGET_EXHAUSTED = "DAILY_RISK_BUDGET_EXHAUSTED"
+    MAX_CONSECUTIVE_LOSSES_REACHED = "MAX_CONSECUTIVE_LOSSES_REACHED"
+    TRADING_DAY_BUDGET_RESET = "TRADING_DAY_BUDGET_RESET"
     SAFETY_TEST = "SAFETY_TEST"
 
 
@@ -125,7 +137,7 @@ class PaperProductionSafetyState:
             datetime.fromisoformat(self.updated_at_utc.replace("Z", "+00:00"))
         except (ValueError, TypeError) as error:
             raise ValueError("INVALID_STATE_IDENTITY") from error
-        if (self.state is PersistentState.ARMED) != (self.arming_scope is not None):
+        if (self.state in {PersistentState.ARMED, PersistentState.CONTINUOUS_ARMED}) != (self.arming_scope is not None):
             raise ValueError("INVALID_ARMING_SCOPE")
 
 
@@ -478,7 +490,7 @@ class PaperProductionSafetyControl:
                 return current
             if not _legal_transition(current.state, target):
                 raise SafetyControlError("ILLEGAL_TRANSITION")
-            if target is PersistentState.ARMED:
+            if target in {PersistentState.ARMED, PersistentState.CONTINUOUS_ARMED}:
                 if not acknowledge_paper_arming:
                     raise SafetyControlError("PAPER_ARMING_ACKNOWLEDGEMENT_REQUIRED")
                 if preflight is None or not preflight.passed:
@@ -562,7 +574,7 @@ class PaperProductionMutationSafetyGate:
                            prerequisites: MutationPrerequisites) -> Iterator[PaperProductionMutationAuthorization]:
         with self.control._lock():
             state = self.control.read_authoritative()
-            if state.state is not PersistentState.ARMED:
+            if state.state not in {PersistentState.ARMED, PersistentState.CONTINUOUS_ARMED}:
                 raise SafetyControlError(f"MUTATION_DENIED_{state.state.value}")
             if target.environment != ENVIRONMENT or target.mode != MODE:
                 raise SafetyControlError("LIVE_OR_NON_PRODUCTION_TARGET_DENIED")
@@ -603,10 +615,20 @@ def _legal_transition(source: PersistentState | None, target: PersistentState) -
     return (source, target) in {
         (None, PersistentState.DISABLED),
         (PersistentState.DISABLED, PersistentState.ARMED),
+        (PersistentState.DISABLED, PersistentState.CONTINUOUS_ARMED),
         (PersistentState.DISABLED, PersistentState.EMERGENCY_STOP),
+        (PersistentState.DISABLED, PersistentState.EMERGENCY_STOPPED),
         (PersistentState.ARMED, PersistentState.DISABLED),
         (PersistentState.ARMED, PersistentState.EMERGENCY_STOP),
+        (PersistentState.ARMED, PersistentState.EMERGENCY_STOPPED),
+        (PersistentState.CONTINUOUS_ARMED, PersistentState.DISABLED),
+        (PersistentState.CONTINUOUS_ARMED, PersistentState.PAUSED_BY_RISK),
+        (PersistentState.CONTINUOUS_ARMED, PersistentState.EMERGENCY_STOPPED),
+        (PersistentState.PAUSED_BY_RISK, PersistentState.CONTINUOUS_ARMED),
+        (PersistentState.PAUSED_BY_RISK, PersistentState.DISABLED),
+        (PersistentState.PAUSED_BY_RISK, PersistentState.EMERGENCY_STOPPED),
         (PersistentState.EMERGENCY_STOP, PersistentState.DISABLED),
+        (PersistentState.EMERGENCY_STOPPED, PersistentState.DISABLED),
     }
 
 
@@ -712,7 +734,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("audit-status")
     init = sub.add_parser("initialize-disabled")
     transitions = {}
-    for name in ("arm", "disable", "emergency-stop", "clear-emergency-stop"):
+    for name in ("arm", "arm-continuous", "disable", "emergency-stop", "clear-emergency-stop"):
         command = sub.add_parser(name)
         transitions[name] = command
         command.add_argument("--environment", required=True)
@@ -724,20 +746,21 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--mode", required=True)
     init.add_argument("--reason", required=True, choices=tuple(item.value for item in ReasonCode))
     init.add_argument("--acknowledge-production-control", action="store_true")
-    arm = transitions["arm"]
-    arm.add_argument("--acknowledge-paper-arming", action="store_true")
-    arm.add_argument("--schema", required=True)
-    arm.add_argument("--pitr-window-seconds", required=True, type=int)
-    arm.add_argument("--market-data-ready", action="store_true")
-    arm.add_argument("--approval-source-ready", action="store_true")
-    arm.add_argument("--wal-archive-health", required=True, choices=("PASS", "FAIL"))
-    arm.add_argument("--wal-unresolved-failures", required=True, type=int)
-    arm.add_argument("--pitr-chain-valid", action="store_true")
-    arm.add_argument("--paper-runtime-enabled", action="store_true")
-    arm.add_argument("--live-enabled", action="store_true")
-    arm.add_argument("--max-new-commands", required=True, type=int)
-    arm.add_argument("--max-open-positions", required=True, type=int)
-    arm.add_argument("--allowed-symbol", action="append", required=True)
+    for arm_name in ("arm", "arm-continuous"):
+        arm = transitions[arm_name]
+        arm.add_argument("--acknowledge-paper-arming", action="store_true")
+        arm.add_argument("--schema", required=True)
+        arm.add_argument("--pitr-window-seconds", required=True, type=int)
+        arm.add_argument("--market-data-ready", action="store_true")
+        arm.add_argument("--approval-source-ready", action="store_true")
+        arm.add_argument("--wal-archive-health", required=True, choices=("PASS", "FAIL"))
+        arm.add_argument("--wal-unresolved-failures", required=True, type=int)
+        arm.add_argument("--pitr-chain-valid", action="store_true")
+        arm.add_argument("--paper-runtime-enabled", action="store_true")
+        arm.add_argument("--live-enabled", action="store_true")
+        arm.add_argument("--max-new-commands", required=True, type=int)
+        arm.add_argument("--max-open-positions", required=True, type=int)
+        arm.add_argument("--allowed-symbol", action="append", required=True)
     return parser
 
 
@@ -753,17 +776,19 @@ def main(argv: list[str] | None = None) -> int:
             if args.command == "initialize-disabled":
                 control.initialize_disabled(acknowledge=args.acknowledge_production_control, reason=reason)
             else:
-                targets = {"arm": PersistentState.ARMED, "disable": PersistentState.DISABLED,
-                           "emergency-stop": PersistentState.EMERGENCY_STOP,
+                targets = {"arm": PersistentState.ARMED,
+                           "arm-continuous": PersistentState.CONTINUOUS_ARMED,
+                           "disable": PersistentState.DISABLED,
+                           "emergency-stop": PersistentState.EMERGENCY_STOPPED,
                            "clear-emergency-stop": PersistentState.DISABLED}
-                preflight = _preflight_from_args(args) if args.command == "arm" else None
-                scope = None if args.command != "arm" else PaperProductionArmingScope(
+                preflight = _preflight_from_args(args) if args.command in {"arm", "arm-continuous"} else None
+                scope = None if args.command not in {"arm", "arm-continuous"} else PaperProductionArmingScope(
                     args.max_new_commands, args.max_open_positions, tuple(sorted(set(args.allowed_symbol))))
                 control.transition(targets[args.command], expected_generation=args.expected_generation,
                                    reason=reason, acknowledge=args.acknowledge_production_control,
                                    acknowledge_paper_arming=getattr(args, "acknowledge_paper_arming", False),
                                    preflight=preflight, arming_scope=scope)
-            report = _render_state(control, preflight if args.command == "arm" else None)
+            report = _render_state(control, preflight if args.command in {"arm", "arm-continuous"} else None)
         print(json.dumps(report, sort_keys=True))
         return 0 if report["health"] == "HEALTHY" else 2
     except (SafetyControlError, ValueError, OSError) as error:

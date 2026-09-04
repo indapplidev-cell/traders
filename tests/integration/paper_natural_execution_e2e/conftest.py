@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0023_scalping_v2_journal_causality"
+EXPECTED_HEAD = "0024_continuous_paper_authority"
 
 
 @pytest.fixture(scope="session")
@@ -79,6 +79,8 @@ def natural_e2e_engine() -> Iterator[Engine]:
 @pytest.fixture
 def natural_e2e_sessions(natural_e2e_engine: Engine) -> sessionmaker:
     tables = (
+        "paper_continuous_control_events",
+        "paper_continuous_control",
         "paper_first_canary_sessions",
         "paper_plan_execution_outcomes",
         "paper_account_baselines",
@@ -103,7 +105,7 @@ def natural_e2e_sessions(natural_e2e_engine: Engine) -> sessionmaker:
     # test-only principal before this isolated-only destructive cleanup.
     with natural_e2e_engine.begin() as connection:
         connection.execute(
-            text("TRUNCATE " + ", ".join(tables) + " RESTART IDENTITY CASCADE")
+            text("TRUNCATE " + ", ".join(tables) + " CASCADE")
         )
     return sessionmaker(
         bind=natural_e2e_engine,

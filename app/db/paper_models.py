@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -247,6 +247,79 @@ class PaperFirstCanarySessionRecord(Base):
     terminal_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
     finding_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    authority_mode: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="FIRST_CANARY_HISTORICAL"
+    )
+    continuous_cycle_number: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class PaperContinuousControlRecord(Base):
+    """Singleton durable authority and UTC-day budget state for PAPER only."""
+
+    __tablename__ = "paper_continuous_control"
+    __table_args__ = (
+        CheckConstraint("environment = 'PRODUCTION'", name="ck_paper_continuous_environment"),
+        CheckConstraint("control_mode = 'CONTINUOUS'", name="ck_paper_continuous_mode"),
+        CheckConstraint(
+            "control_state IN ('DISABLED','CONTINUOUS_ARMED','PAUSED_BY_RISK','EMERGENCY_STOPPED')",
+            name="ck_paper_continuous_state",
+        ),
+        CheckConstraint("trading_day_timezone = 'UTC'", name="ck_paper_continuous_timezone"),
+        CheckConstraint("generation >= 1 AND mode_version >= 1 AND version >= 0", name="ck_paper_continuous_versions"),
+        CheckConstraint("daily_command_budget >= 1 AND commands_used >= 0", name="ck_paper_continuous_command_budget"),
+        CheckConstraint("daily_realized_loss_budget >= 0 AND realized_loss >= 0", name="ck_paper_continuous_loss_budget"),
+        CheckConstraint("daily_risk_budget_bps > 0 AND risk_used_bps >= 0", name="ck_paper_continuous_risk_budget"),
+        CheckConstraint("loss_streak >= 0", name="ck_paper_continuous_loss_streak"),
+        CheckConstraint("max_consecutive_losses IS NULL OR max_consecutive_losses >= 1", name="ck_paper_continuous_loss_streak_limit"),
+        CheckConstraint("enabled = (control_state = 'CONTINUOUS_ARMED')", name="ck_paper_continuous_enabled_state"),
+    )
+
+    environment: Mapped[str] = mapped_column(String(32), primary_key=True)
+    control_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    control_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    mode_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    activation_source: Mapped[str | None] = mapped_column(String(128))
+    activation_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    trading_day_timezone: Mapped[str] = mapped_column(String(16), nullable=False)
+    budget_day: Mapped[date] = mapped_column(nullable=False)
+    daily_command_budget: Mapped[int] = mapped_column(Integer, nullable=False)
+    daily_realized_loss_budget: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    daily_risk_budget_bps: Mapped[Decimal] = mapped_column(Numeric(RATIO_PRECISION, RATIO_SCALE), nullable=False)
+    max_consecutive_losses: Mapped[int | None] = mapped_column(Integer)
+    commands_used: Mapped[int] = mapped_column(Integer, nullable=False)
+    realized_pnl: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    realized_loss: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    risk_used_bps: Mapped[Decimal] = mapped_column(Numeric(RATIO_PRECISION, RATIO_SCALE), nullable=False)
+    loss_streak: Mapped[int] = mapped_column(Integer, nullable=False)
+    pause_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    last_successful_reconciliation: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_command_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    last_position_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class PaperContinuousControlEventRecord(Base):
+    """Append-only audit trail for activation, budget, pause and reconciliation."""
+
+    __tablename__ = "paper_continuous_control_events"
+    __table_args__ = (
+        CheckConstraint("length(trim(event_type)) BETWEEN 1 AND 64", name="ck_paper_continuous_event_type"),
+        CheckConstraint("generation >= 1", name="ck_paper_continuous_event_generation"),
+        Index("ix_paper_continuous_events_occurred", "occurred_at"),
+    )
+
+    event_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    control_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(REASON_CODE_LENGTH), nullable=False)
+    source: Mapped[str] = mapped_column(String(128), nullable=False)
+    details: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
 
 
 class TradingUniverseRuntimeStateRecord(Base):

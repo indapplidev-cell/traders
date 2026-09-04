@@ -7,11 +7,17 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
+from types import SimpleNamespace
 
 from app.engine_paper.command_ingestion_service import (
     PaperCommandIngestionRequest,
     PaperCommandIngestionService,
     paper_ingestion_command_id,
+)
+from app.engine_paper.continuous_authority import (
+    ACTIVE_STATE,
+    ContinuousAuthorityError,
+    PaperContinuousAuthorityStore,
 )
 from app.engine_paper.fill_policy import (
     PaperFillPriceSource,
@@ -110,6 +116,7 @@ class ProductionPaperFirstCanaryExecutor:
         runtime_readiness: Callable[[], ExistingCanaryRuntimeReadiness],
         selector: ProductionEligibleApprovalSelector | None = None,
         outcome_store: PaperPlanExecutionOutcomeStore | None = None,
+        continuous_store: PaperContinuousAuthorityStore | None = None,
     ) -> None:
         self._control = control
         self._canary_store = canary_store
@@ -119,19 +126,32 @@ class ProductionPaperFirstCanaryExecutor:
         self._runtime_readiness = runtime_readiness
         self._selector = selector or ProductionEligibleApprovalSelector()
         self._outcome_store = outcome_store
+        self._continuous_store = continuous_store
         self._prepared = None
         self.last_selection_diagnostics = None
 
     def _validate_boundary(self, transition_id: str, generation: int):
         state = self._control.read_authoritative()
         canary = self._canary_store.current()
+        continuous = (
+            state.state is PersistentState.CONTINUOUS_ARMED
+            and canary is not None
+            and canary.authority_mode == "CONTINUOUS"
+            and state.generation == generation
+            and canary.current_control_generation == generation
+        )
+        legacy = (
+            state.state is PersistentState.ARMED
+            and state.transition_id == transition_id
+            and state.generation == generation
+            and canary is not None
+            and canary.authority_mode == "FIRST_CANARY_HISTORICAL"
+            and canary.arming_transition_id == transition_id
+            and canary.arming_generation == generation
+        )
         if (
-            state.state is not PersistentState.ARMED
-            or state.transition_id != transition_id
-            or state.generation != generation
+            not (continuous or legacy)
             or canary is None
-            or canary.arming_transition_id != transition_id
-            or canary.arming_generation != generation
             or canary.mode != "PAPER"
             or canary.max_new_commands != 1
             or canary.max_open_positions != 1
@@ -141,11 +161,11 @@ class ProductionPaperFirstCanaryExecutor:
             return None
         return canary
 
-    def _read_approvals(self, canary, request_id: str):
+    def _read_approvals(self, canary, request_id: str, *, timeframes=None):
         """Read every executable profile at one causal wall-clock boundary."""
         as_of_ms = None
         results = []
-        for timeframe in EXECUTION_TIMEFRAMES:
+        for timeframe in (EXECUTION_TIMEFRAMES if timeframes is None else timeframes):
             result = self._approval_source.read(PaperProductionApprovalRequest(
                 PaperProductionApprovalScope(
                     symbols=canary.allowed_symbols,
@@ -160,11 +180,15 @@ class ProductionPaperFirstCanaryExecutor:
                 as_of_ms = result.as_of_ms
         return tuple(results)
 
-    def _select_candidate(self, canary, results) -> EligibleApprovalSelectionResult:
+    def _select_candidate(
+        self, canary, results, *, exclude_executed: bool = False,
+    ) -> EligibleApprovalSelectionResult:
         candidates = tuple(
             value.candidate for result in results for value in result.symbol_results
             if value.candidate is not None
         )
+        if exclude_executed and self._outcome_store is not None:
+            candidates = self._outcome_store.unconsumed_candidates(candidates)
         selection = self._selector.select(
             candidates, policy_version=canary.selection_policy_version
         )
@@ -272,6 +296,55 @@ class ProductionPaperFirstCanaryExecutor:
             canary_id=canary_id,
         )
 
+    def execute_continuous_once(self) -> tuple[str, ...]:
+        """Select and dispatch at most one fresh v2 winner for this poll cycle."""
+
+        if self._continuous_store is None:
+            return ("CONTINUOUS_CONTROL_NOT_CONFIGURED",)
+        state = self._control.read_authoritative()
+        if state.state is not PersistentState.CONTINUOUS_ARMED or state.arming_scope is None:
+            return (f"MUTATION_DENIED_{state.state.value}",)
+        try:
+            budget = self._continuous_store.reconcile(generation=state.generation)
+        except ContinuousAuthorityError as error:
+            return (str(error),)
+        if budget.control_state != ACTIVE_STATE or not budget.enabled:
+            return (budget.pause_reason or "CONTINUOUS_CONTROL_NOT_ARMED",)
+        if budget.budget_reason is not None:
+            return (budget.budget_reason,)
+        if budget.open_positions >= 1 or budget.in_flight_commands >= 1:
+            return ("OPEN_POSITION_BUDGET_EXHAUSTED",)
+        authority = SimpleNamespace(
+            allowed_symbols=state.arming_scope.allowed_symbols,
+            selection_policy_version="eligible-approval-ranking-v1",
+            universe_version_id="trading-universe-v2",
+            current_control_generation=state.generation,
+        )
+        request_id = _id(str(state.generation), "continuous-approval-poll")
+        results = self._read_approvals(authority, request_id, timeframes=("5m",))
+        errors = self._approval_source_error(results)
+        if errors:
+            return errors
+        selection = self._select_candidate(authority, results, exclude_executed=True)
+        if selection.failure_code is not None or selection.winner is None:
+            return (selection.failure_code or "NO_ELIGIBLE_APPROVAL",)
+        candidate = selection.winner
+        if getattr(candidate, "trade_profile_id", None) != "trade-5m-v2":
+            return ("SCALPING_V2_AUTHORITY_REQUIRED",)
+        canary = self._canary_store.reserve_continuous_cycle(
+            candidate_identity=candidate.candidate_id,
+            generation=state.generation,
+            control_transition_id=state.transition_id,
+            allowed_symbols=state.arming_scope.allowed_symbols,
+            now=datetime.now(timezone.utc),
+        )
+        findings = self._ingest_candidate(
+            candidate=candidate,
+            request_id=canary.start_request_id or canary.arm_request_id,
+            canary_id=canary.canary_id,
+        )
+        return findings
+
     def _ingest_candidate(self, *, candidate, request_id: str, canary_id: str) -> tuple[str, ...]:
         canary = self._canary_store.get(canary_id)
         if canary is None:
@@ -282,6 +355,7 @@ class ProductionPaperFirstCanaryExecutor:
         if (
             expected_profiles is None
             or getattr(candidate, "trade_profile_id", "") not in expected_profiles
+            or (canary.authority_mode == "CONTINUOUS" and getattr(candidate, "trade_profile_id", "") != "trade-5m-v2")
             or candidate.watermark.primary_timeframe != candidate.primary_timeframe
             or candidate.lineage.source_run_id != candidate.ranking.source_run_id
         ):
@@ -327,12 +401,19 @@ class ProductionPaperFirstCanaryExecutor:
             correlation_id=candidate.paper_strategy_approval.correlation_id,
             causation_id=candidate.paper_risk_approval.approval_id, canary_id=canary_id,
         )
+        continuous_budget = None
+        if canary.authority_mode == "CONTINUOUS":
+            if self._continuous_store is None:
+                return ("CONTINUOUS_CONTROL_NOT_CONFIGURED",)
+            continuous_budget = self._continuous_store.read()
+            if continuous_budget is None or continuous_budget.budget_reason is not None:
+                return (("CONTINUOUS_CONTROL_NOT_CONFIGURED" if continuous_budget is None else continuous_budget.budget_reason),)
         target = PaperProductionMutationTarget(
             environment=canary.environment, mode=canary.mode, symbol=candidate.symbol,
             candidate_identity=candidate.candidate_id,
             current_generation=canary.current_control_generation,
-            new_commands_before=canary.command_count,
-            open_positions_before=canary.position_count,
+            new_commands_before=(0 if continuous_budget is not None else canary.command_count),
+            open_positions_before=(continuous_budget.open_positions if continuous_budget is not None else canary.position_count),
         )
         snapshot_blockers = tuple(dict.fromkeys(readiness.policy_blockers))
         if not readiness.snapshot_authoritative:
@@ -414,6 +495,8 @@ class ProductionPaperFirstCanaryExecutor:
                     candidate.lineage.source_run_id,
                     failure_code=str(result.reason_code),
                 )
+        if result.successful and continuous_budget is not None and self._continuous_store is not None:
+            self._continuous_store.record_command(command_id=command_id)
         return () if result.successful else (str(result.reason_code),)
 
     def status(self) -> PaperOperatorCanaryStatus:

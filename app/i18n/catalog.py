@@ -1086,7 +1086,10 @@ _DOMAIN = {
     },
     "control.state": {
         "DISABLED": ("Отключено", "Disabled"), "ARMED": ("Подготовлено", "Armed"),
+        "CONTINUOUS_ARMED": ("Continuous PAPER активен", "Continuous PAPER armed"),
+        "PAUSED_BY_RISK": ("Пауза по риску", "Paused by risk"),
         "EMERGENCY_STOP": ("Аварийная остановка", "Emergency stop"), "FAIL_CLOSED": ("Заблокировано безопасностью", "Fail-closed"),
+        "EMERGENCY_STOPPED": ("Аварийно остановлено", "Emergency stopped"),
     },
     "control.canary": {
         "NOT_CONFIGURED": ("Не настроено", "Not configured"), "DISABLED": ("Отключено", "Disabled"),

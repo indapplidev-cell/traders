@@ -14,6 +14,7 @@ import threading
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+from decimal import Decimal
 from hashlib import sha256
 
 from app.engine_execution.paper_idempotency import (
@@ -30,6 +31,7 @@ from app.engine_paper.controlled_worker import (
     classify_paper_lifecycle_state,
 )
 from app.engine_paper.exit_evaluation_service import PaperExitEvaluationRequest
+from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
 from app.engine_paper.exit_evaluator import PAPER_EXIT_EVALUATION_POLICY_ID
 from app.engine_paper.fill_causal_boundary import PAPER_FILL_CAUSAL_BOUNDARY_VERSION
 from app.engine_paper.fill_simulator import PaperFillCandle, PaperFillRole
@@ -124,6 +126,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         lock: PostgresCanaryContinuationLock,
         readonly_base_url: str,
         poll_seconds: float = DEFAULT_POLL_SECONDS,
+        continuous_store: PaperContinuousAuthorityStore | None = None,
     ) -> None:
         if not MIN_POLL_SECONDS <= poll_seconds <= MAX_POLL_SECONDS:
             raise ValueError("FIRST_CANARY_LIFECYCLE_POLL_INTERVAL_INVALID")
@@ -137,6 +140,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         self._lock = lock
         self._readonly_base_url = readonly_base_url.rstrip("/")
         self.poll_seconds = float(poll_seconds)
+        self._continuous_store = continuous_store
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._ticks = 0
@@ -184,18 +188,21 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         return tuple(_fill_candle(value) for value in candles), "READY"
 
     def _finalize(self, canary, state) -> str:
-        """Disable the bounded authority, verify reporting, and seal correlation."""
+        """Reconcile a close; only the historical first canary auto-disables."""
 
         disabled = state
-        if state.state is PersistentState.ARMED:
+        continuous = getattr(canary, "authority_mode", "FIRST_CANARY_HISTORICAL") == "CONTINUOUS"
+        if not continuous and state.state is PersistentState.ARMED:
             disabled = self._control.transition(
                 PersistentState.DISABLED,
                 expected_generation=state.generation,
                 reason=ReasonCode.PREPARATION_CANARY,
                 acknowledge=True,
             )
-        elif state.state is not PersistentState.DISABLED:
+        elif not continuous and state.state is not PersistentState.DISABLED:
             return "SAFE_FAILURE:FINALIZATION_CONTROL_NOT_DISABLED"
+        elif continuous and state.state is not PersistentState.CONTINUOUS_ARMED:
+            return "SAFE_FAILURE:CONTINUOUS_CONTROL_NOT_ARMED"
         report_available = False
         paper_status = "UNHEALTHY"
         accounting_status = "UNHEALTHY"
@@ -222,6 +229,19 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             )
         except Exception as error:
             _safe_log("paper_canary_finalization_read_fault", error_type=type(error).__name__)
+        healthy = report_available and paper_status == "HEALTHY" and accounting_status == "HEALTHY"
+        if continuous:
+            if self._continuous_store is None:
+                return "SAFE_FAILURE:CONTINUOUS_CONTROL_NOT_CONFIGURED"
+            try:
+                self._continuous_store.record_close(
+                    position_id=canary.position_id or "",
+                    realized_pnl=Decimal(str((report or {}).get("net_pnl", "0"))),
+                    reconciliation_healthy=healthy,
+                )
+            except Exception as error:
+                _safe_log("paper_continuous_close_reconciliation_fault", error_type=type(error).__name__)
+                return "SAFE_FAILURE:CONTINUOUS_CLOSE_RECONCILIATION_FAILED"
         final = self._canary_store.refresh_terminal(
             canary.canary_id,
             control_state=disabled.state.value,
@@ -232,7 +252,8 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             checked_at=datetime.now(timezone.utc),
         )
         _safe_log(
-            "paper_canary_finalized", canary_id=canary.canary_id,
+            "paper_execution_cycle_finalized", canary_id=canary.canary_id,
+            authority_mode=getattr(canary, "authority_mode", "FIRST_CANARY_HISTORICAL"),
             command_id=canary.command_id, position_id=canary.position_id,
             control_generation=disabled.generation, canary_state=final.state.value,
             report_available=report_available, paper_reconciliation_status=paper_status,
@@ -323,7 +344,11 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             price_quantum=_foundation_policy(command.simulation_policy_id).price_quantum,
             fee_quantum=_foundation_policy(command.simulation_policy_id).fee_quantum,
             quote_asset="USDT",
-            created_at=_at(eligible[-1].close_boundary_ms), correlation_id=correlation,
+            # The close order is caused by the first evaluated boundary, not by
+            # the later observation watermark.  Dating it at the watermark can
+            # make a valid next-candle fill appear to precede its order when a
+            # restart processes several accumulated candles at once.
+            created_at=_at(eligible[0].close_boundary_ms), correlation_id=correlation,
             causation_id=position.position_id,
         )
         return self._cycle(canary_id, graph, exit_evaluation_request=request), "READY"
@@ -331,7 +356,11 @@ class ProductionPaperFirstCanaryLifecycleWorker:
     def _close_cycle(self, canary_id: str, graph, candles):
         command, position, decision = graph.command, graph.positions[0], graph.exit_decisions[0]
         close_order = self._orders(graph)["EXIT"]
-        eligible = tuple(value for value in candles if value.open_time_ms >= decision.source_closed_until_ms)
+        close_order_ready_ms = int(close_order.updated_at.timestamp() * 1000)
+        eligible = tuple(
+            value for value in candles
+            if value.open_time_ms >= max(decision.source_closed_until_ms, close_order_ready_ms)
+        )
         if not eligible:
             return None, "WAITING_FOR_CLOSE_CANDLE"
         selected = eligible[0]
@@ -397,12 +426,17 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 and state.generation == canary.arming_generation
                 and state.transition_id == canary.arming_transition_id
             )
+            continuous_lineage = (
+                state.state is PersistentState.CONTINUOUS_ARMED
+                and canary.authority_mode == "CONTINUOUS"
+                and state.generation == canary.current_control_generation
+            )
             disabled_finalization = (
                 state.state is PersistentState.DISABLED
                 and canary.state.value in {"POSITION_CLOSED", "RECONCILIATION_PENDING"}
             )
             if (
-                not (armed_lineage or disabled_finalization)
+                not (armed_lineage or continuous_lineage or disabled_finalization)
                 or canary.command_count != 1
                 or canary.max_new_commands != 1
                 or canary.max_open_positions != 1
@@ -459,7 +493,15 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 mutation_committed=result.stages_completed == 1,
                 position_id=result.position_id,
             )
-            return f"{result.outcome.value}:{result.final_lifecycle_state.value}"
+            if (
+                canary.authority_mode == "CONTINUOUS"
+                and result.position_id is not None
+                and self._continuous_store is not None
+            ):
+                self._continuous_store.record_position(position_id=result.position_id)
+            child_reason = result.stage_trace[-1].child_reason_code if result.stage_trace else result.reason_code
+            suffix = "" if result.stages_completed == 1 else f":{child_reason}"
+            return f"{result.outcome.value}:{result.final_lifecycle_state.value}{suffix}"
 
     def _run(self) -> None:
         while not self._stop.is_set():

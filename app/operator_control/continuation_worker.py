@@ -16,6 +16,11 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanaryState,
     SqlAlchemyPaperFirstCanaryStore,
 )
+from app.engine_paper.continuous_authority import (
+    ACTIVE_STATE,
+    ContinuousAuthorityError,
+    PaperContinuousAuthorityStore,
+)
 from app.engine_safety.paper_production_control import (
     PaperProductionSafetyControl,
     PersistentState,
@@ -87,6 +92,7 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
         executor: ProductionPaperFirstCanaryExecutor,
         lock: PostgresCanaryContinuationLock,
         poll_seconds: float,
+        continuous_store: PaperContinuousAuthorityStore | None = None,
     ) -> None:
         if not MIN_POLL_SECONDS <= poll_seconds <= MAX_POLL_SECONDS:
             raise ValueError("poll_seconds outside bounded range")
@@ -95,6 +101,7 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
         self._executor = executor
         self._lock = lock
         self.poll_seconds = poll_seconds
+        self._continuous_store = continuous_store
         self._stop = Event()
         self._thread: Thread | None = None
         self._lifecycle_lock = Lock()
@@ -113,6 +120,31 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
         expire = getattr(self._executor, "expire_due_outcomes", None)
         if expire is not None:
             expire()
+        control = self._control.read_authoritative()
+        if control.state is PersistentState.CONTINUOUS_ARMED:
+            if self._continuous_store is None:
+                return "SAFE_FAILURE:CONTINUOUS_CONTROL_NOT_CONFIGURED"
+            try:
+                budget = self._continuous_store.reconcile(generation=control.generation)
+            except ContinuousAuthorityError as error:
+                return f"SAFE_FAILURE:{error}"
+            if budget.control_state != ACTIVE_STATE or not budget.enabled:
+                return f"PAUSED_BY_RISK:{budget.pause_reason or 'RISK_BUDGET_EXHAUSTED'}"
+            canary = self._canary_store.current()
+            if canary is not None:
+                if canary.authority_mode != "CONTINUOUS":
+                    return "SAFE_FAILURE:LEGACY_CANARY_ACTIVE_DURING_CONTINUOUS_MODE"
+                if canary.command_id is not None:
+                    return "ACTIVE_CONTINUOUS_CYCLE"
+            with self._lock.acquire(f"continuous-generation-{control.generation}") as acquired:
+                if not acquired:
+                    return "CLAIMED_BY_ANOTHER_WORKER"
+                findings = self._executor.execute_continuous_once()
+                if findings == ("NO_ELIGIBLE_APPROVAL",):
+                    return "WAITING_FOR_ELIGIBLE_APPROVAL"
+                if findings:
+                    return f"SAFE_FAILURE:{findings[0]}"
+                return "COMMAND_CREATED_OR_REPLAYED"
         canary = self._canary_store.current()
         if canary is None or canary.state is not PaperFirstCanaryState.NO_ELIGIBLE_APPROVAL:
             return "NO_WAITING_CANARY"
@@ -137,7 +169,6 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
                 or current.position_count != 0
             ):
                 return "WAITING_CANARY_CHANGED"
-            control = self._control.read_authoritative()
             if (
                 control.state is not PersistentState.ARMED
                 or control.transition_id != current.arming_transition_id
@@ -168,7 +199,7 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
             self._stop.clear()
             self._thread = Thread(
                 target=self._run,
-                name="paper-first-canary-approval-continuation",
+                name="paper-continuous-approval-worker",
                 daemon=True,
             )
             self._thread.start()
@@ -182,7 +213,13 @@ class PaperFirstCanaryEligibleApprovalContinuationWorker:
 
 
 __all__ = (
+    "PaperContinuousApprovalWorker",
     "PaperFirstCanaryEligibleApprovalContinuationWorker",
     "PostgresCanaryContinuationLock",
     "continuation_poll_seconds",
 )
+
+
+# Canonical production name. The legacy export remains for historical tests and
+# for decoding old first-canary records only.
+PaperContinuousApprovalWorker = PaperFirstCanaryEligibleApprovalContinuationWorker

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -36,6 +36,7 @@ from app.engine_paper.controlled_worker import (
     SqlAlchemyPaperLifecycleGraphLoader,
 )
 from app.engine_paper.command_ingestion_service import PaperCommandIngestionService
+from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
 from app.engine_paper.eligible_approval_ranking import (
     MULTI_SYMBOL_SELECTION_POLICY_VERSION,
     ProductionEligibleApprovalSelector,
@@ -58,9 +59,11 @@ from app.engine_paper.paper_runner import PaperRunner
 from app.engine_paper.scalping_shadow import ShadowCostInputs
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_safety.paper_production_control import (
+    PaperProductionArmingScope,
     PaperProductionMutationSafetyGate,
     PaperProductionSafetyControl,
     PersistentState,
+    ReasonCode,
 )
 from app.operator_control.config import PaperOperatorControlConfig
 from app.operator_control.continuation_worker import (
@@ -155,11 +158,14 @@ class _ApprovalReaderAt(SqlAlchemyPaperProductionApprovalReader):
 
 
 class _MarketReaderAt(SqlAlchemyPaperProductionMarketDataReader):
+    def __init__(self, at_ms: int = ENTRY_MARKET_AS_OF_MS) -> None:
+        self.at_ms = at_ms
+
     def read_clock_ms(self, _executor) -> int:
-        return ENTRY_MARKET_AS_OF_MS
+        return self.at_ms
 
 
-def _candles(timeframe: str, count: int) -> tuple[Candle, ...]:
+def _candles(timeframe: str, count: int, *, symbol: str = SYMBOL) -> tuple[Candle, ...]:
     duration = timeframe_to_milliseconds(timeframe)
     first = BOUNDARY - count * duration
     breakout = (
@@ -197,7 +203,7 @@ def _candles(timeframe: str, count: int) -> tuple[Candle, ...]:
             close = Decimal("100.05")
             volume = Decimal("100")
         rows.append(Candle(
-            symbol=SYMBOL,
+            symbol=symbol,
             timeframe=timeframe,
             open_time_ms=opened,
             close_time_ms=opened + duration - 1,
@@ -257,10 +263,30 @@ def _seed_foundation(factory) -> None:
     ))
 
 
+def _seed_additional_symbol(factory, symbol: str) -> None:
+    repository = CandleRepository(factory)
+    for timeframe, count in (("1m", 512), ("5m", 120), ("15m", 64), ("1h", 50)):
+        repository.upsert_candles(_candles(timeframe, count, symbol=symbol))
+    entry = replace(_candles("1m", 1, symbol=symbol)[0],
+        open_time_ms=BOUNDARY, close_time_ms=BOUNDARY + 59_999,
+        open=Decimal("100.70"), high=Decimal("100.90"), low=Decimal("100.50"), close=Decimal("100.75"))
+    repository.upsert_candle(entry)
+    SyncStateRepository(factory).upsert(SyncStateUpdate(
+        symbol=symbol, timeframe="1m", daemon_instance_id="paper-natural-e2e",
+        status="OK", last_expected_open_time_ms=BOUNDARY,
+        last_expected_close_boundary_ms=BOUNDARY + 60_000,
+        last_stored_open_time_ms=BOUNDARY,
+        last_stored_close_boundary_ms=BOUNDARY + 60_000,
+        last_attempt_at=datetime.fromtimestamp(ENTRY_MARKET_AS_OF_MS / 1000, tz=timezone.utc),
+        last_success_at=datetime.fromtimestamp(ENTRY_MARKET_AS_OF_MS / 1000, tz=timezone.utc),
+        source="paper-e2e-local-fixture",
+    ))
+
+
 def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_READY",
-              profile_id="trade-5m-v2"):
+              profile_id="trade-5m-v2", symbol: str = SYMBOL):
     config = OrchestratorConfig(
-        symbols=(SYMBOL,),
+        symbols=(symbol,),
         trade_profile_id=profile_id,
         primary_timeframe="5m",
         required_timeframes=("1m", "5m", "15m", "1h"),
@@ -275,7 +301,7 @@ def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_RE
             clock_ms=lambda: BOUNDARY + 1_000,
         ),
     )
-    result = runner.run(SYMBOL, BOUNDARY)
+    result = runner.run(symbol, BOUNDARY)
     assert result.status == "COMPLETED", repr((
         result.analysis_status, result.setup_status, result.strategy_status,
         result.risk_status, result.paper_status, result.error_code,
@@ -365,7 +391,7 @@ def _persist_natural_approval(factory, result):
     at = datetime.fromtimestamp(EVALUATION_MS / 1000, tz=timezone.utc)
     store = PipelineResultStore(factory, clock=lambda: at, owner_guard=_Owner())
     run_id = store.reserve(
-        SYMBOL,
+        result.symbol,
         result.primary_timeframe,
         BOUNDARY,
         daemon_instance_id="paper-natural-e2e",
@@ -501,8 +527,9 @@ def _seed_simulation_policy(factory, candidate) -> None:
         ))
 
 
-def _runtime(factory, engine, control, source, *, readiness=None):
+def _runtime(factory, engine, control, source, *, readiness=None, market_reader=None):
     store = SqlAlchemyPaperFirstCanaryStore(factory)
+    continuous_store = PaperContinuousAuthorityStore(factory)
     gate = PaperProductionMutationSafetyGate(control)
     uow = lambda: PaperUnitOfWork(factory)
     executor = ProductionPaperFirstCanaryExecutor(
@@ -515,6 +542,7 @@ def _runtime(factory, engine, control, source, *, readiness=None):
             True, True, True, True, True
         )),
         outcome_store=PaperPlanExecutionOutcomeStore(factory),
+        continuous_store=continuous_store,
     )
     lock = PostgresCanaryContinuationLock(engine)
     continuation = PaperFirstCanaryEligibleApprovalContinuationWorker(
@@ -523,6 +551,7 @@ def _runtime(factory, engine, control, source, *, readiness=None):
         executor=executor,
         lock=lock,
         poll_seconds=5,
+        continuous_store=continuous_store,
     )
     lifecycle_core = PaperControlledLifecycleWorker.from_factories(uow, factory)
     lifecycle = ProductionPaperFirstCanaryLifecycleWorker(
@@ -532,7 +561,7 @@ def _runtime(factory, engine, control, source, *, readiness=None):
         lifecycle_worker=lifecycle_core,
         market_data=PaperProductionMarketDataInputAdapter(
             factory,
-            reader=_MarketReaderAt(),
+            reader=market_reader or _MarketReaderAt(),
             monotonic=lambda: 2.0,
         ),
         mutation_safety_gate=gate,
@@ -542,6 +571,7 @@ def _runtime(factory, engine, control, source, *, readiness=None):
         lock=lock,
         readonly_base_url="http://127.0.0.1:1",
         poll_seconds=5,
+        continuous_store=continuous_store,
     )
     service = PaperOperatorControlService(
         config=PaperOperatorControlConfig.production_paper(),
@@ -551,6 +581,189 @@ def _runtime(factory, engine, control, source, *, readiness=None):
         canary_store=store,
     )
     return store, executor, continuation, lifecycle, service
+
+
+def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
+    natural_e2e_sessions, natural_e2e_engine, tmp_path, monkeypatch
+):
+    factory = natural_e2e_sessions
+    _seed_foundation(factory)
+    _seed_additional_symbol(factory, "ETHUSDT")
+    first_result = _pipeline(factory, symbol="BTCUSDT")
+    second_result = _pipeline(factory, symbol="ETHUSDT")
+    _persist_natural_approval(factory, first_result)
+    _persist_natural_approval(factory, second_result)
+
+    source = _approval_source(factory)
+    candidates = source.read(PaperProductionApprovalRequest(
+        PaperProductionApprovalScope(("BTCUSDT", "ETHUSDT"), "5m", max_candidates=2),
+        request_id="continuous-e2e-policy-seed", as_of_ms=EVALUATION_MS,
+    ))
+    available = tuple(item.candidate for item in candidates.symbol_results if item.candidate)
+    assert available, repr(candidates)
+    candidate = available[0]
+    _seed_simulation_policy(factory, candidate)
+
+    control = PaperProductionSafetyControl(tmp_path / "continuous-paper-control")
+    disabled = control.initialize_disabled(acknowledge=True)
+    armed = control.transition(
+        PersistentState.CONTINUOUS_ARMED,
+        expected_generation=disabled.generation,
+        reason=ReasonCode.CONTINUOUS_PAPER_ACTIVATION,
+        acknowledge=True, acknowledge_paper_arming=True,
+        preflight=PaperOperatorArmReadiness.isolated_ready().authority_preflight(),
+        arming_scope=PaperProductionArmingScope(1, 1, ("BTCUSDT", "ETHUSDT")),
+    )
+    authority = PaperContinuousAuthorityStore(factory)
+    authority.activate(
+        generation=armed.generation, source="isolated-postgres-e2e",
+        reason="TEST_CONTINUOUS_ACTIVATION",
+    )
+    market_reader = _MarketReaderAt()
+    store, executor, continuation, lifecycle, _service = _runtime(
+        factory, natural_e2e_engine, control, source, market_reader=market_reader
+    )
+
+    assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"
+    cycle_a = store.current()
+    assert cycle_a is not None and cycle_a.authority_mode == "CONTINUOUS"
+    assert lifecycle.run_once().endswith(":POSITION_OPEN_CURSOR_READY")
+    cycle_a = store.current()
+    assert cycle_a.position_id is not None
+    with factory() as session:
+        first_symbol = session.get(PaperPositionRecord, cycle_a.position_id).symbol
+    assert continuation.run_once() == "ACTIVE_CONTINUOUS_CYCLE"
+    with factory() as session:
+        assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(PaperPositionRecord).where(PaperPositionRecord.state == "OPEN")) == 1
+
+    repository = CandleRepository(factory)
+    for index in range(1, 4):
+        opened = BOUNDARY + index * 60_000
+        repository.upsert_candle(Candle(
+            symbol=first_symbol, timeframe="1m",
+            open_time_ms=opened, close_time_ms=opened + 59_999,
+            open=Decimal("100"), high=Decimal("200"), low=Decimal("1"),
+            close=Decimal("100"), volume=Decimal("100"), is_closed=True,
+            source="paper-continuous-e2e-close",
+        ))
+    SyncStateRepository(factory).upsert(SyncStateUpdate(
+        symbol=first_symbol, timeframe="1m",
+        daemon_instance_id="paper-natural-e2e", status="OK",
+        last_expected_open_time_ms=BOUNDARY + 180_000,
+        last_expected_close_boundary_ms=BOUNDARY + 240_000,
+        last_stored_open_time_ms=BOUNDARY + 180_000,
+        last_stored_close_boundary_ms=BOUNDARY + 240_000,
+        last_attempt_at=datetime.fromtimestamp((BOUNDARY + 240_001) / 1000, tz=timezone.utc),
+        last_success_at=datetime.fromtimestamp((BOUNDARY + 240_001) / 1000, tz=timezone.utc),
+        source="paper-continuous-e2e-close",
+    ))
+    market_reader.at_ms = BOUNDARY + 240_001
+    assert "POSITION_CLOSING_CLOSE_ORDER_OPEN" in lifecycle.run_once()
+    opened = BOUNDARY + 240_000
+    repository.upsert_candle(Candle(
+        symbol=first_symbol, timeframe="1m",
+        open_time_ms=opened, close_time_ms=opened + 59_999,
+        open=Decimal("100"), high=Decimal("200"), low=Decimal("1"),
+        close=Decimal("100"), volume=Decimal("100"), is_closed=True,
+        source="paper-continuous-e2e-close",
+    ))
+    SyncStateRepository(factory).upsert(SyncStateUpdate(
+        symbol=first_symbol, timeframe="1m",
+        daemon_instance_id="paper-natural-e2e", status="OK",
+        last_expected_open_time_ms=opened,
+        last_expected_close_boundary_ms=BOUNDARY + 300_000,
+        last_stored_open_time_ms=opened,
+        last_stored_close_boundary_ms=BOUNDARY + 300_000,
+        last_attempt_at=datetime.fromtimestamp((BOUNDARY + 300_001) / 1000, tz=timezone.utc),
+        last_success_at=datetime.fromtimestamp((BOUNDARY + 300_001) / 1000, tz=timezone.utc),
+        source="paper-continuous-e2e-close",
+    ))
+    market_reader.at_ms = BOUNDARY + 300_001
+    assert "POSITION_CLOSED" in lifecycle.run_once()
+
+    class _Response:
+        def __init__(self, payload): self.payload = payload
+        def __enter__(self): return self
+        def __exit__(self, *_args): return None
+        def read(self): return self.payload
+
+    responses = iter((
+        _Response(b'{"data":{"net_pnl":"-0.10","total_fees":"0.02","roi_percent":"-0.1"}}'),
+        _Response(b'{"data":{"paper_reconciliation":{"status":"HEALTHY"},"accounting_reconciliation":{"status":"HEALTHY"}}}'),
+    ))
+    monkeypatch.setattr(
+        "app.operator_control.production_lifecycle_worker.urllib.request.urlopen",
+        lambda *_args, **_kwargs: next(responses),
+    )
+    assert lifecycle.run_once() == "FINALIZED:COMPLETED"
+    assert control.read_authoritative().state is PersistentState.CONTINUOUS_ARMED
+    after_close = authority.read()
+    assert after_close is not None and after_close.control_state == "CONTINUOUS_ARMED"
+    assert after_close.commands_used == 1 and after_close.loss_streak == 1
+
+    # No arm/start call occurs here. The normal polling worker selects the
+    # remaining natural fixture approval and creates the second v2 graph.
+    assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"
+    cycle_b = store.current()
+    assert cycle_b is not None and cycle_b.canary_id != cycle_a.canary_id
+    assert cycle_b.authority_mode == "CONTINUOUS"
+    market_reader.at_ms = ENTRY_MARKET_AS_OF_MS
+    assert lifecycle.run_once().endswith(":POSITION_OPEN_CURSOR_READY")
+    assert executor.last_selection_diagnostics.winner_symbol == (
+        {"BTCUSDT", "ETHUSDT"} - {first_symbol}
+    ).pop()
+    with factory() as session:
+        commands = tuple(session.scalars(select(PaperExecutionCommandRecord).order_by(PaperExecutionCommandRecord.created_at)))
+        positions = tuple(session.scalars(select(PaperPositionRecord).order_by(PaperPositionRecord.opened_at)))
+        profiles = tuple(session.execute(text(
+            "SELECT DISTINCT r.trade_profile_id FROM paper_execution_commands c "
+            "JOIN online_pipeline_runs r ON r.run_id = c.pipeline_run_id ORDER BY 1"
+        )).scalars())
+    assert len(commands) == len(positions) == 2
+    assert profiles == ("trade-5m-v2",)
+    assert positions[-1].state == "OPEN"
+    assert authority.read().commands_used == 2
+
+
+def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
+    natural_e2e_sessions,
+):
+    factory = natural_e2e_sessions
+    activated_at = datetime(2026, 9, 4, 20, 0, tzinfo=timezone.utc)
+    store = PaperContinuousAuthorityStore(factory)
+    store.activate(
+        generation=12, source="isolated-postgres-e2e",
+        reason="TEST_CONTINUOUS_ACTIVATION", now=activated_at,
+    )
+    for index in range(5):
+        store.record_command(
+            command_id=f"paper:test:continuous-command:{index}",
+            now=activated_at + timedelta(minutes=index),
+        )
+    restarted = PaperContinuousAuthorityStore(factory)
+    paused = restarted.reconcile(
+        generation=12, now=activated_at + timedelta(hours=1)
+    )
+    assert paused.control_state == "PAUSED_BY_RISK"
+    assert paused.pause_reason == "DAILY_RISK_BUDGET_EXHAUSTED"
+    assert paused.commands_used == 5
+    assert paused.risk_used_bps == Decimal("50")
+
+    reset = restarted.reconcile(
+        generation=12, now=activated_at + timedelta(days=1)
+    )
+    assert reset.control_state == "CONTINUOUS_ARMED"
+    assert reset.enabled is True
+    assert reset.commands_used == 0
+    assert reset.risk_used_bps == Decimal("0")
+    stopped = restarted.set_control_state(
+        generation=13, state="EMERGENCY_STOPPED",
+        source="isolated-postgres-e2e", reason="OPERATOR_EMERGENCY_STOP",
+        now=activated_at + timedelta(days=1, minutes=1),
+    )
+    assert stopped is not None and stopped.control_state == "EMERGENCY_STOPPED"
+    assert PaperContinuousAuthorityStore(factory).read().enabled is False
 
 
 def _arm_and_wait(service):

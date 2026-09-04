@@ -259,7 +259,7 @@ class PaperReadonlyReportingService:
             ("KILL_SWITCH_NOT_READY", runtime.kill_switch_ready),
             (
                 "CONTROL_NOT_ELIGIBLE",
-                control.state in {"DISABLED", "ARMED"}
+                control.state in {"DISABLED", "ARMED", "CONTINUOUS_ARMED", "PAUSED_BY_RISK"}
                 and control.effective_state == control.state
                 and control.health == "HEALTHY"
                 and control.audit_health == "PASS"
@@ -270,6 +270,8 @@ class PaperReadonlyReportingService:
             ("LIVE_NOT_DENIED", not runtime.live_enabled),
         )
         denials.extend(code for code, passed in gates if not passed and code not in denials)
+        if control.risk_pause_reason and control.risk_pause_reason not in denials:
+            denials.append(control.risk_pause_reason)
         mutation_ready = ready and not denials
         return PaperReadiness(
             environment=runtime.environment,
@@ -310,6 +312,19 @@ class PaperReadonlyReportingService:
             current_approval_availability=runtime.current_approval_availability,
             current_mutation_ready=mutation_ready,
             current_mutation_denial_reasons=denials,
+            authority_mode=control.authority_mode,
+            control_mode_version=control.control_mode_version,
+            budget_day=control.budget_day,
+            daily_command_budget=control.daily_command_budget,
+            commands_used_today=control.commands_used_today,
+            daily_realized_loss_budget=control.daily_realized_loss_budget,
+            realized_pnl_today=control.realized_pnl_today,
+            realized_loss_today=control.realized_loss_today,
+            daily_risk_budget_bps=control.daily_risk_budget_bps,
+            risk_used_today_bps=control.risk_used_today_bps,
+            max_consecutive_losses=control.max_consecutive_losses,
+            loss_streak=control.loss_streak,
+            risk_pause_reason=control.risk_pause_reason,
         )
 
     def account(self) -> PaperAccount:

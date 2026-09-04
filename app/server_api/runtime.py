@@ -28,6 +28,7 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanaryState,
     SqlAlchemyPaperFirstCanaryStore,
 )
+from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
 from app.server_api.paper_runtime_observation import (
     ProductionPaperRuntimeObservationSource,
     load_production_identity,
@@ -82,11 +83,21 @@ def _repositories(
 def _paper_control_status(
     control: PaperProductionSafetyControl,
     canaries: SqlAlchemyPaperFirstCanaryStore | None = None,
+    continuous: PaperContinuousAuthorityStore | None = None,
 ) -> PaperControlStatus:
     """Observe the reconciled control state without acquiring/writing a lock."""
     state = control.read_authoritative()
     canary = None if canaries is None else canaries.current()
-    if state.state.value == "ARMED":
+    budget = None if continuous is None else continuous.read()
+    if state.state.value == "CONTINUOUS_ARMED":
+        if (
+            budget is None
+            or budget.generation != state.generation
+            or budget.control_mode != "CONTINUOUS"
+            or budget.control_state not in {"CONTINUOUS_ARMED", "PAUSED_BY_RISK"}
+        ):
+            raise RuntimeError("CONTROL_CONTINUOUS_RECONCILIATION_FAILED")
+    elif state.state.value == "ARMED":
         if (
             canary is None
             or canary.state not in {
@@ -128,6 +139,19 @@ def _paper_control_status(
         canary_open_position_remaining=None if canary is None else max(0, canary.max_open_positions - canary.position_count),
         canary_open_position_budget_exhausted=None if canary is None else canary.position_count >= canary.max_open_positions,
         canary_closed_trade_count=None if canary is None else int(canary.trade_report_available),
+        authority_mode=("CONTINUOUS" if budget is not None else "FIRST_CANARY_HISTORICAL"),
+        control_mode_version=None if budget is None else budget.mode_version,
+        budget_day=None if budget is None else budget.budget_day.isoformat(),
+        daily_command_budget=None if budget is None else budget.daily_command_budget,
+        commands_used_today=None if budget is None else budget.commands_used,
+        daily_realized_loss_budget=None if budget is None else str(budget.daily_realized_loss_budget),
+        realized_pnl_today=None if budget is None else str(budget.realized_pnl),
+        realized_loss_today=None if budget is None else str(budget.realized_loss),
+        daily_risk_budget_bps=None if budget is None else str(budget.daily_risk_budget_bps),
+        risk_used_today_bps=None if budget is None else str(budget.risk_used_bps),
+        max_consecutive_losses=None if budget is None else budget.max_consecutive_losses,
+        loss_streak=None if budget is None else budget.loss_streak,
+        risk_pause_reason=None if budget is None else budget.pause_reason,
     )
 
 
@@ -144,7 +168,8 @@ def create_runtime_app() -> FastAPI:
         acl_checker=(lambda _path: True),
     )
     canaries = SqlAlchemyPaperFirstCanaryStore(sessions)
-    control_status = lambda: _paper_control_status(control, canaries)
+    continuous = PaperContinuousAuthorityStore(sessions)
+    control_status = lambda: _paper_control_status(control, canaries, continuous)
     paper_runtime = ProductionPaperRuntimeObservationSource(sessions, control_status)
     try:
         production_identity = load_production_identity()

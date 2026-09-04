@@ -980,6 +980,7 @@ class TradingFunnelReadRepository:
                         ("0020_paper_plan_execution_outcomes",),
                         ("0021_independent_scalping_profile_v2",),
                         ("0023_scalping_v2_journal_causality",),
+                        ("0024_continuous_paper_authority",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(

@@ -18,6 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from uvicorn import run as run_server
 
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
+from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
 from app.engine_paper.command_ingestion_service import PaperCommandIngestionService
 from app.engine_paper.production_approval import PaperProductionApprovalSourceAdapter
 from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
@@ -131,8 +132,8 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 and payload.get("accounting_reconciliation_status") == "HEALTHY"
                 and payload.get("paper_reconciliation_status") == "HEALTHY"
                 and payload.get("paper_runtime_enabled") is True
-                and payload.get("paper_control_state") == "ARMED"
-                and payload.get("paper_control_effective_state") == "ARMED"
+                and payload.get("paper_control_state") in {"ARMED", "CONTINUOUS_ARMED"}
+                and payload.get("paper_control_effective_state") in {"ARMED", "CONTINUOUS_ARMED"}
                 and payload.get("paper_control_health") == "HEALTHY"
                 and isinstance(payload.get("paper_control_generation"), int)
                 and isinstance(denials, list)
@@ -226,6 +227,7 @@ def create_runtime_app(
     if executor is None and require_production_store:
         if sessions is None or not isinstance(canary_store, SqlAlchemyPaperFirstCanaryStore):
             raise RuntimeError("CONTROL_RUNTIME_EXECUTOR_COMPOSITION_UNAVAILABLE")
+        continuous_store = PaperContinuousAuthorityStore(sessions)
         executor = ProductionPaperFirstCanaryExecutor(
             control=active_control,
             canary_store=canary_store,
@@ -238,7 +240,10 @@ def create_runtime_app(
                 os.environ.get(READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL)
             ),
             outcome_store=PaperPlanExecutionOutcomeStore(sessions),
+            continuous_store=continuous_store,
         )
+    else:
+        continuous_store = PaperContinuousAuthorityStore(sessions) if sessions is not None else None
     continuation_worker = None
     lifecycle_worker = None
     runtime_health_publisher = None
@@ -255,6 +260,7 @@ def create_runtime_app(
             executor=executor,
             lock=PostgresCanaryContinuationLock(engine),
             poll_seconds=continuation_poll_seconds(),
+            continuous_store=continuous_store,
         )
         lifecycle_worker = ProductionPaperFirstCanaryLifecycleWorker(
             control=active_control,
@@ -275,6 +281,7 @@ def create_runtime_app(
                 READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL
             ),
             poll_seconds=lifecycle_poll_seconds(),
+            continuous_store=continuous_store,
         )
         runtime_health_publisher = PaperRuntimeHealthPublisher(
             resolve_production_control_root(),
@@ -297,6 +304,7 @@ def create_runtime_app(
             if continuation_worker is not None else None
         ),
         active_universe=(universe_store.active_universe if universe_store is not None else None),
+        continuous_store=continuous_store,
     )
 
     @asynccontextmanager
@@ -336,6 +344,7 @@ def create_runtime_app(
     app.state.first_canary_continuation_worker = continuation_worker
     app.state.first_canary_lifecycle_worker = lifecycle_worker
     app.state.paper_runtime_health_publisher = runtime_health_publisher
+    app.state.paper_continuous_authority_store = continuous_store
     app.state.trading_universe_store = universe_store
     return app
 

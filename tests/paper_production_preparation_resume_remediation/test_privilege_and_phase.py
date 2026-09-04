@@ -79,10 +79,10 @@ def test_phase_is_schema_and_postcondition_aware(revision, complete, drift, expe
     ) is expected
 
 
-def test_production_upgrade_contract_accepts_deployed_0018_through_0020() -> None:
+def test_production_upgrade_contract_accepts_deployed_0018_through_0024() -> None:
     assert "0018_promote_5m_production_search" in SUPPORTED_PREPARATION_REVISIONS
     assert "0019_first_class_15m_domain" in SUPPORTED_PREPARATION_REVISIONS
-    assert EXPECTED_FINAL_ALEMBIC == "0020_paper_plan_execution_outcomes"
+    assert EXPECTED_FINAL_ALEMBIC == "0024_continuous_paper_authority"
 
 
 def test_non_orchestrated_resume_targets_the_current_supported_revision() -> None:

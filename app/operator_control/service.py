@@ -23,6 +23,7 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanarySession,
     PaperFirstCanaryState,
 )
+from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
 
 from .config import CONTROL_API_VERSION, ControlAuthProfile, PaperOperatorControlConfig
 from .schemas import (
@@ -205,6 +206,7 @@ class PaperOperatorControlService:
         canary_store: PaperFirstCanaryStore | None = None,
         continuation_status: Callable[[], tuple[bool, float | None]] | None = None,
         active_universe: Callable[[], TradingUniverseVersion] | None = None,
+        continuous_store: PaperContinuousAuthorityStore | None = None,
     ) -> None:
         self.config = config
         self.control = control
@@ -213,6 +215,7 @@ class PaperOperatorControlService:
         self.canary_store = canary_store
         self.continuation_status = continuation_status or (lambda: (False, None))
         self.active_universe = active_universe or (lambda: ACTIVE_TRADING_UNIVERSE)
+        self.continuous_store = continuous_store
         self._idempotency = _IdempotencyRegistry()
 
     @staticmethod
@@ -620,7 +623,9 @@ class PaperOperatorControlService:
                 raise ControlApiError(400, "INVALID_REQUEST")
             self._deny_if_foundation(request.request_id, operation)
             before = self._state()
-            if operation == "CLEAR_EMERGENCY_STOP" and before.state is not PersistentState.EMERGENCY_STOP:
+            if operation == "CLEAR_EMERGENCY_STOP" and before.state not in {
+                PersistentState.EMERGENCY_STOP, PersistentState.EMERGENCY_STOPPED,
+            }:
                 raise ControlApiError(409, "ILLEGAL_CONTROL_TRANSITION")
             try:
                 after = self.control.transition(
@@ -628,6 +633,13 @@ class PaperOperatorControlService:
                 )
             except SafetyControlError as error:
                 raise self._map_authority_error(error) from error
+            if self.continuous_store is not None and before.state in {
+                PersistentState.CONTINUOUS_ARMED, PersistentState.EMERGENCY_STOPPED,
+            }:
+                self.continuous_store.set_control_state(
+                    generation=after.generation, state=after.state.value,
+                    source="operator-control-api", reason=reason.value,
+                )
             return PaperOperatorControlDecision(
                 request_id=request.request_id, operation=operation, accepted=True,
                 executed=after.transition_id != before.transition_id,
@@ -685,6 +697,11 @@ class PaperOperatorControlService:
                 )
             except SafetyControlError as error:
                 raise self._map_authority_error(error) from error
+            if self.continuous_store is not None and before.state is PersistentState.CONTINUOUS_ARMED:
+                self.continuous_store.set_control_state(
+                    generation=after.generation, state="DISABLED",
+                    source="operator-control-api", reason=ReasonCode.OPERATOR_DISABLE.value,
+                )
             if canary is not None and self.canary_store is not None:
                 try:
                     self.canary_store.stop_waiting(
@@ -710,7 +727,13 @@ class PaperOperatorControlService:
         return self._run(request.request_id, "DISABLE", request, execute)
 
     def emergency_stop(self, request: PaperOperatorTransitionRequest) -> PaperOperatorControlDecision:
-        return self._transition(request, "EMERGENCY_STOP", PersistentState.EMERGENCY_STOP, ReasonCode.OPERATOR_EMERGENCY_STOP)
+        before = self._state()
+        target = (
+            PersistentState.EMERGENCY_STOPPED
+            if before.state is PersistentState.CONTINUOUS_ARMED
+            else PersistentState.EMERGENCY_STOP
+        )
+        return self._transition(request, "EMERGENCY_STOP", target, ReasonCode.OPERATOR_EMERGENCY_STOP)
 
     def clear_emergency_stop(self, request: PaperOperatorClearEmergencyStopRequest) -> PaperOperatorControlDecision:
         return self._transition(request, "CLEAR_EMERGENCY_STOP", PersistentState.DISABLED, ReasonCode.CLEAR_EMERGENCY_STOP)

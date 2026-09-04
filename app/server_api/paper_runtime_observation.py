@@ -390,7 +390,7 @@ class ProductionPaperRuntimeObservationSource:
         try:
             control = self._control_status()
             kill_switch_ready = (
-                control.state in {"DISABLED", "ARMED"}
+                control.state in {"DISABLED", "ARMED", "CONTINUOUS_ARMED", "PAUSED_BY_RISK"}
                 and control.effective_state == control.state
                 and control.health == "HEALTHY"
                 and control.audit_health == "PASS"

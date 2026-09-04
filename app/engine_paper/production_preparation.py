@@ -20,7 +20,7 @@ PRODUCTION_PAPER_RUNTIME_ROLE: Final = "traders_paper_runtime"
 PRODUCTION_READONLY_ROLE: Final = "traders_readonly_api"
 EXPECTED_START_ALEMBIC: Final = "0008_engine_orchestrator_freshness_retry"
 EXPECTED_PREVIOUS_ALEMBIC: Final = "0019_first_class_15m_domain"
-EXPECTED_FINAL_ALEMBIC: Final = "0020_paper_plan_execution_outcomes"
+EXPECTED_FINAL_ALEMBIC: Final = "0024_continuous_paper_authority"
 SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
     EXPECTED_START_ALEMBIC,
     "0014_paper_canary_selection_policy",
@@ -29,6 +29,10 @@ SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
     "0017_parallel_trade_profiles",
     "0018_promote_5m_production_search",
     EXPECTED_PREVIOUS_ALEMBIC,
+    "0020_paper_plan_execution_outcomes",
+    "0021_independent_scalping_profile_v2",
+    "0022_scalping_v2_paper_simulation_policy",
+    "0023_scalping_v2_journal_causality",
     EXPECTED_FINAL_ALEMBIC,
 })
 IDENTITY_KEYS: Final = (
@@ -256,11 +260,13 @@ RUNTIME_WRITE_TABLES: Final = (
     "paper_order_events", "paper_fills", "paper_positions",
     "paper_exit_evaluation_cursors", "paper_exit_decisions", "paper_journal_entries",
     "paper_first_canary_sessions", "paper_plan_execution_outcomes",
+    "paper_continuous_control", "paper_continuous_control_events",
 )
 RUNTIME_UPDATE_TABLES: Final = (
     "paper_execution_commands", "paper_orders", "paper_positions",
     "paper_exit_evaluation_cursors", "paper_first_canary_sessions",
     "paper_plan_execution_outcomes",
+    "paper_continuous_control",
 )
 READONLY_PAPER_TABLES: Final = (
     "alembic_version", "paper_account_baselines",

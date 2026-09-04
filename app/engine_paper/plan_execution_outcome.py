@@ -109,6 +109,23 @@ class PaperPlanExecutionOutcomeStore:
                     row.lifecycle_state = state
                     row.updated_at = now
 
+    def unconsumed_candidates(self, candidates: Sequence[Any]) -> tuple[Any, ...]:
+        """Exclude approvals that already produced a durable command."""
+        run_ids = tuple(candidate.lineage.source_run_id for candidate in candidates)
+        if not run_ids:
+            return ()
+        with self._session_factory() as session:
+            consumed = frozenset(session.scalars(
+                select(PaperPlanExecutionOutcomeRecord.pipeline_run_id).where(
+                    PaperPlanExecutionOutcomeRecord.pipeline_run_id.in_(run_ids),
+                    PaperPlanExecutionOutcomeRecord.command_id.is_not(None),
+                )
+            ))
+        return tuple(
+            candidate for candidate in candidates
+            if candidate.lineage.source_run_id not in consumed
+        )
+
     def record_attempt(
         self,
         run_id: str,

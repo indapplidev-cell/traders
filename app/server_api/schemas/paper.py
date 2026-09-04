@@ -21,8 +21,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0020_paper_plan_execution_outcomes"
-    ] = "0020_paper_plan_execution_outcomes"
+        "0024_continuous_paper_authority"
+    ] = "0024_continuous_paper_authority"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool
@@ -61,6 +61,19 @@ class PaperReadiness(BaseModel):
     current_approval_availability: str
     current_mutation_ready: bool = False
     current_mutation_denial_reasons: list[str]
+    authority_mode: str = "FIRST_CANARY_HISTORICAL"
+    control_mode_version: int | None = Field(default=None, ge=1)
+    budget_day: str | None = None
+    daily_command_budget: int | None = Field(default=None, ge=1)
+    commands_used_today: int | None = Field(default=None, ge=0)
+    daily_realized_loss_budget: DecimalString | None = None
+    realized_pnl_today: DecimalString | None = None
+    realized_loss_today: DecimalString | None = None
+    daily_risk_budget_bps: DecimalString | None = None
+    risk_used_today_bps: DecimalString | None = None
+    max_consecutive_losses: int | None = Field(default=None, ge=1)
+    loss_streak: int | None = Field(default=None, ge=0)
+    risk_pause_reason: str | None = None
 
 
 class PaperAccount(BaseModel):
@@ -226,6 +239,19 @@ class PaperControlStatus(BaseModel):
     canary_open_position_remaining: int | None = Field(default=None, ge=0)
     canary_open_position_budget_exhausted: bool | None = None
     canary_closed_trade_count: int | None = Field(default=None, ge=0)
+    authority_mode: str = "FIRST_CANARY_HISTORICAL"
+    control_mode_version: int | None = Field(default=None, ge=1)
+    budget_day: str | None = None
+    daily_command_budget: int | None = Field(default=None, ge=1)
+    commands_used_today: int | None = Field(default=None, ge=0)
+    daily_realized_loss_budget: DecimalString | None = None
+    realized_pnl_today: DecimalString | None = None
+    realized_loss_today: DecimalString | None = None
+    daily_risk_budget_bps: DecimalString | None = None
+    risk_used_today_bps: DecimalString | None = None
+    max_consecutive_losses: int | None = Field(default=None, ge=1)
+    loss_streak: int | None = Field(default=None, ge=0)
+    risk_pause_reason: str | None = None
 
 
 class PaperOrderItem(BaseModel):

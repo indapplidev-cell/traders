@@ -268,6 +268,9 @@ def test_reason_codes_are_bounded_non_secret_vocabulary():
     assert {item.value for item in safety.ReasonCode} == {
         "INITIALIZE_SAFE_DEFAULT", "OPERATOR_ARM", "OPERATOR_DISABLE",
         "OPERATOR_EMERGENCY_STOP", "CLEAR_EMERGENCY_STOP", "PREPARATION_CANARY", "SAFETY_TEST",
+        "CONTINUOUS_PAPER_ACTIVATION", "DAILY_COMMAND_BUDGET_EXHAUSTED",
+        "DAILY_LOSS_BUDGET_EXHAUSTED", "DAILY_RISK_BUDGET_EXHAUSTED",
+        "MAX_CONSECUTIVE_LOSSES_REACHED", "TRADING_DAY_BUDGET_RESET",
     }
     assert all(len(item.value) <= safety.MAX_REASON_LENGTH for item in safety.ReasonCode)
 
