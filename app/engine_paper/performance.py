@@ -61,13 +61,31 @@ def scalp_v2_performance(
         if Decimal(str(context[item.position_id].get("risk_amount", "0"))) > 0
     )
     total = sum(pnl, Decimal("0"))
+    fees = sum((item.total_fees for item in selected), Decimal("0"))
+    gross_pnl = sum(
+        (
+            getattr(item, "gross_pnl", item.net_pnl + item.total_fees)
+            for item in selected
+        ),
+        Decimal("0"),
+    )
     return {
         "profile_id": "trade-5m-v2",
         "profile_version": "v2",
-        "observation_status": "OBSERVED" if sample_count else "NOT_ENOUGH_SAMPLE",
-        "sample_status": "NOT_ENOUGH_SAMPLE",
+        "observation_status": "OBSERVED" if sample_count else "NO_OBSERVATIONS",
+        # The project has no statistically approved sufficiency threshold.
+        # Reporting that fact avoids silently turning N into a conclusion.
+        "sample_status": "THRESHOLD_NOT_DEFINED",
+        "sample_threshold": None,
         "sample_count": sample_count,
+        "sample_size": sample_count,
+        "closed_trades_count": sample_count,
+        "period_start": min((item.entry_time for item in selected), default=None),
+        "period_end": max((item.exit_time for item in selected), default=None),
         "wins": len(wins), "losses": len(losses), "breakeven": breakeven,
+        "gross_pnl": gross_pnl,
+        "fees": fees,
+        "net_pnl": total,
         "win_rate": None if not sample_count else Decimal(len(wins)) / sample_count,
         "avg_win": avg_win, "avg_loss": avg_loss,
         "net_expectancy_per_trade": None if not sample_count else total / sample_count,
@@ -82,6 +100,7 @@ def scalp_v2_performance(
         "average_net_rr": None if not net_rr else sum(net_rr) / len(net_rr),
         "break_even_win_rate": break_even,
         "automatic_rr_retune": False,
+        "automatic_conclusion": None,
     }
 
 

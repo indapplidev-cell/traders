@@ -30,6 +30,7 @@ def test_scalping_v2_expectancy_is_factual_and_profile_isolated() -> None:
     }
     value = scalp_v2_performance(reports, context)
     assert value["sample_count"] == 2
+    assert value["sample_size"] == value["closed_trades_count"] == 2
     assert (value["wins"], value["losses"], value["breakeven"]) == (1, 1, 0)
     assert value["win_rate"] == Decimal("0.5")
     assert value["net_expectancy_per_trade"] == Decimal("0.05")
@@ -41,12 +42,20 @@ def test_scalping_v2_expectancy_is_factual_and_profile_isolated() -> None:
     assert value["average_net_rr"] == Decimal("0.25")
     assert value["break_even_win_rate"] == Decimal("0.4285714285714285714285714286")
     assert value["automatic_rr_retune"] is False
-    assert value["sample_status"] == "NOT_ENOUGH_SAMPLE"
+    assert value["sample_status"] == "THRESHOLD_NOT_DEFINED"
+    assert value["sample_threshold"] is None
+    assert value["automatic_conclusion"] is None
+    assert value["gross_pnl"] == Decimal("0.50")
+    assert value["fees"] == Decimal("0.40")
+    assert value["net_pnl"] == Decimal("0.10")
+    assert value["period_start"] == reports[0].entry_time
+    assert value["period_end"] == reports[1].exit_time
 
 
 def test_empty_sample_is_explicit_and_never_claims_profitability() -> None:
     value = scalp_v2_performance((), {})
     assert value["sample_count"] == 0
-    assert value["observation_status"] == "NOT_ENOUGH_SAMPLE"
+    assert value["observation_status"] == "NO_OBSERVATIONS"
+    assert value["sample_status"] == "THRESHOLD_NOT_DEFINED"
     assert value["net_expectancy_per_trade"] is None
     assert value["profit_factor"] is None
