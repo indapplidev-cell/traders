@@ -9,6 +9,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.db.paper_models import (
+    PaperContinuousControlEventRecord,
     PaperExecutionCommandRecord,
     PaperFillRecord,
     PaperJournalEntryRecord,
@@ -722,6 +723,17 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert after_close.generation == armed.generation
     assert after_close.enabled is True
     assert after_close.commands_used == 1 and after_close.loss_streak == 1
+    assert after_close.risk_used_bps == Decimal("10")
+    assert after_close.open_positions == 0
+    # A restarted worker cannot apply the fill, fee, PnL, or released capacity
+    # a second time after the completed cycle has left the active selector.
+    with factory() as session:
+        fill_count_before = session.scalar(select(func.count()).select_from(PaperFillRecord))
+        fee_total_before = session.scalar(select(func.sum(PaperFillRecord.fee_amount)))
+    assert lifecycle.run_once() == "NO_COMMAND_READY"
+    with factory() as session:
+        assert session.scalar(select(func.count()).select_from(PaperFillRecord)) == fill_count_before
+        assert session.scalar(select(func.sum(PaperFillRecord.fee_amount))) == fee_total_before
     restarted_authority = PaperContinuousAuthorityStore(factory).read()
     assert restarted_authority is not None
     assert restarted_authority.control_state == "CONTINUOUS_ARMED"
@@ -771,7 +783,43 @@ def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
             command_id=f"paper:test:continuous-command:{index}",
             now=activated_at + timedelta(minutes=index),
         )
+    before_close = PaperContinuousAuthorityStore(factory).read()
+    assert before_close is not None
+    assert before_close.budget_day == activated_at.date()
+    assert before_close.commands_used == 5
+    assert before_close.risk_used_bps == Decimal("50")
+
+    # Restart before close: persisted counters survive and close accounting is
+    # keyed by the durable position identity.
     restarted = PaperContinuousAuthorityStore(factory)
+    closed = restarted.record_close(
+        position_id="paper:continuous:position:restart-safe",
+        realized_pnl=Decimal("-0.125"),
+        reconciliation_healthy=True,
+        now=activated_at + timedelta(minutes=10),
+    )
+    assert closed.realized_pnl == Decimal("-0.125")
+    assert closed.realized_loss == Decimal("0.125")
+    assert closed.loss_streak == 1
+    restarted_after_close = PaperContinuousAuthorityStore(factory)
+    replay = restarted_after_close.record_close(
+        position_id="paper:continuous:position:restart-safe",
+        realized_pnl=Decimal("-999"),
+        reconciliation_healthy=True,
+        now=activated_at + timedelta(minutes=11),
+    )
+    assert replay.realized_pnl == closed.realized_pnl
+    assert replay.realized_loss == closed.realized_loss
+    assert replay.loss_streak == closed.loss_streak
+    assert replay.commands_used == 5
+    assert replay.risk_used_bps == Decimal("50")
+    with factory() as session:
+        assert session.scalar(
+            select(func.count()).select_from(PaperContinuousControlEventRecord).where(
+                PaperContinuousControlEventRecord.event_type == "POSITION_CLOSED"
+            )
+        ) == 1
+
     paused = restarted.reconcile(
         generation=12, now=activated_at + timedelta(hours=1)
     )
@@ -787,6 +835,20 @@ def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
     assert reset.enabled is True
     assert reset.commands_used == 0
     assert reset.risk_used_bps == Decimal("0")
+    assert reset.realized_pnl == Decimal("0")
+    assert reset.realized_loss == Decimal("0")
+    assert reset.loss_streak == 0
+    same_day_replay = restarted.reconcile(
+        generation=12, now=activated_at + timedelta(days=1, seconds=1)
+    )
+    assert same_day_replay.budget_day == reset.budget_day
+    assert same_day_replay.commands_used == reset.commands_used
+    with factory() as session:
+        assert session.scalar(
+            select(func.count()).select_from(PaperContinuousControlEventRecord).where(
+                PaperContinuousControlEventRecord.event_type == "TRADING_DAY_RESET"
+            )
+        ) == 1
     stopped = restarted.set_control_state(
         generation=13, state="EMERGENCY_STOPPED",
         source="isolated-postgres-e2e", reason="OPERATOR_EMERGENCY_STOP",
