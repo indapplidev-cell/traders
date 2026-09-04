@@ -82,9 +82,10 @@ def lifecycle_poll_seconds() -> float:
     return value if MIN_POLL_SECONDS <= value <= MAX_POLL_SECONDS else DEFAULT_POLL_SECONDS
 
 
-def _id(canary_id: str, role: str) -> str:
+def _id(canary_id: str, role: str, *, continuous: bool = False) -> str:
     digest = sha256(f"{canary_id}|{role}".encode("ascii")).hexdigest()
-    return f"paper:first-canary:{role}:{digest}"
+    authority = "continuous" if continuous else "first-canary"
+    return f"paper:{authority}:{role}:{digest}"
 
 
 def _at(boundary_ms: int) -> datetime:
@@ -174,12 +175,12 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             thread.join(timeout=min(self.poll_seconds + 1.0, 15.0))
         self._thread = None
 
-    def _snapshot(self, symbol: str, canary_id: str):
+    def _snapshot(self, symbol: str, canary_id: str, *, continuous: bool = False):
         result = self._market_data.read(PaperProductionMarketDataRequest(
             scope=PaperProductionMarketDataScope(
                 symbols=(symbol,), timeframes=("1m",), candles_per_timeframe=MAX_CANDLES
             ),
-            request_id=_id(canary_id, "lifecycle-market-snapshot"),
+            request_id=_id(canary_id, "lifecycle-market-snapshot", continuous=continuous),
         ))
         if result.readiness is not PaperProductionMarketDataReadiness.READY or result.data is None:
             return None, result.outcome.value
@@ -268,7 +269,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
     def _orders(graph):
         return {node.role: node.order for node in graph.orders}
 
-    def _entry_cycle(self, canary_id: str, graph, candles):
+    def _entry_cycle(self, canary_id: str, graph, candles, *, continuous: bool = False):
         command = graph.command
         entry = self._orders(graph)["ENTRY"]
         eligible = tuple(value for value in candles if value.open_time_ms >= command.closed_until_ms)
@@ -295,25 +296,25 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             market_snapshot_closed_until_ms=selected.close_boundary_ms,
             simulation_policy=policy, price_quantum=policy.price_quantum,
             fee_quantum=policy.fee_quantum, quote_asset="USDT", fill_id=fill_id,
-            order_event_id=_id(canary_id, "entry-filled-event"),
-            position_event_id=_id(canary_id, "position-opened-event"),
+            order_event_id=_id(canary_id, "entry-filled-event", continuous=continuous),
+            position_event_id=_id(canary_id, "position-opened-event", continuous=continuous),
             journal_entry_ids=(
-                _id(canary_id, "entry-filled-journal"),
-                _id(canary_id, "position-opened-journal"),
+                _id(canary_id, "entry-filled-journal", continuous=continuous),
+                _id(canary_id, "position-opened-journal", continuous=continuous),
             ),
             correlation_id=correlation, causation_id=command.command_id,
             operation_at=_at(selected.close_boundary_ms),
-            position_id=_id(canary_id, "position"),
+            position_id=_id(canary_id, "position", continuous=continuous),
         )
-        return self._cycle(canary_id, graph, entry_execution_request=request), "READY"
+        return self._cycle(canary_id, graph, continuous=continuous, entry_execution_request=request), "READY"
 
-    def _exit_cycle(self, canary_id: str, graph, candles):
+    def _exit_cycle(self, canary_id: str, graph, candles, *, continuous: bool = False):
         command, position, cursor = graph.command, graph.positions[0], graph.cursors[0]
         eligible = tuple(value for value in candles if value.open_time_ms >= cursor.last_evaluated_closed_until_ms)
         if not eligible:
             return None, "WAITING_FOR_EXIT_CANDLE"
         correlation = graph.journal[0].correlation_id
-        close_order_id = _id(canary_id, "close-order")
+        close_order_id = _id(canary_id, "close-order", continuous=continuous)
         request = PaperExitEvaluationRequest(
             position_id=position.position_id, expected_position_version=position.version,
             cursor_id=cursor.cursor_id, expected_cursor_version=cursor.version,
@@ -323,23 +324,23 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             market_snapshot_closed_until_ms=eligible[-1].close_boundary_ms,
             safety_directive=None, evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
             execution_mode=ExecutionMode.PAPER, explicit_paper_authorization=True,
-            exit_decision_id=_id(canary_id, "exit-decision"), close_order_id=close_order_id,
-            exit_event_id=_id(canary_id, "exit-event"),
-            close_order_created_event_id=_id(canary_id, "close-created-event"),
-            close_order_validated_event_id=_id(canary_id, "close-validated-event"),
-            close_order_opened_event_id=_id(canary_id, "close-opened-event"),
+            exit_decision_id=_id(canary_id, "exit-decision", continuous=continuous), close_order_id=close_order_id,
+            exit_event_id=_id(canary_id, "exit-event", continuous=continuous),
+            close_order_created_event_id=_id(canary_id, "close-created-event", continuous=continuous),
+            close_order_validated_event_id=_id(canary_id, "close-validated-event", continuous=continuous),
+            close_order_opened_event_id=_id(canary_id, "close-opened-event", continuous=continuous),
             journal_entry_ids=(
-                _id(canary_id, "close-created-event"),
-                _id(canary_id, "close-validated-event"),
-                _id(canary_id, "close-opened-event"),
-                _id(canary_id, "exit-event"),
+                _id(canary_id, "close-created-event", continuous=continuous),
+                _id(canary_id, "close-validated-event", continuous=continuous),
+                _id(canary_id, "close-opened-event", continuous=continuous),
+                _id(canary_id, "exit-event", continuous=continuous),
             ),
-            close_execution_fill_id=_id(canary_id, "close-fill-reservation"),
-            close_execution_order_event_id=_id(canary_id, "close-filled-event"),
-            close_execution_position_event_id=_id(canary_id, "position-closed-event"),
+            close_execution_fill_id=_id(canary_id, "close-fill-reservation", continuous=continuous),
+            close_execution_order_event_id=_id(canary_id, "close-filled-event", continuous=continuous),
+            close_execution_position_event_id=_id(canary_id, "position-closed-event", continuous=continuous),
             close_execution_journal_entry_ids=(
-                _id(canary_id, "close-filled-journal"),
-                _id(canary_id, "position-closed-journal"),
+                _id(canary_id, "close-filled-journal", continuous=continuous),
+                _id(canary_id, "position-closed-journal", continuous=continuous),
             ),
             price_quantum=_foundation_policy(command.simulation_policy_id).price_quantum,
             fee_quantum=_foundation_policy(command.simulation_policy_id).fee_quantum,
@@ -351,9 +352,9 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             created_at=_at(eligible[0].close_boundary_ms), correlation_id=correlation,
             causation_id=position.position_id,
         )
-        return self._cycle(canary_id, graph, exit_evaluation_request=request), "READY"
+        return self._cycle(canary_id, graph, continuous=continuous, exit_evaluation_request=request), "READY"
 
-    def _close_cycle(self, canary_id: str, graph, candles):
+    def _close_cycle(self, canary_id: str, graph, candles, *, continuous: bool = False):
         command, position, decision = graph.command, graph.positions[0], graph.exit_decisions[0]
         close_order = self._orders(graph)["EXIT"]
         close_order_ready_ms = int(close_order.updated_at.timestamp() * 1000)
@@ -386,21 +387,21 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             market_snapshot_closed_until_ms=selected.close_boundary_ms,
             simulation_policy=policy, price_quantum=policy.price_quantum,
             fee_quantum=policy.fee_quantum, quote_asset="USDT", fill_id=fill_id,
-            order_event_id=_id(canary_id, "close-filled-event"),
-            position_event_id=_id(canary_id, "position-closed-event"),
+            order_event_id=_id(canary_id, "close-filled-event", continuous=continuous),
+            position_event_id=_id(canary_id, "position-closed-event", continuous=continuous),
             journal_entry_ids=(
-                _id(canary_id, "close-filled-journal"),
-                _id(canary_id, "position-closed-journal"),
+                _id(canary_id, "close-filled-journal", continuous=continuous),
+                _id(canary_id, "position-closed-journal", continuous=continuous),
             ),
             correlation_id=correlation, causation_id=decision.exit_decision_id,
             operation_at=_at(selected.close_boundary_ms),
         )
-        return self._cycle(canary_id, graph, close_execution_request=request), "READY"
+        return self._cycle(canary_id, graph, continuous=continuous, close_execution_request=request), "READY"
 
     @staticmethod
-    def _cycle(canary_id: str, graph, **stage_request) -> PaperLifecycleCycleRequest:
+    def _cycle(canary_id: str, graph, *, continuous: bool = False, **stage_request) -> PaperLifecycleCycleRequest:
         return PaperLifecycleCycleRequest(
-            cycle_id=_id(canary_id, "lifecycle-cycle"),
+            cycle_id=_id(canary_id, "lifecycle-cycle", continuous=continuous),
             contract_version=PAPER_LIFECYCLE_CYCLE_CONTRACT_VERSION,
             execution_mode=ExecutionMode.PAPER, explicit_paper_authorization=True,
             scope=PaperLifecycleCycleScope.ADVANCE_ONE_LIFECYCLE_STEP, max_stages=1,
@@ -445,25 +446,40 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             graph = self._graph_loader.load(canary.command_id)
             lifecycle = classify_paper_lifecycle_state(graph)
             if lifecycle is PaperLifecycleState.INCONSISTENT:
-                self._canary_store.fail_safe(canary.canary_id, "FIRST_CANARY_LIFECYCLE_INCONSISTENT")
-                return "SAFE_FAILURE:FIRST_CANARY_LIFECYCLE_INCONSISTENT"
+                authority = (
+                    "CONTINUOUS"
+                    if canary.authority_mode == "CONTINUOUS"
+                    else "FIRST_CANARY"
+                )
+                reason = f"{authority}_LIFECYCLE_INCONSISTENT"
+                self._canary_store.fail_safe(canary.canary_id, reason)
+                return f"SAFE_FAILURE:{reason}"
             if lifecycle is PaperLifecycleState.POSITION_CLOSED:
                 return self._finalize(canary, state)
             readiness: ExistingCanaryRuntimeReadiness = self._runtime_readiness()
             if not all((readiness.market_data_ready, readiness.approval_source_ready,
                         readiness.backup_pitr_pass, readiness.live_disabled)):
                 return "SAFE_FAILURE:INDEPENDENT_READINESS_GATE_DENIED"
-            candles, market = self._snapshot(graph.command.symbol, canary.canary_id)
+            continuous = canary.authority_mode == "CONTINUOUS"
+            candles, market = self._snapshot(
+                graph.command.symbol, canary.canary_id, continuous=continuous
+            )
             if candles is None:
                 return f"WAITING_FOR_MARKET_DATA:{market}"
             if lifecycle is PaperLifecycleState.ENTRY_ORDER_OPEN:
-                cycle, readiness_code = self._entry_cycle(canary.canary_id, graph, candles)
+                cycle, readiness_code = self._entry_cycle(
+                    canary.canary_id, graph, candles, continuous=continuous
+                )
                 stage = MutationStage.ENTRY_EXECUTION
             elif lifecycle is PaperLifecycleState.POSITION_OPEN_CURSOR_READY:
-                cycle, readiness_code = self._exit_cycle(canary.canary_id, graph, candles)
+                cycle, readiness_code = self._exit_cycle(
+                    canary.canary_id, graph, candles, continuous=continuous
+                )
                 stage = MutationStage.EXIT_EVALUATION_MUTATION
             elif lifecycle is PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN:
-                cycle, readiness_code = self._close_cycle(canary.canary_id, graph, candles)
+                cycle, readiness_code = self._close_cycle(
+                    canary.canary_id, graph, candles, continuous=continuous
+                )
                 stage = MutationStage.CLOSE_EXECUTION
             else:
                 return f"SAFE_FAILURE:UNSUPPORTED_{lifecycle.value}"

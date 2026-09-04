@@ -411,12 +411,13 @@ class PaperFirstCanaryRepository:
         ).with_for_update())
         if row is None:
             raise CanaryCorrelationError("CANARY_NOT_FOUND")
+        authority = "CONTINUOUS" if row.authority_mode == "CONTINUOUS" else "FIRST_CANARY"
         if symbol not in row.allowed_symbols:
-            return self.fail_safe(canary_id, "FIRST_CANARY_SYMBOL_SCOPE_VIOLATION")
+            return self.fail_safe(canary_id, f"{authority}_SYMBOL_SCOPE_VIOLATION")
         if row.command_id == command_id and row.command_count == 1:
             return _snapshot(row)
         if row.command_id is not None or row.command_count != 0:
-            return self.fail_safe(canary_id, "FIRST_CANARY_COMMAND_BUDGET_VIOLATION")
+            return self.fail_safe(canary_id, f"{authority}_COMMAND_BUDGET_VIOLATION")
         command = self.session.get(PaperExecutionCommandRecord, command_id)
         if command is None or not command.risk_decision_id:
             return self.fail_safe(canary_id, "CANARY_CORRELATION_UNAVAILABLE")
@@ -436,12 +437,13 @@ class PaperFirstCanaryRepository:
         ).with_for_update())
         if row is None:
             return None
+        authority = "CONTINUOUS" if row.authority_mode == "CONTINUOUS" else "FIRST_CANARY"
         if symbol not in row.allowed_symbols:
-            return self.fail_safe(row.canary_id, "FIRST_CANARY_SYMBOL_SCOPE_VIOLATION")
+            return self.fail_safe(row.canary_id, f"{authority}_SYMBOL_SCOPE_VIOLATION")
         if row.position_id == position_id and row.position_count == 1:
             return _snapshot(row)
         if row.position_id is not None or row.position_count != 0:
-            return self.fail_safe(row.canary_id, "FIRST_CANARY_POSITION_BUDGET_VIOLATION")
+            return self.fail_safe(row.canary_id, f"{authority}_POSITION_BUDGET_VIOLATION")
         row.position_id = position_id
         row.position_count = 1
         row.state = "POSITION_OPEN"
@@ -475,7 +477,8 @@ class PaperFirstCanaryRepository:
             if position is None:
                 return self.fail_safe(canary_id, "CANARY_CORRELATION_UNAVAILABLE", checked_at)
             if position.symbol not in row.allowed_symbols:
-                return self.fail_safe(canary_id, "FIRST_CANARY_SYMBOL_SCOPE_VIOLATION", checked_at)
+                authority = "CONTINUOUS" if row.authority_mode == "CONTINUOUS" else "FIRST_CANARY"
+                return self.fail_safe(canary_id, f"{authority}_SYMBOL_SCOPE_VIOLATION", checked_at)
             if position.state == "OPEN":
                 row.state = "POSITION_OPEN"
             elif position.state == "CLOSING":

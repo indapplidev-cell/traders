@@ -280,11 +280,11 @@ def build_trading_criteria_snapshot(
                        C.BOOLEAN_GATE, False,
                        "app.engine_paper.eligible_approval_ranking.ProductionEligibleApprovalSelector"),
         ),
-        "first_canary_bounds": (
-            _criterion("max_new_commands", "first_canary_bounds", C.FIXED_THRESHOLD,
+        "continuous_paper_bounds": (
+            _criterion("max_new_commands", "continuous_paper_bounds", C.FIXED_THRESHOLD,
                        canary_fields["max_new_commands"].default,
                        "app.operator_control.service.PaperOperatorControlService.arm_first_canary", "commands"),
-            _criterion("max_open_positions", "first_canary_bounds", C.FIXED_THRESHOLD,
+            _criterion("max_open_positions", "continuous_paper_bounds", C.FIXED_THRESHOLD,
                        canary_fields["max_open_positions"].default,
                        "app.operator_control.service.PaperOperatorControlService.arm_first_canary", "positions"),
         ),

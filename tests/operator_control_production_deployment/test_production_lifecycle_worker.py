@@ -11,7 +11,9 @@ from app.operator_control.production_lifecycle_worker import (
     ProductionPaperFirstCanaryLifecycleWorker,
     _fill_candle,
     lifecycle_poll_seconds,
+    _id as lifecycle_id,
 )
+from app.operator_control.production_executor import _id as executor_id
 
 
 class _Lock:
@@ -55,6 +57,16 @@ def test_invalid_lifecycle_poll_override_falls_back(monkeypatch):
     assert lifecycle_poll_seconds() == DEFAULT_POLL_SECONDS
     monkeypatch.setenv("TRADERS_FIRST_CANARY_LIFECYCLE_POLL_SECONDS", "15")
     assert lifecycle_poll_seconds() == 15.0
+
+
+def test_continuous_runtime_ids_do_not_claim_first_canary_identity():
+    for identity in (
+        executor_id("request", "entry-order", continuous=True),
+        lifecycle_id("cycle", "position", continuous=True),
+    ):
+        assert identity.startswith("paper:continuous:")
+        assert "first-canary" not in identity
+    assert lifecycle_id("historical", "position").startswith("paper:first-canary:")
 
 
 def test_worker_without_linked_command_is_strict_zero_action():

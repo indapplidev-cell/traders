@@ -392,6 +392,9 @@ RU.update({
     "paper.arm": "ARM первый PAPER Canary",
     "paper.start": "START первый PAPER Canary",
     "paper.disable": "Отключить",
+    "paper.continuous.enable": "Включить Continuous PAPER",
+    "paper.continuous.disable": "Отключить Continuous PAPER",
+    "paper.continuous.risk_pause": "Пауза по риску",
     "paper.emergency": "АВАРИЙНАЯ ОСТАНОВКА",
     "paper.clear_stop": "Снять аварийную остановку",
     "paper.no_position": "Нет активной PAPER позиции",
@@ -472,6 +475,9 @@ EN.update({
     "paper.arm": "ARM First PAPER Canary",
     "paper.start": "START First PAPER Canary",
     "paper.disable": "Disable",
+    "paper.continuous.enable": "Enable Continuous PAPER",
+    "paper.continuous.disable": "Disable Continuous PAPER",
+    "paper.continuous.risk_pause": "Risk Pause",
     "paper.emergency": "EMERGENCY STOP",
     "paper.clear_stop": "Clear Emergency Stop",
     "paper.no_position": "No active PAPER position",
@@ -621,7 +627,7 @@ _CRITERIA_GROUPS_RU = {
     "target_policy": "Take Profit / цель", "risk_reward_policy": "Risk/Reward",
     "position_sizing_policy": "Размер позиции", "fees_policy": "Комиссии",
     "slippage_policy": "Проскальзывание и исполнение", "approval_policy": "Срок действия approval",
-    "first_canary_bounds": "Ограничения первого canary",
+    "continuous_paper_bounds": "Ограничения Continuous PAPER",
 }
 _CRITERIA_GROUPS_RU["multi_symbol_selection_policy"] = "Политика выбора между символами"
 _CRITERIA_GROUPS_EN = {
@@ -632,7 +638,7 @@ _CRITERIA_GROUPS_EN = {
     "target_policy": "Take Profit / target", "risk_reward_policy": "Risk/Reward",
     "position_sizing_policy": "Position sizing", "fees_policy": "Fees",
     "slippage_policy": "Slippage and execution", "approval_policy": "Approval validity",
-    "first_canary_bounds": "First-canary bounds",
+    "continuous_paper_bounds": "Continuous PAPER bounds",
     "multi_symbol_selection_policy": "Multi-symbol selection policy",
 }
 RU.update({f"paper.criteria.group.{key}": value for key, value in _CRITERIA_GROUPS_RU.items()})

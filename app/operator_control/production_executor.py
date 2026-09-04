@@ -55,9 +55,10 @@ from app.engine_safety.paper_production_control import (
 from .schemas import PaperCanaryNormalizedState, PaperOperatorCanaryStatus
 
 
-def _id(request_id: str, role: str) -> str:
+def _id(request_id: str, role: str, *, continuous: bool = False) -> str:
     digest = sha256(f"{request_id}|{role}".encode("ascii")).hexdigest()
-    return f"paper:first-canary:{role}:{digest}"
+    authority = "continuous" if continuous else "first-canary"
+    return f"paper:{authority}:{role}:{digest}"
 
 
 FOUNDATION_SIMULATION_POLICY_ID = "simulation:foundation:v1"
@@ -326,7 +327,9 @@ class ProductionPaperFirstCanaryExecutor:
             universe_version_id="trading-universe-v2",
             current_control_generation=state.generation,
         )
-        request_id = _id(str(state.generation), "continuous-approval-poll")
+        request_id = _id(
+            str(state.generation), "continuous-approval-poll", continuous=True
+        )
         results = self._read_approvals(authority, request_id, timeframes=("5m",))
         active_cycle = self._canary_store.current()
         errors = self._approval_source_error(results)
@@ -443,14 +446,16 @@ class ProductionPaperFirstCanaryExecutor:
             simulation_policy=_foundation_policy(simulation_policy_id),
             execution_mode=ExecutionMode.PAPER,
             explicit_paper_authorization=True, command_id=command_id,
-            order_id=_id(request_id, "entry-order"),
-            command_event_id=_id(request_id, "command-event"),
-            order_created_event_id=_id(request_id, "order-created-event"),
-            order_validated_event_id=_id(request_id, "order-validated-event"),
-            order_opened_event_id=_id(request_id, "order-opened-event"),
+            order_id=_id(request_id, "entry-order", continuous=canary.authority_mode == "CONTINUOUS"),
+            command_event_id=_id(request_id, "command-event", continuous=canary.authority_mode == "CONTINUOUS"),
+            order_created_event_id=_id(request_id, "order-created-event", continuous=canary.authority_mode == "CONTINUOUS"),
+            order_validated_event_id=_id(request_id, "order-validated-event", continuous=canary.authority_mode == "CONTINUOUS"),
+            order_opened_event_id=_id(request_id, "order-opened-event", continuous=canary.authority_mode == "CONTINUOUS"),
             journal_entry_ids=(
-                _id(request_id, "command-event"), _id(request_id, "order-created-event"),
-                _id(request_id, "order-validated-event"), _id(request_id, "order-opened-event"),
+                _id(request_id, "command-event", continuous=canary.authority_mode == "CONTINUOUS"),
+                _id(request_id, "order-created-event", continuous=canary.authority_mode == "CONTINUOUS"),
+                _id(request_id, "order-validated-event", continuous=canary.authority_mode == "CONTINUOUS"),
+                _id(request_id, "order-opened-event", continuous=canary.authority_mode == "CONTINUOUS"),
             ),
             created_at=created_at,
             correlation_id=candidate.paper_strategy_approval.correlation_id,
