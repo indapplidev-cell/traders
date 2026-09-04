@@ -106,10 +106,12 @@ services:
       ORCHESTRATOR_FRESHNESS_GRACE_SECONDS: ${ORCHESTRATOR_FRESHNESS_GRACE_SECONDS:-180}
       ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS: ${ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS:-60}
       ORCHESTRATOR_WAITING_BATCH_SIZE: ${ORCHESTRATOR_WAITING_BATCH_SIZE:-100}
+      TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: /run/secrets/binance_commission_snapshot
     volumes:
       - ./reports:/service/reports
     secrets:
       - traders_shared_db_password
+      - binance_commission_snapshot
 
   scalping-calibration-collector:
     build:
@@ -143,3 +145,5 @@ volumes:
 secrets:
   traders_shared_db_password:
     file: ./.secrets.production.local/shared-db-password
+  binance_commission_snapshot:
+    file: ./.secrets.production.local/binance-commission-snapshot.json

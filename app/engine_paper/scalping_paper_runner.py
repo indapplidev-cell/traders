@@ -38,11 +38,22 @@ class BinanceCommissionSnapshot:
     symbol: str
     snapshot_id: str
     fetched_at: str
-    entry_taker_bps: float
-    exit_taker_bps: float
+    commission_source: str
+    maker_bps: float
+    taker_bps: float
+    entry_liquidity_role: str
+    exit_liquidity_role: str
     bnb_discount_state: str
     special_commission_state: str
     tax_commission_state: str
+
+    @property
+    def entry_commission_bps(self) -> float:
+        return self.maker_bps if self.entry_liquidity_role == "MAKER" else self.taker_bps
+
+    @property
+    def exit_commission_bps(self) -> float:
+        return self.maker_bps if self.exit_liquidity_role == "MAKER" else self.taker_bps
 
 
 def load_binance_commission_snapshot(symbol: str) -> BinanceCommissionSnapshot | None:
@@ -53,14 +64,27 @@ def load_binance_commission_snapshot(symbol: str) -> BinanceCommissionSnapshot |
     try:
         payload = json.loads(Path(raw_path).read_text(encoding="utf-8"))
         row = payload["symbols"][symbol.upper()]
+        snapshot_type = str(payload["snapshot_type"])
+        if snapshot_type not in {
+            "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT",
+            "USER_AUTHORIZED_STUB",
+        }:
+            return None
         fetched = datetime.fromisoformat(str(payload["fetched_at"]).replace("Z", "+00:00"))
         if fetched.tzinfo is None or datetime.now(timezone.utc) - fetched > timedelta(hours=24):
+            return None
+        entry_role = str(row.get("entry_liquidity_role", "TAKER")).upper()
+        exit_role = str(row.get("exit_liquidity_role", "TAKER")).upper()
+        if entry_role not in {"MAKER", "TAKER"} or exit_role not in {"MAKER", "TAKER"}:
             return None
         return BinanceCommissionSnapshot(
             symbol=symbol.upper(), snapshot_id=str(payload["snapshot_id"]),
             fetched_at=fetched.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
-            entry_taker_bps=float(row["taker_bps"]),
-            exit_taker_bps=float(row["taker_bps"]),
+            commission_source=snapshot_type,
+            maker_bps=float(row["maker_bps"]),
+            taker_bps=float(row["taker_bps"]),
+            entry_liquidity_role=entry_role,
+            exit_liquidity_role=exit_role,
             bnb_discount_state=str(payload.get("bnb_discount_state", "NOT_APPLICABLE")),
             special_commission_state=str(row.get("special_commission_state", "NOT_APPLICABLE")),
             tax_commission_state=str(row.get("tax_commission_state", "NOT_APPLICABLE")),
@@ -107,21 +131,20 @@ class BinancePublicScalpingCostSource:
         captured_at_ms = time.time_ns() // 1_000_000
         commission = load_binance_commission_snapshot(symbol)
         return ShadowCostInputs(
-            entry_fee_bps=(commission.entry_taker_bps if commission else self.entry_fee_bps),
-            exit_fee_bps=(commission.exit_taker_bps if commission else self.exit_fee_bps),
+            entry_fee_bps=(commission.entry_commission_bps if commission else self.entry_fee_bps),
+            exit_fee_bps=(commission.exit_commission_bps if commission else self.exit_fee_bps),
             entry_slippage_bps=self.entry_slippage_bps,
             exit_slippage_bps=self.exit_slippage_bps,
             safety_margin_bps=safety_margin_bps,
             spread_bps=ticker.spread_bps,
             depth_impact_bps=depth.depth_impact_bps,
-            fee_source=(
-                "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT"
-                if commission else "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
-            ),
+            fee_source=(commission.commission_source if commission else "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"),
             commission_authoritative=commission is not None,
             commission_symbol=None if commission is None else commission.symbol,
             commission_snapshot_id=None if commission is None else commission.snapshot_id,
             commission_fetched_at=None if commission is None else commission.fetched_at,
+            entry_liquidity_role=("TAKER" if commission is None else commission.entry_liquidity_role),
+            exit_liquidity_role=("TAKER" if commission is None else commission.exit_liquidity_role),
             bnb_discount_state=("NOT_APPLICABLE" if commission is None else commission.bnb_discount_state),
             special_commission_state=("NOT_APPLICABLE" if commission is None else commission.special_commission_state),
             tax_commission_state=("NOT_APPLICABLE" if commission is None else commission.tax_commission_state),

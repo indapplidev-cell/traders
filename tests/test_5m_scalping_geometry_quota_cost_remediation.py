@@ -454,10 +454,12 @@ class Transport:
 def test_dynamic_account_commission_snapshot_drives_costs(monkeypatch, tmp_path):
     snapshot = tmp_path / "commission.json"
     snapshot.write_text(json.dumps({
+        "snapshot_type": "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT",
         "snapshot_id": "binance:commission:20260904",
         "fetched_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "bnb_discount_state": "DISABLED",
         "symbols": {"BTCUSDT": {
+            "maker_bps": 6.5,
             "taker_bps": 8.5,
             "special_commission_state": "NONE",
             "tax_commission_state": "NONE",
@@ -480,6 +482,55 @@ def test_dynamic_account_commission_snapshot_drives_costs(monkeypatch, tmp_path)
     assert result.valid_plan
     assert result.total_cost_bps is not None
     assert result.round_trip_commission_bps == 17.0
+
+
+def test_user_authorized_commission_stub_is_explicit_and_drives_costs(monkeypatch, tmp_path):
+    snapshot = tmp_path / "commission-stub.json"
+    snapshot.write_text(json.dumps({
+        "snapshot_type": "USER_AUTHORIZED_STUB",
+        "snapshot_id": "user-authorized-stub:test",
+        "fetched_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "bnb_discount_state": "STUB_DISABLED",
+        "symbols": {"BTCUSDT": {
+            "maker_bps": 10.0,
+            "taker_bps": 10.0,
+            "entry_liquidity_role": "TAKER",
+            "exit_liquidity_role": "TAKER",
+            "special_commission_state": "STUB_NONE",
+            "tax_commission_state": "STUB_NONE",
+        }},
+    }), encoding="utf-8")
+    monkeypatch.setenv("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", str(snapshot))
+    source = BinancePublicScalpingCostSource(
+        client=BinancePublicRestClient(transport=Transport(), max_retries=0)
+    )
+
+    value = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+
+    assert value.commission_authoritative is True
+    assert value.fee_source == "USER_AUTHORIZED_STUB"
+    assert value.entry_liquidity_role == value.exit_liquidity_role == "TAKER"
+    assert value.entry_fee_bps == value.exit_fee_bps == 10.0
+    assert value.bnb_discount_state == "STUB_DISABLED"
+    assert value.special_commission_state == value.tax_commission_state == "STUB_NONE"
+
+
+def test_commission_snapshot_without_explicit_type_fails_closed(monkeypatch, tmp_path):
+    snapshot = tmp_path / "ambiguous-commission.json"
+    snapshot.write_text(json.dumps({
+        "snapshot_id": "ambiguous",
+        "fetched_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "symbols": {"BTCUSDT": {"maker_bps": 10.0, "taker_bps": 10.0}},
+    }), encoding="utf-8")
+    monkeypatch.setenv("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", str(snapshot))
+    source = BinancePublicScalpingCostSource(
+        client=BinancePublicRestClient(transport=Transport(), max_retries=0)
+    )
+
+    value = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+
+    assert value.commission_authoritative is False
+    assert value.fee_source == "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
 
 
 def test_existing_public_client_boundary_provides_spread_and_depth_without_orders():
