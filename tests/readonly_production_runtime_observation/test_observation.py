@@ -241,6 +241,52 @@ def test_selected_execution_projection_is_identity_bound_and_terminal_visible() 
     assert value["policy_reason_source"] == "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT"
 
 
+@pytest.mark.parametrize(
+    "command_status,position_state,expected_lifecycle",
+    (
+        ("PROCESSING", "OPEN", "POSITION_OPEN"),
+        ("PROCESSING", "CLOSING", "POSITION_CLOSING"),
+        ("COMPLETED", "CLOSED", "COMPLETED"),
+    ),
+)
+def test_position_state_advances_command_lifecycle_projection(
+    command_status: str, position_state: str, expected_lifecycle: str
+) -> None:
+    outcome = SimpleNamespace(
+        pipeline_run_id="orchestrator:run-eth", symbol="ETHUSDT",
+        trade_profile_id="trade-5m-v2", boundary_closed_at_ms=1788534300000,
+        candidate_id="candidate:eth", final_approval_id="approval:eth",
+        paper_plan_id="plan:eth", approval_valid_until_ms=1788534599999,
+        selector_state="SELECTED", selector_rank=1,
+        first_observed_at=datetime(2026, 9, 4, 15, 5, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 9, 4, 15, 6, tzinfo=timezone.utc),
+        lifecycle_state="COMMAND_CREATED", command_id="command:eth",
+        terminal_reason=None, selector_reason=None, attempt_count=1,
+        control_generation=12,
+    )
+
+    class Result:
+        def one_or_none(self):
+            return outcome, command_status, "position:eth", position_state
+
+    class FakeSession:
+        def __enter__(self): return self
+        def __exit__(self, *_): return None
+        def execute(self, _statement): return Result()
+
+    value = observation.ProductionPaperRuntimeObservationSource(
+        lambda: FakeSession(), lambda: None
+    )._current_execution()
+    assert value is not None
+    assert value["command_status"] == command_status
+    assert value["position_status"] == position_state
+    assert value["lifecycle_state"] == expected_lifecycle
+    assert not (
+        value["position_status"] in {"OPEN", "CLOSING", "CLOSED"}
+        and value["command_status"] == "PENDING"
+    )
+
+
 @pytest.mark.parametrize("failure", ("market", "approval", "control", "runtime", "pitr", "principal"))
 def test_each_authoritative_failure_remains_fail_closed(monkeypatch, tmp_path: Path, failure: str) -> None:
     def control():

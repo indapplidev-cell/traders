@@ -918,7 +918,7 @@ def test_natural_approval_opens_paper_position_end_to_end(
     assert command.pipeline_run_id == run_id
     assert command.analysis_result_id == analysis_id
     assert command.valid_until_ms > command.closed_until_ms
-    assert command.processing_status == "PENDING"
+    assert command.processing_status == "PROCESSING"
     assert len(orders) == 1 and orders[0].order_role == "ENTRY"
     assert orders[0].command_id == command.command_id
     assert orders[0].state == "FILLED"

@@ -1433,6 +1433,12 @@ class PaperRepositories:
                 .limit(1)
             )
             if current_order.state is PaperOrderState.FILLED and position_row is not None:
+                command_row = self.session.get(
+                    PaperExecutionCommandRecord, current_order.command_id
+                )
+                if command_row is None:
+                    return result(RepositoryOutcome.INTERNAL_INVARIANT_FAILURE)
+                command_row.processing_status = "PROCESSING"
                 existing_position = orm_values_to_paper_position(position_row)
                 existing_cursor = self.exit_cursors.get_cursor_bounded(
                     existing_position.position_id
@@ -1531,6 +1537,7 @@ class PaperRepositories:
                 self.session.add(
                     PaperPositionRecord(**paper_position_to_orm_values(position))
                 )
+                command_row.processing_status = "PROCESSING"
                 self.session.flush()
                 canary_table = self.session.scalar(
                     select(text("to_regclass('public.paper_first_canary_sessions')"))
@@ -1668,6 +1675,12 @@ class PaperRepositories:
                 and position.state is PaperPositionState.CLOSED
                 and position.exit_fill_id == existing_fill.fill_id
             ):
+                command_row = self.session.get(
+                    PaperExecutionCommandRecord, order.command_id
+                )
+                if command_row is None:
+                    return result(RepositoryOutcome.INTERNAL_INVARIANT_FAILURE)
+                command_row.processing_status = "COMPLETED"
                 return result(
                     RepositoryOutcome.EXISTING_IDEMPOTENT,
                     CloseFillGraph(order, existing_fill, position),
@@ -1687,6 +1700,13 @@ class PaperRepositories:
             (e for e in events if e.aggregate_type == "paper_position"), None
         )
         if not order_event or not position_event:
+            return result(RepositoryOutcome.INTERNAL_INVARIANT_FAILURE)
+        command_row = self.session.scalar(
+            select(PaperExecutionCommandRecord)
+            .where(PaperExecutionCommandRecord.command_id == order.command_id)
+            .with_for_update()
+        )
+        if command_row is None:
             return result(RepositoryOutcome.INTERNAL_INVARIANT_FAILURE)
         try:
             order_change = fill_order(
@@ -1718,6 +1738,7 @@ class PaperRepositories:
                 self.session.flush()
                 self._fault("close_after_order")
                 _copy_position(position_row, position_change.position)
+                command_row.processing_status = "COMPLETED"
                 self.session.flush()
                 self._fault("close_after_position")
                 self.session.add(

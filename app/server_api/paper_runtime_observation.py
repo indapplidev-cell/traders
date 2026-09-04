@@ -336,6 +336,13 @@ class ProductionPaperRuntimeObservationSource:
                     "EXPIRED_BEFORE_EXECUTION": "EXPIRED",
                     "EXECUTION_FAILED": "FAILED",
                 }.get(outcome.lifecycle_state, "NOT_CREATED")
+            lifecycle_state = outcome.lifecycle_state
+            if position_state == "OPEN":
+                lifecycle_state = "POSITION_OPEN"
+            elif position_state == "CLOSING":
+                lifecycle_state = "POSITION_CLOSING"
+            elif position_state == "CLOSED":
+                lifecycle_state = "COMPLETED"
             return {
                 "source_run_id": outcome.pipeline_run_id,
                 "symbol": outcome.symbol,
@@ -353,7 +360,7 @@ class ProductionPaperRuntimeObservationSource:
                 "policy_generation": outcome.control_generation,
                 "policy_reason_source": "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT",
                 "policy_source_timestamp": utc_text(outcome.updated_at),
-                "lifecycle_state": outcome.lifecycle_state,
+                "lifecycle_state": lifecycle_state,
                 "command_status": command_status,
                 "command_id": outcome.command_id,
                 "position_status": position_state or "NOT_REACHED",
