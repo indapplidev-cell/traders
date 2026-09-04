@@ -217,6 +217,7 @@ def test_15m_effective_parameters_preserve_pre_remediation_engine_defaults():
 
 def test_5m_startup_order_validates_then_acquires_before_daemon_loop():
     source = Path("scripts/engine_orchestrator_online_pipeline.py").read_text(encoding="utf-8")
+    assert '"0024_continuous_paper_authority"' in source
     assert source.index("runtime_parameters = config.runtime_parameters") < source.index(
         "validate_5m_schema_capabilities(sessions)"
     ) < source.index("owner.acquire()") < source.index("daemon.run(")

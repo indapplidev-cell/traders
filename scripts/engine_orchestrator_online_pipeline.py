@@ -85,7 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def validate_5m_schema_capabilities(sessions: object) -> None:
-    """Fail before owner election unless the deployed profile schema is exact 0017."""
+    """Fail before owner election unless the deployed profile schema is supported."""
     with sessions() as session:
         revision = session.scalar(text("SELECT version_num FROM alembic_version"))
         if revision not in {
@@ -93,8 +93,11 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
             "0021_independent_scalping_profile_v2",
             "0022_scalping_v2_paper_simulation_policy",
             "0023_scalping_v2_journal_causality",
+            "0024_continuous_paper_authority",
         }:
-            raise RuntimeError("online runtime requires schema 0020, 0021, 0022, or 0023")
+            raise RuntimeError(
+                "online runtime requires schema 0020, 0021, 0022, 0023, or 0024"
+            )
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
             "WHERE table_schema = current_schema() "
