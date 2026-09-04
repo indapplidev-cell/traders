@@ -125,3 +125,10 @@ def test_trading_funnel_stage_labels_separate_historical_passage_from_current_el
     assert en["funnel.stage.VALIDITY_APPROVED"] == "Validity check passed"
     assert en["funnel.stage.FINAL_APPROVAL"] == "Approval created"
     assert en["funnel.stage.ELIGIBLE"] == "Currently eligible"
+
+
+def test_expired_before_execution_reason_is_operator_readable_and_bilingual():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    assert ru["funnel.reason.EXPIRED_BEFORE_EXECUTION"] == "Срок плана истёк до передачи на исполнение"
+    assert en["funnel.reason.EXPIRED_BEFORE_EXECUTION"] == "Plan expired before execution handoff"
