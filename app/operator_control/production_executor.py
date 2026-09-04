@@ -24,7 +24,11 @@ from app.engine_paper.fill_policy import (
     PaperFillSimulationPolicy,
     PaperIntrabarConflictPolicy,
 )
-from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
+from app.engine_paper.first_canary_correlation import (
+    CanaryCorrelationError,
+    SqlAlchemyPaperFirstCanaryStore,
+    continuous_cycle_id,
+)
 from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
 from app.engine_paper.eligible_approval_ranking import (
     EligibleApprovalSelectionResult,
@@ -322,22 +326,71 @@ class ProductionPaperFirstCanaryExecutor:
         )
         request_id = _id(str(state.generation), "continuous-approval-poll")
         results = self._read_approvals(authority, request_id, timeframes=("5m",))
+        active_cycle = self._canary_store.current()
         errors = self._approval_source_error(results)
         if errors:
+            if (
+                errors == ("NO_ELIGIBLE_APPROVAL",)
+                and active_cycle is not None
+                and active_cycle.authority_mode == "CONTINUOUS"
+                and active_cycle.command_id is None
+            ):
+                self._canary_store.fail_safe(
+                    active_cycle.canary_id, "CONTINUOUS_RESERVED_APPROVAL_EXPIRED"
+                )
             return errors
-        selection = self._select_candidate(authority, results, exclude_executed=True)
-        if selection.failure_code is not None or selection.winner is None:
-            return (selection.failure_code or "NO_ELIGIBLE_APPROVAL",)
-        candidate = selection.winner
+        if (
+            active_cycle is not None
+            and active_cycle.authority_mode == "CONTINUOUS"
+            and active_cycle.command_id is None
+        ):
+            candidates = tuple(
+                value.candidate for result in results for value in result.symbol_results
+                if value.candidate is not None
+                and continuous_cycle_id(state.generation, value.candidate.candidate_id)
+                == active_cycle.canary_id
+            )
+            if len(candidates) != 1:
+                self._canary_store.fail_safe(
+                    active_cycle.canary_id, "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT"
+                )
+                return ("CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
+            selection = self._selector.select(
+                candidates, policy_version=authority.selection_policy_version
+            )
+            self.last_selection_diagnostics = selection.diagnostics
+            if selection.failure_code is not None or selection.winner is None:
+                return (selection.failure_code or "CONTINUOUS_RESERVED_APPROVAL_NOT_CURRENT",)
+            if self._outcome_store is not None:
+                self._outcome_store.observe_selection(
+                    candidates,
+                    selection,
+                    universe_id=authority.universe_version_id,
+                    control_generation=authority.current_control_generation,
+                )
+            candidate = selection.winner
+        else:
+            selection = self._select_candidate(authority, results, exclude_executed=True)
+            if selection.failure_code is not None or selection.winner is None:
+                return (selection.failure_code or "NO_ELIGIBLE_APPROVAL",)
+            candidate = selection.winner
         if getattr(candidate, "trade_profile_id", None) != "trade-5m-v2":
             return ("SCALPING_V2_AUTHORITY_REQUIRED",)
-        canary = self._canary_store.reserve_continuous_cycle(
-            candidate_identity=candidate.candidate_id,
-            generation=state.generation,
-            control_transition_id=state.transition_id,
-            allowed_symbols=state.arming_scope.allowed_symbols,
-            now=datetime.now(timezone.utc),
-        )
+        if active_cycle is not None and active_cycle.canary_id == continuous_cycle_id(
+            state.generation, candidate.candidate_id
+        ):
+            canary = active_cycle
+        else:
+            try:
+                canary = self._canary_store.reserve_continuous_cycle(
+                    candidate_identity=candidate.candidate_id,
+                    generation=state.generation,
+                    control_transition_id=state.transition_id,
+                    allowed_symbols=state.arming_scope.allowed_symbols,
+                    now=datetime.now(timezone.utc),
+                )
+            except CanaryCorrelationError as error:
+                return (str(error),)
         findings = self._ingest_candidate(
             candidate=candidate,
             request_id=canary.start_request_id or canary.arm_request_id,

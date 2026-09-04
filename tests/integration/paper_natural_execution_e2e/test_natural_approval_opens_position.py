@@ -624,6 +624,20 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
         factory, natural_e2e_engine, control, source, market_reader=market_reader
     )
 
+    # Recover the exact candidate if a prior tick durably reserved the cycle
+    # but failed before command ingestion (for example, transient readiness).
+    winner = ProductionEligibleApprovalSelector().select(
+        available, policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION
+    ).winner
+    assert winner is not None
+    reserved = store.reserve_continuous_cycle(
+        candidate_identity=winner.candidate_id,
+        generation=armed.generation,
+        control_transition_id=armed.transition_id,
+        allowed_symbols=("BTCUSDT", "ETHUSDT"),
+        now=datetime.now(timezone.utc),
+    )
+    assert reserved.command_id is None
     assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"
     cycle_a = store.current()
     assert cycle_a is not None and cycle_a.authority_mode == "CONTINUOUS"

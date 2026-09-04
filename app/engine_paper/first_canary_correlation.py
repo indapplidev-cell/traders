@@ -31,6 +31,12 @@ from app.engine_paper.eligible_approval_ranking import (
 TERMINAL_CANARY_STATES = frozenset({"COMPLETED", "STOPPED", "FAILED_SAFE"})
 
 
+def continuous_cycle_id(generation: int, candidate_identity: str) -> str:
+    """Return the stable cycle id used to recover a partially dispatched candidate."""
+
+    return str(uuid5(NAMESPACE_URL, f"traders:paper:continuous:{generation}:{candidate_identity}"))
+
+
 class PaperFirstCanaryState(StrEnum):
     RESERVED = "RESERVED"
     ARMED = "ARMED"
@@ -327,7 +333,7 @@ class PaperFirstCanaryRepository:
         """Create or recover one v2-only execution cycle under continuous authority."""
 
         active = self.current()
-        deterministic_id = str(uuid5(NAMESPACE_URL, f"traders:paper:continuous:{generation}:{candidate_identity}"))
+        deterministic_id = continuous_cycle_id(generation, candidate_identity)
         if active is not None:
             if active.canary_id == deterministic_id and active.authority_mode == "CONTINUOUS":
                 return active
@@ -550,6 +556,7 @@ class SqlAlchemyPaperFirstCanaryStore:
 
 __all__ = (
     "CanaryCorrelationError",
+    "continuous_cycle_id",
     "PaperFirstCanaryRepository",
     "PaperFirstCanarySession",
     "PaperFirstCanaryState",
