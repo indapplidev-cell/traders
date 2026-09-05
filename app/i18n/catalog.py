@@ -1176,7 +1176,10 @@ RU.update({
     "funnel.reason.FINAL_APPROVAL_CREATED": "Финальное решение сформировано",
     "funnel.reason.NOT_ELIGIBLE": "Кандидат не прошёл условия допуска",
     "funnel.reason.CONTINUOUS_ENTRY_FILL_WINDOW_MISSED": "Пропущено причинно допустимое окно входа PAPER",
+    "funnel.reason.ENTRY_FILL_WINDOW_MISSED": "Пропущено причинно допустимое окно входа PAPER",
+    "funnel.reason.PAPER_POSITION_OPENED": "Позиция PAPER открыта",
     "funnel.reason.PAPER_POSITION_CLOSED": "Позиция PAPER закрыта",
+    "funnel.reason.PORTFOLIO_REJECT_TOTAL_OPEN_RISK": "Кандидат отклонён: превышен лимит суммарного риска открытых позиций",
     "funnel.reason.PORTFOLIO_REJECT_DUPLICATE_OR_OPPOSING_SYMBOL": "Кандидат отклонён: уже есть совпадающая или противоположная позиция по символу",
     "paper.field.mutation_readiness": "Готовность следующего операторского перехода ARM",
 })
@@ -1210,7 +1213,10 @@ EN.update({
     "funnel.reason.FINAL_APPROVAL_CREATED": "Final approval created",
     "funnel.reason.NOT_ELIGIBLE": "Candidate did not meet eligibility requirements",
     "funnel.reason.CONTINUOUS_ENTRY_FILL_WINDOW_MISSED": "The causal PAPER entry window was missed",
+    "funnel.reason.ENTRY_FILL_WINDOW_MISSED": "The causal PAPER entry window was missed",
+    "funnel.reason.PAPER_POSITION_OPENED": "PAPER position opened",
     "funnel.reason.PAPER_POSITION_CLOSED": "PAPER position closed",
+    "funnel.reason.PORTFOLIO_REJECT_TOTAL_OPEN_RISK": "Candidate rejected: total open-position risk limit exceeded",
     "funnel.reason.PORTFOLIO_REJECT_DUPLICATE_OR_OPPOSING_SYMBOL": "Candidate rejected: a matching or opposing symbol position already exists",
     "paper.field.mutation_readiness": "Next operator ARM transition readiness",
 })
