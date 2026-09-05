@@ -61,6 +61,14 @@ def _id(request_id: str, role: str, *, continuous: bool = False) -> str:
     return f"paper:{authority}:{role}:{digest}"
 
 
+def _candidate_entry_fill_window_missed(candidate) -> bool:
+    """Return true when the deterministic next-1m fill predates approval."""
+
+    fill_close_ms = candidate.ranking.closed_until_ms + 60_000
+    approved_at_ms = int(candidate.paper_risk_approval.approved_at.timestamp() * 1000)
+    return approved_at_ms > fill_close_ms
+
+
 FOUNDATION_SIMULATION_POLICY_ID = "simulation:foundation:v1"
 SCALPING_V2_SIMULATION_POLICY_ID = "simulation:scalping-v2:foundation:v1"
 
@@ -381,6 +389,13 @@ class ProductionPaperFirstCanaryExecutor:
             candidate = selection.winner
         if getattr(candidate, "trade_profile_id", None) != "trade-5m-v2":
             return ("SCALPING_V2_AUTHORITY_REQUIRED",)
+        if _candidate_entry_fill_window_missed(candidate):
+            if self._outcome_store is not None:
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    failure_code="ENTRY_FILL_WINDOW_MISSED",
+                )
+            return ("ENTRY_FILL_WINDOW_MISSED",)
         if active_cycle is not None and active_cycle.canary_id == continuous_cycle_id(
             state.generation, candidate.candidate_id
         ):

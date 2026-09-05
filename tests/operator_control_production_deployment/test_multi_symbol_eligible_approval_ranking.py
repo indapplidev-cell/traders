@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
 from decimal import Decimal
 from itertools import permutations
+from types import SimpleNamespace
 
 import pytest
 
@@ -19,6 +21,7 @@ from app.engine_paper.production_approval import (
     SYMBOL_ALLOWLIST,
 )
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
+from app.operator_control.production_executor import _candidate_entry_fill_window_missed
 from app.engine_paper.production_preparation import (
     EXPECTED_PREVIOUS_ALEMBIC,
     PaperPreparationPhase,
@@ -66,6 +69,26 @@ def test_zero_and_single_candidate_contract_and_legacy_compatibility():
     only = candidate("BTCUSDT", 1)
     assert select((only,)).winner is only
     assert select((only,), LEGACY_EXACTLY_ONE_POLICY_VERSION).winner is only
+
+
+def test_continuous_candidate_rejects_only_a_missed_entry_fill_window():
+    boundary_ms = 1_900_000_000_000
+    base = candidate("BTCUSDT", 1, closed_until_ms=boundary_ms)
+    timely = SimpleNamespace(
+        ranking=base.ranking,
+        paper_risk_approval=SimpleNamespace(
+            approved_at=datetime.fromtimestamp((boundary_ms + 59_999) / 1000, timezone.utc)
+        ),
+    )
+    late = SimpleNamespace(
+        ranking=base.ranking,
+        paper_risk_approval=SimpleNamespace(
+            approved_at=datetime.fromtimestamp((boundary_ms + 60_001) / 1000, timezone.utc)
+        ),
+    )
+
+    assert _candidate_entry_fill_window_missed(timely) is False
+    assert _candidate_entry_fill_window_missed(late) is True
 
 
 @pytest.mark.parametrize("count", (2, 3, 10))

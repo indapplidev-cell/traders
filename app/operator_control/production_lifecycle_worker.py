@@ -107,6 +107,12 @@ def _fill_candle(value) -> PaperFillCandle:
     )
 
 
+def _entry_fill_window_missed(entry_order, selected_candle: PaperFillCandle) -> bool:
+    """Reject a fill whose deterministic event time predates order creation."""
+
+    return entry_order.updated_at > _at(selected_candle.close_boundary_ms)
+
+
 def _safe_log(event: str, **fields: object) -> None:
     LOGGER.info(json.dumps({"event": event, **fields}, sort_keys=True, default=str))
 
@@ -276,6 +282,20 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         if not eligible:
             return None, "WAITING_FOR_ENTRY_CANDLE"
         selected = eligible[0]
+        if _entry_fill_window_missed(entry, selected):
+            authority = "CONTINUOUS" if continuous else "FIRST_CANARY"
+            reason = f"{authority}_ENTRY_FILL_WINDOW_MISSED"
+            self._canary_store.fail_safe(canary_id, reason)
+            _safe_log(
+                "paper_entry_fill_window_missed",
+                canary_id=canary_id,
+                command_id=command.command_id,
+                order_id=entry.order_id,
+                order_updated_at=entry.updated_at.isoformat(),
+                selected_candle_close_boundary_ms=selected.close_boundary_ms,
+                reason=reason,
+            )
+            return None, f"SAFE_FAILURE:{reason}"
         policy = _foundation_policy(command.simulation_policy_id)
         fill_id = simulated_fill_id(
             contract_version=policy.contract_version,

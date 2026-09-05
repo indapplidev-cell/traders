@@ -9,6 +9,7 @@ from app.engine_safety.paper_production_control import PersistentState
 from app.operator_control.production_lifecycle_worker import (
     DEFAULT_POLL_SECONDS,
     ProductionPaperFirstCanaryLifecycleWorker,
+    _entry_fill_window_missed,
     _fill_candle,
     lifecycle_poll_seconds,
     _id as lifecycle_id,
@@ -50,6 +51,15 @@ def test_closed_candle_conversion_preserves_exact_one_minute_boundary():
     assert converted.close_boundary_ms == 120_000
     assert converted.observed_closed_until_ms == 120_000
     assert converted.is_closed is True
+
+
+def test_entry_fill_window_missed_detects_temporal_regression():
+    candle = SimpleNamespace(close_boundary_ms=120_000)
+    timely = SimpleNamespace(updated_at=datetime.fromtimestamp(119.999, timezone.utc))
+    late = SimpleNamespace(updated_at=datetime.fromtimestamp(120.001, timezone.utc))
+
+    assert _entry_fill_window_missed(timely, candle) is False
+    assert _entry_fill_window_missed(late, candle) is True
 
 
 def test_invalid_lifecycle_poll_override_falls_back(monkeypatch):
