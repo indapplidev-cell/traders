@@ -218,7 +218,7 @@ def test_selected_execution_projection_is_identity_bound_and_terminal_visible() 
 
     class Result:
         def one_or_none(self):
-            return outcome, None, None, None
+            return outcome, None, None, None, None, None, None
 
     class FakeSession:
         def __enter__(self): return self
@@ -267,7 +267,7 @@ def test_position_state_advances_command_lifecycle_projection(
 
     class Result:
         def one_or_none(self):
-            return outcome, command_status, "position:eth", position_state
+            return outcome, command_status, "position:eth", position_state, None, None, None
 
     class FakeSession:
         def __enter__(self): return self
@@ -285,6 +285,44 @@ def test_position_state_advances_command_lifecycle_projection(
         value["position_status"] in {"OPEN", "CLOSING", "CLOSED"}
         and value["command_status"] == "PENDING"
     )
+
+
+def test_failed_safe_canary_overrides_stale_pending_command_projection() -> None:
+    completed_at = datetime(2026, 9, 5, 6, 59, 25, tzinfo=timezone.utc)
+    outcome = SimpleNamespace(
+        pipeline_run_id="orchestrator:late", symbol="SUIUSDT",
+        trade_profile_id="trade-5m-v2", boundary_closed_at_ms=1788584400000,
+        candidate_id="candidate:late", final_approval_id="approval:late",
+        paper_plan_id="plan:late", approval_valid_until_ms=1788584699999,
+        selector_state="SELECTED", selector_rank=1,
+        first_observed_at=datetime(2026, 9, 5, 5, 1, 16, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 9, 5, 5, 1, 20, tzinfo=timezone.utc),
+        lifecycle_state="COMMAND_CREATED", command_id="command:late",
+        terminal_reason=None, selector_reason=None, attempt_count=1,
+        control_generation=12,
+    )
+
+    class Result:
+        def one_or_none(self):
+            return (
+                outcome, "PENDING", None, None, "FAILED_SAFE",
+                "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED", completed_at,
+            )
+
+    class FakeSession:
+        def __enter__(self): return self
+        def __exit__(self, *_): return None
+        def execute(self, _statement): return Result()
+
+    value = observation.ProductionPaperRuntimeObservationSource(
+        lambda: FakeSession(), lambda: None
+    )._current_execution()
+    assert value is not None
+    assert value["lifecycle_state"] == "EXECUTION_FAILED"
+    assert value["command_status"] == "FAILED"
+    assert value["position_status"] == "NOT_REACHED"
+    assert value["terminal_reason"] == "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED"
+    assert value["scheduler_last_observed_at"] == "2026-09-05T06:59:25.000Z"
 
 
 @pytest.mark.parametrize("failure", ("market", "approval", "control", "runtime", "pitr", "principal"))

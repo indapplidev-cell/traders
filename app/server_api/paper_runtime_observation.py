@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
+    PaperFirstCanarySessionRecord,
     PaperOrderRecord,
     PaperPlanExecutionOutcomeRecord,
     PaperPositionRecord,
@@ -301,6 +302,9 @@ class ProductionPaperRuntimeObservationSource:
                         PaperExecutionCommandRecord.processing_status,
                         PaperPositionRecord.position_id,
                         PaperPositionRecord.state,
+                        PaperFirstCanarySessionRecord.state,
+                        PaperFirstCanarySessionRecord.terminal_reason,
+                        PaperFirstCanarySessionRecord.completed_at,
                     )
                     .outerjoin(
                         PaperExecutionCommandRecord,
@@ -317,6 +321,11 @@ class ProductionPaperRuntimeObservationSource:
                         PaperPositionRecord,
                         PaperPositionRecord.entry_order_id == PaperOrderRecord.order_id,
                     )
+                    .outerjoin(
+                        PaperFirstCanarySessionRecord,
+                        PaperFirstCanarySessionRecord.command_id
+                        == PaperPlanExecutionOutcomeRecord.command_id,
+                    )
                     .where(PaperPlanExecutionOutcomeRecord.selected_winner.is_(True))
                     .order_by(
                         PaperPlanExecutionOutcomeRecord.first_observed_at.desc(),
@@ -326,7 +335,10 @@ class ProductionPaperRuntimeObservationSource:
                 ).one_or_none()
             if row is None:
                 return None
-            outcome, processing_status, position_id, position_state = row
+            (
+                outcome, processing_status, position_id, position_state,
+                canary_state, canary_terminal_reason, canary_completed_at,
+            ) = row
             if outcome.command_id is not None:
                 command_status = processing_status or "CREATED"
             else:
@@ -343,6 +355,9 @@ class ProductionPaperRuntimeObservationSource:
                 lifecycle_state = "POSITION_CLOSING"
             elif position_state == "CLOSED":
                 lifecycle_state = "COMPLETED"
+            elif canary_state == "FAILED_SAFE":
+                lifecycle_state = "EXECUTION_FAILED"
+                command_status = "FAILED"
             return {
                 "source_run_id": outcome.pipeline_run_id,
                 "symbol": outcome.symbol,
@@ -355,11 +370,13 @@ class ProductionPaperRuntimeObservationSource:
                 "selector_state": outcome.selector_state,
                 "selector_rank": outcome.selector_rank,
                 "selected_at": utc_text(outcome.first_observed_at),
-                "scheduler_last_observed_at": utc_text(outcome.updated_at),
-                "policy_evaluated_at": utc_text(outcome.updated_at),
+                "scheduler_last_observed_at": utc_text(
+                    canary_completed_at or outcome.updated_at
+                ),
+                "policy_evaluated_at": utc_text(canary_completed_at or outcome.updated_at),
                 "policy_generation": outcome.control_generation,
                 "policy_reason_source": "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT",
-                "policy_source_timestamp": utc_text(outcome.updated_at),
+                "policy_source_timestamp": utc_text(canary_completed_at or outcome.updated_at),
                 "lifecycle_state": lifecycle_state,
                 "command_status": command_status,
                 "command_id": outcome.command_id,
@@ -367,6 +384,7 @@ class ProductionPaperRuntimeObservationSource:
                 "position_id": position_id,
                 "terminal_reason": (
                     outcome.terminal_reason
+                    or canary_terminal_reason
                     or outcome.selector_reason
                     or ("POSITION_CLOSED" if position_state == "CLOSED" else "NOT_REACHED")
                 ),

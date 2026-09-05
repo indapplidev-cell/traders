@@ -35,6 +35,7 @@ from app.server_api.schema_compatibility import (
 )
 from app.db.paper_models import (
     PaperExecutionCommandRecord,
+    PaperFirstCanarySessionRecord,
     PaperOrderRecord,
     PaperPlanExecutionOutcomeRecord,
     PaperPositionRecord,
@@ -1200,6 +1201,9 @@ class TradingFunnelReadRepository:
                 PaperPositionRecord.position_id,
                 PaperPositionRecord.state,
                 PaperPositionRecord.reason_code,
+                PaperFirstCanarySessionRecord.state,
+                PaperFirstCanarySessionRecord.terminal_reason,
+                PaperFirstCanarySessionRecord.completed_at,
             )
             .outerjoin(
                 PaperOrderRecord,
@@ -1209,6 +1213,11 @@ class TradingFunnelReadRepository:
             .outerjoin(
                 PaperPositionRecord,
                 PaperPositionRecord.entry_order_id == PaperOrderRecord.order_id,
+            )
+            .outerjoin(
+                PaperFirstCanarySessionRecord,
+                PaperFirstCanarySessionRecord.command_id
+                == PaperExecutionCommandRecord.command_id,
             )
             .where(PaperExecutionCommandRecord.pipeline_run_id.in_(run_ids))
             .order_by(PaperExecutionCommandRecord.pipeline_run_id.asc())
@@ -1238,7 +1247,9 @@ class TradingFunnelReadRepository:
                 "fill_id": row[5],
                 "fill_status": "FILLED" if row[5] is not None else "NOT_REACHED",
                 "position_id": row[6], "position_status": row[7],
-                "terminal_result": row[8],
+                "terminal_result": row[10] or row[8],
+                "canary_state": row[9],
+                "execution_observed_at": row[11],
             }
             for row in rows
         }
@@ -1274,6 +1285,12 @@ class TradingFunnelReadRepository:
                 "policy_reason_source": "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT",
                 "policy_source_timestamp": outcome.updated_at,
             })
+            if lifecycle.get("canary_state") == "FAILED_SAFE" and not lifecycle.get("position_id"):
+                lifecycle.update({
+                    "command_status": "FAILED",
+                    "position_status": "NOT_REACHED",
+                    "lifecycle_state": "EXECUTION_FAILED",
+                })
         return values
 
     def export_rows(

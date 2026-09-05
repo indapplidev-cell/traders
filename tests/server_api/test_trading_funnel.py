@@ -224,6 +224,32 @@ def test_open_position_terminal_state_overrides_later_approval_expiry():
     assert item["downstream_detail"]["position_status"] == "OPEN"
 
 
+def test_failed_safe_execution_reason_is_not_masked_by_plan_success():
+    run = _run("BTCUSDT")
+    reason = "CONTINUOUS_ENTRY_FILL_WINDOW_MISSED"
+    value = _project(
+        [(run, _result(run, valid_until=NOW_MS + 60_000))],
+        lifecycle={run.run_id: {
+            "selector_state": "SELECTED",
+            "selector_rank": 1,
+            "selected_winner": True,
+            "command_id": "command:BTCUSDT",
+            "command_status": "FAILED",
+            "position_id": None,
+            "position_status": "NOT_REACHED",
+            "terminal_result": reason,
+            "lifecycle_state": "EXECUTION_FAILED",
+        }},
+    )
+
+    item = value["current_cycle"]["items"][0]
+    assert item["stage_trace"]["FINAL_APPROVAL"] == "PASS"
+    assert item["terminal_reason_code"] == reason
+    assert item["downstream_detail"]["execution_lifecycle_state"] == "EXECUTION_FAILED"
+    assert item["downstream_detail"]["command_status"] == "FAILED"
+    assert item["downstream_detail"]["position_status"] == "NOT_REACHED"
+
+
 def test_rolling_4h_plan_count_maps_to_every_persisted_plan_identity_without_symbol_deduplication():
     pairs = []
     run_ids = []
