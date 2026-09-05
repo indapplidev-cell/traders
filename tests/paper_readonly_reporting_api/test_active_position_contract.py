@@ -8,4 +8,4 @@ def test_desktop_projection_separates_active_and_closed_positions() -> None:
     assert 'item.state in {"OPEN", "CLOSING"}' in controller
     assert "last_closed_position" in controller
     assert "paper.paper_positions = active_positions" in controller
-    assert "count: 0" in view
+    assert "count: {len(p.paper_positions)}" in view

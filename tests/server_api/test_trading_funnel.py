@@ -256,6 +256,21 @@ def test_rolling_4h_plan_count_maps_to_every_persisted_plan_identity_without_sym
     )
 
 
+def test_new_scalping_v2_records_never_use_legacy_selector_state():
+    run = _run("BTCUSDT", NOW_MS - 300_000, run_id="run:v2:new")
+    result = _result(run, valid_until=NOW_MS - 1)
+    run.primary_timeframe = result.primary_timeframe = "5m"
+    run.trade_profile_id = result.trade_profile_id = "trade-5m-v2"
+    universe = SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS)
+    value = build_projection(
+        ((run, result),), universe, NOW_MS, {}, "trade-5m-v2",
+        lifecycle_by_run={},
+    )
+    item = value["historical_paper_plans_4h"][0]
+    assert item["downstream_detail"]["selector_state"] == "EXPIRED"
+    assert item["downstream_detail"]["selector_state"] != "LEGACY_NOT_OBSERVED"
+
+
 def test_identity_failure_uses_authoritative_reason_and_quantity_not_reached():
     run = _run("BTCUSDT")
     result = _result(

@@ -508,6 +508,14 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 state_after=result.final_lifecycle_state.value,
                 mutation_committed=result.stages_completed == 1,
                 position_id=result.position_id,
+                child_outcome=(
+                    result.stage_trace[-1].child_outcome_code
+                    if result.stage_trace else None
+                ),
+                child_reason=(
+                    result.stage_trace[-1].child_reason_code
+                    if result.stage_trace else None
+                ),
             )
             if (
                 canary.authority_mode == "CONTINUOUS"

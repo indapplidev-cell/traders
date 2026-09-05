@@ -1639,7 +1639,16 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     ),
                     "selector_state": lifecycle.get(
                         "selector_state",
-                        "LEGACY_NOT_OBSERVED" if execution_terminal else "NOT_REACHED",
+                        (
+                            "EXPIRED"
+                            if profile.trade_profile_id == "trade-5m-v2"
+                            and execution_terminal == "EXPIRED_BEFORE_EXECUTION"
+                            else "NOT_REACHED"
+                            if profile.trade_profile_id == "trade-5m-v2"
+                            else "LEGACY_NOT_OBSERVED"
+                            if execution_terminal
+                            else "NOT_REACHED"
+                        ),
                     ),
                     "selector_reason": lifecycle.get("selector_reason"),
                     "selector_rank": lifecycle.get("selector_rank"),
