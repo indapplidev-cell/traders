@@ -29,6 +29,13 @@ from app.engine_paper.controlled_worker import (
     SqlAlchemyPaperLifecycleGraphLoader,
 )
 from app.engine_paper.production_market_data import PaperProductionMarketDataInputAdapter
+from app.engine_paper.entry_refinement import (
+    EntryRefinementPolicy,
+    ScalpingEntryRefinementService,
+)
+from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSource
+from app.engine_market_data.binance_public_rest import BinancePublicRestClient
+from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.engine_safety.paper_production_control import (
     PaperProductionMutationSafetyGate,
     PaperProductionSafetyControl,
@@ -228,6 +235,30 @@ def create_runtime_app(
         if sessions is None or not isinstance(canary_store, SqlAlchemyPaperFirstCanaryStore):
             raise RuntimeError("CONTROL_RUNTIME_EXECUTOR_COMPOSITION_UNAVAILABLE")
         continuous_store = PaperContinuousAuthorityStore(sessions)
+        market_data_adapter = PaperProductionMarketDataInputAdapter(sessions)
+        scalping = resolve_runtime_parameters("trade-5m-v2")
+        entry_refinement = ScalpingEntryRefinementService(
+            market_data=market_data_adapter,
+            cost_source=BinancePublicScalpingCostSource(
+                client=BinancePublicRestClient(
+                    max_retries=0, request_timeout_seconds=4.0
+                ),
+                reference_notional=float(scalping.vwap_reference_notional),
+                depth_limit=int(scalping.bounded_book_depth_limit),
+                maximum_age_ms=int(scalping.microstructure_max_age_ms),
+                entry_fee_bps=float(scalping.economics_entry_fee_bps),
+                exit_fee_bps=float(scalping.economics_exit_fee_bps),
+                entry_slippage_bps=float(scalping.economics_entry_slippage_bps),
+                exit_slippage_bps=float(scalping.economics_exit_slippage_bps),
+            ),
+            policy=EntryRefinementPolicy(
+                maximum_price_drift_bps=float(scalping.execution_max_price_drift_bps),
+                maximum_spread_bps=float(scalping.execution_max_price_drift_bps),
+                minimum_net_edge_bps=float(scalping.economics_minimum_net_edge_bps),
+                required_net_rr=float(scalping.minimum_planned_rr),
+                cost_safety_margin_bps=float(scalping.cost_safety_margin_bps),
+            ),
+        )
         executor = ProductionPaperFirstCanaryExecutor(
             control=active_control,
             canary_store=canary_store,
@@ -241,6 +272,7 @@ def create_runtime_app(
             ),
             outcome_store=PaperPlanExecutionOutcomeStore(sessions),
             continuous_store=continuous_store,
+            entry_refinement=entry_refinement,
         )
     else:
         continuous_store = PaperContinuousAuthorityStore(sessions) if sessions is not None else None
@@ -271,7 +303,11 @@ def create_runtime_app(
             lifecycle_worker=PaperControlledLifecycleWorker.from_factories(
                 lambda: PaperUnitOfWork(sessions), sessions
             ),
-            market_data=PaperProductionMarketDataInputAdapter(sessions),
+            market_data=(
+                market_data_adapter
+                if 'market_data_adapter' in locals()
+                else PaperProductionMarketDataInputAdapter(sessions)
+            ),
             mutation_safety_gate=PaperProductionMutationSafetyGate(active_control),
             runtime_readiness=ReadonlyExistingCanaryRuntimeReadinessSource(
                 os.environ.get(READONLY_INTERNAL_URL_KEY, DEFAULT_READONLY_INTERNAL_URL)

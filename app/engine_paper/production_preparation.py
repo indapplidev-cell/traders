@@ -20,7 +20,7 @@ PRODUCTION_PAPER_RUNTIME_ROLE: Final = "traders_paper_runtime"
 PRODUCTION_READONLY_ROLE: Final = "traders_readonly_api"
 EXPECTED_START_ALEMBIC: Final = "0008_engine_orchestrator_freshness_retry"
 EXPECTED_PREVIOUS_ALEMBIC: Final = "0019_first_class_15m_domain"
-EXPECTED_FINAL_ALEMBIC: Final = "0025_paper_budget_policy"
+EXPECTED_FINAL_ALEMBIC: Final = "0026_scalping_1m_entry_refinement"
 SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
     EXPECTED_START_ALEMBIC,
     "0014_paper_canary_selection_policy",

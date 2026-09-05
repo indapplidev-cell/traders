@@ -44,6 +44,11 @@ from app.engine_paper.eligible_approval_ranking import (
 )
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
 from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
+from app.engine_paper.entry_refinement import (
+    EntryRefinementResult,
+    MODULE_NAME as ENTRY_REFINEMENT_MODULE_NAME,
+    refinement_identity,
+)
 from app.engine_paper.production_approval import (
     PaperProductionApprovalOutcome,
     PaperProductionApprovalRequest,
@@ -75,6 +80,7 @@ from app.operator_control.production_executor import (
     ExistingCanaryRuntimeReadiness,
     ProductionPaperFirstCanaryExecutor,
     SCALPING_V2_SIMULATION_POLICY_ID,
+    SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID,
     _foundation_policy,
 )
 from app.operator_control.production_lifecycle_worker import (
@@ -505,9 +511,9 @@ def _approval_source(factory, at_ms=EVALUATION_MS):
     )
 
 
-def _seed_simulation_policy(factory, candidate) -> None:
+def _seed_simulation_policy(factory, candidate, *, policy_id=None) -> None:
     policy = _foundation_policy(
-        SCALPING_V2_SIMULATION_POLICY_ID
+        policy_id or SCALPING_V2_SIMULATION_POLICY_ID
         if candidate.trade_profile_id == "trade-5m-v2"
         else "simulation:foundation:v1"
     )
@@ -532,7 +538,8 @@ def _seed_simulation_policy(factory, candidate) -> None:
         ))
 
 
-def _runtime(factory, engine, control, source, *, readiness=None, market_reader=None):
+def _runtime(factory, engine, control, source, *, readiness=None, market_reader=None,
+             entry_refinement=None):
     store = SqlAlchemyPaperFirstCanaryStore(factory)
     continuous_store = PaperContinuousAuthorityStore(factory)
     gate = PaperProductionMutationSafetyGate(control)
@@ -548,6 +555,7 @@ def _runtime(factory, engine, control, source, *, readiness=None, market_reader=
         )),
         outcome_store=PaperPlanExecutionOutcomeStore(factory),
         continuous_store=continuous_store,
+        entry_refinement=entry_refinement,
     )
     lock = PostgresCanaryContinuationLock(engine)
     continuation = PaperFirstCanaryEligibleApprovalContinuationWorker(
@@ -588,6 +596,190 @@ def _runtime(factory, engine, control, source, *, readiness=None, market_reader=
     return store, executor, continuation, lifecycle, service
 
 
+class _StaticEntryRefinement:
+    def __init__(self, state="READY_TO_ENTER", reason="ENTRY_REFINEMENT_CONFIRMED"):
+        self.state = state
+        self.reason = reason
+
+    def evaluate(self, candidate, *, selected_at, plan_id=None, previous_close=None):
+        finished = selected_at if self.state != "WAITING_FOR_1M" else None
+        return EntryRefinementResult(
+            refinement_identity=refinement_identity(candidate, plan_id=plan_id),
+            module_name=ENTRY_REFINEMENT_MODULE_NAME, mode="AUTHORITATIVE",
+            state=self.state, reason=self.reason,
+            profile_id=candidate.trade_profile_id, symbol=candidate.symbol,
+            side=candidate.side.value,
+            boundary_closed_at_ms=candidate.watermark.closed_until_ms,
+            candidate_id=candidate.candidate_id,
+            approval_id=candidate.lineage.final_approval_id,
+            plan_id=plan_id or candidate.lineage.source_run_id,
+            refinement_started_at=selected_at,
+            refinement_finished_at=finished,
+            refinement_valid_from_ms=int(selected_at.timestamp() * 1000),
+            refinement_valid_until_ms=candidate.valid_until_ms,
+            one_min_candle_open_ms=(BOUNDARY if finished else None),
+            one_min_candle_close_ms=(BOUNDARY + 60_000 if finished else None),
+            one_min_snapshot_id=("snapshot:refinement" if finished else None),
+            one_min_watermark=("watermark:refinement" if finished else None),
+            one_min_candle_direction=("BULLISH" if finished else None),
+            price_at_refinement=(candidate.entry_reference_price if finished else None),
+            planned_entry=candidate.entry_reference_price,
+            refined_entry_reference=(candidate.entry_reference_price if finished else None),
+            price_drift_bps=(0 if finished else None), spread_bps=(1 if finished else None),
+            dynamic_fee_bps=(2 if finished else None),
+            executed_gross_rr=(2 if finished else None),
+            executed_net_rr=(1.8 if finished else None),
+            executed_net_edge_bps=(20 if finished else None),
+        )
+
+
+class _SequenceEntryRefinement(_StaticEntryRefinement):
+    def __init__(self, values):
+        self.values = iter(values)
+
+    def evaluate(self, candidate, *, selected_at, plan_id=None, previous_close=None):
+        self.state, self.reason = next(self.values)
+        return super().evaluate(
+            candidate, selected_at=selected_at, plan_id=plan_id,
+            previous_close=previous_close,
+        )
+
+
+def _continuous_refinement_runtime(factory, engine, tmp_path, refinement, *, symbols=(SYMBOL,)):
+    _seed_foundation(factory)
+    result = _pipeline(factory, symbol=symbols[0])
+    _persist_natural_approval(factory, result)
+    if len(symbols) > 1:
+        _seed_additional_symbol(factory, symbols[1])
+        _persist_natural_approval(factory, _pipeline(factory, symbol=symbols[1]))
+    source = _approval_source(factory)
+    control = PaperProductionSafetyControl(tmp_path / "entry-refinement-control")
+    disabled = control.initialize_disabled(acknowledge=True)
+    armed = control.transition(
+        PersistentState.CONTINUOUS_ARMED,
+        expected_generation=disabled.generation,
+        reason=ReasonCode.CONTINUOUS_PAPER_ACTIVATION,
+        acknowledge=True, acknowledge_paper_arming=True,
+        preflight=PaperOperatorArmReadiness.isolated_ready().authority_preflight(),
+        arming_scope=PaperProductionArmingScope(1, 1, symbols),
+    )
+    PaperContinuousAuthorityStore(factory).activate(
+        generation=armed.generation, source="isolated-postgres-e2e",
+        reason="TEST_ENTRY_REFINEMENT",
+    )
+    return _runtime(
+        factory, engine, control, source, entry_refinement=refinement
+    )
+
+
+def test_authoritative_refinement_rejection_creates_no_command_and_no_rank2_fallback(
+    natural_e2e_sessions, natural_e2e_engine, tmp_path
+):
+    factory = natural_e2e_sessions
+    store, _executor, continuation, _lifecycle, _service = _continuous_refinement_runtime(
+        factory, natural_e2e_engine, tmp_path,
+        _StaticEntryRefinement(
+            "REJECTED_1M", "ENTRY_REFINEMENT_MOMENTUM_INVALIDATED"
+        ),
+        symbols=("BTCUSDT", "ETHUSDT"),
+    )
+    assert continuation.run_once() == (
+        "SAFE_FAILURE:ENTRY_REFINEMENT_MOMENTUM_INVALIDATED"
+    )
+    with factory() as session:
+        outcomes = tuple(session.scalars(
+            select(PaperPlanExecutionOutcomeRecord).order_by(
+                PaperPlanExecutionOutcomeRecord.selector_rank
+            )
+        ))
+        assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord)) == 0
+    winner = next(row for row in outcomes if row.selected_winner)
+    loser = next(row for row in outcomes if not row.selected_winner)
+    assert winner.refinement_state == "REJECTED_1M"
+    assert winner.selector_rank == 1 and loser.selector_rank == 2
+    assert loser.refinement_state is None
+    assert store.current() is None
+
+
+def test_authoritative_refinement_waiting_then_expired_creates_no_command(
+    natural_e2e_sessions, natural_e2e_engine, tmp_path
+):
+    factory = natural_e2e_sessions
+    refinement = _SequenceEntryRefinement((
+        ("WAITING_FOR_1M", "ENTRY_REFINEMENT_WAITING_1M_CLOSE"),
+        ("EXPIRED_1M", "ENTRY_REFINEMENT_WINDOW_EXPIRED"),
+    ))
+    _store, _executor, continuation, _lifecycle, _service = _continuous_refinement_runtime(
+        factory, natural_e2e_engine, tmp_path, refinement
+    )
+    assert continuation.run_once() == (
+        "SAFE_FAILURE:ENTRY_REFINEMENT_WAITING_1M_CLOSE"
+    )
+    assert continuation.run_once() == (
+        "SAFE_FAILURE:ENTRY_REFINEMENT_WINDOW_EXPIRED"
+    )
+    with factory() as session:
+        outcome = session.scalar(select(PaperPlanExecutionOutcomeRecord))
+        assert outcome.refinement_state == "EXPIRED_1M"
+        assert outcome.command_id is None
+        assert session.scalar(select(func.count()).select_from(PaperExecutionCommandRecord)) == 0
+
+
+def test_same_symbol_next_5m_boundary_has_independent_refinement_identity_postgres(
+    natural_e2e_sessions,
+):
+    factory = natural_e2e_sessions
+    observed = datetime.now(timezone.utc)
+    boundaries = (BOUNDARY, BOUNDARY + 300_000)
+    with factory() as session, session.begin():
+        for index, boundary in enumerate(boundaries):
+            session.add(PaperPlanExecutionOutcomeRecord(
+                pipeline_run_id=f"run:boundary:{index}",
+                paper_plan_id=f"plan:boundary:{index}",
+                final_approval_id=f"approval:boundary:{index}",
+                candidate_id=f"candidate:boundary:{index}", symbol=SYMBOL,
+                trade_profile_id="trade-5m-v2", universe_id="trading-universe-v2",
+                boundary_closed_at_ms=boundary, plan_created_at_ms=boundary + 1,
+                approval_valid_until_ms=boundary + 299_999,
+                selector_state="SELECTED", selector_reason=None, selector_rank=1,
+                selected_winner=True, lifecycle_state="PLAN_OBSERVED",
+                terminal_reason=None, command_id=None, control_generation=12,
+                runtime_enabled=True, daemon_enabled=True, scheduler_enabled=True,
+                mutation_enabled=True, live_enabled=False, attempt_count=0,
+                first_observed_at=observed, updated_at=observed, terminal_at=None,
+            ))
+    store = PaperPlanExecutionOutcomeStore(factory)
+    for index, boundary in enumerate(boundaries):
+        value = type("Candidate", (), {})()
+        value.trade_profile_id = "trade-5m-v2"
+        value.symbol = SYMBOL
+        value.side = type("Side", (), {"value": "LONG"})()
+        value.candidate_id = f"candidate:boundary:{index}"
+        value.entry_reference_price = Decimal("100")
+        value.stop_price = Decimal("99")
+        value.target_price = Decimal("103")
+        value.valid_until_ms = boundary + 299_999
+        value.watermark = type("Watermark", (), {"closed_until_ms": boundary})()
+        value.lineage = type("Lineage", (), {
+            "source_run_id": f"run:boundary:{index}",
+            "final_approval_id": f"approval:boundary:{index}",
+        })()
+        store.record_refinement(
+            value.lineage.source_run_id,
+            _StaticEntryRefinement().evaluate(
+                value, selected_at=store.selected_at(value.lineage.source_run_id)
+            ),
+        )
+    with factory() as session:
+        rows = tuple(session.scalars(select(PaperPlanExecutionOutcomeRecord).order_by(
+            PaperPlanExecutionOutcomeRecord.boundary_closed_at_ms
+        )))
+    assert len(rows) == 2
+    assert rows[0].symbol == rows[1].symbol == SYMBOL
+    assert rows[0].boundary_closed_at_ms != rows[1].boundary_closed_at_ms
+    assert rows[0].refinement_identity != rows[1].refinement_identity
+
+
 def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     natural_e2e_sessions, natural_e2e_engine, tmp_path, monkeypatch
 ):
@@ -607,7 +799,9 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     available = tuple(item.candidate for item in candidates.symbol_results if item.candidate)
     assert available, repr(candidates)
     candidate = available[0]
-    _seed_simulation_policy(factory, candidate)
+    _seed_simulation_policy(
+        factory, candidate, policy_id=SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID
+    )
 
     control = PaperProductionSafetyControl(tmp_path / "continuous-paper-control")
     disabled = control.initialize_disabled(acknowledge=True)
@@ -626,7 +820,8 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     )
     market_reader = _MarketReaderAt()
     store, executor, continuation, lifecycle, _service = _runtime(
-        factory, natural_e2e_engine, control, source, market_reader=market_reader
+        factory, natural_e2e_engine, control, source, market_reader=market_reader,
+        entry_refinement=_StaticEntryRefinement(),
     )
 
     # Recover the exact candidate if a prior tick durably reserved the cycle
@@ -644,6 +839,7 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     )
     assert reserved.command_id is None
     assert continuation.run_once() == "COMMAND_CREATED_OR_REPLAYED"
+    assert executor.last_refinement.state == "READY_TO_ENTER"
     cycle_a = store.current()
     assert cycle_a is not None and cycle_a.authority_mode == "CONTINUOUS"
     assert lifecycle.run_once().endswith(":POSITION_OPEN_CURSOR_READY")

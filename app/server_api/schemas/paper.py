@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0025_paper_budget_policy"
-    ] = "0025_paper_budget_policy"
+        "0026_scalping_1m_entry_refinement"
+    ] = "0026_scalping_1m_entry_refinement"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool
@@ -240,6 +240,24 @@ class PaperExecutionLifecycle(BaseModel):
     position_id: SafeIdentifier | None = None
     terminal_reason: str | None = None
     attempt_count: int = Field(ge=0)
+    refinement_mode: Literal["OFF", "SHADOW", "AUTHORITATIVE"] = "OFF"
+    refinement_state: str = "NOT_REACHED"
+    refinement_reason: str = "ENTRY_REFINEMENT_NOT_APPLICABLE"
+    refinement_started_at: UtcTimestamp | None = None
+    refinement_finished_at: UtcTimestamp | None = None
+    refinement_valid_from_ms: int | None = Field(default=None, ge=0)
+    refinement_valid_until_ms: int | None = Field(default=None, ge=0)
+    one_min_reference_open_ms: int | None = Field(default=None, ge=0)
+    one_min_reference_close_ms: int | None = Field(default=None, ge=0)
+    one_min_snapshot_id: str | None = None
+    planned_entry: DecimalString | None = None
+    refined_entry_reference: DecimalString | None = None
+    actual_paper_fill: DecimalString | None = None
+    price_drift_bps: float | None = None
+    spread_bps: float | None = None
+    dynamic_fee_bps: float | None = None
+    executed_net_rr: float | None = None
+    executed_net_edge_bps: float | None = None
 
 
 class PaperRuntimeStatus(BaseModel):

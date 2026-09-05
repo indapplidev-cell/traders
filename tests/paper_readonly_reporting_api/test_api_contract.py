@@ -262,7 +262,7 @@ def test_runtime_projects_exact_selected_plan_execution_lifecycle(baseline):
         paper_runtime=PaperRuntimeObservation(current_execution={
             "source_run_id": "orchestrator:run-sui",
             "symbol": "SUIUSDT",
-            "trade_profile_id": "trade-5m-v1",
+            "trade_profile_id": "trade-5m-v2",
             "boundary_closed_at_ms": 1788279600000,
             "candidate_id": "candidate:sui",
             "approval_id": "approval:sui",
@@ -279,6 +279,24 @@ def test_runtime_projects_exact_selected_plan_execution_lifecycle(baseline):
             "position_id": None,
             "terminal_reason": "EXPIRED_BEFORE_EXECUTION",
             "attempt_count": 8,
+            "refinement_mode": "SHADOW",
+            "refinement_state": "READY_TO_ENTER",
+            "refinement_reason": "ENTRY_REFINEMENT_CONFIRMED",
+            "refinement_started_at": "2026-09-01T16:20:58.794697Z",
+            "refinement_finished_at": "2026-09-01T16:21:01.000000Z",
+            "refinement_valid_from_ms": 1788279658794,
+            "refinement_valid_until_ms": 1788279899999,
+            "one_min_reference_open_ms": 1788279660000,
+            "one_min_reference_close_ms": 1788279720000,
+            "one_min_snapshot_id": "snapshot:1m:sui",
+            "planned_entry": "1.0000",
+            "refined_entry_reference": "1.0002",
+            "actual_paper_fill": "1.0003",
+            "price_drift_bps": 2.0,
+            "spread_bps": 1.0,
+            "dynamic_fee_bps": 4.0,
+            "executed_net_rr": 1.7,
+            "executed_net_edge_bps": 12.0,
         }),
     )
     lifecycle = TestClient(app).get("/api/v1/paper/runtime/status").json()["data"]["current_execution"]
@@ -286,6 +304,11 @@ def test_runtime_projects_exact_selected_plan_execution_lifecycle(baseline):
     assert lifecycle["selector_state"] == "SELECTED" and lifecycle["selector_rank"] == 1
     assert lifecycle["command_status"] == "EXPIRED"
     assert lifecycle["terminal_reason"] == "EXPIRED_BEFORE_EXECUTION"
+    assert lifecycle["refinement_mode"] == "SHADOW"
+    assert lifecycle["refinement_state"] == "READY_TO_ENTER"
+    assert lifecycle["planned_entry"] == "1.0000"
+    assert lifecycle["refined_entry_reference"] == "1.0002"
+    assert lifecycle["actual_paper_fill"] == "1.0003"
 
 
 def test_no_eligible_approval_is_healthy_no_trade_semantic(baseline):

@@ -216,6 +216,14 @@ def test_open_position_terminal_state_overrides_later_approval_expiry():
             "position_status": "OPEN",
             "terminal_result": "PAPER_POSITION_OPENED",
             "lifecycle_state": "COMMAND_CREATED",
+            "entry_refinement": {
+                "mode": "SHADOW",
+                "state": "READY_TO_ENTER",
+                "reason": "ENTRY_REFINEMENT_CONFIRMED",
+                "planned_entry": "100.0",
+                "refined_entry_reference": "100.1",
+                "actual_paper_fill": "100.2",
+            },
         }},
     )
 
@@ -223,6 +231,11 @@ def test_open_position_terminal_state_overrides_later_approval_expiry():
     assert item["source_reason_code"] == "PAPER_POSITION_OPENED"
     assert item["terminal_reason_code"] == "PAPER_POSITION_OPENED"
     assert item["downstream_detail"]["position_status"] == "OPEN"
+    refinement = item["downstream_detail"]["entry_refinement"]
+    assert refinement["mode"] == "SHADOW"
+    assert refinement["state"] == "READY_TO_ENTER"
+    assert refinement["planned_entry"] == "100.0"
+    assert refinement["actual_paper_fill"] == "100.2"
 
 
 def test_failed_safe_execution_reason_is_not_masked_by_plan_success():

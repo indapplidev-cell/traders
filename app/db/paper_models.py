@@ -85,6 +85,11 @@ PLAN_EXECUTION_STATES = (
     "EXECUTION_FAILED",
     "EXPIRED_BEFORE_EXECUTION",
 )
+ENTRY_REFINEMENT_MODES = ("OFF", "SHADOW", "AUTHORITATIVE")
+ENTRY_REFINEMENT_STATES = (
+    "NOT_REACHED", "WAITING_FOR_1M", "READY_TO_ENTER", "REJECTED_1M",
+    "EXPIRED_1M", "BYPASSED", "FAILED",
+)
 FIRST_CANARY_STATES = (
     "RESERVED",
     "ARMED",
@@ -564,6 +569,21 @@ class PaperPlanExecutionOutcomeRecord(Base):
         CheckConstraint("selector_rank IS NULL OR selector_rank >= 1", name="ck_plan_outcome_rank"),
         CheckConstraint("attempt_count >= 0", name="ck_plan_outcome_attempts"),
         CheckConstraint("live_enabled = false", name="ck_plan_outcome_live_disabled"),
+        CheckConstraint(
+            "refinement_mode IS NULL OR refinement_mode IN ('OFF','SHADOW','AUTHORITATIVE')",
+            name="ck_plan_outcome_refinement_mode",
+        ),
+        CheckConstraint(
+            "refinement_state IS NULL OR refinement_state IN "
+            "('NOT_REACHED','WAITING_FOR_1M','READY_TO_ENTER','REJECTED_1M',"
+            "'EXPIRED_1M','BYPASSED','FAILED')",
+            name="ck_plan_outcome_refinement_state",
+        ),
+        CheckConstraint(
+            "refinement_valid_until_ms IS NULL OR "
+            "refinement_valid_until_ms <= approval_valid_until_ms",
+            name="ck_plan_outcome_refinement_approval_bound",
+        ),
         Index("ix_plan_outcome_profile_boundary", "trade_profile_id", "boundary_closed_at_ms"),
         Index("ix_plan_outcome_terminal", "lifecycle_state", "approval_valid_until_ms"),
     )
@@ -595,6 +615,15 @@ class PaperPlanExecutionOutcomeRecord(Base):
     first_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     terminal_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refinement_identity: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH), unique=True)
+    refinement_mode: Mapped[str | None] = mapped_column(String(16))
+    refinement_state: Mapped[str | None] = mapped_column(String(32))
+    refinement_reason: Mapped[str | None] = mapped_column(String(80))
+    refinement_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refinement_finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refinement_valid_from_ms: Mapped[int | None] = mapped_column(BigInteger)
+    refinement_valid_until_ms: Mapped[int | None] = mapped_column(BigInteger)
+    refinement_details: Mapped[dict[str, object] | None] = mapped_column(JSON)
 
 
 class PaperOrderRecord(Base):

@@ -983,6 +983,7 @@ class TradingFunnelReadRepository:
                         ("0023_scalping_v2_journal_causality",),
                         ("0024_continuous_paper_authority",),
                         ("0025_paper_budget_policy",),
+                        ("0026_scalping_1m_entry_refinement",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -1284,6 +1285,16 @@ class TradingFunnelReadRepository:
                 "policy_generation": outcome.control_generation,
                 "policy_reason_source": "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT",
                 "policy_source_timestamp": outcome.updated_at,
+                "entry_refinement": {
+                    "mode": outcome.refinement_mode or "OFF",
+                    "state": outcome.refinement_state or "NOT_REACHED",
+                    "reason": outcome.refinement_reason or "ENTRY_REFINEMENT_NOT_APPLICABLE",
+                    "started_at": outcome.refinement_started_at,
+                    "finished_at": outcome.refinement_finished_at,
+                    "valid_from_ms": outcome.refinement_valid_from_ms,
+                    "valid_until_ms": outcome.refinement_valid_until_ms,
+                    **(outcome.refinement_details or {}),
+                },
             })
             if lifecycle.get("canary_state") == "FAILED_SAFE" and not lifecycle.get("position_id"):
                 lifecycle.update({
@@ -1705,6 +1716,10 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "execution_terminal_result": execution_terminal,
                     "execution_lifecycle_state": execution_lifecycle_state,
                     "execution_attempt_count": lifecycle.get("attempt_count", 0),
+                    "entry_refinement": lifecycle.get("entry_refinement", {
+                        "mode": "OFF", "state": "NOT_REACHED",
+                        "reason": "ENTRY_REFINEMENT_NOT_APPLICABLE",
+                    }),
                     "control_generation": lifecycle.get("control_generation"),
                     "policy_evaluated_at": lifecycle.get("policy_evaluated_at"),
                     "policy_generation": lifecycle.get("policy_generation"),

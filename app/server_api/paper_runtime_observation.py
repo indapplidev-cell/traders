@@ -302,6 +302,7 @@ class ProductionPaperRuntimeObservationSource:
                         PaperExecutionCommandRecord.processing_status,
                         PaperPositionRecord.position_id,
                         PaperPositionRecord.state,
+                        PaperPositionRecord.average_entry_price,
                         PaperFirstCanarySessionRecord.state,
                         PaperFirstCanarySessionRecord.terminal_reason,
                         PaperFirstCanarySessionRecord.completed_at,
@@ -335,10 +336,17 @@ class ProductionPaperRuntimeObservationSource:
                 ).one_or_none()
             if row is None:
                 return None
-            (
-                outcome, processing_status, position_id, position_state,
-                canary_state, canary_terminal_reason, canary_completed_at,
-            ) = row
+            if len(row) == 7:  # compatibility for isolated pre-0026 test readers
+                (
+                    outcome, processing_status, position_id, position_state,
+                    canary_state, canary_terminal_reason, canary_completed_at,
+                ) = row
+                actual_fill = None
+            else:
+                (
+                    outcome, processing_status, position_id, position_state, actual_fill,
+                    canary_state, canary_terminal_reason, canary_completed_at,
+                ) = row
             if outcome.command_id is not None:
                 command_status = processing_status or "CREATED"
             else:
@@ -358,6 +366,7 @@ class ProductionPaperRuntimeObservationSource:
             elif canary_state == "FAILED_SAFE":
                 lifecycle_state = "EXECUTION_FAILED"
                 command_status = "FAILED"
+            refinement = getattr(outcome, "refinement_details", None) or {}
             return {
                 "source_run_id": outcome.pipeline_run_id,
                 "symbol": outcome.symbol,
@@ -389,6 +398,35 @@ class ProductionPaperRuntimeObservationSource:
                     or ("POSITION_CLOSED" if position_state == "CLOSED" else "NOT_REACHED")
                 ),
                 "attempt_count": outcome.attempt_count,
+                "refinement_mode": getattr(outcome, "refinement_mode", None) or "OFF",
+                "refinement_state": getattr(outcome, "refinement_state", None) or "NOT_REACHED",
+                "refinement_reason": (
+                    getattr(outcome, "refinement_reason", None)
+                    or "ENTRY_REFINEMENT_NOT_APPLICABLE"
+                ),
+                "refinement_started_at": (
+                    utc_text(getattr(outcome, "refinement_started_at"))
+                    if getattr(outcome, "refinement_started_at", None) is not None else None
+                ),
+                "refinement_finished_at": (
+                    utc_text(getattr(outcome, "refinement_finished_at"))
+                    if getattr(outcome, "refinement_finished_at", None) is not None else None
+                ),
+                "refinement_valid_from_ms": getattr(outcome, "refinement_valid_from_ms", None),
+                "refinement_valid_until_ms": getattr(outcome, "refinement_valid_until_ms", None),
+                "one_min_reference_open_ms": refinement.get("one_min_candle_open_ms"),
+                "one_min_reference_close_ms": refinement.get("one_min_candle_close_ms"),
+                "one_min_snapshot_id": refinement.get("one_min_snapshot_id"),
+                "planned_entry": refinement.get("planned_entry"),
+                "refined_entry_reference": refinement.get("refined_entry_reference"),
+                "actual_paper_fill": (
+                    None if actual_fill is None else format(actual_fill, "f")
+                ),
+                "price_drift_bps": refinement.get("price_drift_bps"),
+                "spread_bps": refinement.get("spread_bps"),
+                "dynamic_fee_bps": refinement.get("dynamic_fee_bps"),
+                "executed_net_rr": refinement.get("executed_net_rr"),
+                "executed_net_edge_bps": refinement.get("executed_net_edge_bps"),
             }
         except Exception:
             return None

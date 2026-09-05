@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.paper_models import PaperPlanExecutionOutcomeRecord
+from app.db.paper_models import PaperPlanExecutionOutcomeRecord, PaperPositionRecord
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow
 
 from .eligible_approval_ranking import (
@@ -19,6 +19,9 @@ from .eligible_approval_ranking import (
 
 
 TERMINAL_STATES = frozenset({"EXECUTION_FAILED", "EXPIRED_BEFORE_EXECUTION"})
+TERMINAL_REFINEMENT_STATES = frozenset({
+    "READY_TO_ENTER", "REJECTED_1M", "EXPIRED_1M", "BYPASSED", "FAILED",
+})
 
 
 class PaperPlanExecutionOutcomeStore:
@@ -126,6 +129,71 @@ class PaperPlanExecutionOutcomeStore:
             if candidate.lineage.source_run_id not in consumed
         )
 
+    def selected_at(self, run_id: str) -> datetime:
+        with self._session_factory() as session:
+            row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+            if row is None:
+                raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
+            return self._utc(row.first_observed_at)
+
+    def refinement_context(self, run_id: str) -> tuple[str, dict[str, object] | None]:
+        """Return the durable plan id and causal previous-close context."""
+        with self._session_factory() as session:
+            row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+            if row is None:
+                raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
+            previous = session.execute(
+                select(PaperPositionRecord)
+                .where(
+                    PaperPositionRecord.symbol == row.symbol,
+                    PaperPositionRecord.state == "CLOSED",
+                    PaperPositionRecord.closed_at.is_not(None),
+                    PaperPositionRecord.closed_at <= row.first_observed_at,
+                )
+                .order_by(PaperPositionRecord.closed_at.desc())
+                .limit(1)
+            ).scalar_one_or_none()
+            if previous is None or previous.closed_at is None:
+                return row.paper_plan_id, None
+            closed_at = self._utc(previous.closed_at)
+            selected_at = self._utc(row.first_observed_at)
+            return row.paper_plan_id, {
+                "time_since_previous_close_seconds": max(
+                    0.0, (selected_at - closed_at).total_seconds()
+                ),
+                "previous_exit_reason": previous.reason_code,
+                "previous_side": previous.side,
+            }
+
+    def refinement_status(self, run_id: str) -> tuple[str | None, str | None, str | None]:
+        with self._session_factory() as session:
+            row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
+            if row is None:
+                raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
+            return row.refinement_state, row.refinement_reason, row.refinement_mode
+
+    def record_refinement(self, run_id: str, result: Any) -> tuple[str, str, str]:
+        """Persist at most one terminal decision for the exact plan identity."""
+        with self._session_factory() as session, session.begin():
+            row = session.get(PaperPlanExecutionOutcomeRecord, run_id, with_for_update=True)
+            if row is None:
+                raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
+            if row.refinement_identity not in {None, result.refinement_identity}:
+                raise ValueError("ENTRY_REFINEMENT_IDENTITY_MISMATCH")
+            if row.refinement_state in TERMINAL_REFINEMENT_STATES:
+                return str(row.refinement_state), str(row.refinement_reason), str(row.refinement_mode)
+            row.refinement_identity = result.refinement_identity
+            row.refinement_mode = result.mode
+            row.refinement_state = result.state
+            row.refinement_reason = result.reason
+            row.refinement_started_at = result.refinement_started_at
+            row.refinement_finished_at = result.refinement_finished_at
+            row.refinement_valid_from_ms = result.refinement_valid_from_ms
+            row.refinement_valid_until_ms = result.refinement_valid_until_ms
+            row.refinement_details = result.details()
+            row.updated_at = self._utc()
+            return result.state, result.reason, result.mode
+
     def record_attempt(
         self,
         run_id: str,
@@ -150,6 +218,11 @@ class PaperPlanExecutionOutcomeStore:
                 row.terminal_reason = None
                 row.terminal_at = None
                 row.selector_reason = None
+                details = dict(row.refinement_details or {})
+                details["selected_to_command_latency_ms"] = max(
+                    0.0, (now - self._utc(row.first_observed_at)).total_seconds() * 1000
+                )
+                row.refinement_details = details
             elif failure_code is not None:
                 row.lifecycle_state = "EXECUTION_FAILED"
                 row.terminal_reason = failure_code
@@ -178,4 +251,7 @@ class PaperPlanExecutionOutcomeStore:
             return len(rows)
 
 
-__all__ = ("PaperPlanExecutionOutcomeStore", "TERMINAL_STATES")
+__all__ = (
+    "PaperPlanExecutionOutcomeStore", "TERMINAL_REFINEMENT_STATES",
+    "TERMINAL_STATES",
+)

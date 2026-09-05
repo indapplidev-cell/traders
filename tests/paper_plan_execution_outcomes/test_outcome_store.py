@@ -111,4 +111,51 @@ def test_successful_retry_records_one_command_without_duplicate_plan_row():
         assert rows[0].command_id == "paper:command:one"
         assert rows[0].lifecycle_state == "COMMAND_CREATED"
         assert rows[0].attempt_count == 1
+        assert rows[0].refinement_details["selected_to_command_latency_ms"] == 0.0
+    engine.dispose()
+
+
+def test_refinement_is_exact_identity_restart_safe_and_terminal_once():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    object.__setattr__(value, "trade_profile_id", "trade-5m-v2")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v2",
+        control_generation=12, observed_at=NOW,
+    )
+    ready = SimpleNamespace(
+        refinement_identity="entry-refinement:exact",
+        mode="AUTHORITATIVE", state="READY_TO_ENTER",
+        reason="ENTRY_REFINEMENT_CONFIRMED",
+        refinement_started_at=NOW, refinement_finished_at=NOW,
+        refinement_valid_from_ms=BOUNDARY + 30_000,
+        refinement_valid_until_ms=VALID_UNTIL,
+        details=lambda: {
+            "one_min_candle_open_ms": BOUNDARY,
+            "one_min_candle_close_ms": BOUNDARY + 60_000,
+            "planned_entry": "100", "refined_entry_reference": "100.01",
+        },
+    )
+    assert store.record_refinement("run:one", ready) == (
+        "READY_TO_ENTER", "ENTRY_REFINEMENT_CONFIRMED", "AUTHORITATIVE"
+    )
+    # A restarted store returns the first terminal result rather than replacing
+    # it with a later observation or creating a second identity.
+    restarted = PaperPlanExecutionOutcomeStore(factory)
+    later = SimpleNamespace(**{
+        **ready.__dict__, "state": "REJECTED_1M",
+        "reason": "ENTRY_REFINEMENT_PRICE_DRIFT_TOO_LARGE",
+    })
+    assert restarted.record_refinement("run:one", later) == (
+        "READY_TO_ENTER", "ENTRY_REFINEMENT_CONFIRMED", "AUTHORITATIVE"
+    )
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.refinement_identity == "entry-refinement:exact"
+        assert row.refinement_state == "READY_TO_ENTER"
+        assert row.refinement_valid_until_ms <= row.approval_valid_until_ms
     engine.dispose()

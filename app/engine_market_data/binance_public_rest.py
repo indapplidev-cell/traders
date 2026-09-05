@@ -59,9 +59,12 @@ class BinancePublicRestClient:
         base_url: str = BASE_URL,
         max_retries: int = 3,
         backoff_seconds: float = 0.25,
+        request_timeout_seconds: float = 15.0,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        self._transport = transport or httpx.Client(timeout=15.0)
+        if request_timeout_seconds <= 0:
+            raise ValueError("request_timeout_seconds must be positive")
+        self._transport = transport or httpx.Client(timeout=request_timeout_seconds)
         self._base_url = base_url.rstrip("/")
         self._max_retries = max_retries
         self._backoff_seconds = backoff_seconds

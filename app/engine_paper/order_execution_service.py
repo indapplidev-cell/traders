@@ -1126,8 +1126,9 @@ class PaperOrderExecutionService:
         )
         position_causation_id = (
             position_event.causation_id
-            if request.simulation_policy.simulation_policy_id
-            == "simulation:scalping-v2:foundation:v1"
+            if request.simulation_policy.simulation_policy_id.startswith(
+                "simulation:scalping-v2:"
+            )
             else request.causation_id
         )
         position_persisted = replace(

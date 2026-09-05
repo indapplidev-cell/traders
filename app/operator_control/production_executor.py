@@ -30,6 +30,10 @@ from app.engine_paper.first_canary_correlation import (
     continuous_cycle_id,
 )
 from app.engine_paper.plan_execution_outcome import PaperPlanExecutionOutcomeStore
+from app.engine_paper.entry_refinement import (
+    EntryRefinementMode,
+    ScalpingEntryRefinementService,
+)
 from app.engine_paper.eligible_approval_ranking import (
     EligibleApprovalSelectionResult,
     ProductionEligibleApprovalSelector,
@@ -71,6 +75,9 @@ def _candidate_entry_fill_window_missed(candidate) -> bool:
 
 FOUNDATION_SIMULATION_POLICY_ID = "simulation:foundation:v1"
 SCALPING_V2_SIMULATION_POLICY_ID = "simulation:scalping-v2:foundation:v1"
+SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID = (
+    "simulation:scalping-v2:1m-entry-refinement:v1"
+)
 
 
 def _foundation_policy(
@@ -130,6 +137,7 @@ class ProductionPaperFirstCanaryExecutor:
         selector: ProductionEligibleApprovalSelector | None = None,
         outcome_store: PaperPlanExecutionOutcomeStore | None = None,
         continuous_store: PaperContinuousAuthorityStore | None = None,
+        entry_refinement: ScalpingEntryRefinementService | None = None,
     ) -> None:
         self._control = control
         self._canary_store = canary_store
@@ -140,8 +148,10 @@ class ProductionPaperFirstCanaryExecutor:
         self._selector = selector or ProductionEligibleApprovalSelector()
         self._outcome_store = outcome_store
         self._continuous_store = continuous_store
+        self._entry_refinement = entry_refinement
         self._prepared = None
         self.last_selection_diagnostics = None
+        self.last_refinement = None
 
     def _validate_boundary(self, transition_id: str, generation: int):
         state = self._control.read_authoritative()
@@ -389,7 +399,36 @@ class ProductionPaperFirstCanaryExecutor:
             candidate = selection.winner
         if getattr(candidate, "trade_profile_id", None) != "trade-5m-v2":
             return ("SCALPING_V2_AUTHORITY_REQUIRED",)
-        if _candidate_entry_fill_window_missed(candidate):
+        authoritative_refinement_ready = False
+        if self._entry_refinement is not None:
+            if self._outcome_store is None:
+                return ("ENTRY_REFINEMENT_PERSISTENCE_NOT_CONFIGURED",)
+            selected_at = self._outcome_store.selected_at(
+                candidate.lineage.source_run_id
+            )
+            plan_id, previous_close = self._outcome_store.refinement_context(
+                candidate.lineage.source_run_id
+            )
+            refinement = self._entry_refinement.evaluate(
+                candidate,
+                selected_at=selected_at,
+                plan_id=plan_id,
+                previous_close=previous_close,
+            )
+            self.last_refinement = refinement
+            state_value, reason_value, mode_value = self._outcome_store.record_refinement(
+                candidate.lineage.source_run_id, refinement
+            )
+            if (
+                mode_value == EntryRefinementMode.AUTHORITATIVE.value
+                and state_value != "READY_TO_ENTER"
+            ):
+                return (reason_value,)
+            authoritative_refinement_ready = (
+                mode_value == EntryRefinementMode.AUTHORITATIVE.value
+                and state_value == "READY_TO_ENTER"
+            )
+        if _candidate_entry_fill_window_missed(candidate) and not authoritative_refinement_ready:
             if self._outcome_store is not None:
                 self._outcome_store.record_attempt(
                     candidate.lineage.source_run_id,
@@ -449,8 +488,17 @@ class ProductionPaperFirstCanaryExecutor:
             candidate.paper_risk_approval.approval_id,
         )
         created_at = candidate.paper_risk_approval.approved_at
+        refinement_state = refinement_mode = None
+        if self._outcome_store is not None:
+            refinement_state, _refinement_reason, refinement_mode = (
+                self._outcome_store.refinement_status(candidate.lineage.source_run_id)
+            )
         simulation_policy_id = (
-            SCALPING_V2_SIMULATION_POLICY_ID
+            SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID
+            if candidate.trade_profile_id == "trade-5m-v2"
+            and refinement_mode == EntryRefinementMode.AUTHORITATIVE.value
+            and refinement_state == "READY_TO_ENTER"
+            else SCALPING_V2_SIMULATION_POLICY_ID
             if candidate.trade_profile_id == "trade-5m-v2"
             else FOUNDATION_SIMULATION_POLICY_ID
         )

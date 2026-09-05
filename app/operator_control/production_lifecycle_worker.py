@@ -59,7 +59,11 @@ from app.engine_safety.paper_production_control import (
 )
 
 from .continuation_worker import PostgresCanaryContinuationLock
-from .production_executor import ExistingCanaryRuntimeReadiness, _foundation_policy
+from .production_executor import (
+    ExistingCanaryRuntimeReadiness,
+    SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID,
+    _foundation_policy,
+)
 
 
 # Uvicorn owns the production stderr handler; using its error logger keeps the
@@ -278,11 +282,21 @@ class ProductionPaperFirstCanaryLifecycleWorker:
     def _entry_cycle(self, canary_id: str, graph, candles, *, continuous: bool = False):
         command = graph.command
         entry = self._orders(graph)["ENTRY"]
-        eligible = tuple(value for value in candles if value.open_time_ms >= command.closed_until_ms)
+        refinement_authoritative = (
+            command.simulation_policy_id == SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID
+        )
+        eligible = tuple(
+            value for value in candles
+            if value.open_time_ms >= command.closed_until_ms
+            and (
+                not refinement_authoritative
+                or _at(value.close_boundary_ms) >= entry.updated_at
+            )
+        )
         if not eligible:
             return None, "WAITING_FOR_ENTRY_CANDLE"
         selected = eligible[0]
-        if _entry_fill_window_missed(entry, selected):
+        if _entry_fill_window_missed(entry, selected) and not refinement_authoritative:
             authority = "CONTINUOUS" if continuous else "FIRST_CANARY"
             reason = f"{authority}_ENTRY_FILL_WINDOW_MISSED"
             self._canary_store.fail_safe(canary_id, reason)
