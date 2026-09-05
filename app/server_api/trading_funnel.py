@@ -1670,6 +1670,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "selector_reason": lifecycle.get("selector_reason"),
                     "selector_rank": lifecycle.get("selector_rank"),
                     "selected_winner": lifecycle.get("selected_winner"),
+                    "execution_candidate_id": lifecycle.get("candidate_id"),
                     "command_id": lifecycle.get("command_id"),
                     "command_status": lifecycle.get("command_status", "NOT_REACHED"),
                     "command_state": lifecycle.get("command_status", "NOT_REACHED"),

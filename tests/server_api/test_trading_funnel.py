@@ -209,6 +209,7 @@ def test_open_position_terminal_state_overrides_later_approval_expiry():
             "selector_state": "SELECTED",
             "selector_rank": 1,
             "selected_winner": True,
+            "candidate_id": "execution-candidate:BTCUSDT",
             "command_id": "command:BTCUSDT",
             "command_status": "PENDING",
             "position_id": "position:BTCUSDT",
@@ -233,6 +234,7 @@ def test_failed_safe_execution_reason_is_not_masked_by_plan_success():
             "selector_state": "SELECTED",
             "selector_rank": 1,
             "selected_winner": True,
+            "candidate_id": "execution-candidate:BTCUSDT",
             "command_id": "command:BTCUSDT",
             "command_status": "FAILED",
             "position_id": None,
@@ -246,6 +248,7 @@ def test_failed_safe_execution_reason_is_not_masked_by_plan_success():
     assert item["stage_trace"]["FINAL_APPROVAL"] == "PASS"
     assert item["terminal_reason_code"] == reason
     assert item["downstream_detail"]["execution_lifecycle_state"] == "EXECUTION_FAILED"
+    assert item["downstream_detail"]["execution_candidate_id"] == "execution-candidate:BTCUSDT"
     assert item["downstream_detail"]["command_status"] == "FAILED"
     assert item["downstream_detail"]["position_status"] == "NOT_REACHED"
 
