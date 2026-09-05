@@ -172,6 +172,46 @@ class PaperPlanExecutionOutcomeStore:
                 raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
             return row.refinement_state, row.refinement_reason, row.refinement_mode
 
+    def pending_shadow_refinement_run_ids(self) -> frozenset[str]:
+        with self._session_factory() as session:
+            return frozenset(session.scalars(
+                select(PaperPlanExecutionOutcomeRecord.pipeline_run_id).where(
+                    PaperPlanExecutionOutcomeRecord.refinement_mode == "SHADOW",
+                    PaperPlanExecutionOutcomeRecord.refinement_state == "WAITING_FOR_1M",
+                )
+            ))
+
+    def expire_shadow_refinements(
+        self, as_of_ms: int, *, observed_at: datetime | None = None
+    ) -> int:
+        """Terminalize pending shadow observations without replaying a command."""
+        now = self._utc(observed_at)
+        with self._session_factory() as session, session.begin():
+            rows = tuple(session.execute(
+                select(PaperPlanExecutionOutcomeRecord)
+                .where(
+                    PaperPlanExecutionOutcomeRecord.refinement_mode == "SHADOW",
+                    PaperPlanExecutionOutcomeRecord.refinement_state == "WAITING_FOR_1M",
+                    PaperPlanExecutionOutcomeRecord.refinement_valid_until_ms < as_of_ms,
+                )
+                .with_for_update()
+            ).scalars())
+            for row in rows:
+                row.refinement_state = "EXPIRED_1M"
+                row.refinement_reason = "ENTRY_REFINEMENT_WINDOW_EXPIRED"
+                row.refinement_finished_at = now
+                details = dict(row.refinement_details or {})
+                details.update({
+                    "state": "EXPIRED_1M",
+                    "reason": "ENTRY_REFINEMENT_WINDOW_EXPIRED",
+                    "refinement_decision": "EXPIRED_1M",
+                    "refinement_reason": "ENTRY_REFINEMENT_WINDOW_EXPIRED",
+                    "refinement_finished_at": now.isoformat().replace("+00:00", "Z"),
+                })
+                row.refinement_details = details
+                row.updated_at = now
+            return len(rows)
+
     def record_refinement(self, run_id: str, result: Any) -> tuple[str, str, str]:
         """Persist at most one terminal decision for the exact plan identity."""
         with self._session_factory() as session, session.begin():

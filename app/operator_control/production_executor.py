@@ -335,16 +335,48 @@ class ProductionPaperFirstCanaryExecutor:
             return (budget.pause_reason or "CONTINUOUS_CONTROL_NOT_ARMED",)
         if budget.budget_reason is not None:
             return (budget.budget_reason,)
-        if budget.open_positions >= 1:
-            return ("MAX_OPEN_POSITIONS_REACHED",)
-        if budget.in_flight_commands >= 1:
-            return ("MAX_NEW_COMMANDS_PER_CYCLE_REACHED",)
         authority = SimpleNamespace(
             allowed_symbols=state.arming_scope.allowed_symbols,
             selection_policy_version="eligible-approval-ranking-v1",
             universe_version_id="trading-universe-v2",
             current_control_generation=state.generation,
         )
+        if self._outcome_store is not None and self._entry_refinement is not None:
+            now = datetime.now(timezone.utc)
+            self._outcome_store.expire_shadow_refinements(
+                int(now.timestamp() * 1000), observed_at=now
+            )
+            pending = self._outcome_store.pending_shadow_refinement_run_ids()
+            if pending:
+                shadow_results = self._read_approvals(
+                    authority,
+                    _id(str(state.generation), "shadow-refinement-poll", continuous=True),
+                    timeframes=("5m",),
+                )
+                for candidate in (
+                    value.candidate for result in shadow_results
+                    for value in result.symbol_results
+                    if value.candidate is not None
+                    and value.candidate.lineage.source_run_id in pending
+                ):
+                    selected_at = self._outcome_store.selected_at(
+                        candidate.lineage.source_run_id
+                    )
+                    plan_id, previous_close = self._outcome_store.refinement_context(
+                        candidate.lineage.source_run_id
+                    )
+                    shadow = self._entry_refinement.evaluate(
+                        candidate, selected_at=selected_at, plan_id=plan_id,
+                        previous_close=previous_close,
+                    )
+                    self.last_refinement = shadow
+                    self._outcome_store.record_refinement(
+                        candidate.lineage.source_run_id, shadow
+                    )
+        if budget.open_positions >= 1:
+            return ("MAX_OPEN_POSITIONS_REACHED",)
+        if budget.in_flight_commands >= 1:
+            return ("MAX_NEW_COMMANDS_PER_CYCLE_REACHED",)
         request_id = _id(
             str(state.generation), "continuous-approval-poll", continuous=True
         )

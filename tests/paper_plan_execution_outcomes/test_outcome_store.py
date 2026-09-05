@@ -159,3 +159,36 @@ def test_refinement_is_exact_identity_restart_safe_and_terminal_once():
         assert row.refinement_state == "READY_TO_ENTER"
         assert row.refinement_valid_until_ms <= row.approval_valid_until_ms
     engine.dispose()
+
+
+def test_pending_shadow_refinement_expires_terminally_without_replaying_command():
+    engine, factory = sessions()
+    store = PaperPlanExecutionOutcomeStore(factory)
+    value = candidate("run:one")
+    selection = ProductionEligibleApprovalSelector().select(
+        (value,), policy_version="eligible-approval-ranking-v1"
+    )
+    store.observe_selection(
+        (value,), selection, universe_id="trading-universe-v2",
+        control_generation=12, observed_at=NOW,
+    )
+    waiting = SimpleNamespace(
+        refinement_identity="entry-refinement:shadow",
+        mode="SHADOW", state="WAITING_FOR_1M",
+        reason="ENTRY_REFINEMENT_WAITING_1M_CLOSE",
+        refinement_started_at=NOW, refinement_finished_at=None,
+        refinement_valid_from_ms=BOUNDARY + 30_000,
+        refinement_valid_until_ms=VALID_UNTIL,
+        details=lambda: {"state": "WAITING_FOR_1M"},
+    )
+    store.record_refinement("run:one", waiting)
+    store.record_attempt("run:one", command_id="paper:command:shadow", observed_at=NOW)
+    assert store.pending_shadow_refinement_run_ids() == frozenset({"run:one"})
+    assert store.expire_shadow_refinements(VALID_UNTIL + 1, observed_at=NOW) == 1
+    assert store.pending_shadow_refinement_run_ids() == frozenset()
+    with factory() as session:
+        row = session.get(PaperPlanExecutionOutcomeRecord, "run:one")
+        assert row.command_id == "paper:command:shadow"
+        assert row.refinement_state == "EXPIRED_1M"
+        assert row.refinement_reason == "ENTRY_REFINEMENT_WINDOW_EXPIRED"
+    engine.dispose()
