@@ -365,7 +365,11 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         safety_directive: PaperSafetyExitDirective | None = None,
     ):
         command, position, cursor = graph.command, graph.positions[0], graph.cursors[0]
-        eligible = tuple(value for value in candles if value.open_time_ms >= cursor.last_evaluated_closed_until_ms)
+        eligible = tuple(
+            value
+            for value in candles
+            if value.open_time_ms >= cursor.last_evaluated_closed_until_ms
+        )[:64]
         if not eligible:
             return None, "WAITING_FOR_EXIT_CANDLE"
         correlation = graph.journal[0].correlation_id
@@ -581,15 +585,6 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 mode=ExecutionMode.PAPER,
                 recovery_close=True,
             )
-            cycle, code = self._exit_cycle(
-                canary.canary_id,
-                graph,
-                candles,
-                continuous=True,
-                safety_directive=directive,
-            )
-            if cycle is None:
-                raise ValueError(f"RECOVERY_CLOSE_{code}")
             target = PaperProductionMutationTarget(
                 environment=canary.environment,
                 mode=canary.mode,
@@ -606,22 +601,48 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 paper_target_authorized=True,
                 live_disabled=True,
             )
-            with self._mutation_safety_gate.authorize_mutation(
-                MutationStage.EXIT_EVALUATION_MUTATION, target, prerequisites
-            ):
-                prepared = self._worker.run_cycle(cycle)
-            if prepared.final_lifecycle_state is not PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN:
-                _safe_event(
-                    "paper_operator_recovery_prepare_failed",
-                    request_id=request_id,
-                    position_id=position_id,
-                    outcome=prepared.outcome,
-                    reason_code=prepared.reason_code,
-                    stage_trace=prepared.stage_trace,
-                    child_outcome_codes=prepared.child_outcome_codes,
-                    child_reason_codes=prepared.child_reason_codes,
+            prepared = None
+            for _window in range(8):
+                cycle, code = self._exit_cycle(
+                    canary.canary_id,
+                    graph,
+                    candles,
+                    continuous=True,
+                    safety_directive=directive,
                 )
-                raise ValueError(f"RECOVERY_CLOSE_PREPARE_{prepared.reason_code}")
+                if cycle is None:
+                    raise ValueError(f"RECOVERY_CLOSE_{code}")
+                with self._mutation_safety_gate.authorize_mutation(
+                    MutationStage.EXIT_EVALUATION_MUTATION, target, prerequisites
+                ):
+                    prepared = self._worker.run_cycle(cycle)
+                if (
+                    prepared.final_lifecycle_state
+                    is PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN
+                ):
+                    break
+                if (
+                    prepared.final_lifecycle_state
+                    is not PaperLifecycleState.POSITION_OPEN_CURSOR_READY
+                ):
+                    _safe_event(
+                        "paper_operator_recovery_prepare_failed",
+                        request_id=request_id,
+                        position_id=position_id,
+                        outcome=prepared.outcome,
+                        reason_code=prepared.reason_code,
+                        stage_trace=prepared.stage_trace,
+                        child_outcome_codes=prepared.child_outcome_codes,
+                        child_reason_codes=prepared.child_reason_codes,
+                    )
+                    raise ValueError(f"RECOVERY_CLOSE_PREPARE_{prepared.reason_code}")
+                graph = self._graph_loader.load(canary.command_id)
+            if (
+                prepared is None
+                or prepared.final_lifecycle_state
+                is not PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN
+            ):
+                raise ValueError("RECOVERY_CLOSE_CATCH_UP_LIMIT")
             graph = self._graph_loader.load(canary.command_id)
             close_cycle, code = self._close_cycle(
                 canary.canary_id,
