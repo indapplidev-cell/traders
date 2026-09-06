@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import isfinite
+from math import isfinite, sqrt
+from statistics import NormalDist
+
+from app.config.trade_parameters import SCALPING_V2
 
 
 PROFILE_ID = "trade-5m-v2"
@@ -12,6 +15,8 @@ ENTRY_POLICY_VERSION = "scalping-next-closed-1m-entry-v2"
 STOP_POLICY_VERSION = "scalping-causal-volatility-stop-v2"
 TARGET_POLICY_VERSION = "scalping-nearest-viable-target-v3"
 RR_EV_POLICY_VERSION = "scalping-conservative-hierarchy-v2"
+PROBABILITY_ESTIMATOR_VERSION = "hierarchical-beta-wilson-v1"
+CONFIDENCE_METHOD = "WILSON_ONE_SIDED_LOWER_BOUND"
 TTL_POLICY_VERSION = "scalping-short-lifecycle-v2"
 RISK_POLICY_VERSION = "scalping-risk-capped-v2"
 COST_POLICY_VERSION = "scalping-round-trip-net-pnl-v2"
@@ -59,6 +64,52 @@ class ExpectancyDecision:
     reason: str
     fallback_level: str | None = None
     bucket_key: str | None = None
+    p_win_raw: float | None = None
+    p_win_adjusted: float | None = None
+    p_win_conservative: float | None = None
+    sample_size: int = 0
+    parent_sample_size: int = 0
+    estimator_version: str = PROBABILITY_ESTIMATOR_VERSION
+    confidence_method: str = CONFIDENCE_METHOD
+
+
+@dataclass(frozen=True, slots=True)
+class ProbabilityEstimate:
+    p_win_raw: float
+    p_win_adjusted: float
+    p_win_conservative: float
+    sample_size: int
+    parent_sample_size: int
+    estimator_version: str
+    confidence_method: str
+    bucket_key: str
+    fallback_level: str
+
+
+def estimate_conservative_probability(
+    bucket: EmpiricalSetupBucket, *, parent_sample_size: int = 0,
+    confidence_level: float = SCALPING_V2.economics.probability_confidence_level,
+    prior_alpha: float = SCALPING_V2.economics.prior_alpha,
+    prior_beta: float = SCALPING_V2.economics.prior_beta,
+) -> ProbabilityEstimate:
+    """Return raw, beta-smoothed and Wilson-lower probabilities."""
+    if bucket.samples <= 0:
+        raise ValueError("probability estimation requires a non-empty bucket")
+    raw = bucket.wins / bucket.samples
+    adjusted = (bucket.wins + prior_alpha) / (
+        bucket.samples + prior_alpha + prior_beta
+    )
+    z = NormalDist().inv_cdf(confidence_level)
+    n = bucket.samples + prior_alpha + prior_beta
+    denominator = 1 + z * z / n
+    centre = adjusted + z * z / (2 * n)
+    margin = z * sqrt((adjusted * (1 - adjusted) + z * z / (4 * n)) / n)
+    conservative = max(0.0, (centre - margin) / denominator)
+    return ProbabilityEstimate(
+        raw, adjusted, conservative, bucket.samples, parent_sample_size,
+        PROBABILITY_ESTIMATOR_VERSION, CONFIDENCE_METHOD,
+        bucket.bucket_key or f"{bucket.setup_type}|{bucket.direction}", bucket.level,
+    )
 
 
 def evaluate_expectancy(
@@ -83,7 +134,11 @@ def evaluate_expectancy(
             False, None, None, "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
             fallback_level="none", bucket_key=None,
         )
-    probability = selected.probability
+    selected_index = (((bucket,) if bucket is not None else ()) + parent_buckets).index(selected)
+    hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
+    parent_size = hierarchy[selected_index + 1].samples if selected_index + 1 < len(hierarchy) else 0
+    estimate = estimate_conservative_probability(selected, parent_sample_size=parent_size)
+    probability = estimate.p_win_conservative
     expected_value = probability * net_win_bps - (1 - probability) * net_loss_bps
     return ExpectancyDecision(
         expected_value >= minimum_expected_value_bps,
@@ -92,12 +147,18 @@ def evaluate_expectancy(
         "CONSERVATIVE_HIERARCHY_EV_PASS" if expected_value >= minimum_expected_value_bps else "CONSERVATIVE_HIERARCHY_EV_REJECT",
         fallback_level=selected.level,
         bucket_key=selected.bucket_key or f"{selected.setup_type}|{selected.direction}",
+        p_win_raw=estimate.p_win_raw,
+        p_win_adjusted=estimate.p_win_adjusted,
+        p_win_conservative=estimate.p_win_conservative,
+        sample_size=estimate.sample_size,
+        parent_sample_size=estimate.parent_sample_size,
     )
 
 
 __all__ = (
     "COST_POLICY_VERSION", "ENTRY_POLICY_VERSION", "EmpiricalSetupBucket", "ExpectancyDecision",
+    "CONFIDENCE_METHOD", "PROBABILITY_ESTIMATOR_VERSION", "ProbabilityEstimate",
     "PROFILE_ID", "RISK_POLICY_VERSION", "RR_EV_POLICY_VERSION",
     "SETUP_POLICY_VERSION", "STOP_POLICY_VERSION", "TARGET_POLICY_VERSION",
-    "TTL_POLICY_VERSION", "evaluate_expectancy", "policy_provenance",
+    "TTL_POLICY_VERSION", "estimate_conservative_probability", "evaluate_expectancy", "policy_provenance",
 )
