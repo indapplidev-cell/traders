@@ -92,12 +92,12 @@ def _project_5m(pairs, eligible=None):
     universe = SimpleNamespace(version_id="trading-universe-v2", symbols=SYMBOLS)
     for run, result in pairs:
         run.primary_timeframe = "5m"
-        run.trade_profile_id = "trade-5m-v1"
+        run.trade_profile_id = "trade-5m-v2"
         if result is not None:
             result.primary_timeframe = "5m"
-            result.trade_profile_id = "trade-5m-v1"
+            result.trade_profile_id = "trade-5m-v2"
     return build_projection(
-        tuple(pairs), universe, NOW_MS, eligible or {}, "trade-5m-v1"
+        tuple(pairs), universe, NOW_MS, eligible or {}, "trade-5m-v2"
     )
 
 
@@ -288,7 +288,7 @@ def test_rolling_4h_plan_count_maps_to_every_persisted_plan_identity_without_sym
         "EXPIRED_BEFORE_EXECUTION"
     }
     assert all(
-        item["downstream_detail"]["selector_state"] == "LEGACY_NOT_OBSERVED"
+        item["downstream_detail"]["selector_state"] == "EXPIRED"
         for item in historical
     )
     assert all(
@@ -412,7 +412,7 @@ def test_rolling_inclusion_boundaries_and_query_contract():
     value = _project(pairs)
     assert value["rolling_1h"]["stage_counts"]["ANALYSIS"] == 2
     assert value["rolling_4h"]["stage_counts"]["ANALYSIS"] == 4
-    assert value["query_time_horizon_ms"] == MAX_HORIZON_MS
+    assert value["query_time_horizon_ms"] == 4 * 60 * 60 * 1000 + 5 * 60 * 1000
 
 
 def test_scalping_v2_cadence_separates_stage_winner_and_trade_counts():
@@ -475,6 +475,10 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     })
     result.paper_payload_json["paper_context"] = {
         "production_rr_floor": "1.5",
+        "causal_opportunity_id": "opportunity:fixture",
+        "causal_parent_id": "opportunity:parent",
+        "causal_reset_reason": "STRUCTURE_CHANGED",
+        "duplicate_opportunity_block": False,
         "scalping_geometry_diagnostics": {
             "entry": "100.25",
             "final_stop": "99.75",
@@ -494,8 +498,23 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
             "exit_slippage_bps": "2",
             "safety_margin_bps": "3",
             "total_cost_bps": "27.8",
+            "effective_total_cost_bps": "30.8",
+            "adverse_fill_reserve_bps": "3",
             "gross_rr": "2.1",
             "net_rr": "1.6",
+            "p_win_raw": "0.75",
+            "p_win_adjusted": "0.74",
+            "p_win_conservative": "0.68",
+            "probability_bucket": "setup|BULLISH",
+            "probability_sample_size": 40,
+            "probability_parent_sample_size": 80,
+            "probability_fallback_level": "setup_direction",
+            "candidate_net_rr": "1.6",
+            "dynamic_required_net_rr": "0.55",
+            "break_even_net_rr": "0.47",
+            "expected_ev_r": "0.76",
+            "min_required_ev": "0.0",
+            "ev_reserve": "1.13",
             "expected_net_edge_bps": "62.2",
             "break_even_win_rate": "0.38461538",
         }
@@ -542,13 +561,22 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     assert item["downstream_detail"]["required_rr"] == "1.5"
     assert item["downstream_detail"]["fee_estimate_bps"] == "20"
     assert item["downstream_detail"]["slippage_estimate_bps"] == "4"
+    assert item["downstream_detail"]["commission_bps"] == "20"
+    assert item["downstream_detail"]["slippage_bps"] == "4"
+    assert item["downstream_detail"]["effective_total_cost_bps"] == "30.8"
+    assert item["downstream_detail"]["p_win_conservative"] == "0.68"
+    assert item["downstream_detail"]["probability_fallback_level"] == "setup_direction"
+    assert item["downstream_detail"]["dynamic_required_net_rr"] == "0.55"
+    assert item["downstream_detail"]["causal_opportunity_id"] == "opportunity:fixture"
+    assert item["downstream_detail"]["duplicate_opportunity_block"] is False
+    assert len(value["trade_parameter_config_hash"]) == 64
     assert item["downstream_detail"]["expected_net_edge_bps"] == "62.2"
     assert item["downstream_detail"]["risk_percent"] == "1.00"
     assert item["downstream_detail"]["planned_quantity"] == "0.9"
     assert item["downstream_detail"]["planned_notional"] == "90.225"
     assert item["downstream_detail"]["ttl_ms"] == 300_000
     assert value["universe_symbols"] == list(SYMBOLS)
-    assert item["profile_market"]["profile_id"] == "trade-5m-v1"
+    assert item["profile_market"]["profile_id"] == "trade-5m-v2"
     assert item["profile_market"]["primary_timeframe"] == "5m"
     assert item["profile_market"]["reference_price"] == "100.25"
     assert item["profile_market"]["market_state"] == "EXPANSION"
@@ -795,12 +823,12 @@ def test_get_route_explicit_profiles_are_isolated_and_invalid_is_4xx():
         clock=lambda: datetime.fromtimestamp(NOW_MS / 1000, tz=timezone.utc),
     ))
     fifteen = client.get("/api/v1/trading/funnel?trade_profile=trade-15m-v1")
-    five = client.get("/api/v1/trading/funnel?trade_profile=trade-5m-v1")
+    five = client.get("/api/v1/trading/funnel?trade_profile=trade-5m-v2")
     invalid = client.get("/api/v1/trading/funnel?trade_profile=unknown")
     assert fifteen.status_code == five.status_code == 200
     assert fifteen.json()["data"]["trade_profile_id"] == "trade-15m-v1"
     assert fifteen.json()["data"]["expected_1h_cycle_count"] == 4
-    assert five.json()["data"]["trade_profile_id"] == "trade-5m-v1"
+    assert five.json()["data"]["trade_profile_id"] == "trade-5m-v2"
     assert five.json()["data"]["trade_mode"] == "SCALPING"
     assert five.json()["data"]["display_i18n_key"] == "trading.profile.trade_5m.title"
     assert five.json()["data"]["primary_timeframe"] == "5m"
@@ -827,11 +855,11 @@ def test_5m_repository_uses_bounded_cycle_and_historical_plan_queries():
     run = _run("BTCUSDT")
     run.id = 1
     run.primary_timeframe = "5m"
-    run.trade_profile_id = "trade-5m-v1"
+    run.trade_profile_id = "trade-5m-v2"
     result = _result(run, approvals=False)
     result.id = 1
     result.primary_timeframe = "5m"
-    result.trade_profile_id = "trade-5m-v1"
+    result.trade_profile_id = "trade-5m-v2"
 
     class Session:
         execute_count = 0
@@ -871,10 +899,10 @@ def test_5m_repository_uses_bounded_cycle_and_historical_plan_queries():
         monotonic_clock=lambda: 10.0,
         load_lifecycle=False,
     )
-    first = projection.project(NOW_MS, "trade-5m-v1")
-    second = projection.project(NOW_MS + 1_000, "trade-5m-v1")
+    first = projection.project(NOW_MS, "trade-5m-v2")
+    second = projection.project(NOW_MS + 1_000, "trade-5m-v2")
 
-    assert first["trade_profile_id"] == "trade-5m-v1"
+    assert first["trade_profile_id"] == "trade-5m-v2"
     assert second["projection_generated_at_ms"] == NOW_MS + 1_000
     assert len(sessions) == 1
     # One rolling-window query plus one set-based historical PAPER-plan query;
@@ -922,11 +950,11 @@ def test_expired_5m_cache_is_released_before_replacement_query():
     run = _run("BTCUSDT")
     run.id = 1
     run.primary_timeframe = "5m"
-    run.trade_profile_id = "trade-5m-v1"
+    run.trade_profile_id = "trade-5m-v2"
     result = _result(run, approvals=False)
     result.id = 1
     result.primary_timeframe = "5m"
-    result.trade_profile_id = "trade-5m-v1"
+    result.trade_profile_id = "trade-5m-v2"
     clock = iter((10.0, 41.0))
     repository = None
 
@@ -939,7 +967,7 @@ def test_expired_5m_cache_is_released_before_replacement_query():
 
         def execute(self, _statement):
             assert repository is not None
-            assert "trade-5m-v1" not in repository._row_cache
+            assert "trade-5m-v2" not in repository._row_cache
             return ((run, result),)
 
     class Capabilities:
@@ -961,8 +989,8 @@ def test_expired_5m_cache_is_released_before_replacement_query():
         load_lifecycle=False,
     )
 
-    repository.project(NOW_MS, "trade-5m-v1")
-    first_rows = repository._row_cache["trade-5m-v1"][1]
-    repository.project(NOW_MS + 31_000, "trade-5m-v1")
+    repository.project(NOW_MS, "trade-5m-v2")
+    first_rows = repository._row_cache["trade-5m-v2"][1]
+    repository.project(NOW_MS + 31_000, "trade-5m-v2")
 
-    assert repository._row_cache["trade-5m-v1"][1] is not first_rows
+    assert repository._row_cache["trade-5m-v2"][1] is not first_rows

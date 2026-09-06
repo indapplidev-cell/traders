@@ -39,7 +39,9 @@ from app.db.paper_models import (
     PaperOrderRecord,
     PaperPlanExecutionOutcomeRecord,
     PaperPositionRecord,
+    ScalpingOutcomeDiagnosticRecord,
 )
+from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
 
 
 PROJECTION_VERSION: Final = "trading-funnel-v1"
@@ -514,6 +516,8 @@ def _downstream_trace(
         _mapping(paper.get("causal_levels")).get("minimum_planned_rr"),
     )
     detail.update({
+        "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
+        "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
         "opportunity_id": (
             diagnostic.get("opportunity_id")
             or _mapping(context.get("causal_primitives")).get("opportunity_id")
@@ -568,6 +572,9 @@ def _downstream_trace(
             "target_candidates_considered"
         ),
         "spread_bps": diagnostic.get("spread_bps"),
+        "commission_bps": _sum_decimals(
+            diagnostic.get("entry_fee_bps"), diagnostic.get("exit_fee_bps")
+        ),
         "depth_impact_bps": diagnostic.get("depth_impact_bps"),
         "entry_fee_bps": diagnostic.get("entry_fee_bps"),
         "exit_fee_bps": diagnostic.get("exit_fee_bps"),
@@ -586,6 +593,12 @@ def _downstream_trace(
                 diagnostic.get("exit_slippage_bps"),
             ),
         ),
+        "slippage_bps": _sum_decimals(
+            diagnostic.get("entry_slippage_bps"),
+            diagnostic.get("exit_slippage_bps"),
+        ),
+        "adverse_fill_reserve_bps": diagnostic.get("adverse_fill_reserve_bps"),
+        "effective_total_cost_bps": diagnostic.get("effective_total_cost_bps"),
         "safety_margin_bps": _first_present(
             net_cost_gate.get("safety_margin_bps"),
             diagnostic.get("safety_margin_bps"),
@@ -628,6 +641,39 @@ def _downstream_trace(
             "price_normalization_quantum"
         ),
         "break_even_win_rate": diagnostic.get("break_even_win_rate"),
+        "p_win_raw": diagnostic.get("p_win_raw"),
+        "p_win_adjusted": _first_present(
+            diagnostic.get("p_win_adjusted"), diagnostic.get("estimated_p_win")
+        ),
+        "p_win_conservative": _first_present(
+            diagnostic.get("p_win_conservative"), diagnostic.get("conservative_p_win")
+        ),
+        "probability_bucket": diagnostic.get("probability_bucket"),
+        "probability_sample_size": diagnostic.get("probability_sample_size"),
+        "probability_parent_sample_size": diagnostic.get("probability_parent_sample_size"),
+        "probability_fallback_level": diagnostic.get("probability_fallback_level"),
+        "candidate_net_rr": diagnostic.get("candidate_net_rr"),
+        "dynamic_required_net_rr": diagnostic.get("dynamic_required_net_rr"),
+        "break_even_net_rr": diagnostic.get("break_even_net_rr"),
+        "expected_ev_r": diagnostic.get("expected_ev_r"),
+        "min_required_ev": _first_present(
+            diagnostic.get("min_required_ev"), SCALPING_V2.economics.min_positive_ev_r
+        ),
+        "ev_reserve": diagnostic.get("ev_reserve"),
+        "causal_opportunity_id": _first_present(
+            context.get("causal_opportunity_id"), diagnostic.get("causal_opportunity_id"),
+            diagnostic.get("opportunity_id"),
+        ),
+        "causal_parent_id": _first_present(
+            context.get("causal_parent_id"), diagnostic.get("causal_parent_id")
+        ),
+        "causal_reset_reason": _first_present(
+            context.get("causal_reset_reason"), diagnostic.get("causal_reset_reason")
+        ),
+        "duplicate_opportunity_block": _first_present(
+            context.get("duplicate_opportunity_block"),
+            diagnostic.get("duplicate_opportunity_block"),
+        ),
         "rr_status": trace["RR_PASS"],
         "rr_reason": (
             geometry_reason if trace["RR_PASS"] == "REJECTED"
@@ -1219,6 +1265,7 @@ class TradingFunnelReadRepository:
                 PaperFirstCanarySessionRecord.state,
                 PaperFirstCanarySessionRecord.terminal_reason,
                 PaperFirstCanarySessionRecord.completed_at,
+                ScalpingOutcomeDiagnosticRecord,
             )
             .outerjoin(
                 PaperOrderRecord,
@@ -1233,6 +1280,11 @@ class TradingFunnelReadRepository:
                 PaperFirstCanarySessionRecord,
                 PaperFirstCanarySessionRecord.command_id
                 == PaperExecutionCommandRecord.command_id,
+            )
+            .outerjoin(
+                ScalpingOutcomeDiagnosticRecord,
+                ScalpingOutcomeDiagnosticRecord.position_id
+                == PaperPositionRecord.position_id,
             )
             .where(PaperExecutionCommandRecord.pipeline_run_id.in_(run_ids))
             .order_by(PaperExecutionCommandRecord.pipeline_run_id.asc())
@@ -1265,6 +1317,29 @@ class TradingFunnelReadRepository:
                 "terminal_result": row[10] or row[8],
                 "canary_state": row[9],
                 "execution_observed_at": row[11],
+                "outcome_diagnostics": (
+                    {
+                        "availability": "AVAILABLE",
+                        "mae": row[12].mae,
+                        "mfe": row[12].mfe,
+                        "time_to_mae_ms": row[12].time_to_mae_ms,
+                        "time_to_mfe_ms": row[12].time_to_mfe_ms,
+                        "planned_stop_distance": row[12].planned_stop_distance,
+                        "actual_stop_slippage": row[12].actual_stop_slippage,
+                        "planned_target_distance": row[12].planned_target_distance,
+                        "target_reached_after_stop": row[12].target_reached_after_stop,
+                        "max_favorable_before_stop": row[12].max_favorable_before_stop,
+                        "max_adverse_before_target": row[12].max_adverse_before_target,
+                        "holding_time_ms": row[12].holding_time_ms,
+                        "diagnostic_version": row[12].diagnostic_version,
+                    }
+                    if row[12] is not None else {
+                        "availability": (
+                            "NOT_REACHED" if row[6] is None or row[7] != "CLOSED"
+                            else "INSUFFICIENT_SAMPLE"
+                        )
+                    }
+                ),
             }
             for row in rows
         }
@@ -1734,6 +1809,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                         "mode": "OFF", "state": "NOT_REACHED",
                         "reason": "ENTRY_REFINEMENT_NOT_APPLICABLE",
                     }),
+                    "mae_mfe_diagnostics": lifecycle.get(
+                        "outcome_diagnostics", {"availability": "NOT_REACHED"}
+                    ),
                     "control_generation": lifecycle.get("control_generation"),
                     "policy_evaluated_at": lifecycle.get("policy_evaluated_at"),
                     "policy_generation": lifecycle.get("policy_generation"),
@@ -2041,6 +2119,8 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
     return {
         "projection_version": PROJECTION_VERSION,
         "trade_profile_id": profile.trade_profile_id,
+        "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
+        "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
         "trade_mode": profile.trade_mode,
         "display_i18n_key": profile.display_i18n_key,
         "primary_timeframe": profile.primary_timeframe,

@@ -287,6 +287,9 @@ class ShadowGeometryDiagnostic:
     empirical_win_probability: float | None = None
     expected_value_bps: float | None = None
     expectancy_gate_reason: str | None = None
+    p_win_raw: float | None = None
+    p_win_adjusted: float | None = None
+    p_win_conservative: float | None = None
     estimated_p_win: float | None = None
     conservative_p_win: float | None = None
     probability_bucket: str | None = None
@@ -296,8 +299,10 @@ class ShadowGeometryDiagnostic:
     probability_confidence_method: str | None = None
     probability_estimator_version: str | None = None
     dynamic_required_net_rr: float | None = None
+    break_even_net_rr: float | None = None
     candidate_net_rr: float | None = None
     expected_ev_r: float | None = None
+    min_required_ev: float | None = None
     ev_reserve: float | None = None
     admission_decision: str | None = None
     admission_reason: str | None = None
@@ -791,6 +796,9 @@ def evaluate_scalping_shadow(
     ) if config.profile_id == V2_PROFILE_ID else None
     if expectancy is not None:
         result.empirical_win_probability = expectancy.probability
+        result.p_win_raw = expectancy.p_win_raw
+        result.p_win_adjusted = expectancy.p_win_adjusted
+        result.p_win_conservative = expectancy.p_win_conservative
         result.estimated_p_win = expectancy.p_win_adjusted
         result.conservative_p_win = expectancy.p_win_conservative
         result.probability_bucket = expectancy.bucket_key
@@ -800,8 +808,13 @@ def evaluate_scalping_shadow(
         result.probability_confidence_method = expectancy.confidence_method
         result.probability_estimator_version = expectancy.estimator_version
         result.dynamic_required_net_rr = expectancy.dynamic_required_net_rr
+        result.break_even_net_rr = (
+            None if expectancy.p_win_conservative in (None, 0)
+            else (1 - expectancy.p_win_conservative) / expectancy.p_win_conservative
+        )
         result.candidate_net_rr = expectancy.candidate_net_rr
         result.expected_ev_r = expectancy.expected_ev_r
+        result.min_required_ev = config.minimum_positive_ev_r
         result.ev_reserve = expectancy.ev_reserve
         result.admission_decision = "PASS" if expectancy.admitted else "REJECT"
         result.admission_reason = expectancy.reason
