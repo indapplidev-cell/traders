@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import dataclass
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -74,6 +75,22 @@ def _json_object(path: Path, *, max_bytes: int = MAX_JSON_BYTES) -> dict[str, ob
     if not isinstance(value, dict):
         raise ValueError("PRODUCTION_OBSERVATION_ARTIFACT_INVALID")
     return value
+
+
+def _volatile_json_object(
+    path: Path, *, max_bytes: int = MAX_JSON_BYTES, attempts: int = 3
+) -> dict[str, object]:
+    """Read a frequently atomically-replaced host artifact across a bind mount."""
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return _json_object(path, max_bytes=max_bytes)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt + 1 < attempts:
+                time.sleep(0.01)
+    assert last_error is not None
+    raise last_error
 
 
 def load_production_identity(
@@ -196,7 +213,9 @@ def _pitr_lineage(
     """Return safe canonical lineage facts without exposing archive paths."""
 
     try:
-        daemon = _json_object(root / "catalog" / "wal_ack_daemon_state.json")
+        daemon = _volatile_json_object(
+            root / "catalog" / "wal_ack_daemon_state.json"
+        )
         updated = datetime.fromisoformat(str(daemon["updated_at"]).replace("Z", "+00:00"))
         daemon_ready = (
             daemon.get("schema") == "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1"

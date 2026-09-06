@@ -95,6 +95,27 @@ def test_current_wal_and_pitr_chain_are_observed_and_gap_fails_closed(tmp_path: 
     assert observation._pitr_readiness(gap, now) == (False, False)
 
 
+def test_wal_daemon_atomic_replace_visibility_gap_is_retried(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime(2026, 8, 13, 20, tzinfo=timezone.utc)
+    _recovery(tmp_path, now=now)
+    original = observation._json_object
+    daemon_attempts = 0
+
+    def transient(path: Path, *, max_bytes: int = observation.MAX_JSON_BYTES):
+        nonlocal daemon_attempts
+        if path.name == "wal_ack_daemon_state.json":
+            daemon_attempts += 1
+            if daemon_attempts == 1:
+                raise FileNotFoundError("atomic bind replacement visibility gap")
+        return original(path, max_bytes=max_bytes)
+
+    monkeypatch.setattr(observation, "_json_object", transient)
+    assert observation._pitr_readiness(tmp_path, now) == (True, True)
+    assert daemon_attempts == 2
+
+
 def test_disabled_runtime_configuration_is_exact_and_live_safe(tmp_path: Path) -> None:
     _write_json(tmp_path / observation.RUNTIME_CONFIGURATION_NAME, {
         "auto_arm": False, "auto_start": False, "daemon_enabled": False,
