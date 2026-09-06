@@ -35,8 +35,9 @@ READONLY_SCHEMA_0024: Final = "0024_continuous_paper_authority"
 READONLY_SCHEMA_0025: Final = "0025_paper_budget_policy"
 READONLY_SCHEMA_0026: Final = "0026_scalping_1m_entry_refinement"
 READONLY_SCHEMA_0027: Final = "0027_scalping_profitability_integration"
+READONLY_SCHEMA_0028: Final = "0028_scalping_profitability_grants"
 PAPER_SCHEMA_MINIMUM: Final = "0015_trading_universe_activation"
-PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0027
+PAPER_SCHEMA_MAXIMUM: Final = READONLY_SCHEMA_0028
 REFINEMENT_COLUMNS: Final = frozenset({
     "refinement_identity", "refinement_mode", "refinement_state",
     "refinement_reason", "refinement_started_at", "refinement_finished_at",
@@ -178,6 +179,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
             READONLY_SCHEMA_0018, READONLY_SCHEMA_0019, READONLY_SCHEMA_0020,
             READONLY_SCHEMA_0021, READONLY_SCHEMA_0022, READONLY_SCHEMA_0023, READONLY_SCHEMA_0024,
             READONLY_SCHEMA_0025, READONLY_SCHEMA_0026, READONLY_SCHEMA_0027,
+            READONLY_SCHEMA_0028,
         }:
             return ReadonlySchemaCapabilityResult(False, revision, issues=(f"UNSUPPORTED_REVISION:{revision}",))
         for model in BASE_REQUIRED_MODELS:
@@ -186,16 +188,21 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         if revision in {
             READONLY_SCHEMA_0020, READONLY_SCHEMA_0021, READONLY_SCHEMA_0022,
             READONLY_SCHEMA_0023, READONLY_SCHEMA_0024, READONLY_SCHEMA_0025,
-            READONLY_SCHEMA_0026, READONLY_SCHEMA_0027,
+            READONLY_SCHEMA_0026, READONLY_SCHEMA_0027, READONLY_SCHEMA_0028,
         }:
             _validate_model(
                 inspector, tables, PaperPlanExecutionOutcomeRecord, issues,
                 excluded=(
                     frozenset()
-                    if revision in {READONLY_SCHEMA_0026, READONLY_SCHEMA_0027} else REFINEMENT_COLUMNS
+                    if revision in {
+                        READONLY_SCHEMA_0026, READONLY_SCHEMA_0027, READONLY_SCHEMA_0028,
+                    } else REFINEMENT_COLUMNS
                 ),
             )
-        if revision in {READONLY_SCHEMA_0024, READONLY_SCHEMA_0025, READONLY_SCHEMA_0026, READONLY_SCHEMA_0027}:
+        if revision in {
+            READONLY_SCHEMA_0024, READONLY_SCHEMA_0025, READONLY_SCHEMA_0026,
+            READONLY_SCHEMA_0027, READONLY_SCHEMA_0028,
+        }:
             for model in (
                 PaperFirstCanarySessionRecord,
                 PaperContinuousControlRecord,
@@ -214,7 +221,7 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
                         else frozenset()
                     ),
                 )
-        if revision == READONLY_SCHEMA_0027:
+        if revision in {READONLY_SCHEMA_0027, READONLY_SCHEMA_0028}:
             _validate_model(inspector, tables, ScalpingOpportunityRecord, issues)
             _validate_model(inspector, tables, ScalpingOutcomeDiagnosticRecord, issues)
         actual_profiles = {}
@@ -250,13 +257,13 @@ def inspect_readonly_schema_capabilities(connection: Connection) -> ReadonlySche
         READONLY_SCHEMA_0017, READONLY_SCHEMA_0018, READONLY_SCHEMA_0019,
         READONLY_SCHEMA_0020, READONLY_SCHEMA_0021, READONLY_SCHEMA_0022,
         READONLY_SCHEMA_0023, READONLY_SCHEMA_0024, READONLY_SCHEMA_0025,
-        READONLY_SCHEMA_0026, READONLY_SCHEMA_0027,
+        READONLY_SCHEMA_0026, READONLY_SCHEMA_0027, READONLY_SCHEMA_0028,
     } and not issues:
         capabilities = capabilities | {ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES}
     if revision in {
         READONLY_SCHEMA_0020, READONLY_SCHEMA_0021, READONLY_SCHEMA_0022,
         READONLY_SCHEMA_0023, READONLY_SCHEMA_0024, READONLY_SCHEMA_0025,
-        READONLY_SCHEMA_0026, READONLY_SCHEMA_0027,
+        READONLY_SCHEMA_0026, READONLY_SCHEMA_0027, READONLY_SCHEMA_0028,
     } and not issues:
         capabilities = capabilities | {
             ReadonlySchemaCapability.PAPER_PLAN_EXECUTION_OUTCOMES
@@ -282,6 +289,7 @@ __all__ = [
     "READONLY_SCHEMA_0018", "READONLY_SCHEMA_0019", "READONLY_SCHEMA_0020", "READONLY_SCHEMA_0021",
     "READONLY_SCHEMA_0022", "READONLY_SCHEMA_0023", "READONLY_SCHEMA_0024",
     "READONLY_SCHEMA_0025", "READONLY_SCHEMA_0026", "READONLY_SCHEMA_0027",
+    "READONLY_SCHEMA_0028",
     "PaperSchemaContractResult", "ReadonlySchemaCapability",
     "ReadonlySchemaCapabilityBridge", "ReadonlySchemaCapabilityResult",
     "inspect_readonly_schema_capabilities", "inspect_required_paper_schema",

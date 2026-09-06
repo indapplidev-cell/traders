@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0027_scalping_profitability_integration"
+EXPECTED_HEAD = "0028_scalping_profitability_grants"
 
 
 @pytest.fixture(scope="session")

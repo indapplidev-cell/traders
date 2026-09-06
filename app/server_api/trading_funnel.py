@@ -1043,7 +1043,10 @@ class TradingFunnelReadRepository:
                         ("0024_continuous_paper_authority",),
                         ("0025_paper_budget_policy",),
                         ("0026_scalping_1m_entry_refinement",),
-                        ("0027_scalping_profitability_integration",),
+                        (
+                            "0027_scalping_profitability_integration",
+                            "0028_scalping_profitability_grants",
+                        ),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
