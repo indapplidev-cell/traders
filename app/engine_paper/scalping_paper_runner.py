@@ -482,19 +482,24 @@ class ScalpingPaperRunner(PaperRunner):
         )
         unique_opportunity = True
         if diagnostic.valid_plan:
-            unique_opportunity = self.opportunity_registry.observe_and_claim(
-                diagnostic.opportunity_id,
-                reentry_enabled=bool(
-                    getattr(self.runtime_parameters, "opportunity_reentry_enabled", False)
-                ),
-            )
+            claim = self.opportunity_registry.claim(diagnostic.opportunity_id)
+            unique_opportunity = claim.admitted
             paper_context["opportunity_observation"] = (
                 "UNIQUE_CAUSAL_OPPORTUNITY" if unique_opportunity
                 else "REPEAT_CAUSAL_OPPORTUNITY"
             )
             paper_context["opportunity_observation_count"] = (
-                self.opportunity_registry.observation_count(diagnostic.opportunity_id)
+                claim.observation_count
             )
+            paper_context.update({
+                "causal_opportunity_id": claim.causal_opportunity_id,
+                "causal_parent_id": claim.causal_parent_id,
+                "causal_reset_reason": claim.reset_reason,
+                "causal_reset_evidence": claim.reset_evidence,
+                "prior_execution_position_id": claim.prior_execution_position_id,
+                "duplicate_opportunity_block": not claim.admitted,
+                "duplicate_block_reason": claim.duplicate_block_reason,
+            })
         if diagnostic.valid_plan and unique_opportunity:
             plan = self._base_plan(
                 source,
