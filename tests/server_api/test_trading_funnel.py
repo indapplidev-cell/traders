@@ -723,6 +723,17 @@ def test_scalping_v2_reached_fields_derive_explicit_persisted_provenance():
             "causal_target": 101.0, "target_source_type": "LOCAL_RANGE_BOUNDARY",
             "stop_envelope_pass": True, "causal_target_exists": True,
             "economic_gate_pass": True, "valid_plan": True,
+            "connection_generation": "fee:1234",
+            "market_source_status": "READY",
+            "fee_source_status": "READY",
+            "book_source_status": "READY",
+            "cost_model_status": "READY",
+            "last_success_at": "2026-09-06T10:00:00Z",
+            "last_failure_at": "2026-09-06T09:55:00Z",
+            "recovered_at": "2026-09-06T10:00:00Z",
+            "rehydration_duration_ms": 300000,
+            "fee_watermark": "user-stub:rehydrated:1234",
+            "fee_authorization_valid_until": "2026-09-13T10:00:00Z",
             "expectancy_gate_reason": "INSUFFICIENT_BUCKET_STATIC_RR_PASS",
             "target_considerations": [{
                 "economically_actionable": True, "target_timeframe": "5m",
@@ -746,6 +757,16 @@ def test_scalping_v2_reached_fields_derive_explicit_persisted_provenance():
     assert detail["cost_gate_decision"] == "PASS"
     assert detail["cost_gate_reason"] == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
     assert detail["rr_reason"] == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
+    assert detail["connection_generation"] == "fee:1234"
+    assert detail["market_source_status"] == "READY"
+    assert detail["fee_source_status"] == "READY"
+    assert detail["book_source_status"] == "READY"
+    assert detail["cost_model_status"] == "READY"
+    assert detail["last_failure_at"] == "2026-09-06T09:55:00Z"
+    assert detail["recovered_at"] == "2026-09-06T10:00:00Z"
+    assert detail["rehydration_duration_ms"] == 300000
+    assert detail["fee_watermark"] == "user-stub:rehydrated:1234"
+    assert detail["fee_authorization_valid_until"] == "2026-09-13T10:00:00Z"
 
 
 class _Funnel:
