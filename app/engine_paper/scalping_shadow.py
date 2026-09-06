@@ -205,6 +205,7 @@ class ShadowGeometryConfig:
     rr_shadow_cohorts: tuple[float, ...] = (1.0, 1.2, 1.5)
     profile_id: str = V2_PROFILE_ID
     empirical_bucket: EmpiricalSetupBucket | None = None
+    parent_buckets: tuple[EmpiricalSetupBucket, ...] = ()
     minimum_empirical_samples: int = 20
     minimum_expected_value_bps: float = 0.0
     minimum_positive_ev_r: float = 0.0
@@ -288,6 +289,12 @@ class ShadowGeometryDiagnostic:
     expectancy_gate_reason: str | None = None
     estimated_p_win: float | None = None
     conservative_p_win: float | None = None
+    probability_bucket: str | None = None
+    probability_sample_size: int = 0
+    probability_parent_sample_size: int = 0
+    probability_fallback_level: str | None = None
+    probability_confidence_method: str | None = None
+    probability_estimator_version: str | None = None
     dynamic_required_net_rr: float | None = None
     candidate_net_rr: float | None = None
     expected_ev_r: float | None = None
@@ -774,6 +781,7 @@ def evaluate_scalping_shadow(
         net_win_bps=result.net_reward_bps,
         net_loss_bps=result.effective_risk_bps,
         bucket=config.empirical_bucket,
+        parent_buckets=config.parent_buckets,
         minimum_samples=config.minimum_empirical_samples,
         minimum_expected_value_bps=config.minimum_expected_value_bps,
         minimum_positive_ev_r=config.minimum_positive_ev_r,
@@ -785,6 +793,12 @@ def evaluate_scalping_shadow(
         result.empirical_win_probability = expectancy.probability
         result.estimated_p_win = expectancy.p_win_adjusted
         result.conservative_p_win = expectancy.p_win_conservative
+        result.probability_bucket = expectancy.bucket_key
+        result.probability_sample_size = expectancy.sample_size
+        result.probability_parent_sample_size = expectancy.parent_sample_size
+        result.probability_fallback_level = expectancy.fallback_level
+        result.probability_confidence_method = expectancy.confidence_method
+        result.probability_estimator_version = expectancy.estimator_version
         result.dynamic_required_net_rr = expectancy.dynamic_required_net_rr
         result.candidate_net_rr = expectancy.candidate_net_rr
         result.expected_ev_r = expectancy.expected_ev_r

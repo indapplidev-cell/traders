@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 import json
@@ -29,10 +29,18 @@ from app.config.trade_parameters import SCALPING_V2
 from app.engine_risk.risk_decision import RiskDecision
 from app.engine_risk.strategy_type_contract import SCALPING_RISK_STRATEGY_TYPES
 from app.engine_paper.scalping_opportunity_registry import ScalpingOpportunityRegistry
+from app.engine_paper.scalping_statistics import StatisticalHierarchy
 
 
 class ScalpingCostSource(Protocol):
     def load(self, symbol: str, entry: float, *, safety_margin_bps: float) -> ShadowCostInputs: ...
+
+
+class ScalpingStatisticsSource(Protocol):
+    def resolve(
+        self, *, symbol: str, setup_type: str, direction: str,
+        regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
+    ) -> StatisticalHierarchy: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -321,6 +329,7 @@ class ScalpingPaperRunner(PaperRunner):
         runtime_parameters: object,
         cost_source: ScalpingCostSource | None = None,
         opportunity_registry: ScalpingOpportunityRegistry | None = None,
+        statistics_source: ScalpingStatisticsSource | None = None,
         store: object | None = None,
         clock_ms: Callable[[], int] | None = None,
     ) -> None:
@@ -334,6 +343,7 @@ class ScalpingPaperRunner(PaperRunner):
         ), store=store, clock_ms=clock_ms)
         self.runtime_parameters = runtime_parameters
         self.opportunity_registry = opportunity_registry or ScalpingOpportunityRegistry()
+        self.statistics_source = statistics_source
         self.cost_source = cost_source or BinancePublicScalpingCostSource(
             reference_notional=float(runtime_parameters.vwap_reference_notional),
             depth_limit=int(runtime_parameters.bounded_book_depth_limit),
@@ -444,13 +454,11 @@ class ScalpingPaperRunner(PaperRunner):
             ),
             fee_source="CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE",
         )
-        diagnostic = evaluate_scalping_shadow(
-            candidate, unavailable_costs, self.geometry_config
-        )
+        diagnostic = evaluate_scalping_shadow(candidate, unavailable_costs, self.geometry_config)
         if diagnostic.rejection_stage == "NET_COST_GATE":
-            diagnostic = evaluate_scalping_shadow(
-                candidate, self._costs(candidate), self.geometry_config
-            )
+            costs = self._costs(candidate)
+            config = self._statistics_config(candidate, context, costs)
+            diagnostic = evaluate_scalping_shadow(candidate, costs, config)
         diagnostic_payload = diagnostic.to_dict()
         paper_context = {
             "plan_policy_version": self.config.plan_policy_version,
@@ -563,10 +571,37 @@ class ScalpingPaperRunner(PaperRunner):
                 depth_authoritative=False,
             )
 
+    def _statistics_config(
+        self, candidate: ShadowGeometryCandidate, context: object,
+        costs: ShadowCostInputs,
+    ) -> ShadowGeometryConfig:
+        if self.statistics_source is None:
+            return self.geometry_config
+        total = (
+            costs.entry_fee_bps + costs.exit_fee_bps + costs.entry_slippage_bps
+            + costs.exit_slippage_bps + costs.safety_margin_bps
+            + costs.adverse_fill_reserve_bps + float(costs.spread_bps or 0)
+            + float(costs.depth_impact_bps or 0)
+        )
+        cost_bucket = "LOW" if total <= 20 else "MEDIUM" if total <= 40 else "HIGH"
+        hierarchy = self.statistics_source.resolve(
+            symbol=candidate.symbol,
+            setup_type=str(getattr(context, "setup_type", None) or candidate.setup_identity or "UNKNOWN"),
+            direction=candidate.direction,
+            regime=str(getattr(context, "regime", None) or "UNKNOWN"),
+            cost_bucket=cost_bucket,
+        )
+        return replace(
+            self.geometry_config,
+            empirical_bucket=hierarchy.exact,
+            parent_buckets=hierarchy.parents,
+        )
+
 
 __all__ = (
     "BinancePublicScalpingCostSource",
     "CommissionSnapshotLoad",
+    "ScalpingStatisticsSource",
     "ScalpingCostSource",
     "ScalpingPaperRunner",
     "read_binance_commission_snapshot",

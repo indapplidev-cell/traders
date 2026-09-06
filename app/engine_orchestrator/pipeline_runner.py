@@ -88,7 +88,8 @@ class PipelineRunner:
                  analysis_runner: object | None = None, setup_runner: object | None = None,
                  strategy_runner: object | None = None, risk_runner: object | None = None,
                  paper_runner: object | None = None,
-                 strategy_cap_cost_source: object | None = None) -> None:
+                 strategy_cap_cost_source: object | None = None,
+                 scalping_statistics_source: object | None = None) -> None:
         self.config = config
         self.runtime_parameters = config.runtime_parameters
         self.candle_repository = candle_repository
@@ -155,7 +156,10 @@ class PipelineRunner:
             runtime_parameters=self.runtime_parameters,
         )
         self.paper_runner = paper_runner or (
-            ScalpingPaperRunner(runtime_parameters=self.runtime_parameters)
+            ScalpingPaperRunner(
+                runtime_parameters=self.runtime_parameters,
+                statistics_source=scalping_statistics_source,
+            )
             if config.trade_profile_id in SCALPING_PROFILE_IDS
             else PaperRunner(runtime_parameters=self.runtime_parameters)
         )

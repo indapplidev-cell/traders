@@ -22,6 +22,7 @@ from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
 from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSource
+from app.engine_paper.scalping_statistics import PostgresPaperOutcomeStatisticsSource
 from app.config.trade_parameters import TRADE_PARAMETERS
 from app.engine_orchestrator.profile_owner import (
     OwnerAlreadyActiveError,
@@ -200,6 +201,10 @@ def main(argv: list[str] | None = None) -> int:
     daemon = OrchestratorDaemon(
         config, detector, gate, PipelineRunner(
             config, candle_repository, strategy_cap_cost_source=calibration_cost_source,
+            scalping_statistics_source=(
+                PostgresPaperOutcomeStatisticsSource(sessions)
+                if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
+            ),
         ), store,
         owner_guard=owner,
     )
