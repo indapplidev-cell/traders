@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 seed: 20260906
 dataset: postgres-paper-outcomes-readonly
 output_root: artifacts/scalping_v2_parameter_sweep
@@ -17,3 +17,13 @@ search_space:
   target_min_bps: [45.0, 60.0]
   causal_reset_min_conditions: [1, 2]
   entry_refinement_1m_confirmation_count: [1, 2]
+  # Suggested manual research space; these are not claimed optima.
+  soft_timeout_seconds: [300, 600, 900]
+  hard_timeout_seconds: [600, 900, 1200, 1800]
+  min_target_progress_at_soft_timeout: [0.10, 0.20, 0.30, 0.40]
+  min_mfe_bps_at_soft_timeout: [null, 10.0, 20.0]
+  min_remaining_ev_r_at_soft_timeout: [0.00, 0.02, 0.05, 0.10]
+  extension_seconds: [0, 300]
+  max_extensions: [0, 1]
+  break_even_activation_target_progress: [0.30, 0.40, 0.50, 0.60]
+  net_break_even_protection_enabled: [true, false]

@@ -14,7 +14,9 @@ from typing import Callable, Iterable, Protocol
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+from app.config.trade_parameters import (
+    SCALPING_V2, TRADE_PARAMETERS, StalePositionPolicyParameters,
+)
 from app.db.paper_models import ScalpingStalePositionShadowRecord
 from app.engine_paper.fill_simulator import PaperFillCandle
 from app.engine_paper.scalping_shadow import ShadowCostInputs
@@ -112,8 +114,14 @@ def _d(value: object) -> Decimal:
     return Decimal(str(value))
 
 
-def evaluate_stale_position_shadow(value: StalePositionInputs) -> StalePositionShadowDecision:
-    policy = SCALPING_V2.exit_policy.stale_position
+def evaluate_stale_position_shadow(
+    value: StalePositionInputs,
+    *,
+    policy: StalePositionPolicyParameters | None = None,
+    config_hash: str | None = None,
+) -> StalePositionShadowDecision:
+    policy = policy or SCALPING_V2.exit_policy.stale_position
+    selected_config_hash = config_hash or TRADE_PARAMETERS.config_hash
     evaluation = value.evaluation_time.astimezone(timezone.utc)
     opened = value.opened_at.astimezone(timezone.utc)
     holding = max(0, int((evaluation - opened).total_seconds()))
@@ -217,7 +225,7 @@ def evaluate_stale_position_shadow(value: StalePositionInputs) -> StalePositionS
     return StalePositionShadowDecision(
         position_id=value.position_id, symbol=value.symbol, side=value.side,
         mode=policy.mode, policy_version=POLICY_VERSION,
-        config_hash=TRADE_PARAMETERS.config_hash, evaluated_at=evaluation,
+        config_hash=selected_config_hash, evaluated_at=evaluation,
         opened_at=opened, evaluation_closed_until_ms=value.evaluation_closed_until_ms,
         current_price=value.current_price, holding_seconds=holding,
         soft_timeout_reached=soft, hard_timeout_reached=hard,
