@@ -7,7 +7,7 @@ from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID, reso
 
 
 class ClosedWindowDetector:
-    def __init__(self, candle_repository: object, result_store: object, *, primary_timeframe: str = "15m",
+    def __init__(self, candle_repository: object, result_store: object, *, primary_timeframe: str = "5m",
                  trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID,
                  max_catchup_windows: int = 4, process_latest_only: bool = False) -> None:
         profile = resolve_trade_profile(trade_profile_id)
@@ -31,10 +31,6 @@ class ClosedWindowDetector:
             for candle in candles if bool(getattr(candle, "is_closed", False))
         ]
         def processed(window: ClosedWindow) -> bool:
-            if self.trade_profile_id == DEFAULT_TRADE_PROFILE_ID:
-                return self.result_store.has_window(
-                    window.symbol, window.timeframe, window.closed_until_ms
-                )
             return self.result_store.has_window(
                 window.symbol, window.timeframe, window.closed_until_ms,
                 trade_profile_id=self.trade_profile_id,

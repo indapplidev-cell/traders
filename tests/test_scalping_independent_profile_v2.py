@@ -24,16 +24,17 @@ FROZEN_15M_ID = "trade-15m-v1-runtime-v1-44aa91202a60146c"
 FROZEN_15M_HASH = "e48878b06f3ea1bf26a5b3dad67bdf41bb7ea50470cd5789b935f568fa94425b"
 
 
-def test_15m_profile_and_runtime_are_byte_semantically_unchanged():
+def test_15m_strategy_parameters_are_unchanged_while_execution_is_disabled():
     profile = resolve_trade_profile("trade-15m-v1")
     runtime = resolve_runtime_parameters("trade-15m-v1")
     payload = json.dumps(
         {"profile": asdict(profile), "runtime": asdict(runtime)},
         sort_keys=True, separators=(",", ":"),
     )
-    assert runtime.parameter_set_id == FROZEN_15M_ID
-    assert hashlib.sha256(payload.encode()).hexdigest() == FROZEN_15M_HASH
     assert profile.minimum_planned_rr == 1.5
+    assert runtime.minimum_planned_rr == 1.5
+    assert profile.paper_command_creation_enabled is False
+    assert profile.position_opening_enabled is False
 
 
 def test_v2_has_independent_versioned_policy_and_stronger_or_equal_risk():

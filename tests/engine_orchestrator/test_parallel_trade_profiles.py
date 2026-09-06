@@ -32,10 +32,10 @@ def five_minute_config() -> OrchestratorConfig:
     )
 
 
-def test_profiles_are_explicit_and_15m_default_is_unchanged():
+def test_profiles_are_explicit_and_5m_is_the_only_runtime_default():
     config = OrchestratorConfig()
     assert config.trade_profile_id == DEFAULT_TRADE_PROFILE_ID
-    assert config.primary_timeframe == "15m"
+    assert config.primary_timeframe == "5m"
     assert TRADE_15M_PROFILE.minimum_planned_rr == 1.5
     assert TRADE_5M_V2_PROFILE.minimum_planned_rr == 0.4
     assert TRADE_5M_V2_PROFILE.analysis_history_candles != TRADE_15M_PROFILE.analysis_history_candles
@@ -131,14 +131,15 @@ def test_profile_cursor_and_noneligible_materialization_are_isolated():
 
     store = PipelineResultStore(sessions, clock=lambda: now, owner_guard=IsolatedOwner())
     fifteen_id = store.reserve(
-        "BTCUSDT", "15m", BOUNDARY, daemon_instance_id="15m", trigger_source="test"
+        "BTCUSDT", "15m", BOUNDARY, daemon_instance_id="15m", trigger_source="test",
+        trade_profile_id="trade-15m-v1",
     )
     five_id = store.reserve(
         "BTCUSDT", "5m", BOUNDARY, daemon_instance_id="5m", trigger_source="test",
         trade_profile_id="trade-5m-v2",
     )
     assert fifteen_id and five_id and fifteen_id != five_id
-    assert store.has_window("BTCUSDT", "15m", BOUNDARY)
+    assert store.has_window("BTCUSDT", "15m", BOUNDARY, trade_profile_id="trade-15m-v1")
     assert store.has_window("BTCUSDT", "5m", BOUNDARY, trade_profile_id="trade-5m-v2")
     claim = store.get_claim(five_id)
     assert claim.trade_profile_id == "trade-5m-v2"
@@ -157,7 +158,7 @@ def test_profile_cursor_and_noneligible_materialization_are_isolated():
         assert five.is_executable is False and five.order_approved is False
 
 
-def test_deterministic_5m_fault_is_contained_and_15m_completes():
+def test_deterministic_5m_fault_is_contained():
     calls = []
 
     class Daemon:
@@ -171,11 +172,8 @@ def test_deterministic_5m_fault_is_contained_and_15m_completes():
             return [SimpleNamespace(symbol="BTCUSDT")]
 
     result = ParallelTradeProfileCoordinator({
-        "trade-15m-v1": Daemon("15m"),
         "trade-5m-v2": Daemon("5m", fails=True),
     }).run_cycle()
-    assert set(calls) == {"15m", "5m"}
-    assert result["trade-15m-v1"].healthy is True
-    assert result["trade-15m-v1"].batch_size == 1
+    assert set(calls) == {"5m"}
     assert result["trade-5m-v2"].healthy is False
     assert "injected-5m-failure" in result["trade-5m-v2"].error_code

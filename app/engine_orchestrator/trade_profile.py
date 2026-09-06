@@ -23,7 +23,7 @@ class TradeMode(StrEnum):
     SCALPING = "SCALPING"
 
 
-DEFAULT_TRADE_PROFILE_ID: Final = TradeProfileId.TRADE_15M_V1.value
+DEFAULT_TRADE_PROFILE_ID: Final = TradeProfileId.TRADE_5M_V2.value
 ACTIVE_SCALPING_PROFILE_ID: Final = TradeProfileId.TRADE_5M_V2.value
 
 
@@ -123,8 +123,8 @@ TRADE_15M_PROFILE: Final = TradeSearchProfile(
     validity_boundaries=1,
     minimum_planned_rr=1.5,
     cost_safety_margin_bps=2.0,
-    paper_command_creation_enabled=True,
-    position_opening_enabled=True,
+    paper_command_creation_enabled=False,
+    position_opening_enabled=False,
 )
 
 # V2 is the sole supported Scalping runtime identity. Historical v1 values are
@@ -164,7 +164,6 @@ SCALPING_PROFILE_IDS: Final = frozenset({
     TradeProfileId.TRADE_5M_V2.value,
 })
 ACTIVE_RUNTIME_PROFILE_IDS: Final = frozenset({
-    TradeProfileId.TRADE_15M_V1.value,
     ACTIVE_SCALPING_PROFILE_ID,
 })
 

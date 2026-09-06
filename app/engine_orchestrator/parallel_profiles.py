@@ -11,7 +11,6 @@ from app.engine_orchestrator.trade_profile import TradeProfileId
 
 
 DEPLOYED_PARALLEL_PROFILE_IDS = frozenset({
-    TradeProfileId.TRADE_15M_V1.value,
     TradeProfileId.TRADE_5M_V2.value,
 })
 
@@ -26,14 +25,14 @@ class ProfileCycleObservation:
 
 
 class ParallelTradeProfileCoordinator:
-    """Run exactly two independent profile cycles without unbounded fan-out."""
+    """Run only explicitly enabled profile cycles without unbounded fan-out."""
 
     def __init__(self, daemons: Mapping[str, object]) -> None:
         # Candidate profile identities are not activated merely by existing in
         # the registry.  Activation remains an explicit deployment decision.
         required = DEPLOYED_PARALLEL_PROFILE_IDS
         if set(daemons) != required:
-            raise ValueError("parallel coordinator requires exactly the 15m and 5m profiles")
+            raise ValueError("parallel coordinator requires exactly the enabled profiles")
         self._daemons = dict(daemons)
 
     @staticmethod
@@ -51,7 +50,7 @@ class ParallelTradeProfileCoordinator:
             )
 
     def run_cycle(self) -> dict[str, ProfileCycleObservation]:
-        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="trade-profile") as executor:
+        with ThreadPoolExecutor(max_workers=len(self._daemons), thread_name_prefix="trade-profile") as executor:
             futures = {
                 profile_id: executor.submit(self._run, profile_id, daemon)
                 for profile_id, daemon in self._daemons.items()

@@ -46,13 +46,11 @@ AUTHORITATIVE_FINAL_APPROVAL_SOURCE: Final = "paper_payload_json.persisted_final
 AUTHORITATIVE_QUANTITY_SOURCE: Final = "PaperQuantityApproval.CONTROLLED_PAPER_AUTHORITY"
 SYMBOL_ALLOWLIST: Final = PREPARED_NEXT_TRADING_UNIVERSE.symbols
 PRIMARY_TIMEFRAME: Final = "15m"
-EXECUTION_TIMEFRAMES: Final = ("15m", "5m")
+EXECUTION_TIMEFRAMES: Final = ("5m",)
 EXECUTION_PROFILE_BY_TIMEFRAME: Final = {
-    "15m": "trade-15m-v1",
     "5m": "trade-5m-v2",
 }
 EXECUTION_PROFILES_BY_TIMEFRAME: Final = {
-    "15m": frozenset({"trade-15m-v1"}),
     "5m": frozenset({"trade-5m-v2"}),
 }
 MAX_SYMBOLS_PER_REQUEST: Final = 10

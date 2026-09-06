@@ -17,7 +17,7 @@ from scripts.engine_orchestrator_online_pipeline import build_parser
 
 def test_v2_is_the_only_active_scalping_runtime_profile():
     assert ACTIVE_SCALPING_PROFILE_ID == "trade-5m-v2"
-    assert ACTIVE_RUNTIME_PROFILE_IDS == {"trade-15m-v1", "trade-5m-v2"}
+    assert ACTIVE_RUNTIME_PROFILE_IDS == {"trade-5m-v2"}
     assert DEPLOYED_PARALLEL_PROFILE_IDS == ACTIVE_RUNTIME_PROFILE_IDS
     assert EXECUTION_PROFILE_BY_TIMEFRAME["5m"] == "trade-5m-v2"
     assert EXECUTION_PROFILES_BY_TIMEFRAME["5m"] == {"trade-5m-v2"}

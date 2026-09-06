@@ -19,15 +19,15 @@ from app.engine_orchestrator.runtime_parameters import (
 )
 
 
-DEFAULT_MINIMUM_WINDOWS = {"1m": 240, "5m": 288, "15m": 480, "1h": 240, "4h": 180, "1d": 240}
+DEFAULT_MINIMUM_WINDOWS = {"1m": 60, "5m": 120, "15m": 64, "1h": 50}
 
 
 @dataclass(frozen=True, slots=True)
 class OrchestratorConfig:
     symbols: tuple[str, ...] = PREPARED_NEXT_TRADING_UNIVERSE.symbols
     trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID
-    primary_timeframe: str = "15m"
-    required_timeframes: tuple[str, ...] = ("1m", "5m", "15m", "1h", "4h", "1d")
+    primary_timeframe: str = "5m"
+    required_timeframes: tuple[str, ...] = ("1m", "5m", "15m", "1h")
     minimum_windows: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_MINIMUM_WINDOWS))
     poll_interval_seconds: float = 10.0
     health_report_interval_seconds: float = 60.0

@@ -50,7 +50,7 @@ services:
 
   online-orchestrator:
     build: .
-    profiles: ["orchestrator"]
+    profiles: ["disabled-trade-15m"]
     restart: always
     depends_on:
       postgres:
@@ -60,6 +60,7 @@ services:
     command: >
       sh -c 'export DATABASE_URL="postgresql+psycopg://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
       exec python scripts/engine_orchestrator_online_pipeline.py
+      --trade-profile trade-15m-v1
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
       --primary-timeframe 15m
       --required-timeframes 1m,5m,15m,1h,4h,1d
