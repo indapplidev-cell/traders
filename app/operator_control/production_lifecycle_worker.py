@@ -611,6 +611,14 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             ):
                 prepared = self._worker.run_cycle(cycle)
             if prepared.final_lifecycle_state is not PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN:
+                _safe_event(
+                    "paper_operator_recovery_prepare_failed",
+                    request_id=request_id,
+                    position_id=position_id,
+                    outcome=prepared.outcome,
+                    reason_code=prepared.reason_code,
+                    trace=prepared.trace,
+                )
                 raise ValueError(f"RECOVERY_CLOSE_PREPARE_{prepared.reason_code}")
             graph = self._graph_loader.load(canary.command_id)
             close_cycle, code = self._close_cycle(
