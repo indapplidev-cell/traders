@@ -13,6 +13,8 @@ from .schemas import (
     PaperOperatorControlStatus,
     PaperOperatorStartFirstCanaryRequest,
     PaperOperatorTransitionRequest,
+    PaperOperatorRecoveryCloseRequest,
+    PaperOperatorRecoveryCloseDecision,
 )
 from .service import PaperOperatorControlService
 
@@ -57,5 +59,19 @@ def build_operator_control_router(
     @router.post("/clear-emergency-stop", response_model=PaperOperatorControlDecision, dependencies=[Depends(require_scope(PaperOperatorScope.CONTROL_CLEAR_EMERGENCY_STOP, "CLEAR_EMERGENCY_STOP", True))])
     def clear_stop(request: PaperOperatorClearEmergencyStopRequest) -> PaperOperatorControlDecision:
         return service.clear_emergency_stop(request)
+
+    @router.post(
+        "/recovery-close-paper-position",
+        response_model=PaperOperatorRecoveryCloseDecision,
+        dependencies=[Depends(require_scope(
+            PaperOperatorScope.PAPER_POSITION_RECOVERY_CLOSE,
+            "RECOVERY_CLOSE_PAPER_POSITION",
+            True,
+        ))],
+    )
+    def recovery_close(
+        request: PaperOperatorRecoveryCloseRequest,
+    ) -> PaperOperatorRecoveryCloseDecision:
+        return service.recovery_close_paper_position(request)
 
     return router

@@ -1115,6 +1115,7 @@ class TradingFunnelReadRepository:
                             "0028_scalping_profitability_grants",
                         ),
                         ("0029_stale_position_shadow",),
+                        ("0030_paper_recovery_close",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(

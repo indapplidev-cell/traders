@@ -31,7 +31,10 @@ from app.engine_safety import (
         (PaperOrderType, {"MARKET_SIMULATED"}),
         (PaperOrderState, {"CREATED", "VALIDATED", "OPEN", "FILLED", "REJECTED", "FAILED"}),
         (PaperPositionState, {"OPEN", "CLOSING", "CLOSED", "FAILED"}),
-        (PaperExitCause, {"STOP_LOSS", "TAKE_PROFIT", "SYSTEM_SAFETY_EXIT"}),
+        (PaperExitCause, {
+            "STOP_LOSS", "TAKE_PROFIT", "SYSTEM_SAFETY_EXIT",
+            "OPERATOR_RECOVERY_CLOSE",
+        }),
         (
             PaperEventType,
             {

@@ -35,6 +35,8 @@ from .schemas import (
     PaperOperatorControlStatus,
     PaperOperatorStartFirstCanaryRequest,
     PaperOperatorTransitionRequest,
+    PaperOperatorRecoveryCloseRequest,
+    PaperOperatorRecoveryCloseDecision,
 )
 
 
@@ -207,6 +209,7 @@ class PaperOperatorControlService:
         continuation_status: Callable[[], tuple[bool, float | None]] | None = None,
         active_universe: Callable[[], TradingUniverseVersion] | None = None,
         continuous_store: PaperContinuousAuthorityStore | None = None,
+        recovery_close: Callable[[str, str], PaperOperatorRecoveryCloseDecision] | None = None,
     ) -> None:
         self.config = config
         self.control = control
@@ -216,7 +219,34 @@ class PaperOperatorControlService:
         self.continuation_status = continuation_status or (lambda: (False, None))
         self.active_universe = active_universe or (lambda: ACTIVE_TRADING_UNIVERSE)
         self.continuous_store = continuous_store
+        self._recovery_close = recovery_close
         self._idempotency = _IdempotencyRegistry()
+
+    def recovery_close_paper_position(
+        self, request: PaperOperatorRecoveryCloseRequest
+    ) -> PaperOperatorRecoveryCloseDecision:
+        if not (
+            request.operator_acknowledgement
+            and request.paper_acknowledgement
+            and request.live_forbidden_acknowledgement
+        ):
+            raise ControlApiError(400, "INVALID_REQUEST")
+        if (
+            not self.config.mutation_foundation_enabled
+            or self.config.mode != "PAPER"
+            or self.config.live_allowed
+        ):
+            raise ControlApiError(409, "RECOVERY_CLOSE_PAPER_ONLY")
+        if self._recovery_close is None:
+            raise ControlApiError(503, "RECOVERY_CLOSE_NOT_CONFIGURED")
+        try:
+            return self._recovery_close(request.request_id, request.position_id)
+        except ControlApiError:
+            raise
+        except ValueError as error:
+            code = str(error)
+            status = 404 if code == "POSITION_NOT_FOUND" else 409
+            raise ControlApiError(status, code) from error
 
     @staticmethod
     def _fingerprint(operation: str, request: object) -> str:

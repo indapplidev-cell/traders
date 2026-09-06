@@ -48,6 +48,35 @@ class PaperOperatorClearEmergencyStopRequest(PaperOperatorTransitionRequest):
     clear_emergency_stop_acknowledgement: StrictBool
 
 
+class PaperOperatorRecoveryCloseRequest(StrictRequest):
+    request_id: RequestId
+    position_id: Annotated[StrictStr, Field(min_length=16, max_length=128)]
+    profile_id: Annotated[StrictStr, Field(pattern=r"^trade-5m-v2$")]
+    operator_acknowledgement: StrictBool
+    paper_acknowledgement: StrictBool
+    live_forbidden_acknowledgement: StrictBool
+
+
+class PaperOperatorRecoveryCloseDecision(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    request_id: str
+    operation: str = "RECOVERY_CLOSE_PAPER_POSITION"
+    accepted: bool
+    executed: bool
+    position_id: str
+    state_before: str
+    state_after: str
+    close_reason: str | None = None
+    exit_fill_id: str | None = None
+    exit_price: str | None = None
+    exit_fee: str | None = None
+    source_closed_until_ms: int | None = None
+    finding_codes: tuple[str, ...] = ()
+    live_allowed: bool = False
+    binance_order_calls_allowed: bool = False
+
+
 class PaperOperatorControlDecision(BaseModel):
     model_config = ConfigDict(frozen=True)
 

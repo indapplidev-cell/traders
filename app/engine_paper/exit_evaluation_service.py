@@ -742,6 +742,11 @@ class PaperExitEvaluationService:
         elif trigger.cause is PaperExitCause.TAKE_PROFIT:
             decision_price = base_position.target_price
             reason = PaperReasonCode.PAPER_EXIT_TAKE_PROFIT_TRIGGERED
+        elif trigger.cause is PaperExitCause.OPERATOR_RECOVERY_CLOSE:
+            decision_price = candle.close_price
+            reason = (
+                PaperReasonCode.PAPER_EXIT_OPERATOR_RECOVERY_CLOSE_AFTER_MISSED_STOP
+            )
         else:
             decision_price = candle.close_price
             reason = PaperReasonCode.PAPER_EXIT_SYSTEM_SAFETY_TRIGGERED

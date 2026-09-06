@@ -160,6 +160,7 @@ def test_exact_source_graph_ids_are_mandatory(
         ("STOP", PaperExitCause.STOP_LOSS),
         ("TARGET", PaperExitCause.TAKE_PROFIT),
         ("SAFETY", PaperExitCause.SYSTEM_SAFETY_EXIT),
+        ("RECOVERY", PaperExitCause.OPERATOR_RECOVERY_CLOSE),
     ],
 )
 def test_trigger_prepares_complete_graph_without_fill(
@@ -170,11 +171,14 @@ def test_trigger_prepares_complete_graph_without_fill(
     cause,
 ):
     cursor = seed_exit_graph(paper_session_factory, causal_graph)
-    safety = make_safety(causal_graph) if trigger == "SAFETY" else None
+    safety = (
+        make_safety(causal_graph, recovery_close=trigger == "RECOVERY")
+        if trigger in {"SAFETY", "RECOVERY"} else None
+    )
     request = make_request(
         causal_graph,
         cursor,
-        trigger=None if trigger == "SAFETY" else trigger,
+        trigger=None if trigger in {"SAFETY", "RECOVERY"} else trigger,
         safety=safety,
     )
     actual = service(
@@ -199,6 +203,10 @@ def test_trigger_prepares_complete_graph_without_fill(
         order_row = session.get(PaperOrderRecord, request.close_order_id)
         position_row = session.get(PaperPositionRecord, request.position_id)
         assert decision_row.source_closed_until_ms == T2
+        if trigger == "RECOVERY":
+            assert decision_row.reason_code == (
+                "PAPER_EXIT_OPERATOR_RECOVERY_CLOSE_AFTER_MISSED_STOP"
+            )
         assert order_row.order_role == "EXIT"
         assert order_row.state == "OPEN" and order_row.version == 2
         assert position_row.state == "CLOSING" and position_row.version == 1

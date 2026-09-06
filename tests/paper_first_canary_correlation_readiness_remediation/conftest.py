@@ -51,7 +51,7 @@ def canary_pg_engine() -> Iterator[Engine]:
             ), {"now": datetime(2026, 8, 12, tzinfo=timezone.utc)})
         command.upgrade(config, "head")
         with engine.connect() as connection:
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0029_stale_position_shadow"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0030_paper_recovery_close"
             assert connection.execute(text("SELECT count(*) FROM paper_account_baselines")).scalar_one() == 1
             assert connection.execute(text("SELECT count(*) FROM paper_first_canary_sessions")).scalar_one() == 0
         yield engine

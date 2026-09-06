@@ -166,6 +166,17 @@ def test_earlier_market_trigger_wins_before_safety():
     assert result.trigger.trigger_source_closed_until_ms == T0 + 60_000
 
 
+def test_recovery_ignores_historical_breach_and_triggers_at_current_directive():
+    directive = safety(T0 + 120_000, recovery_close=True)
+    result = evaluate(
+        (candle(0, trigger="STOP"), candle(1)),
+        safety=directive,
+    )
+    assert result.trigger.cause is PaperExitCause.OPERATOR_RECOVERY_CLOSE
+    assert result.trigger.trigger_source_closed_until_ms == T0 + 120_000
+    assert result.trigger.trigger_candle_open_time_ms is None
+
+
 def test_safety_before_later_market_trigger_wins():
     result = evaluate(
         (candle(0), candle(1, trigger="TARGET")),

@@ -12,6 +12,8 @@ from app.operator_control.auth import (
     PaperOperatorScope,
 )
 from app.operator_control.config import PaperOperatorControlConfig
+from app.operator_control.schemas import PaperOperatorRecoveryCloseDecision
+from app.operator_control.service import PaperOperatorControlService
 from app.server_api.app_factory import create_app as create_readonly_app
 
 from .conftest import AUTH, TOKEN, arm_body
@@ -32,6 +34,7 @@ def test_exact_control_route_inventory(isolated_client):
         ("POST", "/control/v1/disable"),
         ("POST", "/control/v1/emergency-stop"),
         ("POST", "/control/v1/clear-emergency-stop"),
+        ("POST", "/control/v1/recovery-close-paper-position"),
     }
 
 
@@ -65,6 +68,51 @@ def test_missing_invalid_and_insufficient_auth(isolated_client, isolated_control
     )
     assert forbidden.status_code == 403
     assert forbidden.json()["error"]["code"] == "CONTROL_FORBIDDEN"
+
+
+def test_recovery_close_is_authenticated_paper_only_and_delegates_exact_identity(
+    isolated_control, capability
+):
+    calls = []
+
+    def close(request_id, position_id):
+        calls.append((request_id, position_id))
+        return PaperOperatorRecoveryCloseDecision(
+            request_id=request_id,
+            accepted=True,
+            executed=True,
+            position_id=position_id,
+            state_before="OPEN",
+            state_after="CLOSED",
+            close_reason="OPERATOR_RECOVERY_CLOSE",
+        )
+
+    config = PaperOperatorControlConfig.production_paper()
+    service = PaperOperatorControlService(
+        config=config, control=isolated_control, recovery_close=close
+    )
+    client = TestClient(create_paper_operator_control_app(
+        config=config,
+        service=service,
+        authenticator=PaperOperatorAuthenticator((capability,)),
+    ))
+    body = {
+        "request_id": "recovery-request-0001",
+        "position_id": "paper:position:exact-0001",
+        "profile_id": "trade-5m-v2",
+        "operator_acknowledgement": True,
+        "paper_acknowledgement": True,
+        "live_forbidden_acknowledgement": True,
+    }
+    assert client.post(
+        "/control/v1/recovery-close-paper-position", json=body
+    ).status_code == 401
+    response = client.post(
+        "/control/v1/recovery-close-paper-position", headers=AUTH, json=body
+    )
+    assert response.status_code == 200
+    assert response.json()["close_reason"] == "OPERATOR_RECOVERY_CLOSE"
+    assert calls == [("recovery-request-0001", "paper:position:exact-0001")]
 
 
 def test_cookie_and_query_credentials_are_not_auth(isolated_client):

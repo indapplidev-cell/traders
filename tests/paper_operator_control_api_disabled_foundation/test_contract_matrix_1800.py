@@ -34,7 +34,7 @@ def test_disabled_operator_control_contract_matrix(case):
     elif dimension == 3:
         assert MAX_REQUEST_BODY_BYTES == 16384
     elif dimension == 4:
-        assert len(ALL_OPERATOR_SCOPES) == 7
+        assert len(ALL_OPERATOR_SCOPES) == 8
     elif dimension == 5:
         assert all(scope.value.startswith("paper.") for scope in PaperOperatorScope)
     elif dimension == 6:

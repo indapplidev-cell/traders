@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0029_stale_position_shadow"
+EXPECTED_HEAD = "0030_paper_recovery_close"
 
 
 @pytest.fixture(scope="session")

@@ -17,6 +17,7 @@ class PaperOperatorScope(StrEnum):
     CONTROL_DISABLE = "paper.control.disable"
     CONTROL_EMERGENCY_STOP = "paper.control.emergency_stop"
     CONTROL_CLEAR_EMERGENCY_STOP = "paper.control.clear_emergency_stop"
+    PAPER_POSITION_RECOVERY_CLOSE = "paper.position.recovery_close"
 
 
 ALL_OPERATOR_SCOPES = frozenset(PaperOperatorScope)

@@ -59,6 +59,7 @@ class PaperSafetyExitDirective:
     correlation_id: str
     causation_id: str
     mode: ExecutionMode
+    recovery_close: bool = False
 
     def __post_init__(self) -> None:
         for name in (
@@ -86,6 +87,8 @@ class PaperSafetyExitDirective:
         if ExecutionMode(self.mode) is not ExecutionMode.PAPER:
             raise ValueError("safety directive mode must be PAPER")
         object.__setattr__(self, "mode", ExecutionMode.PAPER)
+        if not isinstance(self.recovery_close, bool):
+            raise TypeError("recovery_close must be boolean")
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +142,10 @@ class PaperExitTriggerCandidate:
                 raise ValueError("trigger candle boundary mismatch")
         if not isinstance(self.stop_hit, bool) or not isinstance(self.target_hit, bool):
             raise TypeError("trigger hit flags must be boolean")
-        if self.cause is PaperExitCause.SYSTEM_SAFETY_EXIT:
+        if self.cause in {
+            PaperExitCause.SYSTEM_SAFETY_EXIT,
+            PaperExitCause.OPERATOR_RECOVERY_CLOSE,
+        }:
             if self.safety_directive_id is None or self.trigger_candle_open_time_ms is not None:
                 raise ValueError("safety trigger identity mismatch")
             object.__setattr__(
@@ -336,10 +342,24 @@ def evaluate_paper_exit_window(
             else:
                 stop_hit = candle.high_price >= stop
                 target_hit = candle.low_price <= target
+            # A recovery close is deliberately accounted at the current
+            # causal observation. Historical stop/target crossings remain
+            # forensic evidence and must not turn this operator action into a
+            # backdated normal exit.
+            if (
+                safety_directive is not None
+                and safety_directive.recovery_close
+                and not safety_here
+            ):
+                continue
             if not (safety_here or stop_hit or target_hit):
                 continue
             if safety_here:
-                cause = PaperExitCause.SYSTEM_SAFETY_EXIT
+                cause = (
+                    PaperExitCause.OPERATOR_RECOVERY_CLOSE
+                    if safety_directive.recovery_close
+                    else PaperExitCause.SYSTEM_SAFETY_EXIT
+                )
                 opened = None
                 directive_id = safety_directive.directive_id
                 stop_flag = False

@@ -13,7 +13,7 @@ import os
 import threading
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from hashlib import sha256
 
@@ -32,7 +32,10 @@ from app.engine_paper.controlled_worker import (
 )
 from app.engine_paper.exit_evaluation_service import PaperExitEvaluationRequest
 from app.engine_paper.continuous_authority import PaperContinuousAuthorityStore
-from app.engine_paper.exit_evaluator import PAPER_EXIT_EVALUATION_POLICY_ID
+from app.engine_paper.exit_evaluator import (
+    PAPER_EXIT_EVALUATION_POLICY_ID,
+    PaperSafetyExitDirective,
+)
 from app.engine_paper.fill_causal_boundary import PAPER_FILL_CAUSAL_BOUNDARY_VERSION
 from app.engine_paper.fill_simulator import PaperFillCandle, PaperFillRole
 from app.engine_paper.first_canary_correlation import SqlAlchemyPaperFirstCanaryStore
@@ -40,6 +43,8 @@ from app.engine_paper.order_execution_service import (
     PaperCloseExecutionRequest,
     PaperEntryExecutionRequest,
 )
+from app.engine_paper.scalping_paper_runner import read_binance_commission_snapshot
+from app.engine_safety.paper_domain import PaperPositionState
 from app.engine_paper.production_market_data import (
     PaperProductionMarketDataInputAdapter,
     PaperProductionMarketDataRequest,
@@ -64,6 +69,7 @@ from .production_executor import (
     SCALPING_V2_REFINEMENT_SIMULATION_POLICY_ID,
     _foundation_policy,
 )
+from .schemas import PaperOperatorRecoveryCloseDecision
 
 
 # Uvicorn owns the production stderr handler; using its error logger keeps the
@@ -117,7 +123,7 @@ def _entry_fill_window_missed(entry_order, selected_candle: PaperFillCandle) -> 
     return entry_order.updated_at > _at(selected_candle.close_boundary_ms)
 
 
-def _safe_log(event: str, **fields: object) -> None:
+def _safe_event(event: str, **fields: object) -> None:
     LOGGER.info(json.dumps({"event": event, **fields}, sort_keys=True, default=str))
 
 
@@ -245,7 +251,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 (reconciliation.get("accounting_reconciliation") or {}).get("status", "UNHEALTHY")
             )
         except Exception as error:
-            _safe_log("paper_canary_finalization_read_fault", error_type=type(error).__name__)
+            _safe_event("paper_canary_finalization_read_fault", error_type=type(error).__name__)
         healthy = report_available and paper_status == "HEALTHY" and accounting_status == "HEALTHY"
         if continuous:
             if self._continuous_store is None:
@@ -257,7 +263,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                     reconciliation_healthy=healthy,
                 )
             except Exception as error:
-                _safe_log("paper_continuous_close_reconciliation_fault", error_type=type(error).__name__)
+                _safe_event("paper_continuous_close_reconciliation_fault", error_type=type(error).__name__)
                 return "SAFE_FAILURE:CONTINUOUS_CLOSE_RECONCILIATION_FAILED"
         final = self._canary_store.refresh_terminal(
             canary.canary_id,
@@ -268,7 +274,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             accounting_reconciliation_status=accounting_status,
             checked_at=datetime.now(timezone.utc),
         )
-        _safe_log(
+        _safe_event(
             "paper_execution_cycle_finalized", canary_id=canary.canary_id,
             authority_mode=getattr(canary, "authority_mode", "FIRST_CANARY_HISTORICAL"),
             command_id=canary.command_id, position_id=canary.position_id,
@@ -306,7 +312,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             authority = "CONTINUOUS" if continuous else "FIRST_CANARY"
             reason = f"{authority}_ENTRY_FILL_WINDOW_MISSED"
             self._canary_store.fail_safe(canary_id, reason)
-            _safe_log(
+            _safe_event(
                 "paper_entry_fill_window_missed",
                 canary_id=canary_id,
                 command_id=command.command_id,
@@ -348,7 +354,15 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         )
         return self._cycle(canary_id, graph, continuous=continuous, entry_execution_request=request), "READY"
 
-    def _exit_cycle(self, canary_id: str, graph, candles, *, continuous: bool = False):
+    def _exit_cycle(
+        self,
+        canary_id: str,
+        graph,
+        candles,
+        *,
+        continuous: bool = False,
+        safety_directive: PaperSafetyExitDirective | None = None,
+    ):
         command, position, cursor = graph.command, graph.positions[0], graph.cursors[0]
         eligible = tuple(value for value in candles if value.open_time_ms >= cursor.last_evaluated_closed_until_ms)
         if not eligible:
@@ -362,7 +376,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             source_command_id=command.command_id, entry_order_id=position.entry_order_id,
             entry_fill_id=position.entry_fill_id, candles=eligible,
             market_snapshot_closed_until_ms=eligible[-1].close_boundary_ms,
-            safety_directive=None, evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
+            safety_directive=safety_directive, evaluation_policy_id=PAPER_EXIT_EVALUATION_POLICY_ID,
             execution_mode=ExecutionMode.PAPER, explicit_paper_authorization=True,
             exit_decision_id=_id(canary_id, "exit-decision", continuous=continuous), close_order_id=close_order_id,
             exit_event_id=_id(canary_id, "exit-event", continuous=continuous),
@@ -451,6 +465,172 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             **stage_request,
         )
 
+    def recovery_close_paper_position(
+        self, request_id: str, position_id: str
+    ) -> PaperOperatorRecoveryCloseDecision:
+        """Close one exact OPEN PAPER position at current causal observations.
+
+        This is an authenticated operator entry point into the same atomic
+        evaluation and close-execution services used by mandatory exits. It
+        never mutates position rows directly and never backdates the fill.
+        """
+
+        canary = self._canary_store.current()
+        if canary is None or canary.command_id is None:
+            raise ValueError("POSITION_NOT_FOUND")
+        if canary.position_id != position_id:
+            raise ValueError("POSITION_NOT_FOUND")
+        with self._lock.acquire(canary.canary_id) as claimed:
+            if not claimed:
+                raise ValueError("RECOVERY_CLOSE_BUSY")
+            canary = self._canary_store.get(canary.canary_id)
+            if canary is None or canary.position_id != position_id:
+                raise ValueError("POSITION_NOT_FOUND")
+            state = self._control.read_authoritative()
+            if (
+                state.state is not PersistentState.CONTINUOUS_ARMED
+                or canary.authority_mode != "CONTINUOUS"
+                or state.generation != canary.current_control_generation
+            ):
+                raise ValueError("RECOVERY_CLOSE_CONTROL_NOT_ARMED")
+            graph = self._graph_loader.load(canary.command_id)
+            lifecycle = classify_paper_lifecycle_state(graph)
+            if lifecycle is PaperLifecycleState.POSITION_CLOSED:
+                position = graph.positions[0]
+                return PaperOperatorRecoveryCloseDecision(
+                    request_id=request_id,
+                    accepted=True,
+                    executed=False,
+                    position_id=position_id,
+                    state_before="CLOSED",
+                    state_after="CLOSED",
+                    close_reason="OPERATOR_RECOVERY_CLOSE",
+                    exit_fill_id=position.exit_fill_id,
+                    exit_price=(
+                        None if position.average_exit_price is None
+                        else format(position.average_exit_price, "f")
+                    ),
+                    exit_fee=format(position.exit_fees, "f"),
+                )
+            if lifecycle is not PaperLifecycleState.POSITION_OPEN_CURSOR_READY:
+                raise ValueError("RECOVERY_CLOSE_POSITION_NOT_OPEN")
+            readiness: ExistingCanaryRuntimeReadiness = self._runtime_readiness()
+            if not all((
+                readiness.market_data_ready,
+                readiness.backup_pitr_pass,
+                readiness.live_disabled,
+            )):
+                raise ValueError("RECOVERY_CLOSE_SAFETY_READINESS_DENIED")
+            commission = read_binance_commission_snapshot(graph.command.symbol)
+            policy = _foundation_policy(graph.command.simulation_policy_id)
+            if (
+                commission is None
+                or Decimal(str(commission.exit_commission_bps)) != policy.fee_bps
+            ):
+                raise ValueError("RECOVERY_CLOSE_CURRENT_COMMISSION_NOT_READY")
+            candles, market = self._snapshot(
+                graph.command.symbol, canary.canary_id, continuous=True
+            )
+            if candles is None:
+                raise ValueError(f"RECOVERY_CLOSE_MARKET_DATA_{market}")
+            cursor = graph.cursors[0]
+            eligible = tuple(
+                candle for candle in candles
+                if candle.open_time_ms >= cursor.last_evaluated_closed_until_ms
+            )
+            if len(eligible) < 2:
+                raise ValueError("RECOVERY_CLOSE_CURRENT_CANDLE_PAIR_NOT_READY")
+            trigger_candle = eligible[-2]
+            now = datetime.now(timezone.utc)
+            directive = PaperSafetyExitDirective(
+                directive_id=_id(canary.canary_id, "operator-recovery-directive", continuous=True),
+                version=1,
+                position_id=position_id,
+                symbol=graph.command.symbol,
+                side=graph.positions[0].side,
+                effective_closed_until_ms=trigger_candle.close_boundary_ms,
+                issued_at=now,
+                valid_until_ms=int((now + timedelta(minutes=5)).timestamp() * 1000),
+                final_safety_authorization=True,
+                reason="RECOVERY_CLOSE_AFTER_MISSED_STOP",
+                correlation_id=graph.journal[0].correlation_id,
+                causation_id=request_id,
+                mode=ExecutionMode.PAPER,
+                recovery_close=True,
+            )
+            cycle, code = self._exit_cycle(
+                canary.canary_id,
+                graph,
+                candles,
+                continuous=True,
+                safety_directive=directive,
+            )
+            if cycle is None:
+                raise ValueError(f"RECOVERY_CLOSE_{code}")
+            target = PaperProductionMutationTarget(
+                environment=canary.environment,
+                mode=canary.mode,
+                symbol=graph.command.symbol,
+                candidate_identity=graph.command.risk_decision_id,
+                current_generation=state.generation,
+                new_commands_before=canary.command_count,
+                open_positions_before=canary.position_count,
+            )
+            prerequisites = MutationPrerequisites(
+                market_data_ready=True,
+                approval_candidate_eligible=True,
+                backup_pitr_pass=True,
+                paper_target_authorized=True,
+                live_disabled=True,
+            )
+            with self._mutation_safety_gate.authorize_mutation(
+                MutationStage.EXIT_EVALUATION_MUTATION, target, prerequisites
+            ):
+                prepared = self._worker.run_cycle(cycle)
+            if prepared.final_lifecycle_state is not PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN:
+                raise ValueError(f"RECOVERY_CLOSE_PREPARE_{prepared.reason_code}")
+            graph = self._graph_loader.load(canary.command_id)
+            close_cycle, code = self._close_cycle(
+                canary.canary_id, graph, candles, continuous=True
+            )
+            if close_cycle is None:
+                raise ValueError(f"RECOVERY_CLOSE_{code}")
+            with self._mutation_safety_gate.authorize_mutation(
+                MutationStage.CLOSE_EXECUTION, target, prerequisites
+            ):
+                closed = self._worker.run_cycle(close_cycle)
+            if closed.final_lifecycle_state is not PaperLifecycleState.POSITION_CLOSED:
+                raise ValueError(f"RECOVERY_CLOSE_EXECUTION_{closed.reason_code}")
+            graph = self._graph_loader.load(canary.command_id)
+            position = graph.positions[0]
+            if position.state is not PaperPositionState.CLOSED:
+                raise ValueError("RECOVERY_CLOSE_NOT_CLOSED")
+            if self._outcome_diagnostics is not None:
+                self._outcome_diagnostics.process(position.position_id)
+            self._finalize(canary, state)
+            _safe_event(
+                "paper_operator_recovery_close",
+                request_id=request_id,
+                position_id=position_id,
+                reason="OPERATOR_RECOVERY_CLOSE",
+                exit_fill_id=position.exit_fill_id,
+                source_closed_until_ms=eligible[-1].close_boundary_ms,
+                real_binance_order_calls=0,
+            )
+            return PaperOperatorRecoveryCloseDecision(
+                request_id=request_id,
+                accepted=True,
+                executed=True,
+                position_id=position_id,
+                state_before="OPEN",
+                state_after="CLOSED",
+                close_reason="OPERATOR_RECOVERY_CLOSE",
+                exit_fill_id=position.exit_fill_id,
+                exit_price=format(position.average_exit_price, "f"),
+                exit_fee=format(position.exit_fees, "f"),
+                source_closed_until_ms=eligible[-1].close_boundary_ms,
+            )
+
     def run_once(self) -> str:
         canary = self._canary_store.current()
         if canary is None or canary.command_id is None:
@@ -519,7 +699,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                         shadow = self._stale_position_shadow.evaluate_and_persist(
                             graph.positions[0], candles
                         )
-                        _safe_log(
+                        _safe_event(
                             "stale_position_shadow_evaluated",
                             position_id=graph.positions[0].position_id,
                             mode="SHADOW",
@@ -529,7 +709,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                             production_exit_mutation=False,
                         )
                     except Exception as error:
-                        _safe_log(
+                        _safe_event(
                             "stale_position_shadow_fault",
                             position_id=graph.positions[0].position_id,
                             error_type=type(error).__name__,
@@ -563,7 +743,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                     result = self._worker.run_cycle(cycle)
             except SafetyControlError as error:
                 return f"SAFE_FAILURE:{str(error)[:96]}"
-            _safe_log(
+            _safe_event(
                 "paper_canary_lifecycle_stage", canary_id=canary.canary_id,
                 command_id=canary.command_id, stage=stage.value,
                 outcome=result.outcome.value, reason=result.reason_code,
@@ -606,7 +786,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 self._last_result = self.run_once()
             except Exception as error:
                 self._last_result = f"SAFE_FAILURE:{type(error).__name__}"
-                _safe_log("paper_canary_lifecycle_fault", error_type=type(error).__name__)
+                _safe_event("paper_canary_lifecycle_fault", error_type=type(error).__name__)
             finally:
                 self._ticks += 1
             self._stop.wait(self.poll_seconds)

@@ -359,6 +359,10 @@ def create_runtime_app(
         ),
         active_universe=(universe_store.active_universe if universe_store is not None else None),
         continuous_store=continuous_store,
+        recovery_close=(
+            lifecycle_worker.recovery_close_paper_position
+            if lifecycle_worker is not None else None
+        ),
     )
 
     @asynccontextmanager

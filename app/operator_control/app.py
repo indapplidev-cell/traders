@@ -193,7 +193,7 @@ def create_paper_operator_control_app(
 
     # Materialize the already-composed narrow router.  FastAPI 0.116 defers
     # include_router() behind an internal placeholder; direct materialization
-    # keeps the exact eight-route inventory inspectable before startup.
+    # keeps the exact narrow route inventory inspectable before startup.
     app.router.routes.extend(
         build_operator_control_router(active_service, require_scope).routes
     )

@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0029_stale_position_shadow"
-    ] = "0029_stale_position_shadow"
+        "0030_paper_recovery_close"
+    ] = "0030_paper_recovery_close"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool

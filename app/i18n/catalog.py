@@ -1204,6 +1204,10 @@ _DOMAIN = {
     "paper.exit": {
         "STOP_LOSS": ("Стоп-лосс", "Stop loss"), "TAKE_PROFIT": ("Тейк-профит", "Take profit"),
         "SYSTEM_SAFETY_EXIT": ("Защитное закрытие системой", "System safety exit"),
+        "OPERATOR_RECOVERY_CLOSE": (
+            "Позиция закрыта восстановительным PAPER-выходом после пропущенного Stop Loss",
+            "Position closed by a recovery PAPER exit after a missed Stop Loss",
+        ),
     },
     "incident.status": {
         "UNKNOWN": ("Статус не определён", "Status unavailable"), "OPEN": ("Открыт", "Open"),
