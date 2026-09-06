@@ -54,8 +54,8 @@ profiles:
       slippage_policy: FIXED_BASELINE
       entry_slippage_bps: 2.0
       exit_slippage_bps: 2.0
-      adverse_fill_reserve_bps: 0.0
-      cost_safety_margin_bps: 3.0
+      adverse_fill_reserve_bps: 3.0
+      cost_safety_margin_bps: 0.0
       max_depth_impact_bps: 20.0
       max_cost_snapshot_age_seconds: 86400
       book_depth_limit: 100

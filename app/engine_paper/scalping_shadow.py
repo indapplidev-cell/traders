@@ -74,6 +74,7 @@ class ShadowCostInputs:
     entry_slippage_bps: float = 2.0
     exit_slippage_bps: float = 2.0
     safety_margin_bps: float = 3.0
+    adverse_fill_reserve_bps: float = 0.0
     spread_bps: float | None = None
     depth_impact_bps: float | None = None
     fee_source: str = "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
@@ -119,6 +120,7 @@ class ShadowCostInputs:
         values = (
             self.entry_fee_bps, self.exit_fee_bps, self.entry_slippage_bps,
             self.exit_slippage_bps, self.safety_margin_bps,
+            self.adverse_fill_reserve_bps,
         )
         if any(not isfinite(float(value)) or float(value) < 0 for value in values):
             raise ValueError("cost components must be finite and non-negative")
@@ -273,7 +275,9 @@ class ShadowGeometryDiagnostic:
     exit_slippage_bps: float | None = None
     depth_impact_bps: float | None = None
     safety_margin_bps: float | None = None
+    adverse_fill_reserve_bps: float | None = None
     total_cost_bps: float | None = None
+    effective_total_cost_bps: float | None = None
     expected_net_edge_bps: float | None = None
     net_reward_bps: float | None = None
     effective_risk_bps: float | None = None
@@ -521,6 +525,7 @@ def evaluate_scalping_shadow(
         entry_slippage_bps=costs.entry_slippage_bps,
         exit_slippage_bps=costs.exit_slippage_bps,
         safety_margin_bps=costs.safety_margin_bps,
+        adverse_fill_reserve_bps=costs.adverse_fill_reserve_bps,
         spread_bps=costs.spread_bps,
         depth_impact_bps=costs.depth_impact_bps,
         fee_source=costs.fee_source,
@@ -639,9 +644,10 @@ def evaluate_scalping_shadow(
     total_cost = (
         costs.entry_fee_bps + costs.exit_fee_bps + costs.entry_slippage_bps
         + costs.exit_slippage_bps + costs.spread_bps + costs.depth_impact_bps
-        + costs.safety_margin_bps
+        + costs.safety_margin_bps + costs.adverse_fill_reserve_bps
     )
     result.total_cost_bps = round(total_cost, 8)
+    result.effective_total_cost_bps = result.total_cost_bps
     result.minimum_actionable_target_bps = round(
         total_cost + config.minimum_positive_edge_bps, 8
     )

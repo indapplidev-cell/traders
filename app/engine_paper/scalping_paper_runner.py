@@ -113,7 +113,9 @@ def read_binance_commission_snapshot(
                 f"{source_snapshot_id}:rehydrated:{rehydration_generation}"
             )
         else:
-            if observed_at - fetched > timedelta(hours=24):
+            if observed_at - fetched > timedelta(
+                seconds=SCALPING_V2.costs.max_cost_snapshot_age_seconds
+            ):
                 return CommissionSnapshotLoad(None, "SNAPSHOT_STALE")
             snapshot_id = source_snapshot_id
         entry_role = str(row.get("entry_liquidity_role", "TAKER")).upper()
@@ -158,6 +160,7 @@ class BinancePublicScalpingCostSource:
         exit_fee_bps: float = 10.0,
         entry_slippage_bps: float = 2.0,
         exit_slippage_bps: float = 2.0,
+        adverse_fill_reserve_bps: float = 0.0,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.client = client or BinancePublicRestClient()
@@ -168,6 +171,7 @@ class BinancePublicScalpingCostSource:
         self.exit_fee_bps = float(exit_fee_bps)
         self.entry_slippage_bps = float(entry_slippage_bps)
         self.exit_slippage_bps = float(exit_slippage_bps)
+        self.adverse_fill_reserve_bps = float(adverse_fill_reserve_bps)
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self._recovery_lock = Lock()
         self._connection_generation = 0
@@ -227,6 +231,7 @@ class BinancePublicScalpingCostSource:
             entry_slippage_bps=self.entry_slippage_bps,
             exit_slippage_bps=self.exit_slippage_bps,
             safety_margin_bps=safety_margin_bps,
+            adverse_fill_reserve_bps=self.adverse_fill_reserve_bps,
             spread_bps=(None if ticker is None else ticker.spread_bps),
             depth_impact_bps=(None if depth is None else depth.depth_impact_bps),
             fee_source=(commission.commission_source if commission else "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"),
@@ -337,6 +342,7 @@ class ScalpingPaperRunner(PaperRunner):
             exit_fee_bps=float(runtime_parameters.economics_exit_fee_bps),
             entry_slippage_bps=float(runtime_parameters.economics_entry_slippage_bps),
             exit_slippage_bps=float(runtime_parameters.economics_exit_slippage_bps),
+            adverse_fill_reserve_bps=SCALPING_V2.costs.adverse_fill_reserve_bps,
         )
         self.geometry_config = ShadowGeometryConfig(
             atr_buffer_multiplier=float(runtime_parameters.geometry_atr_buffer_multiplier),
@@ -534,6 +540,7 @@ class ScalpingPaperRunner(PaperRunner):
                 safety_margin_bps=float(
                     getattr(self.runtime_parameters, "cost_safety_margin_bps")
                 ),
+                adverse_fill_reserve_bps=SCALPING_V2.costs.adverse_fill_reserve_bps,
             )
         except Exception:
             return ShadowCostInputs(
