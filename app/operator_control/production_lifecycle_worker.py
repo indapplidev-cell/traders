@@ -617,7 +617,9 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                     position_id=position_id,
                     outcome=prepared.outcome,
                     reason_code=prepared.reason_code,
-                    trace=prepared.trace,
+                    stage_trace=prepared.stage_trace,
+                    child_outcome_codes=prepared.child_outcome_codes,
+                    child_reason_codes=prepared.child_reason_codes,
                 )
                 raise ValueError(f"RECOVERY_CLOSE_PREPARE_{prepared.reason_code}")
             graph = self._graph_loader.load(canary.command_id)
