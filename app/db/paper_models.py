@@ -670,6 +670,74 @@ class ScalpingOutcomeDiagnosticRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ScalpingStalePositionShadowRecord(Base):
+    """Restart-safe, non-mutating time-stop observation for an OPEN PAPER position."""
+
+    __tablename__ = "scalping_stale_position_shadow_diagnostics"
+    __table_args__ = (
+        CheckConstraint("mode = 'SHADOW'", name="ck_stale_shadow_mode"),
+        CheckConstraint("holding_seconds >= 0", name="ck_stale_shadow_holding"),
+        CheckConstraint("extension_count >= 0", name="ck_stale_shadow_extensions"),
+        CheckConstraint(
+            "shadow_exit_reason IS NULL OR shadow_exit_time IS NOT NULL",
+            name="ck_stale_shadow_exit_complete",
+        ),
+        Index(
+            "ix_stale_shadow_position_evaluation",
+            "position_id", "evaluation_closed_until_ms",
+        ),
+    )
+
+    position_id: Mapped[str] = mapped_column(
+        String(IDENTITY_LENGTH),
+        ForeignKey("paper_positions.position_id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    evaluation_closed_until_ms: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True,
+    )
+    symbol: Mapped[str] = mapped_column(String(SYMBOL_LENGTH), nullable=False)
+    side: Mapped[str] = mapped_column(String(8), nullable=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    config_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    current_price: Mapped[Decimal] = mapped_column(Numeric(PRICE_PRECISION, PRICE_SCALE), nullable=False)
+    holding_seconds: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    soft_timeout_reached: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    hard_timeout_reached: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    target_progress: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
+    mfe_bps: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
+    mae_bps: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
+    current_gross_pnl: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    estimated_net_exit_pnl: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    remaining_target_distance: Mapped[Decimal] = mapped_column(Numeric(PRICE_PRECISION, PRICE_SCALE), nullable=False)
+    remaining_ev_r: Mapped[Decimal | None] = mapped_column(Numeric(20, 10))
+    setup_valid: Mapped[bool | None] = mapped_column(Boolean)
+    momentum_valid: Mapped[bool | None] = mapped_column(Boolean)
+    entry_fee_incurred: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    expected_exit_commission: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    spread_cost: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    slippage_cost: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    adverse_exit_reserve: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    net_break_even_price: Mapped[Decimal] = mapped_column(Numeric(PRICE_PRECISION, PRICE_SCALE), nullable=False)
+    break_even_activation_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    extension_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    shadow_decision: Mapped[str] = mapped_column(String(48), nullable=False)
+    decision_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    shadow_exit_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    shadow_exit_price: Mapped[Decimal | None] = mapped_column(Numeric(PRICE_PRECISION, PRICE_SCALE))
+    shadow_exit_reason: Mapped[str | None] = mapped_column(String(REASON_CODE_LENGTH))
+    shadow_gross_pnl: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    shadow_fees: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    shadow_net_pnl: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    position_capacity_seconds_consumed: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    later_rejected_candidates: Mapped[int | None] = mapped_column(Integer)
+    provenance: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class PaperOrderRecord(Base):
     __tablename__ = "paper_orders"
     __table_args__ = (

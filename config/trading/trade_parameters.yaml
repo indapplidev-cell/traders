@@ -77,6 +77,24 @@ profiles:
       validity_boundaries: 1
       exit_time_stop_minutes: 15
       maximum_price_drift_bps: 10.0
+    exit_policy:
+      stale_position:
+        enabled: true
+        mode: SHADOW
+        soft_timeout_seconds: 600
+        hard_timeout_seconds: 900
+        min_target_progress_at_soft_timeout: 0.20
+        min_mfe_bps_at_soft_timeout: null
+        min_remaining_ev_r_at_soft_timeout: 0.0
+        extension_allowed: true
+        extension_seconds: 300
+        max_extensions: 1
+        extension_requires_positive_net_exit_pnl: false
+        extension_requires_setup_valid: true
+        extension_requires_momentum_valid: true
+        net_break_even_protection_enabled: true
+        break_even_activation_target_progress: 0.50
+        use_current_exit_costs: true
     causal_opportunity:
       one_execution_per_opportunity: true
       reset_policy: STRUCTURAL_RESET_REQUIRED

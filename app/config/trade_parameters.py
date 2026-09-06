@@ -120,6 +120,39 @@ class LifecycleParameters(StrictModel):
     maximum_price_drift_bps: float = Field(ge=0)
 
 
+class StalePositionPolicyParameters(StrictModel):
+    enabled: Literal[True]
+    mode: Literal["SHADOW"]
+    soft_timeout_seconds: int = Field(gt=0)
+    hard_timeout_seconds: int = Field(gt=0)
+    min_target_progress_at_soft_timeout: float = Field(ge=0, le=1)
+    min_mfe_bps_at_soft_timeout: float | None = Field(default=None, ge=0)
+    min_remaining_ev_r_at_soft_timeout: float = Field(ge=0)
+    extension_allowed: bool
+    extension_seconds: int = Field(ge=0)
+    max_extensions: int = Field(ge=0)
+    extension_requires_positive_net_exit_pnl: bool
+    extension_requires_setup_valid: bool
+    extension_requires_momentum_valid: bool
+    net_break_even_protection_enabled: bool
+    break_even_activation_target_progress: float = Field(ge=0, le=1)
+    use_current_exit_costs: Literal[True]
+
+    @model_validator(mode="after")
+    def valid_timeout_policy(self):
+        if self.soft_timeout_seconds >= self.hard_timeout_seconds:
+            raise ValueError("soft timeout must be below hard timeout")
+        if not self.extension_allowed and self.max_extensions != 0:
+            raise ValueError("disabled extension policy must have zero extensions")
+        if self.extension_allowed and self.max_extensions > 0 and self.extension_seconds == 0:
+            raise ValueError("enabled extensions must have a positive duration")
+        return self
+
+
+class ExitPolicyParameters(StrictModel):
+    stale_position: StalePositionPolicyParameters
+
+
 class CausalOpportunityParameters(StrictModel):
     one_execution_per_opportunity: bool
     reset_policy: str = Field(min_length=1)
@@ -141,6 +174,7 @@ class ScalpingV2Parameters(StrictModel):
     economics: EconomicsParameters
     costs: CostParameters
     lifecycle: LifecycleParameters
+    exit_policy: ExitPolicyParameters
     causal_opportunity: CausalOpportunityParameters
     entry_refinement_1m: EntryRefinementParameters
 

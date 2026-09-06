@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0028_scalping_profitability_grants"
+EXPECTED_HEAD = "0029_stale_position_shadow"
 
 
 @pytest.fixture(scope="session")
@@ -79,6 +79,7 @@ def natural_e2e_engine() -> Iterator[Engine]:
 @pytest.fixture
 def natural_e2e_sessions(natural_e2e_engine: Engine) -> sessionmaker:
     tables = (
+        "scalping_stale_position_shadow_diagnostics",
         "scalping_outcome_diagnostics",
         "scalping_opportunities",
         "paper_continuous_control_events",

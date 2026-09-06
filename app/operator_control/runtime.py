@@ -36,6 +36,7 @@ from app.engine_paper.entry_refinement import (
 from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSource
 from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
 from app.engine_paper.outcome_diagnostics import PostgresOutcomeDiagnosticsProcessor
+from app.engine_paper.stale_position_shadow import PostgresStalePositionShadowService
 from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.engine_safety.paper_production_control import (
@@ -327,6 +328,24 @@ def create_runtime_app(
             continuous_store=continuous_store,
             opportunity_registry=opportunity_registry,
             outcome_diagnostics=outcome_diagnostics,
+            stale_position_shadow=PostgresStalePositionShadowService(
+                sessions,
+                BinancePublicScalpingCostSource(
+                    client=BinancePublicRestClient(
+                        request_timeout_seconds=float(scalping.market_data_request_timeout_seconds),
+                        max_retries=int(scalping.market_data_max_retries),
+                        retry_backoff_seconds=float(scalping.market_data_retry_backoff_seconds),
+                    ),
+                    reference_notional=float(scalping.vwap_reference_notional),
+                    depth_limit=int(scalping.bounded_book_depth_limit),
+                    maximum_age_ms=int(scalping.microstructure_max_age_ms),
+                    entry_fee_bps=float(scalping.economics_entry_fee_bps),
+                    exit_fee_bps=float(scalping.economics_exit_fee_bps),
+                    entry_slippage_bps=float(scalping.economics_entry_slippage_bps),
+                    exit_slippage_bps=float(scalping.economics_exit_slippage_bps),
+                    adverse_fill_reserve_bps=float(scalping.adverse_fill_reserve_bps),
+                ),
+            ),
         )
         runtime_health_publisher = PaperRuntimeHealthPublisher(
             resolve_production_control_root(),

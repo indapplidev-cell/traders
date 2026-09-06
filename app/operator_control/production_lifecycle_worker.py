@@ -140,6 +140,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         continuous_store: PaperContinuousAuthorityStore | None = None,
         opportunity_registry: object | None = None,
         outcome_diagnostics: object | None = None,
+        stale_position_shadow: object | None = None,
     ) -> None:
         if not MIN_POLL_SECONDS <= poll_seconds <= MAX_POLL_SECONDS:
             raise ValueError("FIRST_CANARY_LIFECYCLE_POLL_INTERVAL_INVALID")
@@ -156,6 +157,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         self._continuous_store = continuous_store
         self._opportunity_registry = opportunity_registry
         self._outcome_diagnostics = outcome_diagnostics
+        self._stale_position_shadow = stale_position_shadow
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._ticks = 0
@@ -512,6 +514,27 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 )
                 stage = MutationStage.ENTRY_EXECUTION
             elif lifecycle is PaperLifecycleState.POSITION_OPEN_CURSOR_READY:
+                if self._stale_position_shadow is not None:
+                    try:
+                        shadow = self._stale_position_shadow.evaluate_and_persist(
+                            graph.positions[0], candles
+                        )
+                        _safe_log(
+                            "stale_position_shadow_evaluated",
+                            position_id=graph.positions[0].position_id,
+                            mode="SHADOW",
+                            decision=None if shadow is None else shadow.shadow_decision,
+                            reason=None if shadow is None else shadow.shadow_exit_reason,
+                            holding_seconds=None if shadow is None else shadow.holding_seconds,
+                            production_exit_mutation=False,
+                        )
+                    except Exception as error:
+                        _safe_log(
+                            "stale_position_shadow_fault",
+                            position_id=graph.positions[0].position_id,
+                            error_type=type(error).__name__,
+                            production_exit_mutation=False,
+                        )
                 cycle, readiness_code = self._exit_cycle(
                     canary.canary_id, graph, candles, continuous=continuous
                 )

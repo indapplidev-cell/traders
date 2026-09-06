@@ -43,6 +43,7 @@ from app.db.paper_models import (
 )
 from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
 from app.engine_paper.binance_account_commission import commission_runtime_status
+from app.engine_paper.stale_position_shadow import stale_position_runtime_projection
 
 
 PROJECTION_VERSION: Final = "trading-funnel-v1"
@@ -1113,6 +1114,7 @@ class TradingFunnelReadRepository:
                             "0027_scalping_profitability_integration",
                             "0028_scalping_profitability_grants",
                         ),
+                        ("0029_stale_position_shadow",),
                     }
                 else:
                     profile_schema_ready = self._schema_capabilities.snapshot().has(
@@ -2195,6 +2197,13 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             if profile.trade_profile_id == "trade-5m-v2" else {
                 "status": "NOT_APPLICABLE", "real_account_data": False,
                 "stub_active": False,
+            }
+        ),
+        "stale_position_shadow": (
+            stale_position_runtime_projection()
+            if profile.trade_profile_id == "trade-5m-v2" else {
+                "capability": "STALE_POSITION_SHADOW",
+                "runtime_active": False, "mode": "NOT_APPLICABLE", "latest": None,
             }
         ),
         "trade_mode": profile.trade_mode,

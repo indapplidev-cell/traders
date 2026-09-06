@@ -396,6 +396,8 @@ class TradingFunnelSnapshot(ContractModel):
     position_opening_enabled: bool = True
     profile_metrics: dict[str, Any] = Field(default_factory=dict)
     profile_health: dict[str, Any] = Field(default_factory=dict)
+    commission_authority: dict[str, Any] = Field(default_factory=dict)
+    stale_position_shadow: dict[str, Any] = Field(default_factory=dict)
 
 
 class TradingFunnelEnvelope(BaseModel):
