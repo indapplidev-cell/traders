@@ -1,0 +1,80 @@
+schema_version: 1
+config_version: scalping-v2-baseline-1
+profiles:
+  trade-5m-v2:
+    enabled: true
+    signal:
+      timeframe: 5m
+      required_timeframes: [1m, 5m, 15m, 1h]
+      market_data_windows: {1m: 60, 5m: 120, 15m: 64, 1h: 50}
+      allowed_setup_types:
+        - SCALP_TREND_PULLBACK
+        - SCALP_BREAKOUT
+        - SCALP_BREAKOUT_RETEST
+        - SCALP_RANGE_BOUNCE
+        - SCALP_LIQUIDITY_SWEEP
+        - SCALP_MOMENTUM_CONTINUATION
+        - SCALP_COMPRESSION_BREAK
+      analysis_history_candles: 120
+      atr_lookback_candles: 12
+      impulse_lookback_candles: 8
+      structure_lookback_candles: 12
+      confirmation_window_candles: 1
+      volume_baseline_candles: 12
+      regime_lookback_candles: 24
+      strategy_minimum_score: 55.0
+    risk:
+      risk_per_trade_bps: 10.0
+      max_open_positions: 2
+      max_new_commands_per_cycle: 1
+      total_open_risk_limit_bps: 50.0
+    geometry:
+      atr_multiplier: 0.25
+      stop_min_bps: 0.0
+      stop_max_bps: 50.0
+      target_policy: SCALPING_NEAREST_VIABLE_TARGET_V3
+      target_min_bps: 45.0
+      minimum_planned_rr: 0.4
+    economics:
+      min_net_edge_bps: 1.0
+      min_positive_ev_r: 0.0
+      min_ev_reserve_r: 0.0
+      bucket_min_sample: 20
+      probability_confidence_level: 0.95
+      prior_alpha: 1.0
+      prior_beta: 1.0
+      static_rr_fallback_enabled: true
+      parent_bucket_fallback_order: [exact, setup_direction_regime, setup_direction, setup, global]
+    costs:
+      commission_source: binance_dynamic
+      conservative_fallback_policy: FAIL_CLOSED
+      configured_entry_fee_bps: 10.0
+      configured_exit_fee_bps: 10.0
+      spread_policy: BINANCE_PUBLIC_BOOK_TICKER
+      slippage_policy: FIXED_BASELINE
+      entry_slippage_bps: 2.0
+      exit_slippage_bps: 2.0
+      adverse_fill_reserve_bps: 0.0
+      cost_safety_margin_bps: 3.0
+      max_depth_impact_bps: 20.0
+      max_cost_snapshot_age_seconds: 86400
+      book_depth_limit: 100
+      vwap_reference_notional: 100.0
+      microstructure_max_age_ms: 5000
+    lifecycle:
+      plan_ttl_seconds: 30
+      entry_fill_window_seconds: 30
+      validity_boundaries: 1
+      exit_time_stop_minutes: 15
+      maximum_price_drift_bps: 10.0
+    causal_opportunity:
+      one_execution_per_opportunity: true
+      reset_policy: STRUCTURAL_RESET_REQUIRED
+      reset_min_conditions: 1
+    entry_refinement_1m:
+      enabled: true
+      mode: SHADOW
+      timeout_seconds: 300
+      authoritative_promotion_allowed: false
+  trade-15m-v1:
+    enabled: false

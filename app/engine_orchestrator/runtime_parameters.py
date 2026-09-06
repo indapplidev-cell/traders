@@ -8,6 +8,8 @@ from dataclasses import asdict, dataclass
 from types import MappingProxyType
 from typing import Final, Mapping
 
+from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+
 from app.engine_orchestrator.trade_profile import (
     TradeProfileId,
     TradeSearchProfile,
@@ -233,6 +235,8 @@ class RuntimeProfileParameters:
             "runtime_parameter_contract_version": self.contract_version,
             "runtime_parameter_set_id": self.parameter_set_id,
             "runtime_parameter_profile_id": self.profile_id,
+            "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
+            "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
         }
 
     def sectioned_public_config(self) -> Mapping[str, Mapping[str, object]]:
@@ -324,11 +328,7 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
             if is_scalping else ()
         ),
         strategy_allowed_setup_types=(
-            (
-                "SCALP_TREND_PULLBACK", "SCALP_BREAKOUT", "SCALP_BREAKOUT_RETEST",
-                "SCALP_RANGE_BOUNCE", "SCALP_LIQUIDITY_SWEEP",
-                "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
-            )
+            SCALPING_V2.signal.allowed_setup_types
             if is_scalping
             else ("BREAKOUT_CONTINUATION", "TREND_CONTINUATION")
         ),
@@ -338,33 +338,33 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
             if is_scalping
             else "LEGACY_WEAK_CAP"
         ),
-        geometry_atr_buffer_multiplier=0.25,
+        geometry_atr_buffer_multiplier=(SCALPING_V2.geometry.atr_multiplier if is_v2 else 0.25),
         geometry_atr_buffer_shadow_cohorts=(0.25, 0.5, 0.75),
-        geometry_stop_envelope_bps=50.0 if is_v2 else 80.0,
+        geometry_stop_envelope_bps=SCALPING_V2.geometry.stop_max_bps if is_v2 else 80.0,
         geometry_stop_envelope_shadow_cohorts_bps=(50.0, 65.0, 80.0),
-        geometry_minimum_target_bps=45.0,
+        geometry_minimum_target_bps=SCALPING_V2.geometry.target_min_bps if is_v2 else 45.0,
         geometry_minimum_target_shadow_cohorts_bps=(45.0, 60.0, 80.0),
-        economics_entry_fee_bps=10.0,
-        economics_exit_fee_bps=10.0,
-        economics_entry_slippage_bps=2.0,
-        economics_exit_slippage_bps=2.0,
-        economics_minimum_net_edge_bps=1.0,
+        economics_entry_fee_bps=(SCALPING_V2.costs.configured_entry_fee_bps if is_v2 else 10.0),
+        economics_exit_fee_bps=(SCALPING_V2.costs.configured_exit_fee_bps if is_v2 else 10.0),
+        economics_entry_slippage_bps=(SCALPING_V2.costs.entry_slippage_bps if is_v2 else 2.0),
+        economics_exit_slippage_bps=(SCALPING_V2.costs.exit_slippage_bps if is_v2 else 2.0),
+        economics_minimum_net_edge_bps=(SCALPING_V2.economics.min_net_edge_bps if is_v2 else 1.0),
         economics_minimum_net_edge_shadow_cohorts_bps=(10.0, 15.0, 20.0),
-        economics_max_depth_impact_bps=20.0,
+        economics_max_depth_impact_bps=(SCALPING_V2.costs.max_depth_impact_bps if is_v2 else 20.0),
         rr_shadow_cohorts=(1.0, 1.2, 1.5),
-        risk_per_trade_bps=10.0,
+        risk_per_trade_bps=SCALPING_V2.risk.risk_per_trade_bps if is_v2 else 10.0,
         risk_per_trade_shadow_cohorts_bps=(10.0, 15.0, 20.0, 25.0),
-        portfolio_max_concurrent_positions=2 if is_v2 else 3,
+        portfolio_max_concurrent_positions=SCALPING_V2.risk.max_open_positions if is_v2 else 3,
         portfolio_max_concurrent_shadow_cohorts=(2, 3, 4),
-        portfolio_max_total_open_risk_bps=50.0,
+        portfolio_max_total_open_risk_bps=(SCALPING_V2.risk.total_open_risk_limit_bps if is_v2 else 50.0),
         portfolio_total_open_risk_shadow_cohorts_bps=(50.0, 75.0),
-        execution_entry_ttl_seconds=30 if is_v2 else 60,
+        execution_entry_ttl_seconds=SCALPING_V2.lifecycle.entry_fill_window_seconds if is_v2 else 60,
         execution_entry_ttl_shadow_cohorts_seconds=(30, 60, 120),
-        execution_max_price_drift_bps=10.0,
-        exit_time_stop_minutes=15 if is_v2 else 30,
+        execution_max_price_drift_bps=(SCALPING_V2.lifecycle.maximum_price_drift_bps if is_v2 else 10.0),
+        exit_time_stop_minutes=SCALPING_V2.lifecycle.exit_time_stop_minutes if is_v2 else 30,
         exit_time_stop_shadow_cohorts_minutes=(15, 30, 45),
         exit_adaptive_rules_production_enabled=False,
-        opportunity_reentry_enabled=False,
+        opportunity_reentry_enabled=(not SCALPING_V2.causal_opportunity.one_execution_per_opportunity if is_v2 else False),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(
@@ -379,13 +379,13 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
             else "ENGINE_RISK_01_RESEARCH_POLICY_V1"
         ),
         risk_minimum_strategy_quality="ACCEPTABLE",
-        risk_minimum_strategy_score=55.0 if is_v2 else 65.0,
+        risk_minimum_strategy_score=SCALPING_V2.signal.strategy_minimum_score if is_v2 else 65.0,
         validity_boundaries=profile.validity_boundaries,
         minimum_planned_rr=profile.minimum_planned_rr,
         cost_safety_margin_bps=profile.cost_safety_margin_bps,
         stop_policy_id=("SCALPING_CAUSAL_VOLATILITY_STOP_V2" if is_v2 else "LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER"),
         target_policy_id=(
-            "SCALPING_NEAREST_VIABLE_TARGET_V3" if is_v2
+            SCALPING_V2.geometry.target_policy if is_v2
             else "CAUSAL_HIERARCHY_COST_AWARE_NET_RR_V3"
             if is_scalping
             else "OPPOSITE_CAUSAL_LEVEL"

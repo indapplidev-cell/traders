@@ -7,6 +7,8 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Final
 
+from app.config.trade_parameters import SCALPING_V2
+
 
 class TradeProfileId(StrEnum):
     TRADE_15M_V1 = "trade-15m-v1"
@@ -133,25 +135,25 @@ TRADE_5M_V2_PROFILE: Final = TradeSearchProfile(
     trade_profile_id=TradeProfileId.TRADE_5M_V2.value,
     trade_mode=TradeMode.SCALPING.value,
     display_i18n_key="trading.profile.trade_5m.title",
-    trigger_timeframe="5m",
-    primary_timeframe="5m",
+    trigger_timeframe=SCALPING_V2.signal.timeframe,
+    primary_timeframe=SCALPING_V2.signal.timeframe,
     entry_timeframes=("1m", "5m"),
     context_timeframes=("15m", "1h"),
-    market_data_windows=(("1m", 60), ("5m", 120), ("15m", 64), ("1h", 50)),
-    book_depth_limit=100,
-    microstructure_max_age_ms=5_000,
-    vwap_reference_notional=100.0,
+    market_data_windows=tuple(SCALPING_V2.signal.market_data_windows.items()),
+    book_depth_limit=SCALPING_V2.costs.book_depth_limit,
+    microstructure_max_age_ms=SCALPING_V2.costs.microstructure_max_age_ms,
+    vwap_reference_notional=SCALPING_V2.costs.vwap_reference_notional,
     mode=TradeProfileMode.PRODUCTION_SEARCH.value,
-    analysis_history_candles=120,
-    atr_lookback_candles=12,
-    impulse_lookback_candles=8,
-    structure_lookback_candles=12,
-    confirmation_window_candles=1,
-    volume_baseline_candles=12,
-    regime_lookback_candles=24,
-    validity_boundaries=1,
-    minimum_planned_rr=0.4,
-    cost_safety_margin_bps=3.0,
+    analysis_history_candles=SCALPING_V2.signal.analysis_history_candles,
+    atr_lookback_candles=SCALPING_V2.signal.atr_lookback_candles,
+    impulse_lookback_candles=SCALPING_V2.signal.impulse_lookback_candles,
+    structure_lookback_candles=SCALPING_V2.signal.structure_lookback_candles,
+    confirmation_window_candles=SCALPING_V2.signal.confirmation_window_candles,
+    volume_baseline_candles=SCALPING_V2.signal.volume_baseline_candles,
+    regime_lookback_candles=SCALPING_V2.signal.regime_lookback_candles,
+    validity_boundaries=SCALPING_V2.lifecycle.validity_boundaries,
+    minimum_planned_rr=SCALPING_V2.geometry.minimum_planned_rr,
+    cost_safety_margin_bps=SCALPING_V2.costs.cost_safety_margin_bps,
     paper_command_creation_enabled=True,
     position_opening_enabled=True,
 )
