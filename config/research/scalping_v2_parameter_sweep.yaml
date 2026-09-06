@@ -1,0 +1,19 @@
+schema_version: 1
+seed: 20260906
+dataset: reports/research/scalping_v2_closed_paper_outcomes.json
+output_root: artifacts/scalping_v2_parameter_sweep
+minimum_samples: {calibration: 30, validation: 20, holdout: 20}
+search_space:
+  min_positive_ev_r: [0.0, 0.02, 0.05]
+  min_ev_reserve_r: [0.0, 0.05, 0.10]
+  min_net_edge_bps: [1.0, 5.0, 10.0]
+  bucket_min_sample: [20, 30, 40]
+  probability_confidence_level: [0.90, 0.95]
+  prior_alpha: [1.0, 2.0]
+  prior_beta: [1.0, 2.0]
+  adverse_fill_reserve_bps: [3.0, 5.0]
+  entry_slippage_bps: [2.0, 3.0]
+  stop_max_bps: [50.0, 65.0]
+  target_min_bps: [45.0, 60.0]
+  causal_reset_min_conditions: [1, 2]
+  entry_refinement_1m_confirmation_count: [1, 2]
