@@ -119,7 +119,7 @@ def test_waits_for_closed_1m_and_expires_without_command_authority():
     expired = service(rows=(), now_ms=BOUNDARY + 300_000).evaluate(
         candidate(), selected_at=selected_at()
     )
-    assert expired.state == "EXPIRED_1M"
+    assert expired.state == "EXPIRED"
     assert expired.reason == "ENTRY_REFINEMENT_WINDOW_EXPIRED"
 
 
@@ -140,7 +140,7 @@ def test_later_closed_minute_can_confirm_after_an_earlier_contradiction():
     ), now_ms=BOUNDARY + 125_000).evaluate(
         candidate(), selected_at=selected_at()
     )
-    assert result.state == "READY_TO_ENTER"
+    assert result.state == "CONFIRMED"
     assert result.one_min_candle_open_ms == BOUNDARY + 60_000
 
 
@@ -149,7 +149,7 @@ def test_price_drift_and_spread_reject_without_moving_stop_or_target():
     drift = service(rows=(candle(),), costs=Costs(bid=100.19, ask=100.21)).evaluate(
         source, selected_at=selected_at()
     )
-    assert drift.state == "REJECTED_1M"
+    assert drift.state == "REJECTED"
     assert drift.reason == "ENTRY_REFINEMENT_PRICE_DRIFT_TOO_LARGE"
     spread = service(rows=(candle(),), costs=Costs(spread=11)).evaluate(
         source, selected_at=selected_at()

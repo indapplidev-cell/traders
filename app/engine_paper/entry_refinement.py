@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import StrEnum
 from hashlib import sha256
-import os
 import time
 from typing import Callable, Mapping, Protocol
 
@@ -25,6 +24,7 @@ from app.engine_paper.production_market_data import (
     PaperProductionMarketDataScope,
 )
 from app.engine_paper.scalping_shadow import ShadowCostInputs, compute_net_economics
+from app.config.trade_parameters import SCALPING_V2
 
 
 PROFILE_ID = "trade-5m-v2"
@@ -44,9 +44,9 @@ class EntryRefinementMode(StrEnum):
 class EntryRefinementState(StrEnum):
     NOT_REACHED = "NOT_REACHED"
     WAITING_FOR_1M = "WAITING_FOR_1M"
-    READY_TO_ENTER = "READY_TO_ENTER"
-    REJECTED_1M = "REJECTED_1M"
-    EXPIRED_1M = "EXPIRED_1M"
+    READY_TO_ENTER = "CONFIRMED"
+    REJECTED_1M = "REJECTED"
+    EXPIRED_1M = "EXPIRED"
     BYPASSED = "BYPASSED"
     FAILED = "FAILED"
 
@@ -61,6 +61,7 @@ STALE = "ENTRY_REFINEMENT_MARKET_DATA_STALE"
 NOT_APPLICABLE = "ENTRY_REFINEMENT_NOT_APPLICABLE"
 COSTS_UNAVAILABLE = "ENTRY_REFINEMENT_COST_DATA_UNAVAILABLE"
 ECONOMICS = "ENTRY_REFINEMENT_ECONOMICS_INVALIDATED"
+UPSTREAM_ADMISSION = "ENTRY_REFINEMENT_UPSTREAM_ECONOMICS_OR_CAUSAL_REJECTED"
 
 
 class CostSource(Protocol):
@@ -120,6 +121,8 @@ class EntryRefinementResult:
 
     @property
     def permits_command(self) -> bool:
+        if self.reason == UPSTREAM_ADMISSION:
+            return False
         if self.mode in {EntryRefinementMode.OFF.value, EntryRefinementMode.SHADOW.value}:
             return True
         return self.state == EntryRefinementState.READY_TO_ENTER.value
@@ -147,11 +150,9 @@ class EntryRefinementResult:
 
 
 def configured_mode() -> EntryRefinementMode:
-    raw = os.environ.get(MODE_ENV, EntryRefinementMode.SHADOW.value).strip().upper()
-    try:
-        return EntryRefinementMode(raw)
-    except ValueError:
-        return EntryRefinementMode.SHADOW
+    # Authoritative promotion is deliberately impossible in this task. The
+    # validated server config is the only mode authority.
+    return EntryRefinementMode(SCALPING_V2.entry_refinement_1m.mode)
 
 
 def refinement_identity(candidate: object, *, plan_id: str | None = None) -> str:
@@ -204,6 +205,8 @@ class ScalpingEntryRefinementService:
         selected_at: datetime,
         plan_id: str | None = None,
         previous_close: Mapping[str, object] | None = None,
+        economics_admitted: bool = True,
+        causal_admitted: bool = True,
     ) -> EntryRefinementResult:
         started = time.perf_counter()
         now = self.clock().astimezone(timezone.utc)
@@ -243,6 +246,12 @@ class ScalpingEntryRefinementService:
             return EntryRefinementResult(
                 **common, state=EntryRefinementState.BYPASSED.value,
                 reason=NOT_APPLICABLE, refinement_finished_at=now,
+                refinement_decision_latency_ms=(time.perf_counter() - started) * 1000,
+            )
+        if not economics_admitted or not causal_admitted:
+            return EntryRefinementResult(
+                **common, state=EntryRefinementState.REJECTED_1M.value,
+                reason=UPSTREAM_ADMISSION, refinement_finished_at=now,
                 refinement_decision_latency_ms=(time.perf_counter() - started) * 1000,
             )
         now_ms = int(now.timestamp() * 1000)
