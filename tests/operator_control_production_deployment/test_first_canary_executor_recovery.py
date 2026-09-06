@@ -9,6 +9,7 @@ from app.engine_paper.first_canary_correlation import (
     PaperFirstCanaryState,
     SqlAlchemyPaperFirstCanaryStore,
 )
+from app.engine_paper.stale_position_shadow import PostgresStalePositionShadowService
 from app.engine_safety.paper_production_control import (
     ArmReadinessPreflight,
     PaperProductionArmingScope,
@@ -150,6 +151,10 @@ def test_runtime_auto_composes_real_executor_and_isolated_mode_stays_disabled(mo
         PaperFirstCanaryEligibleApprovalContinuationWorker,
     )
     assert not isinstance(app.state.first_canary_executor, DisabledPaperFirstCanaryExecutor)
+    assert isinstance(
+        app.state.first_canary_lifecycle_worker._stale_position_shadow,
+        PostgresStalePositionShadowService,
+    )
     assert app.state.runtime_identity == "focused-build"
 
     disabled = create_runtime_app(
