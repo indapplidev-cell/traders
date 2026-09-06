@@ -399,7 +399,6 @@ RUNTIME_PROFILE_PARAMETERS: Final = MappingProxyType({
     profile_id: _runtime_parameters(resolve_trade_profile(profile_id))
     for profile_id in (
         TradeProfileId.TRADE_15M_V1.value,
-        TradeProfileId.TRADE_5M_V1.value,
         TradeProfileId.TRADE_5M_V2.value,
     )
 })

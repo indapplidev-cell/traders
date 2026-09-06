@@ -113,7 +113,7 @@ def _opportunity_ids(records: list[dict[str, Any]], interval_ms: int = 300_000) 
             record["opportunity_id"] = None
             continue
         family = sha256(
-            f"trade-5m-v1|{record['symbol']}|{direction}|{record.get('setup_type')}".encode()
+            f"trade-5m-v2|{record['symbol']}|{direction}|{record.get('setup_type')}".encode()
         ).hexdigest()[:24]
         key = (str(record["shadow_policy_id"]), str(record["symbol"]), str(direction))
         prior = state.get(key)
@@ -219,7 +219,7 @@ def calibrate(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
             record = {
                 "timestamp": datetime.fromtimestamp(int(row["boundary"]) / 1000, timezone.utc).isoformat(),
                 "boundary": int(row["boundary"]), "symbol": row.get("symbol"),
-                "profile_id": row.get("profile") or "trade-5m-v1",
+                "profile_id": row.get("profile") or "trade-5m-v2",
                 "parameter_set_id": row.get("parameter_set_id"), "run_id": row.get("run_id"),
                 "result_id": row.get("result_id"), "direction": direction,
                 "regime": analysis.get("regime"), "setup_type": setup.get("setup_type"),

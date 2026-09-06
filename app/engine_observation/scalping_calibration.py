@@ -347,7 +347,7 @@ def aggregate(
             )
             replayed.append(evaluate_scalping_shadow(
                 ShadowGeometryCandidate(
-                    trade_profile_id="trade-5m-v1", symbol=str(record["symbol"]),
+                    trade_profile_id="trade-5m-v2", symbol=str(record["symbol"]),
                     boundary_ms=int(record["boundary"]),
                     direction="BULLISH" if record["direction"] == "LONG" else "BEARISH",
                     entry=entry, causal_invalidation=invalidation, atr=atr,
@@ -452,7 +452,7 @@ def aggregate(
                 float(record["target"]), str(record["target_source"] or "LOCAL_5M"), int(record["boundary"])
             ),)
             candidate = ShadowGeometryCandidate(
-                trade_profile_id="trade-5m-v1", symbol=str(record["symbol"]), boundary_ms=int(record["boundary"]),
+                trade_profile_id="trade-5m-v2", symbol=str(record["symbol"]), boundary_ms=int(record["boundary"]),
                 direction="BULLISH" if record["direction"] == "LONG" else "BEARISH", entry=float(record["entry"]),
                 causal_invalidation=_number(diagnostic.get("causal_invalidation")), atr=_number(diagnostic.get("atr")), targets=target,
             )

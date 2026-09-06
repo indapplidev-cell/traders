@@ -27,7 +27,6 @@ from app.engine_paper.scalping_paper_runner import (
     ScalpingPaperRunner,
 )
 from app.engine_paper.scalping_final_checklist import evaluate_scalping_final_checklist
-from app.engine_observation.scalping_journal import build_scalping_evaluation_journal
 from app.engine_risk.risk_runner import RiskRunner
 from app.engine_risk.risk_config import RiskConfig
 from app.engine_risk.risk_policy import RiskPolicy
@@ -450,8 +449,8 @@ class PipelineRunner:
             strategy_cap_economics = self._capture_strategy_cap_economics(setup)
             strategy = self._invoke(self.strategy_runner, "process_setup_candidate", setup)
             outputs["strategy"] = strategy
-            if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V1.value:
-                # Scalping order is intentionally Strategy -> Geometry/Net Cost
+            if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value:
+                # A non-executing shadow profile evaluates Strategy -> Geometry/Net Cost
                 # -> Risk reservation. A preview applies every risk gate but
                 # cannot consume the profile research counter.
                 preview = self._invoke(
@@ -572,11 +571,7 @@ class PipelineRunner:
                         ),
                     ).to_dict(),
                 }
-                outputs["paper"] = (
-                    shadow_payload
-                    if self.config.trade_profile.mode == TradeProfileMode.SHADOW_SEARCH.value
-                    else shadow_plan
-                )
+                outputs["paper"] = shadow_payload
             else:
                 # Geometry, net costs and RR are evaluated before the durable
                 # research quota reservation. Terminal rejections therefore
@@ -631,18 +626,6 @@ class PipelineRunner:
             paper_context = dict(paper_context) if isinstance(paper_context, dict) else {}
             paper_context["strategy_cap_shadow_economic_snapshot"] = strategy_cap_economics
             paper_payload["paper_context"] = paper_context
-        if self.config.trade_profile_id == TradeProfileId.TRADE_5M_V1.value:
-            paper_payload["scalping_evaluation_journal"] = build_scalping_evaluation_journal(
-                profile=self.config.trade_profile_id,
-                parameter_set_id=self.runtime_parameters.parameter_set_id,
-                boundary_ms=int(closed_until_ms),
-                symbol=symbol.upper(),
-                analysis=self._profiled_payload(outputs["analysis"]),
-                setup=self._profiled_payload(outputs["setup"]),
-                strategy=self._profiled_payload(outputs["strategy"]),
-                risk=self._profiled_payload(outputs["risk"]),
-                paper=paper_payload,
-            )
         result = PipelineResult(
             symbol=symbol.upper(), primary_timeframe=self.config.primary_timeframe,
             closed_until_ms=closed_until_ms,

@@ -167,8 +167,8 @@ class ShadowGeometryCandidate:
     direction_consistent: bool = True
 
     def __post_init__(self) -> None:
-        if self.trade_profile_id not in {"trade-5m-v1", V2_PROFILE_ID}:
-            raise ValueError("scalping evaluator accepts only versioned 5m profiles")
+        if self.trade_profile_id != V2_PROFILE_ID:
+            raise ValueError("scalping evaluator accepts only trade-5m-v2")
         if self.direction not in {"BULLISH", "BEARISH"}:
             raise ValueError("direction must be BULLISH or BEARISH")
         if not isfinite(float(self.entry)) or self.entry <= 0:
@@ -201,7 +201,7 @@ class ShadowGeometryConfig:
     max_depth_impact_bps: float = 20.0
     minimum_net_edge_shadow_cohorts_bps: tuple[float, ...] = (10.0, 15.0, 20.0)
     rr_shadow_cohorts: tuple[float, ...] = (1.0, 1.2, 1.5)
-    profile_id: str = "trade-5m-v1"
+    profile_id: str = V2_PROFILE_ID
     empirical_bucket: EmpiricalSetupBucket | None = None
     minimum_empirical_samples: int = 20
     minimum_expected_value_bps: float = 0.0
@@ -215,9 +215,9 @@ class ShadowGeometryConfig:
             raise ValueError("target diagnostic is outside the declared shadow cohorts")
         if not isfinite(float(self.minimum_positive_edge_bps)) or self.minimum_positive_edge_bps < 0:
             raise ValueError("minimum positive edge must be finite and non-negative")
-        if self.profile_id == "trade-5m-v1" and self.production_rr_floor != 1.5:
-            raise ValueError("v1 production RR floor must remain 1.5")
-        if self.profile_id == V2_PROFILE_ID and self.production_rr_floor not in {0.2, 0.4, 0.6}:
+        if self.profile_id != V2_PROFILE_ID:
+            raise ValueError("scalping geometry config accepts only trade-5m-v2")
+        if self.production_rr_floor not in {0.2, 0.4, 0.6}:
             raise ValueError("v2 RR floor must be a declared dynamic cohort")
         if self.minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
             raise ValueError("minimum net-edge cohorts must be 10/15/20 bps")

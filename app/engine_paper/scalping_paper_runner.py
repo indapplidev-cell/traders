@@ -319,8 +319,8 @@ class ScalpingPaperRunner(PaperRunner):
         clock_ms: Callable[[], int] | None = None,
     ) -> None:
         profile_id = str(getattr(runtime_parameters, "profile_id", ""))
-        if profile_id not in {"trade-5m-v1", "trade-5m-v2"}:
-            raise ValueError("Scalping PAPER reconstruction requires a 5m identity")
+        if profile_id != "trade-5m-v2":
+            raise ValueError("Scalping PAPER execution requires trade-5m-v2")
         minimum_rr = float(getattr(runtime_parameters, "minimum_planned_rr"))
         super().__init__(PaperConfig(
             minimum_planned_rr=minimum_rr,

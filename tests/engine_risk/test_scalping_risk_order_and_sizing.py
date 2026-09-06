@@ -11,8 +11,8 @@ from tests.engine_risk_01_helpers import strategy_decision
 
 def runtime():
     return SimpleNamespace(
-        profile_id="trade-5m-v1", parameter_set_id="5m",
-        risk_shadow_policy_id="risk", minimum_planned_rr=1.5,
+        profile_id="trade-5m-v2", parameter_set_id="5m-v2",
+        risk_shadow_policy_id="risk", minimum_planned_rr=0.4,
     )
 
 
@@ -27,11 +27,11 @@ def test_preview_does_not_reserve_but_authoritative_risk_does():
 
     preview = runner.preview_strategy_decision(source)
     assert preview.risk_pre_approved
-    assert limits.profile_attempts("trade-5m-v1", source.closed_until_ms) == 0
+    assert limits.profile_attempts("trade-5m-v2", source.closed_until_ms) == 0
 
     admitted = runner.process_strategy_decision(source)
     assert admitted.risk_pre_approved
-    assert limits.profile_attempts("trade-5m-v1", source.closed_until_ms) == 1
+    assert limits.profile_attempts("trade-5m-v2", source.closed_until_ms) == 1
 
 
 def test_position_size_is_allowed_loss_over_stop_with_liquidity_and_notional_caps():

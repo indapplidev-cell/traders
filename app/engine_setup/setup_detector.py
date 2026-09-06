@@ -186,7 +186,7 @@ class SetupDetector:
     def _scalping_family(
         self, result: SetupRuleResult, context: SetupContext
     ) -> SetupRuleResult:
-        if getattr(self.runtime_parameters, "profile_id", None) not in {"trade-5m-v1", "trade-5m-v2"}:
+        if getattr(self.runtime_parameters, "profile_id", None) != "trade-5m-v2":
             return result
         regime = str(
             ((context.analysis_context.get("scalping") or {}).get("market_regime")) or ""

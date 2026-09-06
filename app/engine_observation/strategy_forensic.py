@@ -207,7 +207,7 @@ def _geometry(row: Mapping[str, Any], costs: ShadowCostInputs | None = None):
     invalidation = _number(context.get("causal_invalidation_level"))
     atr = _number(context.get("atr_value"))
     candidate = ShadowGeometryCandidate(
-        trade_profile_id="trade-5m-v1", symbol=str(row.get("symbol")),
+        trade_profile_id="trade-5m-v2", symbol=str(row.get("symbol")),
         boundary_ms=int(row["boundary"]), direction=direction, entry=entry,
         causal_invalidation=invalidation, atr=atr,
         targets=_targets(context, int(row["boundary"])),

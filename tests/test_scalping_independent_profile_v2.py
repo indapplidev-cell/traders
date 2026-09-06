@@ -37,21 +37,19 @@ def test_15m_profile_and_runtime_are_byte_semantically_unchanged():
 
 
 def test_v2_has_independent_versioned_policy_and_stronger_or_equal_risk():
-    old = resolve_runtime_parameters("trade-5m-v1")
     new = resolve_runtime_parameters("trade-5m-v2")
     assert new.parameter_set_id.startswith("trade-5m-v2-runtime-v1-")
-    assert new.parameter_set_id != old.parameter_set_id
     assert new.setup_policy_id == "scalping-micro-setup-v2"
     assert new.strategy_policy_id == "scalping-short-horizon-entry-v2"
     assert new.stop_policy_id == "SCALPING_CAUSAL_VOLATILITY_STOP_V2"
     assert new.target_policy_id == "SCALPING_NEAREST_VIABLE_TARGET_V3"
     assert new.risk_shadow_policy_id == "scalping-risk-capped-v2"
     assert new.minimum_planned_rr == 0.4
-    assert new.execution_entry_ttl_seconds == 30 < old.execution_entry_ttl_seconds
-    assert new.exit_time_stop_minutes == 15 < old.exit_time_stop_minutes
-    assert new.risk_per_trade_bps <= old.risk_per_trade_bps
-    assert new.portfolio_max_concurrent_positions < old.portfolio_max_concurrent_positions
-    assert new.portfolio_max_total_open_risk_bps <= old.portfolio_max_total_open_risk_bps
+    assert new.execution_entry_ttl_seconds == 30
+    assert new.exit_time_stop_minutes == 15
+    assert new.risk_per_trade_bps == 10
+    assert new.portfolio_max_concurrent_positions == 2
+    assert new.portfolio_max_total_open_risk_bps == 50
 
 
 def _directional_context():
@@ -65,15 +63,13 @@ def _directional_context():
     )
 
 
-def test_v2_micro_setup_path_is_isolated_from_v1_and_15m():
+def test_v2_micro_setup_path_is_isolated_from_15m():
     context = _directional_context()
     legacy = evaluate_setup_rules(context)
     v2 = SetupDetector(resolve_runtime_parameters("trade-5m-v2"))
-    v1 = SetupDetector(resolve_runtime_parameters("trade-5m-v1"))
     fifteen = SetupDetector(resolve_runtime_parameters("trade-15m-v1"))
     promoted = v2._scalping_v2_micro_setup(legacy, context)
     assert promoted.status == "SETUP_CANDIDATE"
-    assert v1._scalping_v2_micro_setup(legacy, context) == legacy
     assert fifteen._scalping_v2_micro_setup(legacy, context) == legacy
 
 
@@ -123,7 +119,7 @@ def test_v2_target_rr_ev_path_is_profile_scoped_and_cost_complete():
     assert result.expectancy_gate_reason == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
 
 
-def test_v1_rr_floor_cannot_be_weakened_by_v2_configuration():
+def test_retired_v1_geometry_config_is_rejected():
     try:
         ShadowGeometryConfig(
             atr_buffer_multiplier=0.25, stop_envelope_bps=50.0,
@@ -131,6 +127,6 @@ def test_v1_rr_floor_cannot_be_weakened_by_v2_configuration():
             profile_id="trade-5m-v1",
         )
     except ValueError as exc:
-        assert "v1 production RR floor" in str(exc)
+        assert "only trade-5m-v2" in str(exc)
     else:
         raise AssertionError("v1 RR floor was weakened")

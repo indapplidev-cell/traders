@@ -10,7 +10,6 @@ from typing import Final
 
 class TradeProfileId(StrEnum):
     TRADE_15M_V1 = "trade-15m-v1"
-    TRADE_5M_V1 = "trade-5m-v1"
     TRADE_5M_V2 = "trade-5m-v2"
 
 
@@ -128,35 +127,8 @@ TRADE_15M_PROFILE: Final = TradeSearchProfile(
     position_opening_enabled=True,
 )
 
-TRADE_5M_PROFILE: Final = TradeSearchProfile(
-    trade_profile_id=TradeProfileId.TRADE_5M_V1.value,
-    trade_mode=TradeMode.SCALPING.value,
-    display_i18n_key="trading.profile.trade_5m.title",
-    trigger_timeframe="5m",
-    primary_timeframe="5m",
-    entry_timeframes=("1m", "5m"),
-    context_timeframes=("15m", "1h"),
-    market_data_windows=(("1m", 60), ("5m", 120), ("15m", 64), ("1h", 50)),
-    book_depth_limit=100,
-    microstructure_max_age_ms=5_000,
-    vwap_reference_notional=100.0,
-    mode=TradeProfileMode.PRODUCTION_SEARCH.value,
-    analysis_history_candles=120,
-    atr_lookback_candles=24,
-    impulse_lookback_candles=12,
-    structure_lookback_candles=48,
-    confirmation_window_candles=3,
-    volume_baseline_candles=36,
-    regime_lookback_candles=72,
-    validity_boundaries=1,
-    minimum_planned_rr=1.5,
-    cost_safety_margin_bps=3.0,
-    paper_command_creation_enabled=True,
-    position_opening_enabled=True,
-)
-
-# V2 is the sole active Scalping runtime identity.  V1 remains registered only
-# so immutable historical rows can still be reconstructed by readonly tools.
+# V2 is the sole supported Scalping runtime identity. Historical v1 values are
+# plain persisted strings and remain readable without a runnable profile.
 TRADE_5M_V2_PROFILE: Final = TradeSearchProfile(
     trade_profile_id=TradeProfileId.TRADE_5M_V2.value,
     trade_mode=TradeMode.SCALPING.value,
@@ -186,11 +158,9 @@ TRADE_5M_V2_PROFILE: Final = TradeSearchProfile(
 
 TRADE_PROFILES: Final = MappingProxyType({
     TRADE_15M_PROFILE.trade_profile_id: TRADE_15M_PROFILE,
-    TRADE_5M_PROFILE.trade_profile_id: TRADE_5M_PROFILE,
     TRADE_5M_V2_PROFILE.trade_profile_id: TRADE_5M_V2_PROFILE,
 })
 SCALPING_PROFILE_IDS: Final = frozenset({
-    TradeProfileId.TRADE_5M_V1.value,
     TradeProfileId.TRADE_5M_V2.value,
 })
 ACTIVE_RUNTIME_PROFILE_IDS: Final = frozenset({
@@ -205,7 +175,7 @@ IDENTICAL_VALUE_JUSTIFICATIONS: Final = MappingProxyType({
 })
 
 TRADE_5M_CONTEXT_MINIMUM_WINDOWS: Final = MappingProxyType(
-    dict(TRADE_5M_PROFILE.market_data_windows)
+    dict(TRADE_5M_V2_PROFILE.market_data_windows)
 )
 
 
