@@ -43,7 +43,7 @@ profiles:
       probability_confidence_level: 0.95
       prior_alpha: 1.0
       prior_beta: 1.0
-      static_rr_fallback_enabled: true
+      static_rr_fallback_enabled: false
       parent_bucket_fallback_order: [exact, setup_direction_regime, setup_direction, setup, global]
     costs:
       commission_source: binance_dynamic

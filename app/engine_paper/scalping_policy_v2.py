@@ -11,7 +11,7 @@ SETUP_POLICY_VERSION = "scalping-micro-setup-v2"
 ENTRY_POLICY_VERSION = "scalping-next-closed-1m-entry-v2"
 STOP_POLICY_VERSION = "scalping-causal-volatility-stop-v2"
 TARGET_POLICY_VERSION = "scalping-nearest-viable-target-v3"
-RR_EV_POLICY_VERSION = "scalping-empirical-ev-v1"
+RR_EV_POLICY_VERSION = "scalping-conservative-hierarchy-v2"
 TTL_POLICY_VERSION = "scalping-short-lifecycle-v2"
 RISK_POLICY_VERSION = "scalping-risk-capped-v2"
 COST_POLICY_VERSION = "scalping-round-trip-net-pnl-v2"
@@ -38,6 +38,8 @@ class EmpiricalSetupBucket:
     direction: str
     samples: int
     wins: int
+    level: str = "exact"
+    bucket_key: str | None = None
 
     def __post_init__(self) -> None:
         if self.samples < 0 or not 0 <= self.wins <= self.samples:
@@ -55,6 +57,8 @@ class ExpectancyDecision:
     expected_value_bps: float | None
     probability: float | None
     reason: str
+    fallback_level: str | None = None
+    bucket_key: str | None = None
 
 
 def evaluate_expectancy(
@@ -62,25 +66,32 @@ def evaluate_expectancy(
     bucket: EmpiricalSetupBucket | None,
     minimum_samples: int = 20,
     minimum_expected_value_bps: float = 0.0,
-    static_net_rr: float | None = None,
-    static_minimum_net_rr: float = 0.4,
+    parent_buckets: tuple[EmpiricalSetupBucket, ...] = (),
+    static_net_rr: float | None = None,  # historical caller compatibility; never authoritative
+    static_minimum_net_rr: float = 0.4,  # historical caller compatibility; never authoritative
 ) -> ExpectancyDecision:
-    """Use empirical EV when supported, otherwise a stricter static fallback."""
+    """Select the first sufficiently sampled hierarchy level or fail closed."""
     if any(not isfinite(float(value)) or float(value) <= 0 for value in (net_win_bps, net_loss_bps)):
         raise ValueError("net win/loss must be positive and finite")
-    if bucket is None or bucket.samples < minimum_samples:
-        admitted = static_net_rr is not None and static_net_rr >= static_minimum_net_rr
+    selected = next(
+        (item for item in ((bucket,) if bucket is not None else ()) + parent_buckets
+         if item.samples >= minimum_samples),
+        None,
+    )
+    if selected is None:
         return ExpectancyDecision(
-            admitted, None, None,
-            "INSUFFICIENT_BUCKET_STATIC_RR_PASS" if admitted else "INSUFFICIENT_BUCKET_STATIC_RR_REJECT",
+            False, None, None, "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
+            fallback_level="none", bucket_key=None,
         )
-    probability = bucket.probability
+    probability = selected.probability
     expected_value = probability * net_win_bps - (1 - probability) * net_loss_bps
     return ExpectancyDecision(
         expected_value >= minimum_expected_value_bps,
         expected_value,
         probability,
-        "EMPIRICAL_EV_PASS" if expected_value >= minimum_expected_value_bps else "EMPIRICAL_EV_REJECT",
+        "CONSERVATIVE_HIERARCHY_EV_PASS" if expected_value >= minimum_expected_value_bps else "CONSERVATIVE_HIERARCHY_EV_REJECT",
+        fallback_level=selected.level,
+        bucket_key=selected.bucket_key or f"{selected.setup_type}|{selected.direction}",
     )
 
 

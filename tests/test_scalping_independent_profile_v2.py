@@ -74,7 +74,7 @@ def test_v2_micro_setup_path_is_isolated_from_15m():
     assert fifteen._scalping_v2_micro_setup(legacy, context) == legacy
 
 
-def test_empirical_ev_uses_observed_bucket_and_static_fallback():
+def test_empirical_ev_uses_observed_bucket_and_insufficient_data_fails_closed():
     positive = evaluate_expectancy(
         net_win_bps=60, net_loss_bps=40,
         bucket=EmpiricalSetupBucket("MICRO_BREAKOUT", "BULLISH", 30, 20),
@@ -89,7 +89,8 @@ def test_empirical_ev_uses_observed_bucket_and_static_fallback():
     )
     assert positive.admitted and positive.expected_value_bps > 0
     assert not negative.admitted and negative.expected_value_bps < 0
-    assert fallback.admitted and fallback.expected_value_bps is None
+    assert not fallback.admitted and fallback.expected_value_bps is None
+    assert fallback.reason == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE"
 
 
 def test_v2_target_rr_ev_path_is_profile_scoped_and_cost_complete():
@@ -112,12 +113,12 @@ def test_v2_target_rr_ev_path_is_profile_scoped_and_cost_complete():
         minimum_target_diagnostic_bps=45.0, production_rr_floor=0.4,
         profile_id="trade-5m-v2",
     ))
-    assert result.valid_plan
+    assert not result.valid_plan
     assert result.total_cost_bps == 29.0
     assert result.required_rr == 0.4
-    assert result.rr_policy_version == "scalping-empirical-ev-v1"
+    assert result.rr_policy_version == "scalping-conservative-hierarchy-v2"
     assert result.target_policy_version == "scalping-nearest-viable-target-v3"
-    assert result.expectancy_gate_reason == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
+    assert result.expectancy_gate_reason == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE"
 
 
 def test_retired_v1_geometry_config_is_rejected():

@@ -1,0 +1,11 @@
+# Block 05 — conservative statistical fallback hierarchy
+
+```text
+TASK_STATUS = PASS
+STATIC_RR_FALLBACK_ENABLED = false
+NEW_INSUFFICIENT_BUCKET_STATIC_RR_PASS = IMPOSSIBLE
+FALLBACK_ORDER = exact,setup_direction_regime,setup_direction,setup,global
+NO_SUFFICIENT_LEVEL = INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE
+LIVE = DISABLED
+BINANCE_ORDER_API_CALLS = 0
+```

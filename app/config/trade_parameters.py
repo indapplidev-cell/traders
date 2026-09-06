@@ -63,7 +63,7 @@ class EconomicsParameters(StrictModel):
     probability_confidence_level: float = Field(gt=0, lt=1)
     prior_alpha: float = Field(gt=0)
     prior_beta: float = Field(gt=0)
-    static_rr_fallback_enabled: bool
+    static_rr_fallback_enabled: Literal[False]
     parent_bucket_fallback_order: tuple[str, ...]
 
 
