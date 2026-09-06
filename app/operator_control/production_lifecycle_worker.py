@@ -471,6 +471,20 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         return self._cycle(canary_id, graph, continuous=continuous, close_execution_request=request), "READY"
 
     @staticmethod
+    def _current_exit_policy(command):
+        commission_load = read_binance_commission_snapshot(command.symbol)
+        commission = commission_load.snapshot
+        if commission is None:
+            return None, commission_load.status
+        policy = _foundation_policy(command.simulation_policy_id)
+        snapshot_digest = sha256(commission.snapshot_id.encode("utf-8")).hexdigest()[:16]
+        return replace(
+            policy,
+            fee_policy_id=f"fee:binance-account:{snapshot_digest}:v1",
+            fee_bps=Decimal(str(commission.exit_commission_bps)),
+        ), "READY"
+
+    @staticmethod
     def _cycle(canary_id: str, graph, *, continuous: bool = False, **stage_request) -> PaperLifecycleCycleRequest:
         return PaperLifecycleCycleRequest(
             cycle_id=_id(canary_id, "lifecycle-cycle", continuous=continuous),
@@ -547,17 +561,11 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 readiness.live_disabled,
             )):
                 raise ValueError("RECOVERY_CLOSE_SAFETY_READINESS_DENIED")
-            commission_load = read_binance_commission_snapshot(graph.command.symbol)
-            commission = commission_load.snapshot
-            policy = _foundation_policy(graph.command.simulation_policy_id)
-            if commission is None:
-                raise ValueError("RECOVERY_CLOSE_CURRENT_COMMISSION_NOT_READY")
-            snapshot_digest = sha256(commission.snapshot_id.encode("utf-8")).hexdigest()[:16]
-            current_exit_policy = replace(
-                policy,
-                fee_policy_id=f"fee:binance-account:{snapshot_digest}:v1",
-                fee_bps=Decimal(str(commission.exit_commission_bps)),
+            current_exit_policy, _commission_status = self._current_exit_policy(
+                graph.command
             )
+            if current_exit_policy is None:
+                raise ValueError("RECOVERY_CLOSE_CURRENT_COMMISSION_NOT_READY")
             candles, market = self._snapshot(
                 graph.command.symbol, canary.canary_id, continuous=True
             )
@@ -762,7 +770,8 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             )
 
     def run_once(self) -> str:
-        canary = self._canary_store.current()
+        supervised = getattr(self._canary_store, "supervised", None)
+        canary = supervised() if supervised is not None else self._canary_store.current()
         if canary is None or canary.command_id is None:
             return "NO_COMMAND_READY"
         with self._lock.acquire(canary.canary_id) as claimed:
@@ -772,6 +781,12 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             if canary is None or canary.command_id is None:
                 return "NO_COMMAND_READY"
             state = self._control.read_authoritative()
+            graph = self._graph_loader.load(canary.command_id)
+            lifecycle = classify_paper_lifecycle_state(graph)
+            exit_safety_lifecycle = lifecycle in {
+                PaperLifecycleState.POSITION_OPEN_CURSOR_READY,
+                PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN,
+            }
             armed_lineage = (
                 state.state is PersistentState.ARMED
                 and state.generation == canary.arming_generation
@@ -786,15 +801,23 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 state.state is PersistentState.DISABLED
                 and canary.state.value in {"POSITION_CLOSED", "RECONCILIATION_PENDING"}
             )
+            exit_safety_authority = (
+                exit_safety_lifecycle
+                and state.state is PersistentState.CONTINUOUS_ARMED
+                and canary.authority_mode == "CONTINUOUS"
+            )
             if (
-                not (armed_lineage or continuous_lineage or disabled_finalization)
+                not (
+                    armed_lineage
+                    or continuous_lineage
+                    or disabled_finalization
+                    or exit_safety_authority
+                )
                 or canary.command_count != 1
                 or canary.max_new_commands != 1
                 or canary.max_open_positions != 1
             ):
                 return "CONTROL_PREEMPTED"
-            graph = self._graph_loader.load(canary.command_id)
-            lifecycle = classify_paper_lifecycle_state(graph)
             if lifecycle is PaperLifecycleState.INCONSISTENT:
                 authority = (
                     "CONTINUOUS"
@@ -809,10 +832,24 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                     self._outcome_diagnostics.process(graph.positions[0].position_id)
                 return self._finalize(canary, state)
             readiness: ExistingCanaryRuntimeReadiness = self._runtime_readiness()
-            if not all((readiness.market_data_ready, readiness.approval_source_ready,
-                        readiness.backup_pitr_pass, readiness.live_disabled)):
-                return "SAFE_FAILURE:INDEPENDENT_READINESS_GATE_DENIED"
+            exit_readiness = all((
+                readiness.market_data_ready,
+                readiness.backup_pitr_pass,
+                readiness.live_disabled,
+            ))
+            entry_readiness = exit_readiness and readiness.approval_source_ready
+            if exit_safety_lifecycle and not exit_readiness:
+                return "SAFE_FAILURE:OPEN_POSITION_EXIT_SAFETY_GATE_DENIED"
+            if not exit_safety_lifecycle and not entry_readiness:
+                return "SAFE_FAILURE:ENTRY_READINESS_GATE_DENIED"
             continuous = canary.authority_mode == "CONTINUOUS"
+            current_exit_policy = None
+            if exit_safety_lifecycle:
+                current_exit_policy, commission_status = self._current_exit_policy(
+                    graph.command
+                )
+                if current_exit_policy is None:
+                    return f"WAITING_FOR_EXIT_COMMISSION:{commission_status}"
             candles, market = self._snapshot(
                 graph.command.symbol, canary.canary_id, continuous=continuous
             )
@@ -851,7 +888,11 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 stage = MutationStage.EXIT_EVALUATION_MUTATION
             elif lifecycle is PaperLifecycleState.POSITION_CLOSING_CLOSE_ORDER_OPEN:
                 cycle, readiness_code = self._close_cycle(
-                    canary.canary_id, graph, candles, continuous=continuous
+                    canary.canary_id,
+                    graph,
+                    candles,
+                    continuous=continuous,
+                    exit_policy=current_exit_policy,
                 )
                 stage = MutationStage.CLOSE_EXECUTION
             else:

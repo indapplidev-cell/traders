@@ -245,6 +245,16 @@ def test_position_link_is_derived_from_exact_command_in_same_uow(canary_sessions
     assert linked.position_count == 1
     assert linked.state is PaperFirstCanaryState.POSITION_OPEN
 
+    # Startup supervision is driven by the durable OPEN position even if a
+    # prior process incorrectly left its correlation session terminal.
+    with canary_sessions.begin() as db:
+        row = db.get(PaperFirstCanarySessionRecord, armed.canary_id)
+        row.state = "COMPLETED"
+        row.completed_at = NOW
+    restarted = _store(canary_sessions)
+    assert restarted.current() is None
+    assert restarted.supervised().position_id == "position:canary"
+
 
 @pytest.mark.parametrize("side", [PaperSide.LONG, PaperSide.SHORT])
 def test_full_long_short_closed_report_reconciliation_and_terminal_correlation(canary_sessions, side) -> None:

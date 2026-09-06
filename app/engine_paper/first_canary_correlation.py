@@ -211,6 +211,30 @@ class PaperFirstCanaryRepository:
             raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
         return self._validated(rows[0]) if rows else None
 
+    def supervised(self) -> PaperFirstCanarySession | None:
+        """Return the active session or rehydrate its persisted open position."""
+
+        current = self.current()
+        if current is not None:
+            return current
+        rows = tuple(self.session.scalars(
+            select(PaperFirstCanarySessionRecord)
+            .join(
+                PaperPositionRecord,
+                PaperPositionRecord.position_id
+                == PaperFirstCanarySessionRecord.position_id,
+            )
+            .where(PaperPositionRecord.state.in_(("OPEN", "CLOSING")))
+            .order_by(
+                PaperFirstCanarySessionRecord.created_at,
+                PaperFirstCanarySessionRecord.canary_id,
+            )
+            .limit(2)
+        ))
+        if len(rows) > 1:
+            raise CanaryCorrelationError("CANARY_CORRELATION_UNAVAILABLE")
+        return self._validated(rows[0]) if rows else None
+
     def reserve_arm(
         self,
         *,
@@ -557,6 +581,10 @@ class SqlAlchemyPaperFirstCanaryStore:
     def current(self) -> PaperFirstCanarySession | None:
         with self._session_factory() as session:
             return PaperFirstCanaryRepository(session).current()
+
+    def supervised(self) -> PaperFirstCanarySession | None:
+        with self._session_factory() as session:
+            return PaperFirstCanaryRepository(session).supervised()
 
     def get_by_arm_request(self, request_id: str) -> PaperFirstCanarySession | None:
         with self._session_factory() as session:

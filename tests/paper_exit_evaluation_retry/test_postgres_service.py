@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
+from decimal import Decimal
 from threading import Thread
 
 import pytest
@@ -33,9 +35,16 @@ from app.engine_paper.fill_roles import PaperFillRole
 from app.engine_paper.repositories import PaperRepositories
 from app.engine_paper.repository_results import RepositoryOutcome, result
 from app.engine_paper.unit_of_work import PaperUnitOfWork
+from app.engine_paper.order_execution_service import (
+    PaperOrderExecutionOutcome,
+    PaperOrderExecutionService,
+)
+from app.engine_execution.paper_idempotency import simulated_close_fill_id
+from app.engine_paper.fill_causal_boundary import PAPER_FILL_CAUSAL_BOUNDARY_VERSION
 from app.engine_safety import ExecutionMode, PaperExitCause
 
 from .conftest import T2, make_request, make_safety, seed_exit_graph
+from tests.paper_close_causal_cursor_remediation.conftest import make_candle
 
 
 def service(exit_service_factory, paper_session_factory):
@@ -221,6 +230,66 @@ def test_trigger_prepares_complete_graph_without_fill(
         ) == 1
         assert position_row.exit_fill_id is None
         assert position_row.closed_at is None
+
+
+def test_postgres_stop_close_uses_current_account_fee_and_is_exactly_once(
+    paper_session_factory, causal_graph, exit_service_factory
+):
+    cursor = seed_exit_graph(paper_session_factory, causal_graph)
+    prepared = service(exit_service_factory, paper_session_factory).evaluate(
+        make_request(causal_graph, cursor, trigger="STOP")
+    )
+    assert prepared.outcome is PaperExitServiceOutcome.EXIT_PREPARED
+    base = prepared.close_execution_request
+    assert base is not None
+    boundary = T2 + 60_000
+    fee_policy = replace(
+        base.simulation_policy,
+        fee_policy_id="fee:binance-account:test-snapshot:v1",
+        fee_bps=Decimal("7.5"),
+    )
+    fill_id = simulated_close_fill_id(
+        fill_contract_version=PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
+        order_id=base.order_id,
+        exit_decision_id=base.exit_decision_id,
+        exit_source_closed_until_ms=T2,
+        source_open_time_ms=T2,
+        source_close_boundary_ms=boundary,
+        simulation_policy_id=fee_policy.simulation_policy_id,
+        slippage_policy_id=fee_policy.slippage_policy_id,
+        fee_policy_id=fee_policy.fee_policy_id,
+        latency_policy_id=fee_policy.latency_policy_id,
+    )
+    close_request = replace(
+        base,
+        candidate_candles=(make_candle(
+            T2,
+            open_price=Decimal("92"), high_price=Decimal("93"),
+            low_price=Decimal("91"), close_price=Decimal("92"),
+            observed_closed_until_ms=boundary,
+        ),),
+        market_snapshot_closed_until_ms=boundary,
+        simulation_policy=fee_policy,
+        fill_id=fill_id,
+        current_exit_fee_authority_id=fee_policy.fee_policy_id,
+        operation_at=datetime.fromtimestamp(boundary / 1000, timezone.utc),
+    )
+    executor = PaperOrderExecutionService(
+        lambda: PaperUnitOfWork(paper_session_factory), paper_session_factory
+    )
+    first = executor.execute_close(close_request)
+    replay = executor.execute_close(close_request)
+    assert first.outcome is PaperOrderExecutionOutcome.CLOSE_EXECUTED
+    assert replay.outcome is PaperOrderExecutionOutcome.CLOSE_ALREADY_EXECUTED
+    with paper_session_factory() as session:
+        position = session.get(PaperPositionRecord, close_request.position_id)
+        assert position.state == "CLOSED"
+        assert position.remaining_quantity == 0
+        assert session.scalar(select(func.count()).select_from(PaperExitDecisionRecord)) == 1
+        assert session.scalar(select(func.count()).select_from(PaperFillRecord)) == 2
+        fill = session.get(PaperFillRecord, position.exit_fill_id)
+        assert fill.fee_policy_id == fee_policy.fee_policy_id
+        assert fill.fee_amount == (fill.price * fill.quantity * Decimal("7.5") / 10000)
 
 
 def test_exact_trigger_replay_is_zero_mutation(

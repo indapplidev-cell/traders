@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from app.engine_market_data.candle import Candle
 from app.engine_safety.paper_production_control import PersistentState
+from app.engine_paper.controlled_worker import PaperLifecycleState
 from app.operator_control.production_lifecycle_worker import (
     DEFAULT_POLL_SECONDS,
     ProductionPaperFirstCanaryLifecycleWorker,
@@ -14,6 +15,7 @@ from app.operator_control.production_lifecycle_worker import (
     lifecycle_poll_seconds,
     _id as lifecycle_id,
 )
+from app.operator_control.production_executor import ExistingCanaryRuntimeReadiness
 from app.operator_control.production_executor import _id as executor_id
 
 
@@ -87,6 +89,58 @@ def test_worker_without_linked_command_is_strict_zero_action():
         readonly_base_url="http://readonly-api:8765",
     )
     assert subject.run_once() == "NO_COMMAND_READY"
+
+
+def test_open_position_exit_ignores_entry_approval_and_generation_change(monkeypatch):
+    canary = SimpleNamespace(
+        canary_id="canary:supervised", command_id="command:supervised",
+        command_count=1, max_new_commands=1, max_open_positions=1,
+        authority_mode="CONTINUOUS", current_control_generation=12,
+        arming_generation=1, arming_transition_id="transition:old",
+        environment="PRODUCTION", mode="PAPER", position_count=1,
+        state=SimpleNamespace(value="POSITION_OPEN"),
+    )
+    graph = SimpleNamespace(
+        command=SimpleNamespace(symbol="ETHUSDT", risk_decision_id="risk:1"),
+        positions=(SimpleNamespace(position_id="position:supervised"),),
+    )
+    state = SimpleNamespace(
+        state=PersistentState.CONTINUOUS_ARMED, generation=13,
+        transition_id="transition:new",
+    )
+    result = SimpleNamespace(
+        outcome=SimpleNamespace(value="CYCLE_COMPLETE"), reason_code="NO_TRIGGER",
+        initial_lifecycle_state=PaperLifecycleState.POSITION_OPEN_CURSOR_READY,
+        final_lifecycle_state=PaperLifecycleState.POSITION_OPEN_CURSOR_READY,
+        stages_completed=1, stage_trace=(), position_id="position:supervised",
+    )
+
+    class Gate:
+        @contextmanager
+        def authorize_mutation(self, *_args, **_kwargs):
+            yield
+
+    subject = ProductionPaperFirstCanaryLifecycleWorker(
+        control=SimpleNamespace(read_authoritative=lambda: state),
+        canary_store=_Store(canary),
+        graph_loader=SimpleNamespace(load=lambda _command_id: graph),
+        lifecycle_worker=SimpleNamespace(run_cycle=lambda _cycle: result),
+        market_data=object(), mutation_safety_gate=Gate(),
+        runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(
+            market_data_ready=True, approval_source_ready=False,
+            wal_ready=True, pitr_ready=True, live_disabled=True,
+        ),
+        lock=_Lock(), readonly_base_url="http://readonly-api:8765",
+    )
+    monkeypatch.setattr(
+        "app.operator_control.production_lifecycle_worker.classify_paper_lifecycle_state",
+        lambda _graph: PaperLifecycleState.POSITION_OPEN_CURSOR_READY,
+    )
+    monkeypatch.setattr(subject, "_current_exit_policy", lambda _command: (object(), "READY"))
+    monkeypatch.setattr(subject, "_snapshot", lambda *_args, **_kwargs: ((object(),), "READY"))
+    monkeypatch.setattr(subject, "_exit_cycle", lambda *_args, **_kwargs: (object(), "READY"))
+
+    assert subject.run_once().startswith("CYCLE_COMPLETE:POSITION_OPEN_CURSOR_READY")
 
 
 def test_finalization_disables_before_sealing_healthy_report(monkeypatch):

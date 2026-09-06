@@ -114,7 +114,7 @@ def test_openapi_surfaces_are_narrow_and_readiness_is_boolean() -> None:
         if method in {"get", "post", "put", "patch", "delete"}
     }
     assert sum(method == "GET" for method, _ in control_methods) == 3
-    assert sum(method == "POST" for method, _ in control_methods) == 5
+    assert sum(method == "POST" for method, _ in control_methods) == 6
     assert not any(method in {"PUT", "PATCH", "DELETE"} for method, _ in control_methods)
     assert ("GET", "/control/v1/canaries/{canary_id}") in control_methods
 
