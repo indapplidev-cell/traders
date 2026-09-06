@@ -205,6 +205,8 @@ class ShadowGeometryConfig:
     empirical_bucket: EmpiricalSetupBucket | None = None
     minimum_empirical_samples: int = 20
     minimum_expected_value_bps: float = 0.0
+    minimum_positive_ev_r: float = 0.0
+    minimum_ev_reserve_r: float = 0.0
 
     def __post_init__(self) -> None:
         if self.atr_buffer_multiplier not in {0.25, 0.5, 0.75, 1.0}:
@@ -280,6 +282,14 @@ class ShadowGeometryDiagnostic:
     empirical_win_probability: float | None = None
     expected_value_bps: float | None = None
     expectancy_gate_reason: str | None = None
+    estimated_p_win: float | None = None
+    conservative_p_win: float | None = None
+    dynamic_required_net_rr: float | None = None
+    candidate_net_rr: float | None = None
+    expected_ev_r: float | None = None
+    ev_reserve: float | None = None
+    admission_decision: str | None = None
+    admission_reason: str | None = None
     fee_source: str | None = None
     commission_authoritative: bool = False
     commission_symbol: str | None = None
@@ -760,11 +770,21 @@ def evaluate_scalping_shadow(
         bucket=config.empirical_bucket,
         minimum_samples=config.minimum_empirical_samples,
         minimum_expected_value_bps=config.minimum_expected_value_bps,
+        minimum_positive_ev_r=config.minimum_positive_ev_r,
+        minimum_ev_reserve_r=config.minimum_ev_reserve_r,
         static_net_rr=result.net_rr,
         static_minimum_net_rr=config.production_rr_floor,
     ) if config.profile_id == V2_PROFILE_ID else None
     if expectancy is not None:
         result.empirical_win_probability = expectancy.probability
+        result.estimated_p_win = expectancy.p_win_adjusted
+        result.conservative_p_win = expectancy.p_win_conservative
+        result.dynamic_required_net_rr = expectancy.dynamic_required_net_rr
+        result.candidate_net_rr = expectancy.candidate_net_rr
+        result.expected_ev_r = expectancy.expected_ev_r
+        result.ev_reserve = expectancy.ev_reserve
+        result.admission_decision = "PASS" if expectancy.admitted else "REJECT"
+        result.admission_reason = expectancy.reason
         result.expected_value_bps = expectancy.expected_value_bps
         result.expectancy_gate_reason = expectancy.reason
         if not expectancy.admitted:

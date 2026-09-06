@@ -71,6 +71,10 @@ class ExpectancyDecision:
     parent_sample_size: int = 0
     estimator_version: str = PROBABILITY_ESTIMATOR_VERSION
     confidence_method: str = CONFIDENCE_METHOD
+    dynamic_required_net_rr: float | None = None
+    candidate_net_rr: float | None = None
+    expected_ev_r: float | None = None
+    ev_reserve: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +121,8 @@ def evaluate_expectancy(
     bucket: EmpiricalSetupBucket | None,
     minimum_samples: int = 20,
     minimum_expected_value_bps: float = 0.0,
+    minimum_positive_ev_r: float = SCALPING_V2.economics.min_positive_ev_r,
+    minimum_ev_reserve_r: float = SCALPING_V2.economics.min_ev_reserve_r,
     parent_buckets: tuple[EmpiricalSetupBucket, ...] = (),
     static_net_rr: float | None = None,  # historical caller compatibility; never authoritative
     static_minimum_net_rr: float = 0.4,  # historical caller compatibility; never authoritative
@@ -140,11 +146,25 @@ def evaluate_expectancy(
     estimate = estimate_conservative_probability(selected, parent_sample_size=parent_size)
     probability = estimate.p_win_conservative
     expected_value = probability * net_win_bps - (1 - probability) * net_loss_bps
+    candidate_net_rr = net_win_bps / net_loss_bps
+    break_even_rr = (1 - probability) / probability
+    dynamic_required_net_rr = max(
+        break_even_rr + minimum_ev_reserve_r,
+        (1 - probability + minimum_positive_ev_r) / probability,
+    )
+    expected_ev_r = probability * candidate_net_rr - (1 - probability)
+    ev_reserve = candidate_net_rr - break_even_rr
+    admitted = (
+        expected_value >= minimum_expected_value_bps
+        and candidate_net_rr >= dynamic_required_net_rr
+        and expected_ev_r >= minimum_positive_ev_r
+        and ev_reserve >= minimum_ev_reserve_r
+    )
     return ExpectancyDecision(
-        expected_value >= minimum_expected_value_bps,
+        admitted,
         expected_value,
         probability,
-        "CONSERVATIVE_HIERARCHY_EV_PASS" if expected_value >= minimum_expected_value_bps else "CONSERVATIVE_HIERARCHY_EV_REJECT",
+        "DYNAMIC_NET_RR_CONSERVATIVE_EV_PASS" if admitted else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
         fallback_level=selected.level,
         bucket_key=selected.bucket_key or f"{selected.setup_type}|{selected.direction}",
         p_win_raw=estimate.p_win_raw,
@@ -152,6 +172,10 @@ def evaluate_expectancy(
         p_win_conservative=estimate.p_win_conservative,
         sample_size=estimate.sample_size,
         parent_sample_size=estimate.parent_sample_size,
+        dynamic_required_net_rr=dynamic_required_net_rr,
+        candidate_net_rr=candidate_net_rr,
+        expected_ev_r=expected_ev_r,
+        ev_reserve=ev_reserve,
     )
 
 

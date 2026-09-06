@@ -25,6 +25,7 @@ from app.engine_paper.scalping_shadow import (
     ShadowGeometryConfig,
     evaluate_scalping_shadow,
 )
+from app.config.trade_parameters import SCALPING_V2
 from app.engine_risk.risk_decision import RiskDecision
 from app.engine_risk.strategy_type_contract import SCALPING_RISK_STRATEGY_TYPES
 from app.engine_paper.scalping_opportunity_registry import ScalpingOpportunityRegistry
@@ -345,6 +346,9 @@ class ScalpingPaperRunner(PaperRunner):
             ),
             minimum_positive_edge_bps=float(runtime_parameters.economics_minimum_net_edge_bps),
             production_rr_floor=minimum_rr,
+            minimum_empirical_samples=SCALPING_V2.economics.bucket_min_sample,
+            minimum_positive_ev_r=SCALPING_V2.economics.min_positive_ev_r,
+            minimum_ev_reserve_r=SCALPING_V2.economics.min_ev_reserve_r,
             max_depth_impact_bps=float(runtime_parameters.economics_max_depth_impact_bps),
             minimum_net_edge_shadow_cohorts_bps=tuple(
                 runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
