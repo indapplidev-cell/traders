@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -11,7 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 import yaml
 
 
-CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "trading" / "trade_parameters.yaml"
+CONFIG_PATH = Path(
+    os.environ.get(
+        "TRADERS_TRADE_PARAMETERS_PATH",
+        Path(__file__).resolve().parents[2] / "config" / "trading" / "trade_parameters.yaml",
+    )
+)
 
 
 class StrictModel(BaseModel):

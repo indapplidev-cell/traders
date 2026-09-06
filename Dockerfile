@@ -2,7 +2,8 @@ FROM python:3.11-slim AS production-base
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    TRADERS_TRADE_PARAMETERS_PATH=/service/config/trading/trade_parameters.yaml
 
 WORKDIR /service
 
@@ -12,6 +13,7 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml
 COPY scripts ./scripts
 COPY alembic.ini ./
 COPY alembic ./alembic
@@ -32,6 +34,7 @@ LABEL org.opencontainers.image.revision="${TRADERS_READONLY_SOURCE_IDENTITY}"
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    TRADERS_TRADE_PARAMETERS_PATH=/service/config/trading/trade_parameters.yaml \
     TRADERS_READONLY_API_HOST=0.0.0.0 \
     TRADERS_READONLY_API_PORT=8080
 
@@ -43,6 +46,7 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml
 COPY alembic.ini ./
 COPY alembic ./alembic
 RUN python -m pip install --no-cache-dir --no-deps . \
@@ -63,7 +67,8 @@ LABEL org.opencontainers.image.revision="${TRADERS_CONTROL_SOURCE_IDENTITY}"
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    TRADERS_TRADE_PARAMETERS_PATH=/service/config/trading/trade_parameters.yaml
 
 WORKDIR /service
 
@@ -73,6 +78,7 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml
 COPY scripts/control_api_runtime_probe.py ./scripts/control_api_runtime_probe.py
 RUN python -m pip install --no-cache-dir --no-deps . \
     && rm -rf build *.egg-info

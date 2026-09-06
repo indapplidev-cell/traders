@@ -1,4 +1,7 @@
 from pathlib import Path
+import os
+import subprocess
+import sys
 
 import pytest
 
@@ -39,3 +42,31 @@ def test_invalid_missing_unknown_and_duplicate_fields_fail_closed(tmp_path: Path
 
 def test_hash_is_deterministic():
     assert load_trade_parameters().config_hash == load_trade_parameters().config_hash
+
+
+def test_packaged_runtime_can_bind_authoritative_config_path(tmp_path: Path):
+    runtime_config = tmp_path / "trade_parameters.yaml"
+    runtime_config.write_bytes(CONFIG_PATH.read_bytes())
+    environment = os.environ.copy()
+    environment["TRADERS_TRADE_PARAMETERS_PATH"] = str(runtime_config)
+
+    completed = subprocess.run(
+        [sys.executable, "-c", "from app.config.trade_parameters import CONFIG_PATH; print(CONFIG_PATH)"],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert Path(completed.stdout.strip()) == runtime_config
+
+
+def test_all_production_images_copy_and_bind_authoritative_config():
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(encoding="utf-8")
+
+    assert dockerfile.count(
+        "COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml"
+    ) == 3
+    assert dockerfile.count(
+        "TRADERS_TRADE_PARAMETERS_PATH=/service/config/trading/trade_parameters.yaml"
+    ) == 3
