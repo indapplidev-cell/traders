@@ -178,6 +178,7 @@ def test_scalping_export_includes_additive_downstream_observability_fields():
     assert row["trade_math"]["required_rr"] == "1.5"
     assert row["trade_math"]["fee_estimate_bps"] == "20"
     assert row["trade_math"]["slippage_estimate_bps"] == "4"
+    assert row["trade_math"]["cost_gate_decision"] == "PASS"
     assert row["trade_math"]["expected_net_edge_bps"] == 121
     assert row["trade_math"]["risk_percent"] == "1.00"
     assert row["trade_math"]["planned_quantity"] == "1"
