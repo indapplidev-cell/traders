@@ -42,6 +42,7 @@ from app.db.paper_models import (
     ScalpingOutcomeDiagnosticRecord,
 )
 from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+from app.engine_paper.binance_account_commission import commission_runtime_status
 
 
 PROJECTION_VERSION: Final = "trading-funnel-v1"
@@ -2189,6 +2190,13 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         "trade_profile_id": profile.trade_profile_id,
         "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
         "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
+        "commission_authority": (
+            commission_runtime_status()
+            if profile.trade_profile_id == "trade-5m-v2" else {
+                "status": "NOT_APPLICABLE", "real_account_data": False,
+                "stub_active": False,
+            }
+        ),
         "trade_mode": profile.trade_mode,
         "display_i18n_key": profile.display_i18n_key,
         "primary_timeframe": profile.primary_timeframe,

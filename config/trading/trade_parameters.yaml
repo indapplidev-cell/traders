@@ -47,6 +47,16 @@ profiles:
       parent_bucket_fallback_order: [exact, setup_direction_regime, setup_direction, setup, global]
     costs:
       commission_source: binance_dynamic
+      commission:
+        source: binance_account_commission
+        real_account_data: true
+        refresh_interval_seconds: 3600
+        retry_interval_seconds: 300
+        max_snapshot_age_seconds: 86400
+        fail_closed: true
+        allow_stub_fallback: false
+        entry_liquidity_role: TAKER
+        exit_liquidity_role: TAKER
       conservative_fallback_policy: FAIL_CLOSED
       configured_entry_fee_bps: 10.0
       configured_exit_fee_bps: 10.0

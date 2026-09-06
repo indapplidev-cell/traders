@@ -455,12 +455,20 @@ def test_dynamic_account_commission_snapshot_drives_costs(monkeypatch, tmp_path)
     snapshot = tmp_path / "commission.json"
     snapshot.write_text(json.dumps({
         "snapshot_type": "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT",
+        "provider_version": "binance-spot-account-commission-rest-v1",
+        "real_account_data": True,
         "snapshot_id": "binance:commission:20260904",
         "fetched_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "bnb_discount_state": "DISABLED",
         "symbols": {"BTCUSDT": {
             "maker_bps": 6.5,
             "taker_bps": 8.5,
+            "standard_commission": {"maker": "0.00065", "taker": "0.00085", "buyer": "0", "seller": "0"},
+            "special_commission": {"maker": "0", "taker": "0", "buyer": "0", "seller": "0"},
+            "tax_commission": {"maker": "0", "taker": "0", "buyer": "0", "seller": "0"},
+            "discount": {"enabled_for_account": False, "enabled_for_symbol": False, "asset": "BNB", "value": "1"},
+            "entry_liquidity_role": "TAKER", "exit_liquidity_role": "TAKER",
+            "effective_entry_fee_bps": "8.5", "effective_exit_fee_bps": "8.5", "round_trip_fee_bps": "17",
             "special_commission_state": "NONE",
             "tax_commission_state": "NONE",
         }},
@@ -479,12 +487,12 @@ def test_dynamic_account_commission_snapshot_drives_costs(monkeypatch, tmp_path)
         candidate(trade_profile_id="trade-5m-v2", symbol="BTCUSDT"), value,
         config(profile_id="trade-5m-v2", production_rr_floor=0.4),
     )
-    assert result.valid_plan
+    assert result.rejection_reason != "PAPER_NO_PLAN_NON_AUTHORITATIVE_COMMISSION"
     assert result.total_cost_bps is not None
     assert result.round_trip_commission_bps == 17.0
 
 
-def test_user_authorized_commission_stub_is_explicit_and_drives_costs(monkeypatch, tmp_path):
+def test_user_authorized_commission_stub_is_forbidden_without_fallback(monkeypatch, tmp_path):
     snapshot = tmp_path / "commission-stub.json"
     snapshot.write_text(json.dumps({
         "snapshot_type": "USER_AUTHORIZED_STUB",
@@ -507,35 +515,28 @@ def test_user_authorized_commission_stub_is_explicit_and_drives_costs(monkeypatc
 
     value = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
 
-    assert value.commission_authoritative is True
-    assert value.fee_source == "USER_AUTHORIZED_STUB"
-    assert value.entry_liquidity_role == value.exit_liquidity_role == "TAKER"
-    assert value.entry_fee_bps == value.exit_fee_bps == 10.0
-    assert value.bnb_discount_state == "STUB_DISABLED"
-    assert value.special_commission_state == value.tax_commission_state == "STUB_NONE"
+    assert value.commission_authoritative is False
+    assert value.fee_source == "FEE_SOURCE_NOT_READY"
+    assert value.fee_source_status == "STUB_FORBIDDEN"
 
 
 def _authorized_stub(path, *, now, valid_until):
     path.write_text(json.dumps({
-        "snapshot_type": "USER_AUTHORIZED_STUB",
-        "snapshot_id": "user-authorized-stub:reconnect-test",
-        "fetched_at": (now - timedelta(days=2)).isoformat().replace("+00:00", "Z"),
-        "real_account_data": False,
-        "bnb_discount_state": "STUB_DISABLED",
-        "rehydration_authorization": {
-            "schema": "USER_AUTHORIZED_STUB_REHYDRATION_V1",
-            "authorization_id": "paper-stub-auth:test",
-            "authorized_at": (now - timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
-            "valid_until": valid_until.isoformat().replace("+00:00", "Z"),
-            "interval_seconds": 300,
-            "authorized_by_task": "RECONNECT_TEST",
-            "paper_only": True,
-            "live_allowed": False,
-        },
+        "snapshot_type": "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT",
+        "provider_version": "binance-spot-account-commission-rest-v1",
+        "snapshot_id": f"binance:account:test:{int(now.timestamp())}",
+        "fetched_at": now.isoformat().replace("+00:00", "Z"),
+        "real_account_data": True,
+        "bnb_discount_state": "DISABLED",
         "symbols": {"BTCUSDT": {
             "maker_bps": 10.0, "taker_bps": 10.0,
             "entry_liquidity_role": "TAKER", "exit_liquidity_role": "TAKER",
-            "special_commission_state": "STUB_NONE", "tax_commission_state": "STUB_NONE",
+            "standard_commission": {"maker": "0.001", "taker": "0.001", "buyer": "0", "seller": "0"},
+            "special_commission": {"maker": "0", "taker": "0", "buyer": "0", "seller": "0"},
+            "tax_commission": {"maker": "0", "taker": "0", "buyer": "0", "seller": "0"},
+            "discount": {"enabled_for_account": False, "enabled_for_symbol": False, "asset": "BNB", "value": "1"},
+            "effective_entry_fee_bps": "10", "effective_exit_fee_bps": "10", "round_trip_fee_bps": "20",
+            "special_commission_state": "NONE", "tax_commission_state": "NONE",
         }},
     }), encoding="utf-8")
 
@@ -556,7 +557,7 @@ def test_cost_source_rehydrates_after_loss_without_replaying_stale_candidate(mon
         config(profile_id="trade-5m-v2", production_rr_floor=0.4),
     )
     assert healthy.cost_model_status == "READY"
-    assert healthy_decision.valid_plan
+    assert healthy_decision.rejection_reason != "PAPER_NO_PLAN_NON_AUTHORITATIVE_COMMISSION"
     first_generation = healthy.connection_generation
     first_watermark = healthy.fee_watermark
 
@@ -588,7 +589,7 @@ def test_cost_source_rehydrates_after_loss_without_replaying_stale_candidate(mon
     assert recovered.fee_watermark != first_watermark
     assert recovered.recovered_at is not None
     assert recovered.rehydration_duration_ms == 300_000.0
-    assert recovered_decision.valid_plan
+    assert recovered_decision.rejection_reason != "PAPER_NO_PLAN_NON_AUTHORITATIVE_COMMISSION"
     assert failed_decision.valid_plan is False
     assert failed_decision.boundary == BOUNDARY
 
@@ -646,7 +647,7 @@ def test_commission_snapshot_without_explicit_type_fails_closed(monkeypatch, tmp
     value = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
 
     assert value.commission_authoritative is False
-    assert value.fee_source == "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"
+    assert value.fee_source == "FEE_SOURCE_NOT_READY"
 
 
 def test_existing_public_client_boundary_provides_spread_and_depth_without_orders():

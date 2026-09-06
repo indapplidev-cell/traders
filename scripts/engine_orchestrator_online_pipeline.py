@@ -26,6 +26,7 @@ from app.engine_paper.scalping_paper_runner import (
 )
 from app.engine_paper.scalping_statistics import PostgresPaperOutcomeStatisticsSource
 from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
+from app.engine_paper.binance_account_commission import BinanceAccountCommissionManager
 from app.config.trade_parameters import TRADE_PARAMETERS
 from app.engine_orchestrator.profile_owner import (
     OwnerAlreadyActiveError,
@@ -190,7 +191,21 @@ def main(argv: list[str] | None = None) -> int:
         require_all_timeframes_ok=config.require_all_timeframes_ok,
         allow_stale_higher_timeframes=config.allow_stale_higher_timeframes,
     )
-    calibration_cost_source = (
+    commission_manager = (
+        BinanceAccountCommissionManager.from_environment(config.symbols)
+        if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
+    )
+    if commission_manager is not None:
+        commission_startup = commission_manager.ensure_fresh(force=True)
+        print(json.dumps({
+            "event": "binance_account_commission_startup_refresh",
+            "status": commission_startup.status,
+            "active_symbols_queried": commission_startup.queried_symbols,
+            "active_symbols_ready": commission_startup.ready_symbols,
+            "real_account_data": commission_startup.real_account_data,
+            "stub_active": commission_startup.stub_active,
+        }, sort_keys=True))
+    scalping_cost_source = (
         BinancePublicScalpingCostSource(
             reference_notional=runtime_parameters.vwap_reference_notional,
             depth_limit=runtime_parameters.bounded_book_depth_limit,
@@ -199,9 +214,13 @@ def main(argv: list[str] | None = None) -> int:
             exit_fee_bps=runtime_parameters.economics_exit_fee_bps,
             entry_slippage_bps=runtime_parameters.economics_entry_slippage_bps,
             exit_slippage_bps=runtime_parameters.economics_exit_slippage_bps,
+            commission_manager=commission_manager,
         )
-        if args.strategy_cap_shadow_economic_capture and profile.trade_profile_id in SCALPING_PROFILE_IDS
+        if profile.trade_profile_id in SCALPING_PROFILE_IDS
         else None
+    )
+    calibration_cost_source = (
+        scalping_cost_source if args.strategy_cap_shadow_economic_capture else None
     )
     daemon = OrchestratorDaemon(
         config, detector, gate, PipelineRunner(
@@ -209,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
             paper_runner=(
                 ScalpingPaperRunner(
                     runtime_parameters=runtime_parameters,
+                    cost_source=scalping_cost_source,
                     statistics_source=PostgresPaperOutcomeStatisticsSource(sessions),
                     opportunity_registry=PostgresScalpingOpportunityRegistry(sessions),
                 ) if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
@@ -216,6 +236,9 @@ def main(argv: list[str] | None = None) -> int:
             strategy_cap_cost_source=calibration_cost_source,
         ), store,
         owner_guard=owner,
+        cycle_maintenance=(
+            commission_manager.ensure_fresh if commission_manager is not None else None
+        ),
     )
     daemon.install_signal_handlers()
     try:

@@ -37,24 +37,25 @@ services:
       TRADERS_PAPER_RUNTIME_DATABASE_PORT: "5432"
       TRADERS_READONLY_API_INTERNAL_URL: "http://readonly-api:8765"
       TRADERS_SCALPING_1M_REFINEMENT_MODE: "SHADOW"
-      TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: "/run/secrets/binance_commission_snapshot"
+      TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: "/run/traders-commission/binance-account-commission.json"
     ports:
       - "127.0.0.1:8766:8766"
     secrets:
       - traders_control_api_token
-      - binance_commission_snapshot
     volumes:
       - type: bind
         source: D:/disk_E/game_projects/traders/production_control/paper
         target: /run/traders-control
+      - type: bind
+        source: D:/disk_E/game_projects/traders/production_control/commission
+        target: /run/traders-commission
+        read_only: true
     networks:
       - production
 
 secrets:
   traders_control_api_token:
     file: ../../../.control-api.token
-  binance_commission_snapshot:
-    file: ../../../.secrets.production.local/binance-commission-snapshot.json
 
 networks:
   production:

@@ -115,6 +115,8 @@ class ShadowCostInputs:
     rehydration_duration_ms: float | None = None
     fee_watermark: str | None = None
     fee_authorization_valid_until: str | None = None
+    commission_snapshot_age_seconds: float | None = None
+    commission_provenance: dict[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         values = (
@@ -342,6 +344,8 @@ class ShadowGeometryDiagnostic:
     rehydration_duration_ms: float | None = None
     fee_watermark: str | None = None
     fee_authorization_valid_until: str | None = None
+    commission_snapshot_age_seconds: float | None = None
+    commission_provenance: dict[str, object] = field(default_factory=dict)
     economic_gate_enabled: bool = True
     economic_gate_pass: bool = False
     rr_cohorts_gross: dict[str, bool] = field(default_factory=dict)
@@ -576,6 +580,8 @@ def evaluate_scalping_shadow(
         rehydration_duration_ms=costs.rehydration_duration_ms,
         fee_watermark=costs.fee_watermark,
         fee_authorization_valid_until=costs.fee_authorization_valid_until,
+        commission_snapshot_age_seconds=costs.commission_snapshot_age_seconds,
+        commission_provenance=dict(costs.commission_provenance),
         required_rr=config.production_rr_floor,
         rr_policy_version=(V2_RR_EV_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else RR_POLICY_VERSION),
         target_policy_version=(V2_TARGET_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else TARGET_POLICY_VERSION),

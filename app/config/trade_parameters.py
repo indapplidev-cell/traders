@@ -73,8 +73,29 @@ class EconomicsParameters(StrictModel):
     parent_bucket_fallback_order: tuple[str, ...]
 
 
+class CommissionParameters(StrictModel):
+    source: Literal["binance_account_commission"]
+    real_account_data: Literal[True]
+    refresh_interval_seconds: int = Field(gt=0)
+    retry_interval_seconds: int = Field(gt=0)
+    max_snapshot_age_seconds: int = Field(gt=0)
+    fail_closed: Literal[True]
+    allow_stub_fallback: Literal[False]
+    entry_liquidity_role: Literal["MAKER", "TAKER"]
+    exit_liquidity_role: Literal["MAKER", "TAKER"]
+
+    @model_validator(mode="after")
+    def valid_refresh_policy(self):
+        if self.refresh_interval_seconds > self.max_snapshot_age_seconds:
+            raise ValueError("commission refresh interval cannot exceed max snapshot age")
+        if self.retry_interval_seconds > self.refresh_interval_seconds:
+            raise ValueError("commission retry interval cannot exceed refresh interval")
+        return self
+
+
 class CostParameters(StrictModel):
     commission_source: Literal["binance_dynamic"]
+    commission: CommissionParameters
     conservative_fallback_policy: Literal["FAIL_CLOSED"]
     configured_entry_fee_bps: float = Field(ge=0)
     configured_exit_fee_bps: float = Field(ge=0)

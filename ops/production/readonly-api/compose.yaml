@@ -33,6 +33,7 @@ services:
       TRADERS_READONLY_API_HOST: "0.0.0.0"
       TRADERS_READONLY_API_PORT: "8765"
       TRADERS_PRODUCTION_CONTROL_ROOT: "/run/traders-control"
+      TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: "/run/traders-commission/binance-account-commission.json"
     volumes:
       - type: bind
         source: D:/disk_E/game_projects/traders/production_control/paper
@@ -53,6 +54,10 @@ services:
       - type: bind
         source: ../../../reports/engine_market_data/continuous_sync
         target: /run/traders-market-data-health
+        read_only: true
+      - type: bind
+        source: D:/disk_E/game_projects/traders/production_control/commission
+        target: /run/traders-commission
         read_only: true
     ports:
       - "127.0.0.1:8765:8765"

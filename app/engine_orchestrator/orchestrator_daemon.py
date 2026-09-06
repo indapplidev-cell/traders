@@ -37,6 +37,7 @@ class OrchestratorDaemon:
                  daemon_instance_id: str | None = None,
                  owner_guard: object | None = None,
                  health_reporter: OrchestratorHealthReporter | None = None,
+                 cycle_maintenance: Callable[[], object] | None = None,
                  clock: Callable[[], datetime] = utc_now) -> None:
         self.config = config
         self.detector = detector
@@ -46,6 +47,7 @@ class OrchestratorDaemon:
         self.daemon_instance_id = daemon_instance_id or f"orchestrator-{uuid4().hex[:12]}"
         self.owner_guard = owner_guard
         self.health_reporter = health_reporter or OrchestratorHealthReporter(config.health_report_path)
+        self.cycle_maintenance = cycle_maintenance
         self.clock = clock
         self.state = OrchestratorState()
         self._stop = Event()
@@ -242,6 +244,8 @@ class OrchestratorDaemon:
     def run_cycle(self, *, dry_run: bool = False) -> list[dict[str, Any]]:
         if self.owner_guard is not None:
             self.owner_guard.assert_active()
+        if self.cycle_maintenance is not None:
+            self.cycle_maintenance()
         observations: list[dict[str, Any]] = []
         if not dry_run:
             due_kwargs = {

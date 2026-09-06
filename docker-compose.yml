@@ -107,12 +107,14 @@ services:
       ORCHESTRATOR_FRESHNESS_GRACE_SECONDS: ${ORCHESTRATOR_FRESHNESS_GRACE_SECONDS:-180}
       ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS: ${ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS:-60}
       ORCHESTRATOR_WAITING_BATCH_SIZE: ${ORCHESTRATOR_WAITING_BATCH_SIZE:-100}
-      TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: /run/secrets/binance_commission_snapshot
+      TRADERS_BINANCE_ACCOUNT_CREDENTIALS_PATH: /run/secrets/binance_account_credentials
+      TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: /run/traders-commission/binance-account-commission.json
     volumes:
       - ./reports:/service/reports
+      - D:/disk_E/game_projects/traders/production_control/commission:/run/traders-commission
     secrets:
       - traders_shared_db_password
-      - binance_commission_snapshot
+      - binance_account_credentials
 
   scalping-calibration-collector:
     build:
@@ -146,5 +148,5 @@ volumes:
 secrets:
   traders_shared_db_password:
     file: ./.secrets.production.local/shared-db-password
-  binance_commission_snapshot:
-    file: ./.secrets.production.local/binance-commission-snapshot.json
+  binance_account_credentials:
+    file: ${TRADERS_BINANCE_ACCOUNT_CREDENTIALS_HOST_PATH:-C:/Users/ZENOL/Documents/BINANCE_ACCOUNT_KEY.txt}
