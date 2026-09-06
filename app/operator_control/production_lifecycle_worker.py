@@ -13,6 +13,7 @@ import os
 import threading
 import urllib.parse
 import urllib.request
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from hashlib import sha256
@@ -408,7 +409,15 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         )
         return self._cycle(canary_id, graph, continuous=continuous, exit_evaluation_request=request), "READY"
 
-    def _close_cycle(self, canary_id: str, graph, candles, *, continuous: bool = False):
+    def _close_cycle(
+        self,
+        canary_id: str,
+        graph,
+        candles,
+        *,
+        continuous: bool = False,
+        exit_policy=None,
+    ):
         command, position, decision = graph.command, graph.positions[0], graph.exit_decisions[0]
         close_order = self._orders(graph)["EXIT"]
         close_order_ready_ms = int(close_order.updated_at.timestamp() * 1000)
@@ -419,7 +428,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         if not eligible:
             return None, "WAITING_FOR_CLOSE_CANDLE"
         selected = eligible[0]
-        policy = _foundation_policy(command.simulation_policy_id)
+        policy = exit_policy or _foundation_policy(command.simulation_policy_id)
         fill_id = simulated_close_fill_id(
             fill_contract_version=PAPER_FILL_CAUSAL_BOUNDARY_VERSION,
             order_id=close_order.order_id, exit_decision_id=decision.exit_decision_id,
@@ -449,6 +458,11 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             ),
             correlation_id=correlation, causation_id=decision.exit_decision_id,
             operation_at=_at(selected.close_boundary_ms),
+            current_exit_fee_authority_id=(
+                policy.fee_policy_id
+                if policy.fee_policy_id.startswith("fee:binance-account:")
+                else None
+            ),
         )
         return self._cycle(canary_id, graph, continuous=continuous, close_execution_request=request), "READY"
 
@@ -529,11 +543,14 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             commission_load = read_binance_commission_snapshot(graph.command.symbol)
             commission = commission_load.snapshot
             policy = _foundation_policy(graph.command.simulation_policy_id)
-            if (
-                commission is None
-                or Decimal(str(commission.exit_commission_bps)) != policy.fee_bps
-            ):
+            if commission is None:
                 raise ValueError("RECOVERY_CLOSE_CURRENT_COMMISSION_NOT_READY")
+            snapshot_digest = sha256(commission.snapshot_id.encode("utf-8")).hexdigest()[:16]
+            current_exit_policy = replace(
+                policy,
+                fee_policy_id=f"fee:binance-account:{snapshot_digest}:v1",
+                fee_bps=Decimal(str(commission.exit_commission_bps)),
+            )
             candles, market = self._snapshot(
                 graph.command.symbol, canary.canary_id, continuous=True
             )
@@ -597,7 +614,11 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 raise ValueError(f"RECOVERY_CLOSE_PREPARE_{prepared.reason_code}")
             graph = self._graph_loader.load(canary.command_id)
             close_cycle, code = self._close_cycle(
-                canary.canary_id, graph, candles, continuous=True
+                canary.canary_id,
+                graph,
+                candles,
+                continuous=True,
+                exit_policy=current_exit_policy,
             )
             if close_cycle is None:
                 raise ValueError(f"RECOVERY_CLOSE_{code}")

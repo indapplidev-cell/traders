@@ -236,6 +236,7 @@ class PaperCloseExecutionRequest(_CommonExecutionRequest):
     position_id: str
     expected_position_version: int
     exit_decision_id: str
+    current_exit_fee_authority_id: str | None = None
 
     def __post_init__(self) -> None:
         _validate_common_request(self)
@@ -245,6 +246,17 @@ class PaperCloseExecutionRequest(_CommonExecutionRequest):
             "exit_decision_id",
             _identity(self.exit_decision_id, "exit_decision_id"),
         )
+        if self.current_exit_fee_authority_id is not None:
+            authority = _identity(
+                self.current_exit_fee_authority_id,
+                "current_exit_fee_authority_id",
+            )
+            if (
+                not authority.startswith("fee:binance-account:")
+                or authority != self.simulation_policy.fee_policy_id
+            ):
+                raise ValueError("current exit fee authority must match the Binance fee policy")
+            object.__setattr__(self, "current_exit_fee_authority_id", authority)
         if (
             isinstance(self.expected_position_version, bool)
             or not isinstance(self.expected_position_version, int)
@@ -880,8 +892,18 @@ class PaperOrderExecutionService:
         order: PaperOrder,
         causal_boundary: PaperFillCausalBoundary,
     ):
+        simulation_command = command
+        if (
+            isinstance(request, PaperCloseExecutionRequest)
+            and request.current_exit_fee_authority_id
+            == request.simulation_policy.fee_policy_id
+        ):
+            simulation_command = replace(
+                command,
+                fee_policy_id=request.simulation_policy.fee_policy_id,
+            )
         simulation_request = FillSimulationRequest(
-            command=command,
+            command=simulation_command,
             order=order,
             fill_role=request.fill_role,
             causal_boundary=causal_boundary,
@@ -1048,9 +1070,17 @@ class PaperOrderExecutionService:
                 order=order,
             )
         policy = request.simulation_policy
+        current_exit_fee_override = (
+            operation == "CLOSE"
+            and isinstance(request, PaperCloseExecutionRequest)
+            and request.current_exit_fee_authority_id == policy.fee_policy_id
+        )
         if (
             policy.simulation_policy_id != command.simulation_policy_id
-            or policy.fee_policy_id != command.fee_policy_id
+            or (
+                policy.fee_policy_id != command.fee_policy_id
+                and not current_exit_fee_override
+            )
             or policy.slippage_policy_id != command.slippage_policy_id
             or policy.latency_policy_id != command.latency_policy_id
             or request.price_quantum != policy.price_quantum

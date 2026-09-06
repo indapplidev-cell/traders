@@ -144,7 +144,11 @@ class PaperFillSimulationPolicy:
             _fail("fee must not exceed 10000 bps", "fee_bps")
         if slippage != Decimal("2"):
             _fail("foundation slippage must be exactly 2 bps", "slippage_bps")
-        if fee != Decimal("10"):
+        dynamic_exit_fee = self.fee_policy_id.startswith("fee:binance-account:")
+        if dynamic_exit_fee:
+            if fee <= 0:
+                _fail("account exit fee must be positive", "fee_bps")
+        elif fee != Decimal("10"):
             _fail("foundation fee must be exactly 10 bps", "fee_bps")
 
         if self.partial_fill_enabled is not False:
