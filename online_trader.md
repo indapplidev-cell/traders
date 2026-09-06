@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 2632c2f07195eaf2b286cbf8b2268eff698d20b7
+STATUS_AS_OF_COMMIT = 30a44d908228742ecf804e5a6c41e374571846c5
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-06T10:47:37Z
-RECONCILED_BY_TASK = TRADERS_POST_CONNECTION_LOSS_RECOVERY_AND_COST_GATE_REHYDRATION_01
-FILES_CHANGED = app/engine_paper/scalping_paper_runner.py, app/engine_paper/scalping_shadow.py, app/i18n/catalog.py, app/server_api/trading_funnel.py, app/server_api/funnel_export.py, scripts/authorize_paper_commission_stub_rehydration.py, tests/test_5m_scalping_geometry_quota_cost_remediation.py, tests/server_api/test_trading_funnel.py, tests/server_api/test_funnel_export.py, docs/audits/TRADERS_POST_CONNECTION_LOSS_RECOVERY_AND_COST_GATE_REHYDRATION_01_FINAL.md, FINAL_DECISION.md, online_trader.md
+RECONCILED_AT_UTC = 2026-09-06T17:43:36Z
+RECONCILED_BY_TASK = TRADERS_SCALPING_V2_INTEGRATED_PROFITABILITY_PIPELINE
+FILES_CHANGED = docs/audits/TRADERS_SCALPING_V2_INTEGRATED_PROFITABILITY_PIPELINE_FINAL.md, FINAL_DECISION.md, online_trader.md
 
-REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 2632c2f07195eaf2b286cbf8b2268eff698d20b7_ORIGIN_FEATURE_ENGINE_PLATFORM_PROJECTSTATE_PUSHED_5MIMAGE0A289FB9_SOURCE2C81928_READONLY900BD5B0_SOURCE99192F5_OPERATOR8411DB7_SCHEMA0026
-PUSH_STATE_AT_RECONCILIATION = ROOT_PROJECT_STATE_PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_BEFORE_THIS_DOCUMENTATION_RECONCILIATION_CLIENTREMOTE_NOTCONFIGURED_MOBILEREMOTENOTCONFIGURED
-STATUS_CONFIDENCE = COSTSOURCE_REHYDRATED_FOURNATURALBOUNDARIES40ROWS_FOURCOSTREADYEXACTECONOMICREJECTIONS_GENERICUNKNOWN0_STALEREPLAY0_DUPLICATE0_5MRUNNING0_READONLYHEALTHY0_WALPITRTRUE_SCHEMA0026_CONTINUOUSARMED12_1MSHADOW_LIVEFALSE
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 30a44d908228742ecf804e5a6c41e374571846c5_ORIGIN_FEATURE_ENGINE_PLATFORM_PROJECTSTATE_PUSHED_DEPLOYEDSOURCE59b4d993_SCHEMA0028
+PUSH_STATE_AT_RECONCILIATION = ROOT_PROJECT_STATE_PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_BEFORE_THIS_DOCUMENTATION_RECONCILIATION_CLIENT_MAIN_PUSHED_SYNCHRONIZED_AT0caf2fc7
+STATUS_CONFIDENCE = INTEGRATED_BLOCKS01TO11_DEPLOYED_5MRUNNING_READONLYOPERATORHEALTHY_SCHEMA0028_CONFIGHASHMATCH_POSTGRESE2EPASS_SWEEPSMOKE2CONFIGS_NOMUTATION_15MSTOPPED_LIVEFALSE
 
 # Состояние проекта traders-ml
 
@@ -22,15 +22,41 @@ STATUS_CONFIDENCE = COSTSOURCE_REHYDRATED_FOURNATURALBOUNDARIES40ROWS_FOURCOSTRE
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = SCALPINGV2_5MIMAGE0A289FB9_SOURCE2C81928_RUNNINGRESTART0_OWNERACQUIRED_OPERATOR8411DB7_READONLY900BD5B0_SOURCE99192F5_HEALTHYRESTART0_SCHEMA0026_CONTINUOUSARMED12_WALPITRTRUE_MUTATIONTRUE_LIVE_OFF_AT20260906T104737Z
-SOURCE_API_STATUS = COSTRECOVERYTELEMETRY_AND_EXACTRUENREASON_DEPLOYED_READONLY_DESKTOPBOOTSTRAPEEA7EF1_RUNTIMEPID8024RESPONDING
-CURRENT_STAGE = SCALPING_V2_1M_ENTRY_REFINEMENT_PROSPECTIVE_SHADOW_EVIDENCE_COLLECTION
-CURRENT_BLOCKER = AUTHORITATIVE_PROMOTION_BLOCKED_BY_INCONCLUSIVE_COUNTERFACTUAL_REPLAY_AND_INSUFFICIENT_PROSPECTIVE_SHADOW_OUTCOMES
-CURRENT_PREREQUISITE = COLLECT_NATURAL_SHADOW_COHORT_WITH_EXACT_CURRENT_COSTS_AND_OUTCOMES_THEN_RERUN_PROMOTION_GATE
-SECONDARY_BLOCKER = REAL_BINANCE_ACCOUNT_COMMISSION_SOURCE_NOT_CONFIGURED_PAPER_STUB_AUTH_EXPIRES_20260913T102112Z; TRADERS_CLIENT_REMOTE_NOT_CONFIGURED; MOBILE_PREEXISTING_OVERLAPPING_DIRTY_WORKTREE_AND_NO_REMOTE
+API_RUNTIME_STATUS = SCALPINGV2_BLOCKS01TO11_INTEGRATED_5MIMAGEf8c6a7b6_SOURCE59b4d993_RUNNING_OPERATORc3ee1457_READONLYf7fa5040_HEALTHY_SCHEMA0028_CONTINUOUSARMED_LIVE_OFF_AT20260906T174336Z
+SOURCE_API_STATUS = READONLY_EXPOSES_CONFIG_PROBABILITY_EV_COST_CAUSAL_AND_MAEMFE_PROVENANCE_DESKTOP0caf2fc7_PUSHED_MAIN
+CURRENT_STAGE = MANUAL_FULL_SCALPING_V2_PARAMETER_SWEEP_AND_PROFITABILITY_EVIDENCE_REVIEW
+CURRENT_BLOCKER = FULL_SWEEP_NOT_RUN_BY_CODEX_AND_CURRENT_52_CLOSED_OUTCOMES_INSUFFICIENT_FOR_CONFIGURATION_ACCEPTANCE
+CURRENT_PREREQUISITE = RUN_DOCUMENTED_FULL_SWEEP_MANUALLY_THEN_REVIEW_VALIDATION_AND_HOLDOUT_WITHOUT_AUTOMATIC_PROMOTION
+SECONDARY_BLOCKER = BROAD_MIXED_ERA_SERVER_TESTS_RETAIN_STALE_REMOVED_V1_AND_DISABLED15M_ASSUMPTIONS; REAL_BINANCE_ACCOUNT_COMMISSION_SOURCE_NOT_CONFIGURED_PAPER_STUB_AUTH_EXPIRES_20260913T102112Z
 CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT_POLICY_AND_CONTROLLED_ROLLOUT
 BACKGROUND_TIMED_GATE = STOPPED_TASK_COMPLETED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
+```
+
+## Scalping v2 integrated profitability pipeline
+
+```text
+TASK = TRADERS_SCALPING_V2_INTEGRATED_PROFITABILITY_PIPELINE
+RESULT = PASS_INTEGRATION_DEPLOYMENT_RUNTIME_AND_BOUNDED_SWEEP_SMOKE_WITH_DISCLOSED_LEGACY_TEST_DEBT
+PROJECT_STATE_AUDIT_COMMIT = 30a44d908228742ecf804e5a6c41e374571846c5
+DEPLOYED_SOURCE_COMMIT = 59b4d993433d1908739bd0464f3f34fc30908f22
+BLOCKS_01_TO_11 = IMPLEMENTED_INTEGRATED_DEPLOYED_RUNTIME_ACTIVE_FOR_NEW_trade-5m-v2_DECISIONS
+ACTIVE_PROFILE = trade-5m-v2_ONLY
+REMOVED_AND_DISABLED = trade-5m-v1_HISTORICAL_READONLY_ONLY; trade-15m-v1_CONTAINER_STOPPED
+CONFIG = config/trading/trade_parameters.yaml_SCHEMA1_HASHcd3d340faad52fc2301b4b09953b58dad0865073bb4d0b2b4bb547ee86a5afb0_RUNTIME_MATCHPASS
+ECONOMICS = POSTGRES_OUTCOME_AUTHORITY_HIERARCHICAL_CONSERVATIVE_PROBABILITY_DYNAMIC_NETRR_EV_AND_COSTUNCERTAINTY_FAILCLOSED
+CAUSALITY = POSTGRES_DURABLE_ONE_EXECUTION_PER_OPPORTUNITY
+DIAGNOSTICS = IDEMPOTENT_MAE_MFE_CLOSURE_HOOK
+ENTRY_REFINEMENT = 1M_SHADOW_AFTER_ECONOMICS_AND_CAUSAL_ADMISSION
+SCHEMA = 0028_scalping_profitability_grants_READONLY_AND_RUNTIME_LEASTPRIVILEGE_PROVEN
+RUNTIME = WORKER_READONLY_OPERATOR_HEALTHY_FUNNELCURRENT_CONTINUOUSARMED_LIVEFALSE
+SWEEP_SMOKE = 52ROWS_2CONFIGS_0ACCEPTED_INSUFFICIENTSAMPLE_COUNTS54_53_0_UNCHANGED_PRODUCTIONMUTATION0_BINANCEORDER0
+FULL_SWEEP = NOT_RUN_BY_CODEX_MANUAL_ONLY
+TESTS = CURRENTV2_101PASS_POSTGRES3PASS_SCHEMA0028_DESKTOP1500PASS2SKIP3029SUBTESTS
+REGRESSION_DEBT = BROADMIXEDERA137PASS63FAIL_STALE_REMOVEDV1_DISABLED15M_AND_ONE_COLLECTOR_IDENTITY_ASSUMPTIONS
+SAFETY = LIVEFALSE_REALBINANCEORDER0_SECRETOUTPUT0
+EVIDENCE = docs/audits/TRADERS_SCALPING_V2_INTEGRATED_PROFITABILITY_PIPELINE_FINAL.md
+NEXT_ACTION = RUN_DOCUMENTED_FULL_PARAMETER_SWEEP_MANUALLY_AND_REVIEW_VALIDATION_HOLDOUT_WITHOUT_PROMOTION_OR_LIVE
 ```
 
 ## Post-connection-loss recovery and cost-gate rehydration 01
@@ -6433,18 +6459,18 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | Continuous PAPER plus 1m refinement SHADOW deployed | Scalping v2 remains the sole authority for new 5m decisions on schema 0026. Its cost source recovered with bounded PAPER-only fee rehydration; four natural current boundaries produced current fee/book/cost inputs and exact decisions. The 1m module remains entry-refinement-only and AUTHORITATIVE promotion remains blocked by inconclusive evidence |
+| Online analytics/paper pipeline | Blocks 01–11 integrated and deployed; continuous PAPER plus 1m refinement SHADOW | `trade-5m-v2` is the sole authority for new Scalping decisions on schema 0028. PostgreSQL outcomes drive hierarchical conservative probability, dynamic net RR, EV and cost-uncertainty gates; causal dedupe and closure diagnostics are durable. Profitability promotion remains blocked by sample size and the unrun full manual sweep |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
-| Readonly Server API | Healthy deployed schema-0026 image | Image `sha256:900bd5b0...`, source `99192f5...`, exposes fee/book/cost recovery state, generation, watermark and exact RU/EN commission-source reason in addition to the existing refinement and continuous lifecycle fields |
-| Desktop Readonly client | Source client deployed locally | Commit `99387f9...` projects server-owned refinement fields in Funnel/PAPER; source-tree PID 14344 is responding, client remote remains absent, and LIVE remains absent |
+| Readonly Server API | Healthy deployed schema-0028 image | Image `sha256:f7fa5040...`, source `59b4d993...`, exposes config hash/version, probability, EV, cost, causal opportunity and MAE/MFE provenance with zero write routes |
+| Desktop Readonly client | Source committed and pushed | Commit `0caf2fc...` renders the additive server-owned economics and causal fields; full regression passed, and LIVE controls remain absent |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy and production-accepted | Natural DOGEUSDT and LINKUSDT v2 positions are durably visible with exact command/position identities; both closed naturally and reconciliation scans two rows as HEALTHY |
-| PAPER Operator Control API | Healthy deployed source / CONTINUOUS_ARMED / 1m SHADOW | Source `1ca9049...` is healthy with restart 0, generation 12, durable daily budgets, max one open position, restart-safe shadow completion, and LIVE false |
+| PAPER Operator Control API | Healthy deployed source / CONTINUOUS_ARMED / 1m SHADOW | Source `59b4d993...`, image `sha256:c3ee1457...`, is healthy against schema 0028 with least-privilege profitability grants and LIVE false |
 | Continuous correlation/readiness | Natural continuous cycle active | Exact recovery safely retired an expired pre-command reservation; cycle 2 opened one natural v2/5m AVAXUSDT position and consumed one command plus 10 bps without re-arm |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
-| Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED` |
+| Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED`; this task made zero real Binance order API calls |
 
 Проценты отражают implementation, integration, tests, deployment и acceptance,
 а не количество файлов или coverage.
@@ -6452,8 +6478,8 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = COLLECT_NATURAL_PROSPECTIVE_1M_REFINEMENT_SHADOW_OUTCOMES_AND_RERUN_EVIDENCE_PROMOTION_GATE
-NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_ALREADY_DEPLOYED_SHADOW_OBSERVATION_YES_FOR_AUTHORITATIVE_PROMOTION_TUNING_OR_LIVE
+RECOMMENDED_NEXT_TASK = RUN_FULL_SCALPING_V2_PARAMETER_SWEEP_MANUALLY_AND_REVIEW_VALIDATION_HOLDOUT_AFTER_MORE_CLOSED_OUTCOMES
+NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_READONLY_MANUAL_SWEEP_AND_OBSERVATION_YES_FOR_PARAMETER_PROMOTION_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = NO
 CURRENT_WAL_ACK_ARCHIVE_RECOVERY = PASS_OWNER_HEALTHY_BACKLOG0_PENDING0_UNRESOLVED0
@@ -6553,14 +6579,13 @@ boundaries with zero missing, duplicate, error or future leakage. The 24h count
 gate is reached; the 72h and profitability gates remain future work.
 
 The earlier WAL failure snapshots are historical evidence only. The fresh
-post-task read-only readiness projection reports `status=READY`,
-`wal_ready=true`, `pitr_ready=true`, a contiguous physical lineage,
-`current_mutation_ready=true`, accounting/PAPER reconciliation `HEALTHY`, and
-`live_allowed=false`. Control generation 12 is `CONTINUOUS_ARMED`; one of ten
-daily commands and 10 of 50 daily risk bps are consumed by the current OPEN
-position. Schema 0024, readonly source `d3615b0...`, and operator source
-`a122963...` are deployed; `trade-5m-v2` is authoritative for new Scalping
-decisions, while `trade-5m-v1` is historical readonly only.
+post-task read-only projection reports `status=READY`, schema 0028 ready,
+continuous PAPER armed, and `live_allowed=false`; current mutation remains
+fail-closed while the approval source is unavailable. Worker, Readonly and
+Operator images all carry source `59b4d993...`; the host, worker startup and
+funnel expose the same authoritative configuration hash. `trade-5m-v2` is the
+only authority for new Scalping decisions, `trade-5m-v1` is historical
+readonly provenance, and the 15m container is stopped.
 
 ## Правила актуализации
 
