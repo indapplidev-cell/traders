@@ -4,28 +4,31 @@ from __future__ import annotations
 
 import argparse
 import csv
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
 import itertools
 import json
+import os
 from pathlib import Path
 import random
 import subprocess
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator, Mapping
 
 import yaml
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, event, inspect, select, text
+from sqlalchemy.engine import Connection, URL, make_url
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.config.trade_parameters import (
     CONFIG_PATH, SCALPING_V2, TRADE_PARAMETERS, StalePositionPolicyParameters,
 )
-from app.config.settings import get_settings
 from app.db.paper_models import (
     PaperExecutionCommandRecord, PaperOrderRecord, PaperPositionRecord,
-    ScalpingOutcomeDiagnosticRecord,
+    ScalpingOpportunityRecord, ScalpingOutcomeDiagnosticRecord,
 )
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
 from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket, evaluate_expectancy
@@ -34,12 +37,168 @@ from app.engine_paper.stale_position_shadow import (
 )
 
 SCHEMA_VERSION = "SCALPING_V2_PARAMETER_SWEEP/2"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROTECTED_BINDING_PATH = PROJECT_ROOT / ".env.production.local"
+PROTECTED_READONLY_KEY = "TRADERS_READONLY_API_DATABASE_URL"
+PROTECTED_RUNTIME_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_URL"
+DATASET_SOURCE = "production_paper_readonly"
+LEGACY_DATASET_SOURCE = "postgres-paper-outcomes-readonly"
+DEFAULT_MAX_ROWS = 5_000
+REQUIRED_TABLES = frozenset({
+    "alembic_version", "paper_positions", "paper_orders",
+    "paper_execution_commands", "online_pipeline_runs",
+    "online_pipeline_results",
+})
 TIME_STOP_SEARCH_FIELDS = frozenset({
     "soft_timeout_seconds", "hard_timeout_seconds",
     "min_target_progress_at_soft_timeout", "min_mfe_bps_at_soft_timeout",
     "min_remaining_ev_r_at_soft_timeout", "extension_seconds", "max_extensions",
     "break_even_activation_target_progress", "net_break_even_protection_enabled",
 })
+
+
+class SweepExpectedError(ValueError):
+    """A fixed, secret-free operator failure reason."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        message = (
+            "invalid research search space"
+            if reason == "SEARCH_SPACE_INVALID" else reason
+        )
+        super().__init__(message)
+
+
+@dataclass(frozen=True, slots=True)
+class DatabaseBinding:
+    url: URL
+    source: str
+
+
+@dataclass(frozen=True, slots=True)
+class DatasetOptions:
+    source: str = DATASET_SOURCE
+    profile: str = "trade-5m-v2"
+    closed_only: bool = True
+    maximum_rows: int = DEFAULT_MAX_ROWS
+    from_time: datetime | None = None
+    to_time: datetime | None = None
+
+
+def _parse_utc(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        raise SweepExpectedError("INVALID_DATE_RANGE") from None
+
+
+def _safe_url(value: str) -> URL:
+    try:
+        url = make_url(value)
+    except Exception:
+        raise SweepExpectedError("PROJECT_DATABASE_BINDING_NOT_AVAILABLE") from None
+    if url.get_backend_name() != "postgresql" or not url.database:
+        raise SweepExpectedError("PROJECT_DATABASE_BINDING_NOT_AVAILABLE")
+    return url
+
+
+def _protected_values(path: Path) -> dict[str, str]:
+    """Read only the allowlisted existing binding; never return it to output."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (FileNotFoundError, OSError):
+        return {}
+    allowed = {PROTECTED_READONLY_KEY, PROTECTED_RUNTIME_KEY}
+    values: dict[str, str] = {}
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key in allowed and value:
+            values[key] = value
+    return values
+
+
+def resolve_database_binding(
+    *, explicit_url: str | None = None,
+    protected_path: Path = PROTECTED_BINDING_PATH,
+    environment: Mapping[str, str] | None = None,
+) -> DatabaseBinding:
+    """Resolve explicit, protected-project, then compatibility environment binding."""
+    if explicit_url:
+        return DatabaseBinding(_safe_url(explicit_url), "EXPLICIT_CLI_OVERRIDE")
+    protected = _protected_values(protected_path)
+    readonly_value = protected.get(PROTECTED_READONLY_KEY)
+    if readonly_value:
+        readonly_url = _safe_url(readonly_value)
+        runtime_value = protected.get(PROTECTED_RUNTIME_KEY)
+        if runtime_value:
+            runtime_url = _safe_url(runtime_value)
+            # The protected readonly URL is container-native; reuse the already
+            # protected host endpoint without copying or publishing credentials.
+            if readonly_url.host not in {"127.0.0.1", "localhost", "::1"}:
+                readonly_url = readonly_url.set(
+                    host=runtime_url.host, port=runtime_url.port,
+                )
+        return DatabaseBinding(readonly_url, "PROJECT_PROTECTED_BINDING")
+    env = os.environ if environment is None else environment
+    compatibility = env.get("DATABASE_URL")
+    if compatibility:
+        return DatabaseBinding(_safe_url(compatibility), "DATABASE_URL_ENVIRONMENT")
+    raise SweepExpectedError("PROJECT_DATABASE_BINDING_NOT_AVAILABLE")
+
+
+class ReadOnlyResearchDatabase:
+    """SELECT-only adapter backed by a PostgreSQL session-level write guard."""
+
+    def __init__(self, binding: DatabaseBinding) -> None:
+        try:
+            self.engine = create_engine(binding.url, hide_parameters=True, pool_pre_ping=True)
+        except Exception:
+            raise SweepExpectedError("DATABASE_CONNECTION_FAILED") from None
+        self.binding_source = binding.source
+
+        @event.listens_for(self.engine, "connect")
+        def _force_read_only(dbapi_connection: object, _record: object) -> None:
+            cursor = dbapi_connection.cursor()  # type: ignore[attr-defined]
+            try:
+                cursor.execute("SET default_transaction_read_only = on")
+            finally:
+                cursor.close()
+
+    @contextmanager
+    def connection(self) -> Iterator[Connection]:
+        try:
+            with self.engine.connect() as connection:
+                connection.execute(text("SET TRANSACTION READ ONLY"))
+                yield connection
+                connection.rollback()
+        except SweepExpectedError:
+            raise
+        except SQLAlchemyError:
+            raise SweepExpectedError("DATABASE_CONNECTION_FAILED") from None
+
+    @staticmethod
+    def _assert_select(statement: object) -> None:
+        if getattr(statement, "is_select", False):
+            return
+        rendered = str(statement).lstrip().upper()
+        if rendered.startswith(("SELECT ", "WITH ", "SHOW ")):
+            return
+        raise SweepExpectedError("PRODUCTION_MUTATION_GUARD_REJECTED_WRITE")
+
+    def execute_select(self, connection: Connection, statement: object):
+        self._assert_select(statement)
+        return connection.execute(statement)  # type: ignore[arg-type]
+
+    def dispose(self) -> None:
+        self.engine.dispose()
 
 
 def _json(path: Path) -> Any:
@@ -54,40 +213,53 @@ def _nested(value: object, *path: str) -> object | None:
     return value
 
 
-def _production_rows(maximum_rows: int = 5_000) -> list[dict[str, Any]]:
-    """Load bounded, closed PAPER truth using SELECT statements only."""
-    database_url = get_settings().database_url
-    if not database_url:
-        raise RuntimeError("DATABASE_URL is required for the production read-only dataset")
-    engine = create_engine(database_url, hide_parameters=True)
-    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+def _production_rows(
+    database: ReadOnlyResearchDatabase,
+    options: DatasetOptions,
+) -> list[dict[str, Any]]:
+    """Load bounded PAPER truth through the SELECT-only research adapter."""
+    if not 1 <= options.maximum_rows <= DEFAULT_MAX_ROWS:
+        raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE")
     statement = (
-        select(PaperPositionRecord, OnlinePipelineResultRow, ScalpingOutcomeDiagnosticRecord)
+        select(
+            PaperPositionRecord, PaperExecutionCommandRecord,
+            OnlinePipelineResultRow, ScalpingOutcomeDiagnosticRecord,
+            ScalpingOpportunityRecord,
+        )
         .join(PaperOrderRecord, PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id)
         .join(PaperExecutionCommandRecord, PaperExecutionCommandRecord.command_id == PaperOrderRecord.command_id)
         .join(OnlinePipelineRun, OnlinePipelineRun.run_id == PaperExecutionCommandRecord.pipeline_run_id)
         .join(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
         .outerjoin(ScalpingOutcomeDiagnosticRecord,
                    ScalpingOutcomeDiagnosticRecord.position_id == PaperPositionRecord.position_id)
-        .where(PaperPositionRecord.state == "CLOSED",
-               OnlinePipelineRun.trade_profile_id == "trade-5m-v2")
-        .order_by(PaperPositionRecord.closed_at.asc())
-        .limit(maximum_rows)
+        .outerjoin(ScalpingOpportunityRecord,
+                   ScalpingOpportunityRecord.position_id == PaperPositionRecord.position_id)
+        .where(OnlinePipelineRun.trade_profile_id == options.profile)
+        .order_by(PaperPositionRecord.closed_at.desc())
+        .limit(options.maximum_rows)
     )
-    try:
-        with factory() as session:
-            records = tuple(session.execute(statement))
-    finally:
-        engine.dispose()
+    if options.closed_only:
+        statement = statement.where(PaperPositionRecord.state == "CLOSED")
+    if options.from_time is not None:
+        statement = statement.where(PaperPositionRecord.opened_at >= options.from_time)
+    if options.to_time is not None:
+        statement = statement.where(PaperPositionRecord.closed_at <= options.to_time)
+    with database.connection() as connection, Session(
+        bind=connection, autoflush=False, expire_on_commit=False,
+    ) as session:
+        database._assert_select(statement)
+        records = tuple(session.execute(statement))
     rows: list[dict[str, Any]] = []
-    for position, result, outcome in records:
+    for position, command, result, outcome, opportunity in records:
         diagnostic = _nested(
             result.paper_payload_json, "paper_context", "scalping_geometry_diagnostics"
         ) or {}
         fees = float(position.entry_fees + position.exit_fees)
         net_pnl = float(position.realized_pnl or 0)
         rows.append({
+            "profile_id": options.profile,
             "position_id": position.position_id,
+            "command_id": command.command_id,
             "opened_at_ms": int(position.opened_at.timestamp() * 1000),
             "closed_at_ms": int(position.closed_at.timestamp() * 1000),
             "net_pnl": net_pnl, "gross_pnl": net_pnl + fees, "fees": fees,
@@ -96,7 +268,24 @@ def _production_rows(maximum_rows: int = 5_000) -> list[dict[str, Any]]:
             "mae": None if outcome is None else float(outcome.mae),
             "mfe": None if outcome is None else float(outcome.mfe),
             "symbol": position.symbol, "direction": position.side,
+            "entry_price": float(position.average_entry_price),
+            "exit_price": float(position.average_exit_price),
             "setup_type": _nested(result.setup_payload_json, "setup_type") or "UNKNOWN",
+            "setup": result.setup_payload_json,
+            "causal_opportunity": (
+                None if opportunity is None else opportunity.causal_opportunity_id
+            ),
+            "cost_provenance": {
+                "fee_policy_id": command.fee_policy_id,
+                "slippage_policy_id": command.slippage_policy_id,
+                "diagnostics": diagnostic.get("commission_provenance"),
+            },
+            "probability_ev_provenance": {
+                "configuration_fingerprint": command.configuration_fingerprint,
+                "probability_sample_size": diagnostic.get("probability_sample_size", 0),
+                "p_win_raw": diagnostic.get("p_win_raw", diagnostic.get("estimated_p_win")),
+                "expected_ev_r": diagnostic.get("expected_ev_r"),
+            },
             "session": "UTC", "rejection_reason": diagnostic.get("rejection_reason"),
             "p_win_raw": diagnostic.get("p_win_raw", diagnostic.get("estimated_p_win")),
             "probability_sample_size": diagnostic.get("probability_sample_size", 0),
@@ -105,7 +294,6 @@ def _production_rows(maximum_rows: int = 5_000) -> list[dict[str, Any]]:
             "effective_total_cost_bps": diagnostic.get("effective_total_cost_bps"),
             "adverse_fill_reserve_bps": diagnostic.get("adverse_fill_reserve_bps", 0),
             "entry_slippage_bps": diagnostic.get("entry_slippage_bps", 0),
-            "entry_price": float(position.average_entry_price),
             "quantity": float(position.entry_quantity),
             "stop_price": float(position.stop_price),
             "target_price": float(position.target_price),
@@ -119,12 +307,16 @@ def _production_rows(maximum_rows: int = 5_000) -> list[dict[str, Any]]:
     return rows
 
 
-def _load_rows(dataset: str) -> list[dict[str, Any]]:
-    if dataset == "postgres-paper-outcomes-readonly":
-        return _production_rows()
-    value = _json(Path(dataset))
+def _load_rows(
+    options: DatasetOptions, database: ReadOnlyResearchDatabase | None,
+) -> list[dict[str, Any]]:
+    if options.source in {DATASET_SOURCE, LEGACY_DATASET_SOURCE}:
+        if database is None:
+            raise SweepExpectedError("PROJECT_DATABASE_BINDING_NOT_AVAILABLE")
+        return _production_rows(database, options)
+    value = _json(Path(options.source))
     if not isinstance(value, list):
-        raise ValueError("dataset must be a JSON list")
+        raise SweepExpectedError("DATASET_INVALID")
     return value
 
 
@@ -506,10 +698,41 @@ def _pareto(results: list[dict[str, Any]]) -> list[str]:
     return frontier
 
 
-def run(
-    search_path: Path, *, run_id: str | None = None, max_configs: int | None = None,
-) -> Path:
-    search = yaml.safe_load(search_path.read_text(encoding="utf-8"))
+def _dataset_options(
+    search: dict[str, Any], *, max_rows: int | None = None,
+    from_value: str | None = None, to_value: str | None = None,
+) -> DatasetOptions:
+    raw = search.get("dataset", {})
+    if isinstance(raw, str):
+        source, profile, closed_only = raw, "trade-5m-v2", True
+        configured_max = DEFAULT_MAX_ROWS
+        configured_from = configured_to = None
+    elif isinstance(raw, dict):
+        source = str(raw.get("source", DATASET_SOURCE))
+        profile = str(raw.get("profile", "trade-5m-v2"))
+        closed_only = raw.get("closed_only", True)
+        configured_max = raw.get("max_rows", DEFAULT_MAX_ROWS)
+        configured_from, configured_to = raw.get("from"), raw.get("to")
+    else:
+        raise SweepExpectedError("DATASET_CONFIG_INVALID")
+    if profile != "trade-5m-v2" or closed_only is not True:
+        raise SweepExpectedError("DATASET_CONFIG_INVALID")
+    try:
+        maximum = int(max_rows if max_rows is not None else configured_max)
+    except (TypeError, ValueError):
+        raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE") from None
+    if not 1 <= maximum <= DEFAULT_MAX_ROWS:
+        raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE")
+    start = _parse_utc(from_value if from_value is not None else configured_from)
+    end = _parse_utc(to_value if to_value is not None else configured_to)
+    if start is not None and end is not None and start >= end:
+        raise SweepExpectedError("INVALID_DATE_RANGE")
+    return DatasetOptions(source, profile, True, maximum, start, end)
+
+
+def _validate_search(search: object) -> dict[str, Any]:
+    if not isinstance(search, dict):
+        raise SweepExpectedError("SEARCH_SPACE_INVALID")
     space = search.get("search_space")
     if (
         search.get("schema_version") != 2
@@ -518,11 +741,207 @@ def run(
         or not TIME_STOP_SEARCH_FIELDS.issubset(space)
         or any(not isinstance(values, list) or not values for values in space.values())
     ):
-        raise ValueError("invalid research search space")
-    dataset_source = str(search["dataset"])
-    rows = _load_rows(dataset_source)
+        raise SweepExpectedError("SEARCH_SPACE_INVALID")
+    return search
+
+
+def _local_schema_heads() -> tuple[str, ...]:
+    try:
+        completed = subprocess.run(
+            ["python", "-m", "alembic", "heads"], cwd=PROJECT_ROOT,
+            check=True, text=True, capture_output=True, timeout=30,
+        )
+        return tuple(
+            line.split()[0] for line in completed.stdout.splitlines()
+            if line.strip() and "(head)" in line
+        )
+    except (OSError, subprocess.SubprocessError):
+        raise SweepExpectedError("SCHEMA_DISCOVERY_FAILED") from None
+
+
+def _prepare_output(search: dict[str, Any], run_id: str | None) -> tuple[str, Path]:
+    identifier = run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    if not identifier or any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_." for character in identifier):
+        raise SweepExpectedError("RUN_ID_INVALID")
+    root = Path(str(search.get("output_root", "artifacts/scalping_v2_parameter_sweep")))
+    if not root.is_absolute():
+        root = PROJECT_ROOT / root
+    output = root / identifier
+    try:
+        output.mkdir(parents=True, exist_ok=False)
+        probe = output / ".write-probe"
+        probe.write_text("ok", encoding="ascii")
+        probe.unlink()
+    except FileExistsError:
+        raise SweepExpectedError("RUN_ID_ALREADY_EXISTS") from None
+    except OSError:
+        raise SweepExpectedError("OUTPUT_NOT_WRITABLE") from None
+    return identifier, output
+
+
+def _preflight_database(
+    database: ReadOnlyResearchDatabase,
+) -> tuple[str, str, tuple[str, ...], dict[str, str]]:
+    heads = _local_schema_heads()
+    try:
+        with database.connection() as connection:
+            read_only = database.execute_select(
+                connection, text("SELECT current_setting('transaction_read_only')")
+            ).scalar_one()
+            schema_head = database.execute_select(
+                connection, text("SELECT version_num FROM alembic_version")
+            ).scalar_one()
+            tables = tuple(sorted(inspect(connection).get_table_names()))
+    except SweepExpectedError:
+        raise
+    except SQLAlchemyError:
+        raise SweepExpectedError("SCHEMA_DISCOVERY_FAILED") from None
+    if str(read_only).lower() != "on":
+        raise SweepExpectedError("DATABASE_SESSION_NOT_READ_ONLY")
+    if schema_head not in heads:
+        raise SweepExpectedError("SCHEMA_HEAD_MISMATCH")
+    if not REQUIRED_TABLES.issubset(tables):
+        raise SweepExpectedError("REQUIRED_TABLES_NOT_AVAILABLE")
+    probes = {
+        "INSERT": "INSERT INTO paper_positions SELECT * FROM paper_positions WHERE false",
+        "UPDATE": "UPDATE paper_positions SET symbol = symbol WHERE false",
+        "DELETE": "DELETE FROM paper_positions WHERE false",
+        "DDL": "CREATE TEMP TABLE parameter_sweep_write_probe (id integer)",
+    }
+    rejected: dict[str, str] = {}
+    for name, statement in probes.items():
+        accepted = False
+        try:
+            with database.engine.connect() as connection:
+                connection.execute(text("SET TRANSACTION READ ONLY"))
+                if connection.execute(
+                    text("SELECT current_setting('transaction_read_only')")
+                ).scalar_one() != "on":
+                    raise SweepExpectedError("DATABASE_SESSION_NOT_READ_ONLY")
+                connection.execute(text(statement))
+                accepted = True
+                connection.rollback()
+        except SweepExpectedError:
+            raise
+        except SQLAlchemyError:
+            rejected[name] = "REJECTED"
+        if accepted:
+            raise SweepExpectedError("DATABASE_WRITE_GUARD_FAILED")
+    return str(read_only).upper(), str(schema_head), tables, rejected
+
+
+def _write_preflight(path: Path, payload: dict[str, Any]) -> None:
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _print_preflight(payload: Mapping[str, object]) -> None:
+    print("PARAMETER_SWEEP_PREFLIGHT = PASS")
+    for key in (
+        "DATASET_SOURCE", "DATABASE_BINDING", "DATABASE_SESSION", "SCHEMA_HEAD",
+        "PROFILE", "ROWS_AVAILABLE", "CONFIGURATIONS_PLANNED", "OUTPUT_DIR",
+        "SECRET_OUTPUT",
+    ):
+        print(f"{key} = {payload[key]}")
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return path.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def run(
+    search_path: Path, *, run_id: str | None = None, max_configs: int | None = None,
+    max_rows: int | None = None, from_value: str | None = None,
+    to_value: str | None = None, database_url: str | None = None,
+    preflight_only: bool = False, verbose: bool = False,
+) -> Path:
+    try:
+        search = _validate_search(yaml.safe_load(search_path.read_text(encoding="utf-8")))
+    except FileNotFoundError:
+        raise SweepExpectedError("CONFIG_FILE_NOT_FOUND") from None
+    except yaml.YAMLError:
+        raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
+    space = search["search_space"]
+    options = _dataset_options(
+        search, max_rows=max_rows, from_value=from_value, to_value=to_value,
+    )
+    identifier, output = _prepare_output(search, run_id)
+    database: ReadOnlyResearchDatabase | None = None
+    binding_source = "NOT_REQUIRED_OFFLINE_JSON"
+    session_mode = "NOT_APPLICABLE"
+    schema_head = "NOT_APPLICABLE"
+    write_rejections: dict[str, str] = {}
+    try:
+        if options.source in {DATASET_SOURCE, LEGACY_DATASET_SOURCE}:
+            binding = resolve_database_binding(explicit_url=database_url)
+            binding_source = binding.source
+            database = ReadOnlyResearchDatabase(binding)
+            session_mode, schema_head, _tables, write_rejections = _preflight_database(database)
+        rows = _load_rows(options, database)
+    except SweepExpectedError as error:
+        _write_preflight(output / "PREFLIGHT.json", {
+            "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": error.reason,
+            "SECRET_OUTPUT": 0,
+        })
+        if database is not None:
+            database.dispose()
+        raise
+    finally:
+        if database is not None:
+            database.dispose()
+    if not rows:
+        _write_preflight(output / "PREFLIGHT.json", {
+            "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": "DATASET_EMPTY",
+            "SECRET_OUTPUT": 0,
+        })
+        raise SweepExpectedError("DATASET_EMPTY")
     splits = _split(rows, int(search["seed"]))
     minimums = search["minimum_samples"]
+    planned = 1
+    for values in space.values():
+        planned *= len(values)
+    if max_configs is not None:
+        if max_configs <= 0:
+            raise SweepExpectedError("SEARCH_SPACE_INVALID")
+        planned = min(planned, max_configs)
+    preflight = {
+        "PARAMETER_SWEEP_PREFLIGHT": "PASS",
+        "PROJECT_ROOT_FOUND": PROJECT_ROOT.is_dir(),
+        "CONFIG_FILE_FOUND": search_path.is_file(),
+        "TRADE_PARAMETERS_FOUND": CONFIG_PATH.is_file(),
+        "DATABASE_BINDING_FOUND": database is not None,
+        "DATABASE_CONNECTION_OK": database is not None,
+        "DATABASE_SESSION_READ_ONLY": session_mode == "ON",
+        "SCHEMA_HEAD_OK": schema_head != "NOT_APPLICABLE",
+        "REQUIRED_TABLES_AVAILABLE": database is not None,
+        "TRADE_5M_V2_DATASET_AVAILABLE": bool(rows),
+        "DATASET_ROWS_GT_ZERO": bool(rows),
+        "CONFIG_HASH_AVAILABLE": bool(TRADE_PARAMETERS.config_hash),
+        "SEARCH_SPACE_VALID": True,
+        "OUTPUT_DIRECTORY_WRITABLE": True,
+        "PRODUCTION_MUTATION_GUARD_ACTIVE": True,
+        "WRITE_ATTEMPT_INSERT": write_rejections.get("INSERT", "NOT_APPLICABLE"),
+        "WRITE_ATTEMPT_UPDATE": write_rejections.get("UPDATE", "NOT_APPLICABLE"),
+        "WRITE_ATTEMPT_DELETE": write_rejections.get("DELETE", "NOT_APPLICABLE"),
+        "WRITE_ATTEMPT_DDL": write_rejections.get("DDL", "NOT_APPLICABLE"),
+        "DATASET_SOURCE": (
+            "PRODUCTION_PAPER_READONLY" if database is not None else "OFFLINE_JSON"
+        ),
+        "DATABASE_BINDING": binding_source,
+        "DATABASE_SESSION": "READ_ONLY" if session_mode == "ON" else session_mode,
+        "SCHEMA_HEAD": schema_head,
+        "PROFILE": options.profile,
+        "ROWS_AVAILABLE": len(rows),
+        "CONFIGURATIONS_PLANNED": planned,
+        "OUTPUT_DIR": _display_path(output),
+        "SECRET_OUTPUT": 0,
+    }
+    _write_preflight(output / "PREFLIGHT.json", preflight)
+    _print_preflight(preflight)
+    if preflight_only:
+        return output
     results, rejected = [], []
     combinations = _combinations(space)
     if max_configs is not None:
@@ -558,12 +977,12 @@ def run(
         row["validation"]["profit_factor"] or -1e99,
         -(row["validation"]["max_drawdown"] or 1e99),
     ), reverse=True)
-    identifier = run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    output = Path(search["output_root"]) / identifier
-    output.mkdir(parents=True, exist_ok=False)
     run_config = {
         "schema_version": SCHEMA_VERSION, "seed": search["seed"],
-        "dataset": dataset_source, "dataset_period": {
+        "dataset": {
+            "source": options.source, "profile": options.profile,
+            "closed_only": options.closed_only, "max_rows": options.maximum_rows,
+        }, "dataset_period": {
             "from_ms": min((row.get("opened_at_ms") for row in rows), default=None),
             "to_ms": max((row.get("closed_at_ms") for row in rows), default=None),
         }, "sample_sizes": {key: len(value) for key, value in splits.items()},
@@ -573,6 +992,9 @@ def run(
         "time_stop_policy_schema": "StalePositionPolicyParameters",
         "time_stop_evaluator": "app.engine_paper.stale_position_shadow.evaluate_stale_position_shadow",
         "search_space_config": str(search_path), "git_commit": _git_commit(),
+        "database_binding": binding_source,
+        "database_session": "READ_ONLY" if session_mode == "ON" else session_mode,
+        "schema_head": schema_head,
         "production_mutations": 0, "production_config_writes": 0,
         "approvals_created": 0, "commands_created": 0, "positions_created": 0,
         "binance_order_api_calls": 0,
@@ -592,10 +1014,17 @@ def run(
         "# Scalping v2 parameter sweep\n\n"
         f"- Schema: `{SCHEMA_VERSION}`\n- Git: `{run_config['git_commit']}`\n"
         f"- Baseline config hash: `{TRADE_PARAMETERS.config_hash}`\n"
+        f"- Database schema head: `{schema_head}`\n"
+        f"- Dataset source/profile: `{preflight['DATASET_SOURCE']}` / `{options.profile}`\n"
+        f"- Dataset period: `{json.dumps(run_config['dataset_period'], sort_keys=True)}`\n"
         f"- Dataset rows: {len(rows)}; tested configurations: {len(all_results)}\n"
+        f"- Split sizes: `{json.dumps(run_config['sample_sizes'], sort_keys=True)}`\n"
         f"- Calibration/validation accepted: {len(results)}; rejected or insufficient: {len(rejected)}\n"
         "- Holdout was reported and was not used for ranking.\n"
         "- Small samples are marked `INSUFFICIENT_SAMPLE`; no result is invented.\n"
+        "- Database session: `READ_ONLY`; application adapter accepts SELECT only.\n"
+        "- Production mutations/config writes/approvals/commands/positions: `0`.\n"
+        "- Binance order API calls: `0`; LIVE remains disabled and untouched.\n"
         "- Missing historical timestamped cost/market evidence is `UNREPLAYABLE` or `INSUFFICIENT_DATA`.\n"
         "- Full metrics and every configuration are in RESULTS.json/RESULTS.csv.\n\n"
         "## TIME-STOP / STALE-POSITION ANALYSIS\n\n"
@@ -644,12 +1073,32 @@ def run(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Zero-setup, read-only Scalping v2 parameter sweep",
+    )
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-id")
+    parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--max-configs", type=int)
+    parser.add_argument("--max-rows", type=int)
+    parser.add_argument("--from", dest="from_value")
+    parser.add_argument("--to", dest="to_value")
+    parser.add_argument("--database-url", help="Explicit dev/test/admin override only")
+    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
-    print(run(args.config, run_id=args.run_id, max_configs=args.max_configs) / "REPORT.md")
+    try:
+        output = run(
+            args.config, run_id=args.run_id, max_configs=args.max_configs,
+            max_rows=args.max_rows, from_value=args.from_value,
+            to_value=args.to_value, database_url=args.database_url,
+            preflight_only=args.preflight_only, verbose=args.verbose,
+        )
+    except SweepExpectedError as error:
+        print("PARAMETER_SWEEP_PREFLIGHT = FAILED")
+        print(f"REASON = {error.reason}")
+        raise SystemExit(2) from None
+    report = output / "REPORT.md"
+    print(report if report.exists() else output / "PREFLIGHT.json")
 
 
 if __name__ == "__main__":

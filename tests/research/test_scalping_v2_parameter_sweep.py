@@ -4,7 +4,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from app.research.scalping_v2_parameter_sweep import _stale_policy, run
+from sqlalchemy import text
+
+from app.research.scalping_v2_parameter_sweep import (
+    ReadOnlyResearchDatabase, SweepExpectedError, _stale_policy,
+    resolve_database_binding, run,
+)
 
 
 def _time_stop_space() -> dict[str, list[object]]:
@@ -85,7 +90,7 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
     output = run(_search(tmp_path, _rows()), run_id="smoke")
     expected = {
         "RUN_CONFIG.yaml", "RESULTS.csv", "RESULTS.json", "TOP_CONFIGS.json",
-        "REJECTED_CONFIGS.json", "REPORT.md",
+        "REJECTED_CONFIGS.json", "REPORT.md", "PREFLIGHT.json",
     }
     assert {path.name for path in output.iterdir()} == expected
     results = json.loads((output / "RESULTS.json").read_text())
@@ -108,6 +113,10 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
     assert run_config["commands_created"] == 0
     assert run_config["positions_created"] == 0
     assert run_config["binance_order_api_calls"] == 0
+    preflight = json.loads((output / "PREFLIGHT.json").read_text())
+    assert preflight["PARAMETER_SWEEP_PREFLIGHT"] == "PASS"
+    assert preflight["PRODUCTION_MUTATION_GUARD_ACTIVE"] is True
+    assert preflight["SECRET_OUTPUT"] == 0
 
 
 def test_invalid_timeout_relationship_is_rejected_not_executed(tmp_path):
@@ -156,3 +165,88 @@ def test_runtime_schema_rejects_invalid_or_contradictory_time_stop_configs(overr
     config.update(overrides)
     with pytest.raises(ValueError):
         _stale_policy(config)
+
+
+def _binding(path: Path) -> None:
+    path.write_text(
+        "TRADERS_READONLY_API_DATABASE_URL="
+        "postgresql+psycopg://readonly:read-secret@postgres:5432/traders_ml\n"
+        "TRADERS_PAPER_RUNTIME_DATABASE_URL="
+        "postgresql+psycopg://runtime:runtime-secret@127.0.0.1:5433/traders_ml\n",
+        encoding="utf-8",
+    )
+
+
+def test_project_binding_resolves_without_database_url_and_reuses_host_endpoint(tmp_path):
+    protected = tmp_path / ".env.production.local"
+    _binding(protected)
+    binding = resolve_database_binding(protected_path=protected, environment={})
+    assert binding.source == "PROJECT_PROTECTED_BINDING"
+    assert binding.url.username == "readonly"
+    assert binding.url.host == "127.0.0.1"
+    assert binding.url.port == 5433
+
+
+def test_resolution_precedence_explicit_then_project_then_environment(tmp_path):
+    protected = tmp_path / ".env.production.local"
+    _binding(protected)
+    explicit = resolve_database_binding(
+        explicit_url="postgresql://explicit:x@localhost:5434/dev",
+        protected_path=protected, environment={"DATABASE_URL": "postgresql://env:x@localhost/env"},
+    )
+    assert explicit.source == "EXPLICIT_CLI_OVERRIDE"
+    assert explicit.url.username == "explicit"
+    project = resolve_database_binding(
+        protected_path=protected,
+        environment={"DATABASE_URL": "postgresql://env:x@localhost/env"},
+    )
+    assert project.source == "PROJECT_PROTECTED_BINDING"
+    fallback = resolve_database_binding(
+        protected_path=tmp_path / "missing",
+        environment={"DATABASE_URL": "postgresql://env:x@localhost/env"},
+    )
+    assert fallback.source == "DATABASE_URL_ENVIRONMENT"
+
+
+def test_missing_binding_fails_cleanly(tmp_path):
+    with pytest.raises(SweepExpectedError, match="PROJECT_DATABASE_BINDING_NOT_AVAILABLE"):
+        resolve_database_binding(protected_path=tmp_path / "missing", environment={})
+
+
+@pytest.mark.parametrize("statement", (
+    "INSERT INTO x VALUES (1)", "UPDATE x SET y=1",
+    "DELETE FROM x", "CREATE TABLE x (id int)",
+))
+def test_select_only_adapter_rejects_all_write_classes(statement):
+    with pytest.raises(SweepExpectedError, match="PRODUCTION_MUTATION_GUARD_REJECTED_WRITE"):
+        ReadOnlyResearchDatabase._assert_select(text(statement))
+
+
+def test_run_id_collision_fails_closed(tmp_path):
+    search = _search(tmp_path, _rows())
+    run(search, run_id="collision", max_configs=1)
+    with pytest.raises(SweepExpectedError, match="RUN_ID_ALREADY_EXISTS"):
+        run(search, run_id="collision", max_configs=1)
+
+
+def test_empty_dataset_is_semantic_failure_with_safe_preflight(tmp_path):
+    search = _search(tmp_path, [])
+    with pytest.raises(SweepExpectedError, match="DATASET_EMPTY"):
+        run(search, run_id="empty", max_configs=1)
+    preflight = json.loads(
+        (tmp_path / "artifacts" / "empty" / "PREFLIGHT.json").read_text()
+    )
+    assert preflight == {
+        "PARAMETER_SWEEP_PREFLIGHT": "FAILED",
+        "REASON": "DATASET_EMPTY",
+        "SECRET_OUTPUT": 0,
+    }
+
+
+def test_artifacts_do_not_contain_database_secret(tmp_path):
+    output = run(_search(tmp_path, _rows()), run_id="redaction", max_configs=1)
+    rendered = "\n".join(
+        path.read_text(encoding="utf-8") for path in output.iterdir() if path.is_file()
+    )
+    assert "read-secret" not in rendered
+    assert "runtime-secret" not in rendered

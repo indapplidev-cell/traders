@@ -1,6 +1,11 @@
 schema_version: 2
 seed: 20260906
-dataset: postgres-paper-outcomes-readonly
+dataset:
+  source: production_paper_readonly
+  profile: trade-5m-v2
+  closed_only: true
+  # A bounded newest-first safety ceiling; CLI --max-rows may lower it.
+  max_rows: 5000
 output_root: artifacts/scalping_v2_parameter_sweep
 minimum_samples: {calibration: 30, validation: 20, holdout: 20}
 search_space:
