@@ -30,7 +30,7 @@ from app.engine_paper.scalping_shadow import (
 )
 
 
-PROFILE = "trade-5m-v1"
+PROFILE = "trade-5m-v2"
 SYMBOLS = (
     "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
     "LINKUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SUIUSDT",

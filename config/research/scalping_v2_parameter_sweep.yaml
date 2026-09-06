@@ -1,6 +1,6 @@
 schema_version: 1
 seed: 20260906
-dataset: reports/research/scalping_v2_closed_paper_outcomes.json
+dataset: postgres-paper-outcomes-readonly
 output_root: artifacts/scalping_v2_parameter_sweep
 minimum_samples: {calibration: 30, validation: 20, holdout: 20}
 search_space:

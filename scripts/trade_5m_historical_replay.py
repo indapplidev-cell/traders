@@ -33,7 +33,7 @@ from app.engine_strategy.strategy_runner import StrategyRunner
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 
 
-PROFILE_ID = "trade-5m-v1"
+PROFILE_ID = "trade-5m-v2"
 TRIGGER_TIMEFRAME = "5m"
 CONTEXT_TIMEFRAMES = ("15m", "1h", "4h")
 ANALYSIS_HISTORY = 288

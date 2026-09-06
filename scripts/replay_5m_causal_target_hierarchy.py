@@ -30,7 +30,7 @@ from app.engine_paper.scalping_shadow import (
 )
 
 CONTAINER = "traders-ml-postgres-1"
-PROFILE = "trade-5m-v1"
+PROFILE = "trade-5m-v2"
 TABLE = {"5m": "candles_5m", "15m": "candles_15m", "1h": "candles_1h"}
 
 

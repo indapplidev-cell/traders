@@ -23,7 +23,7 @@ from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameter
 
 CONTAINER = "traders-ml-postgres-1"
 START_BOUNDARY = 1787594700000
-PROFILE = "trade-5m-v1"
+PROFILE = "trade-5m-v2"
 PARAMETER_SET = resolve_runtime_parameters(PROFILE).parameter_set_id
 MAX_BOUNDARIES = 288
 
@@ -138,7 +138,7 @@ def load_rows(start: int, limit: int) -> list[dict]:
 def boundary_count(start: int, limit: int) -> int:
     sql = (
         "SELECT count(*) FROM (SELECT DISTINCT closed_until_ms "
-        "FROM online_pipeline_runs WHERE trade_profile_id='trade-5m-v1' "
+        "FROM online_pipeline_runs WHERE trade_profile_id='trade-5m-v2' "
         f"AND closed_until_ms >= {start} ORDER BY closed_until_ms ASC LIMIT {limit}) q"
     )
     result = subprocess.run(

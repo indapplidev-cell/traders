@@ -25,7 +25,7 @@ def fixture_dataset() -> tuple[ShadowGeometryCandidate, ...]:
             CausalTarget(target, source, BOUNDARY + known_offset),
         )
         return ShadowGeometryCandidate(
-            trade_profile_id="trade-5m-v1", symbol=symbol, boundary_ms=BOUNDARY,
+            trade_profile_id="trade-5m-v2", symbol=symbol, boundary_ms=BOUNDARY,
             direction="BULLISH", entry=entry, causal_invalidation=invalidation,
             atr=atr, targets=targets,
         )

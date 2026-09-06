@@ -23,7 +23,7 @@ def percentile(values: list[float], quantile: float) -> float:
 def main() -> int:
     boundary = 1_800_000_000_000
     candidate = ShadowGeometryCandidate(
-        "trade-5m-v1", "BTCUSDT", boundary, "BULLISH", 100, 99.5, .1,
+        "trade-5m-v2", "BTCUSDT", boundary, "BULLISH", 100, 99.5, .1,
         (CausalTarget(102, "LOCAL_5M", boundary),), "opportunity:benchmark",
     )
     costs = ShadowCostInputs(

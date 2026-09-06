@@ -123,6 +123,9 @@ def evaluate_expectancy(
     minimum_expected_value_bps: float = 0.0,
     minimum_positive_ev_r: float = SCALPING_V2.economics.min_positive_ev_r,
     minimum_ev_reserve_r: float = SCALPING_V2.economics.min_ev_reserve_r,
+    probability_confidence_level: float = SCALPING_V2.economics.probability_confidence_level,
+    prior_alpha: float = SCALPING_V2.economics.prior_alpha,
+    prior_beta: float = SCALPING_V2.economics.prior_beta,
     parent_buckets: tuple[EmpiricalSetupBucket, ...] = (),
     static_net_rr: float | None = None,  # historical caller compatibility; never authoritative
     static_minimum_net_rr: float = 0.4,  # historical caller compatibility; never authoritative
@@ -143,7 +146,11 @@ def evaluate_expectancy(
     selected_index = (((bucket,) if bucket is not None else ()) + parent_buckets).index(selected)
     hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
     parent_size = hierarchy[selected_index + 1].samples if selected_index + 1 < len(hierarchy) else 0
-    estimate = estimate_conservative_probability(selected, parent_sample_size=parent_size)
+    estimate = estimate_conservative_probability(
+        selected, parent_sample_size=parent_size,
+        confidence_level=probability_confidence_level,
+        prior_alpha=prior_alpha, prior_beta=prior_beta,
+    )
     probability = estimate.p_win_conservative
     expected_value = probability * net_win_bps - (1 - probability) * net_loss_bps
     candidate_net_rr = net_win_bps / net_loss_bps

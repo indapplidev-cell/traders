@@ -31,7 +31,7 @@ from app.engine_paper.scalping_shadow import (
 )
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 
-PROFILE = "trade-5m-v1"
+PROFILE = "trade-5m-v2"
 PARAMETER_SET = resolve_runtime_parameters(PROFILE).parameter_set_id
 RUNTIME_SOURCE_COMMIT = "8a2413f00dc0ba6ba398faa8d08ac98e1cacf58a"
 RUNTIME_ARTIFACT_ID = "sha256:41f836ed3ecc41b8f5e323b49c39ce06d17059c2b0152a0751100e5e1b9efc9b"

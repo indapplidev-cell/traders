@@ -17,7 +17,7 @@ from statistics import mean
 from typing import Any, Iterable, Mapping
 
 
-PROFILE_ID = "trade-5m-v1"
+PROFILE_ID = "trade-5m-v2"
 FEE_BPS = 20.0
 SLIPPAGE_BPS = 4.0
 SAFETY_MARGIN_BPS = 3.0
