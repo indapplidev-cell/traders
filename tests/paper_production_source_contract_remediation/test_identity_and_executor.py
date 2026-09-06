@@ -175,6 +175,10 @@ def test_allowlists_are_exact_least_privilege():
     assert all(set(ops) <= {"SELECT", "INSERT", "UPDATE"} for ops in runtime.values())
     assert all(ops == ("SELECT",) for ops in readonly.values())
     assert "paper_first_canary_sessions" in runtime and "paper_account_baselines" in readonly
+    assert runtime["scalping_opportunities"] == ("SELECT", "INSERT", "UPDATE")
+    assert runtime["scalping_outcome_diagnostics"] == ("SELECT", "INSERT")
+    assert readonly["scalping_opportunities"] == ("SELECT",)
+    assert readonly["scalping_outcome_diagnostics"] == ("SELECT",)
 
 
 def test_action_vocabulary_cannot_trade_arm_start_or_enable_live():

@@ -265,12 +265,14 @@ RUNTIME_WRITE_TABLES: Final = (
     "paper_exit_evaluation_cursors", "paper_exit_decisions", "paper_journal_entries",
     "paper_first_canary_sessions", "paper_plan_execution_outcomes",
     "paper_continuous_control", "paper_continuous_control_events",
+    "scalping_opportunities", "scalping_outcome_diagnostics",
 )
 RUNTIME_UPDATE_TABLES: Final = (
     "paper_execution_commands", "paper_orders", "paper_positions",
     "paper_exit_evaluation_cursors", "paper_first_canary_sessions",
     "paper_plan_execution_outcomes",
     "paper_continuous_control",
+    "scalping_opportunities",
 )
 READONLY_PAPER_TABLES: Final = (
     "alembic_version", "paper_account_baselines",
