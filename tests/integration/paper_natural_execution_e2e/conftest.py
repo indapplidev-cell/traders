@@ -79,6 +79,8 @@ def natural_e2e_engine() -> Iterator[Engine]:
 @pytest.fixture
 def natural_e2e_sessions(natural_e2e_engine: Engine) -> sessionmaker:
     tables = (
+        "scalping_outcome_diagnostics",
+        "scalping_opportunities",
         "paper_continuous_control_events",
         "paper_continuous_control",
         "paper_first_canary_sessions",

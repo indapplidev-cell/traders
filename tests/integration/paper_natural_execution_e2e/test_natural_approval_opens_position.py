@@ -17,6 +17,8 @@ from app.db.paper_models import (
     PaperPlanExecutionOutcomeRecord,
     PaperPositionRecord,
     PaperSimulationPolicyRecord,
+    ScalpingOpportunityRecord,
+    ScalpingOutcomeDiagnosticRecord,
 )
 from app.engine_market_data.candle import Candle
 from app.engine_market_data.continuous_sync_state import SyncStateUpdate
@@ -63,6 +65,10 @@ from app.engine_paper.production_market_data import (
 from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
 from app.engine_paper.paper_runner import PaperRunner
 from app.engine_paper.scalping_shadow import ShadowCostInputs
+from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket
+from app.engine_paper.scalping_statistics import StatisticalHierarchy
+from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
+from app.engine_paper.outcome_diagnostics import PostgresOutcomeDiagnosticsProcessor
 from app.engine_paper.unit_of_work import PaperUnitOfWork
 from app.engine_safety.paper_production_control import (
     PaperProductionArmingScope,
@@ -152,6 +158,14 @@ class _DeterministicCostSource:
             reference_quantity=1,
             reference_notional=100,
         )
+
+
+class _DeterministicStatisticsSource:
+    def resolve(self, **_dimensions):
+        return StatisticalHierarchy(None, (EmpiricalSetupBucket(
+            setup_type="SCALP_MOMENTUM_CONTINUATION", direction="BULLISH",
+            samples=100, wins=80, level="global", bucket_key="global|fixture",
+        ),), outcome_count=100)
 
 
 class _EconomicallyInfeasibleCostSource(_DeterministicCostSource):
@@ -294,7 +308,8 @@ def _seed_additional_symbol(factory, symbol: str) -> None:
     ))
 
 
-def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_READY",
+def _pipeline(factory, *, cost_source=None, statistics_source=None,
+              expected_paper_status="PAPER_PLAN_READY",
               profile_id="trade-5m-v2", symbol: str = SYMBOL):
     config = OrchestratorConfig(
         symbols=(symbol,),
@@ -307,9 +322,11 @@ def _pipeline(factory, *, cost_source=None, expected_paper_status="PAPER_PLAN_RE
         config,
         CandleRepository(factory),
         paper_runner=ScalpingPaperRunner(
-            runtime_parameters=config.runtime_parameters,
-            cost_source=cost_source or _DeterministicCostSource(),
-            clock_ms=lambda: BOUNDARY + 1_000,
+                runtime_parameters=config.runtime_parameters,
+                cost_source=cost_source or _DeterministicCostSource(),
+                statistics_source=statistics_source or _DeterministicStatisticsSource(),
+                opportunity_registry=PostgresScalpingOpportunityRegistry(factory),
+                clock_ms=lambda: BOUNDARY + 1_000,
         ),
     )
     result = runner.run(symbol, BOUNDARY)
@@ -354,7 +371,7 @@ def test_infeasible_scalping_geometry_is_durable_and_readonly_reconstructable(
     assert diagnostic["target_considerations"]
     assert diagnostic["cost_model_version"] == "scalping-round-trip-net-pnl-v2"
     assert diagnostic["rr_policy_version"] == (
-        "scalping-empirical-ev-v1"
+        "scalping-conservative-hierarchy-v2"
         if profile_id == "trade-5m-v2"
         else "scalping-required-net-rr-v2"
     )
@@ -544,6 +561,7 @@ def _runtime(factory, engine, control, source, *, readiness=None, market_reader=
     continuous_store = PaperContinuousAuthorityStore(factory)
     gate = PaperProductionMutationSafetyGate(control)
     uow = lambda: PaperUnitOfWork(factory)
+    opportunity_registry = PostgresScalpingOpportunityRegistry(factory)
     executor = ProductionPaperFirstCanaryExecutor(
         control=control,
         canary_store=store,
@@ -556,6 +574,7 @@ def _runtime(factory, engine, control, source, *, readiness=None, market_reader=
         outcome_store=PaperPlanExecutionOutcomeStore(factory),
         continuous_store=continuous_store,
         entry_refinement=entry_refinement,
+        opportunity_registry=opportunity_registry,
     )
     lock = PostgresCanaryContinuationLock(engine)
     continuation = PaperFirstCanaryEligibleApprovalContinuationWorker(
@@ -585,6 +604,8 @@ def _runtime(factory, engine, control, source, *, readiness=None, market_reader=
         readonly_base_url="http://127.0.0.1:1",
         poll_seconds=5,
         continuous_store=continuous_store,
+        opportunity_registry=opportunity_registry,
+        outcome_diagnostics=PostgresOutcomeDiagnosticsProcessor(factory),
     )
     service = PaperOperatorControlService(
         config=PaperOperatorControlConfig.production_paper(),
@@ -921,6 +942,18 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert after_close.commands_used == 1 and after_close.loss_streak == 1
     assert after_close.risk_used_bps == Decimal("10")
     assert after_close.open_positions == 0
+    with factory() as session:
+        closed_diagnostic = session.get(
+            ScalpingOutcomeDiagnosticRecord, cycle_a.position_id
+        )
+        opportunity = session.scalar(select(ScalpingOpportunityRecord).where(
+            ScalpingOpportunityRecord.position_id == cycle_a.position_id
+        ))
+    assert closed_diagnostic is not None
+    assert closed_diagnostic.mae >= 0
+    assert closed_diagnostic.mfe >= 0
+    assert closed_diagnostic.holding_time_ms > 0
+    assert opportunity is not None and opportunity.state == "EXECUTED"
     # A restarted worker cannot apply the fill, fee, PnL, or released capacity
     # a second time after the completed cycle has left the active selector.
     with factory() as session:
@@ -1107,9 +1140,9 @@ def test_natural_approval_opens_paper_position_end_to_end(
     plan_id = result.paper_payload["paper_plan_id"]
     diagnostic = result.paper_payload["paper_context"]["scalping_geometry_diagnostics"]
     if profile_id == "trade-5m-v2":
-        assert diagnostic["rr_policy_version"] == "scalping-empirical-ev-v1"
+        assert diagnostic["rr_policy_version"] == "scalping-conservative-hierarchy-v2"
         assert diagnostic["target_policy_version"] == "scalping-nearest-viable-target-v3"
-        assert diagnostic["expectancy_gate_reason"] == "INSUFFICIENT_BUCKET_STATIC_RR_PASS"
+        assert diagnostic["expectancy_gate_reason"] == "DYNAMIC_NET_RR_CONSERVATIVE_EV_PASS"
         provenance = result.paper_payload["paper_context"]["scalping_policy_provenance"]
         assert provenance == {
             "scalping_profile_version": "trade-5m-v2",
@@ -1117,7 +1150,7 @@ def test_natural_approval_opens_paper_position_end_to_end(
             "entry_policy_version": "scalping-next-closed-1m-entry-v2",
             "stop_policy_version": "scalping-causal-volatility-stop-v2",
             "target_policy_version": "scalping-nearest-viable-target-v3",
-            "rr_ev_policy_version": "scalping-empirical-ev-v1",
+            "rr_ev_policy_version": "scalping-conservative-hierarchy-v2",
             "cost_policy_version": "scalping-round-trip-net-pnl-v2",
             "ttl_policy_version": "scalping-short-lifecycle-v2",
             "risk_policy_version": "scalping-risk-capped-v2",

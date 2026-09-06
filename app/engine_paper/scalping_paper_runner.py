@@ -549,13 +549,19 @@ class ScalpingPaperRunner(PaperRunner):
 
     def _costs(self, candidate: ShadowGeometryCandidate) -> ShadowCostInputs:
         try:
-            return self.cost_source.load(
+            loaded = self.cost_source.load(
                 candidate.symbol,
                 candidate.entry,
                 safety_margin_bps=float(
                     getattr(self.runtime_parameters, "cost_safety_margin_bps")
                 ),
-                adverse_fill_reserve_bps=SCALPING_V2.costs.adverse_fill_reserve_bps,
+            )
+            return replace(
+                loaded,
+                adverse_fill_reserve_bps=max(
+                    loaded.adverse_fill_reserve_bps,
+                    SCALPING_V2.costs.adverse_fill_reserve_bps,
+                ),
             )
         except Exception:
             return ShadowCostInputs(
