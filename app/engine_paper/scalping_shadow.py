@@ -103,6 +103,17 @@ class ShadowCostInputs:
     reference_notional: float | None = None
     maximum_age_ms: int = 5_000
     require_causal_timestamp: bool = False
+    connection_generation: int = 0
+    market_source_status: str = "NOT_EVALUATED"
+    fee_source_status: str = "NOT_EVALUATED"
+    book_source_status: str = "NOT_EVALUATED"
+    cost_model_status: str = "NOT_READY"
+    last_success_at: str | None = None
+    last_failure_at: str | None = None
+    recovered_at: str | None = None
+    rehydration_duration_ms: float | None = None
+    fee_watermark: str | None = None
+    fee_authorization_valid_until: str | None = None
 
     def __post_init__(self) -> None:
         values = (
@@ -294,6 +305,17 @@ class ShadowGeometryDiagnostic:
     economic_input_source: str | None = None
     reference_quantity: float | None = None
     reference_notional: float | None = None
+    connection_generation: int = 0
+    market_source_status: str = "NOT_EVALUATED"
+    fee_source_status: str = "NOT_EVALUATED"
+    book_source_status: str = "NOT_EVALUATED"
+    cost_model_status: str = "NOT_READY"
+    last_success_at: str | None = None
+    last_failure_at: str | None = None
+    recovered_at: str | None = None
+    rehydration_duration_ms: float | None = None
+    fee_watermark: str | None = None
+    fee_authorization_valid_until: str | None = None
     economic_gate_enabled: bool = True
     economic_gate_pass: bool = False
     rr_cohorts_gross: dict[str, bool] = field(default_factory=dict)
@@ -516,6 +538,17 @@ def evaluate_scalping_shadow(
         economic_input_source=costs.economic_input_source,
         reference_quantity=costs.reference_quantity,
         reference_notional=costs.reference_notional,
+        connection_generation=costs.connection_generation,
+        market_source_status=costs.market_source_status,
+        fee_source_status=costs.fee_source_status,
+        book_source_status=costs.book_source_status,
+        cost_model_status=costs.cost_model_status,
+        last_success_at=costs.last_success_at,
+        last_failure_at=costs.last_failure_at,
+        recovered_at=costs.recovered_at,
+        rehydration_duration_ms=costs.rehydration_duration_ms,
+        fee_watermark=costs.fee_watermark,
+        fee_authorization_valid_until=costs.fee_authorization_valid_until,
         required_rr=config.production_rr_floor,
         rr_policy_version=(V2_RR_EV_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else RR_POLICY_VERSION),
         target_policy_version=(V2_TARGET_POLICY_VERSION if config.profile_id == V2_PROFILE_ID else TARGET_POLICY_VERSION),

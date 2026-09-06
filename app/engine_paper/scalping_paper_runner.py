@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+from threading import Lock
 import time
 from typing import Protocol
 
@@ -46,6 +47,9 @@ class BinanceCommissionSnapshot:
     bnb_discount_state: str
     special_commission_state: str
     tax_commission_state: str
+    source_snapshot_id: str | None = None
+    authorization_valid_until: str | None = None
+    rehydration_generation: int = 0
 
     @property
     def entry_commission_bps(self) -> float:
@@ -56,11 +60,26 @@ class BinanceCommissionSnapshot:
         return self.maker_bps if self.exit_liquidity_role == "MAKER" else self.taker_bps
 
 
-def load_binance_commission_snapshot(symbol: str) -> BinanceCommissionSnapshot | None:
+@dataclass(frozen=True, slots=True)
+class CommissionSnapshotLoad:
+    snapshot: BinanceCommissionSnapshot | None
+    status: str
+
+
+def _utc(value: object) -> datetime:
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("commission timestamp must be timezone-aware")
+    return parsed.astimezone(timezone.utc)
+
+
+def read_binance_commission_snapshot(
+    symbol: str, *, now: datetime | None = None
+) -> CommissionSnapshotLoad:
     """Read a secret-free snapshot produced by an authenticated ops boundary."""
     raw_path = os.environ.get("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH")
     if not raw_path:
-        return None
+        return CommissionSnapshotLoad(None, "SOURCE_NOT_CONFIGURED")
     try:
         payload = json.loads(Path(raw_path).read_text(encoding="utf-8"))
         row = payload["symbols"][symbol.upper()]
@@ -69,16 +88,39 @@ def load_binance_commission_snapshot(symbol: str) -> BinanceCommissionSnapshot |
             "BINANCE_ACCOUNT_COMMISSION_SNAPSHOT",
             "USER_AUTHORIZED_STUB",
         }:
-            return None
-        fetched = datetime.fromisoformat(str(payload["fetched_at"]).replace("Z", "+00:00"))
-        if fetched.tzinfo is None or datetime.now(timezone.utc) - fetched > timedelta(hours=24):
-            return None
+            return CommissionSnapshotLoad(None, "SNAPSHOT_TYPE_INVALID")
+        observed_at = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        fetched = _utc(payload["fetched_at"])
+        source_snapshot_id = str(payload["snapshot_id"])
+        authorization_valid_until = None
+        rehydration_generation = 0
+        if snapshot_type == "USER_AUTHORIZED_STUB" and payload.get("rehydration_authorization"):
+            authorization = payload["rehydration_authorization"]
+            if authorization.get("schema") != "USER_AUTHORIZED_STUB_REHYDRATION_V1":
+                return CommissionSnapshotLoad(None, "AUTHORIZATION_SCHEMA_INVALID")
+            authorized_at = _utc(authorization["authorized_at"])
+            valid_until = _utc(authorization["valid_until"])
+            interval_seconds = int(authorization["interval_seconds"])
+            if not 60 <= interval_seconds <= 3600 or not authorized_at <= observed_at <= valid_until:
+                return CommissionSnapshotLoad(None, "AUTHORIZATION_EXPIRED")
+            rehydration_generation = int(observed_at.timestamp()) // interval_seconds
+            fetched = datetime.fromtimestamp(
+                rehydration_generation * interval_seconds, tz=timezone.utc
+            )
+            authorization_valid_until = valid_until.isoformat().replace("+00:00", "Z")
+            snapshot_id = (
+                f"{source_snapshot_id}:rehydrated:{rehydration_generation}"
+            )
+        else:
+            if observed_at - fetched > timedelta(hours=24):
+                return CommissionSnapshotLoad(None, "SNAPSHOT_STALE")
+            snapshot_id = source_snapshot_id
         entry_role = str(row.get("entry_liquidity_role", "TAKER")).upper()
         exit_role = str(row.get("exit_liquidity_role", "TAKER")).upper()
         if entry_role not in {"MAKER", "TAKER"} or exit_role not in {"MAKER", "TAKER"}:
-            return None
-        return BinanceCommissionSnapshot(
-            symbol=symbol.upper(), snapshot_id=str(payload["snapshot_id"]),
+            return CommissionSnapshotLoad(None, "LIQUIDITY_ROLE_INVALID")
+        snapshot = BinanceCommissionSnapshot(
+            symbol=symbol.upper(), snapshot_id=snapshot_id,
             fetched_at=fetched.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
             commission_source=snapshot_type,
             maker_bps=float(row["maker_bps"]),
@@ -88,9 +130,17 @@ def load_binance_commission_snapshot(symbol: str) -> BinanceCommissionSnapshot |
             bnb_discount_state=str(payload.get("bnb_discount_state", "NOT_APPLICABLE")),
             special_commission_state=str(row.get("special_commission_state", "NOT_APPLICABLE")),
             tax_commission_state=str(row.get("tax_commission_state", "NOT_APPLICABLE")),
+            source_snapshot_id=source_snapshot_id,
+            authorization_valid_until=authorization_valid_until,
+            rehydration_generation=rehydration_generation,
         )
+        return CommissionSnapshotLoad(snapshot, "READY")
     except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
-        return None
+        return CommissionSnapshotLoad(None, "SNAPSHOT_UNREADABLE")
+
+
+def load_binance_commission_snapshot(symbol: str) -> BinanceCommissionSnapshot | None:
+    return read_binance_commission_snapshot(symbol).snapshot
 
 
 class BinancePublicScalpingCostSource:
@@ -107,6 +157,7 @@ class BinancePublicScalpingCostSource:
         exit_fee_bps: float = 10.0,
         entry_slippage_bps: float = 2.0,
         exit_slippage_bps: float = 2.0,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.client = client or BinancePublicRestClient()
         self.reference_notional = Decimal(str(reference_notional))
@@ -116,6 +167,15 @@ class BinancePublicScalpingCostSource:
         self.exit_fee_bps = float(exit_fee_bps)
         self.entry_slippage_bps = float(entry_slippage_bps)
         self.exit_slippage_bps = float(exit_slippage_bps)
+        self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self._recovery_lock = Lock()
+        self._connection_generation = 0
+        self._last_signature: tuple[str, str, str, str] | None = None
+        self._last_success_at: str | None = None
+        self._last_failure_at: str | None = None
+        self._recovered_at: str | None = None
+        self._rehydration_started_at: datetime | None = None
+        self._rehydration_duration_ms: float | None = None
         if self.reference_notional <= 0 or self.maximum_age_ms <= 0:
             raise ValueError("Scalping cost-source bounds must be positive")
         if self.depth_limit not in {5, 10, 20, 50, 100, 500, 1000, 5000}:
@@ -123,21 +183,51 @@ class BinancePublicScalpingCostSource:
 
     def load(self, symbol: str, entry: float, *, safety_margin_bps: float) -> ShadowCostInputs:
         capture_started_at_ms = time.time_ns() // 1_000_000
-        ticker = self.client.fetch_book_ticker(symbol)
         reference_quantity = self.reference_notional / Decimal(str(entry))
-        depth = self.client.estimate_round_trip_depth_impact(
-            symbol, reference_quantity, limit=self.depth_limit
-        )
+        ticker = None
+        depth = None
+        ticker_status = "READY"
+        depth_status = "READY"
+        try:
+            ticker = self.client.fetch_book_ticker(symbol)
+        except Exception:
+            ticker_status = "BOOK_TICKER_NOT_READY"
+        try:
+            depth = self.client.estimate_round_trip_depth_impact(
+                symbol, reference_quantity, limit=self.depth_limit
+            )
+        except Exception:
+            depth_status = "DEPTH_NOT_READY"
         captured_at_ms = time.time_ns() // 1_000_000
-        commission = load_binance_commission_snapshot(symbol)
+        observed_at = self.clock().astimezone(timezone.utc)
+        commission_load = read_binance_commission_snapshot(symbol, now=observed_at)
+        commission = commission_load.snapshot
+        market_status = (
+            "READY" if ticker_status == depth_status == "READY" else "NOT_READY"
+        )
+        book_status = (
+            "READY" if ticker_status == depth_status == "READY"
+            else ticker_status if ticker_status != "READY" else depth_status
+        )
+        cost_status = (
+            "READY" if market_status == "READY" and commission is not None
+            else "NOT_READY"
+        )
+        telemetry = self._observe_recovery(
+            observed_at,
+            market_status=market_status,
+            fee_status=commission_load.status,
+            book_status=book_status,
+            cost_status=cost_status,
+        )
         return ShadowCostInputs(
             entry_fee_bps=(commission.entry_commission_bps if commission else self.entry_fee_bps),
             exit_fee_bps=(commission.exit_commission_bps if commission else self.exit_fee_bps),
             entry_slippage_bps=self.entry_slippage_bps,
             exit_slippage_bps=self.exit_slippage_bps,
             safety_margin_bps=safety_margin_bps,
-            spread_bps=ticker.spread_bps,
-            depth_impact_bps=depth.depth_impact_bps,
+            spread_bps=(None if ticker is None else ticker.spread_bps),
+            depth_impact_bps=(None if depth is None else depth.depth_impact_bps),
             fee_source=(commission.commission_source if commission else "CONFIGURED_CONSERVATIVE_FEE_ASSUMPTION_NOT_AUTHORITATIVE"),
             commission_authoritative=commission is not None,
             commission_symbol=None if commission is None else commission.symbol,
@@ -149,13 +239,13 @@ class BinancePublicScalpingCostSource:
             special_commission_state=("NOT_APPLICABLE" if commission is None else commission.special_commission_state),
             tax_commission_state=("NOT_APPLICABLE" if commission is None else commission.tax_commission_state),
             spread_source="BINANCE_PUBLIC_BOOK_TICKER",
-            depth_impact_source=depth.source,
-            spread_authoritative=True,
-            depth_authoritative=True,
-            bid=float(ticker.bid_price),
-            ask=float(ticker.ask_price),
-            buy_vwap=float(depth.buy_vwap),
-            sell_vwap=float(depth.sell_vwap),
+            depth_impact_source=("BINANCE_PUBLIC_MARKET_DATA_DEPTH" if depth is None else depth.source),
+            spread_authoritative=ticker is not None,
+            depth_authoritative=depth is not None,
+            bid=(None if ticker is None else float(ticker.bid_price)),
+            ask=(None if ticker is None else float(ticker.ask_price)),
+            buy_vwap=(None if depth is None else float(depth.buy_vwap)),
+            sell_vwap=(None if depth is None else float(depth.sell_vwap)),
             economic_input_timestamp_ms=capture_started_at_ms,
             economic_capture_started_at_ms=capture_started_at_ms,
             decision_cutoff_timestamp_ms=captured_at_ms,
@@ -164,7 +254,56 @@ class BinancePublicScalpingCostSource:
             require_causal_timestamp=True,
             reference_quantity=float(reference_quantity),
             reference_notional=float(self.reference_notional),
+            connection_generation=telemetry["connection_generation"],
+            market_source_status=market_status,
+            fee_source_status=commission_load.status,
+            book_source_status=book_status,
+            cost_model_status=cost_status,
+            last_success_at=telemetry["last_success_at"],
+            last_failure_at=telemetry["last_failure_at"],
+            recovered_at=telemetry["recovered_at"],
+            rehydration_duration_ms=telemetry["rehydration_duration_ms"],
+            fee_watermark=(None if commission is None else commission.snapshot_id),
+            fee_authorization_valid_until=(
+                None if commission is None else commission.authorization_valid_until
+            ),
         )
+
+    def _observe_recovery(
+        self,
+        observed_at: datetime,
+        *,
+        market_status: str,
+        fee_status: str,
+        book_status: str,
+        cost_status: str,
+    ) -> dict[str, object]:
+        timestamp = observed_at.isoformat().replace("+00:00", "Z")
+        signature = (market_status, fee_status, book_status, cost_status)
+        with self._recovery_lock:
+            if signature != self._last_signature:
+                self._connection_generation += 1
+                self._last_signature = signature
+            if cost_status == "READY":
+                self._last_success_at = timestamp
+                if self._rehydration_started_at is not None:
+                    self._recovered_at = timestamp
+                    self._rehydration_duration_ms = max(
+                        0.0,
+                        (observed_at - self._rehydration_started_at).total_seconds() * 1000.0,
+                    )
+                    self._rehydration_started_at = None
+            else:
+                self._last_failure_at = timestamp
+                if self._rehydration_started_at is None:
+                    self._rehydration_started_at = observed_at
+            return {
+                "connection_generation": self._connection_generation,
+                "last_success_at": self._last_success_at,
+                "last_failure_at": self._last_failure_at,
+                "recovered_at": self._recovered_at,
+                "rehydration_duration_ms": self._rehydration_duration_ms,
+            }
 
 
 class ScalpingPaperRunner(PaperRunner):
@@ -411,6 +550,8 @@ class ScalpingPaperRunner(PaperRunner):
 
 __all__ = (
     "BinancePublicScalpingCostSource",
+    "CommissionSnapshotLoad",
     "ScalpingCostSource",
     "ScalpingPaperRunner",
+    "read_binance_commission_snapshot",
 )

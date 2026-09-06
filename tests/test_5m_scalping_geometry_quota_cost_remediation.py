@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from types import SimpleNamespace
 
@@ -513,6 +513,122 @@ def test_user_authorized_commission_stub_is_explicit_and_drives_costs(monkeypatc
     assert value.entry_fee_bps == value.exit_fee_bps == 10.0
     assert value.bnb_discount_state == "STUB_DISABLED"
     assert value.special_commission_state == value.tax_commission_state == "STUB_NONE"
+
+
+def _authorized_stub(path, *, now, valid_until):
+    path.write_text(json.dumps({
+        "snapshot_type": "USER_AUTHORIZED_STUB",
+        "snapshot_id": "user-authorized-stub:reconnect-test",
+        "fetched_at": (now - timedelta(days=2)).isoformat().replace("+00:00", "Z"),
+        "real_account_data": False,
+        "bnb_discount_state": "STUB_DISABLED",
+        "rehydration_authorization": {
+            "schema": "USER_AUTHORIZED_STUB_REHYDRATION_V1",
+            "authorization_id": "paper-stub-auth:test",
+            "authorized_at": (now - timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
+            "valid_until": valid_until.isoformat().replace("+00:00", "Z"),
+            "interval_seconds": 300,
+            "authorized_by_task": "RECONNECT_TEST",
+            "paper_only": True,
+            "live_allowed": False,
+        },
+        "symbols": {"BTCUSDT": {
+            "maker_bps": 10.0, "taker_bps": 10.0,
+            "entry_liquidity_role": "TAKER", "exit_liquidity_role": "TAKER",
+            "special_commission_state": "STUB_NONE", "tax_commission_state": "STUB_NONE",
+        }},
+    }), encoding="utf-8")
+
+
+def test_cost_source_rehydrates_after_loss_without_replaying_stale_candidate(monkeypatch, tmp_path):
+    snapshot = tmp_path / "commission-reconnect.json"
+    current = [datetime(2026, 9, 6, 10, 0, tzinfo=timezone.utc)]
+    _authorized_stub(snapshot, now=current[0], valid_until=current[0] + timedelta(hours=1))
+    monkeypatch.setenv("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", str(snapshot))
+    source = BinancePublicScalpingCostSource(
+        client=BinancePublicRestClient(transport=Transport(), max_retries=0),
+        clock=lambda: current[0],
+    )
+
+    healthy = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+    healthy_decision = evaluate_scalping_shadow(
+        candidate(trade_profile_id="trade-5m-v2", symbol="BTCUSDT"), healthy,
+        config(profile_id="trade-5m-v2", production_rr_floor=0.4),
+    )
+    assert healthy.cost_model_status == "READY"
+    assert healthy_decision.valid_plan
+    first_generation = healthy.connection_generation
+    first_watermark = healthy.fee_watermark
+
+    snapshot.unlink()
+    current[0] += timedelta(minutes=1)
+    unavailable = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+    failed_decision = evaluate_scalping_shadow(
+        candidate(trade_profile_id="trade-5m-v2", symbol="BTCUSDT"), unavailable,
+        config(profile_id="trade-5m-v2", production_rr_floor=0.4),
+    )
+    assert unavailable.market_source_status == unavailable.book_source_status == "READY"
+    assert unavailable.fee_source_status == "SNAPSHOT_UNREADABLE"
+    assert unavailable.cost_model_status == "NOT_READY"
+    assert failed_decision.rejection_reason == "PAPER_NO_PLAN_NON_AUTHORITATIVE_COMMISSION"
+
+    current[0] += timedelta(minutes=5)
+    _authorized_stub(snapshot, now=current[0], valid_until=current[0] + timedelta(hours=1))
+    recovered = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+    next_candidate = candidate(
+        trade_profile_id="trade-5m-v2", symbol="BTCUSDT",
+        boundary_ms=BOUNDARY + 300_000,
+    )
+    recovered_decision = evaluate_scalping_shadow(
+        next_candidate, recovered,
+        config(profile_id="trade-5m-v2", production_rr_floor=0.4),
+    )
+    assert recovered.cost_model_status == "READY"
+    assert recovered.connection_generation > first_generation
+    assert recovered.fee_watermark != first_watermark
+    assert recovered.recovered_at is not None
+    assert recovered.rehydration_duration_ms == 300_000.0
+    assert recovered_decision.valid_plan
+    assert failed_decision.valid_plan is False
+    assert failed_decision.boundary == BOUNDARY
+
+
+class PartialRecoveryTransport(Transport):
+    def __init__(self):
+        self.depth_ready = False
+
+    def get(self, url, *, params=None):
+        if not url.endswith("bookTicker") and not self.depth_ready:
+            raise ConnectionError("simulated depth disconnect")
+        return super().get(url, params=params)
+
+
+def test_cost_model_waits_for_fee_and_depth_partial_recovery(monkeypatch, tmp_path):
+    snapshot = tmp_path / "commission-partial.json"
+    current = [datetime(2026, 9, 6, 11, 0, tzinfo=timezone.utc)]
+    _authorized_stub(snapshot, now=current[0], valid_until=current[0] + timedelta(hours=1))
+    monkeypatch.setenv("TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH", str(snapshot))
+    transport = PartialRecoveryTransport()
+    source = BinancePublicScalpingCostSource(
+        client=BinancePublicRestClient(transport=transport, max_retries=0),
+        clock=lambda: current[0],
+    )
+
+    partial = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+    partial_decision = evaluate_scalping_shadow(
+        candidate(trade_profile_id="trade-5m-v2", symbol="BTCUSDT"), partial,
+        config(profile_id="trade-5m-v2", production_rr_floor=0.4),
+    )
+    assert partial.fee_source_status == "READY"
+    assert partial.book_source_status == "DEPTH_NOT_READY"
+    assert partial.cost_model_status == "NOT_READY"
+    assert partial_decision.rejection_reason == R.PAPER_NO_PLAN_MISSING_DEPTH_IMPACT
+
+    transport.depth_ready = True
+    current[0] += timedelta(seconds=10)
+    recovered = source.load("BTCUSDT", 100.0, safety_margin_bps=3.0)
+    assert recovered.book_source_status == recovered.cost_model_status == "READY"
+    assert recovered.rehydration_duration_ms == 10_000.0
 
 
 def test_commission_snapshot_without_explicit_type_fails_closed(monkeypatch, tmp_path):
