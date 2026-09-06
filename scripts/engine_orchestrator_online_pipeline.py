@@ -22,6 +22,7 @@ from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
 from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSource
+from app.config.trade_parameters import TRADE_PARAMETERS
 from app.engine_orchestrator.profile_owner import (
     OwnerAlreadyActiveError,
     PostgresProfileOwner,
@@ -146,6 +147,12 @@ def main(argv: list[str] | None = None) -> int:
     # Accessing the immutable object validates the complete parameter schema
     # before any boundary detection or owner election.
     runtime_parameters = config.runtime_parameters
+    print(json.dumps({
+        "event": "trade_parameters_loaded",
+        "TRADE_PARAMETERS_SCHEMA_VERSION": TRADE_PARAMETERS.schema_version,
+        "TRADE_PARAMETERS_CONFIG_HASH": TRADE_PARAMETERS.config_hash,
+        "ACTIVE_PROFILE_IDS": sorted(ACTIVE_RUNTIME_PROFILE_IDS),
+    }, sort_keys=True))
     sessions = create_market_data_session_factory()
     owner = None
     if profile.trade_profile_id in SCALPING_PROFILE_IDS:

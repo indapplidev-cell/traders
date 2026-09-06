@@ -4,6 +4,7 @@ import pytest
 
 from app.config.trade_parameters import CONFIG_PATH, SCALPING_V2, TRADE_PARAMETERS, load_trade_parameters
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
+from app.engine_orchestrator.trade_profile import ACTIVE_RUNTIME_PROFILE_IDS, TRADE_PROFILES
 
 
 def test_authoritative_config_loads_and_drives_runtime_baseline():
@@ -15,6 +16,9 @@ def test_authoritative_config_loads_and_drives_runtime_baseline():
     assert runtime.portfolio_max_concurrent_positions == SCALPING_V2.risk.max_open_positions == 2
     assert runtime.minimum_planned_rr == SCALPING_V2.geometry.minimum_planned_rr == 0.4
     assert runtime.public_provenance()["trade_parameter_config_hash"] == TRADE_PARAMETERS.config_hash
+    assert ACTIVE_RUNTIME_PROFILE_IDS == frozenset({"trade-5m-v2"})
+    assert "trade-5m-v1" not in TRADE_PROFILES
+    assert TRADE_PARAMETERS.profiles.trade_15m_v1.enabled is False
 
 
 @pytest.mark.parametrize("mutation", [
