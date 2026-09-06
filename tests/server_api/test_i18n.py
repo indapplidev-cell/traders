@@ -132,3 +132,35 @@ def test_expired_before_execution_reason_is_operator_readable_and_bilingual():
     en = catalog_payload("en")["translations"]
     assert ru["funnel.reason.EXPIRED_BEFORE_EXECUTION"] == "Срок плана истёк до передачи на исполнение"
     assert en["funnel.reason.EXPIRED_BEFORE_EXECUTION"] == "Plan expired before execution handoff"
+
+
+def test_scalping_v2_economics_causal_diagnostic_labels_and_semantics_are_complete():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    fields = (
+        "p_win_conservative", "expected_ev_r", "dynamic_required_net_rr",
+        "probability_source", "probability_bucket", "probability_sample_size",
+        "probability_parent_sample_size", "probability_fallback_level",
+        "causal_parent", "causal_opportunity", "config_hash", "config_version",
+        "adverse_reserve", "effective_total_cost", "mae_mfe",
+    )
+    for field in fields:
+        assert ru[f"funnel.detail.{field}"]
+        assert en[f"funnel.detail.{field}"]
+        assert ru[f"paper.field.{field}"]
+        assert en[f"paper.field.{field}"]
+    expected_ru = {
+        "LEGACY_RECORD": "Историческая запись: метрика ещё не применялась",
+        "NOT_RECORDED": "Значение не записывалось для этой сделки",
+        "NOT_APPLICABLE": "Не применимо",
+        "NOT_REACHED": "Этап не достигнут",
+        "INSUFFICIENT_SAMPLE": "Недостаточная статистическая выборка",
+        "PENDING": "Расчёт ожидается",
+    }
+    for status, text in expected_ru.items():
+        assert ru[f"funnel.status.{status}"] == text
+        assert ru[f"paper.semantic.{status}"] == text
+        assert en[f"funnel.status.{status}"]
+        assert en[f"paper.semantic.{status}"]
+    for status in ("FAILED", "AVAILABLE"):
+        assert ru[f"funnel.status.{status}"] and en[f"funnel.status.{status}"]

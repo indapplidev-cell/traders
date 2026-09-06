@@ -652,6 +652,7 @@ def _downstream_trace(
         "probability_sample_size": diagnostic.get("probability_sample_size"),
         "probability_parent_sample_size": diagnostic.get("probability_parent_sample_size"),
         "probability_fallback_level": diagnostic.get("probability_fallback_level"),
+        "probability_source": diagnostic.get("probability_estimator_version"),
         "candidate_net_rr": diagnostic.get("candidate_net_rr"),
         "dynamic_required_net_rr": diagnostic.get("dynamic_required_net_rr"),
         "break_even_net_rr": diagnostic.get("break_even_net_rr"),
@@ -750,6 +751,70 @@ def _downstream_trace(
             shadow_approvals.get("shadow_final_approval")
         ).get("status"),
     })
+    semantic_stages = {
+        "p_win_conservative": "RR_PASS",
+        "expected_ev_r": "RR_PASS",
+        "dynamic_required_net_rr": "RR_PASS",
+        "probability_source": "RR_PASS",
+        "probability_bucket": "RR_PASS",
+        "probability_sample_size": "RR_PASS",
+        "probability_parent_sample_size": "RR_PASS",
+        "probability_fallback_level": "RR_PASS",
+        "causal_parent_id": "STRATEGY_ADMITTED",
+        "causal_opportunity_id": "STRATEGY_ADMITTED",
+        "adverse_fill_reserve_bps": "NET_COST_PASS",
+        "effective_total_cost_bps": "NET_COST_PASS",
+    }
+    source_keys = {
+        "p_win_conservative": ("p_win_conservative", "conservative_p_win"),
+        "expected_ev_r": ("expected_ev_r",),
+        "dynamic_required_net_rr": ("dynamic_required_net_rr",),
+        "probability_source": ("probability_estimator_version",),
+        "probability_bucket": ("probability_bucket",),
+        "probability_sample_size": ("probability_sample_size",),
+        "probability_parent_sample_size": ("probability_parent_sample_size",),
+        "probability_fallback_level": ("probability_fallback_level",),
+        "causal_parent_id": ("causal_parent_id",),
+        "causal_opportunity_id": ("causal_opportunity_id", "opportunity_id"),
+        "adverse_fill_reserve_bps": ("adverse_fill_reserve_bps",),
+        "effective_total_cost_bps": ("effective_total_cost_bps",),
+    }
+    insufficient_probability = "INSUFFICIENT" in str(
+        diagnostic.get("expectancy_gate_reason") or ""
+    )
+    semantic_states: dict[str, str] = {}
+    for key, stage in semantic_stages.items():
+        stage_state = trace.get(stage, "NOT_REACHED")
+        value = detail.get(key)
+        if value is not None:
+            state = "AVAILABLE"
+        elif key == "causal_parent_id" and detail.get("causal_opportunity_id"):
+            state = "NOT_APPLICABLE"
+        elif stage_state == "NOT_REACHED":
+            state = "NOT_REACHED"
+        elif key.startswith("probability_") or key in {
+            "p_win_conservative", "expected_ev_r", "dynamic_required_net_rr",
+        }:
+            if insufficient_probability:
+                state = "INSUFFICIENT_SAMPLE"
+            elif not any(source in diagnostic for source in source_keys[key]):
+                state = "LEGACY_RECORD"
+            else:
+                state = "NOT_RECORDED"
+        else:
+            origins = (diagnostic, context)
+            if not any(
+                source in origin
+                for origin in origins
+                for source in source_keys[key]
+            ):
+                state = "LEGACY_RECORD"
+            else:
+                state = "NOT_RECORDED"
+        semantic_states[key] = state
+    semantic_states["trade_parameter_config_version"] = "AVAILABLE"
+    semantic_states["trade_parameter_config_hash"] = "AVAILABLE"
+    detail["semantic_states"] = semantic_states
     return trace, detail
 
 

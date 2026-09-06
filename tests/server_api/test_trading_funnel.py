@@ -509,6 +509,7 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
             "probability_sample_size": 40,
             "probability_parent_sample_size": 80,
             "probability_fallback_level": "setup_direction",
+            "probability_estimator_version": "scalping-v2-hierarchical-beta-v1",
             "candidate_net_rr": "1.6",
             "dynamic_required_net_rr": "0.55",
             "break_even_net_rr": "0.47",
@@ -565,10 +566,15 @@ def test_scalping_canonical_downstream_order_risk_distinction_and_detail():
     assert item["downstream_detail"]["slippage_bps"] == "4"
     assert item["downstream_detail"]["effective_total_cost_bps"] == "30.8"
     assert item["downstream_detail"]["p_win_conservative"] == "0.68"
+    assert item["downstream_detail"]["probability_source"] == "scalping-v2-hierarchical-beta-v1"
     assert item["downstream_detail"]["probability_fallback_level"] == "setup_direction"
     assert item["downstream_detail"]["dynamic_required_net_rr"] == "0.55"
     assert item["downstream_detail"]["causal_opportunity_id"] == "opportunity:fixture"
     assert item["downstream_detail"]["duplicate_opportunity_block"] is False
+    semantics = item["downstream_detail"]["semantic_states"]
+    assert semantics["p_win_conservative"] == "AVAILABLE"
+    assert semantics["causal_parent_id"] == "AVAILABLE"
+    assert semantics["trade_parameter_config_hash"] == "AVAILABLE"
     assert len(value["trade_parameter_config_hash"]) == 64
     assert item["downstream_detail"]["expected_net_edge_bps"] == "62.2"
     assert item["downstream_detail"]["risk_percent"] == "1.00"
