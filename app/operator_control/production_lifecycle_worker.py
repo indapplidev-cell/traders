@@ -475,7 +475,12 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         never mutates position rows directly and never backdates the fill.
         """
 
-        canary = self._canary_store.current()
+        get_by_position = getattr(self._canary_store, "get_by_position", None)
+        canary = (
+            get_by_position(position_id)
+            if get_by_position is not None
+            else self._canary_store.current()
+        )
         if canary is None or canary.command_id is None:
             raise ValueError("POSITION_NOT_FOUND")
         if canary.position_id != position_id:

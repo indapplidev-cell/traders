@@ -188,6 +188,18 @@ class PaperFirstCanaryRepository:
         row = self.session.scalar(query)
         return self._validated(row) if row is not None else None
 
+    def get_by_position(self, position_id: str) -> PaperFirstCanarySession | None:
+        row = self.session.scalar(
+            select(PaperFirstCanarySessionRecord)
+            .where(PaperFirstCanarySessionRecord.position_id == position_id)
+            .order_by(
+                PaperFirstCanarySessionRecord.created_at.desc(),
+                PaperFirstCanarySessionRecord.canary_id.desc(),
+            )
+            .limit(1)
+        )
+        return self._validated(row) if row is not None else None
+
     def current(self) -> PaperFirstCanarySession | None:
         rows = tuple(self.session.scalars(
             select(PaperFirstCanarySessionRecord)
@@ -549,6 +561,10 @@ class SqlAlchemyPaperFirstCanaryStore:
     def get_by_arm_request(self, request_id: str) -> PaperFirstCanarySession | None:
         with self._session_factory() as session:
             return PaperFirstCanaryRepository(session).get_by_arm_request(request_id)
+
+    def get_by_position(self, position_id: str) -> PaperFirstCanarySession | None:
+        with self._session_factory() as session:
+            return PaperFirstCanaryRepository(session).get_by_position(position_id)
 
     def refresh_terminal(self, *args, **kwargs) -> PaperFirstCanarySession:
         return self._write(lambda repo: repo.refresh_terminal(*args, **kwargs))
