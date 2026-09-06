@@ -521,7 +521,8 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 readiness.live_disabled,
             )):
                 raise ValueError("RECOVERY_CLOSE_SAFETY_READINESS_DENIED")
-            commission = read_binance_commission_snapshot(graph.command.symbol)
+            commission_load = read_binance_commission_snapshot(graph.command.symbol)
+            commission = commission_load.snapshot
             policy = _foundation_policy(graph.command.simulation_policy_id)
             if (
                 commission is None
