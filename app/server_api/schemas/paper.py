@@ -29,8 +29,8 @@ class PaperReadiness(BaseModel):
     environment: str
     mode: Literal["PAPER"] = "PAPER"
     paper_schema_expected: Literal[
-        "0026_scalping_1m_entry_refinement"
-    ] = "0026_scalping_1m_entry_refinement"
+        "0027_scalping_profitability_integration"
+    ] = "0027_scalping_profitability_integration"
     paper_schema_ready: bool
     status: str
     paper_runtime_enabled: bool

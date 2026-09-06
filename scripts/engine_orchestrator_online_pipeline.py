@@ -21,8 +21,11 @@ from app.engine_orchestrator.orchestrator_config import DEFAULT_MINIMUM_WINDOWS,
 from app.engine_orchestrator.orchestrator_daemon import OrchestratorDaemon
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
-from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSource
+from app.engine_paper.scalping_paper_runner import (
+    BinancePublicScalpingCostSource, ScalpingPaperRunner,
+)
 from app.engine_paper.scalping_statistics import PostgresPaperOutcomeStatisticsSource
+from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
 from app.config.trade_parameters import TRADE_PARAMETERS
 from app.engine_orchestrator.profile_owner import (
     OwnerAlreadyActiveError,
@@ -98,9 +101,10 @@ def validate_5m_schema_capabilities(sessions: object) -> None:
             "0024_continuous_paper_authority",
             "0025_paper_budget_policy",
             "0026_scalping_1m_entry_refinement",
+            "0027_scalping_profitability_integration",
         }:
             raise RuntimeError(
-                "online runtime requires schema 0020 through 0026"
+                "online runtime requires schema 0020 through 0027"
             )
         columns = set(session.scalars(text(
             "SELECT column_name FROM information_schema.columns "
@@ -200,11 +204,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     daemon = OrchestratorDaemon(
         config, detector, gate, PipelineRunner(
-            config, candle_repository, strategy_cap_cost_source=calibration_cost_source,
-            scalping_statistics_source=(
-                PostgresPaperOutcomeStatisticsSource(sessions)
-                if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
+            config, candle_repository,
+            paper_runner=(
+                ScalpingPaperRunner(
+                    runtime_parameters=runtime_parameters,
+                    statistics_source=PostgresPaperOutcomeStatisticsSource(sessions),
+                    opportunity_registry=PostgresScalpingOpportunityRegistry(sessions),
+                ) if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
             ),
+            strategy_cap_cost_source=calibration_cost_source,
         ), store,
         owner_guard=owner,
     )

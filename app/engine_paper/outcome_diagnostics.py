@@ -6,7 +6,16 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal
 import json
 from pathlib import Path
+from datetime import timezone
 from typing import Literal, Sequence
+
+from sqlalchemy import select
+
+from app.db.paper_models import PaperPositionRecord, ScalpingOutcomeDiagnosticRecord
+from app.engine_market_data.db.candle_tables import Candle1m
+
+
+OUTCOME_DIAGNOSTIC_VERSION = "scalping-mae-mfe-v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,7 +123,65 @@ class OutcomeDiagnosticsStore:
         temporary.replace(self.path)
 
 
+class PostgresOutcomeDiagnosticsProcessor:
+    """Compute exactly one bounded diagnostic when a PAPER position closes."""
+
+    def __init__(self, session_factory) -> None:
+        self._session_factory = session_factory
+
+    def process(self, position_id: str) -> StopTargetDiagnostics | None:
+        with self._session_factory() as session, session.begin():
+            if session.get(ScalpingOutcomeDiagnosticRecord, position_id) is not None:
+                return None
+            position = session.get(PaperPositionRecord, position_id)
+            if position is None or position.state != "CLOSED" or position.closed_at is None:
+                return None
+            opened_ms = int(position.opened_at.astimezone(timezone.utc).timestamp() * 1000)
+            closed_ms = int(position.closed_at.astimezone(timezone.utc).timestamp() * 1000)
+            candles = tuple(session.scalars(
+                select(Candle1m).where(
+                    Candle1m.symbol == position.symbol,
+                    Candle1m.open_time_ms >= opened_ms,
+                    Candle1m.open_time_ms <= closed_ms,
+                    Candle1m.is_closed.is_(True),
+                ).order_by(Candle1m.open_time_ms)
+            ))
+            if not candles:
+                return None
+            diagnostic = compute_stop_target_diagnostics(
+                ClosedTradePath(
+                    position_id=position.position_id,
+                    side=position.side,
+                    entry_price=position.average_entry_price,
+                    planned_stop=position.stop_price,
+                    planned_target=position.target_price,
+                    actual_exit_price=position.average_exit_price,
+                    opened_at_ms=opened_ms,
+                    closed_at_ms=closed_ms,
+                    exit_reason=position.reason_code,
+                ),
+                tuple(OutcomeCandle(row.open_time_ms, row.high, row.low) for row in candles),
+            )
+            session.add(ScalpingOutcomeDiagnosticRecord(
+                position_id=diagnostic.position_id,
+                mae=diagnostic.mae, mfe=diagnostic.mfe,
+                time_to_mae_ms=diagnostic.time_to_mae_ms,
+                time_to_mfe_ms=diagnostic.time_to_mfe_ms,
+                planned_stop_distance=diagnostic.planned_stop_distance,
+                actual_stop_slippage=diagnostic.actual_stop_slippage,
+                planned_target_distance=diagnostic.planned_target_distance,
+                target_reached_after_stop=diagnostic.target_reached_after_stop,
+                max_favorable_before_stop=diagnostic.max_favorable_before_stop,
+                max_adverse_before_target=diagnostic.max_adverse_before_target,
+                holding_time_ms=diagnostic.holding_time_ms,
+                diagnostic_version=OUTCOME_DIAGNOSTIC_VERSION,
+                created_at=position.closed_at,
+            ))
+            return diagnostic
+
+
 __all__ = (
     "ClosedTradePath", "OutcomeCandle", "OutcomeDiagnosticsStore",
+    "OUTCOME_DIAGNOSTIC_VERSION", "PostgresOutcomeDiagnosticsProcessor",
     "StopTargetDiagnostics", "compute_stop_target_diagnostics",
 )

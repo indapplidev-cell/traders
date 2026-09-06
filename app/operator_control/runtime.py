@@ -34,6 +34,8 @@ from app.engine_paper.entry_refinement import (
     ScalpingEntryRefinementService,
 )
 from app.engine_paper.scalping_paper_runner import BinancePublicScalpingCostSource
+from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
+from app.engine_paper.outcome_diagnostics import PostgresOutcomeDiagnosticsProcessor
 from app.engine_market_data.binance_public_rest import BinancePublicRestClient
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
 from app.engine_safety.paper_production_control import (
@@ -222,6 +224,8 @@ def create_runtime_app(
     )
     engine = None
     sessions = None
+    opportunity_registry = None
+    outcome_diagnostics = None
     if canary_store is None and require_production_store:
         canary_store, engine = _production_canary_store()
         sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
@@ -235,6 +239,8 @@ def create_runtime_app(
         if sessions is None or not isinstance(canary_store, SqlAlchemyPaperFirstCanaryStore):
             raise RuntimeError("CONTROL_RUNTIME_EXECUTOR_COMPOSITION_UNAVAILABLE")
         continuous_store = PaperContinuousAuthorityStore(sessions)
+        opportunity_registry = PostgresScalpingOpportunityRegistry(sessions)
+        outcome_diagnostics = PostgresOutcomeDiagnosticsProcessor(sessions)
         market_data_adapter = PaperProductionMarketDataInputAdapter(sessions)
         scalping = resolve_runtime_parameters("trade-5m-v2")
         entry_refinement = ScalpingEntryRefinementService(
@@ -273,6 +279,7 @@ def create_runtime_app(
             outcome_store=PaperPlanExecutionOutcomeStore(sessions),
             continuous_store=continuous_store,
             entry_refinement=entry_refinement,
+            opportunity_registry=opportunity_registry,
         )
     else:
         continuous_store = PaperContinuousAuthorityStore(sessions) if sessions is not None else None
@@ -318,6 +325,8 @@ def create_runtime_app(
             ),
             poll_seconds=lifecycle_poll_seconds(),
             continuous_store=continuous_store,
+            opportunity_registry=opportunity_registry,
+            outcome_diagnostics=outcome_diagnostics,
         )
         runtime_health_publisher = PaperRuntimeHealthPublisher(
             resolve_production_control_root(),

@@ -138,6 +138,8 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         readonly_base_url: str,
         poll_seconds: float = DEFAULT_POLL_SECONDS,
         continuous_store: PaperContinuousAuthorityStore | None = None,
+        opportunity_registry: object | None = None,
+        outcome_diagnostics: object | None = None,
     ) -> None:
         if not MIN_POLL_SECONDS <= poll_seconds <= MAX_POLL_SECONDS:
             raise ValueError("FIRST_CANARY_LIFECYCLE_POLL_INTERVAL_INVALID")
@@ -152,6 +154,8 @@ class ProductionPaperFirstCanaryLifecycleWorker:
         self._readonly_base_url = readonly_base_url.rstrip("/")
         self.poll_seconds = float(poll_seconds)
         self._continuous_store = continuous_store
+        self._opportunity_registry = opportunity_registry
+        self._outcome_diagnostics = outcome_diagnostics
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._ticks = 0
@@ -489,6 +493,8 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 self._canary_store.fail_safe(canary.canary_id, reason)
                 return f"SAFE_FAILURE:{reason}"
             if lifecycle is PaperLifecycleState.POSITION_CLOSED:
+                if self._outcome_diagnostics is not None and graph.positions:
+                    self._outcome_diagnostics.process(graph.positions[0].position_id)
                 return self._finalize(canary, state)
             readiness: ExistingCanaryRuntimeReadiness = self._runtime_readiness()
             if not all((readiness.market_data_ready, readiness.approval_source_ready,
@@ -557,6 +563,16 @@ class ProductionPaperFirstCanaryLifecycleWorker:
                 and self._continuous_store is not None
             ):
                 self._continuous_store.record_position(position_id=result.position_id)
+            if result.position_id is not None and self._opportunity_registry is not None:
+                self._opportunity_registry.bind_position_for_command(
+                    canary.command_id, result.position_id
+                )
+            if (
+                result.position_id is not None
+                and result.final_lifecycle_state is PaperLifecycleState.POSITION_CLOSED
+                and self._outcome_diagnostics is not None
+            ):
+                self._outcome_diagnostics.process(result.position_id)
             child_reason = result.stage_trace[-1].child_reason_code if result.stage_trace else result.reason_code
             suffix = "" if result.stages_completed == 1 else f":{child_reason}"
             return f"{result.outcome.value}:{result.final_lifecycle_state.value}{suffix}"

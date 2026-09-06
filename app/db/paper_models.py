@@ -626,6 +626,50 @@ class PaperPlanExecutionOutcomeRecord(Base):
     refinement_details: Mapped[dict[str, object] | None] = mapped_column(JSON)
 
 
+class ScalpingOpportunityRecord(Base):
+    """Server-owned reservation and execution binding for one causal setup."""
+
+    __tablename__ = "scalping_opportunities"
+    __table_args__ = (
+        CheckConstraint("state IN ('RESET_AVAILABLE','RESERVED','COMMAND_CREATED','EXECUTED')", name="ck_scalping_opportunity_state"),
+        CheckConstraint("length(trim(causal_opportunity_id)) BETWEEN 1 AND 128", name="ck_scalping_opportunity_id"),
+        Index("ix_scalping_opportunity_state", "state"),
+    )
+
+    causal_opportunity_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    state: Mapped[str] = mapped_column(String(24), nullable=False)
+    causal_parent_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    reset_reason: Mapped[str | None] = mapped_column(String(160))
+    reset_evidence: Mapped[str | None] = mapped_column(String(512))
+    paper_plan_id: Mapped[str | None] = mapped_column(String(512))
+    command_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH), unique=True)
+    position_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH), unique=True)
+    observation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default=text("1"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ScalpingOutcomeDiagnosticRecord(Base):
+    """Idempotent historical-only MAE/MFE projection for a closed position."""
+
+    __tablename__ = "scalping_outcome_diagnostics"
+
+    position_id: Mapped[str] = mapped_column(String(IDENTITY_LENGTH), primary_key=True)
+    mae: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    mfe: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    time_to_mae_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    time_to_mfe_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    planned_stop_distance: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    actual_stop_slippage: Mapped[Decimal | None] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE))
+    planned_target_distance: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    target_reached_after_stop: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    max_favorable_before_stop: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    max_adverse_before_target: Mapped[Decimal] = mapped_column(Numeric(MONEY_PRECISION, MONEY_SCALE), nullable=False)
+    holding_time_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    diagnostic_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class PaperOrderRecord(Base):
     __tablename__ = "paper_orders"
     __table_args__ = (

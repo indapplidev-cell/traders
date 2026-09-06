@@ -138,6 +138,7 @@ class ProductionPaperFirstCanaryExecutor:
         outcome_store: PaperPlanExecutionOutcomeStore | None = None,
         continuous_store: PaperContinuousAuthorityStore | None = None,
         entry_refinement: ScalpingEntryRefinementService | None = None,
+        opportunity_registry: object | None = None,
     ) -> None:
         self._control = control
         self._canary_store = canary_store
@@ -149,6 +150,7 @@ class ProductionPaperFirstCanaryExecutor:
         self._outcome_store = outcome_store
         self._continuous_store = continuous_store
         self._entry_refinement = entry_refinement
+        self._opportunity_registry = opportunity_registry
         self._prepared = None
         self.last_selection_diagnostics = None
         self.last_refinement = None
@@ -652,6 +654,11 @@ class ProductionPaperFirstCanaryExecutor:
                 )
         if result.successful and continuous_budget is not None and self._continuous_store is not None:
             self._continuous_store.record_command(command_id=command_id)
+        if result.successful and self._opportunity_registry is not None:
+            opportunity_id = getattr(candidate, "causal_opportunity_id", None)
+            if not opportunity_id:
+                raise RuntimeError("CAUSAL_OPPORTUNITY_ID_MISSING_AT_COMMAND_BIND")
+            self._opportunity_registry.bind_command(opportunity_id, command_id)
         return () if result.successful else (str(result.reason_code),)
 
     def status(self) -> PaperOperatorCanaryStatus:

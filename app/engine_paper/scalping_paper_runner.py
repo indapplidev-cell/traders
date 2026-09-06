@@ -537,6 +537,8 @@ class ScalpingPaperRunner(PaperRunner):
         mutable_context = dict(plan.paper_context)
         mutable_context.update(paper_context)
         object.__setattr__(plan, "paper_context", mutable_context)
+        if diagnostic.valid_plan and unique_opportunity:
+            self.opportunity_registry.bind_plan(diagnostic.opportunity_id, plan.paper_plan_id)
         return plan
 
     @staticmethod

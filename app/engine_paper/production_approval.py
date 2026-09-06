@@ -258,6 +258,7 @@ class PaperProductionApprovalCandidate:
     ranking: PaperProductionApprovalRankingInputs
     trade_profile_id: str
     primary_timeframe: str
+    causal_opportunity_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1040,6 +1041,11 @@ class PaperProductionApprovalSourceAdapter:
             ranking,
             row.trade_profile_id,
             row.primary_timeframe,
+            str(
+                (paper.get("paper_context") or {}).get("causal_opportunity_id")
+                or (paper.get("paper_context") or {}).get("scalping_geometry_diagnostics", {}).get("opportunity_id")
+                or ""
+            ) or None,
         )
         return self._symbol_result(
             row, PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL,

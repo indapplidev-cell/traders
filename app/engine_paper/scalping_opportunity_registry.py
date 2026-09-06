@@ -7,6 +7,12 @@ import json
 import os
 from pathlib import Path
 from threading import RLock
+from datetime import datetime, timezone
+
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+
+from app.db.paper_models import ScalpingOpportunityRecord
 
 DEFAULT_STATE_PATH = Path("reports/runtime/scalping_opportunities.json")
 
@@ -111,5 +117,100 @@ class ScalpingOpportunityRegistry:
         with self._lock:
             return int(self._state.get(str(opportunity_id), {}).get("observation_count", 0))
 
+    def bind_plan(self, opportunity_id: str, paper_plan_id: str) -> None:
+        # The file-backed implementation remains for isolated/offline callers.
+        key = self._validate(opportunity_id)
+        with self._lock:
+            row = self._state[key]
+            row["paper_plan_id"] = str(paper_plan_id)
+            self._persist()
 
-__all__ = ("OpportunityClaim", "ScalpingOpportunityRegistry")
+
+class PostgresScalpingOpportunityRegistry:
+    """Atomic PostgreSQL authority used by production runtime."""
+
+    def __init__(self, session_factory) -> None:
+        self._session_factory = session_factory
+
+    @staticmethod
+    def _validate(value: str) -> str:
+        return ScalpingOpportunityRegistry._validate(value)
+
+    def claim(self, opportunity_id: str) -> OpportunityClaim:
+        key = self._validate(opportunity_id)
+        now = datetime.now(timezone.utc)
+        with self._session_factory() as session, session.begin():
+            inserted = session.scalar(insert(ScalpingOpportunityRecord).values(
+                causal_opportunity_id=key, state="RESERVED", observation_count=1,
+                created_at=now, updated_at=now,
+            ).on_conflict_do_nothing(
+                index_elements=["causal_opportunity_id"]
+            ).returning(ScalpingOpportunityRecord.causal_opportunity_id))
+            admitted = inserted is not None
+            row = session.scalar(select(ScalpingOpportunityRecord).where(
+                ScalpingOpportunityRecord.causal_opportunity_id == key
+            ).with_for_update())
+            if not admitted and row.state == "RESET_AVAILABLE":
+                admitted = True
+                row.state = "RESERVED"
+                row.observation_count = 1
+                row.updated_at = now
+            elif not admitted:
+                row.observation_count += 1
+                row.updated_at = now
+            return OpportunityClaim(
+                key, admitted, row.causal_parent_id, row.reset_reason,
+                row.reset_evidence, row.position_id,
+                None if admitted else "CAUSAL_OPPORTUNITY_ALREADY_RESERVED_OR_EXECUTED",
+                row.observation_count,
+            )
+
+    def bind_plan(self, opportunity_id: str, paper_plan_id: str) -> None:
+        key = self._validate(opportunity_id)
+        with self._session_factory() as session, session.begin():
+            row = session.get(ScalpingOpportunityRecord, key)
+            if row is None:
+                raise ValueError("opportunity must be reserved before plan binding")
+            row.paper_plan_id = str(paper_plan_id)
+            row.updated_at = datetime.now(timezone.utc)
+
+    def bind_command(self, opportunity_id: str, command_id: str) -> None:
+        key = self._validate(opportunity_id)
+        with self._session_factory() as session, session.begin():
+            row = session.get(ScalpingOpportunityRecord, key)
+            if row is None:
+                raise ValueError("opportunity must be reserved before command binding")
+            row.command_id = str(command_id)
+            row.state = "COMMAND_CREATED"
+            row.updated_at = datetime.now(timezone.utc)
+
+    def bind_position_for_command(self, command_id: str, position_id: str) -> None:
+        with self._session_factory() as session, session.begin():
+            row = session.scalar(select(ScalpingOpportunityRecord).where(
+                ScalpingOpportunityRecord.command_id == str(command_id)
+            ).with_for_update())
+            if row is None:
+                raise ValueError("causal command binding is missing")
+            row.position_id = str(position_id)
+            row.state = "EXECUTED"
+            row.updated_at = datetime.now(timezone.utc)
+
+    def structural_reset(self, opportunity_id: str, new_opportunity_id: str, *, reason: str, evidence: str) -> None:
+        parent, child = self._validate(opportunity_id), self._validate(new_opportunity_id)
+        if parent == child or not reason.strip() or not evidence.strip():
+            raise ValueError("structural reset requires a new identity and evidence")
+        now = datetime.now(timezone.utc)
+        with self._session_factory() as session, session.begin():
+            if session.get(ScalpingOpportunityRecord, parent) is None:
+                raise ValueError("causal parent is unknown")
+            session.add(ScalpingOpportunityRecord(
+                causal_opportunity_id=child, state="RESET_AVAILABLE", causal_parent_id=parent,
+                reset_reason=reason, reset_evidence=evidence, observation_count=0,
+                created_at=now, updated_at=now,
+            ))
+
+
+__all__ = (
+    "OpportunityClaim", "PostgresScalpingOpportunityRegistry",
+    "ScalpingOpportunityRegistry",
+)

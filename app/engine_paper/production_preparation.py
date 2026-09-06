@@ -19,8 +19,8 @@ from app.engine_paper.accounting import PaperAccountIdentity
 PRODUCTION_PAPER_RUNTIME_ROLE: Final = "traders_paper_runtime"
 PRODUCTION_READONLY_ROLE: Final = "traders_readonly_api"
 EXPECTED_START_ALEMBIC: Final = "0008_engine_orchestrator_freshness_retry"
-EXPECTED_PREVIOUS_ALEMBIC: Final = "0019_first_class_15m_domain"
-EXPECTED_FINAL_ALEMBIC: Final = "0026_scalping_1m_entry_refinement"
+EXPECTED_PREVIOUS_ALEMBIC: Final = "0026_scalping_1m_entry_refinement"
+EXPECTED_FINAL_ALEMBIC: Final = "0027_scalping_profitability_integration"
 SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
     EXPECTED_START_ALEMBIC,
     "0014_paper_canary_selection_policy",
@@ -28,12 +28,15 @@ SUPPORTED_PREPARATION_REVISIONS: Final = frozenset({
     "0016_control_mobile_device_security",
     "0017_parallel_trade_profiles",
     "0018_promote_5m_production_search",
+    "0019_first_class_15m_domain",
     EXPECTED_PREVIOUS_ALEMBIC,
     "0020_paper_plan_execution_outcomes",
     "0021_independent_scalping_profile_v2",
     "0022_scalping_v2_paper_simulation_policy",
     "0023_scalping_v2_journal_causality",
     "0024_continuous_paper_authority",
+    "0025_paper_budget_policy",
+    EXPECTED_PREVIOUS_ALEMBIC,
     EXPECTED_FINAL_ALEMBIC,
 })
 IDENTITY_KEYS: Final = (
