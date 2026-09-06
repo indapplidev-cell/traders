@@ -705,9 +705,18 @@ class PaperOrderExecutionService:
                     ),
                     None,
                 ) if graph is not None else None
+                boundary_command = command
+                if (
+                    request.current_exit_fee_authority_id
+                    == request.simulation_policy.fee_policy_id
+                ):
+                    boundary_command = replace(
+                        command,
+                        fee_policy_id=request.simulation_policy.fee_policy_id,
+                    )
                 boundary_result = resolve_paper_fill_causal_boundary(
                     fill_role=PaperFillRole.CLOSE,
-                    command=command,
+                    command=boundary_command,
                     order=simulation_order,
                     simulation_policy=request.simulation_policy,
                     correlation_id=request.correlation_id,
