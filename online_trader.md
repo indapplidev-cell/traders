@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 12670cb441bbe4d7e7dc1621cf30b1f2b8cdb6d5
+STATUS_AS_OF_COMMIT = 69978b5dfe801e23c25a7570c2d6e62c5e5c7b5d
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-06T21:19:12Z
-RECONCILED_BY_TASK = TRADERS_SCALPING_V2_FOUR_INDEPENDENT_BLOCKS_INTEGRATE_DEPLOY_02
-FILES_CHANGED = config/trading/trade_parameters.yaml, config/research/scalping_v2_parameter_sweep.yaml, app/config/trade_parameters.py, app/engine_paper/binance_account_commission.py, app/engine_paper/stale_position_shadow.py, app/research/scalping_v2_parameter_sweep.py, app/operator_control/production_lifecycle_worker.py, app/operator_control/runtime.py, app/server_api/trading_funnel.py, app/server_api/schema_compatibility.py, app/i18n/catalog.py, alembic/versions/0029_stale_position_shadow.py, tests, docs/audits/TRADERS_SCALPING_V2_FOUR_INDEPENDENT_BLOCKS_INTEGRATE_DEPLOY_02_BLOCK_1.md, docs/audits/TRADERS_SCALPING_V2_FOUR_INDEPENDENT_BLOCKS_INTEGRATE_DEPLOY_02_BLOCK_2.md, docs/audits/TRADERS_SCALPING_V2_FOUR_INDEPENDENT_BLOCKS_INTEGRATE_DEPLOY_02_BLOCK_3.md, docs/audits/TRADERS_SCALPING_V2_FOUR_INDEPENDENT_BLOCKS_INTEGRATE_DEPLOY_02_BLOCK_4.md, docs/audits/TRADERS_SCALPING_V2_FOUR_INDEPENDENT_BLOCKS_INTEGRATE_DEPLOY_02_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-09-06T23:17:00Z
+RECONCILED_BY_TASK = TRADERS_ETH_RECOVERY_CLOSE_AND_MANDATORY_STOP_TARGET_LIFECYCLE_01
+FILES_CHANGED = app/engine_paper/first_canary_correlation.py, app/engine_paper/fill_policy.py, app/engine_paper/order_execution_service.py, app/operator_control/production_lifecycle_worker.py, app/operator_control/recovery_close.py, app/operator_control/routes.py, app/operator_control/schemas.py, app/operator_control/service.py, app/i18n/catalog.py, alembic/versions/0030_paper_recovery_close.py, tests, docs/audits/TRADERS_ETH_RECOVERY_CLOSE_AND_MANDATORY_STOP_TARGET_LIFECYCLE_01_BLOCK_1.md, docs/audits/TRADERS_ETH_RECOVERY_CLOSE_AND_MANDATORY_STOP_TARGET_LIFECYCLE_01_FINAL.md, online_trader.md
 
-REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 12670cb441bbe4d7e7dc1621cf30b1f2b8cdb6d5_ORIGIN_FEATURE_ENGINE_PLATFORM_PROJECTSTATE_PUSHED_DEPLOYED_BLOCK3_WORKER_READONLY337124CA_OPERATOR4CF69751_SCHEMA0029
-PUSH_STATE_AT_RECONCILIATION = ROOT_PROJECT_STATE_PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_BEFORE_THIS_DOCUMENTATION_RECONCILIATION_CLIENT_MAIN_PUSHED_SYNCHRONIZED_AT5371F796
-STATUS_CONFIDENCE = FOURBLOCKS_PASS_I18NRUEN_REALACCOUNT10OF10_STUBFALSE_STALESHADOWRUNTIMEACTIVE_SCHEMA0029_POSTGRESE2EPASS_OFFLINESWEEPSMOKE2CONFIGS_COUNTS54_106_53_NOMUTATION_15MSTOPPED_LIVEFALSE
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 69978b5dfe801e23c25a7570c2d6e62c5e5c7b5d_ORIGIN_FEATURE_ENGINE_PLATFORM_PROJECTSTATE_PUSHED_OPERATOR_e23fbdd_DEPLOYED_SCHEMA0030
+PUSH_STATE_AT_RECONCILIATION = ROOT_PROJECT_STATE_PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_BEFORE_THIS_DOCUMENTATION_RECONCILIATION_CLIENT_MAIN_SYNCHRONIZED_AT5371F796
+STATUS_CONFIDENCE = BOTHBLOCKSPASS_ETHCLOSED_ACCOUNTINGHEALTHY_MANDATORYSTOPTARGET_RESTARTSAFE_SCHEMA0030_POSTGRESE2EPASS_OPEN0_ORPHAN0_REALFEE7P5BPS_1MSHADOW_TIMESTOPSHADOW_15MSTOPPED_LIVEFALSE
 
 # Состояние проекта traders-ml
 
@@ -22,8 +22,8 @@ STATUS_CONFIDENCE = FOURBLOCKS_PASS_I18NRUEN_REALACCOUNT10OF10_STUBFALSE_STALESH
 ```text
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
-API_RUNTIME_STATUS = SCALPINGV2_5MIMAGEDF2D15BF_SOURCE337124CA_RUNNING_OPERATORIMAGE484A04FF_SOURCE4CF69751_READONLYIMAGEFA264133_SOURCE337124CA_HEALTHY_SCHEMA0029_CONTINUOUSARMED_LIVE_OFF_AT20260906T211912Z
-SOURCE_API_STATUS = READONLY_EXPOSES_REALACCOUNT_COMMISSION_PROVENANCE_AND_STALEPOSITION_SHADOW_CONFIG_DIAGNOSTICS_DESKTOP5371F796_PUSHED_MAIN
+API_RUNTIME_STATUS = OPERATORIMAGE536B17CA_SOURCEE23FBDDB_HEALTHY_WORKERRUNNING_READONLYIMAGE3C4B5C4E_SOURCEB25AEF2A_HEALTHY_SCHEMA0030_CONTINUOUSARMED_LIVE_OFF_AT20260906T231700Z
+SOURCE_API_STATUS = READONLY_EXPOSES_ALL_ACTIVE_PAPER_POSITIONS_RECOVERY_REASON_REALACCOUNT_COMMISSION_AND_STALEPOSITION_SHADOW_DIAGNOSTICS_DESKTOP5371F796_PUSHED_MAIN
 CURRENT_STAGE = COLLECT_CAUSAL_HISTORICAL_TIME_STOP_COST_OBSERVATIONS_THEN_OPTIONAL_MANUAL_FULL_SWEEP_AND_VALIDATION_HOLDOUT_REVIEW
 CURRENT_BLOCKER = FULL_SWEEP_NOT_RUN_BY_CODEX_AND_TIMESTAMPED_HISTORICAL_TIMEOUT_MARKET_COST_EVIDENCE_NOT_YET_SUFFICIENT_FOR_TIME_STOP_PARAMETER_ACCEPTANCE
 CURRENT_PREREQUISITE = COLLECT_EXACT_CAUSAL_HISTORICAL_COST_OBSERVATIONS_THEN_RUN_DOCUMENTED_FULL_SWEEP_MANUALLY_WITHOUT_AUTOMATIC_PROMOTION
@@ -31,6 +31,26 @@ SECONDARY_BLOCKER = BROAD_MIXED_ERA_SERVER_TESTS_RETAIN_LEGACY_DEBT; 72H_PRODUCT
 CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT_POLICY_AND_CONTROLLED_ROLLOUT
 BACKGROUND_TIMED_GATE = STOPPED_TASK_COMPLETED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
+```
+
+## ETH recovery close and mandatory Stop/Target lifecycle 01
+
+```text
+TASK = TRADERS_ETH_RECOVERY_CLOSE_AND_MANDATORY_STOP_TARGET_LIFECYCLE_01
+RESULT = PASS_BOTH_INDEPENDENT_BLOCKS_IMPLEMENTED_INTEGRATED_DEPLOYED_ACCEPTED_PUSHED
+PROJECT_STATE_AUDIT_COMMIT = 69978b5dfe801e23c25a7570c2d6e62c5e5c7b5d
+BLOCK1 = ETHUSDT_SHORT_RECOVERY_CLOSED_CANONICALCURRENTCAUSALFILL2503P050510_REASONMISSEDSTOP_ACCOUNTINGHEALTHY_OPENRISKRELEASED
+BLOCK1_ROOT_CAUSE = ENTRYREADINESS_APPROVALSOURCEFALSE_WAS_APPLIED_BEFORE_OPENPOSITION_EXIT_EVALUATION_CURSORFROZE_BEFORE_PROVEN_SHORTSTOPBREACH
+BLOCK2 = DURABLE_POSTGRES_OPEN_OR_CLOSING_REHYDRATION_EXITSAFETYSEPARATEDFROMENTRYREADINESS_GENERATION_AND_PORTFOLIOADMISSION_CURRENTREALFEE_EXACTLYONCE
+TRIGGERS = AUTHORITATIVE_CLOSED1M_HIGHLOW_LONGSHORT_STOPFIRST_SAMEBAR_NEXTCAUSALCANDLE_GAP_AND_SLIPPAGE
+RESTART = TERMINAL_CANARY_CORRELATION_WITH_OPEN_POSITION_REHYDRATES_BOUNDED64_CATCHUP_CLOSINGRESUME
+TESTS = POSTGRES952PASS1INAPPLICABLEFORWARDONLYDOWNGRADEDESELECTED_PLUS2062PASS_FOCUSED290PASS_WORKER7PASS_COMPILEPASS
+DEPLOYMENT = OPERATORWORKER_SOURCEE23FBDDB_IMAGE536B17CA_HEALTHYRESTART0_READONLYB25AEF2A_HEALTHYRESTART0_SCHEMA0030
+RUNTIME = OPEN0_ORPHAN0_ACCOUNTINGHEALTHY_RECONCILIATIONHEALTHY_COMMISSIONREADYETH7P5BPS_WORKERRUNNING
+UNCHANGED = trade5MV2ACTIVE_1MSHADOW_TIMESTOPSHADOW_15MSTOPPED_V1INACTIVE_LIVEFALSE_REALBINANCEORDER0
+DESKTOP = NOCHANGE_READONLYAUTHORITATIVE; VISUALCAPTUREUNAVAILABLE_SetIsBorderRequired_0x80004002_NO_UNSUPPORTED_CLAIM
+EVIDENCE = docs/audits/TRADERS_ETH_RECOVERY_CLOSE_AND_MANDATORY_STOP_TARGET_LIFECYCLE_01_FINAL.md
+NEXT_ACTION = RESUME_EXISTING_CAUSAL_TIME_STOP_COST_OBSERVATION_STAGE_WITHOUT_AUTOMATIC_PROMOTION
 ```
 
 ## Four independent Scalping v2 integration blocks 02
@@ -6480,16 +6500,16 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Online analytics/paper pipeline | Blocks 01–11 plus four follow-up integration blocks accepted; continuous PAPER plus 1m and stale-position SHADOW | `trade-5m-v2` is the sole authority for new Scalping decisions on schema 0029. Real Binance account commission is 10/10 READY with no stub, and the 600/900-second stale-position policy is runtime-active as non-mutating SHADOW diagnostics. Parameter promotion remains blocked by insufficient causal historical timeout-cost evidence and the unrun manual full sweep |
+| Online analytics/paper pipeline | Blocks 01–11, four follow-up blocks, and mandatory Stop/Target recovery accepted; continuous PAPER plus 1m and stale-position SHADOW | `trade-5m-v2` is the sole authority for new Scalping decisions on schema 0030. Persisted OPEN/CLOSING positions are restart-rehydrated and mandatory Stop/Target exits are independent from entry readiness; real Binance account commission is READY. Parameter promotion remains blocked by insufficient causal historical timeout-cost evidence and the unrun manual full sweep |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
-| Readonly Server API | Healthy deployed schema-0029 image | Image `sha256:fa264133...`, source `337124ca...`, exposes real-account commission authority and stale-position SHADOW policy/latest diagnostics in addition to existing profitability provenance, with zero write routes |
+| Readonly Server API | Healthy deployed schema-0030-compatible image | Image `sha256:3c4b5c4e...`, source `b25aef2a...`, exposes all active PAPER positions, recovery reasons, real-account commission authority and stale-position SHADOW diagnostics, with zero write routes |
 | Desktop Readonly client | Source committed, pushed and running | Commit `5371f796...`, PID 6664, renders authoritative RU/EN stale-position mode, holding, timeout, progress, net-exit PnL, decision and reason fields; LIVE controls remain absent |
 | Android Readonly client | 100% through MOBILE-07 controlled LAN acceptance | Real Android 16 device passes 21/21 mobile GET routes and all nine screens through an exact Private host/phone path; cellular, Control and PostgreSQL access are denied, release cleartext stays disabled, and MOBILE-08 stopped at its Control security gate without changing this path |
 | Android Control client | Schema and persistence privileges accepted / network activation pending | The proven shared `traders_paper_runtime` binding has only registry SELECT and replay INSERT; both security tables remain empty. No TLS Control URL, LAN listener, enrollment or phone Control acceptance exists |
 | Readonly PAPER reporting API | Healthy and production-accepted | Natural DOGEUSDT and LINKUSDT v2 positions are durably visible with exact command/position identities; both closed naturally and reconciliation scans two rows as HEALTHY |
-| PAPER Operator Control API | Healthy deployed source / CONTINUOUS_ARMED / 1m + stale-position SHADOW | Source `4cf69751...`, image `sha256:484a04ff...`, is healthy with restart count zero against schema 0029; the stale evaluator is wired into the OPEN-position lifecycle and cannot mutate production exit behavior; LIVE is false |
-| Continuous correlation/readiness | Natural continuous cycle active | Generation 12 remains `CONTINUOUS_ARMED`; totals are 54 commands, 106 orders and 53 positions (52 CLOSED, one ETHUSDT OPEN). No position was forced or closed for this task |
+| PAPER Operator Control API | Healthy deployed source / mandatory Stop/Target / CONTINUOUS_ARMED / 1m + time-stop SHADOW | Source `e23fbddb...`, image `sha256:536b17ca...`, is healthy with restart count zero against schema 0030; persisted OPEN/CLOSING positions rehydrate and exits use current real fees independently of entry readiness; LIVE is false |
+| Continuous correlation/readiness | Natural continuous cycle active; persisted exit supervision repaired | Generation 12 remains `CONTINUOUS_ARMED`; 53 positions are CLOSED and zero are OPEN. The defect-affected ETHUSDT position was closed once through the authorized recovery lifecycle; accounting and reconciliation are HEALTHY |
 | Market-data health contract | Deployed and ready 60/60 | Official public market-data-only origin remediation is narrowly deployed; all 10 symbols × 6 timeframes are current/history-ready with zero internal gaps, duplicates, checksum conflicts or future closed candles |
 | Полный автономный LIVE-бот | ≈58% engineering / 0% operational | `LIVE = DISABLED`; this task made zero real Binance order API calls |
 
@@ -6582,8 +6602,13 @@ The historical 5m SHADOW and v1 records remain preserved as readonly provenance,
 but neither is an active source of new Scalping decisions. Scalping v2 is the
 only active 5m `PRODUCTION_SEARCH` identity. Continuous PAPER generation 12
 owns new v2 execution with durable UTC budgets and a global one-position cap.
-At this snapshot it has 52 CLOSED positions and one ETHUSDT position remains
-OPEN; closure was deliberately not forced. LIVE stays disabled.
+At this snapshot it has 53 CLOSED positions and zero OPEN positions. The
+defect-affected ETHUSDT SHORT was closed once through the canonical authorized
+recovery lifecycle at the current causal fill price; it was not backdated or
+mutated directly in PostgreSQL. Mandatory Stop/Target supervision now
+rehydrates persisted OPEN/CLOSING positions and no longer depends on new-entry
+approval, portfolio admission, or stale arming-generation equality. LIVE stays
+disabled.
 
 The prospective Scalping calibration collector now runs as a separate
 `restart: always` Compose service. It reads completed production projections and
@@ -6600,11 +6625,12 @@ boundaries with zero missing, duplicate, error or future leakage. The 24h count
 gate is reached; the 72h and profitability gates remain future work.
 
 The earlier WAL failure snapshots are historical evidence only. The fresh
-post-task projection reports schema 0029, continuous PAPER armed and
-`live_allowed=false`. Worker and Readonly run source `337124ca...`; Operator
-runs the accepted wiring fix `4cf69751...`; all have zero restarts. Funnel and
-host expose configuration hash `0485c11f...`, real Binance account commission
-is 10/10 READY with `stub_active=false`, and stale-position mode is SHADOW.
+post-task projection reports schema 0030, continuous PAPER armed and
+`live_allowed=false`. Operator and its lifecycle worker run source
+`e23fbddb...`; Readonly remains healthy on compatible source `b25aef2a...`;
+all have zero restarts. Funnel and host expose configuration hash
+`0485c11f...`, real Binance account commission is 10/10 READY with
+`stub_active=false`, and stale-position/time-stop mode is SHADOW.
 `trade-5m-v2` is the only authority for new Scalping decisions,
 `trade-5m-v1` is historical readonly provenance, and the 15m container is
 stopped. The offline sweep extension is committed at `fb0b6605...`; it was
