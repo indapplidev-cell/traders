@@ -1,5 +1,17 @@
 schema_version: 2
 seed: 20260906
+search:
+  strategy: auto
+  seed: 20260907
+  exhaustive_max_configs: 10000
+  max_evaluated_configs: 5000
+  batch_size: 100
+  stage1_fraction: 0.60
+  stage2_fraction: 0.30
+  stage3_fraction: 0.10
+  max_configs_per_observation: 100
+  minimum_validation_sample: 20
+  minimum_holdout_sample: 20
 dataset:
   source: production_paper_readonly
   profile: trade-5m-v2

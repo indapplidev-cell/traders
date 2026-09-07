@@ -4,18 +4,20 @@ from __future__ import annotations
 
 import argparse
 import csv
+from collections import ChainMap
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
-import itertools
 import json
+import math
 import os
 from pathlib import Path
 import random
+import sqlite3
 import subprocess
-from typing import Any, Iterable, Iterator, Mapping
+from typing import Any, Iterator, Mapping
 
 import yaml
 from sqlalchemy import create_engine, event, inspect, select, text
@@ -83,6 +85,146 @@ class DatasetOptions:
     maximum_rows: int = DEFAULT_MAX_ROWS
     from_time: datetime | None = None
     to_time: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SearchPlan:
+    raw_search_space_size: int
+    dimension_cardinalities: dict[str, int]
+    available_replay_rows: int
+    selected_strategy: str
+    evaluation_budget: int
+    batch_size: int
+    seed: int
+    staged_search_plan: tuple[dict[str, object], ...]
+    reason: str
+    statistical_warning: str
+    promotion_eligible: bool
+    estimated_active_batch_memory_mb: float
+
+    def safe_dict(self) -> dict[str, object]:
+        return {
+            "RAW_SEARCH_SPACE_SIZE": self.raw_search_space_size,
+            "DIMENSION_COUNT": len(self.dimension_cardinalities),
+            "DIMENSION_CARDINALITIES": self.dimension_cardinalities,
+            "AVAILABLE_REPLAY_ROWS": self.available_replay_rows,
+            "SELECTED_SEARCH_STRATEGY": self.selected_strategy,
+            "EVALUATION_BUDGET": self.evaluation_budget,
+            "BATCH_SIZE": self.batch_size,
+            "SEED": self.seed,
+            "STAGED_SEARCH_PLAN": self.staged_search_plan,
+            "REASON": self.reason,
+            "STATISTICAL_SEARCH_WARNING": self.statistical_warning,
+            "PROMOTION_ELIGIBLE": self.promotion_eligible,
+            "MEMORY_PLAN": "SAFE",
+            "ESTIMATED_ACTIVE_BATCH_MEMORY_MB": self.estimated_active_batch_memory_mb,
+            "CONFIG_GENERATION": "LAZY",
+            "RAW_SPACE_MATERIALIZED_IN_MEMORY": "NO",
+        }
+
+
+class ParameterSweepSearchPlanner:
+    """Transparent deterministic planner for exhaustive or bounded exploration."""
+
+    BYTES_PER_ACTIVE_CONFIG = 256 * 1024
+    MAX_ACTIVE_BATCH_MEMORY_MB = 64.0
+
+    @staticmethod
+    def raw_cardinality(space: Mapping[str, list[object]]) -> int:
+        return math.prod(len(values) for values in space.values())
+
+    def plan(
+        self, *, dataset_rows: int, space: Mapping[str, list[object]],
+        search: Mapping[str, object], max_configs_override: int | None = None,
+        validation_rows: int = 0, holdout_rows: int = 0,
+        available_replay_rows: int = 0,
+    ) -> SearchPlan:
+        raw = self.raw_cardinality(space)
+        strategy = str(search.get("strategy", "auto")).lower()
+        if strategy not in {"auto", "exhaustive", "bounded"}:
+            raise SweepExpectedError("SEARCH_SPACE_INVALID")
+        seed = int(search.get("seed", 20260907))
+        exhaustive_threshold = int(search.get("exhaustive_max_configs", 10_000))
+        configured_budget = int(search.get("max_evaluated_configs", 5_000))
+        per_observation = float(search.get("max_configs_per_observation", 100.0))
+        statistical_cap = max(1, int(dataset_rows * per_observation))
+        budget = min(raw, configured_budget, statistical_cap)
+        if max_configs_override is not None:
+            if max_configs_override <= 0:
+                raise SweepExpectedError("SEARCH_SPACE_INVALID")
+            budget = min(budget, max_configs_override)
+        exhaustive = raw <= exhaustive_threshold and strategy != "bounded"
+        if strategy == "exhaustive" and raw > exhaustive_threshold:
+            raise SweepExpectedError("UNSAFE_EXHAUSTIVE_SEARCH")
+        selected = "EXHAUSTIVE_LAZY" if exhaustive else "AUTO_BOUNDED"
+        requested_batch = int(search.get("batch_size", 100))
+        safe_batch = int(
+            self.MAX_ACTIVE_BATCH_MEMORY_MB * 1024 * 1024
+            / self.BYTES_PER_ACTIVE_CONFIG
+        )
+        batch = min(requested_batch, safe_batch, budget)
+        if batch < 1:
+            raise SweepExpectedError("UNSAFE_MEMORY_PLAN")
+        fractions = (
+            float(search.get("stage1_fraction", .60)),
+            float(search.get("stage2_fraction", .30)),
+            float(search.get("stage3_fraction", .10)),
+        )
+        if any(value < 0 for value in fractions) or not math.isclose(sum(fractions), 1.0):
+            raise SweepExpectedError("SEARCH_SPACE_INVALID")
+        counts = [int(budget * fractions[0]), int(budget * fractions[1])]
+        counts.append(budget - sum(counts))
+        stages = tuple(
+            {"stage": name, "budget": count, "uses_holdout": False}
+            for name, count in zip(
+                ("BROAD_EXPLORATION", "VALIDATION_REFINEMENT", "LOCAL_REFINEMENT"),
+                counts, strict=True,
+            )
+        )
+        minimum_validation = int(search.get("minimum_validation_sample", 20))
+        minimum_holdout = int(search.get("minimum_holdout_sample", 20))
+        warning = (
+            "LARGE_HYPOTHESIS_SPACE_SMALL_SAMPLE"
+            if raw > exhaustive_threshold and dataset_rows < configured_budget else "NONE"
+        )
+        promotion = (
+            warning == "NONE" and validation_rows >= minimum_validation
+            and holdout_rows >= minimum_holdout and budget == raw
+        )
+        return SearchPlan(
+            raw, {name: len(values) for name, values in sorted(space.items())},
+            available_replay_rows, selected, budget, batch, seed, stages,
+            "RAW_SPACE_WITHIN_EXHAUSTIVE_THRESHOLD" if exhaustive
+            else "RAW_SPACE_EXCEEDS_SAFE_EXHAUSTIVE_THRESHOLD",
+            warning, promotion,
+            round(batch * self.BYTES_PER_ACTIVE_CONFIG / 1024 / 1024, 3),
+        )
+
+
+def _config_from_index(
+    space: Mapping[str, list[object]], index: int,
+) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name in sorted(space, reverse=True):
+        values = space[name]
+        index, offset = divmod(index, len(values))
+        result[name] = values[offset]
+    return {name: result[name] for name in sorted(result)}
+
+
+def _candidate_indices(plan: SearchPlan) -> Iterator[int]:
+    """Lazy reproducible full-cycle permutation with O(1) active state."""
+    size = plan.raw_search_space_size
+    if plan.selected_strategy == "EXHAUSTIVE_LAZY":
+        yield from range(size)
+        return
+    rng = random.Random(plan.seed)
+    start = rng.randrange(size)
+    step = rng.randrange(1, size)
+    while math.gcd(step, size) != 1:
+        step = (step + 1) % size or 1
+    for offset in range(size):
+        yield (start + offset * step) % size
 
 
 def _parse_utc(value: str | None) -> datetime | None:
@@ -331,12 +473,6 @@ def _git_commit() -> str:
     ).stdout.strip()
 
 
-def _combinations(space: dict[str, list[object]]) -> Iterable[dict[str, object]]:
-    names = tuple(sorted(space))
-    for values in itertools.product(*(space[name] for name in names)):
-        yield dict(zip(names, values, strict=True))
-
-
 def _stale_policy(config: dict[str, object]) -> StalePositionPolicyParameters:
     payload = SCALPING_V2.exit_policy.stale_position.model_dump(mode="python")
     payload.update({name: config[name] for name in TIME_STOP_SEARCH_FIELDS})
@@ -540,7 +676,7 @@ def _replay_time_stop(
         "blocked_candidates": None, "unblocked_candidates": None,
     }
     if not isinstance(observations, list) or not observations:
-        return dict(row), state
+        return row, state
     extension_count = 0
     decision = None
     try:
@@ -559,12 +695,12 @@ def _replay_time_stop(
         ordered = []
     if not ordered:
         state["status"] = "INSUFFICIENT_DATA"
-        return dict(row), state
+        return row, state
     for observation in ordered:
         inputs = _historical_input(row, observation, extension_count=extension_count)
         if inputs is None:
             state["status"] = "INSUFFICIENT_DATA"
-            return dict(row), state
+            return row, state
         decision = evaluate_stale_position_shadow(
             inputs, policy=policy, config_hash=config_hash,
         )
@@ -575,19 +711,18 @@ def _replay_time_stop(
             break
     if decision is None:
         state["status"] = "INSUFFICIENT_DATA"
-        return dict(row), state
+        return row, state
     state["status"] = "REPLAYED"
     if decision.shadow_decision != "HYPOTHETICAL_EXIT":
-        return dict(row), state
-    replayed = dict(row)
-    replayed.update({
+        return row, state
+    replayed = ChainMap({
         "closed_at_ms": int(decision.evaluated_at.timestamp() * 1000),
         "holding_time_ms": decision.holding_seconds * 1000,
         "net_pnl": float(decision.shadow_net_pnl),
         "gross_pnl": float(decision.shadow_gross_pnl),
         "fees": float(decision.shadow_fees),
         "exit_reason": decision.shadow_exit_reason,
-    })
+    }, row)
     state["exit"] = True
     state["break_even"] = decision.shadow_exit_reason == "TIME_STOP_SHADOW_BREAK_EVEN_PROTECT"
     state["seconds_saved"] = max(
@@ -677,27 +812,6 @@ def _time_stop_metrics(
     return result
 
 
-def _pareto(results: list[dict[str, Any]]) -> list[str]:
-    frontier = []
-    for row in results:
-        m = row["validation"]
-        dominated = any(
-            other is not row
-            and (other["validation"]["net_expectancy_per_trade"] or -1e99) >= (m["net_expectancy_per_trade"] or -1e99)
-            and (other["validation"]["max_drawdown"] or 1e99) <= (m["max_drawdown"] or 1e99)
-            and (other["validation"]["trade_count"] or 0) >= (m["trade_count"] or 0)
-            and (
-                (other["validation"]["net_expectancy_per_trade"] or -1e99) > (m["net_expectancy_per_trade"] or -1e99)
-                or (other["validation"]["max_drawdown"] or 1e99) < (m["max_drawdown"] or 1e99)
-                or (other["validation"]["trade_count"] or 0) > (m["trade_count"] or 0)
-            )
-            for other in results
-        )
-        if not dominated:
-            frontier.append(row["config_hash"])
-    return frontier
-
-
 def _dataset_options(
     search: dict[str, Any], *, max_rows: int | None = None,
     from_value: str | None = None, to_value: str | None = None,
@@ -759,7 +873,9 @@ def _local_schema_heads() -> tuple[str, ...]:
         raise SweepExpectedError("SCHEMA_DISCOVERY_FAILED") from None
 
 
-def _prepare_output(search: dict[str, Any], run_id: str | None) -> tuple[str, Path]:
+def _prepare_output(
+    search: dict[str, Any], run_id: str | None, *, resume: bool,
+) -> tuple[str, Path]:
     identifier = run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     if not identifier or any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_." for character in identifier):
         raise SweepExpectedError("RUN_ID_INVALID")
@@ -768,12 +884,18 @@ def _prepare_output(search: dict[str, Any], run_id: str | None) -> tuple[str, Pa
         root = PROJECT_ROOT / root
     output = root / identifier
     try:
-        output.mkdir(parents=True, exist_ok=False)
+        if resume:
+            if not output.is_dir():
+                raise SweepExpectedError("RESUME_RUN_NOT_FOUND")
+        else:
+            output.mkdir(parents=True, exist_ok=False)
         probe = output / ".write-probe"
         probe.write_text("ok", encoding="ascii")
         probe.unlink()
     except FileExistsError:
-        raise SweepExpectedError("RUN_ID_ALREADY_EXISTS") from None
+        raise SweepExpectedError(
+            "RUN_ID_ALREADY_EXISTS; Use a new --run-id or --resume for a compatible interrupted run."
+        ) from None
     except OSError:
         raise SweepExpectedError("OUTPUT_NOT_WRITABLE") from None
     return identifier, output
@@ -851,11 +973,141 @@ def _display_path(path: Path) -> str:
         return str(path)
 
 
+def _atomic_json(path: Path, payload: object) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def _stream_json_array(source: Path, target: Path, *, rejected_only: bool = False) -> None:
+    with source.open(encoding="utf-8") as incoming, target.open("w", encoding="utf-8") as outgoing:
+        outgoing.write("[\n")
+        first = True
+        for line in incoming:
+            item = json.loads(line)
+            if rejected_only and item["result_status"] == "ACCEPTED":
+                continue
+            if not first:
+                outgoing.write(",\n")
+            outgoing.write(json.dumps(item, indent=2, sort_keys=True))
+            first = False
+        outgoing.write("\n]\n")
+
+
+def _evaluate_config(
+    params: dict[str, object], splits: Mapping[str, list[dict[str, Any]]],
+    minimums: Mapping[str, int], *, index: int, stage: str,
+) -> tuple[dict[str, Any], bool, str | None]:
+    item: dict[str, Any] = {
+        "result_index": index, "stage": stage, "parameters": params,
+        "config_hash": _config_hash(params),
+    }
+    try:
+        _stale_policy(params)
+    except (TypeError, ValueError) as error:
+        item.update({
+            "result_status": "PRUNED_INVALID", "invalid_reason": str(error),
+            "split_status": {name: "PRUNED_INVALID" for name in (
+                "calibration", "validation", "holdout"
+            )},
+        })
+        for name in ("calibration", "validation", "holdout"):
+            item[name] = _metrics([])
+        return item, False, "STRUCTURAL_INVALID"
+    admitted_cal = [row for row in splits["CALIBRATION"] if _admitted(row, params)]
+    item["calibration"] = _time_stop_metrics(
+        admitted_cal, params, config_hash=item["config_hash"],
+    )
+    if len(admitted_cal) < int(minimums["calibration"]):
+        reason = "ALL_TRADES_FILTERED" if not admitted_cal else "CALIBRATION_INSUFFICIENT_SAMPLE"
+        item["validation"] = _metrics([])
+        item["holdout"] = _metrics([])
+        item["split_status"] = {
+            "calibration": "INSUFFICIENT_SAMPLE", "validation": "NOT_EVALUATED_EARLY_REJECT",
+            "holdout": "NOT_EVALUATED_EARLY_REJECT",
+        }
+        item["result_status"] = "EARLY_REJECTED"
+        item["early_reject_reason"] = reason
+        return item, True, reason
+    statuses = {"calibration": "PASS"}
+    admitted_validation = [row for row in splits["VALIDATION"] if _admitted(row, params)]
+    item["validation"] = _time_stop_metrics(
+        admitted_validation, params, config_hash=item["config_hash"],
+    )
+    statuses["validation"] = (
+        "PASS" if len(admitted_validation) >= int(minimums["validation"])
+        else "INSUFFICIENT_SAMPLE"
+    )
+    # Holdout is evaluated only after search metrics and never feeds stage/ranking.
+    admitted_holdout = [row for row in splits["HOLDOUT"] if _admitted(row, params)]
+    item["holdout"] = _time_stop_metrics(
+        admitted_holdout, params, config_hash=item["config_hash"],
+    )
+    statuses["holdout"] = (
+        "PASS" if len(admitted_holdout) >= int(minimums["holdout"])
+        else "INSUFFICIENT_SAMPLE"
+    )
+    item["split_status"] = statuses
+    item["result_status"] = (
+        "ACCEPTED" if statuses["validation"] == "PASS" else "REJECTED"
+    )
+    return item, True, None
+
+
+def _stage_for(plan: SearchPlan, evaluated: int) -> str:
+    boundary = 0
+    for stage in plan.staged_search_plan:
+        boundary += int(stage["budget"])
+        if evaluated < boundary:
+            return str(stage["stage"])
+    return str(plan.staged_search_plan[-1]["stage"])
+
+
+def _aggregate_results(output: Path) -> dict[str, object]:
+    database_path = output / ".search-aggregate.sqlite3"
+    connection = sqlite3.connect(database_path)
+    connection.execute(
+        "CREATE TABLE points(hash TEXT PRIMARY KEY, expectancy REAL, drawdown REAL, trades INTEGER)"
+    )
+    with (output / "RESULTS.jsonl").open(encoding="utf-8") as handle:
+        for line in handle:
+            item = json.loads(line)
+            if item["result_status"] != "ACCEPTED":
+                continue
+            metrics = item["validation"]
+            connection.execute("INSERT INTO points VALUES (?,?,?,?)", (
+                item["config_hash"], metrics["net_expectancy_per_trade"] or -1e99,
+                metrics["max_drawdown"] or 0.0, metrics["trade_count"] or 0,
+            ))
+    connection.commit()
+    top_hashes = [row[0] for row in connection.execute(
+        "SELECT hash FROM points ORDER BY expectancy DESC, drawdown ASC, trades DESC LIMIT 10"
+    )]
+    frontier = [row[0] for row in connection.execute(
+        "SELECT p.hash FROM points p WHERE NOT EXISTS (SELECT 1 FROM points o WHERE "
+        "o.hash <> p.hash AND o.expectancy >= p.expectancy AND o.drawdown <= p.drawdown "
+        "AND o.trades >= p.trades AND (o.expectancy > p.expectancy OR o.drawdown < p.drawdown OR o.trades > p.trades))"
+    )]
+    connection.close()
+    database_path.unlink(missing_ok=True)
+    selected: dict[str, dict[str, Any]] = {}
+    with (output / "RESULTS.jsonl").open(encoding="utf-8") as handle:
+        for line in handle:
+            item = json.loads(line)
+            if item["config_hash"] in top_hashes:
+                selected[item["config_hash"]] = item
+    return {
+        "ranked_without_holdout": [selected[value] for value in top_hashes],
+        "pareto_frontier": frontier, "holdout_used_for_search": False,
+    }
+
+
 def run(
     search_path: Path, *, run_id: str | None = None, max_configs: int | None = None,
     max_rows: int | None = None, from_value: str | None = None,
     to_value: str | None = None, database_url: str | None = None,
-    preflight_only: bool = False, verbose: bool = False,
+    preflight_only: bool = False, verbose: bool = False, resume: bool = False,
+    stop_after_batches: int | None = None,
 ) -> Path:
     try:
         search = _validate_search(yaml.safe_load(search_path.read_text(encoding="utf-8")))
@@ -864,14 +1116,10 @@ def run(
     except yaml.YAMLError:
         raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
     space = search["search_space"]
-    options = _dataset_options(
-        search, max_rows=max_rows, from_value=from_value, to_value=to_value,
-    )
-    identifier, output = _prepare_output(search, run_id)
+    options = _dataset_options(search, max_rows=max_rows, from_value=from_value, to_value=to_value)
+    identifier, output = _prepare_output(search, run_id, resume=resume)
     database: ReadOnlyResearchDatabase | None = None
-    binding_source = "NOT_REQUIRED_OFFLINE_JSON"
-    session_mode = "NOT_APPLICABLE"
-    schema_head = "NOT_APPLICABLE"
+    binding_source, session_mode, schema_head = "NOT_REQUIRED_OFFLINE_JSON", "NOT_APPLICABLE", "NOT_APPLICABLE"
     write_rejections: dict[str, str] = {}
     try:
         if options.source in {DATASET_SOURCE, LEGACY_DATASET_SOURCE}:
@@ -882,193 +1130,212 @@ def run(
         rows = _load_rows(options, database)
     except SweepExpectedError as error:
         _write_preflight(output / "PREFLIGHT.json", {
-            "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": error.reason,
-            "SECRET_OUTPUT": 0,
+            "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": error.reason, "SECRET_OUTPUT": 0,
         })
-        if database is not None:
-            database.dispose()
         raise
     finally:
         if database is not None:
             database.dispose()
     if not rows:
         _write_preflight(output / "PREFLIGHT.json", {
-            "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": "DATASET_EMPTY",
-            "SECRET_OUTPUT": 0,
+            "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": "DATASET_EMPTY", "SECRET_OUTPUT": 0,
         })
         raise SweepExpectedError("DATASET_EMPTY")
     splits = _split(rows, int(search["seed"]))
-    minimums = search["minimum_samples"]
-    planned = 1
-    for values in space.values():
-        planned *= len(values)
-    if max_configs is not None:
-        if max_configs <= 0:
-            raise SweepExpectedError("SEARCH_SPACE_INVALID")
-        planned = min(planned, max_configs)
+    plan = ParameterSweepSearchPlanner().plan(
+        dataset_rows=len(rows), space=space, search=search.get("search", {}),
+        max_configs_override=max_configs, validation_rows=len(splits["VALIDATION"]),
+        holdout_rows=len(splits["HOLDOUT"]), available_replay_rows=sum(
+            isinstance(row.get("time_stop_observations"), list)
+            and bool(row.get("time_stop_observations")) for row in rows
+        ),
+    )
+    git_commit, dataset_fingerprint = _git_commit(), _config_hash(rows)
+    search_space_hash = _config_hash(space)
+    checkpoint_path = output / "CHECKPOINT.json"
+    checkpoint = {
+        "run_id": identifier, "git_commit": git_commit,
+        "config_hash": TRADE_PARAMETERS.config_hash,
+        "search_space_hash": search_space_hash,
+        "dataset_fingerprint": dataset_fingerprint,
+        "strategy": plan.selected_strategy, "seed": plan.seed, "stage": "NOT_STARTED",
+        "evaluated_count": 0, "accepted_count": 0, "rejected_count": 0,
+        "pruned_count": 0, "early_reject_count": 0, "failed_count": 0,
+        "last_durable_result_index": -1, "last_candidate_offset": -1,
+        "checkpoint_count": 0, "early_reject_reasons": {}, "completed": False,
+    }
+    if resume:
+        try:
+            existing = _json(checkpoint_path)
+        except (FileNotFoundError, json.JSONDecodeError):
+            raise SweepExpectedError("RESUME_CHECKPOINT_NOT_AVAILABLE") from None
+        immutable = ("run_id", "git_commit", "config_hash", "search_space_hash", "dataset_fingerprint", "strategy", "seed")
+        if any(existing.get(key) != checkpoint[key] for key in immutable):
+            raise SweepExpectedError("RESUME_FINGERPRINT_MISMATCH")
+        checkpoint = existing
     preflight = {
-        "PARAMETER_SWEEP_PREFLIGHT": "PASS",
-        "PROJECT_ROOT_FOUND": PROJECT_ROOT.is_dir(),
-        "CONFIG_FILE_FOUND": search_path.is_file(),
-        "TRADE_PARAMETERS_FOUND": CONFIG_PATH.is_file(),
-        "DATABASE_BINDING_FOUND": database is not None,
-        "DATABASE_CONNECTION_OK": database is not None,
-        "DATABASE_SESSION_READ_ONLY": session_mode == "ON",
-        "SCHEMA_HEAD_OK": schema_head != "NOT_APPLICABLE",
-        "REQUIRED_TABLES_AVAILABLE": database is not None,
-        "TRADE_5M_V2_DATASET_AVAILABLE": bool(rows),
-        "DATASET_ROWS_GT_ZERO": bool(rows),
-        "CONFIG_HASH_AVAILABLE": bool(TRADE_PARAMETERS.config_hash),
-        "SEARCH_SPACE_VALID": True,
-        "OUTPUT_DIRECTORY_WRITABLE": True,
-        "PRODUCTION_MUTATION_GUARD_ACTIVE": True,
+        "PARAMETER_SWEEP_PREFLIGHT": "PASS", "PROJECT_ROOT_FOUND": PROJECT_ROOT.is_dir(),
+        "CONFIG_FILE_FOUND": search_path.is_file(), "TRADE_PARAMETERS_FOUND": CONFIG_PATH.is_file(),
+        "DATABASE_BINDING_FOUND": database is not None, "DATABASE_CONNECTION_OK": database is not None,
+        "DATABASE_SESSION_READ_ONLY": session_mode == "ON", "SCHEMA_HEAD_OK": schema_head != "NOT_APPLICABLE",
+        "REQUIRED_TABLES_AVAILABLE": database is not None, "TRADE_5M_V2_DATASET_AVAILABLE": True,
+        "DATASET_ROWS_GT_ZERO": True, "CONFIG_HASH_AVAILABLE": True, "SEARCH_SPACE_VALID": True,
+        "OUTPUT_DIRECTORY_WRITABLE": True, "PRODUCTION_MUTATION_GUARD_ACTIVE": True,
         "WRITE_ATTEMPT_INSERT": write_rejections.get("INSERT", "NOT_APPLICABLE"),
         "WRITE_ATTEMPT_UPDATE": write_rejections.get("UPDATE", "NOT_APPLICABLE"),
         "WRITE_ATTEMPT_DELETE": write_rejections.get("DELETE", "NOT_APPLICABLE"),
         "WRITE_ATTEMPT_DDL": write_rejections.get("DDL", "NOT_APPLICABLE"),
-        "DATASET_SOURCE": (
-            "PRODUCTION_PAPER_READONLY" if database is not None else "OFFLINE_JSON"
-        ),
-        "DATABASE_BINDING": binding_source,
-        "DATABASE_SESSION": "READ_ONLY" if session_mode == "ON" else session_mode,
-        "SCHEMA_HEAD": schema_head,
-        "PROFILE": options.profile,
-        "ROWS_AVAILABLE": len(rows),
-        "CONFIGURATIONS_PLANNED": planned,
-        "OUTPUT_DIR": _display_path(output),
-        "SECRET_OUTPUT": 0,
+        "DATASET_SOURCE": "PRODUCTION_PAPER_READONLY" if database is not None else "OFFLINE_JSON",
+        "DATABASE_BINDING": binding_source, "DATABASE_SESSION": "READ_ONLY" if session_mode == "ON" else session_mode,
+        "SCHEMA_HEAD": schema_head, "PROFILE": options.profile, "ROWS_AVAILABLE": len(rows),
+        "DATASET_ROWS": len(rows), "RAW_SEARCH_SPACE_SIZE": plan.raw_search_space_size,
+        "SEARCH_STRATEGY": plan.selected_strategy, "EXHAUSTIVE": "YES" if plan.selected_strategy == "EXHAUSTIVE_LAZY" else "NO",
+        "MAX_EVALUATED_CONFIGS": plan.evaluation_budget, "CONFIGURATIONS_PLANNED": plan.evaluation_budget,
+        "BATCH_SIZE": plan.batch_size, "SEED": plan.seed, "MEMORY_PLAN": "SAFE",
+        "ESTIMATED_ACTIVE_BATCH_MEMORY_MB": plan.estimated_active_batch_memory_mb,
+        "STATISTICAL_SEARCH_WARNING": plan.statistical_warning,
+        "PROMOTION_ELIGIBLE": "YES" if plan.promotion_eligible else "NO",
+        "OUTPUT_DIR": _display_path(output), "SECRET_OUTPUT": 0,
     }
     _write_preflight(output / "PREFLIGHT.json", preflight)
+    _atomic_json(output / "SEARCH_PLAN.json", plan.safe_dict())
     _print_preflight(preflight)
+    for key in ("RAW_SEARCH_SPACE_SIZE", "SEARCH_STRATEGY", "EXHAUSTIVE", "MAX_EVALUATED_CONFIGS", "BATCH_SIZE", "SEED", "STATISTICAL_SEARCH_WARNING", "PROMOTION_ELIGIBLE", "MEMORY_PLAN"):
+        print(f"{key} = {preflight[key]}")
     if preflight_only:
+        _atomic_json(checkpoint_path, checkpoint)
         return output
-    results, rejected = [], []
-    combinations = _combinations(space)
-    if max_configs is not None:
-        if max_configs <= 0:
-            raise ValueError("max_configs must be positive")
-        combinations = itertools.islice(combinations, max_configs)
-    for params in combinations:
-        item = {"parameters": params, "config_hash": _config_hash(params)}
-        try:
-            _stale_policy(params)
-        except (TypeError, ValueError) as error:
-            item["invalid_reason"] = str(error)
-            item["split_status"] = {
-                name: "INVALID_CONFIG" for name in ("calibration", "validation", "holdout")
-            }
-            for name in ("calibration", "validation", "holdout"):
-                item[name] = _metrics([])
-            rejected.append(item)
-            continue
-        statuses = {}
-        for name in ("CALIBRATION", "VALIDATION", "HOLDOUT"):
-            admitted = [row for row in splits[name] if _admitted(row, params)]
-            key = name.lower()
-            item[key] = _time_stop_metrics(
-                admitted, params, config_hash=item["config_hash"],
-            )
-            statuses[key] = "PASS" if len(admitted) >= int(minimums[key]) else "INSUFFICIENT_SAMPLE"
-        item["split_status"] = statuses
-        (results if statuses["calibration"] == statuses["validation"] == "PASS" else rejected).append(item)
-    # Holdout is reported but intentionally absent from ranking keys.
-    ranked = sorted(results, key=lambda row: (
-        row["validation"]["net_expectancy_per_trade"] or -1e99,
-        row["validation"]["profit_factor"] or -1e99,
-        -(row["validation"]["max_drawdown"] or 1e99),
-    ), reverse=True)
     run_config = {
-        "schema_version": SCHEMA_VERSION, "seed": search["seed"],
-        "dataset": {
-            "source": options.source, "profile": options.profile,
-            "closed_only": options.closed_only, "max_rows": options.maximum_rows,
-        }, "dataset_period": {
-            "from_ms": min((row.get("opened_at_ms") for row in rows), default=None),
-            "to_ms": max((row.get("closed_at_ms") for row in rows), default=None),
-        }, "sample_sizes": {key: len(value) for key, value in splits.items()},
-        "source_data_provenance": _config_hash(rows),
-        "authoritative_trade_parameters": str(CONFIG_PATH),
-        "baseline_config_hash": TRADE_PARAMETERS.config_hash,
+        "schema_version": SCHEMA_VERSION, "seed": search["seed"], "search": plan.safe_dict(),
+        "dataset": {"source": options.source, "profile": options.profile, "closed_only": True, "max_rows": options.maximum_rows},
+        "dataset_period": {"from_ms": min(row.get("opened_at_ms") for row in rows), "to_ms": max(row.get("closed_at_ms") for row in rows)},
+        "sample_sizes": {key: len(value) for key, value in splits.items()},
+        "source_data_provenance": dataset_fingerprint, "authoritative_trade_parameters": str(CONFIG_PATH),
+        "baseline_config_hash": TRADE_PARAMETERS.config_hash, "search_space_hash": search_space_hash,
         "time_stop_policy_schema": "StalePositionPolicyParameters",
         "time_stop_evaluator": "app.engine_paper.stale_position_shadow.evaluate_stale_position_shadow",
-        "search_space_config": str(search_path), "git_commit": _git_commit(),
-        "database_binding": binding_source,
-        "database_session": "READ_ONLY" if session_mode == "ON" else session_mode,
-        "schema_head": schema_head,
-        "production_mutations": 0, "production_config_writes": 0,
-        "approvals_created": 0, "commands_created": 0, "positions_created": 0,
-        "binance_order_api_calls": 0,
+        "search_space_config": str(search_path), "git_commit": git_commit,
+        "database_binding": binding_source, "database_session": "READ_ONLY" if session_mode == "ON" else session_mode,
+        "schema_head": schema_head, "production_mutations": 0, "production_config_writes": 0,
+        "approvals_created": 0, "commands_created": 0, "positions_created": 0, "binance_order_api_calls": 0,
     }
-    (output / "RUN_CONFIG.yaml").write_text(yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8")
-    all_results = results + rejected
-    (output / "RESULTS.json").write_text(json.dumps(all_results, indent=2, sort_keys=True), encoding="utf-8")
-    flat = [{"config_hash": row["config_hash"], **row["parameters"],
-             **{f"validation_{k}": v for k, v in row["validation"].items() if not isinstance(v, dict)}} for row in all_results]
-    with (output / "RESULTS.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=sorted({key for row in flat for key in row}))
-        writer.writeheader(); writer.writerows(flat)
-    top = {"ranked_without_holdout": ranked[:10], "pareto_frontier": _pareto(results)}
-    (output / "TOP_CONFIGS.json").write_text(json.dumps(top, indent=2, sort_keys=True), encoding="utf-8")
-    (output / "REJECTED_CONFIGS.json").write_text(json.dumps(rejected, indent=2, sort_keys=True), encoding="utf-8")
-    report_lines = [
-        "# Scalping v2 parameter sweep\n\n"
-        f"- Schema: `{SCHEMA_VERSION}`\n- Git: `{run_config['git_commit']}`\n"
-        f"- Baseline config hash: `{TRADE_PARAMETERS.config_hash}`\n"
-        f"- Database schema head: `{schema_head}`\n"
-        f"- Dataset source/profile: `{preflight['DATASET_SOURCE']}` / `{options.profile}`\n"
-        f"- Dataset period: `{json.dumps(run_config['dataset_period'], sort_keys=True)}`\n"
-        f"- Dataset rows: {len(rows)}; tested configurations: {len(all_results)}\n"
-        f"- Split sizes: `{json.dumps(run_config['sample_sizes'], sort_keys=True)}`\n"
-        f"- Calibration/validation accepted: {len(results)}; rejected or insufficient: {len(rejected)}\n"
-        "- Holdout was reported and was not used for ranking.\n"
-        "- Small samples are marked `INSUFFICIENT_SAMPLE`; no result is invented.\n"
-        "- Database session: `READ_ONLY`; application adapter accepts SELECT only.\n"
-        "- Production mutations/config writes/approvals/commands/positions: `0`.\n"
-        "- Binance order API calls: `0`; LIVE remains disabled and untouched.\n"
-        "- Missing historical timestamped cost/market evidence is `UNREPLAYABLE` or `INSUFFICIENT_DATA`.\n"
-        "- Full metrics and every configuration are in RESULTS.json/RESULTS.csv.\n\n"
-        "## TIME-STOP / STALE-POSITION ANALYSIS\n\n"
-        "Runtime and replay share `StalePositionPolicyParameters` and "
-        "`evaluate_stale_position_shadow`; current commissions never replace historical evidence.\n\n"
-    ]
-    for item in all_results:
-        report_lines.append(
-            f"### `{item['config_hash']}`\n\n"
-            f"- Parameters: `{json.dumps(item['parameters'], sort_keys=True)}`\n"
-            f"- Sample sufficiency: `{json.dumps(item['split_status'], sort_keys=True)}`\n"
-        )
-        if item.get("invalid_reason"):
-            report_lines.append(f"- Invalid configuration: `{item['invalid_reason']}`\n\n")
-            continue
-        for split_name in ("calibration", "validation", "holdout"):
-            metrics = item[split_name]
-            report_lines.append(
-                f"- {split_name}: baseline PnL={metrics['baseline_net_pnl']}; "
-                f"time-stop PnL={metrics['time_stop_net_pnl']}; "
-                f"expectancy baseline/time-stop={metrics['baseline_net_expectancy']}/"
-                f"{metrics['time_stop_net_expectancy']}; "
-                f"PF baseline/time-stop={metrics['baseline_profit_factor']}/"
-                f"{metrics['time_stop_profit_factor']}; "
-                f"drawdown baseline/time-stop={metrics['baseline_max_drawdown']}/"
-                f"{metrics['time_stop_max_drawdown']}; "
-                f"holding baseline/avg/p50/p90={metrics['baseline_average_holding_seconds']}/"
-                f"{metrics['average_holding_seconds']}/"
-                f"{metrics['holding_p50']}/{metrics['holding_p90']}; "
-                f"fees baseline/time-stop/delta={metrics['baseline_fees_total']}/"
-                f"{metrics['fees_total']}/{metrics['fee_drag_delta']}; "
-                f"stale/soft/hard/break-even counts={metrics['time_stop_exit_count']}/"
-                f"{metrics['soft_timeout_count']}/{metrics['hard_timeout_count']}/"
-                f"{metrics['break_even_protection_count']}; "
-                f"capacity seconds saved={metrics['capacity_seconds_saved']}; "
-                f"replay={json.dumps(metrics['replay_status'], sort_keys=True)}\n"
+    if not resume:
+        (output / "RUN_CONFIG.yaml").write_text(yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8")
+    jsonl = output / "RESULTS.jsonl"
+    csv_path = output / "RESULTS.csv"
+    csv_fields = ["result_index", "config_hash", "stage", "result_status", "validation_expectancy", "validation_drawdown", "validation_trades", "parameters_json"]
+    csv_new = not csv_path.exists()
+    batch_active = 0
+    batches_this_call = 0
+    with jsonl.open("a", encoding="utf-8", buffering=1) as json_handle, csv_path.open("a", newline="", encoding="utf-8", buffering=1) as csv_handle:
+        writer = csv.DictWriter(csv_handle, fieldnames=csv_fields)
+        if csv_new:
+            writer.writeheader()
+        for candidate_offset, raw_index in enumerate(_candidate_indices(plan)):
+            if candidate_offset <= int(checkpoint["last_candidate_offset"]):
+                continue
+            if int(checkpoint["evaluated_count"]) >= plan.evaluation_budget:
+                break
+            stage = _stage_for(plan, int(checkpoint["evaluated_count"]))
+            item, consumed_budget, early_reason = _evaluate_config(
+                _config_from_index(space, raw_index), splits, search["minimum_samples"],
+                index=int(checkpoint["last_durable_result_index"]) + 1, stage=stage,
             )
-        report_lines.append("\n")
-    report_lines.append(
-        "## Pareto frontier\n\n"
-        f"Validation-only frontier: `{json.dumps(top['pareto_frontier'])}`. "
-        "Holdout is not ranked.\n"
-    )
-    (output / "REPORT.md").write_text("".join(report_lines), encoding="utf-8")
+            json_handle.write(json.dumps(item, sort_keys=True) + "\n")
+            validation = item["validation"]
+            writer.writerow({
+                "result_index": item["result_index"], "config_hash": item["config_hash"],
+                "stage": stage, "result_status": item["result_status"],
+                "validation_expectancy": validation.get("net_expectancy_per_trade"),
+                "validation_drawdown": validation.get("max_drawdown"),
+                "validation_trades": validation.get("trade_count"),
+                "parameters_json": json.dumps(item["parameters"], sort_keys=True),
+            })
+            json_handle.flush(); csv_handle.flush(); os.fsync(json_handle.fileno()); os.fsync(csv_handle.fileno())
+            checkpoint["last_candidate_offset"] = candidate_offset
+            checkpoint["last_durable_result_index"] = item["result_index"]
+            checkpoint["stage"] = stage
+            if consumed_budget:
+                checkpoint["evaluated_count"] = int(checkpoint["evaluated_count"]) + 1
+                if item["result_status"] == "ACCEPTED":
+                    checkpoint["accepted_count"] = int(checkpoint["accepted_count"]) + 1
+                else:
+                    checkpoint["rejected_count"] = int(checkpoint["rejected_count"]) + 1
+                if item["result_status"] == "EARLY_REJECTED":
+                    checkpoint["early_reject_count"] = int(checkpoint["early_reject_count"]) + 1
+            else:
+                checkpoint["pruned_count"] = int(checkpoint["pruned_count"]) + 1
+            if early_reason and consumed_budget:
+                reasons = checkpoint.setdefault("early_reject_reasons", {})
+                reasons[early_reason] = int(reasons.get(early_reason, 0)) + 1
+            checkpoint["checkpoint_count"] = int(checkpoint["checkpoint_count"]) + 1
+            _atomic_json(checkpoint_path, checkpoint)
+            batch_active += 1
+            if batch_active >= plan.batch_size:
+                batches_this_call += 1
+                batch_active = 0
+                if stop_after_batches is not None and batches_this_call >= stop_after_batches:
+                    return output
+    checkpoint["completed"] = int(checkpoint["evaluated_count"]) == plan.evaluation_budget
+    _atomic_json(checkpoint_path, checkpoint)
+    _stream_json_array(jsonl, output / "RESULTS.json")
+    _stream_json_array(jsonl, output / "REJECTED_CONFIGS.json", rejected_only=True)
+    top = _aggregate_results(output)
+    _atomic_json(output / "TOP_CONFIGS.json", top)
+    configs_per_observation = int(checkpoint["evaluated_count"]) / len(rows)
+    report = f"""# Scalping v2 parameter sweep
+
+## SEARCH PLANNING
+
+- Raw search-space size: {plan.raw_search_space_size}
+- Selected strategy: `{plan.selected_strategy}`
+- Seed: {plan.seed}
+- Evaluation budget: {plan.evaluation_budget}
+- Staged plan: `{json.dumps(plan.staged_search_plan)}`
+- Holdout used for search/refinement/ranking: `NO`
+
+## MEMORY SAFETY
+
+- Memory plan: `SAFE`
+- Lazy config generation; raw space materialized: `NO`
+- Batch size: {plan.batch_size}; estimated active batch memory: {plan.estimated_active_batch_memory_mb} MB
+- Peak active batch size: {min(plan.batch_size, int(checkpoint['last_durable_result_index']) + 1)}
+- Base rows are shared; replay uses bounded split-local overlays, not dataset copies.
+- Incremental JSONL/CSV and disk-backed TOP/Pareto aggregation are enabled.
+
+## STATISTICAL SUFFICIENCY
+
+- Dataset source/profile/rows: `{preflight['DATASET_SOURCE']}` / `{options.profile}` / {len(rows)}
+- Configs per observation: {configs_per_observation:.6f}
+- Statistical warning: `{plan.statistical_warning}`
+- Promotion eligible: `{'YES' if plan.promotion_eligible else 'NO'}`
+- No production recommendation is emitted when promotion eligibility is `NO`.
+
+## EXECUTION PROGRESS
+
+- Actual evaluated configs: {checkpoint['evaluated_count']}
+- Pruned invalid configs: {checkpoint['pruned_count']}
+- Early rejected configs: {checkpoint['early_reject_count']}
+- Early rejection reasons: `{json.dumps(checkpoint.get('early_reject_reasons', {}), sort_keys=True)}`
+- Completed durable rows: {int(checkpoint['last_durable_result_index']) + 1}
+- Accepted/rejected/failed: {checkpoint['accepted_count']}/{checkpoint['rejected_count']}/{checkpoint['failed_count']}
+- Checkpoint count: {checkpoint['checkpoint_count']}; resume used: `{'YES' if resume else 'NO'}`
+
+## TIME-STOP / STALE-POSITION ANALYSIS
+
+- Runtime and replay share `StalePositionPolicyParameters` and `evaluate_stale_position_shadow`.
+- Current commissions never replace missing historical causal cost evidence.
+- Holdout is not ranked and does not influence search stages.
+
+## SAFETY
+
+- Database session: `{'READ_ONLY' if session_mode == 'ON' else session_mode}`.
+- Production mutations/config writes/approvals/commands/positions: `0`.
+- Binance order calls: `0`; LIVE remains disabled and untouched.
+- Full results are streamed in `RESULTS.jsonl`, `RESULTS.csv`, and `RESULTS.json`.
+"""
+    (output / "REPORT.md").write_text(report, encoding="utf-8")
+    print(f"CONFIGURATIONS_EVALUATED = {checkpoint['evaluated_count']}")
     return output
 
 
@@ -1079,6 +1346,7 @@ def main() -> None:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-id")
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--max-configs", type=int)
     parser.add_argument("--max-rows", type=int)
     parser.add_argument("--from", dest="from_value")
@@ -1092,6 +1360,7 @@ def main() -> None:
             max_rows=args.max_rows, from_value=args.from_value,
             to_value=args.to_value, database_url=args.database_url,
             preflight_only=args.preflight_only, verbose=args.verbose,
+            resume=args.resume,
         )
     except SweepExpectedError as error:
         print("PARAMETER_SWEEP_PREFLIGHT = FAILED")

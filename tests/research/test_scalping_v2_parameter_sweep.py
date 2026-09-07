@@ -7,7 +7,8 @@ import yaml
 from sqlalchemy import text
 
 from app.research.scalping_v2_parameter_sweep import (
-    ReadOnlyResearchDatabase, SweepExpectedError, _stale_policy,
+    ParameterSweepSearchPlanner, ReadOnlyResearchDatabase, SweepExpectedError,
+    _candidate_indices, _config_from_index, _stale_policy,
     resolve_database_binding, run,
 )
 
@@ -91,6 +92,7 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
     expected = {
         "RUN_CONFIG.yaml", "RESULTS.csv", "RESULTS.json", "TOP_CONFIGS.json",
         "REJECTED_CONFIGS.json", "REPORT.md", "PREFLIGHT.json",
+        "SEARCH_PLAN.json", "CHECKPOINT.json", "RESULTS.jsonl",
     }
     assert {path.name for path in output.iterdir()} == expected
     results = json.loads((output / "RESULTS.json").read_text())
@@ -126,7 +128,7 @@ def test_invalid_timeout_relationship_is_rejected_not_executed(tmp_path):
     search_path.write_text(yaml.safe_dump(search), encoding="utf-8")
     output = run(search_path, run_id="invalid", max_configs=1)
     result = json.loads((output / "RESULTS.json").read_text())[0]
-    assert result["split_status"]["validation"] == "INVALID_CONFIG"
+    assert result["split_status"]["validation"] == "PRUNED_INVALID"
     assert "soft timeout must be below hard timeout" in result["invalid_reason"]
 
 
@@ -250,3 +252,127 @@ def test_artifacts_do_not_contain_database_secret(tmp_path):
     )
     assert "read-secret" not in rendered
     assert "runtime-secret" not in rendered
+
+
+def _planner_search(**overrides):
+    value = {
+        "strategy": "auto", "seed": 20260907,
+        "exhaustive_max_configs": 10_000, "max_evaluated_configs": 5_000,
+        "batch_size": 100, "stage1_fraction": .6,
+        "stage2_fraction": .3, "stage3_fraction": .1,
+        "max_configs_per_observation": 100,
+        "minimum_validation_sample": 20, "minimum_holdout_sample": 20,
+    }
+    value.update(overrides)
+    return value
+
+
+def test_raw_cardinality_small_exhaustive_and_large_auto_bounded():
+    planner = ParameterSweepSearchPlanner()
+    small = {"a": [1, 2], "b": [3, 4, 5]}
+    assert planner.raw_cardinality(small) == 6
+    assert planner.plan(
+        dataset_rows=100, space=small, search=_planner_search(),
+        validation_rows=20, holdout_rows=20,
+    ).selected_strategy == "EXHAUSTIVE_LAZY"
+    large = {"a": list(range(1001)), "b": list(range(1001))}
+    plan = planner.plan(
+        dataset_rows=53, space=large, search=_planner_search(),
+        validation_rows=11, holdout_rows=11,
+    )
+    assert plan.raw_search_space_size == 1_002_001
+    assert plan.selected_strategy == "AUTO_BOUNDED"
+    assert plan.evaluation_budget == 5_000
+    assert plan.statistical_warning == "LARGE_HYPOTHESIS_SPACE_SMALL_SAMPLE"
+    assert plan.promotion_eligible is False
+
+
+def test_bounded_candidate_generation_is_lazy_and_reproducible():
+    planner = ParameterSweepSearchPlanner()
+    space = {"a": list(range(1001)), "b": list(range(1001))}
+    plan = planner.plan(dataset_rows=53, space=space, search=_planner_search())
+    iterator = _candidate_indices(plan)
+    assert iter(iterator) is iterator
+    first = [next(iterator) for _ in range(20)]
+    assert first == [next(_candidate_indices(plan)) for _ in range(1)] + list(
+        __import__("itertools").islice(_candidate_indices(plan), 1, 20)
+    )
+    assert len(set(first)) == 20
+    assert _config_from_index(space, first[0]) == _config_from_index(space, first[0])
+
+
+def test_memory_guard_auto_reduces_batch_and_can_fail_cleanly(monkeypatch):
+    planner = ParameterSweepSearchPlanner()
+    plan = planner.plan(
+        dataset_rows=100, space={"a": list(range(20_000))},
+        search=_planner_search(batch_size=100_000),
+    )
+    assert plan.batch_size == 256
+    monkeypatch.setattr(planner, "MAX_ACTIVE_BATCH_MEMORY_MB", 0)
+    with pytest.raises(SweepExpectedError, match="UNSAFE_MEMORY_PLAN"):
+        planner.plan(
+            dataset_rows=100, space={"a": list(range(20_000))},
+            search=_planner_search(),
+        )
+
+
+def test_incremental_checkpoint_and_compatible_resume(tmp_path):
+    search = _search(tmp_path, _rows())
+    output = run(search, run_id="resume", stop_after_batches=1)
+    checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
+    assert checkpoint["last_durable_result_index"] >= 0
+    resumed = run(search, run_id="resume", resume=True)
+    final = json.loads((resumed / "CHECKPOINT.json").read_text())
+    assert final["completed"] is True
+    assert final["evaluated_count"] == 2
+    assert len((resumed / "RESULTS.jsonl").read_text().splitlines()) == 2
+
+
+def test_resume_hash_mismatch_is_rejected(tmp_path):
+    search_path = _search(tmp_path, _rows())
+    run(search_path, run_id="mismatch", stop_after_batches=1)
+    search = yaml.safe_load(search_path.read_text())
+    search["search_space"]["min_positive_ev_r"].append(.3)
+    search_path.write_text(yaml.safe_dump(search), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match="RESUME_FINGERPRINT_MISMATCH"):
+        run(search_path, run_id="mismatch", resume=True)
+
+
+def test_holdout_is_never_used_for_search_or_ranking(tmp_path):
+    output = run(_search(tmp_path, _rows()), run_id="holdout", max_configs=1)
+    plan = json.loads((output / "SEARCH_PLAN.json").read_text())
+    top = json.loads((output / "TOP_CONFIGS.json").read_text())
+    assert all(stage["uses_holdout"] is False for stage in plan["STAGED_SEARCH_PLAN"])
+    assert top["holdout_used_for_search"] is False
+    assert "Holdout used for search/refinement/ranking: `NO`" in (
+        output / "REPORT.md"
+    ).read_text()
+
+
+def test_incident_764411904_space_is_bounded_without_materialization(tmp_path):
+    source = yaml.safe_load(
+        Path("config/research/scalping_v2_parameter_sweep.yaml").read_text()
+    )
+    rows = []
+    base = _rows()
+    for index in range(53):
+        row = dict(base[index % len(base)])
+        row["position_id"] = f"incident-{index}"
+        row["split"] = (
+            "CALIBRATION" if index < 31 else "VALIDATION" if index < 42 else "HOLDOUT"
+        )
+        rows.append(row)
+    dataset = tmp_path / "incident.json"
+    dataset.write_text(json.dumps(rows), encoding="utf-8")
+    source["dataset"] = str(dataset)
+    source["output_root"] = str(tmp_path / "artifacts")
+    config = tmp_path / "incident.yaml"
+    config.write_text(yaml.safe_dump(source), encoding="utf-8")
+    output = run(config, run_id="incident", max_configs=5)
+    preflight = json.loads((output / "PREFLIGHT.json").read_text())
+    checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
+    assert preflight["RAW_SEARCH_SPACE_SIZE"] == 764_411_904
+    assert preflight["SEARCH_STRATEGY"] == "AUTO_BOUNDED"
+    assert preflight["CONFIGURATIONS_PLANNED"] == 5
+    assert checkpoint["evaluated_count"] == 5
+    assert not (output / ".search-aggregate.sqlite3").exists()
