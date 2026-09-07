@@ -1,12 +1,35 @@
 # Scalping v2 Parameter Sweep
 
-Parameter Sweep is an offline, read-only research tool. From the project root,
-run it with one command:
+Parameter Sweep is an offline, read-only research tool implemented by the
+authoritative `traders_ml/parameter_sweep/` package. The GUI and CLI are thin
+front ends over the same headless engine.
+
+Open the Russian Windows GUI from the project root:
+
+```powershell
+python -m traders_ml.parameter_sweep
+```
+
+Run the native CLI explicitly:
+
+```powershell
+python -m traders_ml.parameter_sweep `
+  --config config/research/scalping_v2_parameter_sweep.yaml `
+  --run-id <manual-run-id>
+```
+
+The historical entrypoint is retained as a delegating compatibility shim:
 
 ```powershell
 python -m app.research.scalping_v2_parameter_sweep `
   --config config/research/scalping_v2_parameter_sweep.yaml `
   --run-id <manual-run-id>
+```
+
+Inspect a run without attaching to it:
+
+```powershell
+python -m traders_ml.parameter_sweep --status <run-id>
 ```
 
 The normal operator path resolves the existing protected project database
@@ -47,15 +70,28 @@ disabled extension and break-even children collapse to one canonical value.
 Each evaluated configuration records an exact gate funnel rather than the
 opaque `ALL_TRADES_FILTERED` label.
 
-Each new run ID creates `RUN_CONFIG.yaml`, `PREFLIGHT.json`, `SEARCH_PLAN.json`,
+The GUI creates a local-time, sortable `YYYYMMDD_HHMMSS_mmm` run ID with a
+collision check. Each new run creates `RUN_CONFIG.yaml`, `PREFLIGHT.json`, `SEARCH_PLAN.json`,
 `CHECKPOINT.json`, `RESULTS.csv`, `RESULTS.jsonl`, `RESULTS.json`,
-`TOP_CONFIGS.json`, `REJECTED_CONFIGS.json`, and `REPORT.md`
+`TOP_CONFIGS.json`, `REJECTED_CONFIGS.json`, `REPORT.md`, `STATUS.json`, and
+`INTEGRITY.json`
 under `artifacts/scalping_v2_parameter_sweep/<run-id>/`. Existing run IDs are
 never overwritten. Use `--resume` only for a compatible interrupted run; Git,
 trade-config, search-space, and dataset fingerprints must all match. Results
 and checkpoints are durable incrementally, while TOP/Pareto aggregation is
 disk-backed. Expected failures print a short `REASON` code without a
 credential-bearing traceback.
+
+The primary stop action is graceful: finish the current configuration, fsync
+its result, atomically checkpoint, and stop before the next configuration.
+`STATUS.json` is written atomically and refreshed by a five-second heartbeat.
+The status command reports stale/dead `RUNNING` states as `INTERRUPTED` instead
+of trusting them indefinitely. A project-local lock rejects a second live run
+and safely replaces a stale lock whose process no longer exists.
+
+Completion is published only after content-aware integrity validation checks
+required files, JSON/YAML parsing, run/config/dataset identities, and durable
+result counts. A failed integrity check leaves the run non-completed.
 
 Run artifacts include a dataset fingerprint and row/time boundaries, full field
 coverage, baseline metrics, replayable/partial/unreplayable counts, and start,

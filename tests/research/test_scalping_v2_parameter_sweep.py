@@ -1,4 +1,7 @@
 import json
+import os
+import re
+import time
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -16,6 +19,14 @@ from app.research.scalping_v2_parameter_sweep import (
     _gate_funnel, _shadow_observation, _stale_policy,
     resolve_database_binding, run,
 )
+from traders_ml.parameter_sweep.controller import (
+    ParameterSweepController, PresentationState,
+)
+from traders_ml.parameter_sweep.events import EventType, SweepEvent
+from traders_ml.parameter_sweep.integrity import verify_artifacts
+from traders_ml.parameter_sweep.locking import SingleRunLock, SweepAlreadyRunning
+from traders_ml.parameter_sweep.state import read_effective_status
+from traders_ml.parameter_sweep.utils import generate_run_id
 
 
 def _time_stop_space() -> dict[str, list[object]]:
@@ -100,6 +111,7 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
         "RUN_CONFIG.yaml", "RESULTS.csv", "RESULTS.json", "TOP_CONFIGS.json",
         "REJECTED_CONFIGS.json", "REPORT.md", "PREFLIGHT.json",
         "SEARCH_PLAN.json", "CHECKPOINT.json", "RESULTS.jsonl",
+        "STATUS.json", "INTEGRITY.json",
     }
     assert {path.name for path in output.iterdir()} == expected
     results = json.loads((output / "RESULTS.json").read_text())
@@ -535,3 +547,165 @@ def test_top_and_pareto_exclude_unaccepted_and_holdout_is_reporting_only(tmp_pat
     assert {item["config_hash"] for item in top["ranked_without_holdout"]} <= eligible
     assert set(top["pareto_frontier"]) <= eligible
     assert top["holdout_used_for_search"] is False
+
+
+def test_authoritative_package_events_status_and_integrity_complete(tmp_path):
+    events = []
+    output = run(_search(tmp_path, _rows()), run_id="lifecycle", event_sink=events.append)
+    types = [event.type for event in events]
+    assert types[0] == EventType.RUN_STARTED
+    for required in (
+        EventType.PREFLIGHT_STARTED, EventType.PREFLIGHT_COMPLETED,
+        EventType.SEARCH_PLANNING_STARTED, EventType.SEARCH_PLANNED,
+        EventType.CONFIG_STARTED, EventType.RESULT_WRITE_STARTED,
+        EventType.RESULT_WRITE_COMPLETED, EventType.CHECKPOINT_WRITTEN,
+        EventType.RUN_FINALIZING, EventType.INTEGRITY_CHECK_STARTED,
+        EventType.INTEGRITY_CHECK_COMPLETED, EventType.RUN_COMPLETED,
+    ):
+        assert required in types
+    status = json.loads((output / "STATUS.json").read_text())
+    assert status["state"] == "COMPLETED"
+    assert status["completed_configs"] == status["planned_configs"] == 2
+    assert status["duration_seconds"] is not None
+    integrity = json.loads((output / "INTEGRITY.json").read_text())
+    assert integrity["integrity_status"] == "PASS"
+
+
+def test_graceful_stop_finishes_current_result_then_compatible_resume(tmp_path):
+    stop = False
+    events = []
+
+    def sink(event):
+        nonlocal stop
+        events.append(event)
+        if event.type == EventType.RESULT_WRITE_COMPLETED:
+            stop = True
+
+    search = _search(tmp_path, _rows())
+    output = run(
+        search, run_id="graceful", event_sink=sink,
+        stop_requested=lambda: stop,
+    )
+    checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
+    assert checkpoint["STATUS"] == "CANCELLED"
+    assert checkpoint["evaluated_count"] == 1
+    assert len((output / "RESULTS.jsonl").read_text().splitlines()) == 1
+    assert EventType.CHECKPOINT_WRITTEN in [event.type for event in events]
+    assert events[-1].type == EventType.RUN_CANCELLED
+    resumed = run(search, run_id="graceful", resume=True)
+    assert json.loads((resumed / "STATUS.json").read_text())["state"] == "COMPLETED"
+    assert len((resumed / "RESULTS.jsonl").read_text().splitlines()) == 2
+
+
+def test_single_run_lock_blocks_live_owner_and_clears_stale_owner(tmp_path):
+    path = tmp_path / ".parameter_sweep.lock"
+    first = SingleRunLock(path, "one")
+    first.acquire()
+    try:
+        with pytest.raises(SweepAlreadyRunning):
+            SingleRunLock(path, "two").acquire()
+    finally:
+        first.release()
+    path.write_text(json.dumps({"run_id": "stale", "pid": 99999999}))
+    replacement = SingleRunLock(path, "new")
+    replacement.acquire()
+    assert json.loads(path.read_text())["run_id"] == "new"
+    replacement.release()
+
+
+def test_status_interprets_dead_or_stale_running_as_interrupted(tmp_path):
+    path = tmp_path / "STATUS.json"
+    path.write_text(json.dumps({
+        "run_id": "stale", "state": "RUNNING_CONFIG", "phase": "RUNNING_CONFIG",
+        "pid": 99999999, "updated_at": "2020-01-01T00:00:00+00:00",
+        "completed_configs": 1, "planned_configs": 2, "started_at": None,
+        "last_checkpoint_at": None, "resume_available": True,
+    }))
+    assert read_effective_status(path)["state"] == "INTERRUPTED"
+
+
+def test_integrity_rejects_missing_invalid_count_and_wrong_run_id(tmp_path):
+    output = run(_search(tmp_path, _rows()), run_id="tamper")
+    config = yaml.safe_load((output / "RUN_CONFIG.yaml").read_text())
+    arguments = {
+        "expected_run_id": "tamper",
+        "expected_dataset_fingerprint": config["dataset_fingerprint"],
+        "expected_config_hash": config["baseline_config_hash"],
+        "expected_count": 2,
+    }
+    assert verify_artifacts(output, **arguments)["integrity_status"] == "PASS"
+    (output / "TOP_CONFIGS.json").write_text("not-json")
+    assert verify_artifacts(output, **arguments)["integrity_status"] == "FAIL"
+    (output / "TOP_CONFIGS.json").write_text("{}")
+    assert verify_artifacts(output, **{**arguments, "expected_count": 3})["integrity_status"] == "FAIL"
+    assert verify_artifacts(output, **{**arguments, "expected_run_id": "wrong"})["integrity_status"] == "FAIL"
+    (output / "REPORT.md").unlink()
+    assert verify_artifacts(output, **arguments)["integrity_status"] == "FAIL"
+
+
+def test_run_id_is_local_millisecond_sortable_and_collision_safe(tmp_path):
+    first = generate_run_id(tmp_path)
+    assert re.fullmatch(r"\d{8}_\d{6}_\d{3}", first)
+    (tmp_path / first).mkdir()
+    second = generate_run_id(tmp_path)
+    assert second != first
+    assert second.startswith(first[:19]) or re.fullmatch(r"\d{8}_\d{6}_\d{3}", second)
+
+
+def test_ui_is_thin_and_controller_consumes_engine_events(tmp_path):
+    source = Path("traders_ml/parameter_sweep/ui.py").read_text(encoding="utf-8")
+    for forbidden in (
+        "sqlalchemy", "evaluate_expectancy", "evaluate_stale_position_shadow",
+        "verify_artifacts", "CHECKPOINT.json", "RESULTS.jsonl",
+    ):
+        assert forbidden not in source
+    controller = ParameterSweepController(tmp_path / "config.yaml", tmp_path / "artifacts")
+    controller.events.put(SweepEvent.create(EventType.RUN_STARTED, "ui"))
+    controller.events.put(SweepEvent.create(
+        EventType.SEARCH_PLANNED, "ui", raw_space=100, planned=5,
+        strategy="AUTO_BOUNDED",
+    ))
+    controller.events.put(SweepEvent.create(
+        EventType.CONFIG_STARTED, "ui", index=1, planned=5,
+        changed_parameters={"x": 1}, resolved_config={"x": 1, "static": 2},
+    ))
+    controller.drain_events()
+    assert controller.state.planned == 5
+    assert controller.state.current_index == 1
+    assert controller.state.changed_parameters == {"x": 1}
+    assert controller.state.strategy == "Автоматический ограниченный поиск"
+
+
+def test_cli_and_gui_controller_reference_same_engine_class():
+    from traders_ml.parameter_sweep import cli, controller
+
+    assert cli.ParameterSweepEngine is controller.ParameterSweepEngine
+
+
+def test_real_tk_gui_bounded_smoke_reaches_integrity_final_screen(tmp_path, monkeypatch):
+    import tkinter as tk
+    from traders_ml.parameter_sweep.ui import ParameterSweepWindow
+    import traders_ml.parameter_sweep.controller as controller_module
+
+    search = _search(tmp_path, _rows())
+    controller = ParameterSweepController(search, tmp_path / "artifacts")
+    root = tk.Tk()
+    root.withdraw()
+    window = ParameterSweepWindow(root, controller)
+    window.start_button.invoke()
+    deadline = time.monotonic() + 15
+    while controller.state.active and time.monotonic() < deadline:
+        root.update()
+        time.sleep(.02)
+    root.update()
+    assert controller.state.active is False
+    assert controller.state.completed == 2
+    assert controller.state.integrity_status == "PASS"
+    assert "Обработка 2 комбинаций окончена" in window.status.cget("text")
+    assert "Целостность отчётов: PASS" in window.integrity.cget("text")
+    assert window.progress["value"] == 100
+    opened = []
+    monkeypatch.setattr(controller_module, "open_directory", opened.append)
+    window.open_button.invoke()
+    assert opened == [Path(controller.state.output_directory)]
+    root.destroy()

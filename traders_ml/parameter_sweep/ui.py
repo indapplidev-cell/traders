@@ -1,0 +1,189 @@
+"""Tkinter presentation only; research work is delegated to the controller."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+from .cli import DEFAULT_CONFIG, DEFAULT_OUTPUT_ROOT
+from .controller import ParameterSweepController
+from .texts import RU
+from .utils import format_duration
+
+
+class ParameterSweepWindow:
+    POLL_MS = 200
+
+    def __init__(self, root: tk.Tk, controller: ParameterSweepController) -> None:
+        self.root = root
+        self.controller = controller
+        self.show_all = False
+        root.title(RU["title"])
+        root.geometry("900x760")
+        root.minsize(720, 600)
+        root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._build()
+        self._render()
+        root.after(self.POLL_MS, self._poll)
+
+    def _build(self) -> None:
+        outer = ttk.Frame(self.root, padding=14)
+        outer.pack(fill="both", expand=True)
+        canvas = tk.Canvas(outer, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        self.body = ttk.Frame(canvas)
+        self.body.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=self.body, anchor="nw", tags="body")
+        canvas.bind("<Configure>", lambda e: canvas.itemconfigure("body", width=e.width))
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        ttk.Label(self.body, text=RU["title"], font=("Segoe UI", 17, "bold")).pack(anchor="w", pady=(0, 10))
+        self.context = ttk.Label(self.body, justify="left")
+        self.context.pack(anchor="w", fill="x")
+        self.status = ttk.Label(self.body, font=("Segoe UI", 11, "bold"), wraplength=820)
+        self.status.pack(anchor="w", fill="x", pady=12)
+        self.plan = ttk.Label(self.body, justify="left")
+        self.plan.pack(anchor="w")
+        self.progress = ttk.Progressbar(self.body, maximum=100)
+        self.progress.pack(fill="x", pady=(12, 3))
+        self.progress_text = ttk.Label(self.body)
+        self.progress_text.pack(anchor="w")
+
+        ttk.Label(self.body, text="Исследуемые параметры:", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(12, 4))
+        self.parameters = tk.Text(self.body, height=8, wrap="none", state="disabled", font=("Consolas", 9))
+        self.parameters.pack(fill="x")
+        self.toggle_button = ttk.Button(self.body, text=RU["show_all"], command=self._toggle_parameters)
+        self.toggle_button.pack(anchor="w", pady=4)
+
+        self.result = ttk.Label(self.body, justify="left")
+        self.result.pack(anchor="w", pady=8)
+        self.counters = ttk.Label(self.body, justify="left")
+        self.counters.pack(anchor="w", pady=4)
+        self.timing = ttk.Label(self.body, justify="left")
+        self.timing.pack(anchor="w", pady=4)
+        self.integrity = ttk.Label(self.body, justify="left")
+        self.integrity.pack(anchor="w", pady=8)
+        self.directory = ttk.Label(self.body, justify="left", wraplength=820)
+        self.directory.pack(anchor="w", pady=4)
+
+        actions = ttk.Frame(self.body)
+        actions.pack(fill="x", pady=12)
+        self.start_button = ttk.Button(actions, text=RU["start"], command=self._start)
+        self.start_button.pack(side="left", padx=(0, 6))
+        self.stop_button = ttk.Button(actions, text=RU["stop"], command=self.controller.request_stop_after_current)
+        self.stop_button.pack(side="left", padx=6)
+        self.resume_button = ttk.Button(actions, text=RU["resume"], command=self._resume)
+        self.resume_button.pack(side="left", padx=6)
+        self.open_button = ttk.Button(actions, text=RU["open"], command=self._open)
+        self.open_button.pack(side="left", padx=6)
+        ttk.Button(actions, text=RU["close"], command=self._on_close).pack(side="right")
+
+    def _start(self) -> None:
+        try:
+            self.controller.start_new_run()
+        except RuntimeError as error:
+            messagebox.showerror(RU["title"], str(error), parent=self.root)
+
+    def _resume(self) -> None:
+        if self.controller.state.run_id != "—":
+            self.controller.resume_run(self.controller.state.run_id)
+
+    def _open(self) -> None:
+        try:
+            self.controller.open_reports_directory()
+        except OSError as error:
+            messagebox.showerror(RU["title"], str(error), parent=self.root)
+
+    def _toggle_parameters(self) -> None:
+        self.show_all = not self.show_all
+        self.toggle_button.configure(text=RU["show_changed"] if self.show_all else RU["show_all"])
+        self._render()
+
+    def _poll(self) -> None:
+        self.controller.drain_events()
+        self._render()
+        if self.controller._close_after_stop and not self.controller.state.active:
+            self.root.destroy()
+            return
+        self.root.after(self.POLL_MS, self._poll)
+
+    def _render(self) -> None:
+        state = self.controller.state
+        self.context.configure(text=(
+            "Профиль: Scalping v2\nРежим: Только чтение\n"
+            "Источник данных: Production PAPER\nLIVE: Отключён\n"
+            f"RUN ID: {state.run_id}"
+        ))
+        self.status.configure(text=state.status_text)
+        self.plan.configure(text=(
+            f"Исходных комбинаций: {state.raw_space:,}".replace(",", " ") + "\n"
+            f"Будет исследовано: {state.planned:,}".replace(",", " ") + "\n"
+            f"Стратегия: {state.strategy}"
+        ))
+        self.progress.configure(value=state.progress_percent)
+        self.progress_text.configure(text=(
+            f"{state.progress_percent:.1f}% · Комбинация {state.current_index} из {state.planned}"
+        ))
+        params = state.resolved_config if self.show_all else state.changed_parameters
+        self.parameters.configure(state="normal")
+        self.parameters.delete("1.0", "end")
+        self.parameters.insert("1.0", json.dumps(params, ensure_ascii=False, indent=2, default=str))
+        self.parameters.configure(state="disabled")
+        result = state.current_result
+        validation = result.get("validation", {})
+        result_status = result.get("result_status", "—")
+        translated_status = {
+            "ACCEPTED": "Принята", "REJECTED": "Отклонена",
+            "EARLY_REJECTED": "Недостаточно данных",
+        }.get(result_status, result_status)
+        self.result.configure(text=(
+            f"Сделок: {validation.get('trade_count', '—')}\n"
+            f"Net PnL: {validation.get('net_pnl', '—')}\n"
+            f"Profit Factor: {validation.get('profit_factor', '—')}\n"
+            f"Статус: {translated_status}"
+        ))
+        self.counters.configure(text=(
+            f"Выполнено: {state.completed}   Осталось: {max(0, state.planned-state.completed)}\n"
+            f"Принято: {state.accepted}   Отклонено: {state.rejected}   "
+            f"Недостаточно данных: {state.insufficient}   Ошибки: {state.errors}"
+        ))
+        elapsed = None
+        if state.started_at:
+            elapsed = state.duration_seconds if state.duration_seconds is not None else (
+                datetime.now(timezone.utc) - datetime.fromisoformat(state.started_at)
+            ).total_seconds()
+        self.timing.configure(text=(
+            f"Начало: {state.started_at or '—'}\nПрошло: {format_duration(elapsed)}\n"
+            f"Ориентировочно осталось: {format_duration(state.eta_seconds) if state.eta_seconds is not None else '—'}"
+        ))
+        self.integrity.configure(text=(
+            f"Целостность отчётов: {state.integrity_status}\n" + "\n".join(state.integrity_files[-10:])
+        ))
+        self.directory.configure(text=f"Каталог результатов: {state.output_directory}")
+        self.start_button.configure(state="disabled" if state.active else "normal")
+        self.stop_button.configure(state="normal" if state.active else "disabled")
+        self.resume_button.configure(state="normal" if state.resume_available and not state.active else "disabled")
+        self.open_button.configure(state="normal" if state.output_directory != "—" and Path(state.output_directory).is_dir() else "disabled")
+
+    def _on_close(self) -> None:
+        if self.controller.state.active:
+            if not messagebox.askyesno(RU["title"], RU["close_active"], parent=self.root):
+                return
+            self.controller.close_ui()
+            return
+        self.root.destroy()
+
+
+def main(
+    config_path: Path = DEFAULT_CONFIG,
+    output_root: Path = DEFAULT_OUTPUT_ROOT,
+) -> None:
+    root = tk.Tk()
+    controller = ParameterSweepController(config_path, output_root)
+    ParameterSweepWindow(root, controller)
+    root.mainloop()
