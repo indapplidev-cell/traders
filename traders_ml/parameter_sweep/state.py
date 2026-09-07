@@ -16,6 +16,7 @@ class RunState(StrEnum):
     READY = "READY"
     PREFLIGHT = "PREFLIGHT"
     PLANNING = "PLANNING"
+    REPLAY_VALIDATION = "REPLAY_VALIDATION"
     RUNNING_CONFIG = "RUNNING_CONFIG"
     WRITING_RESULT = "WRITING_RESULT"
     FINALIZING = "FINALIZING"
@@ -39,7 +40,8 @@ class SweepRunStatus:
     phase: str = RunState.READY.value
     planned_configs: int = 0
     completed_configs: int = 0
-    current_config_index: int = 0
+    current_config_index: int | None = None
+    current_config: dict[str, Any] | None = None
     accepted_configs: int = 0
     rejected_configs: int = 0
     insufficient_configs: int = 0
@@ -57,6 +59,14 @@ class SweepRunStatus:
     search_space_hash: str | None = None
     engine_version: str | None = None
     failure_reason: str | None = None
+    failure_code: str | None = None
+    error_title_ru: str | None = None
+    error_message_ru: str | None = None
+    error_details: dict[str, Any] = field(default_factory=dict)
+    search_dimensions: list[str] = field(default_factory=list)
+    dimension_values: dict[str, list[Any]] = field(default_factory=dict)
+    conditional_dimensions: list[str] = field(default_factory=list)
+    replay_diagnostics: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -109,6 +119,7 @@ def read_effective_status(path: Path, *, stale_after_seconds: int = 30) -> dict[
     value["process_alive"] = alive
     if value.get("state") in {
         RunState.PREFLIGHT.value, RunState.PLANNING.value,
+        RunState.REPLAY_VALIDATION.value,
         RunState.RUNNING_CONFIG.value, RunState.WRITING_RESULT.value,
         RunState.FINALIZING.value, RunState.VERIFYING_ARTIFACTS.value,
         RunState.RESUMING.value, RunState.CANCEL_REQUESTED.value,

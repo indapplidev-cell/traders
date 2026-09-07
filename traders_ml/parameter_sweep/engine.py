@@ -45,7 +45,9 @@ from app.engine_paper.stale_position_shadow import (
 from .events import EventType, SweepEvent
 from .integrity import verify_artifacts
 from .locking import SingleRunLock
+from .models import ReplayDiagnostics, SearchPlanState, StructuredError
 from .state import RunState, StatusStore, SweepRunStatus
+from .texts import ERRORS_RU
 from .utils import generate_run_id
 
 SCHEMA_VERSION = "SCALPING_V2_PARAMETER_SWEEP/3"
@@ -68,6 +70,48 @@ TIME_STOP_SEARCH_FIELDS = frozenset({
     "min_remaining_ev_r_at_soft_timeout", "extension_seconds", "max_extensions",
     "break_even_activation_target_progress", "net_break_even_protection_enabled",
 })
+
+
+def _search_plan_state(
+    space: Mapping[str, list[object]], plan: "SearchPlan",
+) -> SearchPlanState:
+    dimensions = tuple(sorted(space))
+    return SearchPlanState(
+        search_dimensions=dimensions,
+        dimension_values={name: list(space[name]) for name in dimensions},
+        conditional_dimensions=tuple(sorted(TIME_STOP_SEARCH_FIELDS & space.keys())),
+        raw_search_space_size=plan.raw_search_space_size,
+        planned_configs=plan.evaluation_budget,
+        selected_strategy=plan.selected_strategy,
+    )
+
+
+def _replay_diagnostics(rows: list[dict[str, Any]], coverage: Mapping[str, Any]) -> ReplayDiagnostics:
+    reasons = coverage.get("REPLAY_REASON_COUNTS", {})
+    return ReplayDiagnostics(
+        dataset_rows=len(rows),
+        outcome_replay_rows=int(coverage["OUTCOME_ONLY_REPLAY_ROWS"]),
+        time_stop_replay_rows=int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
+        full_replay_rows=int(coverage["FULL_REPLAY_ELIGIBLE_ROWS"]),
+        post_instrumentation_rows=int(coverage["POST_TIME_STOP_INSTRUMENTATION_ROWS"]),
+        missing_market_timeline_rows=int(reasons.get("UNREPLAYABLE_MISSING_MARKET_TIMELINE", 0)),
+        missing_cost_timeline_rows=int(reasons.get("UNREPLAYABLE_MISSING_COST_TIMELINE", 0)),
+    )
+
+
+def _structured_replay_error(contract_failure: str) -> StructuredError:
+    code = (
+        "INSUFFICIENT_REPLAY_DATA"
+        if contract_failure == "NO_REPLAYABLE_ROWS_FOR_REQUIRED_DIMENSIONS"
+        else contract_failure
+    )
+    translated = ERRORS_RU.get(code, {"title": code, "message": contract_failure})
+    return StructuredError(
+        error_code=code,
+        error_title_ru=str(translated["title"]),
+        error_message_ru=str(translated["message"]),
+        error_details={"engine_reason": contract_failure},
+    )
 
 REPLAY_FIELD_CONTRACT: tuple[tuple[str, str, bool], ...] = (
     ("position_id", "position_id", True),
@@ -1624,17 +1668,22 @@ def _run_impl(
         "schema_head": schema_head, "dataset_source": options.source, "rows": rows,
     })
     search_space_hash = _config_hash(space)
+    plan_state = _search_plan_state(space, plan)
+    replay_diagnostics = _replay_diagnostics(rows, coverage)
     status_store.update(
         planned_configs=plan.evaluation_budget,
         dataset_fingerprint=dataset_fingerprint,
         config_hash=TRADE_PARAMETERS.config_hash,
         search_space_hash=search_space_hash,
+        search_dimensions=list(plan_state.search_dimensions),
+        dimension_values=plan_state.dimension_values,
+        conditional_dimensions=list(plan_state.conditional_dimensions),
+        replay_diagnostics=replay_diagnostics.as_dict(),
     )
     emit(
         EventType.SEARCH_PLANNED,
-        raw_space=plan.raw_search_space_size,
-        planned=plan.evaluation_budget,
-        strategy=plan.selected_strategy,
+        **plan_state.as_dict(),
+        replay_diagnostics=replay_diagnostics.as_dict(),
     )
     checkpoint_path = output / "CHECKPOINT.json"
     checkpoint = {
@@ -1736,6 +1785,9 @@ def _run_impl(
         "DATASET_FINGERPRINT": dataset_fingerprint,
         "CONFIG_HASH": TRADE_PARAMETERS.config_hash,
         "SEARCH_SPACE_HASH": search_space_hash,
+        "SEARCH_DIMENSIONS": list(plan_state.search_dimensions),
+        "DIMENSION_VALUES": plan_state.dimension_values,
+        "CONDITIONAL_DIMENSIONS": list(plan_state.conditional_dimensions),
     })
     _atomic_json(output / "SEARCH_PLAN.json", search_plan_artifact)
     _print_preflight(preflight)
@@ -1773,59 +1825,119 @@ def _run_impl(
     }
     if not resume:
         (output / "RUN_CONFIG.yaml").write_text(yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8")
+    status_store.update(
+        state=RunState.REPLAY_VALIDATION.value,
+        phase=RunState.REPLAY_VALIDATION.value,
+        current_config_index=None,
+        current_config=None,
+    )
+    emit(
+        EventType.REPLAY_VALIDATION_STARTED,
+        replay_diagnostics=replay_diagnostics.as_dict(),
+    )
     contract_failure = None
     if int(baseline["BASELINE_ELIGIBLE_ROWS"]) == 0 or int(baseline["BASELINE_TRADES"]) == 0:
         contract_failure = "BASELINE_REPLAY_INVALID"
     elif int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]) == 0:
         contract_failure = "NO_REPLAYABLE_ROWS_FOR_REQUIRED_DIMENSIONS"
     if contract_failure is not None:
+        structured_error = _structured_replay_error(contract_failure)
         failed_at = datetime.now(timezone.utc)
         failure_timing = _timing(run_started, failed_at)
         failure_timing["RUN_FAILED_AT"] = failure_timing.pop("RUN_FINISHED_AT")
         checkpoint.update(failure_timing)
         checkpoint.update({
-            "STATUS": "INSUFFICIENT_REPLAY_DATA", "FAILURE_REASON": contract_failure,
-            "completed": True, "SEARCH_ABORTED_BEFORE_5000_CONFIGS": "YES",
+            "STATUS": "FAILED", "FAILURE_CODE": structured_error.error_code,
+            "FAILURE_REASON": contract_failure, "completed": False,
+            "SEARCH_ABORTED_BEFORE_5000_CONFIGS": "YES",
         })
         _atomic_json(checkpoint_path, checkpoint)
         run_config.update(failure_timing)
         run_config.update({
-            "STATUS": "INSUFFICIENT_REPLAY_DATA", "FAILURE_REASON": contract_failure,
+            "STATUS": "FAILED", "FAILURE_CODE": structured_error.error_code,
+            "FAILURE_REASON": contract_failure,
         })
         (output / "RUN_CONFIG.yaml").write_text(
             yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8",
         )
         preflight.update({
             "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": contract_failure,
-            "STATUS": "INSUFFICIENT_REPLAY_DATA",
+            "STATUS": "FAILED", "FAILURE_CODE": structured_error.error_code,
             "SEARCH_ABORTED_BEFORE_5000_CONFIGS": "YES", **failure_timing,
         })
         _write_preflight(output / "PREFLIGHT.json", preflight)
         (output / "REPORT.md").write_text(
             "# Scalping v2 parameter sweep\n\n"
             "## RUN SUMMARY\n\n"
-            f"- RUN_ID: `{identifier}`\n- STATUS: `INSUFFICIENT_REPLAY_DATA`\n"
+            f"- RUN_ID: `{identifier}`\n- STATUS: `FAILED`\n"
+            f"- FAILURE_CODE: `{structured_error.error_code}`\n"
             f"- FAILURE_REASON: `{contract_failure}`\n"
             f"- RUN_STARTED_AT: `{failure_timing['RUN_STARTED_AT']}`\n"
             f"- RUN_FAILED_AT: `{failure_timing['RUN_FAILED_AT']}`\n"
             f"- RUN_DURATION_SECONDS: {failure_timing['RUN_DURATION_SECONDS']}\n\n"
+            "## SEARCH PLAN\n\n"
+            f"- RAW_SEARCH_SPACE_SIZE: {plan.raw_search_space_size}\n"
+            f"- PLANNED_CONFIGS: {plan.evaluation_budget}\n"
+            f"- PROCESSED_CONFIGS: 0\n"
+            f"- SELECTED_STRATEGY: `{plan.selected_strategy}`\n\n"
             "## BASELINE CONTROL\n\n"
             f"- BASELINE_EVALUATED: `YES`\n- BASELINE_TRADES: {baseline['BASELINE_TRADES']}\n"
             f"- BASELINE_ELIGIBLE_ROWS: {baseline['BASELINE_ELIGIBLE_ROWS']}\n\n"
             "## REPLAY CAPABILITY\n\n"
+            f"- DATASET_ROWS: {len(rows)}\n"
+            f"- OUTCOME_REPLAY_ROWS: {replay_diagnostics.outcome_replay_rows}\n"
             f"- TIME_STOP_REPLAY_ELIGIBLE_ROWS: {coverage['TIME_STOP_REPLAY_ELIGIBLE_ROWS']}\n"
             f"- FULL_REPLAY_ELIGIBLE_ROWS: {coverage['FULL_REPLAY_ELIGIBLE_ROWS']}\n"
+            f"- POST_INSTRUMENTATION_ROWS: {replay_diagnostics.post_instrumentation_rows}\n"
+            f"- MISSING_MARKET_TIMELINE_ROWS: {replay_diagnostics.missing_market_timeline_rows}\n"
+            f"- MISSING_COST_TIMELINE_ROWS: {replay_diagnostics.missing_cost_timeline_rows}\n"
             f"- Unavailable reasons: `{json.dumps(coverage['REPLAY_REASON_COUNTS'], sort_keys=True)}`\n\n"
             "## SAFETY\n\n- Production mutations: `0`; Binance order calls: `0`; LIVE unchanged.\n",
             encoding="utf-8",
         )
         status_store.update(
-            state=RunState.FAILED.value, phase=RunState.PREFLIGHT.value,
+            state=RunState.FAILED.value, phase=RunState.REPLAY_VALIDATION.value,
+            planned_configs=plan.evaluation_budget, completed_configs=0,
+            current_config_index=None, current_config=None,
             finished_at=failed_at.isoformat(),
             duration_seconds=float(failure_timing["RUN_DURATION_SECONDS"]),
-            failure_reason=contract_failure, resume_available=False,
+            failure_reason=contract_failure,
+            failure_code=structured_error.error_code,
+            error_title_ru=structured_error.error_title_ru,
+            error_message_ru=structured_error.error_message_ru,
+            error_details=structured_error.error_details,
+            replay_diagnostics=replay_diagnostics.as_dict(),
+            error_configs=1, resume_available=False,
         )
-        emit(EventType.RUN_FAILED, reason=contract_failure, resume_available=False)
+        emit(EventType.INTEGRITY_CHECK_STARTED, terminal_state="FAILED_BEFORE_EVALUATION")
+
+        def failed_integrity_file(name: str, passed: bool, error: str | None) -> None:
+            emit(EventType.INTEGRITY_FILE_CHECKED, file=name, passed=passed, error=error)
+
+        failed_integrity = verify_artifacts(
+            output,
+            expected_run_id=identifier,
+            expected_dataset_fingerprint=dataset_fingerprint,
+            expected_config_hash=TRADE_PARAMETERS.config_hash,
+            expected_count=0,
+            terminal_state="FAILED_BEFORE_EVALUATION",
+            on_file_checked=failed_integrity_file,
+        )
+        emit(
+            EventType.INTEGRITY_CHECK_COMPLETED,
+            status=failed_integrity["integrity_status"], integrity=failed_integrity,
+        )
+        emit(
+            EventType.RUN_FAILED,
+            reason=contract_failure,
+            **structured_error.as_dict(),
+            replay_diagnostics=replay_diagnostics.as_dict(),
+            failed_before_first_config=True,
+            completed=0,
+            planned=plan.evaluation_budget,
+            current_config_index=None,
+            resume_available=False,
+        )
         raise SweepExpectedError(contract_failure)
     jsonl = output / "RESULTS.jsonl"
     csv_path = output / "RESULTS.csv"
@@ -1848,19 +1960,23 @@ def _run_impl(
             candidate = _candidate_config(
                 space, raw_index, conditional_variants=candidate_variants,
             )
+            baseline_config = _production_baseline_config()
+            resolved_config = {**baseline_config, **candidate}
+            changed_parameters = {
+                key: value for key, value in candidate.items()
+                if baseline_config.get(key) != value
+            }
             status_store.update(
                 state=RunState.RUNNING_CONFIG.value,
                 phase=RunState.RUNNING_CONFIG.value,
                 current_config_index=next_index + 1,
+                current_config=resolved_config,
             )
             emit(
                 EventType.CONFIG_STARTED,
                 index=next_index + 1, planned=plan.evaluation_budget,
-                changed_parameters={
-                    key: value for key, value in candidate.items()
-                    if len(space.get(key, ())) > 1
-                },
-                resolved_config={**_production_baseline_config(), **candidate},
+                changed_parameters=changed_parameters,
+                resolved_config=resolved_config,
             )
             emit(
                 EventType.CONFIG_PROGRESS,
@@ -2236,6 +2352,14 @@ def run(
     if not output_root.is_absolute():
         output_root = PROJECT_ROOT / output_root
     identifier = run_id or generate_run_id(output_root)
+    existing_status_path = output_root / identifier / "STATUS.json"
+    if resume and existing_status_path.is_file():
+        try:
+            existing_status = json.loads(existing_status_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            existing_status = {}
+        if existing_status.get("resume_available") is False:
+            raise SweepExpectedError("RESUME_NOT_AVAILABLE")
     lock = SingleRunLock(output_root / ".parameter_sweep.lock", identifier)
     heartbeat_stop = threading.Event()
     heartbeat = threading.Thread(

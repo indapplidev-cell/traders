@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -49,12 +48,26 @@ class ParameterSweepWindow:
         self.status.pack(anchor="w", fill="x", pady=12)
         self.plan = ttk.Label(self.body, justify="left")
         self.plan.pack(anchor="w")
+        ttk.Label(
+            self.body, text=RU["research_parameters"],
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w", pady=(12, 4))
+        self.search_parameters = tk.Text(
+            self.body, height=10, wrap="word", state="disabled",
+            font=("Segoe UI", 9),
+        )
+        self.search_parameters.pack(fill="x")
         self.progress = ttk.Progressbar(self.body, maximum=100)
         self.progress.pack(fill="x", pady=(12, 3))
         self.progress_text = ttk.Label(self.body)
         self.progress_text.pack(anchor="w")
 
-        ttk.Label(self.body, text="Исследуемые параметры:", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(12, 4))
+        ttk.Label(
+            self.body, text=RU["current_combination"],
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w", pady=(12, 4))
+        self.current_summary = ttk.Label(self.body, justify="left")
+        self.current_summary.pack(anchor="w", pady=(0, 4))
         self.parameters = tk.Text(self.body, height=8, wrap="none", state="disabled", font=("Consolas", 9))
         self.parameters.pack(fill="x")
         self.toggle_button = ttk.Button(self.body, text=RU["show_all"], command=self._toggle_parameters)
@@ -62,12 +75,16 @@ class ParameterSweepWindow:
 
         self.result = ttk.Label(self.body, justify="left")
         self.result.pack(anchor="w", pady=8)
+        self.terminal_explanation = ttk.Label(self.body, justify="left", wraplength=820)
+        self.terminal_explanation.pack(anchor="w", pady=4)
         self.counters = ttk.Label(self.body, justify="left")
         self.counters.pack(anchor="w", pady=4)
         self.timing = ttk.Label(self.body, justify="left")
         self.timing.pack(anchor="w", pady=4)
         self.integrity = ttk.Label(self.body, justify="left")
         self.integrity.pack(anchor="w", pady=8)
+        self.replay_diagnostics = ttk.Label(self.body, justify="left", wraplength=820)
+        self.replay_diagnostics.pack(anchor="w", pady=8)
         self.directory = ttk.Label(self.body, justify="left", wraplength=820)
         self.directory.pack(anchor="w", pady=4)
 
@@ -100,6 +117,8 @@ class ParameterSweepWindow:
             messagebox.showerror(RU["title"], str(error), parent=self.root)
 
     def _toggle_parameters(self) -> None:
+        if self.controller.state.current_config is None:
+            return
         self.show_all = not self.show_all
         self.toggle_button.configure(text=RU["show_changed"] if self.show_all else RU["show_all"])
         self._render()
@@ -120,19 +139,36 @@ class ParameterSweepWindow:
             f"RUN ID: {state.run_id}"
         ))
         self.status.configure(text=state.status_text)
+        planned_label = (
+            "Будет исследовано"
+            if state.terminal_state is None and state.active else "Запланировано"
+        )
         self.plan.configure(text=(
-            f"Исходных комбинаций: {state.raw_space:,}".replace(",", " ") + "\n"
-            f"Будет исследовано: {state.planned:,}".replace(",", " ") + "\n"
+            f"Количество измерений: {len(state.search_dimensions)}\n"
+            f"Исходных комбинаций: {state.raw_space:,}\n"
+            f"{planned_label}: {state.planned:,}\n"
+            f"Фактически обработано: {state.completed:,}\n"
             f"Стратегия: {state.strategy}"
-        ))
+        ).replace(",", " "))
+        self.search_parameters.configure(state="normal")
+        self.search_parameters.delete("1.0", "end")
+        self.search_parameters.insert("1.0", state.format_search_parameters())
+        self.search_parameters.configure(state="disabled")
         self.progress.configure(value=state.progress_percent)
+        stopped = " · Остановлено" if state.terminal_state in {"FAILED", "CANCELLED"} else ""
         self.progress_text.configure(text=(
-            f"{state.progress_percent:.1f}% · Комбинация {state.current_index} из {state.planned}"
+            f"{state.progress_percent:.1f}% · Обработано {state.completed} из {state.planned}{stopped}"
         ))
-        params = state.resolved_config if self.show_all else state.changed_parameters
+        self.current_summary.configure(text=(
+            RU["not_started"]
+            if state.current_config is None
+            else f"Комбинация {state.current_index} из {state.planned}"
+        ))
         self.parameters.configure(state="normal")
         self.parameters.delete("1.0", "end")
-        self.parameters.insert("1.0", json.dumps(params, ensure_ascii=False, indent=2, default=str))
+        self.parameters.insert(
+            "1.0", state.format_current_parameters(show_all=self.show_all),
+        )
         self.parameters.configure(state="disabled")
         result = state.current_result
         validation = result.get("validation", {})
@@ -141,12 +177,27 @@ class ParameterSweepWindow:
             "ACCEPTED": "Принята", "REJECTED": "Отклонена",
             "EARLY_REJECTED": "Недостаточно данных",
         }.get(result_status, result_status)
-        self.result.configure(text=(
-            f"Сделок: {validation.get('trade_count', '—')}\n"
-            f"Net PnL: {validation.get('net_pnl', '—')}\n"
-            f"Profit Factor: {validation.get('profit_factor', '—')}\n"
-            f"Статус: {translated_status}"
-        ))
+        if state.current_config is None:
+            self.result.configure(text="Результат текущей комбинации: отсутствует")
+        else:
+            self.result.configure(text=(
+                f"Сделок: {validation.get('trade_count', '—')}\n"
+                f"Net PnL: {validation.get('net_pnl', '—')}\n"
+                f"Profit Factor: {validation.get('profit_factor', '—')}\n"
+                f"Статус: {translated_status}"
+            ))
+        if state.failed_before_first_config:
+            self.terminal_explanation.configure(text=(
+                f"{RU['failed_before_first']}\n"
+                "Последняя обработанная комбинация: отсутствует\n"
+                f"{RU['new_observations_required']}"
+            ))
+        elif state.terminal_state and state.completed:
+            self.terminal_explanation.configure(
+                text=f"Последняя обработанная комбинация: {state.completed}",
+            )
+        else:
+            self.terminal_explanation.configure(text="")
         self.counters.configure(text=(
             f"Выполнено: {state.completed}   Осталось: {max(0, state.planned-state.completed)}\n"
             f"Принято: {state.accepted}   Отклонено: {state.rejected}   "
@@ -164,7 +215,31 @@ class ParameterSweepWindow:
         self.integrity.configure(text=(
             f"Целостность отчётов: {state.integrity_status}\n" + "\n".join(state.integrity_files[-10:])
         ))
+        diagnostics = state.replay_diagnostics
+        if diagnostics:
+            self.replay_diagnostics.configure(text=(
+                f"{RU['replay_diagnostics']}\n"
+                f"Закрытых PAPER-сделок: {diagnostics.get('dataset_rows', 0)}\n"
+                "Повторная оценка по закрытым сделкам (OUTCOME_REPLAY): "
+                f"{diagnostics.get('outcome_replay_rows', 0)}\n"
+                "Повторная оценка тайм-стопа (TIME_STOP_REPLAY): "
+                f"{diagnostics.get('time_stop_replay_rows', 0)}\n"
+                "Полный причинный replay (FULL_CAUSAL_REPLAY): "
+                f"{diagnostics.get('full_replay_rows', 0)}\n"
+                f"Post-instrumentation observations: {diagnostics.get('post_instrumentation_rows', 0)}\n"
+                f"Без market timeline: {diagnostics.get('missing_market_timeline_rows', 0)}\n"
+                f"Без cost timeline: {diagnostics.get('missing_cost_timeline_rows', 0)}\n"
+                f"Причина остановки: {state.error_message_ru or '—'}"
+            ))
+        else:
+            self.replay_diagnostics.configure(
+                text=f"{RU['replay_diagnostics']}: данные ещё не рассчитаны",
+            )
         self.directory.configure(text=f"Каталог результатов: {state.output_directory}")
+        self.toggle_button.configure(
+            text=RU["show_changed"] if self.show_all else RU["show_all"],
+            state="normal" if state.current_config is not None else "disabled",
+        )
         self.start_button.configure(state="disabled" if state.active else "normal")
         self.stop_button.configure(state="normal" if state.active else "disabled")
         self.resume_button.configure(state="normal" if state.resume_available and not state.active else "disabled")

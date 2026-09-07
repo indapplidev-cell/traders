@@ -93,6 +93,43 @@ Completion is published only after content-aware integrity validation checks
 required files, JSON/YAML parsing, run/config/dataset identities, and durable
 result counts. A failed integrity check leaves the run non-completed.
 
+## GUI parameter and replay semantics
+
+The GUI deliberately separates two concepts:
+
+- **Параметры исследования** lists the dimensions and values published by the
+  engine's typed search plan, including conditional dimensions, raw search
+  space, planned evaluations, and strategy.
+- **Текущая комбинация** exists only after `CONFIG_STARTED`. Before then it says
+  `Комбинация ещё не запущена`; it never renders an empty JSON object, and the
+  all/changed-parameter toggle is disabled. Once a configuration exists, the
+  default view contains values that differ from the production baseline; the
+  toggle reveals the full resolved configuration.
+
+Active runs use future wording (`Будет исследовано`). Terminal runs use factual
+wording (`Запланировано` and `Фактически обработано`). Progress always reports
+`Обработано N из F`; there is no synthetic "configuration 0". A terminal state
+retains the last real configuration when one existed.
+
+If planning succeeds but replay validation fails before configuration 1, the
+run persists `state=FAILED`, `phase=REPLAY_VALIDATION`,
+`current_config_index=null`, and `resume_available=false`. The GUI explicitly
+states that no configuration was processed and that new historical observations
+are required. `--status` reads the same model and prints the planned count,
+actual completed count, `CURRENT_CONFIG = NONE`, and structured failure code.
+
+The **Диагностика replay** panel is sourced from engine state—not YAML, the
+database, or artifacts read by the GUI—and distinguishes:
+
+- `OUTCOME_REPLAY`: repeated evaluation from closed PAPER trade outcomes;
+- `TIME_STOP_REPLAY`: causal time-stop evaluation with timestamped market and
+  historical cost observations;
+- `FULL_CAUSAL_REPLAY`: complete outcome, admission, market, and cost evidence.
+
+It also shows dataset rows, post-instrumentation rows, and missing market/cost
+timeline counts. Failed-before-evaluation integrity uses its own artifact
+contract and does not misclassify absent full result files as corruption.
+
 Run artifacts include a dataset fingerprint and row/time boundaries, full field
 coverage, baseline metrics, replayable/partial/unreplayable counts, and start,
 finish, and duration values. Invalid or unreplayable configurations cannot enter

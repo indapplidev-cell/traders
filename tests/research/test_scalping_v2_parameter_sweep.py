@@ -413,7 +413,8 @@ def test_incident_53_closed_rows_without_causal_observations_stops_before_search
     output = tmp_path / "artifacts" / "incident-53-zero-causal"
     checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
     run_config = yaml.safe_load((output / "RUN_CONFIG.yaml").read_text())
-    assert checkpoint["STATUS"] == "INSUFFICIENT_REPLAY_DATA"
+    assert checkpoint["STATUS"] == "FAILED"
+    assert checkpoint["FAILURE_CODE"] == "INSUFFICIENT_REPLAY_DATA"
     assert checkpoint["evaluated_count"] == 0
     assert checkpoint["SEARCH_ABORTED_BEFORE_5000_CONFIGS"] == "YES"
     assert run_config["baseline_control"]["BASELINE_EVALUATED"] == "YES"
@@ -709,3 +710,178 @@ def test_real_tk_gui_bounded_smoke_reaches_integrity_final_screen(tmp_path, monk
     window.open_button.invoke()
     assert opened == [Path(controller.state.output_directory)]
     root.destroy()
+
+
+def _planned_5000_replay_failure_search(tmp_path: Path) -> Path:
+    rows = []
+    for index in range(53):
+        row = dict(_rows()[index % 6])
+        row["position_id"] = f"ui-incident-{index}"
+        row["command_id"] = f"ui-incident-command-{index}"
+        row["time_stop_observations"] = []
+        rows.append(row)
+    dataset = tmp_path / "ui-incident.json"
+    dataset.write_text(json.dumps(rows), encoding="utf-8")
+    source = yaml.safe_load(
+        Path("config/research/scalping_v2_parameter_sweep.yaml").read_text()
+    )
+    source["dataset"] = str(dataset)
+    source["output_root"] = str(tmp_path / "artifacts")
+    config = tmp_path / "ui-incident.yaml"
+    config.write_text(yaml.safe_dump(source), encoding="utf-8")
+    return config
+
+
+def test_planning_pass_replay_fail_before_config_has_exact_state_and_events(tmp_path):
+    events = []
+    search = _planned_5000_replay_failure_search(tmp_path)
+    with pytest.raises(SweepExpectedError, match="NO_REPLAYABLE_ROWS"):
+        run(search, run_id="failed-before-first", event_sink=events.append)
+    event_types = [event.type for event in events]
+    assert EventType.SEARCH_PLANNED in event_types
+    assert EventType.REPLAY_VALIDATION_STARTED in event_types
+    assert EventType.CONFIG_STARTED not in event_types
+    assert EventType.CONFIG_COMPLETED not in event_types
+    assert EventType.RESULT_WRITE_STARTED not in event_types
+    assert EventType.RESULT_WRITE_COMPLETED not in event_types
+    search_event = next(event for event in events if event.type == EventType.SEARCH_PLANNED)
+    assert search_event.payload["raw_search_space_size"] == 764_411_904
+    assert search_event.payload["planned_configs"] == 5_000
+    assert len(search_event.payload["search_dimensions"]) == 22
+    output = tmp_path / "artifacts" / "failed-before-first"
+    status = json.loads((output / "STATUS.json").read_text())
+    assert status["state"] == "FAILED"
+    assert status["phase"] == "REPLAY_VALIDATION"
+    assert status["planned_configs"] == 5_000
+    assert status["completed_configs"] == 0
+    assert status["current_config_index"] is None
+    assert status["current_config"] is None
+    assert status["failure_code"] == "INSUFFICIENT_REPLAY_DATA"
+    assert status["resume_available"] is False
+    assert status["error_configs"] == 1
+    assert status["replay_diagnostics"] == {
+        "dataset_rows": 53,
+        "outcome_replay_rows": 53,
+        "time_stop_replay_rows": 0,
+        "full_replay_rows": 0,
+        "post_instrumentation_rows": 0,
+        "missing_market_timeline_rows": 53,
+        "missing_cost_timeline_rows": 0,
+    }
+    report = (output / "REPORT.md").read_text()
+    assert "PLANNED_CONFIGS: 5000" in report
+    assert "PROCESSED_CONFIGS: 0" in report
+    assert "FAILURE_CODE: `INSUFFICIENT_REPLAY_DATA`" in report
+    integrity = json.loads((output / "INTEGRITY.json").read_text())
+    assert integrity["terminal_state"] == "FAILED_BEFORE_EVALUATION"
+    assert integrity["integrity_status"] == "PASS"
+    with pytest.raises(SweepExpectedError, match="RESUME_NOT_AVAILABLE"):
+        run(search, run_id="failed-before-first", resume=True)
+    preserved = json.loads((output / "STATUS.json").read_text())
+    assert preserved["state"] == "FAILED"
+    assert preserved["resume_available"] is False
+
+
+def test_failed_before_first_controller_and_tk_render_semantics(tmp_path):
+    import tkinter as tk
+    from traders_ml.parameter_sweep.ui import ParameterSweepWindow
+
+    search = _planned_5000_replay_failure_search(tmp_path)
+    controller = ParameterSweepController(search, tmp_path / "artifacts")
+    root = tk.Tk()
+    root.withdraw()
+    window = ParameterSweepWindow(root, controller)
+    window.start_button.invoke()
+    deadline = time.monotonic() + 15
+    while controller.state.active and time.monotonic() < deadline:
+        root.update()
+        time.sleep(.02)
+    root.update()
+    assert controller.state.active is False
+    assert controller.state.current_config is None
+    assert controller.state.current_index is None
+    assert controller.state.format_current_parameters() == "Комбинация ещё не запущена"
+    assert "{}" not in controller.state.format_current_parameters()
+    assert controller.state.resume_available is False
+    assert window.current_summary.cget("text") == "Комбинация ещё не запущена"
+    assert "{}" not in window.parameters.get("1.0", "end")
+    assert str(window.toggle_button["state"]) == "disabled"
+    assert "Запланировано: 5 000" in window.plan.cget("text")
+    assert "Фактически обработано: 0" in window.plan.cget("text")
+    assert "Будет исследовано" not in window.plan.cget("text")
+    assert window.progress_text.cget("text") == "0.0% · Обработано 0 из 5000 · Остановлено"
+    assert "Комбинация 0" not in window.progress_text.cget("text")
+    assert "Ни одна комбинация не была обработана" in window.terminal_explanation.cget("text")
+    diagnostic_text = window.replay_diagnostics.cget("text")
+    for expected in (
+        "Закрытых PAPER-сделок: 53", "OUTCOME_REPLAY): 53",
+        "TIME_STOP_REPLAY): 0", "FULL_CAUSAL_REPLAY): 0",
+        "Post-instrumentation observations: 0",
+        "timestamped historical market/cost observations",
+    ):
+        assert expected in diagnostic_text
+    assert str(window.start_button["state"]) == "normal"
+    assert str(window.stop_button["state"]) == "disabled"
+    assert str(window.resume_button["state"]) == "disabled"
+    assert str(window.open_button["state"]) == "normal"
+    root.destroy()
+
+
+def test_active_config_panel_shows_changed_params_and_enables_toggle(tmp_path):
+    import tkinter as tk
+    from traders_ml.parameter_sweep.ui import ParameterSweepWindow
+
+    controller = ParameterSweepController(tmp_path / "config.yaml", tmp_path / "artifacts")
+    controller._apply(SweepEvent.create(
+        EventType.SEARCH_PLANNED, "active",
+        search_dimensions=["soft_timeout_seconds"],
+        dimension_values={"soft_timeout_seconds": [300, 600]},
+        conditional_dimensions=["soft_timeout_seconds"],
+        raw_search_space_size=2, planned_configs=2,
+        selected_strategy="EXHAUSTIVE_LAZY", replay_diagnostics={},
+    ))
+    controller._apply(SweepEvent.create(
+        EventType.CONFIG_STARTED, "active", index=1, planned=2,
+        changed_parameters={"soft_timeout_seconds": 300},
+        resolved_config={"soft_timeout_seconds": 300, "hard_timeout_seconds": 900},
+    ))
+    root = tk.Tk()
+    root.withdraw()
+    window = ParameterSweepWindow(root, controller)
+    root.update()
+    assert window.current_summary.cget("text") == "Комбинация 1 из 2"
+    assert "Изменяемые параметры" in window.parameters.get("1.0", "end")
+    assert "soft_timeout_seconds = 300" in window.parameters.get("1.0", "end")
+    assert str(window.toggle_button["state"]) == "normal"
+    window.toggle_button.invoke()
+    assert "hard_timeout_seconds = 900" in window.parameters.get("1.0", "end")
+    root.destroy()
+
+
+def test_cli_status_failed_before_first_matches_authoritative_status(tmp_path, capsys):
+    from traders_ml.parameter_sweep.cli import status as cli_status
+
+    search = _planned_5000_replay_failure_search(tmp_path)
+    with pytest.raises(SweepExpectedError):
+        run(search, run_id="cli-failed")
+    assert cli_status("cli-failed", tmp_path / "artifacts") == 0
+    rendered = capsys.readouterr().out
+    for line in (
+        "STATE = FAILED", "PHASE = REPLAY_VALIDATION", "PLANNED = 5000",
+        "COMPLETED = 0", "CURRENT_CONFIG = NONE",
+        "FAILURE = INSUFFICIENT_REPLAY_DATA", "RESUME_AVAILABLE = NO",
+    ):
+        assert line in rendered
+
+
+def test_integrity_contracts_are_explicit_for_every_terminal_state():
+    from traders_ml.parameter_sweep.integrity import TERMINAL_ARTIFACTS
+
+    assert set(TERMINAL_ARTIFACTS) == {
+        "COMPLETED", "FAILED_BEFORE_EVALUATION", "FAILED_DURING_EVALUATION",
+        "CANCELLED", "INTERRUPTED_RESUMABLE",
+    }
+    assert "RESULTS.json" in TERMINAL_ARTIFACTS["COMPLETED"]
+    assert "RESULTS.json" not in TERMINAL_ARTIFACTS["FAILED_BEFORE_EVALUATION"]
+    assert "STATUS.json" in TERMINAL_ARTIFACTS["FAILED_BEFORE_EVALUATION"]
+    assert "REPORT.md" in TERMINAL_ARTIFACTS["FAILED_BEFORE_EVALUATION"]

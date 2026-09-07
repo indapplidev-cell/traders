@@ -11,7 +11,7 @@ from typing import Any
 
 from .engine import ParameterSweepEngine
 from .events import EventType, SweepEvent
-from .texts import REASONS_RU, STRATEGIES_RU, RU
+from .texts import PARAMETER_LABELS_RU, REASONS_RU, STRATEGIES_RU, RU
 from .state import read_effective_status
 from .utils import generate_run_id, open_directory
 
@@ -29,10 +29,14 @@ class PresentationState:
     rejected: int = 0
     insufficient: int = 0
     errors: int = 0
-    current_index: int = 0
+    current_index: int | None = None
     strategy: str = "—"
-    changed_parameters: dict[str, Any] = field(default_factory=dict)
-    resolved_config: dict[str, Any] = field(default_factory=dict)
+    search_dimensions: list[str] = field(default_factory=list)
+    dimension_values: dict[str, list[Any]] = field(default_factory=dict)
+    conditional_dimensions: list[str] = field(default_factory=list)
+    current_config: dict[str, Any] | None = None
+    changed_parameters: dict[str, Any] | None = None
+    resolved_config: dict[str, Any] | None = None
     current_result: dict[str, Any] = field(default_factory=dict)
     started_at: str | None = None
     finished_at: str | None = None
@@ -43,10 +47,38 @@ class PresentationState:
     resume_available: bool = False
     active: bool = False
     error_reason: str | None = None
+    error_code: str | None = None
+    error_title_ru: str | None = None
+    error_message_ru: str | None = None
+    error_details: dict[str, Any] = field(default_factory=dict)
+    replay_diagnostics: dict[str, int] = field(default_factory=dict)
+    failed_before_first_config: bool = False
+    terminal_state: str | None = None
 
     @property
     def progress_percent(self) -> float:
         return 100.0 * self.completed / self.planned if self.planned else 0.0
+
+    def format_search_parameters(self) -> str:
+        if not self.search_dimensions:
+            return "План исследования ещё не построен"
+        rows = []
+        for name in self.search_dimensions:
+            label = PARAMETER_LABELS_RU.get(name, name)
+            values = ", ".join("—" if value is None else str(value) for value in self.dimension_values[name])
+            conditional = " · условное" if name in self.conditional_dimensions else ""
+            rows.append(f"{label} ({name}){conditional}:\n  {values}")
+        return "\n".join(rows)
+
+    def format_current_parameters(self, *, show_all: bool = False) -> str:
+        if self.current_config is None:
+            return RU["not_started"]
+        values = self.resolved_config if show_all else self.changed_parameters
+        heading = "Все параметры" if show_all else "Изменяемые параметры"
+        rows = [heading]
+        for name, value in sorted((values or {}).items()):
+            rows.append(f"{name} = {'—' if value is None else value}")
+        return "\n".join(rows)
 
 
 class ParameterSweepController:
@@ -74,7 +106,12 @@ class ParameterSweepController:
                 self.state.output_directory = str(path.parent)
                 self.state.completed = int(value.get("completed_configs", 0))
                 self.state.planned = int(value.get("planned_configs", 0))
+                current = value.get("current_config")
+                self.state.current_config = dict(current) if isinstance(current, dict) else None
+                self.state.resolved_config = self.state.current_config
+                self.state.current_index = value.get("current_config_index")
                 self.state.resume_available = True
+                self.state.terminal_state = "INTERRUPTED"
                 self.state.status_text = (
                     f"Найден незавершённый запуск: {self.state.run_id}\n"
                     f"Выполнено: {self.state.completed} из {self.state.planned}"
@@ -94,7 +131,14 @@ class ParameterSweepController:
         self._start(run_id, resume=True, max_configs=None)
 
     def _start(self, run_id: str, *, resume: bool, max_configs: int | None) -> None:
-        self.engine = ParameterSweepEngine(self.events.put)
+        failure_emitted = threading.Event()
+
+        def receive(event: SweepEvent) -> None:
+            if event.type == EventType.RUN_FAILED:
+                failure_emitted.set()
+            self.events.put(event)
+
+        self.engine = ParameterSweepEngine(receive)
         self.state = PresentationState(
             status_text=RU["preparing"], run_id=run_id,
             output_directory=str(self.output_root / run_id), active=True,
@@ -107,7 +151,7 @@ class ParameterSweepController:
                     max_configs=max_configs,
                 )
             except BaseException as error:
-                if not any(event.type == EventType.RUN_FAILED for event in list(self.events.queue)):
+                if not failure_emitted.is_set():
                     self.events.put(SweepEvent.create(
                         EventType.RUN_FAILED, run_id,
                         reason=getattr(error, "reason", type(error).__name__),
@@ -147,6 +191,9 @@ class ParameterSweepController:
         payload = event.payload
         self.state.phase = event.type.value
         if event.type in {EventType.RUN_STARTED, EventType.RUN_RESUMED}:
+            self.state.run_id = event.run_id
+            self.state.output_directory = str(payload.get("output_dir", self.state.output_directory))
+            self.state.active = True
             self.state.started_at = event.occurred_at
             self.state.status_text = RU["preparing"]
         elif event.type == EventType.PREFLIGHT_STARTED:
@@ -154,12 +201,26 @@ class ParameterSweepController:
         elif event.type == EventType.SEARCH_PLANNING_STARTED:
             self.state.status_text = RU["planning"]
         elif event.type == EventType.SEARCH_PLANNED:
-            self.state.raw_space = int(payload["raw_space"])
-            self.state.planned = int(payload["planned"])
-            self.state.strategy = STRATEGIES_RU.get(str(payload["strategy"]), str(payload["strategy"]))
+            self.state.raw_space = int(payload.get("raw_search_space_size", payload.get("raw_space", 0)))
+            self.state.planned = int(payload.get("planned_configs", payload.get("planned", 0)))
+            strategy = str(payload.get("selected_strategy", payload.get("strategy", "—")))
+            self.state.strategy = STRATEGIES_RU.get(strategy, strategy)
+            self.state.search_dimensions = list(payload.get("search_dimensions", ()))
+            self.state.dimension_values = {
+                str(name): list(values)
+                for name, values in payload.get("dimension_values", {}).items()
+            }
+            self.state.conditional_dimensions = list(payload.get("conditional_dimensions", ()))
+            self.state.replay_diagnostics = dict(payload.get("replay_diagnostics", {}))
+        elif event.type == EventType.REPLAY_VALIDATION_STARTED:
+            self.state.status_text = "Статус: Проверка возможности replay"
+            self.state.replay_diagnostics = dict(payload.get("replay_diagnostics", {}))
         elif event.type == EventType.CONFIG_STARTED:
+            self.state.active = True
+            self.state.terminal_state = None
             self.state.status_text = RU["running"]
             self.state.current_index = int(payload["index"])
+            self.state.current_config = dict(payload["resolved_config"])
             self.state.changed_parameters = dict(payload["changed_parameters"])
             self.state.resolved_config = dict(payload["resolved_config"])
         elif event.type == EventType.CONFIG_PROGRESS:
@@ -197,14 +258,35 @@ class ParameterSweepController:
             self.state.duration_seconds = float(payload["duration_seconds"])
             self.state.finished_at = event.occurred_at
             self.state.active = False
+            self.state.terminal_state = "COMPLETED"
         elif event.type == EventType.RUN_CANCELLED:
             self.state.status_text = RU["cancelled"]
             self.state.resume_available = True
             self.state.active = False
+            self.state.terminal_state = "CANCELLED"
         elif event.type == EventType.RUN_FAILED:
             reason = str(payload.get("reason", "UNKNOWN"))
             self.state.error_reason = REASONS_RU.get(reason, reason)
-            self.state.status_text = f"{RU['failed']}\nПричина: {self.state.error_reason}"
+            self.state.error_code = str(payload.get("error_code", reason))
+            self.state.error_title_ru = str(payload.get("error_title_ru", self.state.error_reason))
+            self.state.error_message_ru = str(payload.get("error_message_ru", self.state.error_reason))
+            self.state.error_details = dict(payload.get("error_details", {}))
+            self.state.replay_diagnostics = dict(payload.get("replay_diagnostics", self.state.replay_diagnostics))
+            self.state.failed_before_first_config = bool(payload.get("failed_before_first_config"))
+            if self.state.failed_before_first_config:
+                self.state.current_index = None
+                self.state.current_config = None
+                self.state.changed_parameters = None
+                self.state.resolved_config = None
+                self.state.completed = 0
+                self.state.planned = int(payload.get("planned", self.state.planned))
+            self.state.status_text = (
+                f"{RU['failed']}\n{self.state.error_title_ru}\n"
+                f"{self.state.error_message_ru}"
+            )
             self.state.resume_available = bool(payload.get("resume_available"))
-            self.state.errors += 1
+            self.state.errors = max(1, self.state.errors)
             self.state.active = False
+            self.state.terminal_state = "FAILED"
+            if self.state.failed_before_first_config:
+                self.state.phase = "REPLAY_VALIDATION"
