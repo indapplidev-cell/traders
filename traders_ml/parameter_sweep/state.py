@@ -57,6 +57,10 @@ class SweepRunStatus:
     cancel_requested: bool = False
     resume_available: bool = False
     dataset_fingerprint: str | None = None
+    dataset_manifest_hash: str | None = None
+    dataset_cutoff_at: str | None = None
+    dataset_period_start_ms: int | None = None
+    dataset_period_end_ms: int | None = None
     config_hash: str | None = None
     search_space_hash: str | None = None
     engine_version: str | None = None

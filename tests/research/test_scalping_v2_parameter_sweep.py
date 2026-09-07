@@ -111,7 +111,8 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
         "RUN_CONFIG.yaml", "RESULTS.csv", "RESULTS.json", "TOP_CONFIGS.json",
         "REJECTED_CONFIGS.json", "REPORT.md", "PREFLIGHT.json",
         "SEARCH_PLAN.json", "CHECKPOINT.json", "RESULTS.jsonl",
-        "STATUS.json", "INTEGRITY.json",
+        "STATUS.json", "INTEGRITY.json", "DATASET_MANIFEST.json",
+        "DATASET_SNAPSHOT.json",
     }
     assert {path.name for path in output.iterdir()} == expected
     results = json.loads((output / "RESULTS.json").read_text())
@@ -351,8 +352,103 @@ def test_resume_hash_mismatch_is_rejected(tmp_path):
     search = yaml.safe_load(search_path.read_text())
     search["search_space"]["min_positive_ev_r"].append(.3)
     search_path.write_text(yaml.safe_dump(search), encoding="utf-8")
-    with pytest.raises(SweepExpectedError, match="RESUME_FINGERPRINT_MISMATCH"):
+    with pytest.raises(SweepExpectedError, match="RESUME_SEARCH_PLAN_MISMATCH"):
         run(search_path, run_id="mismatch", resume=True)
+
+
+def test_resume_uses_frozen_manifest_and_ignores_new_source_rows(tmp_path):
+    search_path = _search(tmp_path, _rows())
+    output = run(search_path, run_id="frozen-growth", stop_after_batches=1)
+    before_manifest = json.loads((output / "DATASET_MANIFEST.json").read_text())
+    before_checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
+    source_path = Path(yaml.safe_load(search_path.read_text())["dataset"])
+    grown = json.loads(source_path.read_text())
+    appended = dict(grown[-1])
+    appended["position_id"] = "new-after-cutoff"
+    appended["command_id"] = "new-command-after-cutoff"
+    appended["opened_at_ms"] = int(appended["opened_at_ms"]) + 10_000_000
+    appended["closed_at_ms"] = int(appended["closed_at_ms"]) + 10_000_000
+    grown.append(appended)
+    source_path.write_text(json.dumps(grown), encoding="utf-8")
+
+    resumed = run(search_path, run_id="frozen-growth", resume=True)
+    after_manifest = json.loads((resumed / "DATASET_MANIFEST.json").read_text())
+    after_checkpoint = json.loads((resumed / "CHECKPOINT.json").read_text())
+    assert after_manifest == before_manifest
+    assert after_checkpoint["dataset_fingerprint"] == before_checkpoint["dataset_fingerprint"]
+    assert after_checkpoint["evaluated_count"] == after_checkpoint["durable_result_count"] == 2
+    assert json.loads((resumed / "INTEGRITY.json").read_text())["integrity_status"] == "PASS"
+
+    new_output = run(search_path, run_id="new-after-growth", max_configs=1)
+    new_manifest = json.loads((new_output / "DATASET_MANIFEST.json").read_text())
+    assert new_manifest["dataset_row_count"] == before_manifest["dataset_row_count"] + 1
+    assert new_manifest["dataset_fingerprint"] != before_manifest["dataset_fingerprint"]
+
+
+def test_resume_detects_manifest_or_frozen_snapshot_mutation(tmp_path):
+    search_path = _search(tmp_path, _rows())
+    output = run(search_path, run_id="frozen-mutated", stop_after_batches=1)
+    snapshot_path = output / "DATASET_SNAPSHOT.json"
+    snapshot = json.loads(snapshot_path.read_text())
+    snapshot[0]["net_pnl"] = 999
+    snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match="RESUME_DATASET_MUTATED"):
+        run(search_path, run_id="frozen-mutated", resume=True)
+
+
+def test_resume_detects_engine_incompatibility(tmp_path, monkeypatch):
+    import traders_ml.parameter_sweep.engine as engine_module
+
+    search_path = _search(tmp_path, _rows())
+    run(search_path, run_id="engine-version", stop_after_batches=1)
+    monkeypatch.setattr(engine_module, "SCHEMA_VERSION", "incompatible-test-version")
+    with pytest.raises(SweepExpectedError, match="RESUME_ENGINE_INCOMPATIBLE"):
+        run(search_path, run_id="engine-version", resume=True)
+
+
+def test_resume_reports_config_fingerprint_mismatch_separately(tmp_path):
+    search_path = _search(tmp_path, _rows())
+    output = run(search_path, run_id="config-mismatch", stop_after_batches=1)
+    checkpoint_path = output / "CHECKPOINT.json"
+    checkpoint = json.loads(checkpoint_path.read_text())
+    checkpoint["config_hash"] = "different-config"
+    checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match="RESUME_CONFIG_MISMATCH"):
+        run(search_path, run_id="config-mismatch", resume=True)
+
+
+def test_transient_checkpoint_contention_then_source_growth_resumes_exactly_once(tmp_path, monkeypatch):
+    search_path = _search(tmp_path, _rows())
+    real_replace = os.replace
+    failures = 0
+
+    def flaky_checkpoint(source, destination):
+        nonlocal failures
+        if Path(destination).name == "CHECKPOINT.json" and failures < 3:
+            failures += 1
+            error = PermissionError(32, "injected sharing violation")
+            error.winerror = 32
+            raise error
+        real_replace(source, destination)
+
+    monkeypatch.setattr(os, "replace", flaky_checkpoint)
+    output = run(search_path, run_id="writer-plus-growth", stop_after_batches=1)
+    source_path = Path(yaml.safe_load(search_path.read_text())["dataset"])
+    grown = json.loads(source_path.read_text())
+    extra = dict(grown[-1])
+    extra["position_id"] = "growth-after-writer-retry"
+    grown.append(extra)
+    source_path.write_text(json.dumps(grown), encoding="utf-8")
+    resumed = run(search_path, run_id="writer-plus-growth", resume=True)
+    checkpoint = json.loads((resumed / "CHECKPOINT.json").read_text())
+    identities = [
+        (row["run_id"], row["result_index"], row["config_hash"])
+        for row in map(json.loads, (resumed / "RESULTS.jsonl").read_text().splitlines())
+    ]
+    assert failures == 3
+    assert checkpoint["evaluated_count"] == checkpoint["durable_result_count"] == 2
+    assert len(identities) == len(set(identities)) == 2
+    assert json.loads((resumed / "INTEGRITY.json").read_text())["integrity_status"] == "PASS"
 
 
 def test_holdout_is_never_used_for_search_or_ranking(tmp_path):

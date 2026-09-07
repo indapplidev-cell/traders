@@ -14,7 +14,8 @@ from .artifact_writer import DEFAULT_ARTIFACT_WRITER
 
 
 COMPLETED_ARTIFACTS = (
-    "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "CHECKPOINT.json",
+    "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "DATASET_MANIFEST.json",
+    "DATASET_SNAPSHOT.json", "CHECKPOINT.json",
     "RESULTS.csv", "RESULTS.jsonl", "RESULTS.json", "TOP_CONFIGS.json",
     "REJECTED_CONFIGS.json", "REPORT.md", "STATUS.json",
 )
@@ -22,20 +23,20 @@ COMPLETED_ARTIFACTS = (
 TERMINAL_ARTIFACTS = {
     "COMPLETED": COMPLETED_ARTIFACTS,
     "FAILED_BEFORE_EVALUATION": (
-        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json",
+        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "DATASET_MANIFEST.json", "DATASET_SNAPSHOT.json",
         "CHECKPOINT.json", "STATUS.json", "REPORT.md",
     ),
     "FAILED_DURING_EVALUATION": (
-        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json",
+        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "DATASET_MANIFEST.json", "DATASET_SNAPSHOT.json",
         "CHECKPOINT.json", "STATUS.json", "RESULTS.csv", "RESULTS.jsonl",
         "REPORT.md",
     ),
     "CANCELLED": (
-        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json",
+        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "DATASET_MANIFEST.json", "DATASET_SNAPSHOT.json",
         "CHECKPOINT.json", "STATUS.json", "RESULTS.csv", "RESULTS.jsonl",
     ),
     "INTERRUPTED_RESUMABLE": (
-        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json",
+        "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "DATASET_MANIFEST.json", "DATASET_SNAPSHOT.json",
         "CHECKPOINT.json", "STATUS.json", "RESULTS.csv", "RESULTS.jsonl",
     ),
 }
@@ -80,6 +81,8 @@ def verify_artifacts(
         checkpoint = _json(run_directory / "CHECKPOINT.json")
         preflight = _json(run_directory / "PREFLIGHT.json")
         search_plan = _json(run_directory / "SEARCH_PLAN.json")
+        manifest = _json(run_directory / "DATASET_MANIFEST.json")
+        snapshot = _json(run_directory / "DATASET_SNAPSHOT.json")
         run_config = yaml.safe_load((run_directory / "RUN_CONFIG.yaml").read_text(encoding="utf-8"))
         checks = {
             "run_id": all((
@@ -93,7 +96,15 @@ def verify_artifacts(
                 preflight.get("DATASET_FINGERPRINT") == expected_dataset_fingerprint,
                 search_plan.get("DATASET_FINGERPRINT") == expected_dataset_fingerprint,
                 run_config.get("dataset_fingerprint") == expected_dataset_fingerprint,
+                manifest.get("dataset_fingerprint") == expected_dataset_fingerprint,
             )),
+            "dataset_manifest_hash": (
+                checkpoint.get("dataset_manifest_hash") == manifest.get("manifest_hash")
+                and preflight.get("DATASET_MANIFEST_HASH") == manifest.get("manifest_hash")
+                and search_plan.get("DATASET_MANIFEST_HASH") == manifest.get("manifest_hash")
+                and run_config.get("dataset_manifest_hash") == manifest.get("manifest_hash")
+            ),
+            "dataset_snapshot_count": len(snapshot) == int(manifest.get("dataset_row_count", -1)),
             "config_hash": all((
                 checkpoint.get("config_hash") == expected_config_hash,
                 preflight.get("CONFIG_HASH") == expected_config_hash,

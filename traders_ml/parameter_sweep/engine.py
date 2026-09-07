@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 from collections import ChainMap
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -58,6 +57,7 @@ from .texts import ERRORS_RU
 from .utils import generate_run_id
 
 SCHEMA_VERSION = "SCALPING_V2_PARAMETER_SWEEP/3"
+DATASET_MANIFEST_VERSION = "PARAMETER_SWEEP_DATASET_MANIFEST/1"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROTECTED_BINDING_PATH = PROJECT_ROOT / ".env.production.local"
 PROTECTED_READONLY_KEY = "TRADERS_READONLY_API_DATABASE_URL"
@@ -743,7 +743,73 @@ def _load_rows(
 
 
 def _config_hash(value: object) -> str:
-    return sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return sha256(json.dumps(
+        value, sort_keys=True, separators=(",", ":"), default=str,
+    ).encode()).hexdigest()
+
+
+def _snapshot_json_default(value: object) -> object:
+    if isinstance(value, Decimal):
+        return {"__parameter_sweep_type__": "decimal", "value": str(value)}
+    if isinstance(value, datetime):
+        return {"__parameter_sweep_type__": "datetime", "value": value.isoformat()}
+    raise TypeError(f"unsupported frozen dataset value: {type(value).__name__}")
+
+
+def _snapshot_json_hook(value: dict[str, Any]) -> object:
+    if value.get("__parameter_sweep_type__") == "decimal":
+        return Decimal(str(value["value"]))
+    if value.get("__parameter_sweep_type__") == "datetime":
+        return datetime.fromisoformat(str(value["value"]))
+    return value
+
+
+def _manifest_from_rows(
+    *, run_id: str, options: DatasetOptions, rows: list[dict[str, Any]],
+    schema_head: str,
+) -> dict[str, Any]:
+    summary = rows[0].get("__historical_summary", {}) if rows else {}
+    inventory = rows[0].get("__source_inventory", []) if rows else []
+    opened = [int(row.get("opened_at_ms", row.get("boundary_ms", 0))) for row in rows]
+    closed = [int(row.get("closed_at_ms", row.get("boundary_ms", 0))) for row in rows]
+    period_start = int(summary.get("HISTORICAL_PERIOD_START_MS") or min(opened))
+    period_end = int(summary.get("HISTORICAL_PERIOD_END_MS") or max(closed))
+    dataset_fingerprint = _config_hash({
+        "manifest_version": DATASET_MANIFEST_VERSION,
+        "source": options.source,
+        "profile": options.profile,
+        "schema_head": schema_head,
+        "rows": rows,
+    })
+    manifest = {
+        "manifest_version": DATASET_MANIFEST_VERSION,
+        "run_id": run_id,
+        "profile": options.profile,
+        "symbols": sorted({str(row.get("symbol")) for row in rows if row.get("symbol")}),
+        "historical_period_start_ms": period_start,
+        "historical_period_end_ms": period_end,
+        "dataset_cutoff_at": datetime.fromtimestamp(period_end / 1000, timezone.utc).isoformat(),
+        "dataset_source": options.source,
+        "dataset_row_count": len(rows),
+        "dataset_fingerprint": dataset_fingerprint,
+        "source_schema_version": schema_head,
+        "trade_config_version": TRADE_PARAMETERS.config_version,
+        "trade_config_hash": TRADE_PARAMETERS.config_hash,
+        "source_watermarks": {
+            str(item.get("SOURCE")): {
+                "table": item.get("TABLE_MODEL"),
+                "timestamp_field": item.get("TIMESTAMP_FIELD"),
+                "maximum_timestamp": (item.get("TIME_RANGE") or [None, None])[1],
+                "row_count": item.get("ROW_COUNT"),
+                "primary_key": item.get("PRIMARY_KEY"),
+                "watermark_field": item.get("WATERMARK_FIELD"),
+            }
+            for item in inventory
+        },
+        "snapshot_file": "DATASET_SNAPSHOT.json",
+    }
+    manifest["manifest_hash"] = _config_hash(manifest)
+    return manifest
 
 
 def _present(row: Mapping[str, Any], field: str) -> bool:
@@ -1733,13 +1799,61 @@ def _run_impl(
     database: ReadOnlyResearchDatabase | None = None
     binding_source, session_mode, schema_head = "NOT_REQUIRED_OFFLINE_JSON", "NOT_APPLICABLE", "NOT_APPLICABLE"
     write_rejections: dict[str, str] = {}
+    manifest_path = output / "DATASET_MANIFEST.json"
+    snapshot_path = output / "DATASET_SNAPSHOT.json"
+    dataset_manifest: dict[str, Any] | None = None
     try:
         if options.source in {DATASET_SOURCE, LEGACY_DATASET_SOURCE}:
             binding = resolve_database_binding(explicit_url=database_url)
             binding_source = binding.source
             database = ReadOnlyResearchDatabase(binding)
             session_mode, schema_head, _tables, write_rejections = _preflight_database(database)
-        rows = _load_rows(options, database)
+        if resume:
+            try:
+                dataset_manifest = _json(manifest_path)
+                rows = json.loads(
+                    snapshot_path.read_text(encoding="utf-8"),
+                    object_hook=_snapshot_json_hook,
+                )
+            except (FileNotFoundError, json.JSONDecodeError):
+                raise SweepExpectedError("RESUME_DATASET_MANIFEST_MISMATCH") from None
+            if (
+                not isinstance(dataset_manifest, dict)
+                or dataset_manifest.get("manifest_version") != DATASET_MANIFEST_VERSION
+                or dataset_manifest.get("run_id") != identifier
+                or dataset_manifest.get("profile") != options.profile
+                or dataset_manifest.get("dataset_source") != options.source
+                or dataset_manifest.get("manifest_hash")
+                != _config_hash({
+                    key: value for key, value in dataset_manifest.items()
+                    if key != "manifest_hash"
+                })
+                or not isinstance(rows, list)
+            ):
+                raise SweepExpectedError("RESUME_DATASET_MANIFEST_MISMATCH")
+            if dataset_manifest.get("dataset_fingerprint") != _config_hash({
+                    "manifest_version": DATASET_MANIFEST_VERSION,
+                    "source": options.source,
+                    "profile": options.profile,
+                    "schema_head": dataset_manifest.get("source_schema_version"),
+                    "rows": rows,
+                }):
+                raise SweepExpectedError("RESUME_DATASET_MUTATED")
+        else:
+            rows = _load_rows(options, database)
+            if rows:
+                dataset_manifest = _manifest_from_rows(
+                    run_id=identifier, options=options, rows=rows,
+                    schema_head=schema_head,
+                )
+                DEFAULT_ARTIFACT_WRITER.atomic_text(
+                    snapshot_path,
+                    json.dumps(rows, indent=2, sort_keys=True, default=_snapshot_json_default),
+                    operation="dataset_snapshot_create",
+                )
+                DEFAULT_ARTIFACT_WRITER.atomic_json(
+                    manifest_path, dataset_manifest, operation="dataset_manifest_create",
+                )
     except SweepExpectedError as error:
         _write_preflight(output / "PREFLIGHT.json", {
             "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": error.reason,
@@ -1783,15 +1897,21 @@ def _run_impl(
         available_replay_rows=int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
     )
     git_commit = _git_commit()
-    dataset_fingerprint = str(rows[0].get("__dataset_fingerprint")) if rows and rows[0].get("__dataset_fingerprint") else _config_hash({
-        "schema_head": schema_head, "dataset_source": options.source, "rows": rows,
-    })
+    assert dataset_manifest is not None
+    dataset_fingerprint = str(dataset_manifest["dataset_fingerprint"])
     search_space_hash = _config_hash(space)
     plan_state = _search_plan_state(space, plan)
+    search_plan_hash = _config_hash({
+        "space": space, "plan": plan.safe_dict(), "minimum_samples": search["minimum_samples"],
+    })
     replay_diagnostics = _replay_diagnostics(rows, coverage)
     status_store.update(
         planned_configs=plan.evaluation_budget,
         dataset_fingerprint=dataset_fingerprint,
+        dataset_manifest_hash=str(dataset_manifest["manifest_hash"]),
+        dataset_cutoff_at=str(dataset_manifest["dataset_cutoff_at"]),
+        dataset_period_start_ms=int(dataset_manifest["historical_period_start_ms"]),
+        dataset_period_end_ms=int(dataset_manifest["historical_period_end_ms"]),
         config_hash=TRADE_PARAMETERS.config_hash,
         search_space_hash=search_space_hash,
         search_dimensions=list(plan_state.search_dimensions),
@@ -1809,6 +1929,9 @@ def _run_impl(
         "run_id": identifier, "git_commit": git_commit,
         "config_hash": TRADE_PARAMETERS.config_hash,
         "search_space_hash": search_space_hash,
+        "search_plan_hash": search_plan_hash,
+        "dataset_manifest_hash": dataset_manifest["manifest_hash"],
+        "engine_version": SCHEMA_VERSION,
         "dataset_fingerprint": dataset_fingerprint,
         "strategy": plan.selected_strategy, "seed": plan.seed, "stage": "NOT_STARTED",
         "evaluated_count": 0, "accepted_count": 0, "rejected_count": 0,
@@ -1825,9 +1948,14 @@ def _run_impl(
             existing = _json(checkpoint_path)
         except (FileNotFoundError, json.JSONDecodeError):
             raise SweepExpectedError("RESUME_CHECKPOINT_NOT_AVAILABLE") from None
-        immutable = ("run_id", "git_commit", "config_hash", "search_space_hash", "dataset_fingerprint", "strategy", "seed")
-        if any(existing.get(key) != checkpoint[key] for key in immutable):
-            raise SweepExpectedError("RESUME_FINGERPRINT_MISMATCH")
+        if existing.get("run_id") != identifier or existing.get("dataset_manifest_hash") != checkpoint["dataset_manifest_hash"] or existing.get("dataset_fingerprint") != dataset_fingerprint:
+            raise SweepExpectedError("RESUME_DATASET_MANIFEST_MISMATCH")
+        if existing.get("search_plan_hash") != search_plan_hash or existing.get("search_space_hash") != search_space_hash or existing.get("strategy") != checkpoint["strategy"] or existing.get("seed") != checkpoint["seed"]:
+            raise SweepExpectedError("RESUME_SEARCH_PLAN_MISMATCH")
+        if existing.get("config_hash") != TRADE_PARAMETERS.config_hash:
+            raise SweepExpectedError("RESUME_CONFIG_MISMATCH")
+        if existing.get("engine_version") != SCHEMA_VERSION:
+            raise SweepExpectedError("RESUME_ENGINE_INCOMPATIBLE")
         checkpoint = existing
         try:
             run_started = datetime.fromisoformat(str(checkpoint["RUN_STARTED_AT"]))
@@ -1894,6 +2022,10 @@ def _run_impl(
         "TIME_STOP_REPLAY_ELIGIBLE_ROWS": coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"],
         "FULL_REPLAY_ELIGIBLE_ROWS": coverage["FULL_REPLAY_ELIGIBLE_ROWS"],
         "DATASET_FINGERPRINT": dataset_fingerprint,
+        "DATASET_MANIFEST_HASH": dataset_manifest["manifest_hash"],
+        "DATASET_CUTOFF_AT": dataset_manifest["dataset_cutoff_at"],
+        "HISTORICAL_PERIOD_START_MS": dataset_manifest["historical_period_start_ms"],
+        "HISTORICAL_PERIOD_END_MS": dataset_manifest["historical_period_end_ms"],
         "RUN_STARTED_AT": run_started.isoformat(),
         "OUTPUT_DIR": _display_path(output), "SECRET_OUTPUT": 0,
     }
@@ -1902,6 +2034,9 @@ def _run_impl(
     search_plan_artifact.update({
         "RUN_ID": identifier,
         "DATASET_FINGERPRINT": dataset_fingerprint,
+        "DATASET_MANIFEST_HASH": dataset_manifest["manifest_hash"],
+        "DATASET_CUTOFF_AT": dataset_manifest["dataset_cutoff_at"],
+        "SEARCH_PLAN_HASH": search_plan_hash,
         "CONFIG_HASH": TRADE_PARAMETERS.config_hash,
         "SEARCH_SPACE_HASH": search_space_hash,
         "SEARCH_DIMENSIONS": list(plan_state.search_dimensions),
@@ -1926,6 +2061,10 @@ def _run_impl(
         "dataset_period": {"from_ms": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows), "to_ms": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows)},
         "sample_sizes": {key: len(value) for key, value in splits.items()},
         "source_data_provenance": dataset_fingerprint, "dataset_fingerprint": dataset_fingerprint,
+        "dataset_manifest_hash": dataset_manifest["manifest_hash"],
+        "dataset_manifest": "DATASET_MANIFEST.json",
+        "dataset_snapshot": "DATASET_SNAPSHOT.json",
+        "dataset_cutoff_at": dataset_manifest["dataset_cutoff_at"],
         "dataset_row_count": len(rows),
         "dataset_min_opened_at": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows),
         "dataset_max_closed_at": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows),
@@ -2016,6 +2155,10 @@ def _run_impl(
             f"- RUN_STARTED_AT: `{failure_timing['RUN_STARTED_AT']}`\n"
             f"- RUN_FAILED_AT: `{failure_timing['RUN_FAILED_AT']}`\n"
             f"- RUN_DURATION_SECONDS: {failure_timing['RUN_DURATION_SECONDS']}\n\n"
+            "## FROZEN DATASET\n\n"
+            f"- Cutoff: `{dataset_manifest['dataset_cutoff_at']}`\n"
+            f"- Period: `{dataset_manifest['historical_period_start_ms']}..{dataset_manifest['historical_period_end_ms']}`\n"
+            f"- Manifest hash: `{dataset_manifest['manifest_hash']}`\n\n"
             "## SEARCH PLAN\n\n"
             f"- RAW_SEARCH_SPACE_SIZE: {plan.raw_search_space_size}\n"
             f"- PLANNED_CONFIGS: {plan.evaluation_budget}\n"
@@ -2304,6 +2447,9 @@ def _run_impl(
 
 - Source/profile/rows: `{preflight['DATASET_SOURCE']}` / `{options.profile}` / {len(rows)}
 - Fingerprint: `{dataset_fingerprint}`
+- Frozen cutoff: `{dataset_manifest['dataset_cutoff_at']}`
+- Frozen historical period: `{dataset_manifest['historical_period_start_ms']}..{dataset_manifest['historical_period_end_ms']}`
+- Dataset manifest hash: `{dataset_manifest['manifest_hash']}`
 - Historical market 1m / 5m rows: {historical_summary.get('MARKET_1M_ROWS', 'N/A')} / {historical_summary.get('MARKET_5M_ROWS', 'N/A')}
 - Opportunity universe / persisted closed trades: {historical_summary.get('TOTAL_OPPORTUNITY_UNIVERSE', 'N/A')} / {historical_summary.get('PERSISTED_CLOSED_POSITIONS', 'N/A')}
 - Reconstructed-only / historically rejected opportunities: {historical_summary.get('TOTAL_RECONSTRUCTED_ONLY_CANDIDATES', 'N/A')} / {historical_summary.get('TOTAL_HISTORICALLY_REJECTED', 'N/A')}

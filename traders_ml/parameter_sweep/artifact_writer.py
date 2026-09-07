@@ -142,7 +142,7 @@ class ArtifactWriter:
 
     def atomic_json(self, path: Path, payload: object, *, operation: str = "replace_json") -> None:
         self.atomic_text(
-            path, json.dumps(payload, indent=2, sort_keys=True), operation=operation,
+            path, json.dumps(payload, indent=2, sort_keys=True, default=str), operation=operation,
         )
 
     def append_text(self, path: Path, content: str, *, operation: str = "append") -> None:

@@ -40,6 +40,8 @@ def status(run_id: str, output_root: Path = DEFAULT_OUTPUT_ROOT) -> int:
     print(f"STARTED_AT = {value['started_at']}")
     print(f"UPDATED_AT = {value['updated_at']}")
     print(f"LAST_CHECKPOINT = {value['last_checkpoint_at']}")
+    print(f"DATASET_CUTOFF_AT = {value.get('dataset_cutoff_at') or 'UNKNOWN'}")
+    print(f"DATASET_PERIOD_MS = {value.get('dataset_period_start_ms')}..{value.get('dataset_period_end_ms')}")
     print(f"RESUME_AVAILABLE = {'YES' if value['resume_available'] else 'NO'}")
     return 0
 
