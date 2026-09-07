@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 7dc9cbccec72cbd0d2540a37cfaefb70075ee046
+STATUS_AS_OF_COMMIT = 5f94677c3225843f7ffff74229c6e81c9a32c18d
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-07T15:50:24Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_UI_MODULE_THIN_CLIENT_ENGINE_01
-FILES_CHANGED = app/research/scalping_v2_parameter_sweep.py, traders_ml/parameter_sweep/*, traders_ml/__init__.py, tests/research/test_scalping_v2_parameter_sweep.py, docs/research/scalping_v2_parameter_sweep.md, pyproject.toml, docs/audits/TRADERS_PARAMETER_SWEEP_UI_MODULE_THIN_CLIENT_ENGINE_01_FINAL.md, online_trader.md
+RECONCILED_AT_UTC = 2026-09-07T16:31:55Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_UI_REPLAY_STATE_AND_PARAMETER_VISIBILITY_FIX_01
+FILES_CHANGED = traders_ml/parameter_sweep/engine.py, traders_ml/parameter_sweep/events.py, traders_ml/parameter_sweep/state.py, traders_ml/parameter_sweep/models.py, traders_ml/parameter_sweep/controller.py, traders_ml/parameter_sweep/ui.py, traders_ml/parameter_sweep/cli.py, traders_ml/parameter_sweep/integrity.py, traders_ml/parameter_sweep/texts.py, tests/research/test_scalping_v2_parameter_sweep.py, docs/research/scalping_v2_parameter_sweep.md, docs/audits/evidence/parameter_sweep_ui_replay_state/*, docs/audits/TRADERS_PARAMETER_SWEEP_UI_REPLAY_STATE_AND_PARAMETER_VISIBILITY_FIX_01_FINAL.md, online_trader.md
 
-REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 7dc9cbccec72cbd0d2540a37cfaefb70075ee046_ORIGIN_FEATURE_ENGINE_PLATFORM_PARAMETER_SWEEP_UI_PROJECTSTATE_PUSHED_PRODUCTIONRUNTIMEUNCHANGED_SCHEMA0030
-PUSH_STATE_AT_RECONCILIATION = PROJECTSTATE7DC9CBCC_PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_WORKTREECLEAN_BEFORE_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = PARAMETERUIENGINEPASS_45FOCUSEDPASS_50REGRESSIONPASS_COMPILEPASS_OFFLINESMOKE2_INTEGRITYPASS_STOPRESUMEPASS_LOCKPASS_MUTATION0_CONFIGWRITE0_BINANCEORDER0_LIVEFALSE
+REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = 5f94677c3225843f7ffff74229c6e81c9a32c18d_ORIGIN_FEATURE_ENGINE_PLATFORM_PARAMETER_SWEEP_REPLAYUIFIX_PROJECTSTATE_PUSHED_PRODUCTIONRUNTIMEUNCHANGED_SCHEMA0030
+PUSH_STATE_AT_RECONCILIATION = PROJECTSTATE5F94677C_PUSHED_SYNCHRONIZED_AHEAD0_BEHIND0_WORKTREECLEAN_BEFORE_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = REPLAYUISTATEPASS_50FOCUSEDPASS_55REGRESSIONPASS_COMPILEPASS_INCIDENTRAW764411904PLAN5000PROCESSED0_CURRENTNONE_DIAGNOSTICS53_53_0_0_0_TWOGUISMOKESPASS_MUTATION0_CONFIGWRITE0_BINANCEORDER0_LIVEFALSE
 
 # Состояние проекта traders-ml
 
@@ -31,6 +31,29 @@ SECONDARY_BLOCKER = BROAD_MIXED_ERA_SERVER_TESTS_RETAIN_LEGACY_DEBT; 72H_PRODUCT
 CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT_POLICY_AND_CONTROLLED_ROLLOUT
 BACKGROUND_TIMED_GATE = STOPPED_TASK_COMPLETED
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
+```
+
+## Parameter Sweep replay-state and parameter-visibility fix 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_UI_REPLAY_STATE_AND_PARAMETER_VISIBILITY_FIX_01
+RESULT = PASS_SEMANTICSEARCHSPACE_CURRENTCONFIG_REPLAYDIAGNOSTICS_TERMINALSTATE_CORRECTION
+PROJECT_STATE_COMMIT = 5f94677c3225843f7ffff74229c6e81c9a32c18d
+INCIDENT = RAW764411904_PLANNED5000_DATASET53_CURRENTNONE_COMPLETED0_ERRORS1_FAILED_BEFORECONFIG1
+SEARCH_SPACE = ENGINEPUBLISHED_DIMENSIONS_VALUES_CONDITIONALDIMENSIONS_RAW_PLANNED_STRATEGY_VISIBLEBEFORECONFIG
+CURRENT_CONFIG = EXPLICITOPTIONAL_NONE_TEXT_NOTSTARTED_NOBRACES_TOGGLEDISABLED;RESOLVEDANDCHANGEDAFTERCONFIGSTARTED
+TERMINAL_WORDING = PLANNED_AND_FACTUALLYPROCESSED_NOFUTURETENSE_NO_CONFIGURATION0
+REPLAY_DIAGNOSTICS = DATASET53_OUTCOME53_TIMESTOP0_FULL0_POST0_MISSINGMARKET53_MISSINGCOST0
+ERROR = STRUCTURED_INSUFFICIENTREPLAYDATA_RUTITLE_RUMESSAGE_DETAILS_PHASE_REPLAYVALIDATION
+STATUS = FAILED_PLANNED5000_COMPLETED0_CURRENTINDEXNULL_RESUMEFALSE
+CLI = STATUSPARITY_STATE_PHASE_PLANNED_COMPLETED_CURRENTNONE_FAILURE_RESUMENO
+INTEGRITY = TERMINALSPECIFIC_COMPLETED_FAILEDBEFORE_FAILEDDURING_CANCELLED_INTERRUPTEDRESUMABLE
+SMOKE = REALTK_FAILBEFOREFIRSTPASS_AND_REPLAYABLE2CONFIGPASS_VISUALEVIDENCE2PNG
+TESTS = FOCUSED50PASS_RELEVANTREGRESSION55PASS_COMPILEPASS
+SAFETY = FULLSWEEPNO_PRODUCTIONMUTATION0_CONFIGWRITE0_APPROVAL0_COMMAND0_POSITION0_BINANCEORDER0_LIVEFALSE
+DEPLOYMENT = OFFLINERESEARCHCODE_PUSHED_PRODUCTIONCONTAINERSNOTRESTARTED_RUNTIMEUNCHANGED_SCHEMA0030
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_UI_REPLAY_STATE_AND_PARAMETER_VISIBILITY_FIX_01_FINAL.md
+NEXT_ACTION = ACCUMULATE_TIMESTAMPED_CAUSAL_MARKETCOSTOBSERVATIONS_THEN_OPTIONAL_MANUALAUTOBOUNDEDSWEEP_WITHOUTPROMOTION
 ```
 
 ## Parameter Sweep UI module thin-client engine 01
@@ -6614,7 +6637,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Modular UI/CLI lifecycle implementation and bounded smoke PASS | `traders_ml/parameter_sweep/` is authoritative; Russian Tk GUI and CLI share one headless engine with typed events, atomic status/heartbeat, content-aware integrity, graceful stop/resume and a single-run lock. Two-config offline GUI/CLI smoke passed; no full sweep or parameter promotion was performed |
+| Offline Scalping v2 Parameter Sweep | Modular UI/CLI lifecycle plus replay-failure semantic correction PASS | `traders_ml/parameter_sweep/` remains authoritative. Search-space and optional current-config state are separate; failed-before-first runs expose exact replay counts, `current_config_index=null`, factual planned/processed wording, terminal-specific integrity, no false resume and no `{}`/configuration 0. Failed and two-config Tk smokes passed; no full sweep or parameter promotion was performed |
 | Online analytics/paper pipeline | Blocks 01–11, four follow-up blocks, and mandatory Stop/Target recovery accepted; continuous PAPER plus 1m and stale-position SHADOW | `trade-5m-v2` is the sole authority for new Scalping decisions on schema 0030. Persisted OPEN/CLOSING positions are restart-rehydrated and mandatory Stop/Target exits are independent from entry readiness; real Binance account commission is READY. Parameter promotion remains blocked by insufficient causal historical timeout-cost evidence and the unrun manual full sweep |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
