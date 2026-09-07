@@ -11,6 +11,8 @@ from pathlib import Path
 import threading
 from typing import Any
 
+from .artifact_writer import ArtifactWriteError, ArtifactWriter, DEFAULT_ARTIFACT_WRITER
+
 
 class RunState(StrEnum):
     READY = "READY"
@@ -73,30 +75,35 @@ class SweepRunStatus:
 
 
 class StatusStore:
-    def __init__(self, path: Path, status: SweepRunStatus) -> None:
+    def __init__(
+        self, path: Path, status: SweepRunStatus, *, writer: ArtifactWriter | None = None,
+    ) -> None:
         self.path = path
         self.status = status
         self._lock = threading.RLock()
+        self.writer = writer or DEFAULT_ARTIFACT_WRITER
+        self.last_write_warning: dict[str, Any] | None = None
 
     def update(self, *, heartbeat: bool = False, **changes: Any) -> None:
         with self._lock:
             for key, value in changes.items():
                 setattr(self.status, key, value)
             self.status.updated_at = utc_now()
-            self._write()
+            try:
+                self._write()
+                self.last_write_warning = None
+            except ArtifactWriteError as error:
+                # STATUS is observational. A missed heartbeat must never abort research.
+                self.last_write_warning = error.as_dict()
 
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             return self.status.as_dict()
 
     def _write(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_suffix(".json.tmp")
-        temporary.write_text(
-            json.dumps(self.status.as_dict(), indent=2, sort_keys=True),
-            encoding="utf-8",
+        self.writer.atomic_json(
+            self.path, self.status.as_dict(), operation="status_replace",
         )
-        os.replace(temporary, self.path)
 
 
 def process_alive(pid: int) -> bool:

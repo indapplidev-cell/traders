@@ -43,6 +43,9 @@ from app.engine_paper.stale_position_shadow import (
     StalePositionInputs, evaluate_stale_position_shadow,
 )
 from .events import EventType, SweepEvent
+from .artifact_writer import (
+    ArtifactWriteError, DEFAULT_ARTIFACT_WRITER, DurableResultWriter,
+)
 from .integrity import verify_artifacts
 from .historical_replay import (
     HistoricalReplayRepository, baseline_parity, build_parameter_registry,
@@ -1476,7 +1479,7 @@ def _preflight_database(
 
 
 def _write_preflight(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    DEFAULT_ARTIFACT_WRITER.atomic_json(path, payload, operation="preflight_replace")
 
 
 def _print_preflight(payload: Mapping[str, object]) -> None:
@@ -1497,9 +1500,12 @@ def _display_path(path: Path) -> str:
 
 
 def _atomic_json(path: Path, payload: object) -> None:
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    os.replace(temporary, path)
+    try:
+        DEFAULT_ARTIFACT_WRITER.atomic_json(path, payload, operation=f"{path.name}:replace")
+    except ArtifactWriteError as error:
+        if path.name == "CHECKPOINT.json":
+            raise SweepExpectedError("CHECKPOINT_WRITE_FAILED") from error
+        raise
 
 
 def _timing(started: datetime, finished: datetime | None = None) -> dict[str, object]:
@@ -1517,18 +1523,16 @@ def _timing(started: datetime, finished: datetime | None = None) -> dict[str, ob
 
 
 def _stream_json_array(source: Path, target: Path, *, rejected_only: bool = False) -> None:
-    with source.open(encoding="utf-8") as incoming, target.open("w", encoding="utf-8") as outgoing:
-        outgoing.write("[\n")
-        first = True
+    rendered: list[str] = []
+    with source.open(encoding="utf-8") as incoming:
         for line in incoming:
             item = json.loads(line)
-            if rejected_only and item["result_status"] == "ACCEPTED":
-                continue
-            if not first:
-                outgoing.write(",\n")
-            outgoing.write(json.dumps(item, indent=2, sort_keys=True))
-            first = False
-        outgoing.write("\n]\n")
+            if not rejected_only or item["result_status"] != "ACCEPTED":
+                rendered.append(json.dumps(item, indent=2, sort_keys=True))
+    DEFAULT_ARTIFACT_WRITER.atomic_text(
+        target, "[\n" + ",\n".join(rendered) + "\n]\n",
+        operation=f"{target.name}:replace",
+    )
 
 
 def _evaluate_config(
@@ -1809,7 +1813,7 @@ def _run_impl(
         "strategy": plan.selected_strategy, "seed": plan.seed, "stage": "NOT_STARTED",
         "evaluated_count": 0, "accepted_count": 0, "rejected_count": 0,
         "pruned_count": 0, "early_reject_count": 0, "failed_count": 0,
-        "insufficient_count": 0,
+        "insufficient_count": 0, "durable_result_count": 0,
         "last_durable_result_index": -1, "last_candidate_offset": -1,
         "checkpoint_count": 0, "early_reject_reasons": {}, "completed": False,
         "RUN_STARTED_AT": run_started.isoformat(), "RUN_FINISHED_AT": None,
@@ -1952,7 +1956,10 @@ def _run_impl(
         _atomic_json(output / "PARAMETER_REGISTRY.json", parameter_registry)
         _atomic_json(output / "HISTORICAL_DATA_SOURCE_INVENTORY.json", source_inventory)
     if not resume:
-        (output / "RUN_CONFIG.yaml").write_text(yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8")
+        DEFAULT_ARTIFACT_WRITER.atomic_text(
+            output / "RUN_CONFIG.yaml", yaml.safe_dump(run_config, sort_keys=False),
+            operation="run_config_replace",
+        )
     status_store.update(
         state=RunState.REPLAY_VALIDATION.value,
         phase=RunState.REPLAY_VALIDATION.value,
@@ -1989,8 +1996,9 @@ def _run_impl(
             "STATUS": "FAILED", "FAILURE_CODE": structured_error.error_code,
             "FAILURE_REASON": contract_failure,
         })
-        (output / "RUN_CONFIG.yaml").write_text(
-            yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8",
+        DEFAULT_ARTIFACT_WRITER.atomic_text(
+            output / "RUN_CONFIG.yaml", yaml.safe_dump(run_config, sort_keys=False),
+            operation="run_config_replace",
         )
         preflight.update({
             "PARAMETER_SWEEP_PREFLIGHT": "FAILED", "REASON": contract_failure,
@@ -1998,7 +2006,8 @@ def _run_impl(
             "SEARCH_ABORTED_BEFORE_5000_CONFIGS": "YES", **failure_timing,
         })
         _write_preflight(output / "PREFLIGHT.json", preflight)
-        (output / "REPORT.md").write_text(
+        DEFAULT_ARTIFACT_WRITER.atomic_text(
+            output / "REPORT.md",
             "# Scalping v2 parameter sweep\n\n"
             "## RUN SUMMARY\n\n"
             f"- RUN_ID: `{identifier}`\n- STATUS: `FAILED`\n"
@@ -2025,7 +2034,7 @@ def _run_impl(
             f"- MISSING_COST_TIMELINE_ROWS: {replay_diagnostics.missing_cost_timeline_rows}\n"
             f"- Unavailable reasons: `{json.dumps(coverage['REPLAY_REASON_COUNTS'], sort_keys=True)}`\n\n"
             "## SAFETY\n\n- Production mutations: `0`; Binance order calls: `0`; LIVE unchanged.\n",
-            encoding="utf-8",
+            operation="report_replace",
         )
         status_store.update(
             state=RunState.FAILED.value, phase=RunState.REPLAY_VALIDATION.value,
@@ -2074,14 +2083,15 @@ def _run_impl(
     jsonl = output / "RESULTS.jsonl"
     csv_path = output / "RESULTS.csv"
     csv_fields = ["result_index", "config_hash", "stage", "result_status", "validation_expectancy", "validation_drawdown", "validation_trades", "parameters_json"]
-    csv_new = not csv_path.exists()
+    result_writer = DurableResultWriter(output, csv_fields)
     candidate_variants = _conditional_variants(space)
     batch_active = 0
     batches_this_call = 0
-    with jsonl.open("a", encoding="utf-8", buffering=1) as json_handle, csv_path.open("a", newline="", encoding="utf-8", buffering=1) as csv_handle:
-        writer = csv.DictWriter(csv_handle, fieldnames=csv_fields)
-        if csv_new:
-            writer.writeheader()
+    if not jsonl.exists():
+        DEFAULT_ARTIFACT_WRITER.atomic_text(jsonl, "", operation="results_jsonl_initialize")
+    if not csv_path.exists():
+        result_writer._write_csv([])
+    with result_writer._lock:
         for candidate_offset, raw_index in enumerate(_candidate_indices(plan)):
             if candidate_offset <= int(checkpoint["last_candidate_offset"]):
                 continue
@@ -2119,23 +2129,14 @@ def _run_impl(
                 candidate, splits, search["minimum_samples"],
                 index=next_index, stage=stage,
             )
+            item["run_id"] = identifier
             emit(EventType.CONFIG_COMPLETED, index=next_index + 1, result=item)
             status_store.update(
                 state=RunState.WRITING_RESULT.value,
                 phase=RunState.WRITING_RESULT.value,
             )
             emit(EventType.RESULT_WRITE_STARTED, index=next_index + 1)
-            json_handle.write(json.dumps(item, sort_keys=True) + "\n")
-            validation = item["validation"]
-            writer.writerow({
-                "result_index": item["result_index"], "config_hash": item["config_hash"],
-                "stage": stage, "result_status": item["result_status"],
-                "validation_expectancy": validation.get("net_expectancy_per_trade"),
-                "validation_drawdown": validation.get("max_drawdown"),
-                "validation_trades": validation.get("trade_count"),
-                "parameters_json": json.dumps(item["parameters"], sort_keys=True),
-            })
-            json_handle.flush(); csv_handle.flush(); os.fsync(json_handle.fileno()); os.fsync(csv_handle.fileno())
+            result_writer.append(item)
             emit(EventType.RESULT_WRITE_COMPLETED, index=next_index + 1)
             checkpoint["last_candidate_offset"] = candidate_offset
             checkpoint["last_durable_result_index"] = item["result_index"]
@@ -2154,6 +2155,7 @@ def _run_impl(
                 reasons = checkpoint.setdefault("early_reject_reasons", {})
                 reasons[early_reason] = int(reasons.get(early_reason, 0)) + 1
             checkpoint["checkpoint_count"] = int(checkpoint["checkpoint_count"]) + 1
+            checkpoint["durable_result_count"] = len(result_writer.read_all())
             _atomic_json(checkpoint_path, checkpoint)
             checkpoint_at = datetime.now(timezone.utc).isoformat()
             result_status = str(item["result_status"])
@@ -2224,8 +2226,9 @@ def _run_impl(
     _atomic_json(output / "TOP_CONFIGS.json", top)
     configs_per_observation = int(checkpoint["evaluated_count"]) / len(rows)
     run_config.update(finished_timing)
-    (output / "RUN_CONFIG.yaml").write_text(
-        yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8",
+    DEFAULT_ARTIFACT_WRITER.atomic_text(
+        output / "RUN_CONFIG.yaml", yaml.safe_dump(run_config, sort_keys=False),
+        operation="run_config_replace",
     )
     aggregate_funnel: dict[str, int] = {}
     with jsonl.open(encoding="utf-8") as handle:
@@ -2367,7 +2370,9 @@ def _run_impl(
 - Promotion eligible: `{'YES' if plan.promotion_eligible else 'NO'}`
 - Holdout is evaluated for reporting only and never influences search/refinement/ranking.
 """
-    (output / "REPORT.md").write_text(report, encoding="utf-8")
+    DEFAULT_ARTIFACT_WRITER.atomic_text(
+        output / "REPORT.md", report, operation="report_replace",
+    )
     status_store.update(
         state=RunState.VERIFYING_ARTIFACTS.value,
         phase=RunState.VERIFYING_ARTIFACTS.value,
@@ -2404,8 +2409,11 @@ def _run_impl(
             reason="ARTIFACT_INTEGRITY_FAILED", resume_available=True,
         )
         raise SweepExpectedError("ARTIFACT_INTEGRITY_FAILED")
-    with (output / "REPORT.md").open("a", encoding="utf-8") as report_handle:
-        report_handle.write("\n## ARTIFACT INTEGRITY\n\n- Integrity status: `PASS`.\n")
+    DEFAULT_ARTIFACT_WRITER.append_text(
+        output / "REPORT.md",
+        "\n## ARTIFACT INTEGRITY\n\n- Integrity status: `PASS`.\n",
+        operation="report_append_integrity",
+    )
     status_store.update(
         state=RunState.COMPLETED.value, phase=RunState.COMPLETED.value,
         completed_configs=int(checkpoint["evaluated_count"]),
@@ -2501,7 +2509,13 @@ def _sanitized_error(output: Path, error: BaseException) -> None:
         secret = os.environ.get(key)
         if secret:
             text_value = text_value.replace(secret, "[REDACTED]")
-    (output / "ERROR.log").write_text(text_value, encoding="utf-8")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    numbered = output / f"ERROR.{stamp}.{os.getpid()}.{threading.get_ident()}.log"
+    DEFAULT_ARTIFACT_WRITER.atomic_text(numbered, text_value, operation="error_snapshot")
+    DEFAULT_ARTIFACT_WRITER.append_text(
+        output / "ERROR.log", f"\n===== {stamp} =====\n{text_value}",
+        operation="error_history_append",
+    )
 
 
 def run(
@@ -2564,7 +2578,33 @@ def run(
     except BaseException as error:
         output = output_root / identifier
         if output.is_dir():
-            _sanitized_error(output, error)
+            try:
+                _sanitized_error(output, error)
+            except BaseException:
+                pass
+            if isinstance(error, SweepExpectedError) and error.reason == "CHECKPOINT_WRITE_FAILED":
+                status_path = output / "STATUS.json"
+                try:
+                    value = json.loads(status_path.read_text(encoding="utf-8"))
+                    value.update({
+                        "state": RunState.FAILED.value,
+                        "phase": RunState.WRITING_RESULT.value,
+                        "failure_reason": "CHECKPOINT_WRITE_FAILED",
+                        "failure_code": "CHECKPOINT_WRITE_FAILED",
+                        "error_title_ru": "Не удалось сохранить контрольную точку",
+                        "error_message_ru": "Результаты сохранены, запуск безопасно остановлен до следующей конфигурации.",
+                        "error_details": {
+                            "operation": "checkpoint_replace",
+                            "path": str(output / "CHECKPOINT.json"),
+                        },
+                        "resume_available": True,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    DEFAULT_ARTIFACT_WRITER.atomic_json(
+                        status_path, value, operation="status_checkpoint_failure",
+                    )
+                except BaseException:
+                    pass
         raise
     finally:
         heartbeat_stop.set()

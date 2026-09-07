@@ -10,6 +10,8 @@ from typing import Any, Callable
 
 import yaml
 
+from .artifact_writer import DEFAULT_ARTIFACT_WRITER
+
 
 COMPLETED_ARTIFACTS = (
     "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "CHECKPOINT.json",
@@ -115,6 +117,16 @@ def verify_artifacts(
                 and len(jsonl_results) == expected_count
                 and len(csv_results) == expected_count
             )
+            identities = [
+                (row.get("run_id"), row.get("result_index"), row.get("config_hash"))
+                for row in jsonl_results
+            ]
+            checks["result_identity_unique"] = len(identities) == len(set(identities))
+            checks["checkpoint_evaluated_equals_durable"] = (
+                int(checkpoint.get("evaluated_count", -1))
+                == int(checkpoint.get("durable_result_count", -2))
+                == len(jsonl_results)
+            )
         elif terminal_state == "FAILED_BEFORE_EVALUATION":
             status = _json(run_directory / "STATUS.json")
             checks["failed_before_evaluation_state"] = (
@@ -142,7 +154,7 @@ def verify_artifacts(
         "hash_fingerprint_checks": checks,
         "integrity_status": "PASS" if passed else "FAIL",
     }
-    temporary = run_directory / "INTEGRITY.json.tmp"
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    temporary.replace(run_directory / "INTEGRITY.json")
+    DEFAULT_ARTIFACT_WRITER.atomic_json(
+        run_directory / "INTEGRITY.json", payload, operation="integrity_replace",
+    )
     return payload
