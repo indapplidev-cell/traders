@@ -46,8 +46,13 @@ class ReplayDiagnostics:
     post_instrumentation_rows: int
     missing_market_timeline_rows: int
     missing_cost_timeline_rows: int
+    historical_market_rows: int = 0
+    opportunity_universe_size: int = 0
+    persisted_closed_trades: int = 0
+    reconstructed_opportunities: int = 0
+    replay_capabilities: dict[str, Any] | None = None
 
-    def as_dict(self) -> dict[str, int]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "dataset_rows": self.dataset_rows,
             "outcome_replay_rows": self.outcome_replay_rows,
@@ -56,6 +61,11 @@ class ReplayDiagnostics:
             "post_instrumentation_rows": self.post_instrumentation_rows,
             "missing_market_timeline_rows": self.missing_market_timeline_rows,
             "missing_cost_timeline_rows": self.missing_cost_timeline_rows,
+            "historical_market_rows": self.historical_market_rows,
+            "opportunity_universe_size": self.opportunity_universe_size,
+            "persisted_closed_trades": self.persisted_closed_trades,
+            "reconstructed_opportunities": self.reconstructed_opportunities,
+            "replay_capabilities": self.replay_capabilities or {},
         }
 
 

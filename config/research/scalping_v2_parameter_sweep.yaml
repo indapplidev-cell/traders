@@ -15,12 +15,19 @@ search:
 dataset:
   source: production_paper_readonly
   profile: trade-5m-v2
-  closed_only: true
+  closed_only: false
   # A bounded newest-first safety ceiling; CLI --max-rows may lower it.
-  max_rows: 5000
+  max_rows: 10000
 output_root: artifacts/scalping_v2_parameter_sweep
 minimum_samples: {calibration: 30, validation: 20, holdout: 20}
 search_space:
+  # Values are sourced from the authoritative runtime/config contracts; this
+  # file declares only the allowed research cohorts.
+  minimum_planned_rr: [0.2, 0.4, 0.6]
+  risk_per_trade_bps: [5.0, 10.0]
+  max_open_positions: [1, 2]
+  total_open_risk_limit_bps: [50.0, 75.0]
+  max_new_commands_per_cycle: [1, 2]
   min_positive_ev_r: [0.0, 0.02, 0.05]
   min_ev_reserve_r: [0.0, 0.05, 0.10]
   min_net_edge_bps: [1.0, 5.0, 10.0]

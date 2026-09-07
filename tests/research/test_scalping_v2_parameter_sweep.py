@@ -366,7 +366,7 @@ def test_holdout_is_never_used_for_search_or_ranking(tmp_path):
     ).read_text()
 
 
-def test_incident_764411904_space_is_bounded_without_materialization(tmp_path):
+def test_expanded_runtime_space_is_bounded_without_materialization(tmp_path):
     source = yaml.safe_load(
         Path("config/research/scalping_v2_parameter_sweep.yaml").read_text()
     )
@@ -388,8 +388,8 @@ def test_incident_764411904_space_is_bounded_without_materialization(tmp_path):
     output = run(config, run_id="incident", max_configs=5)
     preflight = json.loads((output / "PREFLIGHT.json").read_text())
     checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
-    assert preflight["RAW_SEARCH_SPACE_SIZE"] == 764_411_904
-    assert preflight["EFFECTIVE_SEARCH_SPACE_SIZE"] < 764_411_904
+    assert preflight["RAW_SEARCH_SPACE_SIZE"] == 36_691_771_392
+    assert preflight["EFFECTIVE_SEARCH_SPACE_SIZE"] < 36_691_771_392
     assert preflight["INVALID_COMBINATIONS_GENERATED"] == 0
     assert preflight["SEARCH_STRATEGY"] == "AUTO_BOUNDED"
     assert preflight["CONFIGURATIONS_PLANNED"] == 5
@@ -745,9 +745,9 @@ def test_planning_pass_replay_fail_before_config_has_exact_state_and_events(tmp_
     assert EventType.RESULT_WRITE_STARTED not in event_types
     assert EventType.RESULT_WRITE_COMPLETED not in event_types
     search_event = next(event for event in events if event.type == EventType.SEARCH_PLANNED)
-    assert search_event.payload["raw_search_space_size"] == 764_411_904
+    assert search_event.payload["raw_search_space_size"] == 36_691_771_392
     assert search_event.payload["planned_configs"] == 5_000
-    assert len(search_event.payload["search_dimensions"]) == 22
+    assert len(search_event.payload["search_dimensions"]) == 27
     output = tmp_path / "artifacts" / "failed-before-first"
     status = json.loads((output / "STATUS.json").read_text())
     assert status["state"] == "FAILED"
@@ -767,6 +767,11 @@ def test_planning_pass_replay_fail_before_config_has_exact_state_and_events(tmp_
         "post_instrumentation_rows": 0,
         "missing_market_timeline_rows": 53,
         "missing_cost_timeline_rows": 0,
+        "historical_market_rows": 0,
+        "opportunity_universe_size": 0,
+        "persisted_closed_trades": 0,
+        "reconstructed_opportunities": 0,
+        "replay_capabilities": {},
     }
     report = (output / "REPORT.md").read_text()
     assert "PLANNED_CONFIGS: 5000" in report

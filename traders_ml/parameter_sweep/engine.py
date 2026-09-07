@@ -44,6 +44,10 @@ from app.engine_paper.stale_position_shadow import (
 )
 from .events import EventType, SweepEvent
 from .integrity import verify_artifacts
+from .historical_replay import (
+    HistoricalReplayRepository, baseline_parity, build_parameter_registry,
+    chronological_portfolio_replay,
+)
 from .locking import SingleRunLock
 from .models import ReplayDiagnostics, SearchPlanState, StructuredError
 from .state import RunState, StatusStore, SweepRunStatus
@@ -57,7 +61,7 @@ PROTECTED_READONLY_KEY = "TRADERS_READONLY_API_DATABASE_URL"
 PROTECTED_RUNTIME_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_URL"
 DATASET_SOURCE = "production_paper_readonly"
 LEGACY_DATASET_SOURCE = "postgres-paper-outcomes-readonly"
-DEFAULT_MAX_ROWS = 5_000
+DEFAULT_MAX_ROWS = 10_000
 REQUIRED_TABLES = frozenset({
     "alembic_version", "paper_positions", "paper_orders",
     "paper_execution_commands", "online_pipeline_runs",
@@ -88,6 +92,7 @@ def _search_plan_state(
 
 def _replay_diagnostics(rows: list[dict[str, Any]], coverage: Mapping[str, Any]) -> ReplayDiagnostics:
     reasons = coverage.get("REPLAY_REASON_COUNTS", {})
+    summary = rows[0].get("__historical_summary", {}) if rows else {}
     return ReplayDiagnostics(
         dataset_rows=len(rows),
         outcome_replay_rows=int(coverage["OUTCOME_ONLY_REPLAY_ROWS"]),
@@ -96,6 +101,11 @@ def _replay_diagnostics(rows: list[dict[str, Any]], coverage: Mapping[str, Any])
         post_instrumentation_rows=int(coverage["POST_TIME_STOP_INSTRUMENTATION_ROWS"]),
         missing_market_timeline_rows=int(reasons.get("UNREPLAYABLE_MISSING_MARKET_TIMELINE", 0)),
         missing_cost_timeline_rows=int(reasons.get("UNREPLAYABLE_MISSING_COST_TIMELINE", 0)),
+        historical_market_rows=int(summary.get("MARKET_1M_ROWS", 0))+int(summary.get("MARKET_5M_ROWS", 0)),
+        opportunity_universe_size=int(summary.get("TOTAL_OPPORTUNITY_UNIVERSE", 0)),
+        persisted_closed_trades=int(summary.get("PERSISTED_CLOSED_POSITIONS", 0)),
+        reconstructed_opportunities=int(summary.get("TOTAL_RECONSTRUCTED_ONLY_CANDIDATES", 0)),
+        replay_capabilities=rows[0].get("__replay_capabilities", {}) if rows else {},
     )
 
 
@@ -175,7 +185,7 @@ class DatabaseBinding:
 class DatasetOptions:
     source: str = DATASET_SOURCE
     profile: str = "trade-5m-v2"
-    closed_only: bool = True
+    closed_only: bool = False
     maximum_rows: int = DEFAULT_MAX_ROWS
     from_time: datetime | None = None
     to_time: datetime | None = None
@@ -577,9 +587,30 @@ def _production_rows(
     database: ReadOnlyResearchDatabase,
     options: DatasetOptions,
 ) -> list[dict[str, Any]]:
-    """Load bounded PAPER truth through the SELECT-only research adapter."""
+    """Load the v2 opportunity universe, never a positions-only dataset."""
     if not 1 <= options.maximum_rows <= DEFAULT_MAX_ROWS:
         raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE")
+    repository = HistoricalReplayRepository(database)
+    dataset = repository.load(
+        maximum_rows=options.maximum_rows,
+        from_ms=None if options.from_time is None else int(options.from_time.timestamp() * 1000),
+        to_ms=None if options.to_time is None else int(options.to_time.timestamp() * 1000),
+    )
+    repository.load_paths(dataset.rows, horizon_seconds=3600)
+    if dataset.rows:
+        dataset.rows[0]["__historical_summary"] = dataset.summary
+        dataset.rows[0]["__replay_capabilities"] = dataset.capabilities
+        dataset.rows[0]["__baseline_positions"] = dataset.baseline_positions
+        dataset.rows[0]["__source_inventory"] = dataset.inventory
+        dataset.rows[0]["__dataset_fingerprint"] = dataset.fingerprint
+    return dataset.rows
+
+
+def _legacy_production_rows(
+    database: ReadOnlyResearchDatabase,
+    options: DatasetOptions,
+) -> list[dict[str, Any]]:
+    """Legacy closed-position loader retained only for fixture compatibility."""
     statement = (
         select(
             PaperPositionRecord, PaperExecutionCommandRecord,
@@ -759,6 +790,30 @@ def _replay_reason(row: Mapping[str, Any]) -> str:
 
 
 def _dataset_coverage(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if rows and "boundary_ms" in rows[0]:
+        market = sum(bool(row.get("market_path_1m")) for row in rows)
+        cost = sum(bool(row.get("cost_provenance")) for row in rows)
+        full = sum(
+            bool(row.get("market_path_1m")) and row.get("entry_price") is not None
+            and row.get("stop_price") is not None and row.get("target_price") is not None
+            and bool(row.get("cost_provenance")) for row in rows
+        )
+        return {
+            "FIELD_COVERAGE": [], "BASELINE_REPLAY_ELIGIBLE_ROWS": full,
+            "OUTCOME_ONLY_REPLAY_ROWS": full,
+            "ENTRY_ADMISSION_REPLAY_ELIGIBLE_ROWS": len(rows),
+            "TIME_STOP_REPLAY_ELIGIBLE_ROWS": full,
+            "COST_REPLAY_ELIGIBLE_ROWS": cost,
+            "MAE_MFE_REPLAY_ELIGIBLE_ROWS": market,
+            "FULL_REPLAY_ELIGIBLE_ROWS": full,
+            "UNREPLAYABLE_ROWS": len(rows)-full,
+            "REPLAY_REASON_COUNTS": {
+                "REPLAYABLE_RECONSTRUCTED_FROM_MARKET_HISTORY": full,
+                "UNAVAILABLE_OPTIONAL_FAMILY_ROWS": len(rows)-full,
+            },
+            "PRE_TIME_STOP_INSTRUMENTATION_ROWS": len(rows),
+            "POST_TIME_STOP_INSTRUMENTATION_ROWS": 0,
+        }
     total = len(rows)
     matrix = []
     for field, label, required in REPLAY_FIELD_CONTRACT:
@@ -829,6 +884,35 @@ def _production_baseline_config() -> dict[str, object]:
 
 
 def _baseline_control(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if rows and "boundary_ms" in rows[0]:
+        config = _production_baseline_config()
+        config.update({
+            "risk_per_trade_bps": SCALPING_V2.risk.risk_per_trade_bps,
+            "max_open_positions": SCALPING_V2.risk.max_open_positions,
+            "total_open_risk_limit_bps": SCALPING_V2.risk.total_open_risk_limit_bps,
+            "max_new_commands_per_cycle": SCALPING_V2.risk.max_new_commands_per_cycle,
+            "minimum_planned_rr": SCALPING_V2.geometry.minimum_planned_rr,
+        })
+        simulated = chronological_portfolio_replay(rows, config)
+        parity = baseline_parity(simulated, list(rows[0].get("__baseline_positions", [])))
+        return {
+            "BASELINE_CONFIG_HASH": TRADE_PARAMETERS.config_hash,
+            "BASELINE_CONFIG_VERSION": TRADE_PARAMETERS.config_version,
+            "BASELINE_EVALUATED": "YES", "BASELINE_DATASET_ROWS": len(rows),
+            "BASELINE_ELIGIBLE_ROWS": simulated["trade_count"],
+            "BASELINE_TRADES": simulated["trade_count"],
+            "BASELINE_WIN_RATE": simulated["win_rate"],
+            "BASELINE_GROSS_PNL": simulated["gross_pnl"],
+            "BASELINE_FEES": simulated["fees"], "BASELINE_NET_PNL": simulated["net_pnl"],
+            "BASELINE_NET_EXPECTANCY": simulated["net_expectancy_per_trade"],
+            "BASELINE_PROFIT_FACTOR": simulated["profit_factor"],
+            "BASELINE_MAX_DRAWDOWN": simulated["max_drawdown"],
+            "BASELINE_AVG_HOLDING_SECONDS": simulated["average_holding_seconds"],
+            "BASELINE_STOP_COUNT": simulated["stop_count"],
+            "BASELINE_TARGET_COUNT": simulated["target_count"],
+            "BASELINE_REPLAY_VALID": simulated["trade_count"] > 0,
+            "PARAMETERS": config, "PARITY": parity,
+        }
     eligible = [row for row in rows if _has_fields(row, OUTCOME_REPLAY_REQUIRED)]
     metrics = _metrics(eligible)
     return {
@@ -932,8 +1016,11 @@ def _split(rows: list[dict[str, Any]], seed: int) -> dict[str, list[dict[str, An
         return {name: [row for row in rows if row["split"] == name] for name in (
             "CALIBRATION", "VALIDATION", "HOLDOUT"
         )}
-    ordered = sorted(rows, key=lambda row: (row.get("closed_at_ms", 0), row.get("position_id", "")))
-    random.Random(seed).shuffle(ordered)
+    ordered = sorted(rows, key=lambda row: (
+        row.get("closed_at_ms", row.get("boundary_ms", 0)),
+        row.get("position_id", row.get("candidate_id", "")),
+    ))
+    # Time-series research must never leak future observations through a random split.
     a, b = int(len(ordered) * .6), int(len(ordered) * .8)
     return {"CALIBRATION": ordered[:a], "VALIDATION": ordered[a:b], "HOLDOUT": ordered[b:]}
 
@@ -1254,18 +1341,18 @@ def _dataset_options(
 ) -> DatasetOptions:
     raw = search.get("dataset", {})
     if isinstance(raw, str):
-        source, profile, closed_only = raw, "trade-5m-v2", True
+        source, profile, closed_only = raw, "trade-5m-v2", False
         configured_max = DEFAULT_MAX_ROWS
         configured_from = configured_to = None
     elif isinstance(raw, dict):
         source = str(raw.get("source", DATASET_SOURCE))
         profile = str(raw.get("profile", "trade-5m-v2"))
-        closed_only = raw.get("closed_only", True)
+        closed_only = raw.get("closed_only", False)
         configured_max = raw.get("max_rows", DEFAULT_MAX_ROWS)
         configured_from, configured_to = raw.get("from"), raw.get("to")
     else:
         raise SweepExpectedError("DATASET_CONFIG_INVALID")
-    if profile != "trade-5m-v2" or closed_only is not True:
+    if profile != "trade-5m-v2" or closed_only is not False:
         raise SweepExpectedError("DATASET_CONFIG_INVALID")
     try:
         maximum = int(max_rows if max_rows is not None else configured_max)
@@ -1277,7 +1364,7 @@ def _dataset_options(
     end = _parse_utc(to_value if to_value is not None else configured_to)
     if start is not None and end is not None and start >= end:
         raise SweepExpectedError("INVALID_DATE_RANGE")
-    return DatasetOptions(source, profile, True, maximum, start, end)
+    return DatasetOptions(source, profile, False, maximum, start, end)
 
 
 def _validate_search(search: object) -> dict[str, Any]:
@@ -1452,6 +1539,30 @@ def _evaluate_config(
         "result_index": index, "stage": stage, "parameters": params,
         "config_hash": _config_hash(params),
     }
+    if any(rows and "boundary_ms" in rows[0] for rows in splits.values()):
+        item["INPUT_ROWS"] = sum(len(rows) for rows in splits.values())
+        item["REPLAYABLE_ROWS"] = sum(
+            bool(row.get("market_path_1m")) for rows in splits.values() for row in rows
+        )
+        item["PARTIALLY_REPLAYABLE_ROWS"] = item["INPUT_ROWS"]-item["REPLAYABLE_ROWS"]
+        item["UNREPLAYABLE_ROWS"] = item["PARTIALLY_REPLAYABLE_ROWS"]
+        results = {
+            name.lower(): chronological_portfolio_replay(rows, params)
+            for name, rows in splits.items()
+        }
+        item.update(results)
+        item["gate_funnel"] = {
+            name: value["funnel"] for name, value in results.items()
+        }
+        item["split_status"] = {
+            name: ("PASS" if value["trade_count"] > 0 else "NO_TRADES_EXPLICIT_FUNNEL")
+            for name, value in results.items()
+        }
+        # Holdout is reported but never participates in selection/ranking.
+        validation = results["validation"]
+        item["result_status"] = "ACCEPTED" if validation["trade_count"] > 0 else "REJECTED"
+        reason = None if validation["trade_count"] > 0 else "VALIDATION_NO_TRADES_EXPLICIT_FUNNEL"
+        return item, True, reason
     all_rows = [row for name in ("CALIBRATION", "VALIDATION", "HOLDOUT") for row in splits[name]]
     reasons = [_replay_reason(row) for row in all_rows]
     item.update({
@@ -1657,6 +1768,10 @@ def _run_impl(
     splits = _split(rows, int(search["seed"]))
     coverage = _dataset_coverage(rows)
     baseline = _baseline_control(rows)
+    historical_summary = rows[0].get("__historical_summary", {}) if rows else {}
+    replay_capabilities = rows[0].get("__replay_capabilities", {}) if rows else {}
+    source_inventory = rows[0].get("__source_inventory", []) if rows else []
+    parameter_registry = build_parameter_registry(space)
     plan = ParameterSweepSearchPlanner().plan(
         dataset_rows=len(rows), space=space, search=search.get("search", {}),
         max_configs_override=max_configs, validation_rows=len(splits["VALIDATION"]),
@@ -1664,7 +1779,7 @@ def _run_impl(
         available_replay_rows=int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
     )
     git_commit = _git_commit()
-    dataset_fingerprint = _config_hash({
+    dataset_fingerprint = str(rows[0].get("__dataset_fingerprint")) if rows and rows[0].get("__dataset_fingerprint") else _config_hash({
         "schema_head": schema_head, "dataset_source": options.source, "rows": rows,
     })
     search_space_hash = _config_hash(space)
@@ -1803,13 +1918,13 @@ def _run_impl(
     run_config = {
         "run_id": identifier,
         "schema_version": SCHEMA_VERSION, "seed": search["seed"], "search": plan.safe_dict(),
-        "dataset": {"source": options.source, "profile": options.profile, "closed_only": True, "max_rows": options.maximum_rows},
-        "dataset_period": {"from_ms": min(row.get("opened_at_ms") for row in rows), "to_ms": max(row.get("closed_at_ms") for row in rows)},
+        "dataset": {"source": options.source, "profile": options.profile, "closed_only": False, "max_rows": options.maximum_rows},
+        "dataset_period": {"from_ms": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows), "to_ms": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows)},
         "sample_sizes": {key: len(value) for key, value in splits.items()},
         "source_data_provenance": dataset_fingerprint, "dataset_fingerprint": dataset_fingerprint,
         "dataset_row_count": len(rows),
-        "dataset_min_opened_at": min(row.get("opened_at_ms") for row in rows),
-        "dataset_max_closed_at": max(row.get("closed_at_ms") for row in rows),
+        "dataset_min_opened_at": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows),
+        "dataset_max_closed_at": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows),
         "dataset_profile": options.profile, "dataset_source": options.source,
         "authoritative_trade_parameters": str(CONFIG_PATH),
         "baseline_config_hash": TRADE_PARAMETERS.config_hash, "search_space_hash": search_space_hash,
@@ -1823,6 +1938,19 @@ def _run_impl(
         "schema_head": schema_head, "production_mutations": 0, "production_config_writes": 0,
         "approvals_created": 0, "commands_created": 0, "positions_created": 0, "binance_order_api_calls": 0,
     }
+    run_config.update({
+        "historical_data_universe": historical_summary,
+        "replay_capabilities": replay_capabilities,
+        "parameter_registry": parameter_registry,
+        "baseline_parity": baseline.get("PARITY", {}),
+        "holdout_used_for_search": False,
+    })
+    if historical_summary:
+        _atomic_json(output / "HISTORICAL_DATASET_SUMMARY.json", historical_summary)
+        _atomic_json(output / "REPLAY_CAPABILITIES.json", replay_capabilities)
+        _atomic_json(output / "BASELINE_PARITY.json", baseline.get("PARITY", {}))
+        _atomic_json(output / "PARAMETER_REGISTRY.json", parameter_registry)
+        _atomic_json(output / "HISTORICAL_DATA_SOURCE_INVENTORY.json", source_inventory)
     if not resume:
         (output / "RUN_CONFIG.yaml").write_text(yaml.safe_dump(run_config, sort_keys=False), encoding="utf-8")
     status_store.update(
@@ -1838,7 +1966,11 @@ def _run_impl(
     contract_failure = None
     if int(baseline["BASELINE_ELIGIBLE_ROWS"]) == 0 or int(baseline["BASELINE_TRADES"]) == 0:
         contract_failure = "BASELINE_REPLAY_INVALID"
-    elif int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]) == 0:
+    elif (
+        replay_capabilities and not any(
+            value.get("STATUS") == "READY" for value in replay_capabilities.values()
+        )
+    ) or (not replay_capabilities and int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]) == 0):
         contract_failure = "NO_REPLAYABLE_ROWS_FOR_REQUIRED_DIMENSIONS"
     if contract_failure is not None:
         structured_error = _structured_replay_error(contract_failure)
@@ -2102,6 +2234,42 @@ def _run_impl(
             for split_funnel in item.get("gate_funnel", {}).values():
                 for key, value in split_funnel.items():
                     aggregate_funnel[key] = aggregate_funnel.get(key, 0) + int(value)
+    if historical_summary:
+        result_summaries = []
+        distinct_funnels: set[str] = set()
+        counterfactual_examples: list[dict[str, object]] = []
+        counterfactual_count = 0
+        with jsonl.open(encoding="utf-8") as handle:
+            for line in handle:
+                item = json.loads(line)
+                validation = item.get("validation", {})
+                funnel = validation.get("funnel", {})
+                distinct_funnels.add(json.dumps(funnel, sort_keys=True))
+                result_summaries.append({
+                    "RESULT_INDEX": item.get("result_index"),
+                    "PARAMETERS": item.get("parameters"),
+                    "STATUS": item.get("result_status"),
+                    "VALIDATION_FUNNEL": funnel,
+                    "VALIDATION_TRADES": validation.get("trade_count", 0),
+                    "VALIDATION_NET_PNL": validation.get("net_pnl"),
+                })
+                for split_name in ("calibration", "validation", "holdout"):
+                    for trade in item.get(split_name, {}).get("trades", []):
+                        if trade.get("historically_rejected"):
+                            counterfactual_count += 1
+                            if len(counterfactual_examples) < 20:
+                                counterfactual_examples.append({key: trade.get(key) for key in (
+                                    "candidate_id", "symbol", "boundary_ms",
+                                    "historical_rejection_reason", "entry_price", "stop_price",
+                                    "target_price", "exit_reason", "cost_provenance",
+                                )})
+        _atomic_json(output / "OPPORTUNITY_FUNNEL.json", {
+            "AGGREGATE_FUNNEL": dict(sorted(aggregate_funnel.items())),
+            "CONFIG_RESULTS": result_summaries,
+            "CONFIGS_WITH_DIFFERENT_FUNNELS": len(distinct_funnels),
+            "COUNTERFACTUAL_REJECTED_OPPORTUNITIES_SIMULATED": counterfactual_count,
+            "COUNTERFACTUAL_EXAMPLES": counterfactual_examples,
+        })
     coverage_table = "\n".join(
         f"| {item['FIELD']} | {item['ROWS_PRESENT']} | {item['ROWS_MISSING']} | "
         f"{item['COVERAGE_PERCENT']} | {item['REPLAY_REQUIRED']} |"
@@ -2133,6 +2301,9 @@ def _run_impl(
 
 - Source/profile/rows: `{preflight['DATASET_SOURCE']}` / `{options.profile}` / {len(rows)}
 - Fingerprint: `{dataset_fingerprint}`
+- Historical market 1m / 5m rows: {historical_summary.get('MARKET_1M_ROWS', 'N/A')} / {historical_summary.get('MARKET_5M_ROWS', 'N/A')}
+- Opportunity universe / persisted closed trades: {historical_summary.get('TOTAL_OPPORTUNITY_UNIVERSE', 'N/A')} / {historical_summary.get('PERSISTED_CLOSED_POSITIONS', 'N/A')}
+- Reconstructed-only / historically rejected opportunities: {historical_summary.get('TOTAL_RECONSTRUCTED_ONLY_CANDIDATES', 'N/A')} / {historical_summary.get('TOTAL_HISTORICALLY_REJECTED', 'N/A')}
 
 | FIELD | ROWS_PRESENT | ROWS_MISSING | COVERAGE_PERCENT | REPLAY_REQUIRED |
 |---|---:|---:|---:|---|
@@ -2153,6 +2324,8 @@ def _run_impl(
 - FULL_REPLAY_ELIGIBLE_ROWS: {coverage['FULL_REPLAY_ELIGIBLE_ROWS']}
 - PRE/POST_TIME_STOP_INSTRUMENTATION_ROWS: {coverage['PRE_TIME_STOP_INSTRUMENTATION_ROWS']} / {coverage['POST_TIME_STOP_INSTRUMENTATION_ROWS']}
 - Exact unavailable reasons: `{json.dumps(coverage['REPLAY_REASON_COUNTS'], sort_keys=True)}`
+- Per-family capabilities: `{json.dumps(replay_capabilities, sort_keys=True)}`
+- TIME_STOP source: `RECONSTRUCTED_FROM_MARKET_HISTORY`; persisted shadow rows are optional parity evidence.
 
 | SPLIT | rows_total | rows_replayable | rows_unreplayable |
 |---|---:|---:|---:|
@@ -2162,6 +2335,7 @@ def _run_impl(
 
 - Aggregate exact counts: `{json.dumps(dict(sorted(aggregate_funnel.items())), sort_keys=True)}`
 - `ALL_TRADES_FILTERED` without reason: `NO`
+- Counterfactual historically rejected opportunities are present in `OPPORTUNITY_FUNNEL.json`.
 
 ## SEARCH PLAN
 
