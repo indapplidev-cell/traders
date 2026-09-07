@@ -31,6 +31,22 @@ trading parameters. `--max-configs` may lower the automatic budget for a smoke;
 `--preflight-only` stops after safe database, dataset, search, and memory-plan
 validation.
 
+Every run evaluates the current production baseline from
+`config/trading/trade_parameters.yaml` before any sampled configuration. Closed
+trade outcomes are reported separately from causal admission and time-stop
+replay. Timestamped time-stop evidence is read directly from
+`scalping_stale_position_shadow_diagnostics`; missing market or historical cost
+timelines are never replaced with current values. If the baseline cannot replay,
+or no row can support a searched causal dimension, the run ends with an exact
+`BASELINE_REPLAY_INVALID` or `NO_REPLAYABLE_ROWS_FOR_REQUIRED_DIMENSIONS` reason
+before mass evaluation.
+
+Known-invalid conditional combinations are omitted by the generator. In
+particular, `soft_timeout_seconds >= hard_timeout_seconds` is never emitted;
+disabled extension and break-even children collapse to one canonical value.
+Each evaluated configuration records an exact gate funnel rather than the
+opaque `ALL_TRADES_FILTERED` label.
+
 Each new run ID creates `RUN_CONFIG.yaml`, `PREFLIGHT.json`, `SEARCH_PLAN.json`,
 `CHECKPOINT.json`, `RESULTS.csv`, `RESULTS.jsonl`, `RESULTS.json`,
 `TOP_CONFIGS.json`, `REJECTED_CONFIGS.json`, and `REPORT.md`
@@ -40,6 +56,11 @@ trade-config, search-space, and dataset fingerprints must all match. Results
 and checkpoints are durable incrementally, while TOP/Pareto aggregation is
 disk-backed. Expected failures print a short `REASON` code without a
 credential-bearing traceback.
+
+Run artifacts include a dataset fingerprint and row/time boundaries, full field
+coverage, baseline metrics, replayable/partial/unreplayable counts, and start,
+finish, and duration values. Invalid or unreplayable configurations cannot enter
+TOP or Pareto results.
 
 When a large hypothesis space meets a small dataset, the report emits
 `LARGE_HYPOTHESIS_SPACE_SMALL_SAMPLE` and sets promotion eligibility to `NO`.
