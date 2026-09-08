@@ -1,0 +1,49 @@
+{
+  "current_cycle": {
+    "analysis": 10,
+    "approval": 0,
+    "costs": 0,
+    "final_risk": 0,
+    "geometry": 1,
+    "plan": 0,
+    "portfolio": 0,
+    "risk_compatibility": 1,
+    "rr": 0,
+    "structural_setup": 1,
+    "target": 1
+  },
+  "last_1h": {
+    "analysis": 130,
+    "approval": 0,
+    "costs": 9,
+    "final_risk": 0,
+    "geometry": 21,
+    "plan": 0,
+    "portfolio": 0,
+    "risk_compatibility": 30,
+    "rr": 0,
+    "structural_setup": 30,
+    "target": 21
+  },
+  "last_4h": {
+    "analysis": 460,
+    "approval": 0,
+    "costs": 46,
+    "final_risk": 0,
+    "geometry": 89,
+    "plan": 0,
+    "portfolio": 0,
+    "risk_compatibility": 150,
+    "rr": 0,
+    "structural_setup": 191,
+    "target": 89
+  },
+  "rr_1h": {
+    "input": 9,
+    "pass": 0
+  },
+  "rr_4h": {
+    "input": 33,
+    "pass": 0
+  }
+}

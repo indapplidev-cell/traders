@@ -1465,6 +1465,44 @@ from .help_source import catalog_entries as _help_catalog_entries
 RU.update(_help_catalog_entries("ru"))
 EN.update(_help_catalog_entries("en"))
 
+for _key, _en, _ru in (
+    ("snapshot_unavailable", "Cycle snapshot unavailable", "Snapshot цикла недоступен"),
+    ("legacy_prefix", "Legacy/general policy (not active Scalping thresholds)", "Общая/legacy policy (не активные пороги Scalping)"),
+    ("summary.target_diagnostic", "Target diagnostic threshold (bps, not admission gate)", "Диагностический порог цели (bps, не фильтр допуска)"),
+    ("summary.ev_reserve", "Minimum EV reserve (R)", "Минимальный EV reserve (R)"),
+    ("group.active_scalping_parameters", "Active Scalping set overrides", "Переопределения активного набора Scalping"),
+    ("group.inherited_scalping_parameters", "Inherited Scalping parameters / safety", "Унаследованные параметры Scalping / safety"),
+    ("group.dynamic_cost_policy", "Dynamic cost sources and cost policy", "Динамические источники затрат и cost policy"),
+    ("group.shadow_policies", "SHADOW policies", "Политики SHADOW"),
+    ("source.SET_2_OVERRIDE", "Source: Set #2 override", "Источник: Set #2 override"),
+    ("source.SET_1_INHERITED", "Source: Set #1 inherited", "Источник: унаследовано из Set #1"),
+    ("source.SET_1_BASELINE", "Source: Set #1 baseline", "Источник: baseline Set #1"),
+    ("source.NAMED_SET_OVERRIDE", "Source: named set override", "Источник: override именованного набора"),
+    ("rr.minimum_planned", "Minimum planned RR", "Минимальный плановый RR"),
+    ("rr.final_required", "Final required RR", "Итоговый требуемый RR"),
+    ("rr.reserve", "RR reserve", "Запас RR"),
+):
+    EN["paper.criteria." + _key] = _en
+    RU["paper.criteria." + _key] = _ru
+
+for _reason, _en, _ru in (
+    ("INSUFFICIENT_PROBABILITY", "Insufficient statistics", "Недостаточная статистика"),
+    ("NET_BELOW_MINIMUM", "Net RR below minimum", "Net RR ниже минимума"),
+    ("NET_BELOW_DYNAMIC_REQUIRED", "Net RR below dynamic threshold", "Net RR ниже динамического порога"),
+    ("EV_RESERVE_FAIL", "EV reserve", "Резерв EV"),
+    ("COST_TOO_HIGH", "Costs too high", "Слишком высокие издержки"),
+    ("OTHER", "Other", "Прочее"),
+):
+    EN["funnel.rr_subreason." + _reason] = _en
+    RU["funnel.rr_subreason." + _reason] = _ru
+
+EN.update({"funnel.detail.minimum_planned_rr": "Minimum planned RR",
+           "funnel.detail.final_required_rr": "Final required RR",
+           "funnel.detail.rr_reserve": "RR reserve"})
+RU.update({"funnel.detail.minimum_planned_rr": "Минимальный плановый RR",
+           "funnel.detail.final_required_rr": "Итоговый требуемый RR",
+           "funnel.detail.rr_reserve": "Запас RR"})
+
 CATALOGS = MappingProxyType(
     {
         Locale.RU: MappingProxyType(RU),

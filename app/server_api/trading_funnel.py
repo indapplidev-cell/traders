@@ -150,6 +150,25 @@ def _sum_decimals(*values: object) -> str | None:
     )
 
 
+def _rr_subreason(diagnostic: Mapping[str, Any], minimum_rr: object) -> str:
+    """Return one stable, non-UI RR rejection bucket from persisted inputs."""
+    if diagnostic.get("expectancy_gate_reason") == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE":
+        return "INSUFFICIENT_PROBABILITY"
+    net_rr = diagnostic.get("net_rr")
+    dynamic = diagnostic.get("dynamic_required_net_rr")
+    if net_rr is not None and minimum_rr is not None and float(net_rr) < float(minimum_rr):
+        return "NET_BELOW_MINIMUM"
+    if net_rr is not None and dynamic is not None and float(net_rr) < float(dynamic):
+        return "NET_BELOW_DYNAMIC_REQUIRED"
+    expected_ev = diagnostic.get("expected_ev_r")
+    minimum_ev = diagnostic.get("min_required_ev")
+    if expected_ev is not None and minimum_ev is not None and float(expected_ev) < float(minimum_ev):
+        return "EV_RESERVE_FAIL"
+    if diagnostic.get("rejection_stage") in {"NET_COST_GATE", "COST_MODEL"}:
+        return "COST_TOO_HIGH"
+    return "OTHER"
+
+
 def _percent_from_bps(value: object) -> str | None:
     number = _decimal(value)
     return _decimal_text(number / Decimal("100")) if number is not None else None
@@ -668,12 +687,21 @@ def _downstream_trace(
         "probability_source": diagnostic.get("probability_estimator_version"),
         "candidate_net_rr": diagnostic.get("candidate_net_rr"),
         "dynamic_required_net_rr": diagnostic.get("dynamic_required_net_rr"),
+        "minimum_planned_rr": required_rr,
+        "final_required_rr": (
+            max(float(value) for value in (
+                required_rr, diagnostic.get("dynamic_required_net_rr")
+            ) if value is not None)
+            if required_rr is not None or diagnostic.get("dynamic_required_net_rr") is not None
+            else None
+        ),
         "break_even_net_rr": diagnostic.get("break_even_net_rr"),
         "expected_ev_r": diagnostic.get("expected_ev_r"),
         "min_required_ev": _first_present(
             diagnostic.get("min_required_ev"), SCALPING_V2.economics.min_positive_ev_r
         ),
         "ev_reserve": diagnostic.get("ev_reserve"),
+        "rr_reserve": diagnostic.get("ev_reserve"),
         "causal_opportunity_id": _first_present(
             context.get("causal_opportunity_id"), diagnostic.get("causal_opportunity_id"),
             diagnostic.get("opportunity_id"),
@@ -694,6 +722,7 @@ def _downstream_trace(
             else diagnostic.get("expectancy_gate_reason")
             or ("RR_AND_EXPECTANCY_PASS" if trace["RR_PASS"] == "PASS" else None)
         ),
+        "rr_subreason": _rr_subreason(diagnostic, required_rr),
         "authoritative_risk": (
             authoritative_risk.get("status") or "PASS"
             if authoritative_risk else None
@@ -2056,6 +2085,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         downstream_reasons: dict[str, Counter[str]] = {
             stage: Counter() for stage in CANONICAL_DOWNSTREAM_STAGES
         }
+        rr_reject_subreasons: Counter[str] = Counter()
         for row, result in selected:
             trace, _ = _stage_trace(row, result, now_ms)
             downstream_trace, _ = _downstream_trace(
@@ -2082,6 +2112,14 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     downstream_rejected[stage] += 1
                     if reason:
                         downstream_reasons[stage][str(reason)] += 1
+            if downstream_trace.get("RR_PASS") == "REJECTED" and result is not None:
+                paper = _mapping(result.paper_payload_json)
+                context = _mapping(paper.get("paper_context"))
+                diagnostic = _mapping(context.get("scalping_geometry_diagnostics"))
+                rr_reject_subreasons[_rr_subreason(
+                    diagnostic,
+                    _first_present(context.get("production_rr_floor"), diagnostic.get("required_rr")),
+                )] += 1
         selected_run_ids = {row.run_id for row, _result in selected}
         execution = tuple(
             lifecycle_by_run[run_id]
@@ -2130,6 +2168,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     if downstream_reasons[stage] else None
                     for stage in CANONICAL_DOWNSTREAM_STAGES
                 },
+                "rr_reject_subreason_distribution": dict(rr_reject_subreasons),
                 "cadence": {
                     "profile_id": profile.trade_profile_id,
                     "profile_version": profile.trade_profile_id.rsplit("-", 1)[-1],

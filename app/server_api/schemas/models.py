@@ -360,6 +360,7 @@ class FunnelRollingSummary(ContractModel):
     downstream_stage_counts: dict[str, int | None] = Field(default_factory=dict)
     stage_rejected_count: dict[str, int] = Field(default_factory=dict)
     dominant_rejection_reason: dict[str, str | None] = Field(default_factory=dict)
+    rr_reject_subreason_distribution: dict[str, int] = Field(default_factory=dict)
 
 
 class TradingFunnelSnapshot(ContractModel):
