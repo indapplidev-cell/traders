@@ -622,6 +622,23 @@ def test_scalping_geometry_terminal_reason_and_null_are_not_zero():
     assert value["current_cycle"]["stage_rejected_count"]["GEOMETRY_VALID"] == 1
 
 
+def test_parameter_set_attribution_uses_only_persisted_cycle_metadata():
+    historical = _run("BTCUSDT")
+    historical_result = _result(historical)
+    historical_result.paper_payload_json["runtime_parameter_set_id"] = "trade-5m-v2-runtime-v1"
+    other = _run("ETHUSDT")
+    other_result = _result(other, setup="NO_SETUP", approvals=False)
+
+    value = _project_5m(((historical, historical_result), (other, other_result)))
+    detail = value["current_cycle"]["items"][0]["downstream_detail"]
+
+    assert detail["parameter_set_id"] == "trade-5m-v2-runtime-v1"
+    assert detail["parameter_set_label"] is None
+    assert detail["resolved_config_hash"] is None
+    assert detail["activation_cycle_boundary_ms"] is None
+    assert detail["activation_revision"] is None
+
+
 def test_detail_candidate_prefers_historical_plan_then_latest_rr_reject():
     current = _run("BTCUSDT")
     current_result = _result(current, setup="NO_SETUP", approvals=False)

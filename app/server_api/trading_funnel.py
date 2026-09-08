@@ -341,6 +341,7 @@ def _downstream_trace(
     if result is None:
         return trace, detail
 
+    analysis = _mapping(result.analysis_payload_json)
     setup = _mapping(result.setup_payload_json)
     strategy = _mapping(result.strategy_payload_json)
     risk = _mapping(result.risk_payload_json)
@@ -523,17 +524,13 @@ def _downstream_trace(
         "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
         "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
         "parameter_set_id": _first_present(
-            paper.get("parameter_set_id"), ACTIVE_SCALPING_V2_PARAMETER_SET.id,
+            paper.get("parameter_set_id"), paper.get("runtime_parameter_set_id"),
+            analysis.get("parameter_set_id"), analysis.get("runtime_parameter_set_id"),
         ),
-        "parameter_set_label": _first_present(
-            paper.get("parameter_set_label"), ACTIVE_SCALPING_V2_PARAMETER_SET.label,
-        ),
-        "resolved_config_hash": _first_present(
-            paper.get("resolved_config_hash"),
-            ACTIVE_SCALPING_V2_PARAMETER_SET.resolved_config_hash,
-        ),
-        "activation_cycle_boundary_ms": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_cycle_boundary_ms,
-        "activation_revision": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_revision,
+        "parameter_set_label": paper.get("parameter_set_label"),
+        "resolved_config_hash": paper.get("resolved_config_hash"),
+        "activation_cycle_boundary_ms": paper.get("activation_cycle_boundary_ms"),
+        "activation_revision": paper.get("activation_revision"),
         "opportunity_id": (
             diagnostic.get("opportunity_id")
             or _mapping(context.get("causal_primitives")).get("opportunity_id")
