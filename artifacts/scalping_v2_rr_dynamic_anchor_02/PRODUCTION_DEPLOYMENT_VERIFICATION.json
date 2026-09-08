@@ -1,0 +1,24 @@
+{
+  "verified_at_utc": "2026-09-08T21:36:23Z",
+  "readonly_api_commit": "fbc03ef4e42a086884b3544abb8d78b1704fdca5",
+  "readonly_api_container_before": "60209f899cb5054351da431f38c1f93a5af831fce004ac7406056640890daece",
+  "readonly_api_container_after": "7cbd478518a45af43326af10a45815cff6ae27f9dab52dfb1a2418c8bf4a8206",
+  "readonly_api_restart_count": 0,
+  "readonly_api_health": "healthy",
+  "api_health": "OK_CURRENT_OPERATIONAL_READY",
+  "rolling_4h_rr_input": 33,
+  "rolling_4h_rr_pass": 0,
+  "rolling_4h_rr_reject_subreason_distribution": {
+    "INSUFFICIENT_PROBABILITY": 33
+  },
+  "fresh_anchor_cycle_boundary": 1788903300000,
+  "fresh_anchor_completed_at": "2026-09-08T21:35:30.673542Z",
+  "fresh_frozen_cohort_count": 33,
+  "fresh_frozen_cohort_identity_sha256": "76f1b5b4322023bbd6706ec89543b093e0fd40d636e053a5d1c1654f33a43285",
+  "orchestrator_5m_restarted": false,
+  "postgres_restarted": false,
+  "market_data_restarted": false,
+  "trade_15m_restarted": false,
+  "live": false,
+  "binance_order_calls": 0
+}
