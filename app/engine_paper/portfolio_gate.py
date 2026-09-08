@@ -31,7 +31,12 @@ def evaluate_paper_portfolio_gate(
     evaluation_time: datetime,
 ) -> dict[str, Any]:
     """Evaluate one candidate against the authoritative persisted PAPER book."""
-    parameters = resolve_runtime_parameters(result.trade_profile_id)
+    parameters = result.runtime_parameters_snapshot or resolve_runtime_parameters(result.trade_profile_id)
+    if result.runtime_parameters_snapshot is not None and (
+        parameters.profile_id != result.trade_profile_id
+        or parameters.parameter_set_id != result.runtime_parameter_set_id
+    ):
+        raise ValueError("portfolio admission runtime snapshot identity mismatch")
     rows = tuple(session.execute(
         select(PaperPositionRecord, OnlinePipelineRun.trade_profile_id)
         .join(PaperOrderRecord, PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id)

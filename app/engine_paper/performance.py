@@ -12,11 +12,14 @@ from app.engine_paper.accounting import PaperTradeFinancialReport
 def scalp_v2_performance(
     reports: Sequence[PaperTradeFinancialReport],
     context: Mapping[str, Mapping[str, object]],
+    *, parameter_set_id: str | None = None,
 ) -> dict[str, object]:
-    selected = tuple(
+    selected = tuple(sorted((
         report for report in reports
         if context.get(report.position_id, {}).get("trade_profile_id") == "trade-5m-v2"
-    )
+        and (parameter_set_id is None or
+             context.get(report.position_id, {}).get("parameter_set_id", "legacy-unattributed") == parameter_set_id)
+    ), key=lambda report: (report.exit_time, report.position_id)))
     pnl = tuple(report.net_pnl for report in selected)
     wins = tuple(value for value in pnl if value > 0)
     losses = tuple(value for value in pnl if value < 0)
@@ -69,7 +72,7 @@ def scalp_v2_performance(
         ),
         Decimal("0"),
     )
-    return {
+    result = {
         "profile_id": "trade-5m-v2",
         "profile_version": "v2",
         "observation_status": "OBSERVED" if sample_count else "NO_OBSERVATIONS",
@@ -102,6 +105,17 @@ def scalp_v2_performance(
         "automatic_rr_retune": False,
         "automatic_conclusion": None,
     }
+    if parameter_set_id is None:
+        ids = {str(context.get(item.position_id, {}).get("parameter_set_id") or "legacy-unattributed")
+               for item in selected} | {"scalping-v2-set-1", "scalping-v2-set-2"}
+        result["aggregation_scope"] = "ALL_SETS_COMBINED_USE_PARAMETER_SETS_FOR_COMPARISON"
+        result["parameter_sets"] = {
+            key: scalp_v2_performance(reports, context, parameter_set_id=key)
+            for key in sorted(ids)
+        }
+    else:
+        result["parameter_set_id"] = parameter_set_id
+    return result
 
 
 __all__ = ("scalp_v2_performance",)

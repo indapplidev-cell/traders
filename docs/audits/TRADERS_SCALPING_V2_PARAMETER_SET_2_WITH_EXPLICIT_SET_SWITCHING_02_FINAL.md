@@ -1,8 +1,8 @@
 # Scalping v2 Set #2 with explicit set switching — final audit
 
 ```text
-TASK_STATUS = COMPLETED
-FINAL_VERDICT = PASS_NAMED_SET_ARCHITECTURE_SET2_PAPER_ACTIVATION_AND_BOUNDED_PRODUCTION_VERIFICATION
+TASK_STATUS = RESUMED_FINAL_INTEGRATION_VERIFICATION
+FINAL_VERDICT = PENDING_CORRECTED_CYCLE_BINDING_AND_ALL_CONSUMER_DEPLOYMENT
 
 PROFILE = trade-5m-v2
 LIVE_STATE = DISABLED
@@ -99,6 +99,16 @@ NEXT_MANUAL_ACTION = CONTINUE_SET_SEPARATED_BOUNDED_PAPER_OBSERVATION; OPTIONALL
 ```
 
 ## Switching semantics and evidence
+
+The resumed source-level call-path review supersedes the initial blanket PASS:
+the boundary resolver had only been tested directly while the pipeline used
+startup globals. The correction binds the real PipelineRunner to one atomic
+configuration read per boundary, pins all symbols/retries to it, and passes
+RR/risk/target/EV values from that same snapshot to evaluation. Financial
+reporting now partitions by persisted set identity (legacy IDs remain separate).
+The new metadata fields are excluded from the legacy 15m semantic identity,
+which was compared directly with pre-task commit 47f05b4. PAPER operator is
+also an affected consumer and must be deployed alongside pipeline and readonly.
 
 The YAML selector is the only authority. A boundary strictly below
 `1788885600000` resolves the immutable Set #1 snapshot; a boundary equal to or

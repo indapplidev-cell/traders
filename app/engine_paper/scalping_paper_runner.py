@@ -25,7 +25,7 @@ from app.engine_paper.scalping_shadow import (
     ShadowGeometryConfig,
     evaluate_scalping_shadow,
 )
-from app.config.trade_parameters import SCALPING_V2
+from app.config.trade_parameters import SCALPING_V2, ScalpingV2Parameters
 from app.engine_risk.risk_decision import RiskDecision
 from app.engine_risk.strategy_type_contract import SCALPING_RISK_STRATEGY_TYPES
 from app.engine_paper.scalping_opportunity_registry import ScalpingOpportunityRegistry
@@ -344,6 +344,7 @@ class ScalpingPaperRunner(PaperRunner):
         cost_source: ScalpingCostSource | None = None,
         opportunity_registry: ScalpingOpportunityRegistry | None = None,
         statistics_source: ScalpingStatisticsSource | None = None,
+        scalping_parameters: ScalpingV2Parameters | None = None,
         store: object | None = None,
         clock_ms: Callable[[], int] | None = None,
     ) -> None:
@@ -356,6 +357,7 @@ class ScalpingPaperRunner(PaperRunner):
             allowed_strategy_types=SCALPING_RISK_STRATEGY_TYPES,
         ), store=store, clock_ms=clock_ms)
         self.runtime_parameters = runtime_parameters
+        self.scalping_parameters = scalping_parameters or SCALPING_V2
         self.opportunity_registry = opportunity_registry or ScalpingOpportunityRegistry()
         self.statistics_source = statistics_source
         self.cost_source = cost_source or BinancePublicScalpingCostSource(
@@ -366,7 +368,7 @@ class ScalpingPaperRunner(PaperRunner):
             exit_fee_bps=float(runtime_parameters.economics_exit_fee_bps),
             entry_slippage_bps=float(runtime_parameters.economics_entry_slippage_bps),
             exit_slippage_bps=float(runtime_parameters.economics_exit_slippage_bps),
-            adverse_fill_reserve_bps=SCALPING_V2.costs.adverse_fill_reserve_bps,
+            adverse_fill_reserve_bps=self.scalping_parameters.costs.adverse_fill_reserve_bps,
         )
         self.geometry_config = ShadowGeometryConfig(
             atr_buffer_multiplier=float(runtime_parameters.geometry_atr_buffer_multiplier),
@@ -376,9 +378,9 @@ class ScalpingPaperRunner(PaperRunner):
             ),
             minimum_positive_edge_bps=float(runtime_parameters.economics_minimum_net_edge_bps),
             production_rr_floor=minimum_rr,
-            minimum_empirical_samples=SCALPING_V2.economics.bucket_min_sample,
-            minimum_positive_ev_r=SCALPING_V2.economics.min_positive_ev_r,
-            minimum_ev_reserve_r=SCALPING_V2.economics.min_ev_reserve_r,
+            minimum_empirical_samples=self.scalping_parameters.economics.bucket_min_sample,
+            minimum_positive_ev_r=self.scalping_parameters.economics.min_positive_ev_r,
+            minimum_ev_reserve_r=self.scalping_parameters.economics.min_ev_reserve_r,
             max_depth_impact_bps=float(runtime_parameters.economics_max_depth_impact_bps),
             minimum_net_edge_shadow_cohorts_bps=tuple(
                 runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
@@ -589,7 +591,7 @@ class ScalpingPaperRunner(PaperRunner):
                 loaded,
                 adverse_fill_reserve_bps=max(
                     loaded.adverse_fill_reserve_bps,
-                    SCALPING_V2.costs.adverse_fill_reserve_bps,
+                    self.scalping_parameters.costs.adverse_fill_reserve_bps,
                 ),
             )
         except Exception:

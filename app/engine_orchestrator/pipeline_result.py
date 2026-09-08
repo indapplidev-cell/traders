@@ -11,6 +11,7 @@ from typing import Any
 
 from app.engine_orchestrator.orchestrator_status import FinalResult, PipelineStatus
 from app.engine_orchestrator.trade_profile import DEFAULT_TRADE_PROFILE_ID, resolve_trade_profile
+from app.engine_orchestrator.runtime_parameters import RuntimeProfileParameters
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +64,7 @@ class PipelineResult:
     trigger_timeframe: str | None = None
     profile_mode: str | None = None
     runtime_parameter_set_id: str | None = None
+    runtime_parameters_snapshot: RuntimeProfileParameters | None = field(default=None, repr=False)
     status: str = PipelineStatus.COMPLETED.value
     final_result: str = FinalResult.NO_DECISION.value
     final_reason: str | None = None

@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, fields, is_dataclass
+from collections import OrderedDict
+from threading import RLock
 from typing import Any
+
+from app.config.trade_parameters import load_trade_parameters, ResolvedParameterSet
+from app.engine_orchestrator.runtime_parameters import _runtime_parameters
 
 from app.engine_analysis.analysis_snapshot import AnalysisSnapshotStatus
 from app.engine_analysis.scalping_semantics import project_scalping_analysis_semantics
@@ -89,9 +94,25 @@ class PipelineRunner:
                  strategy_runner: object | None = None, risk_runner: object | None = None,
                  paper_runner: object | None = None,
                  strategy_cap_cost_source: object | None = None,
-                 scalping_statistics_source: object | None = None) -> None:
+                 scalping_statistics_source: object | None = None,
+                 parameter_loader=None,
+                 resolved_parameter_set: ResolvedParameterSet | None = None) -> None:
         self.config = config
-        self.runtime_parameters = config.runtime_parameters
+        self.resolved_parameter_set = resolved_parameter_set
+        self.runtime_parameters = (
+            _runtime_parameters(config.trade_profile, resolved_parameter_set)
+            if resolved_parameter_set is not None else config.runtime_parameters
+        )
+        self._parameter_loader = parameter_loader or load_trade_parameters
+        self._cycle_lock = RLock()
+        self._cycle_runners = OrderedDict()
+        self._parameter_runners = {}
+        self._injected_runners = dict(
+            analysis_runner=analysis_runner, setup_runner=setup_runner,
+            strategy_runner=strategy_runner, risk_runner=risk_runner,
+            paper_runner=paper_runner,
+            scalping_statistics_source=scalping_statistics_source,
+        )
         self.candle_repository = candle_repository
         self.analysis_runner = analysis_runner or OnlineAnalysisRunner(
             OnlineAnalysisConfig(
@@ -159,6 +180,9 @@ class PipelineRunner:
             ScalpingPaperRunner(
                 runtime_parameters=self.runtime_parameters,
                 statistics_source=scalping_statistics_source,
+                scalping_parameters=(
+                    resolved_parameter_set.parameters if resolved_parameter_set else None
+                ),
             )
             if config.trade_profile_id in SCALPING_PROFILE_IDS
             else PaperRunner(runtime_parameters=self.runtime_parameters)
@@ -391,12 +415,57 @@ class PipelineRunner:
             return FinalResult.NO_ACTION.value
         return FinalResult.NO_DECISION.value
 
+    def for_cycle(self, closed_until_ms: int):
+        """Freeze one atomic YAML read for every symbol/retry at this boundary.
+
+        Deploy/reload is operator managed; no mutable API selector is added.
+        A replacement file is read only when a new boundary first arrives.
+        The cache covers seven days of 5m boundaries, beyond the catch-up scope.
+        """
+        if self.resolved_parameter_set is not None or self.config.trade_profile_id != "trade-5m-v2":
+            return self
+        with self._cycle_lock:
+            if closed_until_ms not in self._cycle_runners:
+                resolved = self._parameter_loader().resolve_scalping_v2_for_cycle(closed_until_ms)
+                identity = (resolved.id, resolved.resolved_config_hash,
+                            resolved.activation_cycle_boundary_ms, resolved.activation_revision)
+                existing = self._parameter_runners.get(identity)
+                if existing is not None:
+                    self._cycle_runners[closed_until_ms] = existing
+                    if len(self._cycle_runners) > 2016:
+                        self._cycle_runners.popitem(last=False)
+                    return existing
+                injected = dict(self._injected_runners)
+                paper = injected.get("paper_runner")
+                if isinstance(paper, ScalpingPaperRunner):
+                    injected["paper_runner"] = ScalpingPaperRunner(
+                        runtime_parameters=_runtime_parameters(self.config.trade_profile, resolved),
+                        scalping_parameters=resolved.parameters,
+                        cost_source=paper.cost_source, statistics_source=paper.statistics_source,
+                        opportunity_registry=paper.opportunity_registry,
+                        store=paper.store, clock_ms=paper._clock_ms,
+                    )
+                runner = PipelineRunner(
+                    self.config, self.candle_repository, **injected,
+                    strategy_cap_cost_source=self.strategy_cap_cost_source,
+                    resolved_parameter_set=resolved,
+                )
+                self._cycle_runners[closed_until_ms] = runner
+                self._parameter_runners[identity] = runner
+                if len(self._cycle_runners) > 2016:
+                    self._cycle_runners.popitem(last=False)
+            return self._cycle_runners[closed_until_ms]
+
     def run(self, symbol: str, closed_until_ms: int) -> PipelineResult:
+        cycle = self.for_cycle(closed_until_ms)
+        if cycle is not self:
+            return cycle.run(symbol, closed_until_ms)
         identity = {
             "trade_profile_id": self.config.trade_profile_id,
             "trigger_timeframe": self.config.primary_timeframe,
             "profile_mode": self.config.trade_profile.mode,
             "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
+            "runtime_parameters_snapshot": self.runtime_parameters,
         }
         try:
             snapshots = self.build_snapshots(symbol, closed_until_ms)

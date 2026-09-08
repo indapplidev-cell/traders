@@ -80,9 +80,15 @@ def test_disabled_profiles_have_no_runtime_authority(natural_e2e_sessions):
 
 
 def test_postgres_named_set_switch_and_rollback_preserve_attribution(natural_e2e_sessions):
+    from app.engine_orchestrator.pipeline_runner import PipelineRunner
+    from tests.engine_orchestrator.test_parameter_set_cycle_binding import configuration
+    from tests.engine_orchestrator.test_parallel_trade_profiles import five_minute_config
+    from tests.engine_orchestrator_01_helpers import BOUNDARY, CandleRepo
+
     registry = PostgresScalpingOpportunityRegistry(natural_e2e_sessions)
-    set_one = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set("scalping-v2-set-1")
-    set_two = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set("scalping-v2-set-2")
+    current = configuration()
+    pipeline = PipelineRunner(five_minute_config(), CandleRepo(), parameter_loader=lambda: current)
+    set_one = pipeline.for_cycle(BOUNDARY).resolved_parameter_set
 
     def claim(cycle: str, resolved):
         return registry.claim(
@@ -96,8 +102,13 @@ def test_postgres_named_set_switch_and_rollback_preserve_attribution(natural_e2e
         )
 
     cycle_a = claim("a", set_one)
+    current = configuration("scalping-v2-set-2", cutoff=BOUNDARY + 300000)
+    set_two = pipeline.for_cycle(BOUNDARY + 300000).resolved_parameter_set
     cycle_b = claim("b", set_two)
-    cycle_c = claim("c", set_one)
+    current = configuration("scalping-v2-set-1", "scalping-v2-set-2", BOUNDARY + 600000)
+    rolled_back = pipeline.for_cycle(BOUNDARY + 600000).resolved_parameter_set
+    cycle_c = claim("c", rolled_back)
+    assert pipeline.for_cycle(BOUNDARY + 300000).resolved_parameter_set == set_two
     assert (cycle_a.parameter_set_id, cycle_b.parameter_set_id, cycle_c.parameter_set_id) == (
         "scalping-v2-set-1", "scalping-v2-set-2", "scalping-v2-set-1",
     )

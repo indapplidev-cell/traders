@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from types import MappingProxyType
 from typing import Final, Mapping
 
 from app.config.trade_parameters import (
-    ACTIVE_SCALPING_V2_PARAMETER_SET, SCALPING_V2, TRADE_PARAMETERS,
+    ACTIVE_SCALPING_V2_PARAMETER_SET, SCALPING_V2, TRADE_PARAMETERS, ResolvedParameterSet,
 )
 
 from app.engine_orchestrator.trade_profile import (
@@ -196,6 +196,8 @@ class RuntimeProfileParameters:
             # Preserve the deployed 15m parameter identity: these new fields
             # only make its already-existing market-data contract explicit.
             for name in (
+                "named_parameter_set_id", "parameter_set_label", "parameter_set_version",
+                "resolved_config_hash", "activation_cycle_boundary_ms", "activation_revision",
                 "market_data_required_timeframes",
                 "market_data_context_windows",
                 "bounded_book_depth_limit",
@@ -293,7 +295,16 @@ class RuntimeProfileParameters:
         })
 
 
-def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters:
+def _runtime_parameters(
+    profile: TradeSearchProfile, resolved: ResolvedParameterSet | None = None,
+) -> RuntimeProfileParameters:
+    # Bind all consumers to the same already-validated snapshot. Never change
+    # module globals when selecting a cycle (other cycles may run concurrently).
+    selected = resolved or TRADE_PARAMETERS.resolve_scalping_v2_parameter_set()
+    SCALPING_V2 = selected.parameters
+    ACTIVE_SCALPING_V2_PARAMETER_SET = selected
+    if resolved is not None:
+        profile = replace(profile, minimum_planned_rr=SCALPING_V2.geometry.minimum_planned_rr)
     is_scalping = profile.trade_mode == "SCALPING"
     is_v2 = profile.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
     if is_scalping:

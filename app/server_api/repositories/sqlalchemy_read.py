@@ -949,10 +949,12 @@ class SqlAlchemyReadAdapter:
                 PaperPositionRecord.average_entry_price,
                 PaperPositionRecord.stop_price,
                 PaperPositionRecord.entry_quantity,
+                OnlinePipelineResultRow.paper_payload_json,
             )
             .join(PaperOrderRecord, PaperOrderRecord.order_id == PaperPositionRecord.entry_order_id)
             .join(PaperExecutionCommandRecord, PaperExecutionCommandRecord.command_id == PaperOrderRecord.command_id)
             .join(OnlinePipelineRun, OnlinePipelineRun.run_id == PaperExecutionCommandRecord.pipeline_run_id)
+            .outerjoin(OnlinePipelineResultRow, OnlinePipelineResultRow.run_id == OnlinePipelineRun.run_id)
             .where(PaperPositionRecord.position_id.in_(position_ids))
         )
         with self._session() as session:
@@ -961,8 +963,11 @@ class SqlAlchemyReadAdapter:
             position_id: {
                 "trade_profile_id": profile_id,
                 "risk_amount": abs(entry - stop) * quantity,
+                "parameter_set_id": (payload or {}).get("parameter_set_id")
+                    or (payload or {}).get("runtime_parameter_set_id") or "legacy-unattributed",
+                "resolved_config_hash": (payload or {}).get("resolved_config_hash"),
             }
-            for position_id, profile_id, entry, stop, quantity in rows
+            for position_id, profile_id, entry, stop, quantity, payload in rows
         }
 
     @staticmethod

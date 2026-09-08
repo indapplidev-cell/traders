@@ -59,3 +59,20 @@ def test_empty_sample_is_explicit_and_never_claims_profitability() -> None:
     assert value["sample_status"] == "THRESHOLD_NOT_DEFINED"
     assert value["net_expectancy_per_trade"] is None
     assert value["profit_factor"] is None
+
+
+def test_named_sets_and_legacy_financial_results_are_never_merged_in_comparison():
+    reports = (_report("a", "-2", ".2", 0), _report("b", "1", ".1", 20),
+               _report("old", "99", "1", 40))
+    context = {
+        item.position_id: {"trade_profile_id": "trade-5m-v2", "parameter_set_id": key}
+        for item, key in zip(reports, ("scalping-v2-set-1", "scalping-v2-set-2", "legacy-original-id"))
+    }
+    sets = scalp_v2_performance(reports, context)["parameter_sets"]
+    assert sets["scalping-v2-set-1"]["net_pnl"] == Decimal("-2")
+    assert sets["scalping-v2-set-1"]["max_drawdown"] == Decimal("2")
+    assert sets["scalping-v2-set-2"]["closed_trades_count"] == 1
+    assert sets["scalping-v2-set-2"]["net_pnl"] == Decimal("1")
+    assert sets["scalping-v2-set-2"]["gross_pnl"] == Decimal("1.1")
+    assert sets["scalping-v2-set-2"]["fees"] == Decimal(".1")
+    assert sets["legacy-original-id"]["net_pnl"] == Decimal("99")
