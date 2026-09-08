@@ -26,8 +26,8 @@ scalping_v2:
   paper:
     previous_parameter_set: scalping-v2-set-1
     active_parameter_set: scalping-v2-set-2
-    switched_at_utc: "2026-09-08T16:15:00Z"
-    activation_cycle_boundary_ms: 1788884100000
+    switched_at_utc: "2026-09-08T16:40:00Z"
+    activation_cycle_boundary_ms: 1788885600000
     activation_revision: scalping-v2-set-2-activation-20260908
     activation_reason: bounded-sweep-interim-paper-experiment
 profiles:

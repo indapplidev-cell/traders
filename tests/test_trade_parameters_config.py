@@ -79,9 +79,9 @@ def test_selector_switch_rollback_cutoff_and_fail_closed(tmp_path: Path):
     set_two = load_trade_parameters().resolve_scalping_v2_parameter_set()
     assert set_one.id == "scalping-v2-set-1"
     assert set_two.id == "scalping-v2-set-2"
-    assert set_two.activation_cycle_boundary_ms == 1788884100000
-    assert TRADE_PARAMETERS.resolve_scalping_v2_for_cycle(1788884099999).id == "scalping-v2-set-1"
-    assert TRADE_PARAMETERS.resolve_scalping_v2_for_cycle(1788884100000).id == "scalping-v2-set-2"
+    assert set_two.activation_cycle_boundary_ms == 1788885600000
+    assert TRADE_PARAMETERS.resolve_scalping_v2_for_cycle(1788885599999).id == "scalping-v2-set-1"
+    assert TRADE_PARAMETERS.resolve_scalping_v2_for_cycle(1788885600000).id == "scalping-v2-set-2"
     # A cycle freezes this immutable object; a subsequent selector load cannot mutate it.
     frozen_cycle = set_one
     assert frozen_cycle.id == "scalping-v2-set-1"
