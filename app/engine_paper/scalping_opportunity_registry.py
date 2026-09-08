@@ -27,6 +27,8 @@ class OpportunityClaim:
     prior_execution_position_id: str | None
     duplicate_block_reason: str | None
     observation_count: int
+    parameter_set_id: str | None = None
+    resolved_config_hash: str | None = None
 
 
 class ScalpingOpportunityRegistry:
@@ -62,7 +64,7 @@ class ScalpingOpportunityRegistry:
             raise ValueError("causal opportunity identity is required")
         return key
 
-    def claim(self, opportunity_id: str) -> OpportunityClaim:
+    def claim(self, opportunity_id: str, **attribution: object) -> OpportunityClaim:
         key = self._validate(opportunity_id)
         with self._lock:
             row = self._state.setdefault(key, {
@@ -70,6 +72,12 @@ class ScalpingOpportunityRegistry:
                 "causal_parent_id": None, "reset_reason": None,
                 "reset_evidence": None, "prior_execution_position_id": None,
             })
+            for name, value in attribution.items():
+                if value is not None:
+                    existing = row.get(name)
+                    if existing is not None and existing != value:
+                        raise ValueError("historical opportunity attribution is immutable")
+                    row[name] = value
             row["observation_count"] = int(row["observation_count"]) + 1
             duplicate = bool(row["admitted"])
             if not duplicate:
@@ -80,6 +88,8 @@ class ScalpingOpportunityRegistry:
                 row.get("reset_evidence"), row.get("prior_execution_position_id"),
                 "CAUSAL_OPPORTUNITY_ALREADY_EXECUTED" if duplicate else None,
                 int(row["observation_count"]),
+                str(row.get("parameter_set_id")) if row.get("parameter_set_id") else None,
+                str(row.get("resolved_config_hash")) if row.get("resolved_config_hash") else None,
             )
 
     def observe_and_claim(self, opportunity_id: str, *, reentry_enabled: bool = False) -> bool:
@@ -136,13 +146,14 @@ class PostgresScalpingOpportunityRegistry:
     def _validate(value: str) -> str:
         return ScalpingOpportunityRegistry._validate(value)
 
-    def claim(self, opportunity_id: str) -> OpportunityClaim:
+    def claim(self, opportunity_id: str, **attribution: object) -> OpportunityClaim:
         key = self._validate(opportunity_id)
         now = datetime.now(timezone.utc)
         with self._session_factory() as session, session.begin():
             inserted = session.scalar(insert(ScalpingOpportunityRecord).values(
                 causal_opportunity_id=key, state="RESERVED", observation_count=1,
                 created_at=now, updated_at=now,
+                **{name: value for name, value in attribution.items() if value is not None},
             ).on_conflict_do_nothing(
                 index_elements=["causal_opportunity_id"]
             ).returning(ScalpingOpportunityRecord.causal_opportunity_id))
@@ -156,6 +167,9 @@ class PostgresScalpingOpportunityRegistry:
                 row.observation_count = 1
                 row.updated_at = now
             elif not admitted:
+                for name, value in attribution.items():
+                    if value is not None and getattr(row, name, None) not in {None, value}:
+                        raise ValueError("historical opportunity attribution is immutable")
                 row.observation_count += 1
                 row.updated_at = now
             return OpportunityClaim(
@@ -163,6 +177,7 @@ class PostgresScalpingOpportunityRegistry:
                 row.reset_evidence, row.position_id,
                 None if admitted else "CAUSAL_OPPORTUNITY_ALREADY_RESERVED_OR_EXECUTED",
                 row.observation_count,
+                row.parameter_set_id, row.resolved_config_hash,
             )
 
     def bind_plan(self, opportunity_id: str, paper_plan_id: str) -> None:

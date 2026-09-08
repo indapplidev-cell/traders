@@ -490,11 +490,19 @@ class PaperReadonlyReportingService:
         return PaperReconciliation(overall_status=status, paper_reconciliation=section, accounting_reconciliation=section)
 
     def runtime_status(self) -> PaperRuntimeStatus:
+        from app.config.trade_parameters import ACTIVE_SCALPING_V2_PARAMETER_SET
+        active = ACTIVE_SCALPING_V2_PARAMETER_SET
         value = self._runtime()
         return PaperRuntimeStatus(runtime_enabled=value.runtime_enabled, daemon_enabled=value.daemon_enabled,
             scheduler_enabled=value.scheduler_enabled, dry_run=value.dry_run, mutation_enabled=value.mutation_enabled,
             worker_running=value.worker_running, operator_runner_running=value.operator_runner_running,
-            current_execution=value.current_execution)
+            current_execution=value.current_execution,
+            active_parameter_set=active.id,
+            parameter_set_label=active.label,
+            parameter_set_version=active.version,
+            resolved_config_hash=active.resolved_config_hash,
+            activation_cycle_boundary_ms=active.activation_cycle_boundary_ms,
+            activation_revision=active.activation_revision)
 
     def control_status(self) -> PaperControlStatus:
         try:

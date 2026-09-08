@@ -35,3 +35,29 @@ def test_boundary_reentry_flag_is_rejected(tmp_path):
     registry = ScalpingOpportunityRegistry(tmp_path / "opportunities.json")
     with pytest.raises(ValueError, match="structural_reset"):
         registry.observe_and_claim("opportunity:abc", reentry_enabled=True)
+
+
+def test_parameter_set_attribution_is_persisted_and_immutable(tmp_path):
+    path = tmp_path / "opportunities.json"
+    first = ScalpingOpportunityRegistry(path).claim(
+        "opportunity:set-attribution",
+        parameter_set_id="scalping-v2-set-2",
+        parameter_set_label="Set #2 — Interim Research",
+        parameter_set_version="scalping-v2-set-2-v1",
+        resolved_config_hash="a" * 64,
+        activation_cycle_boundary_ms=1788884100000,
+        activation_revision="activation-1",
+    )
+    assert first.parameter_set_id == "scalping-v2-set-2"
+    assert first.resolved_config_hash == "a" * 64
+    reloaded = ScalpingOpportunityRegistry(path)
+    assert reloaded.claim(
+        "opportunity:set-attribution",
+        parameter_set_id="scalping-v2-set-2",
+        resolved_config_hash="a" * 64,
+    ).parameter_set_id == "scalping-v2-set-2"
+    with pytest.raises(ValueError, match="attribution is immutable"):
+        reloaded.claim(
+            "opportunity:set-attribution",
+            parameter_set_id="scalping-v2-set-1",
+        )

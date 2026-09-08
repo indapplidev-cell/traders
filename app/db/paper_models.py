@@ -647,6 +647,12 @@ class ScalpingOpportunityRecord(Base):
     observation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default=text("1"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    parameter_set_id: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    parameter_set_label: Mapped[str | None] = mapped_column(String(160))
+    parameter_set_version: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
+    resolved_config_hash: Mapped[str | None] = mapped_column(String(64))
+    activation_cycle_boundary_ms: Mapped[int | None] = mapped_column(BigInteger)
+    activation_revision: Mapped[str | None] = mapped_column(String(IDENTITY_LENGTH))
 
 
 class ScalpingOutcomeDiagnosticRecord(Base):

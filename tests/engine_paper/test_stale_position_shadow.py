@@ -79,7 +79,7 @@ def test_soft_timeout_extension_then_hard_hypothetical_exit_without_mutation():
     assert extended.extension_count == 1 and extended.shadow_exit_time is None
 
     hard = evaluate_stale_position_shadow(replace(
-        source, evaluation_time=NOW + timedelta(seconds=900), extension_count=1,
+        source, evaluation_time=NOW + timedelta(seconds=1200), extension_count=1,
     ))
     assert hard.hard_timeout_reached
     assert hard.shadow_decision == "HYPOTHETICAL_EXIT"
@@ -111,5 +111,5 @@ def test_central_capability_is_runtime_active_shadow_and_live_neutral():
     assert capability["runtime_active"] is True
     assert capability["mode"] == "SHADOW"
     assert capability["policy"]["soft_timeout_seconds"] == 600
-    assert capability["policy"]["hard_timeout_seconds"] == 900
+    assert capability["policy"]["hard_timeout_seconds"] == 1200
     assert "live" not in capability

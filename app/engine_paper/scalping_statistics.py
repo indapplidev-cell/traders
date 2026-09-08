@@ -32,6 +32,7 @@ class PaperOutcome:
     regime: str
     cost_bucket: str
     won: bool
+    parameter_set_id: str = "legacy-unattributed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,9 +72,13 @@ def _cost_bucket(payload: object) -> str:
 def hierarchy_from_outcomes(
     outcomes: Iterable[PaperOutcome], *, symbol: str, setup_type: str,
     direction: str, regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
+    parameter_set_id: str | None = None,
 ) -> StatisticalHierarchy:
     """Build the configured narrow-to-global hierarchy from real outcomes."""
-    rows = tuple(outcomes)
+    rows = tuple(
+        row for row in outcomes
+        if parameter_set_id is None or row.parameter_set_id == parameter_set_id
+    )
     dimensions = (
         ("exact", lambda row: (
             row.symbol, row.setup_type, row.direction, row.regime, row.cost_bucket
@@ -153,16 +158,23 @@ class PostgresPaperOutcomeStatisticsSource:
             regime=_text(_nested(row.analysis_payload_json, "regime")),
             cost_bucket=_cost_bucket(row.paper_payload_json),
             won=float(row.realized_pnl) > 0,
+            parameter_set_id=_text(
+                _nested(row.paper_payload_json, "parameter_set_id")
+                or _nested(row.paper_payload_json, "runtime_parameter_set_id"),
+                "LEGACY_UNATTRIBUTED",
+            ).lower(),
         ) for row in rows)
 
     def resolve(
         self, *, symbol: str, setup_type: str, direction: str,
         regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
+        parameter_set_id: str | None = None,
     ) -> StatisticalHierarchy:
         return hierarchy_from_outcomes(
             self._load(), symbol=_text(symbol), setup_type=_text(setup_type),
             direction=_text(direction), regime=_text(regime),
             cost_bucket=_text(cost_bucket),
+            parameter_set_id=parameter_set_id,
         )
 
 

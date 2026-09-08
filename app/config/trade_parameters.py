@@ -6,7 +6,9 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
-from typing import Literal
+from copy import deepcopy
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 import yaml
@@ -188,10 +190,133 @@ class TradingProfiles(StrictModel):
     trade_15m_v1: Disabled15mParameters = Field(alias="trade-15m-v1")
 
 
+class ParameterSetDefinition(StrictModel):
+    id: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    version: str = Field(min_length=1)
+    inherits: str | None = None
+    overrides: dict[str, Any]
+
+
+class PaperParameterSetSelector(StrictModel):
+    previous_parameter_set: str = Field(min_length=1)
+    active_parameter_set: str = Field(min_length=1)
+    switched_at_utc: str = Field(min_length=1)
+    activation_cycle_boundary_ms: int = Field(ge=0)
+    activation_revision: str = Field(min_length=1)
+    activation_reason: str = Field(min_length=1)
+
+
+class ScalpingV2SetArchitecture(StrictModel):
+    parameter_sets: dict[str, ParameterSetDefinition]
+    paper: PaperParameterSetSelector
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedParameterSet:
+    id: str
+    label: str
+    version: str
+    parameters: ScalpingV2Parameters
+    resolved_config_hash: str
+    activation_cycle_boundary_ms: int
+    activation_revision: str
+    previous_parameter_set: str
+    switched_at_utc: str
+    provenance: dict[str, str]
+
+
 class TradeParameters(StrictModel):
     schema_version: Literal[1]
     config_version: str = Field(min_length=1)
     profiles: TradingProfiles
+    scalping_v2: ScalpingV2SetArchitecture
+
+    @model_validator(mode="after")
+    def valid_parameter_set_registry(self):
+        definitions = tuple(self.scalping_v2.parameter_sets.values())
+        if len({item.id for item in definitions}) != len(definitions):
+            raise ValueError("parameter-set IDs must be unique")
+        for definition in definitions:
+            self.resolve_scalping_v2_parameter_set(definition.id)
+        self.resolve_scalping_v2_parameter_set()
+        self.resolve_scalping_v2_parameter_set(
+            self.scalping_v2.paper.previous_parameter_set
+        )
+        return self
+
+    @staticmethod
+    def _semantic_hash(parameters: ScalpingV2Parameters) -> str:
+        canonical = json.dumps(
+            parameters.model_dump(mode="json"), sort_keys=True,
+            separators=(",", ":"), ensure_ascii=True,
+        )
+        return sha256(canonical.encode("utf-8")).hexdigest()
+
+    def resolve_scalping_v2_parameter_set(
+        self, parameter_set_id: str | None = None,
+    ) -> ResolvedParameterSet:
+        selected = parameter_set_id or self.scalping_v2.paper.active_parameter_set
+        definitions = {item.id: item for item in self.scalping_v2.parameter_sets.values()}
+        if selected not in definitions:
+            raise RuntimeError(f"UNKNOWN_PARAMETER_SET: {selected}")
+        baseline = self.profiles.trade_5m_v2.model_dump(mode="python")
+        resolving: set[str] = set()
+
+        def resolve_values(current_id: str) -> tuple[dict[str, Any], dict[str, str]]:
+            if current_id in resolving:
+                raise RuntimeError(f"INVALID_PARAMETER_SET: inheritance cycle at {current_id}")
+            definition = definitions.get(current_id)
+            if definition is None:
+                raise RuntimeError(f"UNKNOWN_PARAMETER_SET: {current_id}")
+            resolving.add(current_id)
+            if definition.inherits is None:
+                values, provenance = deepcopy(baseline), {}
+            else:
+                values, provenance = resolve_values(definition.inherits)
+            for dotted, value in definition.overrides.items():
+                parts = dotted.split(".")
+                target: dict[str, Any] = values
+                for part in parts[:-1]:
+                    nested = target.get(part)
+                    if not isinstance(nested, dict):
+                        raise RuntimeError(f"INVALID_PARAMETER_SET: unknown override {dotted}")
+                    target = nested
+                if parts[-1] not in target:
+                    raise RuntimeError(f"INVALID_PARAMETER_SET: unknown override {dotted}")
+                target[parts[-1]] = value
+                provenance[dotted] = current_id
+            resolving.remove(current_id)
+            return values, provenance
+
+        try:
+            values, provenance = resolve_values(selected)
+            parameters = ScalpingV2Parameters.model_validate(values)
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            raise RuntimeError(f"INVALID_PARAMETER_SET: {selected}") from exc
+        definition = definitions[selected]
+        return ResolvedParameterSet(
+            id=definition.id, label=definition.label, version=definition.version,
+            parameters=parameters,
+            resolved_config_hash=self._semantic_hash(parameters),
+            activation_cycle_boundary_ms=self.scalping_v2.paper.activation_cycle_boundary_ms,
+            activation_revision=self.scalping_v2.paper.activation_revision,
+            previous_parameter_set=self.scalping_v2.paper.previous_parameter_set,
+            switched_at_utc=self.scalping_v2.paper.switched_at_utc,
+            provenance=provenance,
+        )
+
+    def resolve_scalping_v2_for_cycle(self, cycle_boundary_ms: int) -> ResolvedParameterSet:
+        """Resolve one immutable cycle snapshot at the documented activation cutoff."""
+        selector = self.scalping_v2.paper
+        selected = (
+            selector.previous_parameter_set
+            if int(cycle_boundary_ms) < selector.activation_cycle_boundary_ms
+            else selector.active_parameter_set
+        )
+        return self.resolve_scalping_v2_parameter_set(selected)
 
     @property
     def config_hash(self) -> str:
@@ -225,15 +350,20 @@ def load_trade_parameters(path: Path = CONFIG_PATH) -> TradeParameters:
     try:
         raw = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
         return TradeParameters.model_validate(raw)
+    except RuntimeError as exc:
+        if str(exc).startswith(("UNKNOWN_PARAMETER_SET", "INVALID_PARAMETER_SET")):
+            raise
+        raise RuntimeError(f"invalid authoritative trade parameters: {path}") from exc
     except Exception as exc:
         raise RuntimeError(f"invalid authoritative trade parameters: {path}") from exc
 
 
 TRADE_PARAMETERS = load_trade_parameters()
-SCALPING_V2 = TRADE_PARAMETERS.profiles.trade_5m_v2
+ACTIVE_SCALPING_V2_PARAMETER_SET = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set()
+SCALPING_V2 = ACTIVE_SCALPING_V2_PARAMETER_SET.parameters
 
 
 __all__ = (
-    "CONFIG_PATH", "SCALPING_V2", "TRADE_PARAMETERS", "TradeParameters",
-    "load_trade_parameters",
+    "ACTIVE_SCALPING_V2_PARAMETER_SET", "CONFIG_PATH", "ResolvedParameterSet",
+    "SCALPING_V2", "TRADE_PARAMETERS", "TradeParameters", "load_trade_parameters",
 )

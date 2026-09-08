@@ -1,5 +1,35 @@
 schema_version: 1
 config_version: scalping-v2-baseline-1
+scalping_v2:
+  parameter_sets:
+    set_1:
+      id: scalping-v2-set-1
+      label: "Set #1 — Baseline"
+      version: scalping-v2-set-1-v1
+      inherits: null
+      overrides: {}
+    set_2:
+      id: scalping-v2-set-2
+      label: "Set #2 — Interim Research"
+      version: scalping-v2-set-2-v1
+      inherits: scalping-v2-set-1
+      overrides:
+        geometry.minimum_planned_rr: 0.6
+        risk.risk_per_trade_bps: 5.0
+        geometry.target_min_bps: 60.0
+        economics.min_ev_reserve_r: 0.05
+        exit_policy.stale_position.net_break_even_protection_enabled: true
+        exit_policy.stale_position.soft_timeout_seconds: 600
+        exit_policy.stale_position.hard_timeout_seconds: 1200
+        exit_policy.stale_position.extension_seconds: 300
+        exit_policy.stale_position.max_extensions: 1
+  paper:
+    previous_parameter_set: scalping-v2-set-1
+    active_parameter_set: scalping-v2-set-2
+    switched_at_utc: "2026-09-08T16:15:00Z"
+    activation_cycle_boundary_ms: 1788884100000
+    activation_revision: scalping-v2-set-2-activation-20260908
+    activation_reason: bounded-sweep-interim-paper-experiment
 profiles:
   trade-5m-v2:
     enabled: true

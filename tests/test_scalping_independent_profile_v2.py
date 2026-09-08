@@ -39,16 +39,16 @@ def test_15m_strategy_parameters_are_unchanged_while_execution_is_disabled():
 
 def test_v2_has_independent_versioned_policy_and_stronger_or_equal_risk():
     new = resolve_runtime_parameters("trade-5m-v2")
-    assert new.parameter_set_id.startswith("trade-5m-v2-runtime-v1-")
+    assert new.parameter_set_id == "scalping-v2-set-2"
     assert new.setup_policy_id == "scalping-micro-setup-v2"
     assert new.strategy_policy_id == "scalping-short-horizon-entry-v2"
     assert new.stop_policy_id == "SCALPING_CAUSAL_VOLATILITY_STOP_V2"
     assert new.target_policy_id == "SCALPING_NEAREST_VIABLE_TARGET_V3"
     assert new.risk_shadow_policy_id == "scalping-risk-capped-v2"
-    assert new.minimum_planned_rr == 0.4
+    assert new.minimum_planned_rr == 0.6
     assert new.execution_entry_ttl_seconds == 30
     assert new.exit_time_stop_minutes == 15
-    assert new.risk_per_trade_bps == 10
+    assert new.risk_per_trade_bps == 5
     assert new.portfolio_max_concurrent_positions == 2
     assert new.portfolio_max_total_open_risk_bps == 50
 

@@ -41,7 +41,9 @@ from app.db.paper_models import (
     PaperPositionRecord,
     ScalpingOutcomeDiagnosticRecord,
 )
-from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+from app.config.trade_parameters import (
+    ACTIVE_SCALPING_V2_PARAMETER_SET, SCALPING_V2, TRADE_PARAMETERS,
+)
 from app.engine_paper.binance_account_commission import commission_runtime_status
 from app.engine_paper.stale_position_shadow import stale_position_runtime_projection
 
@@ -520,6 +522,18 @@ def _downstream_trace(
     detail.update({
         "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
         "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
+        "parameter_set_id": _first_present(
+            paper.get("parameter_set_id"), ACTIVE_SCALPING_V2_PARAMETER_SET.id,
+        ),
+        "parameter_set_label": _first_present(
+            paper.get("parameter_set_label"), ACTIVE_SCALPING_V2_PARAMETER_SET.label,
+        ),
+        "resolved_config_hash": _first_present(
+            paper.get("resolved_config_hash"),
+            ACTIVE_SCALPING_V2_PARAMETER_SET.resolved_config_hash,
+        ),
+        "activation_cycle_boundary_ms": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_cycle_boundary_ms,
+        "activation_revision": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_revision,
         "opportunity_id": (
             diagnostic.get("opportunity_id")
             or _mapping(context.get("causal_primitives")).get("opportunity_id")
@@ -2193,6 +2207,12 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         "trade_profile_id": profile.trade_profile_id,
         "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
         "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
+        "active_parameter_set": ACTIVE_SCALPING_V2_PARAMETER_SET.id,
+        "active_parameter_set_label": ACTIVE_SCALPING_V2_PARAMETER_SET.label,
+        "active_parameter_set_version": ACTIVE_SCALPING_V2_PARAMETER_SET.version,
+        "resolved_config_hash": ACTIVE_SCALPING_V2_PARAMETER_SET.resolved_config_hash,
+        "activation_cycle_boundary_ms": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_cycle_boundary_ms,
+        "activation_revision": ACTIVE_SCALPING_V2_PARAMETER_SET.activation_revision,
         "commission_authority": (
             commission_runtime_status()
             if profile.trade_profile_id == "trade-5m-v2" else {

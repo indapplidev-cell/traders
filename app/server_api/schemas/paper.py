@@ -271,6 +271,12 @@ class PaperRuntimeStatus(BaseModel):
     worker_running: bool | None
     operator_runner_running: bool | None
     current_execution: PaperExecutionLifecycle | None = None
+    active_parameter_set: str
+    parameter_set_label: str
+    parameter_set_version: str
+    resolved_config_hash: str
+    activation_cycle_boundary_ms: int = Field(ge=0)
+    activation_revision: str
 
 
 class PaperControlStatus(BaseModel):

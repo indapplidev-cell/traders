@@ -8,7 +8,9 @@ from dataclasses import asdict, dataclass
 from types import MappingProxyType
 from typing import Final, Mapping
 
-from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+from app.config.trade_parameters import (
+    ACTIVE_SCALPING_V2_PARAMETER_SET, SCALPING_V2, TRADE_PARAMETERS,
+)
 
 from app.engine_orchestrator.trade_profile import (
     TradeProfileId,
@@ -89,6 +91,12 @@ class RuntimeProfileParameters:
     target_policy_id: str
     paper_command_creation_enabled: bool
     position_opening_enabled: bool
+    named_parameter_set_id: str | None = None
+    parameter_set_label: str | None = None
+    parameter_set_version: str | None = None
+    resolved_config_hash: str | None = None
+    activation_cycle_boundary_ms: int | None = None
+    activation_revision: str | None = None
 
     def __post_init__(self) -> None:
         profile = resolve_trade_profile(self.profile_id)
@@ -128,8 +136,8 @@ class RuntimeProfileParameters:
             raise ValueError("invalid RR cohorts")
         if self.risk_per_trade_shadow_cohorts_bps != (10.0, 15.0, 20.0, 25.0):
             raise ValueError("invalid risk-per-trade cohorts")
-        if self.risk_per_trade_bps not in self.risk_per_trade_shadow_cohorts_bps:
-            raise ValueError("production risk per trade must use a declared cohort")
+        if self.risk_per_trade_bps not in {5.0, *self.risk_per_trade_shadow_cohorts_bps}:
+            raise ValueError("production risk per trade must use an approved active value")
         if self.portfolio_max_concurrent_shadow_cohorts != (2, 3, 4):
             raise ValueError("invalid max concurrent-position cohorts")
         if self.portfolio_total_open_risk_shadow_cohorts_bps != (50.0, 75.0):
@@ -181,6 +189,8 @@ class RuntimeProfileParameters:
 
     @property
     def parameter_set_id(self) -> str:
+        if self.named_parameter_set_id is not None:
+            return self.named_parameter_set_id
         identity = asdict(self)
         if self.profile_id == TradeProfileId.TRADE_15M_V1.value:
             # Preserve the deployed 15m parameter identity: these new fields
@@ -235,6 +245,11 @@ class RuntimeProfileParameters:
             "runtime_parameter_contract_version": self.contract_version,
             "runtime_parameter_set_id": self.parameter_set_id,
             "runtime_parameter_profile_id": self.profile_id,
+            "parameter_set_label": self.parameter_set_label,
+            "parameter_set_version": self.parameter_set_version,
+            "resolved_config_hash": self.resolved_config_hash,
+            "activation_cycle_boundary_ms": self.activation_cycle_boundary_ms,
+            "activation_revision": self.activation_revision,
             "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
             "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
         }
@@ -392,6 +407,14 @@ def _runtime_parameters(profile: TradeSearchProfile) -> RuntimeProfileParameters
         ),
         paper_command_creation_enabled=profile.paper_command_creation_enabled,
         position_opening_enabled=profile.position_opening_enabled,
+        named_parameter_set_id=(ACTIVE_SCALPING_V2_PARAMETER_SET.id if is_v2 else None),
+        parameter_set_label=(ACTIVE_SCALPING_V2_PARAMETER_SET.label if is_v2 else None),
+        parameter_set_version=(ACTIVE_SCALPING_V2_PARAMETER_SET.version if is_v2 else None),
+        resolved_config_hash=(ACTIVE_SCALPING_V2_PARAMETER_SET.resolved_config_hash if is_v2 else None),
+        activation_cycle_boundary_ms=(
+            ACTIVE_SCALPING_V2_PARAMETER_SET.activation_cycle_boundary_ms if is_v2 else None
+        ),
+        activation_revision=(ACTIVE_SCALPING_V2_PARAMETER_SET.activation_revision if is_v2 else None),
     )
 
 

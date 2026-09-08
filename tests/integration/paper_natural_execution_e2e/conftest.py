@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from app.config.settings import get_settings
 
 
-EXPECTED_HEAD = "0030_paper_recovery_close"
+EXPECTED_HEAD = "0031_scalping_parameter_sets"
 
 
 @pytest.fixture(scope="session")

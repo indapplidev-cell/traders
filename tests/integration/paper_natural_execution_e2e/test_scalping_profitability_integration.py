@@ -7,6 +7,7 @@ from app.engine_orchestrator.trade_profile import ACTIVE_RUNTIME_PROFILE_IDS
 from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
 from app.engine_paper.scalping_policy_v2 import evaluate_expectancy
 from app.engine_paper.scalping_statistics import PaperOutcome, hierarchy_from_outcomes
+from app.config.trade_parameters import TRADE_PARAMETERS
 
 
 def _outcomes(count: int, wins: int):
@@ -76,3 +77,39 @@ def test_postgres_causal_duplicate_restart_and_structural_reset(natural_e2e_sess
 
 def test_disabled_profiles_have_no_runtime_authority(natural_e2e_sessions):
     assert ACTIVE_RUNTIME_PROFILE_IDS == frozenset({"trade-5m-v2"})
+
+
+def test_postgres_named_set_switch_and_rollback_preserve_attribution(natural_e2e_sessions):
+    registry = PostgresScalpingOpportunityRegistry(natural_e2e_sessions)
+    set_one = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set("scalping-v2-set-1")
+    set_two = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set("scalping-v2-set-2")
+
+    def claim(cycle: str, resolved):
+        return registry.claim(
+            f"opportunity:set-switch:{cycle}:{uuid4().hex}",
+            parameter_set_id=resolved.id,
+            parameter_set_label=resolved.label,
+            parameter_set_version=resolved.version,
+            resolved_config_hash=resolved.resolved_config_hash,
+            activation_cycle_boundary_ms=resolved.activation_cycle_boundary_ms,
+            activation_revision=resolved.activation_revision,
+        )
+
+    cycle_a = claim("a", set_one)
+    cycle_b = claim("b", set_two)
+    cycle_c = claim("c", set_one)
+    assert (cycle_a.parameter_set_id, cycle_b.parameter_set_id, cycle_c.parameter_set_id) == (
+        "scalping-v2-set-1", "scalping-v2-set-2", "scalping-v2-set-1",
+    )
+    with natural_e2e_sessions() as session:
+        rows = tuple(session.scalars(select(ScalpingOpportunityRecord).where(
+            ScalpingOpportunityRecord.causal_opportunity_id.in_((
+                cycle_a.causal_opportunity_id,
+                cycle_b.causal_opportunity_id,
+                cycle_c.causal_opportunity_id,
+            ))
+        ).order_by(ScalpingOpportunityRecord.causal_opportunity_id)))
+    assert {row.parameter_set_id for row in rows} == {
+        "scalping-v2-set-1", "scalping-v2-set-2",
+    }
+    assert next(row for row in rows if row.causal_opportunity_id == cycle_b.causal_opportunity_id).resolved_config_hash == set_two.resolved_config_hash

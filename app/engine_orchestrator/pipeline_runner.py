@@ -661,6 +661,12 @@ class PipelineRunner:
             "trade_profile_id": self.config.trade_profile_id,
             "trigger_timeframe": self.config.primary_timeframe,
             "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,
+            "parameter_set_id": self.runtime_parameters.parameter_set_id,
+            "parameter_set_label": self.runtime_parameters.parameter_set_label,
+            "parameter_set_version": self.runtime_parameters.parameter_set_version,
+            "resolved_config_hash": self.runtime_parameters.resolved_config_hash,
+            "activation_cycle_boundary_ms": self.runtime_parameters.activation_cycle_boundary_ms,
+            "activation_revision": self.runtime_parameters.activation_revision,
         }
 
     def _cost_efficiency_diagnostic(self, *values: object) -> dict[str, object]:

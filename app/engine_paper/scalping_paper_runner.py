@@ -43,6 +43,7 @@ class ScalpingStatisticsSource(Protocol):
     def resolve(
         self, *, symbol: str, setup_type: str, direction: str,
         regime: str = "UNKNOWN", cost_bucket: str = "UNKNOWN",
+        parameter_set_id: str | None = None,
     ) -> StatisticalHierarchy: ...
 
 
@@ -486,6 +487,13 @@ class ScalpingPaperRunner(PaperRunner):
             "rr_policy_version": diagnostic.rr_policy_version,
             "expected_value_bps": diagnostic.expected_value_bps,
             "expectancy_gate_reason": diagnostic.expectancy_gate_reason,
+            "parameter_set_id": self.runtime_parameters.parameter_set_id,
+            "parameter_set_label": self.runtime_parameters.parameter_set_label,
+            "parameter_set_version": self.runtime_parameters.parameter_set_version,
+            "resolved_config_hash": self.runtime_parameters.resolved_config_hash,
+            "activation_cycle_boundary_ms": self.runtime_parameters.activation_cycle_boundary_ms,
+            "activation_revision": self.runtime_parameters.activation_revision,
+            "cycle_boundary_ms": source.closed_until_ms,
         }
         if is_v2:
             paper_context["scalping_policy_provenance"] = policy_provenance()
@@ -503,7 +511,15 @@ class ScalpingPaperRunner(PaperRunner):
         )
         unique_opportunity = True
         if diagnostic.valid_plan:
-            claim = self.opportunity_registry.claim(diagnostic.opportunity_id)
+            claim = self.opportunity_registry.claim(
+                diagnostic.opportunity_id,
+                parameter_set_id=self.runtime_parameters.parameter_set_id,
+                parameter_set_label=self.runtime_parameters.parameter_set_label,
+                parameter_set_version=self.runtime_parameters.parameter_set_version,
+                resolved_config_hash=self.runtime_parameters.resolved_config_hash,
+                activation_cycle_boundary_ms=self.runtime_parameters.activation_cycle_boundary_ms,
+                activation_revision=self.runtime_parameters.activation_revision,
+            )
             unique_opportunity = claim.admitted
             paper_context["opportunity_observation"] = (
                 "UNIQUE_CAUSAL_OPPORTUNITY" if unique_opportunity
@@ -611,6 +627,7 @@ class ScalpingPaperRunner(PaperRunner):
             direction=candidate.direction,
             regime=str(getattr(context, "regime", None) or "UNKNOWN"),
             cost_bucket=cost_bucket,
+            parameter_set_id=self.runtime_parameters.parameter_set_id,
         )
         return replace(
             self.geometry_config,
