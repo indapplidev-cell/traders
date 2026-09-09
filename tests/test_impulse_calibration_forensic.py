@@ -1,4 +1,4 @@
-from scripts.forensic_impulse_calibration import distribution, economics
+from scripts.forensic_impulse_calibration import distribution, economics, task_b
 
 
 def test_distribution_interpolates_requested_quantiles():
@@ -22,3 +22,13 @@ def test_economics_keeps_non_candidates_out_of_outcome_quality():
     assert result["expectancy_R"] == 0
     assert result["PF"] == 1
     assert result["RR_pass_count"] == 1
+
+
+def test_threshold_provenance_is_15m_legacy_not_a_5m_config_key():
+    result = task_b()
+    assert result["absolute_threshold"] == 3.0
+    assert result["atr_multiplier"] == 2.5
+    assert result["config_key"] is None
+    assert result["original_timeframe"] == "15m"
+    assert result["timeframe_mismatch_found"] is True
+    assert result["software_defect_found"] is False
