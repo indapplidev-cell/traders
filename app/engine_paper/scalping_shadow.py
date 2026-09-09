@@ -688,6 +688,7 @@ def evaluate_scalping_shadow(
         return result.reject("COST_MODEL", R.COST_MODEL_INVALID.value)
 
     selected: tuple[CausalTarget, float, float, float, float, float] | None = None
+    actionable_targets: list[tuple[CausalTarget, float, float, float, float, float]] = []
     for index, target in enumerate(targets):
         normalized_target = _normalized_price(
             target.price, direction=candidate.direction, role="TARGET"
@@ -760,11 +761,13 @@ def evaluate_scalping_shadow(
         if index + 1 < len(targets):
             trace["next_target_considered"] = targets[index + 1].source_type
         if actionable:
-            result.first_actionable_target = dict(trace)
-            selected = (
+            candidate_selection = (
                 target, normalized_target, reward, edge, gross_rr, net_rr
             )
-            break
+            actionable_targets.append(candidate_selection)
+            if selected is None:
+                result.first_actionable_target = dict(trace)
+                selected = candidate_selection
 
     if selected is None:
         result.next_target_considered = None
@@ -800,6 +803,42 @@ def evaluate_scalping_shadow(
         static_net_rr=result.net_rr,
         static_minimum_net_rr=config.production_rr_floor,
     ) if config.profile_id == V2_PROFILE_ID else None
+    # The probability authority is target-independent.  If the first target
+    # that clears the static/cost gate fails only the later Dynamic RR gate,
+    # continue through farther levels already present in the same causal
+    # snapshot.  This never manufactures a target and never weakens a gate.
+    if (
+        expectancy is not None
+        and not expectancy.admitted
+        and expectancy.dynamic_required_net_rr is not None
+    ):
+        required = max(config.production_rr_floor, expectancy.dynamic_required_net_rr)
+        farther = next((value for value in actionable_targets[1:] if value[5] >= required), None)
+        if farther is not None:
+            target, normalized_target, reward, edge, gross_rr, net_rr = farther
+            result.target_source_type = target.source_type
+            result.causal_target = normalized_target
+            result.target_distance_bps = reward
+            result.gross_reward_bps = reward
+            result.gross_rr = gross_rr
+            result.expected_net_edge_bps = edge
+            result.net_reward_bps = edge
+            result.net_rr = net_rr
+            result.break_even_win_rate = round(
+                result.effective_risk_bps / (result.effective_risk_bps + edge), 8
+            )
+            expectancy = evaluate_expectancy(
+                net_win_bps=result.net_reward_bps,
+                net_loss_bps=result.effective_risk_bps,
+                bucket=config.empirical_bucket,
+                parent_buckets=config.parent_buckets,
+                minimum_samples=config.minimum_empirical_samples,
+                minimum_expected_value_bps=config.minimum_expected_value_bps,
+                minimum_positive_ev_r=config.minimum_positive_ev_r,
+                minimum_ev_reserve_r=config.minimum_ev_reserve_r,
+                static_net_rr=result.net_rr,
+                static_minimum_net_rr=config.production_rr_floor,
+            )
     if expectancy is not None:
         result.empirical_win_probability = expectancy.probability
         result.p_win_raw = expectancy.p_win_raw
