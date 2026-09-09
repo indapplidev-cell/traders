@@ -1,0 +1,635 @@
+{
+  "achievability_ratio_bins": {
+    "0.25-0.50": 10,
+    "<0.25": 39
+  },
+  "anchor": {
+    "completed_at": "2026-09-09T11:50:24.518994+00:00",
+    "cycle_boundary": 1788954600000,
+    "deployed_revision": "6e8e91547d9ed7005cc8132fe22bd30e87a21a04",
+    "parameter_set_id": "scalping-v2-set-2",
+    "profile": "trade-5m-v2",
+    "schema": "0031_scalping_parameter_sets"
+  },
+  "classification_counts": {
+    "STRUCTURALLY_UNACHIEVABLE": 49
+  },
+  "cohort": {
+    "count": 49,
+    "identity_sha256": "e9dbe7d826f48a531f5f9311ae8bf16b5e5e15d4f2f9496b0179d5a06d744a59",
+    "lookback_hours": 12
+  },
+  "distributions": {
+    "achievability_ratio": {
+      "count": 49,
+      "max": 0.48955317913566687,
+      "median": 0.195543391094906,
+      "min": 0.12770485242675222,
+      "p25": 0.17272734007196028,
+      "p75": 0.22383086656070966,
+      "unique_count": 49
+    },
+    "best_causal_net_rr": {
+      "count": 49,
+      "max": 1.9570146781149733,
+      "median": 0.7521595366861906,
+      "min": 0.6033652553335446,
+      "p25": 0.6808415779658857,
+      "p75": 0.9403638052217964,
+      "unique_count": 49
+    },
+    "delta_net_vs_required": {
+      "count": 49,
+      "max": -1.8361445869868283,
+      "median": -3.0430145950352916,
+      "min": -5.757780100845913,
+      "p25": -3.3853838650352914,
+      "p75": -2.8739575969868283,
+      "unique_count": 49
+    },
+    "dynamic_required_net_rr": {
+      "count": 49,
+      "max": 6.6007246708459135,
+      "median": 4.110104274387227,
+      "min": 3.421916830324562,
+      "p25": 3.5971319869868283,
+      "p75": 4.1894012850352915,
+      "unique_count": 11
+    },
+    "final_required_rr": {
+      "count": 49,
+      "max": 6.6007246708459135,
+      "median": 4.110104274387227,
+      "min": 3.421916830324562,
+      "p25": 3.5971319869868283,
+      "p75": 4.1894012850352915,
+      "unique_count": 11
+    },
+    "net_rr": {
+      "count": 49,
+      "max": 1.7609874,
+      "median": 0.75015612,
+      "min": 0.60336526,
+      "p25": 0.68084145,
+      "p75": 0.88682878,
+      "unique_count": 49
+    }
+  },
+  "dominant_driver": "LOW_CONSERVATIVE_PWIN_RELATIVE_TO_CAUSAL_NET_RR_GEOMETRY",
+  "economic_feasibility_verdict": "DYNAMIC_RR_SYSTEMATICALLY_UNACHIEVABLE",
+  "feasibility_frontier": [
+    {
+      "p_win_conservative": 0.1,
+      "required_rr": 9.05
+    },
+    {
+      "p_win_conservative": 0.12,
+      "required_rr": 7.383333333333334
+    },
+    {
+      "p_win_conservative": 0.15,
+      "required_rr": 5.716666666666667
+    },
+    {
+      "p_win_conservative": 0.2,
+      "required_rr": 4.05
+    },
+    {
+      "p_win_conservative": 0.25,
+      "required_rr": 3.05
+    },
+    {
+      "p_win_conservative": 0.3,
+      "required_rr": 2.3833333333333333
+    },
+    {
+      "p_win_conservative": 0.35,
+      "required_rr": 1.9071428571428575
+    },
+    {
+      "p_win_conservative": 0.4,
+      "required_rr": 1.5499999999999998
+    }
+  ],
+  "final_verdict": "DYNAMIC_RR_SYSTEMATICALLY_UNACHIEVABLE",
+  "formula": {
+    "break_even": "(1-p)/p",
+    "min_ev_reserve_r": 0.05,
+    "min_positive_ev_r": 0.0,
+    "production": "max((1-p)/p + min_ev_reserve_r, (1-p+min_positive_ev_r)/p)"
+  },
+  "grouped": {
+    "probability_level_used": {
+      "exact": {
+        "achievability_ratio": {
+          "count": 1,
+          "max": 0.195543391094906,
+          "median": 0.195543391094906,
+          "min": 0.195543391094906,
+          "p25": 0.195543391094906,
+          "p75": 0.195543391094906,
+          "unique_count": 1
+        },
+        "count": 1,
+        "final_required_rr": {
+          "count": 1,
+          "max": 3.622878564360005,
+          "median": 3.622878564360005,
+          "min": 3.622878564360005,
+          "p25": 3.622878564360005,
+          "p75": 3.622878564360005,
+          "unique_count": 1
+        },
+        "net_rr": {
+          "count": 1,
+          "max": 0.70842996,
+          "median": 0.70842996,
+          "min": 0.70842996,
+          "p25": 0.70842996,
+          "p75": 0.70842996,
+          "unique_count": 1
+        }
+      },
+      "setup": {
+        "achievability_ratio": {
+          "count": 1,
+          "max": 0.12770485242675222,
+          "median": 0.12770485242675222,
+          "min": 0.12770485242675222,
+          "p25": 0.12770485242675222,
+          "p75": 0.12770485242675222,
+          "unique_count": 1
+        },
+        "count": 1,
+        "final_required_rr": {
+          "count": 1,
+          "max": 6.6007246708459135,
+          "median": 6.6007246708459135,
+          "min": 6.6007246708459135,
+          "p25": 6.6007246708459135,
+          "p75": 6.6007246708459135,
+          "unique_count": 1
+        },
+        "net_rr": {
+          "count": 1,
+          "max": 0.84294457,
+          "median": 0.84294457,
+          "min": 0.84294457,
+          "p25": 0.84294457,
+          "p75": 0.84294457,
+          "unique_count": 1
+        }
+      },
+      "setup_direction_regime": {
+        "achievability_ratio": {
+          "count": 47,
+          "max": 0.48955317913566687,
+          "median": 0.1992526330957298,
+          "min": 0.1440218348514965,
+          "p25": 0.17385955457360594,
+          "p75": 0.22667293772927666,
+          "unique_count": 47
+        },
+        "count": 47,
+        "final_required_rr": {
+          "count": 47,
+          "max": 4.442277572327322,
+          "median": 4.110104274387227,
+          "min": 3.421916830324562,
+          "p25": 3.5971319869868283,
+          "p75": 4.1894012850352915,
+          "unique_count": 9
+        },
+        "net_rr": {
+          "count": 47,
+          "max": 1.7609874,
+          "median": 0.75015612,
+          "min": 0.60336526,
+          "p25": 0.678056625,
+          "p75": 0.89694903,
+          "unique_count": 47
+        }
+      }
+    },
+    "regime": {
+      "UNKNOWN": {
+        "achievability_ratio": {
+          "count": 49,
+          "max": 0.48955317913566687,
+          "median": 0.195543391094906,
+          "min": 0.12770485242675222,
+          "p25": 0.17272734007196028,
+          "p75": 0.22383086656070966,
+          "unique_count": 49
+        },
+        "count": 49,
+        "final_required_rr": {
+          "count": 49,
+          "max": 6.6007246708459135,
+          "median": 4.110104274387227,
+          "min": 3.421916830324562,
+          "p25": 3.5971319869868283,
+          "p75": 4.1894012850352915,
+          "unique_count": 11
+        },
+        "net_rr": {
+          "count": 49,
+          "max": 1.7609874,
+          "median": 0.75015612,
+          "min": 0.60336526,
+          "p25": 0.68084145,
+          "p75": 0.88682878,
+          "unique_count": 49
+        }
+      }
+    },
+    "setup": {
+      "UNKNOWN": {
+        "achievability_ratio": {
+          "count": 49,
+          "max": 0.48955317913566687,
+          "median": 0.195543391094906,
+          "min": 0.12770485242675222,
+          "p25": 0.17272734007196028,
+          "p75": 0.22383086656070966,
+          "unique_count": 49
+        },
+        "count": 49,
+        "final_required_rr": {
+          "count": 49,
+          "max": 6.6007246708459135,
+          "median": 4.110104274387227,
+          "min": 3.421916830324562,
+          "p25": 3.5971319869868283,
+          "p75": 4.1894012850352915,
+          "unique_count": 11
+        },
+        "net_rr": {
+          "count": 49,
+          "max": 1.7609874,
+          "median": 0.75015612,
+          "min": 0.60336526,
+          "p25": 0.68084145,
+          "p75": 0.88682878,
+          "unique_count": 49
+        }
+      }
+    },
+    "side": {
+      "LONG": {
+        "achievability_ratio": {
+          "count": 24,
+          "max": 0.48955317913566687,
+          "median": 0.1973980120953179,
+          "min": 0.16211963456664658,
+          "p25": 0.17768628655058033,
+          "p75": 0.2247707703493092,
+          "unique_count": 24
+        },
+        "count": 24,
+        "final_required_rr": {
+          "count": 24,
+          "max": 3.818244172919888,
+          "median": 3.5971319869868283,
+          "min": 3.421916830324562,
+          "p25": 3.5971319869868283,
+          "p75": 3.5971319869868283,
+          "unique_count": 5
+        },
+        "net_rr": {
+          "count": 24,
+          "max": 1.7609874,
+          "median": 0.71258399,
+          "min": 0.60705701,
+          "p25": 0.6391610249999999,
+          "p75": 0.799623325,
+          "unique_count": 24
+        }
+      },
+      "SHORT": {
+        "achievability_ratio": {
+          "count": 25,
+          "max": 0.4166624038225298,
+          "median": 0.19191702233729252,
+          "min": 0.12770485242675222,
+          "p25": 0.16457996574901795,
+          "p75": 0.22383086656070966,
+          "unique_count": 25
+        },
+        "count": 25,
+        "final_required_rr": {
+          "count": 25,
+          "max": 6.6007246708459135,
+          "median": 4.1894012850352915,
+          "min": 4.110104274387227,
+          "p25": 4.1894012850352915,
+          "p75": 4.1894012850352915,
+          "unique_count": 6
+        },
+        "net_rr": {
+          "count": 25,
+          "max": 1.74556601,
+          "median": 0.84294457,
+          "min": 0.60336526,
+          "p25": 0.71787183,
+          "p75": 0.93771732,
+          "unique_count": 25
+        }
+      }
+    },
+    "symbol": {
+      "ADAUSDT": {
+        "achievability_ratio": {
+          "count": 10,
+          "max": 0.27924025361358473,
+          "median": 0.20312536310641854,
+          "min": 0.17237172351559937,
+          "p25": 0.1961903761254964,
+          "p75": 0.2203359047502235,
+          "unique_count": 10
+        },
+        "count": 10,
+        "final_required_rr": {
+          "count": 10,
+          "max": 4.365472005647455,
+          "median": 4.1894012850352915,
+          "min": 3.421916830324562,
+          "p25": 3.5971319869868283,
+          "p75": 4.1894012850352915,
+          "unique_count": 4
+        },
+        "net_rr": {
+          "count": 10,
+          "max": 1.21901551,
+          "median": 0.79037104,
+          "min": 0.65814156,
+          "p25": 0.7223943374999999,
+          "p75": 0.9230755225,
+          "unique_count": 10
+        }
+      },
+      "BNBUSDT": {
+        "achievability_ratio": {
+          "count": 1,
+          "max": 0.1687613944098023,
+          "median": 0.1687613944098023,
+          "min": 0.1687613944098023,
+          "p25": 0.1687613944098023,
+          "p75": 0.1687613944098023,
+          "unique_count": 1
+        },
+        "count": 1,
+        "final_required_rr": {
+          "count": 1,
+          "max": 3.5971319869868283,
+          "median": 3.5971319869868283,
+          "min": 3.5971319869868283,
+          "p25": 3.5971319869868283,
+          "p75": 3.5971319869868283,
+          "unique_count": 1
+        },
+        "net_rr": {
+          "count": 1,
+          "max": 0.60705701,
+          "median": 0.60705701,
+          "min": 0.60705701,
+          "p25": 0.60705701,
+          "p75": 0.60705701,
+          "unique_count": 1
+        }
+      },
+      "BTCUSDT": {
+        "achievability_ratio": {
+          "count": 2,
+          "max": 0.175699614317037,
+          "median": 0.17388561321723384,
+          "min": 0.17207161211743063,
+          "p25": 0.17297861266733222,
+          "p75": 0.17479261376713542,
+          "unique_count": 2
+        },
+        "count": 2,
+        "final_required_rr": {
+          "count": 2,
+          "max": 4.1894012850352915,
+          "median": 3.89326663601106,
+          "min": 3.5971319869868283,
+          "p25": 3.7451993114989444,
+          "p75": 4.0413339605231755,
+          "unique_count": 2
+        },
+        "net_rr": {
+          "count": 2,
+          "max": 0.73607619,
+          "median": 0.677520245,
+          "min": 0.6189643,
+          "p25": 0.6482422725,
+          "p75": 0.7067982175,
+          "unique_count": 2
+        }
+      },
+      "DOGEUSDT": {
+        "achievability_ratio": {
+          "count": 8,
+          "max": 0.2593624210412316,
+          "median": 0.19338370255609616,
+          "min": 0.12770485242675222,
+          "p25": 0.17576257391909422,
+          "p75": 0.21415897224925756,
+          "unique_count": 8
+        },
+        "count": 8,
+        "final_required_rr": {
+          "count": 8,
+          "max": 6.6007246708459135,
+          "median": 4.1894012850352915,
+          "min": 3.5971319869868283,
+          "p25": 4.04777060486647,
+          "p75": 4.384673397317422,
+          "unique_count": 6
+        },
+        "net_rr": {
+          "count": 8,
+          "max": 1.08657326,
+          "median": 0.816063985,
+          "min": 0.68949152,
+          "p25": 0.73972458,
+          "p75": 0.87415407,
+          "unique_count": 8
+        }
+      },
+      "LINKUSDT": {
+        "achievability_ratio": {
+          "count": 8,
+          "max": 0.4166624038225298,
+          "median": 0.18334702406971062,
+          "min": 0.16251521486661896,
+          "p25": 0.17557291486222035,
+          "p75": 0.19375092502690183,
+          "unique_count": 8
+        },
+        "count": 8,
+        "final_required_rr": {
+          "count": 8,
+          "max": 4.1894012850352915,
+          "median": 3.89326663601106,
+          "min": 3.5971319869868283,
+          "p25": 3.5971319869868283,
+          "p75": 4.1894012850352915,
+          "unique_count": 2
+        },
+        "net_rr": {
+          "count": 8,
+          "max": 1.74556601,
+          "median": 0.698789735,
+          "min": 0.63661728,
+          "p25": 0.6673976225,
+          "p75": 0.7394082275,
+          "unique_count": 8
+        }
+      },
+      "SOLUSDT": {
+        "achievability_ratio": {
+          "count": 4,
+          "max": 0.1779220062859327,
+          "median": 0.15624989717223658,
+          "min": 0.1440218348514965,
+          "p25": 0.14829527603841522,
+          "p75": 0.1665655300042969,
+          "unique_count": 4
+        },
+        "count": 4,
+        "final_required_rr": {
+          "count": 4,
+          "max": 4.1894012850352915,
+          "median": 4.1894012850352915,
+          "min": 3.5971319869868283,
+          "p25": 4.0413339605231755,
+          "p75": 4.1894012850352915,
+          "unique_count": 2
+        },
+        "net_rr": {
+          "count": 4,
+          "max": 0.6819509,
+          "median": 0.63362254,
+          "min": 0.60336526,
+          "p25": 0.62126842,
+          "p75": 0.65049443,
+          "unique_count": 4
+        }
+      },
+      "SUIUSDT": {
+        "achievability_ratio": {
+          "count": 10,
+          "max": 0.48955317913566687,
+          "median": 0.25679250812638654,
+          "min": 0.1636309708794036,
+          "p25": 0.21076670881895365,
+          "p75": 0.2726003277807717,
+          "unique_count": 10
+        },
+        "count": 10,
+        "final_required_rr": {
+          "count": 10,
+          "max": 4.251158483394164,
+          "median": 3.5971319869868283,
+          "min": 3.5971319869868283,
+          "p25": 3.5971319869868283,
+          "p75": 4.110104274387227,
+          "unique_count": 4
+        },
+        "net_rr": {
+          "count": 10,
+          "max": 1.7609874,
+          "median": 0.923716545,
+          "min": 0.69562119,
+          "p25": 0.8627683675,
+          "p75": 1.1021306725,
+          "unique_count": 10
+        }
+      },
+      "XRPUSDT": {
+        "achievability_ratio": {
+          "count": 6,
+          "max": 0.22951500889784368,
+          "median": 0.18818718892682718,
+          "min": 0.16211963456664658,
+          "p25": 0.17329344732278312,
+          "p75": 0.21773767031944896,
+          "unique_count": 6
+        },
+        "count": 6,
+        "final_required_rr": {
+          "count": 6,
+          "max": 4.1894012850352915,
+          "median": 3.5971319869868283,
+          "min": 3.5439227428248543,
+          "p25": 3.5971319869868283,
+          "p75": 3.7629661264366234,
+          "unique_count": 4
+        },
+        "net_rr": {
+          "count": 6,
+          "max": 0.84367256,
+          "median": 0.710217165,
+          "min": 0.61901235,
+          "p25": 0.6233594025,
+          "p75": 0.816938295,
+          "unique_count": 6
+        }
+      }
+    }
+  },
+  "next_task": "TASK_C_BOUNDED_OFFLINE_POLICY_CANDIDATES",
+  "production_change_required": false,
+  "pwin_required_for_median_geometry": 0.5881812783169583,
+  "rr_fail_count": 49,
+  "rr_pass_count": 0,
+  "safety": {
+    "binance_order_calls": 0,
+    "full_parameter_sweep": false,
+    "live": false,
+    "mode": "PAPER",
+    "production_mutations": 0
+  },
+  "sensitivity": {
+    "baseline_conservative": {
+      "count": 49,
+      "max": 6.6007246708459135,
+      "median": 4.110104274387227,
+      "min": 3.421916830324562,
+      "p25": 3.5971319869868283,
+      "p75": 4.1894012850352915,
+      "unique_count": 11
+    },
+    "posterior_probability": {
+      "count": 49,
+      "max": 3.6055555555555556,
+      "median": 2.7499999999999996,
+      "min": 1.8,
+      "p25": 2.4730769230769227,
+      "p75": 2.7499999999999996,
+      "unique_count": 11
+    },
+    "raw_probability": {
+      "count": 49,
+      "max": 3.9250000000000003,
+      "median": 2.8394736842105264,
+      "min": 1.9071428571428575,
+      "p25": 2.5300000000000002,
+      "p75": 2.8394736842105264,
+      "unique_count": 11
+    },
+    "remove_ev_reserve_only": {
+      "count": 49,
+      "max": 6.550724670845914,
+      "median": 4.0601042743872275,
+      "min": 3.371916830324562,
+      "p25": 3.5471319869868285,
+      "p75": 4.139401285035292,
+      "unique_count": 11
+    }
+  },
+  "task": "TRADERS_SCALPING_V2_DYNAMIC_RR_ACHIEVABILITY_TASK_B",
+  "task_status": "PASS"
+}

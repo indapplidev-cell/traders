@@ -1,4 +1,4 @@
-from scripts.forensic_dynamic_rr_calibration import _metrics, outcome_label
+from scripts.forensic_dynamic_rr_calibration import _best_causal_net_rr, _metrics, outcome_label
 
 
 def test_timeout_uses_net_outcome_instead_of_becoming_automatic_loss():
@@ -22,3 +22,27 @@ def test_calibration_metrics_are_deterministic():
     assert result["predicted_mean"] == .5
     assert result["observed_rate"] == .5
     assert abs(result["brier_score"] - .04) < 1e-12
+
+
+def test_best_causal_net_rr_uses_only_causal_future_safe_targets():
+    diagnostic = {
+        "stop_distance_bps": 20, "effective_total_cost_bps": 10,
+        "target_considerations": [
+            {"causal": True, "future_safe": True, "directionally_valid": True,
+             "target_distance_bps": 70},
+            {"causal": False, "future_safe": True, "directionally_valid": True,
+             "target_distance_bps": 200},
+        ],
+    }
+    assert _best_causal_net_rr(diagnostic) == 2.0
+
+
+def test_best_causal_net_rr_rejects_targets_below_cost():
+    diagnostic = {
+        "stop_distance_bps": 20, "effective_total_cost_bps": 10,
+        "target_considerations": [
+            {"causal": True, "future_safe": True, "directionally_valid": True,
+             "target_distance_bps": 9},
+        ],
+    }
+    assert _best_causal_net_rr(diagnostic) is None
