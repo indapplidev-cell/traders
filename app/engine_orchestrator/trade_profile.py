@@ -8,6 +8,7 @@ from types import MappingProxyType
 from typing import Final
 
 from app.config.trade_parameters import SCALPING_V2
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
 class TradeProfileId(StrEnum):
@@ -25,8 +26,8 @@ class TradeMode(StrEnum):
     SCALPING = "SCALPING"
 
 
-DEFAULT_TRADE_PROFILE_ID: Final = TradeProfileId.TRADE_5M_V2.value
-ACTIVE_SCALPING_PROFILE_ID: Final = TradeProfileId.TRADE_5M_V2.value
+DEFAULT_TRADE_PROFILE_ID: Final = RUNTIME_POLICY.active_profile
+ACTIVE_SCALPING_PROFILE_ID: Final = RUNTIME_POLICY.active_profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,62 +102,54 @@ class TradeSearchProfile:
             raise ValueError("shadow search cannot create PAPER commands or positions")
 
 
-TRADE_15M_PROFILE: Final = TradeSearchProfile(
-    trade_profile_id=TradeProfileId.TRADE_15M_V1.value,
-    trade_mode=TradeMode.TRADE_15M.value,
-    display_i18n_key="trading.profile.trade_15m.title",
-    trigger_timeframe="15m",
-    primary_timeframe="15m",
-    entry_timeframes=("15m",),
-    context_timeframes=("1h", "4h"),
-    market_data_windows=(("1m", 240), ("5m", 288), ("15m", 480),
-                         ("1h", 240), ("4h", 180), ("1d", 240)),
-    book_depth_limit=100,
-    microstructure_max_age_ms=5_000,
-    vwap_reference_notional=100.0,
-    mode=TradeProfileMode.PRODUCTION_SEARCH.value,
-    analysis_history_candles=480,
-    atr_lookback_candles=14,
-    impulse_lookback_candles=8,
-    structure_lookback_candles=32,
-    confirmation_window_candles=2,
-    volume_baseline_candles=20,
-    regime_lookback_candles=48,
-    validity_boundaries=1,
-    minimum_planned_rr=1.5,
-    cost_safety_margin_bps=2.0,
-    paper_command_creation_enabled=False,
-    position_opening_enabled=False,
-)
+def _profile_from_yaml(profile_id: str) -> TradeSearchProfile:
+    source = RUNTIME_POLICY.profiles[profile_id]
+    is_v2 = profile_id == TradeProfileId.TRADE_5M_V2.value
+    signal = SCALPING_V2.signal if is_v2 else None
+    costs = SCALPING_V2.costs if is_v2 else None
+    lifecycle = SCALPING_V2.lifecycle if is_v2 else None
+    geometry = SCALPING_V2.geometry if is_v2 else None
+    return TradeSearchProfile(
+        trade_profile_id=profile_id,
+        trade_mode=source.trade_mode,
+        display_i18n_key=source.display_i18n_key,
+        trigger_timeframe=source.trigger_timeframe,
+        primary_timeframe=source.trigger_timeframe,
+        entry_timeframes=source.entry_timeframes,
+        context_timeframes=source.context_timeframes,
+        market_data_windows=tuple(
+            (signal.market_data_windows if signal else source.market_data_windows or {}).items()
+        ),
+        book_depth_limit=costs.book_depth_limit if costs else int(source.book_depth_limit),
+        microstructure_max_age_ms=(
+            costs.microstructure_max_age_ms if costs else int(source.microstructure_max_age_ms)
+        ),
+        vwap_reference_notional=(
+            costs.vwap_reference_notional if costs else float(source.vwap_reference_notional)
+        ),
+        mode=source.mode,
+        analysis_history_candles=(
+            signal.analysis_history_candles if signal else int(source.analysis_history_candles)
+        ),
+        atr_lookback_candles=(signal.atr_lookback_candles if signal else int(source.atr_lookback_candles)),
+        impulse_lookback_candles=(signal.impulse_lookback_candles if signal else int(source.impulse_lookback_candles)),
+        structure_lookback_candles=(signal.structure_lookback_candles if signal else int(source.structure_lookback_candles)),
+        confirmation_window_candles=(signal.confirmation_window_candles if signal else int(source.confirmation_window_candles)),
+        volume_baseline_candles=(signal.volume_baseline_candles if signal else int(source.volume_baseline_candles)),
+        regime_lookback_candles=(signal.regime_lookback_candles if signal else int(source.regime_lookback_candles)),
+        validity_boundaries=(lifecycle.validity_boundaries if lifecycle else int(source.validity_boundaries)),
+        minimum_planned_rr=(geometry.minimum_planned_rr if geometry else float(source.minimum_planned_rr)),
+        cost_safety_margin_bps=(costs.cost_safety_margin_bps if costs else float(source.cost_safety_margin_bps)),
+        paper_command_creation_enabled=source.paper_command_creation_enabled,
+        position_opening_enabled=source.position_opening_enabled,
+    )
+
+
+TRADE_15M_PROFILE: Final = _profile_from_yaml(TradeProfileId.TRADE_15M_V1.value)
 
 # V2 is the sole supported Scalping runtime identity. Historical v1 values are
 # plain persisted strings and remain readable without a runnable profile.
-TRADE_5M_V2_PROFILE: Final = TradeSearchProfile(
-    trade_profile_id=TradeProfileId.TRADE_5M_V2.value,
-    trade_mode=TradeMode.SCALPING.value,
-    display_i18n_key="trading.profile.trade_5m.title",
-    trigger_timeframe=SCALPING_V2.signal.timeframe,
-    primary_timeframe=SCALPING_V2.signal.timeframe,
-    entry_timeframes=("1m", "5m"),
-    context_timeframes=("15m", "1h"),
-    market_data_windows=tuple(SCALPING_V2.signal.market_data_windows.items()),
-    book_depth_limit=SCALPING_V2.costs.book_depth_limit,
-    microstructure_max_age_ms=SCALPING_V2.costs.microstructure_max_age_ms,
-    vwap_reference_notional=SCALPING_V2.costs.vwap_reference_notional,
-    mode=TradeProfileMode.PRODUCTION_SEARCH.value,
-    analysis_history_candles=SCALPING_V2.signal.analysis_history_candles,
-    atr_lookback_candles=SCALPING_V2.signal.atr_lookback_candles,
-    impulse_lookback_candles=SCALPING_V2.signal.impulse_lookback_candles,
-    structure_lookback_candles=SCALPING_V2.signal.structure_lookback_candles,
-    confirmation_window_candles=SCALPING_V2.signal.confirmation_window_candles,
-    volume_baseline_candles=SCALPING_V2.signal.volume_baseline_candles,
-    regime_lookback_candles=SCALPING_V2.signal.regime_lookback_candles,
-    validity_boundaries=SCALPING_V2.lifecycle.validity_boundaries,
-    minimum_planned_rr=SCALPING_V2.geometry.minimum_planned_rr,
-    cost_safety_margin_bps=SCALPING_V2.costs.cost_safety_margin_bps,
-    paper_command_creation_enabled=True,
-    position_opening_enabled=True,
-)
+TRADE_5M_V2_PROFILE: Final = _profile_from_yaml(TradeProfileId.TRADE_5M_V2.value)
 
 TRADE_PROFILES: Final = MappingProxyType({
     TRADE_15M_PROFILE.trade_profile_id: TRADE_15M_PROFILE,
@@ -166,7 +159,7 @@ SCALPING_PROFILE_IDS: Final = frozenset({
     TradeProfileId.TRADE_5M_V2.value,
 })
 ACTIVE_RUNTIME_PROFILE_IDS: Final = frozenset({
-    ACTIVE_SCALPING_PROFILE_ID,
+    profile_id for profile_id, profile in RUNTIME_POLICY.profiles.items() if profile.enabled
 })
 
 # Identical values are deliberate safety invariants, not copied timeframe tuning.

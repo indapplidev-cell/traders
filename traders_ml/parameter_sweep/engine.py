@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from app.config.trade_parameters import (
     CONFIG_PATH, SCALPING_V2, TRADE_PARAMETERS, StalePositionPolicyParameters,
 )
+from app.config.yaml_authority import RESEARCH_PARAMETERS
 from app.db.paper_models import (
     PaperExecutionCommandRecord, PaperOrderRecord, PaperPositionRecord,
     ScalpingOpportunityRecord, ScalpingOutcomeDiagnosticRecord,
@@ -64,7 +65,7 @@ PROTECTED_READONLY_KEY = "TRADERS_READONLY_API_DATABASE_URL"
 PROTECTED_RUNTIME_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_URL"
 DATASET_SOURCE = "production_paper_readonly"
 LEGACY_DATASET_SOURCE = "postgres-paper-outcomes-readonly"
-DEFAULT_MAX_ROWS = 10_000
+DEFAULT_MAX_ROWS = RESEARCH_PARAMETERS.dataset.max_rows
 REQUIRED_TABLES = frozenset({
     "alembic_version", "paper_positions", "paper_orders",
     "paper_execution_commands", "online_pipeline_runs",
@@ -241,8 +242,8 @@ class SearchPlan:
 class ParameterSweepSearchPlanner:
     """Transparent deterministic planner for exhaustive or bounded exploration."""
 
-    BYTES_PER_ACTIVE_CONFIG = 256 * 1024
-    MAX_ACTIVE_BATCH_MEMORY_MB = 64.0
+    BYTES_PER_ACTIVE_CONFIG = RESEARCH_PARAMETERS.search.bytes_per_active_config
+    MAX_ACTIVE_BATCH_MEMORY_MB = RESEARCH_PARAMETERS.search.max_active_batch_memory_mb
 
     @staticmethod
     def raw_cardinality(space: Mapping[str, list[object]]) -> int:
@@ -258,13 +259,13 @@ class ParameterSweepSearchPlanner:
         effective = _effective_cardinality(space)
         if effective < 1:
             raise SweepExpectedError("SEARCH_SPACE_INVALID")
-        strategy = str(search.get("strategy", "auto")).lower()
+        strategy = str(search["strategy"]).lower()
         if strategy not in {"auto", "exhaustive", "bounded"}:
             raise SweepExpectedError("SEARCH_SPACE_INVALID")
-        seed = int(search.get("seed", 20260907))
-        exhaustive_threshold = int(search.get("exhaustive_max_configs", 10_000))
-        configured_budget = int(search.get("max_evaluated_configs", 5_000))
-        per_observation = float(search.get("max_configs_per_observation", 100.0))
+        seed = int(search["seed"])
+        exhaustive_threshold = int(search["exhaustive_max_configs"])
+        configured_budget = int(search["max_evaluated_configs"])
+        per_observation = float(search["max_configs_per_observation"])
         statistical_cap = max(1, int(dataset_rows * per_observation))
         budget = min(effective, configured_budget, statistical_cap)
         if max_configs_override is not None:
@@ -275,7 +276,7 @@ class ParameterSweepSearchPlanner:
         if strategy == "exhaustive" and effective > exhaustive_threshold:
             raise SweepExpectedError("UNSAFE_EXHAUSTIVE_SEARCH")
         selected = "EXHAUSTIVE_LAZY" if exhaustive else "AUTO_BOUNDED"
-        requested_batch = int(search.get("batch_size", 100))
+        requested_batch = int(search["batch_size"])
         safe_batch = int(
             self.MAX_ACTIVE_BATCH_MEMORY_MB * 1024 * 1024
             / self.BYTES_PER_ACTIVE_CONFIG
@@ -284,9 +285,9 @@ class ParameterSweepSearchPlanner:
         if batch < 1:
             raise SweepExpectedError("UNSAFE_MEMORY_PLAN")
         fractions = (
-            float(search.get("stage1_fraction", .60)),
-            float(search.get("stage2_fraction", .30)),
-            float(search.get("stage3_fraction", .10)),
+            float(search["stage1_fraction"]),
+            float(search["stage2_fraction"]),
+            float(search["stage3_fraction"]),
         )
         if any(value < 0 for value in fractions) or not math.isclose(sum(fractions), 1.0):
             raise SweepExpectedError("SEARCH_SPACE_INVALID")
@@ -299,8 +300,8 @@ class ParameterSweepSearchPlanner:
                 counts, strict=True,
             )
         )
-        minimum_validation = int(search.get("minimum_validation_sample", 20))
-        minimum_holdout = int(search.get("minimum_holdout_sample", 20))
+        minimum_validation = int(search["minimum_validation_sample"])
+        minimum_holdout = int(search["minimum_holdout_sample"])
         warning = (
             "LARGE_HYPOTHESIS_SPACE_SMALL_SAMPLE"
             if raw > exhaustive_threshold and dataset_rows < configured_budget else "NONE"

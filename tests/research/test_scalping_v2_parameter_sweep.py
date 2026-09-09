@@ -11,6 +11,7 @@ import pytest
 import yaml
 
 from sqlalchemy import text
+from app.config.yaml_authority import RESEARCH_PARAMETERS
 
 from app.research.scalping_v2_parameter_sweep import (
     ParameterSweepSearchPlanner, ReadOnlyResearchDatabase, SweepExpectedError,
@@ -96,6 +97,7 @@ def _search(tmp_path: Path, rows: list[dict[str, object]]) -> Path:
     }
     search = {
         "schema_version": 2, "seed": 1, "dataset": str(dataset),
+        "search": RESEARCH_PARAMETERS.search.model_dump(mode="python"),
         "output_root": str(tmp_path / "artifacts"),
         "minimum_samples": {"calibration": 2, "validation": 2, "holdout": 2},
         "search_space": space,
@@ -464,7 +466,7 @@ def test_holdout_is_never_used_for_search_or_ranking(tmp_path):
 
 def test_expanded_runtime_space_is_bounded_without_materialization(tmp_path):
     source = yaml.safe_load(
-        Path("config/research/scalping_v2_parameter_sweep.yaml").read_text()
+        Path("config/research/research_parameters.yaml").read_text()
     )
     rows = []
     base = _rows()
@@ -551,7 +553,7 @@ def test_outcome_causal_and_full_replay_capabilities_are_separate():
 def test_gate_funnel_reports_exact_first_rejection_reason():
     rows = _rows()[:2]
     params = {name: values[0] for name, values in yaml.safe_load(
-        Path("config/research/scalping_v2_parameter_sweep.yaml").read_text()
+        Path("config/research/research_parameters.yaml").read_text()
     )["search_space"].items()}
     params["min_net_edge_bps"] = 100
     admitted, funnel = _gate_funnel(rows, params)
@@ -564,7 +566,7 @@ def test_gate_funnel_reports_exact_first_rejection_reason():
 
 def test_conditional_generator_never_emits_soft_gte_hard_and_collapses_children():
     space = yaml.safe_load(
-        Path("config/research/scalping_v2_parameter_sweep.yaml").read_text()
+        Path("config/research/research_parameters.yaml").read_text()
     )["search_space"]
     variants = _conditional_variants(space)
     assert variants
@@ -819,7 +821,7 @@ def _planned_5000_replay_failure_search(tmp_path: Path) -> Path:
     dataset = tmp_path / "ui-incident.json"
     dataset.write_text(json.dumps(rows), encoding="utf-8")
     source = yaml.safe_load(
-        Path("config/research/scalping_v2_parameter_sweep.yaml").read_text()
+        Path("config/research/research_parameters.yaml").read_text()
     )
     source["dataset"] = str(dataset)
     source["output_root"] = str(tmp_path / "artifacts")

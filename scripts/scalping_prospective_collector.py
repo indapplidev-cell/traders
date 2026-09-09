@@ -20,27 +20,26 @@ from app.engine_observation.scalping_prospective_collector import (
     PostgresRepository,
     ProspectiveCalibrationCollector,
 )
-
-DEFAULT_SYMBOLS = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT"
-
+from app.config.yaml_authority import RUNTIME_POLICY
 
 def build_parser() -> argparse.ArgumentParser:
+    policy = RUNTIME_POLICY.collector
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--symbols", default=DEFAULT_SYMBOLS)
+    parser.add_argument("--symbols", default=",".join(RUNTIME_POLICY.orchestrator.symbols))
     parser.add_argument("--parameter-set-id", required=True)
     parser.add_argument("--runtime-source-commit", required=True)
     parser.add_argument("--runtime-artifact-id", required=True)
     parser.add_argument(
         "--schema-revision",
-        default="0023_scalping_v2_journal_causality",
+        default=policy.schema_revision,
     )
-    parser.add_argument("--poll-seconds", type=float, default=10.0)
-    parser.add_argument("--boundary-wait-seconds", type=int, default=240)
-    parser.add_argument("--max-part-bytes", type=int, default=64 * 1024 * 1024)
-    parser.add_argument("--initial-boundary-ms", type=int)
-    parser.add_argument("--outcome-ttl-ms", type=int, default=30_000)
-    parser.add_argument("--outcome-time-stop-ms", type=int, default=15 * 60 * 1000)
+    parser.add_argument("--poll-seconds", type=float, default=policy.poll_seconds)
+    parser.add_argument("--boundary-wait-seconds", type=int, default=policy.boundary_wait_seconds)
+    parser.add_argument("--max-part-bytes", type=int, default=policy.max_part_bytes)
+    parser.add_argument("--initial-boundary-ms", type=int, default=policy.initial_boundary_ms)
+    parser.add_argument("--outcome-ttl-ms", type=int, default=policy.outcome_ttl_ms)
+    parser.add_argument("--outcome-time-stop-ms", type=int, default=policy.outcome_time_stop_ms)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--status", action="store_true")
     return parser

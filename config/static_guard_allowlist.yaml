@@ -1,0 +1,10 @@
+schema_version: 1
+entries:
+  traders_ml/parameter_sweep/engine.py:
+    rationale: Missing-observation sentinels and counters are algorithmic replay structure; research policy is indexed from YAML without fallback.
+  traders_ml/parameter_sweep/historical_replay.py:
+    rationale: Row-field zero handling is historical-data normalization; every policy lookup uses a required config key.
+  ../traders-client/src/traders_client/providers/paper_http.py:
+    rationale: Optional numeric values are parsed from server DTOs; the client does not create a trading-policy value.
+  ../traders-client/src/traders_client/ui/paper_trading_view.py:
+    rationale: Numeric use is display formatting and missing-value presentation only.

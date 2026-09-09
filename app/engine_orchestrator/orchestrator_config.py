@@ -17,32 +17,35 @@ from app.engine_orchestrator.runtime_parameters import (
     RuntimeProfileParameters,
     resolve_runtime_parameters,
 )
+from app.config.trade_parameters import SCALPING_V2
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
-DEFAULT_MINIMUM_WINDOWS = {"1m": 60, "5m": 120, "15m": 64, "1h": 50}
+DEFAULT_MINIMUM_WINDOWS = dict(SCALPING_V2.signal.market_data_windows)
+_ORCHESTRATOR = RUNTIME_POLICY.orchestrator
 
 
 @dataclass(frozen=True, slots=True)
 class OrchestratorConfig:
-    symbols: tuple[str, ...] = PREPARED_NEXT_TRADING_UNIVERSE.symbols
+    symbols: tuple[str, ...] = _ORCHESTRATOR.symbols
     trade_profile_id: str = DEFAULT_TRADE_PROFILE_ID
-    primary_timeframe: str = "5m"
-    required_timeframes: tuple[str, ...] = ("1m", "5m", "15m", "1h")
+    primary_timeframe: str = SCALPING_V2.signal.timeframe
+    required_timeframes: tuple[str, ...] = SCALPING_V2.signal.required_timeframes
     minimum_windows: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_MINIMUM_WINDOWS))
-    poll_interval_seconds: float = 10.0
-    health_report_interval_seconds: float = 60.0
-    health_report_path: Path = Path("reports/engine_orchestrator/latest_health.json")
-    max_catchup_windows: int = 4
-    process_latest_only: bool = False
-    require_all_timeframes_ok: bool = True
-    allow_stale_higher_timeframes: bool = False
-    trigger_source: str = "postgres_closed_candle"
-    initial_backoff_seconds: float = 2.0
-    max_backoff_seconds: float = 60.0
-    freshness_retry_interval_seconds: float = 5.0
-    freshness_grace_seconds: float = 180.0
-    freshness_max_attempts: int = 60
-    waiting_batch_size: int = 100
+    poll_interval_seconds: float = _ORCHESTRATOR.poll_interval_seconds
+    health_report_interval_seconds: float = _ORCHESTRATOR.health_report_interval_seconds
+    health_report_path: Path = Path(_ORCHESTRATOR.health_report_path)
+    max_catchup_windows: int = _ORCHESTRATOR.max_catchup_windows
+    process_latest_only: bool = _ORCHESTRATOR.process_latest_only
+    require_all_timeframes_ok: bool = _ORCHESTRATOR.require_all_timeframes_ok
+    allow_stale_higher_timeframes: bool = _ORCHESTRATOR.allow_stale_higher_timeframes
+    trigger_source: str = _ORCHESTRATOR.trigger_source
+    initial_backoff_seconds: float = _ORCHESTRATOR.initial_backoff_seconds
+    max_backoff_seconds: float = _ORCHESTRATOR.max_backoff_seconds
+    freshness_retry_interval_seconds: float = _ORCHESTRATOR.freshness_retry_interval_seconds
+    freshness_grace_seconds: float = _ORCHESTRATOR.freshness_grace_seconds
+    freshness_max_attempts: int = _ORCHESTRATOR.freshness_max_attempts
+    waiting_batch_size: int = _ORCHESTRATOR.waiting_batch_size
 
     def __post_init__(self) -> None:
         profile = resolve_trade_profile(self.trade_profile_id)
@@ -56,7 +59,7 @@ class OrchestratorConfig:
             raise ValueError("primary_timeframe must be required")
         for timeframe in timeframes:
             timeframe_to_milliseconds(timeframe)
-            if int(self.minimum_windows.get(timeframe, 0)) <= 0:
+            if timeframe not in self.minimum_windows or int(self.minimum_windows[timeframe]) <= 0:
                 raise ValueError(f"positive minimum window required for {timeframe}")
         if self.poll_interval_seconds <= 0 or self.health_report_interval_seconds <= 0:
             raise ValueError("intervals must be positive")

@@ -1,0 +1,9 @@
+parameter,before_value,after_yaml_value,unit,semantic_change
+signal.impulse_absolute_threshold_pct,3.0,3.0,percent,false
+signal.impulse_atr_multiplier,2.5,2.5,dimensionless,false
+geometry.minimum_planned_rr,0.6,0.6,dimensionless,false
+geometry.target_min_bps,60.0,60.0,bps,false
+risk.risk_per_trade_bps,5.0,5.0,bps,false
+economics.min_ev_reserve_r,0.05,0.05,dimensionless,false
+risk.max_new_commands_per_cycle,1,1,dimensionless,false
+risk.max_open_positions,2,2,dimensionless,false

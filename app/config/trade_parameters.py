@@ -14,6 +14,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 import yaml
 
+from app.config.yaml_authority import RISK_POLICY, RISK_PATH, authority_hash
+
 
 CONFIG_PATH = Path(
     os.environ.get(
@@ -254,13 +256,33 @@ def parameter_snapshot(resolved: ResolvedParameterSet) -> dict[str, Any]:
                       else ParameterSource.SET_1_INHERITED if owner == "scalping-v2-set-1" and resolved.id != owner
                       else ParameterSource.SET_1_BASELINE if owner == "scalping-v2-set-1"
                       else ParameterSource.NAMED_SET_OVERRIDE)
+            source_file = "config/trading/risk_policy.yaml" if path.startswith("risk.") else "config/trading/trade_parameters.yaml"
+            source_path = path.removeprefix("risk.") if path.startswith("risk.") else path
             rows[path] = {"value": value, "source": source.value, "owner_set_id": owner,
-                          "source_component": f"config/trading/trade_parameters.yaml::{path}"}
+                          "source_file": source_file, "source_path": source_path,
+                          "source_kind": "AUTHORITATIVE_YAML", "unit": _unit_for(path),
+                          "source_component": f"{source_file}::{source_path}"}
     visit(resolved.parameters.model_dump(mode="json"))
     return {"parameter_set_id": resolved.id, "parameter_set_label": resolved.label,
             "parameter_set_version": resolved.version, "resolved_config_hash": resolved.resolved_config_hash,
             "activation_cycle_boundary_ms": resolved.activation_cycle_boundary_ms,
             "parameters": rows}
+
+
+def _unit_for(path: str) -> str:
+    if path.endswith("_bps"):
+        return "bps"
+    if path.endswith("_pct"):
+        return "percent"
+    if path.endswith("_seconds"):
+        return "seconds"
+    if path.endswith("_ms"):
+        return "milliseconds"
+    if path.endswith("_minutes"):
+        return "minutes"
+    if path.endswith("_candles") or path.endswith("_boundaries"):
+        return "count"
+    return "dimensionless"
 
 
 class TradeParameters(StrictModel):
@@ -284,11 +306,7 @@ class TradeParameters(StrictModel):
 
     @staticmethod
     def _semantic_hash(parameters: ScalpingV2Parameters) -> str:
-        canonical = json.dumps(
-            parameters.model_dump(mode="json"), sort_keys=True,
-            separators=(",", ":"), ensure_ascii=True,
-        )
-        return sha256(canonical.encode("utf-8")).hexdigest()
+        return authority_hash({"trade_parameters": parameters.model_dump(mode="json")})
 
     def resolve_scalping_v2_parameter_set(
         self, parameter_set_id: str | None = None,
@@ -386,6 +404,19 @@ _UniqueKeyLoader.add_constructor(
 def load_trade_parameters(path: Path = CONFIG_PATH) -> TradeParameters:
     try:
         raw = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
+        profile = raw["profiles"]["trade-5m-v2"]
+        if "risk" in profile:
+            raise RuntimeError("duplicate risk authority in trade_parameters.yaml")
+        profile["risk"] = RISK_POLICY.profiles["trade-5m-v2"].model_dump(mode="python")
+        for definition in raw["scalping_v2"]["parameter_sets"].values():
+            set_id = definition["id"]
+            risk = RISK_POLICY.parameter_sets.get(set_id)
+            if risk is not None:
+                for key, value in risk.overrides.items():
+                    dotted = f"risk.{key}"
+                    if dotted in definition["overrides"]:
+                        raise RuntimeError(f"duplicate authority for {dotted}")
+                    definition["overrides"][dotted] = value
         return TradeParameters.model_validate(raw)
     except RuntimeError as exc:
         if str(exc).startswith(("UNKNOWN_PARAMETER_SET", "INVALID_PARAMETER_SET")):

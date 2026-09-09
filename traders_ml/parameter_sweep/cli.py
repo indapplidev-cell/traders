@@ -11,8 +11,10 @@ from .events import SweepEvent
 from .state import read_effective_status
 
 
-DEFAULT_CONFIG = PROJECT_ROOT / "config/research/scalping_v2_parameter_sweep.yaml"
-DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "artifacts/scalping_v2_parameter_sweep"
+from app.config.yaml_authority import RESEARCH_PARAMETERS, RESEARCH_PATH
+
+DEFAULT_CONFIG = RESEARCH_PATH
+DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / RESEARCH_PARAMETERS.output_root
 
 
 def render_event(event: SweepEvent) -> None:

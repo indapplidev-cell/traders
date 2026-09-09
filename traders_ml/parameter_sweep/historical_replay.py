@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+from app.config.yaml_authority import RESEARCH_PARAMETERS
 
 SYMBOLS = (
     "ADAUSDT", "AVAXUSDT", "BNBUSDT", "BTCUSDT", "DOGEUSDT",
@@ -421,11 +422,11 @@ def resolve_price_path(row: Mapping[str, Any], config: Mapping[str, object]) -> 
         return None
     assert entry is not None and stop is not None and target is not None
     long = str(row.get("direction")) in {"LONG", "BULLISH"}
-    max_holding = int(config.get("hard_timeout_seconds", 900))
-    soft = int(config.get("soft_timeout_seconds", 600))
-    min_progress = float(config.get("min_target_progress_at_soft_timeout", .2))
-    max_extensions = int(config.get("max_extensions", 1))
-    extension = int(config.get("extension_seconds", 300))
+    max_holding = int(config["hard_timeout_seconds"])
+    soft = int(config["soft_timeout_seconds"])
+    min_progress = float(config["min_target_progress_at_soft_timeout"])
+    max_extensions = int(config["max_extensions"])
+    extension = int(config["extension_seconds"])
     high_seen = low_seen = entry
     deadline = max_holding + max_extensions * extension
     exit_price = None; reason = None; exit_ms = None
@@ -463,17 +464,17 @@ def gate_candidate(row: Mapping[str, Any], config: Mapping[str, object]) -> tupl
     cost = _effective_cost(row, config); samples = int(row.get("probability_sample_size") or 0)
     checks = (
         (stop is not None, "REJECT_GEOMETRY"),
-        (stop is not None and stop <= float(config.get("stop_max_bps", 50)), "REJECT_GEOMETRY"),
+        (stop is not None and stop <= float(config["stop_max_bps"]), "REJECT_GEOMETRY"),
         (target is not None, "REJECT_TARGET"),
-        (target is not None and target >= float(config.get("target_min_bps", 45)), "REJECT_TARGET"),
+        (target is not None and target >= float(config["target_min_bps"]), "REJECT_TARGET"),
         (cost is not None, "REJECT_COST"),
-        (row.get("net_rr") is None or float(row["net_rr"]) >= float(config.get("minimum_planned_rr", .4)), "REJECT_RR"),
+        (row.get("net_rr") is None or float(row["net_rr"]) >= float(config["minimum_planned_rr"]), "REJECT_RR"),
         # Probability was not instrumented for every historical era.  Missing
         # optional family evidence disables that family for the row; it must
         # not stop geometry/cost/risk replay.
-        (row.get("p_win_raw") is None or samples >= int(config.get("bucket_min_sample", 20)), "REJECT_PROBABILITY"),
-        (row.get("expected_ev_r") is None or float(row["expected_ev_r"]) >= float(config.get("min_positive_ev_r", 0)), "REJECT_EV"),
-        (int(row.get("causal_reset_conditions") or 0) >= int(config.get("causal_reset_min_conditions", 1)), "REJECT_DUPLICATE_OPPOSING"),
+        (row.get("p_win_raw") is None or samples >= int(config["bucket_min_sample"]), "REJECT_PROBABILITY"),
+        (row.get("expected_ev_r") is None or float(row["expected_ev_r"]) >= float(config["min_positive_ev_r"]), "REJECT_EV"),
+        (int(row.get("causal_reset_conditions") or 0) >= int(config["causal_reset_min_conditions"]), "REJECT_DUPLICATE_OPPOSING"),
     )
     for passed, reason in checks:
         if not passed:
@@ -488,11 +489,14 @@ def _effective_cost(row: Mapping[str, Any], config: Mapping[str, object]) -> flo
     return max(0.0, historical
         - float(row.get("adverse_fill_reserve_bps") or 0)
         - 2 * float(row.get("entry_slippage_bps") or 0)
-        + float(config.get("adverse_fill_reserve_bps", row.get("adverse_fill_reserve_bps") or 0))
-        + 2 * float(config.get("entry_slippage_bps", row.get("entry_slippage_bps") or 0)))
+        + float(config["adverse_fill_reserve_bps"])
+        + 2 * float(config["entry_slippage_bps"]))
 
 
-def chronological_portfolio_replay(rows: list[dict[str, Any]], config: Mapping[str, object], *, starting_balance: float = 1000.0) -> dict[str, Any]:
+def chronological_portfolio_replay(
+    rows: list[dict[str, Any]], config: Mapping[str, object], *,
+    starting_balance: float = RESEARCH_PARAMETERS.search.starting_balance,
+) -> dict[str, Any]:
     balance = starting_balance; available = starting_balance; fees_total = gross_total = 0.0
     active: list[dict[str, Any]] = []; closed: list[dict[str, Any]] = []
     funnel = {name: 0 for name in (
@@ -522,18 +526,18 @@ def chronological_portfolio_replay(rows: list[dict[str, Any]], config: Mapping[s
                 funnel["REJECT_DUPLICATE_OPPOSING"] += 1; continue
             admitted.append(row)
         admitted.sort(key=lambda r: (-float(r.get("risk_score") or 0), -float(r.get("net_rr") or 0), -float(r.get("strategy_score") or 0), -int(r["boundary_ms"]), str(r.get("run_id") or ""), str(r["candidate_id"]), str(r["symbol"])))
-        limit = int(config.get("max_new_commands_per_cycle", 1))
+        limit = int(config["max_new_commands_per_cycle"])
         funnel["REJECT_SELECTOR"] += max(0, len(admitted)-limit)
         for row in admitted[:limit]:
-            if len(active) >= int(config.get("max_open_positions", 2)):
+            if len(active) >= int(config["max_open_positions"]):
                 funnel["REJECT_PORTFOLIO"] += 1; continue
             path = resolve_price_path(row, config)
             if path is None: funnel["REJECT_GEOMETRY"] += 1; continue
             stop_bps = float(row["stop_distance_bps"])
-            risk_bps = float(config.get("risk_per_trade_bps", 10))
+            risk_bps = float(config["risk_per_trade_bps"])
             reserved = min(available, balance * risk_bps / max(stop_bps, 1e-9))
             open_risk = sum(float(p["risk_bps"]) for p in active)
-            if open_risk + risk_bps > float(config.get("total_open_risk_limit_bps", 50)) or reserved <= 0:
+            if open_risk + risk_bps > float(config["total_open_risk_limit_bps"]) or reserved <= 0:
                 funnel["REJECT_RISK"] += 1; continue
             entry = float(row["entry_price"]); exit_price = float(path["exit_price"])
             direction = 1.0 if str(row["direction"]) in {"LONG","BULLISH"} else -1.0

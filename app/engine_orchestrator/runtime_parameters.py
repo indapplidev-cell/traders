@@ -10,7 +10,9 @@ from typing import Final, Mapping
 
 from app.config.trade_parameters import (
     ACTIVE_SCALPING_V2_PARAMETER_SET, SCALPING_V2, TRADE_PARAMETERS, ResolvedParameterSet,
+    parameter_snapshot,
 )
+from app.config.yaml_authority import RUNTIME_POLICY
 
 from app.engine_orchestrator.trade_profile import (
     TradeProfileId,
@@ -116,40 +118,31 @@ class RuntimeProfileParameters:
             raise ValueError("runtime microstructure/profile identity mismatch")
         if not 0 < self.analysis_compression_ratio < 1 < self.analysis_expansion_ratio:
             raise ValueError("invalid analysis volatility-regime thresholds")
-        if profile.trade_mode == "SCALPING" and len(
-            self.scalping_setup_families
-        ) != 7:
-            raise ValueError("Scalping requires all seven setup families")
+        if profile.trade_mode == "SCALPING" and not self.scalping_setup_families:
+            raise ValueError("Scalping requires declared setup families")
         if not self.strategy_allowed_setup_types:
             raise ValueError("strategy requires explicit allowed setup types")
         if self.strategy_not_evaluated_handling not in {
             "LEGACY_WEAK_CAP", "SCORE_FROM_EVALUATED_COMPONENTS",
         }:
             raise ValueError("unsupported NOT_EVALUATED strategy handling")
-        if self.geometry_atr_buffer_shadow_cohorts != (0.25, 0.5, 0.75):
-            raise ValueError("invalid ATR buffer cohorts")
-        if self.geometry_stop_envelope_shadow_cohorts_bps != (50.0, 65.0, 80.0):
-            raise ValueError("invalid stop-envelope cohorts")
-        if self.geometry_minimum_target_shadow_cohorts_bps != (45.0, 60.0, 80.0):
-            raise ValueError("invalid minimum-target cohorts")
-        if self.economics_minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
-            raise ValueError("invalid minimum net-edge cohorts")
-        if self.rr_shadow_cohorts != (1.0, 1.2, 1.5):
-            raise ValueError("invalid RR cohorts")
-        if self.risk_per_trade_shadow_cohorts_bps != (10.0, 15.0, 20.0, 25.0):
-            raise ValueError("invalid risk-per-trade cohorts")
-        if self.risk_per_trade_bps not in {5.0, *self.risk_per_trade_shadow_cohorts_bps}:
-            raise ValueError("production risk per trade must use an approved active value")
-        if self.portfolio_max_concurrent_shadow_cohorts != (2, 3, 4):
-            raise ValueError("invalid max concurrent-position cohorts")
-        if self.portfolio_total_open_risk_shadow_cohorts_bps != (50.0, 75.0):
-            raise ValueError("invalid total open-risk cohorts")
-        if self.execution_entry_ttl_shadow_cohorts_seconds != (30, 60, 120):
-            raise ValueError("invalid entry TTL cohorts")
+        declared = RUNTIME_POLICY.runtime_parameters
+        comparisons = (
+            (self.geometry_atr_buffer_shadow_cohorts, declared.geometry_atr_buffer_shadow_cohorts),
+            (self.geometry_stop_envelope_shadow_cohorts_bps, declared.geometry_stop_envelope_shadow_cohorts_bps),
+            (self.geometry_minimum_target_shadow_cohorts_bps, declared.geometry_minimum_target_shadow_cohorts_bps),
+            (self.economics_minimum_net_edge_shadow_cohorts_bps, declared.economics_minimum_net_edge_shadow_cohorts_bps),
+            (self.rr_shadow_cohorts, declared.rr_shadow_cohorts),
+            (self.risk_per_trade_shadow_cohorts_bps, declared.risk_per_trade_shadow_cohorts_bps),
+            (self.portfolio_max_concurrent_shadow_cohorts, declared.portfolio_max_concurrent_shadow_cohorts),
+            (self.portfolio_total_open_risk_shadow_cohorts_bps, declared.portfolio_total_open_risk_shadow_cohorts_bps),
+            (self.execution_entry_ttl_shadow_cohorts_seconds, declared.execution_entry_ttl_shadow_cohorts_seconds),
+            (self.exit_time_stop_shadow_cohorts_minutes, declared.exit_time_stop_shadow_cohorts_minutes),
+        )
+        if any(actual != expected for actual, expected in comparisons):
+            raise ValueError("runtime cohorts must match authoritative YAML")
         if self.execution_entry_ttl_seconds not in self.execution_entry_ttl_shadow_cohorts_seconds:
             raise ValueError("production entry TTL must use a declared cohort")
-        if self.exit_time_stop_shadow_cohorts_minutes != (15, 30, 45):
-            raise ValueError("invalid time-stop cohorts")
         if self.exit_time_stop_minutes not in self.exit_time_stop_shadow_cohorts_minutes:
             raise ValueError("time stop must use a declared cohort")
         positive = (
@@ -247,7 +240,7 @@ class RuntimeProfileParameters:
         return f"{self.profile_id}-runtime-v1-{digest}"
 
     def public_provenance(self) -> dict[str, object]:
-        return {
+        result = {
             "runtime_parameter_contract_version": self.contract_version,
             "runtime_parameter_set_id": self.parameter_set_id,
             "runtime_parameter_profile_id": self.profile_id,
@@ -259,6 +252,11 @@ class RuntimeProfileParameters:
             "trade_parameter_config_version": TRADE_PARAMETERS.config_version,
             "trade_parameter_config_hash": TRADE_PARAMETERS.config_hash,
         }
+        if self.profile_id == TradeProfileId.TRADE_5M_V2.value:
+            result["authoritative_parameters"] = parameter_snapshot(
+                ACTIVE_SCALPING_V2_PARAMETER_SET
+            )["parameters"]
+        return result
 
     def sectioned_public_config(self) -> Mapping[str, Mapping[str, object]]:
         """Expose one reconstructible source grouped by domain ownership."""
@@ -312,6 +310,7 @@ def _runtime_parameters(
         profile = replace(profile, minimum_planned_rr=SCALPING_V2.geometry.minimum_planned_rr)
     is_scalping = profile.trade_mode == "SCALPING"
     is_v2 = profile.trade_profile_id == TradeProfileId.TRADE_5M_V2.value
+    declared = RUNTIME_POLICY.runtime_parameters
     if is_scalping:
         analysis = {
             "atr_lookback_candles": profile.atr_lookback_candles,
@@ -326,22 +325,21 @@ def _runtime_parameters(
             "regime_lookback_candles": profile.regime_lookback_candles,
         }
     else:
-        # These are the pre-remediation engine defaults.  Keeping them explicit
-        # makes the 15m parameter identity honest without changing 15m behavior.
+        legacy = RUNTIME_POLICY.profiles[TradeProfileId.TRADE_15M_V1.value]
         analysis = {
-            "atr_lookback_candles": 14,
-            "impulse_lookback_candles": 96,
-            "impulse_absolute_threshold_pct": 3.0,
-            "impulse_atr_multiplier": 2.5,
-            "structure_lookback_candles": 96,
-            "analysis_decision_candles": 24,
-            "confirmation_window_candles": 3,
-            "volume_baseline_candles": 93,
-            "breakout_volume_baseline_candles": 20,
-            "regime_lookback_candles": 96,
+            "atr_lookback_candles": legacy.atr_lookback_candles,
+            "impulse_lookback_candles": legacy.impulse_lookback_candles,
+            "impulse_absolute_threshold_pct": legacy.impulse_absolute_threshold_pct,
+            "impulse_atr_multiplier": legacy.impulse_atr_multiplier,
+            "structure_lookback_candles": legacy.structure_lookback_candles,
+            "analysis_decision_candles": legacy.analysis_decision_candles,
+            "confirmation_window_candles": legacy.confirmation_window_candles,
+            "volume_baseline_candles": legacy.volume_baseline_candles,
+            "breakout_volume_baseline_candles": legacy.breakout_volume_baseline_candles,
+            "regime_lookback_candles": legacy.regime_lookback_candles,
         }
     return RuntimeProfileParameters(
-        contract_version="trade-runtime-parameters-v1",
+        contract_version=declared.contract_version,
         profile_id=profile.trade_profile_id,
         trigger_timeframe=profile.trigger_timeframe,
         mode=profile.mode,
@@ -352,73 +350,66 @@ def _runtime_parameters(
         bounded_book_depth_limit=profile.book_depth_limit,
         microstructure_max_age_ms=profile.microstructure_max_age_ms,
         vwap_reference_notional=profile.vwap_reference_notional,
-        analysis_compression_ratio=0.75,
-        analysis_expansion_ratio=1.35,
-        scalping_setup_families=(
-            (
-                "SCALP_TREND_PULLBACK", "SCALP_BREAKOUT", "SCALP_BREAKOUT_RETEST",
-                "SCALP_RANGE_BOUNCE", "SCALP_LIQUIDITY_SWEEP",
-                "SCALP_MOMENTUM_CONTINUATION", "SCALP_COMPRESSION_BREAK",
-            )
-            if is_scalping else ()
-        ),
+        analysis_compression_ratio=declared.analysis_compression_ratio,
+        analysis_expansion_ratio=declared.analysis_expansion_ratio,
+        scalping_setup_families=declared.scalping_setup_families if is_scalping else (),
         strategy_allowed_setup_types=(
             SCALPING_V2.signal.allowed_setup_types
             if is_scalping
             else ("BREAKOUT_CONTINUATION", "TREND_CONTINUATION")
         ),
-        strategy_shadow_thresholds=(55.0, 60.0, 65.0),
+        strategy_shadow_thresholds=declared.strategy_shadow_thresholds,
         strategy_not_evaluated_handling=(
-            "SCORE_FROM_EVALUATED_COMPONENTS"
+            declared.strategy_not_evaluated_handling
             if is_scalping
             else "LEGACY_WEAK_CAP"
         ),
         geometry_atr_buffer_multiplier=(SCALPING_V2.geometry.atr_multiplier if is_v2 else 0.25),
-        geometry_atr_buffer_shadow_cohorts=(0.25, 0.5, 0.75),
+        geometry_atr_buffer_shadow_cohorts=declared.geometry_atr_buffer_shadow_cohorts,
         geometry_stop_envelope_bps=SCALPING_V2.geometry.stop_max_bps if is_v2 else 80.0,
-        geometry_stop_envelope_shadow_cohorts_bps=(50.0, 65.0, 80.0),
+        geometry_stop_envelope_shadow_cohorts_bps=declared.geometry_stop_envelope_shadow_cohorts_bps,
         geometry_minimum_target_bps=SCALPING_V2.geometry.target_min_bps if is_v2 else 45.0,
-        geometry_minimum_target_shadow_cohorts_bps=(45.0, 60.0, 80.0),
+        geometry_minimum_target_shadow_cohorts_bps=declared.geometry_minimum_target_shadow_cohorts_bps,
         economics_entry_fee_bps=(SCALPING_V2.costs.configured_entry_fee_bps if is_v2 else 10.0),
         economics_exit_fee_bps=(SCALPING_V2.costs.configured_exit_fee_bps if is_v2 else 10.0),
         economics_entry_slippage_bps=(SCALPING_V2.costs.entry_slippage_bps if is_v2 else 2.0),
         economics_exit_slippage_bps=(SCALPING_V2.costs.exit_slippage_bps if is_v2 else 2.0),
         economics_minimum_net_edge_bps=(SCALPING_V2.economics.min_net_edge_bps if is_v2 else 1.0),
-        economics_minimum_net_edge_shadow_cohorts_bps=(10.0, 15.0, 20.0),
+        economics_minimum_net_edge_shadow_cohorts_bps=declared.economics_minimum_net_edge_shadow_cohorts_bps,
         economics_max_depth_impact_bps=(SCALPING_V2.costs.max_depth_impact_bps if is_v2 else 20.0),
-        rr_shadow_cohorts=(1.0, 1.2, 1.5),
+        rr_shadow_cohorts=declared.rr_shadow_cohorts,
         risk_per_trade_bps=SCALPING_V2.risk.risk_per_trade_bps if is_v2 else 10.0,
-        risk_per_trade_shadow_cohorts_bps=(10.0, 15.0, 20.0, 25.0),
+        risk_per_trade_shadow_cohorts_bps=declared.risk_per_trade_shadow_cohorts_bps,
         portfolio_max_concurrent_positions=SCALPING_V2.risk.max_open_positions if is_v2 else 3,
-        portfolio_max_concurrent_shadow_cohorts=(2, 3, 4),
+        portfolio_max_concurrent_shadow_cohorts=declared.portfolio_max_concurrent_shadow_cohorts,
         portfolio_max_total_open_risk_bps=(SCALPING_V2.risk.total_open_risk_limit_bps if is_v2 else 50.0),
-        portfolio_total_open_risk_shadow_cohorts_bps=(50.0, 75.0),
+        portfolio_total_open_risk_shadow_cohorts_bps=declared.portfolio_total_open_risk_shadow_cohorts_bps,
         execution_entry_ttl_seconds=SCALPING_V2.lifecycle.entry_fill_window_seconds if is_v2 else 60,
-        execution_entry_ttl_shadow_cohorts_seconds=(30, 60, 120),
+        execution_entry_ttl_shadow_cohorts_seconds=declared.execution_entry_ttl_shadow_cohorts_seconds,
         execution_max_price_drift_bps=(SCALPING_V2.lifecycle.maximum_price_drift_bps if is_v2 else 10.0),
         exit_time_stop_minutes=SCALPING_V2.lifecycle.exit_time_stop_minutes if is_v2 else 30,
-        exit_time_stop_shadow_cohorts_minutes=(15, 30, 45),
-        exit_adaptive_rules_production_enabled=False,
+        exit_time_stop_shadow_cohorts_minutes=declared.exit_time_stop_shadow_cohorts_minutes,
+        exit_adaptive_rules_production_enabled=declared.exit_adaptive_rules_production_enabled,
         opportunity_reentry_enabled=(not SCALPING_V2.causal_opportunity.one_execution_per_opportunity if is_v2 else False),
         analysis_history_candles=profile.analysis_history_candles,
         **analysis,
         setup_policy_id=(
-            "scalping-micro-setup-v2" if is_v2 else "scalping-setup-families-v1"
+            declared.setup_policy_id if is_v2 else "scalping-setup-families-v1"
             if is_scalping
             else "engine-setup-01-causal-v1"
         ),
-        strategy_policy_id=("scalping-short-horizon-entry-v2" if is_v2 else "engine-strategy-01-shadow-v1"),
-        strategy_minimum_allowed_quality="ACCEPTABLE",
+        strategy_policy_id=(declared.strategy_policy_id if is_v2 else "engine-strategy-01-shadow-v1"),
+        strategy_minimum_allowed_quality=declared.strategy_minimum_allowed_quality,
         risk_shadow_policy_id=(
-            "scalping-risk-capped-v2" if is_v2
+            declared.risk_shadow_policy_id if is_v2
             else "ENGINE_RISK_01_RESEARCH_POLICY_V1"
         ),
-        risk_minimum_strategy_quality="ACCEPTABLE",
+        risk_minimum_strategy_quality=declared.risk_minimum_strategy_quality,
         risk_minimum_strategy_score=SCALPING_V2.signal.strategy_minimum_score if is_v2 else 65.0,
         validity_boundaries=profile.validity_boundaries,
         minimum_planned_rr=profile.minimum_planned_rr,
         cost_safety_margin_bps=profile.cost_safety_margin_bps,
-        stop_policy_id=("SCALPING_CAUSAL_VOLATILITY_STOP_V2" if is_v2 else "LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER"),
+        stop_policy_id=(declared.stop_policy_id if is_v2 else "LOCAL_INVALIDATION_STRUCTURE_WITH_VOLATILITY_BUFFER"),
         target_policy_id=(
             SCALPING_V2.geometry.target_policy if is_v2
             else "CAUSAL_HIERARCHY_COST_AWARE_NET_RR_V3"

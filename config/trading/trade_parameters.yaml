@@ -15,7 +15,6 @@ scalping_v2:
       inherits: scalping-v2-set-1
       overrides:
         geometry.minimum_planned_rr: 0.6
-        risk.risk_per_trade_bps: 5.0
         geometry.target_min_bps: 60.0
         economics.min_ev_reserve_r: 0.05
         exit_policy.stale_position.net_break_even_protection_enabled: true
@@ -55,11 +54,6 @@ profiles:
       volume_baseline_candles: 12
       regime_lookback_candles: 24
       strategy_minimum_score: 55.0
-    risk:
-      risk_per_trade_bps: 10.0
-      max_open_positions: 2
-      max_new_commands_per_cycle: 1
-      total_open_risk_limit_bps: 50.0
     geometry:
       atr_multiplier: 0.25
       stop_min_bps: 0.0

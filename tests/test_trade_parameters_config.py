@@ -33,11 +33,11 @@ def test_authoritative_config_loads_and_drives_active_named_set():
 
 @pytest.mark.parametrize("mutation", [
     lambda value: value.replace("schema_version: 1", "schema_version: 2"),
-    lambda value: value.replace("    risk:\n", "    unknown_section: true\n    risk:\n", 1),
-    lambda value: value.replace("      risk_per_trade_bps: 10.0\n", "", 1),
+    lambda value: value.replace("    signal:\n", "    unknown_section: true\n    signal:\n", 1),
+    lambda value: value.replace("      impulse_atr_multiplier: 2.5\n", "", 1),
     lambda value: value.replace(
-        "      risk_per_trade_bps: 10.0\n",
-        "      risk_per_trade_bps: 10.0\n      risk_per_trade_bps: 11.0\n", 1,
+        "      impulse_atr_multiplier: 2.5\n",
+        "      impulse_atr_multiplier: 2.5\n      impulse_atr_multiplier: 2.6\n", 1,
     ),
 ])
 def test_invalid_missing_unknown_and_duplicate_fields_fail_closed(tmp_path: Path, mutation):

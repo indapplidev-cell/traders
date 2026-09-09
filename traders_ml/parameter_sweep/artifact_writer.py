@@ -15,7 +15,9 @@ from typing import Any, Callable, Iterable
 
 
 TRANSIENT_WINDOWS_CODES = frozenset({5, 32, 33})
-DEFAULT_RETRY_DELAYS = (0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0)
+from app.config.yaml_authority import RESEARCH_PARAMETERS
+
+DEFAULT_RETRY_DELAYS = RESEARCH_PARAMETERS.artifact_writer.retry_delays_seconds
 _locks_guard = threading.Lock()
 _locks: dict[str, threading.RLock] = {}
 

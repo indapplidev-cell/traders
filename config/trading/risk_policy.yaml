@@ -1,0 +1,16 @@
+schema_version: 1
+config_version: scalping-v2-risk-policy-1
+profiles:
+  trade-5m-v2:
+    risk_per_trade_bps: 10.0
+    max_open_positions: 2
+    max_new_commands_per_cycle: 1
+    total_open_risk_limit_bps: 50.0
+parameter_sets:
+  scalping-v2-set-1:
+    inherits: null
+    overrides: {}
+  scalping-v2-set-2:
+    inherits: scalping-v2-set-1
+    overrides:
+      risk_per_trade_bps: 5.0

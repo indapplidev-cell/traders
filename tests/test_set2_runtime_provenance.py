@@ -24,10 +24,13 @@ def test_frozen_snapshot_matches_actual_geometry_ev_inputs(monkeypatch):
         assert frozen["parameters"][path]["value"] == value
         assert frozen["parameters"][path]["source"] == "SET_2_OVERRIDE"
     assert frozen["parameters"]["risk.max_open_positions"]["source"] == "SET_1_INHERITED"
-    assert frozen["parameters"]["signal.impulse_absolute_threshold_pct"] == {
+    impulse = frozen["parameters"]["signal.impulse_absolute_threshold_pct"]
+    assert {key: impulse[key] for key in ("value", "source", "owner_set_id", "source_component")} == {
         "value": 3.0, "source": "SET_1_INHERITED", "owner_set_id": "scalping-v2-set-1",
         "source_component": "config/trading/trade_parameters.yaml::signal.impulse_absolute_threshold_pct",
     }
+    assert impulse["source_kind"] == "AUTHORITATIVE_YAML"
+    assert impulse["unit"] == "percent"
     assert cycle.risk_runner.policy.runtime_parameters.risk_per_trade_bps == 5
     captured = []
     import app.engine_paper.scalping_shadow as module

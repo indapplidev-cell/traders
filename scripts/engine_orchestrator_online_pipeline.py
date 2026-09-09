@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -28,6 +27,7 @@ from app.engine_paper.scalping_statistics import PostgresPaperOutcomeStatisticsS
 from app.engine_paper.scalping_opportunity_registry import PostgresScalpingOpportunityRegistry
 from app.engine_paper.binance_account_commission import BinanceAccountCommissionManager
 from app.config.trade_parameters import TRADE_PARAMETERS
+from app.config.yaml_authority import RUNTIME_POLICY
 from app.engine_orchestrator.profile_owner import (
     OwnerAlreadyActiveError,
     PostgresProfileOwner,
@@ -50,8 +50,9 @@ def csv_values(value: str) -> tuple[str, ...]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    policy = RUNTIME_POLICY.orchestrator
     parser = argparse.ArgumentParser(description="Online closed-candle safe pipeline orchestrator")
-    parser.add_argument("--symbols", type=csv_values, default=csv_values("BTCUSDT,ETHUSDT,SOLUSDT"))
+    parser.add_argument("--symbols", type=csv_values, default=policy.symbols)
     parser.add_argument(
         "--trade-profile", choices=tuple(sorted(ACTIVE_RUNTIME_PROFILE_IDS)),
         default=DEFAULT_TRADE_PROFILE_ID,
@@ -63,29 +64,29 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument("--once", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--process-latest-only", action="store_true")
-    parser.add_argument("--max-catchup-windows", type=int, default=4)
-    parser.add_argument("--poll-interval-seconds", type=float, default=10)
-    parser.add_argument("--health-report", type=Path, default=Path("reports/engine_orchestrator/latest_health.json"))
-    parser.add_argument("--health-report-interval-seconds", type=float, default=60)
+    parser.add_argument("--max-catchup-windows", type=int, default=policy.max_catchup_windows)
+    parser.add_argument("--poll-interval-seconds", type=float, default=policy.poll_interval_seconds)
+    parser.add_argument("--health-report", type=Path, default=Path(policy.health_report_path))
+    parser.add_argument("--health-report-interval-seconds", type=float, default=policy.health_report_interval_seconds)
     parser.add_argument("--stop-after-cycles", type=int)
     parser.add_argument("--strategy-cap-shadow-economic-capture", action="store_true")
-    parser.add_argument("--require-all-timeframes-ok", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--allow-stale-higher-timeframes", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--require-all-timeframes-ok", action=argparse.BooleanOptionalAction, default=policy.require_all_timeframes_ok)
+    parser.add_argument("--allow-stale-higher-timeframes", action=argparse.BooleanOptionalAction, default=policy.allow_stale_higher_timeframes)
     parser.add_argument(
         "--freshness-retry-interval-seconds", type=float,
-        default=float(os.getenv("ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS", "5")),
+        default=policy.freshness_retry_interval_seconds,
     )
     parser.add_argument(
         "--freshness-grace-seconds", type=float,
-        default=float(os.getenv("ORCHESTRATOR_FRESHNESS_GRACE_SECONDS", "180")),
+        default=policy.freshness_grace_seconds,
     )
     parser.add_argument(
         "--freshness-max-attempts", type=int,
-        default=int(os.getenv("ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS", "60")),
+        default=policy.freshness_max_attempts,
     )
     parser.add_argument(
         "--waiting-batch-size", type=int,
-        default=int(os.getenv("ORCHESTRATOR_WAITING_BATCH_SIZE", "100")),
+        default=policy.waiting_batch_size,
     )
     return parser
 

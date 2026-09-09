@@ -20,6 +20,8 @@ from uuid import uuid4
 import psycopg
 from psycopg.rows import dict_row
 
+from app.config.yaml_authority import RUNTIME_POLICY
+
 
 PROFILE_ID = "trade-5m-v2"
 TRADE_MODE = "SCALPING"
@@ -31,8 +33,7 @@ ANALYSIS_SEMANTICS_VERSION = "scalping-analysis-v1"
 DECISION_SEMANTICS_VERSION = "scalping-risk-type-contract-v2"
 OWNER_NAMESPACE = 1_937_830_411
 OWNER_KEY = 527_115_001
-DEFAULT_MAX_PART_BYTES = 64 * 1024 * 1024
-DEFAULT_OUTCOME_HORIZON_MS = (45 * 60 + 120) * 1000
+DEFAULT_MAX_PART_BYTES = RUNTIME_POLICY.collector.max_part_bytes
 PROBABILITY_OUTCOME_SEMANTICS = "scalping-probability-outcome-v3-decision-time-ttl30s-timestop15m-netcost"
 
 
@@ -593,13 +594,13 @@ class CollectorConfig:
     parameter_set_id: str
     runtime_source_commit: str
     runtime_artifact_id: str
-    schema_revision: str = "0023_scalping_v2_journal_causality"
-    poll_seconds: float = 10.0
-    boundary_wait_seconds: int = 240
+    schema_revision: str = RUNTIME_POLICY.collector.schema_revision
+    poll_seconds: float = RUNTIME_POLICY.collector.poll_seconds
+    boundary_wait_seconds: int = RUNTIME_POLICY.collector.boundary_wait_seconds
     max_part_bytes: int = DEFAULT_MAX_PART_BYTES
     initial_boundary_ms: int | None = None
-    outcome_ttl_ms: int = 30_000
-    outcome_time_stop_ms: int = 15 * 60 * 1000
+    outcome_ttl_ms: int = RUNTIME_POLICY.collector.outcome_ttl_ms
+    outcome_time_stop_ms: int = RUNTIME_POLICY.collector.outcome_time_stop_ms
 
     @property
     def identity(self) -> HomogeneityIdentity:

@@ -1,0 +1,92 @@
+schema_version: 1
+config_version: runtime-policy-1
+active_profile: trade-5m-v2
+profiles:
+  trade-15m-v1:
+    enabled: false
+    trade_mode: TRADE_15M
+    display_i18n_key: trading.profile.trade_15m.title
+    trigger_timeframe: 15m
+    entry_timeframes: [15m]
+    context_timeframes: [1h, 4h]
+    market_data_windows: {1m: 240, 5m: 288, 15m: 480, 1h: 240, 4h: 180, 1d: 240}
+    book_depth_limit: 100
+    microstructure_max_age_ms: 5000
+    vwap_reference_notional: 100.0
+    mode: PRODUCTION_SEARCH
+    analysis_history_candles: 480
+    atr_lookback_candles: 14
+    impulse_lookback_candles: 96
+    structure_lookback_candles: 96
+    confirmation_window_candles: 3
+    volume_baseline_candles: 93
+    regime_lookback_candles: 96
+    analysis_decision_candles: 24
+    breakout_volume_baseline_candles: 20
+    impulse_absolute_threshold_pct: 3.0
+    impulse_atr_multiplier: 2.5
+    validity_boundaries: 1
+    minimum_planned_rr: 1.5
+    cost_safety_margin_bps: 2.0
+    paper_command_creation_enabled: false
+    position_opening_enabled: false
+  trade-5m-v2:
+    enabled: true
+    trade_mode: SCALPING
+    display_i18n_key: trading.profile.trade_5m.title
+    trigger_timeframe: 5m
+    entry_timeframes: [1m, 5m]
+    context_timeframes: [15m, 1h]
+    mode: PRODUCTION_SEARCH
+    paper_command_creation_enabled: true
+    position_opening_enabled: true
+runtime_parameters:
+  contract_version: trade-runtime-parameters-v1
+  analysis_compression_ratio: 0.75
+  analysis_expansion_ratio: 1.35
+  scalping_setup_families: [SCALP_TREND_PULLBACK, SCALP_BREAKOUT, SCALP_BREAKOUT_RETEST, SCALP_RANGE_BOUNCE, SCALP_LIQUIDITY_SWEEP, SCALP_MOMENTUM_CONTINUATION, SCALP_COMPRESSION_BREAK]
+  strategy_shadow_thresholds: [55.0, 60.0, 65.0]
+  strategy_not_evaluated_handling: SCORE_FROM_EVALUATED_COMPONENTS
+  geometry_atr_buffer_shadow_cohorts: [0.25, 0.5, 0.75]
+  geometry_stop_envelope_shadow_cohorts_bps: [50.0, 65.0, 80.0]
+  geometry_minimum_target_shadow_cohorts_bps: [45.0, 60.0, 80.0]
+  economics_minimum_net_edge_shadow_cohorts_bps: [10.0, 15.0, 20.0]
+  rr_shadow_cohorts: [1.0, 1.2, 1.5]
+  risk_per_trade_shadow_cohorts_bps: [10.0, 15.0, 20.0, 25.0]
+  portfolio_max_concurrent_shadow_cohorts: [2, 3, 4]
+  portfolio_total_open_risk_shadow_cohorts_bps: [50.0, 75.0]
+  execution_entry_ttl_shadow_cohorts_seconds: [30, 60, 120]
+  exit_time_stop_shadow_cohorts_minutes: [15, 30, 45]
+  exit_adaptive_rules_production_enabled: false
+  setup_policy_id: scalping-micro-setup-v2
+  strategy_policy_id: scalping-short-horizon-entry-v2
+  strategy_minimum_allowed_quality: ACCEPTABLE
+  risk_shadow_policy_id: scalping-risk-capped-v2
+  risk_minimum_strategy_quality: ACCEPTABLE
+  stop_policy_id: SCALPING_CAUSAL_VOLATILITY_STOP_V2
+orchestrator:
+  symbols: [BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, LINKUSDT, DOGEUSDT, ADAUSDT, AVAXUSDT, SUIUSDT]
+  poll_interval_seconds: 10.0
+  health_report_interval_seconds: 60.0
+  health_report_path: reports/engine_orchestrator/latest_health_trade_5m.json
+  max_catchup_windows: 4
+  process_latest_only: false
+  require_all_timeframes_ok: true
+  allow_stale_higher_timeframes: false
+  trigger_source: postgres_closed_candle
+  initial_backoff_seconds: 2.0
+  max_backoff_seconds: 60.0
+  freshness_retry_interval_seconds: 5.0
+  freshness_grace_seconds: 180.0
+  freshness_max_attempts: 60
+  waiting_batch_size: 100
+collector:
+  output_directory: reports/calibration/scalping-v2-probability-set2
+  parameter_set_id: scalping-v2-set-2
+  schema_revision: 0031_scalping_parameter_sets
+  initial_boundary_ms: 1788885600000
+  outcome_ttl_ms: 30000
+  outcome_time_stop_ms: 900000
+  poll_seconds: 2.0
+  boundary_wait_seconds: 240
+  max_part_bytes: 67108864
