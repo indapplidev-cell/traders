@@ -67,6 +67,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--collector-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--fresh-from-boundary", type=int)
     args = parser.parse_args()
     health = json.loads((args.collector_dir / "health.json").read_text(encoding="utf-8"))
     segment = health["observation_segment_id"]
@@ -100,11 +101,14 @@ def main() -> None:
     orphan = sorted(got - set(exp))
     duplicate = sorted(key for key, rows in grouped.items() if len(rows) > 1)
     ingestion_lag = []
+    fresh_ingestion_lag = []
     for key in set(exp) & got:
         captured = iso_ms(grouped[key][0].get("captured_at"))
         finished = iso_ms(exp[key].get("finished_at"))
         if captured is not None and finished is not None:
             ingestion_lag.append((captured - finished) / 1000)
+            if args.fresh_from_boundary is not None and key[0] >= args.fresh_from_boundary:
+                fresh_ingestion_lag.append((captured - finished) / 1000)
     outcome_by_obs = Counter(str(r["observation_id"]) for r in outcomes)
     mature_cutoff = int(datetime.now(timezone.utc).timestamp() * 1000) - 1_140_000
     expected_mature = [r for r in collected_rows if r.get("outcome_followup") and r["outcome_followup"]["followup_due_ms"] <= mature_cutoff]
@@ -131,6 +135,10 @@ def main() -> None:
             "p50": percentile(ingestion_lag,.5), "p75": percentile(ingestion_lag,.75),
             "p90": percentile(ingestion_lag,.9), "p95": percentile(ingestion_lag,.95),
             "p99": percentile(ingestion_lag,.99), "max": max(ingestion_lag) if ingestion_lag else None},
+        "fresh_ingestion_lag_seconds": {"from_boundary": args.fresh_from_boundary,
+            "count": len(fresh_ingestion_lag), "p50": percentile(fresh_ingestion_lag,.5),
+            "p95": percentile(fresh_ingestion_lag,.95), "p99": percentile(fresh_ingestion_lag,.99),
+            "max": max(fresh_ingestion_lag) if fresh_ingestion_lag else None},
         "skipped_cycles": sum(v["state"]=="SKIPPED" for v in cycles.values()),
         "partial_cycles": sum(v["state"]=="PARTIAL" for v in cycles.values()),
         "complete_cycles": sum(v["state"]=="COMPLETE" for v in cycles.values()),
