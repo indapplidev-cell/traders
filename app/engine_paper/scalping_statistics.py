@@ -25,7 +25,7 @@ from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket
 
 
 STATISTICS_SOURCE_VERSION = "postgres-paper-plus-causal-prospective-v2"
-PROSPECTIVE_OUTCOME_SEMANTICS = "scalping-probability-outcome-v2-ttl30s-timestop15m-netcost"
+PROSPECTIVE_OUTCOME_SEMANTICS = "scalping-probability-outcome-v3-decision-time-ttl30s-timestop15m-netcost"
 
 
 @dataclass(frozen=True, slots=True)

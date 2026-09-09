@@ -33,7 +33,7 @@ OWNER_NAMESPACE = 1_937_830_411
 OWNER_KEY = 527_115_001
 DEFAULT_MAX_PART_BYTES = 64 * 1024 * 1024
 DEFAULT_OUTCOME_HORIZON_MS = (45 * 60 + 120) * 1000
-PROBABILITY_OUTCOME_SEMANTICS = "scalping-probability-outcome-v2-ttl30s-timestop15m-netcost"
+PROBABILITY_OUTCOME_SEMANTICS = "scalping-probability-outcome-v3-decision-time-ttl30s-timestop15m-netcost"
 
 
 class MixedRuntimeLineageWithinBoundary(RuntimeError):
@@ -196,6 +196,7 @@ def _extract_followup(
         "LOW" if total_cost <= 20 else "MEDIUM" if total_cost <= 40 else "HIGH"
     )
     boundary_ms = int(observation["identity"]["boundary_time_ms"])
+    entry_decision_time_ms = _integer(_first(paper, "created_at_ms")) or boundary_ms
     return {
         "opportunity_id": observation["identity"].get("opportunity_id"),
         "observation_id": observation["observation_id"],
@@ -207,14 +208,14 @@ def _extract_followup(
         "effective_total_cost_bps": total_cost,
         "outcome_semantics": PROBABILITY_OUTCOME_SEMANTICS,
         "boundary_time_ms": boundary_ms,
-        "entry_decision_time_ms": _integer(_first(paper, "created_at_ms")) or boundary_ms,
+        "entry_decision_time_ms": entry_decision_time_ms,
         "direction": direction,
         "entry_reference": entry,
         "baseline_stop": _number(paper.get("hypothetical_stop_level")),
         "baseline_target": _number(paper.get("hypothetical_target_level")),
         "ttl_ms": ttl_ms,
         "time_stop_ms": time_stop_ms,
-        "followup_due_ms": boundary_ms + time_stop_ms + 120_000,
+        "followup_due_ms": entry_decision_time_ms + time_stop_ms + 120_000,
     }
 
 
@@ -225,14 +226,15 @@ def _nested_setup_type(setup: Mapping[str, Any]) -> object | None:
 def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Apply deterministic conservative baseline semantics to a frozen path."""
     boundary = int(followup["boundary_time_ms"])
+    decision_time = int(followup.get("entry_decision_time_ms") or boundary)
     entry = float(followup["entry_reference"])
-    ttl_end = boundary + int(followup.get("ttl_ms") or 60_000)
-    time_stop = boundary + int(followup.get("time_stop_ms") or 30 * 60 * 1000)
+    ttl_end = decision_time + int(followup.get("ttl_ms") or 60_000)
+    time_stop = decision_time + int(followup.get("time_stop_ms") or 30 * 60 * 1000)
     direction = str(followup.get("direction") or "").upper()
     stop, target = _number(followup.get("baseline_stop")), _number(followup.get("baseline_target"))
     ordered = sorted(candles, key=lambda item: int(item["open_time_ms"]))
     entry_index = next((index for index, candle in enumerate(ordered)
-                        if int(candle["open_time_ms"]) < ttl_end
+                        if decision_time <= int(candle["open_time_ms"]) < ttl_end
                         and float(candle["low"]) <= entry <= float(candle["high"])), None)
     serialized = [{
         "open_time_ms": int(candle["open_time_ms"]),
@@ -280,9 +282,9 @@ def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str,
             hit_target = target is not None and low <= target
             hit_stop = stop is not None and high >= stop
         if hit_target and target_time is None:
-            target_time = opened - boundary
+            target_time = opened - decision_time
         if hit_stop and stop_time is None:
-            stop_time = opened - boundary
+            stop_time = opened - decision_time
         if hit_target and hit_stop:
             outcome, both, terminal_ms = "AMBIGUOUS_BOTH_SAME_CANDLE", True, opened
             terminal_price = float(candle["close"])
@@ -295,8 +297,8 @@ def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str,
             outcome, tp_first, terminal_ms = "TP_FIRST", True, opened
             terminal_price = float(target)
             break
-    best = max(favorable, default=(0.0, boundary), key=lambda item: item[0])
-    worst = max(adverse, default=(0.0, boundary), key=lambda item: item[0])
+    best = max(favorable, default=(0.0, decision_time), key=lambda item: item[0])
+    worst = max(adverse, default=(0.0, decision_time), key=lambda item: item[0])
     gross_return_bps = (
         (terminal_price - entry) / entry * 10_000
         if direction in {"BULLISH", "LONG"}
@@ -306,8 +308,8 @@ def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str,
     result.update({
         "baseline_outcome": outcome, "tp_first": tp_first, "sl_first": sl_first,
         "both_same_candle": both, "mfe_bps": best[0], "mae_bps": worst[0],
-        "holding_time_ms": max(0, terminal_ms - boundary),
-        "time_to_mfe_ms": max(0, best[1] - boundary),
+        "holding_time_ms": max(0, terminal_ms - decision_time),
+        "time_to_mfe_ms": max(0, best[1] - decision_time),
         "time_to_mae_ms": max(0, worst[1] - boundary),
         "time_to_target_ms": target_time, "time_to_stop_ms": stop_time,
         "terminal_price": terminal_price,

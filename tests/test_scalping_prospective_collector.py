@@ -196,6 +196,25 @@ def test_outcome_entry_ttl_and_path_without_geometry():
     assert path["baseline_outcome"] == "PATH_CAPTURED_NO_BASELINE_GEOMETRY"
 
 
+def test_outcome_never_uses_a_candle_opened_before_entry_decision():
+    value = evaluate_outcome(
+        followup(entry_decision_time_ms=1_030_000, ttl_ms=60_000),
+        [candle(1_000_000, 99, 101), candle(1_060_000, 99, 101)],
+    )
+    assert value["entry_status"] == "ENTERED"
+    assert value["entry_candle_open_time_ms"] == 1_060_000
+    assert value["time_to_mfe_ms"] == 30_000
+
+
+def test_outcome_ttl_is_anchored_to_entry_decision_not_cycle_boundary():
+    value = evaluate_outcome(
+        followup(entry_decision_time_ms=1_050_000, ttl_ms=30_000),
+        [candle(1_000_000, 99, 101), candle(1_060_000, 99, 101)],
+    )
+    assert value["entry_status"] == "ENTERED"
+    assert value["entry_candle_open_time_ms"] == 1_060_000
+
+
 def test_append_checkpoint_restart_dedupe_rotation_and_same_segment(tmp_path):
     first = AppendOnlyStore(tmp_path, identity(), max_part_bytes=20)
     record = {"observation_id": "one", "value": 1}
