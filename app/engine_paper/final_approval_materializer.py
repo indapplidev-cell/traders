@@ -276,6 +276,14 @@ class NaturalFinalApprovalMaterializer:
                 evaluation_time_ms=evaluation_time_ms,
             )
             attempted_stage = "QUANTITY_APPROVED"
+            frozen_risk_bps = None
+            if result.trade_profile_id == "trade-5m-v2":
+                frozen = result.runtime_parameters_snapshot
+                if frozen is None or frozen.parameter_set_id != result.runtime_parameter_set_id:
+                    return self._not_created(result, "RUNTIME_PARAMETER_SNAPSHOT_MISSING",
+                        attempted_stage="QUANTITY_APPROVED", stage_status="REJECTED",
+                        safe_reason_detail="5m quantity requires same-cycle frozen risk")
+                frozen_risk_bps = Decimal(str(frozen.risk_per_trade_bps))
             controlled_quantity = issue_controlled_paper_quantity_approval(
                 strategy_approval,
                 research_risk,
@@ -284,6 +292,7 @@ class NaturalFinalApprovalMaterializer:
                 evaluation_time_ms=evaluation_time_ms,
                 source_candle_close_time_ms=source_close_ms,
                 source_timeframe=result.primary_timeframe,
+                risk_per_trade_bps=frozen_risk_bps,
             )
             quantity_authority_status = "PASS"
             portfolio_gate = self._portfolio_gate_source(

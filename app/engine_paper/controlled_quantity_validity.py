@@ -53,6 +53,8 @@ class PaperQuantitySizingAudit:
     applicable_min_notional: Decimal | None
     applicable_max_notional: Decimal | None
     normalized_quantity: Decimal
+    risk_per_trade_bps: Decimal = Decimal("100")
+    risk_parameter_source: str = "LEGACY_GENERAL_POLICY"
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -122,6 +124,7 @@ def calculate_controlled_quantity(
     strategy: PaperStrategyApproval,
     account: PaperAccountSummary,
     registry: InstrumentQuantityConstraintRegistry = ACTIVE_QUANTITY_CONSTRAINT_REGISTRY,
+    risk_per_trade_bps: Decimal | None = None,
 ) -> PaperQuantitySizingAudit:
     """Apply exactly paper-quantity-policy-v1 using only local authority data."""
     if not isinstance(strategy, PaperStrategyApproval) or not isinstance(account, PaperAccountSummary):
@@ -134,6 +137,7 @@ def calculate_controlled_quantity(
         entry=strategy.entry_reference_price,
         stop=strategy.stop_price,
         registry=registry,
+        risk_per_trade_bps=risk_per_trade_bps,
     )
 
 
@@ -144,6 +148,7 @@ def calculate_quantity_sizing(
     entry: Decimal,
     stop: Decimal,
     registry: InstrumentQuantityConstraintRegistry = ACTIVE_QUANTITY_CONSTRAINT_REGISTRY,
+    risk_per_trade_bps: Decimal | None = None,
 ) -> PaperQuantitySizingAudit:
     """Apply the shared quantity math without granting PAPER authority.
 
@@ -162,7 +167,10 @@ def calculate_quantity_sizing(
     risk_per_unit = abs(entry - stop)
     if risk_per_unit <= 0:
         fail(PaperReasonCode.PAPER_INPUT_STOP_TARGET_INVALID, "risk distance must be positive", "stop_price")
-    risk_budget = equity * RISK_FRACTION
+    risk_bps = RISK_FRACTION * Decimal("10000") if risk_per_trade_bps is None else Decimal(risk_per_trade_bps)
+    if not risk_bps.is_finite() or not 0 < risk_bps <= 100:
+        fail(PaperReasonCode.PAPER_INPUT_QUANTITY_INVALID, "invalid frozen risk budget", "risk_per_trade_bps")
+    risk_budget = equity * risk_bps / Decimal("10000")
     raw = risk_budget / risk_per_unit
     balance_cap = equity / entry
     capped = min(raw, balance_cap, constraint.max_quantity)
@@ -182,7 +190,8 @@ def calculate_quantity_sizing(
         QUANTITY_POLICY_VERSION, registry.version, registry.universe_id, symbol,
         equity, entry, stop, risk_budget, risk_per_unit, raw, balance_cap,
         constraint.quantity_step, constraint.min_quantity, constraint.max_quantity,
-        constraint.min_notional, constraint.max_notional, normalized,
+        constraint.min_notional, constraint.max_notional, normalized, risk_bps,
+        "SCALPING_V2_RUNTIME_PARAMETERS/risk_per_trade_bps" if risk_per_trade_bps is not None else "LEGACY_GENERAL_POLICY",
     )
 
 
@@ -195,10 +204,14 @@ def issue_controlled_paper_quantity_approval(
     evaluation_time_ms: int,
     source_candle_close_time_ms: int | None = None,
     source_timeframe: str = "15m",
+    risk_per_trade_bps: Decimal | None = None,
     registry: InstrumentQuantityConstraintRegistry = ACTIVE_QUANTITY_CONSTRAINT_REGISTRY,
 ) -> ControlledPaperQuantityResult:
     """Issue the deterministic immutable quantity approval for one causal run."""
-    audit = calculate_controlled_quantity(strategy=strategy, account=account, registry=registry)
+    if source_timeframe == "5m" and risk_per_trade_bps is None:
+        fail(PaperReasonCode.PAPER_INPUT_QUANTITY_INVALID, "5m frozen risk budget required", "risk_per_trade_bps")
+    audit = calculate_controlled_quantity(strategy=strategy, account=account, registry=registry,
+                                         risk_per_trade_bps=risk_per_trade_bps)
     source_close = (
         strategy.closed_until_ms
         if source_candle_close_time_ms is None

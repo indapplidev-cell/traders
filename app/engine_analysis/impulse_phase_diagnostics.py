@@ -111,6 +111,8 @@ class ImpulseDiagnosticInput:
     final_action: str
     candles: Sequence[Mapping[str, Any] | object]
     lookback_bars: int = 96
+    impulse_absolute_threshold_pct: float = 3.0
+    impulse_atr_multiplier: float = 2.5
     minimum_required_bars: int = MIN_BARS
     confirmed_hypotheses: tuple[str, ...] = ()
     directional_confirmation_at: str | datetime | None = None
@@ -131,6 +133,8 @@ class ImpulseDiagnosticInput:
             raise ValueError("minimum_required_bars must be at least 8")
         if self.lookback_bars < self.minimum_required_bars:
             raise ValueError("lookback_bars must cover minimum_required_bars")
+        if self.impulse_absolute_threshold_pct <= 0 or self.impulse_atr_multiplier <= 0:
+            raise ValueError("impulse thresholds must be explicit positive values")
         if (self.range_lower is None) != (self.range_upper is None):
             raise ValueError("range_lower and range_upper must be provided together")
         if self.range_lower is not None and self.range_lower >= self.range_upper:
@@ -289,7 +293,7 @@ def diagnose_impulse_phase(data: ImpulseDiagnosticInput) -> dict[str, Any]:
     direction = "UP" if move is up else "DOWN"
     last = bars[-1]
     atr_pct = (atr / last.close * 100.0) if atr else 0.0
-    impulse_threshold = max(3.0, atr_pct * 2.5)
+    impulse_threshold = max(data.impulse_absolute_threshold_pct, atr_pct * data.impulse_atr_multiplier)
     has_impulse = move["pct"] >= impulse_threshold
     extreme = float(move["extreme"])
     distance_from_extreme = (last.close / extreme - 1.0) * 100.0
@@ -401,6 +405,10 @@ def diagnose_impulse_phase(data: ImpulseDiagnosticInput) -> dict[str, Any]:
         "session_return_pct": _round(session_return),
         "move_from_local_low_pct": _round(move_from_local_low),
         "impulse_move_pct": _round(float(move["pct"])),
+        "impulse_threshold_pct": _round(impulse_threshold),
+        "impulse_absolute_threshold_pct": data.impulse_absolute_threshold_pct,
+        "impulse_atr_multiplier": data.impulse_atr_multiplier,
+        "impulse_threshold_provenance": "EXPLICIT_ANALYSIS_PROFILE",
         "distance_from_recent_high_pct": _round((last.close / max(bar.high for bar in bars) - 1.0) * 100.0),
         "fresh_volume_ratio": _round(fresh_volume_ratio),
         "atr_pct": _round(atr_pct),

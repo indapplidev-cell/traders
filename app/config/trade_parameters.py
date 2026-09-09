@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from copy import deepcopy
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -34,6 +35,8 @@ class SignalParameters(StrictModel):
     analysis_history_candles: int = Field(gt=0)
     atr_lookback_candles: int = Field(gt=0)
     impulse_lookback_candles: int = Field(gt=0)
+    impulse_absolute_threshold_pct: float = Field(gt=0)
+    impulse_atr_multiplier: float = Field(gt=0)
     structure_lookback_candles: int = Field(gt=0)
     confirmation_window_candles: int = Field(gt=0)
     volume_baseline_candles: int = Field(gt=0)
@@ -224,6 +227,40 @@ class ResolvedParameterSet:
     previous_parameter_set: str
     switched_at_utc: str
     provenance: dict[str, str]
+
+
+class ParameterSource(StrEnum):
+    SET_2_OVERRIDE = "SET_2_OVERRIDE"
+    SET_1_INHERITED = "SET_1_INHERITED"
+    SET_1_BASELINE = "SET_1_BASELINE"
+    NAMED_SET_OVERRIDE = "NAMED_SET_OVERRIDE"
+    DYNAMIC_BINANCE_COMMISSION = "DYNAMIC_BINANCE_COMMISSION"
+    RUNTIME_DYNAMIC = "RUNTIME_DYNAMIC"
+    SHADOW_POLICY = "SHADOW_POLICY"
+    LEGACY_UNAVAILABLE = "LEGACY_UNAVAILABLE"
+
+
+def parameter_snapshot(resolved: ResolvedParameterSet) -> dict[str, Any]:
+    """Serialize values and their resolver-owned origin from one captured set."""
+    rows = {}
+    def visit(values, prefix=""):
+        for key, value in values.items():
+            path = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, dict):
+                visit(value, path)
+                continue
+            owner = resolved.provenance.get(path, "scalping-v2-set-1")
+            source = (ParameterSource.SET_2_OVERRIDE if owner == "scalping-v2-set-2"
+                      else ParameterSource.SET_1_INHERITED if owner == "scalping-v2-set-1" and resolved.id != owner
+                      else ParameterSource.SET_1_BASELINE if owner == "scalping-v2-set-1"
+                      else ParameterSource.NAMED_SET_OVERRIDE)
+            rows[path] = {"value": value, "source": source.value, "owner_set_id": owner,
+                          "source_component": f"config/trading/trade_parameters.yaml::{path}"}
+    visit(resolved.parameters.model_dump(mode="json"))
+    return {"parameter_set_id": resolved.id, "parameter_set_label": resolved.label,
+            "parameter_set_version": resolved.version, "resolved_config_hash": resolved.resolved_config_hash,
+            "activation_cycle_boundary_ms": resolved.activation_cycle_boundary_ms,
+            "parameters": rows}
 
 
 class TradeParameters(StrictModel):

@@ -29,6 +29,8 @@ def build_analysis_quality_basis(
     matrix = output.matrix
     if matrix is None or len(matrix.unified_context.candles) < MIN_BARS:
         return None
+    if config is None:
+        raise ValueError("explicit analysis config is required for impulse diagnostics")
 
     context = matrix.unified_context
     hypotheses = matrix.hypothesis_result
@@ -65,13 +67,15 @@ def build_analysis_quality_basis(
         final_action="NO_ACTION",
         candles=context.candles,
         lookback_bars=min(
-            (config.impulse_lookback_candles if config else 96),
+            config.impulse_lookback_candles,
             len(context.candles),
         ),
         minimum_required_bars=min(
             MIN_BARS,
-            (config.impulse_lookback_candles if config else 96),
+            config.impulse_lookback_candles,
         ),
+        impulse_absolute_threshold_pct=config.impulse_absolute_threshold_pct,
+        impulse_atr_multiplier=config.impulse_atr_multiplier,
         confirmed_hypotheses=tuple(item.hypothesis_type.value for item in confirmed),
         directional_confirmation_at=confirmation_at,
         breakout_status=schwager.breakout_context.status.value,

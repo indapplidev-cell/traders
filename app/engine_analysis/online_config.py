@@ -20,6 +20,8 @@ class OnlineAnalysisConfig:
     runtime_parameter_set_id: str = "legacy-analysis-defaults"
     atr_lookback_candles: int = 14
     impulse_lookback_candles: int = 96
+    impulse_absolute_threshold_pct: float = 3.0
+    impulse_atr_multiplier: float = 2.5
     structure_lookback_candles: int = 96
     analysis_decision_candles: int = 24
     confirmation_window_candles: int = 3
@@ -43,6 +45,8 @@ class OnlineAnalysisConfig:
             self.regime_lookback_candles,
         ) < 1:
             raise ValueError("analysis profile lookbacks must be positive")
+        if self.impulse_absolute_threshold_pct <= 0 or self.impulse_atr_multiplier <= 0:
+            raise ValueError("impulse thresholds must be explicit positive values")
         if (
             self.runtime_parameter_set_id != "legacy-analysis-defaults"
             and self.required_history_candles < self.regime_lookback_candles

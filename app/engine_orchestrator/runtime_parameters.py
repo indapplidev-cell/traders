@@ -72,6 +72,8 @@ class RuntimeProfileParameters:
     analysis_history_candles: int
     atr_lookback_candles: int
     impulse_lookback_candles: int
+    impulse_absolute_threshold_pct: float
+    impulse_atr_multiplier: float
     structure_lookback_candles: int
     analysis_decision_candles: int
     confirmation_window_candles: int
@@ -205,6 +207,8 @@ class RuntimeProfileParameters:
                 "vwap_reference_notional",
                 "analysis_compression_ratio",
                 "analysis_expansion_ratio",
+                "impulse_absolute_threshold_pct",
+                "impulse_atr_multiplier",
                 "scalping_setup_families",
                 "strategy_allowed_setup_types",
                 "strategy_shadow_thresholds",
@@ -267,6 +271,7 @@ class RuntimeProfileParameters:
             ),
             "analysis": tuple(name for name in values if name.startswith("analysis_")) + (
                 "atr_lookback_candles", "impulse_lookback_candles",
+                "impulse_absolute_threshold_pct", "impulse_atr_multiplier",
                 "structure_lookback_candles", "confirmation_window_candles",
                 "volume_baseline_candles", "breakout_volume_baseline_candles",
                 "regime_lookback_candles",
@@ -311,6 +316,8 @@ def _runtime_parameters(
         analysis = {
             "atr_lookback_candles": profile.atr_lookback_candles,
             "impulse_lookback_candles": profile.impulse_lookback_candles,
+            "impulse_absolute_threshold_pct": SCALPING_V2.signal.impulse_absolute_threshold_pct,
+            "impulse_atr_multiplier": SCALPING_V2.signal.impulse_atr_multiplier,
             "structure_lookback_candles": profile.structure_lookback_candles,
             "analysis_decision_candles": profile.structure_lookback_candles,
             "confirmation_window_candles": profile.confirmation_window_candles,
@@ -324,6 +331,8 @@ def _runtime_parameters(
         analysis = {
             "atr_lookback_candles": 14,
             "impulse_lookback_candles": 96,
+            "impulse_absolute_threshold_pct": 3.0,
+            "impulse_atr_multiplier": 2.5,
             "structure_lookback_candles": 96,
             "analysis_decision_candles": 24,
             "confirmation_window_candles": 3,

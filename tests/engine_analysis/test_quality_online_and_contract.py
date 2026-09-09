@@ -32,6 +32,7 @@ def test_impulse_quality_diagnostics_are_causal_and_serializable(candle_factory)
     assert payload["safety"]["decision_changed"] is False
     assert payload["safety"]["trade_signal_created"] is False
     assert payload["causal_audit"]["future_bars_used"] is False
+    assert payload["impulse_context"]["impulse_threshold_provenance"] == "EXPLICIT_ANALYSIS_PROFILE"
     json.loads(json.dumps(payload))
 
 

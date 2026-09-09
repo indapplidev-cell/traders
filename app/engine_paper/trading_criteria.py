@@ -55,6 +55,7 @@ def _criterion(key: str, category: str, classification: CriterionClassification,
 
 def build_trading_criteria_snapshot(
     allowed_symbols: tuple[str, ...] | None = None,
+    frozen_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, object]:
     """Build a bounded snapshot directly from active policy/config objects."""
 
@@ -289,13 +290,42 @@ def build_trading_criteria_snapshot(
                        "app.operator_control.service.PaperOperatorControlService.arm_first_canary", "positions"),
         ),
     }
+    # Keep general/legacy policy explicitly separate from persisted cycle values.
+    groups = {name if name in {"environment", "continuous_paper_bounds"} else "legacy_" + name: items
+              for name, items in groups.items()}
+    groups["active_scalping_parameters"] = ()
+    if frozen_snapshot:
+        selected = []
+        inherited = []
+        dynamic = []
+        shadow = []
+        for path, record in frozen_snapshot["parameters"].items():
+            if path.startswith("exit_policy.") or path.startswith("entry_refinement_1m."):
+                destination = shadow
+            elif path.startswith("costs."):
+                destination = dynamic
+            elif record["source"] == "SET_2_OVERRIDE":
+                destination = selected
+            else:
+                destination = inherited
+            destination.append({"key": path, "category": "scalping_parameters",
+                "classification": "DERIVED_VALUE", "value": record["value"], "unit": None,
+                "source_component": record["source_component"], "parameter_source": record["source"],
+                "owner_set_id": record["owner_set_id"]})
+        groups["active_scalping_parameters"] = selected
+        groups["inherited_scalping_parameters"] = inherited
+        groups["dynamic_cost_policy"] = dynamic
+        groups["shadow_policies"] = shadow
     return {
         "title_key": "current_server_trading_criteria",
         "environment": control.environment, "mode": control.mode,
         "versioned_trading_policy_present": True,
         "canary_bound_policy_snapshot_available": False,
-        "groups": {name: [asdict(item) for item in items] for name, items in groups.items()},
+        "groups": {name: [item if isinstance(item, dict) else asdict(item) for item in items]
+                   for name, items in groups.items()},
         "provenance": {
+            "frozen_parameter_snapshot": frozen_snapshot,
+            "snapshot_availability": "RECORDED_CYCLE" if frozen_snapshot else "LEGACY_UNAVAILABLE",
             "projection": "EFFECTIVE_CURRENT_SERVER_POLICY",
             "policy_versions": {"strategy": "StrategyConfig", "risk": risk.policy_version,
                                 "paper_plan": paper.plan_policy_version, "fill": fill.contract_version,

@@ -166,6 +166,27 @@ def _eligible_analysis_predicates(result, run) -> tuple[Any, ...]:
 class SqlAlchemyReadAdapter:
     """Implements API read protocols using existing candle/run/result tables."""
 
+    def latest_scalping_parameter_snapshot(self) -> dict[str, object] | None:
+        statement = select(OnlinePipelineResultRow.closed_until_ms,
+                           OnlinePipelineResultRow.paper_payload_json).where(
+            OnlinePipelineResultRow.trade_profile_id == "trade-5m-v2"
+        ).order_by(OnlinePipelineResultRow.closed_until_ms.desc(),
+                   OnlinePipelineResultRow.id.desc()).limit(1)
+        with self._session() as session:
+            row = session.execute(statement).first()
+        if row is None:
+            return None
+        snapshot = (row[1] or {}).get("frozen_parameter_snapshot")
+        if not snapshot:
+            return None
+        diagnostic = (row[1] or {}).get("paper_context", {}).get("scalping_geometry_diagnostics", {})
+        return {**snapshot, "cycle_boundary_ms": row[0],
+                "cost_observation": {key: diagnostic.get(key) for key in (
+                    "entry_fee_bps", "exit_fee_bps", "spread_bps", "entry_slippage_bps",
+                    "exit_slippage_bps", "adverse_fill_reserve_bps", "effective_total_cost_bps",
+                    "fee_source", "spread_source", "commission_provenance")},
+                "evaluator_inputs": diagnostic.get("evaluator_inputs")}
+
     def __init__(
         self,
         session_or_factory: Session | Callable[[], Session],

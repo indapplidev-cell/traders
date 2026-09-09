@@ -153,6 +153,8 @@ class OnlineAnalysisRunner:
                     confirmation_candles=self.config.confirmation_window_candles,
                     atr_lookback_candles=self.config.atr_lookback_candles,
                     impulse_lookback_candles=self.config.impulse_lookback_candles,
+                    impulse_absolute_threshold_pct=self.config.impulse_absolute_threshold_pct,
+                    impulse_atr_multiplier=self.config.impulse_atr_multiplier,
                     structure_lookback_candles=self.config.structure_lookback_candles,
                     volume_baseline_candles=self.config.volume_baseline_candles,
                     breakout_volume_baseline_candles=

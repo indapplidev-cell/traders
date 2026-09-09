@@ -145,7 +145,9 @@ class PaperReadonlyReportingService:
         repository = self._repo()
         active = getattr(repository, "active_trading_universe", None)
         symbols = active().symbols if callable(active) else None
-        return TradingCriteriaSnapshot.model_validate(build_trading_criteria_snapshot(symbols))
+        snapshot_reader = getattr(repository, "latest_scalping_parameter_snapshot", None)
+        snapshot = snapshot_reader() if callable(snapshot_reader) else None
+        return TradingCriteriaSnapshot.model_validate(build_trading_criteria_snapshot(symbols, snapshot))
 
     def _repo(self) -> PaperReportingReadRepository:
         if self._repository is None:

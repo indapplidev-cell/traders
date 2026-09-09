@@ -121,6 +121,8 @@ class PipelineRunner:
                 runtime_parameter_set_id=self.runtime_parameters.parameter_set_id,
                 atr_lookback_candles=self.runtime_parameters.atr_lookback_candles,
                 impulse_lookback_candles=self.runtime_parameters.impulse_lookback_candles,
+                impulse_absolute_threshold_pct=self.runtime_parameters.impulse_absolute_threshold_pct,
+                impulse_atr_multiplier=self.runtime_parameters.impulse_atr_multiplier,
                 structure_lookback_candles=self.runtime_parameters.structure_lookback_candles,
                 analysis_decision_candles=
                 self.runtime_parameters.analysis_decision_candles,
@@ -306,6 +308,8 @@ class PipelineRunner:
                         confirmation_candles=self.runtime_parameters.confirmation_window_candles,
                         atr_lookback_candles=self.runtime_parameters.atr_lookback_candles,
                         impulse_lookback_candles=self.runtime_parameters.impulse_lookback_candles,
+                        impulse_absolute_threshold_pct=self.runtime_parameters.impulse_absolute_threshold_pct,
+                        impulse_atr_multiplier=self.runtime_parameters.impulse_atr_multiplier,
                         structure_lookback_candles=self.runtime_parameters.structure_lookback_candles,
                         volume_baseline_candles=self.runtime_parameters.volume_baseline_candles,
                         breakout_volume_baseline_candles=
@@ -722,11 +726,14 @@ class PipelineRunner:
         return self._enforce_safety(result)
 
     def _profiled_payload(self, value: object) -> dict[str, Any]:
+        from app.config.trade_parameters import parameter_snapshot
         payload = json_safe(value)
         if not isinstance(payload, dict):
             payload = {"value": payload}
         return {
             **payload,
+            **({"frozen_parameter_snapshot": parameter_snapshot(self.resolved_parameter_set)}
+               if self.resolved_parameter_set is not None else {}),
             "trade_profile_id": self.config.trade_profile_id,
             "trigger_timeframe": self.config.primary_timeframe,
             "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,

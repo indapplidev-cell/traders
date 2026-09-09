@@ -390,11 +390,17 @@ class TradingCriterion(BaseModel):
     value: Any = None
     unit: str | None = Field(default=None, max_length=48)
     source_component: str = Field(min_length=1, max_length=200)
+    parameter_source: Literal["SET_2_OVERRIDE", "SET_1_INHERITED", "SET_1_BASELINE",
+        "NAMED_SET_OVERRIDE", "DYNAMIC_BINANCE_COMMISSION", "RUNTIME_DYNAMIC",
+        "SHADOW_POLICY", "LEGACY_UNAVAILABLE"] | None = None
+    owner_set_id: str | None = None
 
 
 class TradingCriteriaProvenance(BaseModel):
     projection: Literal["EFFECTIVE_CURRENT_SERVER_POLICY"]
     policy_versions: dict[str, str]
+    frozen_parameter_snapshot: dict[str, Any] | None = None
+    snapshot_availability: Literal["RECORDED_CYCLE", "LEGACY_UNAVAILABLE"] = "LEGACY_UNAVAILABLE"
 
 
 class TradingCriteriaSnapshot(BaseModel):

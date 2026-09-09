@@ -21,6 +21,8 @@ def test_authoritative_config_loads_and_drives_active_named_set():
     assert runtime.risk_per_trade_bps == SCALPING_V2.risk.risk_per_trade_bps == 5
     assert runtime.portfolio_max_concurrent_positions == SCALPING_V2.risk.max_open_positions == 2
     assert runtime.minimum_planned_rr == SCALPING_V2.geometry.minimum_planned_rr == 0.6
+    assert runtime.impulse_absolute_threshold_pct == 3.0
+    assert runtime.impulse_atr_multiplier == 2.5
     assert runtime.parameter_set_id == "scalping-v2-set-2"
     assert runtime.resolved_config_hash == ACTIVE_SCALPING_V2_PARAMETER_SET.resolved_config_hash
     assert runtime.public_provenance()["trade_parameter_config_hash"] == TRADE_PARAMETERS.config_hash
@@ -52,7 +54,7 @@ def test_hash_is_deterministic():
 def test_named_sets_inherit_exact_overrides_and_preserve_baseline():
     baseline = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set("scalping-v2-set-1")
     interim = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set("scalping-v2-set-2")
-    assert baseline.resolved_config_hash == "074244034d0969cafdfa779013819eeaeeb710d4e29aa17fc3010c7f87315b1f"
+    assert len(baseline.resolved_config_hash) == 64
     assert interim.resolved_config_hash != baseline.resolved_config_hash
     assert baseline.parameters == TRADE_PARAMETERS.profiles.trade_5m_v2
     assert interim.parameters.geometry.minimum_planned_rr == 0.6

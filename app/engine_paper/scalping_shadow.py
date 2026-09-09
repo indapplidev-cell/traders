@@ -267,6 +267,7 @@ class ShadowGeometryDiagnostic:
     first_actionable_target: dict[str, object] | None = None
     next_target_considered: str | None = None
     minimum_target_diagnostic_bps: float | None = None
+    evaluator_inputs: dict[str, object] = field(default_factory=dict)
     minimum_target_diagnostic_pass: bool | None = None
     gross_reward_bps: float | None = None
     gross_risk_bps: float | None = None
@@ -535,6 +536,11 @@ def evaluate_scalping_shadow(
         atr_buffer_multiplier=config.atr_buffer_multiplier,
         stop_envelope_bps=config.stop_envelope_bps,
         minimum_target_diagnostic_bps=config.minimum_target_diagnostic_bps,
+        evaluator_inputs={"minimum_planned_rr": config.production_rr_floor,
+                          "target_min_bps": config.minimum_target_diagnostic_bps,
+                          "min_ev_reserve_r": config.minimum_ev_reserve_r,
+                          "target_threshold_mode": "DIAGNOSTIC_ONLY",
+                          "ev_evaluator_reached": False},
         minimum_positive_edge_bps=config.minimum_positive_edge_bps,
         entry_fee_bps=costs.entry_fee_bps,
         exit_fee_bps=costs.exit_fee_bps,
@@ -791,6 +797,7 @@ def evaluate_scalping_shadow(
     result.break_even_win_rate = round(
         result.effective_risk_bps / (result.effective_risk_bps + result.net_reward_bps), 8
     )
+    result.evaluator_inputs["ev_evaluator_reached"] = config.profile_id == V2_PROFILE_ID
     expectancy = evaluate_expectancy(
         net_win_bps=result.net_reward_bps,
         net_loss_bps=result.effective_risk_bps,

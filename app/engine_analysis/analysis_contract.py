@@ -28,6 +28,8 @@ class AnalysisWindowConfig:
     confirmation_candles: int = 3
     atr_lookback_candles: int = 14
     impulse_lookback_candles: int = RECOMMENDED_CONTEXT_CANDLES
+    impulse_absolute_threshold_pct: float = 3.0
+    impulse_atr_multiplier: float = 2.5
     structure_lookback_candles: int = RECOMMENDED_CONTEXT_CANDLES
     volume_baseline_candles: int = RECOMMENDED_CONTEXT_CANDLES - 3
     breakout_volume_baseline_candles: int = 20
@@ -53,6 +55,8 @@ class AnalysisWindowConfig:
             raise ValueError("analysis runtime lookbacks must be positive")
         if self.structure_lookback_candles > self.context_candles:
             raise ValueError("structure lookback exceeds context")
+        if self.impulse_absolute_threshold_pct <= 0 or self.impulse_atr_multiplier <= 0:
+            raise ValueError("impulse thresholds must be positive")
 
     def to_dict(self) -> dict[str, int]:
         return {
@@ -62,6 +66,8 @@ class AnalysisWindowConfig:
             "confirmation_candles": self.confirmation_candles,
             "atr_lookback_candles": self.atr_lookback_candles,
             "impulse_lookback_candles": self.impulse_lookback_candles,
+            "impulse_absolute_threshold_pct": self.impulse_absolute_threshold_pct,
+            "impulse_atr_multiplier": self.impulse_atr_multiplier,
             "structure_lookback_candles": self.structure_lookback_candles,
             "volume_baseline_candles": self.volume_baseline_candles,
             "breakout_volume_baseline_candles": self.breakout_volume_baseline_candles,
