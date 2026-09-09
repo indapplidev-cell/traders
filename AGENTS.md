@@ -1,5 +1,30 @@
 # Инструкции проекта traders-ml
 
+## Обязательный Tk Desktop screenshot fallback
+
+Для каждой задачи Codex/Computer Use, которая требует открыть, проверить или
+снять скриншот Tk/Tkinter-клиента Traders, до первого UI-действия обязательно
+прочитать `docs/desktop_automation_policy.md` и выполнить:
+
+```text
+python scripts/traders_desktop_automation_preflight.py --pid <PID> --activate --capture
+```
+
+Процесс PID и связанный с ним top-level HWND являются authoritative способом
+выбора окна. UIA/accessibility и window-only capture являются optional. Пустое
+или частичное UIA-дерево, а также `SetIsBorderRequired 0x80004002`, не являются
+blocker, если пройдены session/WinSta0/Default desktop/integrity/visibility/
+responsiveness/foreground checks и работает full-desktop capture с crop по
+актуальному HWND.
+
+После такого PASS автоматически продолжить через foreground HWND и свежие
+HWND-relative keyboard/mouse/scroll coordinates, делая повторный preflight и
+capture после изменения страницы. Для Desktop acceptance не открывать браузер,
+не искать URL и не использовать Paint. Разрешена только read-only навигация:
+не нажимать `Emergency Stop`, `Disable`, mutation controls, не включать LIVE и
+не менять strategy/risk/selector. После restart всегда заново найти PID/HWND;
+старые HWND, screenshot IDs и coordinates не использовать.
+
 ## Актуализация online_trader.md
 
 `online_trader.md` является post-task snapshot доказанного состояния проекта.
