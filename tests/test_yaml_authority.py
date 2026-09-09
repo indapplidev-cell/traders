@@ -40,3 +40,5 @@ def test_runtime_provenance_is_yaml_visible():
     assert impulse["source_kind"] == "AUTHORITATIVE_YAML"
     risk = provenance["authoritative_parameters"]["risk.risk_per_trade_bps"]
     assert risk["source_file"] == "config/trading/risk_policy.yaml"
+    assert provenance["operational_policy"]["collector.poll_seconds"]["value"] == 2.0
+    assert provenance["operational_policy"]["orchestrator.poll_interval_seconds"]["value"] == 10.0

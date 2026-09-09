@@ -730,10 +730,14 @@ class PipelineRunner:
         payload = json_safe(value)
         if not isinstance(payload, dict):
             payload = {"value": payload}
+        frozen = parameter_snapshot(self.resolved_parameter_set) if self.resolved_parameter_set is not None else None
+        if frozen is not None:
+            provenance = self.runtime_parameters.public_provenance()
+            frozen["runtime_parameters"] = provenance.get("runtime_parameters", {})
+            frozen["operational_policy"] = provenance.get("operational_policy", {})
         return {
             **payload,
-            **({"frozen_parameter_snapshot": parameter_snapshot(self.resolved_parameter_set)}
-               if self.resolved_parameter_set is not None else {}),
+            **({"frozen_parameter_snapshot": frozen} if frozen is not None else {}),
             "trade_profile_id": self.config.trade_profile_id,
             "trigger_timeframe": self.config.primary_timeframe,
             "runtime_parameter_set_id": self.runtime_parameters.parameter_set_id,

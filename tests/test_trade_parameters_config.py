@@ -128,9 +128,7 @@ def test_packaged_runtime_can_bind_authoritative_config_path(tmp_path: Path):
 def test_all_production_images_copy_and_bind_authoritative_config():
     dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(encoding="utf-8")
 
-    assert dockerfile.count(
-        "COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml"
-    ) == 3
+    assert dockerfile.count("COPY config ./config") == 3
     assert dockerfile.count(
         "TRADERS_TRADE_PARAMETERS_PATH=/service/config/trading/trade_parameters.yaml"
     ) == 3

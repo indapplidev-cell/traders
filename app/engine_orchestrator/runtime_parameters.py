@@ -256,6 +256,41 @@ class RuntimeProfileParameters:
             result["authoritative_parameters"] = parameter_snapshot(
                 ACTIVE_SCALPING_V2_PARAMETER_SET
             )["parameters"]
+            result["runtime_parameters"] = {
+                key: {
+                    "value": value,
+                    "source_file": "config/runtime/runtime_policy.yaml",
+                    "source_path": f"resolved_runtime.{key}",
+                    "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+                    "unit": (
+                        "bps" if key.endswith("_bps") else
+                        "percent" if key.endswith("_pct") else
+                        "milliseconds" if key.endswith("_ms") else
+                        "seconds" if key.endswith("_seconds") else
+                        "minutes" if key.endswith("_minutes") else
+                        "count" if key.endswith(("_candles", "_positions")) else
+                        "dimensionless"
+                    ),
+                    "resolved_config_hash": self.resolved_config_hash,
+                }
+                for key, value in asdict(self).items()
+            }
+            result["operational_policy"] = {
+                **{
+                    f"orchestrator.{key}": {
+                        "value": value, "source_file": "config/runtime/runtime_policy.yaml",
+                        "source_path": f"orchestrator.{key}", "source_kind": "AUTHORITATIVE_YAML",
+                    }
+                    for key, value in RUNTIME_POLICY.orchestrator.model_dump(mode="json").items()
+                },
+                **{
+                    f"collector.{key}": {
+                        "value": value, "source_file": "config/runtime/runtime_policy.yaml",
+                        "source_path": f"collector.{key}", "source_kind": "AUTHORITATIVE_YAML",
+                    }
+                    for key, value in RUNTIME_POLICY.collector.model_dump(mode="json").items()
+                },
+            }
         return result
 
     def sectioned_public_config(self) -> Mapping[str, Mapping[str, object]]:
