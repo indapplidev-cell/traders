@@ -20,7 +20,7 @@ from app.config.yaml_authority import RISK_POLICY, RISK_PATH, authority_hash
 CONFIG_PATH = Path(
     os.environ.get(
         "TRADERS_TRADE_PARAMETERS_PATH",
-        Path(__file__).resolve().parents[2] / "config" / "trading" / "trade_parameters.yaml",
+        RISK_PATH.parent / "trade_parameters.yaml",
     )
 )
 

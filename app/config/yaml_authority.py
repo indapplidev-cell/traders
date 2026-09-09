@@ -12,7 +12,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 import yaml
 
 
-ROOT = Path(__file__).resolve().parents[2]
+def _project_root() -> Path:
+    explicit = os.environ.get("TRADERS_CONFIG_ROOT")
+    if explicit:
+        return Path(explicit)
+    candidates = (Path.cwd(), Path(__file__).resolve().parents[2])
+    return next((path for path in candidates if (path / "config").is_dir()), candidates[-1])
+
+
+ROOT = _project_root()
 
 
 class StrictModel(BaseModel):
