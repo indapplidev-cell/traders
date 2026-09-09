@@ -1,4 +1,6 @@
-from scripts.forensic_dynamic_rr_calibration import _best_causal_net_rr, _metrics, outcome_label
+from scripts.forensic_dynamic_rr_calibration import (
+    _best_causal_net_rr, _metrics, _wilson_probability, outcome_label,
+)
 
 
 def test_timeout_uses_net_outcome_instead_of_becoming_automatic_loss():
@@ -46,3 +48,8 @@ def test_best_causal_net_rr_rejects_targets_below_cost():
         ],
     }
     assert _best_causal_net_rr(diagnostic) is None
+
+
+def test_lower_confidence_produces_less_conservative_bounded_probability():
+    assert 0 < _wilson_probability(8, 39, .975) < _wilson_probability(8, 39, .95)
+    assert _wilson_probability(8, 39, .95) < _wilson_probability(8, 39, .90) < 8 / 39

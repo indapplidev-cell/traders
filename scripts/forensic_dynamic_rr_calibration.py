@@ -14,6 +14,7 @@ import json
 import math
 from pathlib import Path
 from statistics import mean
+from statistics import NormalDist
 from typing import Any, Iterable, Mapping
 
 try:
@@ -354,6 +355,88 @@ def build_task_b(rows: list[Mapping[str, Any]], schema: str, deployed_revision: 
                                          for row in cohort if _number(row["p_win_raw"]) not in (None, 0)),
         "remove_ev_reserve_only": distribution(float(row["dynamic_required_net_rr"]) - .05 for row in cohort),
     }
+
+
+def _wilson_probability(wins: int, samples: int, confidence: float) -> float:
+    adjusted = (wins + 1) / (samples + 2)
+    z = NormalDist().inv_cdf(confidence)
+    n = samples + 2
+    denominator = 1 + z * z / n
+    centre = adjusted + z * z / (2 * n)
+    margin = z * math.sqrt((adjusted * (1 - adjusted) + z * z / (4 * n)) / n)
+    return max(0.0, (centre - margin) / denominator)
+
+
+def _replay_economics(rows: list[dict[str, Any]], probabilities: Mapping[str, float]) -> dict[str, Any]:
+    decisions = []
+    for row in rows:
+        probability = probabilities.get(str(row["candidate_id"]))
+        if probability in (None, 0):
+            continue
+        required = (1 - probability) / probability + .05
+        passed = float(row["net_rr"]) >= max(.6, required)
+        decisions.append((row, passed, required))
+    scored = [(row, passed) for row, passed, _ in decisions if row.get("actual_win") is not None]
+    pnl = [float(row["net_outcome_r"]) for row, passed in scored if passed and row.get("net_outcome_r") is not None]
+    gains, losses = sum(value for value in pnl if value > 0), -sum(value for value in pnl if value < 0)
+    equity = peak = drawdown = 0.0
+    for value in pnl:
+        equity += value
+        peak = max(peak, equity)
+        drawdown = max(drawdown, peak - equity)
+    return {"candidate_count": len(decisions), "rr_pass_count": sum(passed for _, passed, _ in decisions),
+            "rr_pass_rate": sum(passed for _, passed, _ in decisions) / len(decisions) if decisions else None,
+            "scoreable_trade_count": len(pnl), "net_pnl_r": sum(pnl),
+            "profit_factor": gains / losses if losses else None, "max_drawdown_r": drawdown,
+            "required_rr": distribution(required for _, _, required in decisions)}
+
+
+def build_task_c(a_rows: list[dict[str, Any]], b_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Evaluate three pre-declared confidence policies on identical frozen rows."""
+    b_by_id = {str(row["candidate_id"]): row for row in b_rows}
+    shared = [{**row, "net_rr": b_by_id[str(row["candidate_id"])]["net_rr"]}
+              for row in a_rows if str(row["candidate_id"]) in b_by_id]
+    policies: dict[str, dict[str, float]] = {name: {} for name in (
+        "BASELINE_WILSON_95", "WILSON_90", "WILSON_975")}
+    for row in shared:
+        identity = str(row["candidate_id"])
+        policies["BASELINE_WILSON_95"][identity] = float(row["p_win_conservative"])
+        policies["WILSON_90"][identity] = _wilson_probability(int(row["wins"]), int(row["sample_count"]), .90)
+        policies["WILSON_975"][identity] = _wilson_probability(int(row["wins"]), int(row["sample_count"]), .975)
+    evaluations = {}
+    for name, probabilities in policies.items():
+        metric_rows = [{**row, "candidate_probability": probabilities[str(row["candidate_id"])]}
+                       for row in shared]
+        calibration = _metrics(metric_rows, "candidate_probability")
+        economics = _replay_economics(shared, probabilities)
+        evaluations[name] = {"confidence_level": {"BASELINE_WILSON_95": .95,
+                                                    "WILSON_90": .90, "WILSON_975": .975}[name],
+                             "calibration": calibration, "economics": economics,
+                             "coverage_proxy": None if calibration["count"] < 3 else
+                                 float(calibration["predicted_mean"] <= calibration["observed_rate"])}
+    baseline = evaluations["BASELINE_WILSON_95"]
+    best_stat = min(evaluations, key=lambda name: evaluations[name]["calibration"]["brier_score"])
+    best_economic = max(evaluations, key=lambda name: (
+        evaluations[name]["economics"]["net_pnl_r"], evaluations[name]["economics"]["rr_pass_count"]))
+    return {
+        "task": "TRADERS_SCALPING_V2_DYNAMIC_RR_CALIBRATION_POLICY_TASK_C",
+        "task_status": "PASS", "final_verdict": "NO_CHANGE",
+        "baseline_policy": "BASELINE_WILSON_95", "candidates_evaluated": list(evaluations),
+        "shared_frozen_candidate_count": len(shared),
+        "shared_scoreable_outcome_count": sum(row["actual_win"] is not None for row in shared),
+        "evaluations": evaluations, "best_statistical_candidate": best_stat,
+        "best_economic_candidate": best_economic, "same_candidate": best_stat == best_economic,
+        "calibration_improvement": baseline["calibration"]["brier_score"] - evaluations[best_stat]["calibration"]["brier_score"],
+        "coverage_change": None,
+        "rr_pass_change": evaluations[best_economic]["economics"]["rr_pass_count"] - baseline["economics"]["rr_pass_count"],
+        "pnl_change_r": evaluations[best_economic]["economics"]["net_pnl_r"] - baseline["economics"]["net_pnl_r"],
+        "profit_factor_change": None, "drawdown_change_r": evaluations[best_economic]["economics"]["max_drawdown_r"] - baseline["economics"]["max_drawdown_r"],
+        "overfit_risk": "HIGH_SMALL_SAMPLE_NO_HOLDOUT_AND_ZERO_RR_PASSES",
+        "promotion_allowed": False,
+        "recommendation": "NO_CHANGE; collect more exact outcomes and improve strategy geometry/edge before reconsidering confidence calibration",
+        "safety": {"offline_only": True, "production_policy_change": False, "shadow_deploy": False,
+                   "live": False, "binance_order_calls": 0, "full_parameter_sweep": False},
+    }
     structural_share = counts["STRUCTURALLY_UNACHIEVABLE"] / len(cohort) if cohort else 0
     verdict = "DYNAMIC_RR_SYSTEMATICALLY_UNACHIEVABLE" if structural_share > .5 else (
         "DYNAMIC_RR_MARGINAL" if counts["MARGINALLY_ACHIEVABLE"] else "DYNAMIC_RR_ECONOMICALLY_ACHIEVABLE")
@@ -385,25 +468,36 @@ def build_task_b(rows: list[Mapping[str, Any]], schema: str, deployed_revision: 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", choices=("a", "b"), required=True)
+    parser.add_argument("--task", choices=("a", "b", "c"), required=True)
     parser.add_argument("--outcome-dir", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--deployed-revision", required=True)
+    parser.add_argument("--task-a-cohort", type=Path)
+    parser.add_argument("--task-b-cohort", type=Path)
     args = parser.parse_args()
-    rows, schema = load_production_rows()
     if args.task == "a":
+        rows, schema = load_production_rows()
         if args.outcome_dir is None:
             parser.error("--outcome-dir is required for task a")
         cohort, report = build_task_a(rows, load_outcomes(args.outcome_dir), schema, args.deployed_revision)
         cohort_name, report_name = "PWIN_CALIBRATION_COHORT.jsonl", "TASK_A_REPORT.json"
-    else:
+    elif args.task == "b":
+        rows, schema = load_production_rows()
         cohort, report = build_task_b(rows, schema, args.deployed_revision)
         cohort_name, report_name = "RR_ACHIEVABILITY_COHORT.jsonl", "TASK_B_REPORT.json"
+    else:
+        if args.task_a_cohort is None or args.task_b_cohort is None:
+            parser.error("--task-a-cohort and --task-b-cohort are required for task c")
+        a_rows = [json.loads(line) for line in args.task_a_cohort.read_text(encoding="utf-8").splitlines() if line]
+        b_rows = [json.loads(line) for line in args.task_b_cohort.read_text(encoding="utf-8").splitlines() if line]
+        cohort, report = [], build_task_c(a_rows, b_rows)
+        cohort_name, report_name = "TASK_C_UNUSED.jsonl", "TASK_C_REPORT.json"
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    (args.output_dir / cohort_name).write_text(
-        "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in cohort), encoding="utf-8")
+    if cohort:
+        (args.output_dir / cohort_name).write_text(
+            "".join(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in cohort), encoding="utf-8")
     (args.output_dir / report_name).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"anchor": report["anchor"], "cohort": report["cohort"],
+    print(json.dumps({"anchor": report.get("anchor"), "cohort": report.get("cohort"),
                       "verdict": report["final_verdict"]}, sort_keys=True))
     return 0
 

@@ -1,0 +1,164 @@
+{
+  "baseline_policy": "BASELINE_WILSON_95",
+  "best_economic_candidate": "BASELINE_WILSON_95",
+  "best_statistical_candidate": "WILSON_975",
+  "calibration_improvement": 0.000885930237442184,
+  "candidates_evaluated": [
+    "BASELINE_WILSON_95",
+    "WILSON_90",
+    "WILSON_975"
+  ],
+  "coverage_change": null,
+  "drawdown_change_r": 0.0,
+  "evaluations": {
+    "BASELINE_WILSON_95": {
+      "calibration": {
+        "brier_score": 0.14049376962086244,
+        "calibration_error": 0.05267814163231585,
+        "count": 18,
+        "observed_rate": 0.16666666666666666,
+        "predicted_mean": 0.2094268520502452,
+        "reliability_bins": [
+          {
+            "count": 5,
+            "observed_rate": 0.2,
+            "predicted_mean": 0.18214767875227283,
+            "range": "0.0-0.2"
+          },
+          {
+            "count": 13,
+            "observed_rate": 0.15384615384615385,
+            "predicted_mean": 0.21991884178023458,
+            "range": "0.2-0.4"
+          }
+        ]
+      },
+      "confidence_level": 0.95,
+      "coverage_proxy": 0.0,
+      "economics": {
+        "candidate_count": 49,
+        "max_drawdown_r": 0.0,
+        "net_pnl_r": 0,
+        "profit_factor": null,
+        "required_rr": {
+          "count": 49,
+          "max": 6.6007246708459135,
+          "median": 4.110104274387227,
+          "min": 3.421916830324562,
+          "p25": 3.5971319869868283,
+          "p75": 4.1894012850352915,
+          "unique_count": 11
+        },
+        "rr_pass_count": 0,
+        "rr_pass_rate": 0.0,
+        "scoreable_trade_count": 0
+      }
+    },
+    "WILSON_90": {
+      "calibration": {
+        "brier_score": 0.1419755051940419,
+        "calibration_error": 0.05757447388562306,
+        "count": 18,
+        "observed_rate": 0.16666666666666666,
+        "predicted_mean": 0.22424114055228975,
+        "reliability_bins": [
+          {
+            "count": 1,
+            "observed_rate": 0,
+            "predicted_mean": 0.14836789145874013,
+            "range": "0.0-0.2"
+          },
+          {
+            "count": 17,
+            "observed_rate": 0.17647058823529413,
+            "predicted_mean": 0.2287042728519103,
+            "range": "0.2-0.4"
+          }
+        ]
+      },
+      "confidence_level": 0.9,
+      "coverage_proxy": 0.0,
+      "economics": {
+        "candidate_count": 49,
+        "max_drawdown_r": 0.0,
+        "net_pnl_r": 0,
+        "profit_factor": null,
+        "required_rr": {
+          "count": 49,
+          "max": 5.790002773970079,
+          "median": 3.778117150500744,
+          "min": 3.115566514417512,
+          "p25": 3.313059409861114,
+          "p75": 3.8203125751099365,
+          "unique_count": 11
+        },
+        "rr_pass_count": 0,
+        "rr_pass_rate": 0.0,
+        "scoreable_trade_count": 0
+      }
+    },
+    "WILSON_975": {
+      "calibration": {
+        "brier_score": 0.13960783938342025,
+        "calibration_error": 0.047368238591925696,
+        "count": 18,
+        "observed_rate": 0.16666666666666666,
+        "predicted_mean": 0.19728389022140408,
+        "reliability_bins": [
+          {
+            "count": 5,
+            "observed_rate": 0.2,
+            "predicted_mean": 0.1698481729330611,
+            "range": "0.0-0.2"
+          },
+          {
+            "count": 13,
+            "observed_rate": 0.15384615384615385,
+            "predicted_mean": 0.20783608917845908,
+            "range": "0.2-0.4"
+          }
+        ]
+      },
+      "confidence_level": 0.975,
+      "coverage_proxy": 0.0,
+      "economics": {
+        "candidate_count": 49,
+        "max_drawdown_r": 0.0,
+        "net_pnl_r": 0,
+        "profit_factor": null,
+        "required_rr": {
+          "count": 49,
+          "max": 7.381129209371528,
+          "median": 4.4194680669709285,
+          "min": 3.618864049823111,
+          "p25": 3.861483914813981,
+          "p75": 4.535394940065018,
+          "unique_count": 11
+        },
+        "rr_pass_count": 0,
+        "rr_pass_rate": 0.0,
+        "scoreable_trade_count": 0
+      }
+    }
+  },
+  "final_verdict": "NO_CHANGE",
+  "overfit_risk": "HIGH_SMALL_SAMPLE_NO_HOLDOUT_AND_ZERO_RR_PASSES",
+  "pnl_change_r": 0,
+  "profit_factor_change": null,
+  "promotion_allowed": false,
+  "recommendation": "NO_CHANGE; collect more exact outcomes and improve strategy geometry/edge before reconsidering confidence calibration",
+  "rr_pass_change": 0,
+  "safety": {
+    "binance_order_calls": 0,
+    "full_parameter_sweep": false,
+    "live": false,
+    "offline_only": true,
+    "production_policy_change": false,
+    "shadow_deploy": false
+  },
+  "same_candidate": false,
+  "shared_frozen_candidate_count": 49,
+  "shared_scoreable_outcome_count": 18,
+  "task": "TRADERS_SCALPING_V2_DYNAMIC_RR_CALIBRATION_POLICY_TASK_C",
+  "task_status": "PASS"
+}
