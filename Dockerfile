@@ -13,7 +13,7 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 
 COPY pyproject.toml README.md ./
 COPY app ./app
-COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml
+COPY config ./config
 COPY scripts ./scripts
 COPY alembic.ini ./
 COPY alembic ./alembic
@@ -46,7 +46,7 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 
 COPY pyproject.toml README.md ./
 COPY app ./app
-COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml
+COPY config ./config
 COPY alembic.ini ./
 COPY alembic ./alembic
 RUN python -m pip install --no-cache-dir --no-deps . \
@@ -78,7 +78,7 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 
 COPY pyproject.toml README.md ./
 COPY app ./app
-COPY config/trading/trade_parameters.yaml ./config/trading/trade_parameters.yaml
+COPY config ./config
 COPY scripts/control_api_runtime_probe.py ./scripts/control_api_runtime_probe.py
 RUN python -m pip install --no-cache-dir --no-deps . \
     && rm -rf build *.egg-info
