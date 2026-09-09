@@ -33,6 +33,7 @@ OWNER_NAMESPACE = 1_937_830_411
 OWNER_KEY = 527_115_001
 DEFAULT_MAX_PART_BYTES = 64 * 1024 * 1024
 DEFAULT_OUTCOME_HORIZON_MS = (45 * 60 + 120) * 1000
+PROBABILITY_OUTCOME_SEMANTICS = "scalping-probability-outcome-v2-ttl30s-timestop15m-netcost"
 
 
 class MixedRuntimeLineageWithinBoundary(RuntimeError):
@@ -113,6 +114,7 @@ class HomogeneityIdentity:
     market_universe_id: str
     decision_semantics_version: str = DECISION_SEMANTICS_VERSION
     collector_schema_version: str = COLLECTOR_SCHEMA_REVISION
+    outcome_semantics_version: str = PROBABILITY_OUTCOME_SEMANTICS
 
     @property
     def segment_id(self) -> str:
@@ -172,7 +174,10 @@ def normalize_microstructure(paper: Mapping[str, Any], decision_cutoff_ms: int |
     }
 
 
-def _extract_followup(observation: Mapping[str, Any]) -> dict[str, Any] | None:
+def _extract_followup(
+    observation: Mapping[str, Any], *, ttl_ms: int = 30_000,
+    time_stop_ms: int = 15 * 60 * 1000,
+) -> dict[str, Any] | None:
     setup = _mapping(observation.get("setup"))
     raw = _mapping(setup.get("raw"))
     if raw.get("status") != "SETUP_CANDIDATE":
@@ -185,21 +190,36 @@ def _extract_followup(observation: Mapping[str, Any]) -> dict[str, Any] | None:
         entry = _number(_first(context, "confirmation_close", "reference_close", "current_closed_candle_close"))
     if entry is None:
         return None
+    diagnostic = _mapping(_mapping(paper.get("paper_context")).get("scalping_geometry_diagnostics"))
+    total_cost = _number(diagnostic.get("effective_total_cost_bps"))
+    cost_bucket = "UNKNOWN" if total_cost is None else (
+        "LOW" if total_cost <= 20 else "MEDIUM" if total_cost <= 40 else "HIGH"
+    )
     boundary_ms = int(observation["identity"]["boundary_time_ms"])
     return {
         "opportunity_id": observation["identity"].get("opportunity_id"),
         "observation_id": observation["observation_id"],
         "symbol": observation["identity"]["symbol"],
+        "parameter_set_id": observation["identity"].get("parameter_set_id"),
+        "setup_type": _first(setup, "type") or _nested_setup_type(setup),
+        "regime": _mapping(observation.get("market_context")).get("regime") or "UNKNOWN",
+        "cost_bucket": cost_bucket,
+        "effective_total_cost_bps": total_cost,
+        "outcome_semantics": PROBABILITY_OUTCOME_SEMANTICS,
         "boundary_time_ms": boundary_ms,
         "entry_decision_time_ms": _integer(_first(paper, "created_at_ms")) or boundary_ms,
         "direction": direction,
         "entry_reference": entry,
         "baseline_stop": _number(paper.get("hypothetical_stop_level")),
         "baseline_target": _number(paper.get("hypothetical_target_level")),
-        "ttl_ms": 60_000,
-        "time_stop_ms": 30 * 60 * 1000,
-        "followup_due_ms": boundary_ms + DEFAULT_OUTCOME_HORIZON_MS,
+        "ttl_ms": ttl_ms,
+        "time_stop_ms": time_stop_ms,
+        "followup_due_ms": boundary_ms + time_stop_ms + 120_000,
     }
+
+
+def _nested_setup_type(setup: Mapping[str, Any]) -> object | None:
+    return _mapping(setup.get("raw")).get("setup_type")
 
 
 def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -242,6 +262,7 @@ def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str,
     favorable: list[tuple[float, int]] = []
     adverse: list[tuple[float, int]] = []
     terminal_ms = time_stop
+    terminal_price = float(active[-1]["close"])
     outcome = "TIME_EXPIRED" if stop is not None and target is not None else "PATH_CAPTURED_NO_BASELINE_GEOMETRY"
     tp_first = sl_first = both = False
     target_time = stop_time = None
@@ -264,15 +285,24 @@ def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str,
             stop_time = opened - boundary
         if hit_target and hit_stop:
             outcome, both, terminal_ms = "AMBIGUOUS_BOTH_SAME_CANDLE", True, opened
+            terminal_price = float(candle["close"])
             break
         if hit_stop:
             outcome, sl_first, terminal_ms = "SL_FIRST", True, opened
+            terminal_price = float(stop)
             break
         if hit_target:
             outcome, tp_first, terminal_ms = "TP_FIRST", True, opened
+            terminal_price = float(target)
             break
     best = max(favorable, default=(0.0, boundary), key=lambda item: item[0])
     worst = max(adverse, default=(0.0, boundary), key=lambda item: item[0])
+    gross_return_bps = (
+        (terminal_price - entry) / entry * 10_000
+        if direction in {"BULLISH", "LONG"}
+        else (entry - terminal_price) / entry * 10_000
+    )
+    total_cost_bps = _number(followup.get("effective_total_cost_bps"))
     result.update({
         "baseline_outcome": outcome, "tp_first": tp_first, "sl_first": sl_first,
         "both_same_candle": both, "mfe_bps": best[0], "mae_bps": worst[0],
@@ -280,6 +310,9 @@ def evaluate_outcome(followup: Mapping[str, Any], candles: Sequence[Mapping[str,
         "time_to_mfe_ms": max(0, best[1] - boundary),
         "time_to_mae_ms": max(0, worst[1] - boundary),
         "time_to_target_ms": target_time, "time_to_stop_ms": stop_time,
+        "terminal_price": terminal_price,
+        "gross_return_bps": gross_return_bps,
+        "net_return_bps": None if total_cost_bps is None else gross_return_bps - total_cost_bps,
     })
     return result
 
@@ -562,6 +595,9 @@ class CollectorConfig:
     poll_seconds: float = 10.0
     boundary_wait_seconds: int = 240
     max_part_bytes: int = DEFAULT_MAX_PART_BYTES
+    initial_boundary_ms: int | None = None
+    outcome_ttl_ms: int = 30_000
+    outcome_time_stop_ms: int = 15 * 60 * 1000
 
     @property
     def identity(self) -> HomogeneityIdentity:
@@ -612,8 +648,11 @@ class ProspectiveCalibrationCollector:
             self.runtime_daemon_instance_id = checkpoint.get("runtime_daemon_instance_id")
             self.last_persisted_run_id = checkpoint.get("last_persisted_run_id")
         else:
-            latest = repository.latest_boundary()
-            self.last_seen_boundary = self.last_persisted_boundary = int(latest or 0)
+            initial = (
+                int(config.initial_boundary_ms) - 300_000
+                if config.initial_boundary_ms is not None else repository.latest_boundary()
+            )
+            self.last_seen_boundary = self.last_persisted_boundary = int(initial or 0)
             self.records_written = len(self.store.observation_ids)
         self.pending = self.store.pending_followups()
 
@@ -739,7 +778,10 @@ class ProspectiveCalibrationCollector:
             },
             "outcome_followup": None,
         }
-        observation["outcome_followup"] = _extract_followup(observation)
+        observation["outcome_followup"] = _extract_followup(
+            observation, ttl_ms=self.config.outcome_ttl_ms,
+            time_stop_ms=self.config.outcome_time_stop_ms,
+        )
         return observation
 
     def _checkpoint(self, last_run_id: str | None) -> None:
@@ -1042,5 +1084,5 @@ class ProspectiveCalibrationCollector:
 __all__ = [
     "AppendOnlyStore", "CollectorConfig", "HomogeneityIdentity", "PostgresCollectorOwner",
     "PostgresRepository", "ProspectiveCalibrationCollector", "MixedRuntimeLineageWithinBoundary", "evaluate_outcome",
-    "market_universe_id", "normalize_microstructure",
+    "PROBABILITY_OUTCOME_SEMANTICS", "market_universe_id", "normalize_microstructure",
 ]

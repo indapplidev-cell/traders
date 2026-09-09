@@ -129,13 +129,16 @@ services:
     command: >
       sh -c 'export DATABASE_URL="postgresql://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
       exec python scripts/scalping_prospective_collector.py
-      --output-dir reports/calibration/scalping-v2-prospective
+      --output-dir reports/calibration/scalping-v2-probability-set2
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
-      --parameter-set-id trade-5m-v2-runtime-v1-2b79734d55b752c2
+      --parameter-set-id scalping-v2-set-2
       --runtime-source-commit ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
       --runtime-artifact-id ${TRADERS_SCALPING_V2_ARTIFACT_ID:-UNSET}
-      --schema-revision 0023_scalping_v2_journal_causality
-      --poll-seconds 10
+      --schema-revision 0031_scalping_parameter_sets
+      --initial-boundary-ms 1788885600000
+      --outcome-ttl-ms 30000
+      --outcome-time-stop-ms 900000
+      --poll-seconds 2
       --boundary-wait-seconds 240'
     volumes:
       - ./reports:/service/reports

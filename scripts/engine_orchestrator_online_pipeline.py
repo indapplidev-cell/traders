@@ -232,7 +232,12 @@ def main(argv: list[str] | None = None) -> int:
                 ScalpingPaperRunner(
                     runtime_parameters=runtime_parameters,
                     cost_source=scalping_cost_source,
-                    statistics_source=PostgresPaperOutcomeStatisticsSource(sessions),
+                    statistics_source=PostgresPaperOutcomeStatisticsSource(
+                        sessions,
+                        prospective_outcome_directory=Path(
+                            "reports/calibration/scalping-v2-probability-set2"
+                        ),
+                    ),
                     opportunity_registry=PostgresScalpingOpportunityRegistry(sessions),
                 ) if profile.trade_profile_id in SCALPING_PROFILE_IDS else None
             ),

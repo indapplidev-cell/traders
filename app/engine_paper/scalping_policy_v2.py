@@ -45,6 +45,7 @@ class EmpiricalSetupBucket:
     wins: int
     level: str = "exact"
     bucket_key: str | None = None
+    evidence_source: str = "PERSISTED_PAPER_OUTCOME"
 
     def __post_init__(self) -> None:
         if self.samples < 0 or not 0 <= self.wins <= self.samples:
@@ -139,9 +140,17 @@ def evaluate_expectancy(
         None,
     )
     if selected is None:
+        hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
+        leaf = bucket or (hierarchy[0] if hierarchy else None)
+        broadest = hierarchy[-1] if hierarchy else None
         return ExpectancyDecision(
             False, None, None, "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE",
-            fallback_level="none", bucket_key=None,
+            fallback_level="none",
+            bucket_key=None if leaf is None else (
+                leaf.bucket_key or f"{leaf.setup_type}|{leaf.direction}"
+            ),
+            sample_size=0 if leaf is None else leaf.samples,
+            parent_sample_size=0 if broadest is None else broadest.samples,
         )
     selected_index = (((bucket,) if bucket is not None else ()) + parent_buckets).index(selected)
     hierarchy = ((bucket,) if bucket is not None else ()) + parent_buckets
@@ -174,6 +183,7 @@ def evaluate_expectancy(
         "DYNAMIC_NET_RR_CONSERVATIVE_EV_PASS" if admitted else "DYNAMIC_NET_RR_CONSERVATIVE_EV_REJECT",
         fallback_level=selected.level,
         bucket_key=selected.bucket_key or f"{selected.setup_type}|{selected.direction}",
+        estimator_version=f"{estimate.estimator_version}+{selected.evidence_source}",
         p_win_raw=estimate.p_win_raw,
         p_win_adjusted=estimate.p_win_adjusted,
         p_win_conservative=estimate.p_win_conservative,

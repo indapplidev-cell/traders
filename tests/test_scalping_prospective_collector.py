@@ -278,7 +278,7 @@ def test_mixed_boundary_fails_closed_preserves_incident_and_recovers_next_clean(
     assert set(collector.pending) == pending_before
     assert manifest["exclusions"] == [{
         "incident_id": manifest["exclusions"][0]["incident_id"],
-        "observation_segment_id": identity().segment_id,
+        "observation_segment_id": config(tmp_path).identity.segment_id,
         "boundary_time_ms": mixed,
         "reason": "MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY",
         "calibration_eligible": False,

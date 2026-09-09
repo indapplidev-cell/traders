@@ -38,6 +38,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--poll-seconds", type=float, default=10.0)
     parser.add_argument("--boundary-wait-seconds", type=int, default=240)
     parser.add_argument("--max-part-bytes", type=int, default=64 * 1024 * 1024)
+    parser.add_argument("--initial-boundary-ms", type=int)
+    parser.add_argument("--outcome-ttl-ms", type=int, default=30_000)
+    parser.add_argument("--outcome-time-stop-ms", type=int, default=15 * 60 * 1000)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--status", action="store_true")
     return parser
@@ -66,6 +69,9 @@ def main(argv: list[str] | None = None) -> int:
         poll_seconds=args.poll_seconds,
         boundary_wait_seconds=args.boundary_wait_seconds,
         max_part_bytes=args.max_part_bytes,
+        initial_boundary_ms=args.initial_boundary_ms,
+        outcome_ttl_ms=args.outcome_ttl_ms,
+        outcome_time_stop_ms=args.outcome_time_stop_ms,
     )
     read_connection = psycopg.connect(database_url, autocommit=True, application_name="traders_scalping_calibration_reader")
     try:

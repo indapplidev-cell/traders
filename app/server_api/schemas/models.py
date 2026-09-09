@@ -386,6 +386,7 @@ class TradingFunnelSnapshot(ContractModel):
     historical_paper_plans_4h: list[FunnelCandidateStatus] = Field(default_factory=list)
     rolling_1h: FunnelRollingSummary
     rolling_4h: FunnelRollingSummary
+    probability_authority_summary: dict[str, Any] = Field(default_factory=dict)
     projection_generated_at_ms: int = Field(ge=0)
     latest_pipeline_update_ms: int | None = Field(default=None, ge=0)
     age_ms: int | None = Field(default=None, ge=0)

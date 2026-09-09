@@ -186,6 +186,11 @@ def _product(left: object, right: object) -> str | None:
     return _decimal_text(first * second) if first is not None and second is not None else None
 
 
+def _authority_ratio(sample: object, required: int) -> str | None:
+    count = _decimal(sample)
+    return _decimal_text(count / Decimal(required)) if count is not None else None
+
+
 def _profile_screen_contexts(
     row: OnlinePipelineRun,
     result: OnlinePipelineResultRow | None,
@@ -682,8 +687,27 @@ def _downstream_trace(
         ),
         "probability_bucket": diagnostic.get("probability_bucket"),
         "probability_sample_size": diagnostic.get("probability_sample_size"),
+        "probability_required_sample_size": SCALPING_V2.economics.bucket_min_sample,
+        "probability_authority_ratio": _authority_ratio(
+            diagnostic.get("probability_sample_size"),
+            SCALPING_V2.economics.bucket_min_sample,
+        ),
+        "probability_authority_status": (
+            "READY" if int(diagnostic.get("probability_sample_size") or 0)
+            >= SCALPING_V2.economics.bucket_min_sample
+            else "INSUFFICIENT"
+        ),
         "probability_parent_sample_size": diagnostic.get("probability_parent_sample_size"),
         "probability_fallback_level": diagnostic.get("probability_fallback_level"),
+        "probability_parent_used": diagnostic.get("probability_fallback_level") not in {
+            None, "none", "exact",
+        },
+        "probability_eta_to_authority_hours": None,
+        "probability_authority_reason_code": (
+            "INSUFFICIENT_PROBABILITY_BUCKET_AND_PARENT"
+            if diagnostic.get("expectancy_gate_reason")
+            == "INSUFFICIENT_STATISTICAL_AUTHORITY_NO_TRADE" else None
+        ),
         "probability_source": diagnostic.get("probability_estimator_version"),
         "candidate_net_rr": diagnostic.get("candidate_net_rr"),
         "dynamic_required_net_rr": diagnostic.get("dynamic_required_net_rr"),
@@ -856,6 +880,15 @@ def _downstream_trace(
         semantic_states[key] = state
     semantic_states["trade_parameter_config_version"] = "AVAILABLE"
     semantic_states["trade_parameter_config_hash"] = "AVAILABLE"
+    for key in (
+        "probability_required_sample_size", "probability_authority_ratio",
+        "probability_authority_status", "probability_parent_used",
+        "probability_eta_to_authority_hours", "probability_authority_reason_code",
+    ):
+        semantic_states[key] = (
+            "AVAILABLE" if diagnostic.get("expectancy_gate_reason") is not None
+            else "NOT_REACHED"
+        )
     detail["semantic_states"] = semantic_states
     return trace, detail
 
@@ -2238,6 +2271,42 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 shadow_candidate.get("status") in {"CANDIDATE", "PLAN_READY", "ELIGIBLE"}
             )
     freshness_state = "NOT_AVAILABLE" if age is None else "CURRENT" if age <= boundary_ms * 2 else "STALE"
+    authority_rows: list[dict[str, Any]] = []
+    for boundary, pairs in by_boundary.items():
+        if not now_ms - 4 * 60 * 60 * 1000 <= boundary <= now_ms:
+            continue
+        for row, result in pairs:
+            trace, _meta = _stage_trace(row, result, now_ms)
+            _, detail = _downstream_trace(
+                result, trace,
+                scalping=profile.trigger_timeframe == "5m",
+                now_ms=now_ms,
+                include_detail=True,
+            )
+            if detail.get("rr_subreason") == "INSUFFICIENT_PROBABILITY":
+                authority_rows.append(detail)
+    unique_authority_buckets = {
+        str(item["probability_bucket"])
+        for item in authority_rows if item.get("probability_bucket")
+    }
+    required_samples = SCALPING_V2.economics.bucket_min_sample
+    ready_buckets = {
+        str(item["probability_bucket"])
+        for item in authority_rows
+        if item.get("probability_bucket")
+        and int(item.get("probability_sample_size") or 0) >= required_samples
+    }
+    near_buckets = {
+        str(item["probability_bucket"])
+        for item in authority_rows
+        if item.get("probability_bucket")
+        and required_samples * .75 <= int(item.get("probability_sample_size") or 0) < required_samples
+    }
+    zero_buckets = {
+        str(item["probability_bucket"])
+        for item in authority_rows
+        if item.get("probability_bucket") and int(item.get("probability_sample_size") or 0) == 0
+    }
     return {
         "projection_version": PROJECTION_VERSION,
         "trade_profile_id": profile.trade_profile_id,
@@ -2287,6 +2356,15 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         ],
         "historical_paper_plans_4h": historical_paper_plans_4h,
         "rolling_1h": rolling(60 * 60 * 1000), "rolling_4h": rolling(4 * 60 * 60 * 1000),
+        "probability_authority_summary": {
+            "rr_blocked_insufficient_probability": len(authority_rows),
+            "unique_buckets": len(unique_authority_buckets),
+            "ready_buckets": len(ready_buckets),
+            "near_authority_buckets": len(near_buckets),
+            "no_accumulation_buckets": len(zero_buckets),
+            "required_sample_count": required_samples,
+            "window_ms": 4 * 60 * 60 * 1000,
+        },
         "projection_generated_at_ms": now_ms, "latest_pipeline_update_ms": latest,
         "age_ms": age, "freshness_state": freshness_state,
         "query_time_horizon_ms": max_horizon_ms,
