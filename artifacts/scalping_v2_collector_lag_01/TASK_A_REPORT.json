@@ -1,0 +1,9565 @@
+{
+  "anchor_cycle": 1788990000000,
+  "anchor_time": "2026-09-09T21:40:00+00:00",
+  "collected": 2182,
+  "collector_last_boundary": 1788977100000,
+  "complete_cycles": 219,
+  "cycles": {
+    "1788903900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788904200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788904500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788904800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788905100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788905400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788905700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788906000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788906300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788906600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788906900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788907200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788907500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788907800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788908100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788908400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788908700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788909000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788909300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788909600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788909900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788910200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788910500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788910800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788911100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788911400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788911700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788912000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788912300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788912600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788912900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788913200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788913500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788913800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788914100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788914400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788914700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788915000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788915300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788915600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788915900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788916200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788916500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788916800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788917100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788917400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788917700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788918000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788918300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788918600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788918900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788919200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788919500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788919800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788920100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788920400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788920700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788921000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788921300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788921600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788921900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788922200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788922500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788922800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788923100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788923400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788923700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788924000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788924300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788924600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788924900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788925200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788925500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788925800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788926100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788926400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788926700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788927000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788927300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788927600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788927900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788928200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788928500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788928800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788929100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788929400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788929700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788930000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788930300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788930600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788930900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788931200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788931500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788931800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788932100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788932400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788932700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788933000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788933300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788933600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788933900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788934200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788934500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788934800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788935100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788935400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788935700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788936000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788936300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788936600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788936900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788937200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788937500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788937800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788938100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788938400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788938700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788939000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788939300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788939600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788939900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788940200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788940500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788940800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788941100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788941400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788941700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788942000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788942300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788942600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788942900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788943200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788943500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788943800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788944100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788944400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788944700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788950700000": {
+      "expected_symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "BTCUSDT",
+        "ETHUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788951000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788951300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788951600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788951900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788952200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788952500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788952800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788953100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788953400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788953700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788954000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788954300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788954600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788954900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788955200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788955500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788955800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788956100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788956400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788956700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788957000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788957300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788957600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788957900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788958200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788958500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788958800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788959100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788959400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788959700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788960000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788960300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788960600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788960900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788961200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788961500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788961800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788962100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788962400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788962700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788963000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788963300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788963600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788963900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788964200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788964500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788964800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788965100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788965400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788965700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788966000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788966300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788966600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788966900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788967200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788967500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788967800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788968100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788968400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788968700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788969000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788969300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788969600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788969900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788970200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788970500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788970800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788971100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788971400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788971700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788972000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788972300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788972600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788972900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788973200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788973500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788973800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788974100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788974400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788974700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788975000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788975300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788975600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788975900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788976200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788976500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788976800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788977100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [],
+      "seen_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "state": "COMPLETE"
+    },
+    "1788977400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788977700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788978000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788978300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788978600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788978900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788979200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788979500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788979800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788980100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788980400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788980700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788981000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788981300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788981600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788981900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788982200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788982500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788982800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788983100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788983400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788983700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788984000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788984300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788984600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788984900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788985200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788985500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788985800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788986100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788986400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788986700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788987000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788987300000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788987600000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788987900000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788988200000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788988500000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788988800000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788989100000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788989400000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788989700000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    },
+    "1788990000000": {
+      "expected_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "missing_symbols": [
+        "ADAUSDT",
+        "AVAXUSDT",
+        "BNBUSDT",
+        "BTCUSDT",
+        "DOGEUSDT",
+        "ETHUSDT",
+        "LINKUSDT",
+        "SOLUSDT",
+        "SUIUSDT",
+        "XRPUSDT"
+      ],
+      "seen_symbols": [],
+      "state": "SKIPPED"
+    }
+  },
+  "duplicate_ids": [],
+  "duplicates": 0,
+  "expected": 2682,
+  "generated_at": "2026-09-09T21:45:06.192044+00:00",
+  "ingestion_lag_seconds": {
+    "max": 70029.025,
+    "min": 0.358,
+    "p50": 37619.9405,
+    "p75": 53962.78825,
+    "p90": 63774.3568,
+    "p95": 67039.85749999994,
+    "p99": 69439.80702000001
+  },
+  "mature_but_not_collected": 0,
+  "mature_missing_ids": [],
+  "missing": 500,
+  "missing_ids": [
+    [
+      1788974700000,
+      "ADAUSDT"
+    ],
+    [
+      1788974700000,
+      "AVAXUSDT"
+    ],
+    [
+      1788974700000,
+      "BNBUSDT"
+    ],
+    [
+      1788974700000,
+      "BTCUSDT"
+    ],
+    [
+      1788974700000,
+      "DOGEUSDT"
+    ],
+    [
+      1788974700000,
+      "ETHUSDT"
+    ],
+    [
+      1788974700000,
+      "LINKUSDT"
+    ],
+    [
+      1788974700000,
+      "SOLUSDT"
+    ],
+    [
+      1788974700000,
+      "SUIUSDT"
+    ],
+    [
+      1788974700000,
+      "XRPUSDT"
+    ],
+    [
+      1788975000000,
+      "ADAUSDT"
+    ],
+    [
+      1788975000000,
+      "AVAXUSDT"
+    ],
+    [
+      1788975000000,
+      "BNBUSDT"
+    ],
+    [
+      1788975000000,
+      "BTCUSDT"
+    ],
+    [
+      1788975000000,
+      "DOGEUSDT"
+    ],
+    [
+      1788975000000,
+      "ETHUSDT"
+    ],
+    [
+      1788975000000,
+      "LINKUSDT"
+    ],
+    [
+      1788975000000,
+      "SOLUSDT"
+    ],
+    [
+      1788975000000,
+      "SUIUSDT"
+    ],
+    [
+      1788975000000,
+      "XRPUSDT"
+    ],
+    [
+      1788975300000,
+      "ADAUSDT"
+    ],
+    [
+      1788975300000,
+      "AVAXUSDT"
+    ],
+    [
+      1788975300000,
+      "BNBUSDT"
+    ],
+    [
+      1788975300000,
+      "BTCUSDT"
+    ],
+    [
+      1788975300000,
+      "DOGEUSDT"
+    ],
+    [
+      1788975300000,
+      "ETHUSDT"
+    ],
+    [
+      1788975300000,
+      "LINKUSDT"
+    ],
+    [
+      1788975300000,
+      "SOLUSDT"
+    ],
+    [
+      1788975300000,
+      "SUIUSDT"
+    ],
+    [
+      1788975300000,
+      "XRPUSDT"
+    ],
+    [
+      1788975600000,
+      "ADAUSDT"
+    ],
+    [
+      1788975600000,
+      "AVAXUSDT"
+    ],
+    [
+      1788975600000,
+      "BNBUSDT"
+    ],
+    [
+      1788975600000,
+      "BTCUSDT"
+    ],
+    [
+      1788975600000,
+      "DOGEUSDT"
+    ],
+    [
+      1788975600000,
+      "ETHUSDT"
+    ],
+    [
+      1788975600000,
+      "LINKUSDT"
+    ],
+    [
+      1788975600000,
+      "SOLUSDT"
+    ],
+    [
+      1788975600000,
+      "SUIUSDT"
+    ],
+    [
+      1788975600000,
+      "XRPUSDT"
+    ],
+    [
+      1788975900000,
+      "ADAUSDT"
+    ],
+    [
+      1788975900000,
+      "AVAXUSDT"
+    ],
+    [
+      1788975900000,
+      "BNBUSDT"
+    ],
+    [
+      1788975900000,
+      "BTCUSDT"
+    ],
+    [
+      1788975900000,
+      "DOGEUSDT"
+    ],
+    [
+      1788975900000,
+      "ETHUSDT"
+    ],
+    [
+      1788975900000,
+      "LINKUSDT"
+    ],
+    [
+      1788975900000,
+      "SOLUSDT"
+    ],
+    [
+      1788975900000,
+      "SUIUSDT"
+    ],
+    [
+      1788975900000,
+      "XRPUSDT"
+    ],
+    [
+      1788976200000,
+      "ADAUSDT"
+    ],
+    [
+      1788976200000,
+      "AVAXUSDT"
+    ],
+    [
+      1788976200000,
+      "BNBUSDT"
+    ],
+    [
+      1788976200000,
+      "BTCUSDT"
+    ],
+    [
+      1788976200000,
+      "DOGEUSDT"
+    ],
+    [
+      1788976200000,
+      "ETHUSDT"
+    ],
+    [
+      1788976200000,
+      "LINKUSDT"
+    ],
+    [
+      1788976200000,
+      "SOLUSDT"
+    ],
+    [
+      1788976200000,
+      "SUIUSDT"
+    ],
+    [
+      1788976200000,
+      "XRPUSDT"
+    ],
+    [
+      1788976800000,
+      "ADAUSDT"
+    ],
+    [
+      1788976800000,
+      "AVAXUSDT"
+    ],
+    [
+      1788976800000,
+      "BNBUSDT"
+    ],
+    [
+      1788976800000,
+      "BTCUSDT"
+    ],
+    [
+      1788976800000,
+      "DOGEUSDT"
+    ],
+    [
+      1788976800000,
+      "ETHUSDT"
+    ],
+    [
+      1788976800000,
+      "LINKUSDT"
+    ],
+    [
+      1788976800000,
+      "SOLUSDT"
+    ],
+    [
+      1788976800000,
+      "SUIUSDT"
+    ],
+    [
+      1788976800000,
+      "XRPUSDT"
+    ],
+    [
+      1788977400000,
+      "ADAUSDT"
+    ],
+    [
+      1788977400000,
+      "AVAXUSDT"
+    ],
+    [
+      1788977400000,
+      "BNBUSDT"
+    ],
+    [
+      1788977400000,
+      "BTCUSDT"
+    ],
+    [
+      1788977400000,
+      "DOGEUSDT"
+    ],
+    [
+      1788977400000,
+      "ETHUSDT"
+    ],
+    [
+      1788977400000,
+      "LINKUSDT"
+    ],
+    [
+      1788977400000,
+      "SOLUSDT"
+    ],
+    [
+      1788977400000,
+      "SUIUSDT"
+    ],
+    [
+      1788977400000,
+      "XRPUSDT"
+    ],
+    [
+      1788977700000,
+      "ADAUSDT"
+    ],
+    [
+      1788977700000,
+      "AVAXUSDT"
+    ],
+    [
+      1788977700000,
+      "BNBUSDT"
+    ],
+    [
+      1788977700000,
+      "BTCUSDT"
+    ],
+    [
+      1788977700000,
+      "DOGEUSDT"
+    ],
+    [
+      1788977700000,
+      "ETHUSDT"
+    ],
+    [
+      1788977700000,
+      "LINKUSDT"
+    ],
+    [
+      1788977700000,
+      "SOLUSDT"
+    ],
+    [
+      1788977700000,
+      "SUIUSDT"
+    ],
+    [
+      1788977700000,
+      "XRPUSDT"
+    ],
+    [
+      1788978000000,
+      "ADAUSDT"
+    ],
+    [
+      1788978000000,
+      "AVAXUSDT"
+    ],
+    [
+      1788978000000,
+      "BNBUSDT"
+    ],
+    [
+      1788978000000,
+      "BTCUSDT"
+    ],
+    [
+      1788978000000,
+      "DOGEUSDT"
+    ],
+    [
+      1788978000000,
+      "ETHUSDT"
+    ],
+    [
+      1788978000000,
+      "LINKUSDT"
+    ],
+    [
+      1788978000000,
+      "SOLUSDT"
+    ],
+    [
+      1788978000000,
+      "SUIUSDT"
+    ],
+    [
+      1788978000000,
+      "XRPUSDT"
+    ],
+    [
+      1788978300000,
+      "ADAUSDT"
+    ],
+    [
+      1788978300000,
+      "AVAXUSDT"
+    ],
+    [
+      1788978300000,
+      "BNBUSDT"
+    ],
+    [
+      1788978300000,
+      "BTCUSDT"
+    ],
+    [
+      1788978300000,
+      "DOGEUSDT"
+    ],
+    [
+      1788978300000,
+      "ETHUSDT"
+    ],
+    [
+      1788978300000,
+      "LINKUSDT"
+    ],
+    [
+      1788978300000,
+      "SOLUSDT"
+    ],
+    [
+      1788978300000,
+      "SUIUSDT"
+    ],
+    [
+      1788978300000,
+      "XRPUSDT"
+    ],
+    [
+      1788978600000,
+      "ADAUSDT"
+    ],
+    [
+      1788978600000,
+      "AVAXUSDT"
+    ],
+    [
+      1788978600000,
+      "BNBUSDT"
+    ],
+    [
+      1788978600000,
+      "BTCUSDT"
+    ],
+    [
+      1788978600000,
+      "DOGEUSDT"
+    ],
+    [
+      1788978600000,
+      "ETHUSDT"
+    ],
+    [
+      1788978600000,
+      "LINKUSDT"
+    ],
+    [
+      1788978600000,
+      "SOLUSDT"
+    ],
+    [
+      1788978600000,
+      "SUIUSDT"
+    ],
+    [
+      1788978600000,
+      "XRPUSDT"
+    ],
+    [
+      1788978900000,
+      "ADAUSDT"
+    ],
+    [
+      1788978900000,
+      "AVAXUSDT"
+    ],
+    [
+      1788978900000,
+      "BNBUSDT"
+    ],
+    [
+      1788978900000,
+      "BTCUSDT"
+    ],
+    [
+      1788978900000,
+      "DOGEUSDT"
+    ],
+    [
+      1788978900000,
+      "ETHUSDT"
+    ],
+    [
+      1788978900000,
+      "LINKUSDT"
+    ],
+    [
+      1788978900000,
+      "SOLUSDT"
+    ],
+    [
+      1788978900000,
+      "SUIUSDT"
+    ],
+    [
+      1788978900000,
+      "XRPUSDT"
+    ],
+    [
+      1788979200000,
+      "ADAUSDT"
+    ],
+    [
+      1788979200000,
+      "AVAXUSDT"
+    ],
+    [
+      1788979200000,
+      "BNBUSDT"
+    ],
+    [
+      1788979200000,
+      "BTCUSDT"
+    ],
+    [
+      1788979200000,
+      "DOGEUSDT"
+    ],
+    [
+      1788979200000,
+      "ETHUSDT"
+    ],
+    [
+      1788979200000,
+      "LINKUSDT"
+    ],
+    [
+      1788979200000,
+      "SOLUSDT"
+    ],
+    [
+      1788979200000,
+      "SUIUSDT"
+    ],
+    [
+      1788979200000,
+      "XRPUSDT"
+    ],
+    [
+      1788979500000,
+      "ADAUSDT"
+    ],
+    [
+      1788979500000,
+      "AVAXUSDT"
+    ],
+    [
+      1788979500000,
+      "BNBUSDT"
+    ],
+    [
+      1788979500000,
+      "BTCUSDT"
+    ],
+    [
+      1788979500000,
+      "DOGEUSDT"
+    ],
+    [
+      1788979500000,
+      "ETHUSDT"
+    ],
+    [
+      1788979500000,
+      "LINKUSDT"
+    ],
+    [
+      1788979500000,
+      "SOLUSDT"
+    ],
+    [
+      1788979500000,
+      "SUIUSDT"
+    ],
+    [
+      1788979500000,
+      "XRPUSDT"
+    ],
+    [
+      1788979800000,
+      "ADAUSDT"
+    ],
+    [
+      1788979800000,
+      "AVAXUSDT"
+    ],
+    [
+      1788979800000,
+      "BNBUSDT"
+    ],
+    [
+      1788979800000,
+      "BTCUSDT"
+    ],
+    [
+      1788979800000,
+      "DOGEUSDT"
+    ],
+    [
+      1788979800000,
+      "ETHUSDT"
+    ],
+    [
+      1788979800000,
+      "LINKUSDT"
+    ],
+    [
+      1788979800000,
+      "SOLUSDT"
+    ],
+    [
+      1788979800000,
+      "SUIUSDT"
+    ],
+    [
+      1788979800000,
+      "XRPUSDT"
+    ],
+    [
+      1788980100000,
+      "ADAUSDT"
+    ],
+    [
+      1788980100000,
+      "AVAXUSDT"
+    ],
+    [
+      1788980100000,
+      "BNBUSDT"
+    ],
+    [
+      1788980100000,
+      "BTCUSDT"
+    ],
+    [
+      1788980100000,
+      "DOGEUSDT"
+    ],
+    [
+      1788980100000,
+      "ETHUSDT"
+    ],
+    [
+      1788980100000,
+      "LINKUSDT"
+    ],
+    [
+      1788980100000,
+      "SOLUSDT"
+    ],
+    [
+      1788980100000,
+      "SUIUSDT"
+    ],
+    [
+      1788980100000,
+      "XRPUSDT"
+    ],
+    [
+      1788980400000,
+      "ADAUSDT"
+    ],
+    [
+      1788980400000,
+      "AVAXUSDT"
+    ],
+    [
+      1788980400000,
+      "BNBUSDT"
+    ],
+    [
+      1788980400000,
+      "BTCUSDT"
+    ],
+    [
+      1788980400000,
+      "DOGEUSDT"
+    ],
+    [
+      1788980400000,
+      "ETHUSDT"
+    ],
+    [
+      1788980400000,
+      "LINKUSDT"
+    ],
+    [
+      1788980400000,
+      "SOLUSDT"
+    ],
+    [
+      1788980400000,
+      "SUIUSDT"
+    ],
+    [
+      1788980400000,
+      "XRPUSDT"
+    ],
+    [
+      1788980700000,
+      "ADAUSDT"
+    ],
+    [
+      1788980700000,
+      "AVAXUSDT"
+    ],
+    [
+      1788980700000,
+      "BNBUSDT"
+    ],
+    [
+      1788980700000,
+      "BTCUSDT"
+    ],
+    [
+      1788980700000,
+      "DOGEUSDT"
+    ],
+    [
+      1788980700000,
+      "ETHUSDT"
+    ],
+    [
+      1788980700000,
+      "LINKUSDT"
+    ],
+    [
+      1788980700000,
+      "SOLUSDT"
+    ],
+    [
+      1788980700000,
+      "SUIUSDT"
+    ],
+    [
+      1788980700000,
+      "XRPUSDT"
+    ],
+    [
+      1788981000000,
+      "ADAUSDT"
+    ],
+    [
+      1788981000000,
+      "AVAXUSDT"
+    ],
+    [
+      1788981000000,
+      "BNBUSDT"
+    ],
+    [
+      1788981000000,
+      "BTCUSDT"
+    ],
+    [
+      1788981000000,
+      "DOGEUSDT"
+    ],
+    [
+      1788981000000,
+      "ETHUSDT"
+    ],
+    [
+      1788981000000,
+      "LINKUSDT"
+    ],
+    [
+      1788981000000,
+      "SOLUSDT"
+    ],
+    [
+      1788981000000,
+      "SUIUSDT"
+    ],
+    [
+      1788981000000,
+      "XRPUSDT"
+    ],
+    [
+      1788981300000,
+      "ADAUSDT"
+    ],
+    [
+      1788981300000,
+      "AVAXUSDT"
+    ],
+    [
+      1788981300000,
+      "BNBUSDT"
+    ],
+    [
+      1788981300000,
+      "BTCUSDT"
+    ],
+    [
+      1788981300000,
+      "DOGEUSDT"
+    ],
+    [
+      1788981300000,
+      "ETHUSDT"
+    ],
+    [
+      1788981300000,
+      "LINKUSDT"
+    ],
+    [
+      1788981300000,
+      "SOLUSDT"
+    ],
+    [
+      1788981300000,
+      "SUIUSDT"
+    ],
+    [
+      1788981300000,
+      "XRPUSDT"
+    ],
+    [
+      1788981600000,
+      "ADAUSDT"
+    ],
+    [
+      1788981600000,
+      "AVAXUSDT"
+    ],
+    [
+      1788981600000,
+      "BNBUSDT"
+    ],
+    [
+      1788981600000,
+      "BTCUSDT"
+    ],
+    [
+      1788981600000,
+      "DOGEUSDT"
+    ],
+    [
+      1788981600000,
+      "ETHUSDT"
+    ],
+    [
+      1788981600000,
+      "LINKUSDT"
+    ],
+    [
+      1788981600000,
+      "SOLUSDT"
+    ],
+    [
+      1788981600000,
+      "SUIUSDT"
+    ],
+    [
+      1788981600000,
+      "XRPUSDT"
+    ],
+    [
+      1788981900000,
+      "ADAUSDT"
+    ],
+    [
+      1788981900000,
+      "AVAXUSDT"
+    ],
+    [
+      1788981900000,
+      "BNBUSDT"
+    ],
+    [
+      1788981900000,
+      "BTCUSDT"
+    ],
+    [
+      1788981900000,
+      "DOGEUSDT"
+    ],
+    [
+      1788981900000,
+      "ETHUSDT"
+    ],
+    [
+      1788981900000,
+      "LINKUSDT"
+    ],
+    [
+      1788981900000,
+      "SOLUSDT"
+    ],
+    [
+      1788981900000,
+      "SUIUSDT"
+    ],
+    [
+      1788981900000,
+      "XRPUSDT"
+    ],
+    [
+      1788982200000,
+      "ADAUSDT"
+    ],
+    [
+      1788982200000,
+      "AVAXUSDT"
+    ],
+    [
+      1788982200000,
+      "BNBUSDT"
+    ],
+    [
+      1788982200000,
+      "BTCUSDT"
+    ],
+    [
+      1788982200000,
+      "DOGEUSDT"
+    ],
+    [
+      1788982200000,
+      "ETHUSDT"
+    ],
+    [
+      1788982200000,
+      "LINKUSDT"
+    ],
+    [
+      1788982200000,
+      "SOLUSDT"
+    ],
+    [
+      1788982200000,
+      "SUIUSDT"
+    ],
+    [
+      1788982200000,
+      "XRPUSDT"
+    ],
+    [
+      1788982500000,
+      "ADAUSDT"
+    ],
+    [
+      1788982500000,
+      "AVAXUSDT"
+    ],
+    [
+      1788982500000,
+      "BNBUSDT"
+    ],
+    [
+      1788982500000,
+      "BTCUSDT"
+    ],
+    [
+      1788982500000,
+      "DOGEUSDT"
+    ],
+    [
+      1788982500000,
+      "ETHUSDT"
+    ],
+    [
+      1788982500000,
+      "LINKUSDT"
+    ],
+    [
+      1788982500000,
+      "SOLUSDT"
+    ],
+    [
+      1788982500000,
+      "SUIUSDT"
+    ],
+    [
+      1788982500000,
+      "XRPUSDT"
+    ],
+    [
+      1788982800000,
+      "ADAUSDT"
+    ],
+    [
+      1788982800000,
+      "AVAXUSDT"
+    ],
+    [
+      1788982800000,
+      "BNBUSDT"
+    ],
+    [
+      1788982800000,
+      "BTCUSDT"
+    ],
+    [
+      1788982800000,
+      "DOGEUSDT"
+    ],
+    [
+      1788982800000,
+      "ETHUSDT"
+    ],
+    [
+      1788982800000,
+      "LINKUSDT"
+    ],
+    [
+      1788982800000,
+      "SOLUSDT"
+    ],
+    [
+      1788982800000,
+      "SUIUSDT"
+    ],
+    [
+      1788982800000,
+      "XRPUSDT"
+    ],
+    [
+      1788983100000,
+      "ADAUSDT"
+    ],
+    [
+      1788983100000,
+      "AVAXUSDT"
+    ],
+    [
+      1788983100000,
+      "BNBUSDT"
+    ],
+    [
+      1788983100000,
+      "BTCUSDT"
+    ],
+    [
+      1788983100000,
+      "DOGEUSDT"
+    ],
+    [
+      1788983100000,
+      "ETHUSDT"
+    ],
+    [
+      1788983100000,
+      "LINKUSDT"
+    ],
+    [
+      1788983100000,
+      "SOLUSDT"
+    ],
+    [
+      1788983100000,
+      "SUIUSDT"
+    ],
+    [
+      1788983100000,
+      "XRPUSDT"
+    ],
+    [
+      1788983400000,
+      "ADAUSDT"
+    ],
+    [
+      1788983400000,
+      "AVAXUSDT"
+    ],
+    [
+      1788983400000,
+      "BNBUSDT"
+    ],
+    [
+      1788983400000,
+      "BTCUSDT"
+    ],
+    [
+      1788983400000,
+      "DOGEUSDT"
+    ],
+    [
+      1788983400000,
+      "ETHUSDT"
+    ],
+    [
+      1788983400000,
+      "LINKUSDT"
+    ],
+    [
+      1788983400000,
+      "SOLUSDT"
+    ],
+    [
+      1788983400000,
+      "SUIUSDT"
+    ],
+    [
+      1788983400000,
+      "XRPUSDT"
+    ],
+    [
+      1788983700000,
+      "ADAUSDT"
+    ],
+    [
+      1788983700000,
+      "AVAXUSDT"
+    ],
+    [
+      1788983700000,
+      "BNBUSDT"
+    ],
+    [
+      1788983700000,
+      "BTCUSDT"
+    ],
+    [
+      1788983700000,
+      "DOGEUSDT"
+    ],
+    [
+      1788983700000,
+      "ETHUSDT"
+    ],
+    [
+      1788983700000,
+      "LINKUSDT"
+    ],
+    [
+      1788983700000,
+      "SOLUSDT"
+    ],
+    [
+      1788983700000,
+      "SUIUSDT"
+    ],
+    [
+      1788983700000,
+      "XRPUSDT"
+    ],
+    [
+      1788984000000,
+      "ADAUSDT"
+    ],
+    [
+      1788984000000,
+      "AVAXUSDT"
+    ],
+    [
+      1788984000000,
+      "BNBUSDT"
+    ],
+    [
+      1788984000000,
+      "BTCUSDT"
+    ],
+    [
+      1788984000000,
+      "DOGEUSDT"
+    ],
+    [
+      1788984000000,
+      "ETHUSDT"
+    ],
+    [
+      1788984000000,
+      "LINKUSDT"
+    ],
+    [
+      1788984000000,
+      "SOLUSDT"
+    ],
+    [
+      1788984000000,
+      "SUIUSDT"
+    ],
+    [
+      1788984000000,
+      "XRPUSDT"
+    ],
+    [
+      1788984300000,
+      "ADAUSDT"
+    ],
+    [
+      1788984300000,
+      "AVAXUSDT"
+    ],
+    [
+      1788984300000,
+      "BNBUSDT"
+    ],
+    [
+      1788984300000,
+      "BTCUSDT"
+    ],
+    [
+      1788984300000,
+      "DOGEUSDT"
+    ],
+    [
+      1788984300000,
+      "ETHUSDT"
+    ],
+    [
+      1788984300000,
+      "LINKUSDT"
+    ],
+    [
+      1788984300000,
+      "SOLUSDT"
+    ],
+    [
+      1788984300000,
+      "SUIUSDT"
+    ],
+    [
+      1788984300000,
+      "XRPUSDT"
+    ],
+    [
+      1788984600000,
+      "ADAUSDT"
+    ],
+    [
+      1788984600000,
+      "AVAXUSDT"
+    ],
+    [
+      1788984600000,
+      "BNBUSDT"
+    ],
+    [
+      1788984600000,
+      "BTCUSDT"
+    ],
+    [
+      1788984600000,
+      "DOGEUSDT"
+    ],
+    [
+      1788984600000,
+      "ETHUSDT"
+    ],
+    [
+      1788984600000,
+      "LINKUSDT"
+    ],
+    [
+      1788984600000,
+      "SOLUSDT"
+    ],
+    [
+      1788984600000,
+      "SUIUSDT"
+    ],
+    [
+      1788984600000,
+      "XRPUSDT"
+    ],
+    [
+      1788984900000,
+      "ADAUSDT"
+    ],
+    [
+      1788984900000,
+      "AVAXUSDT"
+    ],
+    [
+      1788984900000,
+      "BNBUSDT"
+    ],
+    [
+      1788984900000,
+      "BTCUSDT"
+    ],
+    [
+      1788984900000,
+      "DOGEUSDT"
+    ],
+    [
+      1788984900000,
+      "ETHUSDT"
+    ],
+    [
+      1788984900000,
+      "LINKUSDT"
+    ],
+    [
+      1788984900000,
+      "SOLUSDT"
+    ],
+    [
+      1788984900000,
+      "SUIUSDT"
+    ],
+    [
+      1788984900000,
+      "XRPUSDT"
+    ],
+    [
+      1788985200000,
+      "ADAUSDT"
+    ],
+    [
+      1788985200000,
+      "AVAXUSDT"
+    ],
+    [
+      1788985200000,
+      "BNBUSDT"
+    ],
+    [
+      1788985200000,
+      "BTCUSDT"
+    ],
+    [
+      1788985200000,
+      "DOGEUSDT"
+    ],
+    [
+      1788985200000,
+      "ETHUSDT"
+    ],
+    [
+      1788985200000,
+      "LINKUSDT"
+    ],
+    [
+      1788985200000,
+      "SOLUSDT"
+    ],
+    [
+      1788985200000,
+      "SUIUSDT"
+    ],
+    [
+      1788985200000,
+      "XRPUSDT"
+    ],
+    [
+      1788985500000,
+      "ADAUSDT"
+    ],
+    [
+      1788985500000,
+      "AVAXUSDT"
+    ],
+    [
+      1788985500000,
+      "BNBUSDT"
+    ],
+    [
+      1788985500000,
+      "BTCUSDT"
+    ],
+    [
+      1788985500000,
+      "DOGEUSDT"
+    ],
+    [
+      1788985500000,
+      "ETHUSDT"
+    ],
+    [
+      1788985500000,
+      "LINKUSDT"
+    ],
+    [
+      1788985500000,
+      "SOLUSDT"
+    ],
+    [
+      1788985500000,
+      "SUIUSDT"
+    ],
+    [
+      1788985500000,
+      "XRPUSDT"
+    ],
+    [
+      1788985800000,
+      "ADAUSDT"
+    ],
+    [
+      1788985800000,
+      "AVAXUSDT"
+    ],
+    [
+      1788985800000,
+      "BNBUSDT"
+    ],
+    [
+      1788985800000,
+      "BTCUSDT"
+    ],
+    [
+      1788985800000,
+      "DOGEUSDT"
+    ],
+    [
+      1788985800000,
+      "ETHUSDT"
+    ],
+    [
+      1788985800000,
+      "LINKUSDT"
+    ],
+    [
+      1788985800000,
+      "SOLUSDT"
+    ],
+    [
+      1788985800000,
+      "SUIUSDT"
+    ],
+    [
+      1788985800000,
+      "XRPUSDT"
+    ],
+    [
+      1788986100000,
+      "ADAUSDT"
+    ],
+    [
+      1788986100000,
+      "AVAXUSDT"
+    ],
+    [
+      1788986100000,
+      "BNBUSDT"
+    ],
+    [
+      1788986100000,
+      "BTCUSDT"
+    ],
+    [
+      1788986100000,
+      "DOGEUSDT"
+    ],
+    [
+      1788986100000,
+      "ETHUSDT"
+    ],
+    [
+      1788986100000,
+      "LINKUSDT"
+    ],
+    [
+      1788986100000,
+      "SOLUSDT"
+    ],
+    [
+      1788986100000,
+      "SUIUSDT"
+    ],
+    [
+      1788986100000,
+      "XRPUSDT"
+    ],
+    [
+      1788986400000,
+      "ADAUSDT"
+    ],
+    [
+      1788986400000,
+      "AVAXUSDT"
+    ],
+    [
+      1788986400000,
+      "BNBUSDT"
+    ],
+    [
+      1788986400000,
+      "BTCUSDT"
+    ],
+    [
+      1788986400000,
+      "DOGEUSDT"
+    ],
+    [
+      1788986400000,
+      "ETHUSDT"
+    ],
+    [
+      1788986400000,
+      "LINKUSDT"
+    ],
+    [
+      1788986400000,
+      "SOLUSDT"
+    ],
+    [
+      1788986400000,
+      "SUIUSDT"
+    ],
+    [
+      1788986400000,
+      "XRPUSDT"
+    ],
+    [
+      1788986700000,
+      "ADAUSDT"
+    ],
+    [
+      1788986700000,
+      "AVAXUSDT"
+    ],
+    [
+      1788986700000,
+      "BNBUSDT"
+    ],
+    [
+      1788986700000,
+      "BTCUSDT"
+    ],
+    [
+      1788986700000,
+      "DOGEUSDT"
+    ],
+    [
+      1788986700000,
+      "ETHUSDT"
+    ],
+    [
+      1788986700000,
+      "LINKUSDT"
+    ],
+    [
+      1788986700000,
+      "SOLUSDT"
+    ],
+    [
+      1788986700000,
+      "SUIUSDT"
+    ],
+    [
+      1788986700000,
+      "XRPUSDT"
+    ],
+    [
+      1788987000000,
+      "ADAUSDT"
+    ],
+    [
+      1788987000000,
+      "AVAXUSDT"
+    ],
+    [
+      1788987000000,
+      "BNBUSDT"
+    ],
+    [
+      1788987000000,
+      "BTCUSDT"
+    ],
+    [
+      1788987000000,
+      "DOGEUSDT"
+    ],
+    [
+      1788987000000,
+      "ETHUSDT"
+    ],
+    [
+      1788987000000,
+      "LINKUSDT"
+    ],
+    [
+      1788987000000,
+      "SOLUSDT"
+    ],
+    [
+      1788987000000,
+      "SUIUSDT"
+    ],
+    [
+      1788987000000,
+      "XRPUSDT"
+    ],
+    [
+      1788987300000,
+      "ADAUSDT"
+    ],
+    [
+      1788987300000,
+      "AVAXUSDT"
+    ],
+    [
+      1788987300000,
+      "BNBUSDT"
+    ],
+    [
+      1788987300000,
+      "BTCUSDT"
+    ],
+    [
+      1788987300000,
+      "DOGEUSDT"
+    ],
+    [
+      1788987300000,
+      "ETHUSDT"
+    ],
+    [
+      1788987300000,
+      "LINKUSDT"
+    ],
+    [
+      1788987300000,
+      "SOLUSDT"
+    ],
+    [
+      1788987300000,
+      "SUIUSDT"
+    ],
+    [
+      1788987300000,
+      "XRPUSDT"
+    ],
+    [
+      1788987600000,
+      "ADAUSDT"
+    ],
+    [
+      1788987600000,
+      "AVAXUSDT"
+    ],
+    [
+      1788987600000,
+      "BNBUSDT"
+    ],
+    [
+      1788987600000,
+      "BTCUSDT"
+    ],
+    [
+      1788987600000,
+      "DOGEUSDT"
+    ],
+    [
+      1788987600000,
+      "ETHUSDT"
+    ],
+    [
+      1788987600000,
+      "LINKUSDT"
+    ],
+    [
+      1788987600000,
+      "SOLUSDT"
+    ],
+    [
+      1788987600000,
+      "SUIUSDT"
+    ],
+    [
+      1788987600000,
+      "XRPUSDT"
+    ],
+    [
+      1788987900000,
+      "ADAUSDT"
+    ],
+    [
+      1788987900000,
+      "AVAXUSDT"
+    ],
+    [
+      1788987900000,
+      "BNBUSDT"
+    ],
+    [
+      1788987900000,
+      "BTCUSDT"
+    ],
+    [
+      1788987900000,
+      "DOGEUSDT"
+    ],
+    [
+      1788987900000,
+      "ETHUSDT"
+    ],
+    [
+      1788987900000,
+      "LINKUSDT"
+    ],
+    [
+      1788987900000,
+      "SOLUSDT"
+    ],
+    [
+      1788987900000,
+      "SUIUSDT"
+    ],
+    [
+      1788987900000,
+      "XRPUSDT"
+    ],
+    [
+      1788988200000,
+      "ADAUSDT"
+    ],
+    [
+      1788988200000,
+      "AVAXUSDT"
+    ],
+    [
+      1788988200000,
+      "BNBUSDT"
+    ],
+    [
+      1788988200000,
+      "BTCUSDT"
+    ],
+    [
+      1788988200000,
+      "DOGEUSDT"
+    ],
+    [
+      1788988200000,
+      "ETHUSDT"
+    ],
+    [
+      1788988200000,
+      "LINKUSDT"
+    ],
+    [
+      1788988200000,
+      "SOLUSDT"
+    ],
+    [
+      1788988200000,
+      "SUIUSDT"
+    ],
+    [
+      1788988200000,
+      "XRPUSDT"
+    ],
+    [
+      1788988500000,
+      "ADAUSDT"
+    ],
+    [
+      1788988500000,
+      "AVAXUSDT"
+    ],
+    [
+      1788988500000,
+      "BNBUSDT"
+    ],
+    [
+      1788988500000,
+      "BTCUSDT"
+    ],
+    [
+      1788988500000,
+      "DOGEUSDT"
+    ],
+    [
+      1788988500000,
+      "ETHUSDT"
+    ],
+    [
+      1788988500000,
+      "LINKUSDT"
+    ],
+    [
+      1788988500000,
+      "SOLUSDT"
+    ],
+    [
+      1788988500000,
+      "SUIUSDT"
+    ],
+    [
+      1788988500000,
+      "XRPUSDT"
+    ],
+    [
+      1788988800000,
+      "ADAUSDT"
+    ],
+    [
+      1788988800000,
+      "AVAXUSDT"
+    ],
+    [
+      1788988800000,
+      "BNBUSDT"
+    ],
+    [
+      1788988800000,
+      "BTCUSDT"
+    ],
+    [
+      1788988800000,
+      "DOGEUSDT"
+    ],
+    [
+      1788988800000,
+      "ETHUSDT"
+    ],
+    [
+      1788988800000,
+      "LINKUSDT"
+    ],
+    [
+      1788988800000,
+      "SOLUSDT"
+    ],
+    [
+      1788988800000,
+      "SUIUSDT"
+    ],
+    [
+      1788988800000,
+      "XRPUSDT"
+    ],
+    [
+      1788989100000,
+      "ADAUSDT"
+    ],
+    [
+      1788989100000,
+      "AVAXUSDT"
+    ],
+    [
+      1788989100000,
+      "BNBUSDT"
+    ],
+    [
+      1788989100000,
+      "BTCUSDT"
+    ],
+    [
+      1788989100000,
+      "DOGEUSDT"
+    ],
+    [
+      1788989100000,
+      "ETHUSDT"
+    ],
+    [
+      1788989100000,
+      "LINKUSDT"
+    ],
+    [
+      1788989100000,
+      "SOLUSDT"
+    ],
+    [
+      1788989100000,
+      "SUIUSDT"
+    ],
+    [
+      1788989100000,
+      "XRPUSDT"
+    ],
+    [
+      1788989400000,
+      "ADAUSDT"
+    ],
+    [
+      1788989400000,
+      "AVAXUSDT"
+    ],
+    [
+      1788989400000,
+      "BNBUSDT"
+    ],
+    [
+      1788989400000,
+      "BTCUSDT"
+    ],
+    [
+      1788989400000,
+      "DOGEUSDT"
+    ],
+    [
+      1788989400000,
+      "ETHUSDT"
+    ],
+    [
+      1788989400000,
+      "LINKUSDT"
+    ],
+    [
+      1788989400000,
+      "SOLUSDT"
+    ],
+    [
+      1788989400000,
+      "SUIUSDT"
+    ],
+    [
+      1788989400000,
+      "XRPUSDT"
+    ],
+    [
+      1788989700000,
+      "ADAUSDT"
+    ],
+    [
+      1788989700000,
+      "AVAXUSDT"
+    ],
+    [
+      1788989700000,
+      "BNBUSDT"
+    ],
+    [
+      1788989700000,
+      "BTCUSDT"
+    ],
+    [
+      1788989700000,
+      "DOGEUSDT"
+    ],
+    [
+      1788989700000,
+      "ETHUSDT"
+    ],
+    [
+      1788989700000,
+      "LINKUSDT"
+    ],
+    [
+      1788989700000,
+      "SOLUSDT"
+    ],
+    [
+      1788989700000,
+      "SUIUSDT"
+    ],
+    [
+      1788989700000,
+      "XRPUSDT"
+    ],
+    [
+      1788990000000,
+      "ADAUSDT"
+    ],
+    [
+      1788990000000,
+      "AVAXUSDT"
+    ],
+    [
+      1788990000000,
+      "BNBUSDT"
+    ],
+    [
+      1788990000000,
+      "BTCUSDT"
+    ],
+    [
+      1788990000000,
+      "DOGEUSDT"
+    ],
+    [
+      1788990000000,
+      "ETHUSDT"
+    ],
+    [
+      1788990000000,
+      "LINKUSDT"
+    ],
+    [
+      1788990000000,
+      "SOLUSDT"
+    ],
+    [
+      1788990000000,
+      "SUIUSDT"
+    ],
+    [
+      1788990000000,
+      "XRPUSDT"
+    ]
+  ],
+  "not_yet_mature": 0,
+  "orphan": 0,
+  "orphan_ids": [],
+  "outcome_duplicate_ids": [],
+  "outcome_duplicates": 0,
+  "parameter_set": "scalping-v2-set-2",
+  "partial_cycles": 0,
+  "profile": "trade-5m-v2",
+  "segment": "scalping-calibration-segment-a5a504b23affb58d99ce330c",
+  "skipped_cycles": 50,
+  "universe": [
+    "ADAUSDT",
+    "AVAXUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "LINKUSDT",
+    "SOLUSDT",
+    "SUIUSDT",
+    "XRPUSDT"
+  ]
+}
