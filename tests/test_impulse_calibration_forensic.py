@@ -1,4 +1,4 @@
-from scripts.forensic_impulse_calibration import distribution, economics, task_b
+from scripts.forensic_impulse_calibration import distribution, economics, task_b, task_c
 
 
 def test_distribution_interpolates_requested_quantiles():
@@ -32,3 +32,16 @@ def test_threshold_provenance_is_15m_legacy_not_a_5m_config_key():
     assert result["original_timeframe"] == "15m"
     assert result["timeframe_mismatch_found"] is True
     assert result["software_defect_found"] is False
+
+
+def test_bounded_variants_do_not_select_frequency_without_quality():
+    rows = []
+    for boundary in range(10):
+        rows.append({"cycle_boundary": boundary, "move_pct": .6, "ATR_pct": .2,
+                     "setup_fallback_pass": True, "candidate_formed": True,
+                     "net_outcome_R": -1.0, "net_rr": .3, "required_rr": .6,
+                     "rr_pass": False, "MFE": 5, "MAE": 20})
+    report = task_c(rows, {"cycle_boundary": 9, "v3_cutoff": 0})
+    assert report["variants_evaluated"] == 6
+    assert report["final_verdict"] == "NO_CANDIDATE"
+    assert report["shadow_allowed"] is False
