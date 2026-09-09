@@ -244,6 +244,24 @@ def test_boundary_append_checkpoint_missing_and_crash_replay_dedupe(tmp_path):
     assert restarted.duplicate_records == 0
 
 
+def test_failed_result_without_parameter_identity_is_diagnostic_not_fatal(tmp_path):
+    boundary = 2_000
+    failed = row("BTCUSDT", boundary)
+    failed["error_code"] = "SNAPSHOT_CONTRACT_VIOLATION"
+    failed["paper"].pop("runtime_parameter_set_id")
+    failed["strategy"].pop("runtime_parameter_set_id")
+    failed["analysis"].pop("runtime_parameter_set_id")
+    collector = ProspectiveCalibrationCollector(
+        config(tmp_path), FakeRepository({boundary: [failed]}), FakeOwner(),
+    )
+
+    assert collector.process_boundary(boundary)
+    assert collector.records_written == 0
+    assert collector.missing_records == 2
+    assert collector.errors_count == 1
+    assert collector.last_persisted_boundary == boundary
+
+
 def test_mixed_boundary_fails_closed_preserves_incident_and_recovers_next_clean(tmp_path):
     good = 2_000
     mixed = 3_000

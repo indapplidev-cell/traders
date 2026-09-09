@@ -934,10 +934,23 @@ class ProspectiveCalibrationCollector:
             )
             self.runtime_daemon_instance_id = daemon_id
         last_run_id = None
+        collected_symbols: list[str] = []
         for row in rows:
             if row.get("result_id") is None:
                 continue
-            observation = self._observation(row)
+            try:
+                observation = self._observation(row)
+            except RuntimeError as exc:
+                if (
+                    str(exc) == "RUNTIME_PARAMETER_IDENTITY_CHANGED"
+                    and row.get("error_code")
+                ):
+                    # Failed pipeline rows can have a durable result shell but no
+                    # parameter payload.  Keep them in boundary diagnostics and
+                    # outside the homogeneous probability-evidence segment.
+                    continue
+                raise
+            collected_symbols.append(str(row["symbol"]))
             if self.store.append("observations", observation):
                 self.records_written += 1
                 followup = observation.get("outcome_followup")
@@ -947,8 +960,8 @@ class ProspectiveCalibrationCollector:
             if observation["microstructure"]["microstructure_status"] == "AVAILABLE":
                 self.micro_available += 1
             last_run_id = str(row["run_id"])
-        missing = sorted(expected - present)
-        row_symbols = [str(row["symbol"]) for row in rows if row.get("result_id") is not None]
+        missing = sorted(expected - set(collected_symbols))
+        row_symbols = collected_symbols
         duplicates = sorted({symbol for symbol in row_symbols if row_symbols.count(symbol) > 1})
         errors = sorted({str(row["error_code"]) for row in rows if row.get("error_code")})
         diagnostic_id = "boundary-" + sha256(
