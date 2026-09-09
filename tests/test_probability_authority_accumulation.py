@@ -48,6 +48,45 @@ def test_set_identity_and_semantics_filter_are_fail_closed(tmp_path):
     assert load_prospective_outcomes(tmp_path, parameter_set_id="scalping-v2-set-2") == ()
 
 
+def test_loader_deduplicates_opportunity_across_lineage_segments(tmp_path):
+    segments = ("segment-before-provenance", "segment-after-provenance")
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "segments": [{
+            "observation_segment_id": segment,
+            "homogeneity_identity": {
+                "parameter_set_id": "scalping-v2-set-2",
+                "outcome_semantics_version": PROBABILITY_OUTCOME_SEMANTICS,
+            },
+        } for segment in segments],
+        "parts": [{
+            "kind": "outcomes",
+            "observation_segment_id": segment,
+            "path": f"outcomes-{index}.jsonl",
+        } for index, segment in enumerate(segments)],
+    }), encoding="utf-8")
+    for index, segment in enumerate(segments):
+        (tmp_path / f"outcomes-{index}.jsonl").write_text(json.dumps({
+            "baseline_outcome": "TP_FIRST",
+            "completed_at": "2026-09-09T00:00:00Z",
+            "frozen_opportunity": {
+                "opportunity_id": "opportunity:stable-across-segments",
+                "symbol": "BTCUSDT",
+                "setup_type": "SCALP_MOMENTUM_CONTINUATION",
+                "direction": "BULLISH",
+                "regime": "TREND",
+                "cost_bucket": "LOW",
+            },
+            "observation_segment_id": segment,
+        }) + "\n", encoding="utf-8")
+
+    outcomes = load_prospective_outcomes(
+        tmp_path, parameter_set_id="scalping-v2-set-2",
+    )
+
+    assert len(outcomes) == 1
+
+
 def test_threshold_minus_one_then_threshold_and_parent_fallback(tmp_path):
     _write_segment(tmp_path, count=19, wins=12)
     rows = load_prospective_outcomes(tmp_path, parameter_set_id="scalping-v2-set-2")

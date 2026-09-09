@@ -106,6 +106,7 @@ def load_prospective_outcomes(
         == PROSPECTIVE_OUTCOME_SEMANTICS
     }
     results: list[PaperOutcome] = []
+    seen_opportunity_ids: set[str] = set()
     for part in manifest.get("parts", ()):
         if part.get("kind") != "outcomes" or str(part.get("observation_segment_id")) not in compatible_segments:
             continue
@@ -130,6 +131,11 @@ def load_prospective_outcomes(
                 # Entry expiry, ambiguous same-candle paths and incomplete geometry
                 # are not silently converted into probability labels.
                 continue
+            opportunity_id = str(frozen.get("opportunity_id") or "").strip()
+            if opportunity_id:
+                if opportunity_id in seen_opportunity_ids:
+                    continue
+                seen_opportunity_ids.add(opportunity_id)
             results.append(PaperOutcome(
                 symbol=_text(frozen.get("symbol")),
                 setup_type=_text(frozen.get("setup_type")),
