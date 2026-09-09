@@ -1,0 +1,25 @@
+# TRADERS_SCALPING_V2 setup/regime shadow — Task D
+
+```text
+TASK_STATUS = NOT_APPLICABLE
+FINAL_VERDICT = NO_SHADOW_DEPLOYMENT
+SHADOW_ID = NONE
+SHADOW_DEPLOYED = NO
+FRESH_CYCLES = 0
+SHADOW_CANDIDATES = 0
+AUTHORITATIVE_CANDIDATES = UNCHANGED
+SHADOW_RR_PASS = 0
+AUTHORITATIVE_RR_PASS = UNCHANGED
+SHADOW_EXPECTANCY = N/A
+AUTHORITATIVE_EXPECTANCY = UNCHANGED
+SHADOW_PF = N/A
+AUTHORITATIVE_PF = UNCHANGED
+SHADOW_COMMANDS = 0
+SHADOW_POSITIONS = 0
+BINANCE_ORDER_CALLS = 0
+PROMOTION_AUTHORIZED = NO
+NEXT_ACTION = collect fresh causal v3 outcomes before reconsidering a shadow filter
+```
+
+Task C selected no credible candidate, so no shadow identity, service, command,
+position, UI projection, or deployment was created.
