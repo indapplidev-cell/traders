@@ -263,6 +263,26 @@ def test_boundary_append_checkpoint_missing_and_crash_replay_dedupe(tmp_path):
     assert restarted.duplicate_records == 0
 
 
+def test_incomplete_boundary_is_retried_instead_of_advancing_cursor(tmp_path, monkeypatch):
+    boundary = 2_000
+    rows = {boundary: [row("BTCUSDT", boundary)]}
+    collector = ProspectiveCalibrationCollector(
+        config(tmp_path), FakeRepository(rows), FakeOwner(),
+    )
+    monkeypatch.setattr("app.engine_observation.scalping_prospective_collector.time.time", lambda: 2.0)
+
+    assert collector.run(once=True) == 0
+    assert collector.last_seen_boundary == 1_000
+    assert collector.last_persisted_boundary == 1_000
+    assert not (tmp_path / "checkpoint.json").exists()
+
+    rows[boundary].append(row("ETHUSDT", boundary, result_id=2))
+    assert collector.run(once=True) == 0
+    assert collector.last_seen_boundary == boundary
+    assert collector.last_persisted_boundary == boundary
+    assert len(collector.store.observation_ids) == 2
+
+
 def test_failed_result_without_parameter_identity_is_diagnostic_not_fatal(tmp_path):
     boundary = 2_000
     failed = row("BTCUSDT", boundary)

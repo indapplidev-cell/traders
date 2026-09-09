@@ -1072,7 +1072,6 @@ class ProspectiveCalibrationCollector:
             while not self.stop_requested:
                 boundary = self.repository.next_boundary(self.last_seen_boundary)
                 if boundary is not None:
-                    self.last_seen_boundary = boundary
                     try:
                         self.process_boundary(boundary)
                     except MixedRuntimeLineageWithinBoundary:
