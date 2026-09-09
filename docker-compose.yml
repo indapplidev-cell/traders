@@ -51,7 +51,9 @@ services:
   online-orchestrator:
     build: .
     profiles: ["disabled-trade-15m"]
-    restart: always
+    # Historical/read-only compatibility only.  The legacy 15m producer must
+    # never be revived by Docker after an explicit stop or host restart.
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,15 +67,8 @@ services:
       --primary-timeframe 15m
       --required-timeframes 1m,5m,15m,1h,4h,1d
       --continuous
-      --poll-interval-seconds 10
-      --max-catchup-windows 4
       --health-report reports/engine_orchestrator/latest_health.json
       --health-report-interval-seconds 60'
-    environment:
-      ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS: ${ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS:-5}
-      ORCHESTRATOR_FRESHNESS_GRACE_SECONDS: ${ORCHESTRATOR_FRESHNESS_GRACE_SECONDS:-180}
-      ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS: ${ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS:-60}
-      ORCHESTRATOR_WAITING_BATCH_SIZE: ${ORCHESTRATOR_WAITING_BATCH_SIZE:-100}
     volumes:
       - ./reports:/service/reports
     secrets:
@@ -98,15 +93,8 @@ services:
       --trade-profile trade-5m-v2
       --strategy-cap-shadow-economic-capture
       --continuous
-      --poll-interval-seconds 10
-      --max-catchup-windows 4
-      --health-report reports/engine_orchestrator/latest_health_trade_5m.json
-      --health-report-interval-seconds 60'
+      --health-report reports/engine_orchestrator/latest_health_trade_5m.json'
     environment:
-      ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS: ${ORCHESTRATOR_FRESHNESS_RETRY_INTERVAL_SECONDS:-5}
-      ORCHESTRATOR_FRESHNESS_GRACE_SECONDS: ${ORCHESTRATOR_FRESHNESS_GRACE_SECONDS:-180}
-      ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS: ${ORCHESTRATOR_FRESHNESS_MAX_ATTEMPTS:-60}
-      ORCHESTRATOR_WAITING_BATCH_SIZE: ${ORCHESTRATOR_WAITING_BATCH_SIZE:-100}
       TRADERS_BINANCE_ACCOUNT_CREDENTIALS_PATH: /run/secrets/binance_account_credentials
       TRADERS_BINANCE_COMMISSION_SNAPSHOT_PATH: /run/traders-commission/binance-account-commission.json
     volumes:
@@ -134,12 +122,7 @@ services:
       --parameter-set-id scalping-v2-set-2
       --runtime-source-commit ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
       --runtime-artifact-id ${TRADERS_SCALPING_V2_ARTIFACT_ID:-UNSET}
-      --schema-revision 0031_scalping_parameter_sets
-      --initial-boundary-ms 1788885600000
-      --outcome-ttl-ms 30000
-      --outcome-time-stop-ms 900000
-      --poll-seconds 2
-      --boundary-wait-seconds 240'
+      --schema-revision 0031_scalping_parameter_sets'
     volumes:
       - ./reports:/service/reports
     secrets:
