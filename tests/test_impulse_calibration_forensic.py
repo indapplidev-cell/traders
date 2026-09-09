@@ -26,11 +26,11 @@ def test_economics_keeps_non_candidates_out_of_outcome_quality():
     assert result["RR_pass_count"] == 1
 
 
-def test_threshold_provenance_is_15m_legacy_not_a_5m_config_key():
+def test_threshold_provenance_is_explicit_5m_config_with_historical_15m_origin():
     result = task_b()
     assert result["absolute_threshold"] == 3.0
     assert result["atr_multiplier"] == 2.5
-    assert result["config_key"] is None
+    assert result["config_key"].startswith("profiles.trade-5m-v2.signal")
     assert result["original_timeframe"] == "15m"
     assert result["timeframe_mismatch_found"] is True
     assert result["software_defect_found"] is False

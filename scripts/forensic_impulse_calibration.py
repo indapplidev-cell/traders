@@ -17,16 +17,21 @@ from pathlib import Path
 from statistics import median
 from typing import Any, Iterable, Mapping
 
+from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
+
 PROFILE = "trade-5m-v2"
 PARAMETER_SET = "scalping-v2-set-2"
-CONFIG_HASH = "1d0afbb4d1fb2cfb8afba03f718c28796a47e23b9d17c1f6e0109ace3d3717e7"
+CONFIG_HASH = TRADE_PARAMETERS.resolve_scalping_v2_parameter_set(PARAMETER_SET).resolved_config_hash
 V3 = "scalping-probability-outcome-v3-decision-time-ttl30s-timestop15m-netcost"
 ABSOLUTE_BANDS = ((0, .25), (.25, .5), (.5, .75), (.75, 1), (1, 1.5), (1.5, 2), (2, 3), (3, math.inf))
 ATR_BANDS = ((0, .5), (.5, 1), (1, 1.5), (1.5, 2), (2, 2.5), (2.5, math.inf))
 
 
 def effective_threshold_pct(atr_pct: float) -> float:
-    return max(3.0, 2.5 * atr_pct)
+    return max(
+        SCALPING_V2.signal.impulse_absolute_threshold_pct,
+        SCALPING_V2.signal.impulse_atr_multiplier * atr_pct,
+    )
 
 
 def impulse_confirmed(move_pct: float, atr_pct: float) -> bool:
@@ -230,7 +235,7 @@ def task_a(rows: list[dict[str, Any]], anchor: Mapping[str, Any]) -> dict[str, A
 def task_b() -> dict[str, Any]:
     return {"task_status": "PASS", "final_verdict": "TIMEFRAME_MISMATCH_AND_POLICY_MISMATCH_NO_WIRING_DEFECT",
             "absolute_threshold": 3.0, "atr_multiplier": 2.5,
-            "source_file": "app/engine_analysis/impulse_phase_diagnostics.py:292", "config_key": None,
+            "source_file": "config/trading/trade_parameters.yaml", "config_key": "profiles.trade-5m-v2.signal.impulse_absolute_threshold_pct / impulse_atr_multiplier",
             "introduced_commit": "cca167e8c89feb8494c8d8c7af1f103ffd43e6f8", "introduced_at": "2026-07-17T22:10:39+03:00",
             "original_profile": "trade-15m-v1", "original_timeframe": "15m",
             "original_strategy": "GENERIC_IMPULSE_PHASE_DIAGNOSTIC", "used_by_5m": True, "used_by_15m": True,
@@ -238,7 +243,7 @@ def task_b() -> dict[str, Any]:
             "generic_callable_accepts_other_timeframes": True,
             "setup_fallback_threshold": .25, "threshold_ratio": 12.0,
             "contract_intent": "IMPULSE is a generic 8-bar analysis phase; SETUP_CANDIDATE is a separate profile-specific actionable micro-setup. A candidate may therefore exist with NO_IMPULSE by code, but the >12x fixed-floor gap lacks a timeframe/economic rationale and is a policy mismatch.",
-            "legacy_drift_found": True, "timeframe_mismatch_found": True, "policy_mismatch_found": True,
+            "legacy_drift_found": False, "timeframe_mismatch_found": True, "policy_mismatch_found": True,
             "software_defect_found": False, "production_fix_required": False, "next_task": "TASK_C_BOUNDED_VARIANTS"}
 
 

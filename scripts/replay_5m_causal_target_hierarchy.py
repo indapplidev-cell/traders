@@ -151,6 +151,8 @@ def _level_candidates(symbol: str, boundary_ms: int, entry: float) -> list[Causa
                 confirmation_candles=runtime.confirmation_window_candles,
                 atr_lookback_candles=runtime.atr_lookback_candles,
                 impulse_lookback_candles=runtime.impulse_lookback_candles,
+                impulse_absolute_threshold_pct=runtime.impulse_absolute_threshold_pct,
+                impulse_atr_multiplier=runtime.impulse_atr_multiplier,
                 structure_lookback_candles=runtime.structure_lookback_candles,
                 volume_baseline_candles=runtime.volume_baseline_candles,
                 breakout_volume_baseline_candles=runtime.breakout_volume_baseline_candles,
