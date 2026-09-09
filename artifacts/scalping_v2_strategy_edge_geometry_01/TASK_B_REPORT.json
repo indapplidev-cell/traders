@@ -1,0 +1,60 @@
+{
+  "alternatives_available_count": 710,
+  "anchor": {
+    "cohort_sha256": "d63b5850c1b930ff5b05d6ecf753ca19b6ba2674b677a047fc21ccd53963300d",
+    "completed_at": "2026-09-09T13:40:35.05884+00:00",
+    "config_hash": "1d0afbb4d1fb2cfb8afba03f718c28796a47e23b9d17c1f6e0109ace3d3717e7",
+    "cycle_boundary": 1788961200000,
+    "deployed_revision": "6e8e91547d9ed7005cc8132fe22bd30e87a21a04",
+    "lookback_hours": 24,
+    "parameter_set_id": "scalping-v2-set-2",
+    "profile": "trade-5m-v2",
+    "schema_head": "0031_scalping_parameter_sets"
+  },
+  "cohort_count": 723,
+  "final_verdict": "STOP_TOO_WIDE_BY_MARKET_STRUCTURE",
+  "mae_vs_selected_stop": {
+    "count": 628,
+    "max": 8.895763443423398,
+    "median": 0.5133618240482418,
+    "min": 0.0,
+    "p25": 0.22875735366752897,
+    "p75": 1.0106166854570489,
+    "unique_count": 599
+  },
+  "next_task": "TASK_C_CAUSAL_TARGET_SELECTION",
+  "regression_audit": {
+    "atr_units": "PASS_PRICE_UNITS_CONVERTED_TO_BPS",
+    "deterministic_selection": "PASS",
+    "long_short_sign": "PASS",
+    "nearest_farthest_ordering": "PASS_NEAREST_DIRECTIONAL_LEVEL",
+    "stale_structure": "NOT_OBSERVED",
+    "timeframe_source": "PASS_5M"
+  },
+  "rejection_breakdown": {
+    "INVALID_GEOMETRY": 75,
+    "OTHER": 444,
+    "STOP_TOO_WIDE": 204
+  },
+  "selector_suboptimal": false,
+  "software_defect": false,
+  "stop_distance_bps": {
+    "count": 723,
+    "max": 219.13525699,
+    "median": 33.63032876,
+    "min": 3.73989475,
+    "p25": 20.00286145,
+    "p75": 53.856933964999996,
+    "unique_count": 723
+  },
+  "stop_efficiency": {
+    "count": 710,
+    "max": 1.00000000083355,
+    "median": 0.999999989391192,
+    "min": 0.9999185398969065,
+    "p25": 0.999999244722453,
+    "p75": 0.999999999929089,
+    "unique_count": 710
+  },
+  "task_status": "PASS"
+}
