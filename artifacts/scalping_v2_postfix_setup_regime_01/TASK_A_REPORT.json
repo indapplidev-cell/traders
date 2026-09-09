@@ -1,0 +1,1101 @@
+{
+  "anchor": {
+    "cohort_sha256": "f3ae23e357e2f8a870b5ce3eeb7651fd83dd553b86a30e0dd137fdc152c3d641",
+    "completed_at": "2026-09-09T16:55:26.365027+00:00",
+    "config_hash": "1d0afbb4d1fb2cfb8afba03f718c28796a47e23b9d17c1f6e0109ace3d3717e7",
+    "cycle_boundary": 1788972900000,
+    "deployed_revision": "a115cbcd5c7d796ccd9a0962b5d8296df617b0ae",
+    "lookback_hours": 24,
+    "parameter_set_id": "scalping-v2-set-2",
+    "profile": "trade-5m-v2",
+    "schema_head": "0031_scalping_parameter_sets"
+  },
+  "deployment_cutoff": 1788962100000,
+  "dynamic_required_rr_distribution": {
+    "count": 10,
+    "max": 4.670374624796515,
+    "mean": 4.179478439951009,
+    "median": 4.110104274387227,
+    "min": 3.8605822755991848
+  },
+  "farther_target_evaluated_count": 10,
+  "farther_target_missed_count": 0,
+  "final_verdict": "POSTFIX_SAMPLE_LIMITED_BUT_NO_REGRESSION",
+  "limitation": "Fresh post-fix sample is bounded; RR pass is not required for selector acceptance.",
+  "multi_target_details": [
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 53.72584434889697,
+          "future_safe": true,
+          "gross_rr": 1.1923951000731745,
+          "net_rr": 0.4722390343240234,
+          "price": 2489.075,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 11.068842606652423,
+          "future_safe": true,
+          "gross_rr": 0.24566265728543188,
+          "net_rr": null,
+          "price": 2499.75,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:1b5a87ef4b537f586ff4",
+      "cycle_boundary": 1788962400000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.4722390343240234,
+          "price": 2489.075
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:eb7d026ad4b531159c548057",
+      "selected_index": 1,
+      "selected_target": 2499.75,
+      "side": "SHORT",
+      "symbol": "ETHUSDT",
+      "target_ordering": [
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": -1.0,
+            "outcome": "STOP_FIRST",
+            "stop_hit": true,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 64.1183723797792,
+          "future_safe": true,
+          "gross_rr": 1.4972991027533638,
+          "net_rr": 0.6188679028736992,
+          "price": 0.8058,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": -1.0,
+            "outcome": "STOP_FIRST",
+            "stop_hit": true,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 86.1076859843815,
+          "future_safe": true,
+          "gross_rr": 2.0107959104283615,
+          "net_rr": 0.9517409252748374,
+          "price": 0.8040166666666667,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": -1.0,
+            "outcome": "STOP_FIRST",
+            "stop_hit": true,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 64.1183723797792,
+          "future_safe": true,
+          "gross_rr": 1.4972991027533638,
+          "net_rr": 0.6188679028736992,
+          "price": 0.8058,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:23a2e1600b03d06faeb6",
+      "cycle_boundary": 1788962400000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.9517409252748374,
+          "price": 0.8040166666666667
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:b93af19e2081e6ff811c8325",
+      "selected_index": 0,
+      "selected_target": 0.8058,
+      "side": "SHORT",
+      "symbol": "SUIUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 45.483171226645794,
+          "future_safe": true,
+          "gross_rr": 1.345986991385391,
+          "net_rr": 0.40328276863967194,
+          "price": 1.4226,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 57.61201688708498,
+          "future_safe": true,
+          "gross_rr": 1.7049168557548378,
+          "net_rr": 0.617981356342572,
+          "price": 1.4208666666666667,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 45.483171226645794,
+          "future_safe": true,
+          "gross_rr": 1.345986991385391,
+          "net_rr": 0.40328276863967194,
+          "price": 1.4226,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:135b16da670e45afd05a",
+      "cycle_boundary": 1788962400000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.617981356342572,
+          "price": 1.4208666666666667
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:682ab630281e8e271f3dc8e4",
+      "selected_index": null,
+      "selected_target": 1.42086667,
+      "side": "SHORT",
+      "symbol": "XRPUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 72.9684908789395,
+          "future_safe": true,
+          "gross_rr": 1.8723404254610272,
+          "net_rr": 0.7741338014421463,
+          "price": 0.08979,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 30.956329463792425,
+          "future_safe": true,
+          "gross_rr": 0.7943262411046759,
+          "net_rr": 0.10828605374917763,
+          "price": 0.09017,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:c54a21f122a33b31f09c",
+      "cycle_boundary": 1788962700000,
+      "farther_targets": [],
+      "farther_targets_evaluated": false,
+      "opportunity_id": "opportunity:4b4290ac4450b7abbdb8db8c",
+      "selected_index": 0,
+      "selected_target": 0.08979,
+      "side": "SHORT",
+      "symbol": "DOGEUSDT",
+      "target_ordering": [
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": -1.0,
+            "outcome": "STOP_FIRST",
+            "stop_hit": true,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 77.57665312153777,
+          "future_safe": true,
+          "gross_rr": 2.5095402363643307,
+          "net_rr": 1.0038085398300882,
+          "price": 0.8058,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": -1.0,
+            "outcome": "STOP_FIRST",
+            "stop_hit": true,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 89.68517834421017,
+          "future_safe": true,
+          "gross_rr": 2.9012409610878156,
+          "net_rr": 1.227454147059728,
+          "price": 0.8048166666666667,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": -1.0,
+            "outcome": "STOP_FIRST",
+            "stop_hit": true,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 77.57665312153777,
+          "future_safe": true,
+          "gross_rr": 2.5095402363643307,
+          "net_rr": 1.0038085398300882,
+          "price": 0.8058,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:3821bccc7af7b53b12d1",
+      "cycle_boundary": 1788962700000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.227454147059728,
+          "price": 0.8048166666666667
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:c97768e780f52a927f52ecb2",
+      "selected_index": 0,
+      "selected_target": 0.8058,
+      "side": "SHORT",
+      "symbol": "SUIUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 51.05252115532459,
+          "future_safe": true,
+          "gross_rr": 1.7904927285743304,
+          "net_rr": 0.5536847596718509,
+          "price": 1.4226,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 60.26062428608096,
+          "future_safe": true,
+          "gross_rr": 2.113435480988474,
+          "net_rr": 0.7334921562418039,
+          "price": 1.4212833333333332,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 51.05252115532459,
+          "future_safe": true,
+          "gross_rr": 1.7904927285743304,
+          "net_rr": 0.5536847596718509,
+          "price": 1.4226,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:ae9b0cb0eab980f7689e",
+      "cycle_boundary": 1788962700000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.7334921562418039,
+          "price": 1.4212833333333332
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:682ab630281e8e271f3dc8e4",
+      "selected_index": null,
+      "selected_target": 1.42128334,
+      "side": "SHORT",
+      "symbol": "XRPUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 38.151907595381005,
+          "future_safe": true,
+          "gross_rr": 0.961764140227792,
+          "net_rr": 0.24773617222586217,
+          "price": 1.42305,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 70.93688017734215,
+          "future_safe": true,
+          "gross_rr": 1.7882342423806672,
+          "net_rr": 0.773393982241497,
+          "price": 1.4183666666666668,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 35.00175008750518,
+          "future_safe": true,
+          "gross_rr": 0.8823524222273238,
+          "net_rr": 0.19722812642363924,
+          "price": 1.4235,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 41.30206510325527,
+          "future_safe": true,
+          "gross_rr": 1.041175858228221,
+          "net_rr": 0.2982442180280601,
+          "price": 1.4226,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:c6644a94b3aaa5310e7d",
+      "cycle_boundary": 1788963300000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.773393982241497,
+          "price": 1.4183666666666668
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:682ab630281e8e271f3dc8e4",
+      "selected_index": null,
+      "selected_target": 1.41836667,
+      "side": "SHORT",
+      "symbol": "XRPUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 66.56890813025204,
+          "future_safe": true,
+          "gross_rr": 4.202020202998895,
+          "net_rr": 1.1382850282777994,
+          "price": 1.4225666666666665,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 82.04734306263478,
+          "future_safe": true,
+          "gross_rr": 5.179063362087733,
+          "net_rr": 1.5398976090702603,
+          "price": 1.42035,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 60.05167236924755,
+          "future_safe": true,
+          "gross_rr": 3.7906336096982534,
+          "net_rr": 0.9691849942598894,
+          "price": 1.4235,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 66.33614971021467,
+          "future_safe": true,
+          "gross_rr": 4.187327824666634,
+          "net_rr": 1.1322457413485496,
+          "price": 1.4226,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 73.31890231129078,
+          "future_safe": true,
+          "gross_rr": 4.6280991746316,
+          "net_rr": 1.3134243492248787,
+          "price": 1.4216,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:3053e97a65a108dd780f",
+      "cycle_boundary": 1788964200000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.1382850282777994,
+          "price": 1.4225666666666665
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.5398976090702603,
+          "price": 1.42035
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.3134243492248787,
+          "price": 1.4216
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:682ab630281e8e271f3dc8e4",
+      "selected_index": null,
+      "selected_target": 1.42256667,
+      "side": "SHORT",
+      "symbol": "XRPUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL",
+        "STRUCTURAL",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": 0.6666312801753571,
+            "outcome": "TARGET_FIRST",
+            "stop_hit": false,
+            "target_hit": true,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 56.21391674263281,
+          "future_safe": true,
+          "gross_rr": 3.1322751329466105,
+          "net_rr": 0.6666312802329871,
+          "price": 0.21816666666666665,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": 0.5300571419791582,
+            "outcome": "TIMEOUT",
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": true
+          },
+          "directionally_valid": true,
+          "distance_bps": 107.1103008204189,
+          "future_safe": true,
+          "gross_rr": 5.968253969533235,
+          "net_rr": 1.8104396877248827,
+          "price": 0.21705000000000002,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": 1.1446407638619827,
+            "outcome": "TARGET_FIRST",
+            "stop_hit": false,
+            "target_hit": true,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 77.48404740200579,
+          "future_safe": true,
+          "gross_rr": 4.31746031838578,
+          "net_rr": 1.1446407639609362,
+          "price": 0.2177,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": 1.5543631784505512,
+            "outcome": "TARGET_FIRST",
+            "stop_hit": false,
+            "target_hit": true,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 95.71558796718408,
+          "future_safe": true,
+          "gross_rr": 5.333333334476577,
+          "net_rr": 1.5543631785849252,
+          "price": 0.2173,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:8ff28f54a22747f874ed",
+      "cycle_boundary": 1788964500000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.6666312802329871,
+          "price": 0.21816666666666665
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.8104396877248827,
+          "price": 0.21705000000000002
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.1446407639609362,
+          "price": 0.2177
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.5543631785849252,
+          "price": 0.2173
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:231e9bf5b1344282b0135697",
+      "selected_index": null,
+      "selected_target": 0.21816667,
+      "side": "SHORT",
+      "symbol": "ADAUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 56.84862887630913,
+          "future_safe": true,
+          "gross_rr": 2.216922203087645,
+          "net_rr": 0.706436323110354,
+          "price": 1.4225666666666665,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 82.12762983155046,
+          "future_safe": true,
+          "gross_rr": 3.2027257237228253,
+          "net_rr": 1.2293619112539933,
+          "price": 1.4189500000000002,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 50.325015726568076,
+          "future_safe": true,
+          "gross_rr": 1.962521294536578,
+          "net_rr": 0.571487784234548,
+          "price": 1.4235,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 56.615642692388306,
+          "future_safe": true,
+          "gross_rr": 2.20783645635362,
+          "net_rr": 0.701616732436187,
+          "price": 1.4226,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 63.6052282099679,
+          "future_safe": true,
+          "gross_rr": 2.4804088583726163,
+          "net_rr": 0.8462044526602626,
+          "price": 1.4216,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:d140bca653d5140ffce1",
+      "cycle_boundary": 1788964500000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.706436323110354,
+          "price": 1.4225666666666665
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.2293619112539933,
+          "price": 1.4189500000000002
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.8462044526602626,
+          "price": 1.4216
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:682ab630281e8e271f3dc8e4",
+      "selected_index": null,
+      "selected_target": 1.42256667,
+      "side": "SHORT",
+      "symbol": "XRPUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL",
+        "STRUCTURAL",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    },
+    {
+      "all_causal_targets_available_at_decision": [
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 56.27009646302329,
+          "future_safe": true,
+          "gross_rr": 2.1744474063624084,
+          "net_rr": 0.6910960133487483,
+          "price": 1.42255,
+          "source": "LOCAL_5M",
+          "source_detail": "schwager_support_zone",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 78.40533109650951,
+          "future_safe": true,
+          "gross_rr": 3.0298200920949863,
+          "net_rr": 1.146771333680275,
+          "price": 1.4193833333333334,
+          "source": "LOCAL_RANGE_BOUNDARY",
+          "source_detail": "scalping_v2_two_atr_short_target",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 49.62952607297711,
+          "future_safe": true,
+          "gross_rr": 1.9178356006426227,
+          "net_rr": 0.5543934172492837,
+          "price": 1.4235,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        },
+        {
+          "causal": true,
+          "causal_outcome": {
+            "net_r": null,
+            "outcome": null,
+            "stop_hit": false,
+            "target_hit": false,
+            "timeout": false
+          },
+          "directionally_valid": true,
+          "distance_bps": 62.91066685306947,
+          "future_safe": true,
+          "gross_rr": 2.431059212082194,
+          "net_rr": 0.8277986094482127,
+          "price": 1.4216,
+          "source": "STRUCTURAL",
+          "source_detail": "confirmed_structural_swing_low",
+          "timeframe": "5m"
+        }
+      ],
+      "candidate_id": "shadow-geometry:a63c9ddb762c03164284",
+      "cycle_boundary": 1788964800000,
+      "farther_targets": [
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 1.146771333680275,
+          "price": 1.4193833333333334
+        },
+        {
+          "dynamic_relation": "BELOW",
+          "net_rr": 0.8277986094482127,
+          "price": 1.4216
+        }
+      ],
+      "farther_targets_evaluated": true,
+      "opportunity_id": "opportunity:682ab630281e8e271f3dc8e4",
+      "selected_index": 0,
+      "selected_target": 1.42255,
+      "side": "SHORT",
+      "symbol": "XRPUSDT",
+      "target_ordering": [
+        "LOCAL_5M",
+        "LOCAL_RANGE_BOUNDARY",
+        "STRUCTURAL",
+        "STRUCTURAL"
+      ],
+      "why_selected": "FIRST_CAUSAL_TARGET_MEETING_UNCHANGED_FINAL_DYNAMIC_RR_OR_LAST_EVALUATED_REJECT"
+    }
+  ],
+  "multi_target_opportunity_count": 11,
+  "net_rr_distribution": {
+    "count": 10,
+    "max": 1.13828442,
+    "mean": 0.772412018,
+    "median": 0.719963545,
+    "min": 0.61798094
+  },
+  "new_regression_found": false,
+  "next_task": "TASK_B_NO_IMPULSE_UNKNOWN_REGIME",
+  "old_ordering_defect_reproduced": false,
+  "post_fix_farther_valid_target_missed": 0,
+  "postfix_cohort_count": 52,
+  "postfix_rr_input_count": 10,
+  "postfix_rr_pass_count": 0,
+  "postfix_target_candidate_count": 13,
+  "pre_fix_farther_valid_target_missed": 59,
+  "regression_checks": {
+    "duplicate_target_evaluation": 0,
+    "first_positive_target_early_stop": 0,
+    "lookahead_target": 0,
+    "nearest_only_hidden_fallback": 0,
+    "stale_target_ordering": 0,
+    "wrong_target_direction": 0,
+    "wrong_target_timeframe": 0
+  },
+  "scoreable_outcomes": {
+    "ENTRY_EXPIRED": 15,
+    "PATH_CAPTURED_NO_BASELINE_GEOMETRY": 27,
+    "SL_FIRST": 8,
+    "TIME_EXPIRED": 2
+  },
+  "strict_fixed_path_exercised_count": 0,
+  "target_fix_validated": "PARTIAL_NO_REGRESSION_PATH_NOT_EXERCISED",
+  "target_ordering_deployed_at": "2026-09-09T13:59:09.557590374Z",
+  "target_ordering_deployed_revision": "a115cbcd5c7d796ccd9a0962b5d8296df617b0ae",
+  "target_ordering_fix_commit": "305d793ca9c48a77d50a445ecd5c0e27dbb6d9f1",
+  "task_status": "PASS"
+}
