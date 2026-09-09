@@ -12,6 +12,8 @@ FARTHER_CAUSAL_TARGET_AVAILABLE_COUNT = 376
 TARGET_SELECTOR_MISSED_COUNT = 59
 TARGET_SOFTWARE_DEFECT = YES
 PRODUCTION_CHANGE_REQUIRED = YES_DEFECT_FIX_ONLY
+DEFECT_FIX_COMMIT = 305d793ca9c48a77d50a445ecd5c0e27dbb6d9f1
+PRODUCTION_DEPLOY = image sha256:222bf516ac402d311a3d339009a6430dafca4fffbe1a43bbda919a9bebea2f2b / source a115cbcd5c7d796ccd9a0962b5d8296df617b0ae / orchestrator+collector restart0
 NEXT_TASK = TASK_D_BOUNDED_VARIANTS
 ```
 
@@ -32,4 +34,3 @@ RR, 67 have complete outcomes, only 3 hit target, 46 hit stop, 18 timed out;
 expectancy is -0.7174R, PF 0.0628, DD 48.7056R. The defect fix therefore only
 continues causal traversal through farther levels when the first target fails
 Dynamic RR. It does not promote the alternative or weaken costs/probability/RR.
-
