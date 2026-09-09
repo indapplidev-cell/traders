@@ -1,0 +1,51 @@
+{
+  "collector": {
+    "anchor_cycle": 1788997200000,
+    "collected": 2682,
+    "complete_cycles": 269,
+    "duplicates": 0,
+    "expected": 2682,
+    "fresh_lag_p95_seconds": 24.6699,
+    "fresh_lag_sample_count": 10,
+    "mature_missing": 0,
+    "orphan": 0,
+    "partial_cycles": 0,
+    "predecision_violations": 0,
+    "skipped_cycles": 0
+  },
+  "deployment": {
+    "collector_revision": "60ba8ad62290f81cdb44510a5c519ccfb184d238",
+    "components": [
+      "online-orchestrator-5m",
+      "scalping-calibration-collector",
+      "readonly-api"
+    ],
+    "readonly_revision": "8ab9627175726526f4f92f2798c59d7c7ad3b1f4",
+    "server_revision": "8ab9627175726526f4f92f2798c59d7c7ad3b1f4"
+  },
+  "fresh_cycle": {
+    "config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+    "cycle_boundary": 1788997200000,
+    "operational_policy_rows": 10,
+    "parameter_set_id": "scalping-v2-set-2",
+    "profile": "trade-5m-v2",
+    "runtime_parameter_rows": 10,
+    "symbol_count": 10,
+    "unprovenanced_runtime_parameters": 0
+  },
+  "generated_at": "2026-09-09T23:43:45.288327+00:00",
+  "legacy_15m": {
+    "container_state": "exited",
+    "historical_readable": true,
+    "max_boundary": 1788993000000,
+    "max_id": 89289,
+    "new_rows_after_stop": 0,
+    "restart_policy": "no",
+    "row_count": 29345
+  },
+  "live_state": "DISABLED",
+  "real_binance_order_calls": 0,
+  "schema_revision": "yaml-authority-production-reconciliation-v1",
+  "semantic_change_count": 0,
+  "status": "PASS"
+}

@@ -1,0 +1,16 @@
+{
+  "COLLECTOR_REVISION": "60ba8ad62290f81cdb44510a5c519ccfb184d238",
+  "LEGACY_15M_WATERMARK": {
+    "max_boundary": 1788993000000,
+    "max_id": 89289,
+    "row_count": 29345
+  },
+  "SERVER_REVISION": "8ab9627175726526f4f92f2798c59d7c7ad3b1f4",
+  "SOAK_CONFIG_HASH": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+  "SOAK_START_CYCLE": 1788997200000,
+  "SOAK_START_TIME": "2026-09-09T23:43:45.288327+00:00",
+  "mode": "PAPER",
+  "parameter_set_id": "scalping-v2-set-2",
+  "promotion_authorized": false,
+  "schema_revision": "yaml-authority-72h-soak-marker-v1"
+}
