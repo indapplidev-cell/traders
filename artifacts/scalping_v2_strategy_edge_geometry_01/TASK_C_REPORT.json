@@ -1,0 +1,94 @@
+{
+  "anchor": {
+    "cohort_sha256": "d63b5850c1b930ff5b05d6ecf753ca19b6ba2674b677a047fc21ccd53963300d",
+    "completed_at": "2026-09-09T13:40:35.05884+00:00",
+    "config_hash": "1d0afbb4d1fb2cfb8afba03f718c28796a47e23b9d17c1f6e0109ace3d3717e7",
+    "cycle_boundary": 1788961200000,
+    "deployed_revision": "6e8e91547d9ed7005cc8132fe22bd30e87a21a04",
+    "lookback_hours": 24,
+    "parameter_set_id": "scalping-v2-set-2",
+    "profile": "trade-5m-v2",
+    "schema_head": "0031_scalping_parameter_sets"
+  },
+  "best_causal_target_distance_bps": {
+    "count": 444,
+    "max": 136.60975744516332,
+    "median": 39.104554296035495,
+    "min": 4.156626202967662,
+    "p25": 29.295033674418463,
+    "p75": 52.17484053915059,
+    "unique_count": 441
+  },
+  "bounded_replay": {
+    "current_selector": {
+      "count": 0,
+      "expectancy_r": null,
+      "losses": 0,
+      "max_drawdown_r": 0.0,
+      "mean_net_r": null,
+      "median_net_r": null,
+      "net_pnl_r": 0,
+      "profit_factor": null,
+      "rr_pass_count": 0,
+      "timeouts": 0,
+      "win_rate": null,
+      "wins": 0
+    },
+    "first_dynamic_acceptable_farther_policy": {
+      "count": 67,
+      "expectancy_r": -0.7174033481605031,
+      "losses": 60,
+      "max_drawdown_r": 48.705648475999205,
+      "mean_net_r": -0.7174033481605031,
+      "median_net_r": -1.0,
+      "net_pnl_r": -48.06602432675371,
+      "profit_factor": 0.06283769934938926,
+      "rr_pass_count": 78,
+      "stop_hit": 46,
+      "target_hit": 3,
+      "timeout": 18,
+      "timeouts": 18,
+      "win_rate": 0.1044776119402985,
+      "wins": 7
+    },
+    "no_lookahead": true,
+    "selection_rule": "first causally inventoried target meeting unchanged final Dynamic RR"
+  },
+  "classification_counts": {
+    "FARTHER_CAUSAL_TARGET_AVAILABLE": 317,
+    "ONLY_NEAR_TARGET": 143,
+    "SELECTOR_DID_NOT_CONSIDER_FARTHER": 59
+  },
+  "cohort_count": 723,
+  "farther_target_available_count": 376,
+  "final_verdict": "TARGET_ORDERING_DEFECT",
+  "historical_regression_pattern_present": true,
+  "next_task": "TASK_D_BOUNDED_VARIANTS",
+  "selector_missed_count": 59,
+  "selector_semantics": {
+    "does_selector_evaluate_farther_targets": "YES_UNTIL_FIRST_STATIC_ACCEPTABLE_THEN_NO",
+    "first_acceptable_rule": "net_rr >= minimum_planned_rr (0.6) before late Dynamic RR evaluation",
+    "target_ordering": "LOCAL_5M, RECENT_5M_SWING, LOCAL_RANGE_BOUNDARY, STRUCTURAL, 15M, 1H; nearest within tier",
+    "target_selector_formula": "priority tier, then distance, then known_at/source_detail; first static-cost-actionable target"
+  },
+  "software_defect": true,
+  "target_distance_bps": {
+    "count": 519,
+    "max": 124.31626057,
+    "median": 25.34714569,
+    "min": 0.70561671,
+    "p25": 14.21910881,
+    "p75": 45.59801698,
+    "unique_count": 506
+  },
+  "target_efficiency": {
+    "count": 243,
+    "max": 1.0000000825681417,
+    "median": 0.9999943503909781,
+    "min": 0.012808053523330731,
+    "p25": 0.7175176971686739,
+    "p75": 0.9999999925587144,
+    "unique_count": 243
+  },
+  "task_status": "PASS"
+}
