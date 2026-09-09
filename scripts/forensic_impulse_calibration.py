@@ -25,6 +25,14 @@ ABSOLUTE_BANDS = ((0, .25), (.25, .5), (.5, .75), (.75, 1), (1, 1.5), (1.5, 2), 
 ATR_BANDS = ((0, .5), (.5, 1), (1, 1.5), (1.5, 2), (2, 2.5), (2.5, math.inf))
 
 
+def effective_threshold_pct(atr_pct: float) -> float:
+    return max(3.0, 2.5 * atr_pct)
+
+
+def impulse_confirmed(move_pct: float, atr_pct: float) -> bool:
+    return move_pct >= effective_threshold_pct(atr_pct)
+
+
 def num(value: object) -> float | None:
     try:
         result = float(value)
@@ -114,7 +122,7 @@ def freeze(root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         scalping = nested(analysis, "raw", "analysis_context", "scalping") or {}
         geometry = nested(raw, "current_production_decision_trace", "paper_raw", "paper_context", "scalping_geometry_diagnostics") or {}
         move = num(impulse.get("impulse_move_pct")); atr_pct = num(impulse.get("atr_pct"))
-        threshold = None if atr_pct is None else max(3.0, 2.5 * atr_pct)
+        threshold = None if atr_pct is None else effective_threshold_pct(atr_pct)
         opportunity = str(identity.get("opportunity_id") or setup_raw.get("opportunity_id") or "")
         outcome = outcomes.get((boundary, opportunity)) if opportunity else None
         final_required_values = [v for v in (num(geometry.get("required_rr")), num(geometry.get("dynamic_required_net_rr"))) if v is not None]

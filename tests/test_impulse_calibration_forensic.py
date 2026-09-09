@@ -1,4 +1,6 @@
-from scripts.forensic_impulse_calibration import distribution, economics, task_b, task_c
+from scripts.forensic_impulse_calibration import (
+    distribution, economics, effective_threshold_pct, impulse_confirmed, task_b, task_c,
+)
 
 
 def test_distribution_interpolates_requested_quantiles():
@@ -45,3 +47,15 @@ def test_bounded_variants_do_not_select_frequency_without_quality():
     assert report["variants_evaluated"] == 6
     assert report["final_verdict"] == "NO_CANDIDATE"
     assert report["shadow_allowed"] is False
+
+
+def test_absolute_floor_boundary_and_just_below():
+    assert effective_threshold_pct(.5) == 3.0
+    assert impulse_confirmed(3.0, .5) is True
+    assert impulse_confirmed(2.999999, .5) is False
+
+
+def test_atr_term_boundary_and_just_below():
+    assert effective_threshold_pct(2.0) == 5.0
+    assert impulse_confirmed(5.0, 2.0) is True
+    assert impulse_confirmed(4.999999, 2.0) is False
