@@ -29,6 +29,7 @@ from app.engine_orchestrator.orchestrator_config import OrchestratorConfig
 from app.engine_orchestrator.pipeline_result_store import PipelineResultStore
 from app.engine_orchestrator.pipeline_runner import PipelineRunner
 from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
+from app.config.yaml_authority import RUNTIME_POLICY
 from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineResultRow,
     OnlinePipelineRun,
@@ -62,7 +63,11 @@ from app.engine_paper.production_market_data import (
     PaperProductionMarketDataInputAdapter,
     SqlAlchemyPaperProductionMarketDataReader,
 )
-from app.engine_paper.scalping_paper_runner import ScalpingPaperRunner
+from app.engine_paper.scalping_paper_runner import (
+    BinanceCommissionSnapshot,
+    CommissionSnapshotLoad,
+    ScalpingPaperRunner,
+)
 from app.engine_paper.paper_runner import PaperRunner
 from app.engine_paper.scalping_shadow import ShadowCostInputs
 from app.engine_paper.scalping_policy_v2 import EmpiricalSetupBucket
@@ -168,6 +173,24 @@ class _DeterministicStatisticsSource:
         ),), outcome_count=100)
 
 
+def _authoritative_commission_load(symbol: str) -> CommissionSnapshotLoad:
+    runtime = resolve_runtime_parameters("trade-5m-v2")
+    return CommissionSnapshotLoad(BinanceCommissionSnapshot(
+        symbol=symbol,
+        snapshot_id=f"fixture:binance-account:{symbol}:v1",
+        fetched_at="2026-09-10T00:00:00Z",
+        commission_source="BINANCE_ACCOUNT_COMMISSION",
+        maker_bps=runtime.economics_entry_fee_bps,
+        taker_bps=runtime.economics_exit_fee_bps,
+        entry_liquidity_role="TAKER",
+        exit_liquidity_role="TAKER",
+        bnb_discount_state="NOT_APPLICABLE",
+        special_commission_state="NOT_APPLICABLE",
+        tax_commission_state="NOT_APPLICABLE",
+        provenance={"source_kind": "AUTHORITATIVE_YAML_TEST_PROJECTION"},
+    ), "READY")
+
+
 class _EconomicallyInfeasibleCostSource(_DeterministicCostSource):
     def load(self, symbol: str, entry: float, *, safety_margin_bps: float):
         value = super().load(symbol, entry, safety_margin_bps=safety_margin_bps)
@@ -193,11 +216,13 @@ class _MarketReaderAt(SqlAlchemyPaperProductionMarketDataReader):
 def _candles(timeframe: str, count: int, *, symbol: str = SYMBOL) -> tuple[Candle, ...]:
     duration = timeframe_to_milliseconds(timeframe)
     first = BOUNDARY - count * duration
+    # Market-data test vector, deliberately wide enough for the current
+    # canonical YAML cost/RR gate.  It is market input, not policy authority.
     breakout = (
-        Decimal("100.10"), Decimal("100.15"), Decimal("100.20"),
-        Decimal("100.25"), Decimal("100.30"), Decimal("100.35"),
-        Decimal("100.40"), Decimal("100.45"), Decimal("100.50"),
-        Decimal("100.55"), Decimal("100.60"), Decimal("100.65"),
+        Decimal("100.10"), Decimal("100.20"), Decimal("100.30"),
+        Decimal("100.40"), Decimal("100.50"), Decimal("100.60"),
+        Decimal("100.70"), Decimal("100.80"), Decimal("100.90"),
+        Decimal("101.00"), Decimal("101.10"), Decimal("101.20"),
     )
     rows = []
     for index in range(count):
@@ -264,10 +289,10 @@ def _seed_foundation(factory) -> None:
         timeframe="1m",
         open_time_ms=BOUNDARY,
         close_time_ms=BOUNDARY + 59_999,
-        open=Decimal("100.70"),
-        high=Decimal("100.90"),
-        low=Decimal("100.50"),
-        close=Decimal("100.75"),
+        open=Decimal("101.20"),
+        high=Decimal("101.35"),
+        low=Decimal("101.10"),
+        close=Decimal("101.25"),
         volume=Decimal("100"),
         is_closed=True,
         source="paper-e2e-local-fixture",
@@ -294,7 +319,7 @@ def _seed_additional_symbol(factory, symbol: str) -> None:
         repository.upsert_candles(_candles(timeframe, count, symbol=symbol))
     entry = replace(_candles("1m", 1, symbol=symbol)[0],
         open_time_ms=BOUNDARY, close_time_ms=BOUNDARY + 59_999,
-        open=Decimal("100.70"), high=Decimal("100.90"), low=Decimal("100.50"), close=Decimal("100.75"))
+        open=Decimal("101.20"), high=Decimal("101.35"), low=Decimal("101.10"), close=Decimal("101.25"))
     repository.upsert_candle(entry)
     SyncStateRepository(factory).upsert(SyncStateUpdate(
         symbol=symbol, timeframe="1m", daemon_instance_id="paper-natural-e2e",
@@ -439,10 +464,10 @@ def _persist_natural_approval(factory, result):
     return run_id
 
 
-def test_15m_first_class_gates_persist_and_project_on_fresh_postgres(
+def test_disabled_15m_runtime_fails_closed_without_new_postgres_result(
     natural_e2e_sessions,
 ):
-    """Exercise the real 15m gate/materialization/projection path on PG16."""
+    """The preserved 15m schema remains readable but cannot accept a new run."""
     factory = natural_e2e_sessions
     _seed_foundation(factory)
     risk_value = replace(risk(), risk_context={
@@ -470,54 +495,17 @@ def test_15m_first_class_gates_persist_and_project_on_fresh_postgres(
     result.risk_payload = risk_value.to_dict()
     result.paper_payload = paper.to_dict()
     result.paper_status = paper.paper_status
-    run_id = _persist_natural_approval(factory, result)
-
+    result.runtime_parameter_set_id = None
+    result.runtime_parameters_snapshot = None
+    assert RUNTIME_POLICY.profiles["trade-15m-v1"].enabled is False
+    with pytest.raises(ValueError, match="runtime parameter identity changed or is missing"):
+        _persist_natural_approval(factory, result)
     with factory() as session:
-        run = session.scalar(select(OnlinePipelineRun).where(
-            OnlinePipelineRun.run_id == run_id
-        ))
-        row = session.scalar(select(OnlinePipelineResultRow).where(
-            OnlinePipelineResultRow.run_id == run_id
-        ))
-    assert run is not None and row is not None
-    persisted = row.paper_payload_json
-    assert persisted["paper_context"]["canonical_domain_evaluation"]["raw_rr"] == 2.0
-    assert persisted["paper_context"]["net_cost_gate"]["gate_decision"] == "PASS"
-    assert persisted["portfolio_gate"]["decision"] == "PASS"
-    assert persisted["portfolio_gate"]["measured"]["active_position_count"] == 0
-    assert persisted["persisted_final_approvals"]["paper_quantity_approval"]
-
-    with factory() as session:
-        with pytest.raises(IntegrityError):
-            session.execute(
-                text(
-                    "UPDATE online_pipeline_results "
-                    "SET trade_profile_id = 'trade-5m-v1' WHERE run_id = :run_id"
-                ),
-                {"run_id": run_id},
+        assert session.scalar(
+            select(func.count()).select_from(OnlinePipelineResultRow).where(
+                OnlinePipelineResultRow.trade_profile_id == "trade-15m-v1"
             )
-            session.commit()
-        session.rollback()
-        assert session.scalar(select(OnlinePipelineResultRow.trade_profile_id).where(
-            OnlinePipelineResultRow.run_id == run_id
-        )) == "trade-15m-v1"
-
-    projection = build_projection(
-        ((run, row),), runtime_universe("trading-universe-v2"), EVALUATION_MS,
-        trade_profile_id="trade-15m-v1",
-    )
-    cycle = projection["current_cycle"]
-    assert cycle["symbols_expected"] == 10
-    assert len(cycle["items"]) == 10
-    item = next(value for value in cycle["items"] if value["symbol"] == SYMBOL)
-    assert tuple(item["downstream_stage_trace"]) == tuple(
-        projection["downstream_stage_order"]
-    )
-    assert all(
-        status == "PASS" for status in item["downstream_stage_trace"].values()
-    )
-    assert item["downstream_detail"]["target_source_timeframe"] == "15m"
-    assert item["downstream_detail"]["portfolio_decision"] == "PASS"
+        ) == 0
 
 
 def _approval_source(factory, at_ms=EVALUATION_MS):
@@ -805,6 +793,10 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     natural_e2e_sessions, natural_e2e_engine, tmp_path, monkeypatch
 ):
     factory = natural_e2e_sessions
+    monkeypatch.setattr(
+        "app.operator_control.production_lifecycle_worker.read_binance_commission_snapshot",
+        _authoritative_commission_load,
+    )
     _seed_foundation(factory)
     _seed_additional_symbol(factory, "ETHUSDT")
     first_result = _pipeline(factory, symbol="BTCUSDT")
@@ -940,7 +932,9 @@ def test_continuous_v2_two_positions_without_rearm_postgres_e2e(
     assert after_close.generation == armed.generation
     assert after_close.enabled is True
     assert after_close.commands_used == 1 and after_close.loss_streak == 1
-    assert after_close.risk_used_bps == Decimal("10")
+    assert after_close.risk_used_bps == Decimal(str(
+        resolve_runtime_parameters("trade-5m-v2").risk_per_trade_bps
+    ))
     assert after_close.open_positions == 0
     with factory() as session:
         closed_diagnostic = session.get(
@@ -1016,7 +1010,10 @@ def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
     assert before_close is not None
     assert before_close.budget_day == activated_at.date()
     assert before_close.commands_used == 5
-    assert before_close.risk_used_bps == Decimal("50")
+    per_command_risk = Decimal(str(
+        resolve_runtime_parameters("trade-5m-v2").risk_per_trade_bps
+    ))
+    assert before_close.risk_used_bps == per_command_risk * 5
 
     # Restart before close: persisted counters survive and close accounting is
     # keyed by the durable position identity.
@@ -1041,7 +1038,7 @@ def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
     assert replay.realized_loss == closed.realized_loss
     assert replay.loss_streak == closed.loss_streak
     assert replay.commands_used == 5
-    assert replay.risk_used_bps == Decimal("50")
+    assert replay.risk_used_bps == per_command_risk * 5
     with factory() as session:
         assert session.scalar(
             select(func.count()).select_from(PaperContinuousControlEventRecord).where(
@@ -1057,7 +1054,7 @@ def test_continuous_budget_restart_pause_and_utc_reset_postgres_e2e(
     assert reconciled.budget_enforcement_mode == "PAPER_STATISTICS_ONLY"
     assert reconciled.budget_reason is None
     assert reconciled.commands_used == 5
-    assert reconciled.risk_used_bps == Decimal("50")
+    assert reconciled.risk_used_bps == per_command_risk * 5
 
     reset = restarted.reconcile(
         generation=12, now=activated_at + timedelta(days=1)
@@ -1115,10 +1112,14 @@ def _arm_and_wait(service):
 
 
 def test_natural_approval_opens_paper_position_end_to_end(
-    natural_e2e_sessions, natural_e2e_engine, tmp_path
+    natural_e2e_sessions, natural_e2e_engine, tmp_path, monkeypatch
 ):
     profile_id = "trade-5m-v2"
     factory = natural_e2e_sessions
+    monkeypatch.setattr(
+        "app.operator_control.production_lifecycle_worker.read_binance_commission_snapshot",
+        _authoritative_commission_load,
+    )
     _seed_foundation(factory)
     source = _approval_source(factory)
     control = PaperProductionSafetyControl(tmp_path / "isolated-paper-control")
@@ -1231,7 +1232,7 @@ def test_natural_approval_opens_paper_position_end_to_end(
 
     policy = _foundation_policy(command.simulation_policy_id)
     expected_price = (
-        Decimal("100.70") * (Decimal("1") + policy.slippage_bps / Decimal("10000"))
+        Decimal("101.20") * (Decimal("1") + policy.slippage_bps / Decimal("10000"))
     ).quantize(policy.price_quantum)
     expected_fee = (
         fills[0].quantity * expected_price * policy.fee_bps / Decimal("10000")
@@ -1355,9 +1356,13 @@ def test_selected_identity_mismatch_is_durable_and_creates_no_command(
 
 
 def test_real_backup_blocker_is_durable_then_fixed_candidate_opens_position(
-    natural_e2e_sessions, natural_e2e_engine, tmp_path
+    natural_e2e_sessions, natural_e2e_engine, tmp_path, monkeypatch
 ):
     factory = natural_e2e_sessions
+    monkeypatch.setattr(
+        "app.operator_control.production_lifecycle_worker.read_binance_commission_snapshot",
+        _authoritative_commission_load,
+    )
     _seed_foundation(factory)
     source = _approval_source(factory)
     control = PaperProductionSafetyControl(tmp_path / "blocked-paper-control")

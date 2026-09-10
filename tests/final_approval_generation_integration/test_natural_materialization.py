@@ -150,8 +150,12 @@ def plan(**changes) -> PaperTradePlan:
 
 
 def natural_result(**changes) -> PipelineResult:
+    runtime = resolve_runtime_parameters("trade-15m-v1")
     value = PipelineResult(
         symbol="BTCUSDT", primary_timeframe="15m", closed_until_ms=BOUNDARY,
+        trade_profile_id="trade-15m-v1",
+        runtime_parameter_set_id=runtime.parameter_set_id,
+        runtime_parameters_snapshot=runtime,
         status="COMPLETED", final_result="PAPER_PLAN_READY",
         market_data_payload={
             "15m": {
@@ -182,12 +186,15 @@ def natural_result(**changes) -> PipelineResult:
 
 def five_minute_natural_result() -> PipelineResult:
     value = deepcopy(natural_result())
+    runtime = resolve_runtime_parameters("trade-5m-v2")
+    setup_id = value.setup_payload["setup_id"]
+    strategy_id = strategy_decision_id("BTCUSDT", "5m", BOUNDARY, setup_id)
+    risk_id = risk_decision_id("BTCUSDT", "5m", BOUNDARY, strategy_id)
     value.primary_timeframe = "5m"
-    value.trade_profile_id = "trade-5m-v1"
+    value.trade_profile_id = "trade-5m-v2"
     value.profile_mode = "PRODUCTION_SEARCH"
-    value.runtime_parameter_set_id = resolve_runtime_parameters(
-        "trade-5m-v1"
-    ).parameter_set_id
+    value.runtime_parameter_set_id = runtime.parameter_set_id
+    value.runtime_parameters_snapshot = runtime
     value.market_data_payload = {
         "5m": {"last_close_time_ms": SOURCE_CLOSE, "closed_until_ms": BOUNDARY}
     }
@@ -196,9 +203,18 @@ def five_minute_natural_result() -> PipelineResult:
         natural_market_snapshot(timeframe="5m").snapshot_id
     )
     value.setup_payload["timeframe"] = "5m"
-    value.strategy_payload = replace(strategy(), timeframe="5m").to_dict()
-    value.risk_payload = replace(risk(), timeframe="5m").to_dict()
-    value.paper_payload = replace(plan(), timeframe="5m").to_dict()
+    value.strategy_payload = replace(
+        strategy(), timeframe="5m", decision_id=strategy_id,
+        source_setup_id=setup_id,
+    ).to_dict()
+    value.risk_payload = replace(
+        risk(), timeframe="5m", risk_decision_id=risk_id,
+        source_strategy_decision_id=strategy_id, source_setup_id=setup_id,
+    ).to_dict()
+    value.paper_payload = replace(
+        plan(), timeframe="5m", source_risk_decision_id=risk_id,
+        source_strategy_decision_id=strategy_id, source_setup_id=setup_id,
+    ).to_dict()
     return value
 
 
@@ -371,7 +387,7 @@ def test_5m_production_store_persists_executable_final_approval_test():
     with sessions() as session:
         session.add(OnlinePipelineRun(
             run_id="orchestrator:5m:natural:1", symbol="BTCUSDT",
-            primary_timeframe="5m", trade_profile_id="trade-5m-v1",
+            primary_timeframe="5m", trade_profile_id="trade-5m-v2",
             profile_mode="PRODUCTION_SEARCH", closed_until_ms=BOUNDARY,
             closed_until_utc=datetime.fromtimestamp(BOUNDARY / 1000, tz=timezone.utc),
             status="RUNNING", started_at=EVALUATION, trigger_source="TEST",
@@ -418,7 +434,11 @@ def test_final_approval_persisted_in_expected_json_path_and_pipeline_finish_retr
             semantic_version="PAPER_ACCOUNTING/1.0",
         ))
         session.commit()
-    store = PipelineResultStore(sessions, clock=lambda: EVALUATION)
+    store = PipelineResultStore(
+        sessions, clock=lambda: EVALUATION, owner_guard=type(
+            "HistoricalOwner", (), {"assert_active": lambda self, session: None}
+        )(),
+    )
     assert store.finish("orchestrator:natural:1", natural_result(), freshness_status="READY")
     assert not store.finish("orchestrator:natural:1", natural_result(), freshness_status="READY")
     with sessions() as session:
@@ -452,7 +472,7 @@ def test_cross_profile_and_cross_boundary_result_associations_fail_closed():
     store = PipelineResultStore(
         sessions, clock=lambda: EVALUATION, owner_guard=Owner()
     )
-    add_run("orchestrator:5m:reject-15m", "trade-5m-v1", "5m")
+    add_run("orchestrator:5m:reject-15m", "trade-5m-v2", "5m")
     with pytest.raises(ValueError, match="execution-domain identity mismatch"):
         store.finish(
             "orchestrator:5m:reject-15m", natural_result(),
@@ -475,11 +495,15 @@ def test_cross_profile_and_cross_boundary_result_associations_fail_closed():
         )
 
 
-def _persisted_decision(payload):
-    result = natural_result()
+def _persisted_decision(payload, *, five_minute=False):
+    result = five_minute_natural_result() if five_minute else natural_result()
     return approval_adapter._PersistedDecision(
         run_pk=1, result_pk=1, run_id="orchestrator:natural:1", symbol="BTCUSDT",
-        primary_timeframe="15m", closed_until_ms=BOUNDARY, status="COMPLETED",
+        primary_timeframe=result.primary_timeframe,
+        trade_profile_id=result.trade_profile_id,
+        result_trade_profile_id=result.trade_profile_id,
+        result_primary_timeframe=result.primary_timeframe,
+        closed_until_ms=BOUNDARY, status="COMPLETED",
         finished_at=EVALUATION, freshness_deadline_at=None, future_bars_used=False,
         is_trade_signal=True, is_executable=True, order_approved=True,
         execution_approved=True, position_opened=False, position_size_approved=True,
@@ -491,9 +515,11 @@ def _persisted_decision(payload):
     )
 
 
-def _classify(payload):
+def _classify(payload, *, five_minute=False):
     adapter = object.__new__(approval_adapter.PaperProductionApprovalSourceAdapter)
-    return adapter._classify(_persisted_decision(payload), EVALUATION_MS)
+    return adapter._classify(
+        _persisted_decision(payload, five_minute=five_minute), EVALUATION_MS
+    )
 
 
 def test_real_snapshot_online_analysis_persisted_natural_approval_is_adapter_eligible_test():
@@ -549,7 +575,12 @@ def test_real_snapshot_online_analysis_persisted_natural_approval_is_adapter_eli
             semantic_version="PAPER_ACCOUNTING/1.0",
         ))
         session.commit()
-    assert PipelineResultStore(sessions, clock=lambda: EVALUATION).finish(
+    owner = type(
+        "HistoricalOwner", (), {"assert_active": lambda self, session: None}
+    )()
+    assert PipelineResultStore(
+        sessions, clock=lambda: EVALUATION, owner_guard=owner
+    ).finish(
         run_id, result, freshness_status="READY"
     )
     with sessions() as session:
@@ -564,14 +595,13 @@ def test_real_snapshot_online_analysis_persisted_natural_approval_is_adapter_eli
     assert persisted_result.paper_payload_json["final_approval_generation"][
         "outcome"
     ] == "FINAL_APPROVAL_CREATED"
-    assert classified.outcome is approval_adapter.PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL
-    assert classified.candidate is not None
-    assert classified.candidate.watermark.source_market_data_snapshot_id == market_snapshot.snapshot_id
+    assert classified.outcome is approval_adapter.PaperProductionApprovalOutcome.CAUSALITY_MISMATCH
+    assert classified.candidate is None
 
 
 def test_final_approval_adapter_reads_new_natural_approval_and_selector_accepts_single_valid_test():
-    value = materialize()
-    classified = _classify(value.paper_payload)
+    value = materialize(five_minute_natural_result())
+    classified = _classify(value.paper_payload, five_minute=True)
     assert classified.outcome is approval_adapter.PaperProductionApprovalOutcome.ELIGIBLE_APPROVAL
     selected = ProductionEligibleApprovalSelector().select(
         (classified.candidate,), policy_version=MULTI_SYMBOL_SELECTION_POLICY_VERSION
