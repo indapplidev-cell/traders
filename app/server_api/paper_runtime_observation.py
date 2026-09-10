@@ -50,6 +50,7 @@ from app.server_api.services.paper_reporting import PaperRuntimeObservation
 from app.server_api.mapping.contract import utc_text
 from app.engine_safety.production_control_root import resolve_production_control_root
 from app.operator_control.runtime_health import read_paper_runtime_health
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
 PRODUCTION_RUNTIME_ROOT: Final = Path("/run/traders-paper-runtime")
@@ -58,11 +59,12 @@ PRODUCTION_RECOVERY_ROOT: Final = Path("/run/traders-recovery")
 PRODUCTION_MARKET_HEALTH_ROOT: Final = Path("/run/traders-market-data-health")
 RUNTIME_CONFIGURATION_NAME: Final = "paper-runtime.disabled.json"
 IDENTITY_CONFIGURATION_NAME: Final = "paper-identity.json"
-MINIMUM_PITR_WINDOW_SECONDS: Final = 86_400
+MINIMUM_PITR_WINDOW_SECONDS: Final = RUNTIME_POLICY.paper_readiness.minimum_pitr_window_seconds
 MAX_JSON_BYTES: Final = 16 * 1024
 MAX_MARKET_HEALTH_JSON_BYTES: Final = 256 * 1024
-MAX_WAL_DAEMON_AGE_SECONDS: Final = 1_200
-MAX_MARKET_HEALTH_AGE_SECONDS: Final = 180
+MAX_WAL_DAEMON_AGE_SECONDS: Final = RUNTIME_POLICY.paper_readiness.wal_daemon_max_age_seconds
+MAX_ARTIFACT_FUTURE_SKEW_SECONDS: Final = RUNTIME_POLICY.paper_readiness.artifact_future_skew_tolerance_seconds
+MAX_MARKET_HEALTH_AGE_SECONDS: Final = RUNTIME_POLICY.paper_readiness.market_health_max_age_seconds
 _START_WAL = re.compile(
     r"^START WAL LOCATION: (?P<lsn>[0-9A-F]+/[0-9A-F]+) \(file (?P<file>[0-9A-F]{24})\)$",
     re.MULTILINE,
@@ -163,7 +165,9 @@ def _market_data_readiness(
             or payload.get("timeframes") != list(TIMEFRAME_ALLOWLIST)
             or not isinstance(snapshots, list)
             or len(snapshots) != len(MARKET_SYMBOLS) * len(TIMEFRAME_ALLOWLIST)
-            or not 0 <= (now - generated.astimezone(timezone.utc)).total_seconds() <= MAX_MARKET_HEALTH_AGE_SECONDS
+            or not -MAX_ARTIFACT_FUTURE_SKEW_SECONDS
+            <= (now - generated.astimezone(timezone.utc)).total_seconds()
+            <= MAX_MARKET_HEALTH_AGE_SECONDS
         ):
             return False
         expected = {(symbol, timeframe) for symbol in MARKET_SYMBOLS for timeframe in TIMEFRAME_ALLOWLIST}
@@ -225,7 +229,9 @@ def _pitr_lineage(
             and daemon.get("error_class") == "NONE"
             and daemon.get("export_backlog_count") == 0
             and daemon.get("pending_archive_status_count") == 0
-            and 0 <= (now - updated.astimezone(timezone.utc)).total_seconds() <= MAX_WAL_DAEMON_AGE_SECONDS
+            and -MAX_ARTIFACT_FUTURE_SKEW_SECONDS
+            <= (now - updated.astimezone(timezone.utc)).total_seconds()
+            <= MAX_WAL_DAEMON_AGE_SECONDS
         )
         catalog = _json_object(root / "catalog" / "catalog.json")
         entries = catalog.get("entries")

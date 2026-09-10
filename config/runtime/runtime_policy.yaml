@@ -132,3 +132,8 @@ wal_ack_daemon:
   settle_poll_seconds: 0.25
   state_write_attempts: 5
   state_write_retry_seconds: 0.2
+paper_readiness:
+  minimum_pitr_window_seconds: 86400
+  wal_daemon_max_age_seconds: 1200
+  artifact_future_skew_tolerance_seconds: 5.0
+  market_health_max_age_seconds: 180

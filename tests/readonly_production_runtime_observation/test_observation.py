@@ -116,6 +116,19 @@ def test_wal_daemon_atomic_replace_visibility_gap_is_retried(
     assert daemon_attempts == 2
 
 
+def test_wal_daemon_atomic_update_after_observation_clock_is_tolerated(tmp_path: Path) -> None:
+    now = datetime(2026, 8, 13, 20, tzinfo=timezone.utc)
+    _recovery(tmp_path, now=now)
+    state = tmp_path / "catalog" / "wal_ack_daemon_state.json"
+    payload = json.loads(state.read_text(encoding="utf-8"))
+    payload["updated_at"] = (now + timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+    _write_json(state, payload)
+    assert observation._pitr_readiness(tmp_path, now) == (True, True)
+    payload["updated_at"] = (now + timedelta(seconds=6)).isoformat().replace("+00:00", "Z")
+    _write_json(state, payload)
+    assert observation._pitr_readiness(tmp_path, now) == (False, False)
+
+
 def test_disabled_runtime_configuration_is_exact_and_live_safe(tmp_path: Path) -> None:
     _write_json(tmp_path / observation.RUNTIME_CONFIGURATION_NAME, {
         "auto_arm": False, "auto_start": False, "daemon_enabled": False,

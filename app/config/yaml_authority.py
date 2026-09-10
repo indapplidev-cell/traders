@@ -204,6 +204,13 @@ class WalAckDaemonPolicy(StrictModel):
     state_write_retry_seconds: float = Field(ge=0)
 
 
+class PaperReadinessPolicy(StrictModel):
+    minimum_pitr_window_seconds: int = Field(gt=0)
+    wal_daemon_max_age_seconds: float = Field(gt=0)
+    artifact_future_skew_tolerance_seconds: float = Field(ge=0)
+    market_health_max_age_seconds: int = Field(gt=0)
+
+
 class RuntimePolicy(StrictModel):
     schema_version: Literal[1]
     config_version: str
@@ -214,6 +221,7 @@ class RuntimePolicy(StrictModel):
     orchestrator: OrchestratorPolicy
     collector: CollectorPolicy
     wal_ack_daemon: WalAckDaemonPolicy
+    paper_readiness: PaperReadinessPolicy
 
     @model_validator(mode="after")
     def active_is_enabled(self):
