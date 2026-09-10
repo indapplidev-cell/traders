@@ -7,12 +7,12 @@ STATUS_AS_OF_COMMIT = 4c6d23a7a17bf3d270e0c3b9e95ccf6391753106
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-10T18:49:00Z
-RECONCILED_BY_TASK = TRADERS_REMOVE_UNKNOWN_STATE_REASON_MAPPING_ONLY_01
-FILES_CHANGED = app/i18n/catalog.py; app/i18n/public_codes.py; tests/server_api/test_i18n.py; tests/server_api/test_trading_funnel.py; docs/audits/TRADERS_REMOVE_UNKNOWN_STATE_REASON_MAPPING_ONLY_01_FINAL.md; online_trader.md; ../traders-client/src/traders_client/i18n/generated_bootstrap.json; ../traders-client/tests/test_i18n_gui.py; ../traders-client/client_status.md
+RECONCILED_AT_UTC = 2026-09-10T19:17:04Z
+RECONCILED_BY_TASK = TRADERS_COMMIT_ALL_EXISTING_UNCOMMITTED_CHANGES_01
+FILES_CHANGED = docs/audits/TRADERS_COMMIT_ALL_EXISTING_UNCOMMITTED_CHANGES_01_FINAL.md; online_trader.md; ../traders-client/src/traders_client/models/paper.py; ../traders-client/src/traders_client/providers/paper_http.py; ../traders-client/src/traders_client/ui/paper_trading_view.py; ../traders-client/src/traders_client/ui/setups_view.py; ../traders-client/tests/test_set2_provenance_rendering.py; ../traders-mobile/app/src/main/java/com/traders/mobile/funnel/TradingFunnelModels.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/funnel/TradingFunnelParser.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/funnel/TradingFunnelRepository.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/navigation/ScreenRouter.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/ReadonlyUi.kt; ../traders-mobile/app/src/test/java/com/traders/mobile/funnel/TradingFunnelParserTest.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/profile/ProfileSelectionStore.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/profile/ServerDomainCatalog.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/funnel/ScalpingFunnelScreen.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/profile/ProfileAwareHostScreen.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/profile/ScalpingProfileScreen.kt; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/engine_paper/plan_execution_outcome.py; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/operator_control/production_executor.py; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/operator_control/runtime.py; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/server_api/trading_funnel.py
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = SERVER_PROJECT_STATE_4c6d23a_AND_CLIENT98928a6_PUSHED; DOCUMENTATION_RECONCILIATION_PENDING_SELF_RESOLUTION
+PUSH_STATE_AT_RECONCILIATION = SERVER_HYGIENE_BRANCH_6ab76e2_AND_CLIENT_a9e88e4_PUSHED; MOBILE_61666a0_LOCAL_CLEAN_BUT_NO_REMOTE_OR_UPSTREAM; DOCUMENTATION_RECONCILIATION_RESOLVES_VIA_GIT_HISTORY
 STATUS_CONFIDENCE = KNOWNREASONMAPPING5OF5_RUEN_UNKNOWNFORKNOWN0_ROWDETAILPARITYPASS_READONLYDEPLOYPASS_DESKTOPPREFLIGHTCAPTUREPASS_TRADINGLOGICNO_YAMLNO_CONFIGHASHUNCHANGED_5MRESTARTNO_COLLECTORRESTARTNO_15MRESTARTNO_LIVEFALSE_BINANCEORDER0
 
 # Состояние проекта traders-ml
@@ -23,7 +23,7 @@ STATUS_CONFIDENCE = KNOWNREASONMAPPING5OF5_RUEN_UNKNOWNFORKNOWN0_ROWDETAILPARITY
 ROOT_BRANCH = feature/engine-platform
 API_ROOT_STATUS = DEPLOYED_LOCALHOST_READONLY_WITH_ACCEPTED_EXACT_PHONE_PRIVATE_LAN_FORWARDER
 API_RUNTIME_STATUS = READONLY_HEALTH_OK_EXACT_ROW_DETAIL_IDENTITY_CURRENT5M_EXACT10_PAPER_READY_WALTRUE_PITRTRUE_APPROVALSOURCETRUE_MUTATIONTRUE_LIVE_OFF
-SOURCE_API_STATUS = YAML_AUTHORITY_CERTIFIED_ORCHESTRATOR5M_SOURCE50b6828_READONLY_SOURCE4c6d23a_COLLECTOR_SOURCE50b6828_CLIENT98928a6_PREEXISTING_CLIENT_DIRTY_WORKTREE_PRESERVED
+SOURCE_API_STATUS = YAML_AUTHORITY_CERTIFIED_ORCHESTRATOR5M_SOURCE50b6828_READONLY_SOURCE4c6d23a_COLLECTOR_SOURCE50b6828_CLIENT_WORKTREE_CLEAN_AFTER_EXISTING_CHANGES_COMMITTED_a9e88e4_UNTESTED_BY_GIT_HYGIENE_TASK
 CURRENT_STAGE = READY_WAITING_FOR_NATURAL_ELIGIBLE_APPROVAL_AND_CLEAN72H_SOAK
 CURRENT_BLOCKER = NATURAL_ELIGIBLE_APPROVAL_NOT_OBSERVED_IN_BOUNDED_WINDOW; CLEAN72H_SOAK_NOT_MATURE; NO_LIVE_PROMOTION
 CURRENT_PREREQUISITE = KEEP_PAPER_READINESS_HEALTHY_AND_OBSERVE_FIRST_NATURAL_APPROVAL_COMMAND_FILL_OPEN_POSITION; COMPLETE864_BOUNDARIES_AND_RUN_SOAK_FINALIZER
