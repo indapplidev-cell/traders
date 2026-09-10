@@ -11,10 +11,10 @@ search:
   checkpoint_cadence: 1
   stage_budgets:
     SET2_BASELINE: 1
-    ONE_FACTOR_SENSITIVITY: 48
-    SMALL_FAMILY_SEARCH: 240
-    TOP_REGION_REFINEMENT: 160
-    LOCAL_FINALIST_VALIDATION: 51
+    ONE_FACTOR_SENSITIVITY: 16
+    SMALL_FAMILY_SEARCH: 60
+    TOP_REGION_REFINEMENT: 40
+    LOCAL_FINALIST_VALIDATION: 27
   max_configs_per_observation: 100
   minimum_validation_sample: 20
   minimum_holdout_sample: 20
@@ -110,10 +110,10 @@ search_space:
   prior_beta: [1.0, 2.0]
   adverse_fill_reserve_bps: [3.0, 5.0]
   entry_slippage_bps: [2.0, 3.0]
-  stop_max_bps: [50.0, 65.0]
-  target_min_bps: [45.0, 60.0]
-  causal_reset_min_conditions: [1, 2]
-  entry_refinement_1m_confirmation_count: [1, 2]
+  stop_max_bps: [50.0, 55.0, 60.0, 65.0]
+  target_min_bps: [45.0, 50.0, 55.0, 60.0]
+  causal_reset_min_conditions: [1, 2, 3]
+  entry_refinement_1m_confirmation_count: [1, 2, 3]
   soft_timeout_seconds: [300, 600, 900]
   hard_timeout_seconds: [600, 900, 1200, 1800]
   min_target_progress_at_soft_timeout: [0.10, 0.20, 0.30, 0.40]
