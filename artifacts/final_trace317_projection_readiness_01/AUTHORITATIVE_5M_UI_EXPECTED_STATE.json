@@ -1,0 +1,24 @@
+{
+  "captured_at_utc": "2026-09-10T10:49:22.887514Z",
+  "cycle_boundary_ms": 1789037100000,
+  "cycle_boundary_utc": "2026-09-10T10:45:00Z",
+  "profile": "trade-5m-v2",
+  "timeframe": "5m",
+  "parameter_set_id": "scalping-v2-set-2",
+  "resolved_config_hash": "8d725ee1c2637dfd6f7c33b8ef2157a599775f3948e195dbfc29d1885a055586",
+  "freshness": "CURRENT",
+  "symbol_count": 10,
+  "symbols": [
+    {"symbol":"ADAUSDT","result_id":88359,"run_id":"orchestrator:42429ddd94e5420bb0af028239e364a8"},
+    {"symbol":"AVAXUSDT","result_id":88360,"run_id":"orchestrator:e9c4bb6652ff4833a97a8ef85e415000"},
+    {"symbol":"BNBUSDT","result_id":88355,"run_id":"orchestrator:7665ce4ea91b46e6834bb606c7fa4930"},
+    {"symbol":"BTCUSDT","result_id":88352,"run_id":"orchestrator:b648376e4992493b81d80e3ef6dfacb5","analysis_snapshot_id":"analysis:BTCUSDT:5m:1789037100000:f4f6ebc388141764"},
+    {"symbol":"DOGEUSDT","result_id":88358,"run_id":"orchestrator:a6bf198e2f134693b2be79c70dde997d"},
+    {"symbol":"ETHUSDT","result_id":88353,"run_id":"orchestrator:1dce2e3ba1b0400585be46b295a06b46"},
+    {"symbol":"LINKUSDT","result_id":88357,"run_id":"orchestrator:99e9905255da48a2a8996e75949e14f0"},
+    {"symbol":"SOLUSDT","result_id":88354,"run_id":"orchestrator:d00c3a252b9d467d827097fef604fb78"},
+    {"symbol":"SUIUSDT","result_id":88361,"run_id":"orchestrator:d34c796333304eb0a5ac97463e4f626a"},
+    {"symbol":"XRPUSDT","result_id":88356,"run_id":"orchestrator:3ba3e1460b2a4b78b06dd9e1328e03b2"}
+  ],
+  "source": "production PostgreSQL online_pipeline_runs/online_pipeline_results and resolved runtime projection"
+}
