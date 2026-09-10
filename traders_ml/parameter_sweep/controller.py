@@ -54,6 +54,14 @@ class PresentationState:
     replay_diagnostics: dict[str, int] = field(default_factory=dict)
     failed_before_first_config: bool = False
     terminal_state: str | None = None
+    current_stage: str = "—"
+    current_parameter_family: str = "—"
+    artifact_bytes: int = 0
+    artifact_soft_budget_bytes: int = 0
+    artifact_hard_budget_bytes: int = 0
+    negative_expectancy: int = 0
+    promising: int = 0
+    validation_candidates: int = 0
 
     @property
     def progress_percent(self) -> float:
@@ -118,19 +126,19 @@ class ParameterSweepController:
                 )
                 return
 
-    def start_new_run(self, *, max_configs: int | None = None) -> str:
+    def start_new_run(self, *, max_configs: int | None = None, stage: str | None = None) -> str:
         if self.worker and self.worker.is_alive():
             raise RuntimeError("PARAMETER_SWEEP_ALREADY_RUNNING")
         run_id = generate_run_id(self.output_root)
-        self._start(run_id, resume=False, max_configs=max_configs)
+        self._start(run_id, resume=False, max_configs=max_configs, stage=stage)
         return run_id
 
     def resume_run(self, run_id: str) -> None:
         if self.worker and self.worker.is_alive():
             raise RuntimeError("PARAMETER_SWEEP_ALREADY_RUNNING")
-        self._start(run_id, resume=True, max_configs=None)
+        self._start(run_id, resume=True, max_configs=None, stage=None)
 
-    def _start(self, run_id: str, *, resume: bool, max_configs: int | None) -> None:
+    def _start(self, run_id: str, *, resume: bool, max_configs: int | None, stage: str | None) -> None:
         failure_emitted = threading.Event()
 
         def receive(event: SweepEvent) -> None:
@@ -149,6 +157,7 @@ class ParameterSweepController:
                 self.engine.run(
                     self.config_path, run_id=run_id, resume=resume,
                     max_configs=max_configs,
+                    stage=stage,
                 )
             except BaseException as error:
                 if not failure_emitted.is_set():
@@ -223,6 +232,8 @@ class ParameterSweepController:
             self.state.current_config = dict(payload["resolved_config"])
             self.state.changed_parameters = dict(payload["changed_parameters"])
             self.state.resolved_config = dict(payload["resolved_config"])
+            self.state.current_stage = str(payload.get("stage", "—"))
+            self.state.current_parameter_family = str(payload.get("parameter_family", "—"))
         elif event.type == EventType.CONFIG_PROGRESS:
             self.state.completed = int(payload.get("completed", self.state.completed))
             self.state.planned = int(payload.get("planned", self.state.planned))
@@ -241,6 +252,12 @@ class ParameterSweepController:
             self.state.rejected = int(payload["rejected"])
             self.state.insufficient = int(payload["insufficient"])
             self.state.errors = int(payload["errors"])
+            self.state.artifact_bytes = int(payload.get("artifact_bytes", self.state.artifact_bytes))
+            self.state.artifact_soft_budget_bytes = int(payload.get("artifact_soft_budget_bytes", self.state.artifact_soft_budget_bytes))
+            self.state.artifact_hard_budget_bytes = int(payload.get("artifact_hard_budget_bytes", self.state.artifact_hard_budget_bytes))
+            self.state.negative_expectancy = int(payload.get("negative_expectancy", self.state.negative_expectancy))
+            self.state.promising = int(payload.get("promising", self.state.promising))
+            self.state.validation_candidates = int(payload.get("validation_candidates", self.state.validation_candidates))
             if self.state.completed >= 3 and self.state.started_at:
                 elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(self.state.started_at)).total_seconds()
                 self.state.eta_seconds = elapsed / self.state.completed * max(0, self.state.planned - self.state.completed)

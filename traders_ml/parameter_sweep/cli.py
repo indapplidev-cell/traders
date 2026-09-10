@@ -9,6 +9,7 @@ from typing import Sequence
 from .engine import PROJECT_ROOT, ParameterSweepEngine, SweepExpectedError
 from .events import SweepEvent
 from .state import read_effective_status
+from .artifact_v2 import migrate_v1_run
 
 
 from app.config.yaml_authority import RESEARCH_PARAMETERS, RESEARCH_PATH
@@ -56,6 +57,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--stage", choices=("SET2_BASELINE", "ONE_FACTOR_SENSITIVITY", "SMALL_FAMILY_SEARCH", "TOP_REGION_REFINEMENT", "LOCAL_FINALIST_VALIDATION"))
+    parser.add_argument("--migrate-v1", type=Path, metavar="RUN_DIR")
+    parser.add_argument("--migration-target", type=Path)
+    parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--max-configs", type=int)
     parser.add_argument("--max-rows", type=int)
     parser.add_argument("--from", dest="from_value")
@@ -67,6 +72,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    if args.migrate_v1:
+        target = args.migration_target or args.migrate_v1.with_name(args.migrate_v1.name + "-v2")
+        report = migrate_v1_run(args.migrate_v1, target, dry_run=args.dry_run)
+        print(f"V1_TO_V2_MIGRATION = {'DRY_RUN_PASS' if args.dry_run else 'PASS'}")
+        print(f"SOURCE_ROWS = {report.source_rows}")
+        print(f"TARGET_ROWS = {report.target_rows}")
+        print(f"INLINE_MARKET_PATH_COUNT = {report.inline_market_path_count}")
+        return
     if args.status:
         raise SystemExit(status(args.status, args.output_root))
     try:
@@ -76,6 +89,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             to_value=args.to_value, database_url=args.database_url,
             preflight_only=args.preflight_only, verbose=args.verbose,
             resume=args.resume,
+            stage=args.stage,
         )
     except SweepExpectedError as error:
         print("PARAMETER_SWEEP = FAILED")

@@ -73,6 +73,14 @@ class SweepRunStatus:
     dimension_values: dict[str, list[Any]] = field(default_factory=dict)
     conditional_dimensions: list[str] = field(default_factory=list)
     replay_diagnostics: dict[str, int] = field(default_factory=dict)
+    current_stage: str | None = None
+    current_parameter_family: str | None = None
+    artifact_bytes: int = 0
+    artifact_soft_budget_bytes: int = 0
+    artifact_hard_budget_bytes: int = 0
+    negative_expectancy_configs: int = 0
+    promising_configs: int = 0
+    validation_candidate_configs: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)

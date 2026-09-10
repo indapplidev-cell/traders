@@ -90,6 +90,9 @@ class ParameterSweepWindow:
 
         actions = ttk.Frame(self.body)
         actions.pack(fill="x", pady=12)
+        self.stage_var = tk.StringVar(value="ALL")
+        self.stage_selector = ttk.Combobox(actions, textvariable=self.stage_var, state="readonly", width=28, values=("ALL", "SET2_BASELINE", "ONE_FACTOR_SENSITIVITY", "SMALL_FAMILY_SEARCH", "TOP_REGION_REFINEMENT", "LOCAL_FINALIST_VALIDATION"))
+        self.stage_selector.pack(side="left", padx=(0, 6))
         self.start_button = ttk.Button(actions, text=RU["start"], command=self._start)
         self.start_button.pack(side="left", padx=(0, 6))
         self.stop_button = ttk.Button(actions, text=RU["stop"], command=self.controller.request_stop_after_current)
@@ -102,7 +105,7 @@ class ParameterSweepWindow:
 
     def _start(self) -> None:
         try:
-            self.controller.start_new_run()
+            self.controller.start_new_run(stage=None if self.stage_var.get() == "ALL" else self.stage_var.get())
         except RuntimeError as error:
             messagebox.showerror(RU["title"], str(error), parent=self.root)
 
@@ -201,7 +204,13 @@ class ParameterSweepWindow:
         self.counters.configure(text=(
             f"Выполнено: {state.completed}   Осталось: {max(0, state.planned-state.completed)}\n"
             f"Принято: {state.accepted}   Отклонено: {state.rejected}   "
-            f"Недостаточно данных: {state.insufficient}   Ошибки: {state.errors}"
+            f"Недостаточно данных: {state.insufficient}   Ошибки: {state.errors}\n"
+            f"Этап: {state.current_stage}   Семейство: {state.current_parameter_family}\n"
+            f"Negative expectancy: {state.negative_expectancy}   Promising: {state.promising}   "
+            f"Validation candidates: {state.validation_candidates}\n"
+            f"Артефакты: {state.artifact_bytes / 1048576:.2f} MiB / "
+            f"soft {state.artifact_soft_budget_bytes / 1048576:.0f} MiB / "
+            f"hard {state.artifact_hard_budget_bytes / 1048576:.0f} MiB"
         ))
         elapsed = None
         if state.started_at:

@@ -1746,6 +1746,7 @@ def _run_impl(
     max_rows: int | None = None, from_value: str | None = None,
     to_value: str | None = None, database_url: str | None = None,
     preflight_only: bool = False, verbose: bool = False, resume: bool = False,
+    stage: str | None = None,
     stop_after_batches: int | None = None,
     event_sink: Callable[[SweepEvent], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
@@ -1889,6 +1890,7 @@ def _run_impl(
     assert dataset_manifest is not None
     dataset_fingerprint = str(dataset_manifest["dataset_fingerprint"])
     search_space_hash = _config_hash(space)
+    research_hash = _config_hash(search)
     plan_state = _search_plan_state(space, plan)
     search_plan_hash = _config_hash({
         "space": space, "plan": plan.safe_dict(), "minimum_samples": search["minimum_samples"],
@@ -1919,6 +1921,8 @@ def _run_impl(
         "config_hash": TRADE_PARAMETERS.config_hash,
         "search_space_hash": search_space_hash,
         "search_plan_hash": search_plan_hash,
+        "research_config_hash": research_hash,
+        "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
         "dataset_manifest_hash": dataset_manifest["manifest_hash"],
         "engine_version": SCHEMA_VERSION,
         "dataset_fingerprint": dataset_fingerprint,
@@ -1941,6 +1945,10 @@ def _run_impl(
             raise SweepExpectedError("RESUME_DATASET_MANIFEST_MISMATCH")
         if existing.get("search_plan_hash") != search_plan_hash or existing.get("search_space_hash") != search_space_hash or existing.get("strategy") != checkpoint["strategy"] or existing.get("seed") != checkpoint["seed"]:
             raise SweepExpectedError("RESUME_SEARCH_PLAN_MISMATCH")
+        if existing.get("research_config_hash") != research_hash:
+            raise SweepExpectedError("RESUME_RESEARCH_CONFIG_MISMATCH")
+        if existing.get("artifact_schema_version") != ARTIFACT_SCHEMA_VERSION:
+            raise SweepExpectedError("RESUME_ARTIFACT_SCHEMA_MISMATCH")
         if existing.get("config_hash") != TRADE_PARAMETERS.config_hash:
             raise SweepExpectedError("RESUME_CONFIG_MISMATCH")
         if existing.get("engine_version") != SCHEMA_VERSION:
@@ -2215,7 +2223,6 @@ def _run_impl(
     jsonl = output / "RESULTS.jsonl"
     csv_path = output / "RESULTS.csv"
     csv_fields = ["result_index", "config_hash", "stage", "result_status", "validation_expectancy", "validation_drawdown", "validation_trades", "parameters_json"]
-    research_hash = _config_hash(search)
     result_writer = DurableResultWriter(
         output, csv_fields,
         transform=lambda value: compact_result(
@@ -2227,7 +2234,10 @@ def _run_impl(
     candidate_variants = _conditional_variants(space)
     baseline_config = _production_baseline_config()
     if plan.selected_strategy == "TARGETED_STAGED":
-        candidate_source = enumerate(staged_candidates(search, baseline_config))
+        targeted_items = staged_candidates(search, baseline_config)
+        if stage is not None:
+            targeted_items = (item for item in targeted_items if item.stage == stage)
+        candidate_source = enumerate(targeted_items)
     else:
         candidate_source = enumerate(_candidate_indices(plan))
     batch_active = 0
@@ -2264,6 +2274,8 @@ def _run_impl(
                 index=next_index + 1, planned=plan.evaluation_budget,
                 changed_parameters=changed_parameters,
                 resolved_config=resolved_config,
+                stage=stage,
+                parameter_family=next((family for family, names in search.get("calibration", {}).get("parameter_families", {}).items() if set(changed_parameters) & set(names)), "BASELINE"),
             )
             emit(
                 EventType.CONFIG_PROGRESS,
@@ -2297,6 +2309,17 @@ def _run_impl(
             )
             emit(EventType.RESULT_WRITE_STARTED, index=next_index + 1)
             result_writer.append(item)
+            result_class = compact_result(item)["performance_class"]
+            status_store.update(
+                current_stage=stage,
+                current_parameter_family=next((family for family, names in search.get("calibration", {}).get("parameter_families", {}).items() if set(changed_parameters) & set(names)), "BASELINE"),
+                artifact_bytes=sum(path.stat().st_size for path in output.glob("*") if path.is_file()),
+                artifact_soft_budget_bytes=RESEARCH_PARAMETERS.artifact.soft_total_bytes,
+                artifact_hard_budget_bytes=RESEARCH_PARAMETERS.artifact.hard_total_bytes,
+                negative_expectancy_configs=status_store.status.negative_expectancy_configs + int(result_class == "NEGATIVE_EXPECTANCY"),
+                promising_configs=status_store.status.promising_configs + int(result_class == "PROMISING_RESEARCH"),
+                validation_candidate_configs=status_store.status.validation_candidate_configs + int(result_class == "VALIDATION_CANDIDATE"),
+            )
             emit(EventType.RESULT_WRITE_COMPLETED, index=next_index + 1)
             checkpoint["last_candidate_offset"] = candidate_offset
             checkpoint["last_durable_result_index"] = item["result_index"]
@@ -2351,6 +2374,12 @@ def _run_impl(
                 ),
                 errors=int(checkpoint["failed_count"]),
                 insufficient=status_store.status.insufficient_configs,
+                artifact_bytes=sum(path.stat().st_size for path in output.glob("*") if path.is_file()),
+                artifact_soft_budget_bytes=RESEARCH_PARAMETERS.artifact.soft_total_bytes,
+                artifact_hard_budget_bytes=RESEARCH_PARAMETERS.artifact.hard_total_bytes,
+                negative_expectancy=status_store.status.negative_expectancy_configs,
+                promising=status_store.status.promising_configs,
+                validation_candidates=status_store.status.validation_candidate_configs,
             )
             if stop_requested is not None and stop_requested():
                 checkpoint["STATUS"] = "CANCELLED"
@@ -2711,6 +2740,7 @@ def run(
     event_sink: Callable[[SweepEvent], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     use_lock: bool = True,
+    stage: str | None = None,
 ) -> Path:
     """Run the authoritative research engine with lock and heartbeat protection."""
     search_path = Path(search_path)
@@ -2758,6 +2788,7 @@ def run(
             stop_after_batches=stop_after_batches,
             event_sink=event_sink,
             stop_requested=stop_requested,
+            stage=stage,
         )
     except BaseException as error:
         output = output_root / identifier
