@@ -81,7 +81,9 @@ def _adapter(tmp_path, *, rows: int = 4):
             connection.execute(
                 OnlinePipelineResultRow.__table__.insert(), result_values
             )
-    return engine, SqlAlchemyReadAdapter(sessionmaker(bind=engine))
+    return engine, SqlAlchemyReadAdapter(
+        sessionmaker(bind=engine), primary_timeframe="15m", trade_profile_id="trade-15m-v1"
+    )
 
 
 def _capture_sql(engine):

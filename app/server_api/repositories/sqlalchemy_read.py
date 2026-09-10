@@ -191,8 +191,8 @@ class SqlAlchemyReadAdapter:
         self,
         session_or_factory: Session | Callable[[], Session],
         *,
-        primary_timeframe: str = "15m",
-        trade_profile_id: str = "trade-15m-v1",
+        primary_timeframe: str,
+        trade_profile_id: str,
         clock: Callable[[], datetime] | None = None,
         schema_capabilities: ReadonlySchemaCapabilityBridge | None = None,
     ) -> None:

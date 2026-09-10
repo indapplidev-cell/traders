@@ -24,6 +24,7 @@ from app.server_api.services import ApiQueryService
 from app.server_api.schemas.i18n import I18nCatalog, I18nManifest
 from app.i18n import catalog_payload, manifest_payload
 from app.server_api.errors import ApiError
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
 SymbolPath = Annotated[str, Path(pattern=r"^[A-Z0-9]{5,20}$")]
@@ -74,7 +75,7 @@ def build_v1_router(service: ApiQueryService) -> APIRouter:
     def get_trading_funnel(
         trade_profile: Annotated[
             Literal["trade-15m-v1", "trade-5m-v1", "trade-5m-v2"], Query()
-        ] = "trade-15m-v1",
+        ] = RUNTIME_POLICY.active_profile,
     ) -> TradingFunnelEnvelope:
         return service.trading_funnel(trade_profile)
 

@@ -1241,7 +1241,7 @@ def test_natural_approval_opens_paper_position_end_to_end(
     assert fills[0].fee_amount == expected_fee
 
     projection = PaperReadonlyReportingService(
-        SqlAlchemyReadAdapter(factory)
+        SqlAlchemyReadAdapter(factory, primary_timeframe="5m", trade_profile_id="trade-5m-v2")
     ).positions(limit=10, cursor=None, state="OPEN", symbol=SYMBOL)
     assert len(projection.items) == 1
     ui_position = projection.items[0]

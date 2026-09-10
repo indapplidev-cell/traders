@@ -821,7 +821,7 @@ def test_scalping_v2_reached_fields_derive_explicit_persisted_provenance():
 
 
 class _Funnel:
-    def project(self, now_ms):
+    def project(self, now_ms, trade_profile_id):
         return _project([])
 
 
@@ -867,7 +867,7 @@ def test_get_route_explicit_profiles_are_isolated_and_invalid_is_4xx():
 
 def test_get_route_db_error_is_not_empty_success():
     class Broken:
-        def project(self, now_ms):
+        def project(self, now_ms, trade_profile_id):
             raise RuntimeError("database unavailable")
     repositories = replace(FakeReadRepository().api_repositories(), funnel=Broken())
     response = TestClient(create_app(repositories=repositories), raise_server_exceptions=False).get("/api/v1/trading/funnel")

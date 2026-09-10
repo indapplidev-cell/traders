@@ -45,6 +45,7 @@ from app.instrument_constraints.registry import (
     REGISTRY_VERSION,
 )
 from app.server_api.repositories.sqlalchemy_read import SqlAlchemyReadAdapter
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
 FINAL_APPROVAL_MATERIALIZER_VERSION: Final = "natural-final-approval-materializer-v1"
@@ -75,7 +76,12 @@ def _canonical_hash(values: tuple[object, ...]) -> str:
 
 
 def _default_account_summary(session: Session) -> PaperAccountSummary:
-    reader = SqlAlchemyReadAdapter(session)
+    active_profile_id = RUNTIME_POLICY.active_profile
+    reader = SqlAlchemyReadAdapter(
+        session,
+        primary_timeframe=RUNTIME_POLICY.profiles[active_profile_id].trigger_timeframe,
+        trade_profile_id=active_profile_id,
+    )
     baselines = reader.list_account_baselines(2)
     if len(baselines) != 1:
         raise ValueError("authoritative PAPER account baseline is unavailable")

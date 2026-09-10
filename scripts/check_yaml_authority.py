@@ -28,6 +28,10 @@ FILES = (
     ROOT / "scripts/scalping_prospective_collector.py",
     ROOT / "traders_ml/parameter_sweep/engine.py",
     ROOT / "traders_ml/parameter_sweep/historical_replay.py",
+    ROOT / "app/server_api/routes/v1.py",
+    ROOT / "app/server_api/services/query_service.py",
+    ROOT / "app/server_api/schemas/models.py",
+    ROOT / "app/server_api/repositories/sqlalchemy_read.py",
 )
 
 
@@ -35,6 +39,8 @@ def scan_text_for_policy_literals(source: str) -> tuple[str, ...]:
     """Return fail-closed reason codes for adversarial Python source."""
     tree = ast.parse(source)
     failures: list[str] = []
+    if re.search(r"(?<![=!<>])=\s*['\"]trade-15m-v1['\"]", source):
+        failures.append("LEGACY_PROFILE_LITERAL_DEFAULT")
     policy_name = re.compile(
         r"(?:^|_)(?:min|max|rr|risk|timeout|ttl|budget|threshold|poll|retry|"
         r"backoff|cadence|lookback|horizon|spread|slippage|fee)(?:_|$)", re.I
@@ -72,6 +78,8 @@ def main() -> int:
     for path in files:
         source = path.read_text(encoding="utf-8")
         ast.parse(source)
+        if re.search(r"(?<![=!<>])=\s*['\"]trade-15m-v1['\"]", source):
+            failures.append(f"LEGACY_PROFILE_LITERAL_DEFAULT:{path}")
         for pattern, code in ((literal_default, "LITERAL_POLICY_DEFAULT"), (literal_fallback, "LITERAL_POLICY_FALLBACK")):
             if pattern.search(source):
                 try:

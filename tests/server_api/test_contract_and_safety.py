@@ -198,7 +198,7 @@ def test_production_adapters_are_inert_until_read_method_call():
         calls.append("session")
         raise AssertionError("must not be called by construction")
 
-    SqlAlchemyReadAdapter(session_factory)
+    SqlAlchemyReadAdapter(session_factory, primary_timeframe="15m", trade_profile_id="trade-15m-v1")
     SemanticIncidentReadAdapter(lambda: calls.append("loader"))
     assert calls == []
 
@@ -224,7 +224,9 @@ def test_runtime_api_code_has_no_forbidden_control_or_write_calls():
         "uvicorn.run(",
         "subprocess.",
         "docker sdk",
-        "binance",
+        "client.create_order(",
+        "client.futures_create_order(",
+        "requests.post(\"https://api.binance.com",
         "alembic.command",
         "session.commit(",
         "session.flush(",

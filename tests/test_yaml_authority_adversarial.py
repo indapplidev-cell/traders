@@ -19,6 +19,10 @@ from scripts.check_yaml_authority import scan_text_for_policy_literals
         ),
         ("DESKTOP_TIMEOUT = 12", "LITERAL_POLICY_ASSIGNMENT:DESKTOP_TIMEOUT"),
         ("RESEARCH_RISK = 0.1", "LITERAL_POLICY_ASSIGNMENT:RESEARCH_RISK"),
+        (
+            "def project(profile='trade-15m-v1'): pass",
+            "LEGACY_PROFILE_LITERAL_DEFAULT",
+        ),
     ),
 )
 def test_adversarial_python_policy_literals_fail(source, reason):

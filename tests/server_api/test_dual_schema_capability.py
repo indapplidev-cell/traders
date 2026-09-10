@@ -87,7 +87,10 @@ def test_0016_projection_never_builds_profile_column_predicate():
     bridge.activate(ReadonlySchemaCapabilityResult(
         True, "0016_control_mobile_device_security", BASE_READONLY_CAPABILITIES
     ))
-    adapter = SqlAlchemyReadAdapter(lambda: None, schema_capabilities=bridge)
+    adapter = SqlAlchemyReadAdapter(
+        lambda: None, primary_timeframe="15m", trade_profile_id="trade-15m-v1",
+        schema_capabilities=bridge,
+    )
     assert adapter._default_profile_predicates() == ()
 
 
@@ -98,7 +101,10 @@ def test_0017_projection_builds_bounded_sql_profile_predicate():
         "0017_parallel_trade_profiles",
         BASE_READONLY_CAPABILITIES | {ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES},
     ))
-    adapter = SqlAlchemyReadAdapter(lambda: None, schema_capabilities=bridge)
+    adapter = SqlAlchemyReadAdapter(
+        lambda: None, primary_timeframe="15m", trade_profile_id="trade-15m-v1",
+        schema_capabilities=bridge,
+    )
     predicates = adapter._default_profile_predicates()
     assert len(predicates) == 1
     assert "trade_profile_id" in str(predicates[0])

@@ -31,7 +31,7 @@ def _database():
     OnlinePipelineRun.__table__.create(engine)
     OnlinePipelineResultRow.__table__.create(engine)
     sessions = sessionmaker(bind=engine)
-    adapter = SqlAlchemyReadAdapter(sessions)
+    adapter = SqlAlchemyReadAdapter(sessions, primary_timeframe="15m", trade_profile_id="trade-15m-v1")
     repositories = ApiRepositories(
         health=adapter,
         markets=adapter,

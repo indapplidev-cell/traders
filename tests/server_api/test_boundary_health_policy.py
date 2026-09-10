@@ -218,6 +218,8 @@ def test_repository_maps_original_failure_to_consistent_non_blocking_health():
 
     adapter = SqlAlchemyReadAdapter(
         sessions,
+        primary_timeframe="15m",
+        trade_profile_id="trade-15m-v1",
         clock=lambda: BOUNDARY + timedelta(seconds=51),
     )
     value = adapter.get_health()

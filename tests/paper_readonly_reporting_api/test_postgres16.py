@@ -27,7 +27,7 @@ NOW = datetime(2026, 8, 11, tzinfo=timezone.utc)
 
 
 def test_real_pg16_0008_gate_and_0012_full_reporting_lifecycle(reporting_pg_engine, reporting_sessions):
-    adapter = SqlAlchemyReadAdapter(reporting_sessions)
+    adapter = SqlAlchemyReadAdapter(reporting_sessions, primary_timeframe="15m", trade_profile_id="trade-15m-v1")
     observed = []
     event.listen(reporting_pg_engine, "before_cursor_execute", lambda _c, _u, statement, *_a: observed.append(statement.lower()))
     assert adapter.schema_revision() == "0008_engine_orchestrator_freshness_retry"
@@ -115,7 +115,9 @@ def test_real_pg16_atomic_close_report_race_is_never_partial(reporting_pg_engine
     thread = Thread(target=close_writer)
     thread.start()
     assert prepared.wait(10)
-    service = PaperReadonlyReportingService(SqlAlchemyReadAdapter(reporting_sessions))
+    service = PaperReadonlyReportingService(SqlAlchemyReadAdapter(
+        reporting_sessions, primary_timeframe="15m", trade_profile_id="trade-15m-v1"
+    ))
     try:
         service.trade_report(position.position_id)
         before = "COMPLETE"

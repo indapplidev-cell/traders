@@ -25,7 +25,7 @@ def test_trading_universe_readiness_has_three_bounded_database_round_trips():
     def sessions():
         yield session
 
-    adapter = SqlAlchemyReadAdapter(sessions)
+    adapter = SqlAlchemyReadAdapter(sessions, primary_timeframe="15m", trade_profile_id="trade-15m-v1")
     result = adapter.trading_universe_readiness()
 
     assert len(result) == 10

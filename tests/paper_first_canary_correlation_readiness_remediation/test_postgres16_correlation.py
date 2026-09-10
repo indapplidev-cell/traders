@@ -341,7 +341,9 @@ def test_full_long_short_closed_report_reconciliation_and_terminal_correlation(c
         assert closed.outcome is RepositoryOutcome.UPDATED
         assert uow.commit().successful
 
-    reporting = PaperReadonlyReportingService(SqlAlchemyReadAdapter(canary_sessions))
+    reporting = PaperReadonlyReportingService(SqlAlchemyReadAdapter(
+        canary_sessions, primary_timeframe="15m", trade_profile_id="trade-15m-v1"
+    ))
     report = reporting.trade_report(f"position:{side.value.lower()}")
     assert report.position_id == f"position:{side.value.lower()}"
     assert report.side == side.value

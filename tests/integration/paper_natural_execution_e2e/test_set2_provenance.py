@@ -28,7 +28,9 @@ def test_persisted_cycle_provenance_is_projected_without_global_rebind(natural_e
         session.commit()
     current = configuration()
     assert pipeline.for_cycle(BOUNDARY + 300000).runtime_parameters.minimum_planned_rr == .4
-    repository = SqlAlchemyReadAdapter(natural_e2e_sessions)
+    repository = SqlAlchemyReadAdapter(
+        natural_e2e_sessions, primary_timeframe="5m", trade_profile_id="trade-5m-v2"
+    )
     observed = repository.latest_scalping_parameter_snapshot()
     assert observed["parameter_set_id"] == "scalping-v2-set-2"
     assert observed["resolved_config_hash"] == cycle.runtime_parameters.resolved_config_hash
