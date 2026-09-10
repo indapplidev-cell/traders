@@ -639,7 +639,7 @@ def test_parameter_set_attribution_uses_only_persisted_cycle_metadata():
     assert detail["activation_revision"] is None
 
 
-def test_detail_candidate_prefers_historical_plan_then_latest_rr_reject():
+def test_detail_candidates_mirror_current_rows_and_never_leak_historical_geometry():
     current = _run("BTCUSDT")
     current_result = _result(current, setup="NO_SETUP", approvals=False)
     other_current = _run("ETHUSDT")
@@ -670,10 +670,26 @@ def test_detail_candidate_prefers_historical_plan_then_latest_rr_reject():
     value = _project_5m(((current, current_result), (other_current, other_current_result),
                          (plan, plan_result), (rr, rr_result)))
     details = {item["symbol"]: item for item in value["detail_candidates"]}
-    assert details["BTCUSDT"]["source_run_id"] == plan.run_id
-    assert details["BTCUSDT"]["downstream_stage_trace"]["PAPER_PLAN"] == "PASS"
-    assert details["ETHUSDT"]["source_run_id"] == rr.run_id
-    assert details["ETHUSDT"]["downstream_stage_trace"]["RR_PASS"] == "REJECTED"
+    assert details["BTCUSDT"]["source_run_id"] == current.run_id
+    assert details["ETHUSDT"]["source_run_id"] == other_current.run_id
+    assert details["BTCUSDT"]["downstream_detail"]["entry_price"] is None
+    assert details["ETHUSDT"]["downstream_detail"]["gross_rr"] is None
+    assert all(
+        item["downstream_detail"]["cycle_boundary_ms"] == BOUNDARY
+        for item in details.values()
+    )
+    btc_identity = details["BTCUSDT"]["downstream_detail"]["row_identity"]
+    assert btc_identity == {
+        "profile": "trade-5m-v2",
+        "timeframe": "5m",
+        "cycle_boundary_ms": BOUNDARY,
+        "symbol": "BTCUSDT",
+        "source_run_id": current.run_id,
+        "opportunity_id": f"setup:{current.symbol}",
+        "candidate_id": f"setup:{current.symbol}",
+        "approval_id": None,
+        "plan_id": f"paper:{current.run_id}",
+    }
 
 
 def test_15m_downstream_is_first_class_and_historical_unknowns_are_honest():

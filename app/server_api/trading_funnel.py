@@ -1728,75 +1728,6 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
         row.symbol for row, _ in by_boundary[boundary] if row.status in TERMINAL_RUN_STATUSES
     } == set(universe.symbols)]
     last_completed_boundary = next((value for value in complete_boundaries if value != current_boundary), None)
-    detail_source_by_symbol: dict[str, tuple[tuple[int, int], str, int]] = {}
-    if profile.trigger_timeframe == "5m":
-        for detail_row, detail_result in rows:
-            if detail_result is None:
-                continue
-            detail_paper = _mapping(detail_result.paper_payload_json)
-            detail_diagnostic = _mapping(
-                _mapping(detail_paper.get("paper_context")).get(
-                    "scalping_geometry_diagnostics"
-                )
-            )
-            detail_setup = _mapping(detail_result.setup_payload_json)
-            detail_strategy = _mapping(detail_result.strategy_payload_json)
-            detail_risk = _mapping(detail_result.risk_payload_json)
-            detail_admitted = (
-                (detail_row.setup_status or detail_setup.get("status"))
-                == "SETUP_CANDIDATE"
-                and (
-                    detail_row.strategy_status
-                    or detail_strategy.get("decision_status")
-                ) == "ALLOW_RESEARCH_TRADE_PLAN"
-                and (detail_row.risk_status or detail_risk.get("risk_status"))
-                in {"RISK_PRE_APPROVED_RESEARCH", "RISK_APPROVED"}
-            )
-            detail_validity = _mapping(
-                detail_paper.get("approval_validity")
-            ) or _mapping(detail_paper.get("validity_policy"))
-            detail_approvals = _mapping(
-                detail_paper.get("persisted_final_approvals")
-            )
-            detail_shadow_approvals = _mapping(
-                detail_paper.get("shadow_approvals")
-            )
-            detail_valid_values = [
-                int(value["valid_until_ms"])
-                for value in (
-                    *detail_approvals.values(),
-                    *detail_shadow_approvals.values(),
-                )
-                if isinstance(value, Mapping)
-                and value.get("valid_until_ms") is not None
-            ]
-            detail_valid_until_ms = detail_validity.get("valid_until_ms")
-            if detail_valid_until_ms is None and detail_valid_values:
-                detail_valid_until_ms = min(detail_valid_values)
-            detail_plan_current = (
-                detail_valid_until_ms is not None
-                and int(detail_valid_until_ms) > now_ms
-            )
-            detail_priority = (
-                4 if detail_admitted and detail_paper.get("paper_status") == "PAPER_PLAN_READY" and detail_plan_current
-                else 3 if detail_admitted and detail_diagnostic.get("rejection_stage") == "RR_GATE"
-                else 2 if detail_admitted and detail_paper.get("paper_status") == "PAPER_PLAN_READY"
-                else 1 if detail_admitted
-                else 0
-            )
-            if detail_priority == 0:
-                continue
-            detail_rank = (detail_priority, int(detail_row.closed_until_ms))
-            detail_previous = detail_source_by_symbol.get(detail_row.symbol)
-            if detail_previous is None or detail_rank > detail_previous[0]:
-                detail_source_by_symbol[detail_row.symbol] = (
-                    detail_rank,
-                    detail_row.run_id,
-                    int(detail_row.closed_until_ms),
-                )
-    detail_boundaries = {
-        value[2] for value in detail_source_by_symbol.values()
-    }
     historical_plan_boundaries_4h = {
         int(row.closed_until_ms)
         for row, _result in rows
@@ -1828,8 +1759,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 now_ms=now_ms,
                 include_detail=boundary in {
                     current_boundary, last_completed_boundary
-                } or boundary in detail_boundaries
-                or boundary in historical_plan_boundaries_4h,
+                } or boundary in historical_plan_boundaries_4h,
             )
             candidate = eligible_by_run.get(row.run_id)
             production_eligibility = production_eligibility_by_run.get(row.run_id)
@@ -1944,8 +1874,20 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 "terminal_reason_code": execution_terminal or reason,
                 "downstream_detail": {
                     "profile": profile.trade_profile_id,
+                    "timeframe": profile.trigger_timeframe,
                     "cycle_boundary_ms": boundary,
                     **downstream_detail,
+                    "row_identity": {
+                        "profile": profile.trade_profile_id,
+                        "timeframe": profile.trigger_timeframe,
+                        "cycle_boundary_ms": boundary,
+                        "symbol": row.symbol,
+                        "source_run_id": row.run_id,
+                        "opportunity_id": downstream_detail.get("opportunity_id") or row.run_id,
+                        "candidate_id": meta.get("candidate_id"),
+                        "approval_id": meta.get("final_approval_id"),
+                        "plan_id": downstream_detail.get("paper_plan_id"),
+                    },
                     "terminal_reason": execution_terminal or reason,
                     "updated_at_ms": updated_ms,
                     "plan_status": downstream_trace["PAPER_PLAN"],
@@ -2061,7 +2003,19 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 "terminal_reason_code": "SYMBOL_NOT_REACHED_AT_BOUNDARY",
                 "downstream_detail": {
                     "profile": profile.trade_profile_id,
+                    "timeframe": profile.trigger_timeframe,
                     "cycle_boundary_ms": boundary,
+                    "row_identity": {
+                        "profile": profile.trade_profile_id,
+                        "timeframe": profile.trigger_timeframe,
+                        "cycle_boundary_ms": boundary,
+                        "symbol": symbol,
+                        "source_run_id": placeholder_id,
+                        "opportunity_id": placeholder_id,
+                        "candidate_id": None,
+                        "approval_id": None,
+                        "plan_id": None,
+                    },
                     "terminal_reason": "SYMBOL_NOT_REACHED_AT_BOUNDARY",
                     "updated_at_ms": boundary,
                     "plan_status": "NOT_REACHED",
@@ -2271,22 +2225,6 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                 }}
 
     current = cycle(current_boundary)
-    detail_by_symbol: dict[str, dict[str, Any]] = {}
-    for detail_symbol, (_rank, detail_run_id, detail_boundary) in (
-        detail_source_by_symbol.items()
-    ):
-        detail_cycle = cycle(detail_boundary)
-        if detail_cycle is None:
-            continue
-        detail_item = next(
-            (
-                item for item in detail_cycle["items"]
-                if item["source_run_id"] == detail_run_id
-            ),
-            None,
-        )
-        if detail_item is not None:
-            detail_by_symbol[detail_symbol] = detail_item
     latest = current["latest_pipeline_update_ms"] if current else None
     historical_paper_plans_4h: list[dict[str, Any]] = []
     for boundary, pairs in sorted(by_boundary.items(), reverse=True):
@@ -2405,11 +2343,9 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
             stage: "SYMBOL" for stage in CANONICAL_DOWNSTREAM_STAGES
         },
         "current_cycle": current, "last_completed_cycle": cycle(last_completed_boundary),
-        "detail_candidates": [
-            detail_by_symbol[symbol]
-            for symbol in universe.symbols
-            if symbol in detail_by_symbol
-        ],
+        # Exact mirror only: a current row can never inherit geometry from an
+        # older opportunity merely because both rows share a symbol.
+        "detail_candidates": list(current["items"]) if current else [],
         "historical_paper_plans_4h": historical_paper_plans_4h,
         "rolling_1h": rolling(60 * 60 * 1000), "rolling_4h": rolling(4 * 60 * 60 * 1000),
         "probability_authority_summary": {
