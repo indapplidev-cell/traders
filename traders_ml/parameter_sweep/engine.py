@@ -1463,7 +1463,10 @@ def _validate_search(search: object) -> dict[str, Any]:
         or any(not isinstance(values, list) or not values for values in space.values())
     ):
         raise SweepExpectedError("SEARCH_SPACE_INVALID")
-    if search.get("search", {}).get("strategy") == "targeted" and "calibration" in search:
+    targeted = search.get("search", {}).get("strategy") == "targeted" and "calibration" in search
+    if not targeted and not TIME_STOP_SEARCH_FIELDS.issubset(space):
+        raise SweepExpectedError("SEARCH_SPACE_INVALID")
+    if targeted:
         try:
             validate_targeted_space(search)
         except (KeyError, TypeError, ValueError):

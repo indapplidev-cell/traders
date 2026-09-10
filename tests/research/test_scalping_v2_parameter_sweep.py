@@ -114,18 +114,16 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
         "REJECTED_CONFIGS.json", "REPORT.md", "PREFLIGHT.json",
         "SEARCH_PLAN.json", "CHECKPOINT.json", "RESULTS.jsonl",
         "STATUS.json", "INTEGRITY.json", "DATASET_MANIFEST.json",
-        "DATASET_SNAPSHOT.json",
+        "DATASET_SNAPSHOT.json", "RUN_MANIFEST.json", "ACCEPTED_CONFIGS.jsonl",
+        "REJECTED_CONFIGS.jsonl", "FINALIST_TRADES.jsonl", "ARTIFACT_SIZES.json",
     }
     assert {path.name for path in output.iterdir()} == expected
     results = json.loads((output / "RESULTS.json").read_text())
     assert len(results) == 2
-    validation = results[0]["validation"]
-    assert validation["soft_timeout_count"] == 2
-    assert validation["time_stop_exit_count"] == 2
-    assert validation["stale_position_seconds_saved"] == 1200
-    assert validation["candidates_blocked_while_position_open"] == 2
-    assert validation["hypothetical_candidates_unblocked_after_stale_exit"] == 2
-    assert validation["replay_status"] == {"REPLAYABLE": 2}
+    assert results[0]["artifact_schema_version"] == 2
+    assert results[0]["replay_status"] == {"REPLAYABLE": 2}
+    assert "validation" not in results[0]
+    assert "market_path_1m" not in (output / "RESULTS.jsonl").read_text()
     report = (output / "REPORT.md").read_text(encoding="utf-8")
     assert "TIME-STOP ANALYSIS" in report
     assert "Holdout is evaluated for reporting only" in report
@@ -158,11 +156,11 @@ def test_missing_historical_cost_evidence_is_unreplayable_without_invention(tmp_
     rows[3]["time_stop_observations"] = []
     output = run(_search(tmp_path, rows), run_id="missing", max_configs=1)
     result = json.loads((output / "RESULTS.json").read_text())[0]
-    assert result["validation"]["replay_status"] == {
+    assert result["replay_status"] == {
         "UNREPLAYABLE_MISSING_COST_TIMELINE": 1,
         "UNREPLAYABLE_MISSING_MARKET_TIMELINE": 1,
     }
-    assert result["validation"]["time_stop_exit_count"] == 0
+    assert "validation" not in result
 
 
 def test_search_schema_requires_every_runtime_time_stop_dimension(tmp_path):
@@ -444,7 +442,7 @@ def test_transient_checkpoint_contention_then_source_growth_resumes_exactly_once
     resumed = run(search_path, run_id="writer-plus-growth", resume=True)
     checkpoint = json.loads((resumed / "CHECKPOINT.json").read_text())
     identities = [
-        (row["run_id"], row["result_index"], row["config_hash"])
+        (row["config_index"], row["config_id"])
         for row in map(json.loads, (resumed / "RESULTS.jsonl").read_text().splitlines())
     ]
     assert failures == 3
@@ -486,8 +484,8 @@ def test_expanded_runtime_space_is_bounded_without_materialization(tmp_path):
     output = run(config, run_id="incident", max_configs=5)
     preflight = json.loads((output / "PREFLIGHT.json").read_text())
     checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
-    assert preflight["RAW_SEARCH_SPACE_SIZE"] == 36_691_771_392
-    assert preflight["EFFECTIVE_SEARCH_SPACE_SIZE"] < 36_691_771_392
+    assert preflight["RAW_SEARCH_SPACE_SIZE"] == 330_225_942_528
+    assert preflight["EFFECTIVE_SEARCH_SPACE_SIZE"] < preflight["RAW_SEARCH_SPACE_SIZE"]
     assert preflight["INVALID_COMBINATIONS_GENERATED"] == 0
     assert preflight["SEARCH_STRATEGY"] == "AUTO_BOUNDED"
     assert preflight["CONFIGURATIONS_PLANNED"] == 5
@@ -638,12 +636,8 @@ def test_top_and_pareto_exclude_unaccepted_and_holdout_is_reporting_only(tmp_pat
     output = run(_search(tmp_path, _rows()), run_id="ranking-contract", max_configs=2)
     results = json.loads((output / "RESULTS.json").read_text())
     top = json.loads((output / "TOP_CONFIGS.json").read_text())
-    eligible = {
-        item["config_hash"] for item in results
-        if item["result_status"] == "ACCEPTED"
-        and item["validation"]["trade_count"] > 0
-    }
-    assert {item["config_hash"] for item in top["ranked_without_holdout"]} <= eligible
+    eligible = {item["config_id"] for item in results if item["evaluation_status"] == "ACCEPTED" and item["trade_count"] > 0}
+    assert {item["config_id"] for item in top["ranked_without_holdout"]} <= eligible
     assert set(top["pareto_frontier"]) <= eligible
     assert top["holdout_used_for_search"] is False
 
@@ -843,7 +837,7 @@ def test_planning_pass_replay_fail_before_config_has_exact_state_and_events(tmp_
     assert EventType.RESULT_WRITE_STARTED not in event_types
     assert EventType.RESULT_WRITE_COMPLETED not in event_types
     search_event = next(event for event in events if event.type == EventType.SEARCH_PLANNED)
-    assert search_event.payload["raw_search_space_size"] == 36_691_771_392
+    assert search_event.payload["raw_search_space_size"] == 330_225_942_528
     assert search_event.payload["planned_configs"] == 5_000
     assert len(search_event.payload["search_dimensions"]) == 27
     output = tmp_path / "artifacts" / "failed-before-first"

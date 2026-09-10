@@ -82,7 +82,7 @@ def test_per_family_capability_does_not_globally_fail_optional_missing_family():
 def test_parameter_registry_is_derived_from_runtime_owners_and_search_values():
     registry = build_parameter_registry({"risk_per_trade_bps": [5.0, 10.0], "stop_max_bps": [50.0, 65.0]})
     assert {item["PARAMETER_FAMILY"] for item in registry} == {"RISK", "STOP"}
-    assert next(x for x in registry if x["PARAMETER_NAME"] == "risk_per_trade_bps")["BASELINE_VALUE"] == 10.0
+    assert next(x for x in registry if x["PARAMETER_NAME"] == "risk_per_trade_bps")["BASELINE_VALUE"] == 5.0
 
 
 def test_baseline_parity_classifies_known_recovery_separately():

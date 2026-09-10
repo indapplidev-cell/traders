@@ -128,6 +128,7 @@ def compact_result(
         "performance_class": performance_class(metrics),
         **{key: value for key, value in metrics.items() if key != "invalid_reason"},
         "key_rejection_distribution": dict(sorted(funnel.items())),
+        "replay_status": dict(sorted((validation.get("replay_status") or {}).items())),
         "cost_source_class": validation.get("cost_source_class", item.get("cost_source_class", "FROZEN_DATASET_POLICY")),
         "dataset_manifest_ref": dataset_manifest_ref,
         "trade_summary_ref": "FINALIST_TRADES.jsonl",

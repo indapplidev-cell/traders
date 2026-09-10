@@ -14,7 +14,7 @@ Run the native CLI explicitly:
 
 ```powershell
 python -m traders_ml.parameter_sweep `
-  --config config/research/scalping_v2_parameter_sweep.yaml `
+  --config config/research/research_parameters.yaml `
   --run-id <manual-run-id>
 ```
 
@@ -43,14 +43,15 @@ SELECT-oriented statements, and preflight verifies that INSERT, UPDATE, DELETE,
 and DDL are rejected. No credential is written to the research YAML, artifacts,
 console, Git, or image.
 
-The default dataset is bounded to the newest 5,000 closed `trade-5m-v2` PAPER
-positions. Use `--max-rows` to lower that ceiling and `--from` / `--to` with UTC
-ISO-8601 timestamps to narrow the period. The default `auto` planner calculates
-raw cardinality without enumerating the Cartesian product. A grid at or below
-10,000 configurations uses lazy exhaustive evaluation; a larger grid switches
-to reproducible `AUTO_BOUNDED` exploration with a 5,000-config ceiling, seed
-20260907, and batches of 100. These are compute-safety defaults, not promoted
-trading parameters. `--max-configs` may lower the automatic budget for a smoke;
+The default dataset is bounded to 10,000 current `trade-5m-v2` PAPER
+opportunities/positions. Use `--max-rows` to lower that ceiling and `--from` / `--to` with UTC
+ISO-8601 timestamps to narrow the period. The default `targeted` planner
+calculates raw cardinality without enumerating the Cartesian product. It runs
+Set #2 baseline, one-factor sensitivity, small-family search, top-region
+refinement and local finalist validation. The targeted phase is capped at 500
+configurations in YAML and uses batches of 25. Economics, costs, risk/safety and
+lifecycle-shadow remain frozen. `--stage STAGE_NAME` runs one stage;
+`--max-configs` may lower the automatic budget for a smoke;
 `--preflight-only` stops after safe database, dataset, search, and memory-plan
 validation.
 
@@ -72,12 +73,14 @@ opaque `ALL_TRADES_FILTERED` label.
 
 The GUI creates a local-time, sortable `YYYYMMDD_HHMMSS_mmm` run ID with a
 collision check. Each new run creates `RUN_CONFIG.yaml`, `PREFLIGHT.json`, `SEARCH_PLAN.json`,
-`CHECKPOINT.json`, `RESULTS.csv`, `RESULTS.jsonl`, `RESULTS.json`,
-`TOP_CONFIGS.json`, `REJECTED_CONFIGS.json`, `REPORT.md`, `STATUS.json`, and
-`INTEGRITY.json`
+`RUN_MANIFEST.json`, `DATASET_MANIFEST.json`, `CHECKPOINT.json`, `RESULTS.csv`,
+compact `RESULTS.jsonl`, `ACCEPTED_CONFIGS.jsonl`, `REJECTED_CONFIGS.jsonl`,
+`TOP_CONFIGS.json`, bounded `FINALIST_TRADES.jsonl`, `ARTIFACT_SIZES.json`,
+`REPORT.md`, `STATUS.json`, and `INTEGRITY.json`
 under `artifacts/scalping_v2_parameter_sweep/<run-id>/`. Existing run IDs are
-never overwritten. Use `--resume` only for a compatible interrupted run; Git,
-trade-config, search-space, and dataset fingerprints must all match. Results
+never overwritten. Use `--resume` only for a compatible interrupted run;
+dataset, research config, search space, artifact schema, engine compatibility
+and baseline fingerprints are checked separately. Results
 and checkpoints are durable incrementally, while TOP/Pareto aggregation is
 disk-backed. Expected failures print a short `REASON` code without a
 credential-bearing traceback.
@@ -142,3 +145,29 @@ stage selection.
 
 Running a sweep does not promote a configuration, change production trading
 parameters, call Binance order APIs, or enable LIVE.
+
+## Artifact schema v2 and migration
+
+Every `RESULTS.jsonl` row has `artifact_schema_version: 2`, compact overrides,
+evaluation status, an independent performance class, required metrics,
+rejection distribution, cost source, dataset-manifest reference and finalist
+trade reference. Full candles, snapshots, YAML documents, opportunities, trade
+arrays and `market_path_1m` are forbidden in result rows. Detailed trades are
+written only for the YAML-bounded finalist subset and use a hash-checked
+`market_path_ref` into the immutable frozen dataset.
+
+The finalizer reports total/results/finalist/dataset bytes. YAML budgets are
+120 MiB soft and 200 MiB hard for the run, and 50/100 MiB for RESULTS. Crossing
+a hard limit fails with `ARTIFACT_SIZE_BUDGET_EXCEEDED`.
+
+Legacy v1 rows remain readable through the adapter. Non-destructive migration
+supports dry-run and atomic target-directory publication:
+
+```powershell
+python -m traders_ml.parameter_sweep --migrate-v1 <old-run-dir> --dry-run
+python -m traders_ml.parameter_sweep --migrate-v1 <old-run-dir> --migration-target <new-v2-dir>
+```
+
+The source directory is never rewritten. Set #2 remains the immutable baseline;
+an evidence-backed Set #3 may only be emitted as a research candidate file and
+is never activated by Parameter Sweep.

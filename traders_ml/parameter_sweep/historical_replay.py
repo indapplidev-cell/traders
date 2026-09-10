@@ -489,8 +489,8 @@ def _effective_cost(row: Mapping[str, Any], config: Mapping[str, object]) -> flo
     return max(0.0, historical
         - float(row.get("adverse_fill_reserve_bps") or 0)
         - 2 * float(row.get("entry_slippage_bps") or 0)
-        + float(config["adverse_fill_reserve_bps"])
-        + 2 * float(config["entry_slippage_bps"]))
+        + float(config.get("adverse_fill_reserve_bps", SCALPING_V2.costs.adverse_fill_reserve_bps))
+        + 2 * float(config.get("entry_slippage_bps", SCALPING_V2.costs.entry_slippage_bps)))
 
 
 def chronological_portfolio_replay(
