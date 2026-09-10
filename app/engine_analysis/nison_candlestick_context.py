@@ -18,14 +18,16 @@ from app.engine_analysis.schemas import (
 from app.engine_analysis.nison_pattern_catalog import (
     analyze_nison_pattern_catalog,
 )
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
 _UPPER_SHADOW_CODE = "L" "ONG_UPPER_SHADOW_REJECTION"
 _LOWER_SHADOW_CODE = "L" "ONG_LOWER_SHADOW_REJECTION"
-SHADOW_TO_BODY_SHAPE_MIN = 2.0
-OPPOSITE_SHADOW_TO_RANGE_MAX = 0.10
-HAMMER_BODY_POSITION_MIN = 0.60
-STAR_BODY_POSITION_MAX = 0.40
+_POLICY = RUNTIME_POLICY.analysis_algorithms
+SHADOW_TO_BODY_SHAPE_MIN = _POLICY.nison_shadow_to_body_shape_min
+OPPOSITE_SHADOW_TO_RANGE_MAX = _POLICY.nison_opposite_shadow_to_range_max
+HAMMER_BODY_POSITION_MIN = _POLICY.nison_hammer_body_position_min
+STAR_BODY_POSITION_MAX = _POLICY.nison_star_body_position_max
 
 _EVIDENCE: dict[str, tuple[str, float]] = {
     "STRONG_BULLISH_CANDLE_BODY": ("Strong bullish real body", 0.10),

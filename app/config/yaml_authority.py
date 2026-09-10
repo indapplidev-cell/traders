@@ -128,6 +128,42 @@ class RuntimeParameters(StrictModel):
     stop_policy_id: str
 
 
+class AnalysisAlgorithmPolicy(StrictModel):
+    morphology_doji_body_to_range_max: float = Field(ge=0, le=1)
+    morphology_spinning_top_body_to_range_max: float = Field(ge=0, le=1)
+    morphology_small_body_to_range_max: float = Field(ge=0, le=1)
+    morphology_large_body_to_range_min: float = Field(ge=0, le=1)
+    morphology_strong_body_to_range_min: float = Field(ge=0, le=1)
+    morphology_extended_shadow_to_range_min: float = Field(ge=0, le=1)
+    morphology_near_high_threshold: float = Field(ge=0, le=1)
+    morphology_near_low_threshold: float = Field(ge=0, le=1)
+    nison_shadow_to_body_shape_min: float = Field(gt=0)
+    nison_opposite_shadow_to_range_max: float = Field(ge=0, le=1)
+    nison_hammer_body_position_min: float = Field(ge=0, le=1)
+    nison_star_body_position_max: float = Field(ge=0, le=1)
+    altunina_structure_tolerance_ratio: float = Field(gt=0, lt=1)
+    altunina_fibonacci_pullback_levels: tuple[float, ...]
+    altunina_correction_limit: float = Field(gt=0, lt=1)
+    regime_min_score: float = Field(ge=0, le=1)
+    regime_min_score_margin: float = Field(ge=0, le=1)
+    schwager_zone_cluster_tolerance_ratio: float = Field(gt=0, lt=1)
+    schwager_min_zone_touches: int = Field(gt=0)
+    schwager_min_range_touches: int = Field(gt=0)
+    schwager_min_inside_close_ratio: float = Field(ge=0, le=1)
+    schwager_min_range_width_ratio: float = Field(gt=0, lt=1)
+    schwager_max_range_width_ratio: float = Field(gt=0, lt=1)
+    schwager_breakout_buffer_ratio: float = Field(gt=0, lt=1)
+    schwager_follow_through_lookahead: int = Field(gt=0)
+    schwager_false_breakout_lookahead: int = Field(gt=0)
+    schwager_retest_lookahead: int = Field(gt=0)
+    schwager_min_range_duration: int = Field(gt=0)
+    schwager_min_boundary_alternations: int = Field(gt=0)
+    schwager_min_confirmation_closes: int = Field(gt=0)
+    schwager_breakout_confirmation_distance_ratio: float = Field(gt=0, lt=1)
+    schwager_false_breakout_time_lookahead: int = Field(gt=0)
+    schwager_retest_departure_ratio: float = Field(gt=0, lt=1)
+
+
 class OrchestratorPolicy(StrictModel):
     symbols: tuple[str, ...]
     poll_interval_seconds: float = Field(gt=0)
@@ -158,19 +194,34 @@ class CollectorPolicy(StrictModel):
     max_part_bytes: int = Field(gt=0)
 
 
+class WalAckDaemonPolicy(StrictModel):
+    interval_seconds: int = Field(gt=0)
+    minimum_interval_seconds: int = Field(gt=0)
+    maximum_interval_seconds: int = Field(gt=0)
+    cycle_work_seconds: float = Field(gt=0)
+    settle_poll_seconds: float = Field(gt=0)
+    state_write_attempts: int = Field(gt=0)
+    state_write_retry_seconds: float = Field(ge=0)
+
+
 class RuntimePolicy(StrictModel):
     schema_version: Literal[1]
     config_version: str
     active_profile: str
     profiles: dict[str, RuntimeProfile]
     runtime_parameters: RuntimeParameters
+    analysis_algorithms: AnalysisAlgorithmPolicy
     orchestrator: OrchestratorPolicy
     collector: CollectorPolicy
+    wal_ack_daemon: WalAckDaemonPolicy
 
     @model_validator(mode="after")
     def active_is_enabled(self):
         if self.active_profile not in self.profiles or not self.profiles[self.active_profile].enabled:
             raise ValueError("active runtime profile must exist and be enabled")
+        for profile_id, profile in self.profiles.items():
+            if profile.trade_mode == "SCALPING" and profile.trigger_timeframe != "5m":
+                raise ValueError(f"scalping profile cannot fall back to 15m: {profile_id}")
         return self
 
 

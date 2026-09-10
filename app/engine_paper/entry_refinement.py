@@ -16,6 +16,7 @@ from hashlib import sha256
 import time
 from typing import Callable, Mapping, Protocol
 
+from app.config.yaml_authority import UNIT_CONSTANTS
 from app.engine_market_data.candle import Candle
 from app.engine_paper.production_market_data import (
     PaperProductionMarketDataInputAdapter,
@@ -32,7 +33,12 @@ MODULE_NAME = "scalping-v2-1m-entry-refinement-v1"
 WINDOW_POLICY = "SELECTED_AT_TO_MIN_APPROVAL_VALID_UNTIL_OR_NEXT_5M_BOUNDARY"
 WINDOW_SOURCE = "paper-approval-validity-policy-v1_AND_5M_CAUSAL_BOUNDARY"
 MODE_ENV = "TRADERS_SCALPING_1M_REFINEMENT_MODE"
-FIVE_MIN_MS = 300_000
+
+FIVE_MIN_MS = (
+    5
+    * UNIT_CONSTANTS.seconds_per_minute
+    * UNIT_CONSTANTS.milliseconds_per_second
+)
 
 
 class EntryRefinementMode(StrEnum):

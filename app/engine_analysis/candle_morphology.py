@@ -7,16 +7,18 @@ from enum import Enum
 from typing import Any
 
 from app.engine_analysis.schemas import EngineAnalysisCandle
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
-DOJI_BODY_TO_RANGE_MAX = 0.10
-SPINNING_TOP_BODY_TO_RANGE_MAX = 0.25
-SMALL_BODY_TO_RANGE_MAX = 0.30
-LARGE_BODY_TO_RANGE_MIN = 0.60
-STRONG_BODY_TO_RANGE_MIN = 0.70
-EXTENDED_SHADOW_TO_RANGE_MIN = 0.55
-NEAR_HIGH_THRESHOLD = 0.75
-NEAR_LOW_THRESHOLD = 0.25
+_POLICY = RUNTIME_POLICY.analysis_algorithms
+DOJI_BODY_TO_RANGE_MAX = _POLICY.morphology_doji_body_to_range_max
+SPINNING_TOP_BODY_TO_RANGE_MAX = _POLICY.morphology_spinning_top_body_to_range_max
+SMALL_BODY_TO_RANGE_MAX = _POLICY.morphology_small_body_to_range_max
+LARGE_BODY_TO_RANGE_MIN = _POLICY.morphology_large_body_to_range_min
+STRONG_BODY_TO_RANGE_MIN = _POLICY.morphology_strong_body_to_range_min
+EXTENDED_SHADOW_TO_RANGE_MIN = _POLICY.morphology_extended_shadow_to_range_min
+NEAR_HIGH_THRESHOLD = _POLICY.morphology_near_high_threshold
+NEAR_LOW_THRESHOLD = _POLICY.morphology_near_low_threshold
 
 
 class CandleDirection(str, Enum):

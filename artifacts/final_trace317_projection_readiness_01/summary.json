@@ -1,0 +1,21 @@
+{
+  "authoritative_ui_values_outside_server_projection": 0,
+  "classification_counts": {
+    "ALGORITHM_STRUCTURE_LITERAL": 35,
+    "DEAD_CODE": 40,
+    "DEPLOYMENT_INFRASTRUCTURE_LITERAL": 83,
+    "PROTOCOL_SCHEMA_IDENTITY": 131,
+    "YAML_AUTHORITY_REQUIRED": 26,
+    "YAML_UNIT_CONSTANT_REQUIRED": 2
+  },
+  "cross_yaml_duplicate_authorities": 0,
+  "duplicate_authority_keys": [],
+  "hardcoded_policy_values_remaining": 0,
+  "resolved_config_hash": "8d725ee1c2637dfd6f7c33b8ef2157a599775f3948e195dbfc29d1885a055586",
+  "trace_input_count": 317,
+  "trace_input_sha256": "6ff77b3275f9798fbe3d24f3a155a43757c4e016b4d59be80e08e79ec314e046",
+  "trace_resolved_count": 317,
+  "unknown_requires_trace": 0,
+  "unprovenanced_research_parameters": 0,
+  "unprovenanced_runtime_parameters": 0
+}

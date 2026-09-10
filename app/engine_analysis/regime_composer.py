@@ -34,10 +34,12 @@ from app.engine_analysis.schemas import (
     EngineAnalysisResult,
     EngineAnalysisSafety,
 )
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
-MIN_REGIME_SCORE = 0.30
-MIN_SCORE_MARGIN = 0.08
+_POLICY = RUNTIME_POLICY.analysis_algorithms
+MIN_REGIME_SCORE = _POLICY.regime_min_score
+MIN_SCORE_MARGIN = _POLICY.regime_min_score_margin
 
 
 class RegimeDecisionSource(str, Enum):

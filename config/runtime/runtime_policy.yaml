@@ -64,6 +64,40 @@ runtime_parameters:
   risk_shadow_policy_id: scalping-risk-capped-v2
   risk_minimum_strategy_quality: ACCEPTABLE
   stop_policy_id: SCALPING_CAUSAL_VOLATILITY_STOP_V2
+analysis_algorithms:
+  morphology_doji_body_to_range_max: 0.10
+  morphology_spinning_top_body_to_range_max: 0.25
+  morphology_small_body_to_range_max: 0.30
+  morphology_large_body_to_range_min: 0.60
+  morphology_strong_body_to_range_min: 0.70
+  morphology_extended_shadow_to_range_min: 0.55
+  morphology_near_high_threshold: 0.75
+  morphology_near_low_threshold: 0.25
+  nison_shadow_to_body_shape_min: 2.0
+  nison_opposite_shadow_to_range_max: 0.10
+  nison_hammer_body_position_min: 0.60
+  nison_star_body_position_max: 0.40
+  altunina_structure_tolerance_ratio: 0.001
+  altunina_fibonacci_pullback_levels: [0.38, 0.50, 0.62]
+  altunina_correction_limit: 0.62
+  regime_min_score: 0.30
+  regime_min_score_margin: 0.08
+  schwager_zone_cluster_tolerance_ratio: 0.003
+  schwager_min_zone_touches: 2
+  schwager_min_range_touches: 4
+  schwager_min_inside_close_ratio: 0.60
+  schwager_min_range_width_ratio: 0.003
+  schwager_max_range_width_ratio: 0.20
+  schwager_breakout_buffer_ratio: 0.001
+  schwager_follow_through_lookahead: 2
+  schwager_false_breakout_lookahead: 3
+  schwager_retest_lookahead: 5
+  schwager_min_range_duration: 4
+  schwager_min_boundary_alternations: 2
+  schwager_min_confirmation_closes: 3
+  schwager_breakout_confirmation_distance_ratio: 0.005
+  schwager_false_breakout_time_lookahead: 4
+  schwager_retest_departure_ratio: 0.003
 orchestrator:
   symbols: [BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, LINKUSDT, DOGEUSDT, ADAUSDT, AVAXUSDT, SUIUSDT]
   poll_interval_seconds: 10.0
@@ -90,3 +124,11 @@ collector:
   poll_seconds: 2.0
   boundary_wait_seconds: 240
   max_part_bytes: 67108864
+wal_ack_daemon:
+  interval_seconds: 3
+  minimum_interval_seconds: 1
+  maximum_interval_seconds: 30
+  cycle_work_seconds: 30.0
+  settle_poll_seconds: 0.25
+  state_write_attempts: 5
+  state_write_retry_seconds: 0.2

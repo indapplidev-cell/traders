@@ -13,11 +13,13 @@ from app.engine_analysis.schemas import (
     EngineAnalysisCandle,
     EngineAnalysisEvidence,
 )
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
-STRUCTURE_TOLERANCE_RATIO = 0.001
-FIBONACCI_PULLBACK_LEVELS = (0.38, 0.50, 0.62)
-ALTUNINA_CORRECTION_LIMIT = 0.62
+_POLICY = RUNTIME_POLICY.analysis_algorithms
+STRUCTURE_TOLERANCE_RATIO = _POLICY.altunina_structure_tolerance_ratio
+FIBONACCI_PULLBACK_LEVELS = _POLICY.altunina_fibonacci_pullback_levels
+ALTUNINA_CORRECTION_LIMIT = _POLICY.altunina_correction_limit
 
 BOOK_RULE = "ALTUNINA_BOOK_RULE"
 DERIVED_HEURISTIC = "ENGINE_ANALYSIS_DERIVED_HEURISTIC"

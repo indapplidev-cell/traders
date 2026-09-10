@@ -6,13 +6,15 @@ import time
 from datetime import datetime
 from typing import Any
 
+from app.engine_market_data.timeframe import timeframe_to_milliseconds
 from app.engine_observation.observer_reliability import CollectorStatus, redact
 from .contracts import SemanticContract
 from .models import CandleSnapshot, ResultSnapshot, RunSnapshot, SemanticCollection
 
 
 CANDLE_TABLES = {"1m": "candles_1m", "5m": "candles_5m", "15m": "candles_15m", "1h": "candles_1h", "4h": "candles_4h", "1d": "candles_1d"}
-MAX_TIMEFRAME_MS = 86_400_000
+
+MAX_TIMEFRAME_MS = timeframe_to_milliseconds("1d")
 
 
 def _status(exc: Exception) -> tuple[CollectorStatus, str]:

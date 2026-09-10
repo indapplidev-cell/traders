@@ -16,24 +16,26 @@ from app.engine_analysis.altunina_trend_context import (
     SwingPointType,
     detect_swing_points,
 )
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
-ZONE_CLUSTER_TOLERANCE_RATIO = 0.003
-MIN_ZONE_TOUCHES = 2
-MIN_RANGE_TOUCHES = 4
-MIN_INSIDE_CLOSE_RATIO = 0.60
-MIN_RANGE_WIDTH_RATIO = 0.003
-MAX_RANGE_WIDTH_RATIO = 0.20
-BREAKOUT_BUFFER_RATIO = 0.001
-FOLLOW_THROUGH_LOOKAHEAD = 2
-FALSE_BREAKOUT_LOOKAHEAD = 3
-RETEST_LOOKAHEAD = 5
-MIN_RANGE_DURATION = 4
-MIN_BOUNDARY_ALTERNATIONS = 2
-MIN_CONFIRMATION_CLOSES = 3
-BREAKOUT_CONFIRMATION_DISTANCE_RATIO = 0.005
-FALSE_BREAKOUT_TIME_LOOKAHEAD = 4
-RETEST_DEPARTURE_RATIO = 0.003
+_POLICY = RUNTIME_POLICY.analysis_algorithms
+ZONE_CLUSTER_TOLERANCE_RATIO = _POLICY.schwager_zone_cluster_tolerance_ratio
+MIN_ZONE_TOUCHES = _POLICY.schwager_min_zone_touches
+MIN_RANGE_TOUCHES = _POLICY.schwager_min_range_touches
+MIN_INSIDE_CLOSE_RATIO = _POLICY.schwager_min_inside_close_ratio
+MIN_RANGE_WIDTH_RATIO = _POLICY.schwager_min_range_width_ratio
+MAX_RANGE_WIDTH_RATIO = _POLICY.schwager_max_range_width_ratio
+BREAKOUT_BUFFER_RATIO = _POLICY.schwager_breakout_buffer_ratio
+FOLLOW_THROUGH_LOOKAHEAD = _POLICY.schwager_follow_through_lookahead
+FALSE_BREAKOUT_LOOKAHEAD = _POLICY.schwager_false_breakout_lookahead
+RETEST_LOOKAHEAD = _POLICY.schwager_retest_lookahead
+MIN_RANGE_DURATION = _POLICY.schwager_min_range_duration
+MIN_BOUNDARY_ALTERNATIONS = _POLICY.schwager_min_boundary_alternations
+MIN_CONFIRMATION_CLOSES = _POLICY.schwager_min_confirmation_closes
+BREAKOUT_CONFIRMATION_DISTANCE_RATIO = _POLICY.schwager_breakout_confirmation_distance_ratio
+FALSE_BREAKOUT_TIME_LOOKAHEAD = _POLICY.schwager_false_breakout_time_lookahead
+RETEST_DEPARTURE_RATIO = _POLICY.schwager_retest_departure_ratio
 
 
 class ZoneType(str, Enum):
