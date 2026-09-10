@@ -1210,6 +1210,7 @@ _DOMAIN = {
         "RESERVED": ("Зарезервировано", "Reserved"), "ARMED": ("Подготовлено", "Armed"),
         "ARMED_WAITING": ("Подготовлено, ожидает запуска", "Armed, awaiting start"),
         "NO_ELIGIBLE_APPROVAL": ("Подходящего решения пока нет", "No eligible approval yet"),
+        "NO_TRADE_SIGNAL": ("Торгового сигнала пока нет", "No trade signal yet"),
         "WAITING_FOR_APPROVAL": ("Ожидает решения", "Waiting for approval"),
         "WAITING_FOR_ELIGIBLE_APPROVAL": ("Ожидает подходящего решения", "Waiting for an eligible approval"),
         "RUNNING": ("Выполняется", "Running"), "POSITION_OPEN": ("Позиция открыта", "Position open"),

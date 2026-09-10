@@ -459,8 +459,33 @@ class Win32DesktopAutomation:
             user32.ShowWindow(hwnd, 9)
         else:
             user32.ShowWindow(hwnd, 5)
-        user32.BringWindowToTop(hwnd)
-        user32.SetForegroundWindow(hwnd)
+        # SetForegroundWindow is legitimately denied when the launching shell
+        # is not the current input owner (common after a Tk client restart).
+        # Temporarily join the current, foreground, and target input queues so
+        # Windows can perform the same explicit foreground transfer.  Always
+        # detach in reverse order; no global setting or persistent hook is used.
+        current_thread = int(kernel32.GetCurrentThreadId())
+        foreground = int(user32.GetForegroundWindow() or 0)
+        foreground_thread = int(
+            user32.GetWindowThreadProcessId(foreground, None)
+            if foreground else 0
+        )
+        attached: list[int] = []
+        try:
+            for thread_id in (foreground_thread, window.thread_id):
+                if (
+                    thread_id
+                    and thread_id != current_thread
+                    and thread_id not in attached
+                    and user32.AttachThreadInput(current_thread, thread_id, True)
+                ):
+                    attached.append(thread_id)
+            user32.BringWindowToTop(hwnd)
+            user32.SetActiveWindow(hwnd)
+            user32.SetForegroundWindow(hwnd)
+        finally:
+            for thread_id in reversed(attached):
+                user32.AttachThreadInput(current_thread, thread_id, False)
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             if int(user32.GetForegroundWindow() or 0) == hwnd:
