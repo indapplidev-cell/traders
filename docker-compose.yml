@@ -111,17 +111,23 @@ services:
         TRADERS_RUNTIME_SOURCE_IDENTITY: ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
     profiles: ["calibration"]
     restart: always
+    environment:
+      TRADERS_SCALPING_V2_INITIAL_BOUNDARY_MS: ${TRADERS_SCALPING_V2_INITIAL_BOUNDARY_MS:-}
     depends_on:
       postgres:
         condition: service_healthy
     command: >
       sh -c 'export DATABASE_URL="postgresql://traders_ml:$$(cat /run/secrets/traders_shared_db_password)@postgres:5432/traders_ml";
+      if [ -n "$$TRADERS_SCALPING_V2_INITIAL_BOUNDARY_MS" ]; then
+      set -- --initial-boundary-ms "$$TRADERS_SCALPING_V2_INITIAL_BOUNDARY_MS";
+      else set --; fi;
       exec python scripts/scalping_prospective_collector.py
       --output-dir reports/calibration/scalping-v2-probability-set2
       --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT,LINKUSDT,DOGEUSDT,ADAUSDT,AVAXUSDT,SUIUSDT
       --parameter-set-id scalping-v2-set-2
       --runtime-source-commit ${TRADERS_SCALPING_V2_SOURCE_IDENTITY:-UNSET}
       --runtime-artifact-id ${TRADERS_SCALPING_V2_ARTIFACT_ID:-UNSET}
+      "$$@"
       --schema-revision 0031_scalping_parameter_sets'
     volumes:
       - ./reports:/service/reports
