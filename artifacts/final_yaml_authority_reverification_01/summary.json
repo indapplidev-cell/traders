@@ -1,0 +1,21 @@
+{
+  "classification_counts": {
+    "ALGORITHM_STRUCTURE_LITERAL": 1250,
+    "GENERATED_CODE": 1,
+    "HISTORICAL_MIGRATION_ONLY": 69,
+    "PROTOCOL_OR_SCHEMA_IDENTITY": 3539,
+    "TEST_VECTOR_ONLY": 702,
+    "UNKNOWN_REQUIRES_TRACE": 317
+  },
+  "exclusions": {
+    "artifacts_and_reports": "evidence/output, not executable source",
+    "cache_and_build": "generated/non-source artifacts",
+    "vendor_and_virtualenv": "third-party code, not project authority"
+  },
+  "new_scan_files": 596,
+  "new_scan_suspicious_values": 5878,
+  "new_unexpected_policy_values": 317,
+  "previously_misclassified_values": 317,
+  "registry_keys": 259,
+  "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839"
+}

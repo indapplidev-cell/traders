@@ -78,17 +78,10 @@ def test_quantity_sizing_uses_five_bps_not_legacy_one_percent():
 
 def test_actual_materializer_passes_frozen_risk_to_quantity_authority(monkeypatch):
     import tests.final_approval_generation_integration.test_natural_materialization as fixture
-    from app.engine_orchestrator.pipeline_result import PipelineResult
     from app.engine_orchestrator.runtime_parameters import resolve_runtime_parameters
     import app.engine_paper.final_approval_materializer as module
-    # Adapt the old 15m fixture's implicit default to its explicit domain.
-    monkeypatch.setattr(fixture, "PipelineResult", lambda **kw: PipelineResult(trade_profile_id="trade-15m-v1", **kw))
-    monkeypatch.setattr(fixture, "resolve_runtime_parameters", lambda _profile: resolve_runtime_parameters("trade-5m-v2"))
     value = fixture.five_minute_natural_result()
-    value.trade_profile_id = "trade-5m-v2"
-    value.trigger_timeframe = "5m"
-    value.runtime_parameters_snapshot = resolve_runtime_parameters("trade-5m-v2")
-    value.runtime_parameter_set_id = value.runtime_parameters_snapshot.parameter_set_id
+    assert value.runtime_parameters_snapshot == resolve_runtime_parameters("trade-5m-v2")
     calls = []
     original = module.issue_controlled_paper_quantity_approval
     def spy(*args, **kwargs):

@@ -1,0 +1,1740 @@
+{
+  "activation_cycle_boundary_ms": 1788885600000,
+  "activation_revision": "scalping-v2-set-2-activation-20260908",
+  "authoritative_parameters": {
+    "causal_opportunity.one_execution_per_opportunity": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::causal_opportunity.one_execution_per_opportunity",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "causal_opportunity.one_execution_per_opportunity",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "causal_opportunity.reset_min_conditions": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::causal_opportunity.reset_min_conditions",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "causal_opportunity.reset_min_conditions",
+      "unit": "dimensionless",
+      "value": 1
+    },
+    "causal_opportunity.reset_policy": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::causal_opportunity.reset_policy",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "causal_opportunity.reset_policy",
+      "unit": "dimensionless",
+      "value": "STRUCTURAL_RESET_REQUIRED"
+    },
+    "costs.adverse_fill_reserve_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.adverse_fill_reserve_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.adverse_fill_reserve_bps",
+      "unit": "bps",
+      "value": 3.0
+    },
+    "costs.book_depth_limit": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.book_depth_limit",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.book_depth_limit",
+      "unit": "dimensionless",
+      "value": 100
+    },
+    "costs.commission.allow_stub_fallback": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.allow_stub_fallback",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.allow_stub_fallback",
+      "unit": "dimensionless",
+      "value": false
+    },
+    "costs.commission.entry_liquidity_role": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.entry_liquidity_role",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.entry_liquidity_role",
+      "unit": "dimensionless",
+      "value": "TAKER"
+    },
+    "costs.commission.exit_liquidity_role": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.exit_liquidity_role",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.exit_liquidity_role",
+      "unit": "dimensionless",
+      "value": "TAKER"
+    },
+    "costs.commission.fail_closed": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.fail_closed",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.fail_closed",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "costs.commission.max_snapshot_age_seconds": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.max_snapshot_age_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.max_snapshot_age_seconds",
+      "unit": "seconds",
+      "value": 86400
+    },
+    "costs.commission.real_account_data": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.real_account_data",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.real_account_data",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "costs.commission.refresh_interval_seconds": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.refresh_interval_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.refresh_interval_seconds",
+      "unit": "seconds",
+      "value": 3600
+    },
+    "costs.commission.retry_interval_seconds": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.retry_interval_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.retry_interval_seconds",
+      "unit": "seconds",
+      "value": 300
+    },
+    "costs.commission.source": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission.source",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission.source",
+      "unit": "dimensionless",
+      "value": "binance_account_commission"
+    },
+    "costs.commission_source": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.commission_source",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.commission_source",
+      "unit": "dimensionless",
+      "value": "binance_dynamic"
+    },
+    "costs.configured_entry_fee_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.configured_entry_fee_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.configured_entry_fee_bps",
+      "unit": "bps",
+      "value": 10.0
+    },
+    "costs.configured_exit_fee_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.configured_exit_fee_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.configured_exit_fee_bps",
+      "unit": "bps",
+      "value": 10.0
+    },
+    "costs.conservative_fallback_policy": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.conservative_fallback_policy",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.conservative_fallback_policy",
+      "unit": "dimensionless",
+      "value": "FAIL_CLOSED"
+    },
+    "costs.cost_safety_margin_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.cost_safety_margin_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.cost_safety_margin_bps",
+      "unit": "bps",
+      "value": 0.0
+    },
+    "costs.entry_slippage_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.entry_slippage_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.entry_slippage_bps",
+      "unit": "bps",
+      "value": 2.0
+    },
+    "costs.exit_slippage_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.exit_slippage_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.exit_slippage_bps",
+      "unit": "bps",
+      "value": 2.0
+    },
+    "costs.max_cost_snapshot_age_seconds": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.max_cost_snapshot_age_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.max_cost_snapshot_age_seconds",
+      "unit": "seconds",
+      "value": 86400
+    },
+    "costs.max_depth_impact_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.max_depth_impact_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.max_depth_impact_bps",
+      "unit": "bps",
+      "value": 20.0
+    },
+    "costs.microstructure_max_age_ms": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.microstructure_max_age_ms",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.microstructure_max_age_ms",
+      "unit": "milliseconds",
+      "value": 5000
+    },
+    "costs.slippage_policy": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.slippage_policy",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.slippage_policy",
+      "unit": "dimensionless",
+      "value": "FIXED_BASELINE"
+    },
+    "costs.spread_policy": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.spread_policy",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.spread_policy",
+      "unit": "dimensionless",
+      "value": "BINANCE_PUBLIC_BOOK_TICKER"
+    },
+    "costs.vwap_reference_notional": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::costs.vwap_reference_notional",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "costs.vwap_reference_notional",
+      "unit": "dimensionless",
+      "value": 100.0
+    },
+    "economics.bucket_min_sample": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.bucket_min_sample",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.bucket_min_sample",
+      "unit": "dimensionless",
+      "value": 20
+    },
+    "economics.min_ev_reserve_r": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::economics.min_ev_reserve_r",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.min_ev_reserve_r",
+      "unit": "dimensionless",
+      "value": 0.05
+    },
+    "economics.min_net_edge_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.min_net_edge_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.min_net_edge_bps",
+      "unit": "bps",
+      "value": 1.0
+    },
+    "economics.min_positive_ev_r": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.min_positive_ev_r",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.min_positive_ev_r",
+      "unit": "dimensionless",
+      "value": 0.0
+    },
+    "economics.parent_bucket_fallback_order": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.parent_bucket_fallback_order",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.parent_bucket_fallback_order",
+      "unit": "dimensionless",
+      "value": [
+        "exact",
+        "setup_direction_regime",
+        "setup_direction",
+        "setup",
+        "global"
+      ]
+    },
+    "economics.prior_alpha": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.prior_alpha",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.prior_alpha",
+      "unit": "dimensionless",
+      "value": 1.0
+    },
+    "economics.prior_beta": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.prior_beta",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.prior_beta",
+      "unit": "dimensionless",
+      "value": 1.0
+    },
+    "economics.probability_confidence_level": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.probability_confidence_level",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.probability_confidence_level",
+      "unit": "dimensionless",
+      "value": 0.95
+    },
+    "economics.static_rr_fallback_enabled": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::economics.static_rr_fallback_enabled",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "economics.static_rr_fallback_enabled",
+      "unit": "dimensionless",
+      "value": false
+    },
+    "enabled": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::enabled",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "enabled",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "entry_refinement_1m.authoritative_promotion_allowed": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::entry_refinement_1m.authoritative_promotion_allowed",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "entry_refinement_1m.authoritative_promotion_allowed",
+      "unit": "dimensionless",
+      "value": false
+    },
+    "entry_refinement_1m.enabled": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::entry_refinement_1m.enabled",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "entry_refinement_1m.enabled",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "entry_refinement_1m.mode": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::entry_refinement_1m.mode",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "entry_refinement_1m.mode",
+      "unit": "dimensionless",
+      "value": "SHADOW"
+    },
+    "entry_refinement_1m.timeout_seconds": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::entry_refinement_1m.timeout_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "entry_refinement_1m.timeout_seconds",
+      "unit": "seconds",
+      "value": 300
+    },
+    "exit_policy.stale_position.break_even_activation_target_progress": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.break_even_activation_target_progress",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.break_even_activation_target_progress",
+      "unit": "dimensionless",
+      "value": 0.5
+    },
+    "exit_policy.stale_position.enabled": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.enabled",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.enabled",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "exit_policy.stale_position.extension_allowed": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.extension_allowed",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.extension_allowed",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "exit_policy.stale_position.extension_requires_momentum_valid": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.extension_requires_momentum_valid",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.extension_requires_momentum_valid",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "exit_policy.stale_position.extension_requires_positive_net_exit_pnl": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.extension_requires_positive_net_exit_pnl",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.extension_requires_positive_net_exit_pnl",
+      "unit": "dimensionless",
+      "value": false
+    },
+    "exit_policy.stale_position.extension_requires_setup_valid": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.extension_requires_setup_valid",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.extension_requires_setup_valid",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "exit_policy.stale_position.extension_seconds": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.extension_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.extension_seconds",
+      "unit": "seconds",
+      "value": 300
+    },
+    "exit_policy.stale_position.hard_timeout_seconds": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.hard_timeout_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.hard_timeout_seconds",
+      "unit": "seconds",
+      "value": 1200
+    },
+    "exit_policy.stale_position.max_extensions": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.max_extensions",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.max_extensions",
+      "unit": "dimensionless",
+      "value": 1
+    },
+    "exit_policy.stale_position.min_mfe_bps_at_soft_timeout": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.min_mfe_bps_at_soft_timeout",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.min_mfe_bps_at_soft_timeout",
+      "unit": "dimensionless",
+      "value": null
+    },
+    "exit_policy.stale_position.min_remaining_ev_r_at_soft_timeout": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.min_remaining_ev_r_at_soft_timeout",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.min_remaining_ev_r_at_soft_timeout",
+      "unit": "dimensionless",
+      "value": 0.0
+    },
+    "exit_policy.stale_position.min_target_progress_at_soft_timeout": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.min_target_progress_at_soft_timeout",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.min_target_progress_at_soft_timeout",
+      "unit": "dimensionless",
+      "value": 0.2
+    },
+    "exit_policy.stale_position.mode": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.mode",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.mode",
+      "unit": "dimensionless",
+      "value": "SHADOW"
+    },
+    "exit_policy.stale_position.net_break_even_protection_enabled": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.net_break_even_protection_enabled",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.net_break_even_protection_enabled",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "exit_policy.stale_position.soft_timeout_seconds": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.soft_timeout_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.soft_timeout_seconds",
+      "unit": "seconds",
+      "value": 600
+    },
+    "exit_policy.stale_position.use_current_exit_costs": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::exit_policy.stale_position.use_current_exit_costs",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "exit_policy.stale_position.use_current_exit_costs",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "geometry.atr_multiplier": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::geometry.atr_multiplier",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "geometry.atr_multiplier",
+      "unit": "dimensionless",
+      "value": 0.25
+    },
+    "geometry.minimum_planned_rr": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::geometry.minimum_planned_rr",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "geometry.minimum_planned_rr",
+      "unit": "dimensionless",
+      "value": 0.6
+    },
+    "geometry.stop_max_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::geometry.stop_max_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "geometry.stop_max_bps",
+      "unit": "bps",
+      "value": 50.0
+    },
+    "geometry.stop_min_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::geometry.stop_min_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "geometry.stop_min_bps",
+      "unit": "bps",
+      "value": 0.0
+    },
+    "geometry.target_min_bps": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/trade_parameters.yaml::geometry.target_min_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "geometry.target_min_bps",
+      "unit": "bps",
+      "value": 60.0
+    },
+    "geometry.target_policy": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::geometry.target_policy",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "geometry.target_policy",
+      "unit": "dimensionless",
+      "value": "SCALPING_NEAREST_VIABLE_TARGET_V3"
+    },
+    "lifecycle.entry_fill_window_seconds": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::lifecycle.entry_fill_window_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "lifecycle.entry_fill_window_seconds",
+      "unit": "seconds",
+      "value": 30
+    },
+    "lifecycle.exit_time_stop_minutes": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::lifecycle.exit_time_stop_minutes",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "lifecycle.exit_time_stop_minutes",
+      "unit": "minutes",
+      "value": 15
+    },
+    "lifecycle.maximum_price_drift_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::lifecycle.maximum_price_drift_bps",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "lifecycle.maximum_price_drift_bps",
+      "unit": "bps",
+      "value": 10.0
+    },
+    "lifecycle.plan_ttl_seconds": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::lifecycle.plan_ttl_seconds",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "lifecycle.plan_ttl_seconds",
+      "unit": "seconds",
+      "value": 30
+    },
+    "lifecycle.validity_boundaries": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::lifecycle.validity_boundaries",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "lifecycle.validity_boundaries",
+      "unit": "count",
+      "value": 1
+    },
+    "risk.max_new_commands_per_cycle": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/risk_policy.yaml::max_new_commands_per_cycle",
+      "source_file": "config/trading/risk_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "max_new_commands_per_cycle",
+      "unit": "dimensionless",
+      "value": 1
+    },
+    "risk.max_open_positions": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/risk_policy.yaml::max_open_positions",
+      "source_file": "config/trading/risk_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "max_open_positions",
+      "unit": "dimensionless",
+      "value": 2
+    },
+    "risk.risk_per_trade_bps": {
+      "owner_set_id": "scalping-v2-set-2",
+      "source": "SET_2_OVERRIDE",
+      "source_component": "config/trading/risk_policy.yaml::risk_per_trade_bps",
+      "source_file": "config/trading/risk_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "risk_per_trade_bps",
+      "unit": "bps",
+      "value": 5.0
+    },
+    "risk.total_open_risk_limit_bps": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/risk_policy.yaml::total_open_risk_limit_bps",
+      "source_file": "config/trading/risk_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "total_open_risk_limit_bps",
+      "unit": "bps",
+      "value": 50.0
+    },
+    "signal.allowed_setup_types": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.allowed_setup_types",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.allowed_setup_types",
+      "unit": "dimensionless",
+      "value": [
+        "SCALP_TREND_PULLBACK",
+        "SCALP_BREAKOUT",
+        "SCALP_BREAKOUT_RETEST",
+        "SCALP_RANGE_BOUNCE",
+        "SCALP_LIQUIDITY_SWEEP",
+        "SCALP_MOMENTUM_CONTINUATION",
+        "SCALP_COMPRESSION_BREAK"
+      ]
+    },
+    "signal.analysis_history_candles": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.analysis_history_candles",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.analysis_history_candles",
+      "unit": "count",
+      "value": 120
+    },
+    "signal.atr_lookback_candles": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.atr_lookback_candles",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.atr_lookback_candles",
+      "unit": "count",
+      "value": 12
+    },
+    "signal.confirmation_window_candles": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.confirmation_window_candles",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.confirmation_window_candles",
+      "unit": "count",
+      "value": 1
+    },
+    "signal.impulse_absolute_threshold_pct": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.impulse_absolute_threshold_pct",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.impulse_absolute_threshold_pct",
+      "unit": "percent",
+      "value": 3.0
+    },
+    "signal.impulse_atr_multiplier": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.impulse_atr_multiplier",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.impulse_atr_multiplier",
+      "unit": "dimensionless",
+      "value": 2.5
+    },
+    "signal.impulse_lookback_candles": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.impulse_lookback_candles",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.impulse_lookback_candles",
+      "unit": "count",
+      "value": 8
+    },
+    "signal.market_data_windows.15m": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.market_data_windows.15m",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.market_data_windows.15m",
+      "unit": "dimensionless",
+      "value": 64
+    },
+    "signal.market_data_windows.1h": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.market_data_windows.1h",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.market_data_windows.1h",
+      "unit": "dimensionless",
+      "value": 50
+    },
+    "signal.market_data_windows.1m": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.market_data_windows.1m",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.market_data_windows.1m",
+      "unit": "dimensionless",
+      "value": 60
+    },
+    "signal.market_data_windows.5m": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.market_data_windows.5m",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.market_data_windows.5m",
+      "unit": "dimensionless",
+      "value": 120
+    },
+    "signal.regime_lookback_candles": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.regime_lookback_candles",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.regime_lookback_candles",
+      "unit": "count",
+      "value": 24
+    },
+    "signal.required_timeframes": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.required_timeframes",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.required_timeframes",
+      "unit": "dimensionless",
+      "value": [
+        "1m",
+        "5m",
+        "15m",
+        "1h"
+      ]
+    },
+    "signal.strategy_minimum_score": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.strategy_minimum_score",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.strategy_minimum_score",
+      "unit": "dimensionless",
+      "value": 55.0
+    },
+    "signal.structure_lookback_candles": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.structure_lookback_candles",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.structure_lookback_candles",
+      "unit": "count",
+      "value": 12
+    },
+    "signal.timeframe": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.timeframe",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.timeframe",
+      "unit": "dimensionless",
+      "value": "5m"
+    },
+    "signal.volume_baseline_candles": {
+      "owner_set_id": "scalping-v2-set-1",
+      "source": "SET_1_INHERITED",
+      "source_component": "config/trading/trade_parameters.yaml::signal.volume_baseline_candles",
+      "source_file": "config/trading/trade_parameters.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "signal.volume_baseline_candles",
+      "unit": "count",
+      "value": 12
+    }
+  },
+  "operational_policy": {
+    "collector.boundary_wait_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.boundary_wait_seconds",
+      "value": 240
+    },
+    "collector.initial_boundary_ms": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.initial_boundary_ms",
+      "value": 1788885600000
+    },
+    "collector.max_part_bytes": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.max_part_bytes",
+      "value": 67108864
+    },
+    "collector.outcome_time_stop_ms": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.outcome_time_stop_ms",
+      "value": 900000
+    },
+    "collector.outcome_ttl_ms": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.outcome_ttl_ms",
+      "value": 30000
+    },
+    "collector.output_directory": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.output_directory",
+      "value": "reports/calibration/scalping-v2-probability-set2"
+    },
+    "collector.parameter_set_id": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.parameter_set_id",
+      "value": "scalping-v2-set-2"
+    },
+    "collector.poll_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.poll_seconds",
+      "value": 2.0
+    },
+    "collector.schema_revision": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "collector.schema_revision",
+      "value": "0031_scalping_parameter_sets"
+    },
+    "orchestrator.allow_stale_higher_timeframes": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.allow_stale_higher_timeframes",
+      "value": false
+    },
+    "orchestrator.freshness_grace_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.freshness_grace_seconds",
+      "value": 180.0
+    },
+    "orchestrator.freshness_max_attempts": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.freshness_max_attempts",
+      "value": 60
+    },
+    "orchestrator.freshness_retry_interval_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.freshness_retry_interval_seconds",
+      "value": 5.0
+    },
+    "orchestrator.health_report_interval_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.health_report_interval_seconds",
+      "value": 60.0
+    },
+    "orchestrator.health_report_path": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.health_report_path",
+      "value": "reports/engine_orchestrator/latest_health_trade_5m.json"
+    },
+    "orchestrator.initial_backoff_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.initial_backoff_seconds",
+      "value": 2.0
+    },
+    "orchestrator.max_backoff_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.max_backoff_seconds",
+      "value": 60.0
+    },
+    "orchestrator.max_catchup_windows": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.max_catchup_windows",
+      "value": 4
+    },
+    "orchestrator.poll_interval_seconds": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.poll_interval_seconds",
+      "value": 10.0
+    },
+    "orchestrator.process_latest_only": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.process_latest_only",
+      "value": false
+    },
+    "orchestrator.require_all_timeframes_ok": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.require_all_timeframes_ok",
+      "value": true
+    },
+    "orchestrator.symbols": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.symbols",
+      "value": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "LINKUSDT",
+        "DOGEUSDT",
+        "ADAUSDT",
+        "AVAXUSDT",
+        "SUIUSDT"
+      ]
+    },
+    "orchestrator.trigger_source": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.trigger_source",
+      "value": "postgres_closed_candle"
+    },
+    "orchestrator.waiting_batch_size": {
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML",
+      "source_path": "orchestrator.waiting_batch_size",
+      "value": 100
+    }
+  },
+  "parameter_set_label": "Set #2 \u2014 Interim Research",
+  "parameter_set_version": "scalping-v2-set-2-v1",
+  "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+  "runtime_parameter_contract_version": "trade-runtime-parameters-v1",
+  "runtime_parameter_profile_id": "trade-5m-v2",
+  "runtime_parameter_set_id": "scalping-v2-set-2",
+  "runtime_parameters": {
+    "activation_cycle_boundary_ms": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.activation_cycle_boundary_ms",
+      "unit": "milliseconds",
+      "value": 1788885600000
+    },
+    "activation_revision": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.activation_revision",
+      "unit": "dimensionless",
+      "value": "scalping-v2-set-2-activation-20260908"
+    },
+    "analysis_compression_ratio": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.analysis_compression_ratio",
+      "unit": "dimensionless",
+      "value": 0.75
+    },
+    "analysis_decision_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.analysis_decision_candles",
+      "unit": "count",
+      "value": 12
+    },
+    "analysis_expansion_ratio": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.analysis_expansion_ratio",
+      "unit": "dimensionless",
+      "value": 1.35
+    },
+    "analysis_history_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.analysis_history_candles",
+      "unit": "count",
+      "value": 120
+    },
+    "atr_lookback_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.atr_lookback_candles",
+      "unit": "count",
+      "value": 12
+    },
+    "bounded_book_depth_limit": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.bounded_book_depth_limit",
+      "unit": "dimensionless",
+      "value": 100
+    },
+    "breakout_volume_baseline_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.breakout_volume_baseline_candles",
+      "unit": "count",
+      "value": 12
+    },
+    "confirmation_window_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.confirmation_window_candles",
+      "unit": "count",
+      "value": 1
+    },
+    "contract_version": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.contract_version",
+      "unit": "dimensionless",
+      "value": "trade-runtime-parameters-v1"
+    },
+    "cost_safety_margin_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.cost_safety_margin_bps",
+      "unit": "bps",
+      "value": 0.0
+    },
+    "economics_entry_fee_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.economics_entry_fee_bps",
+      "unit": "bps",
+      "value": 10.0
+    },
+    "economics_entry_slippage_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.economics_entry_slippage_bps",
+      "unit": "bps",
+      "value": 2.0
+    },
+    "economics_exit_fee_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.economics_exit_fee_bps",
+      "unit": "bps",
+      "value": 10.0
+    },
+    "economics_exit_slippage_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.economics_exit_slippage_bps",
+      "unit": "bps",
+      "value": 2.0
+    },
+    "economics_max_depth_impact_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.economics_max_depth_impact_bps",
+      "unit": "bps",
+      "value": 20.0
+    },
+    "economics_minimum_net_edge_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.economics_minimum_net_edge_bps",
+      "unit": "bps",
+      "value": 1.0
+    },
+    "economics_minimum_net_edge_shadow_cohorts_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.economics_minimum_net_edge_shadow_cohorts_bps",
+      "unit": "bps",
+      "value": [
+        10.0,
+        15.0,
+        20.0
+      ]
+    },
+    "execution_entry_ttl_seconds": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.execution_entry_ttl_seconds",
+      "unit": "seconds",
+      "value": 30
+    },
+    "execution_entry_ttl_shadow_cohorts_seconds": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.execution_entry_ttl_shadow_cohorts_seconds",
+      "unit": "seconds",
+      "value": [
+        30,
+        60,
+        120
+      ]
+    },
+    "execution_max_price_drift_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.execution_max_price_drift_bps",
+      "unit": "bps",
+      "value": 10.0
+    },
+    "exit_adaptive_rules_production_enabled": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.exit_adaptive_rules_production_enabled",
+      "unit": "dimensionless",
+      "value": false
+    },
+    "exit_time_stop_minutes": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.exit_time_stop_minutes",
+      "unit": "minutes",
+      "value": 15
+    },
+    "exit_time_stop_shadow_cohorts_minutes": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.exit_time_stop_shadow_cohorts_minutes",
+      "unit": "minutes",
+      "value": [
+        15,
+        30,
+        45
+      ]
+    },
+    "geometry_atr_buffer_multiplier": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.geometry_atr_buffer_multiplier",
+      "unit": "dimensionless",
+      "value": 0.25
+    },
+    "geometry_atr_buffer_shadow_cohorts": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.geometry_atr_buffer_shadow_cohorts",
+      "unit": "dimensionless",
+      "value": [
+        0.25,
+        0.5,
+        0.75
+      ]
+    },
+    "geometry_minimum_target_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.geometry_minimum_target_bps",
+      "unit": "bps",
+      "value": 60.0
+    },
+    "geometry_minimum_target_shadow_cohorts_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.geometry_minimum_target_shadow_cohorts_bps",
+      "unit": "bps",
+      "value": [
+        45.0,
+        60.0,
+        80.0
+      ]
+    },
+    "geometry_stop_envelope_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.geometry_stop_envelope_bps",
+      "unit": "bps",
+      "value": 50.0
+    },
+    "geometry_stop_envelope_shadow_cohorts_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.geometry_stop_envelope_shadow_cohorts_bps",
+      "unit": "bps",
+      "value": [
+        50.0,
+        65.0,
+        80.0
+      ]
+    },
+    "impulse_absolute_threshold_pct": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.impulse_absolute_threshold_pct",
+      "unit": "percent",
+      "value": 3.0
+    },
+    "impulse_atr_multiplier": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.impulse_atr_multiplier",
+      "unit": "dimensionless",
+      "value": 2.5
+    },
+    "impulse_lookback_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.impulse_lookback_candles",
+      "unit": "count",
+      "value": 8
+    },
+    "market_data_context_windows": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.market_data_context_windows",
+      "unit": "dimensionless",
+      "value": [
+        [
+          "1m",
+          60
+        ],
+        [
+          "5m",
+          120
+        ],
+        [
+          "15m",
+          64
+        ],
+        [
+          "1h",
+          50
+        ]
+      ]
+    },
+    "market_data_required_timeframes": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.market_data_required_timeframes",
+      "unit": "dimensionless",
+      "value": [
+        "1m",
+        "5m",
+        "15m",
+        "1h"
+      ]
+    },
+    "microstructure_max_age_ms": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.microstructure_max_age_ms",
+      "unit": "milliseconds",
+      "value": 5000
+    },
+    "minimum_planned_rr": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.minimum_planned_rr",
+      "unit": "dimensionless",
+      "value": 0.6
+    },
+    "mode": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.mode",
+      "unit": "dimensionless",
+      "value": "PRODUCTION_SEARCH"
+    },
+    "named_parameter_set_id": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.named_parameter_set_id",
+      "unit": "dimensionless",
+      "value": "scalping-v2-set-2"
+    },
+    "opportunity_reentry_enabled": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.opportunity_reentry_enabled",
+      "unit": "dimensionless",
+      "value": false
+    },
+    "paper_command_creation_enabled": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.paper_command_creation_enabled",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "parameter_set_label": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.parameter_set_label",
+      "unit": "dimensionless",
+      "value": "Set #2 \u2014 Interim Research"
+    },
+    "parameter_set_version": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.parameter_set_version",
+      "unit": "dimensionless",
+      "value": "scalping-v2-set-2-v1"
+    },
+    "portfolio_max_concurrent_positions": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.portfolio_max_concurrent_positions",
+      "unit": "count",
+      "value": 2
+    },
+    "portfolio_max_concurrent_shadow_cohorts": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.portfolio_max_concurrent_shadow_cohorts",
+      "unit": "dimensionless",
+      "value": [
+        2,
+        3,
+        4
+      ]
+    },
+    "portfolio_max_total_open_risk_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.portfolio_max_total_open_risk_bps",
+      "unit": "bps",
+      "value": 50.0
+    },
+    "portfolio_total_open_risk_shadow_cohorts_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.portfolio_total_open_risk_shadow_cohorts_bps",
+      "unit": "bps",
+      "value": [
+        50.0,
+        75.0
+      ]
+    },
+    "position_opening_enabled": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.position_opening_enabled",
+      "unit": "dimensionless",
+      "value": true
+    },
+    "profile_id": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.profile_id",
+      "unit": "dimensionless",
+      "value": "trade-5m-v2"
+    },
+    "regime_lookback_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.regime_lookback_candles",
+      "unit": "count",
+      "value": 24
+    },
+    "resolved_config_hash": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.resolved_config_hash",
+      "unit": "dimensionless",
+      "value": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839"
+    },
+    "risk_minimum_strategy_quality": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.risk_minimum_strategy_quality",
+      "unit": "dimensionless",
+      "value": "ACCEPTABLE"
+    },
+    "risk_minimum_strategy_score": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.risk_minimum_strategy_score",
+      "unit": "dimensionless",
+      "value": 55.0
+    },
+    "risk_per_trade_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.risk_per_trade_bps",
+      "unit": "bps",
+      "value": 5.0
+    },
+    "risk_per_trade_shadow_cohorts_bps": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.risk_per_trade_shadow_cohorts_bps",
+      "unit": "bps",
+      "value": [
+        10.0,
+        15.0,
+        20.0,
+        25.0
+      ]
+    },
+    "risk_shadow_policy_id": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.risk_shadow_policy_id",
+      "unit": "dimensionless",
+      "value": "scalping-risk-capped-v2"
+    },
+    "rr_shadow_cohorts": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.rr_shadow_cohorts",
+      "unit": "dimensionless",
+      "value": [
+        1.0,
+        1.2,
+        1.5
+      ]
+    },
+    "scalping_setup_families": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.scalping_setup_families",
+      "unit": "dimensionless",
+      "value": [
+        "SCALP_TREND_PULLBACK",
+        "SCALP_BREAKOUT",
+        "SCALP_BREAKOUT_RETEST",
+        "SCALP_RANGE_BOUNCE",
+        "SCALP_LIQUIDITY_SWEEP",
+        "SCALP_MOMENTUM_CONTINUATION",
+        "SCALP_COMPRESSION_BREAK"
+      ]
+    },
+    "setup_policy_id": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.setup_policy_id",
+      "unit": "dimensionless",
+      "value": "scalping-micro-setup-v2"
+    },
+    "stop_policy_id": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.stop_policy_id",
+      "unit": "dimensionless",
+      "value": "SCALPING_CAUSAL_VOLATILITY_STOP_V2"
+    },
+    "strategy_allowed_setup_types": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.strategy_allowed_setup_types",
+      "unit": "dimensionless",
+      "value": [
+        "SCALP_TREND_PULLBACK",
+        "SCALP_BREAKOUT",
+        "SCALP_BREAKOUT_RETEST",
+        "SCALP_RANGE_BOUNCE",
+        "SCALP_LIQUIDITY_SWEEP",
+        "SCALP_MOMENTUM_CONTINUATION",
+        "SCALP_COMPRESSION_BREAK"
+      ]
+    },
+    "strategy_minimum_allowed_quality": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.strategy_minimum_allowed_quality",
+      "unit": "dimensionless",
+      "value": "ACCEPTABLE"
+    },
+    "strategy_not_evaluated_handling": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.strategy_not_evaluated_handling",
+      "unit": "dimensionless",
+      "value": "SCORE_FROM_EVALUATED_COMPONENTS"
+    },
+    "strategy_policy_id": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.strategy_policy_id",
+      "unit": "dimensionless",
+      "value": "scalping-short-horizon-entry-v2"
+    },
+    "strategy_shadow_thresholds": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.strategy_shadow_thresholds",
+      "unit": "dimensionless",
+      "value": [
+        55.0,
+        60.0,
+        65.0
+      ]
+    },
+    "structure_lookback_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.structure_lookback_candles",
+      "unit": "count",
+      "value": 12
+    },
+    "target_policy_id": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.target_policy_id",
+      "unit": "dimensionless",
+      "value": "SCALPING_NEAREST_VIABLE_TARGET_V3"
+    },
+    "trigger_timeframe": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.trigger_timeframe",
+      "unit": "dimensionless",
+      "value": "5m"
+    },
+    "validity_boundaries": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.validity_boundaries",
+      "unit": "dimensionless",
+      "value": 1
+    },
+    "volume_baseline_candles": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.volume_baseline_candles",
+      "unit": "count",
+      "value": 12
+    },
+    "vwap_reference_notional": {
+      "resolved_config_hash": "536fd1adafe68f0c3f6095303fb3954b38196285ad66c656073516fbeed87839",
+      "source_file": "config/runtime/runtime_policy.yaml",
+      "source_kind": "AUTHORITATIVE_YAML_RESOLVED",
+      "source_path": "resolved_runtime.vwap_reference_notional",
+      "unit": "dimensionless",
+      "value": 100.0
+    }
+  },
+  "trade_parameter_config_hash": "0b109fd317af9c9d2b96f6933a4964f3ae3ff5685804a4a160aacb7ef27cb429",
+  "trade_parameter_config_version": "scalping-v2-baseline-1"
+}

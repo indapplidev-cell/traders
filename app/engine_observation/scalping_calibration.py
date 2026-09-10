@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Iterable, Mapping
 
+from app.config.trade_parameters import SCALPING_V2
+from app.config.yaml_authority import RUNTIME_POLICY
 from app.engine_observation.scalping_expectancy import calculate_scalping_expectancy
 from app.engine_paper.scalping_shadow import (
     CausalTarget,
@@ -21,10 +23,10 @@ from app.engine_paper.scalping_shadow import (
 )
 
 
-RR_COHORTS = (1.0, 1.2, 1.5)
-ATR_COHORTS = (0.25, 0.50, 0.75, 1.00)
-STOP_ENVELOPES_BPS = (50.0, 65.0, 80.0)
-MIN_TARGETS_BPS = (45.0, 60.0, 80.0)
+RR_COHORTS = RUNTIME_POLICY.runtime_parameters.rr_shadow_cohorts
+ATR_COHORTS = RUNTIME_POLICY.runtime_parameters.geometry_atr_buffer_shadow_cohorts
+STOP_ENVELOPES_BPS = RUNTIME_POLICY.runtime_parameters.geometry_stop_envelope_shadow_cohorts_bps
+MIN_TARGETS_BPS = RUNTIME_POLICY.runtime_parameters.geometry_minimum_target_shadow_cohorts_bps
 QUOTA_FREE_REASONS = {
     "PAPER_NO_PLAN_SOURCE_NO_DECISION",
     "PAPER_NO_PLAN_MISSING_INVALIDATION_LEVEL",
@@ -354,7 +356,21 @@ def aggregate(
                     targets=target_values, setup_identity=str(record["setup"]),
                 ),
                 ShadowCostInputs(),
-                ShadowGeometryConfig(.25, 80.0, 45.0),
+                ShadowGeometryConfig(
+                    SCALPING_V2.geometry.atr_multiplier,
+                    SCALPING_V2.geometry.stop_max_bps,
+                    SCALPING_V2.geometry.target_min_bps,
+                    minimum_positive_edge_bps=SCALPING_V2.economics.min_net_edge_bps,
+                    production_rr_floor=SCALPING_V2.geometry.minimum_planned_rr,
+                    max_depth_impact_bps=SCALPING_V2.costs.max_depth_impact_bps,
+                    minimum_net_edge_shadow_cohorts_bps=(
+                        RUNTIME_POLICY.runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
+                    ),
+                    rr_shadow_cohorts=RUNTIME_POLICY.runtime_parameters.rr_shadow_cohorts,
+                    minimum_empirical_samples=SCALPING_V2.economics.bucket_min_sample,
+                    minimum_positive_ev_r=SCALPING_V2.economics.min_positive_ev_r,
+                    minimum_ev_reserve_r=SCALPING_V2.economics.min_ev_reserve_r,
+                ),
             ))
         observed_downstream = [record for record in admitted if record["stop_distance_bps"] is not None]
         strategy_cohorts[str(threshold)] = {
@@ -468,24 +484,43 @@ def aggregate(
             )
             return evaluate_scalping_shadow(candidate, costs, ShadowGeometryConfig(
                 atr_buffer_multiplier=atr, stop_envelope_bps=envelope,
-                minimum_target_diagnostic_bps=target_min, production_rr_floor=1.5,
+                minimum_target_diagnostic_bps=target_min,
+                production_rr_floor=SCALPING_V2.geometry.minimum_planned_rr,
+                minimum_positive_edge_bps=SCALPING_V2.economics.min_net_edge_bps,
+                max_depth_impact_bps=SCALPING_V2.costs.max_depth_impact_bps,
+                minimum_net_edge_shadow_cohorts_bps=(
+                    RUNTIME_POLICY.runtime_parameters.economics_minimum_net_edge_shadow_cohorts_bps
+                ),
+                rr_shadow_cohorts=RUNTIME_POLICY.runtime_parameters.rr_shadow_cohorts,
+                minimum_empirical_samples=SCALPING_V2.economics.bucket_min_sample,
+                minimum_positive_ev_r=SCALPING_V2.economics.min_positive_ev_r,
+                minimum_ev_reserve_r=SCALPING_V2.economics.min_ev_reserve_r,
             ))
 
         result: dict[str, Any] = {"same_source_candidate_count": len(candidates)}
         result["atr_buffer"] = {}
         for atr in ATR_COHORTS:
-            outcomes = [evaluate(record, diagnostic, atr, 80, 45) for record, diagnostic in candidates]
+            outcomes = [evaluate(
+                record, diagnostic, atr, SCALPING_V2.geometry.stop_max_bps,
+                SCALPING_V2.geometry.target_min_bps,
+            ) for record, diagnostic in candidates]
             result["atr_buffer"][str(atr)] = {"geometry_pass": sum(item.stop_envelope_pass is True for item in outcomes),
                                                 "cost_pass": sum(item.economic_gate_pass for item in outcomes),
                                                 "plan_eligible": sum(item.valid_plan for item in outcomes)}
         result["stop_envelope"] = {}
         for envelope in STOP_ENVELOPES_BPS:
-            outcomes = [evaluate(record, diagnostic, .25, envelope, 45) for record, diagnostic in candidates]
+            outcomes = [evaluate(
+                record, diagnostic, SCALPING_V2.geometry.atr_multiplier,
+                envelope, SCALPING_V2.geometry.target_min_bps,
+            ) for record, diagnostic in candidates]
             result["stop_envelope"][str(envelope)] = {"geometry_pass": sum(item.stop_envelope_pass is True for item in outcomes),
                                                        "plan_eligible": sum(item.valid_plan for item in outcomes)}
         result["minimum_target"] = {}
         for target_min in MIN_TARGETS_BPS:
-            outcomes = [evaluate(record, diagnostic, .25, 80, target_min) for record, diagnostic in candidates]
+            outcomes = [evaluate(
+                record, diagnostic, SCALPING_V2.geometry.atr_multiplier,
+                SCALPING_V2.geometry.stop_max_bps, target_min,
+            ) for record, diagnostic in candidates]
             result["minimum_target"][str(target_min)] = {
                 "diagnostic_pass": sum(item.minimum_target_diagnostic_pass is True for item in outcomes),
                 "plan_eligible": sum(item.valid_plan for item in outcomes),
