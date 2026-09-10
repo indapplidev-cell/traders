@@ -105,6 +105,25 @@ def test_0017_projection_builds_bounded_sql_profile_predicate():
     assert "trade-15m-v1" in str(predicates[0].compile(compile_kwargs={"literal_binds": True}))
 
 
+def test_0017_projection_binds_requested_profile_without_legacy_fallback():
+    bridge = ReadonlySchemaCapabilityBridge()
+    bridge.activate(ReadonlySchemaCapabilityResult(
+        True,
+        "0017_parallel_trade_profiles",
+        BASE_READONLY_CAPABILITIES | {ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES},
+    ))
+    adapter = SqlAlchemyReadAdapter(
+        lambda: None,
+        primary_timeframe="5m",
+        trade_profile_id="trade-5m-v2",
+        schema_capabilities=bridge,
+    )
+    predicate = adapter._default_profile_predicates()[0]
+    compiled = str(predicate.compile(compile_kwargs={"literal_binds": True}))
+    assert "trade-5m-v2" in compiled
+    assert "trade-15m-v1" not in compiled
+
+
 def test_bridge_rejects_incompatible_and_conflicting_activation():
     bridge = ReadonlySchemaCapabilityBridge()
     with pytest.raises(RuntimeError, match="READONLY_SCHEMA_CAPABILITY_CHECK_FAILED"):

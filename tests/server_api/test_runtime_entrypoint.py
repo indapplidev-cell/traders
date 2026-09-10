@@ -123,6 +123,8 @@ def test_composition_injects_one_exact_read_adapter(monkeypatch) -> None:
     }
     assert len(adapters) == 1
     assert isinstance(repositories.health, SqlAlchemyReadAdapter)
+    assert repositories.health._trade_profile_id == "trade-5m-v2"
+    assert repositories.health._primary_timeframe == "5m"
     assert not any(
         hasattr(repositories.health, name)
         for name in ("add", "delete", "flush", "commit")

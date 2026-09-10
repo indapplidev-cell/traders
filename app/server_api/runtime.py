@@ -36,6 +36,7 @@ from app.server_api.paper_runtime_observation import (
     ProductionPaperRuntimeObservationSource,
     load_production_identity,
 )
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
 APPLICATION_NAME = "traders-readonly-api"
@@ -92,7 +93,14 @@ def _repositories(
         autoflush=False,
         expire_on_commit=False,
     )
-    adapter = SqlAlchemyReadAdapter(sessions, schema_capabilities=capabilities)
+    active_profile_id = RUNTIME_POLICY.active_profile
+    active_profile = RUNTIME_POLICY.profiles[active_profile_id]
+    adapter = SqlAlchemyReadAdapter(
+        sessions,
+        primary_timeframe=active_profile.trigger_timeframe,
+        trade_profile_id=active_profile_id,
+        schema_capabilities=capabilities,
+    )
     funnel = TradingFunnelReadRepository(
         sessions, adapter.active_trading_universe, schema_capabilities=capabilities
     )

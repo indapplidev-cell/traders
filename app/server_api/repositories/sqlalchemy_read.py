@@ -192,6 +192,7 @@ class SqlAlchemyReadAdapter:
         session_or_factory: Session | Callable[[], Session],
         *,
         primary_timeframe: str = "15m",
+        trade_profile_id: str = "trade-15m-v1",
         clock: Callable[[], datetime] | None = None,
         schema_capabilities: ReadonlySchemaCapabilityBridge | None = None,
     ) -> None:
@@ -199,6 +200,7 @@ class SqlAlchemyReadAdapter:
             raise ValueError("unsupported primary timeframe")
         self._session_or_factory = session_or_factory
         self._primary_timeframe = primary_timeframe
+        self._trade_profile_id = trade_profile_id
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._schema_capabilities = schema_capabilities
 
@@ -207,7 +209,7 @@ class SqlAlchemyReadAdapter:
             return ()
         capabilities = self._schema_capabilities.snapshot()
         if capabilities.has(ReadonlySchemaCapability.PARALLEL_TRADE_PROFILES):
-            return (model.trade_profile_id == "trade-15m-v1",)
+            return (model.trade_profile_id == self._trade_profile_id,)
         return ()
 
     @contextmanager
