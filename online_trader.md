@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 4c6d23a7a17bf3d270e0c3b9e95ccf6391753106
+STATUS_AS_OF_COMMIT = d791bd2916c1e51faabafb04c257249ef3c2be44
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-10T19:17:04Z
-RECONCILED_BY_TASK = TRADERS_COMMIT_ALL_EXISTING_UNCOMMITTED_CHANGES_01
-FILES_CHANGED = docs/audits/TRADERS_COMMIT_ALL_EXISTING_UNCOMMITTED_CHANGES_01_FINAL.md; online_trader.md; ../traders-client/src/traders_client/models/paper.py; ../traders-client/src/traders_client/providers/paper_http.py; ../traders-client/src/traders_client/ui/paper_trading_view.py; ../traders-client/src/traders_client/ui/setups_view.py; ../traders-client/tests/test_set2_provenance_rendering.py; ../traders-mobile/app/src/main/java/com/traders/mobile/funnel/TradingFunnelModels.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/funnel/TradingFunnelParser.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/funnel/TradingFunnelRepository.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/navigation/ScreenRouter.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/ReadonlyUi.kt; ../traders-mobile/app/src/test/java/com/traders/mobile/funnel/TradingFunnelParserTest.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/profile/ProfileSelectionStore.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/profile/ServerDomainCatalog.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/funnel/ScalpingFunnelScreen.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/profile/ProfileAwareHostScreen.kt; ../traders-mobile/app/src/main/java/com/traders/mobile/ui/profile/ScalpingProfileScreen.kt; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/engine_paper/plan_execution_outcome.py; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/operator_control/production_executor.py; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/operator_control/runtime.py; D:/disk_E/game_projects/traders_temp_worktrees/TRADERS_SELECTED_APPROVAL_TO_PAPER_EXECUTION_COMMAND_FIX_01/app/server_api/trading_funnel.py
+RECONCILED_AT_UTC = 2026-09-10T20:33:45Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_V2_TARGETED_YAML_CALIBRATION_AND_COMPACT_ARTIFACTS_01
+FILES_CHANGED = app/config/yaml_authority.py; config/research/research_parameters.yaml; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/artifact_writer.py; traders_ml/parameter_sweep/cli.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/historical_replay.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/ranking.py; traders_ml/parameter_sweep/replay_integrity.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/targeted.py; traders_ml/parameter_sweep/ui.py; tests/research/test_parameter_sweep_artifact_v2.py; tests/research/test_parameter_sweep_cli_gui_v2.py; tests/research/test_parameter_sweep_historical_replay.py; tests/research/test_parameter_sweep_ranking_v2.py; tests/research/test_parameter_sweep_replay_integrity_v2.py; tests/research/test_parameter_sweep_targeted.py; tests/research/test_scalping_v2_parameter_sweep.py; docs/research/scalping_v2_parameter_sweep.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TASK_A_BASELINE_FORENSIC.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TASK_B_ARTIFACT_COMPACTION.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TASK_C_TARGETED_SEARCH_SPACE.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TASK_D_REPLAY_INTEGRITY.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TASK_E_RANKING_AND_OVERFIT_CONTROL.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TASK_F_GUI_CLI_RESUME.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TASK_G_BOUNDED_ACCEPTANCE.md; docs/audits/TRADERS_PARAMETER_SWEEP_V2_TARGETED_YAML_CALIBRATION_AND_COMPACT_ARTIFACTS_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = SERVER_HYGIENE_BRANCH_6ab76e2_AND_CLIENT_a9e88e4_PUSHED; MOBILE_61666a0_LOCAL_CLEAN_BUT_NO_REMOTE_OR_UPSTREAM; DOCUMENTATION_RECONCILIATION_RESOLVES_VIA_GIT_HISTORY
-STATUS_CONFIDENCE = KNOWNREASONMAPPING5OF5_RUEN_UNKNOWNFORKNOWN0_ROWDETAILPARITYPASS_READONLYDEPLOYPASS_DESKTOPPREFLIGHTCAPTUREPASS_TRADINGLOGICNO_YAMLNO_CONFIGHASHUNCHANGED_5MRESTARTNO_COLLECTORRESTARTNO_15MRESTARTNO_LIVEFALSE_BINANCEORDER0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_d791bd2916c1e51faabafb04c257249ef3c2be44_PUSHED_AHEAD0_BEHIND0; DOCUMENTATION_RECONCILIATION_RESOLVES_VIA_GIT_HISTORY
+STATUS_CONFIDENCE = PARAMETER_SWEEPV2_SCHEMA2_INLINEPATH0_MIGRATIONPASS_REPLAYPARITYPASS_DETERMINISMPASS_144OF144_INTEGRITYPASS_PROJECTED5K113.05MIB_SET2UNCHANGED_SET3NO_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
 
 # Состояние проекта traders-ml
 
@@ -31,6 +31,25 @@ SECONDARY_BLOCKER = ACTIVE_PRODUCTION_TEST_GATE_CLEAN; LEGACY_COMPATIBILITY_REPO
 CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT_POLICY_AND_CONTROLLED_ROLLOUT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
+```
+
+## Parameter Sweep v2 targeted YAML calibration and compact artifacts 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_V2_TARGETED_YAML_CALIBRATION_AND_COMPACT_ARTIFACTS_01
+RESULT = PASS_READY_FOR_TARGETED_YAML_CALIBRATION_NO_CANDIDATE
+PROJECT_STATE_COMMIT = d791bd2916c1e51faabafb04c257249ef3c2be44
+ARTIFACT = V2_COMPACT_INLINE_MARKET_PATH0_V1READPASS_MIGRATIONPASS_RESOLVERPASS
+SIZE = BASELINE1157485547_NEW77739047_REDUCTION93.2838PERCENT_TARGETED111028543_PROJECTED5K118540843BYTES_113.05MIB_SOFTPASS_HARDPASS
+SEARCH = SET2BASELINE1_SENSITIVITY10_FAMILY60_REFINEMENT40_FINALIST33_TOTAL144OF144_RAWACTIVE144_UNBOUNDEDNO
+FAMILIES = TARGETSIGNALREGIMEENTRYGEOMETRY_CURRENTDIMENSIONSENTRYGEOMETRY_FROZENECONOMICSLIFECYCLERISKSAFETYCOSTS
+REPLAY = DATASET83bed0d8_CUTOFF2026-09-10T20:20:00Z_BASELINE98TRADES_PARITY22MATCH31DATAAVAILABILITY_UNEXPLAINED0
+RANKING = MULTIMETRICPASS_CLASSES6_OVERFITGUARDPASS_HOLDOUTNOLEAK
+ACCEPTANCE = INTEGRITYPASS_ALL144INSUFFICIENTSAMPLE_NO_CANDIDATE_SET3NO
+TESTS = FOCUSED103PASS_COMPILEPASS_MIGRATIONDRYRUN1277OF1277
+SAFETY = SET2FILEUNCHANGED_SELECTORUNCHANGED_PRODUCTIONYAMLUNCHANGED_LIVEFALSE_BINANCEORDERS0_MUTATIONS0_DEPLOYNOTREQUIRED_SERVICESNORESTART
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_V2_TARGETED_YAML_CALIBRATION_AND_COMPACT_ARTIFACTS_01_FINAL.md
+NEXT_ACTION = COLLECT_MORE_INDEPENDENT_FROZEN_PERIODS_AND_RERUN_SAME144_TARGETED_PHASE_WITHOUT_WEAKENING_ECONOMICS_OR_SAFETY
 ```
 
 ## Scalping 5m exact reason display mapping 01
