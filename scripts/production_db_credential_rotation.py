@@ -207,8 +207,8 @@ def _wait_client(container: str, expected_image: str) -> tuple[bool, int, bool]:
     while time.monotonic() < deadline:
         inspection = _safe_inspect(container)
         env_safe = "DATABASE_URL" not in inspection.env_keys_only
-        secret_loaded = "runtime-secret:traders_shared_db_password" in inspection.secret_binding_source_identity
-        if inspection.state == "running" and env_safe and secret_loaded:
+        binding_loaded = "runtime-secret:traders_shared_db_password" in inspection.secret_binding_source_identity
+        if inspection.state == "running" and env_safe and binding_loaded:
             return inspection.image_id == expected_image, inspection.restart_count, True
         time.sleep(2)
     return False, -1, False

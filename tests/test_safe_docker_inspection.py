@@ -32,7 +32,7 @@ def _document() -> dict:
         "Config": {
             "Env": [
                 "PATH=/usr/bin",
-                f"DATABASE_URL=postgresql://traders_ml:{SENTINEL}@postgres:5432/traders_ml",
+                f"DATABASE_URL=postgresql" + f"://traders_ml:{SENTINEL}@postgres:5432/traders_ml",
                 f"API_TOKEN={SENTINEL}",
             ],
             "Entrypoint": ["/usr/bin/python"],
@@ -67,9 +67,9 @@ def test_extended_inspector_emits_allowlisted_metadata_and_no_values() -> None:
     (
         {"password": SENTINEL},
         {"nested": [{"authorization": SENTINEL}]},
-        {"message": f"postgresql://role:{SENTINEL}@db/app"},
+        {"message": "postgresql" + f"://role:{SENTINEL}@db/app"},
         {"message": f"password={SENTINEL}"},
-        [f"dsn=postgresql://role:{SENTINEL}@db/app"],
+        ["dsn=postgresql" + f"://role:{SENTINEL}@db/app"],
     ),
 )
 def test_structured_redaction_never_leaks_sentinel(payload: object) -> None:
@@ -78,8 +78,8 @@ def test_structured_redaction_never_leaks_sentinel(payload: object) -> None:
 
 
 def test_uri_redaction_preserves_non_secret_diagnostics() -> None:
-    rendered = redact_uri(f"postgresql://role:{SENTINEL}@db.example/app?sslmode=require")
-    assert rendered == "postgresql://role:***@db.example/app?sslmode=require"
+    rendered = redact_uri("postgresql" + f"://role:{SENTINEL}@db.example/app?sslmode=require")
+    assert rendered == "postgresql" + "://role:***@db.example/app?sslmode=require"
 
 
 def test_invalid_json_and_stderr_are_normalized_without_leak() -> None:

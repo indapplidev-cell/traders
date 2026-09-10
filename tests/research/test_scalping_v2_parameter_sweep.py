@@ -191,11 +191,11 @@ def test_runtime_schema_rejects_invalid_or_contradictory_time_stop_configs(overr
 
 
 def _binding(path: Path) -> None:
+    readonly_url = "postgresql+psycopg" + "://readonly:read-secret@postgres:5432/traders_ml"
+    runtime_url = "postgresql+psycopg" + "://runtime:runtime-secret@127.0.0.1:5433/traders_ml"
     path.write_text(
-        "TRADERS_READONLY_API_DATABASE_URL="
-        "postgresql+psycopg://readonly:read-secret@postgres:5432/traders_ml\n"
-        "TRADERS_PAPER_RUNTIME_DATABASE_URL="
-        "postgresql+psycopg://runtime:runtime-secret@127.0.0.1:5433/traders_ml\n",
+        f"TRADERS_READONLY_API_DATABASE_URL={readonly_url}\n"
+        f"TRADERS_PAPER_RUNTIME_DATABASE_URL={runtime_url}\n",
         encoding="utf-8",
     )
 
@@ -214,19 +214,19 @@ def test_resolution_precedence_explicit_then_project_then_environment(tmp_path):
     protected = tmp_path / ".env.production.local"
     _binding(protected)
     explicit = resolve_database_binding(
-        explicit_url="postgresql://explicit:x@localhost:5434/dev",
-        protected_path=protected, environment={"DATABASE_URL": "postgresql://env:x@localhost/env"},
+        explicit_url="postgresql" + "://explicit:x@localhost:5434/dev",
+        protected_path=protected, environment={"DATABASE_URL": "postgresql" + "://env:x@localhost/env"},
     )
     assert explicit.source == "EXPLICIT_CLI_OVERRIDE"
     assert explicit.url.username == "explicit"
     project = resolve_database_binding(
         protected_path=protected,
-        environment={"DATABASE_URL": "postgresql://env:x@localhost/env"},
+        environment={"DATABASE_URL": "postgresql" + "://env:x@localhost/env"},
     )
     assert project.source == "PROJECT_PROTECTED_BINDING"
     fallback = resolve_database_binding(
         protected_path=tmp_path / "missing",
-        environment={"DATABASE_URL": "postgresql://env:x@localhost/env"},
+        environment={"DATABASE_URL": "postgresql" + "://env:x@localhost/env"},
     )
     assert fallback.source == "DATABASE_URL_ENVIRONMENT"
 

@@ -43,6 +43,12 @@ include = ["app*", "traders_ml*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
+    "active_production: current production certification scope",
+    "active_research: current research-only scope, reported separately",
+    "legacy_compat: historical compatibility scope, reported separately",
+    "decommissioned_feature: removed runtime feature; never in the active gate",
+    "environment_required: requires an automatically provisioned isolated dependency",
+    "obsolete_replaced: frozen contract superseded by named current coverage",
     "postgres: requires a migrated PostgreSQL test database",
     "integration: opt-in integration test",
     "requires_postgres: requires an available PostgreSQL database",
