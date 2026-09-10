@@ -11,10 +11,10 @@ search:
   checkpoint_cadence: 1
   stage_budgets:
     SET2_BASELINE: 1
-    ONE_FACTOR_SENSITIVITY: 16
+    ONE_FACTOR_SENSITIVITY: 10
     SMALL_FAMILY_SEARCH: 60
     TOP_REGION_REFINEMENT: 40
-    LOCAL_FINALIST_VALIDATION: 27
+    LOCAL_FINALIST_VALIDATION: 33
   max_configs_per_observation: 100
   minimum_validation_sample: 20
   minimum_holdout_sample: 20

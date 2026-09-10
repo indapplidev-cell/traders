@@ -945,6 +945,11 @@ def _production_baseline_config() -> dict[str, object]:
     geometry = SCALPING_V2.geometry
     stale = SCALPING_V2.exit_policy.stale_position
     return {
+        "risk_per_trade_bps": SCALPING_V2.risk.risk_per_trade_bps,
+        "max_open_positions": SCALPING_V2.risk.max_open_positions,
+        "total_open_risk_limit_bps": SCALPING_V2.risk.total_open_risk_limit_bps,
+        "max_new_commands_per_cycle": SCALPING_V2.risk.max_new_commands_per_cycle,
+        "minimum_planned_rr": geometry.minimum_planned_rr,
         "min_positive_ev_r": economics.min_positive_ev_r,
         "min_ev_reserve_r": economics.min_ev_reserve_r,
         "min_net_edge_bps": economics.min_net_edge_bps,
