@@ -164,17 +164,18 @@ DEFAULT_ARTIFACT_WRITER = ArtifactWriter()
 class DurableResultWriter:
     """Exactly-once JSONL authority with a derived, atomically replaced CSV view."""
 
-    def __init__(self, directory: Path, csv_fields: list[str], *, writer: ArtifactWriter | None = None) -> None:
+    def __init__(self, directory: Path, csv_fields: list[str], *, writer: ArtifactWriter | None = None, transform: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> None:
         self.directory = directory
         self.jsonl_path = directory / "RESULTS.jsonl"
         self.csv_path = directory / "RESULTS.csv"
         self.csv_fields = csv_fields
         self.writer = writer or DEFAULT_ARTIFACT_WRITER
+        self.transform = transform
         self._lock = threading.RLock()
 
     @staticmethod
     def identity(item: dict[str, Any]) -> tuple[Any, Any, Any]:
-        return item.get("run_id"), item.get("result_index"), item.get("config_hash")
+        return item.get("run_id"), item.get("result_index", item.get("config_index")), item.get("config_hash", item.get("config_id"))
 
     def read_all(self) -> list[dict[str, Any]]:
         if not self.jsonl_path.exists():
@@ -183,6 +184,7 @@ class DurableResultWriter:
 
     def append(self, item: dict[str, Any]) -> bool:
         """Return True for a new durable result and False for an identical replay."""
+        item = self.transform(item) if self.transform is not None else item
         with self._lock, _path_lock(self.jsonl_path), _path_lock(self.csv_path):
             rows = self.read_all()
             identity = self.identity(item)
@@ -192,8 +194,9 @@ class DurableResultWriter:
                     raise ValueError(f"RESULT_IDENTITY_CONFLICT:{identity}")
                 self._write_csv(rows)
                 return False
-            if any(row.get("result_index") == item.get("result_index") for row in rows):
-                raise ValueError(f"RESULT_INDEX_CONFLICT:{item.get('result_index')}")
+            index = item.get("result_index", item.get("config_index"))
+            if any(row.get("result_index", row.get("config_index")) == index for row in rows):
+                raise ValueError(f"RESULT_INDEX_CONFLICT:{index}")
             rendered = "".join(json.dumps(row, sort_keys=True) + "\n" for row in (*rows, item))
             try:
                 self.writer.atomic_text(self.jsonl_path, rendered, operation="result_jsonl_replace")
@@ -213,15 +216,23 @@ class DurableResultWriter:
         csv_writer = csv.DictWriter(buffer, fieldnames=self.csv_fields)
         csv_writer.writeheader()
         for item in rows:
-            validation = item["validation"]
-            csv_writer.writerow({
-                "result_index": item["result_index"],
-                "config_hash": item["config_hash"],
-                "stage": item["stage"],
-                "result_status": item["result_status"],
-                "validation_expectancy": validation.get("net_expectancy_per_trade"),
-                "validation_drawdown": validation.get("max_drawdown"),
-                "validation_trades": validation.get("trade_count"),
-                "parameters_json": json.dumps(item["parameters"], sort_keys=True),
-            })
+            if item.get("artifact_schema_version") == 2:
+                csv_writer.writerow({
+                    "result_index": item["config_index"], "config_hash": item["config_id"],
+                    "stage": item["stage"], "result_status": item["evaluation_status"],
+                    "validation_expectancy": item.get("expectancy_R"),
+                    "validation_drawdown": item.get("max_drawdown"),
+                    "validation_trades": item.get("trade_count"),
+                    "parameters_json": json.dumps(item["overrides"], sort_keys=True),
+                })
+            else:
+                validation = item["validation"]
+                csv_writer.writerow({
+                    "result_index": item["result_index"], "config_hash": item["config_hash"],
+                    "stage": item["stage"], "result_status": item["result_status"],
+                    "validation_expectancy": validation.get("net_expectancy_per_trade"),
+                    "validation_drawdown": validation.get("max_drawdown"),
+                    "validation_trades": validation.get("trade_count"),
+                    "parameters_json": json.dumps(item["parameters"], sort_keys=True),
+                })
         self.writer.atomic_text(self.csv_path, buffer.getvalue(), operation="result_csv_replace")

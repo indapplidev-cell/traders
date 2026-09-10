@@ -46,6 +46,12 @@ from .events import EventType, SweepEvent
 from .artifact_writer import (
     ArtifactWriteError, DEFAULT_ARTIFACT_WRITER, DurableResultWriter,
 )
+from .artifact_v2 import (
+    ARTIFACT_SCHEMA_VERSION, ArtifactSizeBudgetExceeded, compact_result, compact_trade,
+    enforce_size_budget, iter_results,
+)
+from .ranking import pareto_frontier, rank_results, selection_bias_guard
+from .targeted import active_search_space, staged_candidates, validate_targeted_space
 from .integrity import verify_artifacts
 from .historical_replay import (
     HistoricalReplayRepository, baseline_parity, build_parameter_registry,
@@ -260,11 +266,11 @@ class ParameterSweepSearchPlanner:
         if effective < 1:
             raise SweepExpectedError("SEARCH_SPACE_INVALID")
         strategy = str(search["strategy"]).lower()
-        if strategy not in {"auto", "exhaustive", "bounded"}:
+        if strategy not in {"auto", "exhaustive", "bounded", "targeted"}:
             raise SweepExpectedError("SEARCH_SPACE_INVALID")
         seed = int(search["seed"])
         exhaustive_threshold = int(search["exhaustive_max_configs"])
-        configured_budget = int(search["max_evaluated_configs"])
+        configured_budget = min(int(search["max_evaluated_configs"]), int(search.get("max_total_configs", search["max_evaluated_configs"])))
         per_observation = float(search["max_configs_per_observation"])
         statistical_cap = max(1, int(dataset_rows * per_observation))
         budget = min(effective, configured_budget, statistical_cap)
@@ -272,10 +278,10 @@ class ParameterSweepSearchPlanner:
             if max_configs_override <= 0:
                 raise SweepExpectedError("SEARCH_SPACE_INVALID")
             budget = min(budget, max_configs_override)
-        exhaustive = effective <= exhaustive_threshold and strategy != "bounded"
+        exhaustive = effective <= exhaustive_threshold and strategy not in {"bounded", "targeted"}
         if strategy == "exhaustive" and effective > exhaustive_threshold:
             raise SweepExpectedError("UNSAFE_EXHAUSTIVE_SEARCH")
-        selected = "EXHAUSTIVE_LAZY" if exhaustive else "AUTO_BOUNDED"
+        selected = "TARGETED_STAGED" if strategy == "targeted" else ("EXHAUSTIVE_LAZY" if exhaustive else "AUTO_BOUNDED")
         requested_batch = int(search["batch_size"])
         safe_batch = int(
             self.MAX_ACTIVE_BATCH_MEMORY_MB * 1024 * 1024
@@ -284,22 +290,26 @@ class ParameterSweepSearchPlanner:
         batch = min(requested_batch, safe_batch, budget)
         if batch < 1:
             raise SweepExpectedError("UNSAFE_MEMORY_PLAN")
-        fractions = (
-            float(search["stage1_fraction"]),
-            float(search["stage2_fraction"]),
-            float(search["stage3_fraction"]),
-        )
-        if any(value < 0 for value in fractions) or not math.isclose(sum(fractions), 1.0):
-            raise SweepExpectedError("SEARCH_SPACE_INVALID")
-        counts = [int(budget * fractions[0]), int(budget * fractions[1])]
-        counts.append(budget - sum(counts))
-        stages = tuple(
-            {"stage": name, "budget": count, "uses_holdout": False}
-            for name, count in zip(
-                ("BROAD_EXPLORATION", "VALIDATION_REFINEMENT", "LOCAL_REFINEMENT"),
-                counts, strict=True,
+        if strategy == "targeted":
+            configured_stages = search.get("stage_budgets", {})
+            remaining = budget
+            stage_rows = []
+            for name in ("SET2_BASELINE", "ONE_FACTOR_SENSITIVITY", "SMALL_FAMILY_SEARCH", "TOP_REGION_REFINEMENT", "LOCAL_FINALIST_VALIDATION"):
+                count = min(remaining, int(configured_stages.get(name, 0)))
+                stage_rows.append({"stage": name, "budget": count, "uses_holdout": False})
+                remaining -= count
+            stages = tuple(stage_rows)
+        else:
+            fractions = (
+                float(search.get("stage1_fraction", .6)),
+                float(search.get("stage2_fraction", .3)),
+                float(search.get("stage3_fraction", .1)),
             )
-        )
+            if any(value < 0 for value in fractions) or not math.isclose(sum(fractions), 1.0):
+                raise SweepExpectedError("SEARCH_SPACE_INVALID")
+            counts = [int(budget * fractions[0]), int(budget * fractions[1])]
+            counts.append(budget - sum(counts))
+            stages = tuple({"stage": name, "budget": count, "uses_holdout": False} for name, count in zip(("BROAD_EXPLORATION", "VALIDATION_REFINEMENT", "LOCAL_REFINEMENT"), counts, strict=True))
         minimum_validation = int(search["minimum_validation_sample"])
         minimum_holdout = int(search["minimum_holdout_sample"])
         warning = (
@@ -1445,10 +1455,14 @@ def _validate_search(search: object) -> dict[str, Any]:
         search.get("schema_version") != 2
         or not isinstance(space, dict)
         or "risk_per_trade" in space
-        or not TIME_STOP_SEARCH_FIELDS.issubset(space)
         or any(not isinstance(values, list) or not values for values in space.values())
     ):
         raise SweepExpectedError("SEARCH_SPACE_INVALID")
+    if search.get("search", {}).get("strategy") == "targeted" and "calibration" in search:
+        try:
+            validate_targeted_space(search)
+        except (KeyError, TypeError, ValueError):
+            raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
     return search
 
 
@@ -1594,7 +1608,8 @@ def _stream_json_array(source: Path, target: Path, *, rejected_only: bool = Fals
     with source.open(encoding="utf-8") as incoming:
         for line in incoming:
             item = json.loads(line)
-            if not rejected_only or item["result_status"] != "ACCEPTED":
+            status = item.get("evaluation_status", item.get("result_status"))
+            if not rejected_only or status != "ACCEPTED":
                 rendered.append(json.dumps(item, indent=2, sort_keys=True))
     DEFAULT_ARTIFACT_WRITER.atomic_text(
         target, "[\n" + ",\n".join(rendered) + "\n]\n",
@@ -1715,45 +1730,14 @@ def _stage_for(plan: SearchPlan, evaluated: int) -> str:
 
 
 def _aggregate_results(output: Path) -> dict[str, object]:
-    database_path = output / ".search-aggregate.sqlite3"
-    connection = sqlite3.connect(database_path)
-    connection.execute(
-        "CREATE TABLE points(hash TEXT PRIMARY KEY, expectancy REAL, drawdown REAL, trades INTEGER)"
-    )
-    with (output / "RESULTS.jsonl").open(encoding="utf-8") as handle:
-        for line in handle:
-            item = json.loads(line)
-            if (
-                item["result_status"] != "ACCEPTED"
-                or item["validation"].get("rows_replayable", 0) <= 0
-                or item["validation"].get("net_expectancy_per_trade") is None
-            ):
-                continue
-            metrics = item["validation"]
-            connection.execute("INSERT INTO points VALUES (?,?,?,?)", (
-                item["config_hash"], metrics["net_expectancy_per_trade"] or -1e99,
-                metrics["max_drawdown"] or 0.0, metrics["trade_count"] or 0,
-            ))
-    connection.commit()
-    top_hashes = [row[0] for row in connection.execute(
-        "SELECT hash FROM points ORDER BY expectancy DESC, drawdown ASC, trades DESC LIMIT 10"
-    )]
-    frontier = [row[0] for row in connection.execute(
-        "SELECT p.hash FROM points p WHERE NOT EXISTS (SELECT 1 FROM points o WHERE "
-        "o.hash <> p.hash AND o.expectancy >= p.expectancy AND o.drawdown <= p.drawdown "
-        "AND o.trades >= p.trades AND (o.expectancy > p.expectancy OR o.drawdown < p.drawdown OR o.trades > p.trades))"
-    )]
-    connection.close()
-    database_path.unlink(missing_ok=True)
-    selected: dict[str, dict[str, Any]] = {}
-    with (output / "RESULTS.jsonl").open(encoding="utf-8") as handle:
-        for line in handle:
-            item = json.loads(line)
-            if item["config_hash"] in top_hashes:
-                selected[item["config_hash"]] = item
+    rows = list(iter_results(output / "RESULTS.jsonl"))
+    ranked = rank_results(rows)[: RESEARCH_PARAMETERS.artifact.top_config_count]
     return {
-        "ranked_without_holdout": [selected[value] for value in top_hashes],
-        "pareto_frontier": frontier, "holdout_used_for_search": False,
+        "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
+        "ranked_without_holdout": ranked,
+        "pareto_frontier": pareto_frontier(ranked),
+        "holdout_used_for_search": False,
+        "selection_bias_guard": selection_bias_guard(hypothesis_count=len(rows), independent_observations=max((int(row.get("opportunity_count") or 0) for row in rows), default=0)),
     }
 
 
@@ -1773,7 +1757,11 @@ def _run_impl(
         raise SweepExpectedError("CONFIG_FILE_NOT_FOUND") from None
     except yaml.YAMLError:
         raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
-    space = search["search_space"]
+    legacy_offline_config = not isinstance(search.get("dataset"), dict)
+    if search.get("search", {}).get("strategy") == "targeted" and legacy_offline_config:
+        search = {**search, "search": {**search["search"], "strategy": "bounded"}}
+        search["search"].pop("max_total_configs", None)
+    space = active_search_space(search) if search.get("search", {}).get("strategy") == "targeted" else search["search_space"]
     options = _dataset_options(search, max_rows=max_rows, from_value=from_value, to_value=to_value)
     identifier, output = _prepare_output(search, run_id, resume=resume)
     status_store = StatusStore(
@@ -2227,26 +2215,39 @@ def _run_impl(
     jsonl = output / "RESULTS.jsonl"
     csv_path = output / "RESULTS.csv"
     csv_fields = ["result_index", "config_hash", "stage", "result_status", "validation_expectancy", "validation_drawdown", "validation_trades", "parameters_json"]
-    result_writer = DurableResultWriter(output, csv_fields)
+    research_hash = _config_hash(search)
+    result_writer = DurableResultWriter(
+        output, csv_fields,
+        transform=lambda value: compact_result(
+            value,
+            baseline_config_hash=TRADE_PARAMETERS.config_hash,
+            research_config_hash=research_hash,
+        ),
+    )
     candidate_variants = _conditional_variants(space)
+    baseline_config = _production_baseline_config()
+    if plan.selected_strategy == "TARGETED_STAGED":
+        candidate_source = enumerate(staged_candidates(search, baseline_config))
+    else:
+        candidate_source = enumerate(_candidate_indices(plan))
     batch_active = 0
     batches_this_call = 0
+    finalist_candidates: list[tuple[tuple[float, float, int], str, list[dict[str, Any]]]] = []
     if not jsonl.exists():
         DEFAULT_ARTIFACT_WRITER.atomic_text(jsonl, "", operation="results_jsonl_initialize")
     if not csv_path.exists():
         result_writer._write_csv([])
     with result_writer._lock:
-        for candidate_offset, raw_index in enumerate(_candidate_indices(plan)):
+        for candidate_offset, raw_value in candidate_source:
             if candidate_offset <= int(checkpoint["last_candidate_offset"]):
                 continue
             if int(checkpoint["evaluated_count"]) >= plan.evaluation_budget:
                 break
-            stage = _stage_for(plan, int(checkpoint["evaluated_count"]))
+            stage = raw_value.stage if plan.selected_strategy == "TARGETED_STAGED" else _stage_for(plan, int(checkpoint["evaluated_count"]))
             next_index = int(checkpoint["last_durable_result_index"]) + 1
-            candidate = _candidate_config(
-                space, raw_index, conditional_variants=candidate_variants,
+            candidate = raw_value.overrides if plan.selected_strategy == "TARGETED_STAGED" else _candidate_config(
+                space, raw_value, conditional_variants=candidate_variants,
             )
-            baseline_config = _production_baseline_config()
             resolved_config = {**baseline_config, **candidate}
             changed_parameters = {
                 key: value for key, value in candidate.items()
@@ -2270,10 +2271,25 @@ def _run_impl(
                 planned=plan.evaluation_budget,
             )
             item, consumed_budget, early_reason = _evaluate_config(
-                candidate, splits, search["minimum_samples"],
+                resolved_config, splits, search["minimum_samples"],
                 index=next_index, stage=stage,
             )
+            item["overrides"] = changed_parameters
             item["run_id"] = identifier
+            validation_metrics = item.get("validation", {})
+            if item.get("result_status") == "ACCEPTED":
+                detailed = []
+                for split_name in ("calibration", "validation", "holdout"):
+                    for trade in item.get(split_name, {}).get("trades", [])[: RESEARCH_PARAMETERS.artifact.max_detailed_trades_per_config]:
+                        detailed.append({"config_id": item["config_hash"], "split": split_name, **compact_trade(trade, str(dataset_manifest["manifest_hash"]))})
+                score = (
+                    float(validation_metrics.get("net_expectancy_per_trade") or -1e12),
+                    -float(validation_metrics.get("max_drawdown") or 0),
+                    int(validation_metrics.get("trade_count") or 0),
+                )
+                finalist_candidates.append((score, item["config_hash"], detailed))
+                finalist_candidates.sort(reverse=True, key=lambda value: (value[0], value[1]))
+                del finalist_candidates[RESEARCH_PARAMETERS.artifact.finalist_config_count:]
             emit(EventType.CONFIG_COMPLETED, index=next_index + 1, result=item)
             status_store.update(
                 state=RunState.WRITING_RESULT.value,
@@ -2366,8 +2382,29 @@ def _run_impl(
     _atomic_json(checkpoint_path, checkpoint)
     _stream_json_array(jsonl, output / "RESULTS.json")
     _stream_json_array(jsonl, output / "REJECTED_CONFIGS.json", rejected_only=True)
+    accepted_rows = [row for row in iter_results(jsonl) if row["evaluation_status"] == "ACCEPTED"]
+    rejected_rows = [row for row in iter_results(jsonl) if row["evaluation_status"] != "ACCEPTED"]
+    DEFAULT_ARTIFACT_WRITER.atomic_text(output / "ACCEPTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in accepted_rows) or "\n", operation="accepted_configs_v2")
+    DEFAULT_ARTIFACT_WRITER.atomic_text(output / "REJECTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in rejected_rows) or "\n", operation="rejected_configs_v2")
+    finalist_rows = [trade for _score, _config_id, trades in finalist_candidates for trade in trades]
+    DEFAULT_ARTIFACT_WRITER.atomic_text(output / "FINALIST_TRADES.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in finalist_rows) or "\n", operation="finalist_trades_v2")
     top = _aggregate_results(output)
     _atomic_json(output / "TOP_CONFIGS.json", top)
+    _atomic_json(output / "RUN_MANIFEST.json", {
+        "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
+        "run_id": identifier,
+        "dataset_manifest_ref": "DATASET_MANIFEST.json",
+        "baseline_set_id": RESEARCH_PARAMETERS.calibration.baseline_set_id,
+        "baseline_config_hash": TRADE_PARAMETERS.config_hash,
+        "research_config_hash": research_hash,
+        "search_space_hash": search_space_hash,
+        "engine_compatibility": SCHEMA_VERSION,
+    })
+    try:
+        size_status = enforce_size_budget(output)
+    except ArtifactSizeBudgetExceeded as error:
+        raise SweepExpectedError(str(error)) from error
+    _atomic_json(output / "ARTIFACT_SIZES.json", size_status)
     configs_per_observation = int(checkpoint["evaluated_count"]) / len(rows)
     run_config.update(finished_timing)
     DEFAULT_ARTIFACT_WRITER.atomic_text(

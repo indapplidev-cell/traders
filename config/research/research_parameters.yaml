@@ -1,14 +1,20 @@
 schema_version: 2
 seed: 20260906
 search:
-  strategy: auto
+  strategy: targeted
   seed: 20260907
   exhaustive_max_configs: 10000
   max_evaluated_configs: 5000
-  batch_size: 100
-  stage1_fraction: 0.60
-  stage2_fraction: 0.30
-  stage3_fraction: 0.10
+  max_total_configs: 500
+  max_concurrent_evaluations: 1
+  batch_size: 25
+  checkpoint_cadence: 1
+  stage_budgets:
+    SET2_BASELINE: 1
+    ONE_FACTOR_SENSITIVITY: 48
+    SMALL_FAMILY_SEARCH: 240
+    TOP_REGION_REFINEMENT: 160
+    LOCAL_FINALIST_VALIDATION: 51
   max_configs_per_observation: 100
   minimum_validation_sample: 20
   minimum_holdout_sample: 20
@@ -22,6 +28,71 @@ dataset:
   max_rows: 10000
 output_root: artifacts/scalping_v2_parameter_sweep
 minimum_samples: {calibration: 30, validation: 20, holdout: 20}
+artifact:
+  schema_version: 2
+  top_config_count: 10
+  finalist_config_count: 5
+  max_detailed_trades_per_config: 100
+  soft_total_bytes: 125829120
+  hard_total_bytes: 209715200
+  soft_results_bytes: 52428800
+  hard_results_bytes: 104857600
+ranking:
+  minimum_trades: 20
+  minimum_symbol_coverage: 3
+  minimum_independent_periods: 3
+  validation_minimum_trades: 20
+  selection_bias_hypotheses_per_observation: 10.0
+  promising_min_expectancy_r: 0.0
+  promising_min_profit_factor: 1.0
+  validation_candidate_min_stability: 0.6
+calibration:
+  baseline_set_id: scalping-v2-set-2
+  targeted_families: [SIGNAL, REGIME, ENTRY, GEOMETRY]
+  frozen_families: [ECONOMICS, LIFECYCLE_SHADOW, RISK_SAFETY, COSTS]
+  parameter_families:
+    SIGNAL:
+      - impulse_absolute_threshold_pct
+      - impulse_atr_multiplier
+      - impulse_lookback_candles
+      - confirmation_window_candles
+      - strategy_minimum_score
+    REGIME:
+      - regime_lookback_candles
+      - volume_baseline_candles
+    ENTRY:
+      - entry_refinement_1m_confirmation_count
+      - causal_reset_min_conditions
+    GEOMETRY:
+      - stop_max_bps
+      - target_min_bps
+    ECONOMICS:
+      - minimum_planned_rr
+      - min_positive_ev_r
+      - min_ev_reserve_r
+      - min_net_edge_bps
+      - bucket_min_sample
+      - probability_confidence_level
+      - prior_alpha
+      - prior_beta
+    LIFECYCLE_SHADOW:
+      - soft_timeout_seconds
+      - hard_timeout_seconds
+      - min_target_progress_at_soft_timeout
+      - min_mfe_bps_at_soft_timeout
+      - min_remaining_ev_r_at_soft_timeout
+      - extension_seconds
+      - max_extensions
+      - break_even_activation_target_progress
+      - net_break_even_protection_enabled
+    RISK_SAFETY:
+      - risk_per_trade_bps
+      - max_open_positions
+      - total_open_risk_limit_bps
+      - max_new_commands_per_cycle
+    COSTS:
+      - adverse_fill_reserve_bps
+      - entry_slippage_bps
 artifact_writer:
   retry_delays_seconds: [0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
 search_space:

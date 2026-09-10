@@ -234,14 +234,15 @@ class RuntimePolicy(StrictModel):
 
 
 class ResearchSearchPolicy(StrictModel):
-    strategy: Literal["auto", "exhaustive", "bounded"]
+    strategy: Literal["auto", "exhaustive", "bounded", "targeted"]
     seed: int
     exhaustive_max_configs: int = Field(gt=0)
     max_evaluated_configs: int = Field(gt=0)
+    max_total_configs: int = Field(gt=0)
+    max_concurrent_evaluations: int = Field(gt=0)
     batch_size: int = Field(gt=0)
-    stage1_fraction: float = Field(ge=0, le=1)
-    stage2_fraction: float = Field(ge=0, le=1)
-    stage3_fraction: float = Field(ge=0, le=1)
+    checkpoint_cadence: int = Field(gt=0)
+    stage_budgets: dict[str, int]
     max_configs_per_observation: int = Field(gt=0)
     minimum_validation_sample: int = Field(gt=0)
     minimum_holdout_sample: int = Field(gt=0)
@@ -250,9 +251,11 @@ class ResearchSearchPolicy(StrictModel):
     starting_balance: float = Field(gt=0)
 
     @model_validator(mode="after")
-    def fractions_sum_to_one(self):
-        if abs(self.stage1_fraction + self.stage2_fraction + self.stage3_fraction - 1.0) > 1e-9:
-            raise ValueError("research stage fractions must sum to one")
+    def stage_budget_is_bounded(self):
+        if any(value < 0 for value in self.stage_budgets.values()):
+            raise ValueError("research stage budgets must be non-negative")
+        if sum(self.stage_budgets.values()) > self.max_total_configs:
+            raise ValueError("research stage budgets exceed max_total_configs")
         return self
 
 
@@ -267,6 +270,35 @@ class ArtifactWriterPolicy(StrictModel):
     retry_delays_seconds: tuple[float, ...]
 
 
+class ResearchArtifactPolicy(StrictModel):
+    schema_version: Literal[2]
+    top_config_count: int = Field(gt=0)
+    finalist_config_count: int = Field(gt=0)
+    max_detailed_trades_per_config: int = Field(gt=0)
+    soft_total_bytes: int = Field(gt=0)
+    hard_total_bytes: int = Field(gt=0)
+    soft_results_bytes: int = Field(gt=0)
+    hard_results_bytes: int = Field(gt=0)
+
+
+class ResearchRankingPolicy(StrictModel):
+    minimum_trades: int = Field(gt=0)
+    minimum_symbol_coverage: int = Field(gt=0)
+    minimum_independent_periods: int = Field(gt=0)
+    validation_minimum_trades: int = Field(gt=0)
+    selection_bias_hypotheses_per_observation: float = Field(gt=0)
+    promising_min_expectancy_r: float
+    promising_min_profit_factor: float = Field(gt=0)
+    validation_candidate_min_stability: float = Field(ge=0, le=1)
+
+
+class ResearchCalibrationPolicy(StrictModel):
+    baseline_set_id: Literal["scalping-v2-set-2"]
+    targeted_families: tuple[str, ...]
+    frozen_families: tuple[str, ...]
+    parameter_families: dict[str, tuple[str, ...]]
+
+
 class ResearchParameters(StrictModel):
     schema_version: Literal[2]
     seed: int
@@ -274,6 +306,9 @@ class ResearchParameters(StrictModel):
     dataset: ResearchDataset
     output_root: str
     minimum_samples: dict[str, int]
+    artifact: ResearchArtifactPolicy
+    ranking: ResearchRankingPolicy
+    calibration: ResearchCalibrationPolicy
     artifact_writer: ArtifactWriterPolicy
     search_space: dict[str, list[float | int | bool | None]]
 

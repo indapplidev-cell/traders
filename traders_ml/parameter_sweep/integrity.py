@@ -14,10 +14,11 @@ from .artifact_writer import DEFAULT_ARTIFACT_WRITER
 
 
 COMPLETED_ARTIFACTS = (
-    "RUN_CONFIG.yaml", "PREFLIGHT.json", "SEARCH_PLAN.json", "DATASET_MANIFEST.json",
+    "RUN_CONFIG.yaml", "RUN_MANIFEST.json", "PREFLIGHT.json", "SEARCH_PLAN.json", "DATASET_MANIFEST.json",
     "DATASET_SNAPSHOT.json", "CHECKPOINT.json",
     "RESULTS.csv", "RESULTS.jsonl", "RESULTS.json", "TOP_CONFIGS.json",
-    "REJECTED_CONFIGS.json", "REPORT.md", "STATUS.json",
+    "ACCEPTED_CONFIGS.jsonl", "REJECTED_CONFIGS.jsonl", "FINALIST_TRADES.jsonl",
+    "REJECTED_CONFIGS.json", "ARTIFACT_SIZES.json", "REPORT.md", "STATUS.json",
 )
 
 TERMINAL_ARTIFACTS = {
@@ -128,11 +129,10 @@ def verify_artifacts(
                 and len(jsonl_results) == expected_count
                 and len(csv_results) == expected_count
             )
-            identities = [
-                (row.get("run_id"), row.get("result_index"), row.get("config_hash"))
-                for row in jsonl_results
-            ]
+            identities = [(row.get("run_id"), row.get("result_index", row.get("config_index")), row.get("config_hash", row.get("config_id"))) for row in jsonl_results]
             checks["result_identity_unique"] = len(identities) == len(set(identities))
+            checks["artifact_schema_v2"] = all(row.get("artifact_schema_version") == 2 for row in jsonl_results)
+            checks["inline_market_path_zero"] = all("market_path_1m" not in line for line in (run_directory / "RESULTS.jsonl").read_text(encoding="utf-8").splitlines())
             checks["checkpoint_evaluated_equals_durable"] = (
                 int(checkpoint.get("evaluated_count", -1))
                 == int(checkpoint.get("durable_result_count", -2))
