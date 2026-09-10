@@ -21,14 +21,14 @@ from app.config.trade_parameters import SCALPING_V2
 
 PROFILE_ID = "trade-5m-v2"
 FEE_BPS = (
-    SCALPING_V2.cost.configured_entry_fee_bps
-    + SCALPING_V2.cost.configured_exit_fee_bps
+    SCALPING_V2.costs.configured_entry_fee_bps
+    + SCALPING_V2.costs.configured_exit_fee_bps
 )
 SLIPPAGE_BPS = (
-    SCALPING_V2.cost.entry_slippage_bps
-    + SCALPING_V2.cost.exit_slippage_bps
+    SCALPING_V2.costs.entry_slippage_bps
+    + SCALPING_V2.costs.exit_slippage_bps
 )
-SAFETY_MARGIN_BPS = SCALPING_V2.cost.cost_safety_margin_bps
+SAFETY_MARGIN_BPS = SCALPING_V2.costs.cost_safety_margin_bps
 RR_VALUES = (0.4, 0.6, 0.8, 1.0, 1.2, 1.5)
 EDGE_VALUES = (1.0, 10.0, 15.0, 20.0)
 SCORE_VALUES = (55.0, 60.0, 65.0)
