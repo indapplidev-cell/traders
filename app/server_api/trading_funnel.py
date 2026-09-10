@@ -9,9 +9,11 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from threading import Lock
 from time import monotonic
+from types import SimpleNamespace
 from typing import Any, Final
 
-from sqlalchemy import func, select, text, tuple_
+from sqlalchemy import cast, func, select, text, tuple_
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session, load_only
 
 from app.engine_orchestrator.orchestrator_models import OnlinePipelineResultRow, OnlinePipelineRun
@@ -46,6 +48,58 @@ from app.config.trade_parameters import (
 )
 from app.engine_paper.binance_account_commission import commission_runtime_status
 from app.engine_paper.stale_position_shadow import stale_position_runtime_projection
+
+
+_FUNNEL_RESULT_FIELDS: Final = (
+    "analysis_payload_json",
+    "setup_payload_json",
+    "strategy_payload_json",
+    "risk_payload_json",
+    "paper_payload_json",
+)
+
+
+def _projected_result_columns() -> tuple[Any, ...]:
+    """Return the causally complete, bounded JSON projection used by the funnel.
+
+    Every pipeline module persists the same large frozen parameter snapshot. The
+    funnel never reads that duplicated object (configuration provenance is
+    projected from canonical top-level fields), so transferring 500 copies can
+    exceed the readonly statement timeout and container memory budget. PostgreSQL
+    removes only that unused key before JSON decoding; decision, rejection,
+    identity, and lifecycle fields remain unchanged.
+    """
+    return (
+        OnlinePipelineResultRow.id,
+        OnlinePipelineResultRow.trade_profile_id,
+        OnlinePipelineResultRow.primary_timeframe,
+        *(
+            cast(getattr(OnlinePipelineResultRow, field), JSONB)
+            .op("-")("frozen_parameter_snapshot")
+            .label(field)
+            for field in _FUNNEL_RESULT_FIELDS
+        ),
+        OnlinePipelineResultRow.module_reasons_json,
+        OnlinePipelineResultRow.created_at,
+    )
+
+
+def _projected_result_pair(row: Any) -> tuple[OnlinePipelineRun, Any | None]:
+    """Normalize a PostgreSQL scalar projection or an ORM pair used by tests."""
+    if len(row) == 2:
+        return row[0], row[1]
+    run = row[0]
+    if row[1] is None:
+        return run, None
+    values = dict(zip(_FUNNEL_RESULT_FIELDS, row[4:9], strict=True))
+    return run, SimpleNamespace(
+        id=row[1],
+        trade_profile_id=row[2],
+        primary_timeframe=row[3],
+        **values,
+        module_reasons_json=row[9],
+        created_at=row[10],
+    )
 
 
 PROJECTION_VERSION: Final = "trading-funnel-v1"
@@ -1208,8 +1262,18 @@ class TradingFunnelReadRepository:
                         if profile_schema_ready
                         else ()
                     )
+                    postgres_projection = (
+                        getattr(getattr(session, "bind", None), "dialect", None)
+                        is not None
+                        and session.bind.dialect.name == "postgresql"
+                    )
+                    selected_result = (
+                        _projected_result_columns()
+                        if postgres_projection
+                        else (OnlinePipelineResultRow,)
+                    )
                     statement = (
-                        select(OnlinePipelineRun, OnlinePipelineResultRow)
+                        select(OnlinePipelineRun, *selected_result)
                         .options(
                             load_only(
                                 OnlinePipelineRun.id,
@@ -1237,18 +1301,6 @@ class TradingFunnelReadRepository:
                                 OnlinePipelineRun.final_reason,
                                 OnlinePipelineRun.updated_at,
                             ),
-                            load_only(
-                                OnlinePipelineResultRow.id,
-                                OnlinePipelineResultRow.trade_profile_id,
-                                OnlinePipelineResultRow.primary_timeframe,
-                                OnlinePipelineResultRow.analysis_payload_json,
-                                OnlinePipelineResultRow.setup_payload_json,
-                                OnlinePipelineResultRow.strategy_payload_json,
-                                OnlinePipelineResultRow.risk_payload_json,
-                                OnlinePipelineResultRow.paper_payload_json,
-                                OnlinePipelineResultRow.module_reasons_json,
-                                OnlinePipelineResultRow.created_at,
-                            ),
                         )
                         .outerjoin(
                             OnlinePipelineResultRow,
@@ -1273,7 +1325,10 @@ class TradingFunnelReadRepository:
                             * (50 if profile.trigger_timeframe == "5m" else 18)
                         )
                     )
-                    rows = tuple(session.execute(statement))
+                    rows = tuple(
+                        _projected_result_pair(row)
+                        for row in session.execute(statement)
+                    )
                     if profile.trigger_timeframe == "5m":
                         # Keep the latest persisted successful PAPER plans
                         # selectable after they age out of the rolling 4h
@@ -1281,7 +1336,7 @@ class TradingFunnelReadRepository:
                         # one query per symbol); its causal payload is rendered
                         # unchanged and is not mixed with current quotes.
                         detail_statement = (
-                            select(OnlinePipelineRun, OnlinePipelineResultRow)
+                            select(OnlinePipelineRun, *selected_result)
                             .outerjoin(
                                 OnlinePipelineResultRow,
                                 (
@@ -1315,7 +1370,8 @@ class TradingFunnelReadRepository:
                             str,
                             tuple[OnlinePipelineRun, OnlinePipelineResultRow | None],
                         ] = {}
-                        for pair in session.execute(detail_statement):
+                        for raw_pair in session.execute(detail_statement):
+                            pair = _projected_result_pair(raw_pair)
                             plan_run = pair[0]
                             if (
                                 plan_run.run_id not in known_run_ids
