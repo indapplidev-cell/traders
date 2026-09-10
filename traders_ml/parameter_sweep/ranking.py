@@ -7,6 +7,12 @@ from typing import Any, Iterable, Mapping
 from app.config.yaml_authority import RESEARCH_PARAMETERS
 
 
+PERFORMANCE_CLASSES = (
+    "INVALID", "INSUFFICIENT_SAMPLE", "NEGATIVE_EXPECTANCY", "WEAK",
+    "PROMISING_RESEARCH", "VALIDATION_CANDIDATE",
+)
+
+
 def rank_score(row: Mapping[str, Any]) -> tuple[float, ...]:
     trades = int(row.get("trade_count") or 0)
     expectancy = float(row.get("expectancy_R") or -1e12)
@@ -29,6 +35,19 @@ def selection_bias_guard(*, hypothesis_count: int, independent_observations: int
     return "PASS"
 
 
+def rank_stability(period_expectancies: Iterable[float]) -> float:
+    values = [float(value) for value in period_expectancies]
+    if not values:
+        return 0.0
+    positive_share = sum(value > 0 for value in values) / len(values)
+    if len(values) == 1:
+        return positive_share
+    spread = max(values) - min(values)
+    scale = max(abs(value) for value in values) or 1.0
+    smoothness = max(0.0, 1.0 - spread / (2 * scale))
+    return round(positive_share * smoothness, 12)
+
+
 def pareto_frontier(rows: Iterable[dict[str, Any]]) -> list[str]:
     values = list(rows)
     result = []
@@ -48,4 +67,3 @@ def pareto_frontier(rows: Iterable[dict[str, Any]]) -> list[str]:
         if not dominated:
             result.append(str(point.get("config_id")))
     return sorted(result)
-
