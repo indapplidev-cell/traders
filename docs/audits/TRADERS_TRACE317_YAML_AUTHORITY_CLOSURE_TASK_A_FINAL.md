@@ -34,10 +34,13 @@ Frozen one-to-one input and resolution are in
 `artifacts/final_trace317_projection_readiness_01/TRACE317_INPUT.csv` and
 `TRACE317_RESOLUTION.csv`. Input SHA-256 is
 `6ff77b3275f9798fbe3d24f3a155a43757c4e016b4d59be80e08e79ec314e046`.
-The resolved active hash is
-`8d725ee1c2637dfd6f7c33b8ef2157a599775f3948e195dbfc29d1885a055586`.
+The repository-wide authority hash is
+`49d89364e72d53aed0f59aa7ff9e7ce5335933049b3ff68f1221e1ba36496edf`.
+The active Set #2 trade-resolution hash remains
+`8d725ee1c2637dfd6f7c33b8ef2157a599775f3948e195dbfc29d1885a055586`;
+the difference is the readiness-only YAML domain, which is not an economic
+strategy input.
 
 The adversarial guard rejects literal policy assignments, numeric/string
 fallbacks, argparse defaults, duplicate semantic YAML ownership, missing YAML
 keys, Desktop/research fallbacks, and a literal legacy 15m projection default.
-
