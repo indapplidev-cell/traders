@@ -29,6 +29,7 @@ from app.engine_orchestrator.orchestrator_models import (
     OnlinePipelineResultRow,
     OnlinePipelineRun,
 )
+from app.config.yaml_authority import RUNTIME_POLICY
 from app.trading_universe.domain import PREPARED_NEXT_TRADING_UNIVERSE
 if TYPE_CHECKING:
     from app.engine_paper.paper_approvals import PaperQuantityApprovalSource
@@ -45,13 +46,18 @@ AUTHORITATIVE_RISK_SOURCE: Final = "online_pipeline_results.risk_payload_json"
 AUTHORITATIVE_FINAL_APPROVAL_SOURCE: Final = "paper_payload_json.persisted_final_approvals"
 AUTHORITATIVE_QUANTITY_SOURCE: Final = "PaperQuantityApproval.CONTROLLED_PAPER_AUTHORITY"
 SYMBOL_ALLOWLIST: Final = PREPARED_NEXT_TRADING_UNIVERSE.symbols
-PRIMARY_TIMEFRAME: Final = "15m"
-EXECUTION_TIMEFRAMES: Final = ("5m",)
+PRIMARY_TIMEFRAME: Final = RUNTIME_POLICY.profiles[
+    RUNTIME_POLICY.active_profile
+].trigger_timeframe
 EXECUTION_PROFILE_BY_TIMEFRAME: Final = {
-    "5m": "trade-5m-v2",
+    profile.trigger_timeframe: profile_id
+    for profile_id, profile in RUNTIME_POLICY.profiles.items()
+    if profile.enabled and profile.paper_command_creation_enabled
 }
+EXECUTION_TIMEFRAMES: Final = tuple(EXECUTION_PROFILE_BY_TIMEFRAME)
 EXECUTION_PROFILES_BY_TIMEFRAME: Final = {
-    "5m": frozenset({"trade-5m-v2"}),
+    timeframe: frozenset({profile_id})
+    for timeframe, profile_id in EXECUTION_PROFILE_BY_TIMEFRAME.items()
 }
 MAX_SYMBOLS_PER_REQUEST: Final = 10
 MAX_RUN_LOOKBACK: Final = 8
@@ -388,9 +394,9 @@ class _PersistedDecision:
     strategy: Mapping[str, Any]
     risk: Mapping[str, Any]
     paper: Mapping[str, Any]
-    trade_profile_id: str = "trade-15m-v1"
-    result_trade_profile_id: str | None = "trade-15m-v1"
-    result_primary_timeframe: str | None = "15m"
+    trade_profile_id: str = RUNTIME_POLICY.active_profile
+    result_trade_profile_id: str | None = RUNTIME_POLICY.active_profile
+    result_primary_timeframe: str | None = PRIMARY_TIMEFRAME
 
 
 class _ReadOnlyExecutor:

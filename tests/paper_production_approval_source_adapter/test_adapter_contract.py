@@ -88,7 +88,7 @@ def research_strategy():
     return StrategyDecision(
         decision_id="strategy:1", created_at_ms=CLOSED + 1,
         source_setup_id="setup:1", source_analysis_snapshot_id="analysis:1",
-        symbol="BTCUSDT", timeframe="15m", closed_until_ms=CLOSED,
+        symbol="BTCUSDT", timeframe="5m", closed_until_ms=CLOSED,
         decision_status="ALLOW_RESEARCH_TRADE_PLAN",
         strategy_type="BREAKOUT_CONTINUATION_RESEARCH", direction_hint="BULLISH",
         setup_status="SETUP_CANDIDATE", setup_type="BREAKOUT_CONTINUATION",
@@ -103,7 +103,7 @@ def research_risk():
         risk_decision_id="risk:1", created_at_ms=CLOSED + 2,
         source_strategy_decision_id="strategy:1", source_setup_id="setup:1",
         source_analysis_snapshot_id="analysis:1", symbol="BTCUSDT",
-        timeframe="15m", closed_until_ms=CLOSED,
+        timeframe="5m", closed_until_ms=CLOSED,
         risk_status="RISK_PRE_APPROVED_RESEARCH", risk_level="LOW", risk_score=90.0,
         risk_policy_version="risk-v1",
         source_decision_status="ALLOW_RESEARCH_TRADE_PLAN",
@@ -145,7 +145,7 @@ def approval_chain():
 def row(**changes):
     analysis_payload = {
         "snapshot_id": "analysis:1", "source_market_data_snapshot_id": "market-snapshot:1",
-        "symbol": "BTCUSDT", "timeframe": "15m", "closed_until_ms": CLOSED,
+        "symbol": "BTCUSDT", "timeframe": "5m", "closed_until_ms": CLOSED,
         "created_at_ms": CLOSED + 1, "future_bars_used": False,
     }
     setup_payload = {
@@ -165,7 +165,7 @@ def row(**changes):
     }
     values = dict(
         run_pk=1, result_pk=1, run_id="run:1", symbol="BTCUSDT",
-        primary_timeframe="15m", closed_until_ms=CLOSED, status="COMPLETED",
+        primary_timeframe="5m", closed_until_ms=CLOSED, status="COMPLETED",
         finished_at=APPROVED_AT, freshness_deadline_at=None, future_bars_used=False,
         is_trade_signal=True, is_executable=True, order_approved=True,
         execution_approved=True, position_opened=False, position_size_approved=True,
@@ -241,8 +241,8 @@ def test_5m_is_an_authorized_production_approval_scope():
     with_timeframe = lambda payload: {**payload, "timeframe": "5m"}
     candidate = replace(
         source, primary_timeframe="5m",
-        trade_profile_id="trade-5m-v1",
-        result_trade_profile_id="trade-5m-v1",
+        trade_profile_id="trade-5m-v2",
+        result_trade_profile_id="trade-5m-v2",
         result_primary_timeframe="5m",
         analysis=with_timeframe(source.analysis),
         setup=with_timeframe(source.setup),
@@ -266,7 +266,7 @@ def test_5m_is_an_authorized_production_approval_scope():
     (
         {"trade_profile_id": "trade-5m-v1"},
         {"result_trade_profile_id": "trade-5m-v1"},
-        {"result_primary_timeframe": "5m"},
+        {"result_primary_timeframe": "15m"},
     ),
 )
 def test_cross_profile_or_result_identity_contamination_fails_closed(changes):

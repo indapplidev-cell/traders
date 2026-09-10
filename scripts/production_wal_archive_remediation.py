@@ -28,6 +28,7 @@ from app.engine_safety.production_wal_archive import (
     wal_segment_identity,
 )
 from scripts.production_backup import CONTAINER, SAFE_ROOT, OperationFailure, sync_wal
+from app.config.yaml_authority import RUNTIME_POLICY
 
 
 DB_USER = "traders_ml"
@@ -43,8 +44,9 @@ HOST_ACK_ARCHIVE_COMMAND = (
     "sleep 1; i=$((i+1)); done; "
     "test -f /var/lib/postgresql/wal_export/%f.ack"
 )
-DAEMON_STATE_WRITE_ATTEMPTS = 5
-DAEMON_STATE_WRITE_RETRY_SECONDS = 0.2
+_DAEMON_POLICY = RUNTIME_POLICY.wal_ack_daemon
+DAEMON_STATE_WRITE_ATTEMPTS = _DAEMON_POLICY.state_write_attempts
+DAEMON_STATE_WRITE_RETRY_SECONDS = _DAEMON_POLICY.state_write_retry_seconds
 WINDOWS_AUTOSTART_TASK = "TradersML-WALAckDaemon"
 WINDOWS_STARTUP_LAUNCHER = "TradersML-WALAckDaemon.vbs"
 
@@ -328,7 +330,11 @@ def install_windows_daemon_autostart(root: Path, *, interval_seconds: int) -> bo
     """Install the canonical daemon as a current-user logon task on Windows."""
     if os.name != "nt":
         raise OperationFailure("WINDOWS_AUTOSTART_UNAVAILABLE")
-    if interval_seconds < 1 or interval_seconds > 30:
+    if not (
+        _DAEMON_POLICY.minimum_interval_seconds
+        <= interval_seconds
+        <= _DAEMON_POLICY.maximum_interval_seconds
+    ):
         raise OperationFailure("INVALID_ACK_DAEMON_INTERVAL")
     if root.resolve() != SAFE_ROOT.resolve() or not (root / "wal_archive").is_dir():
         raise OperationFailure("UNAPPROVED_STORAGE_ROOT")
@@ -382,13 +388,18 @@ def _host_ack_daemon_cycle(root: Path, *, process_id: int) -> dict[str, object]:
 
     snapshot = capture_snapshot(root)
     published = 0
-    if snapshot.export_backlog_count:
-        result = sync_wal(root)
-        published = int(result["published_segment_count"])
-        # The PostgreSQL archive command observes the host ACK asynchronously.
-        # Do not publish its short-lived .ready/export state as a readiness
-        # failure after the archive bytes have already been durably synced.
-        snapshot, _ = bounded_retry(root, timeout_seconds=30)
+    deadline = time.monotonic() + _DAEMON_POLICY.cycle_work_seconds
+    while time.monotonic() < deadline:
+        if snapshot.export_backlog_count:
+            result = sync_wal(root)
+            published += int(result["published_segment_count"])
+        snapshot = capture_snapshot(root)
+        if (
+            snapshot.pending_archive_status_count == 0
+            and snapshot.export_backlog_count == 0
+        ):
+            break
+        time.sleep(_DAEMON_POLICY.settle_poll_seconds)
     return {
         "schema": "TRADERS_ML_WAL_ACK_DAEMON_STATE_V1",
         "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -403,7 +414,11 @@ def _host_ack_daemon_cycle(root: Path, *, process_id: int) -> dict[str, object]:
 
 def run_host_ack_daemon(root: Path, *, interval_seconds: int) -> None:
     """Continuously service the existing fail-closed host ACK protocol."""
-    if interval_seconds < 1 or interval_seconds > 30:
+    if not (
+        _DAEMON_POLICY.minimum_interval_seconds
+        <= interval_seconds
+        <= _DAEMON_POLICY.maximum_interval_seconds
+    ):
         raise OperationFailure("INVALID_ACK_DAEMON_INTERVAL")
     if root.resolve() != SAFE_ROOT.resolve():
         raise OperationFailure("UNAPPROVED_STORAGE_ROOT")
@@ -442,7 +457,9 @@ def main(argv: list[str] | None = None) -> int:
     ))
     parser.add_argument("--root", type=Path, default=SAFE_ROOT)
     parser.add_argument("--timeout-seconds", type=int, default=600)
-    parser.add_argument("--interval-seconds", type=int, default=3)
+    parser.add_argument(
+        "--interval-seconds", type=int, default=_DAEMON_POLICY.interval_seconds
+    )
     args = parser.parse_args(argv)
     try:
         if args.operation == "diagnose":

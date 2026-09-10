@@ -88,22 +88,41 @@ def test_daemon_cycle_publishes_post_sync_zero_backlog(monkeypatch) -> None:
         "export_backlog_count": 0,
         "pending_archive_status_count": 0,
     })()
-    monkeypatch.setattr(remediation, "capture_snapshot", lambda _root: before)
+    snapshots = iter((before, after))
+    monkeypatch.setattr(remediation, "capture_snapshot", lambda _root: next(snapshots))
     monkeypatch.setattr(
         remediation, "sync_wal", lambda _root: {"published_segment_count": 1}
     )
-    monkeypatch.setattr(
-        remediation,
-        "bounded_retry",
-        lambda _root, timeout_seconds: (after, 0),
-    )
-
     payload = remediation._host_ack_daemon_cycle(Path("unused"), process_id=4321)
 
     assert payload["process_id"] == 4321
     assert payload["published_segment_count_last_cycle"] == 1
     assert payload["export_backlog_count"] == 0
     assert payload["pending_archive_status_count"] == 0
+
+
+def test_daemon_cycle_remains_healthy_while_bounded_backlog_is_draining(
+    monkeypatch,
+) -> None:
+    backlog = type("Snapshot", (), {
+        "export_backlog_count": 2,
+        "pending_archive_status_count": 3,
+    })()
+    clock = iter((0.0, 0.0, 31.0))
+    monkeypatch.setattr(remediation, "capture_snapshot", lambda _root: backlog)
+    monkeypatch.setattr(remediation.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(remediation.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(
+        remediation, "sync_wal", lambda _root: {"published_segment_count": 2}
+    )
+
+    payload = remediation._host_ack_daemon_cycle(Path("unused"), process_id=4321)
+
+    assert payload["status"] == "RUNNING"
+    assert payload["error_class"] == "NONE"
+    assert payload["published_segment_count_last_cycle"] == 2
+    assert payload["export_backlog_count"] == 2
+    assert payload["pending_archive_status_count"] == 3
 
 
 def test_daemon_lock_recovers_only_proven_dead_owner(tmp_path, monkeypatch) -> None:

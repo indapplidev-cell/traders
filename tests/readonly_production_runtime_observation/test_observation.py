@@ -186,9 +186,13 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
         runtime_health_root=tmp_path,
         clock=lambda: next(clock_values),
     )
-    source._approval = SimpleNamespace(read=lambda request: SimpleNamespace(
-        readiness=PaperProductionApprovalReadiness.HEALTHY_NO_ELIGIBLE_APPROVAL,
-        outcome=PaperProductionApprovalOutcome.NO_TRADE_SIGNAL,
+    approval_requests = []
+    source._approval = SimpleNamespace(read=lambda request: (
+        approval_requests.append(request)
+        or SimpleNamespace(
+            readiness=PaperProductionApprovalReadiness.HEALTHY_NO_ELIGIBLE_APPROVAL,
+            outcome=PaperProductionApprovalOutcome.NO_TRADE_SIGNAL,
+        )
     ))
     monkeypatch.setattr(observation, "_runtime_configuration_ready", lambda root: True)
     monkeypatch.setattr(observation, "_market_data_readiness", lambda root, now: True)
@@ -220,6 +224,7 @@ def test_production_observation_populates_authoritative_sources(monkeypatch, tmp
     assert value.canary_scope_valid is True
     assert value.mutation_enabled is True and value.live_enabled is False
     assert value.worker_running is True
+    assert approval_requests[0].scope.primary_timeframe == "5m"
     assert heartbeat_read_at == [datetime(2026, 8, 31, 12, 0, 15, tzinfo=timezone.utc)]
 
 

@@ -23,6 +23,8 @@ from app.db.paper_models import (
 )
 
 from app.engine_paper.production_approval import (
+    EXECUTION_TIMEFRAMES,
+    MAX_RUN_LOOKBACK,
     PaperProductionApprovalReadiness,
     PaperProductionApprovalRequest,
     PaperProductionApprovalScope,
@@ -457,7 +459,11 @@ class ProductionPaperRuntimeObservationSource:
         approval_availability = "NOT_AVAILABLE"
         try:
             approval = self._approval.read(PaperProductionApprovalRequest(
-                PaperProductionApprovalScope(APPROVAL_SYMBOLS, max_run_lookback=8),
+                PaperProductionApprovalScope(
+                    APPROVAL_SYMBOLS,
+                    primary_timeframe=EXECUTION_TIMEFRAMES[0],
+                    max_run_lookback=MAX_RUN_LOOKBACK,
+                ),
                 "readonly-production-paper-readiness",
             ))
             approval_ready = approval.readiness in {
