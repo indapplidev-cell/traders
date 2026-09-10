@@ -622,6 +622,47 @@ def test_scalping_geometry_terminal_reason_and_null_are_not_zero():
     assert value["current_cycle"]["stage_rejected_count"]["GEOMETRY_VALID"] == 1
 
 
+def test_scalping_expectancy_reason_projects_exactly_with_row_detail_identity_parity():
+    run = _run("BTCUSDT")
+    result = _result(run, paper="REJECT", approvals=False)
+    result.paper_payload_json["paper_context"] = {
+        "production_rr_floor": "0.4",
+        "scalping_geometry_diagnostics": {
+            "opportunity_id": "opportunity:expectancy:fixture",
+            "stop_envelope_pass": True,
+            "causal_target_exists": True,
+            "economic_gate_pass": True,
+            "valid_plan": False,
+            "net_rr": "0.9061",
+            "dynamic_required_net_rr": "5.5825",
+            "expected_ev_r": "-0.7082",
+            "min_required_ev": "0.02",
+            "rejection_stage": "EXPECTANCY_GATE",
+            "rejection_reason": "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED",
+        },
+    }
+    other = _run("ETHUSDT")
+    other_result = _result(other, setup="NO_SETUP", approvals=False)
+
+    value = _project_5m(((run, result), (other, other_result)))
+    item = next(row for row in value["current_cycle"]["items"] if row["symbol"] == "BTCUSDT")
+    detail = item["downstream_detail"]
+    identity = detail["row_identity"]
+
+    assert item["downstream_stage_trace"]["RR_PASS"] == "REJECTED"
+    assert item["terminal_reason_code"] == "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED"
+    assert detail["terminal_reason"] == item["terminal_reason_code"]
+    assert detail["rr_subreason"] == "NET_BELOW_DYNAMIC_REQUIRED"
+    assert detail["expected_ev_r"] == "-0.7082"
+    assert detail["net_rr"] == "0.9061"
+    assert detail["dynamic_required_net_rr"] == "5.5825"
+    assert identity["profile"] == detail["profile"] == value["trade_profile_id"]
+    assert identity["timeframe"] == detail["timeframe"] == value["decision_timeframe"]
+    assert identity["cycle_boundary_ms"] == detail["cycle_boundary_ms"]
+    assert identity["symbol"] == item["symbol"]
+    assert identity["opportunity_id"] == detail["opportunity_id"]
+
+
 def test_parameter_set_attribution_uses_only_persisted_cycle_metadata():
     historical = _run("BTCUSDT")
     historical_result = _result(historical)

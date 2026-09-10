@@ -134,6 +134,34 @@ def test_expired_before_execution_reason_is_operator_readable_and_bilingual():
     assert en["funnel.reason.EXPIRED_BEFORE_EXECUTION"] == "Plan expired before execution handoff"
 
 
+def test_known_scalping_rejection_reasons_are_operator_readable_and_bilingual():
+    ru = catalog_payload("ru")["translations"]
+    en = catalog_payload("en")["translations"]
+    expected = {
+        "SCALPING_EMPIRICAL_EXPECTANCY_REJECTED": (
+            "Недостаточная ожидаемая доходность", "Insufficient expected return"
+        ),
+        "NET_BELOW_DYNAMIC_REQUIRED": (
+            "Net RR ниже динамического порога", "Net RR below dynamic threshold"
+        ),
+        "INSUFFICIENT_PROBABILITY": (
+            "Недостаточная статистика", "Insufficient statistics"
+        ),
+        "SCALP_REJECT_CAUSAL_STOP_TOO_WIDE": (
+            "Скальпинг отклонён: причинно обоснованный стоп шире допустимого диапазона",
+            "Scalping rejected: causal stop exceeds the profile envelope",
+        ),
+        "NO_STRUCTURAL_SETUP": (
+            "Структурный сценарий не найден", "No structural setup"
+        ),
+    }
+    for code, (ru_text, en_text) in expected.items():
+        assert ru[f"funnel.reason.{code}"] == ru_text
+        assert en[f"funnel.reason.{code}"] == en_text
+        assert ru[f"funnel.reason.{code}"] != ru["common.unknown_state"]
+        assert en[f"funnel.reason.{code}"] != en["common.unknown_state"]
+
+
 def test_scalping_v2_economics_causal_diagnostic_labels_and_semantics_are_complete():
     ru = catalog_payload("ru")["translations"]
     en = catalog_payload("en")["translations"]
