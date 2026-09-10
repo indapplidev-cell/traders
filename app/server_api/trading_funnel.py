@@ -71,6 +71,19 @@ CANONICAL_DOWNSTREAM_STAGES: Final = (
 ROW_CACHE_TTL_SECONDS: Final = 30.0
 
 
+def paper_command_status(lifecycle_state: str, command_id: str | None) -> str:
+    if command_id is not None:
+        return "PENDING"
+    return {
+        "PLAN_OBSERVED": "PENDING_CREATE",
+        "NOT_SELECTED": "BLOCKED",
+        "BLOCKED_BY_POLICY": "BLOCKED",
+        "EXPIRED_BEFORE_EXECUTION": "EXPIRED",
+        "EXECUTION_FAILED": "FAILED",
+        "COMMAND_CREATED": "PENDING",
+    }.get(lifecycle_state, "PENDING_CREATE")
+
+
 @dataclass(frozen=True, slots=True)
 class _ShadowRanking:
     risk_score: Decimal
@@ -1188,6 +1201,9 @@ class TradingFunnelReadRepository:
         }
         for outcome in outcome_rows:
             lifecycle = values.setdefault(outcome.pipeline_run_id, {})
+            command_status = paper_command_status(
+                outcome.lifecycle_state, outcome.command_id
+            )
             lifecycle.update({
                 "execution_intent": (
                     "PAPER_COMMAND_CREATED" if lifecycle.get("command_id")
@@ -1199,9 +1215,10 @@ class TradingFunnelReadRepository:
                 "selected_winner": outcome.selected_winner,
                 "command_id": lifecycle.get("command_id") or outcome.command_id,
                 "command_status": lifecycle.get("command_status") or (
-                    "NOT_CREATED" if outcome.command_id is None else "PENDING"
+                    command_status if outcome.command_id is None else "PENDING"
                 ),
                 "terminal_result": lifecycle.get("terminal_result") or outcome.terminal_reason,
+                "command_reason": outcome.terminal_reason or outcome.selector_reason,
                 "lifecycle_state": outcome.lifecycle_state,
                 "attempt_count": outcome.attempt_count,
                 "control_generation": outcome.control_generation,
@@ -1567,6 +1584,7 @@ def build_projection(rows: tuple[tuple[OnlinePipelineRun, OnlinePipelineResultRo
                     "selected_winner": lifecycle.get("selected_winner"),
                     "command_id": lifecycle.get("command_id"),
                     "command_status": lifecycle.get("command_status", "NOT_REACHED"),
+                    "command_reason": lifecycle.get("command_reason"),
                     "order_id": lifecycle.get("order_id"),
                     "order_status": lifecycle.get("order_status", "NOT_REACHED"),
                     "fill_id": lifecycle.get("fill_id"),

@@ -80,6 +80,7 @@ class ExistingCanaryRuntimeReadiness:
     wal_ready: bool = False
     pitr_ready: bool = False
     live_disabled: bool = True
+    finding_codes: tuple[str, ...] = ()
 
     @property
     def backup_pitr_pass(self) -> bool:
@@ -175,6 +176,17 @@ class ProductionPaperFirstCanaryExecutor:
             int(datetime.now(timezone.utc).timestamp() * 1000)
         )
 
+    def _record_outcome_attempt(self, run_id: str, **values) -> bool:
+        if self._outcome_store is None:
+            return False
+        try:
+            self._outcome_store.record_attempt(run_id, **values)
+            return True
+        except ValueError as error:
+            if str(error) == "PAPER_PLAN_OUTCOME_NOT_OBSERVED":
+                return False
+            raise
+
     @staticmethod
     def _approval_source_error(results) -> tuple[str, ...]:
         unhealthy = tuple(
@@ -265,6 +277,10 @@ class ProductionPaperFirstCanaryExecutor:
     def _ingest_candidate(self, *, candidate, request_id: str, canary_id: str) -> tuple[str, ...]:
         canary = self._canary_store.get(canary_id)
         if canary is None:
+            self._record_outcome_attempt(
+                candidate.lineage.source_run_id,
+                failure_code="NOT_CREATED_CONTROL_DISABLED",
+            )
             return ("CANARY_NOT_ARMED",)
         expected_profile = EXECUTION_PROFILE_BY_TIMEFRAME.get(
             getattr(candidate, "primary_timeframe", "")
@@ -275,8 +291,19 @@ class ProductionPaperFirstCanaryExecutor:
             or candidate.watermark.primary_timeframe != candidate.primary_timeframe
             or candidate.lineage.source_run_id != candidate.ranking.source_run_id
         ):
+            self._record_outcome_attempt(
+                candidate.lineage.source_run_id,
+                failure_code="NOT_CREATED_IDENTITY_MISMATCH",
+            )
             return ("APPROVAL_PROFILE_IDENTITY_MISMATCH",)
-        readiness = self._runtime_readiness()
+        try:
+            readiness = self._runtime_readiness()
+        except Exception:
+            self._record_outcome_attempt(
+                candidate.lineage.source_run_id,
+                blocker_codes=("READONLY_READINESS_UNAVAILABLE",),
+            )
+            return ("READONLY_READINESS_UNAVAILABLE",)
         command_id = paper_ingestion_command_id(
             candidate.paper_strategy_approval.approval_id,
             candidate.paper_quantity_approval.quantity_approval_id,
@@ -318,7 +345,7 @@ class ProductionPaperFirstCanaryExecutor:
             paper_target_authorized=True,
             live_disabled=readiness.live_disabled,
         )
-        policy_blockers = tuple(
+        policy_blockers = readiness.finding_codes or tuple(
             code for code, passed in (
                 ("MARKET_DATA_NOT_READY", readiness.market_data_ready),
                 ("APPROVAL_SOURCE_NOT_READY", readiness.approval_source_ready),
@@ -354,7 +381,19 @@ class ProductionPaperFirstCanaryExecutor:
                         blocker_codes=(code,),
                     )
                 return (code,)
-            raise
+            if self._outcome_store is not None and not attempt_recorded:
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    failure_code=f"NOT_CREATED_{code}"[:96],
+                )
+            return (code,)
+        except Exception:
+            if self._outcome_store is not None:
+                self._outcome_store.record_attempt(
+                    candidate.lineage.source_run_id,
+                    failure_code="NOT_CREATED_INTERNAL_ERROR",
+                )
+            return ("NOT_CREATED_INTERNAL_ERROR",)
         if self._outcome_store is not None:
             if result.successful:
                 self._outcome_store.record_attempt(

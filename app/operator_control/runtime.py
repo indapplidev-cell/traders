@@ -66,6 +66,7 @@ RUNTIME_IDENTITY_KEY = "TRADERS_CONTROL_SOURCE_IDENTITY"
 CONTAINER_LISTENER_KEY = "TRADERS_CONTROL_CONTAINER_LISTENER"
 READONLY_INTERNAL_URL_KEY = "TRADERS_READONLY_API_INTERNAL_URL"
 DEFAULT_READONLY_INTERNAL_URL = "http://readonly-api:8765"
+READONLY_READINESS_TIMEOUT_SECONDS = 10.0
 RUNTIME_DATABASE_HOST_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_HOST"
 RUNTIME_DATABASE_PORT_KEY = "TRADERS_PAPER_RUNTIME_DATABASE_PORT"
 MOBILE_BIND_HOST_KEY = "TRADERS_CONTROL_MOBILE_BIND_HOST"
@@ -85,7 +86,9 @@ class ReadonlyPaperArmReadinessSource:
     def __call__(self) -> PaperOperatorArmReadiness:
         try:
             request = urllib.request.Request(self._url, method="GET")
-            with urllib.request.urlopen(request, timeout=3) as response:
+            with urllib.request.urlopen(
+                request, timeout=READONLY_READINESS_TIMEOUT_SECONDS
+            ) as response:
                 document = json.loads(response.read())
             payload = document.get("data") if isinstance(document, dict) else None
             ready = (
@@ -112,7 +115,9 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
     def __call__(self) -> ExistingCanaryRuntimeReadiness:
         try:
             request = urllib.request.Request(self._url, method="GET")
-            with urllib.request.urlopen(request, timeout=3) as response:
+            with urllib.request.urlopen(
+                request, timeout=READONLY_READINESS_TIMEOUT_SECONDS
+            ) as response:
                 document = json.loads(response.read())
             payload = document.get("data") if isinstance(document, dict) else None
             denials = payload.get("current_mutation_denial_reasons") if isinstance(payload, dict) else None
@@ -135,7 +140,14 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 and payload.get("current_mutation_ready") is True
             )
             if not common_ready:
-                return ExistingCanaryRuntimeReadiness(live_disabled=False)
+                findings = tuple(
+                    str(value) for value in denials
+                    if isinstance(value, str) and value
+                ) if isinstance(denials, list) else ()
+                return ExistingCanaryRuntimeReadiness(
+                    live_disabled=False,
+                    finding_codes=findings or ("READONLY_READINESS_CONTRACT_DENIED",),
+                )
             return ExistingCanaryRuntimeReadiness(
                 market_data_ready=payload.get("market_data_adapter_ready") is True,
                 approval_source_ready=payload.get("approval_source_adapter_ready") is True,
@@ -143,8 +155,16 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
                 pitr_ready=payload.get("pitr_ready") is True,
                 live_disabled=True,
             )
+        except TimeoutError:
+            return ExistingCanaryRuntimeReadiness(
+                live_disabled=False,
+                finding_codes=("READONLY_READINESS_TIMEOUT",),
+            )
         except Exception:
-            return ExistingCanaryRuntimeReadiness(live_disabled=False)
+            return ExistingCanaryRuntimeReadiness(
+                live_disabled=False,
+                finding_codes=("READONLY_READINESS_UNAVAILABLE",),
+            )
 
 
 def _production_canary_store() -> tuple[SqlAlchemyPaperFirstCanaryStore, Engine]:

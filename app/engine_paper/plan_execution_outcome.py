@@ -123,7 +123,11 @@ class PaperPlanExecutionOutcomeStore:
             row = session.get(PaperPlanExecutionOutcomeRecord, run_id)
             if row is None:
                 raise ValueError("PAPER_PLAN_OUTCOME_NOT_OBSERVED")
-            if row.lifecycle_state in TERMINAL_STATES and row.command_id is None:
+            if (
+                row.lifecycle_state in TERMINAL_STATES
+                and row.command_id is None
+                and command_id is None
+            ):
                 return
             row.attempt_count += 1
             row.updated_at = now
