@@ -94,7 +94,7 @@ PRODUCTION_MUTATIONS = 0
 
 # Delivery
 
-FOCUSED_TESTS = PASS; 106 passed in 80.29s
+FOCUSED_TESTS = PASS; final rerun 106 passed in 80.91s
 COMPILE = PASS; python -m compileall -q traders_ml/parameter_sweep app/research/scalping_v2_parameter_sweep.py app/config/yaml_authority.py
 COMMITS = project-state 01645845350947b902ce4d5ed2baa40f4a57ad31; documentation reconciliation resolve from Git history
 PUSH = PASS after documentation reconciliation commit
