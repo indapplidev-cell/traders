@@ -6,7 +6,8 @@ import pytest
 
 from app.config.yaml_authority import RESEARCH_PARAMETERS
 from traders_ml.parameter_sweep.targeted import (
-    active_search_space, research_config_hash, staged_candidates,
+    active_search_space, deduplicate_behavioral_configs, research_config_hash,
+    sensitivity_preflight, staged_candidates, TargetedCandidate,
     validate_targeted_space,
 )
 
@@ -55,3 +56,30 @@ def test_research_hash_changes_with_yaml_search_value():
     before = research_config_hash(config)
     config["search_space"]["stop_max_bps"][0] += 1
     assert research_config_hash(config) != before
+
+
+def test_sensitivity_detects_no_op_and_preserves_each_declared_family():
+    config = _config()
+    config["search_space"] = {
+        "strategy_minimum_score": [45.0, 55.0],
+        "regime_lookback_candles": [12, 24],
+        "entry_refinement_1m_confirmation_count": [1, 2],
+        "stop_max_bps": [50.0, 60.0],
+        "target_min_bps": [45.0, 55.0],
+        "causal_reset_min_conditions": [1, 2],
+    }
+    baseline = {name: values[0] for name, values in config["search_space"].items()}
+    def signature(resolved):
+        return {key: value for key, value in resolved.items() if key != "causal_reset_min_conditions"}
+    result = sensitivity_preflight(config, baseline, signature)
+    assert set(result["active_families"]) == {"SIGNAL", "REGIME", "ENTRY", "GEOMETRY"}
+    assert set(result["no_op_dimensions"]) == {"causal_reset_min_conditions"}
+    assert result["raw_config_count"] == 64
+    assert result["unique_effective_config_count"] == 32
+
+
+def test_behavioral_dedup_records_aliases():
+    configs = [TargetedCandidate("X", {"value": value}) for value in (1, 2, 3)]
+    representatives, aliases = deduplicate_behavioral_configs(configs, lambda item: item["value"] % 2)
+    assert len(representatives) == 2
+    assert sum(map(len, aliases.values())) == 1

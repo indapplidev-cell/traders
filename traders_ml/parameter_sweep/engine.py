@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from collections import ChainMap
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
@@ -51,7 +51,10 @@ from .artifact_v2 import (
     enforce_size_budget, iter_results,
 )
 from .ranking import pareto_frontier, rank_results, selection_bias_guard
-from .targeted import active_search_space, staged_candidates, validate_targeted_space
+from .targeted import (
+    active_search_space, deduplicate_behavioral_configs, sensitivity_preflight,
+    staged_candidates, validate_targeted_space,
+)
 from .integrity import verify_artifacts
 from .historical_replay import (
     HistoricalReplayRepository, baseline_parity, build_parameter_registry,
@@ -994,6 +997,8 @@ def _production_baseline_config() -> dict[str, object]:
         "target_min_bps": geometry.target_min_bps,
         "causal_reset_min_conditions": SCALPING_V2.causal_opportunity.reset_min_conditions,
         "entry_refinement_1m_confirmation_count": SCALPING_V2.signal.confirmation_window_candles,
+        "strategy_minimum_score": SCALPING_V2.signal.strategy_minimum_score,
+        "regime_lookback_candles": SCALPING_V2.signal.regime_lookback_candles,
         **{
             field: getattr(stale, field) for field in TIME_STOP_SEARCH_FIELDS
         },
@@ -1143,6 +1148,13 @@ def _split(rows: list[dict[str, Any]], seed: int) -> dict[str, list[dict[str, An
 
 
 def _gate_result(row: dict[str, Any], config: dict[str, object]) -> tuple[bool, str]:
+    signal_regime_checks = (
+        (float(row.get("strategy_score", SCALPING_V2.signal.strategy_minimum_score)) >= float(config.get("strategy_minimum_score", 0)), "REJECT_STRATEGY_SCORE"),
+        (int(row.get("regime_history_candles", SCALPING_V2.signal.regime_lookback_candles)) >= int(config.get("regime_lookback_candles", SCALPING_V2.signal.regime_lookback_candles)), "REJECT_REGIME_HISTORY"),
+    )
+    for passed, reason in signal_regime_checks:
+        if not passed:
+            return False, reason
     samples = int(row.get("probability_sample_size", 0))
     raw = row.get("p_win_raw")
     if raw is None:
@@ -1926,13 +1938,41 @@ def _run_impl(
     historical_summary = rows[0].get("__historical_summary", {}) if rows else {}
     replay_capabilities = rows[0].get("__replay_capabilities", {}) if rows else {}
     source_inventory = rows[0].get("__source_inventory", []) if rows else []
-    parameter_registry = build_parameter_registry(space)
+    baseline_config = _production_baseline_config()
+    sensitivity: dict[str, Any] | None = None
+    if search.get("search", {}).get("strategy") == "targeted":
+        def behavior_signature(config: dict[str, object]) -> dict[str, Any]:
+            return {
+                name: _gate_funnel(split_rows, config)[1]
+                for name, split_rows in sorted(splits.items())
+            }
+        try:
+            sensitivity = sensitivity_preflight(search, baseline_config, behavior_signature)
+        except ValueError as error:
+            raise SweepExpectedError(str(error)) from None
+        space = sensitivity["active_dimensions"]
+    parameter_registry = build_parameter_registry(active_search_space(search) if sensitivity else space)
     plan = ParameterSweepSearchPlanner().plan(
         dataset_rows=len(rows), space=space, search=search.get("search", {}),
         max_configs_override=max_configs, validation_rows=len(splits["VALIDATION"]),
         holdout_rows=len(splits["HOLDOUT"]),
         available_replay_rows=int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
     )
+    targeted_candidates = None
+    behavioral_aliases: dict[str, list[dict[str, Any]]] = {}
+    if sensitivity is not None:
+        effective_search = {**search, "search_space": space}
+        targeted_candidates, behavioral_aliases = deduplicate_behavioral_configs(
+            staged_candidates(effective_search, baseline_config),
+            lambda overrides: behavior_signature({**baseline_config, **overrides}),
+        )
+        plan = replace(
+            plan,
+            evaluation_budget=min(plan.evaluation_budget, len(targeted_candidates)),
+            effective_search_space_size=len(targeted_candidates),
+        )
+        sensitivity["behaviorally_distinct_count"] = len(targeted_candidates)
+        sensitivity["behavioral_aliases"] = behavioral_aliases
     git_commit = _git_commit()
     assert dataset_manifest is not None
     dataset_fingerprint = str(dataset_manifest["dataset_fingerprint"])
@@ -2132,11 +2172,20 @@ def _run_impl(
         "baseline_parity": baseline.get("PARITY", {}),
         "holdout_used_for_search": False,
     })
+    registry_artifact = {
+        **(sensitivity or {
+            "declared_families": [], "active_families": [],
+            "active_dimensions": space, "no_op_dimensions": {}, "excluded_dimensions": {},
+            "raw_config_count": plan.raw_search_space_size,
+            "unique_effective_config_count": plan.effective_search_space_size,
+        }),
+        "dimensions": parameter_registry,
+    }
+    _atomic_json(output / "PARAMETER_REGISTRY.json", registry_artifact)
     if historical_summary:
         _atomic_json(output / "HISTORICAL_DATASET_SUMMARY.json", historical_summary)
         _atomic_json(output / "REPLAY_CAPABILITIES.json", replay_capabilities)
         _atomic_json(output / "BASELINE_PARITY.json", baseline.get("PARITY", {}))
-        _atomic_json(output / "PARAMETER_REGISTRY.json", parameter_registry)
         _atomic_json(output / "HISTORICAL_DATA_SOURCE_INVENTORY.json", source_inventory)
     if not resume:
         DEFAULT_ARTIFACT_WRITER.atomic_text(
@@ -2279,9 +2328,8 @@ def _run_impl(
         ),
     )
     candidate_variants = _conditional_variants(space)
-    baseline_config = _production_baseline_config()
     if plan.selected_strategy == "TARGETED_STAGED":
-        targeted_items = staged_candidates(search, baseline_config)
+        targeted_items = iter(targeted_candidates or ())
         if stage is not None:
             targeted_items = (item for item in targeted_items if item.stage == stage)
         candidate_source = enumerate(targeted_items)

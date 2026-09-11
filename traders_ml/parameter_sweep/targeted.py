@@ -39,6 +39,70 @@ def active_search_space(config: Mapping[str, Any]) -> dict[str, list[Any]]:
     return {name: list(values) for name, values in config["search_space"].items() if name in allowed}
 
 
+def sensitivity_preflight(
+    config: Mapping[str, Any], baseline: Mapping[str, Any], signature,
+) -> dict[str, Any]:
+    """Classify one-factor dimensions before any combinatorial expansion."""
+    space = active_search_space(config)
+    families = config["calibration"]["parameter_families"]
+    family_for = {name: family for family, names in families.items() for name in names}
+    baseline_signature = signature(dict(baseline))
+    active: dict[str, list[Any]] = {}
+    no_op: dict[str, dict[str, Any]] = {}
+    signatures: dict[str, list[str]] = {}
+    for name, values in sorted(space.items()):
+        observed = []
+        for value in values:
+            resolved = {**baseline, name: value}
+            observed.append(signature(resolved))
+        encoded = [sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest() for value in observed]
+        signatures[name] = encoded
+        if len(set(encoded + [sha256(json.dumps(baseline_signature, sort_keys=True, default=str).encode()).hexdigest()])) > 1:
+            active[name] = values
+        else:
+            no_op[name] = {
+                "reason": "GENUINELY_INERT_ON_THIS_DATASET",
+                "candidate_values": values,
+            }
+    declared = list(config["calibration"]["targeted_families"])
+    active_families = sorted({family_for[name] for name in active})
+    missing = sorted(set(declared) - set(active_families))
+    if missing:
+        raise ValueError("DECLARED_FAMILY_WITHOUT_ACTIVE_DIMENSION:" + ",".join(missing))
+    raw = 1
+    for values in space.values():
+        raw *= len(values)
+    effective = 1
+    for values in active.values():
+        effective *= len(values)
+    return {
+        "declared_families": declared,
+        "active_families": active_families,
+        "active_dimensions": active,
+        "no_op_dimensions": no_op,
+        "excluded_dimensions": {},
+        "raw_config_count": raw,
+        "unique_effective_config_count": effective,
+        "sensitivity_signatures": signatures,
+    }
+
+
+def deduplicate_behavioral_configs(configs: Iterable[TargetedCandidate], signature):
+    """Yield one representative per behavior and retain deterministic aliases."""
+    representatives: list[TargetedCandidate] = []
+    aliases: dict[str, list[dict[str, Any]]] = {}
+    seen: dict[str, int] = {}
+    for candidate in configs:
+        key = sha256(json.dumps(signature(candidate.overrides), sort_keys=True, default=str).encode()).hexdigest()
+        if key in seen:
+            aliases.setdefault(key, []).append(candidate.overrides)
+            continue
+        seen[key] = len(representatives)
+        representatives.append(candidate)
+        aliases[key] = []
+    return representatives, aliases
+
+
 def research_config_hash(config: Mapping[str, Any]) -> str:
     return sha256(json.dumps(config, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
 

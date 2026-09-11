@@ -39,6 +39,8 @@ class ParameterDescriptor:
     search_values: tuple[object, ...]
     replay_requirements: tuple[str, ...]
     runtime_owner: str
+    value_type: str = "number"
+    unit: str = "count"
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -47,10 +49,21 @@ class ParameterDescriptor:
             "SEARCH_VALUES": list(self.search_values),
             "REPLAY_REQUIREMENTS": list(self.replay_requirements),
             "RUNTIME_OWNER": self.runtime_owner,
+            "canonical_key": self.name,
+            "family": self.family,
+            "baseline": self.baseline_value,
+            "candidate_values": list(self.search_values),
+            "type": self.value_type,
+            "unit": self.unit,
+            "source_yaml": "config/trading/trade_parameters.yaml",
+            "source_path": f"profiles.trade-5m-v2.{self.runtime_owner}",
+            "consumer": "traders_ml.parameter_sweep.engine._gate_result",
         }
 
 
 PARAMETER_OWNERS: dict[str, tuple[str, str, tuple[str, ...]]] = {
+    "strategy_minimum_score": ("SIGNAL", "signal.strategy_minimum_score", ("PIPELINE_STRATEGY_SCORE",)),
+    "regime_lookback_candles": ("REGIME", "signal.regime_lookback_candles", ("PIPELINE_REGIME_HISTORY",)),
     "atr_multiplier": ("GEOMETRY", "geometry.atr_multiplier", ("PIPELINE_CAUSAL_PRIMITIVES",)),
     "stop_max_bps": ("STOP", "geometry.stop_max_bps", ("PIPELINE_GEOMETRY", "MARKET_1M_PATH")),
     "target_min_bps": ("TARGET", "geometry.target_min_bps", ("PIPELINE_TARGETS", "MARKET_1M_PATH")),
@@ -104,6 +117,8 @@ def _baseline_values() -> dict[str, object]:
         "max_new_commands_per_cycle": p.risk.max_new_commands_per_cycle,
         "causal_reset_min_conditions": p.causal_opportunity.reset_min_conditions,
         "entry_refinement_1m_confirmation_count": p.signal.confirmation_window_candles,
+        "strategy_minimum_score": p.signal.strategy_minimum_score,
+        "regime_lookback_candles": p.signal.regime_lookback_candles,
         **{name: getattr(stale, name) for name in (
             "soft_timeout_seconds", "hard_timeout_seconds",
             "min_target_progress_at_soft_timeout", "min_mfe_bps_at_soft_timeout",
@@ -248,6 +263,11 @@ class HistoricalReplayRepository:
             "expected_ev_r": _float(geometry.get("expected_ev_r")), "ev_reserve": _float(geometry.get("ev_reserve")),
             "net_edge_bps": _float(geometry.get("expected_net_edge_bps") or geometry.get("net_reward_bps")),
             "strategy_score": _float(strategy.get("strategy_score")) or 0.0,
+            "regime_history_candles": int(
+                primitives.get("regime_history_candles")
+                or primitives.get("analysis_history_candles")
+                or SCALPING_V2.signal.regime_lookback_candles
+            ),
             "risk_score": _float(risk.get("risk_score")) or 0.0,
             "causal_reset_conditions": 1, "one_min_confirmation_count": 1,
             "cost_provenance": cost_provenance, "commission_provenance": fee_source,
