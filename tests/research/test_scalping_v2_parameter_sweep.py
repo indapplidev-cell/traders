@@ -627,7 +627,7 @@ def test_dataset_fingerprint_and_success_timing_are_persisted(tmp_path):
     assert first_config["RUN_DURATION_HUMAN"]
     report = (first / "REPORT.md").read_text()
     assert all(section in report for section in (
-        "RUN SUMMARY", "RUNTIME", "DATASET COVERAGE", "BASELINE CONTROL",
+            "RUN SUMMARY", "RUNTIME", "DATASET COVERAGE", "HISTORICAL_BASELINE_CONTROL",
         "REPLAY CAPABILITY", "GATE REJECTION FUNNEL", "SEARCH PLAN", "RESULTS",
         "TIME-STOP ANALYSIS", "STATISTICAL SUFFICIENCY",
     ))
@@ -660,6 +660,14 @@ def test_authoritative_package_events_status_and_integrity_complete(tmp_path):
     status = json.loads((output / "STATUS.json").read_text())
     assert status["state"] == "COMPLETED"
     assert status["completed_configs"] == status["planned_configs"] == 2
+    results = json.loads((output / "RESULTS.json").read_text())
+    insufficient = sum(row["performance_class"] == "INSUFFICIENT_SAMPLE" for row in results)
+    assert status["insufficient_configs"] == insufficient
+    assert status["classification_counts"]["INSUFFICIENT_SAMPLE"] == insufficient
+    report = (output / "REPORT.md").read_text()
+    assert f"INSUFFICIENT_CONFIGS: {insufficient}" in report
+    assert "PROMOTION_EVALUATION_ALLOWED: `YES`" in report
+    assert "CANDIDATE_PROMOTION_ELIGIBLE: `NO`" in report
     assert status["duration_seconds"] is not None
     integrity = json.loads((output / "INTEGRITY.json").read_text())
     assert integrity["integrity_status"] == "PASS"

@@ -47,8 +47,8 @@ from .artifact_writer import (
     ArtifactWriteError, DEFAULT_ARTIFACT_WRITER, DurableResultWriter,
 )
 from .artifact_v2 import (
-    ARTIFACT_SCHEMA_VERSION, ArtifactSizeBudgetExceeded, compact_result, compact_trade,
-    enforce_size_budget, iter_results,
+    ARTIFACT_SCHEMA_VERSION, ArtifactSizeBudgetExceeded, aggregate_result_semantics,
+    compact_result, compact_trade, enforce_size_budget, iter_results,
 )
 from .ranking import pareto_frontier, rank_results, selection_bias_guard
 from .targeted import (
@@ -1062,6 +1062,25 @@ def _baseline_control(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _search_validation_baseline(
+    splits: dict[str, list[dict[str, Any]]], minimums: dict[str, int],
+) -> dict[str, Any]:
+    item, _consumed, _reason = _evaluate_config(
+        _production_baseline_config(), splits, minimums,
+        index=-1, stage="SEARCH_VALIDATION_BASELINE",
+    )
+    compact = compact_result(item)
+    return {
+        "population": "SEARCH_VALIDATION_BASELINE",
+        "directly_comparable_to_candidates": True,
+        "dataset_split": "VALIDATION",
+        "trade_count": compact["trade_count"],
+        "performance_class": compact["performance_class"],
+        "insufficient_sample_gates": compact["insufficient_sample_gates"],
+        "evaluation_contract": "SAME_DATASET_SPLIT_CUTOFF_COST_SNAPSHOT_AND_EVALUATOR",
+    }
+
+
 def _git_commit() -> str:
     return subprocess.run(
         ["git", "rev-parse", "HEAD"], check=True, text=True,
@@ -1939,6 +1958,9 @@ def _run_impl(
     replay_capabilities = rows[0].get("__replay_capabilities", {}) if rows else {}
     source_inventory = rows[0].get("__source_inventory", []) if rows else []
     baseline_config = _production_baseline_config()
+    search_validation_baseline = _search_validation_baseline(
+        splits, search["minimum_samples"],
+    )
     sensitivity: dict[str, Any] | None = None
     if search.get("search", {}).get("strategy") == "targeted":
         def behavior_signature(config: dict[str, object]) -> dict[str, Any]:
@@ -2096,7 +2118,8 @@ def _run_impl(
         "BATCH_SIZE": plan.batch_size, "SEED": plan.seed, "MEMORY_PLAN": "SAFE",
         "ESTIMATED_ACTIVE_BATCH_MEMORY_MB": plan.estimated_active_batch_memory_mb,
         "STATISTICAL_SEARCH_WARNING": plan.statistical_warning,
-        "PROMOTION_ELIGIBLE": "YES" if plan.promotion_eligible else "NO",
+        "PROMOTION_EVALUATION_ALLOWED": "YES",
+        "CANDIDATE_PROMOTION_ELIGIBLE": "NO",
         "EFFECTIVE_SEARCH_SPACE_SIZE": plan.effective_search_space_size,
         "INVALID_COMBINATIONS_GENERATED": 0,
         "CONDITIONAL_DIMENSION_COLLAPSE": "YES" if plan.conditional_dimension_collapse else "NO",
@@ -2129,7 +2152,7 @@ def _run_impl(
     })
     _atomic_json(output / "SEARCH_PLAN.json", search_plan_artifact)
     _print_preflight(preflight)
-    for key in ("RAW_SEARCH_SPACE_SIZE", "SEARCH_STRATEGY", "EXHAUSTIVE", "MAX_EVALUATED_CONFIGS", "BATCH_SIZE", "SEED", "STATISTICAL_SEARCH_WARNING", "PROMOTION_ELIGIBLE", "MEMORY_PLAN"):
+    for key in ("RAW_SEARCH_SPACE_SIZE", "SEARCH_STRATEGY", "EXHAUSTIVE", "MAX_EVALUATED_CONFIGS", "BATCH_SIZE", "SEED", "STATISTICAL_SEARCH_WARNING", "PROMOTION_EVALUATION_ALLOWED", "CANDIDATE_PROMOTION_ELIGIBLE", "MEMORY_PLAN"):
         print(f"{key} = {preflight[key]}")
     if preflight_only:
         _atomic_json(checkpoint_path, checkpoint)
@@ -2155,6 +2178,13 @@ def _run_impl(
         "dataset_profile": options.profile, "dataset_source": options.source,
         "authoritative_trade_parameters": str(CONFIG_PATH),
         "baseline_config_hash": TRADE_PARAMETERS.config_hash, "search_space_hash": search_space_hash,
+        "historical_baseline_control": {
+            **baseline,
+            "POPULATION": "HISTORICAL_BASELINE_CONTROL",
+            "DIRECTLY_COMPARABLE_TO_CANDIDATES": "NO",
+            "CONFIG_FINGERPRINT_COMPOSITION": dataset_manifest.get("composition", {}).get("configuration_fingerprint", {}),
+        },
+        "search_validation_baseline": search_validation_baseline,
         "baseline_control": baseline, "dataset_coverage": coverage,
         "RUN_STARTED_AT": run_started.isoformat(), "RUN_FINISHED_AT": None,
         "RUN_DURATION_SECONDS": None, "RUN_DURATION_HUMAN": None,
@@ -2437,10 +2467,7 @@ def _run_impl(
             _atomic_json(checkpoint_path, checkpoint)
             checkpoint_at = datetime.now(timezone.utc).isoformat()
             result_status = str(item["result_status"])
-            insufficient = result_status in {"EARLY_REJECTED"} or any(
-                value == "INSUFFICIENT_REPLAY_DATA"
-                for value in item.get("split_status", {}).values()
-            )
+            insufficient = result_class == "INSUFFICIENT_SAMPLE"
             if insufficient:
                 checkpoint["insufficient_count"] = int(checkpoint.get("insufficient_count", 0)) + 1
                 _atomic_json(checkpoint_path, checkpoint)
@@ -2508,6 +2535,19 @@ def _run_impl(
     _stream_json_array(jsonl, output / "REJECTED_CONFIGS.json", rejected_only=True)
     accepted_rows = [row for row in iter_results(jsonl) if row["evaluation_status"] == "ACCEPTED"]
     rejected_rows = [row for row in iter_results(jsonl) if row["evaluation_status"] != "ACCEPTED"]
+    canonical_semantics = aggregate_result_semantics([*accepted_rows, *rejected_rows])
+    checkpoint["insufficient_count"] = canonical_semantics["insufficient_configs"]
+    checkpoint["classification_counts"] = canonical_semantics["classification_counts"]
+    checkpoint["validation_readiness"] = canonical_semantics["validation_readiness"]
+    _atomic_json(checkpoint_path, checkpoint)
+    status_store.update(
+        insufficient_configs=canonical_semantics["insufficient_configs"],
+        accepted_configs=len(accepted_rows),
+        rejected_configs=max(0, len(rejected_rows) - canonical_semantics["insufficient_configs"]),
+        validation_candidate_configs=canonical_semantics["promotable_candidate_count"],
+        classification_counts=canonical_semantics["classification_counts"],
+        validation_readiness=canonical_semantics["validation_readiness"],
+    )
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "ACCEPTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in accepted_rows) or "\n", operation="accepted_configs_v2")
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "REJECTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in rejected_rows) or "\n", operation="rejected_configs_v2")
     finalist_rows = [trade for _score, _config_id, trades in finalist_candidates for trade in trades]
@@ -2620,13 +2660,21 @@ def _run_impl(
 |---|---:|---:|---:|---|
 {coverage_table}
 
-## BASELINE CONTROL
+## HISTORICAL_BASELINE_CONTROL
 
 - BASELINE_CONFIG_HASH: `{baseline['BASELINE_CONFIG_HASH']}`
 - BASELINE_CONFIG_VERSION: `{baseline['BASELINE_CONFIG_VERSION']}`
 - BASELINE_EVALUATED: `YES`; BASELINE_REPLAY_VALID: `{'YES' if baseline['BASELINE_REPLAY_VALID'] else 'NO'}`
 - BASELINE_DATASET_ROWS / ELIGIBLE_ROWS / TRADES: {baseline['BASELINE_DATASET_ROWS']} / {baseline['BASELINE_ELIGIBLE_ROWS']} / {baseline['BASELINE_TRADES']}
 - BASELINE_NET_PNL / EXPECTANCY / PF: {baseline['BASELINE_NET_PNL']} / {baseline['BASELINE_NET_EXPECTANCY']} / {baseline['BASELINE_PROFIT_FACTOR']}
+- DIRECTLY_COMPARABLE_TO_CANDIDATES: `NO`
+
+## SEARCH_VALIDATION_BASELINE
+
+- SAME_SPLIT_COMPARISON: `YES`
+- VALIDATION_TRADES: {search_validation_baseline['trade_count']}
+- PERFORMANCE_CLASS: `{search_validation_baseline['performance_class']}`
+- INSUFFICIENT_SAMPLE_GATES: `{json.dumps(search_validation_baseline['insufficient_sample_gates'], sort_keys=True)}`
 
 ## REPLAY CAPABILITY
 
@@ -2663,6 +2711,9 @@ def _run_impl(
 
 - Actual evaluated configs: {checkpoint['evaluated_count']}; pruned invalid: {checkpoint['pruned_count']}
 - Accepted/rejected/failed: {checkpoint['accepted_count']}/{checkpoint['rejected_count']}/{checkpoint['failed_count']}
+- CLASSIFICATION_COUNTS: `{json.dumps(canonical_semantics['classification_counts'], sort_keys=True)}`
+- INSUFFICIENT_CONFIGS: {canonical_semantics['insufficient_configs']}
+- VALIDATION_READINESS: `{json.dumps(canonical_semantics['validation_readiness'], sort_keys=True)}`
 - TOP contains only accepted, validation-evaluated configs with metrics; Pareto uses the same eligible set.
 
 ## TIME-STOP ANALYSIS
@@ -2675,7 +2726,8 @@ def _run_impl(
 
 - Configs per observation: {configs_per_observation:.6f}
 - Statistical warning: `{plan.statistical_warning}`
-- Promotion eligible: `{'YES' if plan.promotion_eligible else 'NO'}`
+- PROMOTION_EVALUATION_ALLOWED: `YES`
+- CANDIDATE_PROMOTION_ELIGIBLE: `{'YES' if canonical_semantics['candidate_promotion_eligible'] else 'NO'}`
 - Holdout is evaluated for reporting only and never influences search/refinement/ranking.
 """
     DEFAULT_ARTIFACT_WRITER.atomic_text(

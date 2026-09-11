@@ -81,6 +81,8 @@ class SweepRunStatus:
     negative_expectancy_configs: int = 0
     promising_configs: int = 0
     validation_candidate_configs: int = 0
+    classification_counts: dict[str, int] = field(default_factory=dict)
+    validation_readiness: dict[str, dict[str, int]] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)

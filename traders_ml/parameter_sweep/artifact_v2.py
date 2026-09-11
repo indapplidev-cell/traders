@@ -115,6 +115,23 @@ def compact_result(
         "EARLY_REJECTED": "REJECTED", "PRUNED_INVALID": "INVALID",
     }.get(str(item.get("result_status")), str(item.get("evaluation_status") or "INVALID"))
     metrics["invalid_reason"] = item.get("invalid_reason")
+    independent_periods = int(validation.get("independent_period_count") or 0)
+    holdout_count = int((item.get("holdout") or {}).get("trade_count") or 0)
+    slice_count = sum(
+        int((item.get(name) or {}).get("trade_count") or 0) > 0
+        for name in ("calibration", "validation", "holdout")
+    )
+    gates = [
+        ("validation_trade_count", trade_count, RESEARCH_PARAMETERS.ranking.validation_minimum_trades),
+        ("symbol_coverage", metrics["symbol_coverage"], RESEARCH_PARAMETERS.ranking.minimum_symbol_coverage),
+        ("independent_period_count", independent_periods, RESEARCH_PARAMETERS.ranking.minimum_independent_periods),
+        ("holdout_count", holdout_count, RESEARCH_PARAMETERS.search.minimum_holdout_sample),
+        ("minimum_slice_count", slice_count, 3),
+    ]
+    failed_gates = [
+        {"gate": gate, "current": current, "required": required, "deficit": max(0, required - current)}
+        for gate, current, required in gates if current < required
+    ]
     return {
         "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
         "config_index": int(item.get("config_index", item.get("result_index", 0))),
@@ -126,12 +143,39 @@ def compact_result(
         "stage": item.get("stage"),
         "evaluation_status": evaluation_status,
         "performance_class": performance_class(metrics),
+        "insufficient_sample_gates": failed_gates,
         **{key: value for key, value in metrics.items() if key != "invalid_reason"},
         "key_rejection_distribution": dict(sorted(funnel.items())),
         "replay_status": dict(sorted((validation.get("replay_status") or {}).items())),
         "cost_source_class": validation.get("cost_source_class", item.get("cost_source_class", "FROZEN_DATASET_POLICY")),
         "dataset_manifest_ref": dataset_manifest_ref,
         "trade_summary_ref": "FINALIST_TRADES.jsonl",
+    }
+
+
+def aggregate_result_semantics(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+    """Canonical counters shared by status, reports, CLI and GUI events."""
+    values = list(rows)
+    counts: dict[str, int] = {}
+    readiness: dict[str, dict[str, int]] = {}
+    for row in values:
+        classification = str(row.get("performance_class") or "INVALID")
+        counts[classification] = counts.get(classification, 0) + 1
+        for gate in row.get("insufficient_sample_gates") or []:
+            name = str(gate["gate"])
+            current = int(gate["current"])
+            required = int(gate["required"])
+            existing = readiness.setdefault(name, {"current": current, "required": required, "deficit": max(0, required-current)})
+            existing["current"] = max(existing["current"], current)
+            existing["deficit"] = max(0, existing["required"] - existing["current"])
+    promotable = counts.get("VALIDATION_CANDIDATE", 0)
+    return {
+        "evaluated_configs": len(values),
+        "classification_counts": dict(sorted(counts.items())),
+        "insufficient_configs": counts.get("INSUFFICIENT_SAMPLE", 0),
+        "candidate_promotion_eligible": promotable > 0,
+        "promotable_candidate_count": promotable,
+        "validation_readiness": dict(sorted(readiness.items())),
     }
 
 
