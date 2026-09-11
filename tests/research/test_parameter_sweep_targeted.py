@@ -76,6 +76,19 @@ def test_sensitivity_detects_no_op_and_preserves_each_declared_family():
     assert set(result["no_op_dimensions"]) == {"causal_reset_min_conditions"}
     assert result["raw_config_count"] == 64
     assert result["unique_effective_config_count"] == 32
+    assert result["planning_snapshots"]["declared_targeted_families"] == [
+        "SIGNAL", "REGIME", "ENTRY", "GEOMETRY",
+    ]
+    assert result["dimension_trace"]["causal_reset_min_conditions"] == {
+        "canonical_key": "causal_reset_min_conditions",
+        "family": "ENTRY",
+        "baseline_value": 1,
+        "candidate_values": [1, 2],
+        "source_yaml": "config/research/research_parameters.yaml#search_space",
+        "activation_state": "BEHAVIORAL_NO_OP",
+        "removal_stage": "NO_OP_DETECTION",
+        "removal_reason": "BEHAVIORAL_NO_OP",
+    }
 
 
 def test_behavioral_dedup_records_aliases():

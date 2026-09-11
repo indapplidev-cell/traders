@@ -212,6 +212,39 @@ def test_null_expected_ev_is_a_gate_rejection_not_a_planner_type_error(tmp_path)
     assert "TypeError" not in (output / "REPORT.md").read_text(encoding="utf-8")
 
 
+def test_independent_predicate_signature_prevents_upstream_gate_masking():
+    import traders_ml.parameter_sweep.engine as engine_module
+
+    row = _rows()[0]
+    row.update({
+        "expected_ev_r": None, "strategy_score": 80,
+        "stop_distance_bps": 58, "target_distance_bps": 52,
+    })
+    baseline = engine_module._production_baseline_config()
+    left = engine_module._independent_gate_predicate_signature(
+        [row], {**baseline, "stop_max_bps": 50, "target_min_bps": 60},
+    )
+    right = engine_module._independent_gate_predicate_signature(
+        [row], {**baseline, "stop_max_bps": 60, "target_min_bps": 50},
+    )
+    assert _gate_funnel(
+        [row], {**baseline, "stop_max_bps": 50, "target_min_bps": 60},
+    )[1] == _gate_funnel(
+        [row], {**baseline, "stop_max_bps": 60, "target_min_bps": 50},
+    )[1]
+    assert left["stop_max_bps"] != right["stop_max_bps"]
+    assert left["target_min_bps"] != right["target_min_bps"]
+
+
+def test_research_signal_range_spans_current_score_band_without_changing_set2():
+    import traders_ml.parameter_sweep.engine as engine_module
+
+    assert RESEARCH_PARAMETERS.search_space["strategy_minimum_score"] == [
+        55.0, 75.0, 85.0,
+    ]
+    assert engine_module._production_baseline_config()["strategy_minimum_score"] == 55.0
+
+
 @pytest.mark.parametrize(
     ("field", "value", "reason"),
     (

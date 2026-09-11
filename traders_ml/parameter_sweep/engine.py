@@ -1282,6 +1282,69 @@ def _gate_funnel(
     return admitted, dict(sorted(funnel.items()))
 
 
+def _independent_gate_predicate_signature(
+    rows: list[dict[str, Any]], config: Mapping[str, object],
+) -> dict[str, dict[str, object]]:
+    """Fingerprint researched predicates without upstream-gate masking.
+
+    The evaluation funnel remains sequential and fail-closed. Planning also
+    needs independent row-level signatures so an early economics rejection
+    cannot classify a later SIGNAL, REGIME, ENTRY, or GEOMETRY threshold as a
+    behavioral no-op.
+    """
+    flags: dict[str, bytearray] = {
+        name: bytearray() for name in (
+            "strategy_minimum_score", "regime_lookback_candles",
+            "stop_max_bps", "target_min_bps", "causal_reset_min_conditions",
+            "entry_refinement_1m_confirmation_count",
+        )
+    }
+    for row in rows:
+        raw_probability = row.get("p_win_raw")
+        if raw_probability is None:
+            stop = (
+                float("inf") if row.get("stop_distance_bps") is None
+                else float(row["stop_distance_bps"])
+            )
+            target = (
+                float("-inf") if row.get("target_distance_bps") is None
+                else float(row["target_distance_bps"])
+            )
+        else:
+            stop = float(row.get("stop_distance_bps") or 0)
+            target = float(row.get("target_distance_bps") or 0)
+        outcomes = {
+            "strategy_minimum_score": (
+                float(row.get("strategy_score", SCALPING_V2.signal.strategy_minimum_score))
+                >= float(config["strategy_minimum_score"])
+            ),
+            "regime_lookback_candles": (
+                int(row.get("regime_history_candles", SCALPING_V2.signal.regime_lookback_candles))
+                >= int(config["regime_lookback_candles"])
+            ),
+            "stop_max_bps": stop <= float(config["stop_max_bps"]),
+            "target_min_bps": target >= float(config["target_min_bps"]),
+            "causal_reset_min_conditions": (
+                int(row.get("causal_reset_conditions", 0))
+                >= int(config["causal_reset_min_conditions"])
+            ),
+            "entry_refinement_1m_confirmation_count": (
+                int(row.get("one_min_confirmation_count", 0))
+                >= int(config["entry_refinement_1m_confirmation_count"])
+            ),
+        }
+        for name, passed in outcomes.items():
+            flags[name].append(passed)
+    return {
+        name: {
+            "row_outcome_sha256": sha256(values).hexdigest(),
+            "passed_rows": sum(values),
+            "input_rows": len(values),
+        }
+        for name, values in sorted(flags.items())
+    }
+
+
 def _distribution(rows: list[dict[str, Any]], name: str) -> dict[str, int]:
     result: dict[str, int] = {}
     for row in rows:
@@ -2016,7 +2079,12 @@ def _run_impl(
     if search.get("search", {}).get("strategy") == "targeted":
         def behavior_signature(config: dict[str, object]) -> dict[str, Any]:
             return {
-                name: _gate_funnel(split_rows, config)[1]
+                name: {
+                    "sequential_funnel": _gate_funnel(split_rows, config)[1],
+                    "independent_research_predicates": (
+                        _independent_gate_predicate_signature(split_rows, config)
+                    ),
+                }
                 for name, split_rows in sorted(splits.items())
             }
         try:

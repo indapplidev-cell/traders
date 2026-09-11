@@ -46,10 +46,22 @@ def sensitivity_preflight(
     space = active_search_space(config)
     families = config["calibration"]["parameter_families"]
     family_for = {name: family for family, names in families.items() for name in names}
+    declared = list(config["calibration"]["targeted_families"])
+    all_dimensions = {
+        name: {
+            "canonical_key": name,
+            "family": family_for.get(name, "UNREGISTERED"),
+            "baseline_value": baseline.get(name),
+            "candidate_values": list(values),
+            "source_yaml": "config/research/research_parameters.yaml#search_space",
+        }
+        for name, values in sorted(config["search_space"].items())
+    }
     baseline_signature = signature(dict(baseline))
     active: dict[str, list[Any]] = {}
     no_op: dict[str, dict[str, Any]] = {}
     signatures: dict[str, list[str]] = {}
+    dimension_trace: dict[str, dict[str, Any]] = {}
     for name, values in sorted(space.items()):
         observed = []
         for value in values:
@@ -59,12 +71,27 @@ def sensitivity_preflight(
         signatures[name] = encoded
         if len(set(encoded + [sha256(json.dumps(baseline_signature, sort_keys=True, default=str).encode()).hexdigest()])) > 1:
             active[name] = values
+            dimension_trace[name] = {
+                **all_dimensions[name], "activation_state": "ACTIVE",
+                "removal_stage": None, "removal_reason": None,
+            }
         else:
             no_op[name] = {
-                "reason": "GENUINELY_INERT_ON_THIS_DATASET",
+                "reason": "BEHAVIORAL_NO_OP",
                 "candidate_values": values,
             }
-    declared = list(config["calibration"]["targeted_families"])
+            dimension_trace[name] = {
+                **all_dimensions[name], "activation_state": "BEHAVIORAL_NO_OP",
+                "removal_stage": "NO_OP_DETECTION",
+                "removal_reason": "BEHAVIORAL_NO_OP",
+            }
+    for name, item in all_dimensions.items():
+        if name not in space:
+            dimension_trace[name] = {
+                **item, "activation_state": "FROZEN_EXCLUDED",
+                "removal_stage": "MODE_FAMILY_FILTER",
+                "removal_reason": "FAMILY_NOT_TARGETED",
+            }
     active_families = sorted({family_for[name] for name in active})
     missing = sorted(set(declared) - set(active_families))
     if missing:
@@ -80,10 +107,27 @@ def sensitivity_preflight(
         "active_families": active_families,
         "active_dimensions": active,
         "no_op_dimensions": no_op,
-        "excluded_dimensions": {},
+        "excluded_dimensions": {
+            name: item for name, item in dimension_trace.items()
+            if item["activation_state"] == "FROZEN_EXCLUDED"
+        },
         "raw_config_count": raw,
         "unique_effective_config_count": effective,
         "sensitivity_signatures": signatures,
+        "planning_snapshots": {
+            "declared_targeted_families": declared,
+            "registry_dimensions_before_filter": list(all_dimensions),
+            "dimensions_after_mode_family_filter": list(space),
+            "dimensions_after_activation_predicates": list(space),
+            "dimensions_after_baseline_candidate_resolution": list(space),
+            "dimensions_after_no_op_detection": list(active),
+            "dimensions_after_behavioral_dedup": list(active),
+            "final_active_dimensions_by_family": {
+                family: sorted(name for name in active if family_for[name] == family)
+                for family in declared
+            },
+        },
+        "dimension_trace": dimension_trace,
     }
 
 
