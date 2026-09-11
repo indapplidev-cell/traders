@@ -28,6 +28,10 @@ from traders_ml.parameter_sweep.integrity import verify_artifacts
 from traders_ml.parameter_sweep.locking import SingleRunLock, SweepAlreadyRunning
 from traders_ml.parameter_sweep.state import read_effective_status
 from traders_ml.parameter_sweep.utils import generate_run_id
+from traders_ml.parameter_sweep.modes import (
+    ACTIVE_RESEARCH_FAMILIES, FROZEN_RESEARCH_FAMILIES, RESEARCH_MODES,
+    ResearchMode, parse_research_mode,
+)
 
 
 def _time_stop_space() -> dict[str, list[object]]:
@@ -51,7 +55,8 @@ def _rows() -> list[dict[str, object]]:
         opened = index * 2_000_000
         rows.append({
             "position_id": f"p{index}", "command_id": f"c{index}",
-            "profile_id": "trade-5m-v2", "split": split,
+            "profile_id": "trade-5m-v2", "primary_timeframe": "5m",
+            "split": split,
             "opened_at_ms": opened, "closed_at_ms": opened + 1_200_000,
             "expected_ev_r": .2, "ev_reserve": .3, "net_edge_bps": 20,
             "probability_sample_size": 50, "stop_distance_bps": 40,
@@ -95,16 +100,218 @@ def _search(tmp_path: Path, rows: list[dict[str, object]]) -> Path:
         "target_min_bps": [45], "causal_reset_min_conditions": [1],
         "entry_refinement_1m_confirmation_count": [1], **_time_stop_space(),
     }
-    search = {
-        "schema_version": 2, "seed": 1, "dataset": str(dataset),
-        "search": RESEARCH_PARAMETERS.search.model_dump(mode="python"),
+    search = RESEARCH_PARAMETERS.model_dump(mode="python")
+    search["search"]["strategy"] = "bounded"
+    search["search"].pop("max_total_configs", None)
+    search.update({
+        "seed": 1,
+        "dataset": {
+            "source": str(dataset), "profile": "trade-5m-v2",
+            "primary_timeframe": "5m", "closed_only": False,
+            "selection_mode": "ALL_UNTIL_CUTOFF", "max_rows": None,
+        },
         "output_root": str(tmp_path / "artifacts"),
         "minimum_samples": {"calibration": 2, "validation": 2, "holdout": 2},
         "search_space": space,
-    }
+    })
     search_path = tmp_path / "search.yaml"
     search_path.write_text(yaml.safe_dump(search), encoding="utf-8")
     return search_path
+
+
+def _targeted_mode_search(tmp_path: Path) -> Path:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    seeds = _rows()
+    rows = []
+    for index in range(15):
+        row = json.loads(json.dumps(seeds[index % len(seeds)]))
+        row["position_id"] = f"mode-p{index}"
+        row["command_id"] = f"mode-c{index}"
+        row["opened_at_ms"] = index * 2_000_000
+        row["closed_at_ms"] = row["opened_at_ms"] + 1_200_000
+        row["split"] = ("CALIBRATION", "VALIDATION", "HOLDOUT")[index % 3]
+        rows.append(row)
+    for index, row in enumerate(rows):
+        row.update({
+            "strategy_score": 65, "regime_history_candles": 36,
+            "one_min_confirmation_count": 3,
+            "stop_distance_bps": 35, "target_distance_bps": 65,
+        })
+    for group, field, values in (
+        (0, "strategy_score", (45, 55, 65)),
+        (1, "regime_history_candles", (12, 24, 36)),
+        (2, "one_min_confirmation_count", (1, 2, 3)),
+        (3, "stop_distance_bps", (35, 45, 55)),
+        (4, "target_distance_bps", (45, 55, 65)),
+    ):
+        for offset, value in enumerate(values):
+            rows[group * 3 + offset][field] = value
+    path = _search(tmp_path, rows)
+    value = yaml.safe_load(path.read_text())
+    value["search"]["strategy"] = "targeted"
+    value["search"]["max_total_configs"] = 500
+    value["search"]["max_evaluated_configs"] = 2
+    value["search"]["batch_size"] = 1
+    value["search_space"] = {
+        "strategy_minimum_score": [45.0, 55.0, 65.0],
+        "regime_lookback_candles": [12, 24, 36],
+        "entry_refinement_1m_confirmation_count": [1, 2, 3],
+        "stop_max_bps": [40.0, 50.0, 60.0],
+        "target_min_bps": [40.0, 50.0, 60.0],
+    }
+    path.write_text(yaml.safe_dump(value, sort_keys=False), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize("mode", RESEARCH_MODES)
+def test_every_launch_mode_builds_and_runs_a_tiny_v2_plan(tmp_path, mode):
+    output = run(
+        _targeted_mode_search(tmp_path), run_id=f"mode-{mode.value.lower()}",
+        mode=mode, max_configs=1,
+    )
+    plan = json.loads((output / "SEARCH_PLAN.json").read_text())
+    manifest = json.loads((output / "DATASET_MANIFEST.json").read_text())
+    run_config = yaml.safe_load((output / "RUN_CONFIG.yaml").read_text())
+    assert plan["RESEARCH_MODE"] == mode.value
+    assert tuple(plan["ACTIVE_FAMILIES"]) == ACTIVE_RESEARCH_FAMILIES
+    assert tuple(plan["FROZEN_FAMILIES"]) == FROZEN_RESEARCH_FAMILIES
+    assert plan["DIMENSION_COUNT"] == 5
+    assert plan["RAW_SEARCH_SPACE_SIZE"] == 243
+    assert plan["EVALUATION_BUDGET"] == 1
+    assert manifest["profile"] == "trade-5m-v2"
+    assert manifest["primary_timeframe"] == "5m"
+    assert manifest["baseline_set_id"] == "scalping-v2-set-2"
+    assert manifest["composition"]["profile"] == {"trade-5m-v2": 15}
+    assert manifest["composition"]["primary_timeframe"] == {"5m": 15}
+    assert run_config["production_mutations"] == 0
+    assert run_config["binance_order_api_calls"] == 0
+    assert json.loads((output / "CHECKPOINT.json").read_text())["completed"] is True
+
+
+@pytest.mark.parametrize("value", ("UNKNOWN", "", "trade-5m-v1", "trade-15m-v1", "15m", None, 7, ["ALL"]))
+def test_invalid_research_modes_fail_closed(value):
+    with pytest.raises(ValueError, match="UNSUPPORTED_RESEARCH_MODE"):
+        parse_research_mode(value)
+
+
+def test_engine_invalid_mode_fails_closed_before_output(tmp_path):
+    with pytest.raises(SweepExpectedError, match="UNSUPPORTED_RESEARCH_MODE"):
+        run(_targeted_mode_search(tmp_path), run_id="bad-mode", mode="UNKNOWN")
+    assert not (tmp_path / "artifacts" / "bad-mode").exists()
+
+
+def test_null_expected_ev_is_a_gate_rejection_not_a_planner_type_error(tmp_path):
+    path = _targeted_mode_search(tmp_path)
+    value = yaml.safe_load(path.read_text())
+    dataset = Path(value["dataset"]["source"])
+    rows = json.loads(dataset.read_text())
+    rows[0]["expected_ev_r"] = None
+    dataset.write_text(json.dumps(rows), encoding="utf-8")
+    output = run(path, run_id="null-ev", mode=ResearchMode.ALL, max_configs=1)
+    assert (output / "SEARCH_PLAN.json").is_file()
+    assert "TypeError" not in (output / "REPORT.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "reason"),
+    (
+        ("profile", "trade-5m-v1", "DATASET_CONFIG_INVALID"),
+        ("profile", "trade-15m-v1", "DATASET_CONFIG_INVALID"),
+        ("primary_timeframe", "15m", "DATASET_CONFIG_INVALID"),
+    ),
+)
+def test_new_run_rejects_legacy_profile_and_timeframe(tmp_path, field, value, reason):
+    path = _targeted_mode_search(tmp_path)
+    config = yaml.safe_load(path.read_text())
+    config["dataset"][field] = value
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match=reason):
+        run(path, run_id=f"reject-{field}-{value}", mode=ResearchMode.ALL)
+
+
+def test_frozen_family_override_and_baseline_mismatch_fail_closed(tmp_path):
+    path = _targeted_mode_search(tmp_path)
+    config = yaml.safe_load(path.read_text())
+    config["calibration"]["targeted_families"].append("COSTS")
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match="RESEARCH_AUTHORITY_INVALID"):
+        run(path, run_id="frozen-family", mode=ResearchMode.ALL)
+
+    path = _targeted_mode_search(tmp_path / "baseline")
+    config = yaml.safe_load(path.read_text())
+    config["calibration"]["baseline_set_id"] = "scalping-v2-set-1"
+    path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match="RESEARCH_AUTHORITY_INVALID"):
+        run(path, run_id="baseline-mismatch", mode=ResearchMode.ALL)
+
+
+def test_resume_requires_same_canonical_mode_and_authority_identity(tmp_path):
+    path = _targeted_mode_search(tmp_path)
+    output = run(
+        path, run_id="resume-mode", mode=ResearchMode.ALL,
+        stop_after_batches=1,
+    )
+    assert json.loads((output / "CHECKPOINT.json").read_text())["completed"] is False
+    with pytest.raises(SweepExpectedError, match="RESUME_RESEARCH_MODE_MISMATCH"):
+        run(path, run_id="resume-mode", mode=ResearchMode.ONE_FACTOR_SENSITIVITY, resume=True)
+    resumed = run(path, run_id="resume-mode", mode=ResearchMode.ALL, resume=True)
+    assert json.loads((resumed / "CHECKPOINT.json").read_text())["completed"] is True
+
+    for field, reason in (
+        ("profile", "RESUME_PROFILE_MISMATCH"),
+        ("primary_timeframe", "RESUME_TIMEFRAME_MISMATCH"),
+        ("baseline_set_id", "RESUME_BASELINE_SET_MISMATCH"),
+    ):
+        output = run(
+            path, run_id=f"resume-{field}", mode=ResearchMode.ALL,
+            stop_after_batches=1,
+        )
+        checkpoint_path = output / "CHECKPOINT.json"
+        checkpoint = json.loads(checkpoint_path.read_text())
+        checkpoint[field] = "mismatch"
+        checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
+        with pytest.raises(SweepExpectedError, match=reason):
+            run(path, run_id=f"resume-{field}", mode=ResearchMode.ALL, resume=True)
+
+
+@pytest.mark.parametrize("mode", RESEARCH_MODES)
+def test_every_launch_mode_resume_identity_is_enforced(tmp_path, mode):
+    path = _targeted_mode_search(tmp_path)
+    same_id = f"resume-same-{mode.value.lower()}"
+    run(path, run_id=same_id, mode=mode, max_configs=1, preflight_only=True)
+    resumed = run(path, run_id=same_id, mode=mode, max_configs=1, resume=True)
+    assert json.loads((resumed / "CHECKPOINT.json").read_text())["completed"] is True
+
+    cross_id = f"resume-cross-{mode.value.lower()}"
+    run(path, run_id=cross_id, mode=mode, max_configs=1, preflight_only=True)
+    different = (
+        ResearchMode.ONE_FACTOR_SENSITIVITY
+        if mode is ResearchMode.ALL else ResearchMode.ALL
+    )
+    with pytest.raises(SweepExpectedError, match="RESUME_RESEARCH_MODE_MISMATCH"):
+        run(path, run_id=cross_id, mode=different, max_configs=1, resume=True)
+
+
+def test_controller_and_direct_cli_engine_path_have_identical_plan_identity(tmp_path):
+    path = _targeted_mode_search(tmp_path)
+    config = yaml.safe_load(path.read_text())
+    output_root = Path(config["output_root"])
+    controller = ParameterSweepController(path, output_root)
+    gui_run_id = controller.start_new_run(max_configs=1, mode="ALL")
+    assert controller.worker is not None
+    controller.worker.join(timeout=30)
+    assert not controller.worker.is_alive()
+    controller.drain_events()
+    assert controller.state.terminal_state == "COMPLETED"
+    cli_output = run(path, run_id="cli-parity", max_configs=1, mode="ALL")
+    gui_plan = json.loads((output_root / gui_run_id / "SEARCH_PLAN.json").read_text())
+    cli_plan = json.loads((cli_output / "SEARCH_PLAN.json").read_text())
+    keys = (
+        "RESEARCH_MODE", "ACTIVE_FAMILIES", "SEARCH_DIMENSIONS",
+        "RAW_SEARCH_SPACE_SIZE", "EVALUATION_BUDGET", "SEARCH_SPACE_HASH",
+        "SEARCH_PLAN_HASH",
+    )
+    assert {key: gui_plan[key] for key in keys} == {key: cli_plan[key] for key in keys}
 
 
 def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_path):
@@ -363,7 +570,7 @@ def test_resume_uses_frozen_manifest_and_ignores_new_source_rows(tmp_path):
     output = run(search_path, run_id="frozen-growth", stop_after_batches=1)
     before_manifest = json.loads((output / "DATASET_MANIFEST.json").read_text())
     before_checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
-    source_path = Path(yaml.safe_load(search_path.read_text())["dataset"])
+    source_path = Path(yaml.safe_load(search_path.read_text())["dataset"]["source"])
     grown = json.loads(source_path.read_text())
     appended = dict(grown[-1])
     appended["position_id"] = "new-after-cutoff"
@@ -435,7 +642,7 @@ def test_transient_checkpoint_contention_then_source_growth_resumes_exactly_once
 
     monkeypatch.setattr(os, "replace", flaky_checkpoint)
     output = run(search_path, run_id="writer-plus-growth", stop_after_batches=1)
-    source_path = Path(yaml.safe_load(search_path.read_text())["dataset"])
+    source_path = Path(yaml.safe_load(search_path.read_text())["dataset"]["source"])
     grown = json.loads(source_path.read_text())
     extra = dict(grown[-1])
     extra["position_id"] = "growth-after-writer-retry"
@@ -479,7 +686,13 @@ def test_expanded_runtime_space_is_bounded_without_materialization(tmp_path):
         rows.append(row)
     dataset = tmp_path / "incident.json"
     dataset.write_text(json.dumps(rows), encoding="utf-8")
-    source["dataset"] = str(dataset)
+    source["dataset"] = {
+        "source": str(dataset), "profile": "trade-5m-v2",
+        "primary_timeframe": "5m", "closed_only": False,
+        "selection_mode": "ALL_UNTIL_CUTOFF", "max_rows": None,
+    }
+    source["search"]["strategy"] = "bounded"
+    source["search"].pop("max_total_configs", None)
     source["output_root"] = str(tmp_path / "artifacts")
     config = tmp_path / "incident.yaml"
     config.write_text(yaml.safe_dump(source), encoding="utf-8")
@@ -763,7 +976,9 @@ def test_ui_is_thin_and_controller_consumes_engine_events(tmp_path):
     ):
         assert forbidden not in source
     controller = ParameterSweepController(tmp_path / "config.yaml", tmp_path / "artifacts")
-    controller.events.put(SweepEvent.create(EventType.RUN_STARTED, "ui"))
+    controller.events.put(SweepEvent.create(
+        EventType.RUN_STARTED, "ui", research_mode="ALL",
+    ))
     controller.events.put(SweepEvent.create(
         EventType.SEARCH_PLANNED, "ui", raw_space=100, planned=5,
         strategy="AUTO_BOUNDED",
@@ -827,7 +1042,13 @@ def _planned_5000_replay_failure_search(tmp_path: Path) -> Path:
     source = yaml.safe_load(
         Path("config/research/research_parameters.yaml").read_text()
     )
-    source["dataset"] = str(dataset)
+    source["dataset"] = {
+        "source": str(dataset), "profile": "trade-5m-v2",
+        "primary_timeframe": "5m", "closed_only": False,
+        "selection_mode": "ALL_UNTIL_CUTOFF", "max_rows": None,
+    }
+    source["search"]["strategy"] = "bounded"
+    source["search"].pop("max_total_configs", None)
     source["output_root"] = str(tmp_path / "artifacts")
     config = tmp_path / "ui-incident.yaml"
     config.write_text(yaml.safe_dump(source), encoding="utf-8")
