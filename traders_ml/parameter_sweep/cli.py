@@ -10,6 +10,7 @@ from .engine import PROJECT_ROOT, ParameterSweepEngine, SweepExpectedError
 from .events import SweepEvent
 from .state import read_effective_status
 from .artifact_v2 import migrate_v1_run
+from .modes import RESEARCH_MODE_VALUES, ResearchMode
 
 
 from app.config.yaml_authority import RESEARCH_PARAMETERS, RESEARCH_PATH
@@ -34,6 +35,7 @@ def status(run_id: str, output_root: Path = DEFAULT_OUTPUT_ROOT) -> int:
     print(f"RUN_ID = {run_id}")
     print(f"STATE = {value['state']}")
     print(f"PHASE = {value['phase']}")
+    print(f"RESEARCH_MODE = {value.get('research_mode') or 'UNKNOWN'}")
     print(f"PROCESS_ALIVE = {'YES' if value['process_alive'] else 'NO'}")
     print(f"PLANNED = {value['planned_configs']}")
     print(f"COMPLETED = {value['completed_configs']}")
@@ -57,7 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--stage", choices=("SET2_BASELINE", "ONE_FACTOR_SENSITIVITY", "SMALL_FAMILY_SEARCH", "TOP_REGION_REFINEMENT", "LOCAL_FINALIST_VALIDATION"))
+    parser.add_argument(
+        "--mode", choices=RESEARCH_MODE_VALUES, default=ResearchMode.ALL.value,
+        help="Canonical research mode; defaults explicitly to ALL.",
+    )
     parser.add_argument("--migrate-v1", type=Path, metavar="RUN_DIR")
     parser.add_argument("--migration-target", type=Path)
     parser.add_argument("--dry-run", action="store_true")
@@ -89,7 +94,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             to_value=args.to_value, database_url=args.database_url,
             preflight_only=args.preflight_only, verbose=args.verbose,
             resume=args.resume,
-            stage=args.stage,
+            mode=args.mode,
         )
     except SweepExpectedError as error:
         print("PARAMETER_SWEEP = FAILED")

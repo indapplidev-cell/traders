@@ -246,6 +246,7 @@ class HistoricalReplayRepository:
             "candidate_id": str(geometry.get("candidate_id") or setup.get("setup_id") or identity),
             "causal_opportunity": str(setup.get("opportunity_id") or strategy.get("context", {}).get("opportunity_id") or identity),
             "causal_identity": identity, "run_id": run_id, "symbol": symbol,
+            "profile_id": PROFILE, "primary_timeframe": "5m",
             "boundary_ms": boundary, "opened_at_ms": boundary, "direction": direction,
             "setup_type": str(setup.get("setup_type") or "UNKNOWN"),
             "setup_status": str(setup.get("status")), "structural_setup": True,

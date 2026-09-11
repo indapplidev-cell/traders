@@ -38,6 +38,7 @@ def utc_now() -> str:
 @dataclass(slots=True)
 class SweepRunStatus:
     run_id: str
+    research_mode: str | None = None
     state: str = RunState.READY.value
     phase: str = RunState.READY.value
     planned_configs: int = 0

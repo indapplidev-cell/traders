@@ -14,6 +14,7 @@ from .events import EventType, SweepEvent
 from .texts import PARAMETER_LABELS_RU, REASONS_RU, STRATEGIES_RU, RU
 from .state import read_effective_status
 from .utils import generate_run_id, open_directory
+from .modes import ResearchMode, parse_research_mode
 
 
 @dataclass(slots=True)
@@ -62,6 +63,7 @@ class PresentationState:
     negative_expectancy: int = 0
     promising: int = 0
     validation_candidates: int = 0
+    research_mode: str = ResearchMode.ALL.value
 
     @property
     def progress_percent(self) -> float:
@@ -110,7 +112,12 @@ class ParameterSweepController:
             except (OSError, ValueError, KeyError):
                 continue
             if value.get("state") in {"INTERRUPTED", "CANCELLED", "INTERRUPTED_RESUMABLE"} and value.get("resume_available"):
+                try:
+                    mode = parse_research_mode(value.get("research_mode"))
+                except ValueError:
+                    continue
                 self.state.run_id = str(value["run_id"])
+                self.state.research_mode = mode.value
                 self.state.output_directory = str(path.parent)
                 self.state.completed = int(value.get("completed_configs", 0))
                 self.state.planned = int(value.get("planned_configs", 0))
@@ -126,19 +133,29 @@ class ParameterSweepController:
                 )
                 return
 
-    def start_new_run(self, *, max_configs: int | None = None, stage: str | None = None) -> str:
+    def start_new_run(
+        self, *, max_configs: int | None = None,
+        mode: ResearchMode | str = ResearchMode.ALL,
+    ) -> str:
         if self.worker and self.worker.is_alive():
             raise RuntimeError("PARAMETER_SWEEP_ALREADY_RUNNING")
+        canonical_mode = parse_research_mode(mode)
         run_id = generate_run_id(self.output_root)
-        self._start(run_id, resume=False, max_configs=max_configs, stage=stage)
+        self._start(run_id, resume=False, max_configs=max_configs, mode=canonical_mode)
         return run_id
 
     def resume_run(self, run_id: str) -> None:
         if self.worker and self.worker.is_alive():
             raise RuntimeError("PARAMETER_SWEEP_ALREADY_RUNNING")
-        self._start(run_id, resume=True, max_configs=None, stage=None)
+        self._start(
+            run_id, resume=True, max_configs=None,
+            mode=parse_research_mode(self.state.research_mode),
+        )
 
-    def _start(self, run_id: str, *, resume: bool, max_configs: int | None, stage: str | None) -> None:
+    def _start(
+        self, run_id: str, *, resume: bool, max_configs: int | None,
+        mode: ResearchMode,
+    ) -> None:
         failure_emitted = threading.Event()
 
         def receive(event: SweepEvent) -> None:
@@ -150,6 +167,7 @@ class ParameterSweepController:
         self.state = PresentationState(
             status_text=RU["preparing"], run_id=run_id,
             output_directory=str(self.output_root / run_id), active=True,
+            research_mode=mode.value,
         )
 
         def target() -> None:
@@ -157,7 +175,7 @@ class ParameterSweepController:
                 self.engine.run(
                     self.config_path, run_id=run_id, resume=resume,
                     max_configs=max_configs,
-                    stage=stage,
+                    mode=mode,
                 )
             except BaseException as error:
                 if not failure_emitted.is_set():
@@ -201,6 +219,7 @@ class ParameterSweepController:
         self.state.phase = event.type.value
         if event.type in {EventType.RUN_STARTED, EventType.RUN_RESUMED}:
             self.state.run_id = event.run_id
+            self.state.research_mode = str(payload["research_mode"])
             self.state.output_directory = str(payload.get("output_dir", self.state.output_directory))
             self.state.active = True
             self.state.started_at = event.occurred_at

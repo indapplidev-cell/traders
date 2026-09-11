@@ -262,6 +262,7 @@ class ResearchSearchPolicy(StrictModel):
 class ResearchDataset(StrictModel):
     source: str
     profile: Literal["trade-5m-v2"]
+    primary_timeframe: Literal["5m"]
     closed_only: Literal[False]
     selection_mode: Literal["ALL_UNTIL_CUTOFF", "LATEST_N_UNTIL_CUTOFF"]
     max_rows: int | None = Field(default=None, gt=0)

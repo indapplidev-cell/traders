@@ -11,6 +11,7 @@ from .cli import DEFAULT_CONFIG, DEFAULT_OUTPUT_ROOT
 from .controller import ParameterSweepController
 from .texts import RU
 from .utils import format_duration
+from .modes import RESEARCH_MODE_VALUES, ResearchMode
 
 
 class ParameterSweepWindow:
@@ -90,9 +91,12 @@ class ParameterSweepWindow:
 
         actions = ttk.Frame(self.body)
         actions.pack(fill="x", pady=12)
-        self.stage_var = tk.StringVar(value="ALL")
-        self.stage_selector = ttk.Combobox(actions, textvariable=self.stage_var, state="readonly", width=28, values=("ALL", "SET2_BASELINE", "ONE_FACTOR_SENSITIVITY", "SMALL_FAMILY_SEARCH", "TOP_REGION_REFINEMENT", "LOCAL_FINALIST_VALIDATION"))
-        self.stage_selector.pack(side="left", padx=(0, 6))
+        self.mode_var = tk.StringVar(value=ResearchMode.ALL.value)
+        self.mode_selector = ttk.Combobox(
+            actions, textvariable=self.mode_var, state="readonly", width=28,
+            values=RESEARCH_MODE_VALUES,
+        )
+        self.mode_selector.pack(side="left", padx=(0, 6))
         self.start_button = ttk.Button(actions, text=RU["start"], command=self._start)
         self.start_button.pack(side="left", padx=(0, 6))
         self.stop_button = ttk.Button(actions, text=RU["stop"], command=self.controller.request_stop_after_current)
@@ -105,8 +109,8 @@ class ParameterSweepWindow:
 
     def _start(self) -> None:
         try:
-            self.controller.start_new_run(stage=None if self.stage_var.get() == "ALL" else self.stage_var.get())
-        except RuntimeError as error:
+            self.controller.start_new_run(mode=self.mode_var.get())
+        except (RuntimeError, ValueError) as error:
             messagebox.showerror(RU["title"], str(error), parent=self.root)
 
     def _resume(self) -> None:
@@ -138,6 +142,7 @@ class ParameterSweepWindow:
         state = self.controller.state
         self.context.configure(text=(
             "Профиль: Scalping v2\nРежим: Только чтение\n"
+            f"Режим исследования: {state.research_mode}\n"
             "Источник данных: Production PAPER\nLIVE: Отключён\n"
             f"RUN ID: {state.run_id}"
         ))

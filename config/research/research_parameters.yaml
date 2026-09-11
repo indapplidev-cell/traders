@@ -24,6 +24,7 @@ search:
 dataset:
   source: production_paper_readonly
   profile: trade-5m-v2
+  primary_timeframe: 5m
   closed_only: false
   selection_mode: ALL_UNTIL_CUTOFF
 output_root: artifacts/scalping_v2_parameter_sweep

@@ -63,6 +63,10 @@ from .historical_replay import (
 )
 from .locking import SingleRunLock
 from .models import ReplayDiagnostics, SearchPlanState, StructuredError
+from .modes import (
+    ACTIVE_RESEARCH_FAMILIES, FROZEN_RESEARCH_FAMILIES, ResearchMode,
+    families_for_mode, parse_research_mode,
+)
 from .state import RunState, StatusStore, SweepRunStatus
 from .texts import ERRORS_RU
 from .utils import generate_run_id
@@ -199,6 +203,7 @@ class DatabaseBinding:
 class DatasetOptions:
     source: str = DATASET_SOURCE
     profile: str = "trade-5m-v2"
+    primary_timeframe: str = "5m"
     closed_only: bool = False
     selection_mode: str = "ALL_UNTIL_CUTOFF"
     maximum_rows: int | None = DEFAULT_MAX_ROWS
@@ -223,6 +228,8 @@ class SearchPlan:
     estimated_active_batch_memory_mb: float
     invalid_combinations_generated: int = 0
     conditional_dimension_collapse: bool = False
+    research_mode: str = ResearchMode.ALL.value
+    active_families: tuple[str, ...] = ACTIVE_RESEARCH_FAMILIES
 
     def safe_dict(self) -> dict[str, object]:
         return {
@@ -247,6 +254,9 @@ class SearchPlan:
             "CONDITIONAL_DIMENSION_COLLAPSE": (
                 "YES" if self.conditional_dimension_collapse else "NO"
             ),
+            "RESEARCH_MODE": self.research_mode,
+            "ACTIVE_FAMILIES": self.active_families,
+            "FROZEN_FAMILIES": FROZEN_RESEARCH_FAMILIES,
         }
 
 
@@ -265,6 +275,7 @@ class ParameterSweepSearchPlanner:
         search: Mapping[str, object], max_configs_override: int | None = None,
         validation_rows: int = 0, holdout_rows: int = 0,
         available_replay_rows: int = 0,
+        mode: ResearchMode = ResearchMode.ALL,
     ) -> SearchPlan:
         raw = self.raw_cardinality(space)
         effective = _effective_cardinality(space)
@@ -333,7 +344,7 @@ class ParameterSweepSearchPlanner:
             else "RAW_SPACE_EXCEEDS_SAFE_EXHAUSTIVE_THRESHOLD",
             warning, promotion,
             round(batch * self.BYTES_PER_ACTIVE_CONFIG / 1024 / 1024, 3),
-            0, effective < raw,
+            0, effective < raw, mode.value, families_for_mode(mode),
         )
 
 
@@ -763,6 +774,16 @@ def _load_rows(
     return value
 
 
+def _validate_dataset_authority(
+    rows: list[dict[str, Any]], options: DatasetOptions,
+) -> None:
+    for row in rows:
+        if row.get("profile_id") != options.profile:
+            raise SweepExpectedError("DATASET_PROFILE_MISMATCH")
+        if row.get("primary_timeframe") != options.primary_timeframe:
+            raise SweepExpectedError("DATASET_TIMEFRAME_MISMATCH")
+
+
 def _config_hash(value: object) -> str:
     return sha256(json.dumps(
         value, sort_keys=True, separators=(",", ":"), default=str,
@@ -799,6 +820,7 @@ def _manifest_from_rows(
         "manifest_version": DATASET_MANIFEST_VERSION,
         "source": options.source,
         "profile": options.profile,
+        "primary_timeframe": options.primary_timeframe,
         "schema_head": schema_head,
         "rows": rows,
     })
@@ -806,6 +828,8 @@ def _manifest_from_rows(
         "manifest_version": DATASET_MANIFEST_VERSION,
         "run_id": run_id,
         "profile": options.profile,
+        "primary_timeframe": options.primary_timeframe,
+        "baseline_set_id": RESEARCH_PARAMETERS.calibration.baseline_set_id,
         "symbols": sorted({str(row.get("symbol")) for row in rows if row.get("symbol")}),
         "historical_period_start_ms": period_start,
         "historical_period_end_ms": period_end,
@@ -828,6 +852,8 @@ def _manifest_from_rows(
             "page_size": int(summary.get("STREAM_CHUNK_SIZE", len(rows))),
         },
         "composition": {
+            "profile": {options.profile: len(rows)},
+            "primary_timeframe": {options.primary_timeframe: len(rows)},
             "configuration_fingerprint": dict(sorted(_distribution(rows, "configuration_fingerprint").items())),
             "parameter_set_id": dict(sorted(_distribution(rows, "parameter_set_id").items())),
             "cost_provenance": dict(sorted(_distribution(rows, "cost_provenance").items())),
@@ -1178,14 +1204,18 @@ def _gate_result(row: dict[str, Any], config: dict[str, object]) -> tuple[bool, 
     samples = int(row.get("probability_sample_size", 0))
     raw = row.get("p_win_raw")
     if raw is None:
-        # Backward-compatible offline fixtures may carry already-computed EV.
+        # Persisted pre-probability rows legitimately carry null computed
+        # metrics. Missing evidence must reject the gate, never abort planning.
+        def finite_or(value: object, unavailable: float) -> float:
+            return unavailable if value is None else float(value)
+
         checks = (
-            (float(row.get("expected_ev_r", -1e9)) >= float(config["min_positive_ev_r"]), "REJECT_EV"),
-            (float(row.get("ev_reserve", -1e9)) >= float(config["min_ev_reserve_r"]), "REJECT_DYNAMIC_NET_RR"),
-            (float(row.get("net_edge_bps", -1e9)) >= float(config["min_net_edge_bps"]), "REJECT_MIN_NET_EDGE"),
+            (finite_or(row.get("expected_ev_r"), -1e9) >= float(config["min_positive_ev_r"]), "REJECT_EV"),
+            (finite_or(row.get("ev_reserve"), -1e9) >= float(config["min_ev_reserve_r"]), "REJECT_DYNAMIC_NET_RR"),
+            (finite_or(row.get("net_edge_bps"), -1e9) >= float(config["min_net_edge_bps"]), "REJECT_MIN_NET_EDGE"),
             (samples >= int(config["bucket_min_sample"]), "REJECT_BUCKET_SAMPLE"),
-            (float(row.get("stop_distance_bps", 1e9)) <= float(config["stop_max_bps"]), "REJECT_STOP_MAX_BPS"),
-            (float(row.get("target_distance_bps", -1e9)) >= float(config["target_min_bps"]), "REJECT_TARGET_MIN_BPS"),
+            (finite_or(row.get("stop_distance_bps"), 1e9) <= float(config["stop_max_bps"]), "REJECT_STOP_MAX_BPS"),
+            (finite_or(row.get("target_distance_bps"), -1e9) >= float(config["target_min_bps"]), "REJECT_TARGET_MIN_BPS"),
             (int(row.get("causal_reset_conditions", 0)) >= int(config["causal_reset_min_conditions"]), "REJECT_CAUSAL_DUPLICATE"),
             (int(row.get("one_min_confirmation_count", 0)) >= int(config["entry_refinement_1m_confirmation_count"]), "REJECT_OTHER"),
         )
@@ -1489,20 +1519,20 @@ def _dataset_options(
     from_value: str | None = None, to_value: str | None = None,
 ) -> DatasetOptions:
     raw = search.get("dataset", {})
-    if isinstance(raw, str):
-        source, profile, closed_only = raw, "trade-5m-v2", False
-        selection_mode, configured_max = "ALL_UNTIL_CUTOFF", None
-        configured_from = configured_to = None
-    elif isinstance(raw, dict):
+    if isinstance(raw, dict):
         source = str(raw.get("source", DATASET_SOURCE))
-        profile = str(raw.get("profile", "trade-5m-v2"))
+        profile = str(raw.get("profile", ""))
+        primary_timeframe = str(raw.get("primary_timeframe", ""))
         closed_only = raw.get("closed_only", False)
         selection_mode = str(raw.get("selection_mode", ""))
         configured_max = raw.get("max_rows")
         configured_from, configured_to = raw.get("from"), raw.get("to")
     else:
         raise SweepExpectedError("DATASET_CONFIG_INVALID")
-    if profile != "trade-5m-v2" or closed_only is not False:
+    if (
+        profile != "trade-5m-v2" or primary_timeframe != "5m"
+        or closed_only is not False
+    ):
         raise SweepExpectedError("DATASET_CONFIG_INVALID")
     if max_rows is not None:
         selection_mode, configured_max = "LATEST_N_UNTIL_CUTOFF", max_rows
@@ -1520,7 +1550,10 @@ def _dataset_options(
     end = _parse_utc(to_value if to_value is not None else configured_to)
     if start is not None and end is not None and start >= end:
         raise SweepExpectedError("INVALID_DATE_RANGE")
-    return DatasetOptions(source, profile, False, selection_mode, maximum, start, end)
+    return DatasetOptions(
+        source, profile, primary_timeframe, False, selection_mode, maximum,
+        start, end,
+    )
 
 
 def _validate_search(search: object) -> dict[str, Any]:
@@ -1537,6 +1570,17 @@ def _validate_search(search: object) -> dict[str, Any]:
     targeted = search.get("search", {}).get("strategy") == "targeted" and "calibration" in search
     if not targeted and not TIME_STOP_SEARCH_FIELDS.issubset(space):
         raise SweepExpectedError("SEARCH_SPACE_INVALID")
+    calibration = search.get("calibration", {})
+    artifact = search.get("artifact", {})
+    if (
+        not isinstance(calibration, dict)
+        or calibration.get("baseline_set_id") != "scalping-v2-set-2"
+        or tuple(calibration.get("targeted_families", ())) != ACTIVE_RESEARCH_FAMILIES
+        or tuple(calibration.get("frozen_families", ())) != FROZEN_RESEARCH_FAMILIES
+        or not isinstance(artifact, dict)
+        or artifact.get("schema_version") != 2
+    ):
+        raise SweepExpectedError("RESEARCH_AUTHORITY_INVALID")
     if targeted:
         try:
             validate_targeted_space(search)
@@ -1825,7 +1869,7 @@ def _run_impl(
     max_rows: int | None = None, from_value: str | None = None,
     to_value: str | None = None, database_url: str | None = None,
     preflight_only: bool = False, verbose: bool = False, resume: bool = False,
-    stage: str | None = None,
+    mode: ResearchMode = ResearchMode.ALL,
     stop_after_batches: int | None = None,
     event_sink: Callable[[SweepEvent], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
@@ -1837,10 +1881,6 @@ def _run_impl(
         raise SweepExpectedError("CONFIG_FILE_NOT_FOUND") from None
     except yaml.YAMLError:
         raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
-    legacy_offline_config = not isinstance(search.get("dataset"), dict)
-    if search.get("search", {}).get("strategy") == "targeted" and legacy_offline_config:
-        search = {**search, "search": {**search["search"], "strategy": "bounded"}}
-        search["search"].pop("max_total_configs", None)
     space = active_search_space(search) if search.get("search", {}).get("strategy") == "targeted" else search["search_space"]
     options = _dataset_options(search, max_rows=max_rows, from_value=from_value, to_value=to_value)
     identifier, output = _prepare_output(search, run_id, resume=resume)
@@ -1848,6 +1888,7 @@ def _run_impl(
         output / "STATUS.json",
         SweepRunStatus(
             run_id=identifier,
+            research_mode=mode.value,
             state=RunState.RESUMING.value if resume else RunState.PREFLIGHT.value,
             phase=RunState.RESUMING.value if resume else RunState.PREFLIGHT.value,
             started_at=run_started.isoformat(),
@@ -1861,7 +1902,10 @@ def _run_impl(
             event_sink(SweepEvent.create(event_type, identifier, **payload))
 
     status_store.update()
-    emit(EventType.RUN_RESUMED if resume else EventType.RUN_STARTED, output_dir=str(output))
+    emit(
+        EventType.RUN_RESUMED if resume else EventType.RUN_STARTED,
+        output_dir=str(output), research_mode=mode.value,
+    )
     emit(EventType.PREFLIGHT_STARTED, checks=(
         "database", "read_only", "dataset", "configuration",
     ))
@@ -1891,6 +1935,9 @@ def _run_impl(
                 or dataset_manifest.get("manifest_version") != DATASET_MANIFEST_VERSION
                 or dataset_manifest.get("run_id") != identifier
                 or dataset_manifest.get("profile") != options.profile
+                or dataset_manifest.get("primary_timeframe") != options.primary_timeframe
+                or dataset_manifest.get("baseline_set_id")
+                != RESEARCH_PARAMETERS.calibration.baseline_set_id
                 or dataset_manifest.get("dataset_source") != options.source
                 or dataset_manifest.get("manifest_hash")
                 != _config_hash({
@@ -1904,13 +1951,16 @@ def _run_impl(
                     "manifest_version": DATASET_MANIFEST_VERSION,
                     "source": options.source,
                     "profile": options.profile,
+                    "primary_timeframe": options.primary_timeframe,
                     "schema_head": dataset_manifest.get("source_schema_version"),
                     "rows": rows,
                 }):
                 raise SweepExpectedError("RESUME_DATASET_MUTATED")
+            _validate_dataset_authority(rows, options)
         else:
             rows = _load_rows(options, database)
             if rows:
+                _validate_dataset_authority(rows, options)
                 dataset_manifest = _manifest_from_rows(
                     run_id=identifier, options=options, rows=rows,
                     schema_head=schema_head,
@@ -1980,15 +2030,24 @@ def _run_impl(
         max_configs_override=max_configs, validation_rows=len(splits["VALIDATION"]),
         holdout_rows=len(splits["HOLDOUT"]),
         available_replay_rows=int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
+        mode=mode,
     )
     targeted_candidates = None
     behavioral_aliases: dict[str, list[dict[str, Any]]] = {}
     if sensitivity is not None:
         effective_search = {**search, "search_space": space}
+        mode_candidates = staged_candidates(effective_search, baseline_config)
+        if mode.selected_stage is not None:
+            mode_candidates = (
+                item for item in mode_candidates
+                if item.stage == mode.selected_stage
+            )
         targeted_candidates, behavioral_aliases = deduplicate_behavioral_configs(
-            staged_candidates(effective_search, baseline_config),
+            mode_candidates,
             lambda overrides: behavior_signature({**baseline_config, **overrides}),
         )
+        if not targeted_candidates:
+            raise SweepExpectedError("NO_PLANNED_EVALUATIONS_FOR_MODE")
         plan = replace(
             plan,
             evaluation_budget=min(plan.evaluation_budget, len(targeted_candidates)),
@@ -2036,7 +2095,11 @@ def _run_impl(
         "dataset_manifest_hash": dataset_manifest["manifest_hash"],
         "engine_version": SCHEMA_VERSION,
         "dataset_fingerprint": dataset_fingerprint,
-        "strategy": plan.selected_strategy, "seed": plan.seed, "stage": "NOT_STARTED",
+        "strategy": plan.selected_strategy, "seed": plan.seed,
+        "research_mode": mode.value, "stage": "NOT_STARTED",
+        "profile": options.profile,
+        "primary_timeframe": options.primary_timeframe,
+        "baseline_set_id": RESEARCH_PARAMETERS.calibration.baseline_set_id,
         "evaluated_count": 0, "accepted_count": 0, "rejected_count": 0,
         "pruned_count": 0, "early_reject_count": 0, "failed_count": 0,
         "insufficient_count": 0, "durable_result_count": 0,
@@ -2053,6 +2116,14 @@ def _run_impl(
             raise SweepExpectedError("RESUME_CHECKPOINT_NOT_AVAILABLE") from None
         if existing.get("run_id") != identifier or existing.get("dataset_manifest_hash") != checkpoint["dataset_manifest_hash"] or existing.get("dataset_fingerprint") != dataset_fingerprint:
             raise SweepExpectedError("RESUME_DATASET_MANIFEST_MISMATCH")
+        if existing.get("research_mode") != mode.value:
+            raise SweepExpectedError("RESUME_RESEARCH_MODE_MISMATCH")
+        if existing.get("profile") != options.profile:
+            raise SweepExpectedError("RESUME_PROFILE_MISMATCH")
+        if existing.get("primary_timeframe") != options.primary_timeframe:
+            raise SweepExpectedError("RESUME_TIMEFRAME_MISMATCH")
+        if existing.get("baseline_set_id") != RESEARCH_PARAMETERS.calibration.baseline_set_id:
+            raise SweepExpectedError("RESUME_BASELINE_SET_MISMATCH")
         if existing.get("search_plan_hash") != search_plan_hash or existing.get("search_space_hash") != search_space_hash or existing.get("strategy") != checkpoint["strategy"] or existing.get("seed") != checkpoint["seed"]:
             raise SweepExpectedError("RESUME_SEARCH_PLAN_MISMATCH")
         if existing.get("research_config_hash") != research_hash:
@@ -2112,7 +2183,10 @@ def _run_impl(
         "WRITE_ATTEMPT_DDL": write_rejections.get("DDL", "NOT_APPLICABLE"),
         "DATASET_SOURCE": "PRODUCTION_PAPER_READONLY" if database is not None else "OFFLINE_JSON",
         "DATABASE_BINDING": binding_source, "DATABASE_SESSION": "READ_ONLY" if session_mode == "ON" else session_mode,
-        "SCHEMA_HEAD": schema_head, "PROFILE": options.profile, "ROWS_AVAILABLE": len(rows),
+        "SCHEMA_HEAD": schema_head, "PROFILE": options.profile,
+        "PRIMARY_TIMEFRAME": options.primary_timeframe,
+        "BASELINE_SET_ID": RESEARCH_PARAMETERS.calibration.baseline_set_id,
+        "RESEARCH_MODE": mode.value, "ROWS_AVAILABLE": len(rows),
         "DATASET_ROWS": len(rows), "RAW_SEARCH_SPACE_SIZE": plan.raw_search_space_size,
         "SEARCH_STRATEGY": plan.selected_strategy, "EXHAUSTIVE": "YES" if plan.selected_strategy == "EXHAUSTIVE_LAZY" else "NO",
         "MAX_EVALUATED_CONFIGS": plan.evaluation_budget, "CONFIGURATIONS_PLANNED": plan.evaluation_budget,
@@ -2164,8 +2238,9 @@ def _run_impl(
         return output
     run_config = {
         "run_id": identifier,
+        "research_mode": mode.value,
         "schema_version": SCHEMA_VERSION, "seed": search["seed"], "search": plan.safe_dict(),
-        "dataset": {"source": options.source, "profile": options.profile, "closed_only": False, "selection_mode": options.selection_mode, "max_rows": options.maximum_rows},
+        "dataset": {"source": options.source, "profile": options.profile, "primary_timeframe": options.primary_timeframe, "closed_only": False, "selection_mode": options.selection_mode, "max_rows": options.maximum_rows},
         "dataset_period": {"from_ms": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows), "to_ms": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows)},
         "sample_sizes": {key: len(value) for key, value in splits.items()},
         "source_data_provenance": dataset_fingerprint, "dataset_fingerprint": dataset_fingerprint,
@@ -2176,7 +2251,10 @@ def _run_impl(
         "dataset_row_count": len(rows),
         "dataset_min_opened_at": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows),
         "dataset_max_closed_at": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows),
-        "dataset_profile": options.profile, "dataset_source": options.source,
+        "dataset_profile": options.profile,
+        "dataset_primary_timeframe": options.primary_timeframe,
+        "baseline_set_id": RESEARCH_PARAMETERS.calibration.baseline_set_id,
+        "dataset_source": options.source,
         "authoritative_trade_parameters": str(CONFIG_PATH),
         "baseline_config_hash": TRADE_PARAMETERS.config_hash, "search_space_hash": search_space_hash,
         "historical_baseline_control": {
@@ -2361,8 +2439,6 @@ def _run_impl(
     candidate_variants = _conditional_variants(space)
     if plan.selected_strategy == "TARGETED_STAGED":
         targeted_items = iter(targeted_candidates or ())
-        if stage is not None:
-            targeted_items = (item for item in targeted_items if item.stage == stage)
         candidate_source = enumerate(targeted_items)
     else:
         candidate_source = enumerate(_candidate_indices(plan))
@@ -2381,7 +2457,7 @@ def _run_impl(
                 continue
             if int(checkpoint["evaluated_count"]) >= plan.evaluation_budget:
                 break
-            stage = raw_value.stage if plan.selected_strategy == "TARGETED_STAGED" else _stage_for(plan, int(checkpoint["evaluated_count"]))
+            current_stage = raw_value.stage if plan.selected_strategy == "TARGETED_STAGED" else _stage_for(plan, int(checkpoint["evaluated_count"]))
             next_index = int(checkpoint["last_durable_result_index"]) + 1
             candidate = raw_value.overrides if plan.selected_strategy == "TARGETED_STAGED" else _candidate_config(
                 space, raw_value, conditional_variants=candidate_variants,
@@ -2402,7 +2478,7 @@ def _run_impl(
                 index=next_index + 1, planned=plan.evaluation_budget,
                 changed_parameters=changed_parameters,
                 resolved_config=resolved_config,
-                stage=stage,
+                stage=current_stage,
                 parameter_family=next((family for family, names in search.get("calibration", {}).get("parameter_families", {}).items() if set(changed_parameters) & set(names)), "BASELINE"),
             )
             emit(
@@ -2412,7 +2488,7 @@ def _run_impl(
             )
             item, consumed_budget, early_reason = _evaluate_config(
                 resolved_config, splits, search["minimum_samples"],
-                index=next_index, stage=stage,
+                index=next_index, stage=current_stage,
             )
             item["overrides"] = changed_parameters
             item["run_id"] = identifier
@@ -2451,7 +2527,7 @@ def _run_impl(
             result_writer.append(item)
             result_class = compact_result(item)["performance_class"]
             status_store.update(
-                current_stage=stage,
+                current_stage=current_stage,
                 current_parameter_family=next((family for family, names in search.get("calibration", {}).get("parameter_families", {}).items() if set(changed_parameters) & set(names)), "BASELINE"),
                 artifact_bytes=sum(path.stat().st_size for path in output.glob("*") if path.is_file()),
                 artifact_soft_budget_bytes=RESEARCH_PARAMETERS.artifact.soft_total_bytes,
@@ -2463,7 +2539,7 @@ def _run_impl(
             emit(EventType.RESULT_WRITE_COMPLETED, index=next_index + 1)
             checkpoint["last_candidate_offset"] = candidate_offset
             checkpoint["last_durable_result_index"] = item["result_index"]
-            checkpoint["stage"] = stage
+            checkpoint["stage"] = current_stage
             if consumed_budget:
                 checkpoint["evaluated_count"] = int(checkpoint["evaluated_count"]) + 1
                 if item["result_status"] == "ACCEPTED":
@@ -2870,10 +2946,14 @@ def run(
     event_sink: Callable[[SweepEvent], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
     use_lock: bool = True,
-    stage: str | None = None,
+    mode: ResearchMode | str = ResearchMode.ALL,
 ) -> Path:
     """Run the authoritative research engine with lock and heartbeat protection."""
     search_path = Path(search_path)
+    try:
+        canonical_mode = parse_research_mode(mode)
+    except ValueError:
+        raise SweepExpectedError("UNSUPPORTED_RESEARCH_MODE") from None
     try:
         search = _validate_search(yaml.safe_load(search_path.read_text(encoding="utf-8")))
     except FileNotFoundError:
@@ -2918,7 +2998,7 @@ def run(
             stop_after_batches=stop_after_batches,
             event_sink=event_sink,
             stop_requested=stop_requested,
-            stage=stage,
+            mode=canonical_mode,
         )
     except BaseException as error:
         output = output_root / identifier
@@ -2927,6 +3007,24 @@ def run(
                 _sanitized_error(output, error)
             except BaseException:
                 pass
+            if isinstance(error, SweepExpectedError) and not resume:
+                status_path = output / "STATUS.json"
+                try:
+                    value = json.loads(status_path.read_text(encoding="utf-8"))
+                    if value.get("state") not in {
+                        RunState.COMPLETED.value, RunState.FAILED.value,
+                        RunState.CANCELLED.value,
+                    }:
+                        value.update({
+                            "state": RunState.FAILED.value,
+                            "failure_reason": error.reason,
+                            "failure_code": error.reason,
+                            "resume_available": False,
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        })
+                        _atomic_json(status_path, value)
+                except (OSError, json.JSONDecodeError):
+                    pass
             if isinstance(error, SweepExpectedError) and error.reason == "CHECKPOINT_WRITE_FAILED":
                 status_path = output / "STATUS.json"
                 try:
