@@ -25,7 +25,7 @@ dataset:
   source: production_paper_readonly
   profile: trade-5m-v2
   closed_only: false
-  max_rows: 10000
+  selection_mode: ALL_UNTIL_CUTOFF
 output_root: artifacts/scalping_v2_parameter_sweep
 minimum_samples: {calibration: 30, validation: 20, holdout: 20}
 artifact:

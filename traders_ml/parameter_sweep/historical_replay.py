@@ -8,6 +8,7 @@ closed candles; executed positions are used only as a parity control sample.
 from __future__ import annotations
 
 from collections import OrderedDict, defaultdict
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -254,7 +255,7 @@ class HistoricalReplayRepository:
             "paper_plan_id": plan_id,
         }
 
-    def load(self, *, maximum_rows: int = 5000, from_ms: int | None = None, to_ms: int | None = None) -> HistoricalReplayDataset:
+    def load(self, *, maximum_rows: int | None = None, selection_mode: str = "ALL_UNTIL_CUTOFF", from_ms: int | None = None, to_ms: int | None = None) -> HistoricalReplayDataset:
         with self.database.connection() as connection:
             period_start, period_end = self._period(connection)
             start, end = from_ms or period_start, to_ms or period_end
@@ -270,7 +271,11 @@ class HistoricalReplayRepository:
                 WHERE u.trade_profile_id=:profile AND r.closed_until_ms BETWEEN :start AND :end
                 ORDER BY r.closed_until_ms,r.symbol,r.run_id
             """
-            rows: list[dict[str, Any]] = []
+            selected: list[dict[str, Any]] | deque[dict[str, Any]] = (
+                deque(maxlen=maximum_rows)
+                if selection_mode == "LATEST_N_UNTIL_CUTOFF" and maximum_rows is not None
+                else []
+            )
             seen: set[str] = set()
             observations = setups = rejected = 0
             result = self._select(connection, sql, {"profile": PROFILE, "start": start, "end": end})
@@ -290,8 +295,10 @@ class HistoricalReplayRepository:
                     seen.add(identity)
                     if candidate["historically_rejected"]:
                         rejected += 1
-                    if len(rows) < maximum_rows:
-                        rows.append(candidate)
+                    selected.append(candidate)
+            rows = sorted(list(selected), key=lambda item: (
+                int(item["boundary_ms"]), str(item["symbol"]), str(item["run_id"]),
+            ))
             baseline_positions = [dict(r) for r in self._select(connection, """
                 SELECT p.position_id,p.symbol,p.side,p.opened_at,p.closed_at,p.average_entry_price,
                        p.average_exit_price,p.stop_price,p.target_price,p.entry_quantity,p.entry_fees,
@@ -310,6 +317,8 @@ class HistoricalReplayRepository:
                 WHERE trade_profile_id=:profile AND closed_until_ms BETWEEN :start AND :end
                 GROUP BY symbol ORDER BY symbol
             """, {"profile": PROFILE, "start": start, "end": end})}
+        omitted_older = max(0, len(seen) - len(rows)) if selection_mode == "LATEST_N_UNTIL_CUTOFF" else 0
+        latest_eligible = max((int(row["boundary_ms"]) for row in rows), default=end)
         summary = {
             "HISTORICAL_REPLAY_DATA_SOURCE": "EXISTING_POSTGRESQL_HISTORY",
             "FUTURE_WAIT_REQUIRED": "NO", "HISTORICAL_PERIOD_START_MS": start,
@@ -320,6 +329,11 @@ class HistoricalReplayRepository:
             "TOTAL_PERSISTED_CANDIDATES": sum(bool(r["historically_persisted"]) for r in rows),
             "TOTAL_RECONSTRUCTED_ONLY_CANDIDATES": sum(not r["historically_persisted"] for r in rows),
             "TOTAL_OPPORTUNITY_UNIVERSE": len(seen), "LOADED_OPPORTUNITY_ROWS": len(rows),
+            "DATASET_SELECTION_MODE": selection_mode,
+            "REQUESTED_MAX_ROWS": maximum_rows,
+            "OMITTED_OLDER_ROWS": omitted_older,
+            "OMITTED_NEWER_ROWS": 0,
+            "LATEST_ELIGIBLE_BOUNDARY_MS": latest_eligible,
             "TOTAL_HISTORICALLY_REJECTED": rejected,
             "TOTAL_HISTORICALLY_EXECUTED": len(baseline_positions),
             "PERSISTED_CLOSED_POSITIONS": len(baseline_positions),

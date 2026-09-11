@@ -263,7 +263,16 @@ class ResearchDataset(StrictModel):
     source: str
     profile: Literal["trade-5m-v2"]
     closed_only: Literal[False]
-    max_rows: int = Field(gt=0)
+    selection_mode: Literal["ALL_UNTIL_CUTOFF", "LATEST_N_UNTIL_CUTOFF"]
+    max_rows: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def bounded_selection_requires_limit(self):
+        if self.selection_mode == "LATEST_N_UNTIL_CUTOFF" and self.max_rows is None:
+            raise ValueError("LATEST_N_UNTIL_CUTOFF requires max_rows")
+        if self.selection_mode == "ALL_UNTIL_CUTOFF" and self.max_rows is not None:
+            raise ValueError("ALL_UNTIL_CUTOFF must not declare max_rows")
+        return self
 
 
 class ArtifactWriterPolicy(StrictModel):

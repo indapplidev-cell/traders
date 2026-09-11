@@ -64,7 +64,7 @@ from .texts import ERRORS_RU
 from .utils import generate_run_id
 
 SCHEMA_VERSION = "SCALPING_V2_PARAMETER_SWEEP/3"
-DATASET_MANIFEST_VERSION = "PARAMETER_SWEEP_DATASET_MANIFEST/1"
+DATASET_MANIFEST_VERSION = "PARAMETER_SWEEP_DATASET_MANIFEST/2"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROTECTED_BINDING_PATH = PROJECT_ROOT / ".env.production.local"
 PROTECTED_READONLY_KEY = "TRADERS_READONLY_API_DATABASE_URL"
@@ -196,7 +196,8 @@ class DatasetOptions:
     source: str = DATASET_SOURCE
     profile: str = "trade-5m-v2"
     closed_only: bool = False
-    maximum_rows: int = DEFAULT_MAX_ROWS
+    selection_mode: str = "ALL_UNTIL_CUTOFF"
+    maximum_rows: int | None = DEFAULT_MAX_ROWS
     from_time: datetime | None = None
     to_time: datetime | None = None
 
@@ -602,11 +603,16 @@ def _production_rows(
     options: DatasetOptions,
 ) -> list[dict[str, Any]]:
     """Load the v2 opportunity universe, never a positions-only dataset."""
-    if not 1 <= options.maximum_rows <= DEFAULT_MAX_ROWS:
+    if options.selection_mode not in {"ALL_UNTIL_CUTOFF", "LATEST_N_UNTIL_CUTOFF"}:
+        raise SweepExpectedError("DATASET_SELECTION_MODE_INVALID")
+    if options.selection_mode == "LATEST_N_UNTIL_CUTOFF" and (
+        options.maximum_rows is None or options.maximum_rows < 1
+    ):
         raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE")
     repository = HistoricalReplayRepository(database)
     dataset = repository.load(
         maximum_rows=options.maximum_rows,
+        selection_mode=options.selection_mode,
         from_ms=None if options.from_time is None else int(options.from_time.timestamp() * 1000),
         to_ms=None if options.to_time is None else int(options.to_time.timestamp() * 1000),
     )
@@ -802,6 +808,32 @@ def _manifest_from_rows(
         "dataset_cutoff_at": datetime.fromtimestamp(period_end / 1000, timezone.utc).isoformat(),
         "dataset_source": options.source,
         "dataset_row_count": len(rows),
+        "selection_mode": options.selection_mode,
+        "requested_max_rows": options.maximum_rows,
+        "total_eligible_rows": int(summary.get("TOTAL_OPPORTUNITY_UNIVERSE", len(rows))),
+        "loaded_rows": len(rows),
+        "cutoff": datetime.fromtimestamp(period_end / 1000, timezone.utc).isoformat(),
+        "first_loaded_boundary": min(opened),
+        "last_loaded_boundary": max(closed),
+        "latest_eligible_boundary": int(summary.get("LATEST_ELIGIBLE_BOUNDARY_MS", max(closed))),
+        "omitted_older_rows": int(summary.get("OMITTED_OLDER_ROWS", 0)),
+        "omitted_newer_rows": int(summary.get("OMITTED_NEWER_ROWS", 0)),
+        "pagination": {
+            "mode": "DETERMINISTIC_STREAMING_FETCHMANY",
+            "stable_order": ["closed_until_ms", "symbol", "run_id"],
+            "page_size": int(summary.get("STREAM_CHUNK_SIZE", len(rows))),
+        },
+        "composition": {
+            "configuration_fingerprint": dict(sorted(_distribution(rows, "configuration_fingerprint").items())),
+            "parameter_set_id": dict(sorted(_distribution(rows, "parameter_set_id").items())),
+            "cost_provenance": dict(sorted(_distribution(rows, "cost_provenance").items())),
+            "time_period_utc_date": dict(sorted(
+                _distribution([
+                    {"period": datetime.fromtimestamp(int(row.get("boundary_ms", row.get("opened_at_ms", 0))) / 1000, timezone.utc).date().isoformat()}
+                    for row in rows
+                ], "period").items()
+            )),
+        },
         "dataset_fingerprint": dataset_fingerprint,
         "source_schema_version": schema_head,
         "trade_config_version": TRADE_PARAMETERS.config_version,
@@ -1427,29 +1459,36 @@ def _dataset_options(
     raw = search.get("dataset", {})
     if isinstance(raw, str):
         source, profile, closed_only = raw, "trade-5m-v2", False
-        configured_max = DEFAULT_MAX_ROWS
+        selection_mode, configured_max = "ALL_UNTIL_CUTOFF", None
         configured_from = configured_to = None
     elif isinstance(raw, dict):
         source = str(raw.get("source", DATASET_SOURCE))
         profile = str(raw.get("profile", "trade-5m-v2"))
         closed_only = raw.get("closed_only", False)
-        configured_max = raw.get("max_rows", DEFAULT_MAX_ROWS)
+        selection_mode = str(raw.get("selection_mode", ""))
+        configured_max = raw.get("max_rows")
         configured_from, configured_to = raw.get("from"), raw.get("to")
     else:
         raise SweepExpectedError("DATASET_CONFIG_INVALID")
     if profile != "trade-5m-v2" or closed_only is not False:
         raise SweepExpectedError("DATASET_CONFIG_INVALID")
+    if max_rows is not None:
+        selection_mode, configured_max = "LATEST_N_UNTIL_CUTOFF", max_rows
+    if selection_mode not in {"ALL_UNTIL_CUTOFF", "LATEST_N_UNTIL_CUTOFF"}:
+        raise SweepExpectedError("DATASET_SELECTION_MODE_INVALID")
     try:
-        maximum = int(max_rows if max_rows is not None else configured_max)
+        maximum = None if configured_max is None else int(configured_max)
     except (TypeError, ValueError):
         raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE") from None
-    if not 1 <= maximum <= DEFAULT_MAX_ROWS:
+    if selection_mode == "LATEST_N_UNTIL_CUTOFF" and (maximum is None or maximum < 1):
         raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE")
+    if selection_mode == "ALL_UNTIL_CUTOFF" and maximum is not None:
+        raise SweepExpectedError("DATASET_CONFIG_INVALID")
     start = _parse_utc(from_value if from_value is not None else configured_from)
     end = _parse_utc(to_value if to_value is not None else configured_to)
     if start is not None and end is not None and start >= end:
         raise SweepExpectedError("INVALID_DATE_RANGE")
-    return DatasetOptions(source, profile, False, maximum, start, end)
+    return DatasetOptions(source, profile, False, selection_mode, maximum, start, end)
 
 
 def _validate_search(search: object) -> dict[str, Any]:
@@ -2062,7 +2101,7 @@ def _run_impl(
     run_config = {
         "run_id": identifier,
         "schema_version": SCHEMA_VERSION, "seed": search["seed"], "search": plan.safe_dict(),
-        "dataset": {"source": options.source, "profile": options.profile, "closed_only": False, "max_rows": options.maximum_rows},
+        "dataset": {"source": options.source, "profile": options.profile, "closed_only": False, "selection_mode": options.selection_mode, "max_rows": options.maximum_rows},
         "dataset_period": {"from_ms": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows), "to_ms": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows)},
         "sample_sizes": {key: len(value) for key, value in splits.items()},
         "source_data_provenance": dataset_fingerprint, "dataset_fingerprint": dataset_fingerprint,
