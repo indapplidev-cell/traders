@@ -33,6 +33,7 @@ artifact:
   top_config_count: 10
   finalist_config_count: 5
   max_detailed_trades_per_config: 100
+  max_counterfactual_examples: 20
   soft_total_bytes: 125829120
   hard_total_bytes: 209715200
   soft_results_bytes: 52428800

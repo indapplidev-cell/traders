@@ -179,6 +179,43 @@ def aggregate_result_semantics(rows: Iterable[Mapping[str, Any]]) -> dict[str, A
     }
 
 
+def build_opportunity_funnel(
+    results: Iterable[Mapping[str, Any]], *, counterfactual_count: int,
+    counterfactual_examples: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Build the funnel exclusively from canonical compact result rows."""
+    rows = list(results)
+    configs = []
+    aggregate: dict[str, int] = {}
+    for row in rows:
+        rejection = dict(row.get("key_rejection_distribution") or {})
+        for key, value in rejection.items():
+            aggregate[key] = aggregate.get(key, 0) + int(value)
+        configs.append({
+            "config_index": row.get("config_index"),
+            "config_id": row.get("config_id"),
+            "parameters": dict(row.get("overrides") or {}),
+            "status": row.get("evaluation_status"),
+            "performance_class": row.get("performance_class"),
+            "validation_funnel": rejection,
+            "validation_trade_count": int(row.get("trade_count") or 0),
+            "rejection_distribution": rejection,
+        })
+    required = (
+        "config_index", "config_id", "parameters", "status", "performance_class",
+        "validation_funnel", "validation_trade_count", "rejection_distribution",
+    )
+    if any(any(item.get(key) is None for key in required) for item in configs):
+        raise ValueError("FUNNEL_ARTIFACT_INCOMPLETE")
+    return {
+        "AGGREGATE_FUNNEL": dict(sorted(aggregate.items())),
+        "AGGREGATE_FUNNEL_SEMANTICS": "SUM_OF_PER_CONFIG_VALIDATION_FUNNELS",
+        "CONFIG_RESULTS": configs,
+        "COUNTERFACTUAL_REJECTED_OPPORTUNITIES_SIMULATED": int(counterfactual_count),
+        "COUNTERFACTUAL_EXAMPLES": list(counterfactual_examples),
+    }
+
+
 def make_market_path_ref(
     dataset_manifest_hash: str, trade: Mapping[str, Any], path: list[Mapping[str, Any]],
 ) -> dict[str, Any]:

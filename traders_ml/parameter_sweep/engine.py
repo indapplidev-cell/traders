@@ -48,7 +48,8 @@ from .artifact_writer import (
 )
 from .artifact_v2 import (
     ARTIFACT_SCHEMA_VERSION, ArtifactSizeBudgetExceeded, aggregate_result_semantics,
-    compact_result, compact_trade, enforce_size_budget, iter_results,
+    build_opportunity_funnel, compact_result, compact_trade, enforce_size_budget,
+    iter_results,
 )
 from .ranking import pareto_frontier, rank_results, selection_bias_guard
 from .targeted import (
@@ -2368,6 +2369,8 @@ def _run_impl(
     batch_active = 0
     batches_this_call = 0
     finalist_candidates: list[tuple[tuple[float, float, int], str, list[dict[str, Any]]]] = []
+    counterfactual_count = 0
+    counterfactual_examples: list[dict[str, Any]] = []
     if not jsonl.exists():
         DEFAULT_ARTIFACT_WRITER.atomic_text(jsonl, "", operation="results_jsonl_initialize")
     if not csv_path.exists():
@@ -2413,6 +2416,18 @@ def _run_impl(
             )
             item["overrides"] = changed_parameters
             item["run_id"] = identifier
+            for split_name in ("calibration", "validation", "holdout"):
+                for trade in item.get(split_name, {}).get("trades", []):
+                    if trade.get("historically_rejected"):
+                        counterfactual_count += 1
+                        if len(counterfactual_examples) < RESEARCH_PARAMETERS.artifact.max_counterfactual_examples:
+                            counterfactual_examples.append({
+                                "opportunity_id": trade.get("causal_opportunity") or trade.get("candidate_id"),
+                                "baseline_disposition": "HISTORICALLY_REJECTED",
+                                "counterfactual_config": item.get("config_hash"),
+                                "counterfactual_disposition": "SIMULATED_TRADE",
+                                "reason_changed": f"{trade.get('historical_rejection_reason')}->{trade.get('exit_reason')}",
+                            })
             validation_metrics = item.get("validation", {})
             if item.get("result_status") == "ACCEPTED":
                 detailed = []
@@ -2533,9 +2548,10 @@ def _run_impl(
     _atomic_json(checkpoint_path, checkpoint)
     _stream_json_array(jsonl, output / "RESULTS.json")
     _stream_json_array(jsonl, output / "REJECTED_CONFIGS.json", rejected_only=True)
-    accepted_rows = [row for row in iter_results(jsonl) if row["evaluation_status"] == "ACCEPTED"]
-    rejected_rows = [row for row in iter_results(jsonl) if row["evaluation_status"] != "ACCEPTED"]
-    canonical_semantics = aggregate_result_semantics([*accepted_rows, *rejected_rows])
+    all_result_rows = list(iter_results(jsonl))
+    accepted_rows = [row for row in all_result_rows if row["evaluation_status"] == "ACCEPTED"]
+    rejected_rows = [row for row in all_result_rows if row["evaluation_status"] != "ACCEPTED"]
+    canonical_semantics = aggregate_result_semantics(all_result_rows)
     checkpoint["insufficient_count"] = canonical_semantics["insufficient_configs"]
     checkpoint["classification_counts"] = canonical_semantics["classification_counts"]
     checkpoint["validation_readiness"] = canonical_semantics["validation_readiness"]
@@ -2575,49 +2591,15 @@ def _run_impl(
         output / "RUN_CONFIG.yaml", yaml.safe_dump(run_config, sort_keys=False),
         operation="run_config_replace",
     )
-    aggregate_funnel: dict[str, int] = {}
-    with jsonl.open(encoding="utf-8") as handle:
-        for line in handle:
-            item = json.loads(line)
-            for split_funnel in item.get("gate_funnel", {}).values():
-                for key, value in split_funnel.items():
-                    aggregate_funnel[key] = aggregate_funnel.get(key, 0) + int(value)
-    if historical_summary:
-        result_summaries = []
-        distinct_funnels: set[str] = set()
-        counterfactual_examples: list[dict[str, object]] = []
-        counterfactual_count = 0
-        with jsonl.open(encoding="utf-8") as handle:
-            for line in handle:
-                item = json.loads(line)
-                validation = item.get("validation", {})
-                funnel = validation.get("funnel", {})
-                distinct_funnels.add(json.dumps(funnel, sort_keys=True))
-                result_summaries.append({
-                    "RESULT_INDEX": item.get("result_index"),
-                    "PARAMETERS": item.get("parameters"),
-                    "STATUS": item.get("result_status"),
-                    "VALIDATION_FUNNEL": funnel,
-                    "VALIDATION_TRADES": validation.get("trade_count", 0),
-                    "VALIDATION_NET_PNL": validation.get("net_pnl"),
-                })
-                for split_name in ("calibration", "validation", "holdout"):
-                    for trade in item.get(split_name, {}).get("trades", []):
-                        if trade.get("historically_rejected"):
-                            counterfactual_count += 1
-                            if len(counterfactual_examples) < 20:
-                                counterfactual_examples.append({key: trade.get(key) for key in (
-                                    "candidate_id", "symbol", "boundary_ms",
-                                    "historical_rejection_reason", "entry_price", "stop_price",
-                                    "target_price", "exit_reason", "cost_provenance",
-                                )})
-        _atomic_json(output / "OPPORTUNITY_FUNNEL.json", {
-            "AGGREGATE_FUNNEL": dict(sorted(aggregate_funnel.items())),
-            "CONFIG_RESULTS": result_summaries,
-            "CONFIGS_WITH_DIFFERENT_FUNNELS": len(distinct_funnels),
-            "COUNTERFACTUAL_REJECTED_OPPORTUNITIES_SIMULATED": counterfactual_count,
-            "COUNTERFACTUAL_EXAMPLES": counterfactual_examples,
-        })
+    try:
+        opportunity_funnel = build_opportunity_funnel(
+            all_result_rows, counterfactual_count=counterfactual_count,
+            counterfactual_examples=counterfactual_examples,
+        )
+    except ValueError as error:
+        raise SweepExpectedError(str(error)) from None
+    aggregate_funnel = opportunity_funnel["AGGREGATE_FUNNEL"]
+    _atomic_json(output / "OPPORTUNITY_FUNNEL.json", opportunity_funnel)
     coverage_table = "\n".join(
         f"| {item['FIELD']} | {item['ROWS_PRESENT']} | {item['ROWS_MISSING']} | "
         f"{item['COVERAGE_PERCENT']} | {item['REPLAY_REQUIRED']} |"
@@ -2695,6 +2677,7 @@ def _run_impl(
 - Aggregate exact counts: `{json.dumps(dict(sorted(aggregate_funnel.items())), sort_keys=True)}`
 - `ALL_TRADES_FILTERED` without reason: `NO`
 - Counterfactual historically rejected opportunities are present in `OPPORTUNITY_FUNNEL.json`.
+- COUNTERFACTUAL_REJECTED_OPPORTUNITIES_SIMULATED: {counterfactual_count}
 
 ## SEARCH PLAN
 

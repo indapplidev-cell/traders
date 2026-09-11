@@ -284,6 +284,7 @@ class ResearchArtifactPolicy(StrictModel):
     top_config_count: int = Field(gt=0)
     finalist_config_count: int = Field(gt=0)
     max_detailed_trades_per_config: int = Field(gt=0)
+    max_counterfactual_examples: int = Field(ge=0)
     soft_total_bytes: int = Field(gt=0)
     hard_total_bytes: int = Field(gt=0)
     soft_results_bytes: int = Field(gt=0)

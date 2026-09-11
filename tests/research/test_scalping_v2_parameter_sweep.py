@@ -117,6 +117,7 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
         "DATASET_SNAPSHOT.json", "RUN_MANIFEST.json", "ACCEPTED_CONFIGS.jsonl",
         "REJECTED_CONFIGS.jsonl", "FINALIST_TRADES.jsonl", "ARTIFACT_SIZES.json",
         "PARAMETER_REGISTRY.json",
+        "OPPORTUNITY_FUNNEL.json",
     }
     assert {path.name for path in output.iterdir()} == expected
     results = json.loads((output / "RESULTS.json").read_text())
