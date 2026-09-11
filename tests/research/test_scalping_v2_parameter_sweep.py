@@ -114,6 +114,7 @@ def _search(tmp_path: Path, rows: list[dict[str, object]]) -> Path:
         "minimum_samples": {"calibration": 2, "validation": 2, "holdout": 2},
         "search_space": space,
     })
+    search["search"]["seed"] = 1
     search_path = tmp_path / "search.yaml"
     search_path.write_text(yaml.safe_dump(search), encoding="utf-8")
     return search_path
@@ -911,6 +912,12 @@ def test_authoritative_package_events_status_and_integrity_complete(tmp_path):
     insufficient = sum(row["performance_class"] == "INSUFFICIENT_SAMPLE" for row in results)
     assert status["insufficient_configs"] == insufficient
     assert status["classification_counts"]["INSUFFICIENT_SAMPLE"] == insufficient
+    evaluation_counts = {
+        name: sum(row["evaluation_status"] == name for row in results)
+        for name in ("ACCEPTED", "REJECTED", "ERROR")
+    }
+    assert status["evaluation_status_counts"] == evaluation_counts
+    assert status["performance_class_counts"] == {"INSUFFICIENT_SAMPLE": insufficient}
     report = (output / "REPORT.md").read_text()
     assert f"INSUFFICIENT_CONFIGS: {insufficient}" in report
     assert "PROMOTION_EVALUATION_ALLOWED: `YES`" in report
@@ -918,6 +925,21 @@ def test_authoritative_package_events_status_and_integrity_complete(tmp_path):
     assert status["duration_seconds"] is not None
     integrity = json.loads((output / "INTEGRITY.json").read_text())
     assert integrity["integrity_status"] == "PASS"
+    assert all(integrity["hash_fingerprint_checks"][name] for name in (
+        "results_status_parity", "results_report_parity",
+        "accepted_rejected_artifact_parity", "resolved_seed_parity",
+        "opportunity_funnel_aggregation_parity", "finalist_trades_coverage_parity",
+    ))
+    checkpoint_event = next(
+        event for event in reversed(events) if event.type == EventType.CHECKPOINT_WRITTEN
+    )
+    controller = ParameterSweepController(tmp_path / "unused.yaml", tmp_path / "unused")
+    controller.events.put(checkpoint_event)
+    controller.drain_events()
+    assert controller.state.evaluation_status_counts == status["evaluation_status_counts"]
+    assert controller.state.performance_class_counts == status["performance_class_counts"]
+    assert controller.state.accepted == status["accepted_configs"]
+    assert controller.state.rejected == status["rejected_configs"]
 
 
 def test_graceful_stop_finishes_current_result_then_compatible_resume(tmp_path):
@@ -944,6 +966,24 @@ def test_graceful_stop_finishes_current_result_then_compatible_resume(tmp_path):
     resumed = run(search, run_id="graceful", resume=True)
     assert json.loads((resumed / "STATUS.json").read_text())["state"] == "COMPLETED"
     assert len((resumed / "RESULTS.jsonl").read_text().splitlines()) == 2
+
+
+def test_run_and_resume_reject_seed_identity_mismatch(tmp_path):
+    search = _search(tmp_path, _rows())
+    value = yaml.safe_load(search.read_text(encoding="utf-8"))
+    value["seed"] = 2
+    search.write_text(yaml.safe_dump(value), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match="RUN_SEED_MISMATCH"):
+        run(search, run_id="seed-mismatch", max_configs=1)
+
+    value["search"]["seed"] = 2
+    search.write_text(yaml.safe_dump(value), encoding="utf-8")
+    stopped = run(search, run_id="seed-resume", max_configs=1, stop_after_batches=1)
+    assert json.loads((stopped / "CHECKPOINT.json").read_text())["resolved_seed"] == 2
+    value["seed"] = value["search"]["seed"] = 3
+    search.write_text(yaml.safe_dump(value), encoding="utf-8")
+    with pytest.raises(SweepExpectedError, match="RESUME_SEARCH_PLAN_MISMATCH"):
+        run(search, run_id="seed-resume", max_configs=1, resume=True)
 
 
 def test_single_run_lock_blocks_live_owner_and_clears_stale_owner(tmp_path):

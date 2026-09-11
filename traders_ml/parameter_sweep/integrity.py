@@ -11,6 +11,7 @@ from typing import Any, Callable
 import yaml
 
 from .artifact_writer import DEFAULT_ARTIFACT_WRITER
+from .artifact_v2 import aggregate_result_semantics
 
 
 COMPLETED_ARTIFACTS = (
@@ -138,6 +139,75 @@ def verify_artifacts(
                 int(checkpoint.get("evaluated_count", -1))
                 == int(checkpoint.get("durable_result_count", -2))
                 == len(jsonl_results)
+            )
+            status = _json(run_directory / "STATUS.json")
+            accepted_rows = [
+                json.loads(line) for line in (run_directory / "ACCEPTED_CONFIGS.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            rejected_rows = [
+                json.loads(line) for line in (run_directory / "REJECTED_CONFIGS.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            semantics = aggregate_result_semantics(
+                jsonl_results, error_count=int(checkpoint.get("failed_count", 0)),
+            )
+            checks["results_status_parity"] = all((
+                status.get("evaluation_status_counts") == semantics["evaluation_status_counts"],
+                status.get("performance_class_counts") == semantics["performance_class_counts"],
+                int(status.get("accepted_configs", -1)) == semantics["accepted_configs"],
+                int(status.get("rejected_configs", -1)) == semantics["rejected_configs"],
+                int(status.get("error_configs", -1)) == semantics["error_configs"],
+            ))
+            checks["accepted_rejected_artifact_parity"] = (
+                len(accepted_rows) == semantics["accepted_configs"]
+                and len(rejected_rows) == len(jsonl_results) - semantics["accepted_configs"]
+            )
+            report = (run_directory / "REPORT.md").read_text(encoding="utf-8")
+            checks["results_report_parity"] = all((
+                f"EVALUATION_STATUS_COUNTS: `{json.dumps(semantics['evaluation_status_counts'], sort_keys=True)}`" in report,
+                f"PERFORMANCE_CLASS_COUNTS: `{json.dumps(semantics['performance_class_counts'], sort_keys=True)}`" in report,
+            ))
+            resolved_seed = checkpoint.get("resolved_seed", checkpoint.get("seed"))
+            run_manifest = _json(run_directory / "RUN_MANIFEST.json")
+            opportunity_funnel = _json(run_directory / "OPPORTUNITY_FUNNEL.json")
+            finalist_rows = [
+                json.loads(line) for line in (run_directory / "FINALIST_TRADES.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            seed_values = (
+                checkpoint.get("seed"), checkpoint.get("resolved_seed"),
+                preflight.get("SEED"), preflight.get("RESOLVED_SEED"),
+                search_plan.get("SEED"), search_plan.get("RESOLVED_SEED"),
+                run_config.get("seed"), run_config.get("resolved_seed"),
+                run_config.get("sampler_seed"), run_manifest.get("resolved_seed"),
+                status.get("resolved_seed"),
+            )
+            checks["resolved_seed_parity"] = (
+                resolved_seed is not None
+                and all(value == resolved_seed for value in seed_values)
+                and all(row.get("resolved_seed") == resolved_seed for row in jsonl_results)
+                and all(row.get("resolved_seed") == resolved_seed for row in accepted_rows + rejected_rows + finalist_rows)
+                and opportunity_funnel.get("RESOLVED_SEED") == resolved_seed
+                and f"Requested/resolved/sampler seed: {resolved_seed}/{resolved_seed}/{resolved_seed}" in report
+            )
+            checks["opportunity_funnel_aggregation_parity"] = (
+                opportunity_funnel.get("RUN_AGGREGATION") == semantics
+            )
+            finalist_validation: dict[str, list[dict[str, Any]]] = {}
+            for trade in finalist_rows:
+                if trade.get("split") == "validation":
+                    finalist_validation.setdefault(str(trade["config_id"]), []).append(trade)
+            results_by_id = {str(row["config_id"]): row for row in jsonl_results}
+            checks["finalist_trades_coverage_parity"] = all(
+                int(results_by_id[config_id]["trade_count"]) == len(trades)
+                and int(results_by_id[config_id]["symbol_coverage"]) == len({str(t["symbol"]) for t in trades})
+                and int(results_by_id[config_id]["setup_coverage"]) == len({str(t.get("setup_type") or "UNKNOWN") for t in trades})
+                and int(results_by_id[config_id]["independent_period_count"]) == len({
+                    datetime.fromtimestamp(int(t.get("opened_at_ms", t.get("boundary_ms"))) / 1000, timezone.utc).date().isoformat()
+                    for t in trades
+                })
+                for config_id, trades in finalist_validation.items()
             )
         elif terminal_state == "FAILED_BEFORE_EVALUATION":
             status = _json(run_directory / "STATUS.json")

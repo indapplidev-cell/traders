@@ -10,6 +10,7 @@ from typing import Mapping
 IMMUTABLE_RESUME_FIELDS = (
     "run_id", "git_commit", "config_hash", "search_space_hash",
     "dataset_fingerprint", "strategy", "seed",
+    "resolved_seed",
 )
 
 

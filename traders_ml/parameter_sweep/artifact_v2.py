@@ -9,6 +9,7 @@ immutable dataset snapshot.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from hashlib import sha256
 import json
 import os
@@ -57,9 +58,15 @@ def performance_class(metrics: Mapping[str, Any], *, stability: float | None = N
     expectancy = metrics.get("expectancy_R", metrics.get("net_expectancy_per_trade"))
     profit_factor = metrics.get("profit_factor")
     symbols = metrics.get("symbol_coverage")
+    independent_periods = metrics.get("independent_period_count")
     if metrics.get("invalid_reason"):
         return "INVALID"
-    if trades < policy.minimum_trades or int(symbols or 0) < policy.minimum_symbol_coverage:
+    if (
+        trades < policy.minimum_trades
+        or int(symbols or 0) < policy.minimum_symbol_coverage
+        or independent_periods is None
+        or int(independent_periods) < policy.minimum_independent_periods
+    ):
         return "INSUFFICIENT_SAMPLE"
     if expectancy is None or float(expectancy) < 0:
         return "NEGATIVE_EXPECTANCY"
@@ -77,15 +84,42 @@ def compact_result(
 ) -> dict[str, Any]:
     """Return a v2 row with no market data or detailed trade payloads."""
     validation = dict(item.get("validation") or {})
+    trade_records_present = isinstance(validation.get("trades"), list)
     trades = list(validation.get("trades") or [])
-    wins = int(validation.get("wins") or sum(float(t.get("net_pnl", 0)) > 0 for t in trades))
-    losses = int(validation.get("losses") or sum(float(t.get("net_pnl", 0)) < 0 for t in trades))
-    trade_count = int(validation.get("trade_count") or len(trades))
+    wins = sum(float(t.get("net_pnl", 0)) > 0 for t in trades) if trade_records_present else int(validation.get("wins") or 0)
+    losses = sum(float(t.get("net_pnl", 0)) < 0 for t in trades) if trade_records_present else int(validation.get("losses") or 0)
+    trade_count = len(trades) if trade_records_present else int(validation.get("trade_count") or 0)
     funnel = dict(validation.get("funnel") or {})
     candidate_count = int(item.get("INPUT_ROWS") or sum(funnel.values()) or 0)
     rr_pass = int(funnel.get("PASSED_ROWS") or trade_count)
-    symbols = set(validation.get("symbol_distribution") or ())
-    setups = set(validation.get("setup_distribution") or ())
+    symbols = {
+        str(trade["symbol"]) for trade in trades
+        if trade.get("symbol") not in (None, "")
+    } if trade_records_present else set(validation.get("symbol_distribution") or ())
+    setups = {
+        str(trade.get("setup_type") or "UNKNOWN") for trade in trades
+    } if trade_records_present else set(validation.get("setup_distribution") or ())
+    period_buckets: list[str] = []
+    period_status = "COMPLETE"
+    if trade_records_present:
+        for trade in trades:
+            timestamp = trade.get("opened_at_ms", trade.get("boundary_ms"))
+            if timestamp is None:
+                period_status = "DATA_INCOMPLETE"
+                period_buckets = []
+                break
+            period_buckets.append(
+                datetime.fromtimestamp(int(timestamp) / 1000, timezone.utc).date().isoformat()
+            )
+        independent_periods: int | None = (
+            len(set(period_buckets)) if period_status == "COMPLETE" else None
+        )
+    else:
+        raw_periods = validation.get("independent_period_count")
+        independent_periods = None if raw_periods is None else int(raw_periods)
+        period_status = str(validation.get("independent_period_status") or (
+            "COMPLETE" if raw_periods is not None else "DATA_INCOMPLETE"
+        ))
     overrides = dict(item.get("overrides") or item.get("parameters") or {})
     metrics = {
         "trade_count": trade_count,
@@ -107,15 +141,15 @@ def compact_result(
         "candidate_frequency": validation.get("candidate_frequency"),
         "trade_frequency": validation.get("trades_per_hour", validation.get("trade_frequency")),
         "cost_burden": validation.get("fee_to_gross_edge_ratio", validation.get("average_cost_per_trade")),
-        "symbol_coverage": int(validation.get("symbol_coverage") or len(symbols)),
-        "setup_coverage": int(validation.get("setup_coverage") or len(setups)),
+        "symbol_coverage": len(symbols) if trade_records_present else int(validation.get("symbol_coverage") or len(symbols)),
+        "setup_coverage": len(setups) if trade_records_present else int(validation.get("setup_coverage") or len(setups)),
+        "independent_period_count": independent_periods,
     }
     evaluation_status = {
         "ACCEPTED": "ACCEPTED", "REJECTED": "REJECTED",
-        "EARLY_REJECTED": "REJECTED", "PRUNED_INVALID": "INVALID",
-    }.get(str(item.get("result_status")), str(item.get("evaluation_status") or "INVALID"))
+        "EARLY_REJECTED": "REJECTED", "PRUNED_INVALID": "ERROR",
+    }.get(str(item.get("result_status")), str(item.get("evaluation_status") or "ERROR"))
     metrics["invalid_reason"] = item.get("invalid_reason")
-    independent_periods = int(validation.get("independent_period_count") or 0)
     holdout_count = int((item.get("holdout") or {}).get("trade_count") or 0)
     slice_count = sum(
         int((item.get(name) or {}).get("trade_count") or 0) > 0
@@ -129,8 +163,12 @@ def compact_result(
         ("minimum_slice_count", slice_count, 3),
     ]
     failed_gates = [
-        {"gate": gate, "current": current, "required": required, "deficit": max(0, required - current)}
-        for gate, current, required in gates if current < required
+        {
+            "gate": gate, "current": current, "required": required,
+            "deficit": None if current is None else max(0, required - current),
+            "status": "DATA_INCOMPLETE" if current is None else "BELOW_MINIMUM",
+        }
+        for gate, current, required in gates if current is None or current < required
     ]
     return {
         "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
@@ -139,10 +177,14 @@ def compact_result(
         "baseline_set_id": baseline_set_id or RESEARCH_PARAMETERS.calibration.baseline_set_id,
         "baseline_config_hash": baseline_config_hash,
         "research_config_hash": research_config_hash,
+        "resolved_seed": item.get("resolved_seed"),
         "overrides": overrides,
         "stage": item.get("stage"),
         "evaluation_status": evaluation_status,
         "performance_class": performance_class(metrics),
+        "independent_period_status": period_status,
+        "independent_period_unit": RESEARCH_PARAMETERS.ranking.independent_period_unit,
+        "independent_period_buckets": sorted(set(period_buckets)),
         "insufficient_sample_gates": failed_gates,
         **{key: value for key, value in metrics.items() if key != "invalid_reason"},
         "key_rejection_distribution": dict(sorted(funnel.items())),
@@ -153,26 +195,42 @@ def compact_result(
     }
 
 
-def aggregate_result_semantics(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
+def aggregate_result_semantics(
+    rows: Iterable[Mapping[str, Any]], *, error_count: int = 0,
+) -> dict[str, Any]:
     """Canonical counters shared by status, reports, CLI and GUI events."""
     values = list(rows)
-    counts: dict[str, int] = {}
-    readiness: dict[str, dict[str, int]] = {}
+    evaluation_counts: dict[str, int] = {"ACCEPTED": 0, "REJECTED": 0, "ERROR": int(error_count)}
+    performance_counts: dict[str, int] = {}
+    readiness: dict[str, dict[str, Any]] = {}
     for row in values:
+        evaluation = str(row.get("evaluation_status") or "ERROR")
+        evaluation_counts[evaluation] = evaluation_counts.get(evaluation, 0) + 1
         classification = str(row.get("performance_class") or "INVALID")
-        counts[classification] = counts.get(classification, 0) + 1
+        performance_counts[classification] = performance_counts.get(classification, 0) + 1
         for gate in row.get("insufficient_sample_gates") or []:
             name = str(gate["gate"])
-            current = int(gate["current"])
+            current = None if gate.get("current") is None else int(gate["current"])
             required = int(gate["required"])
-            existing = readiness.setdefault(name, {"current": current, "required": required, "deficit": max(0, required-current)})
-            existing["current"] = max(existing["current"], current)
-            existing["deficit"] = max(0, existing["required"] - existing["current"])
-    promotable = counts.get("VALIDATION_CANDIDATE", 0)
+            existing = readiness.setdefault(name, {
+                "current": current, "required": required,
+                "deficit": None if current is None else max(0, required-current),
+                "status": "DATA_INCOMPLETE" if current is None else "BELOW_MINIMUM",
+            })
+            if current is not None and (existing["current"] is None or current > existing["current"]):
+                existing["current"] = current
+                existing["deficit"] = max(0, required - current)
+                existing["status"] = "BELOW_MINIMUM"
+    promotable = performance_counts.get("VALIDATION_CANDIDATE", 0)
     return {
         "evaluated_configs": len(values),
-        "classification_counts": dict(sorted(counts.items())),
-        "insufficient_configs": counts.get("INSUFFICIENT_SAMPLE", 0),
+        "evaluation_status_counts": dict(sorted(evaluation_counts.items())),
+        "performance_class_counts": dict(sorted(performance_counts.items())),
+        "classification_counts": dict(sorted(performance_counts.items())),
+        "accepted_configs": evaluation_counts.get("ACCEPTED", 0),
+        "rejected_configs": evaluation_counts.get("REJECTED", 0),
+        "error_configs": evaluation_counts.get("ERROR", 0),
+        "insufficient_configs": performance_counts.get("INSUFFICIENT_SAMPLE", 0),
         "candidate_promotion_eligible": promotable > 0,
         "promotable_candidate_count": promotable,
         "validation_readiness": dict(sorted(readiness.items())),
@@ -181,10 +239,11 @@ def aggregate_result_semantics(rows: Iterable[Mapping[str, Any]]) -> dict[str, A
 
 def build_opportunity_funnel(
     results: Iterable[Mapping[str, Any]], *, counterfactual_count: int,
-    counterfactual_examples: Iterable[Mapping[str, Any]],
+    counterfactual_examples: Iterable[Mapping[str, Any]], error_count: int = 0,
 ) -> dict[str, Any]:
     """Build the funnel exclusively from canonical compact result rows."""
     rows = list(results)
+    resolved_seeds = {row.get("resolved_seed") for row in rows}
     configs = []
     aggregate: dict[str, int] = {}
     for row in rows:
@@ -208,6 +267,8 @@ def build_opportunity_funnel(
     if any(any(item.get(key) is None for key in required) for item in configs):
         raise ValueError("FUNNEL_ARTIFACT_INCOMPLETE")
     return {
+        "RUN_AGGREGATION": aggregate_result_semantics(rows, error_count=error_count),
+        "RESOLVED_SEED": next(iter(resolved_seeds)) if len(resolved_seeds) == 1 else None,
         "AGGREGATE_FUNNEL": dict(sorted(aggregate.items())),
         "AGGREGATE_FUNNEL_SEMANTICS": "SUM_OF_PER_CONFIG_VALIDATION_FUNNELS",
         "CONFIG_RESULTS": configs,
@@ -247,6 +308,7 @@ def resolve_market_path(reference: Mapping[str, Any], dataset_rows: Iterable[Map
 
 def compact_trade(trade: Mapping[str, Any], dataset_manifest_hash: str) -> dict[str, Any]:
     result = {key: value for key, value in trade.items() if key not in FORBIDDEN_INLINE_FIELDS}
+    result["setup_type"] = str(trade.get("setup_type") or "UNKNOWN")
     path = list(trade.get("market_path_1m") or [])
     if path:
         result["market_path_ref"] = make_market_path_ref(dataset_manifest_hash, trade, path)

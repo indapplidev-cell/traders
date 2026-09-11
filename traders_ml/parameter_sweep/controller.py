@@ -63,6 +63,9 @@ class PresentationState:
     negative_expectancy: int = 0
     promising: int = 0
     validation_candidates: int = 0
+    evaluation_status_counts: dict[str, int] = field(default_factory=dict)
+    performance_class_counts: dict[str, int] = field(default_factory=dict)
+    resolved_seed: int | None = None
     research_mode: str = ResearchMode.ALL.value
 
     @property
@@ -240,6 +243,8 @@ class ParameterSweepController:
             }
             self.state.conditional_dimensions = list(payload.get("conditional_dimensions", ()))
             self.state.replay_diagnostics = dict(payload.get("replay_diagnostics", {}))
+            if payload.get("resolved_seed") is not None:
+                self.state.resolved_seed = int(payload["resolved_seed"])
         elif event.type == EventType.REPLAY_VALIDATION_STARTED:
             self.state.status_text = "Статус: Проверка возможности replay"
             self.state.replay_diagnostics = dict(payload.get("replay_diagnostics", {}))
@@ -259,6 +264,8 @@ class ParameterSweepController:
             self.state.accepted = int(payload.get("accepted", self.state.accepted))
             self.state.rejected = int(payload.get("rejected", self.state.rejected))
             self.state.errors = int(payload.get("errors", self.state.errors))
+            self.state.evaluation_status_counts = dict(payload.get("evaluation_status_counts", self.state.evaluation_status_counts))
+            self.state.performance_class_counts = dict(payload.get("performance_class_counts", self.state.performance_class_counts))
         elif event.type == EventType.CONFIG_COMPLETED:
             self.state.current_result = dict(payload["result"])
         elif event.type == EventType.RESULT_WRITE_STARTED:
@@ -271,6 +278,8 @@ class ParameterSweepController:
             self.state.rejected = int(payload["rejected"])
             self.state.insufficient = int(payload["insufficient"])
             self.state.errors = int(payload["errors"])
+            self.state.evaluation_status_counts = dict(payload["evaluation_status_counts"])
+            self.state.performance_class_counts = dict(payload["performance_class_counts"])
             self.state.artifact_bytes = int(payload.get("artifact_bytes", self.state.artifact_bytes))
             self.state.artifact_soft_budget_bytes = int(payload.get("artifact_soft_budget_bytes", self.state.artifact_soft_budget_bytes))
             self.state.artifact_hard_budget_bytes = int(payload.get("artifact_hard_budget_bytes", self.state.artifact_hard_budget_bytes))

@@ -1,5 +1,5 @@
 schema_version: 2
-seed: 20260906
+seed: 20260907
 search:
   strategy: targeted
   seed: 20260907
@@ -43,6 +43,7 @@ ranking:
   minimum_trades: 20
   minimum_symbol_coverage: 3
   minimum_independent_periods: 3
+  independent_period_unit: UTC_CALENDAR_DAY
   validation_minimum_trades: 20
   selection_bias_hypotheses_per_observation: 10.0
   promising_min_expectancy_r: 0.0

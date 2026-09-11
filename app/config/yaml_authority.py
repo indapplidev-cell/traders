@@ -296,6 +296,7 @@ class ResearchRankingPolicy(StrictModel):
     minimum_trades: int = Field(gt=0)
     minimum_symbol_coverage: int = Field(gt=0)
     minimum_independent_periods: int = Field(gt=0)
+    independent_period_unit: Literal["UTC_CALENDAR_DAY"]
     validation_minimum_trades: int = Field(gt=0)
     selection_bias_hypotheses_per_observation: float = Field(gt=0)
     promising_min_expectancy_r: float

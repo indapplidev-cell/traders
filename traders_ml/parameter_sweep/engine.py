@@ -1649,6 +1649,8 @@ def _validate_search(search: object) -> dict[str, Any]:
             validate_targeted_space(search)
         except (KeyError, TypeError, ValueError):
             raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
+    if int(search["seed"]) != int(search["search"]["seed"]):
+        raise SweepExpectedError("RUN_SEED_MISMATCH")
     return search
 
 
@@ -2065,7 +2067,8 @@ def _run_impl(
     emit(EventType.PREFLIGHT_COMPLETED, dataset_rows=len(rows), source=options.source)
     status_store.update(state=RunState.PLANNING.value, phase=RunState.PLANNING.value)
     emit(EventType.SEARCH_PLANNING_STARTED)
-    splits = _split(rows, int(search["seed"]))
+    resolved_seed = int(search["search"]["seed"])
+    splits = _split(rows, resolved_seed)
     coverage = _dataset_coverage(rows)
     baseline = _baseline_control(rows)
     historical_summary = rows[0].get("__historical_summary", {}) if rows else {}
@@ -2146,11 +2149,13 @@ def _run_impl(
         dimension_values=plan_state.dimension_values,
         conditional_dimensions=list(plan_state.conditional_dimensions),
         replay_diagnostics=replay_diagnostics.as_dict(),
+        resolved_seed=resolved_seed,
     )
     emit(
         EventType.SEARCH_PLANNED,
         **plan_state.as_dict(),
         replay_diagnostics=replay_diagnostics.as_dict(),
+        resolved_seed=resolved_seed,
     )
     checkpoint_path = output / "CHECKPOINT.json"
     checkpoint = {
@@ -2163,7 +2168,8 @@ def _run_impl(
         "dataset_manifest_hash": dataset_manifest["manifest_hash"],
         "engine_version": SCHEMA_VERSION,
         "dataset_fingerprint": dataset_fingerprint,
-        "strategy": plan.selected_strategy, "seed": plan.seed,
+        "strategy": plan.selected_strategy, "seed": resolved_seed,
+        "requested_seed": resolved_seed, "resolved_seed": resolved_seed,
         "research_mode": mode.value, "stage": "NOT_STARTED",
         "profile": options.profile,
         "primary_timeframe": options.primary_timeframe,
@@ -2192,7 +2198,7 @@ def _run_impl(
             raise SweepExpectedError("RESUME_TIMEFRAME_MISMATCH")
         if existing.get("baseline_set_id") != RESEARCH_PARAMETERS.calibration.baseline_set_id:
             raise SweepExpectedError("RESUME_BASELINE_SET_MISMATCH")
-        if existing.get("search_plan_hash") != search_plan_hash or existing.get("search_space_hash") != search_space_hash or existing.get("strategy") != checkpoint["strategy"] or existing.get("seed") != checkpoint["seed"]:
+        if existing.get("search_plan_hash") != search_plan_hash or existing.get("search_space_hash") != search_space_hash or existing.get("strategy") != checkpoint["strategy"] or existing.get("seed") != checkpoint["seed"] or existing.get("resolved_seed") != checkpoint["resolved_seed"]:
             raise SweepExpectedError("RESUME_SEARCH_PLAN_MISMATCH")
         if existing.get("research_config_hash") != research_hash:
             raise SweepExpectedError("RESUME_RESEARCH_CONFIG_MISMATCH")
@@ -2213,13 +2219,12 @@ def _run_impl(
             started_at=run_started.isoformat(),
             completed_configs=int(checkpoint["evaluated_count"]),
             accepted_configs=int(checkpoint["accepted_count"]),
-            rejected_configs=max(
-                0,
-                int(checkpoint["rejected_count"])
-                - int(checkpoint.get("insufficient_count", 0)),
-            ),
+            rejected_configs=int(checkpoint["rejected_count"]),
             error_configs=int(checkpoint["failed_count"]),
             insufficient_configs=int(checkpoint.get("insufficient_count", 0)),
+            evaluation_status_counts=dict(checkpoint.get("evaluation_status_counts") or {}),
+            performance_class_counts=dict(checkpoint.get("performance_class_counts") or checkpoint.get("classification_counts") or {}),
+            resolved_seed=resolved_seed,
             last_checkpoint_at=datetime.now(timezone.utc).isoformat(),
             resume_available=True,
         )
@@ -2228,13 +2233,11 @@ def _run_impl(
             completed=int(checkpoint["evaluated_count"]),
             planned=plan.evaluation_budget,
             accepted=int(checkpoint["accepted_count"]),
-            rejected=max(
-                0,
-                int(checkpoint["rejected_count"])
-                - int(checkpoint.get("insufficient_count", 0)),
-            ),
+            rejected=int(checkpoint["rejected_count"]),
             errors=int(checkpoint["failed_count"]),
             insufficient=int(checkpoint.get("insufficient_count", 0)),
+            evaluation_status_counts=dict(checkpoint.get("evaluation_status_counts") or {}),
+            performance_class_counts=dict(checkpoint.get("performance_class_counts") or checkpoint.get("classification_counts") or {}),
         )
     preflight = {
         "RUN_ID": identifier, "CONFIG_HASH": TRADE_PARAMETERS.config_hash,
@@ -2258,7 +2261,9 @@ def _run_impl(
         "DATASET_ROWS": len(rows), "RAW_SEARCH_SPACE_SIZE": plan.raw_search_space_size,
         "SEARCH_STRATEGY": plan.selected_strategy, "EXHAUSTIVE": "YES" if plan.selected_strategy == "EXHAUSTIVE_LAZY" else "NO",
         "MAX_EVALUATED_CONFIGS": plan.evaluation_budget, "CONFIGURATIONS_PLANNED": plan.evaluation_budget,
-        "BATCH_SIZE": plan.batch_size, "SEED": plan.seed, "MEMORY_PLAN": "SAFE",
+        "BATCH_SIZE": plan.batch_size, "SEED": resolved_seed,
+        "REQUESTED_SEED": resolved_seed, "RESOLVED_SEED": resolved_seed,
+        "MEMORY_PLAN": "SAFE",
         "ESTIMATED_ACTIVE_BATCH_MEMORY_MB": plan.estimated_active_batch_memory_mb,
         "STATISTICAL_SEARCH_WARNING": plan.statistical_warning,
         "PROMOTION_EVALUATION_ALLOWED": "YES",
@@ -2292,6 +2297,8 @@ def _run_impl(
         "SEARCH_DIMENSIONS": list(plan_state.search_dimensions),
         "DIMENSION_VALUES": plan_state.dimension_values,
         "CONDITIONAL_DIMENSIONS": list(plan_state.conditional_dimensions),
+        "REQUESTED_SEED": resolved_seed,
+        "RESOLVED_SEED": resolved_seed,
     })
     _atomic_json(output / "SEARCH_PLAN.json", search_plan_artifact)
     _print_preflight(preflight)
@@ -2307,7 +2314,10 @@ def _run_impl(
     run_config = {
         "run_id": identifier,
         "research_mode": mode.value,
-        "schema_version": SCHEMA_VERSION, "seed": search["seed"], "search": plan.safe_dict(),
+        "schema_version": SCHEMA_VERSION,
+        "seed": resolved_seed, "requested_seed": resolved_seed,
+        "resolved_seed": resolved_seed, "sampler_seed": resolved_seed,
+        "search": plan.safe_dict(),
         "dataset": {"source": options.source, "profile": options.profile, "primary_timeframe": options.primary_timeframe, "closed_only": False, "selection_mode": options.selection_mode, "max_rows": options.maximum_rows},
         "dataset_period": {"from_ms": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows), "to_ms": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows)},
         "sample_sizes": {key: len(value) for key, value in splits.items()},
@@ -2560,6 +2570,7 @@ def _run_impl(
             )
             item["overrides"] = changed_parameters
             item["run_id"] = identifier
+            item["resolved_seed"] = resolved_seed
             for split_name in ("calibration", "validation", "holdout"):
                 for trade in item.get(split_name, {}).get("trades", []):
                     if trade.get("historically_rejected"):
@@ -2577,7 +2588,7 @@ def _run_impl(
                 detailed = []
                 for split_name in ("calibration", "validation", "holdout"):
                     for trade in item.get(split_name, {}).get("trades", [])[: RESEARCH_PARAMETERS.artifact.max_detailed_trades_per_config]:
-                        detailed.append({"config_id": item["config_hash"], "split": split_name, **compact_trade(trade, str(dataset_manifest["manifest_hash"]))})
+                        detailed.append({"config_id": item["config_hash"], "split": split_name, "resolved_seed": resolved_seed, **compact_trade(trade, str(dataset_manifest["manifest_hash"]))})
                 score = (
                     float(validation_metrics.get("net_expectancy_per_trade") or -1e12),
                     -float(validation_metrics.get("max_drawdown") or 0),
@@ -2630,16 +2641,22 @@ def _run_impl(
             if insufficient:
                 checkpoint["insufficient_count"] = int(checkpoint.get("insufficient_count", 0)) + 1
                 _atomic_json(checkpoint_path, checkpoint)
+            live_semantics = aggregate_result_semantics(
+                result_writer.read_all(),
+                error_count=int(checkpoint["failed_count"]),
+            )
+            checkpoint["evaluation_status_counts"] = live_semantics["evaluation_status_counts"]
+            checkpoint["performance_class_counts"] = live_semantics["performance_class_counts"]
+            checkpoint["classification_counts"] = live_semantics["performance_class_counts"]
+            _atomic_json(checkpoint_path, checkpoint)
             status_store.update(
                 completed_configs=int(checkpoint["evaluated_count"]),
-                accepted_configs=int(checkpoint["accepted_count"]),
-                rejected_configs=max(
-                    0,
-                    int(checkpoint["rejected_count"])
-                    - int(checkpoint.get("insufficient_count", 0)),
-                ),
+                accepted_configs=live_semantics["accepted_configs"],
+                rejected_configs=live_semantics["rejected_configs"],
                 insufficient_configs=int(checkpoint.get("insufficient_count", 0)),
                 error_configs=int(checkpoint["failed_count"]),
+                evaluation_status_counts=live_semantics["evaluation_status_counts"],
+                performance_class_counts=live_semantics["performance_class_counts"],
                 last_checkpoint_at=checkpoint_at,
                 resume_available=True,
             )
@@ -2647,14 +2664,12 @@ def _run_impl(
                 EventType.CHECKPOINT_WRITTEN,
                 index=next_index + 1, at=checkpoint_at,
                 completed=int(checkpoint["evaluated_count"]),
-                accepted=int(checkpoint["accepted_count"]),
-                rejected=max(
-                    0,
-                    int(checkpoint["rejected_count"])
-                    - int(checkpoint.get("insufficient_count", 0)),
-                ),
+                accepted=live_semantics["accepted_configs"],
+                rejected=live_semantics["rejected_configs"],
                 errors=int(checkpoint["failed_count"]),
                 insufficient=status_store.status.insufficient_configs,
+                evaluation_status_counts=live_semantics["evaluation_status_counts"],
+                performance_class_counts=live_semantics["performance_class_counts"],
                 artifact_bytes=sum(path.stat().st_size for path in output.glob("*") if path.is_file()),
                 artifact_soft_budget_bytes=RESEARCH_PARAMETERS.artifact.soft_total_bytes,
                 artifact_hard_budget_bytes=RESEARCH_PARAMETERS.artifact.hard_total_bytes,
@@ -2695,17 +2710,24 @@ def _run_impl(
     all_result_rows = list(iter_results(jsonl))
     accepted_rows = [row for row in all_result_rows if row["evaluation_status"] == "ACCEPTED"]
     rejected_rows = [row for row in all_result_rows if row["evaluation_status"] != "ACCEPTED"]
-    canonical_semantics = aggregate_result_semantics(all_result_rows)
+    canonical_semantics = aggregate_result_semantics(
+        all_result_rows, error_count=int(checkpoint["failed_count"]),
+    )
     checkpoint["insufficient_count"] = canonical_semantics["insufficient_configs"]
     checkpoint["classification_counts"] = canonical_semantics["classification_counts"]
+    checkpoint["evaluation_status_counts"] = canonical_semantics["evaluation_status_counts"]
+    checkpoint["performance_class_counts"] = canonical_semantics["performance_class_counts"]
     checkpoint["validation_readiness"] = canonical_semantics["validation_readiness"]
     _atomic_json(checkpoint_path, checkpoint)
     status_store.update(
         insufficient_configs=canonical_semantics["insufficient_configs"],
-        accepted_configs=len(accepted_rows),
-        rejected_configs=max(0, len(rejected_rows) - canonical_semantics["insufficient_configs"]),
+        accepted_configs=canonical_semantics["accepted_configs"],
+        rejected_configs=canonical_semantics["rejected_configs"],
+        error_configs=canonical_semantics["error_configs"],
         validation_candidate_configs=canonical_semantics["promotable_candidate_count"],
         classification_counts=canonical_semantics["classification_counts"],
+        evaluation_status_counts=canonical_semantics["evaluation_status_counts"],
+        performance_class_counts=canonical_semantics["performance_class_counts"],
         validation_readiness=canonical_semantics["validation_readiness"],
     )
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "ACCEPTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in accepted_rows) or "\n", operation="accepted_configs_v2")
@@ -2723,6 +2745,10 @@ def _run_impl(
         "research_config_hash": research_hash,
         "search_space_hash": search_space_hash,
         "engine_compatibility": SCHEMA_VERSION,
+        "seed": resolved_seed,
+        "requested_seed": resolved_seed,
+        "resolved_seed": resolved_seed,
+        "sampler_seed": resolved_seed,
     })
     try:
         size_status = enforce_size_budget(output)
@@ -2739,6 +2765,7 @@ def _run_impl(
         opportunity_funnel = build_opportunity_funnel(
             all_result_rows, counterfactual_count=counterfactual_count,
             counterfactual_examples=counterfactual_examples,
+            error_count=int(checkpoint["failed_count"]),
         )
     except ValueError as error:
         raise SweepExpectedError(str(error)) from None
@@ -2829,7 +2856,7 @@ def _run_impl(
 - Effective conditional search-space size: {plan.effective_search_space_size}
 - Invalid combinations generated: `0`; conditional dimension collapse: `{'YES' if plan.conditional_dimension_collapse else 'NO'}`
 - Selected strategy: `{plan.selected_strategy}`
-- Seed: {plan.seed}
+- Requested/resolved/sampler seed: {resolved_seed}/{resolved_seed}/{resolved_seed}
 - Evaluation budget: {plan.evaluation_budget}
 - Staged plan: `{json.dumps(plan.staged_search_plan)}`
 - Holdout used for search/refinement/ranking: `NO`
@@ -2837,8 +2864,10 @@ def _run_impl(
 ## RESULTS
 
 - Actual evaluated configs: {checkpoint['evaluated_count']}; pruned invalid: {checkpoint['pruned_count']}
-- Accepted/rejected/failed: {checkpoint['accepted_count']}/{checkpoint['rejected_count']}/{checkpoint['failed_count']}
-- CLASSIFICATION_COUNTS: `{json.dumps(canonical_semantics['classification_counts'], sort_keys=True)}`
+- Accepted/rejected/failed: {canonical_semantics['accepted_configs']}/{canonical_semantics['rejected_configs']}/{canonical_semantics['error_configs']}
+- EVALUATION_STATUS_COUNTS: `{json.dumps(canonical_semantics['evaluation_status_counts'], sort_keys=True)}`
+- PERFORMANCE_CLASS_COUNTS: `{json.dumps(canonical_semantics['performance_class_counts'], sort_keys=True)}`
+- CLASSIFICATION_COUNTS: `{json.dumps(canonical_semantics['performance_class_counts'], sort_keys=True)}`
 - INSUFFICIENT_CONFIGS: {canonical_semantics['insufficient_configs']}
 - VALIDATION_READINESS: `{json.dumps(canonical_semantics['validation_readiness'], sort_keys=True)}`
 - TOP contains only accepted, validation-evaluated configs with metrics; Pareto uses the same eligible set.
