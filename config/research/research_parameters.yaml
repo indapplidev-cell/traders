@@ -47,6 +47,23 @@ ranking:
   promising_min_expectancy_r: 0.0
   promising_min_profit_factor: 1.0
   validation_candidate_min_stability: 0.6
+data_driven_range_generation:
+  generator_version: data-driven-ranges-v1
+  max_generated_points: 7
+  low_sample_minimum_points: 3
+  winner_dense_quantiles: [0.25, 0.50, 0.75]
+  observed_support_quantiles: [0.10, 0.90]
+  transition_weight: 0.50
+  minimum_observed_coverage: 0.80
+  high_confidence_min_separation: 0.70
+  medium_confidence_min_separation: 0.40
+  high_confidence_min_stability: 0.70
+  medium_confidence_min_stability: 0.40
+  minimum_spacing_fraction: 0.01
+  boundary_pressure_quantile: 0.75
+  boundary_pressure_tolerance_fraction: 0.05
+  rounding_decimal_places: 6
+  preserve_current_value_under_low_confidence: true
 calibration:
   baseline_set_id: scalping-v2-set-2
   targeted_families: [SIGNAL, REGIME, ENTRY, GEOMETRY]

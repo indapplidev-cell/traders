@@ -302,6 +302,42 @@ class ResearchRankingPolicy(StrictModel):
     validation_candidate_min_stability: float = Field(ge=0, le=1)
 
 
+class DataDrivenRangeGenerationPolicy(StrictModel):
+    generator_version: str = Field(min_length=1)
+    max_generated_points: StrictInt = Field(ge=3)
+    low_sample_minimum_points: StrictInt = Field(ge=2)
+    winner_dense_quantiles: tuple[float, ...] = Field(min_length=1)
+    observed_support_quantiles: tuple[float, ...] = Field(min_length=1)
+    transition_weight: float = Field(ge=0, le=1)
+    minimum_observed_coverage: float = Field(ge=0, le=1)
+    high_confidence_min_separation: float = Field(ge=0, le=1)
+    medium_confidence_min_separation: float = Field(ge=0, le=1)
+    high_confidence_min_stability: float = Field(ge=0, le=1)
+    medium_confidence_min_stability: float = Field(ge=0, le=1)
+    minimum_spacing_fraction: float = Field(gt=0, le=1)
+    boundary_pressure_quantile: float = Field(gt=0.5, le=1)
+    boundary_pressure_tolerance_fraction: float = Field(ge=0, le=1)
+    rounding_decimal_places: StrictInt = Field(ge=0, le=12)
+    preserve_current_value_under_low_confidence: Literal[True]
+
+    @model_validator(mode="after")
+    def valid_quantiles_and_cardinality(self):
+        quantiles = (*self.winner_dense_quantiles, *self.observed_support_quantiles)
+        if any(value < 0 or value > 1 for value in quantiles):
+            raise ValueError("range-generation quantiles must be within [0, 1]")
+        if tuple(sorted(set(self.winner_dense_quantiles))) != self.winner_dense_quantiles:
+            raise ValueError("winner-dense quantiles must be unique and sorted")
+        if tuple(sorted(set(self.observed_support_quantiles))) != self.observed_support_quantiles:
+            raise ValueError("observed-support quantiles must be unique and sorted")
+        if self.low_sample_minimum_points > self.max_generated_points:
+            raise ValueError("low-sample minimum exceeds maximum generated points")
+        if self.high_confidence_min_separation < self.medium_confidence_min_separation:
+            raise ValueError("high separation threshold must not be below medium")
+        if self.high_confidence_min_stability < self.medium_confidence_min_stability:
+            raise ValueError("high stability threshold must not be below medium")
+        return self
+
+
 class ResearchCalibrationPolicy(StrictModel):
     baseline_set_id: Literal["scalping-v2-set-2"]
     targeted_families: tuple[str, ...]
@@ -323,6 +359,7 @@ class ResearchParameters(StrictModel):
     minimum_samples: ResearchMinimumSamples
     artifact: ResearchArtifactPolicy
     ranking: ResearchRankingPolicy
+    data_driven_range_generation: DataDrivenRangeGenerationPolicy
     calibration: ResearchCalibrationPolicy
     artifact_writer: ArtifactWriterPolicy
     search_space: dict[str, list[float | int | bool | None]]
@@ -456,6 +493,22 @@ def load_validation_sample_policy(path: Path) -> ValidationSamplePolicy:
     )
 
 
+def load_data_driven_range_policy(path: Path) -> tuple[DataDrivenRangeGenerationPolicy, dict[str, str]]:
+    """Resolve the only range-generation policy authority, fail closed."""
+    parameters = load_research_parameters(path)
+    source_file = (
+        "config/research/research_parameters.yaml"
+        if path.resolve() == (ROOT / "config/research/research_parameters.yaml").resolve()
+        else str(path)
+    )
+    policy = parameters.data_driven_range_generation
+    provenance = {
+        name: f"{source_file}:data_driven_range_generation.{name}"
+        for name in policy.__class__.model_fields
+    }
+    return policy, provenance
+
+
 RISK_PATH = Path(os.environ.get("TRADERS_RISK_POLICY_PATH", ROOT / "config/trading/risk_policy.yaml"))
 RUNTIME_PATH = Path(os.environ.get("TRADERS_RUNTIME_POLICY_PATH", ROOT / "config/runtime/runtime_policy.yaml"))
 RESEARCH_PATH = Path(os.environ.get("TRADERS_RESEARCH_PARAMETERS_PATH", ROOT / "config/research/research_parameters.yaml"))
@@ -484,6 +537,7 @@ __all__ = (
     "RESEARCH_PARAMETERS", "RESEARCH_PATH", "ResearchParameters",
     "VALIDATION_SAMPLE_POLICY", "ValidationSamplePolicy",
     "load_research_parameters", "load_validation_sample_policy",
+    "load_data_driven_range_policy", "DataDrivenRangeGenerationPolicy",
     "RISK_PATH", "RISK_POLICY",
     "RUNTIME_PATH", "RUNTIME_POLICY", "UNIT_CONSTANTS", "UNIT_PATH", "authority_hash",
 )
