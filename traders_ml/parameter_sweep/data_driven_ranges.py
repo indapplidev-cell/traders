@@ -27,6 +27,7 @@ from .historical_replay import build_parameter_registry
 
 
 GENERATOR_ARTIFACT_VERSION = 1
+RANGE_HANDOFF_ARTIFACT_VERSION = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -368,8 +369,15 @@ def generate_range_artifacts(
         if generated:
             handoff_rows.append({
                 "parameter": mapping["parameter"], "generated_values": generated,
+                "parameter_type": mapping["parameter_type"],
+                "schema_domain": domain,
+                "range_status": status,
+                "eligible_for_search": status in {"GENERATED", "PROVISIONAL_LOW_SAMPLE"},
                 "confidence": confidence, "provisional": status == "PROVISIONAL_LOW_SAMPLE",
+                "sample_adequacy": adequacy,
+                "promotion_eligible": False,
                 "boundary_pressure": pressure,
+                "provenance": range_row["provenance"],
                 "joint_search_priority_annotations": [
                     {"feature_a": row["feature_a"], "feature_b": row["feature_b"], "interaction_score": row.get("interaction_score")}
                     for row in related_interactions
@@ -378,7 +386,17 @@ def generate_range_artifacts(
     ranges = {"artifact": "DATA_DRIVEN_SEARCH_RANGES", "schema_version": GENERATOR_ARTIFACT_VERSION, "symbol": manifest["symbol"], "profile": manifest["profile"], "separability_status": manifest["final_status"], "sample_adequacy": adequacy, "input_sha256": dict(input_provenance or {}), "promotion_eligible": False, "search_executed": False, "parameters": range_rows}
     trace = {"artifact": "RANGE_GENERATION_TRACE", "schema_version": GENERATOR_ARTIFACT_VERSION, "parameters": trace_rows}
     comparison = {"artifact": "LEGACY_RANGE_COMPARISON", "schema_version": GENERATOR_ARTIFACT_VERSION, "diagnostic_only": True, "parameters": comparison_rows}
-    range_handoff = {"artifact": "DATA_DRIVEN_RANGE_HANDOFF", "schema_version": GENERATOR_ARTIFACT_VERSION, "research_approved_only": True, "promotion_eligible": False, "search_executed": False, "adaptive_refinement_executed": False, "holdout_opened": False, "parameters": handoff_rows}
+    range_handoff = {
+        "artifact": "DATA_DRIVEN_RANGE_HANDOFF",
+        "schema_version": RANGE_HANDOFF_ARTIFACT_VERSION,
+        "symbol": manifest["symbol"], "profile": manifest["profile"],
+        "separability_status": manifest["final_status"],
+        "sample_adequacy": adequacy,
+        "range_provenance": {"input_sha256": dict(input_provenance or {}), "policy": dict(policy_provenance)},
+        "research_approved_only": True, "promotion_eligible": False,
+        "search_executed": False, "adaptive_refinement_executed": False,
+        "holdout_opened": False, "parameters": handoff_rows,
+    }
     return {"ranges": ranges, "trace": trace, "comparison": comparison, "handoff": range_handoff}
 
 
