@@ -10,13 +10,15 @@ from app.config.yaml_authority import RESEARCH_PARAMETERS
 from traders_ml.parameter_sweep.data_driven_ranges import _schema_domain
 from traders_ml.parameter_sweep.expanded_search import (
     DataDrivenRangeHandoff, assert_resume_compatible, build_plan,
+    build_reporting_reconciliation,
     cluster_results, iter_planned_configs, normalize_handoff_values,
     run_expanded_search, validate_dataset, validate_handoff,
 )
 from traders_ml.parameter_sweep.historical_replay import build_parameter_registry
+from traders_ml.parameter_sweep.symbol_authority_audit import build_symbol_runtime_authority_audit
 
 
-def _handoff_payload(domains: dict[str, list[object]]) -> dict[str, object]:
+def _handoff_payload(domains: dict[str, list[object]], *, symbol: str = "DOGEUSDT") -> dict[str, object]:
     registry = {row["canonical_key"]: row for row in build_parameter_registry(RESEARCH_PARAMETERS.search_space)}
     parameters = []
     for name, values in domains.items():
@@ -33,7 +35,7 @@ def _handoff_payload(domains: dict[str, list[object]]) -> dict[str, object]:
         })
     return {
         "artifact": "DATA_DRIVEN_RANGE_HANDOFF", "schema_version": 2,
-        "symbol": "DOGEUSDT", "profile": "trade-5m-v2",
+        "symbol": symbol, "profile": "trade-5m-v2",
         "separability_status": "PASS_LIMITED_SAMPLE", "sample_adequacy": "DESCRIPTIVE_ONLY",
         "range_provenance": {"test": True}, "research_approved_only": True,
         "promotion_eligible": False, "search_executed": False,
@@ -42,11 +44,11 @@ def _handoff_payload(domains: dict[str, list[object]]) -> dict[str, object]:
     }
 
 
-def _dataset() -> list[dict[str, object]]:
+def _dataset(*, symbol: str = "DOGEUSDT") -> list[dict[str, object]]:
     rows = []
     for index, pnl in enumerate((-1.0, 2.0, -0.5, 1.0, -0.25)):
         rows.append({
-            "symbol": "DOGEUSDT", "profile_id": "trade-5m-v2",
+            "symbol": symbol, "profile_id": "trade-5m-v2",
             "source_type": "PERSISTED_CAUSAL_OBSERVATION", "trade_id": f"t{index}",
             "candidate_id": f"c{index}", "entry_boundary_ms": 1_700_000_000_000 + index * 86_400_000,
             "close_timestamp": "2026-09-05T00:00:00+00:00", "net_paper_pnl": pnl,
@@ -174,3 +176,78 @@ def test_handoff_provenance_and_schema_mismatch_fail_closed(tmp_path: Path):
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="SCHEMA"):
         validate_handoff(path, symbol="DOGEUSDT", profile="trade-5m-v2")
+
+
+def _compact_row(
+    config_id: str, *, net_pnl: float, pf: float | None,
+    signature: str, parameters: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "config_id": config_id, "parameters": parameters,
+        "evaluation_status": "ACCEPTED", "performance_class": "INSUFFICIENT_SAMPLE",
+        "expectancy_R": None, "profit_factor": pf, "max_drawdown": 0.0,
+        "trade_count": 1, "symbol_coverage": 1, "rank_stability": 0.0,
+        "net_pnl": net_pnl, "wins": int(net_pnl > 0), "losses": int(net_pnl < 0),
+        "neutrals": 0, "independent_period_count": 1,
+        "behavioral_signature": signature,
+        "insufficient_sample_gates": [{"gate": "validation_trade_count"}],
+    }
+
+
+def test_canonical_best_and_metric_best_are_reported_separately():
+    canonical = _compact_row("canonical", net_pnl=-0.1, pf=1.5, signature="negative", parameters={"x": 1})
+    positive_a = _compact_row("positive-a", net_pnl=2.0, pf=None, signature="positive", parameters={"x": 2})
+    positive_b = _compact_row("positive-b", net_pnl=2.0, pf=None, signature="positive", parameters={"x": 3})
+    summary, artifact = build_reporting_reconciliation(
+        [canonical, positive_a, positive_b], [canonical, positive_b],
+    )
+    assert summary["BEST_CANONICAL_RANKED_CONFIG"]["config_id"] == "canonical"
+    assert summary["BEST_NET_PNL_CONFIG"]["config_id"] == "positive-b"
+    assert summary["BEST_EXPECTANCY_CONFIG"] is None
+    assert summary["BEST_PROFIT_FACTOR_CONFIG"]["config_id"] == "canonical"
+    assert summary["POSITIVE_NUMERIC_CONFIGS"] == 2
+    assert summary["POSITIVE_BEHAVIORAL_CLUSTERS"] == 1
+    assert summary["POSITIVE_BEHAVIORAL_DUPLICATES"] == 1
+    assert len(artifact["configs"]) == 2
+
+
+@pytest.mark.parametrize("symbol", ["DOGEUSDT", "LINKUSDT"])
+def test_same_expanded_engine_accepts_different_valid_symbol_fixtures(tmp_path: Path, symbol: str):
+    handoff_path = tmp_path / f"{symbol}-handoff.json"
+    handoff_path.write_text(json.dumps(_handoff_payload({"min_net_edge_bps": [1.0]}, symbol=symbol)), encoding="utf-8")
+    dataset_path = tmp_path / f"{symbol}-dataset.jsonl"
+    rows = _dataset(symbol=symbol)
+    dataset_path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    from traders_ml.parameter_sweep.expanded_search import _canonical_dataset_hash
+    manifest_path = tmp_path / f"{symbol}-manifest.json"
+    manifest_path.write_text(json.dumps({
+        "symbol": symbol, "profile": "trade-5m-v2",
+        "dataset_sha256": _canonical_dataset_hash(rows),
+        "source_history_start": "2026-09-01T00:00:00+00:00",
+        "source_history_end": "2026-09-05T00:00:00+00:00",
+        "source_history_actual_days": 4.0,
+    }), encoding="utf-8")
+    result = run_expanded_search(
+        handoff_path=handoff_path, dataset_path=dataset_path,
+        dataset_manifest_path=manifest_path, output=tmp_path / f"out-{symbol}",
+        symbol=symbol,
+    )
+    assert result["status"]["SYMBOL"] == symbol
+
+
+def test_handoff_symbol_mismatch_and_missing_symbol_fail_closed(tmp_path: Path):
+    path = tmp_path / "handoff.json"
+    path.write_text(json.dumps(_handoff_payload({"min_net_edge_bps": [1.0]})), encoding="utf-8")
+    with pytest.raises(ValueError, match="HANDOFF_SYMBOL_MISMATCH"):
+        validate_handoff(path, symbol="LINKUSDT", profile="trade-5m-v2")
+    for missing in (None, ""):
+        with pytest.raises(ValueError, match="SYMBOL_REQUIRED"):
+            validate_handoff(path, symbol=missing, profile="trade-5m-v2")
+
+
+def test_runtime_symbol_literal_forensic_is_zero():
+    audit = build_symbol_runtime_authority_audit()
+    assert audit["RUNTIME_SYMBOL_HARDCODES"] == 0
+    assert audit["RUNTIME_SYMBOL_DEFAULTS"] == 0
+    assert audit["RUNTIME_SYMBOL_BRANCHES"] == 0
+    assert audit["symbol_binding_status"] == "PASS"

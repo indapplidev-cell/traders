@@ -810,7 +810,7 @@ def run_separability(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--symbol", default="DOGEUSDT")
+    parser.add_argument("--symbol", required=True)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--database-url")
     args = parser.parse_args(argv)

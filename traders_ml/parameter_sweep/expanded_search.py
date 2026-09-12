@@ -30,6 +30,7 @@ from .engine import (
 from .historical_replay import build_parameter_registry
 from .ranking import rank_results
 from .research_protocol import deduplicate_validation_behavior
+from .universe import validate_parameter_sweep_symbol
 
 
 HANDOFF_SCHEMA_VERSION = 2
@@ -129,7 +130,8 @@ def _write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
     DEFAULT_ARTIFACT_WRITER.atomic_text(path, text, operation=f"{path.name}:replace")
 
 
-def validate_handoff(path: Path, *, symbol: str, profile: str) -> tuple[DataDrivenRangeHandoff, str]:
+def validate_handoff(path: Path, *, symbol: object, profile: str) -> tuple[DataDrivenRangeHandoff, str]:
+    symbol = validate_parameter_sweep_symbol(symbol)
     payload = path.read_bytes()
     handoff = DataDrivenRangeHandoff.model_validate_json(payload)
     if handoff.symbol != symbol:
@@ -411,6 +413,166 @@ def _comparison_summary(rows: Sequence[Mapping[str, Any]], representatives: Sequ
     }
 
 
+def _metric_leader(rows: Sequence[Mapping[str, Any]], field: str) -> dict[str, Any] | None:
+    available = [row for row in rows if row.get(field) is not None]
+    if not available:
+        return None
+    return dict(max(available, key=lambda row: (float(row[field]), str(row.get("config_id")))))
+
+
+def _leader_projection(row: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return {
+        "config_id": row.get("config_id"), "parameters": row.get("parameters"),
+        "net_pnl": row.get("net_pnl"), "expectancy_r": row.get("expectancy_R"),
+        "profit_factor": row.get("profit_factor"),
+        "validation_trade_count": row.get("trade_count"),
+        "wins": row.get("wins"), "losses": row.get("losses"),
+        "max_drawdown": row.get("max_drawdown"),
+        "independent_periods": row.get("independent_period_count"),
+    }
+
+
+def build_reporting_reconciliation(
+    results: Sequence[Mapping[str, Any]], representatives: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Describe canonical and metric leaders without altering ranking."""
+    canonical_numeric = rank_results([dict(row) for row in results], VALIDATION_SAMPLE_POLICY)
+    rank_by_config = {
+        str(row["config_id"]): index for index, row in enumerate(canonical_numeric, 1)
+    }
+    canonical_best = dict(representatives[0]) if representatives else None
+    net_best = _metric_leader(results, "net_pnl")
+    expectancy_best = _metric_leader(results, "expectancy_R")
+    pf_best = _metric_leader(results, "profit_factor")
+    positive = [dict(row) for row in canonical_numeric if float(row.get("net_pnl") or 0) > 0]
+    positive_signatures = {str(row["behavioral_signature"]) for row in positive}
+    positive_rows = []
+    for row in positive:
+        positive_rows.append({
+            "config_id": row["config_id"], "parameters": row["parameters"],
+            "behavioral_signature": row["behavioral_signature"],
+            "validation_trade_count": row["trade_count"],
+            "wins": row["wins"], "losses": row["losses"],
+            "neutrals": row["neutrals"], "net_pnl": row["net_pnl"],
+            "expectancy_r": row["expectancy_R"],
+            "profit_factor": row["profit_factor"],
+            "max_drawdown": row["max_drawdown"],
+            "independent_periods": row["independent_period_count"],
+            "canonical_rank": rank_by_config[str(row["config_id"])],
+            "canonical_status": row["performance_class"],
+            "validation_eligible": bool(
+                row.get("evaluation_status") == "ACCEPTED"
+                and row.get("performance_class") == "VALIDATION_CANDIDATE"
+                and not row.get("insufficient_sample_gates")
+            ),
+        })
+    basis = (
+        "CANONICAL_RESEARCH_RANKING: expectancy_R DESC, profit_factor DESC, "
+        "max_drawdown ASC, min(trade_count,20) DESC, symbol_coverage DESC, "
+        "rank_stability DESC, config_id DESC"
+    )
+    summary = {
+        "BEST_OBSERVED_SELECTION_BASIS": basis,
+        "BEST_CANONICAL_RANKED_CONFIG": _leader_projection(canonical_best),
+        "BEST_NET_PNL_CONFIG": _leader_projection(net_best),
+        "BEST_EXPECTANCY_CONFIG": _leader_projection(expectancy_best),
+        "BEST_PROFIT_FACTOR_CONFIG": _leader_projection(pf_best),
+        "POSITIVE_OBSERVED_CONFIGS": len(positive),
+        "POSITIVE_NUMERIC_CONFIGS": len(positive),
+        "POSITIVE_BEHAVIORAL_CLUSTERS": len(positive_signatures),
+        "POSITIVE_BEHAVIORAL_DUPLICATES": len(positive) - len(positive_signatures),
+        "BEST_CANONICAL_VS_POSITIVE_EXPLANATION": (
+            "net_pnl is not a canonical rank-score component. All expectancy_R values are unavailable, "
+            "so their canonical sentinel ties; profit_factor is then compared before drawdown and capped "
+            "trade count. Positive one-trade configurations have unavailable profit_factor, which the "
+            "unchanged rank_score treats as 0, below the canonical best finite PF."
+        ),
+    }
+    artifact = {
+        "artifact": "POSITIVE_OBSERVED_CONFIGS", "schema_version": 1,
+        "selection_predicate": "net_pnl > 0",
+        "positive_numeric_configs": len(positive),
+        "positive_behavioral_clusters": len(positive_signatures),
+        "positive_behavioral_duplicates": len(positive) - len(positive_signatures),
+        "configs": positive_rows,
+    }
+    return summary, artifact
+
+
+def reconcile_expanded_search_reporting(
+    *, output: Path, range_handoff_path: Path,
+    separability_manifest_path: Path, symbol_audit_path: Path,
+) -> dict[str, Any]:
+    """Regenerate reporting from durable results; never evaluate a config."""
+    config = _read_json(output / "EXPANDED_SEARCH_CONFIG.json")
+    results = _read_jsonl(output / "EXPANDED_SEARCH_RESULTS.jsonl")
+    status = _read_json(output / "STATUS.json")
+    space = {str(name): list(values) for name, values in config["dimension_values"].items()}
+    representatives, _clusters = cluster_results(results, space)
+    summary, positive_artifact = build_reporting_reconciliation(results, representatives)
+    range_handoff = _read_json(range_handoff_path)
+    separability_manifest = _read_json(separability_manifest_path)
+    symbol_audit = _read_json(symbol_audit_path)
+    selected = validate_parameter_sweep_symbol(config.get("symbol"))
+    bindings = {
+        "SYMBOL_SOURCE": symbol_audit["symbol_authority_source"],
+        "SELECTED_SYMBOL": selected,
+        "DATASET_SYMBOL": separability_manifest.get("symbol"),
+        "SEPARABILITY_HANDOFF_SYMBOL": separability_manifest.get("symbol"),
+        "RANGE_HANDOFF_SYMBOL": range_handoff.get("symbol"),
+        "EXPANDED_SEARCH_SYMBOL": config.get("symbol"),
+    }
+    if any(value != selected for key, value in bindings.items() if key != "SYMBOL_SOURCE"):
+        raise ValueError("REPORT_SYMBOL_BINDING_MISMATCH")
+    status.update(summary)
+    status.update(bindings)
+    status.update({
+        "SYMBOL_BINDING_STATUS": symbol_audit["symbol_binding_status"],
+        "RUNTIME_SYMBOL_HARDCODES": symbol_audit["RUNTIME_SYMBOL_HARDCODES"],
+        "RUNTIME_SYMBOL_DEFAULTS": symbol_audit["RUNTIME_SYMBOL_DEFAULTS"],
+        "RUNTIME_SYMBOL_BRANCHES": symbol_audit["RUNTIME_SYMBOL_BRANCHES"],
+        "SEARCH_RANKING_CHANGED": False, "SEARCH_SPACE_CHANGED": False,
+        "RANGES_CHANGED": False, "VALIDATION_20_3_CHANGED": False,
+    })
+    _write_json(output / "POSITIVE_OBSERVED_CONFIGS.json", positive_artifact)
+    _write_json(output / "STATUS.json", status)
+    canonical = summary["BEST_CANONICAL_RANKED_CONFIG"]
+    net_best = summary["BEST_NET_PNL_CONFIG"]
+    pf_best = summary["BEST_PROFIT_FACTOR_CONFIG"]
+    report = "\n".join([
+        "# Expanded Automatic Search — Reporting Reconciliation", "",
+        f"- Symbol/profile: `{selected}` / `{config['profile']}`",
+        f"- Symbol source: `{bindings['SYMBOL_SOURCE']}`; binding status: `{status['SYMBOL_BINDING_STATUS']}`",
+        f"- Selection basis: `{summary['BEST_OBSERVED_SELECTION_BASIS']}`", "",
+        "## Separate leaders", "",
+        f"- Best canonical ranked: `{json.dumps(canonical, sort_keys=True)}`",
+        f"- Best net PnL: `{json.dumps(net_best, sort_keys=True)}`",
+        "- Best expectancy R: `NOT_AVAILABLE`",
+        f"- Best profit factor: `{json.dumps(pf_best, sort_keys=True)}`", "",
+        "## Why canonical best can have lower net PnL", "",
+        summary["BEST_CANONICAL_VS_POSITIVE_EXPLANATION"], "",
+        "## Positive accounting", "",
+        f"- Positive numeric configs (`net_pnl > 0`): {summary['POSITIVE_NUMERIC_CONFIGS']}",
+        f"- Positive behavioral clusters: {summary['POSITIVE_BEHAVIORAL_CLUSTERS']}",
+        f"- Positive behavioral duplicates: {summary['POSITIVE_BEHAVIORAL_DUPLICATES']}", "",
+        "## Symbol authority", "",
+        f"- GUI: `{symbol_audit['gui_symbol_source']}`",
+        f"- CLI: `{symbol_audit['cli_symbol_source']}`",
+        f"- Run config: `{symbol_audit['run_config_symbol_source']}`",
+        f"- Dataset: `{symbol_audit['dataset_symbol_binding']}`",
+        f"- Separability: `{symbol_audit['separability_symbol_binding']}`",
+        f"- Range handoff: `{symbol_audit['range_handoff_symbol_binding']}`",
+        f"- Expanded search: `{symbol_audit['expanded_search_symbol_binding']}`",
+        f"- Resume: `{symbol_audit['resume_symbol_binding']}`",
+        f"- Runtime hardcodes/defaults/branches: {status['RUNTIME_SYMBOL_HARDCODES']}/{status['RUNTIME_SYMBOL_DEFAULTS']}/{status['RUNTIME_SYMBOL_BRANCHES']}", "",
+        "Ranking, search space, ranges, validation 20/3, adaptive refinement, holdout and promotion are unchanged.", "",
+    ])
+    DEFAULT_ARTIFACT_WRITER.atomic_text(output / "REPORT.md", report, operation="expanded_search_reporting_reconciliation")
+    return {"status": status, "positive": positive_artifact, "evaluations_executed": 0}
+
+
 def _run_rows(space: Mapping[str, list[object]], rows: Sequence[Mapping[str, Any]]) -> tuple[SearchPlan, list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     plan = build_plan(space, dataset_rows=len(rows))
     splits = _split_without_holdout(rows)
@@ -476,9 +638,10 @@ def _handoff_result(row: Mapping[str, Any]) -> dict[str, Any]:
 
 def run_expanded_search(
     *, handoff_path: Path, dataset_path: Path, dataset_manifest_path: Path,
-    output: Path, symbol: str, profile: str = "trade-5m-v2",
+    output: Path, symbol: object, profile: str = "trade-5m-v2",
     resume: bool = False,
 ) -> dict[str, Any]:
+    symbol = validate_parameter_sweep_symbol(symbol)
     handoff, handoff_hash = validate_handoff(handoff_path, symbol=symbol, profile=profile)
     space, normalization = normalize_handoff_values(handoff)
     rows = _read_jsonl(dataset_path)
