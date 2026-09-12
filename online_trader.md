@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = beff25a129191dc02fe8c3429f6623fc9806871f
+STATUS_AS_OF_COMMIT = e5e24e80ebcee379e1bb2de5473d2a1fdd3bfd90
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-12T16:08:52Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_ADAPTIVE_REFINEMENT_01
-FILES_CHANGED = traders_ml/parameter_sweep/adaptive_refinement.py; traders_ml/parameter_sweep/symbol_authority_audit.py; tests/research/test_parameter_sweep_adaptive_refinement.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_ADAPTIVE_REFINEMENT_01_FINAL.md; online_trader.md; research-only adaptive_refinement_dogeusdt_01 artifacts
+RECONCILED_AT_UTC = 2026-09-12T16:24:43Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01
+FILES_CHANGED = docs/audits/TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01/METRIC_ACCOUNTING_FORENSIC.json; docs/audits/TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01/POSITIVE_BEHAVIORAL_CLUSTER_METRICS.json; docs/audits/TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01/BOUNDARY_EXPANSION_FORENSIC.json; docs/audits/TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01/REPORT.md; docs/audits/TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_beff25a129191dc02fe8c3429f6623fc9806871f_AND_DOCUMENTATION_RECONCILIATION_PUSHED_LOCAL_AHEAD0_BEHIND0
-STATUS_CONFIDENCE = PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_PASS_DESCRIPTIVEONLY_INITIAL500NUMERIC21BEHAVIOR2POSITIVECLUSTERS_ROUNDS2_NEW50NUMERIC4BEHAVIOR1POSITIVECLUSTER_DUPLICATES46_FINAL25BEHAVIOR127POSITIVENUMERIC3POSITIVECLUSTERS_INTERIOR90GENERATED49EVALUATED_BOUNDARY1GENERATED1EVALUATED_CONVERGED_NONEWBEHAVIOR_VALIDATIONELIGIBLE0_EXPECTANCYUNAVAILABLE_SYMBOLHARDCODE0_SYMBOLDEFAULT0_SYMBOLBRANCH0_HOLDOUTREAD0_FINALIST0_PROMOTIONNO_231RESEARCHPASS_17FOCUSEDPASS_COMPILEPASS_BYTERESUMEPASS_RANKINGUNCHANGED_POLICY20_3UNCHANGED_PRODUCTIONLOGICNO_PRODUCTIONYAMLNO_SET2NO_DBSCHEMANO_DEPLOYNO_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_e5e24e80ebcee379e1bb2de5473d2a1fdd3bfd90_AND_DOCUMENTATION_RECONCILIATION_PUSHED_LOCAL_AHEAD0_BEHIND0
+STATUS_CONFIDENCE = ADAPTIVE_METRIC_FORENSIC_PASS_READONLY_NETPNL_AND_PF_SAME_VALIDATIONPOPULATION_BESTNET_ONEWINZEROLOSS_PFUNAVAILABLE_BESTPF_CANONICAL1WIN2LOSS_PF0.95351674_CONSISTENT_PF_MISSING_FOR_POSITIVE_CONFIG_POSITIVECLUSTERS3_ALLPFUNAVAILABLE_BOUNDARY_min_net_edge_bps_HIGH_82.589044_PLUS9.584658_TO92.173702_PROVENANCEPASS_NEWBEHAVIORYES_POSITIVENO_BESTNETIMPROVEMENTNO_SEARCHRERUNNO_ADAPTIVERERUNNO_RESULTCHANGE_CAMPAIGNHASHCHANGE0_RANKINGUNCHANGED_POLICY20_3UNCHANGED_PRODUCTIONNO_LIVEFALSE_BINANCEORDER0_MUTATION0
 
 # Состояние проекта traders-ml
 
@@ -32,6 +32,37 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Parameter Sweep adaptive refinement metric consistency forensic 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01
+RESULT = PASS_READ_ONLY_METRIC_ACCOUNTING_AND_BOUNDARY_PROVENANCE_CONSISTENT
+PROJECT_STATE_COMMIT = e5e24e80ebcee379e1bb2de5473d2a1fdd3bfd90
+SYMBOL = DOGEUSDT
+PROFILE = trade-5m-v2
+METRIC_POPULATION = SAME_PER_CONFIG_VALIDATION_ONLY_ADMITTED_PERSISTED_NET_REALIZED_PNL
+NET_PNL = SUM_SIGNED_NET_REALIZED_PNL
+PROFIT_FACTOR = SUM_POSITIVE_NET_REALIZED_PNL_DIVIDED_BY_ABS_SUM_NEGATIVE_WHEN_LOSS_EXISTS_ELSE_NOTAVAILABLE
+RANKING_POPULATION = ALL_ACCEPTED_NUMERIC_CONFIGS_VALIDATIONFIELDS_HOLDOUTKEYSREJECTED_BEHAVIORDEDUPAFTERRANKING
+CONSISTENCY = BESTNET1.01784916_ONEWIN_ZEROLOSS_PFNOTAVAILABLE; BESTPF_AND_CANONICAL_PF0.95351674_ONEWIN_TWOLOSS; VERDICT_CONSISTENT_PF_MISSING_FOR_POSITIVE_CONFIG
+POSITIVE_CLUSTERS = COUNT3_PFGT1_0_PFLE1_0_PFNOTAVAILABLE_3
+BOUNDARY = min_net_edge_bps_HIGH_82.589044_ADJACENT73.004386_SPACING9.584658_GENERATED92.173702_SCHEMAUNCLIPPED_PARENTf3bd818_ROUND1_RESULT93a3aa1_NEWBEHAVIORYES_TRADES0_NET0_PFNA_POSITIVENO_IMPROVEDBESTNO_PROVENANCEPASS
+INVARIANCE = SEARCHRERUNNO_ADAPTIVERERUNNO_RESULTSCHANGE_CAMPAIGNARTIFACTHASHCHANGES0_RANKINGNO_GATES20_3NO
+VERIFICATION = READONLYASSERTIONS20PASS_JSON3PASS_COMPILEPASS
+SAFETY = PRODUCTIONLOGICNO_PRODUCTIONYAMLNO_SET2NO_DBSCHEMANO_DEPLOYNO_LIVEFALSE_BINANCEORDER0_MUTATION0
+ARTIFACTS = METRIC_ACCOUNTING_FORENSIC; POSITIVE_BEHAVIORAL_CLUSTER_METRICS; BOUNDARY_EXPANSION_FORENSIC; REPORT
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01_FINAL.md
+NEXT_RESEARCH_ACTION = SEPARATE_STEP7_VALIDATION_RANKING_ONLY_IF_EXPLICITLY_AUTHORIZED
+```
+
+The positive Net PnL and sub-one reported best PF are consistent because they
+belong to different configs. The best-Net config has no losing denominator, so
+its PF is correctly unavailable rather than infinite. All three positive
+behavioral clusters share that one-win/zero-loss PF-missing semantic. The sole
+boundary expansion discovered a new zero-trade behavior and did not improve
+profitability. This forensic performed no evaluation and changed no campaign
+artifact.
 
 ## Parameter Sweep single-symbol adaptive refinement 01
 
@@ -7428,7 +7459,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Adaptive Refinement PASS descriptive-only; deterministic convergence and handoff complete; validation gates single-authority PASS; 30-day reconstruction remains BLOCKED_PARITY | The accepted DOGEUSDT expanded campaign continued through two behavior-aware rounds. Fifty new numerical configs produced four new behavioral clusters and 46 behavioral duplicates, taking the campaign from 21 to 25 clusters; 127 positive numerical configs collapse to three positive clusters. Ninety distinct transition-derived interior candidates were traced (49 evaluated), and one evidenced high-boundary candidate was generated and evaluated. The second round found no new behavior and stopped with 450 evaluations unused. Canonical, net-PnL, expectancy and PF leaders remain separate and unchanged; expectancy is unavailable. Runtime scanning still finds zero symbol hardcodes/defaults/branches, DOGE/LINK fixtures share one engine, and the complete research suite passes 231 tests. Zero configs pass the unchanged 20-trade/three-day gates; holdout, finalist freeze and promotion remain unperformed |
+| Offline Scalping v2 Parameter Sweep | Adaptive Refinement PASS descriptive-only; metric consistency forensic PASS; deterministic convergence and handoff complete; validation gates single-authority PASS; 30-day reconstruction remains BLOCKED_PARITY | The accepted DOGEUSDT expanded campaign continued through two behavior-aware rounds. Fifty new numerical configs produced four new behavioral clusters and 46 behavioral duplicates, taking the campaign from 21 to 25 clusters; 127 positive numerical configs collapse to three positive clusters. Read-only forensic proves Net PnL and PF use the same validation-only admitted persisted net-realized-PnL population: the best-Net config has one win and zero losses, so PF is unavailable; the finite PF leader is the unchanged canonical config. All three positive clusters have unavailable PF. The sole high-boundary expansion created a new zero-trade behavior and did not improve best Net PnL. No campaign artifact changed. Zero configs pass the unchanged 20-trade/three-day gates; holdout, finalist freeze and promotion remain unperformed |
 | Online analytics/paper pipeline | Named-set switching integrated and bounded deployment accepted; profitability not proven | Schema 0031; immutable real-cycle and portfolio-risk snapshots. Active Set #2, Set #1 unchanged. Three corrected-runtime cycles passed 30/30; 15m unchanged. 1m and time-stop remain SHADOW; full sweep and 72h soak not run |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
