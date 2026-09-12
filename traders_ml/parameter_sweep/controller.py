@@ -64,6 +64,11 @@ class PresentationState:
     negative_expectancy: int = 0
     promising: int = 0
     validation_candidates: int = 0
+    validation_ranking_eligible_numeric: int = 0
+    validation_ranking_eligible_behavioral: int = 0
+    validation_ranking_descriptive_behavioral: int = 0
+    validation_ranking_top_eligible: str | None = None
+    validation_ranking_top_descriptive: str | None = None
     evaluation_status_counts: dict[str, int] = field(default_factory=dict)
     performance_class_counts: dict[str, int] = field(default_factory=dict)
     resolved_seed: int | None = None
@@ -266,6 +271,21 @@ class ParameterSweepController:
             self.state.validation_minimum_trades = persisted.get("VALIDATION_MINIMUM_TRADES")
             self.state.minimum_independent_periods = persisted.get("MINIMUM_INDEPENDENT_PERIODS")
             self.state.independent_period_unit = persisted.get("INDEPENDENT_PERIOD_UNIT")
+            self.state.validation_ranking_eligible_numeric = int(
+                persisted.get("validation_ranking_eligible_numeric", self.state.validation_ranking_eligible_numeric)
+            )
+            self.state.validation_ranking_eligible_behavioral = int(
+                persisted.get("validation_ranking_eligible_behavioral", self.state.validation_ranking_eligible_behavioral)
+            )
+            self.state.validation_ranking_descriptive_behavioral = int(
+                persisted.get("validation_ranking_descriptive_behavioral", self.state.validation_ranking_descriptive_behavioral)
+            )
+            self.state.validation_ranking_top_eligible = persisted.get(
+                "validation_ranking_top_eligible", self.state.validation_ranking_top_eligible
+            )
+            self.state.validation_ranking_top_descriptive = persisted.get(
+                "validation_ranking_top_descriptive", self.state.validation_ranking_top_descriptive
+            )
             self.state.history_target_days = int(persisted.get("history_target_days") or 30)
             self.state.history_start = persisted.get("history_start") or self.state.history_start
             self.state.history_end = persisted.get("history_end") or self.state.history_end
