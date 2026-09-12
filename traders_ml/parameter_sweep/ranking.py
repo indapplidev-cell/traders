@@ -22,7 +22,14 @@ def rank_score(
 ) -> tuple[float, ...]:
     trades = int(row.get("trade_count") or 0)
     expectancy = float(row.get("expectancy_R") or -1e12)
-    pf = float(row.get("profit_factor") or 0)
+    raw_pf = row.get("profit_factor")
+    zero_loss_positive = (
+        raw_pf is None
+        and int(row.get("wins") or 0) > 0
+        and int(row.get("losses") or 0) == 0
+        and float(row.get("net_pnl") or 0) > 0
+    )
+    pf = float("inf") if zero_loss_positive else float(raw_pf or 0)
     drawdown = float(row.get("max_drawdown") or 0)
     stability = float(row.get("rank_stability") or 0)
     symbols = int(row.get("symbol_coverage") or 0)

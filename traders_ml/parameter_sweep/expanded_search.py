@@ -486,8 +486,9 @@ def build_reporting_reconciliation(
         "BEST_CANONICAL_VS_POSITIVE_EXPLANATION": (
             "net_pnl is not a canonical rank-score component. All expectancy_R values are unavailable, "
             "so their canonical sentinel ties; profit_factor is then compared before drawdown and capped "
-            "trade count. Positive one-trade configurations have unavailable profit_factor, which the "
-            "unchanged rank_score treats as 0, below the canonical best finite PF."
+            "trade count. A positive configuration with wins, zero losses, and unavailable profit_factor "
+            "uses the zero-loss positive ranking semantic (positive infinity); other missing PF values "
+            "retain the zero sentinel."
         ),
     }
     artifact = {
