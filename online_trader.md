@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 5ccf694b0dcb60d1141acfa4c36f93d66c8868a5
+STATUS_AS_OF_COMMIT = 748b087aff8f6eeb6e3c62b44b25afd21afe7fdb
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-12T04:50:25Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_RESEARCH_ENGINE_HOLDOUT_ISOLATION_AND_BLOCK_ORCHESTRATION_REFACTOR_01
-FILES_CHANGED = traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/checkpoint.py; traders_ml/parameter_sweep/cli.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/ranking.py; traders_ml/parameter_sweep/research_protocol.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/ui.py; tests/research/test_parameter_sweep_holdout_protocol.py; tests/research/test_parameter_sweep_report_semantics.py; tests/research/test_scalping_v2_parameter_sweep.py; docs/audits/HOLDOUT_ACCESS_INVENTORY.json; docs/audits/FINALIST_FREEZE.example.json; docs/audits/TRADERS_PARAMETER_SWEEP_RESEARCH_ENGINE_HOLDOUT_ISOLATION_AND_BLOCK_ORCHESTRATION_REFACTOR_01_FINAL.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-12T06:59:52Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01
+FILES_CHANGED = tests/research/test_parameter_sweep_single_symbol.py; tests/research/test_scalping_v2_parameter_sweep.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/checkpoint.py; traders_ml/parameter_sweep/cli.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/historical_replay.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/research_protocol.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/universe.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_5ccf694b0dcb60d1141acfa4c36f93d66c8868a5_AND_DOCUMENTATION_RECONCILIATION_PUSHED_AHEAD0_BEHIND0_AFTER_FINAL_PUSH
-STATUS_CONFIDENCE = PARAMETER_SWEEP_HOLDOUTISOLATIONPASS_146RESEARCHPASS_COMPILEPASS_BOUNDEDZERO_POSITIVE_BLOCK2BLOCK3BLOCK4PASS_FREEZEGUARDONESHOTPASS_SEARCHSPACEUNCHANGED_SET2UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_748b087aff8f6eeb6e3c62b44b25afd21afe7fdb_AND_DOCUMENTATION_RECONCILIATION_PUSHED_AHEAD0_BEHIND0_AFTER_FINAL_PUSH
+STATUS_CONFIDENCE = PARAMETER_SWEEP_SINGLESYMBOLPASS_151RESEARCHPASS_2SYMBOLSMOKEPASS_COMPILEPASS_RESUMEGUARDPASS_CROSSSYMBOL0_NONSElectedREPLAY0_UNIVERSEUNCHANGED_SET2UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
 
 # Состояние проекта traders-ml
 
@@ -32,6 +32,30 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Parameter Sweep single-symbol search mode fix 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01
+RESULT = PASS
+PROJECT_STATE_COMMIT = 748b087aff8f6eeb6e3c62b44b25afd21afe7fdb
+SYMBOL_AUTHORITY = app.trading_universe.domain.resolve_universe_TRADINGUNIVERSEV2_SYMBOLS10_RESEARCHHARDCODEDNO
+LAUNCH = GUIONESYMBOLDROPDOWN_CLIEXPLICIT--symbol_NULLINVALIDOUTSIDEUNIVERSEREJECTED
+DATASET = EARLYSYMBOLFILTER_FROZENDISTINCT1_REPLAYEVALUATED1_NONSESelectedWORK0_CROSSCONTAMINATIONFAILCLOSED
+IDENTITY = RUNCONFIG_STATUS_DATASETANDRUNMANIFEST_CHECKPOINT_SEARCHFINGERPRINT_REPORT_FINALISTFREEZE_RESULTS_SYMBOLBOUND
+RESUME = SAMESYMBOLPASS_DIFFERENTSYMBOL_RESUME_SYMBOL_MISMATCH
+COVERAGE = EXPECTED1_ACTUAL1_PASS_NOMULTISYMBOLREJECTION_OTHERSTATISTICALGATESUNCHANGED
+SMOKE = LINKUSDT1CONFIGPASS_BTCUSDT1CONFIGPASS_GENERICIMPLEMENTATION
+REGRESSION = 151RESEARCHPASS_ALL6MODESPASS_COMPILEPASS
+SAFETY = PRODUCTIONYAMLNO_SET2NO_TRADINGLOGICNO_UNIVERSEMUTATIONNO_DBSCHEMANO_DEPLOYNO_LIVEFALSE_BINANCEORDERS0_MUTATIONS0
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md
+NEXT_ACTION = START_SEPARATE_DEEP_SINGLE_SYMBOL_RESEARCH_CAMPAIGN_WITHOUT_AUTOMATIC_PARAMETER_PROMOTION
+```
+
+Parameter Sweep now requires exactly one authoritative v2 symbol per new
+campaign. ALL continues to mean all parameter-search logic, but only for that
+selected symbol. The selector is research-only and does not mutate the active
+production universe. The large optimal search remains intentionally unrun.
 
 ## Parameter Sweep research holdout isolation and block orchestration refactor 01
 
@@ -7126,7 +7150,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Holdout-isolated research protocol PASS | `traders_ml/parameter_sweep/` remains authoritative. Search, sensitivity, separability, range discovery, validation ranking and Pareto cannot receive holdout outcomes. Finalists are validation-selected and hash-frozen before one-shot holdout; non-finalists cannot enter holdout, post-open tuning/resume fails closed, and run-local range artifacts never mutate YAML. Artifact v2, frozen-dataset resume, mode/GUI/CLI/reporting/coverage/seed/counterfactual invariants pass in 146 research tests. Full optimization and parameter promotion remain unperformed |
+| Offline Scalping v2 Parameter Sweep | Holdout-isolated, single-symbol research protocol PASS | `traders_ml/parameter_sweep/` remains authoritative. Every new GUI/CLI campaign requires exactly one symbol resolved from `trading-universe-v2`; filtering precedes replay, symbol identity is frozen through reports/checkpoints/finalists, cross-symbol contamination and resume mismatch fail closed, and single-symbol coverage expects one. Search, sensitivity, separability, range discovery, validation ranking and Pareto cannot receive holdout outcomes. Finalists are validation-selected and hash-frozen before one-shot holdout; non-finalists cannot enter holdout, post-open tuning/resume fails closed, and run-local range artifacts never mutate YAML. The complete research suite passes 151 tests. Full optimization and parameter promotion remain unperformed |
 | Online analytics/paper pipeline | Named-set switching integrated and bounded deployment accepted; profitability not proven | Schema 0031; immutable real-cycle and portfolio-risk snapshots. Active Set #2, Set #1 unchanged. Three corrected-runtime cycles passed 30/30; 15m unchanged. 1m and time-stop remain SHADOW; full sweep and 72h soak not run |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
