@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 748b087aff8f6eeb6e3c62b44b25afd21afe7fdb
+STATUS_AS_OF_COMMIT = 793cfbc8cb6189f69a7d9a3b9402184480e8d45c
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-12T06:59:52Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01
-FILES_CHANGED = tests/research/test_parameter_sweep_single_symbol.py; tests/research/test_scalping_v2_parameter_sweep.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/checkpoint.py; traders_ml/parameter_sweep/cli.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/historical_replay.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/research_protocol.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/ui.py; traders_ml/parameter_sweep/universe.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-12T07:56:55Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01
+FILES_CHANGED = tests/research/test_parameter_sweep_single_symbol.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/historical_replay.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/research_protocol.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/ui.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_748b087aff8f6eeb6e3c62b44b25afd21afe7fdb_AND_DOCUMENTATION_RECONCILIATION_PUSHED_AHEAD0_BEHIND0_AFTER_FINAL_PUSH
-STATUS_CONFIDENCE = PARAMETER_SWEEP_SINGLESYMBOLPASS_151RESEARCHPASS_2SYMBOLSMOKEPASS_COMPILEPASS_RESUMEGUARDPASS_CROSSSYMBOL0_NONSElectedREPLAY0_UNIVERSEUNCHANGED_SET2UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_793cfbc8cb6189f69a7d9a3b9402184480e8d45c_AND_DOCUMENTATION_RECONCILIATION_PUSHED_AHEAD0_BEHIND0_AFTER_FINAL_PUSH
+STATUS_CONFIDENCE = PARAMETER_SWEEP_POSTFIXPASS_155RESEARCHPASS_25FOCUSEDPASS_COMPILEPASS_1CONFIGLINKSMOKEPASS_CANONICALPARITYPASS_ELIGIBLEFREEZEPASS_DEDUPPASS_ZEROFINALISTHOLDOUTPASS_HISTORYTARGET30_ACTUAL9_420139_PARTIALSOURCELIMIT_CROSSSYMBOL0_NONSElectedREPLAY0_SET2UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
 
 # Состояние проекта traders-ml
 
@@ -32,6 +32,29 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Parameter Sweep single-symbol postfix bugfix and 30-day history 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01
+RESULT = PASS_WITH_EXPECTED_PARTIAL_SOURCE_LIMIT
+PROJECT_STATE_COMMIT = 793cfbc8cb6189f69a7d9a3b9402184480e8d45c
+CANONICAL_VALIDATION = ONE_PROJECTION_RESULTS_STATUS_REPORT_GUI_INTEGRITY_EXACTPARITY
+FINALISTS = VALIDATIONELIGIBLEONLY_BEHAVIORALDEDUP_WITHLINEAGE_DETERMINISTICREPRESENTATIVE
+ZERO_FINALISTS = IMMUTABLEEMPTYFREEZE_HOLDOUTNOTOPENED_EVALUATIONS0_ROWS0_METRICS0_CONTROLLEDTERMINAL
+HISTORY = FIXED30CALENDARDAYS_SELECTEDSYMBOLFIRST_ACTUAL9_420139D_PARTIAL_SOURCE_LIMIT_NOHIDDENROWCAP
+SMOKE = LINKUSDT1CONFIG_ROWS1M13575_ROWS5M2715_OPPORTUNITIES1336_DISTINCT1_EVALUATED1_CROSSCONTAMINATION0_NONSESelectedWORK0
+REGRESSION = 155RESEARCHPASS_25FOCUSEDPASS_COMPILEPASS_INTEGRITYPASS
+SAFETY = LARGETSEARCHNO_PRODUCTIONYAMLNO_SET2NO_TRADINGLOGICNO_UNIVERSEMUTATIONNO_DBSCHEMANO_DEPLOYNO_LIVEFALSE_BINANCEORDERS0_MUTATIONS0
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md
+NEXT_ACTION = WAIT_FOR_NATURAL_USABLE_OPPORTUNITY_HISTORY_TO_REACH30D_THEN_RERUN_BOUNDED_SINGLE_SYMBOL_SMOKE
+```
+
+The research loader now targets the latest closed cutoff minus 30 calendar
+days for the selected symbol before causal eligibility and freezing. LINKUSDT
+candle storage exceeds 30 days, but the usable `trade-5m-v2` opportunity source
+currently spans only 9.420139 days; the honest result is therefore
+`PARTIAL_SOURCE_LIMIT`. This is not a task failure and no data was synthesized.
 
 ## Parameter Sweep single-symbol search mode fix 01
 
@@ -7150,7 +7173,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Holdout-isolated, single-symbol research protocol PASS | `traders_ml/parameter_sweep/` remains authoritative. Every new GUI/CLI campaign requires exactly one symbol resolved from `trading-universe-v2`; filtering precedes replay, symbol identity is frozen through reports/checkpoints/finalists, cross-symbol contamination and resume mismatch fail closed, and single-symbol coverage expects one. Search, sensitivity, separability, range discovery, validation ranking and Pareto cannot receive holdout outcomes. Finalists are validation-selected and hash-frozen before one-shot holdout; non-finalists cannot enter holdout, post-open tuning/resume fails closed, and run-local range artifacts never mutate YAML. The complete research suite passes 151 tests. Full optimization and parameter promotion remain unperformed |
+| Offline Scalping v2 Parameter Sweep | Holdout-isolated, single-symbol research protocol PASS; 30-day target currently source-limited | `traders_ml/parameter_sweep/` remains authoritative. Every new GUI/CLI campaign requires exactly one symbol resolved from `trading-universe-v2`; filtering precedes the fixed 30-calendar-day window, causal eligibility, freeze and replay. Results, status, report and GUI share one canonical validation projection. Finalists must be validation-eligible and are behaviorally deduplicated with lineage; zero finalists produce an immutable empty freeze and never open holdout. LINKUSDT smoke loaded 9.420139 usable days and honestly reported `PARTIAL_SOURCE_LIMIT`; no hidden recent-row cap was found. The complete research suite passes 155 tests. Full optimization and parameter promotion remain unperformed |
 | Online analytics/paper pipeline | Named-set switching integrated and bounded deployment accepted; profitability not proven | Schema 0031; immutable real-cycle and portfolio-risk snapshots. Active Set #2, Set #1 unchanged. Three corrected-runtime cycles passed 30/30; 15m unchanged. 1m and time-stop remain SHADOW; full sweep and 72h soak not run |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
