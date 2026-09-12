@@ -91,6 +91,13 @@ class ParameterSweepWindow:
 
         actions = ttk.Frame(self.body)
         actions.pack(fill="x", pady=12)
+        ttk.Label(actions, text="Символ:").pack(side="left", padx=(0, 4))
+        self.symbol_var = tk.StringVar(value=self.controller.state.symbol or "")
+        self.symbol_selector = ttk.Combobox(
+            actions, textvariable=self.symbol_var, state="readonly", width=12,
+            values=self.controller.available_symbols,
+        )
+        self.symbol_selector.pack(side="left", padx=(0, 8))
         self.mode_var = tk.StringVar(value=ResearchMode.ALL.value)
         self.mode_selector = ttk.Combobox(
             actions, textvariable=self.mode_var, state="readonly", width=28,
@@ -109,13 +116,17 @@ class ParameterSweepWindow:
 
     def _start(self) -> None:
         try:
-            self.controller.start_new_run(mode=self.mode_var.get())
+            self.controller.start_new_run(
+                mode=self.mode_var.get(), symbol=self.symbol_var.get(),
+            )
         except (RuntimeError, ValueError) as error:
             messagebox.showerror(RU["title"], str(error), parent=self.root)
 
     def _resume(self) -> None:
         if self.controller.state.run_id != "—":
-            self.controller.resume_run(self.controller.state.run_id)
+            self.controller.resume_run(
+                self.controller.state.run_id, symbol=self.symbol_var.get(),
+            )
 
     def _open(self) -> None:
         try:
@@ -141,7 +152,9 @@ class ParameterSweepWindow:
     def _render(self) -> None:
         state = self.controller.state
         self.context.configure(text=(
-            "Профиль: Scalping v2\nРежим: Только чтение\n"
+            "Profile: trade-5m-v2\nTimeframe: 5m\n"
+            f"Symbol: {state.symbol or self.symbol_var.get() or '—'}\n"
+            "Режим: Только чтение\n"
             f"Режим исследования: {state.research_mode}\n"
             "Источник данных: Production PAPER\nLIVE: Отключён\n"
             f"RUN ID: {state.run_id}"
@@ -268,7 +281,10 @@ class ParameterSweepWindow:
             text=RU["show_changed"] if self.show_all else RU["show_all"],
             state="normal" if state.current_config is not None else "disabled",
         )
-        self.start_button.configure(state="disabled" if state.active else "normal")
+        valid_symbol = self.symbol_var.get() in self.controller.available_symbols
+        self.start_button.configure(
+            state="disabled" if state.active or not valid_symbol else "normal",
+        )
         self.stop_button.configure(state="normal" if state.active else "disabled")
         self.resume_button.configure(state="normal" if state.resume_available and not state.active else "disabled")
         self.open_button.configure(state="normal" if state.output_directory != "—" and Path(state.output_directory).is_dir() else "disabled")

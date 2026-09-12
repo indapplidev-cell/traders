@@ -63,7 +63,7 @@ def performance_class(metrics: Mapping[str, Any], *, stability: float | None = N
         return "INVALID"
     if (
         trades < policy.minimum_trades
-        or int(symbols or 0) < policy.minimum_symbol_coverage
+        or int(symbols or 0) < 1
         or independent_periods is None
         or int(independent_periods) < policy.minimum_independent_periods
     ):
@@ -157,7 +157,7 @@ def compact_result(
     )
     gates = [
         ("validation_trade_count", trade_count, RESEARCH_PARAMETERS.ranking.validation_minimum_trades),
-        ("symbol_coverage", metrics["symbol_coverage"], RESEARCH_PARAMETERS.ranking.minimum_symbol_coverage),
+        ("symbol_coverage", metrics["symbol_coverage"], 1),
         ("independent_period_count", independent_periods, RESEARCH_PARAMETERS.ranking.minimum_independent_periods),
         ("minimum_slice_count", slice_count, 2),
     ]
@@ -177,6 +177,11 @@ def compact_result(
         "baseline_config_hash": baseline_config_hash,
         "research_config_hash": research_config_hash,
         "resolved_seed": item.get("resolved_seed"),
+        "symbol": item.get("symbol"),
+        "SYMBOL": item.get("symbol"),
+        "evaluated_symbol_count": item.get("evaluated_symbol_count", 1),
+        "symbol_coverage_expected": 1,
+        "symbol_coverage_pass": int(metrics["symbol_coverage"] or 0) == 1,
         "overrides": overrides,
         "candidate_parameters": candidate_parameters,
         "stage": item.get("stage"),

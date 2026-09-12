@@ -15,6 +15,7 @@ from .texts import PARAMETER_LABELS_RU, REASONS_RU, STRATEGIES_RU, RU
 from .state import read_effective_status
 from .utils import generate_run_id, open_directory
 from .modes import ResearchMode, parse_research_mode
+from .universe import resolve_parameter_sweep_universe, validate_parameter_sweep_symbol
 
 
 @dataclass(slots=True)
@@ -67,6 +68,7 @@ class PresentationState:
     performance_class_counts: dict[str, int] = field(default_factory=dict)
     resolved_seed: int | None = None
     research_mode: str = ResearchMode.ALL.value
+    symbol: str | None = None
     research_phase: str = "CALIBRATION_SEARCH"
     holdout_status: str = "UNTOUCHED"
     finalists_frozen: bool = False
@@ -111,6 +113,10 @@ class ParameterSweepController:
         self._close_after_stop = False
         self._discover_incomplete_run()
 
+    @property
+    def available_symbols(self) -> tuple[str, ...]:
+        return resolve_parameter_sweep_universe()[1]
+
     def _discover_incomplete_run(self) -> None:
         if not self.output_root.is_dir():
             return
@@ -127,6 +133,9 @@ class ParameterSweepController:
                     continue
                 self.state.run_id = str(value["run_id"])
                 self.state.research_mode = mode.value
+                self.state.symbol = str(value.get("symbol") or "") or None
+                if self.state.symbol not in self.available_symbols:
+                    continue
                 self.state.output_directory = str(path.parent)
                 self.state.completed = int(value.get("completed_configs", 0))
                 self.state.planned = int(value.get("planned_configs", 0))
@@ -143,27 +152,33 @@ class ParameterSweepController:
                 return
 
     def start_new_run(
-        self, *, max_configs: int | None = None,
+        self, *, symbol: str | None = None, max_configs: int | None = None,
         mode: ResearchMode | str = ResearchMode.ALL,
     ) -> str:
         if self.worker and self.worker.is_alive():
             raise RuntimeError("PARAMETER_SWEEP_ALREADY_RUNNING")
         canonical_mode = parse_research_mode(mode)
+        canonical_symbol = validate_parameter_sweep_symbol(symbol)
         run_id = generate_run_id(self.output_root)
-        self._start(run_id, resume=False, max_configs=max_configs, mode=canonical_mode)
+        self._start(
+            run_id, resume=False, max_configs=max_configs, mode=canonical_mode,
+            symbol=canonical_symbol,
+        )
         return run_id
 
-    def resume_run(self, run_id: str) -> None:
+    def resume_run(self, run_id: str, *, symbol: str | None = None) -> None:
         if self.worker and self.worker.is_alive():
             raise RuntimeError("PARAMETER_SWEEP_ALREADY_RUNNING")
         self._start(
             run_id, resume=True, max_configs=None,
             mode=parse_research_mode(self.state.research_mode),
+            symbol=validate_parameter_sweep_symbol(symbol or self.state.symbol),
         )
 
     def _start(
         self, run_id: str, *, resume: bool, max_configs: int | None,
         mode: ResearchMode,
+        symbol: str,
     ) -> None:
         failure_emitted = threading.Event()
 
@@ -177,6 +192,7 @@ class ParameterSweepController:
             status_text=RU["preparing"], run_id=run_id,
             output_directory=str(self.output_root / run_id), active=True,
             research_mode=mode.value,
+            symbol=symbol,
         )
 
         def target() -> None:
@@ -185,6 +201,7 @@ class ParameterSweepController:
                     self.config_path, run_id=run_id, resume=resume,
                     max_configs=max_configs,
                     mode=mode,
+                    symbol=symbol,
                 )
             except BaseException as error:
                 if not failure_emitted.is_set():
@@ -233,6 +250,7 @@ class ParameterSweepController:
             self.state.finalist_count = int(persisted.get("finalist_count", self.state.finalist_count))
             self.state.holdout_opened = bool(persisted.get("holdout_opened", self.state.holdout_opened))
             self.state.holdout_evaluated = bool(persisted.get("holdout_evaluated", self.state.holdout_evaluated))
+            self.state.symbol = str(persisted.get("symbol") or self.state.symbol or "") or None
         return drained
 
     def _apply(self, event: SweepEvent) -> None:
@@ -241,6 +259,7 @@ class ParameterSweepController:
         if event.type in {EventType.RUN_STARTED, EventType.RUN_RESUMED}:
             self.state.run_id = event.run_id
             self.state.research_mode = str(payload["research_mode"])
+            self.state.symbol = str(payload.get("symbol") or self.state.symbol or "") or None
             self.state.output_directory = str(payload.get("output_dir", self.state.output_directory))
             self.state.active = True
             self.state.started_at = event.occurred_at

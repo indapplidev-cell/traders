@@ -18,8 +18,14 @@ from app.research.scalping_v2_parameter_sweep import (
     _baseline_control, _candidate_config, _candidate_indices,
     _config_from_index, _conditional_variants, _dataset_coverage,
     _gate_funnel, _shadow_observation, _stale_policy,
-    resolve_database_binding, run,
+    resolve_database_binding, run as _engine_run,
 )
+
+
+def run(*args, **kwargs):
+    """Legacy suite helper: all fixtures use the one-symbol BTC dataset."""
+    kwargs.setdefault("symbol", "BTCUSDT")
+    return _engine_run(*args, **kwargs)
 from traders_ml.parameter_sweep.controller import (
     ParameterSweepController, PresentationState,
 )
@@ -331,7 +337,9 @@ def test_controller_and_direct_cli_engine_path_have_identical_plan_identity(tmp_
     config = yaml.safe_load(path.read_text())
     output_root = Path(config["output_root"])
     controller = ParameterSweepController(path, output_root)
-    gui_run_id = controller.start_new_run(max_configs=1, mode="ALL")
+    gui_run_id = controller.start_new_run(
+        symbol="BTCUSDT", max_configs=1, mode="ALL",
+    )
     assert controller.worker is not None
     controller.worker.join(timeout=30)
     assert not controller.worker.is_alive()
@@ -1095,6 +1103,8 @@ def test_real_tk_gui_bounded_smoke_reaches_integrity_final_screen(tmp_path, monk
     root = tk.Tk()
     root.withdraw()
     window = ParameterSweepWindow(root, controller)
+    window.symbol_var.set("BTCUSDT")
+    window._render()
     window.start_button.invoke()
     deadline = time.monotonic() + 15
     while controller.state.active and time.monotonic() < deadline:
@@ -1204,6 +1214,8 @@ def test_failed_before_first_controller_and_tk_render_semantics(tmp_path):
     root = tk.Tk()
     root.withdraw()
     window = ParameterSweepWindow(root, controller)
+    window.symbol_var.set("BTCUSDT")
+    window._render()
     window.start_button.invoke()
     deadline = time.monotonic() + 15
     while controller.state.active and time.monotonic() < deadline:

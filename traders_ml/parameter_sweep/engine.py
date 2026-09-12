@@ -74,6 +74,7 @@ from .modes import (
     ACTIVE_RESEARCH_FAMILIES, FROZEN_RESEARCH_FAMILIES, ResearchMode,
     families_for_mode, parse_research_mode,
 )
+from .universe import resolve_parameter_sweep_universe, validate_parameter_sweep_symbol
 from .state import RunState, StatusStore, SweepRunStatus
 from .texts import ERRORS_RU
 from .utils import generate_run_id
@@ -216,6 +217,7 @@ class DatasetOptions:
     maximum_rows: int | None = DEFAULT_MAX_ROWS
     from_time: datetime | None = None
     to_time: datetime | None = None
+    symbol: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -634,6 +636,7 @@ def _production_rows(
         raise SweepExpectedError("MAX_ROWS_OUT_OF_RANGE")
     repository = HistoricalReplayRepository(database)
     dataset = repository.load(
+        symbol=str(options.symbol),
         maximum_rows=options.maximum_rows,
         selection_mode=options.selection_mode,
         from_ms=None if options.from_time is None else int(options.from_time.timestamp() * 1000),
@@ -779,7 +782,10 @@ def _load_rows(
     value = _json(Path(options.source))
     if not isinstance(value, list):
         raise SweepExpectedError("DATASET_INVALID")
-    return value
+    return [
+        row for row in value
+        if isinstance(row, dict) and row.get("symbol") == options.symbol
+    ]
 
 
 def _validate_dataset_authority(
@@ -790,6 +796,8 @@ def _validate_dataset_authority(
             raise SweepExpectedError("DATASET_PROFILE_MISMATCH")
         if row.get("primary_timeframe") != options.primary_timeframe:
             raise SweepExpectedError("DATASET_TIMEFRAME_MISMATCH")
+        if row.get("symbol") != options.symbol:
+            raise SweepExpectedError("CROSS_SYMBOL_CONTAMINATION")
 
 
 def _config_hash(value: object) -> str:
@@ -818,6 +826,7 @@ def _manifest_from_rows(
     *, run_id: str, options: DatasetOptions, rows: list[dict[str, Any]],
     schema_head: str,
 ) -> dict[str, Any]:
+    universe_id, _available_symbols = resolve_parameter_sweep_universe()
     summary = rows[0].get("__historical_summary", {}) if rows else {}
     inventory = rows[0].get("__source_inventory", []) if rows else []
     opened = [int(row.get("opened_at_ms", row.get("boundary_ms", 0))) for row in rows]
@@ -829,6 +838,7 @@ def _manifest_from_rows(
         "source": options.source,
         "profile": options.profile,
         "primary_timeframe": options.primary_timeframe,
+        "symbol": options.symbol,
         "schema_head": schema_head,
         "rows": rows,
     })
@@ -837,8 +847,12 @@ def _manifest_from_rows(
         "run_id": run_id,
         "profile": options.profile,
         "primary_timeframe": options.primary_timeframe,
+        "symbol": options.symbol,
+        "SYMBOL": options.symbol,
+        "symbol_authority_id": universe_id,
         "baseline_set_id": RESEARCH_PARAMETERS.calibration.baseline_set_id,
         "symbols": sorted({str(row.get("symbol")) for row in rows if row.get("symbol")}),
+        "dataset_symbol_count": len({str(row.get("symbol")) for row in rows if row.get("symbol")}),
         "historical_period_start_ms": period_start,
         "historical_period_end_ms": period_end,
         "dataset_cutoff_at": datetime.fromtimestamp(period_end / 1000, timezone.utc).isoformat(),
@@ -1594,6 +1608,7 @@ def _time_stop_metrics(
 def _dataset_options(
     search: dict[str, Any], *, max_rows: int | None = None,
     from_value: str | None = None, to_value: str | None = None,
+    symbol: str,
 ) -> DatasetOptions:
     raw = search.get("dataset", {})
     if isinstance(raw, dict):
@@ -1629,7 +1644,7 @@ def _dataset_options(
         raise SweepExpectedError("INVALID_DATE_RANGE")
     return DatasetOptions(
         source, profile, primary_timeframe, False, selection_mode, maximum,
-        start, end,
+        start, end, symbol,
     )
 
 
@@ -1827,9 +1842,19 @@ def _evaluate_config(
         raise ResearchProtocolError("HOLDOUT_ACCESS_BEFORE_FINALIST_FREEZE")
     if set(splits) != {"CALIBRATION", "VALIDATION"}:
         raise SweepExpectedError("RESEARCH_SPLIT_CONTRACT_INVALID")
+    evaluated_symbols = {
+        str(row.get("symbol")) for rows in splits.values() for row in rows
+        if row.get("symbol")
+    }
+    if len(evaluated_symbols) != 1:
+        raise SweepExpectedError("CROSS_SYMBOL_CONTAMINATION")
+    evaluated_symbol = next(iter(evaluated_symbols))
     item: dict[str, Any] = {
         "result_index": index, "stage": stage, "parameters": params,
-        "config_hash": _config_hash(params),
+        "symbol": evaluated_symbol,
+        "SYMBOL": evaluated_symbol,
+        "evaluated_symbol_count": 1,
+        "config_hash": _config_hash({"symbol": evaluated_symbol, "parameters": params}),
     }
     if any(rows and "boundary_ms" in rows[0] for rows in splits.values()):
         item["INPUT_ROWS"] = sum(len(rows) for rows in splits.values())
@@ -1925,8 +1950,12 @@ def _evaluate_frozen_holdout(
     params: dict[str, object], rows: list[dict[str, Any]], *,
     finalist_id: str, policy: HoldoutAccessPolicy, minimum_sample: int,
 ) -> dict[str, Any]:
+    symbols = {str(row.get("symbol")) for row in rows if row.get("symbol")}
+    if len(symbols) != 1:
+        raise SweepExpectedError("CROSS_SYMBOL_CONTAMINATION")
     guarded = policy.holdout_rows(
-        rows, finalist_id=finalist_id, config_hash=_config_hash(params),
+        rows, finalist_id=finalist_id,
+        config_hash=_config_hash({"symbol": next(iter(symbols)), "parameters": params}),
     )
     if guarded and "boundary_ms" in guarded[0]:
         metrics = chronological_portfolio_replay(guarded, params)
@@ -1945,6 +1974,9 @@ def _evaluate_frozen_holdout(
     )
     return {
         "finalist_id": finalist_id,
+        "symbol": next(iter(symbols)),
+        "SYMBOL": next(iter(symbols)),
+        "evaluated_symbol_count": 1,
         "config_hash": finalist_id,
         "holdout_trade_count": int(metrics.get("trade_count") or 0),
         "win_count": wins,
@@ -1993,8 +2025,10 @@ def _run_impl(
     stop_after_batches: int | None = None,
     event_sink: Callable[[SweepEvent], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
+    symbol: str,
 ) -> Path:
     run_started = datetime.now(timezone.utc)
+    universe_id, available_symbols = resolve_parameter_sweep_universe()
     try:
         search = _validate_search(yaml.safe_load(search_path.read_text(encoding="utf-8")))
     except FileNotFoundError:
@@ -2002,12 +2036,16 @@ def _run_impl(
     except yaml.YAMLError:
         raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
     space = active_search_space(search) if search.get("search", {}).get("strategy") == "targeted" else search["search_space"]
-    options = _dataset_options(search, max_rows=max_rows, from_value=from_value, to_value=to_value)
+    options = _dataset_options(
+        search, max_rows=max_rows, from_value=from_value, to_value=to_value,
+        symbol=symbol,
+    )
     identifier, output = _prepare_output(search, run_id, resume=resume)
     status_store = StatusStore(
         output / "STATUS.json",
         SweepRunStatus(
             run_id=identifier,
+            symbol=symbol,
             research_mode=mode.value,
             state=RunState.RESUMING.value if resume else RunState.PREFLIGHT.value,
             phase=RunState.RESUMING.value if resume else RunState.PREFLIGHT.value,
@@ -2024,7 +2062,7 @@ def _run_impl(
     status_store.update()
     emit(
         EventType.RUN_RESUMED if resume else EventType.RUN_STARTED,
-        output_dir=str(output), research_mode=mode.value,
+        output_dir=str(output), research_mode=mode.value, symbol=symbol,
     )
     emit(EventType.PREFLIGHT_STARTED, checks=(
         "database", "read_only", "dataset", "configuration",
@@ -2050,9 +2088,10 @@ def _run_impl(
                 )
             except (FileNotFoundError, json.JSONDecodeError):
                 raise SweepExpectedError("RESUME_DATASET_MANIFEST_MISMATCH") from None
+            if not isinstance(dataset_manifest, dict) or dataset_manifest.get("symbol") != symbol:
+                raise SweepExpectedError("RESUME_SYMBOL_MISMATCH")
             if (
-                not isinstance(dataset_manifest, dict)
-                or dataset_manifest.get("manifest_version") != DATASET_MANIFEST_VERSION
+                dataset_manifest.get("manifest_version") != DATASET_MANIFEST_VERSION
                 or dataset_manifest.get("run_id") != identifier
                 or dataset_manifest.get("profile") != options.profile
                 or dataset_manifest.get("primary_timeframe") != options.primary_timeframe
@@ -2072,6 +2111,7 @@ def _run_impl(
                     "source": options.source,
                     "profile": options.profile,
                     "primary_timeframe": options.primary_timeframe,
+                    "symbol": symbol,
                     "schema_head": dataset_manifest.get("source_schema_version"),
                     "rows": rows,
                 }):
@@ -2206,11 +2246,12 @@ def _run_impl(
     git_commit = _git_commit()
     assert dataset_manifest is not None
     dataset_fingerprint = str(dataset_manifest["dataset_fingerprint"])
-    search_space_hash = _config_hash(space)
-    research_hash = _config_hash(search)
+    search_space_hash = _config_hash({"symbol": symbol, "space": space})
+    research_hash = _config_hash({"symbol": symbol, "research": search})
     plan_state = _search_plan_state(space, plan)
     search_plan_hash = _config_hash({
-        "space": space, "plan": plan.safe_dict(), "minimum_samples": search["minimum_samples"],
+        "symbol": symbol, "space": space, "plan": plan.safe_dict(),
+        "minimum_samples": search["minimum_samples"],
     })
     replay_diagnostics = _replay_diagnostics(rows, coverage)
     status_store.update(
@@ -2237,6 +2278,7 @@ def _run_impl(
     checkpoint_path = output / "CHECKPOINT.json"
     checkpoint = {
         "run_id": identifier, "git_commit": git_commit,
+        "symbol": symbol, "SYMBOL": symbol,
         "config_hash": TRADE_PARAMETERS.config_hash,
         "search_space_hash": search_space_hash,
         "search_plan_hash": search_plan_hash,
@@ -2272,6 +2314,8 @@ def _run_impl(
             raise SweepExpectedError("RESUME_DATASET_MANIFEST_MISMATCH")
         if existing.get("research_mode") != mode.value:
             raise SweepExpectedError("RESUME_RESEARCH_MODE_MISMATCH")
+        if existing.get("symbol") != symbol:
+            raise SweepExpectedError("RESUME_SYMBOL_MISMATCH")
         if existing.get("profile") != options.profile:
             raise SweepExpectedError("RESUME_PROFILE_MISMATCH")
         if existing.get("primary_timeframe") != options.primary_timeframe:
@@ -2345,6 +2389,12 @@ def _run_impl(
         )
     preflight = {
         "RUN_ID": identifier, "CONFIG_HASH": TRADE_PARAMETERS.config_hash,
+        "SYMBOL": symbol,
+        "SYMBOL_AUTHORITY_ID": universe_id,
+        "FULL_UNIVERSE_AVAILABLE_SYMBOLS": len(available_symbols),
+        "SELECTED_SYMBOLS": 1,
+        "EVALUATED_SYMBOLS_PER_CONFIG": 1,
+        "NON_SELECTED_SYMBOL_REPLAY_WORK": 0,
         "PARAMETER_SWEEP_PREFLIGHT": "PASS", "PROJECT_ROOT_FOUND": PROJECT_ROOT.is_dir(),
         "CONFIG_FILE_FOUND": search_path.is_file(), "TRADE_PARAMETERS_FOUND": CONFIG_PATH.is_file(),
         "DATABASE_BINDING_FOUND": database is not None, "DATABASE_CONNECTION_OK": database is not None,
@@ -2392,6 +2442,8 @@ def _run_impl(
     search_plan_artifact = plan.safe_dict()
     search_plan_artifact.update({
         "RUN_ID": identifier,
+        "SYMBOL": symbol,
+        "symbol": symbol,
         "DATASET_FINGERPRINT": dataset_fingerprint,
         "DATASET_MANIFEST_HASH": dataset_manifest["manifest_hash"],
         "DATASET_CUTOFF_AT": dataset_manifest["dataset_cutoff_at"],
@@ -2417,12 +2469,18 @@ def _run_impl(
         return output
     run_config = {
         "run_id": identifier,
+        "symbol": symbol, "SYMBOL": symbol,
+        "symbol_authority_id": universe_id,
+        "available_symbol_count": len(available_symbols),
+        "selected_symbol_count": 1,
+        "evaluated_symbols_per_config": 1,
+        "non_selected_symbol_replay_work": 0,
         "research_mode": mode.value,
         "schema_version": SCHEMA_VERSION,
         "seed": resolved_seed, "requested_seed": resolved_seed,
         "resolved_seed": resolved_seed, "sampler_seed": resolved_seed,
         "search": plan.safe_dict(),
-        "dataset": {"source": options.source, "profile": options.profile, "primary_timeframe": options.primary_timeframe, "closed_only": False, "selection_mode": options.selection_mode, "max_rows": options.maximum_rows},
+        "dataset": {"source": options.source, "profile": options.profile, "primary_timeframe": options.primary_timeframe, "symbol": symbol, "closed_only": False, "selection_mode": options.selection_mode, "max_rows": options.maximum_rows},
         "dataset_period": {"from_ms": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows), "to_ms": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows)},
         "sample_sizes": {key: len(value) for key, value in splits.items()},
         "source_data_provenance": dataset_fingerprint, "dataset_fingerprint": dataset_fingerprint,
@@ -2431,6 +2489,9 @@ def _run_impl(
         "dataset_snapshot": "DATASET_SNAPSHOT.json",
         "dataset_cutoff_at": dataset_manifest["dataset_cutoff_at"],
         "dataset_row_count": len(rows),
+        "dataset_rows_for_symbol": len(rows),
+        "opportunities_for_symbol": len(rows),
+        "replay_eligible_rows_for_symbol": int(coverage["FULL_REPLAY_ELIGIBLE_ROWS"]),
         "dataset_min_opened_at": min(row.get("opened_at_ms", row.get("boundary_ms")) for row in rows),
         "dataset_max_closed_at": max(row.get("closed_at_ms", row.get("boundary_ms")) for row in rows),
         "dataset_profile": options.profile,
@@ -2536,6 +2597,7 @@ def _run_impl(
         _write_preflight(output / "PREFLIGHT.json", preflight)
         DEFAULT_ARTIFACT_WRITER.atomic_text(
             output / "REPORT.md",
+            f"PROFILE = {options.profile}\nTIMEFRAME = {options.primary_timeframe}\nSYMBOL = {symbol}\n\n"
             "# Scalping v2 parameter sweep\n\n"
             "## RUN SUMMARY\n\n"
             f"- RUN_ID: `{identifier}`\n- STATUS: `FAILED`\n"
@@ -2594,6 +2656,7 @@ def _run_impl(
             expected_config_hash=TRADE_PARAMETERS.config_hash,
             expected_count=0,
             terminal_state="FAILED_BEFORE_EVALUATION",
+            expected_symbol=symbol,
             on_file_checked=failed_integrity_file,
         )
         emit(
@@ -2883,6 +2946,7 @@ def _run_impl(
     existing_freeze = _json(freeze_path) if freeze_path.is_file() else None
     freeze = create_finalist_freeze(
         campaign_id=identifier,
+        symbol=symbol,
         dataset_fingerprint=dataset_fingerprint,
         split_fingerprint=split_fingerprint,
         baseline_id=RESEARCH_PARAMETERS.calibration.baseline_set_id,
@@ -2950,7 +3014,7 @@ def _run_impl(
         holdout_rows = []
         for finalist in freeze["finalists"]:
             resolved = {**baseline_config, **dict(finalist["parameters"])}
-            if _config_hash(resolved) != finalist["config_hash"]:
+            if _config_hash({"symbol": symbol, "parameters": resolved}) != finalist["config_hash"]:
                 raise SweepExpectedError("FINALIST_CONFIG_HASH_MISMATCH")
             holdout_rows.append(_evaluate_frozen_holdout(
                 resolved, splits["HOLDOUT"],
@@ -3003,6 +3067,8 @@ def _run_impl(
     _atomic_json(output / "RUN_MANIFEST.json", {
         "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
         "run_id": identifier,
+        "symbol": symbol,
+        "SYMBOL": symbol,
         "dataset_manifest_ref": "DATASET_MANIFEST.json",
         "baseline_set_id": RESEARCH_PARAMETERS.calibration.baseline_set_id,
         "baseline_config_hash": TRADE_PARAMETERS.config_hash,
@@ -3046,7 +3112,16 @@ def _run_impl(
         f"{len(split_rows) - _dataset_coverage(split_rows)['TIME_STOP_REPLAY_ELIGIBLE_ROWS']} |"
         for name, split_rows in splits.items()
     )
-    report = f"""# Scalping v2 parameter sweep
+    report = f"""PROFILE = {options.profile}
+TIMEFRAME = {options.primary_timeframe}
+SYMBOL = {symbol}
+DATASET_ROWS_FOR_SYMBOL = {len(rows)}
+OPPORTUNITIES_FOR_SYMBOL = {len(rows)}
+REPLAY_ELIGIBLE_ROWS_FOR_SYMBOL = {coverage['FULL_REPLAY_ELIGIBLE_ROWS']}
+CONFIGURATIONS_PLANNED = {plan.evaluation_budget}
+CONFIGURATIONS_EVALUATED = {checkpoint['evaluated_count']}
+
+# Scalping v2 parameter sweep
 
 ## RUN SUMMARY
 
@@ -3172,6 +3247,7 @@ def _run_impl(
         expected_dataset_fingerprint=dataset_fingerprint,
         expected_config_hash=TRADE_PARAMETERS.config_hash,
         expected_count=int(checkpoint["last_durable_result_index"]) + 1,
+        expected_symbol=symbol,
         on_file_checked=integrity_file,
     )
     emit(
@@ -3313,6 +3389,7 @@ def run(
     use_lock: bool = True,
     mode: ResearchMode | str = ResearchMode.ALL,
     range_override_path: Path | None = None,
+    symbol: str | None = None,
 ) -> Path:
     """Run the authoritative research engine with lock and heartbeat protection."""
     search_path = Path(search_path)
@@ -3320,6 +3397,10 @@ def run(
         canonical_mode = parse_research_mode(mode)
     except ValueError:
         raise SweepExpectedError("UNSUPPORTED_RESEARCH_MODE") from None
+    try:
+        canonical_symbol = validate_parameter_sweep_symbol(symbol)
+    except ValueError as error:
+        raise SweepExpectedError(str(error)) from None
     try:
         search = _validate_search(yaml.safe_load(search_path.read_text(encoding="utf-8")))
     except FileNotFoundError:
@@ -3366,6 +3447,7 @@ def run(
             stop_requested=stop_requested,
             mode=canonical_mode,
             range_override_path=range_override_path,
+            symbol=canonical_symbol,
         )
     except BaseException as error:
         output = output_root / identifier

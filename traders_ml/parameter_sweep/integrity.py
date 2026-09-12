@@ -57,6 +57,7 @@ def verify_artifacts(
     run_directory: Path, *, expected_run_id: str,
     expected_dataset_fingerprint: str, expected_config_hash: str,
     expected_count: int, terminal_state: str = "COMPLETED",
+    expected_symbol: str | None = None,
     on_file_checked: Callable[[str, bool, str | None], None] | None = None,
 ) -> dict[str, Any]:
     try:
@@ -122,6 +123,16 @@ def verify_artifacts(
                 int(checkpoint.get("last_durable_result_index", -2)) + 1 == expected_count
             ),
         }
+        if expected_symbol is not None:
+            checks["single_symbol_identity"] = all((
+                checkpoint.get("symbol") == expected_symbol,
+                preflight.get("SYMBOL") == expected_symbol,
+                search_plan.get("symbol") == expected_symbol,
+                run_config.get("symbol") == expected_symbol,
+                manifest.get("symbol") == expected_symbol,
+                manifest.get("symbols") == [expected_symbol],
+                all(row.get("symbol") == expected_symbol for row in snapshot),
+            ))
         if terminal_state == "COMPLETED":
             json_results = _json(run_directory / "RESULTS.json")
             jsonl_results = [
@@ -135,6 +146,14 @@ def verify_artifacts(
                 and len(jsonl_results) == expected_count
                 and len(csv_results) == expected_count
             )
+            if expected_symbol is not None:
+                run_manifest = _json(run_directory / "RUN_MANIFEST.json")
+                freeze = _json(run_directory / "FINALIST_FREEZE.json")
+                checks["single_symbol_results"] = all(
+                    row.get("symbol") == expected_symbol
+                    and int(row.get("evaluated_symbol_count", 0)) == 1
+                    for row in jsonl_results
+                ) and run_manifest.get("symbol") == expected_symbol and freeze.get("symbol") == expected_symbol
             identities = [(row.get("run_id"), row.get("result_index", row.get("config_index")), row.get("config_hash", row.get("config_id"))) for row in jsonl_results]
             checks["result_identity_unique"] = len(identities) == len(set(identities))
             checks["artifact_schema_v2"] = all(row.get("artifact_schema_version") == 2 for row in jsonl_results)

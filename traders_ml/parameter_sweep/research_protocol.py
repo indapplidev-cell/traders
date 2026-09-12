@@ -124,12 +124,15 @@ def create_finalist_freeze(
     *, campaign_id: str, dataset_fingerprint: str, split_fingerprint: str,
     baseline_id: str, search_space_hash: str, selection_rule: Mapping[str, Any],
     ranked_rows: Sequence[Mapping[str, Any]], finalist_count: int,
+    symbol: str | None = None,
     freeze_timestamp: str | None = None,
 ) -> dict[str, Any]:
     assert_validation_only_rows(ranked_rows)
     selected = list(ranked_rows[:finalist_count])
     payload: dict[str, Any] = {
         "campaign_id": campaign_id,
+        "symbol": symbol,
+        "SYMBOL": symbol,
         "dataset_fingerprint": dataset_fingerprint,
         "split_fingerprint": split_fingerprint,
         "baseline_id": baseline_id,

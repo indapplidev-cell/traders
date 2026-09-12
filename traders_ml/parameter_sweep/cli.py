@@ -42,6 +42,7 @@ def status(run_id: str, output_root: Path = DEFAULT_OUTPUT_ROOT) -> int:
     print(f"HOLDOUT_OPENED = {'YES' if value.get('holdout_opened') else 'NO'}")
     print(f"HOLDOUT_EVALUATED = {'YES' if value.get('holdout_evaluated') else 'NO'}")
     print(f"RESEARCH_MODE = {value.get('research_mode') or 'UNKNOWN'}")
+    print(f"SYMBOL = {value.get('symbol') or 'UNKNOWN'}")
     print(f"PROCESS_ALIVE = {'YES' if value['process_alive'] else 'NO'}")
     print(f"PLANNED = {value['planned_configs']}")
     print(f"COMPLETED = {value['completed_configs']}")
@@ -61,6 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Read-only Scalping v2 parameter sweep")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--run-id")
+    parser.add_argument("--symbol", help="Exactly one symbol from trading-universe-v2")
     parser.add_argument("--status", metavar="RUN_ID")
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--preflight-only", action="store_true")
@@ -98,6 +100,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.status:
         raise SystemExit(status(args.status, args.output_root))
     try:
+        if not args.symbol:
+            raise SweepExpectedError("SYMBOL_REQUIRED")
         output = ParameterSweepEngine(render_event).run(
             args.config, run_id=args.run_id, max_configs=args.max_configs,
             max_rows=args.max_rows, from_value=args.from_value,
@@ -106,6 +110,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             resume=args.resume,
             mode=args.mode,
             range_override_path=args.range_override,
+            symbol=args.symbol,
         )
     except SweepExpectedError as error:
         print("PARAMETER_SWEEP = FAILED")

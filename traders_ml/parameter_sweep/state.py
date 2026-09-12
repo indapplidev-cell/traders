@@ -38,6 +38,7 @@ def utc_now() -> str:
 @dataclass(slots=True)
 class SweepRunStatus:
     run_id: str
+    symbol: str | None = None
     research_mode: str | None = None
     state: str = RunState.READY.value
     phase: str = RunState.READY.value
@@ -96,7 +97,9 @@ class SweepRunStatus:
     freeze_hash: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        value = asdict(self)
+        value["SYMBOL"] = self.symbol
+        return value
 
 
 class StatusStore:

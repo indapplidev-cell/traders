@@ -9,7 +9,7 @@ from typing import Mapping
 
 IMMUTABLE_RESUME_FIELDS = (
     "run_id", "git_commit", "config_hash", "search_space_hash",
-    "dataset_fingerprint", "strategy", "seed",
+    "dataset_fingerprint", "strategy", "seed", "symbol",
     "resolved_seed", "freeze_hash", "finalists_frozen", "holdout_opened",
     "holdout_result_hash",
 )

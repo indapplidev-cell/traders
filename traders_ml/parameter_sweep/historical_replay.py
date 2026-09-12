@@ -23,10 +23,6 @@ from sqlalchemy.engine import Connection
 from app.config.trade_parameters import SCALPING_V2, TRADE_PARAMETERS
 from app.config.yaml_authority import RESEARCH_PARAMETERS
 
-SYMBOLS = (
-    "ADAUSDT", "AVAXUSDT", "BNBUSDT", "BTCUSDT", "DOGEUSDT",
-    "ETHUSDT", "LINKUSDT", "SOLUSDT", "SUIUSDT", "XRPUSDT",
-)
 PROFILE = "trade-5m-v2"
 MAX_CANDLE_CACHE_WINDOWS = 512
 
@@ -164,13 +160,13 @@ class HistoricalReplayRepository:
         self.database._assert_select(statement)
         return connection.execution_options(stream_results=True).execute(statement, params or {})
 
-    def _period(self, connection: Connection) -> tuple[int, int]:
+    def _period(self, connection: Connection, symbol: str) -> tuple[int, int]:
         row = self._select(connection, """
             SELECT min(r.closed_until_ms), max(r.closed_until_ms)
             FROM online_pipeline_results r
             JOIN online_pipeline_runs u ON u.run_id=r.run_id
-            WHERE u.trade_profile_id=:profile
-        """, {"profile": PROFILE}).one()
+            WHERE u.trade_profile_id=:profile AND r.symbol=:symbol
+        """, {"profile": PROFILE, "symbol": symbol}).one()
         if row[0] is None or row[1] is None:
             raise ValueError("NO_V2_HISTORICAL_PERIOD")
         return int(row[0]), int(row[1])
@@ -276,20 +272,24 @@ class HistoricalReplayRepository:
             "paper_plan_id": plan_id,
         }
 
-    def load(self, *, maximum_rows: int | None = None, selection_mode: str = "ALL_UNTIL_CUTOFF", from_ms: int | None = None, to_ms: int | None = None) -> HistoricalReplayDataset:
+    def load(self, *, symbol: str, maximum_rows: int | None = None, selection_mode: str = "ALL_UNTIL_CUTOFF", from_ms: int | None = None, to_ms: int | None = None) -> HistoricalReplayDataset:
         with self.database.connection() as connection:
-            period_start, period_end = self._period(connection)
+            period_start, period_end = self._period(connection, symbol)
             start, end = from_ms or period_start, to_ms or period_end
             inventory = self._inventory(connection, start, end)
-            persisted_plans = {str(r[0]) for r in self._select(connection, "SELECT pipeline_run_id FROM paper_plan_execution_outcomes WHERE trade_profile_id=:profile", {"profile": PROFILE})}
-            commands = {str(r[0]) for r in self._select(connection, "SELECT pipeline_run_id FROM paper_execution_commands")}
+            for item in inventory:
+                item["ROW_SCOPE"] = "SHARED_STORAGE_INVENTORY_NOT_EVALUATED"
+                item["SELECTED_SYMBOL"] = symbol
+            persisted_plans = {str(r[0]) for r in self._select(connection, "SELECT pipeline_run_id FROM paper_plan_execution_outcomes WHERE trade_profile_id=:profile AND symbol=:symbol", {"profile": PROFILE, "symbol": symbol})}
+            commands = {str(r[0]) for r in self._select(connection, "SELECT pipeline_run_id FROM paper_execution_commands WHERE symbol=:symbol", {"symbol": symbol})}
             sql = """
                 SELECT r.run_id,r.symbol,r.closed_until_ms,r.setup_payload_json,
                        r.strategy_payload_json,r.risk_payload_json,r.paper_payload_json,
                        r.trade_profile_id,r.profile_mode
                 FROM online_pipeline_results r
                 JOIN online_pipeline_runs u ON u.run_id=r.run_id
-                WHERE u.trade_profile_id=:profile AND r.closed_until_ms BETWEEN :start AND :end
+                WHERE u.trade_profile_id=:profile AND r.symbol=:symbol
+                  AND r.closed_until_ms BETWEEN :start AND :end
                 ORDER BY r.closed_until_ms,r.symbol,r.run_id
             """
             selected: list[dict[str, Any]] | deque[dict[str, Any]] = (
@@ -299,7 +299,7 @@ class HistoricalReplayRepository:
             )
             seen: set[str] = set()
             observations = setups = rejected = 0
-            result = self._select(connection, sql, {"profile": PROFILE, "start": start, "end": end})
+            result = self._select(connection, sql, {"profile": PROFILE, "symbol": symbol, "start": start, "end": end})
             while True:
                 batch = result.mappings().fetchmany(self.chunk_size)
                 if not batch:
@@ -327,17 +327,17 @@ class HistoricalReplayRepository:
                 FROM paper_positions p JOIN paper_orders o ON o.order_id=p.entry_order_id
                 JOIN paper_execution_commands c ON c.command_id=o.command_id
                 JOIN online_pipeline_runs u ON u.run_id=c.pipeline_run_id
-                WHERE u.trade_profile_id=:profile AND p.state='CLOSED'
+                WHERE u.trade_profile_id=:profile AND p.symbol=:symbol AND p.state='CLOSED'
                 ORDER BY p.opened_at
-            """, {"profile": PROFILE}).mappings()]
-            market_1m = self._count(connection, "SELECT count(*) FROM candles_1m WHERE close_time_ms BETWEEN :start AND :end AND symbol=ANY(:symbols)", start=start, end=end, symbols=list(SYMBOLS))
-            market_5m = self._count(connection, "SELECT count(*) FROM candles_5m WHERE close_time_ms BETWEEN :start AND :end AND symbol=ANY(:symbols)", start=start, end=end, symbols=list(SYMBOLS))
-            shadow = self._count(connection, "SELECT count(*) FROM scalping_stale_position_shadow_diagnostics")
+            """, {"profile": PROFILE, "symbol": symbol}).mappings()]
+            market_1m = self._count(connection, "SELECT count(*) FROM candles_1m WHERE close_time_ms BETWEEN :start AND :end AND symbol=:symbol", start=start, end=end, symbol=symbol)
+            market_5m = self._count(connection, "SELECT count(*) FROM candles_5m WHERE close_time_ms BETWEEN :start AND :end AND symbol=:symbol", start=start, end=end, symbol=symbol)
+            shadow = self._count(connection, "SELECT count(*) FROM scalping_stale_position_shadow_diagnostics WHERE symbol=:symbol", symbol=symbol)
             symbol_counts = {str(r[0]): int(r[1]) for r in self._select(connection, """
                 SELECT symbol,count(*) FROM online_pipeline_results
-                WHERE trade_profile_id=:profile AND closed_until_ms BETWEEN :start AND :end
+                WHERE trade_profile_id=:profile AND symbol=:symbol AND closed_until_ms BETWEEN :start AND :end
                 GROUP BY symbol ORDER BY symbol
-            """, {"profile": PROFILE, "start": start, "end": end})}
+            """, {"profile": PROFILE, "symbol": symbol, "start": start, "end": end})}
         omitted_older = max(0, len(seen) - len(rows)) if selection_mode == "LATEST_N_UNTIL_CUTOFF" else 0
         latest_eligible = max((int(row["boundary_ms"]) for row in rows), default=end)
         summary = {
@@ -359,6 +359,8 @@ class HistoricalReplayRepository:
             "TOTAL_HISTORICALLY_EXECUTED": len(baseline_positions),
             "PERSISTED_CLOSED_POSITIONS": len(baseline_positions),
             "TIME_STOP_SHADOW_ROWS": shadow, "SYMBOL_BOUNDARIES": symbol_counts,
+            "SELECTED_SYMBOL": symbol, "EVALUATED_SYMBOL_COUNT": 1,
+            "NON_SELECTED_SYMBOL_REPLAY_WORK": 0,
             "STREAM_CHUNK_SIZE": self.chunk_size, "BOUNDED_CACHE_WINDOWS": MAX_CANDLE_CACHE_WINDOWS,
         }
         capabilities = replay_capabilities(summary, rows)
