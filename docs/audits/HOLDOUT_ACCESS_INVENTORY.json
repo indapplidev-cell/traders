@@ -113,7 +113,7 @@
     "accesses": [
       {
         "file": "traders_ml/parameter_sweep/engine.py",
-        "line": 1824,
+        "line": 1826,
         "function": "_evaluate_config",
         "call_path": "candidate/baseline/finalist-detail evaluation -> split contract guard",
         "reason": "reject any HOLDOUT-bearing mapping with HOLDOUT_ACCESS_BEFORE_FINALIST_FREEZE",
@@ -123,7 +123,7 @@
       },
       {
         "file": "traders_ml/parameter_sweep/engine.py",
-        "line": 2923,
+        "line": 2955,
         "function": "_run_impl -> _evaluate_frozen_holdout",
         "call_path": "validation ranking -> FINALIST_FREEZE -> HoldoutAccessPolicy -> frozen finalist replay",
         "reason": "one-shot outcome evaluation for immutable finalist IDs only",
@@ -133,7 +133,7 @@
       },
       {
         "file": "traders_ml/parameter_sweep/engine.py",
-        "line": 2288,
+        "line": 2306,
         "function": "_run_impl resume integrity",
         "call_path": "resume -> read completed HOLDOUT_RESULTS -> verify checkpoint result hash",
         "reason": "integrity validation; no replay and no tuning",
@@ -153,7 +153,7 @@
       },
       {
         "file": "traders_ml/parameter_sweep/engine.py",
-        "line": 2161,
+        "line": 2179,
         "function": "ParameterSweepSearchPlanner.plan",
         "call_path": "run -> planner",
         "reason": "holdout row count retained as inert metadata; promotion formula is validation-only",
