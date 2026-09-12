@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
-from app.config.yaml_authority import RESEARCH_PARAMETERS
+from app.config.yaml_authority import (
+    RESEARCH_PARAMETERS, VALIDATION_SAMPLE_POLICY, ValidationSamplePolicy,
+)
 from .research_protocol import assert_validation_only_rows
 
 
@@ -14,21 +16,34 @@ PERFORMANCE_CLASSES = (
 )
 
 
-def rank_score(row: Mapping[str, Any]) -> tuple[float, ...]:
+def rank_score(
+    row: Mapping[str, Any],
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
+) -> tuple[float, ...]:
     trades = int(row.get("trade_count") or 0)
     expectancy = float(row.get("expectancy_R") or -1e12)
     pf = float(row.get("profit_factor") or 0)
     drawdown = float(row.get("max_drawdown") or 0)
     stability = float(row.get("rank_stability") or 0)
     symbols = int(row.get("symbol_coverage") or 0)
-    return (expectancy, pf, -drawdown, min(trades, RESEARCH_PARAMETERS.ranking.minimum_trades), symbols, stability)
+    return (
+        expectancy, pf, -drawdown,
+        min(trades, validation_policy.minimum_validation_trades), symbols, stability,
+    )
 
 
-def rank_results(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+def rank_results(
+    rows: Iterable[dict[str, Any]],
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
+) -> list[dict[str, Any]]:
     values = list(rows)
     assert_validation_only_rows(values)
     eligible = [row for row in values if row.get("evaluation_status") == "ACCEPTED"]
-    return sorted(eligible, key=lambda row: (rank_score(row), str(row.get("config_id"))), reverse=True)
+    return sorted(
+        eligible,
+        key=lambda row: (rank_score(row, validation_policy), str(row.get("config_id"))),
+        reverse=True,
+    )
 
 
 def selection_bias_guard(*, hypothesis_count: int, independent_observations: int) -> str:

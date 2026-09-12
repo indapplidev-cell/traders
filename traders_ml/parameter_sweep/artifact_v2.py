@@ -21,7 +21,9 @@ import io
 import uuid
 from typing import Any, Iterable, Mapping
 
-from app.config.yaml_authority import RESEARCH_PARAMETERS
+from app.config.yaml_authority import (
+    RESEARCH_PARAMETERS, VALIDATION_SAMPLE_POLICY, ValidationSamplePolicy,
+)
 from .artifact_writer import ArtifactWriter, DEFAULT_ARTIFACT_WRITER
 
 
@@ -52,7 +54,10 @@ def _mean(rows: Iterable[Mapping[str, Any]], *names: str) -> float | None:
     return statistics.fmean(values) if values else None
 
 
-def performance_class(metrics: Mapping[str, Any], *, stability: float | None = None) -> str:
+def performance_class(
+    metrics: Mapping[str, Any], *, stability: float | None = None,
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
+) -> str:
     policy = RESEARCH_PARAMETERS.ranking
     trades = int(metrics.get("trade_count") or 0)
     expectancy = metrics.get("expectancy_R", metrics.get("net_expectancy_per_trade"))
@@ -62,10 +67,10 @@ def performance_class(metrics: Mapping[str, Any], *, stability: float | None = N
     if metrics.get("invalid_reason"):
         return "INVALID"
     if (
-        trades < policy.minimum_trades
+        trades < validation_policy.minimum_validation_trades
         or int(symbols or 0) < 1
         or independent_periods is None
-        or int(independent_periods) < policy.minimum_independent_periods
+        or int(independent_periods) < validation_policy.minimum_independent_periods
     ):
         return "INSUFFICIENT_SAMPLE"
     if expectancy is None or float(expectancy) < 0:
@@ -81,6 +86,7 @@ def compact_result(
     item: Mapping[str, Any], *, dataset_manifest_ref: str = "DATASET_MANIFEST.json",
     baseline_set_id: str | None = None, baseline_config_hash: str | None = None,
     research_config_hash: str | None = None,
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
 ) -> dict[str, Any]:
     """Return a v2 row with no market data or detailed trade payloads."""
     validation = dict(item.get("validation") or {})
@@ -180,9 +186,9 @@ def compact_result(
         for name in ("calibration", "validation")
     )
     gates = [
-        ("validation_trade_count", trade_count, RESEARCH_PARAMETERS.ranking.validation_minimum_trades),
+        ("validation_trade_count", trade_count, validation_policy.minimum_validation_trades),
         ("symbol_coverage", metrics["symbol_coverage"], 1),
-        ("independent_period_count", independent_periods, RESEARCH_PARAMETERS.ranking.minimum_independent_periods),
+        ("independent_period_count", independent_periods, validation_policy.minimum_independent_periods),
         ("minimum_slice_count", slice_count, 2),
     ]
     failed_gates = [
@@ -212,9 +218,9 @@ def compact_result(
         "candidate_parameters": candidate_parameters,
         "stage": item.get("stage"),
         "evaluation_status": evaluation_status,
-        "performance_class": performance_class(metrics),
+        "performance_class": performance_class(metrics, validation_policy=validation_policy),
         "independent_period_status": period_status,
-        "independent_period_unit": RESEARCH_PARAMETERS.ranking.independent_period_unit,
+        "independent_period_unit": validation_policy.independent_period_unit,
         "independent_period_buckets": sorted(set(period_buckets)),
         "insufficient_sample_gates": failed_gates,
         **{key: value for key, value in metrics.items() if key != "invalid_reason"},
@@ -245,12 +251,14 @@ def canonical_validation_projection(row: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _readiness_from_projection(projection: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
-    policy = RESEARCH_PARAMETERS.ranking
+def _readiness_from_projection(
+    projection: Mapping[str, Any],
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
+) -> dict[str, dict[str, Any]]:
     requirements = {
-        "validation_trade_count": policy.validation_minimum_trades,
+        "validation_trade_count": validation_policy.minimum_validation_trades,
         "symbol_coverage": 1,
-        "independent_period_count": policy.minimum_independent_periods,
+        "independent_period_count": validation_policy.minimum_independent_periods,
         "setup_coverage": 1,
         "minimum_slice_count": 2,
     }
@@ -265,6 +273,7 @@ def _readiness_from_projection(projection: Mapping[str, Any]) -> dict[str, dict[
 
 def aggregate_result_semantics(
     rows: Iterable[Mapping[str, Any]], *, error_count: int = 0,
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
 ) -> dict[str, Any]:
     """Canonical counters shared by status, reports, CLI and GUI events."""
     values = list(rows)
@@ -280,7 +289,7 @@ def aggregate_result_semantics(
         default={},
     )
     projection = canonical_validation_projection(canonical_row)
-    readiness = _readiness_from_projection(projection)
+    readiness = _readiness_from_projection(projection, validation_policy)
     promotable = performance_counts.get("VALIDATION_CANDIDATE", 0)
     return {
         "evaluated_configs": len(values),
@@ -301,6 +310,7 @@ def aggregate_result_semantics(
 def build_opportunity_funnel(
     results: Iterable[Mapping[str, Any]], *, counterfactual_count: int,
     counterfactual_examples: Iterable[Mapping[str, Any]], error_count: int = 0,
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
 ) -> dict[str, Any]:
     """Build the funnel exclusively from canonical compact result rows."""
     rows = list(results)
@@ -328,7 +338,9 @@ def build_opportunity_funnel(
     if any(any(item.get(key) is None for key in required) for item in configs):
         raise ValueError("FUNNEL_ARTIFACT_INCOMPLETE")
     return {
-        "RUN_AGGREGATION": aggregate_result_semantics(rows, error_count=error_count),
+        "RUN_AGGREGATION": aggregate_result_semantics(
+            rows, error_count=error_count, validation_policy=validation_policy,
+        ),
         "RESOLVED_SEED": next(iter(resolved_seeds)) if len(resolved_seeds) == 1 else None,
         "AGGREGATE_FUNNEL": dict(sorted(aggregate.items())),
         "AGGREGATE_FUNNEL_SEMANTICS": "SUM_OF_PER_CONFIG_VALIDATION_FUNNELS",

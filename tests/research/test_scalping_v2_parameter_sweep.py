@@ -108,7 +108,6 @@ def _search(tmp_path: Path, rows: list[dict[str, object]]) -> Path:
     }
     search = RESEARCH_PARAMETERS.model_dump(mode="python")
     search["search"]["strategy"] = "bounded"
-    search["search"].pop("max_total_configs", None)
     search.update({
         "seed": 1,
         "dataset": {
@@ -117,7 +116,7 @@ def _search(tmp_path: Path, rows: list[dict[str, object]]) -> Path:
             "selection_mode": "ALL_UNTIL_CUTOFF", "max_rows": None,
         },
         "output_root": str(tmp_path / "artifacts"),
-        "minimum_samples": {"calibration": 2, "validation": 2, "holdout": 2},
+        "minimum_samples": {"calibration": 2, "holdout": 2},
         "search_space": space,
     })
     search["search"]["seed"] = 1
@@ -533,7 +532,7 @@ def _planner_search(**overrides):
         "batch_size": 100, "stage1_fraction": .6,
         "stage2_fraction": .3, "stage3_fraction": .1,
         "max_configs_per_observation": 100,
-        "minimum_validation_sample": 20, "minimum_holdout_sample": 20,
+        "minimum_holdout_sample": 20,
     }
     value.update(overrides)
     return value

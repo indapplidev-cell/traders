@@ -98,6 +98,13 @@ class SweepRunStatus:
     symbol_coverage_expected: int = 1
     symbol_coverage_pass: bool = False
     independent_period_count: int | None = None
+    validation_minimum_trades: int | None = None
+    validation_minimum_trades_source: str | None = None
+    minimum_independent_periods: int | None = None
+    minimum_independent_periods_source: str | None = None
+    independent_period_unit: str | None = None
+    independent_period_unit_source: str | None = None
+    validation_gate_provenance: dict[str, dict[str, Any]] = field(default_factory=dict)
     setup_coverage: int = 0
     regime_coverage: int = 0
     resolved_seed: int | None = None
@@ -112,6 +119,15 @@ class SweepRunStatus:
     def as_dict(self) -> dict[str, Any]:
         value = asdict(self)
         value["SYMBOL"] = self.symbol
+        value.update({
+            "VALIDATION_MINIMUM_TRADES": self.validation_minimum_trades,
+            "VALIDATION_MINIMUM_TRADES_SOURCE": self.validation_minimum_trades_source,
+            "MINIMUM_INDEPENDENT_PERIODS": self.minimum_independent_periods,
+            "MINIMUM_INDEPENDENT_PERIODS_SOURCE": self.minimum_independent_periods_source,
+            "INDEPENDENT_PERIOD_UNIT": self.independent_period_unit,
+            "INDEPENDENT_PERIOD_UNIT_SOURCE": self.independent_period_unit_source,
+            "VALIDATION_GATE_PROVENANCE": self.validation_gate_provenance,
+        })
         return value
 
 

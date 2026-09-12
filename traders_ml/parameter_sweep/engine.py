@@ -31,7 +31,10 @@ from sqlalchemy.orm import Session
 from app.config.trade_parameters import (
     CONFIG_PATH, SCALPING_V2, TRADE_PARAMETERS, StalePositionPolicyParameters,
 )
-from app.config.yaml_authority import RESEARCH_PARAMETERS
+from app.config.yaml_authority import (
+    RESEARCH_PARAMETERS, VALIDATION_SAMPLE_POLICY, ValidationSamplePolicy,
+    load_validation_sample_policy,
+)
 from app.db.paper_models import (
     PaperExecutionCommandRecord, PaperOrderRecord, PaperPositionRecord,
     ScalpingOpportunityRecord, ScalpingOutcomeDiagnosticRecord,
@@ -288,6 +291,7 @@ class ParameterSweepSearchPlanner:
         validation_rows: int = 0, holdout_rows: int = 0,
         available_replay_rows: int = 0,
         mode: ResearchMode = ResearchMode.ALL,
+        validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
     ) -> SearchPlan:
         raw = self.raw_cardinality(space)
         effective = _effective_cardinality(space)
@@ -338,7 +342,7 @@ class ParameterSweepSearchPlanner:
             counts = [int(budget * fractions[0]), int(budget * fractions[1])]
             counts.append(budget - sum(counts))
             stages = tuple({"stage": name, "budget": count, "uses_holdout": False} for name, count in zip(("BROAD_EXPLORATION", "VALIDATION_REFINEMENT", "LOCAL_REFINEMENT"), counts, strict=True))
-        minimum_validation = int(search["minimum_validation_sample"])
+        minimum_validation = validation_policy.minimum_validation_trades
         warning = (
             "LARGE_HYPOTHESIS_SPACE_SMALL_SAMPLE"
             if raw > exhaustive_threshold and dataset_rows < configured_budget else "NONE"
@@ -1151,6 +1155,7 @@ def _baseline_control(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _search_validation_baseline(
     splits: dict[str, list[dict[str, Any]]], minimums: dict[str, int],
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
 ) -> dict[str, Any]:
     item, _consumed, _reason = _evaluate_config(
         _production_baseline_config(), {
@@ -1159,7 +1164,7 @@ def _search_validation_baseline(
         }, minimums,
         index=-1, stage="SEARCH_VALIDATION_BASELINE",
     )
-    compact = compact_result(item)
+    compact = compact_result(item, validation_policy=validation_policy)
     return {
         "population": "SEARCH_VALIDATION_BASELINE",
         "directly_comparable_to_candidates": True,
@@ -2039,9 +2044,14 @@ def _stage_for(plan: SearchPlan, evaluated: int) -> str:
     return str(plan.staged_search_plan[-1]["stage"])
 
 
-def _aggregate_results(output: Path) -> dict[str, object]:
+def _aggregate_results(
+    output: Path,
+    validation_policy: ValidationSamplePolicy = VALIDATION_SAMPLE_POLICY,
+) -> dict[str, object]:
     rows = list(iter_results(output / "RESULTS.jsonl"))
-    ranked = rank_results(rows)[: RESEARCH_PARAMETERS.artifact.top_config_count]
+    ranked = rank_results(
+        rows, validation_policy,
+    )[: RESEARCH_PARAMETERS.artifact.top_config_count]
     return {
         "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
         "ranked_without_holdout": ranked,
@@ -2067,10 +2077,17 @@ def _run_impl(
     universe_id, available_symbols = resolve_parameter_sweep_universe()
     try:
         search = _validate_search(yaml.safe_load(search_path.read_text(encoding="utf-8")))
+        validation_policy = load_validation_sample_policy(search_path)
     except FileNotFoundError:
         raise SweepExpectedError("CONFIG_FILE_NOT_FOUND") from None
     except yaml.YAMLError:
         raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
+    except RuntimeError:
+        raise SweepExpectedError("RESEARCH_AUTHORITY_INVALID") from None
+    evaluation_minimums = {
+        **search["minimum_samples"],
+        "validation": validation_policy.minimum_validation_trades,
+    }
     space = active_search_space(search) if search.get("search", {}).get("strategy") == "targeted" else search["search_space"]
     options = _dataset_options(
         search, max_rows=max_rows, from_value=from_value, to_value=to_value,
@@ -2088,6 +2105,16 @@ def _run_impl(
             started_at=run_started.isoformat(),
             resume_available=resume,
             engine_version=SCHEMA_VERSION,
+            validation_minimum_trades=validation_policy.minimum_validation_trades,
+            validation_minimum_trades_source=validation_policy.source("minimum_validation_trades"),
+            minimum_independent_periods=validation_policy.minimum_independent_periods,
+            minimum_independent_periods_source=validation_policy.source("minimum_independent_periods"),
+            independent_period_unit=validation_policy.independent_period_unit,
+            independent_period_unit_source=validation_policy.source("independent_period_unit"),
+            validation_gate_provenance={
+                name: item.model_dump(mode="json")
+                for name, item in validation_policy.provenance.items()
+            },
         ),
     )
 
@@ -2224,7 +2251,7 @@ def _run_impl(
     source_inventory = rows[0].get("__source_inventory", []) if rows else []
     baseline_config = _production_baseline_config()
     search_validation_baseline = _search_validation_baseline(
-        splits, search["minimum_samples"],
+        splits, evaluation_minimums, validation_policy,
     )
     sensitivity: dict[str, Any] | None = None
     if search.get("search", {}).get("strategy") == "targeted":
@@ -2255,6 +2282,7 @@ def _run_impl(
         holdout_rows=len(splits["HOLDOUT"]),
         available_replay_rows=int(search_coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
         mode=mode,
+        validation_policy=validation_policy,
     )
     targeted_candidates = None
     behavioral_aliases: dict[str, list[dict[str, Any]]] = {}
@@ -2287,7 +2315,7 @@ def _run_impl(
     plan_state = _search_plan_state(space, plan)
     search_plan_hash = _config_hash({
         "symbol": symbol, "space": space, "plan": plan.safe_dict(),
-        "minimum_samples": search["minimum_samples"],
+        "minimum_samples": evaluation_minimums,
     })
     replay_diagnostics = _replay_diagnostics(rows, coverage)
     status_store.update(
@@ -2350,6 +2378,7 @@ def _run_impl(
         "finalists_frozen": False, "freeze_hash": None,
         "holdout_opened": False, "holdout_evaluated": False,
         "holdout_result_hash": None,
+        **validation_policy.artifact_fields(),
     }
     if resume:
         try:
@@ -2506,6 +2535,7 @@ def _run_impl(
         "CONDITIONAL_DIMENSIONS": list(plan_state.conditional_dimensions),
         "REQUESTED_SEED": resolved_seed,
         "RESOLVED_SEED": resolved_seed,
+        **validation_policy.artifact_fields(),
     })
     _atomic_json(output / "SEARCH_PLAN.json", search_plan_artifact)
     _print_preflight(preflight)
@@ -2533,6 +2563,7 @@ def _run_impl(
         "history_depth_status": dataset_manifest["history_depth_status"],
         "research_mode": mode.value,
         "schema_version": SCHEMA_VERSION,
+        **validation_policy.artifact_fields(),
         "seed": resolved_seed, "requested_seed": resolved_seed,
         "resolved_seed": resolved_seed, "sampler_seed": resolved_seed,
         "search": plan.safe_dict(),
@@ -2713,6 +2744,7 @@ def _run_impl(
             expected_count=0,
             terminal_state="FAILED_BEFORE_EVALUATION",
             expected_symbol=symbol,
+            validation_policy=validation_policy,
             on_file_checked=failed_integrity_file,
         )
         emit(
@@ -2740,6 +2772,7 @@ def _run_impl(
             value,
             baseline_config_hash=TRADE_PARAMETERS.config_hash,
             research_config_hash=research_hash,
+            validation_policy=validation_policy,
         ),
     )
     candidate_variants = _conditional_variants(space)
@@ -2793,7 +2826,7 @@ def _run_impl(
                 planned=plan.evaluation_budget,
             )
             item, consumed_budget, early_reason = _evaluate_config(
-                resolved_config, search_splits, search["minimum_samples"],
+                resolved_config, search_splits, evaluation_minimums,
                 index=next_index, stage=current_stage,
             )
             item["overrides"] = changed_parameters
@@ -2826,7 +2859,7 @@ def _run_impl(
                 finalist_candidates.append((score, item["config_hash"], detailed))
                 finalist_candidates.sort(reverse=True, key=lambda value: (value[0], value[1]))
                 del finalist_candidates[RESEARCH_PARAMETERS.artifact.finalist_config_count:]
-            compact_item = compact_result(item)
+            compact_item = compact_result(item, validation_policy=validation_policy)
             emit(
                 EventType.CONFIG_COMPLETED, index=next_index + 1, result=item,
                 canonical_validation=canonical_validation_projection(compact_item),
@@ -2877,6 +2910,7 @@ def _run_impl(
             live_semantics = aggregate_result_semantics(
                 result_writer.read_all(),
                 error_count=int(checkpoint["failed_count"]),
+                validation_policy=validation_policy,
             )
             checkpoint["evaluation_status_counts"] = live_semantics["evaluation_status_counts"]
             checkpoint["performance_class_counts"] = live_semantics["performance_class_counts"]
@@ -2957,6 +2991,7 @@ def _run_impl(
     rejected_rows = [row for row in all_result_rows if row["evaluation_status"] != "ACCEPTED"]
     canonical_semantics = aggregate_result_semantics(
         all_result_rows, error_count=int(checkpoint["failed_count"]),
+        validation_policy=validation_policy,
     )
     # Blocks 2 and 3 are diagnostic successors of an exhausted Block 1.  They
     # run for both positive and zero-positive outcomes and consume no holdout.
@@ -3005,7 +3040,7 @@ def _run_impl(
     status_store.update(research_phase=ResearchPhase.VALIDATION_RANKING.value)
     holdout_policy.transition(ResearchPhase.VALIDATION_RANKING)
     validation_ranked = deduplicate_validation_behavior(
-        eligible_validation_finalists(rank_results(all_result_rows))
+        eligible_validation_finalists(rank_results(all_result_rows, validation_policy))
     )
     selection_rule = {
         "source": "CALIBRATION_AND_VALIDATION_ONLY",
@@ -3056,7 +3091,7 @@ def _run_impl(
     for finalist in freeze["finalists"]:
         resolved = {**baseline_config, **dict(finalist["parameters"])}
         detail, _consumed, _reason = _evaluate_config(
-            resolved, search_splits, search["minimum_samples"],
+            resolved, search_splits, evaluation_minimums,
             index=-1, stage="FROZEN_FINALIST_DETAIL",
         )
         for split_name in ("calibration", "validation"):
@@ -3109,7 +3144,7 @@ def _run_impl(
             holdout_rows.append(_evaluate_frozen_holdout(
                 resolved, splits["HOLDOUT"],
                 finalist_id=str(finalist["finalist_id"]), policy=holdout_policy,
-                minimum_sample=int(search["minimum_samples"]["holdout"]),
+                minimum_sample=int(evaluation_minimums["holdout"]),
             ))
         write_jsonl(holdout_path, holdout_rows, operation="one_shot_holdout_results")
         campaign_verdict = (
@@ -3169,7 +3204,7 @@ def _run_impl(
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "ACCEPTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in accepted_rows) or "\n", operation="accepted_configs_v2")
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "REJECTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in rejected_rows) or "\n", operation="rejected_configs_v2")
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "FINALIST_TRADES.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in finalist_rows) or "\n", operation="finalist_trades_v2")
-    top = _aggregate_results(output)
+    top = _aggregate_results(output, validation_policy)
     _atomic_json(output / "TOP_CONFIGS.json", top)
     _atomic_json(output / "RUN_MANIFEST.json", {
         "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
@@ -3191,6 +3226,7 @@ def _run_impl(
         "history_end": dataset_manifest["history_end"],
         "history_actual_days": dataset_manifest["history_actual_days"],
         "history_depth_status": dataset_manifest["history_depth_status"],
+        **validation_policy.artifact_fields(),
     })
     try:
         size_status = enforce_size_budget(output)
@@ -3208,6 +3244,7 @@ def _run_impl(
             all_result_rows, counterfactual_count=counterfactual_count,
             counterfactual_examples=counterfactual_examples,
             error_count=int(checkpoint["failed_count"]),
+            validation_policy=validation_policy,
         )
     except ValueError as error:
         raise SweepExpectedError(str(error)) from None
@@ -3237,6 +3274,12 @@ HISTORY_START = {dataset_manifest['history_start']}
 HISTORY_END = {dataset_manifest['history_end']}
 HISTORY_ACTUAL_DAYS = {dataset_manifest['history_actual_days']}
 HISTORY_DEPTH_STATUS = {dataset_manifest['history_depth_status']}
+VALIDATION_MINIMUM_TRADES = {validation_policy.minimum_validation_trades}
+VALIDATION_MINIMUM_TRADES_SOURCE = {validation_policy.source('minimum_validation_trades')}
+MINIMUM_INDEPENDENT_PERIODS = {validation_policy.minimum_independent_periods}
+MINIMUM_INDEPENDENT_PERIODS_SOURCE = {validation_policy.source('minimum_independent_periods')}
+INDEPENDENT_PERIOD_UNIT = {validation_policy.independent_period_unit}
+INDEPENDENT_PERIOD_UNIT_SOURCE = {validation_policy.source('independent_period_unit')}
 
 # Scalping v2 parameter sweep
 
@@ -3373,6 +3416,7 @@ HISTORY_DEPTH_STATUS = {dataset_manifest['history_depth_status']}
         expected_config_hash=TRADE_PARAMETERS.config_hash,
         expected_count=int(checkpoint["last_durable_result_index"]) + 1,
         expected_symbol=symbol,
+        validation_policy=validation_policy,
         on_file_checked=integrity_file,
     )
     emit(
@@ -3532,6 +3576,10 @@ def run(
         raise SweepExpectedError("CONFIG_FILE_NOT_FOUND") from None
     except yaml.YAMLError:
         raise SweepExpectedError("SEARCH_SPACE_INVALID") from None
+    try:
+        load_validation_sample_policy(search_path)
+    except RuntimeError:
+        raise SweepExpectedError("RESEARCH_AUTHORITY_INVALID") from None
     output_root = Path(str(search.get("output_root", "artifacts/scalping_v2_parameter_sweep")))
     if not output_root.is_absolute():
         output_root = PROJECT_ROOT / output_root

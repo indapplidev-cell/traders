@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 import yaml
 
 
@@ -244,7 +244,6 @@ class ResearchSearchPolicy(StrictModel):
     checkpoint_cadence: int = Field(gt=0)
     stage_budgets: dict[str, int]
     max_configs_per_observation: int = Field(gt=0)
-    minimum_validation_sample: int = Field(gt=0)
     minimum_holdout_sample: int = Field(gt=0)
     max_active_batch_memory_mb: float = Field(gt=0)
     bytes_per_active_config: int = Field(gt=0)
@@ -293,11 +292,10 @@ class ResearchArtifactPolicy(StrictModel):
 
 
 class ResearchRankingPolicy(StrictModel):
-    minimum_trades: int = Field(gt=0)
     minimum_symbol_coverage: int = Field(gt=0)
-    minimum_independent_periods: int = Field(gt=0)
+    minimum_independent_periods: StrictInt = Field(gt=0)
     independent_period_unit: Literal["UTC_CALENDAR_DAY"]
-    validation_minimum_trades: int = Field(gt=0)
+    validation_minimum_trades: StrictInt = Field(gt=0)
     selection_bias_hypotheses_per_observation: float = Field(gt=0)
     promising_min_expectancy_r: float
     promising_min_profit_factor: float = Field(gt=0)
@@ -311,13 +309,18 @@ class ResearchCalibrationPolicy(StrictModel):
     parameter_families: dict[str, tuple[str, ...]]
 
 
+class ResearchMinimumSamples(StrictModel):
+    calibration: int = Field(gt=0)
+    holdout: int = Field(gt=0)
+
+
 class ResearchParameters(StrictModel):
     schema_version: Literal[2]
     seed: int
     search: ResearchSearchPolicy
     dataset: ResearchDataset
     output_root: str
-    minimum_samples: dict[str, int]
+    minimum_samples: ResearchMinimumSamples
     artifact: ResearchArtifactPolicy
     ranking: ResearchRankingPolicy
     calibration: ResearchCalibrationPolicy
@@ -359,6 +362,100 @@ def _load(path: Path, model: type[StrictModel]) -> Any:
         raise RuntimeError(f"invalid authoritative YAML: {path}") from exc
 
 
+class ResearchPolicyProvenance(StrictModel):
+    source_file: str
+    source_path: str
+    resolved_value: int | str
+
+
+class ValidationSamplePolicy(StrictModel):
+    minimum_validation_trades: int = Field(gt=0)
+    minimum_independent_periods: int = Field(gt=0)
+    independent_period_unit: Literal["UTC_CALENDAR_DAY"]
+    provenance: dict[str, ResearchPolicyProvenance]
+
+    def artifact_fields(self) -> dict[str, int | str | dict[str, dict[str, int | str]]]:
+        values = {
+            "VALIDATION_MINIMUM_TRADES": self.minimum_validation_trades,
+            "VALIDATION_MINIMUM_TRADES_SOURCE": self.source("minimum_validation_trades"),
+            "MINIMUM_INDEPENDENT_PERIODS": self.minimum_independent_periods,
+            "MINIMUM_INDEPENDENT_PERIODS_SOURCE": self.source("minimum_independent_periods"),
+            "INDEPENDENT_PERIOD_UNIT": self.independent_period_unit,
+            "INDEPENDENT_PERIOD_UNIT_SOURCE": self.source("independent_period_unit"),
+        }
+        return {**values, "VALIDATION_GATE_PROVENANCE": {
+            name: item.model_dump(mode="json") for name, item in self.provenance.items()
+        }}
+
+    def source(self, name: str) -> str:
+        item = self.provenance[name]
+        return f"{item.source_file}:{item.source_path}"
+
+
+class _ValidationRankingAuthority(BaseModel):
+    model_config = ConfigDict(extra="allow", frozen=True)
+    validation_minimum_trades: StrictInt = Field(gt=0)
+    minimum_independent_periods: StrictInt = Field(gt=0)
+    independent_period_unit: Literal["UTC_CALENDAR_DAY"]
+
+
+class _ValidationGateAuthority(BaseModel):
+    model_config = ConfigDict(extra="allow", frozen=True)
+    ranking: _ValidationRankingAuthority
+
+
+def load_research_parameters(path: Path) -> ResearchParameters:
+    return _load(path, ResearchParameters)
+
+
+def load_validation_sample_policy(path: Path) -> ValidationSamplePolicy:
+    try:
+        raw = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
+        if not isinstance(raw, dict):
+            raise ValueError("research authority must be a mapping")
+        search = raw.get("search")
+        minimum_samples = raw.get("minimum_samples")
+        ranking = raw.get("ranking")
+        duplicate_paths = (
+            isinstance(search, dict) and "minimum_validation_sample" in search,
+            isinstance(minimum_samples, dict) and "validation" in minimum_samples,
+            isinstance(ranking, dict) and "minimum_trades" in ranking,
+        )
+        if any(duplicate_paths):
+            raise ValueError("duplicate validation gate authority")
+        authority = _ValidationGateAuthority.model_validate(raw)
+    except Exception as exc:
+        raise RuntimeError(f"invalid authoritative YAML: {path}") from exc
+    source_file = (
+        "config/research/research_parameters.yaml"
+        if path.resolve() == (ROOT / "config/research/research_parameters.yaml").resolve()
+        else str(path)
+    )
+    ranking_authority = authority.ranking
+    return ValidationSamplePolicy(
+        minimum_validation_trades=ranking_authority.validation_minimum_trades,
+        minimum_independent_periods=ranking_authority.minimum_independent_periods,
+        independent_period_unit=ranking_authority.independent_period_unit,
+        provenance={
+            "minimum_validation_trades": ResearchPolicyProvenance(
+                source_file=source_file,
+                source_path="ranking.validation_minimum_trades",
+                resolved_value=ranking_authority.validation_minimum_trades,
+            ),
+            "minimum_independent_periods": ResearchPolicyProvenance(
+                source_file=source_file,
+                source_path="ranking.minimum_independent_periods",
+                resolved_value=ranking_authority.minimum_independent_periods,
+            ),
+            "independent_period_unit": ResearchPolicyProvenance(
+                source_file=source_file,
+                source_path="ranking.independent_period_unit",
+                resolved_value=ranking_authority.independent_period_unit,
+            ),
+        },
+    )
+
+
 RISK_PATH = Path(os.environ.get("TRADERS_RISK_POLICY_PATH", ROOT / "config/trading/risk_policy.yaml"))
 RUNTIME_PATH = Path(os.environ.get("TRADERS_RUNTIME_POLICY_PATH", ROOT / "config/runtime/runtime_policy.yaml"))
 RESEARCH_PATH = Path(os.environ.get("TRADERS_RESEARCH_PARAMETERS_PATH", ROOT / "config/research/research_parameters.yaml"))
@@ -366,7 +463,8 @@ UNIT_PATH = Path(os.environ.get("TRADERS_UNIT_CONSTANTS_PATH", ROOT / "config/sy
 
 RISK_POLICY = _load(RISK_PATH, RiskPolicy)
 RUNTIME_POLICY = _load(RUNTIME_PATH, RuntimePolicy)
-RESEARCH_PARAMETERS = _load(RESEARCH_PATH, ResearchParameters)
+RESEARCH_PARAMETERS = load_research_parameters(RESEARCH_PATH)
+VALIDATION_SAMPLE_POLICY = load_validation_sample_policy(RESEARCH_PATH)
 UNIT_CONSTANTS = _load(UNIT_PATH, UnitConstants)
 
 
@@ -383,6 +481,9 @@ def authority_hash(extra: dict[str, Any] | None = None) -> str:
 
 
 __all__ = (
-    "RESEARCH_PARAMETERS", "RESEARCH_PATH", "RISK_PATH", "RISK_POLICY",
+    "RESEARCH_PARAMETERS", "RESEARCH_PATH", "ResearchParameters",
+    "VALIDATION_SAMPLE_POLICY", "ValidationSamplePolicy",
+    "load_research_parameters", "load_validation_sample_policy",
+    "RISK_PATH", "RISK_POLICY",
     "RUNTIME_PATH", "RUNTIME_POLICY", "UNIT_CONSTANTS", "UNIT_PATH", "authority_hash",
 )

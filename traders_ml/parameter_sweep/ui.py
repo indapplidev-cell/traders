@@ -211,9 +211,12 @@ class ParameterSweepWindow:
         else:
             self.result.configure(text=(
                 f"Сделок: {validation.get('validation_trade_count', '—')}\n"
+                f"Минимум сделок validation: {state.validation_minimum_trades or '—'}\n"
                 f"Покрытие символов: {validation.get('symbol_coverage', '—')} / "
                 f"{validation.get('symbol_coverage_expected', 1)}\n"
-                f"Независимых периодов: {validation.get('independent_period_count', '—')}\n"
+                f"Независимых периодов: {validation.get('independent_period_count', '—')} / "
+                f"{state.minimum_independent_periods or '—'} "
+                f"({state.independent_period_unit or '—'})\n"
                 f"Статус: {translated_status}"
             ))
         if state.failed_before_first_config:

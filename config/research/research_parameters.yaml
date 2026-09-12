@@ -16,7 +16,6 @@ search:
     TOP_REGION_REFINEMENT: 40
     LOCAL_FINALIST_VALIDATION: 33
   max_configs_per_observation: 100
-  minimum_validation_sample: 20
   minimum_holdout_sample: 20
   max_active_batch_memory_mb: 64.0
   bytes_per_active_config: 262144
@@ -28,7 +27,7 @@ dataset:
   closed_only: false
   selection_mode: ALL_UNTIL_CUTOFF
 output_root: artifacts/scalping_v2_parameter_sweep
-minimum_samples: {calibration: 30, validation: 20, holdout: 20}
+minimum_samples: {calibration: 30, holdout: 20}
 artifact:
   schema_version: 2
   top_config_count: 10
@@ -40,7 +39,6 @@ artifact:
   soft_results_bytes: 52428800
   hard_results_bytes: 104857600
 ranking:
-  minimum_trades: 20
   minimum_symbol_coverage: 3
   minimum_independent_periods: 3
   independent_period_unit: UTC_CALENDAR_DAY

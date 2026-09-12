@@ -76,6 +76,9 @@ class PresentationState:
     holdout_opened: bool = False
     holdout_evaluated: bool = False
     canonical_validation: dict[str, Any] = field(default_factory=dict)
+    validation_minimum_trades: int | None = None
+    minimum_independent_periods: int | None = None
+    independent_period_unit: str | None = None
     history_target_days: int = 30
     history_start: str | None = None
     history_end: str | None = None
@@ -260,6 +263,9 @@ class ParameterSweepController:
             self.state.canonical_validation = dict(
                 persisted.get("canonical_validation") or self.state.canonical_validation
             )
+            self.state.validation_minimum_trades = persisted.get("VALIDATION_MINIMUM_TRADES")
+            self.state.minimum_independent_periods = persisted.get("MINIMUM_INDEPENDENT_PERIODS")
+            self.state.independent_period_unit = persisted.get("INDEPENDENT_PERIOD_UNIT")
             self.state.history_target_days = int(persisted.get("history_target_days") or 30)
             self.state.history_start = persisted.get("history_start") or self.state.history_start
             self.state.history_end = persisted.get("history_end") or self.state.history_end

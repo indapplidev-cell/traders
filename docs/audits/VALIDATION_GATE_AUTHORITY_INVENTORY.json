@@ -1,0 +1,129 @@
+{
+  "forensic_scope": {
+    "repository_head_before": "c6d4a76e5d75d103b3269c3128c4e4b76ca959d1",
+    "searched_terms": [
+      "20",
+      "3",
+      "validation_minimum_trades",
+      "minimum_validation_sample",
+      "minimum_samples.validation",
+      "minimum_trades",
+      "minimum_independent_periods",
+      "independent_period_unit",
+      "UTC_CALENDAR_DAY"
+    ],
+    "classification_note": "Bare 20 and 3 literals were classified by semantic context; search-space values, artifact size/count limits, symbol coverage, timestamps, test populations, and production policy values are unrelated."
+  },
+  "semantic_gates": [
+    {
+      "semantic_name": "validation minimum trades",
+      "current_value": 20,
+      "all_yaml_paths": [
+        {"path": "search.minimum_validation_sample", "before": "DUPLICATE_AUTHORITY", "after": "REMOVED"},
+        {"path": "minimum_samples.validation", "before": "DUPLICATE_AUTHORITY", "after": "REMOVED"},
+        {"path": "ranking.minimum_trades", "before": "DUPLICATE_AUTHORITY", "after": "REMOVED"},
+        {"path": "ranking.validation_minimum_trades", "before": "DECLARATION", "after": "DECLARATION"}
+      ],
+      "all_schema_paths": [
+        "app.config.yaml_authority.ResearchRankingPolicy.validation_minimum_trades",
+        "app.config.yaml_authority._ValidationRankingAuthority.validation_minimum_trades",
+        "app.config.yaml_authority.ValidationSamplePolicy.minimum_validation_trades"
+      ],
+      "all_code_defaults": [],
+      "all_consumers": [
+        "traders_ml.parameter_sweep.engine.ParameterSweepSearchPlanner.plan",
+        "traders_ml.parameter_sweep.engine._evaluate_config via evaluation_minimums",
+        "traders_ml.parameter_sweep.artifact_v2.performance_class",
+        "traders_ml.parameter_sweep.artifact_v2.compact_result",
+        "traders_ml.parameter_sweep.artifact_v2._readiness_from_projection",
+        "traders_ml.parameter_sweep.ranking.rank_score",
+        "traders_ml.parameter_sweep.research_protocol.eligible_validation_finalists via canonical compact gates"
+      ],
+      "all_reporting_consumers": [
+        "RUN_CONFIG.yaml",
+        "STATUS.json",
+        "REPORT.md",
+        "RUN_MANIFEST.json",
+        "SEARCH_PLAN.json",
+        "CHECKPOINT.json",
+        "ParameterSweepController/ParameterSweepWindow"
+      ],
+      "all_test_fixtures": [
+        "tests/research/test_parameter_sweep_validation_gate_authority.py"
+      ],
+      "selected_canonical_yaml_path": "ranking.validation_minimum_trades",
+      "selected_resolver": "app.config.yaml_authority.load_validation_sample_policy"
+    },
+    {
+      "semantic_name": "minimum independent periods",
+      "current_value": 3,
+      "all_yaml_paths": [
+        {"path": "ranking.minimum_independent_periods", "before": "DECLARATION", "after": "DECLARATION"}
+      ],
+      "all_schema_paths": [
+        "app.config.yaml_authority.ResearchRankingPolicy.minimum_independent_periods",
+        "app.config.yaml_authority._ValidationRankingAuthority.minimum_independent_periods",
+        "app.config.yaml_authority.ValidationSamplePolicy.minimum_independent_periods"
+      ],
+      "all_code_defaults": [],
+      "all_consumers": [
+        "traders_ml.parameter_sweep.artifact_v2.performance_class",
+        "traders_ml.parameter_sweep.artifact_v2.compact_result",
+        "traders_ml.parameter_sweep.artifact_v2._readiness_from_projection",
+        "traders_ml.parameter_sweep.research_protocol.eligible_validation_finalists via canonical compact gates"
+      ],
+      "all_reporting_consumers": [
+        "RUN_CONFIG.yaml",
+        "STATUS.json",
+        "REPORT.md",
+        "RUN_MANIFEST.json",
+        "SEARCH_PLAN.json",
+        "CHECKPOINT.json",
+        "ParameterSweepController/ParameterSweepWindow"
+      ],
+      "all_test_fixtures": [
+        "tests/research/test_parameter_sweep_validation_gate_authority.py",
+        "tests/research/test_parameter_sweep_report_semantics.py"
+      ],
+      "selected_canonical_yaml_path": "ranking.minimum_independent_periods",
+      "selected_resolver": "app.config.yaml_authority.load_validation_sample_policy"
+    },
+    {
+      "semantic_name": "independent period unit",
+      "current_value": "UTC_CALENDAR_DAY",
+      "all_yaml_paths": [
+        {"path": "ranking.independent_period_unit", "before": "DECLARATION", "after": "DECLARATION"}
+      ],
+      "all_schema_paths": [
+        "app.config.yaml_authority.ResearchRankingPolicy.independent_period_unit",
+        "app.config.yaml_authority._ValidationRankingAuthority.independent_period_unit",
+        "app.config.yaml_authority.ValidationSamplePolicy.independent_period_unit"
+      ],
+      "all_code_defaults": [],
+      "all_consumers": [
+        "traders_ml.parameter_sweep.artifact_v2.compact_result UTC day bucketing contract"
+      ],
+      "all_reporting_consumers": [
+        "RUN_CONFIG.yaml",
+        "STATUS.json",
+        "REPORT.md",
+        "RUN_MANIFEST.json",
+        "SEARCH_PLAN.json",
+        "CHECKPOINT.json",
+        "ParameterSweepController/ParameterSweepWindow"
+      ],
+      "all_test_fixtures": [
+        "tests/research/test_parameter_sweep_validation_gate_authority.py"
+      ],
+      "selected_canonical_yaml_path": "ranking.independent_period_unit",
+      "selected_resolver": "app.config.yaml_authority.load_validation_sample_policy"
+    }
+  ],
+  "unrelated_classifications": [
+    "ranking.minimum_symbol_coverage: 3 — UNRELATED",
+    "search_space.bucket_min_sample values including 20 — UNRELATED cost/probability family",
+    "artifact count/size limits containing 20 — UNRELATED",
+    "search-space values containing 3 — UNRELATED",
+    "tests with explicit current-policy assertions — TEST_FIXTURE"
+  ]
+}

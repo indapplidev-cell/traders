@@ -68,7 +68,7 @@ def _search(tmp_path: Path) -> Path:
         "selection_mode": "ALL_UNTIL_CUTOFF", "max_rows": None,
     }
     value["output_root"] = str(tmp_path / "artifacts")
-    value["minimum_samples"] = {"calibration": 2, "validation": 2, "holdout": 2}
+    value["minimum_samples"] = {"calibration": 2, "holdout": 2}
     value["search"]["strategy"] = "bounded"
     value["search"]["max_evaluated_configs"] = 1
     value["search"]["batch_size"] = 1

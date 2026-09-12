@@ -10,6 +10,8 @@ from typing import Any, Callable
 
 import yaml
 
+from app.config.yaml_authority import ValidationSamplePolicy
+
 from .artifact_writer import DEFAULT_ARTIFACT_WRITER
 from .artifact_v2 import aggregate_result_semantics
 from .research_protocol import canonical_hash, holdout_result_hash
@@ -58,6 +60,7 @@ def verify_artifacts(
     expected_dataset_fingerprint: str, expected_config_hash: str,
     expected_count: int, terminal_state: str = "COMPLETED",
     expected_symbol: str | None = None,
+    validation_policy: ValidationSamplePolicy | None = None,
     on_file_checked: Callable[[str, bool, str | None], None] | None = None,
 ) -> dict[str, Any]:
     try:
@@ -92,6 +95,12 @@ def verify_artifacts(
         manifest = _json(run_directory / "DATASET_MANIFEST.json")
         snapshot = _json(run_directory / "DATASET_SNAPSHOT.json")
         run_config = yaml.safe_load((run_directory / "RUN_CONFIG.yaml").read_text(encoding="utf-8"))
+        resolved_validation_policy = validation_policy or ValidationSamplePolicy(
+            minimum_validation_trades=run_config["VALIDATION_MINIMUM_TRADES"],
+            minimum_independent_periods=run_config["MINIMUM_INDEPENDENT_PERIODS"],
+            independent_period_unit=run_config["INDEPENDENT_PERIOD_UNIT"],
+            provenance=run_config["VALIDATION_GATE_PROVENANCE"],
+        )
         checks = {
             "run_id": all((
                 checkpoint.get("run_id") == expected_run_id,
@@ -174,6 +183,7 @@ def verify_artifacts(
             ]
             semantics = aggregate_result_semantics(
                 jsonl_results, error_count=int(checkpoint.get("failed_count", 0)),
+                validation_policy=resolved_validation_policy,
             )
             checks["results_status_parity"] = all((
                 status.get("evaluation_status_counts") == semantics["evaluation_status_counts"],
@@ -191,6 +201,13 @@ def verify_artifacts(
                 and len(rejected_rows) == len(jsonl_results) - semantics["accepted_configs"]
             )
             report = (run_directory / "REPORT.md").read_text(encoding="utf-8")
+            policy_fields = resolved_validation_policy.artifact_fields()
+            provenance_keys = (
+                "VALIDATION_MINIMUM_TRADES", "VALIDATION_MINIMUM_TRADES_SOURCE",
+                "MINIMUM_INDEPENDENT_PERIODS", "MINIMUM_INDEPENDENT_PERIODS_SOURCE",
+                "INDEPENDENT_PERIOD_UNIT", "INDEPENDENT_PERIOD_UNIT_SOURCE",
+                "VALIDATION_GATE_PROVENANCE",
+            )
             checks["results_report_parity"] = all((
                 f"EVALUATION_STATUS_COUNTS: `{json.dumps(semantics['evaluation_status_counts'], sort_keys=True)}`" in report,
                 f"PERFORMANCE_CLASS_COUNTS: `{json.dumps(semantics['performance_class_counts'], sort_keys=True)}`" in report,
@@ -198,6 +215,14 @@ def verify_artifacts(
             ))
             resolved_seed = checkpoint.get("resolved_seed", checkpoint.get("seed"))
             run_manifest = _json(run_directory / "RUN_MANIFEST.json")
+            checks["validation_gate_provenance"] = all(
+                artifact.get(key) == policy_fields[key]
+                for artifact in (run_config, status, checkpoint, run_manifest)
+                for key in provenance_keys
+            ) and all(
+                f"{key} = {policy_fields[key]}" in report
+                for key in provenance_keys[:-1]
+            )
             opportunity_funnel = _json(run_directory / "OPPORTUNITY_FUNNEL.json")
             freeze = _json(run_directory / "FINALIST_FREEZE.json")
             holdout_results = [
