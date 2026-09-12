@@ -11,7 +11,7 @@ from .cli import DEFAULT_CONFIG, DEFAULT_OUTPUT_ROOT
 from .controller import ParameterSweepController
 from .texts import RU
 from .utils import format_duration
-from .modes import RESEARCH_MODE_VALUES, ResearchMode
+from .modes import ResearchMode
 
 
 class ParameterSweepWindow:
@@ -101,7 +101,7 @@ class ParameterSweepWindow:
         self.mode_var = tk.StringVar(value=ResearchMode.ALL.value)
         self.mode_selector = ttk.Combobox(
             actions, textvariable=self.mode_var, state="readonly", width=28,
-            values=RESEARCH_MODE_VALUES,
+            values=(ResearchMode.ALL.value,),
         )
         self.mode_selector.pack(side="left", padx=(0, 6))
         self.start_button = ttk.Button(actions, text=RU["start"], command=self._start)
@@ -166,7 +166,30 @@ class ParameterSweepWindow:
             "Будет исследовано"
             if state.terminal_state is None and state.active else "Запланировано"
         )
-        self.plan.configure(text=(
+        if state.research_mode == ResearchMode.ALL.value:
+            phase_lines = []
+            labels = {
+                "SEPARABILITY": "Separability",
+                "DATA_DRIVEN_RANGE_GENERATION": "Data-Driven Ranges",
+                "EXPANDED_AUTOMATIC_SEARCH": "Expanded Search",
+                "ADAPTIVE_REFINEMENT": "Adaptive Refinement",
+            }
+            for phase, label in labels.items():
+                summary = state.pipeline_phase_summaries.get(phase, {})
+                detail = ", ".join(f"{key}={value}" for key, value in summary.items())
+                phase_lines.append(
+                    f"{label}: {state.pipeline_phase_statuses.get(phase, 'NOT_STARTED')}"
+                    + (f" · {detail}" if detail else "")
+                )
+            plan_text = (
+                f"Оркестратор: {state.gui_orchestrator}\n"
+                f"Выбранный символ: {state.symbol or '—'}\n"
+                f"Текущая фаза: {state.pipeline_phase}\n"
+                f"Общий статус: {state.overall_status}\n"
+                + "\n".join(phase_lines)
+            )
+        else:
+            plan_text = (
             f"Фаза исследования: {state.research_phase}\n"
             f"HOLDOUT: {state.holdout_status}\n"
             f"Финалисты зафиксированы: {'ДА' if state.finalists_frozen else 'НЕТ'} · "
@@ -183,16 +206,28 @@ class ParameterSweepWindow:
             f"{planned_label}: {state.planned:,}\n"
             f"Фактически обработано: {state.completed:,}\n"
             f"Стратегия: {state.strategy}"
-        ).replace(",", " "))
+            )
+        self.plan.configure(text=plan_text.replace(",", " "))
         self.search_parameters.configure(state="normal")
         self.search_parameters.delete("1.0", "end")
         self.search_parameters.insert("1.0", state.format_search_parameters())
         self.search_parameters.configure(state="disabled")
-        self.progress.configure(value=state.progress_percent)
-        stopped = " · Остановлено" if state.terminal_state in {"FAILED", "CANCELLED"} else ""
-        self.progress_text.configure(text=(
-            f"{state.progress_percent:.1f}% · Обработано {state.completed} из {state.planned}{stopped}"
-        ))
+        if state.research_mode == ResearchMode.ALL.value:
+            phase_values = tuple(state.pipeline_phase_statuses.values())
+            finished_phases = sum(value in {"COMPLETED", "LIMITED", "STOPPED", "FAILED"} for value in phase_values)
+            pipeline_progress = 100.0 * finished_phases / 4
+            if state.overall_status == "COMPLETED":
+                pipeline_progress = 100.0
+            self.progress.configure(value=pipeline_progress)
+            self.progress_text.configure(text=(
+                f"{pipeline_progress:.1f}% · Фаза {state.pipeline_phase} · {state.overall_status}"
+            ))
+        else:
+            self.progress.configure(value=state.progress_percent)
+            stopped = " · Остановлено" if state.terminal_state in {"FAILED", "CANCELLED"} else ""
+            self.progress_text.configure(text=(
+                f"{state.progress_percent:.1f}% · Обработано {state.completed} из {state.planned}{stopped}"
+            ))
         self.current_summary.configure(text=(
             RU["not_started"]
             if state.current_config is None

@@ -1,0 +1,99 @@
+{
+  "GUI_ORCHESTRATOR": "NEW_SINGLE_SYMBOL_PIPELINE",
+  "LEGACY_ARRAY_FALLBACK": 0,
+  "LEGACY_TARGETED_STAGED_USED": "NO",
+  "PHASE_1": "SEPARABILITY",
+  "PHASE_2": "DATA_DRIVEN_RANGE_GENERATION",
+  "PHASE_3": "EXPANDED_AUTOMATIC_SEARCH",
+  "PHASE_4": "ADAPTIVE_REFINEMENT",
+  "PHASE_5": "COMPLETED",
+  "adaptive_handoff_fingerprint": "e7adb853882f20c070cfc231f2681208eb8d851d0630f6ce09dedb54201abfd7",
+  "adaptive_refinement_status": "COMPLETED",
+  "adaptive_source": "EXPANDED_SEARCH_HANDOFF",
+  "artifact": "SINGLE_SYMBOL_PIPELINE_MANIFEST",
+  "binance_order_calls": 0,
+  "completed_at": "2026-09-12T20:25:39.396056+00:00",
+  "current_phase": "COMPLETED",
+  "dataset_fingerprint": "799b6509efdc0de4903381d0a60d9d6474e9166ddea999f381d571e1d6efa9d2",
+  "expanded_search_handoff_fingerprint": "c33cdb76ad04e6320ca7b448bdf5c03f918c0c8e170b91c7512b7443a14504dc",
+  "expanded_search_status": "COMPLETED",
+  "final_pipeline_status": "COMPLETED",
+  "finalist_freeze_executed": false,
+  "gui_orchestrator": "NEW_SINGLE_SYMBOL_PIPELINE",
+  "gui_run_id": "20260912_232513_652",
+  "handoff_fingerprint_chain": {
+    "adaptive_refinement": "e7adb853882f20c070cfc231f2681208eb8d851d0630f6ce09dedb54201abfd7",
+    "data_driven_ranges": "51d3986e5fb7ae5ea31970f15ab390a1abdd68d0ec1bfbca4193f3bdb81aaf27",
+    "expanded_search": "c33cdb76ad04e6320ca7b448bdf5c03f918c0c8e170b91c7512b7443a14504dc",
+    "separability": "35cb84eb4a52c888fe16db0c8ebc6c7df7d70f840780872f6e6a5ed0fbd25c03"
+  },
+  "holdout_opened": false,
+  "legacy_array_fallback": 0,
+  "legacy_fallback_used": false,
+  "legacy_targeted_staged_used": false,
+  "live_state": false,
+  "next_stage_available": "VALIDATION_RANKING",
+  "phase_order": [
+    "SEPARABILITY",
+    "DATA_DRIVEN_RANGE_GENERATION",
+    "EXPANDED_AUTOMATIC_SEARCH",
+    "ADAPTIVE_REFINEMENT",
+    "COMPLETED"
+  ],
+  "phase_status": {
+    "ADAPTIVE_REFINEMENT": "COMPLETED",
+    "DATA_DRIVEN_RANGE_GENERATION": "COMPLETED",
+    "EXPANDED_AUTOMATIC_SEARCH": "COMPLETED",
+    "SEPARABILITY": "LIMITED"
+  },
+  "phase_summary": {
+    "ADAPTIVE_REFINEMENT": {
+      "new_clusters": 2,
+      "rounds": 2,
+      "stop_reason": "NO_NEW_BEHAVIORAL_CLUSTERS"
+    },
+    "DATA_DRIVEN_RANGE_GENERATION": {
+      "generated_parameters": 4,
+      "provisional_count": 4
+    },
+    "EXPANDED_AUTOMATIC_SEARCH": {
+      "behavioral_clusters": 32,
+      "evaluated": 500,
+      "planned": 500
+    },
+    "SEPARABILITY": {
+      "closed_trades": 14,
+      "losses": 12,
+      "sample_adequacy": "DESCRIPTIVE_ONLY",
+      "wins": 2
+    }
+  },
+  "pipeline_run_id": "20260912_232513_652",
+  "pipeline_schema_version": 1,
+  "production_mutations": 0,
+  "profile": "trade-5m-v2",
+  "range_generation_status": "COMPLETED",
+  "range_handoff_fingerprint": "51d3986e5fb7ae5ea31970f15ab390a1abdd68d0ec1bfbca4193f3bdb81aaf27",
+  "resume_guards": [
+    "pipeline_schema_version",
+    "selected_symbol",
+    "profile",
+    "dataset_fingerprint",
+    "phase_handoff_fingerprints"
+  ],
+  "search_source": "DATA_DRIVEN_RANGE_HANDOFF",
+  "selected_symbol": "SUIUSDT",
+  "separability_handoff_fingerprint": "35cb84eb4a52c888fe16db0c8ebc6c7df7d70f840780872f6e6a5ed0fbd25c03",
+  "separability_status": "LIMITED",
+  "started_at": "2026-09-12T20:25:13.654663+00:00",
+  "stop_reason": null,
+  "symbol_binding": {
+    "adaptive_refinement_symbol": "SUIUSDT",
+    "expanded_search_symbol": "SUIUSDT",
+    "gui_selected_symbol": "SUIUSDT",
+    "range_generation_symbol": "SUIUSDT",
+    "run_config_symbol": "SUIUSDT",
+    "separability_symbol": "SUIUSDT"
+  },
+  "validation_ranking_executed": false
+}

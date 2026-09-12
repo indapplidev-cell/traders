@@ -1,0 +1,324 @@
+[
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "setup_quality_score",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "setup_structural_score",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "setup_confirmation_score",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "EFFECTIVELY_CONSTANT",
+    "distinct_count": 2,
+    "feature": "setup_context_score",
+    "non_null_count": 14,
+    "reason": "TWO_DISTINCT_NUMERIC_VALUES"
+  },
+  {
+    "activity_status": "EFFECTIVELY_CONSTANT",
+    "distinct_count": 2,
+    "feature": "source_confidence",
+    "non_null_count": 14,
+    "reason": "TWO_DISTINCT_NUMERIC_VALUES"
+  },
+  {
+    "activity_status": "EFFECTIVELY_CONSTANT",
+    "distinct_count": 2,
+    "feature": "strategy_score",
+    "non_null_count": 14,
+    "reason": "TWO_DISTINCT_NUMERIC_VALUES"
+  },
+  {
+    "activity_status": "EFFECTIVELY_CONSTANT",
+    "distinct_count": 2,
+    "feature": "strategy_raw_score",
+    "non_null_count": 14,
+    "reason": "TWO_DISTINCT_NUMERIC_VALUES"
+  },
+  {
+    "activity_status": "EFFECTIVELY_CONSTANT",
+    "distinct_count": 2,
+    "feature": "strategy_margin_to_threshold",
+    "non_null_count": 14,
+    "reason": "TWO_DISTINCT_NUMERIC_VALUES"
+  },
+  {
+    "activity_status": "EFFECTIVELY_CONSTANT",
+    "distinct_count": 2,
+    "feature": "risk_score",
+    "non_null_count": 14,
+    "reason": "TWO_DISTINCT_NUMERIC_VALUES"
+  },
+  {
+    "activity_status": "EFFECTIVELY_CONSTANT",
+    "distinct_count": 2,
+    "feature": "plan_score",
+    "non_null_count": 14,
+    "reason": "TWO_DISTINCT_NUMERIC_VALUES"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "planned_rr",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "entry_reference",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "stop_distance_bps",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "target_distance_bps",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "atr_value",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "atr_normalized_stop",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "volatility_buffer",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "effective_total_cost_bps",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "commission_bps",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 12,
+    "feature": "spread_bps",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "slippage_bps",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "probability_sample_size",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "estimated_p_win",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "expected_ev_r",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 14,
+    "feature": "net_edge_bps",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 10,
+    "feature": "utc_hour",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 2,
+    "feature": "direction",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 2,
+    "feature": "utc_day_of_week",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "setup_type",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 2,
+    "feature": "regime",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "impulse_phase",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "setup_quality",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "strategy_quality",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "risk_level",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "confirmation_state",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "entry_reference_source",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "stop_source",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "ACTIVE",
+    "distinct_count": 2,
+    "feature": "target_source",
+    "non_null_count": 14,
+    "reason": "OBSERVED_VARIATION"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "has_conflict",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "liquidity_presence",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "strategy_cap_applied",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "CONSTANT",
+    "distinct_count": 1,
+    "feature": "risk_pre_approved",
+    "non_null_count": 14,
+    "reason": "ONE_DISTINCT_OBSERVED_VALUE"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "causal_reset_state",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "momentum_score",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "volume_ratio",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  },
+  {
+    "activity_status": "ALL_MISSING",
+    "distinct_count": 0,
+    "feature": "dynamic_required_rr",
+    "non_null_count": 0,
+    "reason": "UNAVAILABLE_HISTORICALLY_NO_IMPUTATION"
+  }
+]

@@ -331,20 +331,23 @@ def test_every_launch_mode_resume_identity_is_enforced(tmp_path, mode):
         run(path, run_id=cross_id, mode=different, max_configs=1, resume=True)
 
 
-def test_controller_and_direct_cli_engine_path_have_identical_plan_identity(tmp_path):
+def test_explicit_legacy_controller_and_direct_engine_have_identical_plan_identity(tmp_path):
     path = _targeted_mode_search(tmp_path)
     config = yaml.safe_load(path.read_text())
     output_root = Path(config["output_root"])
     controller = ParameterSweepController(path, output_root)
     gui_run_id = controller.start_new_run(
-        symbol="BTCUSDT", max_configs=1, mode="ALL",
+        symbol="BTCUSDT", max_configs=1, mode=ResearchMode.ONE_FACTOR_SENSITIVITY,
     )
     assert controller.worker is not None
     controller.worker.join(timeout=30)
     assert not controller.worker.is_alive()
     controller.drain_events()
     assert controller.state.terminal_state == "COMPLETED"
-    cli_output = run(path, run_id="cli-parity", max_configs=1, mode="ALL")
+    cli_output = run(
+        path, run_id="cli-parity", max_configs=1,
+        mode=ResearchMode.ONE_FACTOR_SENSITIVITY,
+    )
     gui_plan = json.loads((output_root / gui_run_id / "SEARCH_PLAN.json").read_text())
     cli_plan = json.loads((cli_output / "SEARCH_PLAN.json").read_text())
     keys = (
@@ -1103,6 +1106,7 @@ def test_real_tk_gui_bounded_smoke_reaches_integrity_final_screen(tmp_path, monk
     root.withdraw()
     window = ParameterSweepWindow(root, controller)
     window.symbol_var.set("BTCUSDT")
+    window.mode_var.set(ResearchMode.ONE_FACTOR_SENSITIVITY.value)
     window._render()
     window.start_button.invoke()
     deadline = time.monotonic() + 15
@@ -1214,6 +1218,7 @@ def test_failed_before_first_controller_and_tk_render_semantics(tmp_path):
     root.withdraw()
     window = ParameterSweepWindow(root, controller)
     window.symbol_var.set("BTCUSDT")
+    window.mode_var.set(ResearchMode.ONE_FACTOR_SENSITIVITY.value)
     window._render()
     window.start_button.invoke()
     deadline = time.monotonic() + 15

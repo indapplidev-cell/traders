@@ -1,0 +1,1204 @@
+{
+  "artifact": "PARAMETER_EVIDENCE_MAP",
+  "evidence_only_not_tunable": [
+    {
+      "feature": "atr_normalized_stop",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "atr_value",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "commission_bps",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "direction",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "dynamic_required_rr",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "entry_reference",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "entry_reference_source",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "has_conflict",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "impulse_phase",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "liquidity_presence",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "momentum_score",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "plan_score",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "risk_level",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "setup_confirmation_score",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "setup_context_score",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "setup_quality",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "setup_quality_score",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "setup_structural_score",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "setup_type",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "source_confidence",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "spread_bps",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "stop_source",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "strategy_cap_applied",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "strategy_margin_to_threshold",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "strategy_quality",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "strategy_raw_score",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "target_source",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "utc_day_of_week",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "utc_hour",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "volatility_buffer",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    },
+    {
+      "feature": "volume_ratio",
+      "reason": "NO_CURRENT_RESEARCH_TUNABLE_PARAMETER",
+      "status": "EVIDENCE_ONLY_NOT_TUNABLE"
+    }
+  ],
+  "parameters": [
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.costs.adverse_fill_reserve_bps",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 3.0,
+      "current_search_values": [
+        3.0,
+        5.0
+      ],
+      "directly_observable_derived_fields": [
+        "effective_total_cost_bps"
+      ],
+      "effect_on_pipeline": [
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "DERIVED_EVIDENCE",
+      "evidence_features": [
+        "effective_total_cost_bps"
+      ],
+      "mapping_confidence": "MEDIUM",
+      "mapping_path": "adverse_fill_reserve_bps -> total-cost formula -> effective_total_cost_bps",
+      "parameter": "adverse_fill_reserve_bps",
+      "parameter_name": "adverse_fill_reserve_bps",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "ADVERSE_RESERVE"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.break_even_activation_target_progress",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 0.5,
+      "current_search_values": [
+        0.3,
+        0.4,
+        0.5,
+        0.6
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "break_even_activation_target_progress",
+      "parameter_name": "break_even_activation_target_progress",
+      "parameter_type": "NUMERIC",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": 1,
+        "maximum_inclusive": true,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "TIME_STOP"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.economics.bucket_min_sample",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 20,
+      "current_search_values": [
+        20,
+        30,
+        40
+      ],
+      "directly_observable_derived_fields": [
+        "probability_sample_size"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_EXPECTANCY"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "probability_sample_size"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "bucket_min_sample -> probability sample gate <= probability_sample_size",
+      "parameter": "bucket_min_sample",
+      "parameter_name": "bucket_min_sample",
+      "parameter_type": "INTEGER",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "SAMPLE_THRESHOLDS"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.causal_opportunity.reset_min_conditions",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1,
+      "current_search_values": [
+        1,
+        2,
+        3
+      ],
+      "directly_observable_derived_fields": [
+        "causal_reset_state"
+      ],
+      "effect_on_pipeline": [
+        "CAUSAL_IDENTITY"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "DERIVED_EVIDENCE",
+      "evidence_features": [
+        "causal_reset_state"
+      ],
+      "mapping_confidence": "MEDIUM",
+      "mapping_path": "causal_reset_min_conditions -> reset state machine -> causal_reset_state",
+      "parameter": "causal_reset_min_conditions",
+      "parameter_name": "causal_reset_min_conditions",
+      "parameter_type": "INTEGER",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "CAUSAL_DUPLICATE"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.signal.confirmation_window_candles",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1,
+      "current_search_values": [
+        1,
+        2,
+        3
+      ],
+      "directly_observable_derived_fields": [
+        "confirmation_state"
+      ],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "DERIVED_EVIDENCE",
+      "evidence_features": [
+        "confirmation_state"
+      ],
+      "mapping_confidence": "MEDIUM",
+      "mapping_path": "confirmation count -> 1m refinement state -> confirmation_state",
+      "parameter": "entry_refinement_1m_confirmation_count",
+      "parameter_name": "entry_refinement_1m_confirmation_count",
+      "parameter_type": "INTEGER",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "ENTRY_REFINEMENT"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.costs.entry_slippage_bps",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 2.0,
+      "current_search_values": [
+        2.0,
+        3.0
+      ],
+      "directly_observable_derived_fields": [
+        "slippage_bps"
+      ],
+      "effect_on_pipeline": [
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "slippage_bps"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "entry_slippage_bps -> paper causal primitives -> slippage_bps",
+      "parameter": "entry_slippage_bps",
+      "parameter_name": "entry_slippage_bps",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "SLIPPAGE"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.extension_seconds",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 300,
+      "current_search_values": [
+        0,
+        300
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "extension_seconds",
+      "parameter_name": "extension_seconds",
+      "parameter_type": "INTEGER",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "TIME_STOP_EXTENSION"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.hard_timeout_seconds",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1200,
+      "current_search_values": [
+        600,
+        900,
+        1200,
+        1800
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH",
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "hard_timeout_seconds",
+      "parameter_name": "hard_timeout_seconds",
+      "parameter_type": "INTEGER",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "TIME_STOP"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.max_extensions",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1,
+      "current_search_values": [
+        0,
+        1
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "max_extensions",
+      "parameter_name": "max_extensions",
+      "parameter_type": "INTEGER",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "TIME_STOP_EXTENSION"
+    },
+    {
+      "authoritative_source": "config/trading/risk_policy.yaml:profiles.trade-5m-v2.max_new_commands_per_cycle",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1,
+      "current_search_values": [
+        1,
+        2
+      ],
+      "directly_observable_derived_fields": [
+        "risk_pre_approved"
+      ],
+      "effect_on_pipeline": [
+        "DETERMINISTIC_SELECTOR"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "INDIRECT_EVIDENCE",
+      "evidence_features": [
+        "risk_pre_approved"
+      ],
+      "mapping_confidence": "LOW",
+      "mapping_path": "max_new_commands_per_cycle -> selector -> downstream approval state",
+      "parameter": "max_new_commands_per_cycle",
+      "parameter_name": "max_new_commands_per_cycle",
+      "parameter_type": "INTEGER",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "SELECTOR"
+    },
+    {
+      "authoritative_source": "config/trading/risk_policy.yaml:profiles.trade-5m-v2.max_open_positions",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 2,
+      "current_search_values": [
+        1,
+        2
+      ],
+      "directly_observable_derived_fields": [
+        "risk_pre_approved"
+      ],
+      "effect_on_pipeline": [
+        "CHRONOLOGICAL_PORTFOLIO"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "INDIRECT_EVIDENCE",
+      "evidence_features": [
+        "risk_pre_approved"
+      ],
+      "mapping_confidence": "LOW",
+      "mapping_path": "max_open_positions -> portfolio gate -> risk_pre_approved",
+      "parameter": "max_open_positions",
+      "parameter_name": "max_open_positions",
+      "parameter_type": "INTEGER",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "PORTFOLIO"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.economics.min_ev_reserve_r",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 0.05,
+      "current_search_values": [
+        0.0,
+        0.05,
+        0.1
+      ],
+      "directly_observable_derived_fields": [
+        "expected_ev_r"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_EXPECTANCY"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "DERIVED_EVIDENCE",
+      "evidence_features": [
+        "expected_ev_r"
+      ],
+      "mapping_confidence": "MEDIUM",
+      "mapping_path": "min_ev_reserve_r -> EV reserve formula -> expected_ev_r",
+      "parameter": "min_ev_reserve_r",
+      "parameter_name": "min_ev_reserve_r",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "EV"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.min_mfe_bps_at_soft_timeout",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": null,
+      "current_search_values": [
+        null,
+        10.0,
+        20.0
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "min_mfe_bps_at_soft_timeout",
+      "parameter_name": "min_mfe_bps_at_soft_timeout",
+      "parameter_type": "NUMERIC",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": true,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "MAE_MFE"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.economics.min_net_edge_bps",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1.0,
+      "current_search_values": [
+        1.0,
+        5.0,
+        10.0
+      ],
+      "directly_observable_derived_fields": [
+        "net_edge_bps"
+      ],
+      "effect_on_pipeline": [
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "net_edge_bps"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "min_net_edge_bps -> economics gate <= expected_net_edge_bps",
+      "parameter": "min_net_edge_bps",
+      "parameter_name": "min_net_edge_bps",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "NET_EDGE"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.economics.min_positive_ev_r",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 0.0,
+      "current_search_values": [
+        0.0,
+        0.02,
+        0.05
+      ],
+      "directly_observable_derived_fields": [
+        "expected_ev_r"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_EXPECTANCY"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "expected_ev_r"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "min_positive_ev_r -> economics gate <= expected_ev_r",
+      "parameter": "min_positive_ev_r",
+      "parameter_name": "min_positive_ev_r",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "EV"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.min_remaining_ev_r_at_soft_timeout",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 0.0,
+      "current_search_values": [
+        0.0,
+        0.02,
+        0.05,
+        0.1
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH",
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "min_remaining_ev_r_at_soft_timeout",
+      "parameter_name": "min_remaining_ev_r_at_soft_timeout",
+      "parameter_type": "NUMERIC",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "TIME_STOP"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.min_target_progress_at_soft_timeout",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 0.2,
+      "current_search_values": [
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "min_target_progress_at_soft_timeout",
+      "parameter_name": "min_target_progress_at_soft_timeout",
+      "parameter_type": "NUMERIC",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": 1,
+        "maximum_inclusive": true,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "TIME_STOP"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.geometry.minimum_planned_rr",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 0.6,
+      "current_search_values": [
+        0.2,
+        0.4,
+        0.6
+      ],
+      "directly_observable_derived_fields": [
+        "planned_rr"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_GEOMETRY",
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "planned_rr"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "minimum_planned_rr -> engine._gate_result <= planned_rr",
+      "parameter": "minimum_planned_rr",
+      "parameter_name": "minimum_planned_rr",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "NET_RR"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.net_break_even_protection_enabled",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": true,
+      "current_search_values": [
+        true,
+        false
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH",
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "net_break_even_protection_enabled",
+      "parameter_name": "net_break_even_protection_enabled",
+      "parameter_type": "BOOLEAN",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": null,
+        "minimum_inclusive": null,
+        "type": "BOOLEAN",
+        "values": [
+          false,
+          true
+        ]
+      },
+      "semantic_family": "TIME_STOP"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.economics.prior_alpha",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1.0,
+      "current_search_values": [
+        1.0,
+        2.0
+      ],
+      "directly_observable_derived_fields": [
+        "estimated_p_win"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_EXPECTANCY"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "DERIVED_EVIDENCE",
+      "evidence_features": [
+        "estimated_p_win"
+      ],
+      "mapping_confidence": "MEDIUM",
+      "mapping_path": "prior_alpha -> beta posterior -> estimated_p_win",
+      "parameter": "prior_alpha",
+      "parameter_name": "prior_alpha",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "PROBABILITY"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.economics.prior_beta",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 1.0,
+      "current_search_values": [
+        1.0,
+        2.0
+      ],
+      "directly_observable_derived_fields": [
+        "estimated_p_win"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_EXPECTANCY"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "DERIVED_EVIDENCE",
+      "evidence_features": [
+        "estimated_p_win"
+      ],
+      "mapping_confidence": "MEDIUM",
+      "mapping_path": "prior_beta -> beta posterior -> estimated_p_win",
+      "parameter": "prior_beta",
+      "parameter_name": "prior_beta",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "PROBABILITY"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.economics.probability_confidence_level",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 0.95,
+      "current_search_values": [
+        0.9,
+        0.95
+      ],
+      "directly_observable_derived_fields": [
+        "estimated_p_win"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_EXPECTANCY"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "DERIVED_EVIDENCE",
+      "evidence_features": [
+        "estimated_p_win"
+      ],
+      "mapping_confidence": "MEDIUM",
+      "mapping_path": "probability_confidence_level -> conservative probability formula -> estimated_p_win",
+      "parameter": "probability_confidence_level",
+      "parameter_name": "probability_confidence_level",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": 1,
+        "maximum_inclusive": false,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "PROBABILITY"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.signal.regime_lookback_candles",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 24,
+      "current_search_values": [
+        12,
+        24,
+        36
+      ],
+      "directly_observable_derived_fields": [
+        "regime"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_REGIME_HISTORY"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "INDIRECT_EVIDENCE",
+      "evidence_features": [
+        "regime"
+      ],
+      "mapping_confidence": "LOW",
+      "mapping_path": "regime_lookback_candles -> regime-history gate -> observed regime",
+      "parameter": "regime_lookback_candles",
+      "parameter_name": "regime_lookback_candles",
+      "parameter_type": "INTEGER",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "REGIME"
+    },
+    {
+      "authoritative_source": "config/trading/risk_policy.yaml:profiles.trade-5m-v2.risk_per_trade_bps",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 5.0,
+      "current_search_values": [
+        5.0,
+        10.0
+      ],
+      "directly_observable_derived_fields": [
+        "risk_score"
+      ],
+      "effect_on_pipeline": [
+        "CHRONOLOGICAL_PORTFOLIO"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "INDIRECT_EVIDENCE",
+      "evidence_features": [
+        "risk_score"
+      ],
+      "mapping_confidence": "LOW",
+      "mapping_path": "risk_per_trade_bps -> sizing/risk stages -> risk_score",
+      "parameter": "risk_per_trade_bps",
+      "parameter_name": "risk_per_trade_bps",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "RISK"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.exit_policy.stale_position.soft_timeout_seconds",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 600,
+      "current_search_values": [
+        300,
+        600,
+        900
+      ],
+      "directly_observable_derived_fields": [],
+      "effect_on_pipeline": [
+        "MARKET_1M_PATH",
+        "HISTORICAL_COST"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "NO_AUTHORIZED_EVIDENCE_MAPPING",
+      "evidence_features": [],
+      "mapping_confidence": "UNAVAILABLE",
+      "mapping_path": null,
+      "parameter": "soft_timeout_seconds",
+      "parameter_name": "soft_timeout_seconds",
+      "parameter_type": "INTEGER",
+      "reason": "NO_AUDITABLE_PARAMETER_TO_CAUSAL_FEATURE_CONSUMER_PATH",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "INTEGER",
+        "values": null
+      },
+      "semantic_family": "TIME_STOP"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.geometry.stop_max_bps",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 50.0,
+      "current_search_values": [
+        50.0,
+        55.0,
+        60.0,
+        65.0
+      ],
+      "directly_observable_derived_fields": [
+        "stop_distance_bps"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_GEOMETRY",
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "stop_distance_bps"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "stop_max_bps -> engine._gate_result >= stop_distance_bps",
+      "parameter": "stop_max_bps",
+      "parameter_name": "stop_max_bps",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "STOP"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.signal.strategy_minimum_score",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 55.0,
+      "current_search_values": [
+        55.0,
+        75.0,
+        85.0
+      ],
+      "directly_observable_derived_fields": [
+        "strategy_score"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_STRATEGY_SCORE"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "strategy_score"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "strategy_minimum_score -> engine._gate_result >= strategy_score",
+      "parameter": "strategy_minimum_score",
+      "parameter_name": "strategy_minimum_score",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": 100,
+        "maximum_inclusive": true,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "SIGNAL"
+    },
+    {
+      "authoritative_source": "config/trading/trade_parameters.yaml:profiles.trade-5m-v2.geometry.target_min_bps",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 60.0,
+      "current_search_values": [
+        45.0,
+        50.0,
+        55.0,
+        60.0
+      ],
+      "directly_observable_derived_fields": [
+        "target_distance_bps"
+      ],
+      "effect_on_pipeline": [
+        "PIPELINE_TARGETS",
+        "MARKET_1M_PATH"
+      ],
+      "eligible_for_range_generation": true,
+      "evidence_class": "DIRECT_EVIDENCE",
+      "evidence_features": [
+        "target_distance_bps"
+      ],
+      "mapping_confidence": "HIGH",
+      "mapping_path": "target_min_bps -> engine._gate_result <= target_distance_bps",
+      "parameter": "target_min_bps",
+      "parameter_name": "target_min_bps",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "TARGET"
+    },
+    {
+      "authoritative_source": "config/trading/risk_policy.yaml:profiles.trade-5m-v2.total_open_risk_limit_bps",
+      "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+      "current_authoritative_value": 50.0,
+      "current_search_values": [
+        50.0,
+        75.0
+      ],
+      "directly_observable_derived_fields": [
+        "risk_pre_approved"
+      ],
+      "effect_on_pipeline": [
+        "CHRONOLOGICAL_PORTFOLIO"
+      ],
+      "eligible_for_range_generation": false,
+      "evidence_class": "INDIRECT_EVIDENCE",
+      "evidence_features": [
+        "risk_pre_approved"
+      ],
+      "mapping_confidence": "LOW",
+      "mapping_path": "total_open_risk_limit_bps -> portfolio risk gate -> risk_pre_approved",
+      "parameter": "total_open_risk_limit_bps",
+      "parameter_name": "total_open_risk_limit_bps",
+      "parameter_type": "NUMERIC",
+      "reason": "EXACT_CONSUMER_PATH_TO_CAUSAL_FEATURE",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      },
+      "semantic_family": "PORTFOLIO"
+    }
+  ],
+  "schema_version": 1
+}

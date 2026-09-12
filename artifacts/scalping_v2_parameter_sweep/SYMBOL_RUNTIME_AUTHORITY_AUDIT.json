@@ -1,0 +1,2342 @@
+{
+  "RUNTIME_SYMBOL_BRANCHES": 0,
+  "RUNTIME_SYMBOL_DEFAULTS": 0,
+  "RUNTIME_SYMBOL_HARDCODES": 0,
+  "adaptive_refinement_symbol_binding": "run_adaptive_refinement validates selected symbol against dataset, range handoff, expanded config, expanded handoff and checkpoint",
+  "allowed_audit_literals": [
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 60,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 131,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 132,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 191,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_FORENSIC_AUDIT_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 75,
+      "path": "docs/audits/TRADERS_15M_FIRST_CLASS_DOMAIN_EXECUTION_FUNNEL_AND_ARCHITECTURE_REMEDIATION_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 96,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 97,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 97,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 97,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 97,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 97,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 98,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 99,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 115,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 116,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 117,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 118,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 119,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 120,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 121,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 122,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 123,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 124,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 174,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 175,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 176,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 177,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 228,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 229,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 230,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 231,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 250,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 251,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 252,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 253,
+      "path": "docs/audits/TRADERS_5M_SCALPING_ANALYSIS_REPORT_20260824T1805_20260825T0745.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 176,
+      "path": "docs/audits/TRADERS_5M_SCALPING_DECISION_CHAIN_REPORT.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_CLIENT_MARKET_ANALYSIS_SCENARIOS_FIRST_CLASS_SCALPING_PROFILE_AWARENESS_REFACTOR_01_FINAL.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 66,
+      "path": "docs/audits/TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 67,
+      "path": "docs/audits/TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 123,
+      "path": "docs/audits/TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 133,
+      "path": "docs/audits/TRADERS_CLIENT_SCALPING_PAPER_PLAN_DETAIL_MATH_AND_EXACT10_SYMBOL_VIEW_REFACTOR_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 13,
+      "path": "docs/audits/TRADERS_CONTINUOUS_PAPER_14_BLOCK_REMEDIATION_01_BLOCK_02.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 23,
+      "path": "docs/audits/TRADERS_CONTINUOUS_PAPER_14_BLOCK_REMEDIATION_01_BLOCK_02.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 49,
+      "path": "docs/audits/TRADERS_CONTINUOUS_PAPER_AUTHORITY_DEPLOYMENT_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 63,
+      "path": "docs/audits/TRADERS_CONTINUOUS_PAPER_AUTHORITY_DEPLOYMENT_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 116,
+      "path": "docs/audits/TRADERS_DESKTOP_FUNNEL_ARBITRARY_RANGE_EXPORT_TIMEOUT_REMEDIATION_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 28,
+      "path": "docs/audits/TRADERS_ETH_RECOVERY_CLOSE_AND_MANDATORY_STOP_TARGET_LIFECYCLE_01_BLOCK_1.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 30,
+      "path": "docs/audits/TRADERS_ETH_RECOVERY_CLOSE_AND_MANDATORY_STOP_TARGET_LIFECYCLE_01_BLOCK_1.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 37,
+      "path": "docs/audits/TRADERS_FUNNEL_MONOTONIC_STAGE_SEMANTICS_REMEDIATION_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 49,
+      "path": "docs/audits/TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01_RETRY_02_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 51,
+      "path": "docs/audits/TRADERS_MOBILE_07_CONTROLLED_MOBILE_NETWORK_ACCESS_ACCEPTANCE_01_RETRY_02_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 39,
+      "path": "docs/audits/TRADERS_PAPER_CANDIDATE_EXECUTION_AND_CLIENT_LATENCY_AUDIT_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 47,
+      "path": "docs/audits/TRADERS_PAPER_CANDIDATE_EXECUTION_AND_CLIENT_LATENCY_AUDIT_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 48,
+      "path": "docs/audits/TRADERS_PAPER_CANDIDATE_EXECUTION_AND_CLIENT_LATENCY_AUDIT_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 49,
+      "path": "docs/audits/TRADERS_PAPER_CANDIDATE_EXECUTION_AND_CLIENT_LATENCY_AUDIT_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 16,
+      "path": "docs/audits/TRADERS_PAPER_EXECUTION_READINESS_AND_COMMAND_OPEN_FIX_01_PARTIAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 20,
+      "path": "docs/audits/TRADERS_PAPER_EXECUTION_READINESS_AND_COMMAND_OPEN_FIX_01_PARTIAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 24,
+      "path": "docs/audits/TRADERS_PAPER_EXECUTION_READINESS_AND_COMMAND_OPEN_FIX_01_PARTIAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 27,
+      "path": "docs/audits/TRADERS_PAPER_EXECUTION_READINESS_AND_COMMAND_OPEN_FIX_01_PARTIAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 111,
+      "path": "docs/audits/TRADERS_PAPER_EXECUTION_UI_SYNC_AND_REFRESH_LATENCY_FIX_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 114,
+      "path": "docs/audits/TRADERS_PAPER_EXECUTION_UI_SYNC_AND_REFRESH_LATENCY_FIX_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 39,
+      "path": "docs/audits/TRADERS_PAPER_NATURAL_EXECUTION_POSTGRES_E2E_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 40,
+      "path": "docs/audits/TRADERS_PAPER_NATURAL_EXECUTION_POSTGRES_E2E_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 124,
+      "path": "docs/audits/TRADERS_PAPER_NATURAL_EXECUTION_POSTGRES_E2E_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 36,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 45,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 51,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 53,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 71,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 77,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 79,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 97,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 103,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 105,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 325,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 331,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 333,
+      "path": "docs/audits/TRADERS_PAPER_PLAN_TO_EXECUTION_DIAGNOSTIC_AND_FIX_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 142,
+      "path": "docs/audits/TRADERS_PAPER_PRODUCTION_DEPLOYMENT_ACCEPTANCE_01_PARTIAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 52,
+      "path": "docs/audits/TRADERS_PAPER_SYNC_AND_EXECUTION_FORENSIC_TWO_BLOCK_REMEDIATION_01_BLOCK_1_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 57,
+      "path": "docs/audits/TRADERS_PAPER_SYNC_AND_EXECUTION_FORENSIC_TWO_BLOCK_REMEDIATION_01_BLOCK_1_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 61,
+      "path": "docs/audits/TRADERS_PAPER_SYNC_AND_EXECUTION_FORENSIC_TWO_BLOCK_REMEDIATION_01_BLOCK_1_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_ADAPTIVE_REFINEMENT_METRIC_CONSISTENCY_FORENSIC_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 134,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 153,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 153,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 40,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_FULL_HISTORICAL_MARKET_REPLAY_AND_COUNTERFACTUAL_SEARCH_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 45,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_REPORTING_ACCOUNTING_BUGS_FIX_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 45,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_REPORTING_ACCOUNTING_BUGS_FIX_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 45,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_REPORTING_ACCOUNTING_BUGS_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 45,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_REPORTING_ACCOUNTING_BUGS_FIX_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 45,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_REPORTING_ACCOUNTING_BUGS_FIX_01_FINAL.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SEPARABILITY_SMALL_FOLLOWUP_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 51,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SEPARABILITY_SMALL_FOLLOWUP_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 75,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SEPARABILITY_SMALL_FOLLOWUP_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 33,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 86,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_ADAPTIVE_REFINEMENT_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 6,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_DATA_DRIVEN_RANGE_GENERATION_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_EXPANDED_AUTOMATIC_SEARCH_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_IMMUTABLE_FINALIST_FREEZE_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 91,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_IMMUTABLE_FINALIST_FREEZE_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 40,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 41,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 42,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 66,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 73,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 10,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 17,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 18,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 19,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 21,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 22,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 23,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_SEARCH_MODE_FIX_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_VALIDATION_RANKING_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 100,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_VALIDATION_RANKING_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 7,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_WINNER_LOSER_SEPARABILITY_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 74,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_WINNER_LOSER_SEPARABILITY_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 102,
+      "path": "docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_WINNER_LOSER_SEPARABILITY_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 70,
+      "path": "docs/audits/TRADERS_POST_CONNECTION_LOSS_RECOVERY_AND_COST_GATE_REHYDRATION_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 71,
+      "path": "docs/audits/TRADERS_POST_CONNECTION_LOSS_RECOVERY_AND_COST_GATE_REHYDRATION_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 72,
+      "path": "docs/audits/TRADERS_POST_CONNECTION_LOSS_RECOVERY_AND_COST_GATE_REHYDRATION_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 73,
+      "path": "docs/audits/TRADERS_POST_CONNECTION_LOSS_RECOVERY_AND_COST_GATE_REHYDRATION_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 53,
+      "path": "docs/audits/TRADERS_REMOVE_UNKNOWN_STATE_REASON_MAPPING_ONLY_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 26,
+      "path": "docs/audits/TRADERS_SCALPING_CAUSAL_OPPORTUNITY_ALREADY_USED_FORENSIC_AUDIT_02_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 167,
+      "path": "docs/audits/TRADERS_SCALPING_CAUSAL_OPPORTUNITY_ALREADY_USED_FORENSIC_AUDIT_02_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 195,
+      "path": "docs/audits/TRADERS_SCALPING_CAUSAL_OPPORTUNITY_ALREADY_USED_FORENSIC_AUDIT_02_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 198,
+      "path": "docs/audits/TRADERS_SCALPING_CAUSAL_OPPORTUNITY_ALREADY_USED_FORENSIC_AUDIT_02_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 202,
+      "path": "docs/audits/TRADERS_SCALPING_CAUSAL_OPPORTUNITY_ALREADY_USED_FORENSIC_AUDIT_02_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 132,
+      "path": "docs/audits/TRADERS_SCALPING_COLLECTOR_MIXED_RUNTIME_LINEAGE_WITHIN_BOUNDARY_RECOVERY_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 134,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 135,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 136,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 137,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 138,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 139,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 140,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 141,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 147,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 148,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 149,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 150,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 151,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 152,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 153,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 154,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 155,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 156,
+      "path": "docs/audits/TRADERS_SCALPING_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1009,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1010,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1011,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1012,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1013,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1014,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1015,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1016,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1017,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1029,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1030,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1031,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1032,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1033,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1034,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1035,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1045,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1046,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1047,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1048,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1049,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 1050,
+      "path": "docs/audits/TRADERS_SCALPING_MODEL_RECALIBRATION_AND_OPPORTUNITY_CADENCE_01_SEARCH.json",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 171,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 172,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 173,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 174,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 175,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 176,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 177,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 178,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 179,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 180,
+      "path": "docs/audits/TRADERS_SCALPING_NEW_SEGMENT_INTERIM_DIAGNOSTIC_SNAPSHOT_REPORT_02_FINAL.md",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 85,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 86,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 87,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 88,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 89,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 90,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 91,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 92,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 93,
+      "path": "docs/audits/TRADERS_SCALPING_POLICY_INDEPENDENT_PROFILE_REDESIGN_01_CANDLE_REPLAY.json",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 114,
+      "path": "docs/audits/TRADERS_SCALPING_V2_1M_ENTRY_REFINEMENT_MODULE_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 114,
+      "path": "docs/audits/TRADERS_SCALPING_V2_1M_ENTRY_REFINEMENT_MODULE_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 37,
+      "path": "docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 42,
+      "path": "docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 74,
+      "path": "docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 90,
+      "path": "docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 92,
+      "path": "docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 95,
+      "path": "docs/audits/TRADERS_SCALPING_V2_AUTHORITATIVE_PAPER_EXECUTION_BRIDGE_FIX_01_PARTIAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 180,
+      "path": "docs/audits/TRADERS_SCALPING_V2_CONTINUOUS_PAPER_BUDGET_POLICY_AUDIT_AND_FIX_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 180,
+      "path": "docs/audits/TRADERS_SCALPING_V2_CONTINUOUS_PAPER_BUDGET_POLICY_AUDIT_AND_FIX_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 180,
+      "path": "docs/audits/TRADERS_SCALPING_V2_CONTINUOUS_PAPER_BUDGET_POLICY_AUDIT_AND_FIX_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 181,
+      "path": "docs/audits/TRADERS_SCALPING_V2_CONTINUOUS_PAPER_BUDGET_POLICY_AUDIT_AND_FIX_01_FINAL.md",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 64,
+      "path": "docs/audits/TRADERS_SCALPING_V2_FOUR_INDEPENDENT_BLOCKS_INTEGRATE_DEPLOY_02_BLOCK_2.md",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 77,
+      "path": "docs/audits/TRADERS_SCALPING_V2_RESEARCH_QUOTA_RISK_COMPATIBILITY_FIX_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 77,
+      "path": "docs/audits/TRADERS_SCALPING_V2_RESEARCH_QUOTA_RISK_COMPATIBILITY_FIX_01_FINAL.md",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 122,
+      "path": "docs/audits/TRADERS_SCALPING_V2_RR_DYNAMIC_ANCHOR_FORENSIC_AND_REGRESSION_DIAGNOSTIC_02_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 14,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_CAUSAL_GEOMETRY_01_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 14,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_CAUSAL_GEOMETRY_01_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 14,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_CAUSAL_GEOMETRY_01_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 15,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_CAUSAL_GEOMETRY_01_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 15,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_CAUSAL_GEOMETRY_01_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 15,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_CAUSAL_GEOMETRY_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 8,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_TASK_A_FINAL.md",
+      "symbol": "BNBUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 8,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_TASK_A_FINAL.md",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 8,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_TASK_A_FINAL.md",
+      "symbol": "SOLUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 9,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_TASK_A_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 9,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_TASK_A_FINAL.md",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 9,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_TASK_A_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 14,
+      "path": "docs/audits/TRADERS_SCALPING_V2_STRATEGY_EDGE_TASK_A_FINAL.md",
+      "symbol": "AVAXUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 27,
+      "path": "docs/audits/TRADERS_SELECTED_APPROVAL_PAPER_SCREEN_PARITY_REMEDIATION_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 35,
+      "path": "docs/audits/TRADERS_SELECTED_APPROVAL_PAPER_SCREEN_PARITY_REMEDIATION_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 41,
+      "path": "docs/audits/TRADERS_SELECTED_APPROVAL_PAPER_SCREEN_PARITY_REMEDIATION_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "AUDIT_ARTIFACT",
+      "line": 44,
+      "path": "docs/audits/TRADERS_SELECTED_APPROVAL_PAPER_SCREEN_PARITY_REMEDIATION_01_FINAL.md",
+      "symbol": "SUIUSDT"
+    }
+  ],
+  "allowed_test_literals": [
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 32,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 54,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 86,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 112,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 126,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 126,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 137,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 267,
+      "path": "tests/research/test_parameter_sweep_adaptive_refinement.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 24,
+      "path": "tests/research/test_parameter_sweep_artifact_v2.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 26,
+      "path": "tests/research/test_parameter_sweep_artifact_v2.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 46,
+      "path": "tests/research/test_parameter_sweep_artifact_v2.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 21,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 47,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 98,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 99,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 101,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 104,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 135,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 146,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 161,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 172,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 174,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 178,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 214,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 214,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 242,
+      "path": "tests/research/test_parameter_sweep_expanded_search.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 18,
+      "path": "tests/research/test_parameter_sweep_finalist_freeze.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 63,
+      "path": "tests/research/test_parameter_sweep_finalist_freeze.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 188,
+      "path": "tests/research/test_parameter_sweep_finalist_freeze.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 188,
+      "path": "tests/research/test_parameter_sweep_finalist_freeze.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 122,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 122,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 122,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 139,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 148,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 155,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 156,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 164,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 173,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 182,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 184,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 187,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 191,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 196,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 218,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 219,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 220,
+      "path": "tests/research/test_parameter_sweep_gui_pipeline.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 30,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 49,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 50,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 53,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 56,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 62,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 71,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 82,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 120,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 128,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 133,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 135,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 140,
+      "path": "tests/research/test_parameter_sweep_historical_reconstruction.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 14,
+      "path": "tests/research/test_parameter_sweep_historical_replay.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 89,
+      "path": "tests/research/test_parameter_sweep_historical_replay.py",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 113,
+      "path": "tests/research/test_parameter_sweep_holdout_protocol.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 117,
+      "path": "tests/research/test_parameter_sweep_holdout_protocol.py",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 28,
+      "path": "tests/research/test_parameter_sweep_replay_integrity_v2.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 10,
+      "path": "tests/research/test_parameter_sweep_report_semantics.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 49,
+      "path": "tests/research/test_parameter_sweep_report_semantics.py",
+      "symbol": "ADAUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 49,
+      "path": "tests/research/test_parameter_sweep_report_semantics.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 49,
+      "path": "tests/research/test_parameter_sweep_report_semantics.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 49,
+      "path": "tests/research/test_parameter_sweep_report_semantics.py",
+      "symbol": "SUIUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 49,
+      "path": "tests/research/test_parameter_sweep_report_semantics.py",
+      "symbol": "XRPUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 82,
+      "path": "tests/research/test_parameter_sweep_report_semantics.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 13,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 52,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 65,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "ETHUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 67,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 77,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 80,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 136,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 137,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 156,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 160,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 182,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 201,
+      "path": "tests/research/test_parameter_sweep_separability.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 23,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 23,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 97,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 106,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 109,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 109,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 131,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 132,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 133,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 135,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 136,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 136,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 143,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 145,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 153,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 194,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 205,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 228,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 228,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 229,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 229,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 242,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 245,
+      "path": "tests/research/test_parameter_sweep_single_symbol.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 37,
+      "path": "tests/research/test_parameter_sweep_validation_gate_authority.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 52,
+      "path": "tests/research/test_parameter_sweep_validation_ranking.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 177,
+      "path": "tests/research/test_parameter_sweep_validation_ranking.py",
+      "symbol": "DOGEUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 177,
+      "path": "tests/research/test_parameter_sweep_validation_ranking.py",
+      "symbol": "LINKUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 27,
+      "path": "tests/research/test_scalping_v2_parameter_sweep.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 74,
+      "path": "tests/research/test_scalping_v2_parameter_sweep.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 340,
+      "path": "tests/research/test_scalping_v2_parameter_sweep.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 1108,
+      "path": "tests/research/test_scalping_v2_parameter_sweep.py",
+      "symbol": "BTCUSDT"
+    },
+    {
+      "classification": "TEST_FIXTURE",
+      "line": 1220,
+      "path": "tests/research/test_scalping_v2_parameter_sweep.py",
+      "symbol": "BTCUSDT"
+    }
+  ],
+  "artifact": "SYMBOL_RUNTIME_AUTHORITY_AUDIT",
+  "cli_symbol_source": "parameter_sweep, expanded_search, and adaptive_refinement CLIs require --symbol -> validate_parameter_sweep_symbol",
+  "dataset_symbol_binding": "validate_dataset requires every row symbol == validated selected symbol; mismatch fails closed",
+  "expanded_search_symbol_binding": "run_expanded_search validates selected symbol against trading-universe-v2 before handoff/dataset evaluation",
+  "gui_symbol_source": "ParameterSweepWindow.symbol_selector -> ParameterSweepController.start_new_run -> validate_parameter_sweep_symbol",
+  "range_handoff_symbol_binding": "DATA_DRIVEN_RANGE_HANDOFF.symbol copied from separability manifest and validate_handoff requires equality",
+  "resume_symbol_binding": "expanded and adaptive checkpoint symbol/fingerprint guards fail closed on mismatch",
+  "run_config_symbol_source": "validated selected symbol persisted in expanded/adaptive config and fingerprint-bound checkpoints",
+  "runtime_scope": "traders_ml/parameter_sweep/*.py",
+  "runtime_symbol_branches": [],
+  "runtime_symbol_defaults": [],
+  "runtime_symbol_hardcodes": [],
+  "schema_version": 1,
+  "separability_symbol_binding": "run_separability requires explicit symbol and filters/query-binds it; CLI has no symbol default",
+  "symbol_authority_source": "app.trading_universe.domain:trading-universe-v2",
+  "symbol_binding_status": "PASS",
+  "symbols_scanned": [
+    "ADAUSDT",
+    "AVAXUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "LINKUSDT",
+    "SOLUSDT",
+    "SUIUSDT",
+    "XRPUSDT"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "artifact": "GUI_PARAMETER_SWEEP_ROUTE_BEFORE",
+  "schema_version": 1,
+  "gui_entrypoint": "traders_ml.parameter_sweep.ui.ParameterSweepWindow._start",
+  "selected_symbol_source": "ParameterSweepWindow.symbol_selector -> symbol_var.get() -> ParameterSweepController.start_new_run -> validate_parameter_sweep_symbol -> engine run config",
+  "mode_source": "ParameterSweepWindow.mode_selector defaults to ResearchMode.ALL",
+  "legacy_strategy_source": "config/research/research_parameters.yaml search.strategy=targeted -> ParameterSweepSearchPlanner.plan -> TARGETED_STAGED",
+  "legacy_dimension_source": "config/research/research_parameters.yaml calibration.parameter_families and search_space; normal ALL used targeted active_search_space/staged_candidates",
+  "legacy_fallback_points": [
+    "ParameterSweepController._start unconditionally constructed ParameterSweepEngine",
+    "ParameterSweepController._start target unconditionally called ParameterSweepEngine.run",
+    "ParameterSweepSearchPlanner.plan mapped strategy=targeted to TARGETED_STAGED",
+    "engine.run selected active_search_space and staged_candidates when strategy=targeted"
+  ]
+}

@@ -1,0 +1,546 @@
+{
+  "artifact": "LEGACY_RANGE_COMPARISON",
+  "diagnostic_only": true,
+  "parameters": [
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        3.0,
+        5.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        3.0,
+        5.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "adverse_fill_reserve_bps"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0.3,
+        0.4,
+        0.5,
+        0.6
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0.3,
+        0.4,
+        0.5,
+        0.6
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "break_even_activation_target_progress"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        20,
+        30,
+        40
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        20,
+        30,
+        40
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "bucket_min_sample"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        1,
+        2,
+        3
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        1,
+        2,
+        3
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "causal_reset_min_conditions"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        1,
+        2,
+        3
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        1,
+        2,
+        3
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "entry_refinement_1m_confirmation_count"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        2.0,
+        3.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        2.0,
+        3.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "entry_slippage_bps"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0,
+        300
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0,
+        300
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "extension_seconds"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        600,
+        900,
+        1200,
+        1800
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        1200,
+        1800,
+        600,
+        900
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "hard_timeout_seconds"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0,
+        1
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0,
+        1
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "max_extensions"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        1,
+        2
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        1,
+        2
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "max_new_commands_per_cycle"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        1,
+        2
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        1,
+        2
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "max_open_positions"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0.0,
+        0.05,
+        0.1
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0.0,
+        0.05,
+        0.1
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "min_ev_reserve_r"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        null,
+        10.0,
+        20.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        null,
+        10.0,
+        20.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "min_mfe_bps_at_soft_timeout"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [
+        1.0,
+        22.615013,
+        28.57565,
+        38.510045,
+        48.44444,
+        56.515413
+      ],
+      "legacy_values": [
+        1.0,
+        5.0,
+        10.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        10.0,
+        5.0
+      ],
+      "newly_suggested_values": [
+        22.615013,
+        28.57565,
+        38.510045,
+        48.44444,
+        56.515413
+      ],
+      "overlap": [
+        1.0
+      ],
+      "parameter": "min_net_edge_bps"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0.0,
+        0.02,
+        0.05
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0.0,
+        0.02,
+        0.05
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "min_positive_ev_r"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0.0,
+        0.02,
+        0.05,
+        0.1
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0.0,
+        0.02,
+        0.05,
+        0.1
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "min_remaining_ev_r_at_soft_timeout"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "min_target_progress_at_soft_timeout"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [
+        0.6,
+        1.497788,
+        2.577955,
+        2.889157,
+        3.221992,
+        3.554827,
+        3.754528
+      ],
+      "legacy_values": [
+        0.2,
+        0.4,
+        0.6
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0.2,
+        0.4
+      ],
+      "newly_suggested_values": [
+        1.497788,
+        2.577955,
+        2.889157,
+        3.221992,
+        3.554827,
+        3.754528
+      ],
+      "overlap": [
+        0.6
+      ],
+      "parameter": "minimum_planned_rr"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        true,
+        false
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        false,
+        true
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "net_break_even_protection_enabled"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        1.0,
+        2.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        1.0,
+        2.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "prior_alpha"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        1.0,
+        2.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        1.0,
+        2.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "prior_beta"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        0.9,
+        0.95
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        0.9,
+        0.95
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "probability_confidence_level"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        12,
+        24,
+        36
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        12,
+        24,
+        36
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "regime_lookback_candles"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        5.0,
+        10.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        10.0,
+        5.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "risk_per_trade_bps"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        300,
+        600,
+        900
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        300,
+        600,
+        900
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "soft_timeout_seconds"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [
+        14.244403,
+        17.518161,
+        22.974424,
+        28.430687,
+        45.50224,
+        50.0
+      ],
+      "legacy_values": [
+        50.0,
+        55.0,
+        60.0,
+        65.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        55.0,
+        60.0,
+        65.0
+      ],
+      "newly_suggested_values": [
+        14.244403,
+        17.518161,
+        22.974424,
+        28.430687,
+        45.50224
+      ],
+      "overlap": [
+        50.0
+      ],
+      "parameter": "stop_max_bps"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        55.0,
+        75.0,
+        85.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        55.0,
+        75.0,
+        85.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "strategy_minimum_score"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [
+        50.865921,
+        56.825926,
+        60.0,
+        66.759268,
+        76.692609,
+        84.758871
+      ],
+      "legacy_values": [
+        45.0,
+        50.0,
+        55.0,
+        60.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        45.0,
+        50.0,
+        55.0
+      ],
+      "newly_suggested_values": [
+        50.865921,
+        56.825926,
+        66.759268,
+        76.692609,
+        84.758871
+      ],
+      "overlap": [
+        60.0
+      ],
+      "parameter": "target_min_bps"
+    },
+    {
+      "diagnostic_only_no_removal_authorized": true,
+      "generated_values": [],
+      "legacy_values": [
+        50.0,
+        75.0
+      ],
+      "legacy_values_not_supported_by_current_evidence": [
+        50.0,
+        75.0
+      ],
+      "newly_suggested_values": [],
+      "overlap": [],
+      "parameter": "total_open_risk_limit_bps"
+    }
+  ],
+  "schema_version": 1
+}

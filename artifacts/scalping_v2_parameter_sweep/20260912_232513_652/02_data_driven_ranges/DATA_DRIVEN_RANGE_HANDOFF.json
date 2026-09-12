@@ -1,0 +1,444 @@
+{
+  "adaptive_refinement_executed": false,
+  "artifact": "DATA_DRIVEN_RANGE_HANDOFF",
+  "holdout_opened": false,
+  "parameters": [
+    {
+      "boundary_pressure": "NO_BOUNDARY_PRESSURE",
+      "confidence": "DESCRIPTIVE_ONLY",
+      "eligible_for_search": true,
+      "generated_values": [
+        1.0,
+        22.615013,
+        28.57565,
+        38.510045,
+        48.44444,
+        56.515413
+      ],
+      "joint_search_priority_annotations": [
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.5
+        },
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.5
+        },
+        {
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.33333333333333326
+        },
+        {
+          "feature_a": "entry_reference",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.25
+        },
+        {
+          "feature_a": "spread_bps",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.25
+        },
+        {
+          "feature_a": "atr_value",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.08333333333333337
+        },
+        {
+          "feature_a": "volatility_buffer",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.08333333333333337
+        },
+        {
+          "feature_a": "net_edge_bps",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.0
+        }
+      ],
+      "parameter": "min_net_edge_bps",
+      "parameter_type": "NUMERIC",
+      "promotion_eligible": false,
+      "provenance": {
+        "input_sha256": {
+          "D:\\disk_E\\game_projects\\traders\\traders-ml\\config\\research\\research_parameters.yaml": "a08d036187a994aec4233639da6a4eb0f7c531585066bfb064fa31f91624e3b9",
+          "FEATURE_ACTIVITY.json": "480f6958ec36dd4582bce252f8d2c66e9e66e833015cd709958ca1f0ad7b9f55",
+          "FEATURE_REGISTRY.json": "9633e181ff5acc671a367be197f8034435a6eb96e89f5148d857f9ee27423041",
+          "INTERACTION_SCREEN.json": "9eb5f6731216a71e57ef77537c7bad6b1017e6bcc32ba5c11915b155ca882ce3",
+          "SEPARABILITY_DATASET_MANIFEST.json": "909006172183f00f0799f5a8f2ca16ac87edbd0c77f142db0c2c426a06f395d0",
+          "SEPARABILITY_HANDOFF.json": "35cb84eb4a52c888fe16db0c8ebc6c7df7d70f840780872f6e6a5ed0fbd25c03"
+        },
+        "mapping_artifact": "PARAMETER_EVIDENCE_MAP.json",
+        "policy": {
+          "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+          "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+          "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+          "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+          "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+          "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+          "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+          "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+          "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+          "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+          "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+          "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+          "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+          "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+          "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+          "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+        },
+        "separability_artifact": "SEPARABILITY_HANDOFF.json"
+      },
+      "provisional": true,
+      "range_status": "PROVISIONAL_LOW_SAMPLE",
+      "sample_adequacy": "DESCRIPTIVE_ONLY",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": true,
+        "type": "NUMERIC",
+        "values": null
+      }
+    },
+    {
+      "boundary_pressure": "BOUNDARY_PRESSURE_HIGH",
+      "confidence": "DESCRIPTIVE_ONLY",
+      "eligible_for_search": true,
+      "generated_values": [
+        0.6,
+        1.497788,
+        2.577955,
+        2.889157,
+        3.221992,
+        3.554827,
+        3.754528
+      ],
+      "joint_search_priority_annotations": [
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "entry_reference",
+          "interaction_score": 0.8333333333333333
+        },
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "spread_bps",
+          "interaction_score": 0.8333333333333333
+        },
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "atr_value",
+          "interaction_score": 0.75
+        },
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "volatility_buffer",
+          "interaction_score": 0.75
+        },
+        {
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "planned_rr",
+          "interaction_score": 0.5833333333333333
+        },
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "stop_distance_bps",
+          "interaction_score": 0.5833333333333333
+        },
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.5
+        },
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.5
+        }
+      ],
+      "parameter": "minimum_planned_rr",
+      "parameter_type": "NUMERIC",
+      "promotion_eligible": false,
+      "provenance": {
+        "input_sha256": {
+          "D:\\disk_E\\game_projects\\traders\\traders-ml\\config\\research\\research_parameters.yaml": "a08d036187a994aec4233639da6a4eb0f7c531585066bfb064fa31f91624e3b9",
+          "FEATURE_ACTIVITY.json": "480f6958ec36dd4582bce252f8d2c66e9e66e833015cd709958ca1f0ad7b9f55",
+          "FEATURE_REGISTRY.json": "9633e181ff5acc671a367be197f8034435a6eb96e89f5148d857f9ee27423041",
+          "INTERACTION_SCREEN.json": "9eb5f6731216a71e57ef77537c7bad6b1017e6bcc32ba5c11915b155ca882ce3",
+          "SEPARABILITY_DATASET_MANIFEST.json": "909006172183f00f0799f5a8f2ca16ac87edbd0c77f142db0c2c426a06f395d0",
+          "SEPARABILITY_HANDOFF.json": "35cb84eb4a52c888fe16db0c8ebc6c7df7d70f840780872f6e6a5ed0fbd25c03"
+        },
+        "mapping_artifact": "PARAMETER_EVIDENCE_MAP.json",
+        "policy": {
+          "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+          "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+          "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+          "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+          "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+          "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+          "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+          "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+          "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+          "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+          "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+          "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+          "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+          "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+          "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+          "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+        },
+        "separability_artifact": "SEPARABILITY_HANDOFF.json"
+      },
+      "provisional": true,
+      "range_status": "PROVISIONAL_LOW_SAMPLE",
+      "sample_adequacy": "DESCRIPTIVE_ONLY",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      }
+    },
+    {
+      "boundary_pressure": "BOUNDARY_PRESSURE_LOW",
+      "confidence": "DESCRIPTIVE_ONLY",
+      "eligible_for_search": true,
+      "generated_values": [
+        14.244403,
+        17.518161,
+        22.974424,
+        28.430687,
+        45.50224,
+        50.0
+      ],
+      "joint_search_priority_annotations": [
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "atr_value",
+          "interaction_score": 0.6666666666666667
+        },
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "entry_reference",
+          "interaction_score": 0.6666666666666667
+        },
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "spread_bps",
+          "interaction_score": 0.6666666666666667
+        },
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "volatility_buffer",
+          "interaction_score": 0.6666666666666667
+        },
+        {
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "stop_distance_bps",
+          "interaction_score": 0.5833333333333333
+        },
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "stop_distance_bps",
+          "interaction_score": 0.5833333333333333
+        },
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "net_edge_bps",
+          "interaction_score": 0.5
+        },
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.5
+        }
+      ],
+      "parameter": "stop_max_bps",
+      "parameter_type": "NUMERIC",
+      "promotion_eligible": false,
+      "provenance": {
+        "input_sha256": {
+          "D:\\disk_E\\game_projects\\traders\\traders-ml\\config\\research\\research_parameters.yaml": "a08d036187a994aec4233639da6a4eb0f7c531585066bfb064fa31f91624e3b9",
+          "FEATURE_ACTIVITY.json": "480f6958ec36dd4582bce252f8d2c66e9e66e833015cd709958ca1f0ad7b9f55",
+          "FEATURE_REGISTRY.json": "9633e181ff5acc671a367be197f8034435a6eb96e89f5148d857f9ee27423041",
+          "INTERACTION_SCREEN.json": "9eb5f6731216a71e57ef77537c7bad6b1017e6bcc32ba5c11915b155ca882ce3",
+          "SEPARABILITY_DATASET_MANIFEST.json": "909006172183f00f0799f5a8f2ca16ac87edbd0c77f142db0c2c426a06f395d0",
+          "SEPARABILITY_HANDOFF.json": "35cb84eb4a52c888fe16db0c8ebc6c7df7d70f840780872f6e6a5ed0fbd25c03"
+        },
+        "mapping_artifact": "PARAMETER_EVIDENCE_MAP.json",
+        "policy": {
+          "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+          "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+          "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+          "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+          "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+          "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+          "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+          "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+          "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+          "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+          "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+          "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+          "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+          "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+          "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+          "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+        },
+        "separability_artifact": "SEPARABILITY_HANDOFF.json"
+      },
+      "provisional": true,
+      "range_status": "PROVISIONAL_LOW_SAMPLE",
+      "sample_adequacy": "DESCRIPTIVE_ONLY",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      }
+    },
+    {
+      "boundary_pressure": "NO_BOUNDARY_PRESSURE",
+      "confidence": "DESCRIPTIVE_ONLY",
+      "eligible_for_search": true,
+      "generated_values": [
+        50.865921,
+        56.825926,
+        60.0,
+        66.759268,
+        76.692609,
+        84.758871
+      ],
+      "joint_search_priority_annotations": [
+        {
+          "feature_a": "planned_rr",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.5
+        },
+        {
+          "feature_a": "stop_distance_bps",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.5
+        },
+        {
+          "feature_a": "atr_normalized_stop",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.33333333333333326
+        },
+        {
+          "feature_a": "entry_reference",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.25
+        },
+        {
+          "feature_a": "spread_bps",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.25
+        },
+        {
+          "feature_a": "atr_value",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.08333333333333337
+        },
+        {
+          "feature_a": "volatility_buffer",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.08333333333333337
+        },
+        {
+          "feature_a": "net_edge_bps",
+          "feature_b": "target_distance_bps",
+          "interaction_score": 0.0
+        }
+      ],
+      "parameter": "target_min_bps",
+      "parameter_type": "NUMERIC",
+      "promotion_eligible": false,
+      "provenance": {
+        "input_sha256": {
+          "D:\\disk_E\\game_projects\\traders\\traders-ml\\config\\research\\research_parameters.yaml": "a08d036187a994aec4233639da6a4eb0f7c531585066bfb064fa31f91624e3b9",
+          "FEATURE_ACTIVITY.json": "480f6958ec36dd4582bce252f8d2c66e9e66e833015cd709958ca1f0ad7b9f55",
+          "FEATURE_REGISTRY.json": "9633e181ff5acc671a367be197f8034435a6eb96e89f5148d857f9ee27423041",
+          "INTERACTION_SCREEN.json": "9eb5f6731216a71e57ef77537c7bad6b1017e6bcc32ba5c11915b155ca882ce3",
+          "SEPARABILITY_DATASET_MANIFEST.json": "909006172183f00f0799f5a8f2ca16ac87edbd0c77f142db0c2c426a06f395d0",
+          "SEPARABILITY_HANDOFF.json": "35cb84eb4a52c888fe16db0c8ebc6c7df7d70f840780872f6e6a5ed0fbd25c03"
+        },
+        "mapping_artifact": "PARAMETER_EVIDENCE_MAP.json",
+        "policy": {
+          "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+          "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+          "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+          "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+          "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+          "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+          "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+          "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+          "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+          "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+          "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+          "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+          "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+          "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+          "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+          "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+        },
+        "separability_artifact": "SEPARABILITY_HANDOFF.json"
+      },
+      "provisional": true,
+      "range_status": "PROVISIONAL_LOW_SAMPLE",
+      "sample_adequacy": "DESCRIPTIVE_ONLY",
+      "schema_domain": {
+        "allows_null": false,
+        "maximum": null,
+        "maximum_inclusive": null,
+        "minimum": 0,
+        "minimum_inclusive": false,
+        "type": "NUMERIC",
+        "values": null
+      }
+    }
+  ],
+  "profile": "trade-5m-v2",
+  "promotion_eligible": false,
+  "range_provenance": {
+    "input_sha256": {
+      "D:\\disk_E\\game_projects\\traders\\traders-ml\\config\\research\\research_parameters.yaml": "a08d036187a994aec4233639da6a4eb0f7c531585066bfb064fa31f91624e3b9",
+      "FEATURE_ACTIVITY.json": "480f6958ec36dd4582bce252f8d2c66e9e66e833015cd709958ca1f0ad7b9f55",
+      "FEATURE_REGISTRY.json": "9633e181ff5acc671a367be197f8034435a6eb96e89f5148d857f9ee27423041",
+      "INTERACTION_SCREEN.json": "9eb5f6731216a71e57ef77537c7bad6b1017e6bcc32ba5c11915b155ca882ce3",
+      "SEPARABILITY_DATASET_MANIFEST.json": "909006172183f00f0799f5a8f2ca16ac87edbd0c77f142db0c2c426a06f395d0",
+      "SEPARABILITY_HANDOFF.json": "35cb84eb4a52c888fe16db0c8ebc6c7df7d70f840780872f6e6a5ed0fbd25c03"
+    },
+    "policy": {
+      "boundary_pressure_quantile": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+      "boundary_pressure_tolerance_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction",
+      "generator_version": "config/research/research_parameters.yaml:data_driven_range_generation.generator_version",
+      "high_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_separation",
+      "high_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.high_confidence_min_stability",
+      "low_sample_minimum_points": "config/research/research_parameters.yaml:data_driven_range_generation.low_sample_minimum_points",
+      "max_generated_points": "config/research/research_parameters.yaml:data_driven_range_generation.max_generated_points",
+      "medium_confidence_min_separation": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_separation",
+      "medium_confidence_min_stability": "config/research/research_parameters.yaml:data_driven_range_generation.medium_confidence_min_stability",
+      "minimum_observed_coverage": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_observed_coverage",
+      "minimum_spacing_fraction": "config/research/research_parameters.yaml:data_driven_range_generation.minimum_spacing_fraction",
+      "observed_support_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.observed_support_quantiles",
+      "preserve_current_value_under_low_confidence": "config/research/research_parameters.yaml:data_driven_range_generation.preserve_current_value_under_low_confidence",
+      "rounding_decimal_places": "config/research/research_parameters.yaml:data_driven_range_generation.rounding_decimal_places",
+      "transition_weight": "config/research/research_parameters.yaml:data_driven_range_generation.transition_weight",
+      "winner_dense_quantiles": "config/research/research_parameters.yaml:data_driven_range_generation.winner_dense_quantiles"
+    }
+  },
+  "research_approved_only": true,
+  "sample_adequacy": "DESCRIPTIVE_ONLY",
+  "schema_version": 2,
+  "search_executed": false,
+  "separability_status": "PASS_LIMITED_SAMPLE",
+  "symbol": "SUIUSDT"
+}

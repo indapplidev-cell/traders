@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import json
 import queue
 from pathlib import Path
 import threading
-from typing import Any
+from typing import Any, Mapping
 
 from .engine import ParameterSweepEngine
 from .events import EventType, SweepEvent
@@ -16,6 +17,7 @@ from .state import read_effective_status
 from .utils import generate_run_id, open_directory
 from .modes import ResearchMode, parse_research_mode
 from .universe import resolve_parameter_sweep_universe, validate_parameter_sweep_symbol
+from .pipeline import PIPELINE_NAME, SingleSymbolResearchPipeline
 
 
 @dataclass(slots=True)
@@ -89,6 +91,12 @@ class PresentationState:
     history_end: str | None = None
     history_actual_days: float | None = None
     history_depth_status: str | None = None
+    gui_orchestrator: str = PIPELINE_NAME
+    pipeline_phase: str = "NOT_STARTED"
+    pipeline_phase_statuses: dict[str, str] = field(default_factory=dict)
+    pipeline_phase_summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
+    overall_status: str = "READY"
+    pipeline_stop_reason: str | None = None
 
     @property
     def progress_percent(self) -> float:
@@ -123,6 +131,7 @@ class ParameterSweepController:
         self.events: queue.Queue[SweepEvent] = queue.Queue()
         self.state = PresentationState()
         self.engine = ParameterSweepEngine(self.events.put)
+        self.pipeline: SingleSymbolResearchPipeline | None = None
         self.worker: threading.Thread | None = None
         self._close_after_stop = False
         self._discover_incomplete_run()
@@ -133,6 +142,33 @@ class ParameterSweepController:
 
     def _discover_incomplete_run(self) -> None:
         if not self.output_root.is_dir():
+            return
+        pipeline_candidates = sorted(
+            self.output_root.glob("*/SINGLE_SYMBOL_PIPELINE_MANIFEST.json"), reverse=True,
+        )
+        for path in pipeline_candidates:
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError, TypeError):
+                continue
+            if value.get("final_pipeline_status") not in {"CANCELLED", "FAILED"}:
+                continue
+            symbol = value.get("selected_symbol")
+            if symbol not in self.available_symbols:
+                continue
+            self.state.run_id = str(value["pipeline_run_id"])
+            self.state.research_mode = ResearchMode.ALL.value
+            self.state.symbol = str(symbol)
+            self.state.output_directory = str(path.parent)
+            self.state.resume_available = True
+            self.state.terminal_state = str(value["final_pipeline_status"])
+            self.state.gui_orchestrator = PIPELINE_NAME
+            self.state.pipeline_phase = str(value.get("current_phase", "NOT_STARTED"))
+            self.state.pipeline_phase_statuses = dict(value.get("phase_status", {}))
+            self.state.pipeline_phase_summaries = dict(value.get("phase_summary", {}))
+            self.state.overall_status = str(value["final_pipeline_status"])
+            self.state.pipeline_stop_reason = value.get("stop_reason")
+            self.state.status_text = f"Найден незавершённый pipeline: {self.state.run_id}"
             return
         candidates = sorted(self.output_root.glob("*/STATUS.json"), reverse=True)
         for path in candidates:
@@ -202,21 +238,35 @@ class ParameterSweepController:
             self.events.put(event)
 
         self.engine = ParameterSweepEngine(receive)
+        self.pipeline = None
         self.state = PresentationState(
             status_text=RU["preparing"], run_id=run_id,
             output_directory=str(self.output_root / run_id), active=True,
             research_mode=mode.value,
             symbol=symbol,
+            gui_orchestrator=PIPELINE_NAME if mode is ResearchMode.ALL else "LEGACY_EXPLICIT_RESEARCH_MODE",
+            overall_status="RUNNING",
         )
+
+        def receive_pipeline(value: Mapping[str, Any]) -> None:
+            self._apply_pipeline_manifest(value)
 
         def target() -> None:
             try:
-                self.engine.run(
-                    self.config_path, run_id=run_id, resume=resume,
-                    max_configs=max_configs,
-                    mode=mode,
-                    symbol=symbol,
-                )
+                if mode is ResearchMode.ALL:
+                    self.pipeline = SingleSymbolResearchPipeline(progress=receive_pipeline)
+                    result = self.pipeline.run(
+                        symbol=symbol, output_root=self.output_root,
+                        run_id=run_id, resume=resume,
+                    )
+                    self._apply_pipeline_manifest(result)
+                else:
+                    self.engine.run(
+                        self.config_path, run_id=run_id, resume=resume,
+                        max_configs=max_configs,
+                        mode=mode,
+                        symbol=symbol,
+                    )
             except BaseException as error:
                 if not failure_emitted.is_set():
                     self.events.put(SweepEvent.create(
@@ -229,9 +279,49 @@ class ParameterSweepController:
         self.worker.start()
 
     def request_stop_after_current(self) -> None:
-        self.engine.request_stop_after_current()
+        if self.pipeline is not None and self.state.research_mode == ResearchMode.ALL.value:
+            self.pipeline.request_cancel()
+        else:
+            self.engine.request_stop_after_current()
         self.state.status_text = RU["cancel_requested"]
         self.state.phase = "CANCEL_REQUESTED"
+
+    def _apply_pipeline_manifest(self, value: Mapping[str, Any]) -> None:
+        state = self.state
+        state.gui_orchestrator = str(value.get("gui_orchestrator", PIPELINE_NAME))
+        state.pipeline_phase = str(value.get("current_phase", "NOT_STARTED"))
+        state.pipeline_phase_statuses = dict(value.get("phase_status", {}))
+        state.pipeline_phase_summaries = {
+            str(name): dict(summary)
+            for name, summary in dict(value.get("phase_summary", {})).items()
+        }
+        state.overall_status = str(value.get("final_pipeline_status", "RUNNING"))
+        state.strategy = PIPELINE_NAME
+        state.pipeline_stop_reason = value.get("stop_reason")
+        state.output_directory = str(self.output_root / str(value["pipeline_run_id"]))
+        state.run_id = str(value["pipeline_run_id"])
+        state.symbol = str(value["selected_symbol"])
+        state.research_phase = state.pipeline_phase
+        state.phase = state.pipeline_phase
+        state.started_at = value.get("started_at")
+        state.finished_at = value.get("completed_at")
+        terminal = state.overall_status in {"COMPLETED", "STOPPED", "FAILED", "CANCELLED"}
+        state.active = not terminal
+        state.terminal_state = state.overall_status if terminal else None
+        state.resume_available = state.overall_status in {"FAILED", "CANCELLED"}
+        labels = {
+            "SEPARABILITY": "Separability",
+            "DATA_DRIVEN_RANGE_GENERATION": "Data-Driven Ranges",
+            "EXPANDED_AUTOMATIC_SEARCH": "Expanded Search",
+            "ADAPTIVE_REFINEMENT": "Adaptive Refinement",
+            "COMPLETED": "Completed",
+        }
+        state.status_text = (
+            f"Pipeline: {labels.get(state.pipeline_phase, state.pipeline_phase)}\n"
+            f"Статус фазы: {state.pipeline_phase_statuses.get(state.pipeline_phase, state.overall_status)}\n"
+            f"Общий статус: {state.overall_status}"
+            + (f"\nПричина остановки: {state.pipeline_stop_reason}" if state.pipeline_stop_reason else "")
+        )
 
     def open_reports_directory(self) -> None:
         open_directory(Path(self.state.output_directory))
