@@ -161,6 +161,7 @@ def _validate_handoff(
     if not isinstance(ranking, list) or not isinstance(descriptive, list):
         raise FinalistFreezeError("FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF")
     signatures: set[str] = set()
+    numeric_members: set[str] = set()
     projected: list[dict[str, Any]] = []
     previous_rank = 0
     eligible_numeric = 0
@@ -168,14 +169,37 @@ def _validate_handoff(
         if not isinstance(candidate, Mapping) or candidate.get("validation_eligible") is not True:
             raise FinalistFreezeError("FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF")
         row = _candidate_projection(candidate, index)
+        gate_results = row["canonical_gate_results"]
+        if any(
+            (value.get("pass") is not True if isinstance(value, Mapping) else value is not True)
+            for value in gate_results.values()
+        ):
+            raise FinalistFreezeError("FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF")
         if row["behavioral_signature"] in signatures:
             raise FinalistFreezeError("FAIL_CLOSED_DUPLICATE_BEHAVIORAL_REPRESENTATIVE")
+        members = set(row["member_config_ids"])
+        if len(members) != len(row["member_config_ids"]) or numeric_members & members:
+            raise FinalistFreezeError("FAIL_CLOSED_DUPLICATE_NUMERIC_CONFIG")
         if row["canonical_validation_rank"] <= previous_rank:
             raise FinalistFreezeError("FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF")
         signatures.add(row["behavioral_signature"])
+        numeric_members.update(members)
         previous_rank = row["canonical_validation_rank"]
         eligible_numeric += len(row["member_config_ids"])
         projected.append(row)
+    if any(
+        not isinstance(candidate, Mapping) or candidate.get("validation_eligible") is not False
+        for candidate in descriptive
+    ):
+        raise FinalistFreezeError("FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF")
+    declared_counts = {
+        "eligible_behavioral_count": len(projected),
+        "eligible_numeric_count": eligible_numeric,
+        "descriptive_behavioral_count": len(descriptive),
+    }
+    for key, expected_count in declared_counts.items():
+        if key in raw and raw[key] != expected_count:
+            raise FinalistFreezeError("FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF")
     return projected, eligible_numeric, len(descriptive), fingerprint
 
 

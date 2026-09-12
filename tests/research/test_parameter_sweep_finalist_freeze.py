@@ -91,6 +91,30 @@ def test_duplicate_eligible_behavioral_representatives_fail_closed(tmp_path):
         _run(tmp_path, _handoff(rows), output_name="duplicate")
 
 
+def test_duplicate_numeric_member_across_behavioral_representatives_fails_closed(tmp_path):
+    rows = [
+        _candidate("a", "sig-a", 1, members=["a", "shared"]),
+        _candidate("b", "sig-b", 2, members=["b", "shared"]),
+    ]
+    with pytest.raises(FinalistFreezeError, match="FAIL_CLOSED_DUPLICATE_NUMERIC_CONFIG"):
+        _run(tmp_path, _handoff(rows), output_name="duplicate-member")
+
+
+def test_false_canonical_gate_in_eligible_lane_fails_closed(tmp_path):
+    candidate = _candidate("a", "sig-a", 1)
+    candidate["canonical_gate_results"]["minimum_trades_20"] = False
+    with pytest.raises(FinalistFreezeError, match="FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF"):
+        _run(tmp_path, _handoff([candidate]), output_name="false-gate")
+
+
+def test_declared_population_count_mismatch_fails_closed(tmp_path):
+    handoff = _handoff([_candidate("a", "sig-a", 1)])
+    handoff["eligible_behavioral_count"] = 2
+    handoff["validation_ranking_handoff_fingerprint"] = validation_ranking_handoff_fingerprint(handoff)
+    with pytest.raises(FinalistFreezeError, match="FAIL_CLOSED_INVALID_VALIDATION_RANKING_HANDOFF"):
+        _run(tmp_path, handoff, output_name="count-mismatch")
+
+
 def test_zero_eligible_creates_immutable_empty_freeze(tmp_path):
     result = _run(tmp_path, _handoff([], [_candidate("b", "b", 1, eligible=False)]))
     assert result["freeze"]["finalists"] == []

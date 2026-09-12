@@ -1,0 +1,21 @@
+{
+  "calibration_split_fingerprint": "101969104640633443a57c406449dccf72eccefa71b6647f935f4043a0d7a105",
+  "canonical_serialization_version": "canonical-json-sort-keys-utf8-v1",
+  "created_from_phase": "VALIDATION_RANKING",
+  "dataset_fingerprint": "e096e40c3e30182ac6f399ca79cd80f7f2f5beb9f653a7cf615c4de3b2689798",
+  "finalist_count_policy_source": "config/research/research_parameters.yaml:artifact.finalist_config_count",
+  "finalist_freeze_content_hash": "e29844d5e2d24b6abd9e8c0eb2dd8f81d4992a5711a2b85422edce4cfbdc9716",
+  "finalists": [],
+  "freeze_id": "finalist-freeze:v1:e29844d5e2d24b6abd9e8c0eb2dd8f81d4992a5711a2b85422edce4cfbdc9716",
+  "freeze_schema_version": 1,
+  "parameter_registry_fingerprint": "0c22c5e7279e829efeb6a856489220ce964c5463a5773a7dfe557216b55eb866",
+  "profile": "trade-5m-v2",
+  "ranking_policy_fingerprint": "c9e9bf68988b7436d8af2824139031c8196245f5a606e01e764efba7d288889a",
+  "requested_finalist_count": 5,
+  "selected_finalist_count": 0,
+  "selection_reason": "ZERO_ELIGIBLE_VALIDATION_FINALISTS",
+  "symbol": "DOGEUSDT",
+  "validation_policy_fingerprint": "e1a77eee8eb331556fa2c97ff218a883be3c51e14e0708aa8fa9bf40dad75545",
+  "validation_ranking_handoff_fingerprint": "e4b7129f5c15ecf9c2b7ad8d0e4fb061d1534f6d46ae7bfda080aca9829432d4",
+  "validation_split_fingerprint": "0f8ceb2c5a367ecb7ffa1d1d9044b8d9c2e19c19cb0a0a88c647176411dcbc36"
+}
