@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 87b1b5c19cd64f4327970e18eaa38096d0bada30
+STATUS_AS_OF_COMMIT = d730dcb4df0a08105253eadd74b8d93d55e902da
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-12T11:19:59Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_DATA_DRIVEN_RANGE_GENERATION_01
-FILES_CHANGED = app/config/yaml_authority.py; config/research/research_parameters.yaml; traders_ml/parameter_sweep/data_driven_ranges.py; tests/research/test_parameter_sweep_data_driven_ranges.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_DATA_DRIVEN_RANGE_GENERATION_01_FINAL.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-12T11:53:40Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_EXPANDED_AUTOMATIC_SEARCH_01
+FILES_CHANGED = traders_ml/parameter_sweep/data_driven_ranges.py; traders_ml/parameter_sweep/expanded_search.py; tests/research/test_parameter_sweep_expanded_search.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_EXPANDED_AUTOMATIC_SEARCH_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_87b1b5c19cd64f4327970e18eaa38096d0bada30_PUSHED_AHEAD0_BEHIND0_DOCUMENTATION_RECONCILIATION_PENDING
-STATUS_CONFIDENCE = PARAMETER_SWEEP_DATA_DRIVEN_RANGE_GENERATION_PASS_DOGE_PASSLIMITEDSAMPLE_DESCRIPTIVEONLY_29TUNABLE_8DIRECT_7DERIVED_5INDIRECT_9NOMAPPING_4PROVISIONAL_25NOTGENERATED_CURRENT4OF4_PRESERVED_SCHEMA0_CYCLICLINEAR0_HIDDENFALLBACK0_LEGACYFALLBACK0_BOUNDARYPRESSURE2_197RESEARCHPASS_COMPILEPASS_BYTEDETERMINISMPASS_SEARCH0_ADAPTIVE0_HOLDOUT0_PROMOTIONNO_POLICY20_3_UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_d730dcb4df0a08105253eadd74b8d93d55e902da_NOT_PUSHED_LOCAL_AHEAD2_BEHIND0_AFTER_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = PARAMETER_SWEEP_EXPANDED_AUTOMATIC_SEARCH_PASS_DOGE_DESCRIPTIVEONLY_RAW1764_NORMALIZED1764_PLANNED500_EVALUATED500_NUMERIC500_BEHAVIORAL21_DUPLICATE479_BESTTRADES3_BESTPERIODS1_POSITIVE2_ELIGIBLE0_LEGACYPAIRED144_SEARCHSPACEFROZEN_BYTEDETERMINISMPASS_RESUMEGUARDSPASS_SCHEMA0_LEGACYFALLBACK0_NEWVALUES0_RECONSTRUCTED0_CROSSSYMBOL0_209RESEARCHPASS_COMPILEPASS_ADAPTIVE0_HOLDOUT0_PROMOTIONNO_POLICY20_3_UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
 
 # Состояние проекта traders-ml
 
@@ -32,6 +32,47 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Parameter Sweep single-symbol expanded automatic search 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_EXPANDED_AUTOMATIC_SEARCH_01
+RESULT = PASS_DESCRIPTIVE_ONLY_LOW_SAMPLE_NOT_CERTIFIED
+PROJECT_STATE_COMMIT = d730dcb4df0a08105253eadd74b8d93d55e902da
+SYMBOL = DOGEUSDT
+PROFILE = trade-5m-v2
+SEARCH_SOURCE = DATA_DRIVEN_RANGE_HANDOFF_ONLY
+SOURCE_HISTORY = 2026-09-02T21:35:00Z_TO_2026-09-12T10:45:00Z_ACTUAL9.548611D_PERSISTEDOBSERVATIONINVENTORY2685
+TRADE_SAMPLE = CLOSED10_EXACT_PERSISTED_CAUSAL_PREENTRY_ROWS_DESCRIPTIVEONLY
+DIMENSIONS = 4_min_net_edge_bps_minimum_planned_rr_stop_max_bps_target_min_bps
+SEARCH = RAW1764_NORMALIZED1764_PLANNED500_EVALUATED500_LAZYBOUNDED_SEED20260907
+ACCOUNTING = NUMERICALLYDISTINCT500_BEHAVIORALLYDISTINCT21_BEHAVIORALDUPLICATES479
+BEST = TRADES3_WIN1_LOSS2_NETPNL_MINUS0.04961942_PF0.95351674_MAXDD1.06746858_PERIODS1_EXPECTANCYR_NOTAVAILABLE
+BEST_PARAMETERS = min_net_edge_bps1.0_minimum_planned_rr0.6_stop_max_bps50.0_target_min_bps60.0
+BEST_BOUNDARIES = LOW_LOW_HIGH_INTERIOR
+POSITIVE_OBSERVED = 2
+VALIDATION_ELIGIBLE = 0
+LEGACY_COMPARISON = PAIRED_SAME_FROZEN_DATASET_DIAGNOSTIC_ONLY_RAW144_EVALUATED144_BEHAVIORAL2_POSITIVE0
+REGRESSION = 209RESEARCHPASS_29FOCUSEDPASS_COMPILEPASS_REALRUNPASS_BYTERESUMEPASS
+SAFETY = SCHEMAVIOLATION0_LEGACYFALLBACK0_NEWVALUE0_RECONSTRUCTED0_CROSSSYMBOL0_SEARCHSPACEFROZENYES_ADAPTIVENO_HOLDOUTNO_PROMOTIONNO_PRODUCTIONLOGICNO_PRODUCTIONYAMLNO_SET2NO_VALIDATION20_3NO_DBSCHEMANO_DEPLOYNO_LIVEFALSE_BINANCEORDERS0_MUTATIONS0
+ARTIFACTS = EXPANDED_SEARCH_CONFIG; SEARCH_VALUE_NORMALIZATION; EXPANDED_SEARCH_RESULTS; BEHAVIORAL_CLUSTERS; LEGACY_EXPANDED_SEARCH_COMPARISON; EXPANDED_SEARCH_HANDOFF; REPORT; STATUS_IN_IGNORED_RUN_DIRECTORY
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_EXPANDED_AUTOMATIC_SEARCH_01_FINAL.md
+NEXT_RESEARCH_ACTION = SEPARATE_ADAPTIVE_REFINEMENT_TASK_MAY_CONSUME_EXPANDED_SEARCH_HANDOFF_WITHOUT_PROMOTION_OR_HOLDOUT
+```
+
+The accepted handoff values were not regenerated or expanded. The v1 artifact
+was contract-upgraded to v2 by attaching its already proven symbol, profile,
+sample adequacy, schema domain, eligibility and provenance while preserving
+every candidate value exactly. Direct binary64 threshold consumption justified
+only exact-value normalization, which removed no current DOGE values.
+
+Ranking uses the existing validation ranking and artifact-v2 behavioral trade
+signature. Funnel and outcome signatures refine cluster identity, while every
+raw numeric alias remains auditable. The accepted persisted dataset contains no
+authoritative realized-risk denominator, so expectancy R remains unavailable
+rather than being synthesized from net USDT PnL. The 20-trade/three-day gates
+therefore remain unchanged and unmet. No finalist, adaptive refinement or
+holdout phase was entered.
 
 ## Parameter Sweep single-symbol data-driven range generation 01
 
@@ -7306,7 +7347,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Holdout-isolated single-symbol protocol PASS; validation gates single-authority PASS; 30-day reconstruction BLOCKED_PARITY | Validation readiness now resolves 20 trades, three UTC calendar days and provenance from exactly one research YAML key per semantic gate; temporary 21/4 propagation, missing-key and duplicate-authority guards pass. A bounded DOGEUSDT overlap still proves setup/direction/strategy/eligibility parity and zero causal or symbol violations, but historical commission/book/depth/as-of probability inputs remain unavailable; reconstruction is not certified and no hybrid dataset was created or used. The complete research suite passes 172 tests. Full optimization and parameter promotion remain unperformed |
+| Offline Scalping v2 Parameter Sweep | Expanded single-symbol search PASS descriptive-only; validation gates single-authority PASS; 30-day reconstruction remains BLOCKED_PARITY | Four provisional DOGEUSDT domains were consumed only from the typed data-driven handoff. The bounded run evaluated 500 of 1,764 configurations and found 21 behavioral clusters, two positive-observed clusters and zero validation-eligible configurations on ten exact persisted causal trades. Paired legacy comparison evaluated all 144 legacy configurations on the same frozen dataset. The 20-trade/three-day gates remain unchanged and unmet; adaptive refinement and holdout were not entered. The complete research suite passes 209 tests. Parameter promotion remains unperformed |
 | Online analytics/paper pipeline | Named-set switching integrated and bounded deployment accepted; profitability not proven | Schema 0031; immutable real-cycle and portfolio-risk snapshots. Active Set #2, Set #1 unchanged. Three corrected-runtime cycles passed 30/30; 15m unchanged. 1m and time-stop remain SHADOW; full sweep and 72h soak not run |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
@@ -7326,7 +7367,7 @@ LIVE.
 ## Следующий этап
 
 ```text
-RECOMMENDED_NEXT_TASK = START_A_SEPARATE_RESEARCH_CAMPAIGN_AT_BLOCK2_WINNER_LOSER_SEPARABILITY_THEN_BLOCK3_DATA_DRIVEN_RANGE_GENERATION_BLOCK4_EXPANDED_SEARCH_AND_VALIDATION_FINALIST_FREEZE_ONE_SHOT_HOLDOUT
+RECOMMENDED_NEXT_TASK = START_SEPARATE_ADAPTIVE_REFINEMENT_FROM_EXPANDED_SEARCH_HANDOFF_WITHOUT_PROMOTION_OR_HOLDOUT_ONLY_IF_EXPLICITLY_AUTHORIZED
 NEXT_TASK_REQUIRES_SEPARATE_OPERATOR_AUTHORIZATION = NO_FOR_READONLY_MANUAL_SWEEP_AND_OBSERVATION_YES_FOR_PARAMETER_PROMOTION_OR_LIVE
 PITR_MINIMUM_WINDOW_CONFIRMATION = FORMALLY_CONFIRMED_BY_TRADERS_ML_PAPER_TRADING_PRODUCTION_PITR_MINIMUM_WINDOW_ACCUMULATION_CONFIRMATION_01
 WAL_ARCHIVE_RETRY_PENDING_REMEDIATION = NO
