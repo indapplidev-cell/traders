@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 08787e48dad9e13e00465921ddbf7796fcf16bb0
+STATUS_AS_OF_COMMIT = 8e277c4b12299ab031bfda9a3c3f135c148c4c03
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-12T09:00:48Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01
-FILES_CHANGED = traders_ml/parameter_sweep/historical_reconstruction.py; tests/research/test_parameter_sweep_historical_reconstruction.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01_FINAL.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-12T09:41:31Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_CANONICAL_VALIDATION_GATES_SINGLE_AUTHORITY_01
+FILES_CHANGED = app/config/yaml_authority.py; config/research/research_parameters.yaml; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/ranking.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/ui.py; tests/research/test_parameter_sweep_single_symbol.py; tests/research/test_parameter_sweep_validation_gate_authority.py; tests/research/test_scalping_v2_parameter_sweep.py; docs/audits/VALIDATION_GATE_AUTHORITY_INVENTORY.json; docs/audits/TRADERS_PARAMETER_SWEEP_CANONICAL_VALIDATION_GATES_SINGLE_AUTHORITY_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_08787e48dad9e13e00465921ddbf7796fcf16bb0_AND_DOCUMENTATION_RECONCILIATION_PUSHED_AHEAD0_BEHIND0_AFTER_FINAL_PUSH
-STATUS_CONFIDENCE = PARAMETER_SWEEP_RECONSTRUCTION_BLOCKEDPARITY_164RESEARCHPASS_9FOCUSEDPASS_COMPILEPASS_DOGE48BOUNDARYMATCH_SETUPDIRECTIONSTRATEGYELIGIBILITYPASS_TERMINAL11MISMATCH_REJECTION24MISMATCH_NUMERIC119_CAUSALVIOLATION0_CROSSSYMBOL0_HYBRIDNOTCREATED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
+PUSH_STATE_AT_RECONCILIATION = LOCAL_PROJECT_STATE_AND_DOCUMENTATION_NOT_PUSHED_origin/feature/engine-platform_AHEAD2_BEHIND0
+STATUS_CONFIDENCE = PARAMETER_SWEEP_VALIDATIONGATE_SINGLEAUTHORITY_PASS_172RESEARCHPASS_COMPILEPASS_TEMP21AND4PROPAGATIONPASS_MISSINGFAILCLOSED_DUPLICATEGUARDPASS_ARTIFACTPROVENANCEPASS_POLICY20_3_UTCDAY_UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
 
 # Состояние проекта traders-ml
 
@@ -32,6 +32,33 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Parameter Sweep canonical validation gates single authority 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_CANONICAL_VALIDATION_GATES_SINGLE_AUTHORITY_01
+RESULT = PASS
+PROJECT_STATE_COMMIT = 8e277c4b12299ab031bfda9a3c3f135c148c4c03
+CANONICAL_VALIDATION_MINIMUM_TRADES = config/research/research_parameters.yaml:ranking.validation_minimum_trades_VALUE20
+CANONICAL_MINIMUM_INDEPENDENT_PERIODS = config/research/research_parameters.yaml:ranking.minimum_independent_periods_VALUE3
+CANONICAL_INDEPENDENT_PERIOD_UNIT = config/research/research_parameters.yaml:ranking.independent_period_unit_VALUEUTC_CALENDAR_DAY
+DUPLICATE_VALIDATION_AUTHORITIES = BEFORE4_AFTER1
+RESOLVER = app.config.yaml_authority.load_validation_sample_policy_TYPED_FROZEN_FAILCLOSED_PROVENANCE
+CONSUMERS = SEARCH_EVALUATION_RANKING_CLASSIFICATION_READINESS_FINALIST_STATUS_REPORT_GUI_MANIFEST_CHECKPOINT_ARTIFACTINTEGRITY
+PROPAGATION = TEMP20TO21_AND3TO4_ALLCONSUMERSPASS_WITHOUTCODECHANGE
+FAIL_CLOSED = MISSINGKEY_DUPLICATEALIAS_DUPLICATEYAMLKEY_STRING20_FLOAT3POINT5_WRONGUNIT
+REGRESSION = 172RESEARCHPASS_COMPILEPASS_BOUNDED5CONFIGARTIFACTINTEGRITYPASS
+POLICY = VALUES20_3_UTCCALENDARDAY_UNCHANGED_SEMANTICSUNCHANGED
+SAFETY = SEARCHRANGESNO_SEARCHFAMILIESNO_PRODUCTIONLOGICNO_PRODUCTIONYAMLNO_SET2NO_DBSCHEMANO_DEPLOY_LIVEFALSE_BINANCEORDERS0_MUTATIONS0
+EVIDENCE = docs/audits/VALIDATION_GATE_AUTHORITY_INVENTORY.json; docs/audits/TRADERS_PARAMETER_SWEEP_CANONICAL_VALIDATION_GATES_SINGLE_AUTHORITY_01_FINAL.md
+NEXT_ACTION = CONTINUE_EXISTING_SEPARATE_RESEARCH_CAMPAIGN_SEQUENCE_WITHOUT_AUTOMATIC_PARAMETER_PROMOTION
+```
+
+The validation readiness gates now have one numeric/string YAML authority each.
+Every research consumer receives the immutable resolved policy, and run
+artifacts preserve both the resolved values and exact YAML-path provenance.
+The current policy remains 20 validation trades, three independent UTC calendar
+days, with unchanged insufficient-sample behavior.
 
 ## Parameter Sweep single-symbol 30-day historical causal reconstruction parity 01
 
@@ -7197,7 +7224,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Holdout-isolated single-symbol protocol PASS; 30-day reconstruction BLOCKED_PARITY | `traders_ml/parameter_sweep/` now includes a research-only versioned reconstruction/parity gate that reuses authoritative read-only pipeline components. A bounded DOGEUSDT overlap proves setup/direction/strategy/eligibility parity and zero causal or symbol violations, but historical commission/book/depth/as-of probability inputs are unavailable; terminal and rejection semantics differ. Reconstruction is not certified and no hybrid dataset was created or used. Existing persisted-only runs remain source-limited. The complete research suite passes 164 tests. Full optimization and parameter promotion remain unperformed |
+| Offline Scalping v2 Parameter Sweep | Holdout-isolated single-symbol protocol PASS; validation gates single-authority PASS; 30-day reconstruction BLOCKED_PARITY | Validation readiness now resolves 20 trades, three UTC calendar days and provenance from exactly one research YAML key per semantic gate; temporary 21/4 propagation, missing-key and duplicate-authority guards pass. A bounded DOGEUSDT overlap still proves setup/direction/strategy/eligibility parity and zero causal or symbol violations, but historical commission/book/depth/as-of probability inputs remain unavailable; reconstruction is not certified and no hybrid dataset was created or used. The complete research suite passes 172 tests. Full optimization and parameter promotion remain unperformed |
 | Online analytics/paper pipeline | Named-set switching integrated and bounded deployment accepted; profitability not proven | Schema 0031; immutable real-cycle and portfolio-risk snapshots. Active Set #2, Set #1 unchanged. Three corrected-runtime cycles passed 30/30; 15m unchanged. 1m and time-stop remain SHADOW; full sweep and 72h soak not run |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
