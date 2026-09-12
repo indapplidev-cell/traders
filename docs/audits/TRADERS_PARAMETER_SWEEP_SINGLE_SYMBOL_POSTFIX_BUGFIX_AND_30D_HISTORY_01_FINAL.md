@@ -48,8 +48,8 @@ COMPILE = PASS_PYTHON_COMPILEALL_TRADERS_ML_PARAMETER_SWEEP_AND_TESTS_RESEARCH
 
 FILES_CHANGED = tests/research/test_parameter_sweep_single_symbol.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/historical_replay.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/research_protocol.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/ui.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md; online_trader.md
 COMMITS = PROJECT_STATE_793cfbc8cb6189f69a7d9a3b9402184480e8d45c; DOCUMENTATION_RECONCILIATION_RESOLVE_WITH_git_log_-1_--format=%H_--_online_trader.md
-PUSH = PROJECT_STATE_PUSHED; DOCUMENTATION_RECONCILIATION_TO_BE_PUSHED_AS_FINAL_TASK_STEP
-AHEAD_BEHIND = 0/0_AFTER_PROJECT_STATE_PUSH
+PUSH = PROJECT_STATE_AND_DOCUMENTATION_RECONCILIATION_PUSHED
+AHEAD_BEHIND = 0/0_AFTER_FINAL_PUSH
 WORKTREE = CLEAN_AFTER_FINAL_DOCUMENTATION_COMMIT_AND_PUSH
 
 PRODUCTION_TRADING_LOGIC_CHANGED = NO
