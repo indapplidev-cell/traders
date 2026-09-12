@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = 793cfbc8cb6189f69a7d9a3b9402184480e8d45c
+STATUS_AS_OF_COMMIT = 08787e48dad9e13e00465921ddbf7796fcf16bb0
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-12T07:59:11Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01
-FILES_CHANGED = tests/research/test_parameter_sweep_single_symbol.py; traders_ml/parameter_sweep/artifact_v2.py; traders_ml/parameter_sweep/controller.py; traders_ml/parameter_sweep/engine.py; traders_ml/parameter_sweep/historical_replay.py; traders_ml/parameter_sweep/integrity.py; traders_ml/parameter_sweep/research_protocol.py; traders_ml/parameter_sweep/state.py; traders_ml/parameter_sweep/ui.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_POSTFIX_BUGFIX_AND_30D_HISTORY_01_FINAL.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-12T09:00:48Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01
+FILES_CHANGED = traders_ml/parameter_sweep/historical_reconstruction.py; tests/research/test_parameter_sweep_historical_reconstruction.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_793cfbc8cb6189f69a7d9a3b9402184480e8d45c_AND_DOCUMENTATION_RECONCILIATION_PUSHED_AHEAD0_BEHIND0_AFTER_FINAL_PUSH
-STATUS_CONFIDENCE = PARAMETER_SWEEP_POSTFIXPASS_155RESEARCHPASS_25FOCUSEDPASS_COMPILEPASS_1CONFIGLINKSMOKEPASS_CANONICALPARITYPASS_ELIGIBLEFREEZEPASS_DEDUPPASS_ZEROFINALISTHOLDOUTPASS_HISTORYTARGET30_ACTUAL9_420139_PARTIALSOURCELIMIT_CROSSSYMBOL0_NONSElectedREPLAY0_SET2UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_08787e48dad9e13e00465921ddbf7796fcf16bb0_AND_DOCUMENTATION_RECONCILIATION_PUSHED_AHEAD0_BEHIND0_AFTER_FINAL_PUSH
+STATUS_CONFIDENCE = PARAMETER_SWEEP_RECONSTRUCTION_BLOCKEDPARITY_164RESEARCHPASS_9FOCUSEDPASS_COMPILEPASS_DOGE48BOUNDARYMATCH_SETUPDIRECTIONSTRATEGYELIGIBILITYPASS_TERMINAL11MISMATCH_REJECTION24MISMATCH_NUMERIC119_CAUSALVIOLATION0_CROSSSYMBOL0_HYBRIDNOTCREATED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
 
 # Состояние проекта traders-ml
 
@@ -32,6 +32,30 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Parameter Sweep single-symbol 30-day historical causal reconstruction parity 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01
+RESULT = BLOCKED_PARITY_RECONSTRUCTION_NOT_CERTIFIED
+PROJECT_STATE_COMMIT = 08787e48dad9e13e00465921ddbf7796fcf16bb0
+IMPLEMENTATION = RESEARCHONLY_VERSIONEDCANONICALOBSERVATION_READONLYAUTHORITATIVEPIPELINE_CAUSALCANDLEREPOSITORY_OVERLAPCOMPARATOR_FAILCLOSEDHYBRIDGATE
+FORENSIC = DOGE_CANDLE1M_FROM20260807_CANDLE5M_FROM20260710_PERSISTED_FROM20260902_TARGETSTART20260813
+OVERLAP = SOURCE2663_BOUNDED48_MATCHED48_SETUPPASS_DIRECTIONPASS_STRATEGYPASS_ELIGIBILITYPASS_TERMINAL11MISMATCH_REJECTION24MISMATCH_NUMERIC119
+MISSING_CAUSAL_INPUTS = HISTORICALACCOUNTCOMMISSION_BOOKTICKER_ORDERBOOKDEPTH_ASOFPROBABILITYSTATISTICS
+CAUSALITY = FUTUREVIOLATIONS0_CROSSSYMBOL0_SELECTEDDOGEONLY
+HYBRID30D = NOTCREATED_PARITYNOTCERTIFIED_PERSISTEDUSED0_RECONSTRUCTEDUSED0
+REGRESSION = 164RESEARCHPASS_9FOCUSEDPASS_COMPILEPASS
+SAFETY = PRODUCTIONLOGICNO_YAMLNO_SET2NO_UNIVERSENO_SCHEMANO_DEPLOYNO_LIVEFALSE_BINANCEORDERS0_MUTATIONS0
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_30D_HISTORICAL_CAUSAL_RECONSTRUCTION_PARITY_01_FINAL.md
+NEXT_ACTION = WAIT_FOR30D_PERSISTEDOBSERVATIONS_OR_SEPARATELY_SOURCE_HISTORICALMICROSTRUCTUREANDASOFSTATISTICS_THEN_FULLPARITY
+```
+
+The reconstruction framework is implemented, but its output is not certified
+for search use. Candle-derived setup, direction, strategy status and eligibility
+match on the bounded overlap, while unavailable historical economic/statistical
+inputs change terminal/rejection semantics. The fail-closed gate correctly
+prevents creation or use of a 30-day hybrid dataset.
 
 ## Parameter Sweep single-symbol postfix bugfix and 30-day history 01
 
@@ -7173,7 +7197,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Holdout-isolated, single-symbol research protocol PASS; 30-day target currently source-limited | `traders_ml/parameter_sweep/` remains authoritative. Every new GUI/CLI campaign requires exactly one symbol resolved from `trading-universe-v2`; filtering precedes the fixed 30-calendar-day window, causal eligibility, freeze and replay. Results, status, report and GUI share one canonical validation projection. Finalists must be validation-eligible and are behaviorally deduplicated with lineage; zero finalists produce an immutable empty freeze and never open holdout. LINKUSDT smoke loaded 9.420139 usable days and honestly reported `PARTIAL_SOURCE_LIMIT`; no hidden recent-row cap was found. The complete research suite passes 155 tests. Full optimization and parameter promotion remain unperformed |
+| Offline Scalping v2 Parameter Sweep | Holdout-isolated single-symbol protocol PASS; 30-day reconstruction BLOCKED_PARITY | `traders_ml/parameter_sweep/` now includes a research-only versioned reconstruction/parity gate that reuses authoritative read-only pipeline components. A bounded DOGEUSDT overlap proves setup/direction/strategy/eligibility parity and zero causal or symbol violations, but historical commission/book/depth/as-of probability inputs are unavailable; terminal and rejection semantics differ. Reconstruction is not certified and no hybrid dataset was created or used. Existing persisted-only runs remain source-limited. The complete research suite passes 164 tests. Full optimization and parameter promotion remain unperformed |
 | Online analytics/paper pipeline | Named-set switching integrated and bounded deployment accepted; profitability not proven | Schema 0031; immutable real-cycle and portfolio-risk snapshots. Active Set #2, Set #1 unchanged. Three corrected-runtime cycles passed 30/30; 15m unchanged. 1m and time-stop remain SHADOW; full sweep and 72h soak not run |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
