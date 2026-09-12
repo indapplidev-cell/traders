@@ -33,7 +33,7 @@ def test_canonical_semantics_counts_every_insufficient_result_and_gates():
     assert summary["candidate_promotion_eligible"] is False
     assert set(summary["validation_readiness"]) >= {
         "validation_trade_count", "symbol_coverage", "independent_period_count",
-        "holdout_count", "minimum_slice_count",
+        "minimum_slice_count",
     }
 
 

@@ -357,6 +357,9 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
         "STATUS.json", "INTEGRITY.json", "DATASET_MANIFEST.json",
         "DATASET_SNAPSHOT.json", "RUN_MANIFEST.json", "ACCEPTED_CONFIGS.jsonl",
         "REJECTED_CONFIGS.jsonl", "FINALIST_TRADES.jsonl", "ARTIFACT_SIZES.json",
+        "WINNER_LOSER_DATASET.jsonl", "DATA_DRIVEN_SEARCH_RANGES.json",
+        "RESEARCH_BLOCK_STATUS.json", "FINALIST_FREEZE.json",
+        "HOLDOUT_RESULTS.jsonl",
         "PARAMETER_REGISTRY.json",
         "OPPORTUNITY_FUNNEL.json",
     }
@@ -369,7 +372,7 @@ def test_two_variant_smoke_reuses_time_stop_evaluator_and_has_zero_mutation(tmp_
     assert "market_path_1m" not in (output / "RESULTS.jsonl").read_text()
     report = (output / "REPORT.md").read_text(encoding="utf-8")
     assert "TIME-STOP ANALYSIS" in report
-    assert "Holdout is evaluated for reporting only" in report
+    assert "Holdout is opened once, only after immutable finalist freeze" in report
     run_config = yaml.safe_load((output / "RUN_CONFIG.yaml").read_text())
     assert run_config["time_stop_policy_schema"] == "StalePositionPolicyParameters"
     assert run_config["production_mutations"] == 0
@@ -698,8 +701,17 @@ def test_holdout_is_never_used_for_search_or_ranking(tmp_path):
     output = run(_search(tmp_path, _rows()), run_id="holdout", max_configs=1)
     plan = json.loads((output / "SEARCH_PLAN.json").read_text())
     top = json.loads((output / "TOP_CONFIGS.json").read_text())
+    freeze = json.loads((output / "FINALIST_FREEZE.json").read_text())
+    holdout = [
+        json.loads(line)
+        for line in (output / "HOLDOUT_RESULTS.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
     assert all(stage["uses_holdout"] is False for stage in plan["STAGED_SEARCH_PLAN"])
     assert top["holdout_used_for_search"] is False
+    frozen_ids = {row["finalist_id"] for row in freeze["finalists"]}
+    assert {row["finalist_id"] for row in holdout} == frozen_ids
+    assert len(holdout) == len({row["finalist_id"] for row in holdout})
     assert "Holdout used for search/refinement/ranking: `NO`" in (
         output / "REPORT.md"
     ).read_text()
@@ -763,7 +775,7 @@ def test_incident_53_closed_rows_without_causal_observations_stops_before_search
     assert checkpoint["evaluated_count"] == 0
     assert checkpoint["SEARCH_ABORTED_BEFORE_5000_CONFIGS"] == "YES"
     assert run_config["baseline_control"]["BASELINE_EVALUATED"] == "YES"
-    assert run_config["baseline_control"]["BASELINE_TRADES"] == 53
+    assert run_config["baseline_control"]["BASELINE_TRADES"] == 18
 
 
 def test_baseline_zero_trade_contract_mismatch_fails_closed(tmp_path):

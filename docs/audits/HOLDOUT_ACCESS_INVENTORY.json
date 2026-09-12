@@ -1,0 +1,166 @@
+{
+  "task": "TRADERS_PARAMETER_SWEEP_RESEARCH_ENGINE_HOLDOUT_ISOLATION_AND_BLOCK_ORCHESTRATION_REFACTOR_01",
+  "pre_fix_commit": "01645845350947b902ce4d5ed2baa40f4a57ad31",
+  "classification_contract": [
+    "PRE_FREEZE_FORBIDDEN",
+    "POST_FREEZE_ALLOWED",
+    "REPORT_ONLY",
+    "UNKNOWN"
+  ],
+  "pre_fix": {
+    "PRE_FREEZE_FORBIDDEN": 8,
+    "POST_FREEZE_ALLOWED": 0,
+    "REPORT_ONLY": 1,
+    "UNKNOWN": 0,
+    "accesses": [
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2073,
+        "function": "_run_impl -> _baseline_control",
+        "call_path": "run -> _run_impl -> _baseline_control(rows) -> replay/metrics",
+        "reason": "full-dataset baseline outcome metrics before search",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": true,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2091,
+        "function": "_run_impl.behavior_signature",
+        "call_path": "run -> _run_impl -> sensitivity_preflight -> behavior_signature -> _gate_funnel(HOLDOUT)",
+        "reason": "behavioral activity/dedup signature included HOLDOUT",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": true,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2102,
+        "function": "ParameterSweepSearchPlanner.plan",
+        "call_path": "run -> _run_impl -> plan(holdout_rows) -> promotion_eligible",
+        "reason": "holdout sample count participated in pre-freeze eligibility",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": true,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 1823,
+        "function": "_evaluate_config",
+        "call_path": "candidate loop -> _evaluate_config -> chronological_portfolio_replay(HOLDOUT)",
+        "reason": "historical replay evaluated every config across all splits",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 1895,
+        "function": "_evaluate_config",
+        "call_path": "candidate loop -> _evaluate_config -> _gate_funnel(HOLDOUT) -> _time_stop_metrics",
+        "reason": "legacy/offline replay evaluated HOLDOUT for every calibration survivor",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2574,
+        "function": "_run_impl candidate accounting",
+        "call_path": "candidate loop -> evaluated item -> counterfactual aggregation(HOLDOUT trades)",
+        "reason": "holdout trade outcomes entered campaign-wide counterfactual reporting",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2589,
+        "function": "_run_impl finalist_candidates",
+        "call_path": "candidate loop -> accepted config -> detailed trade collection(HOLDOUT)",
+        "reason": "holdout trades were retained while finalist set remained mutable",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/artifact_v2.py",
+        "line": 153,
+        "function": "compact_result",
+        "call_path": "result writer -> compact_result -> holdout_count/minimum_slice gates -> performance/report semantics",
+        "reason": "holdout evaluation influenced pre-freeze sample/readiness classification",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": true,
+        "classification": "PRE_FREEZE_FORBIDDEN"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 1182,
+        "function": "_split",
+        "call_path": "run -> _run_impl -> _split",
+        "reason": "construct split membership and boundary metadata without reading outcomes",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "REPORT_ONLY"
+      }
+    ]
+  },
+  "post_fix": {
+    "PRE_FREEZE_FORBIDDEN": 0,
+    "POST_FREEZE_ALLOWED": 2,
+    "REPORT_ONLY": 3,
+    "UNKNOWN": 0,
+    "accesses": [
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 1824,
+        "function": "_evaluate_config",
+        "call_path": "candidate/baseline/finalist-detail evaluation -> split contract guard",
+        "reason": "reject any HOLDOUT-bearing mapping with HOLDOUT_ACCESS_BEFORE_FINALIST_FREEZE",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "REPORT_ONLY"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2923,
+        "function": "_run_impl -> _evaluate_frozen_holdout",
+        "call_path": "validation ranking -> FINALIST_FREEZE -> HoldoutAccessPolicy -> frozen finalist replay",
+        "reason": "one-shot outcome evaluation for immutable finalist IDs only",
+        "before_finalist_freeze": false,
+        "can_influence_search_or_ranking": false,
+        "classification": "POST_FREEZE_ALLOWED"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2288,
+        "function": "_run_impl resume integrity",
+        "call_path": "resume -> read completed HOLDOUT_RESULTS -> verify checkpoint result hash",
+        "reason": "integrity validation; no replay and no tuning",
+        "before_finalist_freeze": false,
+        "can_influence_search_or_ranking": false,
+        "classification": "POST_FREEZE_ALLOWED"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 1195,
+        "function": "_split",
+        "call_path": "run -> split construction",
+        "reason": "split membership/boundary metadata only",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "REPORT_ONLY"
+      },
+      {
+        "file": "traders_ml/parameter_sweep/engine.py",
+        "line": 2161,
+        "function": "ParameterSweepSearchPlanner.plan",
+        "call_path": "run -> planner",
+        "reason": "holdout row count retained as inert metadata; promotion formula is validation-only",
+        "before_finalist_freeze": true,
+        "can_influence_search_or_ranking": false,
+        "classification": "REPORT_ONLY"
+      }
+    ]
+  }
+}

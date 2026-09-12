@@ -1,0 +1,30 @@
+{
+  "baseline_id": "scalping-v2-set-2",
+  "campaign_id": "EXAMPLE_NOT_EXECUTED",
+  "dataset_fingerprint": "example-dataset-fingerprint",
+  "finalist_count_requested": 5,
+  "finalist_count_selected": 1,
+  "finalists": [
+    {
+      "config_hash": "d43778c9239dda182a770608bb3f7e99fa686ec88fd0ce1f42ee4eda35577167",
+      "finalist_id": "d43778c9239dda182a770608bb3f7e99fa686ec88fd0ce1f42ee4eda35577167",
+      "parameters": {"strategy_minimum_score": 75.0},
+      "validation_metrics_snapshot": {
+        "expectancy_R": -0.6502702284,
+        "independent_period_count": 2,
+        "max_drawdown": 15.606485481,
+        "net_pnl": -15.606485481,
+        "performance_class": "NEGATIVE_EXPECTANCY",
+        "profit_factor": 0.075125492,
+        "symbol_coverage": 5,
+        "trade_count": 24,
+        "win_rate": 0.125
+      }
+    }
+  ],
+  "freeze_hash": "44913e84c354aa46edaa2325b14023dbfa9ab8ebda7b29f447a463a492116b7b",
+  "freeze_timestamp": "2026-09-11T00:00:00+00:00",
+  "search_space_hash": "example-search-space-hash",
+  "selection_rule_hash": "d8324bf790843e33b3df424b107bb4fb6cd8b451f3726278381a5fc2a648b416",
+  "split_fingerprint": "example-split-fingerprint"
+}
