@@ -87,13 +87,14 @@ def build_symbol_runtime_authority_audit() -> dict[str, Any]:
         "allowed_audit_literals": audit_literals,
         "symbol_authority_source": f"app.trading_universe.domain:{universe_id}",
         "gui_symbol_source": "ParameterSweepWindow.symbol_selector -> ParameterSweepController.start_new_run -> validate_parameter_sweep_symbol",
-        "cli_symbol_source": "parameter_sweep CLI --symbol required -> ParameterSweepEngine.run; expanded_search CLI --symbol required -> validate_parameter_sweep_symbol",
-        "run_config_symbol_source": "validated selected symbol persisted as EXPANDED_SEARCH_CONFIG.json:symbol and CHECKPOINT.json:symbol",
+        "cli_symbol_source": "parameter_sweep, expanded_search, and adaptive_refinement CLIs require --symbol -> validate_parameter_sweep_symbol",
+        "run_config_symbol_source": "validated selected symbol persisted in expanded/adaptive config and fingerprint-bound checkpoints",
         "dataset_symbol_binding": "validate_dataset requires every row symbol == validated selected symbol; mismatch fails closed",
         "separability_symbol_binding": "run_separability requires explicit symbol and filters/query-binds it; CLI has no symbol default",
         "range_handoff_symbol_binding": "DATA_DRIVEN_RANGE_HANDOFF.symbol copied from separability manifest and validate_handoff requires equality",
         "expanded_search_symbol_binding": "run_expanded_search validates selected symbol against trading-universe-v2 before handoff/dataset evaluation",
-        "resume_symbol_binding": "CHECKPOINT.symbol compared by assert_resume_compatible; mismatch fails closed",
+        "adaptive_refinement_symbol_binding": "run_adaptive_refinement validates selected symbol against dataset, range handoff, expanded config, expanded handoff and checkpoint",
+        "resume_symbol_binding": "expanded and adaptive checkpoint symbol/fingerprint guards fail closed on mismatch",
         "symbol_binding_status": "PASS" if not (hardcodes or defaults or branches) else "FAIL",
     }
 
