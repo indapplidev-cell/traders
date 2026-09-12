@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from traders_ml.parameter_sweep.separability import (
     FEATURE_SPECS, SOURCE_TYPE, build_activity, build_registry,
-    categorical_analysis, construct_dataset, handoff_artifact,
+    categorical_analysis, construct_dataset, cyclic_distance, handoff_artifact,
     interaction_screen, label_net_pnl, numeric_analysis, rank_features,
     run_separability, stability_analysis,
 )
@@ -102,6 +102,29 @@ def test_numeric_and_categorical_direction_constant_and_handoff_forbids_ranges()
     assert len(interactions) <= 3
 
 
+def test_utc_hour_is_cyclic_and_cannot_be_a_linear_range_or_interaction():
+    rows = [_source(i, 1 if i >= 5 else -1) for i in range(10)]
+    dataset, _, registry, activity, numeric, categorical, stability, ranking = _analyze(rows)
+    utc_registry = next(row for row in registry if row["feature_name"] == "utc_hour")
+    utc_ranking = next(row for row in ranking if row["feature"] == "utc_hour")
+    utc_handoff = next(
+        row for row in handoff_artifact(ranking, numeric, categorical)["features"]
+        if row["feature"] == "utc_hour"
+    )
+    assert utc_registry["data_type"] == utc_registry["semantic_type"] == "CYCLIC"
+    assert utc_registry["analysis_method"] == "CYCLIC_CATEGORY_WIN_LOSS_LIFT"
+    assert utc_handoff["semantic_type"] == "CYCLIC"
+    assert utc_handoff["period"] == 24
+    assert utc_handoff["do_not_generate_linear_min_max_range"] is True
+    assert utc_ranking["do_not_generate_linear_min_max_range"] is True
+    assert cyclic_distance(23, 0, period=24) == 1
+    assert cyclic_distance(0, 12, period=24) == 12
+    assert all(
+        "utc_hour" not in {row["feature_a"], row["feature_b"]}
+        for row in interaction_screen(dataset, ranking, top_n=len(ranking))
+    )
+
+
 class _UnusedDatabase:
     pass
 
@@ -124,3 +147,63 @@ def test_run_artifacts_are_complete_and_deterministic(tmp_path):
     assert one["manifest"]["ranges_generated"] is False
     assert one["manifest"]["search_executed"] is False
     assert one["manifest"]["holdout_opened"] is False
+
+
+def test_low_and_sufficient_sample_status_mapping(tmp_path):
+    low = [_source(i, 1 if i < 3 else -1) for i in range(10)]
+    sufficient = [_source(i, 1 if i < 10 else -1) for i in range(20)]
+    low_result = run_separability(
+        database=_UnusedDatabase(), symbol="DOGEUSDT", output=tmp_path / "low",
+        source_rows=low,
+    )
+    sufficient_result = run_separability(
+        database=_UnusedDatabase(), symbol="DOGEUSDT", output=tmp_path / "sufficient",
+        source_rows=sufficient,
+    )
+    assert low_result["manifest"]["sample_adequacy"] == "DESCRIPTIVE_ONLY"
+    assert low_result["manifest"]["final_status"] == "PASS_LIMITED_SAMPLE"
+    assert sufficient_result["manifest"]["sample_adequacy"] == "USABLE"
+    assert sufficient_result["manifest"]["final_status"] == "PASS"
+
+
+def test_source_history_span_is_independent_from_three_day_trade_sample(tmp_path):
+    source_start = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    source_history = [
+        {"closed_until_ms": int(source_start.timestamp() * 1000)},
+        {"closed_until_ms": int((source_start + timedelta(days=10)).timestamp() * 1000)},
+    ]
+    trade_start = source_start + timedelta(days=2)
+    rows = [_source(i, 1 if i < 3 else -1) for i in range(10)]
+    for index, row in enumerate(rows):
+        row["opened_at"] = trade_start + timedelta(hours=index * 8)
+        row["closed_at"] = row["opened_at"] + timedelta(minutes=5)
+    rows[-1]["closed_at"] = trade_start + timedelta(days=3)
+    result = run_separability(
+        database=_UnusedDatabase(), symbol="DOGEUSDT", output=tmp_path / "spans",
+        source_rows=rows, source_history_rows=source_history,
+    )
+    manifest = result["manifest"]
+    assert manifest["source_history_actual_days"] == 10
+    assert manifest["trade_sample_span_days"] == 3
+    assert manifest["source_history_start"] != manifest["trade_sample_start"]
+    assert manifest["source_history_end"] != manifest["trade_sample_end"]
+    assert manifest["source_history_selection_mode"] == "DEEPEST_AVAILABLE_CLEAN_PERSISTED_SELECTED_SYMBOL_HISTORY"
+
+
+def test_source_history_and_trade_sample_spans_are_independent(tmp_path):
+    trades = [_source(24 + index * 18, 1 if index < 3 else -1) for index in range(5)]
+    start = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    history = [
+        {"closed_until_ms": int((start + timedelta(days=day)).timestamp() * 1000)}
+        for day in range(11)
+    ]
+    result = run_separability(
+        database=_UnusedDatabase(), symbol="DOGEUSDT", output=tmp_path / "spans",
+        source_rows=trades, source_history_rows=history,
+    )["manifest"]
+    assert result["source_history_actual_days"] == 10
+    assert result["trade_sample_span_days"] == 3 + 5 / (24 * 60)
+    assert result["source_history_actual_days"] != result["trade_sample_span_days"]
+    assert result["source_history_rows"] == 11
+    assert result["source_history_selection_mode"] == "DEEPEST_AVAILABLE_CLEAN_PERSISTED_SELECTED_SYMBOL_HISTORY"
+    assert result["reconstructed_rows_used"] == 0

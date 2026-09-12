@@ -27,6 +27,9 @@ from .engine import ReadOnlyResearchDatabase, resolve_database_binding
 
 
 SOURCE_TYPE = "PERSISTED_CAUSAL_OBSERVATION"
+SOURCE_HISTORY_SOURCE = "PERSISTED_CAUSAL_OBSERVATION_INVENTORY"
+SOURCE_HISTORY_SELECTION_MODE = "DEEPEST_AVAILABLE_CLEAN_PERSISTED_SELECTED_SYMBOL_HISTORY"
+TRADE_SAMPLE_TIMESTAMP_BASIS = "EARLIEST_ENTRY_TIMESTAMP_TO_LATEST_CLOSE_TIMESTAMP"
 PROFILE = "trade-5m-v2"
 SCHEMA_VERSION = 1
 
@@ -99,7 +102,7 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
     FeatureSpec("estimated_p_win", "PROBABILITY", "NUMERIC", "paper_payload_json", "paper_context.scalping_geometry_diagnostics.p_win_raw", _path("paper", "paper_context", "scalping_geometry_diagnostics", "p_win_raw")),
     FeatureSpec("expected_ev_r", "EV", "NUMERIC", "paper_payload_json", "paper_context.scalping_geometry_diagnostics.expected_ev_r", _path("paper", "paper_context", "scalping_geometry_diagnostics", "expected_ev_r")),
     FeatureSpec("net_edge_bps", "NET_RR", "NUMERIC", "paper_payload_json", "paper_context.scalping_geometry_diagnostics.expected_net_edge_bps", _path("paper", "paper_context", "scalping_geometry_diagnostics", "expected_net_edge_bps")),
-    FeatureSpec("utc_hour", "TIME_OF_DAY", "ORDINAL", "entry_boundary_ms", "UTC hour", _derived("utc_hour")),
+    FeatureSpec("utc_hour", "TIME_OF_DAY", "CYCLIC", "entry_boundary_ms", "UTC hour", _derived("utc_hour")),
     FeatureSpec("direction", "DIRECTION", "CATEGORICAL", "paper_positions", "side", lambda row: row.get("side")),
     FeatureSpec("utc_day_of_week", "DAY_OF_WEEK", "CATEGORICAL", "entry_boundary_ms", "UTC weekday", _derived("utc_day_of_week")),
     FeatureSpec("setup_type", "SETUP", "CATEGORICAL", "setup_payload_json", "setup_type", _path("setup", "setup_type")),
@@ -158,6 +161,24 @@ def load_persisted_closed_trades(
           AND p.mode='PAPER' AND c.mode='PAPER'
           AND u.trade_profile_id=:profile AND r.trade_profile_id=:profile
         ORDER BY p.opened_at,p.position_id
+    """)
+    with database.connection() as connection:
+        return [dict(row) for row in database.execute_select(
+            connection, sql.bindparams(symbol=symbol, profile=profile),
+        ).mappings()]
+
+
+def load_persisted_source_history(
+    database: ReadOnlyResearchDatabase, *, symbol: str, profile: str = PROFILE,
+) -> list[dict[str, Any]]:
+    """Scan the full persisted selected-symbol observation inventory."""
+    sql = text("""
+        SELECT r.closed_until_ms
+        FROM online_pipeline_results r
+        JOIN online_pipeline_runs u ON u.run_id=r.run_id
+        WHERE r.symbol=:symbol
+          AND u.trade_profile_id=:profile AND r.trade_profile_id=:profile
+        ORDER BY r.closed_until_ms,r.run_id
     """)
     with database.connection() as connection:
         return [dict(row) for row in database.execute_select(
@@ -295,6 +316,14 @@ def _adequacy(winners: int, losers: int) -> str:
     return "USABLE"
 
 
+def cyclic_distance(left: float, right: float, *, period: float) -> float:
+    """Return the shortest distance on a periodic domain."""
+    if period <= 0:
+        raise ValueError("period must be positive")
+    difference = abs(float(left) - float(right)) % period
+    return min(difference, period - difference)
+
+
 def _direction(auc: float | None, *, epsilon: float = 0.05) -> str:
     if auc is None or abs(auc - 0.5) <= epsilon:
         return "NO_CLEAR_DIRECTION"
@@ -314,7 +343,14 @@ def build_registry(
             "source_field": spec.source_field,
             "causal_timestamp_basis": "MAX_PERSISTED_LAYER_TIMESTAMP_LE_ENTRY_BOUNDARY",
             "missing_policy": spec.missing_policy,
-            "analysis_method": "ROBUST_NUMERIC_RANK_AUC" if spec.data_type == "NUMERIC" else "CATEGORY_WIN_LOSS_LIFT",
+            "analysis_method": (
+                "ROBUST_NUMERIC_RANK_AUC" if spec.data_type == "NUMERIC"
+                else "CYCLIC_CATEGORY_WIN_LOSS_LIFT" if spec.data_type == "CYCLIC"
+                else "CATEGORY_WIN_LOSS_LIFT"
+            ),
+            "semantic_type": "CYCLIC" if spec.data_type == "CYCLIC" else spec.data_type,
+            "period": 24 if spec.name == "utc_hour" else None,
+            "do_not_generate_linear_min_max_range": spec.data_type == "CYCLIC",
             "availability_count": len(present), "missing_count": len(values) - len(present),
             "distinct_count": len({_stable_value(value) for value in present}),
         })
@@ -405,7 +441,7 @@ def categorical_analysis(
     global_win_rate = sum(row["label"] == "WIN" for row in binary) / len(binary) if binary else 0
     result = []
     for meta in registry:
-        if meta["data_type"] not in {"BOOLEAN", "CATEGORICAL", "ORDINAL"}:
+        if meta["data_type"] not in {"BOOLEAN", "CATEGORICAL", "ORDINAL", "CYCLIC"}:
             continue
         name = str(meta["feature_name"])
         buckets: dict[str, dict[str, int]] = {}
@@ -524,6 +560,9 @@ def rank_features(
             evidence_class = "NO_SEPARATION"
         result.append({
             "feature": name, "data_type": meta[name]["data_type"],
+            "semantic_type": meta[name]["semantic_type"],
+            "period": meta[name]["period"],
+            "do_not_generate_linear_min_max_range": meta[name]["do_not_generate_linear_min_max_range"],
             "separation_score": separation, "coverage": coverage,
             "missingness": 1 - coverage, "stability_score": stable,
             "direction": analysis["direction"], "ranking_score": score,
@@ -592,6 +631,8 @@ def handoff_artifact(
             "separation_score": ranked["separation_score"], "stability_score": ranked["stability_score"],
             "coverage": ranked["coverage"], "missingness": ranked["missingness"],
             "sample_adequacy_status": ranked["sample_adequacy_status"],
+            "semantic_type": ranked["semantic_type"], "period": ranked["period"],
+            "do_not_generate_linear_min_max_range": ranked["do_not_generate_linear_min_max_range"],
         }
         if name in numeric_by_name:
             row = numeric_by_name[name]
@@ -614,25 +655,60 @@ def handoff_artifact(
 def _manifest(
     dataset: Sequence[Mapping[str, Any]], registry: Sequence[Mapping[str, Any]],
     activity: Sequence[Mapping[str, Any]], diagnostics: Mapping[str, int], *, symbol: str,
+    source_history_rows: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     labels = {name: sum(row["label"] == name for row in dataset) for name in ("WIN", "LOSS", "NEUTRAL")}
-    start = dataset[0]["entry_timestamp"] if dataset else None
-    end = dataset[-1]["close_timestamp"] if dataset else None
-    actual_days = None
+    trade_start = dataset[0]["entry_timestamp"] if dataset else None
+    trade_end = dataset[-1]["close_timestamp"] if dataset else None
+    trade_span_days = None
     if dataset:
-        actual_days = (datetime.fromisoformat(end) - datetime.fromisoformat(start)).total_seconds() / 86400
+        trade_span_days = (datetime.fromisoformat(trade_end) - datetime.fromisoformat(trade_start)).total_seconds() / 86400
+    history_boundaries = sorted({
+        int(row["closed_until_ms"]) for row in source_history_rows
+        if row.get("closed_until_ms") is not None
+    })
+    source_start = (
+        datetime.fromtimestamp(history_boundaries[0] / 1000, timezone.utc).isoformat()
+        if history_boundaries else None
+    )
+    source_end = (
+        datetime.fromtimestamp(history_boundaries[-1] / 1000, timezone.utc).isoformat()
+        if history_boundaries else None
+    )
+    source_days = (
+        (history_boundaries[-1] - history_boundaries[0]) / 86_400_000
+        if history_boundaries else None
+    )
+    adequacy = _adequacy(labels["WIN"], labels["LOSS"])
+    final_status = "PASS" if adequacy == "USABLE" else "PASS_LIMITED_SAMPLE"
+    final_verdict = (
+        "PASS_EXACT_PERSISTED_CAUSAL_PREENTRY_ROWS"
+        if adequacy == "USABLE"
+        else "PASS_DESCRIPTIVE_ONLY_LOW_SAMPLE_EXACT_PERSISTED_CAUSAL_PREENTRY_ROWS"
+    )
     active = {row["feature"]: row["activity_status"] for row in activity}
     excluded = sum(status != "ACTIVE" for status in active.values())
     return {
         "artifact": "SEPARABILITY_DATASET_MANIFEST", "schema_version": SCHEMA_VERSION,
-        "symbol": symbol, "profile": PROFILE, "history_start": start, "history_end": end,
-        "history_actual_days": actual_days, "source_type": SOURCE_TYPE,
+        "symbol": symbol, "profile": PROFILE,
+        "final_status": final_status, "final_verdict": final_verdict,
+        "sample_adequacy": adequacy,
+        "low_sample_status_mapping": "DESCRIPTIVE_ONLY_OR_LOW_SAMPLE_TO_PASS_LIMITED_SAMPLE",
+        "source_history_start": source_start, "source_history_end": source_end,
+        "source_history_actual_days": source_days,
+        "source_history_source": SOURCE_HISTORY_SOURCE,
+        "source_history_selection_mode": SOURCE_HISTORY_SELECTION_MODE,
+        "source_history_rows": len(source_history_rows),
+        "trade_sample_start": trade_start, "trade_sample_end": trade_end,
+        "trade_sample_span_days": trade_span_days,
+        "trade_sample_timestamp_basis": TRADE_SAMPLE_TIMESTAMP_BASIS,
+        "source_type": SOURCE_TYPE,
         "source_rows": diagnostics["source_rows"], "closed_trades": len(dataset),
         "wins": labels["WIN"], "losses": labels["LOSS"], "neutrals": labels["NEUTRAL"],
         "binary_analysis_rows": labels["WIN"] + labels["LOSS"],
         "feature_count_total": len(registry),
         "numeric_feature_count": sum(row["data_type"] == "NUMERIC" for row in registry),
-        "categorical_feature_count": sum(row["data_type"] in {"CATEGORICAL", "BOOLEAN", "ORDINAL"} for row in registry),
+        "categorical_feature_count": sum(row["data_type"] in {"CATEGORICAL", "BOOLEAN", "ORDINAL", "CYCLIC"} for row in registry),
         "excluded_feature_count": excluded,
         "usable_feature_count": len(registry) - excluded,
         "constant_feature_count": sum(status in {"CONSTANT", "EFFECTIVELY_CONSTANT"} for status in active.values()),
@@ -655,9 +731,12 @@ def _report(manifest: Mapping[str, Any], ranking: Sequence[Mapping[str, Any]], a
     missing = [row["feature"] for row in activity if row["activity_status"] in {"ALL_MISSING", "NEARLY_ALL_MISSING"}]
     return f"""# Single-symbol Winner / Loser Separability
 
+- Final status/verdict: `{manifest['final_status']}` / `{manifest['final_verdict']}`
 - Selected symbol: `{manifest['symbol']}`
 - Profile/source: `{manifest['profile']}` / `{manifest['source_type']}`
-- History actually used: `{manifest['history_start']}` through `{manifest['history_end']}` ({manifest['history_actual_days']:.6f} days)
+- Source history scanned: `{manifest['source_history_start']}` through `{manifest['source_history_end']}` ({manifest['source_history_actual_days']:.6f} days)
+- Source history provenance: `{manifest['source_history_source']}` / `{manifest['source_history_selection_mode']}`
+- Trade sample span: `{manifest['trade_sample_start']}` through `{manifest['trade_sample_end']}` ({manifest['trade_sample_span_days']:.6f} days; `{manifest['trade_sample_timestamp_basis']}`)
 - Closed PAPER trades: {manifest['closed_trades']} (WIN {manifest['wins']}, LOSS {manifest['losses']}, NEUTRAL {manifest['neutrals']})
 - Binary analysis rows: {manifest['binary_analysis_rows']}
 - Causality: persisted exact pre-entry snapshots; future leakage violations {manifest['future_leakage_violations']}
@@ -675,14 +754,22 @@ def _report(manifest: Mapping[str, Any], ranking: Sequence[Mapping[str, Any]], a
 ## Adequacy and scope
 
 This is descriptive evidence only when either class has fewer than five trades or the binary sample has fewer than 20 rows.  The canonical validation policy (20 trades / 3 UTC days) is recorded elsewhere and is not used to suppress separability output.  No production decision, cutoff, threshold, search range, search run, or holdout access is produced here.
+
+`utc_hour` is a cyclic feature with period 24. It is analyzed as categorical descriptive evidence, is excluded from linear interaction geometry, and is marked machine-readably so downstream range generation cannot treat it as an ordinary linear min/max feature.
 """
 
 
 def run_separability(
     *, database: ReadOnlyResearchDatabase, symbol: str, output: Path,
     source_rows: Sequence[Mapping[str, Any]] | None = None,
+    source_history_rows: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     raw = list(source_rows) if source_rows is not None else load_persisted_closed_trades(database, symbol=symbol)
+    history = (
+        list(source_history_rows) if source_history_rows is not None
+        else list(source_rows) if source_rows is not None
+        else load_persisted_source_history(database, symbol=symbol)
+    )
     dataset, diagnostics = construct_dataset(raw, symbol=symbol)
     registry = build_registry(dataset)
     activity = build_activity(registry, len(dataset))
@@ -694,7 +781,10 @@ def run_separability(
     top_n = int(RESEARCH_PARAMETERS.artifact.top_config_count)
     interactions = interaction_screen(dataset, ranking, top_n=top_n)
     handoff = handoff_artifact(ranking, numeric, categorical)
-    manifest = _manifest(dataset, registry, activity, diagnostics, symbol=symbol)
+    manifest = _manifest(
+        dataset, registry, activity, diagnostics, symbol=symbol,
+        source_history_rows=history,
+    )
     manifest["dataset_sha256"] = sha256("".join(
         json.dumps(row, sort_keys=True, separators=(",", ":"), default=str) + "\n" for row in dataset
     ).encode()).hexdigest()
