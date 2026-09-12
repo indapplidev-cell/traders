@@ -52,6 +52,13 @@ from .artifact_v2 import (
     iter_results,
 )
 from .ranking import pareto_frontier, rank_results, selection_bias_guard
+from .research_protocol import (
+    HoldoutAccessPolicy, ResearchPhase, ResearchProtocolError,
+    build_data_driven_ranges, build_winner_loser_dataset, canonical_hash,
+    create_finalist_freeze, holdout_result_hash, not_evaluated_metrics,
+    load_run_local_search_ranges, orchestrate_research_blocks,
+    write_immutable_freeze, write_jsonl,
+)
 from .targeted import (
     active_search_space, deduplicate_behavioral_configs, sensitivity_preflight,
     staged_candidates, validate_targeted_space,
@@ -71,7 +78,7 @@ from .state import RunState, StatusStore, SweepRunStatus
 from .texts import ERRORS_RU
 from .utils import generate_run_id
 
-SCHEMA_VERSION = "SCALPING_V2_PARAMETER_SWEEP/3"
+SCHEMA_VERSION = "SCALPING_V2_PARAMETER_SWEEP/4"
 DATASET_MANIFEST_VERSION = "PARAMETER_SWEEP_DATASET_MANIFEST/2"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROTECTED_BINDING_PATH = PROJECT_ROOT / ".env.production.local"
@@ -327,14 +334,15 @@ class ParameterSweepSearchPlanner:
             counts.append(budget - sum(counts))
             stages = tuple({"stage": name, "budget": count, "uses_holdout": False} for name, count in zip(("BROAD_EXPLORATION", "VALIDATION_REFINEMENT", "LOCAL_REFINEMENT"), counts, strict=True))
         minimum_validation = int(search["minimum_validation_sample"])
-        minimum_holdout = int(search["minimum_holdout_sample"])
         warning = (
             "LARGE_HYPOTHESIS_SPACE_SMALL_SAMPLE"
             if raw > exhaustive_threshold and dataset_rows < configured_budget else "NONE"
         )
+        # Search eligibility is deliberately validation-only.  Holdout sample
+        # size is metadata until the finalist set has been frozen.
         promotion = (
             warning == "NONE" and validation_rows >= minimum_validation
-            and holdout_rows >= minimum_holdout and budget == effective
+            and budget == effective
         )
         return SearchPlan(
             raw, effective,
@@ -1043,7 +1051,9 @@ def _baseline_control(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "minimum_planned_rr": SCALPING_V2.geometry.minimum_planned_rr,
         })
         simulated = chronological_portfolio_replay(rows, config)
-        parity = baseline_parity(simulated, list(rows[0].get("__baseline_positions", [])))
+        # The dataset-level persisted baseline population may contain holdout
+        # outcomes.  It is intentionally unavailable before finalist freeze.
+        parity = {"status": "NOT_EVALUATED_PRE_FREEZE"}
         return {
             "BASELINE_CONFIG_HASH": TRADE_PARAMETERS.config_hash,
             "BASELINE_CONFIG_VERSION": TRADE_PARAMETERS.config_version,
@@ -1093,7 +1103,10 @@ def _search_validation_baseline(
     splits: dict[str, list[dict[str, Any]]], minimums: dict[str, int],
 ) -> dict[str, Any]:
     item, _consumed, _reason = _evaluate_config(
-        _production_baseline_config(), splits, minimums,
+        _production_baseline_config(), {
+            "CALIBRATION": splits["CALIBRATION"],
+            "VALIDATION": splits["VALIDATION"],
+        }, minimums,
         index=-1, stage="SEARCH_VALIDATION_BASELINE",
     )
     compact = compact_result(item)
@@ -1519,6 +1532,7 @@ def _time_stop_metrics(
     ]
     result = {
         **time_stop,
+        "trades": replayed,
         "baseline": baseline,
         "time_stop": time_stop,
         "time_stop_exit_count": sum(bool(state["exit"]) for state in states),
@@ -1809,6 +1823,10 @@ def _evaluate_config(
     params: dict[str, object], splits: Mapping[str, list[dict[str, Any]]],
     minimums: Mapping[str, int], *, index: int, stage: str,
 ) -> tuple[dict[str, Any], bool, str | None]:
+    if "HOLDOUT" in splits or "holdout" in splits:
+        raise ResearchProtocolError("HOLDOUT_ACCESS_BEFORE_FINALIST_FREEZE")
+    if set(splits) != {"CALIBRATION", "VALIDATION"}:
+        raise SweepExpectedError("RESEARCH_SPLIT_CONTRACT_INVALID")
     item: dict[str, Any] = {
         "result_index": index, "stage": stage, "parameters": params,
         "config_hash": _config_hash(params),
@@ -1825,6 +1843,7 @@ def _evaluate_config(
             for name, rows in splits.items()
         }
         item.update(results)
+        item["holdout"] = not_evaluated_metrics()
         item["gate_funnel"] = {
             name: value["funnel"] for name, value in results.items()
         }
@@ -1832,12 +1851,12 @@ def _evaluate_config(
             name: ("PASS" if value["trade_count"] > 0 else "NO_TRADES_EXPLICIT_FUNNEL")
             for name, value in results.items()
         }
-        # Holdout is reported but never participates in selection/ranking.
+        # Only calibration and validation are present in this phase.
         validation = results["validation"]
         item["result_status"] = "ACCEPTED" if validation["trade_count"] > 0 else "REJECTED"
         reason = None if validation["trade_count"] > 0 else "VALIDATION_NO_TRADES_EXPLICIT_FUNNEL"
         return item, True, reason
-    all_rows = [row for name in ("CALIBRATION", "VALIDATION", "HOLDOUT") for row in splits[name]]
+    all_rows = [row for name in ("CALIBRATION", "VALIDATION") for row in splits[name]]
     reasons = [_replay_reason(row) for row in all_rows]
     item.update({
         "INPUT_ROWS": len(all_rows),
@@ -1853,12 +1872,14 @@ def _evaluate_config(
     except (TypeError, ValueError) as error:
         item.update({
             "result_status": "PRUNED_INVALID", "invalid_reason": str(error),
-            "split_status": {name: "PRUNED_INVALID" for name in (
-                "calibration", "validation", "holdout"
-            )},
+            "split_status": {
+                "calibration": "PRUNED_INVALID", "validation": "PRUNED_INVALID",
+                "holdout": "NOT_EVALUATED",
+            },
         })
-        for name in ("calibration", "validation", "holdout"):
+        for name in ("calibration", "validation"):
             item[name] = _metrics([])
+        item["holdout"] = not_evaluated_metrics()
         return item, False, "STRUCTURAL_INVALID"
     admitted_cal, calibration_funnel = _gate_funnel(splits["CALIBRATION"], params)
     item["gate_funnel"] = {"calibration": calibration_funnel}
@@ -1871,7 +1892,7 @@ def _evaluate_config(
             if not admitted_cal else "CALIBRATION_INSUFFICIENT_SAMPLE"
         )
         item["validation"] = _metrics([])
-        item["holdout"] = _metrics([])
+        item["holdout"] = not_evaluated_metrics()
         item["split_status"] = {
             "calibration": "INSUFFICIENT_SAMPLE", "validation": "NOT_EVALUATED_EARLY_REJECT",
             "holdout": "NOT_EVALUATED_EARLY_REJECT",
@@ -1891,21 +1912,54 @@ def _evaluate_config(
     )
     if item["validation"]["rows_replayable"] == 0:
         statuses["validation"] = "INSUFFICIENT_REPLAY_DATA"
-    # Holdout is evaluated only after search metrics and never feeds stage/ranking.
-    admitted_holdout, holdout_funnel = _gate_funnel(splits["HOLDOUT"], params)
-    item["gate_funnel"]["holdout"] = holdout_funnel
-    item["holdout"] = _time_stop_metrics(
-        admitted_holdout, params, config_hash=item["config_hash"],
-    )
-    statuses["holdout"] = (
-        "PASS" if len(admitted_holdout) >= int(minimums["holdout"])
-        else "INSUFFICIENT_SAMPLE"
-    )
+    item["holdout"] = not_evaluated_metrics()
+    statuses["holdout"] = "NOT_EVALUATED"
     item["split_status"] = statuses
     item["result_status"] = (
         "ACCEPTED" if statuses["validation"] == "PASS" else "REJECTED"
     )
     return item, True, None
+
+
+def _evaluate_frozen_holdout(
+    params: dict[str, object], rows: list[dict[str, Any]], *,
+    finalist_id: str, policy: HoldoutAccessPolicy, minimum_sample: int,
+) -> dict[str, Any]:
+    guarded = policy.holdout_rows(
+        rows, finalist_id=finalist_id, config_hash=_config_hash(params),
+    )
+    if guarded and "boundary_ms" in guarded[0]:
+        metrics = chronological_portfolio_replay(guarded, params)
+    else:
+        admitted, _funnel = _gate_funnel(guarded, params)
+        metrics = _time_stop_metrics(admitted, params, config_hash=finalist_id)
+    trades = list(metrics.get("trades") or [])
+    wins = sum(float(row.get("net_pnl", 0)) > 0 for row in trades)
+    losses = sum(float(row.get("net_pnl", 0)) < 0 for row in trades)
+    adequate = int(metrics.get("trade_count") or 0) >= minimum_sample
+    expectancy = metrics.get("expectancy_R", metrics.get("net_expectancy_per_trade"))
+    positive = (
+        expectancy is not None
+        and float(expectancy) > 0
+        and float(metrics.get("profit_factor") or 0) >= 1
+    )
+    return {
+        "finalist_id": finalist_id,
+        "config_hash": finalist_id,
+        "holdout_trade_count": int(metrics.get("trade_count") or 0),
+        "win_count": wins,
+        "loss_count": losses,
+        "expectancy": metrics.get("expectancy_R", metrics.get("net_expectancy_per_trade")),
+        "profit_factor": metrics.get("profit_factor"),
+        "net_pnl": metrics.get("net_pnl"),
+        "max_drawdown": metrics.get("max_drawdown"),
+        "symbol_coverage": len({str(row.get("symbol")) for row in trades if row.get("symbol")}),
+        "period_coverage": len({datetime.fromtimestamp(int(row.get("opened_at_ms", row.get("boundary_ms"))) / 1000, timezone.utc).date().isoformat() for row in trades if row.get("opened_at_ms", row.get("boundary_ms")) is not None}),
+        "verdict": (
+            "PASS" if adequate and positive
+            else "INSUFFICIENT_SAMPLE" if not adequate else "FAIL"
+        ),
+    }
 
 
 def _stage_for(plan: SearchPlan, evaluated: int) -> str:
@@ -1935,6 +1989,7 @@ def _run_impl(
     to_value: str | None = None, database_url: str | None = None,
     preflight_only: bool = False, verbose: bool = False, resume: bool = False,
     mode: ResearchMode = ResearchMode.ALL,
+    range_override_path: Path | None = None,
     stop_after_batches: int | None = None,
     event_sink: Callable[[SweepEvent], None] | None = None,
     stop_requested: Callable[[], bool] | None = None,
@@ -2069,8 +2124,25 @@ def _run_impl(
     emit(EventType.SEARCH_PLANNING_STARTED)
     resolved_seed = int(search["search"]["seed"])
     splits = _split(rows, resolved_seed)
+    search_splits = {
+        "CALIBRATION": splits["CALIBRATION"],
+        "VALIDATION": splits["VALIDATION"],
+    }
+    split_fingerprint = canonical_hash({
+        name: [
+            row.get("position_id", row.get("candidate_id", row.get("boundary_ms")))
+            for row in split_rows
+        ]
+        for name, split_rows in sorted(splits.items())
+    })
+    holdout_policy = HoldoutAccessPolicy()
+    search_coverage = _dataset_coverage(
+        splits["CALIBRATION"] + splits["VALIDATION"],
+    )
+    # Field availability and row counts are permitted split metadata.  They do
+    # not expose outcomes and remain useful for dataset/accounting parity.
     coverage = _dataset_coverage(rows)
-    baseline = _baseline_control(rows)
+    baseline = _baseline_control(splits["CALIBRATION"])
     historical_summary = rows[0].get("__historical_summary", {}) if rows else {}
     replay_capabilities = rows[0].get("__replay_capabilities", {}) if rows else {}
     source_inventory = rows[0].get("__source_inventory", []) if rows else []
@@ -2088,19 +2160,24 @@ def _run_impl(
                         _independent_gate_predicate_signature(split_rows, config)
                     ),
                 }
-                for name, split_rows in sorted(splits.items())
+                for name, split_rows in sorted(search_splits.items())
             }
         try:
             sensitivity = sensitivity_preflight(search, baseline_config, behavior_signature)
         except ValueError as error:
             raise SweepExpectedError(str(error)) from None
         space = sensitivity["active_dimensions"]
+    if range_override_path is not None:
+        try:
+            space = load_run_local_search_ranges(Path(range_override_path), space)
+        except ResearchProtocolError as error:
+            raise SweepExpectedError(error.code) from error
     parameter_registry = build_parameter_registry(active_search_space(search) if sensitivity else space)
     plan = ParameterSweepSearchPlanner().plan(
         dataset_rows=len(rows), space=space, search=search.get("search", {}),
         max_configs_override=max_configs, validation_rows=len(splits["VALIDATION"]),
         holdout_rows=len(splits["HOLDOUT"]),
-        available_replay_rows=int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
+        available_replay_rows=int(search_coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]),
         mode=mode,
     )
     targeted_candidates = None
@@ -2181,7 +2258,10 @@ def _run_impl(
         "checkpoint_count": 0, "early_reject_reasons": {}, "completed": False,
         "RUN_STARTED_AT": run_started.isoformat(), "RUN_FINISHED_AT": None,
         "RUN_DURATION_SECONDS": None, "RUN_DURATION_HUMAN": None,
-        "STATUS": "RUNNING",
+        "STATUS": "RUNNING", "research_phase": ResearchPhase.CALIBRATION_SEARCH.value,
+        "finalists_frozen": False, "freeze_hash": None,
+        "holdout_opened": False, "holdout_evaluated": False,
+        "holdout_result_hash": None,
     }
     if resume:
         try:
@@ -2208,6 +2288,30 @@ def _run_impl(
             raise SweepExpectedError("RESUME_CONFIG_MISMATCH")
         if existing.get("engine_version") != SCHEMA_VERSION:
             raise SweepExpectedError("RESUME_ENGINE_INCOMPATIBLE")
+        freeze_path = output / "FINALIST_FREEZE.json"
+        results_path = output / "HOLDOUT_RESULTS.jsonl"
+        if bool(existing.get("finalists_frozen")) != freeze_path.is_file():
+            raise SweepExpectedError("RESUME_FREEZE_INTEGRITY_MISMATCH")
+        if freeze_path.is_file():
+            frozen = _json(freeze_path)
+            if frozen.get("freeze_hash") != existing.get("freeze_hash"):
+                raise SweepExpectedError("RESUME_FREEZE_INTEGRITY_MISMATCH")
+            try:
+                holdout_policy.install_freeze(frozen)
+            except ResearchProtocolError as error:
+                raise SweepExpectedError(error.code) from error
+        if bool(existing.get("holdout_evaluated")) != results_path.is_file():
+            raise SweepExpectedError("RESUME_HOLDOUT_STATE_INTEGRITY_MISMATCH")
+        if results_path.is_file():
+            stored_holdout = [json.loads(line) for line in results_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            if holdout_result_hash(stored_holdout) != existing.get("holdout_result_hash"):
+                raise SweepExpectedError("RESUME_HOLDOUT_STATE_INTEGRITY_MISMATCH")
+        if existing.get("holdout_evaluated"):
+            raise SweepExpectedError("RESUME_NOT_AVAILABLE_AFTER_HOLDOUT")
+        if existing.get("holdout_opened"):
+            raise SweepExpectedError(
+                "RESUME_HOLDOUT_OPENED_INCOMPLETE_NEW_CAMPAIGN_REQUIRED"
+            )
         checkpoint = existing
         try:
             run_started = datetime.fromisoformat(str(checkpoint["RUN_STARTED_AT"]))
@@ -2358,6 +2462,9 @@ def _run_impl(
         "parameter_registry": parameter_registry,
         "baseline_parity": baseline.get("PARITY", {}),
         "holdout_used_for_search": False,
+        "run_local_range_override": (
+            None if range_override_path is None else str(range_override_path)
+        ),
     })
     registry_artifact = {
         **(sensitivity or {
@@ -2382,6 +2489,8 @@ def _run_impl(
     status_store.update(
         state=RunState.REPLAY_VALIDATION.value,
         phase=RunState.REPLAY_VALIDATION.value,
+        research_phase=ResearchPhase.CALIBRATION_SEARCH.value,
+        holdout_status="UNTOUCHED",
         current_config_index=None,
         current_config=None,
     )
@@ -2396,7 +2505,7 @@ def _run_impl(
         replay_capabilities and not any(
             value.get("STATUS") == "READY" for value in replay_capabilities.values()
         )
-    ) or (not replay_capabilities and int(coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]) == 0):
+    ) or (not replay_capabilities and int(search_coverage["TIME_STOP_REPLAY_ELIGIBLE_ROWS"]) == 0):
         contract_failure = "NO_REPLAYABLE_ROWS_FOR_REQUIRED_DIMENSIONS"
     if contract_failure is not None:
         structured_error = _structured_replay_error(contract_failure)
@@ -2565,13 +2674,14 @@ def _run_impl(
                 planned=plan.evaluation_budget,
             )
             item, consumed_budget, early_reason = _evaluate_config(
-                resolved_config, splits, search["minimum_samples"],
+                resolved_config, search_splits, search["minimum_samples"],
                 index=next_index, stage=current_stage,
             )
             item["overrides"] = changed_parameters
+            item["candidate_parameters"] = candidate
             item["run_id"] = identifier
             item["resolved_seed"] = resolved_seed
-            for split_name in ("calibration", "validation", "holdout"):
+            for split_name in ("calibration", "validation"):
                 for trade in item.get(split_name, {}).get("trades", []):
                     if trade.get("historically_rejected"):
                         counterfactual_count += 1
@@ -2586,7 +2696,7 @@ def _run_impl(
             validation_metrics = item.get("validation", {})
             if item.get("result_status") == "ACCEPTED":
                 detailed = []
-                for split_name in ("calibration", "validation", "holdout"):
+                for split_name in ("calibration", "validation"):
                     for trade in item.get(split_name, {}).get("trades", [])[: RESEARCH_PARAMETERS.artifact.max_detailed_trades_per_config]:
                         detailed.append({"config_id": item["config_hash"], "split": split_name, "resolved_seed": resolved_seed, **compact_trade(trade, str(dataset_manifest["manifest_hash"]))})
                 score = (
@@ -2713,6 +2823,161 @@ def _run_impl(
     canonical_semantics = aggregate_result_semantics(
         all_result_rows, error_count=int(checkpoint["failed_count"]),
     )
+    # Blocks 2 and 3 are diagnostic successors of an exhausted Block 1.  They
+    # run for both positive and zero-positive outcomes and consume no holdout.
+    positive_found = any(
+        row.get("expectancy_R") is not None and float(row["expectancy_R"]) >= 0
+        for row in all_result_rows
+    )
+    block1_result = (
+        "POSITIVE_CONFIG_FOUND" if positive_found
+        else "NO_POSITIVE_CONFIG_IN_CURRENT_SPACE"
+    )
+    status_store.update(research_phase=ResearchPhase.SEPARABILITY_ANALYSIS.value)
+    holdout_policy.transition(ResearchPhase.SEPARABILITY_ANALYSIS)
+    winner_loser_rows: list[dict[str, Any]] = []
+    range_artifact: dict[str, Any] = {}
+
+    def run_separability() -> str:
+        nonlocal winner_loser_rows
+        winner_loser_rows = build_winner_loser_dataset(
+            splits["CALIBRATION"], splits["VALIDATION"],
+        )
+        write_jsonl(
+            output / "WINNER_LOSER_DATASET.jsonl", winner_loser_rows,
+            operation="winner_loser_dataset",
+        )
+        return "STARTED"
+
+    def run_ranges() -> str:
+        nonlocal range_artifact
+        status_store.update(
+            research_phase=ResearchPhase.DATA_DRIVEN_RANGE_GENERATION.value,
+        )
+        holdout_policy.transition(ResearchPhase.DATA_DRIVEN_RANGE_GENERATION)
+        range_artifact = build_data_driven_ranges(
+            search_space=space, baseline=baseline_config,
+            winner_loser_rows=winner_loser_rows,
+        )
+        _atomic_json(output / "DATA_DRIVEN_SEARCH_RANGES.json", range_artifact)
+        return "STARTED"
+
+    block_status = orchestrate_research_blocks(
+        block1_result, run_block2=run_separability, run_block3=run_ranges,
+    )
+    _atomic_json(output / "RESEARCH_BLOCK_STATUS.json", block_status)
+
+    status_store.update(research_phase=ResearchPhase.VALIDATION_RANKING.value)
+    holdout_policy.transition(ResearchPhase.VALIDATION_RANKING)
+    validation_ranked = rank_results(all_result_rows)
+    selection_rule = {
+        "source": "CALIBRATION_AND_VALIDATION_ONLY",
+        "ranking": "rank_results",
+        "finalist_count": RESEARCH_PARAMETERS.artifact.finalist_config_count,
+        "metrics": [
+            "expectancy_R", "profit_factor", "max_drawdown", "trade_count",
+            "symbol_coverage", "rank_stability", "independent_period_count",
+        ],
+    }
+    freeze_path = output / "FINALIST_FREEZE.json"
+    existing_freeze = _json(freeze_path) if freeze_path.is_file() else None
+    freeze = create_finalist_freeze(
+        campaign_id=identifier,
+        dataset_fingerprint=dataset_fingerprint,
+        split_fingerprint=split_fingerprint,
+        baseline_id=RESEARCH_PARAMETERS.calibration.baseline_set_id,
+        search_space_hash=search_space_hash,
+        selection_rule=selection_rule,
+        ranked_rows=validation_ranked,
+        finalist_count=RESEARCH_PARAMETERS.artifact.finalist_config_count,
+        freeze_timestamp=(
+            str(existing_freeze["freeze_timestamp"])
+            if isinstance(existing_freeze, dict) else None
+        ),
+    )
+    status_store.update(research_phase=ResearchPhase.FINALIST_FREEZE.value)
+    holdout_policy.transition(ResearchPhase.FINALIST_FREEZE)
+    write_immutable_freeze(freeze_path, freeze)
+    holdout_policy.install_freeze(freeze)
+    checkpoint.update({
+        "research_phase": ResearchPhase.FINALIST_FREEZE.value,
+        "finalists_frozen": True,
+        "freeze_hash": freeze["freeze_hash"],
+        "holdout_opened": False,
+        "holdout_evaluated": False,
+    })
+    _atomic_json(checkpoint_path, checkpoint)
+    status_store.update(
+        finalists_frozen=True,
+        finalist_count=int(freeze["finalist_count_selected"]),
+        freeze_hash=str(freeze["freeze_hash"]),
+        holdout_status="UNTOUCHED",
+    )
+
+    finalist_rows = []
+    for finalist in freeze["finalists"]:
+        resolved = {**baseline_config, **dict(finalist["parameters"])}
+        detail, _consumed, _reason = _evaluate_config(
+            resolved, search_splits, search["minimum_samples"],
+            index=-1, stage="FROZEN_FINALIST_DETAIL",
+        )
+        for split_name in ("calibration", "validation"):
+            for trade in detail.get(split_name, {}).get("trades", [])[: RESEARCH_PARAMETERS.artifact.max_detailed_trades_per_config]:
+                finalist_rows.append({
+                    "config_id": finalist["finalist_id"], "split": split_name,
+                    "resolved_seed": resolved_seed,
+                    **compact_trade(trade, str(dataset_manifest["manifest_hash"])),
+                })
+
+    holdout_path = output / "HOLDOUT_RESULTS.jsonl"
+    if holdout_path.is_file():
+        holdout_rows = [
+            json.loads(line) for line in holdout_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    else:
+        checkpoint.update({
+            "research_phase": ResearchPhase.HOLDOUT_EVALUATION.value,
+            "holdout_opened": bool(freeze["finalists"]),
+            "holdout_evaluated": False,
+        })
+        _atomic_json(checkpoint_path, checkpoint)
+        status_store.update(
+            research_phase=ResearchPhase.HOLDOUT_EVALUATION.value,
+            holdout_status="OPENED", holdout_opened=True,
+        )
+        holdout_policy.transition(ResearchPhase.HOLDOUT_EVALUATION)
+        holdout_rows = []
+        for finalist in freeze["finalists"]:
+            resolved = {**baseline_config, **dict(finalist["parameters"])}
+            if _config_hash(resolved) != finalist["config_hash"]:
+                raise SweepExpectedError("FINALIST_CONFIG_HASH_MISMATCH")
+            holdout_rows.append(_evaluate_frozen_holdout(
+                resolved, splits["HOLDOUT"],
+                finalist_id=str(finalist["finalist_id"]), policy=holdout_policy,
+                minimum_sample=int(search["minimum_samples"]["holdout"]),
+            ))
+        write_jsonl(holdout_path, holdout_rows, operation="one_shot_holdout_results")
+    holdout_hash = holdout_result_hash(holdout_rows)
+    campaign_verdict = (
+        "HOLDOUT_PASSED"
+        if any(row.get("verdict") == "PASS" for row in holdout_rows)
+        else "HOLDOUT_FAILED"
+    )
+    checkpoint.update({
+        "research_phase": ResearchPhase.FINAL_REPORT.value,
+        "holdout_opened": bool(freeze["finalists"]),
+        "holdout_evaluated": True,
+        "holdout_result_hash": holdout_hash,
+        "campaign_verdict": campaign_verdict,
+    })
+    _atomic_json(checkpoint_path, checkpoint)
+    holdout_policy.transition(ResearchPhase.FINAL_REPORT)
+    status_store.update(
+        research_phase=ResearchPhase.FINAL_REPORT.value,
+        holdout_status="EVALUATED", holdout_opened=bool(freeze["finalists"]),
+        holdout_evaluated=True,
+    )
     checkpoint["insufficient_count"] = canonical_semantics["insufficient_configs"]
     checkpoint["classification_counts"] = canonical_semantics["classification_counts"]
     checkpoint["evaluation_status_counts"] = canonical_semantics["evaluation_status_counts"]
@@ -2732,7 +2997,6 @@ def _run_impl(
     )
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "ACCEPTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in accepted_rows) or "\n", operation="accepted_configs_v2")
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "REJECTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in rejected_rows) or "\n", operation="rejected_configs_v2")
-    finalist_rows = [trade for _score, _config_id, trades in finalist_candidates for trade in trades]
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "FINALIST_TRADES.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in finalist_rows) or "\n", operation="finalist_trades_v2")
     top = _aggregate_results(output)
     _atomic_json(output / "TOP_CONFIGS.json", top)
@@ -2860,6 +3124,10 @@ def _run_impl(
 - Evaluation budget: {plan.evaluation_budget}
 - Staged plan: `{json.dumps(plan.staged_search_plan)}`
 - Holdout used for search/refinement/ranking: `NO`
+- Research phases: `{', '.join(phase.value for phase in ResearchPhase)}`
+- Finalists frozen: `YES`; finalist count: {freeze['finalist_count_selected']}
+- Holdout status: `EVALUATED_ONE_SHOT_FROZEN_FINALISTS_ONLY`
+- Campaign verdict: `{campaign_verdict}`
 
 ## RESULTS
 
@@ -2884,7 +3152,7 @@ def _run_impl(
 - Statistical warning: `{plan.statistical_warning}`
 - PROMOTION_EVALUATION_ALLOWED: `YES`
 - CANDIDATE_PROMOTION_ELIGIBLE: `{'YES' if canonical_semantics['candidate_promotion_eligible'] else 'NO'}`
-- Holdout is evaluated for reporting only and never influences search/refinement/ranking.
+- Holdout is opened once, only after immutable finalist freeze, and never influences search/refinement/ranking.
 """
     DEFAULT_ARTIFACT_WRITER.atomic_text(
         output / "REPORT.md", report, operation="report_replace",
@@ -3044,6 +3312,7 @@ def run(
     stop_requested: Callable[[], bool] | None = None,
     use_lock: bool = True,
     mode: ResearchMode | str = ResearchMode.ALL,
+    range_override_path: Path | None = None,
 ) -> Path:
     """Run the authoritative research engine with lock and heartbeat protection."""
     search_path = Path(search_path)
@@ -3096,6 +3365,7 @@ def run(
             event_sink=event_sink,
             stop_requested=stop_requested,
             mode=canonical_mode,
+            range_override_path=range_override_path,
         )
     except BaseException as error:
         output = output_root / identifier

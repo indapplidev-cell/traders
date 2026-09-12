@@ -152,6 +152,12 @@ class ParameterSweepWindow:
             if state.terminal_state is None and state.active else "Запланировано"
         )
         self.plan.configure(text=(
+            f"Фаза исследования: {state.research_phase}\n"
+            f"HOLDOUT: {state.holdout_status}\n"
+            f"Финалисты зафиксированы: {'ДА' if state.finalists_frozen else 'НЕТ'} · "
+            f"Количество: {state.finalist_count}\n"
+            f"Holdout открыт/оценён: {'ДА' if state.holdout_opened else 'НЕТ'} / "
+            f"{'ДА' if state.holdout_evaluated else 'НЕТ'}\n"
             f"Количество измерений: {len(state.search_dimensions)}\n"
             f"Исходных комбинаций: {state.raw_space:,}\n"
             f"{planned_label}: {state.planned:,}\n"

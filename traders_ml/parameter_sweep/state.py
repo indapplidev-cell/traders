@@ -87,6 +87,13 @@ class SweepRunStatus:
     performance_class_counts: dict[str, int] = field(default_factory=dict)
     validation_readiness: dict[str, dict[str, Any]] = field(default_factory=dict)
     resolved_seed: int | None = None
+    research_phase: str = "CALIBRATION_SEARCH"
+    holdout_status: str = "UNTOUCHED"
+    finalists_frozen: bool = False
+    finalist_count: int = 0
+    holdout_opened: bool = False
+    holdout_evaluated: bool = False
+    freeze_hash: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -12,6 +12,7 @@ import yaml
 
 from .artifact_writer import DEFAULT_ARTIFACT_WRITER
 from .artifact_v2 import aggregate_result_semantics
+from .research_protocol import canonical_hash, holdout_result_hash
 
 
 COMPLETED_ARTIFACTS = (
@@ -21,6 +22,9 @@ COMPLETED_ARTIFACTS = (
     "ACCEPTED_CONFIGS.jsonl", "REJECTED_CONFIGS.jsonl", "FINALIST_TRADES.jsonl",
     "REJECTED_CONFIGS.json", "ARTIFACT_SIZES.json", "REPORT.md", "STATUS.json",
     "OPPORTUNITY_FUNNEL.json", "PARAMETER_REGISTRY.json",
+    "WINNER_LOSER_DATASET.jsonl", "DATA_DRIVEN_SEARCH_RANGES.json",
+    "RESEARCH_BLOCK_STATUS.json", "FINALIST_FREEZE.json",
+    "HOLDOUT_RESULTS.jsonl",
 )
 
 TERMINAL_ARTIFACTS = {
@@ -171,6 +175,43 @@ def verify_artifacts(
             resolved_seed = checkpoint.get("resolved_seed", checkpoint.get("seed"))
             run_manifest = _json(run_directory / "RUN_MANIFEST.json")
             opportunity_funnel = _json(run_directory / "OPPORTUNITY_FUNNEL.json")
+            freeze = _json(run_directory / "FINALIST_FREEZE.json")
+            holdout_results = [
+                json.loads(line) for line in (run_directory / "HOLDOUT_RESULTS.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            winner_loser = [
+                json.loads(line) for line in (run_directory / "WINNER_LOSER_DATASET.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            ranges = _json(run_directory / "DATA_DRIVEN_SEARCH_RANGES.json")
+            freeze_hash = canonical_hash({
+                key: value for key, value in freeze.items() if key != "freeze_hash"
+            })
+            frozen_ids = {
+                str(item["finalist_id"]) for item in freeze.get("finalists", [])
+            }
+            holdout_ids = [str(item.get("finalist_id")) for item in holdout_results]
+            checks["finalist_freeze_integrity"] = (
+                freeze.get("freeze_hash") == freeze_hash
+                and checkpoint.get("freeze_hash") == freeze_hash
+                and freeze.get("dataset_fingerprint") == expected_dataset_fingerprint
+                and int(freeze.get("finalist_count_selected", -1)) == len(frozen_ids)
+            )
+            checks["holdout_frozen_finalists_only_once"] = (
+                set(holdout_ids) <= frozen_ids
+                and len(holdout_ids) == len(set(holdout_ids))
+                and checkpoint.get("holdout_result_hash") == holdout_result_hash(holdout_results)
+            )
+            checks["winner_loser_holdout_zero"] = all(
+                row.get("split") in {"CALIBRATION", "VALIDATION"}
+                and int(row.get("feature_timestamp", 1)) <= int(row.get("entry_decision_timestamp", 0))
+                for row in winner_loser
+            )
+            checks["range_artifact_run_local"] = (
+                ranges.get("mutates_yaml") is False
+                and ranges.get("global_authority") is False
+            )
             finalist_rows = [
                 json.loads(line) for line in (run_directory / "FINALIST_TRADES.jsonl").read_text(encoding="utf-8").splitlines()
                 if line.strip()

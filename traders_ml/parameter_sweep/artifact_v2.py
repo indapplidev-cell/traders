@@ -121,6 +121,7 @@ def compact_result(
             "COMPLETE" if raw_periods is not None else "DATA_INCOMPLETE"
         ))
     overrides = dict(item.get("overrides") or item.get("parameters") or {})
+    candidate_parameters = dict(item.get("candidate_parameters") or overrides)
     metrics = {
         "trade_count": trade_count,
         "win_count": wins,
@@ -150,17 +151,15 @@ def compact_result(
         "EARLY_REJECTED": "REJECTED", "PRUNED_INVALID": "ERROR",
     }.get(str(item.get("result_status")), str(item.get("evaluation_status") or "ERROR"))
     metrics["invalid_reason"] = item.get("invalid_reason")
-    holdout_count = int((item.get("holdout") or {}).get("trade_count") or 0)
     slice_count = sum(
         int((item.get(name) or {}).get("trade_count") or 0) > 0
-        for name in ("calibration", "validation", "holdout")
+        for name in ("calibration", "validation")
     )
     gates = [
         ("validation_trade_count", trade_count, RESEARCH_PARAMETERS.ranking.validation_minimum_trades),
         ("symbol_coverage", metrics["symbol_coverage"], RESEARCH_PARAMETERS.ranking.minimum_symbol_coverage),
         ("independent_period_count", independent_periods, RESEARCH_PARAMETERS.ranking.minimum_independent_periods),
-        ("holdout_count", holdout_count, RESEARCH_PARAMETERS.search.minimum_holdout_sample),
-        ("minimum_slice_count", slice_count, 3),
+        ("minimum_slice_count", slice_count, 2),
     ]
     failed_gates = [
         {
@@ -179,6 +178,7 @@ def compact_result(
         "research_config_hash": research_config_hash,
         "resolved_seed": item.get("resolved_seed"),
         "overrides": overrides,
+        "candidate_parameters": candidate_parameters,
         "stage": item.get("stage"),
         "evaluation_status": evaluation_status,
         "performance_class": performance_class(metrics),

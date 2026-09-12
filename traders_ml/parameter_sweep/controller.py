@@ -67,6 +67,12 @@ class PresentationState:
     performance_class_counts: dict[str, int] = field(default_factory=dict)
     resolved_seed: int | None = None
     research_mode: str = ResearchMode.ALL.value
+    research_phase: str = "CALIBRATION_SEARCH"
+    holdout_status: str = "UNTOUCHED"
+    finalists_frozen: bool = False
+    finalist_count: int = 0
+    holdout_opened: bool = False
+    holdout_evaluated: bool = False
 
     @property
     def progress_percent(self) -> float:
@@ -215,6 +221,18 @@ class ParameterSweepController:
                 break
             drained.append(event)
             self._apply(event)
+        status_path = Path(self.state.output_directory) / "STATUS.json"
+        if status_path.is_file():
+            try:
+                persisted = read_effective_status(status_path)
+            except (OSError, ValueError, KeyError):
+                persisted = {}
+            self.state.research_phase = str(persisted.get("research_phase", self.state.research_phase))
+            self.state.holdout_status = str(persisted.get("holdout_status", self.state.holdout_status))
+            self.state.finalists_frozen = bool(persisted.get("finalists_frozen", self.state.finalists_frozen))
+            self.state.finalist_count = int(persisted.get("finalist_count", self.state.finalist_count))
+            self.state.holdout_opened = bool(persisted.get("holdout_opened", self.state.holdout_opened))
+            self.state.holdout_evaluated = bool(persisted.get("holdout_evaluated", self.state.holdout_evaluated))
         return drained
 
     def _apply(self, event: SweepEvent) -> None:

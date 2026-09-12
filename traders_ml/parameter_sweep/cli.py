@@ -35,6 +35,12 @@ def status(run_id: str, output_root: Path = DEFAULT_OUTPUT_ROOT) -> int:
     print(f"RUN_ID = {run_id}")
     print(f"STATE = {value['state']}")
     print(f"PHASE = {value['phase']}")
+    print(f"RESEARCH_PHASE = {value.get('research_phase', 'UNKNOWN')}")
+    print(f"HOLDOUT = {value.get('holdout_status', 'UNTOUCHED')}")
+    print(f"FINALISTS_FROZEN = {'YES' if value.get('finalists_frozen') else 'NO'}")
+    print(f"FINALIST_COUNT = {value.get('finalist_count', 0)}")
+    print(f"HOLDOUT_OPENED = {'YES' if value.get('holdout_opened') else 'NO'}")
+    print(f"HOLDOUT_EVALUATED = {'YES' if value.get('holdout_evaluated') else 'NO'}")
     print(f"RESEARCH_MODE = {value.get('research_mode') or 'UNKNOWN'}")
     print(f"PROCESS_ALIVE = {'YES' if value['process_alive'] else 'NO'}")
     print(f"PLANNED = {value['planned_configs']}")
@@ -72,6 +78,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--to", dest="to_value")
     parser.add_argument("--database-url", help="Explicit dev/test/admin override only")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--range-override", type=Path,
+        help="Explicit run-local DATA_DRIVEN_SEARCH_RANGES.json input.",
+    )
     return parser
 
 
@@ -95,6 +105,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             preflight_only=args.preflight_only, verbose=args.verbose,
             resume=args.resume,
             mode=args.mode,
+            range_override_path=args.range_override,
         )
     except SweepExpectedError as error:
         print("PARAMETER_SWEEP = FAILED")

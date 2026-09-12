@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Iterable, Mapping
 
 from app.config.yaml_authority import RESEARCH_PARAMETERS
+from .research_protocol import assert_validation_only_rows
 
 
 PERFORMANCE_CLASSES = (
@@ -24,7 +25,9 @@ def rank_score(row: Mapping[str, Any]) -> tuple[float, ...]:
 
 
 def rank_results(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    eligible = [row for row in rows if row.get("evaluation_status") == "ACCEPTED"]
+    values = list(rows)
+    assert_validation_only_rows(values)
+    eligible = [row for row in values if row.get("evaluation_status") == "ACCEPTED"]
     return sorted(eligible, key=lambda row: (rank_score(row), str(row.get("config_id"))), reverse=True)
 
 
