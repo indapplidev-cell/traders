@@ -75,6 +75,12 @@ class PresentationState:
     finalist_count: int = 0
     holdout_opened: bool = False
     holdout_evaluated: bool = False
+    canonical_validation: dict[str, Any] = field(default_factory=dict)
+    history_target_days: int = 30
+    history_start: str | None = None
+    history_end: str | None = None
+    history_actual_days: float | None = None
+    history_depth_status: str | None = None
 
     @property
     def progress_percent(self) -> float:
@@ -251,6 +257,14 @@ class ParameterSweepController:
             self.state.holdout_opened = bool(persisted.get("holdout_opened", self.state.holdout_opened))
             self.state.holdout_evaluated = bool(persisted.get("holdout_evaluated", self.state.holdout_evaluated))
             self.state.symbol = str(persisted.get("symbol") or self.state.symbol or "") or None
+            self.state.canonical_validation = dict(
+                persisted.get("canonical_validation") or self.state.canonical_validation
+            )
+            self.state.history_target_days = int(persisted.get("history_target_days") or 30)
+            self.state.history_start = persisted.get("history_start") or self.state.history_start
+            self.state.history_end = persisted.get("history_end") or self.state.history_end
+            self.state.history_actual_days = persisted.get("history_actual_days", self.state.history_actual_days)
+            self.state.history_depth_status = persisted.get("history_depth_status") or self.state.history_depth_status
         return drained
 
     def _apply(self, event: SweepEvent) -> None:
@@ -305,6 +319,7 @@ class ParameterSweepController:
             self.state.performance_class_counts = dict(payload.get("performance_class_counts", self.state.performance_class_counts))
         elif event.type == EventType.CONFIG_COMPLETED:
             self.state.current_result = dict(payload["result"])
+            self.state.canonical_validation = dict(payload.get("canonical_validation") or {})
         elif event.type == EventType.RESULT_WRITE_STARTED:
             self.state.status_text = RU["writing"]
         elif event.type == EventType.RESULT_WRITE_COMPLETED:

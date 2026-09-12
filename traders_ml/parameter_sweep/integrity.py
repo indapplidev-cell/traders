@@ -181,6 +181,10 @@ def verify_artifacts(
                 int(status.get("accepted_configs", -1)) == semantics["accepted_configs"],
                 int(status.get("rejected_configs", -1)) == semantics["rejected_configs"],
                 int(status.get("error_configs", -1)) == semantics["error_configs"],
+                status.get("canonical_validation") == semantics["canonical_validation"],
+                checkpoint.get("canonical_validation") == semantics["canonical_validation"],
+                status.get("validation_readiness") == semantics["validation_readiness"],
+                checkpoint.get("validation_readiness") == semantics["validation_readiness"],
             ))
             checks["accepted_rejected_artifact_parity"] = (
                 len(accepted_rows) == semantics["accepted_configs"]
@@ -190,6 +194,7 @@ def verify_artifacts(
             checks["results_report_parity"] = all((
                 f"EVALUATION_STATUS_COUNTS: `{json.dumps(semantics['evaluation_status_counts'], sort_keys=True)}`" in report,
                 f"PERFORMANCE_CLASS_COUNTS: `{json.dumps(semantics['performance_class_counts'], sort_keys=True)}`" in report,
+                f"CANONICAL_VALIDATION: `{json.dumps(semantics['canonical_validation'], sort_keys=True)}`" in report,
             ))
             resolved_seed = checkpoint.get("resolved_seed", checkpoint.get("seed"))
             run_manifest = _json(run_directory / "RUN_MANIFEST.json")
@@ -210,6 +215,7 @@ def verify_artifacts(
             frozen_ids = {
                 str(item["finalist_id"]) for item in freeze.get("finalists", [])
             }
+            results_by_id = {str(row["config_id"]): row for row in jsonl_results}
             holdout_ids = [str(item.get("finalist_id")) for item in holdout_results]
             checks["finalist_freeze_integrity"] = (
                 freeze.get("freeze_hash") == freeze_hash
@@ -217,10 +223,53 @@ def verify_artifacts(
                 and freeze.get("dataset_fingerprint") == expected_dataset_fingerprint
                 and int(freeze.get("finalist_count_selected", -1)) == len(frozen_ids)
             )
+            checks["finalist_eligibility"] = all(
+                results_by_id[str(item["finalist_id"])].get("performance_class") == "VALIDATION_CANDIDATE"
+                and results_by_id[str(item["finalist_id"])].get("evaluation_status") == "ACCEPTED"
+                and not results_by_id[str(item["finalist_id"])].get("insufficient_sample_gates")
+                for item in freeze.get("finalists", [])
+            )
+            signatures = [str(item.get("behavioral_signature")) for item in freeze.get("finalists", [])]
+            checks["behavioral_finalist_dedup"] = (
+                len(signatures) == len(set(signatures))
+                and all(
+                    int(item.get("equivalence_count", 0)) == len(item.get("equivalent_config_ids", []))
+                    and item.get("representative_config_id") == item.get("finalist_id")
+                    for item in freeze.get("finalists", [])
+                )
+            )
             checks["holdout_frozen_finalists_only_once"] = (
                 set(holdout_ids) <= frozen_ids
                 and len(holdout_ids) == len(set(holdout_ids))
                 and checkpoint.get("holdout_result_hash") == holdout_result_hash(holdout_results)
+            )
+            checks["zero_finalists_holdout_guard"] = (
+                bool(frozen_ids)
+                or (
+                    freeze.get("reason") == "ZERO_ELIGIBLE_VALIDATION_FINALISTS"
+                    and checkpoint.get("campaign_verdict") == "HOLDOUT_SKIPPED_ZERO_FINALISTS"
+                    and checkpoint.get("holdout_opened") is False
+                    and checkpoint.get("holdout_evaluated") is False
+                    and int(checkpoint.get("holdout_evaluations", -1)) == 0
+                    and int(checkpoint.get("holdout_rows_read", -1)) == 0
+                    and int(checkpoint.get("holdout_metrics_computed", -1)) == 0
+                    and not holdout_results
+                )
+            )
+            history_values = (
+                manifest.get("history_target_days"), checkpoint.get("history_target_days"),
+                status.get("history_target_days"), run_config.get("history_target_days"),
+                run_manifest.get("history_target_days"),
+            )
+            checks["history_depth_parity"] = (
+                all(value == 30 for value in history_values)
+                and all(
+                    artifact.get("history_start") == manifest.get("history_start")
+                    and artifact.get("history_end") == manifest.get("history_end")
+                    and artifact.get("history_actual_days") == manifest.get("history_actual_days")
+                    and artifact.get("history_depth_status") == manifest.get("history_depth_status")
+                    for artifact in (checkpoint, status, run_config, run_manifest)
+                )
             )
             checks["winner_loser_holdout_zero"] = all(
                 row.get("split") in {"CALIBRATION", "VALIDATION"}

@@ -99,6 +99,9 @@ def compact_result(
     setups = {
         str(trade.get("setup_type") or "UNKNOWN") for trade in trades
     } if trade_records_present else set(validation.get("setup_distribution") or ())
+    regimes = {
+        str(trade.get("regime") or "UNKNOWN") for trade in trades
+    } if trade_records_present else set(validation.get("regime_distribution") or ())
     period_buckets: list[str] = []
     period_status = "COMPLETE"
     if trade_records_present:
@@ -122,6 +125,26 @@ def compact_result(
         ))
     overrides = dict(item.get("overrides") or item.get("parameters") or {})
     candidate_parameters = dict(item.get("candidate_parameters") or overrides)
+    behavioral_signature = canonical_hash([
+        {
+            "trade_identity": trade.get("causal_opportunity") or trade.get("candidate_id") or trade.get("position_id"),
+            "entry_timestamp": trade.get("opened_at_ms", trade.get("boundary_ms")),
+            "exit_timestamp": trade.get("closed_at_ms", trade.get("exit_time_ms")),
+            "side": trade.get("side", trade.get("direction")),
+            "entry_outcome": trade.get("entry_status", "TRADE"),
+            "exit_outcome": trade.get("exit_status", trade.get("exit_reason")),
+            "net_pnl": trade.get("net_pnl"),
+            "r_outcome": trade.get("realized_r", trade.get("net_rr")),
+            "terminal_reason": trade.get("exit_reason", trade.get("reason")),
+        }
+        for trade in sorted(
+            trades,
+            key=lambda value: (
+                int(value.get("opened_at_ms", value.get("boundary_ms", 0)) or 0),
+                str(value.get("causal_opportunity") or value.get("candidate_id") or value.get("position_id") or ""),
+            ),
+        )
+    ])
     metrics = {
         "trade_count": trade_count,
         "win_count": wins,
@@ -144,6 +167,7 @@ def compact_result(
         "cost_burden": validation.get("fee_to_gross_edge_ratio", validation.get("average_cost_per_trade")),
         "symbol_coverage": len(symbols) if trade_records_present else int(validation.get("symbol_coverage") or len(symbols)),
         "setup_coverage": len(setups) if trade_records_present else int(validation.get("setup_coverage") or len(setups)),
+        "regime_coverage": len(regimes) if trade_records_present else int(validation.get("regime_coverage") or len(regimes)),
         "independent_period_count": independent_periods,
     }
     evaluation_status = {
@@ -182,6 +206,8 @@ def compact_result(
         "evaluated_symbol_count": item.get("evaluated_symbol_count", 1),
         "symbol_coverage_expected": 1,
         "symbol_coverage_pass": int(metrics["symbol_coverage"] or 0) == 1,
+        "validation_behavioral_signature": behavioral_signature,
+        "minimum_slice_count": slice_count,
         "overrides": overrides,
         "candidate_parameters": candidate_parameters,
         "stage": item.get("stage"),
@@ -200,6 +226,43 @@ def compact_result(
     }
 
 
+def canonical_validation_projection(row: Mapping[str, Any]) -> dict[str, Any]:
+    """Project readiness from one canonical compact validation result."""
+    symbol_coverage = int(row.get("symbol_coverage") or 0)
+    return {
+        "config_id": row.get("config_id"),
+        "validation_trade_count": int(row.get("trade_count") or 0),
+        "symbol_coverage": symbol_coverage,
+        "symbol_coverage_expected": 1,
+        "symbol_coverage_pass": symbol_coverage == 1,
+        "independent_period_count": row.get("independent_period_count"),
+        "setup_coverage": int(row.get("setup_coverage") or 0),
+        "regime_coverage": int(row.get("regime_coverage") or 0),
+        "performance_class": row.get("performance_class"),
+        "evaluation_status": row.get("evaluation_status"),
+        "validation_readiness_pass": not bool(row.get("insufficient_sample_gates")),
+        "minimum_slice_count": int(row.get("minimum_slice_count") or 0),
+    }
+
+
+def _readiness_from_projection(projection: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    policy = RESEARCH_PARAMETERS.ranking
+    requirements = {
+        "validation_trade_count": policy.validation_minimum_trades,
+        "symbol_coverage": 1,
+        "independent_period_count": policy.minimum_independent_periods,
+        "setup_coverage": 1,
+        "minimum_slice_count": 2,
+    }
+    return {
+        name: {
+            "current": projection.get(name), "required": required,
+            "pass": projection.get(name) is not None and projection.get(name) >= required,
+        }
+        for name, required in requirements.items()
+    }
+
+
 def aggregate_result_semantics(
     rows: Iterable[Mapping[str, Any]], *, error_count: int = 0,
 ) -> dict[str, Any]:
@@ -207,25 +270,17 @@ def aggregate_result_semantics(
     values = list(rows)
     evaluation_counts: dict[str, int] = {"ACCEPTED": 0, "REJECTED": 0, "ERROR": int(error_count)}
     performance_counts: dict[str, int] = {}
-    readiness: dict[str, dict[str, Any]] = {}
     for row in values:
         evaluation = str(row.get("evaluation_status") or "ERROR")
         evaluation_counts[evaluation] = evaluation_counts.get(evaluation, 0) + 1
         classification = str(row.get("performance_class") or "INVALID")
         performance_counts[classification] = performance_counts.get(classification, 0) + 1
-        for gate in row.get("insufficient_sample_gates") or []:
-            name = str(gate["gate"])
-            current = None if gate.get("current") is None else int(gate["current"])
-            required = int(gate["required"])
-            existing = readiness.setdefault(name, {
-                "current": current, "required": required,
-                "deficit": None if current is None else max(0, required-current),
-                "status": "DATA_INCOMPLETE" if current is None else "BELOW_MINIMUM",
-            })
-            if current is not None and (existing["current"] is None or current > existing["current"]):
-                existing["current"] = current
-                existing["deficit"] = max(0, required - current)
-                existing["status"] = "BELOW_MINIMUM"
+    canonical_row = max(
+        values, key=lambda row: (int(row.get("config_index") or 0), str(row.get("config_id") or "")),
+        default={},
+    )
+    projection = canonical_validation_projection(canonical_row)
+    readiness = _readiness_from_projection(projection)
     promotable = performance_counts.get("VALIDATION_CANDIDATE", 0)
     return {
         "evaluated_configs": len(values),
@@ -239,6 +294,7 @@ def aggregate_result_semantics(
         "candidate_promotion_eligible": promotable > 0,
         "promotable_candidate_count": promotable,
         "validation_readiness": dict(sorted(readiness.items())),
+        "canonical_validation": projection,
     }
 
 

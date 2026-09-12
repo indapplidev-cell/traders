@@ -25,6 +25,8 @@ from app.config.yaml_authority import RESEARCH_PARAMETERS
 
 PROFILE = "trade-5m-v2"
 MAX_CANDLE_CACHE_WINDOWS = 512
+HISTORY_TARGET_DAYS = 30
+HISTORY_TARGET_MS = HISTORY_TARGET_DAYS * 86_400_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,8 +276,10 @@ class HistoricalReplayRepository:
 
     def load(self, *, symbol: str, maximum_rows: int | None = None, selection_mode: str = "ALL_UNTIL_CUTOFF", from_ms: int | None = None, to_ms: int | None = None) -> HistoricalReplayDataset:
         with self.database.connection() as connection:
-            period_start, period_end = self._period(connection, symbol)
-            start, end = from_ms or period_start, to_ms or period_end
+            source_start, source_end = self._period(connection, symbol)
+            end = min(to_ms, source_end) if to_ms is not None else source_end
+            target_start = end - HISTORY_TARGET_MS
+            start = max(source_start, target_start, from_ms or target_start)
             inventory = self._inventory(connection, start, end)
             for item in inventory:
                 item["ROW_SCOPE"] = "SHARED_STORAGE_INVENTORY_NOT_EVALUATED"
@@ -342,8 +346,14 @@ class HistoricalReplayRepository:
         latest_eligible = max((int(row["boundary_ms"]) for row in rows), default=end)
         summary = {
             "HISTORICAL_REPLAY_DATA_SOURCE": "EXISTING_POSTGRESQL_HISTORY",
-            "FUTURE_WAIT_REQUIRED": "NO", "HISTORICAL_PERIOD_START_MS": start,
-            "HISTORICAL_PERIOD_END_MS": end, "MARKET_1M_ROWS": market_1m,
+            "FUTURE_WAIT_REQUIRED": "NO",
+            "HISTORY_TARGET_DAYS": HISTORY_TARGET_DAYS,
+            "HISTORY_TARGET_START_MS": target_start,
+            "SOURCE_AVAILABLE_START_MS": source_start,
+            "SOURCE_AVAILABLE_END_MS": source_end,
+            "HISTORICAL_PERIOD_START_MS": min((int(row["boundary_ms"]) for row in rows), default=start),
+            "HISTORICAL_PERIOD_END_MS": max((int(row["boundary_ms"]) for row in rows), default=end),
+            "MARKET_1M_ROWS": market_1m,
             "MARKET_5M_ROWS": market_5m, "MARKET_SNAPSHOT_ROWS": observations,
             "TOTAL_5M_BOUNDARIES": observations, "TOTAL_SYMBOL_BOUNDARIES": observations,
             "TOTAL_RECONSTRUCTED_SETUPS": setups,

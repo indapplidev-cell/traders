@@ -63,6 +63,11 @@ class SweepRunStatus:
     dataset_cutoff_at: str | None = None
     dataset_period_start_ms: int | None = None
     dataset_period_end_ms: int | None = None
+    history_target_days: int = 30
+    history_start: str | None = None
+    history_end: str | None = None
+    history_actual_days: float | None = None
+    history_depth_status: str | None = None
     config_hash: str | None = None
     search_space_hash: str | None = None
     engine_version: str | None = None
@@ -87,6 +92,14 @@ class SweepRunStatus:
     evaluation_status_counts: dict[str, int] = field(default_factory=dict)
     performance_class_counts: dict[str, int] = field(default_factory=dict)
     validation_readiness: dict[str, dict[str, Any]] = field(default_factory=dict)
+    canonical_validation: dict[str, Any] = field(default_factory=dict)
+    validation_trade_count: int = 0
+    symbol_coverage: int = 0
+    symbol_coverage_expected: int = 1
+    symbol_coverage_pass: bool = False
+    independent_period_count: int | None = None
+    setup_coverage: int = 0
+    regime_coverage: int = 0
     resolved_seed: int | None = None
     research_phase: str = "CALIBRATION_SEARCH"
     holdout_status: str = "UNTOUCHED"

@@ -154,6 +154,8 @@ class ParameterSweepWindow:
         self.context.configure(text=(
             "Profile: trade-5m-v2\nTimeframe: 5m\n"
             f"Symbol: {state.symbol or self.symbol_var.get() or '—'}\n"
+            f"Глубина истории: {state.history_target_days} дней\n"
+            f"Фактически загружено: {state.history_actual_days if state.history_actual_days is not None else '—'} дней\n"
             "Режим: Только чтение\n"
             f"Режим исследования: {state.research_mode}\n"
             "Источник данных: Production PAPER\nLIVE: Отключён\n"
@@ -198,7 +200,7 @@ class ParameterSweepWindow:
         )
         self.parameters.configure(state="disabled")
         result = state.current_result
-        validation = result.get("validation", {})
+        validation = state.canonical_validation
         result_status = result.get("result_status", "—")
         translated_status = {
             "ACCEPTED": "Принята", "REJECTED": "Отклонена",
@@ -208,9 +210,10 @@ class ParameterSweepWindow:
             self.result.configure(text="Результат текущей комбинации: отсутствует")
         else:
             self.result.configure(text=(
-                f"Сделок: {validation.get('trade_count', '—')}\n"
-                f"Net PnL: {validation.get('net_pnl', '—')}\n"
-                f"Profit Factor: {validation.get('profit_factor', '—')}\n"
+                f"Сделок: {validation.get('validation_trade_count', '—')}\n"
+                f"Покрытие символов: {validation.get('symbol_coverage', '—')} / "
+                f"{validation.get('symbol_coverage_expected', 1)}\n"
+                f"Независимых периодов: {validation.get('independent_period_count', '—')}\n"
                 f"Статус: {translated_status}"
             ))
         if state.failed_before_first_config:

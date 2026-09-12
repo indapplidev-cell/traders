@@ -5,13 +5,18 @@ import pytest
 import yaml
 
 from app.config.yaml_authority import RESEARCH_PARAMETERS
-from traders_ml.parameter_sweep.artifact_v2 import compact_result
+from traders_ml.parameter_sweep.artifact_v2 import canonical_validation_projection, compact_result
 from traders_ml.parameter_sweep.cli import build_parser
 from traders_ml.parameter_sweep.controller import ParameterSweepController
 from traders_ml.parameter_sweep.engine import SweepExpectedError, _evaluate_config, run
 from traders_ml.parameter_sweep.universe import (
     resolve_parameter_sweep_universe,
     validate_parameter_sweep_symbol,
+)
+from traders_ml.parameter_sweep.research_protocol import (
+    HoldoutAccessPolicy, ResearchPhase, ResearchProtocolError,
+    create_finalist_freeze, deduplicate_validation_behavior,
+    eligible_validation_finalists,
 )
 
 
@@ -142,3 +147,104 @@ def test_single_symbol_coverage_expected_is_one():
     assert row["symbol_coverage"] == row["symbol_coverage_expected"] == 1
     assert row["symbol_coverage_pass"] is True
     assert not any(gate["gate"] == "symbol_coverage" for gate in row["insufficient_sample_gates"])
+
+
+def test_canonical_result_status_report_projection_parity(tmp_path):
+    output = run(_search(tmp_path), run_id="parity", symbol="LINKUSDT", max_configs=1)
+    result = json.loads((output / "RESULTS.json").read_text())[0]
+    expected = canonical_validation_projection(result)
+    status = json.loads((output / "STATUS.json").read_text())
+    checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
+    report = (output / "REPORT.md").read_text()
+    assert status["canonical_validation"] == checkpoint["canonical_validation"] == expected
+    for field in (
+        "validation_trade_count", "symbol_coverage", "symbol_coverage_expected",
+        "symbol_coverage_pass", "independent_period_count", "setup_coverage",
+        "regime_coverage",
+    ):
+        assert status[field] == checkpoint[field] == expected[field]
+    assert f"CANONICAL_VALIDATION: `{json.dumps(expected, sort_keys=True)}`" in report
+
+
+def _eligible(config_id, signature):
+    return {
+        "config_id": config_id, "evaluation_status": "ACCEPTED",
+        "performance_class": "VALIDATION_CANDIDATE",
+        "symbol_coverage_pass": True, "insufficient_sample_gates": [],
+        "validation_behavioral_signature": signature,
+        "candidate_parameters": {"x": config_id}, "trade_count": 21,
+    }
+
+
+def test_eligible_only_behavioral_finalist_dedup_is_deterministic():
+    rows = [
+        _eligible("representative", "same"), _eligible("equivalent", "same"),
+        _eligible("different", "different"),
+        {**_eligible("ineligible", "third"), "performance_class": "INSUFFICIENT_SAMPLE"},
+    ]
+    eligible = eligible_validation_finalists(rows)
+    deduplicated = deduplicate_validation_behavior(eligible)
+    assert [row["config_id"] for row in deduplicated] == ["representative", "different"]
+    first = deduplicated[0]
+    assert first["representative_config_id"] == "representative"
+    assert first["equivalent_config_ids"] == ["equivalent", "representative"]
+    assert first["equivalence_count"] == 2
+    assert first["behavioral_signature"] == "same"
+    freeze = create_finalist_freeze(
+        campaign_id="dedup", symbol="LINKUSDT", dataset_fingerprint="dataset",
+        split_fingerprint="split", baseline_id="set2", search_space_hash="space",
+        selection_rule={"ranking": "unchanged"}, ranked_rows=deduplicated,
+        finalist_count=2, freeze_timestamp="2026-09-12T00:00:00+00:00",
+    )
+    assert freeze["finalists"][0]["representative_config_id"] == "representative"
+    assert freeze["finalists"][0]["equivalence_count"] == 2
+    assert len(freeze["finalists"]) == 2
+
+
+def test_empty_freeze_skips_holdout_and_policy_fails_closed(tmp_path):
+    output = run(_search(tmp_path), run_id="zero-finalists", symbol="LINKUSDT", max_configs=1)
+    freeze = json.loads((output / "FINALIST_FREEZE.json").read_text())
+    checkpoint = json.loads((output / "CHECKPOINT.json").read_text())
+    status = json.loads((output / "STATUS.json").read_text())
+    assert freeze["finalists"] == []
+    assert freeze["reason"] == "ZERO_ELIGIBLE_VALIDATION_FINALISTS"
+    assert checkpoint["campaign_verdict"] == "HOLDOUT_SKIPPED_ZERO_FINALISTS"
+    assert checkpoint["holdout_opened"] is checkpoint["holdout_evaluated"] is False
+    assert checkpoint["holdout_evaluations"] == checkpoint["holdout_rows_read"] == 0
+    assert status["holdout_opened"] is status["holdout_evaluated"] is False
+    policy = HoldoutAccessPolicy()
+    with pytest.raises(ResearchProtocolError, match="HOLDOUT_ACCESS_BEFORE_FINALIST_FREEZE"):
+        policy.holdout_rows([], finalist_id="x", config_hash="x")
+    policy.install_freeze(freeze)
+    policy.transition(ResearchPhase.HOLDOUT_EVALUATION)
+    with pytest.raises(ResearchProtocolError, match="HOLDOUT_SKIPPED_ZERO_FINALISTS"):
+        policy.holdout_rows([], finalist_id="x", config_hash="x")
+
+
+def test_fixed_30_day_window_has_no_future_or_cross_symbol_rows(tmp_path):
+    path = _search(tmp_path)
+    config = yaml.safe_load(path.read_text())
+    rows = []
+    seeds = _rows(("LINKUSDT", "BTCUSDT"))
+    for symbol in ("LINKUSDT", "BTCUSDT"):
+        seed = next(row for row in seeds if row["symbol"] == symbol)
+        for day in range(41):
+            row = json.loads(json.dumps(seed))
+            row.pop("split", None)
+            row["position_id"] = f"{symbol}-{day}"
+            row["command_id"] = f"{symbol}-{day}"
+            row["opened_at_ms"] = day * 86_400_000
+            row["closed_at_ms"] = row["opened_at_ms"] + 1_200_000
+            row["time_stop_observations"][0]["evaluation_time_ms"] = row["opened_at_ms"] + 600_000
+            row["time_stop_observations"][0]["evaluation_closed_until_ms"] = row["opened_at_ms"] + 600_000
+            rows.append(row)
+    Path(config["dataset"]["source"]).write_text(json.dumps(rows), encoding="utf-8")
+    output = run(path, run_id="history-30d", symbol="LINKUSDT", max_configs=1)
+    snapshot = json.loads((output / "DATASET_SNAPSHOT.json").read_text())
+    manifest = json.loads((output / "DATASET_MANIFEST.json").read_text())
+    assert {row["symbol"] for row in snapshot} == {"LINKUSDT"}
+    assert manifest["history_target_days"] == 30
+    assert manifest["history_actual_days"] >= 30
+    assert manifest["history_depth_status"] == "PASS"
+    assert min(row["opened_at_ms"] for row in snapshot) >= 10 * 86_400_000
+    assert max(row["opened_at_ms"] for row in snapshot) <= 40 * 86_400_000

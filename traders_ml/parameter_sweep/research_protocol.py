@@ -81,6 +81,8 @@ class HoldoutAccessPolicy:
     ) -> list[dict[str, Any]]:
         if self.phase is not ResearchPhase.HOLDOUT_EVALUATION or not self.freeze_hash:
             raise ResearchProtocolError("HOLDOUT_ACCESS_BEFORE_FINALIST_FREEZE")
+        if not self.frozen_finalists:
+            raise ResearchProtocolError("HOLDOUT_SKIPPED_ZERO_FINALISTS")
         if finalist_id not in self.frozen_finalists:
             raise ResearchProtocolError("HOLDOUT_CONFIG_NOT_IN_FINALIST_FREEZE")
         if self.finalist_hashes[finalist_id] != config_hash:
@@ -120,6 +122,47 @@ def assert_validation_only_rows(rows: Iterable[Mapping[str, Any]]) -> None:
             raise ResearchProtocolError("HOLDOUT_METRIC_IN_VALIDATION_RANKING")
 
 
+def eligible_validation_finalists(
+    ranked_rows: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep only completed validation candidates without failed readiness gates."""
+    return [
+        dict(row) for row in ranked_rows
+        if row.get("evaluation_status") == "ACCEPTED"
+        and row.get("performance_class") == "VALIDATION_CANDIDATE"
+        and row.get("symbol_coverage_pass") is True
+        and not row.get("insufficient_sample_gates")
+    ]
+
+
+def deduplicate_validation_behavior(
+    ranked_rows: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Select the first ranked deterministic representative per behavior."""
+    groups: dict[str, list[Mapping[str, Any]]] = {}
+    order: list[str] = []
+    for row in ranked_rows:
+        signature = str(row.get("validation_behavioral_signature") or "")
+        if not signature:
+            raise ResearchProtocolError("FINALIST_BEHAVIOR_SIGNATURE_MISSING")
+        if signature not in groups:
+            groups[signature] = []
+            order.append(signature)
+        groups[signature].append(row)
+    representatives: list[dict[str, Any]] = []
+    for signature in order:
+        equivalents = groups[signature]
+        representative = dict(equivalents[0])
+        representative["representative_config_id"] = str(representative["config_id"])
+        representative["equivalent_config_ids"] = sorted(
+            str(row["config_id"]) for row in equivalents
+        )
+        representative["equivalence_count"] = len(equivalents)
+        representative["behavioral_signature"] = signature
+        representatives.append(representative)
+    return representatives
+
+
 def create_finalist_freeze(
     *, campaign_id: str, dataset_fingerprint: str, split_fingerprint: str,
     baseline_id: str, search_space_hash: str, selection_rule: Mapping[str, Any],
@@ -154,11 +197,21 @@ def create_finalist_freeze(
                         "independent_period_count", "performance_class",
                     )
                 },
+                "representative_config_id": str(
+                    row.get("representative_config_id") or row["config_id"]
+                ),
+                "equivalent_config_ids": list(
+                    row.get("equivalent_config_ids") or [str(row["config_id"])]
+                ),
+                "equivalence_count": int(row.get("equivalence_count") or 1),
+                "behavioral_signature": row.get("behavioral_signature") or row.get("validation_behavioral_signature"),
             }
             for row in selected
         ],
         "freeze_timestamp": freeze_timestamp or datetime.now(timezone.utc).isoformat(),
     }
+    if not selected:
+        payload["reason"] = "ZERO_ELIGIBLE_VALIDATION_FINALISTS"
     payload["freeze_hash"] = canonical_hash(payload)
     return payload
 

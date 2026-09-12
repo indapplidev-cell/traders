@@ -48,14 +48,16 @@ from .artifact_writer import (
 )
 from .artifact_v2 import (
     ARTIFACT_SCHEMA_VERSION, ArtifactSizeBudgetExceeded, aggregate_result_semantics,
-    build_opportunity_funnel, compact_result, compact_trade, enforce_size_budget,
+    build_opportunity_funnel, canonical_validation_projection, compact_result,
+    compact_trade, enforce_size_budget,
     iter_results,
 )
 from .ranking import pareto_frontier, rank_results, selection_bias_guard
 from .research_protocol import (
     HoldoutAccessPolicy, ResearchPhase, ResearchProtocolError,
     build_data_driven_ranges, build_winner_loser_dataset, canonical_hash,
-    create_finalist_freeze, holdout_result_hash, not_evaluated_metrics,
+    create_finalist_freeze, deduplicate_validation_behavior,
+    eligible_validation_finalists, holdout_result_hash, not_evaluated_metrics,
     load_run_local_search_ranges, orchestrate_research_blocks,
     write_immutable_freeze, write_jsonl,
 )
@@ -65,7 +67,8 @@ from .targeted import (
 )
 from .integrity import verify_artifacts
 from .historical_replay import (
-    HistoricalReplayRepository, baseline_parity, build_parameter_registry,
+    HISTORY_TARGET_DAYS, HISTORY_TARGET_MS, HistoricalReplayRepository,
+    baseline_parity, build_parameter_registry,
     chronological_portfolio_replay,
 )
 from .locking import SingleRunLock
@@ -782,9 +785,31 @@ def _load_rows(
     value = _json(Path(options.source))
     if not isinstance(value, list):
         raise SweepExpectedError("DATASET_INVALID")
-    return [
+    selected = [
         row for row in value
         if isinstance(row, dict) and row.get("symbol") == options.symbol
+    ]
+    if not selected:
+        return []
+    timestamps = [
+        int(row.get("boundary_ms", row.get("opened_at_ms", 0)))
+        for row in selected
+    ]
+    source_end = max(timestamps)
+    requested_end = (
+        int(options.to_time.timestamp() * 1000)
+        if options.to_time is not None else source_end
+    )
+    cutoff = min(source_end, requested_end)
+    target_start = cutoff - HISTORY_TARGET_MS
+    requested_start = (
+        int(options.from_time.timestamp() * 1000)
+        if options.from_time is not None else target_start
+    )
+    start = max(target_start, requested_start)
+    return [
+        row for row in selected
+        if start <= int(row.get("boundary_ms", row.get("opened_at_ms", 0))) <= cutoff
     ]
 
 
@@ -833,6 +858,11 @@ def _manifest_from_rows(
     closed = [int(row.get("closed_at_ms", row.get("boundary_ms", 0))) for row in rows]
     period_start = int(summary.get("HISTORICAL_PERIOD_START_MS") or min(opened))
     period_end = int(summary.get("HISTORICAL_PERIOD_END_MS") or max(closed))
+    history_actual_days = (period_end - period_start) / 86_400_000
+    history_depth_status = (
+        "PASS" if history_actual_days >= HISTORY_TARGET_DAYS
+        else "PARTIAL_SOURCE_LIMIT"
+    )
     dataset_fingerprint = _config_hash({
         "manifest_version": DATASET_MANIFEST_VERSION,
         "source": options.source,
@@ -855,6 +885,12 @@ def _manifest_from_rows(
         "dataset_symbol_count": len({str(row.get("symbol")) for row in rows if row.get("symbol")}),
         "historical_period_start_ms": period_start,
         "historical_period_end_ms": period_end,
+        "history_target_days": HISTORY_TARGET_DAYS,
+        "HISTORY_TARGET_DAYS": HISTORY_TARGET_DAYS,
+        "history_start": datetime.fromtimestamp(period_start / 1000, timezone.utc).isoformat(),
+        "history_end": datetime.fromtimestamp(period_end / 1000, timezone.utc).isoformat(),
+        "history_actual_days": round(history_actual_days, 6),
+        "history_depth_status": history_depth_status,
         "dataset_cutoff_at": datetime.fromtimestamp(period_end / 1000, timezone.utc).isoformat(),
         "dataset_source": options.source,
         "dataset_row_count": len(rows),
@@ -2261,6 +2297,11 @@ def _run_impl(
         dataset_cutoff_at=str(dataset_manifest["dataset_cutoff_at"]),
         dataset_period_start_ms=int(dataset_manifest["historical_period_start_ms"]),
         dataset_period_end_ms=int(dataset_manifest["historical_period_end_ms"]),
+        history_target_days=HISTORY_TARGET_DAYS,
+        history_start=str(dataset_manifest["history_start"]),
+        history_end=str(dataset_manifest["history_end"]),
+        history_actual_days=float(dataset_manifest["history_actual_days"]),
+        history_depth_status=str(dataset_manifest["history_depth_status"]),
         config_hash=TRADE_PARAMETERS.config_hash,
         search_space_hash=search_space_hash,
         search_dimensions=list(plan_state.search_dimensions),
@@ -2279,6 +2320,11 @@ def _run_impl(
     checkpoint = {
         "run_id": identifier, "git_commit": git_commit,
         "symbol": symbol, "SYMBOL": symbol,
+        "history_target_days": HISTORY_TARGET_DAYS,
+        "history_start": dataset_manifest["history_start"],
+        "history_end": dataset_manifest["history_end"],
+        "history_actual_days": dataset_manifest["history_actual_days"],
+        "history_depth_status": dataset_manifest["history_depth_status"],
         "config_hash": TRADE_PARAMETERS.config_hash,
         "search_space_hash": search_space_hash,
         "search_plan_hash": search_plan_hash,
@@ -2395,6 +2441,11 @@ def _run_impl(
         "SELECTED_SYMBOLS": 1,
         "EVALUATED_SYMBOLS_PER_CONFIG": 1,
         "NON_SELECTED_SYMBOL_REPLAY_WORK": 0,
+        "HISTORY_TARGET_DAYS": HISTORY_TARGET_DAYS,
+        "HISTORY_START": dataset_manifest["history_start"],
+        "HISTORY_END": dataset_manifest["history_end"],
+        "HISTORY_ACTUAL_DAYS": dataset_manifest["history_actual_days"],
+        "HISTORY_DEPTH_STATUS": dataset_manifest["history_depth_status"],
         "PARAMETER_SWEEP_PREFLIGHT": "PASS", "PROJECT_ROOT_FOUND": PROJECT_ROOT.is_dir(),
         "CONFIG_FILE_FOUND": search_path.is_file(), "TRADE_PARAMETERS_FOUND": CONFIG_PATH.is_file(),
         "DATABASE_BINDING_FOUND": database is not None, "DATABASE_CONNECTION_OK": database is not None,
@@ -2475,6 +2526,11 @@ def _run_impl(
         "selected_symbol_count": 1,
         "evaluated_symbols_per_config": 1,
         "non_selected_symbol_replay_work": 0,
+        "history_target_days": HISTORY_TARGET_DAYS,
+        "history_start": dataset_manifest["history_start"],
+        "history_end": dataset_manifest["history_end"],
+        "history_actual_days": dataset_manifest["history_actual_days"],
+        "history_depth_status": dataset_manifest["history_depth_status"],
         "research_mode": mode.value,
         "schema_version": SCHEMA_VERSION,
         "seed": resolved_seed, "requested_seed": resolved_seed,
@@ -2770,14 +2826,18 @@ def _run_impl(
                 finalist_candidates.append((score, item["config_hash"], detailed))
                 finalist_candidates.sort(reverse=True, key=lambda value: (value[0], value[1]))
                 del finalist_candidates[RESEARCH_PARAMETERS.artifact.finalist_config_count:]
-            emit(EventType.CONFIG_COMPLETED, index=next_index + 1, result=item)
+            compact_item = compact_result(item)
+            emit(
+                EventType.CONFIG_COMPLETED, index=next_index + 1, result=item,
+                canonical_validation=canonical_validation_projection(compact_item),
+            )
             status_store.update(
                 state=RunState.WRITING_RESULT.value,
                 phase=RunState.WRITING_RESULT.value,
             )
             emit(EventType.RESULT_WRITE_STARTED, index=next_index + 1)
             result_writer.append(item)
-            result_class = compact_result(item)["performance_class"]
+            result_class = compact_item["performance_class"]
             status_store.update(
                 current_stage=current_stage,
                 current_parameter_family=next((family for family, names in search.get("calibration", {}).get("parameter_families", {}).items() if set(changed_parameters) & set(names)), "BASELINE"),
@@ -2821,6 +2881,8 @@ def _run_impl(
             checkpoint["evaluation_status_counts"] = live_semantics["evaluation_status_counts"]
             checkpoint["performance_class_counts"] = live_semantics["performance_class_counts"]
             checkpoint["classification_counts"] = live_semantics["performance_class_counts"]
+            checkpoint["validation_readiness"] = live_semantics["validation_readiness"]
+            checkpoint["canonical_validation"] = live_semantics["canonical_validation"]
             _atomic_json(checkpoint_path, checkpoint)
             status_store.update(
                 completed_configs=int(checkpoint["evaluated_count"]),
@@ -2830,6 +2892,16 @@ def _run_impl(
                 error_configs=int(checkpoint["failed_count"]),
                 evaluation_status_counts=live_semantics["evaluation_status_counts"],
                 performance_class_counts=live_semantics["performance_class_counts"],
+                validation_readiness=live_semantics["validation_readiness"],
+                canonical_validation=live_semantics["canonical_validation"],
+                **{
+                    key: live_semantics["canonical_validation"][key]
+                    for key in (
+                        "validation_trade_count", "symbol_coverage",
+                        "symbol_coverage_expected", "symbol_coverage_pass",
+                        "independent_period_count", "setup_coverage", "regime_coverage",
+                    )
+                },
                 last_checkpoint_at=checkpoint_at,
                 resume_available=True,
             )
@@ -2932,7 +3004,9 @@ def _run_impl(
 
     status_store.update(research_phase=ResearchPhase.VALIDATION_RANKING.value)
     holdout_policy.transition(ResearchPhase.VALIDATION_RANKING)
-    validation_ranked = rank_results(all_result_rows)
+    validation_ranked = deduplicate_validation_behavior(
+        eligible_validation_finalists(rank_results(all_result_rows))
+    )
     selection_rule = {
         "source": "CALIBRATION_AND_VALIDATION_ONLY",
         "ranking": "rank_results",
@@ -2994,11 +3068,27 @@ def _run_impl(
                 })
 
     holdout_path = output / "HOLDOUT_RESULTS.jsonl"
-    if holdout_path.is_file():
+    zero_finalists = not freeze["finalists"]
+    if zero_finalists:
+        holdout_rows: list[dict[str, Any]] = []
+        write_jsonl(holdout_path, holdout_rows, operation="zero_finalists_holdout_skip")
+        campaign_verdict = "HOLDOUT_SKIPPED_ZERO_FINALISTS"
+        holdout_opened = False
+        holdout_evaluated = False
+        holdout_status = campaign_verdict
+    elif holdout_path.is_file():
         holdout_rows = [
             json.loads(line) for line in holdout_path.read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
+        campaign_verdict = (
+            "HOLDOUT_PASSED"
+            if any(row.get("verdict") == "PASS" for row in holdout_rows)
+            else "HOLDOUT_FAILED"
+        )
+        holdout_opened = True
+        holdout_evaluated = True
+        holdout_status = "EVALUATED"
     else:
         checkpoint.update({
             "research_phase": ResearchPhase.HOLDOUT_EVALUATION.value,
@@ -3022,16 +3112,22 @@ def _run_impl(
                 minimum_sample=int(search["minimum_samples"]["holdout"]),
             ))
         write_jsonl(holdout_path, holdout_rows, operation="one_shot_holdout_results")
+        campaign_verdict = (
+            "HOLDOUT_PASSED"
+            if any(row.get("verdict") == "PASS" for row in holdout_rows)
+            else "HOLDOUT_FAILED"
+        )
+        holdout_opened = True
+        holdout_evaluated = True
+        holdout_status = "EVALUATED"
     holdout_hash = holdout_result_hash(holdout_rows)
-    campaign_verdict = (
-        "HOLDOUT_PASSED"
-        if any(row.get("verdict") == "PASS" for row in holdout_rows)
-        else "HOLDOUT_FAILED"
-    )
     checkpoint.update({
         "research_phase": ResearchPhase.FINAL_REPORT.value,
-        "holdout_opened": bool(freeze["finalists"]),
-        "holdout_evaluated": True,
+        "holdout_opened": holdout_opened,
+        "holdout_evaluated": holdout_evaluated,
+        "holdout_evaluations": len(holdout_rows),
+        "holdout_rows_read": 0 if zero_finalists else len(splits["HOLDOUT"]),
+        "holdout_metrics_computed": len(holdout_rows),
         "holdout_result_hash": holdout_hash,
         "campaign_verdict": campaign_verdict,
     })
@@ -3039,14 +3135,16 @@ def _run_impl(
     holdout_policy.transition(ResearchPhase.FINAL_REPORT)
     status_store.update(
         research_phase=ResearchPhase.FINAL_REPORT.value,
-        holdout_status="EVALUATED", holdout_opened=bool(freeze["finalists"]),
-        holdout_evaluated=True,
+        holdout_status=holdout_status, holdout_opened=holdout_opened,
+        holdout_evaluated=holdout_evaluated,
     )
     checkpoint["insufficient_count"] = canonical_semantics["insufficient_configs"]
     checkpoint["classification_counts"] = canonical_semantics["classification_counts"]
     checkpoint["evaluation_status_counts"] = canonical_semantics["evaluation_status_counts"]
     checkpoint["performance_class_counts"] = canonical_semantics["performance_class_counts"]
     checkpoint["validation_readiness"] = canonical_semantics["validation_readiness"]
+    checkpoint["canonical_validation"] = canonical_semantics["canonical_validation"]
+    checkpoint.update(canonical_semantics["canonical_validation"])
     _atomic_json(checkpoint_path, checkpoint)
     status_store.update(
         insufficient_configs=canonical_semantics["insufficient_configs"],
@@ -3058,6 +3156,15 @@ def _run_impl(
         evaluation_status_counts=canonical_semantics["evaluation_status_counts"],
         performance_class_counts=canonical_semantics["performance_class_counts"],
         validation_readiness=canonical_semantics["validation_readiness"],
+        canonical_validation=canonical_semantics["canonical_validation"],
+        **{
+            key: canonical_semantics["canonical_validation"][key]
+            for key in (
+                "validation_trade_count", "symbol_coverage",
+                "symbol_coverage_expected", "symbol_coverage_pass",
+                "independent_period_count", "setup_coverage", "regime_coverage",
+            )
+        },
     )
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "ACCEPTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in accepted_rows) or "\n", operation="accepted_configs_v2")
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "REJECTED_CONFIGS.jsonl", "".join(json.dumps(row, sort_keys=True) + "\n" for row in rejected_rows) or "\n", operation="rejected_configs_v2")
@@ -3079,6 +3186,11 @@ def _run_impl(
         "requested_seed": resolved_seed,
         "resolved_seed": resolved_seed,
         "sampler_seed": resolved_seed,
+        "history_target_days": HISTORY_TARGET_DAYS,
+        "history_start": dataset_manifest["history_start"],
+        "history_end": dataset_manifest["history_end"],
+        "history_actual_days": dataset_manifest["history_actual_days"],
+        "history_depth_status": dataset_manifest["history_depth_status"],
     })
     try:
         size_status = enforce_size_budget(output)
@@ -3120,6 +3232,11 @@ OPPORTUNITIES_FOR_SYMBOL = {len(rows)}
 REPLAY_ELIGIBLE_ROWS_FOR_SYMBOL = {coverage['FULL_REPLAY_ELIGIBLE_ROWS']}
 CONFIGURATIONS_PLANNED = {plan.evaluation_budget}
 CONFIGURATIONS_EVALUATED = {checkpoint['evaluated_count']}
+HISTORY_TARGET_DAYS = {HISTORY_TARGET_DAYS}
+HISTORY_START = {dataset_manifest['history_start']}
+HISTORY_END = {dataset_manifest['history_end']}
+HISTORY_ACTUAL_DAYS = {dataset_manifest['history_actual_days']}
+HISTORY_DEPTH_STATUS = {dataset_manifest['history_depth_status']}
 
 # Scalping v2 parameter sweep
 
@@ -3201,7 +3318,7 @@ CONFIGURATIONS_EVALUATED = {checkpoint['evaluated_count']}
 - Holdout used for search/refinement/ranking: `NO`
 - Research phases: `{', '.join(phase.value for phase in ResearchPhase)}`
 - Finalists frozen: `YES`; finalist count: {freeze['finalist_count_selected']}
-- Holdout status: `EVALUATED_ONE_SHOT_FROZEN_FINALISTS_ONLY`
+- Holdout status: `{holdout_status}`
 - Campaign verdict: `{campaign_verdict}`
 
 ## RESULTS
@@ -3213,6 +3330,14 @@ CONFIGURATIONS_EVALUATED = {checkpoint['evaluated_count']}
 - CLASSIFICATION_COUNTS: `{json.dumps(canonical_semantics['performance_class_counts'], sort_keys=True)}`
 - INSUFFICIENT_CONFIGS: {canonical_semantics['insufficient_configs']}
 - VALIDATION_READINESS: `{json.dumps(canonical_semantics['validation_readiness'], sort_keys=True)}`
+- CANONICAL_VALIDATION: `{json.dumps(canonical_semantics['canonical_validation'], sort_keys=True)}`
+- VALIDATION_TRADE_COUNT: {canonical_semantics['canonical_validation']['validation_trade_count']}
+- SYMBOL_COVERAGE: {canonical_semantics['canonical_validation']['symbol_coverage']}
+- SYMBOL_COVERAGE_EXPECTED: {canonical_semantics['canonical_validation']['symbol_coverage_expected']}
+- SYMBOL_COVERAGE_PASS: `{str(canonical_semantics['canonical_validation']['symbol_coverage_pass']).upper()}`
+- INDEPENDENT_PERIOD_COUNT: {canonical_semantics['canonical_validation']['independent_period_count']}
+- SETUP_COVERAGE: {canonical_semantics['canonical_validation']['setup_coverage']}
+- REGIME_COVERAGE: {canonical_semantics['canonical_validation']['regime_coverage']}
 - TOP contains only accepted, validation-evaluated configs with metrics; Pareto uses the same eligible set.
 
 ## TIME-STOP ANALYSIS
