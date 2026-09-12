@@ -1,0 +1,58 @@
+{
+  "artifact": "POSITIVE_BEHAVIORAL_CLUSTER_METRICS",
+  "schema_version": 1,
+  "symbol": "DOGEUSDT",
+  "profile": "trade-5m-v2",
+  "representative_selection_changed": false,
+  "positive_behavioral_cluster_count": 3,
+  "positive_clusters_with_pf_gt_1": 0,
+  "positive_clusters_with_pf_eq_le_1": 0,
+  "positive_clusters_with_pf_not_available": 3,
+  "clusters": [
+    {
+      "behavioral_signature": "f3bd8181679724f23b7434fe007af0aaa0fb28dc6716c388901eb645d2282e41",
+      "representative_config_id": "fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5",
+      "member_numeric_config_count": 90,
+      "trade_count": 1,
+      "wins": 1,
+      "losses": 0,
+      "net_pnl": 1.01784916,
+      "profit_factor": null,
+      "profit_factor_available": false,
+      "max_drawdown": 0.0,
+      "independent_periods": 1,
+      "canonical_rank": 4,
+      "validation_eligible": false
+    },
+    {
+      "behavioral_signature": "8ee10f83d20919e729db5b75258267e3c1ae517720e7fbfd74f9a8a293e36469",
+      "representative_config_id": "fda1d50d8839d1c5a45f82f2bd3b601ead261b6d46c2772cebc481dc970e621f",
+      "member_numeric_config_count": 27,
+      "trade_count": 1,
+      "wins": 1,
+      "losses": 0,
+      "net_pnl": 1.01784916,
+      "profit_factor": null,
+      "profit_factor_available": false,
+      "max_drawdown": 0.0,
+      "independent_periods": 1,
+      "canonical_rank": 5,
+      "validation_eligible": false
+    },
+    {
+      "behavioral_signature": "91dcac9aca72185f704066c2d8a92ae1a2971c92926253d89b502b8bfc10ab8c",
+      "representative_config_id": "fbfa3883d346ba1c7a170b21fc3e26f24ba7b7716a843b7653218fd550953a40",
+      "member_numeric_config_count": 10,
+      "trade_count": 1,
+      "wins": 1,
+      "losses": 0,
+      "net_pnl": 1.01784916,
+      "profit_factor": null,
+      "profit_factor_available": false,
+      "max_drawdown": 0.0,
+      "independent_periods": 1,
+      "canonical_rank": 6,
+      "validation_eligible": false
+    }
+  ]
+}

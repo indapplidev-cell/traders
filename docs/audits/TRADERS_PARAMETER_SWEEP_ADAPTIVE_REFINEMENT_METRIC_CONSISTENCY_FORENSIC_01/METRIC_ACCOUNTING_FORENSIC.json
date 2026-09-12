@@ -1,0 +1,107 @@
+{
+  "artifact": "METRIC_ACCOUNTING_FORENSIC",
+  "schema_version": 1,
+  "symbol": "DOGEUSDT",
+  "profile": "trade-5m-v2",
+  "read_only": true,
+  "search_rerun": false,
+  "adaptive_rerun": false,
+  "net_pnl": {
+    "formula": "sum(float(row['net_paper_pnl']) for each admitted validation row)",
+    "population": "Per numeric config: persisted causal CLOSED PAPER trade rows for the selected symbol/profile that are in the deterministic VALIDATION split and pass every active config threshold.",
+    "split": "VALIDATION_ONLY; dataset sorted by (entry_boundary_ms, trade_id), first floor(60%) CALIBRATION and remaining rows VALIDATION.",
+    "source_artifacts": [
+      "artifacts/scalping_v2_parameter_sweep/separability_dogeusdt_followup_01/SEPARABILITY_DATASET.jsonl:net_paper_pnl",
+      "artifacts/scalping_v2_parameter_sweep/expanded_search_dogeusdt_final_01/EXPANDED_SEARCH_RESULTS.jsonl:net_pnl",
+      "artifacts/scalping_v2_parameter_sweep/adaptive_refinement_dogeusdt_01/ADAPTIVE_RESULTS.jsonl:net_pnl"
+    ],
+    "authority_trace": [
+      "paper_positions.realized_pnl",
+      "traders_ml/parameter_sweep/separability.py:load_persisted_closed_trades",
+      "traders_ml/parameter_sweep/separability.py:build_separability_dataset -> net_paper_pnl",
+      "traders_ml/parameter_sweep/expanded_search.py:_split_without_holdout",
+      "traders_ml/parameter_sweep/expanded_search.py:_passes",
+      "traders_ml/parameter_sweep/expanded_search.py:_metrics -> net_pnl",
+      "traders_ml/parameter_sweep/artifact_v2.py:compact_result",
+      "traders_ml/parameter_sweep/expanded_search.py:build_reporting_reconciliation"
+    ],
+    "included_trade_statuses": ["CLOSED", "PAPER"],
+    "realized_only": true,
+    "net_vs_gross_basis": "NET_REALIZED_PNL",
+    "fees": "ENTRY_AND_EXIT_FEES_ALREADY_DEDUCTED_IN_PERSISTED_REALIZED_PNL",
+    "slippage": "NO_SECOND_DEDUCTION_IN_SWEEP; foundation adverse slippage is already embodied in persisted simulated fill prices",
+    "spread": "NO_SEPARATE_SPREAD_TERM_IN_REALIZED_PNL_FORMULA; only any effect already embodied in persisted fill prices is present",
+    "per_config_aggregation": true
+  },
+  "profit_factor": {
+    "formula": "sum(value for value in admitted net_paper_pnl if value > 0) / sum(abs(value) for value in admitted net_paper_pnl if value < 0), only when at least one loss exists",
+    "population": "Exactly the same admitted validation trade population used by net_pnl for that numeric config.",
+    "split": "VALIDATION_ONLY",
+    "source_artifacts": [
+      "artifacts/scalping_v2_parameter_sweep/separability_dogeusdt_followup_01/SEPARABILITY_DATASET.jsonl:net_paper_pnl",
+      "artifacts/scalping_v2_parameter_sweep/expanded_search_dogeusdt_final_01/EXPANDED_SEARCH_RESULTS.jsonl:profit_factor",
+      "artifacts/scalping_v2_parameter_sweep/adaptive_refinement_dogeusdt_01/ADAPTIVE_RESULTS.jsonl:profit_factor"
+    ],
+    "winning_and_losing_values_are": "PERSISTED_NET_REALIZED_PNL_AFTER_ENTRY_AND_EXIT_FEES",
+    "missingness_rule": "profit_factor is null when gross_losing_sum_abs is zero, including zero-trade and all-winning configs; no infinity or surrogate is synthesized"
+  },
+  "ranking": {
+    "population_definition": "All combined expanded-search and adaptive numeric result rows whose evaluation_status is ACCEPTED, after rejecting any row containing a holdout metric key.",
+    "unit": "NUMERIC_CONFIG",
+    "filters": [
+      "assert_validation_only_rows: no holdout/holdout_expectancy/holdout_pf/holdout_pnl/holdout_drawdown/holdout_trade_count keys",
+      "evaluation_status == ACCEPTED"
+    ],
+    "not_filters": ["positive Net PnL", "validation eligible", "adequate sample", "behavioral representative"],
+    "split": "VALIDATION_RESULT_FIELDS_ONLY",
+    "score": "expectancy_R DESC, profit_factor DESC, max_drawdown ASC, min(trade_count,20) DESC, symbol_coverage DESC, rank_stability DESC, config_id DESC",
+    "missing_pf_rank_value": 0,
+    "behavioral_deduplication": "Applied after numeric ranking; the first ranked member becomes the unchanged representative for each behavioral signature. Metric leaders are selected from all accepted numeric configs with that metric available."
+  },
+  "config_proofs": [
+    {
+      "role": "BEST_NET_PNL_CONFIG",
+      "config_id": "fec017f393fe5daf2b7c5354ab275fc0e1f7190a8c01e7c6c5889b94862d40c5",
+      "behavioral_signature": "f3bd8181679724f23b7434fe007af0aaa0fb28dc6716c388901eb645d2282e41",
+      "trade_count": 1,
+      "wins": 1,
+      "losses": 0,
+      "neutrals": 0,
+      "gross_winning_sum": 1.01784916,
+      "gross_losing_sum_abs": 0,
+      "net_pnl": 1.01784916,
+      "profit_factor": null,
+      "profit_factor_available": false,
+      "split": "VALIDATION",
+      "population_id": "validation-admitted:f3bd8181679724f23b7434fe007af0aaa0fb28dc6716c388901eb645d2282e41",
+      "population_trade_ids": ["paper:continuous:position:70302600a55152aa175f4c6bc9a1d43430c8b8d1454bfdf1114c8bce8c2e7193"],
+      "per_trade_net_realized_pnl": [1.01784916],
+      "fees_cost_basis": "persisted realized_pnl; entry/exit fees deducted upstream; fill-price slippage embodied upstream; no separate sweep-time fee/slippage/spread deduction"
+    },
+    {
+      "role": "BEST_CANONICAL_RANKED_CONFIG_AND_BEST_PF_CONFIG",
+      "config_id": "f37a02163583157089fbc2d5f012e0f3355b48c67d78bea3a9281206895d2b0c",
+      "behavioral_signature": "bf45ca7bf09892e6118cdb8b7beca1cc622a28f6dcd93bf946a70310770354ad",
+      "trade_count": 3,
+      "wins": 1,
+      "losses": 2,
+      "neutrals": 0,
+      "gross_winning_sum": 1.01784916,
+      "gross_losing_sum_abs": 1.06746858,
+      "net_pnl": -0.04961941999999997,
+      "profit_factor": 0.9535167395746674,
+      "profit_factor_available": true,
+      "split": "VALIDATION",
+      "population_id": "validation-admitted:bf45ca7bf09892e6118cdb8b7beca1cc622a28f6dcd93bf946a70310770354ad",
+      "population_trade_ids": [
+        "paper:continuous:position:246af947326e9099ba9ff2a07d22a78f83fc39d20267af875bee90aaf667a72e",
+        "paper:continuous:position:4f7d9e3c5aad6f2e2af1d7f17a5d19ee632da832c5c31c879719a1ff61bc6e1d",
+        "paper:continuous:position:70302600a55152aa175f4c6bc9a1d43430c8b8d1454bfdf1114c8bce8c2e7193"
+      ],
+      "per_trade_net_realized_pnl": [-0.47794874, -0.58951984, 1.01784916],
+      "fees_cost_basis": "persisted realized_pnl; entry/exit fees deducted upstream; fill-price slippage embodied upstream; no separate sweep-time fee/slippage/spread deduction"
+    }
+  ],
+  "metric_consistency_verdict": "CONSISTENT_PF_MISSING_FOR_POSITIVE_CONFIG",
+  "explanation": "BEST_NET_PNL_CONFIG is one winning validation trade with no losing denominator, so its PF is correctly unavailable. BEST_PF_CONFIG is selected only among numeric configs with non-null PF and is also the canonical leader. The metrics use the same per-config validation population; there is no accounting or reporting mismatch."
+}

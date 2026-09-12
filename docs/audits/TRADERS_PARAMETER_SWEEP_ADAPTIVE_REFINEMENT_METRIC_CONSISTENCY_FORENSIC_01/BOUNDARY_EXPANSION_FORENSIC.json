@@ -1,0 +1,77 @@
+{
+  "artifact": "BOUNDARY_EXPANSION_FORENSIC",
+  "schema_version": 1,
+  "symbol": "DOGEUSDT",
+  "profile": "trade-5m-v2",
+  "candidate_count": 1,
+  "parameter": "min_net_edge_bps",
+  "direction": "HIGH",
+  "original_boundary_value": 82.589044,
+  "adjacent_value_used_for_spacing": 73.004386,
+  "derived_spacing": 9.584658,
+  "generated_value": 92.173702,
+  "schema_min": 0,
+  "schema_max": null,
+  "schema_clipping_applied": false,
+  "schema_valid": true,
+  "parent_clusters": ["f3bd8181679724f23b7434fe007af0aaa0fb28dc6716c388901eb645d2282e41"],
+  "parent_configs": [
+    {
+      "config_id": "193585127174df622bf7c2f2b4c2762528bd6386f8c2d1f7b385e1011ca257b5",
+      "parameters": {
+        "min_net_edge_bps": 82.589044,
+        "minimum_planned_rr": 0.6,
+        "stop_max_bps": 43.772972,
+        "target_min_bps": 73.180352
+      },
+      "net_pnl": 1.01784916,
+      "profit_factor": null
+    }
+  ],
+  "boundary_pressure_source": {
+    "artifact": "artifacts/scalping_v2_parameter_sweep/data_driven_ranges_dogeusdt_01/DATA_DRIVEN_RANGE_HANDOFF.json",
+    "field": "parameters[min_net_edge_bps].boundary_pressure",
+    "value": "BOUNDARY_PRESSURE_HIGH",
+    "policy_authorities": [
+      "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_quantile",
+      "config/research/research_parameters.yaml:data_driven_range_generation.boundary_pressure_tolerance_fraction"
+    ]
+  },
+  "behaviorally_active_status": "WEAKLY_ACTIVE",
+  "generation_formula": "generated_value = original_boundary_value + (original_boundary_value - adjacent_value_used_for_spacing), rounded with authoritative data-driven range precision",
+  "generation_reason": "EVIDENCE_BASED_HIGH_BOUNDARY_EXPANSION",
+  "round_id": 1,
+  "candidate_key": "6c297ede9735361d6a3c99855fceccce3306e0abcc8d91f4954076f7026a32c7",
+  "candidate_config_id": "29edc653f8fa1428ace306430d6776402c9086e360cb6badf16700cff1805868",
+  "evaluated": true,
+  "result_behavioral_signature": "93a3aa1fa07d2e44ad55a993b51207cfa58ca0331b60fad5eb4ad1a4db205104",
+  "new_behavioral_cluster": true,
+  "validation_trade_count": 0,
+  "wins": 0,
+  "losses": 0,
+  "neutrals": 0,
+  "gross_winning_sum": 0,
+  "gross_losing_sum_abs": 0,
+  "net_pnl": 0,
+  "profit_factor": null,
+  "profit_factor_available": false,
+  "numeric_canonical_rank": 458,
+  "behavioral_cluster_canonical_rank": 16,
+  "canonical_status": "INSUFFICIENT_SAMPLE",
+  "positive_observed": false,
+  "improved_best_net_pnl": false,
+  "provenance": {
+    "candidate_trace_artifact": "artifacts/scalping_v2_parameter_sweep/adaptive_refinement_dogeusdt_01/ADAPTIVE_CANDIDATE_TRACE.jsonl",
+    "result_artifact": "artifacts/scalping_v2_parameter_sweep/adaptive_refinement_dogeusdt_01/ADAPTIVE_RESULTS.jsonl",
+    "range_handoff_artifact": "artifacts/scalping_v2_parameter_sweep/data_driven_ranges_dogeusdt_01/DATA_DRIVEN_RANGE_HANDOFF.json",
+    "sensitivity_artifact": "artifacts/scalping_v2_parameter_sweep/adaptive_refinement_dogeusdt_01/ADAPTIVE_PARAMETER_SENSITIVITY.json",
+    "parent_canonical_rank_at_generation": 3,
+    "positive_parent": true,
+    "boundary_pressure": true,
+    "policy": "config/research/research_parameters.yaml"
+  },
+  "boundary_expansion_valid_provenance": "PASS",
+  "boundary_expansion_new_behavior": "YES",
+  "boundary_expansion_positive": "NO",
+  "boundary_expansion_improved_best_net_pnl": "NO"
+}
