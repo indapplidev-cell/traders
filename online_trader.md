@@ -3,17 +3,17 @@ DOCUMENT_ROLE = SINGLE_SOURCE_OF_TRUTH_FOR_PROJECT_STATUS
 DOCUMENT_SNAPSHOT_TYPE = POST_TASK_PROVEN_STATE
 PROJECT = traders-ml
 
-STATUS_AS_OF_COMMIT = d730dcb4df0a08105253eadd74b8d93d55e902da
+STATUS_AS_OF_COMMIT = 6e5d74a2c298bd3e75643f85342d2060e5c9203a
 DOCUMENT_REVISION = SELF
 DOCUMENT_COMMIT_RESOLUTION = git log -1 --format=%H -- online_trader.md
 
-RECONCILED_AT_UTC = 2026-09-12T11:53:40Z
-RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_EXPANDED_AUTOMATIC_SEARCH_01
-FILES_CHANGED = traders_ml/parameter_sweep/data_driven_ranges.py; traders_ml/parameter_sweep/expanded_search.py; tests/research/test_parameter_sweep_expanded_search.py; docs/audits/TRADERS_PARAMETER_SWEEP_SINGLE_SYMBOL_EXPANDED_AUTOMATIC_SEARCH_01_FINAL.md; online_trader.md
+RECONCILED_AT_UTC = 2026-09-12T12:17:51Z
+RECONCILED_BY_TASK = TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01
+FILES_CHANGED = traders_ml/parameter_sweep/expanded_search.py; traders_ml/parameter_sweep/separability.py; traders_ml/parameter_sweep/symbol_authority_audit.py; tests/research/test_parameter_sweep_expanded_search.py; docs/audits/TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01_FINAL.md; online_trader.md
 
 REMOTE_PRODUCTION_BASE_AT_RECONCILIATION = ORCHESTRATOR5M_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; COLLECTOR_SOURCE50b682886e953064a8b90f76213fd646d7926b42_UNCHANGED_RESTART0; READONLY_SOURCE4c6d23a7a17bf3d270e0c3b9e95ccf6391753106_IMAGEfa072aa5_CONTAINER1abd775_RESTART0_HEALTHY; CLIENT_SOURCE98928a6f6ce1d1dffb4b8af5e95acfc5dd591cf0; LEGACY15M_EXITED_RESTARTNO
-PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_d730dcb4df0a08105253eadd74b8d93d55e902da_NOT_PUSHED_LOCAL_AHEAD2_BEHIND0_AFTER_DOCUMENTATION_RECONCILIATION
-STATUS_CONFIDENCE = PARAMETER_SWEEP_EXPANDED_AUTOMATIC_SEARCH_PASS_DOGE_DESCRIPTIVEONLY_RAW1764_NORMALIZED1764_PLANNED500_EVALUATED500_NUMERIC500_BEHAVIORAL21_DUPLICATE479_BESTTRADES3_BESTPERIODS1_POSITIVE2_ELIGIBLE0_LEGACYPAIRED144_SEARCHSPACEFROZEN_BYTEDETERMINISMPASS_RESUMEGUARDSPASS_SCHEMA0_LEGACYFALLBACK0_NEWVALUES0_RECONSTRUCTED0_CROSSSYMBOL0_209RESEARCHPASS_COMPILEPASS_ADAPTIVE0_HOLDOUT0_PROMOTIONNO_POLICY20_3_UNCHANGED_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
+PUSH_STATE_AT_RECONCILIATION = PROJECT_STATE_6e5d74a2c298bd3e75643f85342d2060e5c9203a_NOT_PUSHED_LOCAL_AHEAD4_BEHIND0_AFTER_DOCUMENTATION_RECONCILIATION
+STATUS_CONFIDENCE = PARAMETER_SWEEP_EXPANDED_SEARCH_FOLLOWUP_PASS_CANONICALBESTPRESERVED_NETBESTSEPARATE_EXPECTANCYUNAVAILABLE_PFBESTSEPARATE_POSITIVENUMERIC108_POSITIVECLUSTERS2_POSITIVEDUPLICATES106_SYMBOLHARDCODE0_SYMBOLDEFAULT0_SYMBOLBRANCH0_DOGEFIXTUREPASS_LINKFIXTUREPASS_MISMATCHESFAILCLOSED_MISSINGSYMBOLFAILCLOSED_214RESEARCHPASS_17FOCUSEDPASS_COMPILEPASS_RANKINGUNCHANGED_SPACEUNCHANGED_RANGESUNCHANGED_POLICY20_3UNCHANGED_EVALUATIONS0_ADAPTIVE0_HOLDOUT0_PROMOTIONNO_PRODUCTIONLOGICNO_PRODUCTIONYAMLNO_SET2NO_DBSCHEMANO_DEPLOYNO_LIVEFALSE_BINANCEORDER0_PRODUCTIONMUTATION0
 
 # Состояние проекта traders-ml
 
@@ -32,6 +32,47 @@ CURRENT_OPERATIONAL_RESTRAINT = LIVE_DISABLED_REAL_MONEY_REQUIRES_SEPARATE_LIMIT
 BACKGROUND_TIMED_GATE = CLEAN_72H_PAPER_SOAK_RESTARTED_2026-09-10T11:33:15.880142Z_CYCLE1789039800000
 BACKGROUND_SCALPING_BLOCKER = HISTORICAL_NEGATIVE_OOS_REMAINS_NOT_LIVE_ACCEPTANCE_BUT_USER_AUTHORIZED_PAPER_ONLY_PRODUCTION_PROFILE
 ```
+
+## Parameter Sweep expanded search small follow-up 01
+
+```text
+TASK = TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01
+RESULT = PASS_REPORTING_DISAMBIGUATED_AND_UNIVERSAL_SYMBOL_ENGINE_PROVEN
+PROJECT_STATE_COMMIT = 6e5d74a2c298bd3e75643f85342d2060e5c9203a
+SYMBOL = DOGEUSDT
+PROFILE = trade-5m-v2
+BEST_SELECTION = CANONICAL_RANK_EXPECTANCY_PF_NEGATIVEDRAWDOWN_CAPPEDTRADES_SYMBOLCOVERAGE_STABILITY_CONFIGID
+BEST_CANONICAL = min_edge1.0_rr0.6_stop50.0_target60.0_NETPNL_MINUS0.04961942_EXPECTANCYNA_PF0.95351674
+BEST_NET_PNL = min_edge73.004386_rr1.953403_stop48.496589_target49.163216_NETPNL1.01784916
+BEST_EXPECTANCY = NOTAVAILABLE
+BEST_PROFIT_FACTOR = SAME_AS_CANONICAL_PF0.95351674
+POSITIVE_ACCOUNTING = NUMERIC108_BEHAVIORALCLUSTERS2_DUPLICATES106
+SYMBOL_AUTHORITY = trading-universe-v2_GUI_OR_REQUIREDCLI_TO_VALIDATOR_TO_RUNCONFIG_DATASET_SEPARABILITY_RANGE_EXPANDED_RESUME
+SYMBOL_FORENSIC = ALL10UNIVERSESYMBOLS_RUNTIMEHARDCODE0_RUNTIMEDEFAULT0_RUNTIMEBRANCH0
+SYMBOL_FIXTURES = DOGEPASS_LINKPASS_HANDOFFMISMATCHFAILCLOSED_DATASETMISMATCHFAILCLOSED_RESUMEMISMATCHFAILCLOSED_MISSINGSYMBOLFAILCLOSED
+REPORT_REGENERATION = EXISTING500RESULTS_ONLY_NEW_EVALUATIONS0
+REGRESSION = 214RESEARCHPASS_17FOCUSEDPASS_COMPILEPASS
+INVARIANTS = RANKINGUNCHANGED_SEARCHSPACEUNCHANGED_RANGESUNCHANGED_VALIDATION20_3UNCHANGED_ADAPTIVENO_HOLDOUTNO_PROMOTIONNO_PRODUCTIONMUTATION
+ARTIFACTS = POSITIVE_OBSERVED_CONFIGS; SYMBOL_RUNTIME_AUTHORITY_AUDIT; RECONCILED_REPORT; RECONCILED_STATUS_IN_IGNORED_ARTIFACT_DIRECTORIES
+EVIDENCE = docs/audits/TRADERS_PARAMETER_SWEEP_EXPANDED_SEARCH_SMALL_FOLLOWUP_01_FINAL.md
+NEXT_RESEARCH_ACTION = SEPARATE_ADAPTIVE_REFINEMENT_TASK_ONLY_IF_EXPLICITLY_AUTHORIZED
+```
+
+The previous `POSITIVE_OBSERVED_CONFIGS = 2` value represented positive
+behavioral representatives, not numeric configurations. The unchanged durable
+results contain 108 positive numeric configurations that collapse to two
+behavioral clusters, leaving 106 positive aliases. Net PnL is not part of the
+canonical ranking tuple; with expectancy R unavailable, finite PF precedes
+drawdown and capped trade count, so the unchanged canonical leader may have
+lower net PnL than the separately reported net-PnL leader.
+
+The only runtime symbol default found by the repository forensic was the
+standalone separability CLI default; it was removed. All research entrypoints
+now require or validate a selected symbol against `trading-universe-v2` and
+propagate it through dataset, handoff, expanded-search and resume equality
+guards. Post-fix AST scanning finds zero symbol literals used as runtime
+hardcodes, defaults or branches. DOGEUSDT and LINKUSDT fixture campaigns pass
+through the same engine path, while all missing/mismatch cases fail closed.
 
 ## Parameter Sweep single-symbol expanded automatic search 01
 
@@ -7347,7 +7388,7 @@ LIVE.
 
 | Контур | Готовность | Доказанное состояние |
 |---|---:|---|
-| Offline Scalping v2 Parameter Sweep | Expanded single-symbol search PASS descriptive-only; validation gates single-authority PASS; 30-day reconstruction remains BLOCKED_PARITY | Four provisional DOGEUSDT domains were consumed only from the typed data-driven handoff. The bounded run evaluated 500 of 1,764 configurations and found 21 behavioral clusters, two positive-observed clusters and zero validation-eligible configurations on ten exact persisted causal trades. Paired legacy comparison evaluated all 144 legacy configurations on the same frozen dataset. The 20-trade/three-day gates remain unchanged and unmet; adaptive refinement and holdout were not entered. The complete research suite passes 209 tests. Parameter promotion remains unperformed |
+| Offline Scalping v2 Parameter Sweep | Expanded single-symbol search PASS descriptive-only; leader reporting reconciled; universal symbol engine proven; validation gates single-authority PASS; 30-day reconstruction remains BLOCKED_PARITY | Four provisional DOGEUSDT domains were consumed only from the typed data-driven handoff. The unchanged bounded run evaluated 500 of 1,764 configurations and found 21 behavioral clusters and zero validation-eligible configurations on ten exact persisted causal trades. Corrected reporting distinguishes 108 positive numeric configurations, two positive behavioral clusters and 106 aliases; canonical, net-PnL, expectancy and PF leaders are separate. Runtime scanning across all ten universe symbols finds zero symbol hardcodes/defaults/branches after removal of the separability CLI default, and DOGE/LINK fixtures share one engine path. The 20-trade/three-day gates remain unchanged and unmet; adaptive refinement and holdout were not entered. The complete research suite passes 214 tests. Parameter promotion remains unperformed |
 | Online analytics/paper pipeline | Named-set switching integrated and bounded deployment accepted; profitability not proven | Schema 0031; immutable real-cycle and portfolio-risk snapshots. Active Set #2, Set #1 unchanged. Three corrected-runtime cycles passed 30/30; 15m unchanged. 1m and time-stop remain SHADOW; full sweep and 72h soak not run |
 | Production reliability/acceptance | ≈85% | Historical failed window remains FAILED; a separate uninterrupted diagnostic-observer window passed 4569.843 seconds, while the 72-hour soak remains open |
 | Production backup/PITR | Current gate PASS | Canonical ACK owner is healthy; fresh readonly projection reports WAL/PITR true, contiguous lineage, no physical gap and mutation ready |
