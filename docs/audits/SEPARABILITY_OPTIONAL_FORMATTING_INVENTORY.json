@@ -1,0 +1,44 @@
+{
+  "scope": "Separability report, feature summary, feature ranking, interaction report, GUI phase projection, Markdown report, JSON-derived human projection, and final audit text",
+  "canonical_optional_formatter": "traders_ml.parameter_sweep.separability.format_optional_number",
+  "canonical_unavailable_token": "NOT_AVAILABLE",
+  "sites_scanned": 2,
+  "unsafe_sites_found": 2,
+  "unsafe_sites_fixed": 2,
+  "sites": [
+    {
+      "layer": "Markdown report",
+      "field": "source_history_actual_days",
+      "type": "optional numeric",
+      "can_be_none": true,
+      "why_can_be_none": "No persisted source-history boundaries",
+      "previous_formatting": "f-string :.6f",
+      "previously_unsafe": true,
+      "target_behavior": "None -> NOT_AVAILABLE; numeric -> six decimal places"
+    },
+    {
+      "layer": "Markdown report",
+      "field": "trade_sample_span_days",
+      "type": "optional numeric",
+      "can_be_none": true,
+      "why_can_be_none": "No closed PAPER trades in the selected-symbol dataset",
+      "previous_formatting": "f-string :.6f",
+      "previously_unsafe": true,
+      "target_behavior": "None -> NOT_AVAILABLE; numeric -> six decimal places"
+    }
+  ],
+  "layers_without_optional_numeric_format_sites": {
+    "feature_summary": "Names/statuses only",
+    "feature_ranking_report": "Names/directions only",
+    "interaction_report": "Feature names only",
+    "GUI_progress_status_projection": "Phase progress and integer counts; Separability optional metrics are not numerically formatted",
+    "machine_readable_JSON": "Atomic JSON serialization preserves null and numeric values",
+    "final_audit_text": "Explicit canonical tokens; no direct optional numeric formatting"
+  },
+  "non_finite_policy": {
+    "NaN": "NaN",
+    "positive_infinity": "+INFINITY",
+    "negative_infinity": "-INFINITY",
+    "coerce_to_zero": false
+  }
+}

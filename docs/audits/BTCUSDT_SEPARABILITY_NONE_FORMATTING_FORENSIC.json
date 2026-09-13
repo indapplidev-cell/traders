@@ -1,0 +1,14 @@
+{
+  "symbol": "BTCUSDT",
+  "profile": "trade-5m-v2",
+  "reproduced": true,
+  "exception_type": "TypeError",
+  "exception_message": "unsupported format string passed to NoneType.__format__",
+  "source_file": "traders_ml/parameter_sweep/separability.py",
+  "source_function": "_report",
+  "source_line": 739,
+  "field_name": "trade_sample_span_days",
+  "raw_value": null,
+  "semantic_meaning_of_none": "NOT_AVAILABLE_BECAUSE_BTCUSDT_HAS_NO_CLOSED_PAPER_TRADES_IN_THE_SELECTED_PERSISTED_SAMPLE",
+  "rendering_target": "Separability REPORT.md consumed by the normal GUI single-symbol pipeline"
+}

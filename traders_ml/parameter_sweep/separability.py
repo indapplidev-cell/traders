@@ -32,6 +32,21 @@ SOURCE_HISTORY_SELECTION_MODE = "DEEPEST_AVAILABLE_CLEAN_PERSISTED_SELECTED_SYMB
 TRADE_SAMPLE_TIMESTAMP_BASIS = "EARLIEST_ENTRY_TIMESTAMP_TO_LATEST_CLOSE_TIMESTAMP"
 PROFILE = "trade-5m-v2"
 SCHEMA_VERSION = 1
+UNAVAILABLE_RENDERING = "NOT_AVAILABLE"
+
+
+def format_optional_number(value: object, *, precision: int = 6) -> str:
+    """Render an optional research metric without changing its domain value."""
+    if value is None:
+        return UNAVAILABLE_RENDERING
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return UNAVAILABLE_RENDERING
+    number = float(value)
+    if math.isnan(number):
+        return "NaN"
+    if math.isinf(number):
+        return "+INFINITY" if number > 0 else "-INFINITY"
+    return f"{number:.{precision}f}"
 
 
 def _path(source: str, *parts: str) -> Callable[[Mapping[str, Any]], object]:
@@ -734,9 +749,9 @@ def _report(manifest: Mapping[str, Any], ranking: Sequence[Mapping[str, Any]], a
 - Final status/verdict: `{manifest['final_status']}` / `{manifest['final_verdict']}`
 - Selected symbol: `{manifest['symbol']}`
 - Profile/source: `{manifest['profile']}` / `{manifest['source_type']}`
-- Source history scanned: `{manifest['source_history_start']}` through `{manifest['source_history_end']}` ({manifest['source_history_actual_days']:.6f} days)
+- Source history scanned: `{manifest['source_history_start']}` through `{manifest['source_history_end']}` ({format_optional_number(manifest['source_history_actual_days'])} days)
 - Source history provenance: `{manifest['source_history_source']}` / `{manifest['source_history_selection_mode']}`
-- Trade sample span: `{manifest['trade_sample_start']}` through `{manifest['trade_sample_end']}` ({manifest['trade_sample_span_days']:.6f} days; `{manifest['trade_sample_timestamp_basis']}`)
+- Trade sample span: `{manifest['trade_sample_start']}` through `{manifest['trade_sample_end']}` ({format_optional_number(manifest['trade_sample_span_days'])} days; `{manifest['trade_sample_timestamp_basis']}`)
 - Closed PAPER trades: {manifest['closed_trades']} (WIN {manifest['wins']}, LOSS {manifest['losses']}, NEUTRAL {manifest['neutrals']})
 - Binary analysis rows: {manifest['binary_analysis_rows']}
 - Causality: persisted exact pre-entry snapshots; future leakage violations {manifest['future_leakage_violations']}

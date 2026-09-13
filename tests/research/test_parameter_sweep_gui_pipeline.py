@@ -11,6 +11,7 @@ from traders_ml.parameter_sweep.pipeline import (
     PHASE_ORDER, PIPELINE_NAME, SingleSymbolResearchPipeline,
 )
 from traders_ml.parameter_sweep.finalist_freeze import canonical_fingerprint
+from traders_ml.parameter_sweep.separability import run_separability
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -195,6 +196,15 @@ class FakeStages:
         return {"freeze": freeze, "status": {"REQUESTED_FINALIST_COUNT": 5, "SELECTED_FINALIST_COUNT": selected}}
 
 
+class EmptyTradeSeparabilityStages(FakeStages):
+    def separability(self, *, symbol: str, output: Path):
+        self.calls.append("SEPARABILITY")
+        return run_separability(
+            database=object(), symbol=symbol, output=output,
+            source_rows=[], source_history_rows=[],
+        )
+
+
 def _pipeline(stages: FakeStages) -> SingleSymbolResearchPipeline:
     return SingleSymbolResearchPipeline(
         separability_runner=stages.separability,
@@ -237,6 +247,21 @@ def test_low_sample_provisional_ranges_continue(tmp_path: Path):
     assert stages.calls == list(PHASE_ORDER[:6])
     assert result["separability_status"] == "LIMITED"
     assert result["phase_summary"]["DATA_DRIVEN_RANGE_GENERATION"]["provisional_count"] == 1
+
+
+def test_gui_pipeline_projection_accepts_empty_btc_separability_without_formatting_exception(tmp_path: Path):
+    stages = EmptyTradeSeparabilityStages(ranges=0, limited=True)
+    result = _pipeline(stages).run(symbol="BTCUSDT", output_root=tmp_path, run_id="btc-empty")
+
+    assert stages.calls == ["SEPARABILITY", "DATA_DRIVEN_RANGE_GENERATION"]
+    assert result["phase_status"]["SEPARABILITY"] == "LIMITED"
+    assert result["phase_summary"]["SEPARABILITY"] == {
+        "closed_trades": 0, "wins": 0, "losses": 0,
+        "sample_adequacy": "LOW_SAMPLE",
+    }
+    assert result["final_pipeline_status"] == "STOPPED"
+    assert result["stop_reason"] == "STOPPED_NO_DATA_DRIVEN_RANGES"
+    assert "NOT_AVAILABLE" in (tmp_path / "btc-empty" / "01_separability" / "REPORT.md").read_text(encoding="utf-8")
 
 
 def test_symbol_mismatch_fails_closed(tmp_path: Path):

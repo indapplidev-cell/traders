@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import json
+import math
+
+import pytest
 
 from traders_ml.parameter_sweep.separability import (
     FEATURE_SPECS, SOURCE_TYPE, build_activity, build_registry,
     categorical_analysis, construct_dataset, cyclic_distance, handoff_artifact,
-    interaction_screen, label_net_pnl, numeric_analysis, rank_features,
+    format_optional_number, interaction_screen, label_net_pnl, numeric_analysis, rank_features,
     run_separability, stability_analysis,
 )
 
@@ -127,6 +131,40 @@ def test_utc_hour_is_cyclic_and_cannot_be_a_linear_range_or_interaction():
 
 class _UnusedDatabase:
     pass
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (
+        (None, "NOT_AVAILABLE"),
+        (1.234567, "1.234567"),
+        (0.0, "0.000000"),
+        (-1.25, "-1.250000"),
+        (math.nan, "NaN"),
+        (math.inf, "+INFINITY"),
+        (-math.inf, "-INFINITY"),
+    ),
+)
+def test_optional_number_presentation_preserves_numeric_semantics(value, expected):
+    assert format_optional_number(value, precision=6) == expected
+
+
+@pytest.mark.parametrize("symbol", ("BTCUSDT", "SUIUSDT", "LINKUSDT"))
+def test_empty_trade_sample_renders_unavailable_without_changing_json_domain_value(tmp_path, symbol):
+    output = tmp_path / symbol.lower()
+    result = run_separability(
+        database=_UnusedDatabase(), symbol=symbol, output=output,
+        source_rows=[], source_history_rows=[],
+    )
+
+    assert result["manifest"]["source_history_actual_days"] is None
+    assert result["manifest"]["trade_sample_span_days"] is None
+    machine_manifest = json.loads((output / "SEPARABILITY_DATASET_MANIFEST.json").read_text(encoding="utf-8"))
+    assert machine_manifest["source_history_actual_days"] is None
+    assert machine_manifest["trade_sample_span_days"] is None
+    report = (output / "REPORT.md").read_text(encoding="utf-8")
+    assert "Source history scanned: `None` through `None` (NOT_AVAILABLE days)" in report
+    assert "Trade sample span: `None` through `None` (NOT_AVAILABLE days;" in report
 
 
 def test_run_artifacts_are_complete_and_deterministic(tmp_path):
