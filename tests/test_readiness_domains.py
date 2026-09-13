@@ -33,3 +33,16 @@ def test_database_connection_failure_blocks():
     from app.engine_safety.readiness_domains import observe_database
     def unavailable(): raise OSError("unavailable")
     assert not observe_database(unavailable).durability_ready
+
+
+def test_core_storage_failure_is_not_cleared_by_successful_read():
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+    from app.engine_safety.readiness_domains import observe_database,record_transaction_failure,record_transaction_success
+    session=SimpleNamespace(execute=lambda _:SimpleNamespace(one=lambda:[True]*7))
+    record_transaction_success()
+    assert observe_database(lambda:nullcontext(session)).durability_ready
+    record_transaction_failure(SimpleNamespace(sqlstate="53100"))
+    assert not observe_database(lambda:nullcontext(session)).durability_ready
+    record_transaction_success()
+    assert observe_database(lambda:nullcontext(session)).durability_ready

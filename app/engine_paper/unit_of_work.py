@@ -9,6 +9,7 @@ from sqlalchemy.exc import DBAPIError
 
 from app.db.session import get_session_factory
 from app.engine_paper.db_failures import classify_database_failure
+from app.engine_safety.readiness_domains import record_transaction_failure, record_transaction_success
 from app.engine_paper.repository_results import RepositoryOutcome, RepositoryResult, result
 
 
@@ -44,6 +45,7 @@ class PaperUnitOfWork:
         try:
             self._transaction.commit()
         except Exception as exception:
+            record_transaction_failure(exception)
             failure = classify_database_failure(exception)
             if self.session.is_active:
                 self.session.rollback()
@@ -53,6 +55,7 @@ class PaperUnitOfWork:
                     reason_code="PAPER_DB_COMMIT_OUTCOME_UNKNOWN",
                 )
             return result(failure.outcome, reason_code=failure.reason_code)
+        record_transaction_success()
         self._committed = True
         return result(RepositoryOutcome.UPDATED, message="transaction committed")
 
