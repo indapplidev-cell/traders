@@ -109,6 +109,8 @@ class ExistingCanaryRuntimeReadiness:
 
     market_data_ready: bool = False
     approval_source_ready: bool = False
+    database_durability_ready: bool = False
+    paper_mutation_ready: bool = False
     wal_ready: bool = False
     pitr_ready: bool = False
     live_disabled: bool = True
@@ -116,6 +118,11 @@ class ExistingCanaryRuntimeReadiness:
     snapshot_authoritative: bool = True
     control_generation: int | None = None
     reason_source: str = "READONLY_PAPER_READINESS_CURRENT_SNAPSHOT"
+
+    def persistence_ready_for(self, profile_id: str) -> bool:
+        if profile_id == "trade-5m-v2":
+            return self.database_durability_ready and self.snapshot_authoritative
+        return self.backup_pitr_pass
 
     @property
     def backup_pitr_pass(self) -> bool:
@@ -598,6 +605,7 @@ class ProductionPaperFirstCanaryExecutor:
             ),
             approval_candidate_eligible=True,
             backup_pitr_pass=readiness.backup_pitr_pass,
+            paper_durability_pass=(readiness.persistence_ready_for(candidate.trade_profile_id) and readiness.paper_mutation_ready if candidate.trade_profile_id == "trade-5m-v2" else None),
             paper_target_authorized=True,
             live_disabled=readiness.live_disabled,
         )
@@ -605,8 +613,8 @@ class ProductionPaperFirstCanaryExecutor:
             code for code, passed in (
                 ("MARKET_DATA_NOT_READY", readiness.market_data_ready),
                 ("APPROVAL_SOURCE_NOT_READY", readiness.approval_source_ready),
-                ("WAL_NOT_READY", readiness.wal_ready),
-                ("PITR_NOT_READY", readiness.pitr_ready),
+                ("PAPER_PERSISTENCE_NOT_READY", readiness.persistence_ready_for(candidate.trade_profile_id)),
+                ("PAPER_MUTATION_NOT_READY", candidate.trade_profile_id != "trade-5m-v2" or readiness.paper_mutation_ready),
                 ("LIVE_NOT_DISABLED", readiness.live_disabled),
             ) if not passed
         )

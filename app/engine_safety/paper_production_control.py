@@ -180,10 +180,12 @@ class MutationPrerequisites:
     backup_pitr_pass: bool
     paper_target_authorized: bool
     live_disabled: bool
+    paper_durability_pass: bool | None = None
 
     @property
     def passed(self) -> bool:
-        return all(asdict(self).values())
+        persistence = self.backup_pitr_pass if self.paper_durability_pass is None else self.paper_durability_pass
+        return all((self.market_data_ready, self.approval_candidate_eligible, persistence, self.paper_target_authorized, self.live_disabled))
 
 
 @dataclass(frozen=True, slots=True)

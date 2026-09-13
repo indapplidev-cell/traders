@@ -328,6 +328,7 @@ def test_callable_authoritative_runtime_can_make_first_arm_truthfully_ready(base
     calls = []
     runtime = PaperRuntimeObservation(
         environment="production", runtime_enabled=True,
+        database_runtime_ready=True, database_durability_ready=True,
         market_data_adapter_ready=True, approval_source_adapter_ready=True,
         wal_ready=True, pitr_ready=True, current_approval_availability="NO_TRADE_SIGNAL",
         paper_principal_ready=True, production_identity_binding_ready=True,
@@ -359,6 +360,7 @@ def test_armed_control_projects_exact_generation_canary_and_start_specific_readi
     paper = FakePaperRepository(baseline)
     runtime = PaperRuntimeObservation(
         environment="production", runtime_enabled=True,
+        database_runtime_ready=True, database_durability_ready=True,
         market_data_adapter_ready=True, approval_source_adapter_ready=True,
         wal_ready=True, pitr_ready=True, current_approval_availability="NO_TRADE_SIGNAL",
         paper_principal_ready=True, production_identity_binding_ready=True,
@@ -547,3 +549,24 @@ def test_future_readonly_capability_plan_is_select_only():
         assert table in plan
     for forbidden in ("INSERT", "UPDATE", "DELETE", "TRUNCATE", "CREATE", "ALTER"):
         assert forbidden not in plan
+
+
+@pytest.mark.parametrize("db_ready,durable,wal,pitr,expected", [(True,True,False,False,True),(True,False,True,True,False),(False,False,False,False,False)])
+def test_paper_recovery_domains_are_independent(baseline,db_ready,durable,wal,pitr,expected):
+    runtime=PaperRuntimeObservation(environment="production",runtime_enabled=True,
+        database_runtime_ready=db_ready,database_durability_ready=durable,
+        market_data_adapter_ready=True,approval_source_adapter_ready=True,
+        wal_ready=wal,pitr_ready=pitr,paper_principal_ready=True,
+        production_identity_binding_ready=True,runtime_config_ready=True,
+        kill_switch_ready=True,canary_scope_valid=True)
+    app=create_app(repositories=replace(FakeReadRepository().api_repositories(),paper=FakePaperRepository(baseline)),
+        clock=lambda:NOW,paper_runtime=runtime,paper_control_status=lambda:PaperControlStatus(
+        state="DISABLED",effective_state="DISABLED",generation=3,health="HEALTHY",emergency_stop_available=True,
+        audit_health="PASS",state_audit_reconciliation="PASS"))
+    data=TestClient(app).get("/api/v1/paper/readiness").json()["data"]
+    assert data["paper_schema_ready"] is True
+    assert data["paper_mutation_ready"] is expected
+    assert data["current_mutation_ready"] is expected
+    assert data["live_allowed"] is False
+    assert data["live_durability_ready"] is False
+    assert data["wal_ready"] is wal and data["pitr_ready"] is pitr

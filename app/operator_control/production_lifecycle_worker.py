@@ -557,7 +557,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             readiness: ExistingCanaryRuntimeReadiness = self._runtime_readiness()
             if not all((
                 readiness.market_data_ready,
-                readiness.backup_pitr_pass,
+                readiness.persistence_ready_for("trade-5m-v2") if canary.authority_mode == "CONTINUOUS" else readiness.backup_pitr_pass,
                 readiness.live_disabled,
             )):
                 raise ValueError("RECOVERY_CLOSE_SAFETY_READINESS_DENIED")
@@ -834,7 +834,7 @@ class ProductionPaperFirstCanaryLifecycleWorker:
             readiness: ExistingCanaryRuntimeReadiness = self._runtime_readiness()
             exit_readiness = all((
                 readiness.market_data_ready,
-                readiness.backup_pitr_pass,
+                readiness.persistence_ready_for("trade-5m-v2") if canary.authority_mode == "CONTINUOUS" else readiness.backup_pitr_pass,
                 readiness.live_disabled,
             ))
             entry_readiness = exit_readiness and readiness.approval_source_ready

@@ -128,7 +128,8 @@ def test_open_position_exit_ignores_entry_approval_and_generation_change(monkeyp
         market_data=object(), mutation_safety_gate=Gate(),
         runtime_readiness=lambda: ExistingCanaryRuntimeReadiness(
             market_data_ready=True, approval_source_ready=False,
-            wal_ready=True, pitr_ready=True, live_disabled=True,
+            database_durability_ready=True, paper_mutation_ready=False,
+            wal_ready=False, pitr_ready=False, live_disabled=True,
         ),
         lock=_Lock(), readonly_base_url="http://readonly-api:8765",
     )

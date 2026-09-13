@@ -9,6 +9,8 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final, Protocol
+from dataclasses import asdict
+from app.engine_safety.readiness_domains import DatabaseReadiness, observe_database
 
 
 SCHEMA: Final = "TRADERS_PAPER_RUNTIME_HEALTH/1"
@@ -42,11 +44,13 @@ class PaperRuntimeHealthPublisher:
         approval_loop: RuntimeLoop,
         lifecycle_loop: RuntimeLoop,
         mutation_enabled: bool,
+        database_session_factory=None,
         clock: Callable[[], datetime] = _utc_now,
         interval_seconds: float = PUBLISH_INTERVAL_SECONDS,
     ) -> None:
         if not 1.0 <= interval_seconds <= 30.0:
             raise ValueError("PAPER_RUNTIME_HEALTH_INTERVAL_INVALID")
+        self._database_sessions = database_session_factory
         self._root = root
         self._approval = approval_loop
         self._lifecycle = lifecycle_loop
@@ -66,6 +70,7 @@ class PaperRuntimeHealthPublisher:
         lifecycle_active = self._lifecycle.active
         now = self._clock().astimezone(timezone.utc)
         return {
+            "database": asdict(observe_database(self._database_sessions) if self._database_sessions else DatabaseReadiness()),
             "approval_poll_seconds": self._approval.poll_seconds,
             "approval_ticks": self._approval.ticks,
             "approval_watcher_active": approval_active,
@@ -150,7 +155,7 @@ def read_paper_runtime_health(
         }
         if (
             not isinstance(payload, dict)
-            or set(payload) != exact
+            or set(payload) not in (exact, exact | {"database"})
             or payload.get("schema") != SCHEMA
             or payload.get("mode") != "PAPER"
             or payload.get("live_allowed") is not False

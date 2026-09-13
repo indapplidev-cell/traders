@@ -51,6 +51,7 @@ from app.server_api.mapping.contract import utc_text
 from app.engine_safety.production_control_root import resolve_production_control_root
 from app.operator_control.runtime_health import read_paper_runtime_health
 from app.config.yaml_authority import RUNTIME_POLICY
+from app.engine_safety.readiness_domains import observe_database
 
 
 PRODUCTION_RUNTIME_ROOT: Final = Path("/run/traders-paper-runtime")
@@ -484,6 +485,7 @@ class ProductionPaperRuntimeObservationSource:
             identity_ready = load_production_identity(self._identity_root) is not None
         except (OSError, ValueError):
             identity_ready = False
+        database = observe_database(self._session_factory)
         pitr = _pitr_lineage(self._recovery_root, now)
         try:
             control = self._control_status()
@@ -528,6 +530,13 @@ class ProductionPaperRuntimeObservationSource:
             current_execution=self._current_execution(),
             market_data_adapter_ready=market_ready,
             approval_source_adapter_ready=approval_ready,
+            database_runtime_ready=database.runtime_ready,
+            database_durability_ready=(
+                automatic_ready
+                and isinstance(automatic_runtime.get("database"), dict)
+                and automatic_runtime["database"].get("durability_ready") is True
+                and database.runtime_ready
+            ),
             wal_ready=pitr.wal_ready,
             pitr_ready=pitr.pitr_ready,
             pitr_lineage_valid=pitr.lineage_valid,

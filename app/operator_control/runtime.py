@@ -107,6 +107,8 @@ class ReadonlyPaperArmReadinessSource:
                 response.status == 200
                 and isinstance(payload, dict)
                 and payload.get("status") == "READY"
+                and payload.get("wal_ready") is True
+                and payload.get("pitr_ready") is True
                 and payload.get("current_mutation_ready") is True
                 and payload.get("current_mutation_denial_reasons") == []
                 and payload.get("paper_control_state") == "DISABLED"
@@ -166,6 +168,8 @@ class ReadonlyExistingCanaryRuntimeReadinessSource:
             return ExistingCanaryRuntimeReadiness(
                 market_data_ready=payload.get("market_data_adapter_ready") is True,
                 approval_source_ready=payload.get("approval_source_adapter_ready") is True,
+                database_durability_ready=payload.get("database_durability_ready") is True,
+                paper_mutation_ready=payload.get("paper_mutation_ready") is True,
                 wal_ready=payload.get("wal_ready") is True,
                 pitr_ready=payload.get("pitr_ready") is True,
                 live_disabled=payload.get("live_allowed") is False,
@@ -342,6 +346,7 @@ def create_runtime_app(
             approval_loop=continuation_worker,
             lifecycle_loop=lifecycle_worker,
             mutation_enabled=active_config.mutation_foundation_enabled,
+            database_session_factory=sessions,
         )
 
     from .service import PaperOperatorControlService

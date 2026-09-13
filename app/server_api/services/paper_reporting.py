@@ -75,6 +75,8 @@ class PaperRuntimeObservation:
     operator_runner_running: bool | None = None
     market_data_adapter_ready: bool | None = None
     approval_source_adapter_ready: bool | None = None
+    database_runtime_ready: bool = False
+    database_durability_ready: bool = False
     wal_ready: bool | None = None
     pitr_ready: bool | None = None
     pitr_lineage_valid: bool | None = None
@@ -248,8 +250,8 @@ class PaperReadonlyReportingService:
         )
         denials.extend(code for code, passed in preparation_gates if passed is False)
         gates = (
-            ("PITR_NOT_READY", runtime.pitr_ready is True),
-            ("WAL_NOT_READY", runtime.wal_ready is True),
+            ("DATABASE_UNAVAILABLE", runtime.database_runtime_ready),
+            ("DATABASE_DURABILITY_BLOCKED", runtime.database_durability_ready),
             ("MARKET_DATA_NOT_READY", runtime.market_data_adapter_ready is True),
             ("APPROVAL_SOURCE_NOT_READY", runtime.approval_source_adapter_ready is True),
             ("BASELINE_PERSISTENCE_NOT_READY", ready),
@@ -297,6 +299,11 @@ class PaperReadonlyReportingService:
             paper_reconciliation_status=paper_status,
             market_data_adapter_ready=runtime.market_data_adapter_ready,
             approval_source_adapter_ready=runtime.approval_source_adapter_ready,
+            database_runtime_ready=runtime.database_runtime_ready,
+            database_durability_ready=runtime.database_durability_ready,
+            paper_mutation_ready=mutation_ready,
+            backup_recovery_ready=runtime.wal_ready is True and runtime.pitr_ready is True,
+            live_durability_ready=False,  # Existing LIVE guard is disabled.
             wal_ready=runtime.wal_ready,
             pitr_ready=runtime.pitr_ready,
             pitr_lineage_valid=runtime.pitr_lineage_valid,

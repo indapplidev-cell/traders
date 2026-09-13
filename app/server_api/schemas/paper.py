@@ -50,6 +50,11 @@ class PaperReadiness(BaseModel):
     paper_reconciliation_status: str
     market_data_adapter_ready: bool | None
     approval_source_adapter_ready: bool | None
+    database_runtime_ready: bool = False
+    database_durability_ready: bool = False
+    paper_mutation_ready: bool = False
+    backup_recovery_ready: bool = False
+    live_durability_ready: bool = False
     wal_ready: bool | None
     pitr_ready: bool | None
     pitr_lineage_valid: bool | None = None
