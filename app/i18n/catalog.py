@@ -1534,6 +1534,48 @@ RU.update({"funnel.detail.minimum_planned_rr": "Минимальный план�
            "funnel.detail.final_required_rr": "Итоговый требуемый RR",
            "funnel.detail.rr_reserve": "Запас RR"})
 
+for _key, _ru, _en in (
+    ('domain.database', 'База данных', 'Database'),
+    ('domain.durability', 'Надёжность транзакций БД', 'DB durability'),
+    ('domain.paper_mutations', 'Операции PAPER', 'PAPER mutations'),
+    ('domain.schema', 'Схема БД / миграции', 'DB schema / migrations'),
+    ('domain.wal', 'Архив WAL', 'WAL archive'),
+    ('domain.pitr', 'Восстановление PITR', 'PITR recovery'),
+    ('domain.backup_recovery', 'Резервирование / восстановление', 'Backup / recovery'),
+    ('domain.continuous_paper', 'Непрерывный PAPER', 'Continuous PAPER'),
+    ('domain.arm', 'Готовность ARM', 'ARM readiness'),
+    ('domain.live', 'Готовность LIVE', 'LIVE readiness'),
+    ('state.READY', 'Готово', 'Ready'),
+    ('state.DEGRADED', 'Деградация', 'Degraded'),
+    ('state.RECOVERING', 'Восстановление', 'Recovering'),
+    ('state.BLOCKED', 'Заблокировано', 'Blocked'),
+    ('state.NOT_EVALUATED', 'Не проверено', 'Not evaluated'),
+    ('field.last_success_at', 'Последняя успешная проверка', 'Last successful check'),
+    ('field.last_failure_at', 'Последняя ошибка', 'Last failure'),
+    ('field.degraded_since', 'Деградация с', 'Degraded since'),
+    ('field.recovered_at', 'Восстановлено', 'Recovered at'),
+    ('field.next_recheck_at', 'Следующая проверка', 'Next recheck'),
+    ('reason.WAL_ARCHIVER_FAILURE', 'Ошибка архивирования WAL', 'WAL archiver failure'),
+    ('reason.WAL_ARCHIVE_STALE', 'Проверка архива WAL устарела', 'WAL archive observation stale'),
+    ('reason.WAL_ARCHIVE_DESTINATION_UNAVAILABLE', 'Архив WAL недоступен', 'WAL archive destination unavailable'),
+    ('reason.PITR_BASE_BACKUP_STALE', 'Базовая копия устарела', 'Base backup stale'),
+    ('reason.PITR_BASE_BACKUP_INVALID', 'Базовая копия невалидна', 'Base backup invalid'),
+    ('reason.PITR_WAL_GAP', 'Разрыв цепочки WAL', 'WAL chain gap'),
+    ('reason.PITR_VERIFICATION_PENDING', 'Ожидается проверка PITR', 'PITR verification pending'),
+    ('reason.WAL_ARCHIVE_READY', 'Архив WAL проверен', 'WAL archive verified'),
+    ('reason.PITR_RECOVERY_READY', 'Цепочка PITR проверена', 'PITR chain verified'),
+    ('reason.DATABASE_RUNTIME', 'Доступность PostgreSQL', 'PostgreSQL availability'),
+    ('reason.DATABASE_DURABILITY', 'Проверка рабочего соединения БД', 'Runtime database checks'),
+    ('reason.PAPER_MUTATION', 'Условия операций PAPER', 'PAPER mutation guards'),
+    ('reason.DATABASE_SCHEMA', 'Совместимость миграций', 'Migration compatibility'),
+    ('reason.BACKUP_RECOVERY', 'Готовность восстановления', 'Recovery readiness'),
+    ('reason.CONTINUOUS_PAPER', 'Состояние рабочих циклов', 'Worker loop state'),
+    ('reason.ARM_READINESS', 'ARM требует готовности recovery', 'ARM requires recovery readiness'),
+    ('reason.LIVE_DISABLED', 'LIVE выключен', 'LIVE disabled'),
+):
+    RU['readiness.' + _key] = _ru
+    EN['readiness.' + _key] = _en
+
 CATALOGS = MappingProxyType(
     {
         Locale.RU: MappingProxyType(RU),

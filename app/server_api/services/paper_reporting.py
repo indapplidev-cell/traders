@@ -280,7 +280,23 @@ class PaperReadonlyReportingService:
         if control.risk_pause_reason and control.risk_pause_reason not in denials:
             denials.append(control.risk_pause_reason)
         mutation_ready = ready and not denials
+        def domain(passed, reason):
+            return {"state": "READY" if passed else "BLOCKED", "reason_code": reason}
+        recovery = runtime.recovery_domains or {}
+        domains = {
+            "database": domain(runtime.database_runtime_ready, "DATABASE_RUNTIME"),
+            "durability": domain(runtime.database_durability_ready, "DATABASE_DURABILITY"),
+            "paper_mutations": domain(mutation_ready, "PAPER_MUTATION"),
+            "schema": domain(ready, "DATABASE_SCHEMA"),
+            "wal": recovery.get("wal", {"state":"NOT_EVALUATED","reason_code":"WAL_ARCHIVE_STALE"}),
+            "pitr": recovery.get("pitr", {"state":"NOT_EVALUATED","reason_code":"PITR_VERIFICATION_PENDING"}),
+            "backup_recovery": {"state": "READY" if runtime.wal_ready and runtime.pitr_ready else "DEGRADED", "reason_code":"BACKUP_RECOVERY"},
+            "continuous_paper": domain(runtime.runtime_enabled and runtime.worker_running is True, "CONTINUOUS_PAPER"),
+            "arm": domain(mutation_ready and runtime.wal_ready is True and runtime.pitr_ready is True, "ARM_READINESS"),
+            "live": domain(False, "LIVE_DISABLED"),
+        }
         return PaperReadiness(
+            readiness_domains=domains,
             environment=runtime.environment,
             paper_schema_ready=ready,
             status="READY" if ready and baseline_valid and accounting_status == "HEALTHY" else ("PAPER_SCHEMA_NOT_DEPLOYED" if not ready else accounting_status),
