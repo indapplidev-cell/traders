@@ -1,0 +1,23 @@
+BLOCK_1_STATUS = PASS
+BLOCK_1_VERDICT = PASS_ROOT_CAUSE_IDENTIFIED
+ROOT_CAUSE_WAL_PERIODIC_FALSE = Host ACK owner absent (PID15876), heartbeat frozen 2026-09-11T18:17:39.057170Z. Persisted daemon stderr proves uncaught subprocess.TimeoutExpired in Docker metadata inspection; current handler also excludes TimeoutExpired. Logon-only startup has no process supervision. PostgreSQL retries archive_command waiting for host ACK; 200 pending and 1 export backlog, 409 archive failures, 0 archived since PostgreSQL restart.
+ROOT_CAUSE_PITR_PERIODIC_FALSE = WAL readiness hard dependency propagates ACK-owner failure despite valid existing contiguous base/archive chain.
+WAL_READY_FORMULA = Valid daemon schema AND RUNNING AND error NONE AND export backlog0 AND pending0 AND heartbeat age in [-5,1200] seconds AND base chain contiguous.
+PITR_READY_FORMULA = WAL_READY AND base chain contiguous AND no physical gap AND archive_mtime-minus-base_created_at >=86400 seconds.
+WAL_FALSE_PREDICATE = daemon heartbeat stale (current state may misleadingly say RUNNING); current live ACK backlog also nonzero.
+PITR_FALSE_PREDICATE = WAL_READY false. Existing chain window2715728 seconds and physical_gap false.
+WAL_READY_FALSE_SINCE = Heartbeat expiry no later than 2026-09-11T18:37:39.057170Z; exact first API observation not retained.
+PITR_READY_FALSE_SINCE = Same propagated expiry; exact first observation not retained.
+WAL_FALSE_IS_REAL_FAILURE_OR_STALENESS = Real archive ACK interruption plus stale observer state, not low-write freshness false positive.
+PITR_FALSE_IS_REAL_BREAK_OR_STALENESS = Recovery advancement degraded; retained chain intact. No proof of lost required WAL.
+FRESHNESS_POLICY = YAML typed resolver heartbeat1200s skew5s minimum window86400s. No base max-age or verification-age predicate in actual current API formula. PostgreSQL archive_timeout15min; diagnostic CLI separately hardcodes progression900s and uses last_archived since stats reset, yielding range unknown after restart; it must not be confused with API retained-chain evidence.
+RESTART_REHYDRATION_BEHAVIOR = API rereads persisted artifacts on every request; does not launch owner. PostgreSQL restart retains data but resets pg_stat_archiver; dead host daemon does not restart with Docker. Current-user autostart only on logon; sticky false until owner restored. Log traceback proves timeout mechanism, but process exit wall-clock and OS termination provenance unavailable.
+PAPER_DEPENDENCY_GRAPH = dependency_graph.json
+LIVE_DEPENDENCY_GRAPH = dependency_graph.json; LIVE allowed literal false remains authoritative.
+DB_CORE_WAL_HEALTH = pg_isready pass; recovery false; transaction_read_only off; fsync/synchronous_commit/full_page_writes on; LSN99/A2216E78; data filesystem8percent used,883.7GiB available. Observational core health, not a write-injection test.
+WAL_ARCHIVE_HEALTH = DEGRADED_HOST_ACK_OWNER_ABSENT
+PITR_CHAIN_HEALTH = RETAINED_CHAIN_CONTIGUOUS_NO_PHYSICAL_GAP; ADVANCEMENT_DEGRADED
+FILES_CHANGED = forensic artifacts only
+PRODUCTION_MUTATIONS = 0
+LIVE_STATE = DISABLED
+BINANCE_ORDER_CALLS = 0_BY_UNCHANGED_EXECUTION_MODE_NO_ORDER_ACTIONS

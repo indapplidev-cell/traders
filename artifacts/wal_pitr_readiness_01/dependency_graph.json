@@ -1,0 +1,58 @@
+[
+  {
+    "source_predicate": "DB reachable",
+    "target_predicate": "read-only accounting/schema",
+    "code_location": "app/server_api/services/paper_reporting.py:215",
+    "config_source": "DB/session/schema",
+    "dependency": "hard"
+  },
+  {
+    "source_predicate": "ACK heartbeat schema/status/error/backlogs/age AND base chain",
+    "target_predicate": "WAL ready",
+    "code_location": "app/server_api/paper_runtime_observation.py:226",
+    "config_source": "runtime_policy.paper_readiness.wal_daemon_max_age_seconds=1200",
+    "dependency": "hard"
+  },
+  {
+    "source_predicate": "WAL ready AND valid lineage AND window>=86400",
+    "target_predicate": "PITR ready",
+    "code_location": "app/server_api/paper_runtime_observation.py:281",
+    "config_source": "runtime_policy.paper_readiness.minimum_pitr_window_seconds",
+    "dependency": "hard"
+  },
+  {
+    "source_predicate": "WAL/PITR ready",
+    "target_predicate": "mutation ready",
+    "code_location": "app/server_api/services/paper_reporting.py:250",
+    "config_source": "runtime observation",
+    "dependency": "hard"
+  },
+  {
+    "source_predicate": "WAL/PITR ready",
+    "target_predicate": "PAPER command",
+    "code_location": "app/operator_control/production_executor.py:600",
+    "config_source": "Readonly snapshot + MutationPrerequisites",
+    "dependency": "hard"
+  },
+  {
+    "source_predicate": "mutation ready",
+    "target_predicate": "ARM",
+    "code_location": "app/operator_control/runtime.py:110",
+    "config_source": "Readonly snapshot",
+    "dependency": "hard"
+  },
+  {
+    "source_predicate": "WAL/PITR + existing guards",
+    "target_predicate": "continuous activation",
+    "code_location": "app/operator_control/continuous_activation.py:51",
+    "config_source": "activation evidence",
+    "dependency": "hard"
+  },
+  {
+    "source_predicate": "WAL/PITR",
+    "target_predicate": "Analysis through RR",
+    "code_location": "app/engine_orchestrator; app/engine_analysis",
+    "config_source": "none",
+    "dependency": "no dependency"
+  }
+]
