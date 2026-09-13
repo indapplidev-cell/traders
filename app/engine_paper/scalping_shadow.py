@@ -216,16 +216,18 @@ class ShadowGeometryConfig:
     def __post_init__(self) -> None:
         if self.atr_buffer_multiplier not in {0.25, 0.5, 0.75, 1.0}:
             raise ValueError("ATR multiplier is outside the declared shadow cohorts")
-        if self.stop_envelope_bps not in {50.0, 65.0, 80.0}:
-            raise ValueError("stop envelope is outside the declared shadow cohorts")
-        if self.minimum_target_diagnostic_bps not in {45.0, 60.0, 80.0}:
-            raise ValueError("target diagnostic is outside the declared shadow cohorts")
+        # Active resolved parameters are continuous typed values. Shadow
+        # comparison cohorts below do not constrain the production snapshot.
+        if not isfinite(float(self.stop_envelope_bps)) or self.stop_envelope_bps <= 0:
+            raise ValueError("stop envelope must be finite and positive")
+        if not isfinite(float(self.minimum_target_diagnostic_bps)) or self.minimum_target_diagnostic_bps <= 0:
+            raise ValueError("target diagnostic must be finite and positive")
         if not isfinite(float(self.minimum_positive_edge_bps)) or self.minimum_positive_edge_bps < 0:
             raise ValueError("minimum positive edge must be finite and non-negative")
         if self.profile_id != V2_PROFILE_ID:
             raise ValueError("scalping geometry config accepts only trade-5m-v2")
-        if self.production_rr_floor not in {0.2, 0.4, 0.6}:
-            raise ValueError("v2 RR floor must be a declared dynamic cohort")
+        if not isfinite(float(self.production_rr_floor)) or self.production_rr_floor < 0.2:
+            raise ValueError("v2 RR floor must be finite and at least 0.2")
         if self.minimum_net_edge_shadow_cohorts_bps != (10.0, 15.0, 20.0):
             raise ValueError("minimum net-edge cohorts must be 10/15/20 bps")
         if self.rr_shadow_cohorts != (1.0, 1.2, 1.5):
