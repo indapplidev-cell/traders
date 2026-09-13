@@ -1,0 +1,33 @@
+{
+  "atr_pct": {
+    "before": "wrong top-level lookup",
+    "source": "analysis_context.quality_basis.impulse_context.atr_pct",
+    "state": "AVAILABLE"
+  },
+  "direction_confidence": {
+    "source": "no direction confidence estimator in online analysis contract",
+    "state": "NOT_EVALUATED"
+  },
+  "liquidity_state": {
+    "source": "no categorical liquidity estimator in analysis contract; book fee authority remains separate",
+    "state": "NOT_EVALUATED"
+  },
+  "structure_state": {
+    "before": "calculated unified context discarded by online projection",
+    "source": "unified_context.altunina_context.structure_direction",
+    "state": "AVAILABLE"
+  },
+  "volume_state": {
+    "source": "no categorical classifier; existing unified_context.volume_context separately preserved",
+    "state": "NOT_EVALUATED"
+  },
+  "4h": {
+    "source": "trade-5m-v2 required timeframes = 1m,5m,15m,1h",
+    "state": "NOT_APPLICABLE"
+  },
+  "desktop_nullable_detail": {
+    "before": "_null_value conflated absent key, null, NOT_REACHED and NOT_APPLICABLE",
+    "source": "downstream_detail.semantic_states; server i18n funnel.status.*",
+    "state": "typed"
+  }
+}

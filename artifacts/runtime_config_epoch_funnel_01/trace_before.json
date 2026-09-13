@@ -1,0 +1,177 @@
+{
+  "rows": 10,
+  "cycles": {
+    "2026-09-13T19:15:00+00:00": 10
+  },
+  "symbols": [
+    "ADAUSDT",
+    "AVAXUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "DOGEUSDT",
+    "ETHUSDT",
+    "LINKUSDT",
+    "SOLUSDT",
+    "SUIUSDT",
+    "XRPUSDT"
+  ],
+  "trace_mismatch_count": 13,
+  "mismatches": [
+    {
+      "symbol": "ADAUSDT",
+      "stage": "STRUCTURAL_SETUP",
+      "downstream": "PASS",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "ADAUSDT",
+      "stage": "TARGET_VALID",
+      "downstream": "REJECTED",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "stage": "STRUCTURAL_SETUP",
+      "downstream": "PASS",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "stage": "TARGET_VALID",
+      "downstream": "REJECTED",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "stage": "STRUCTURAL_SETUP",
+      "downstream": "PASS",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "stage": "TARGET_VALID",
+      "downstream": "PASS",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "ETHUSDT",
+      "stage": "NET_COST_PASS",
+      "downstream": "REJECTED",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "stage": "STRUCTURAL_SETUP",
+      "downstream": "PASS",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "SOLUSDT",
+      "stage": "TARGET_VALID",
+      "downstream": "REJECTED",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "SUIUSDT",
+      "stage": "STRUCTURAL_SETUP",
+      "downstream": "PASS",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "SUIUSDT",
+      "stage": "GEOMETRY_VALID",
+      "downstream": "REJECTED",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "stage": "STRUCTURAL_SETUP",
+      "downstream": "PASS",
+      "funnel": "NOT_REACHED"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "stage": "TARGET_VALID",
+      "downstream": "REJECTED",
+      "funnel": "NOT_REACHED"
+    }
+  ],
+  "every_row_provenance_valid": true,
+  "epoch_ids": [
+    "0851841178bc37934e68df720c62b91aa18d35719066d31e3c4dc4f85249baab"
+  ],
+  "mapping": [
+    {
+      "canonical_stage": "ANALYSIS_QUALIFIED",
+      "downstream_field": "ANALYSIS_QUALIFIED",
+      "funnel_field": "analysis",
+      "desktop_field": "downstream_stage_trace.ANALYSIS_QUALIFIED"
+    },
+    {
+      "canonical_stage": "STRUCTURAL_SETUP",
+      "downstream_field": "STRUCTURAL_SETUP",
+      "funnel_field": "setup",
+      "desktop_field": "downstream_stage_trace.STRUCTURAL_SETUP"
+    },
+    {
+      "canonical_stage": "STRATEGY_ADMITTED",
+      "downstream_field": "STRATEGY_ADMITTED",
+      "funnel_field": "strategy",
+      "desktop_field": "downstream_stage_trace.STRATEGY_ADMITTED"
+    },
+    {
+      "canonical_stage": "RISK_COMPATIBILITY_ADMITTED",
+      "downstream_field": "RISK_COMPATIBILITY_ADMITTED",
+      "funnel_field": "risk_compatibility",
+      "desktop_field": "downstream_stage_trace.RISK_COMPATIBILITY_ADMITTED"
+    },
+    {
+      "canonical_stage": "GEOMETRY_VALID",
+      "downstream_field": "GEOMETRY_VALID",
+      "funnel_field": "geometry",
+      "desktop_field": "downstream_stage_trace.GEOMETRY_VALID"
+    },
+    {
+      "canonical_stage": "TARGET_VALID",
+      "downstream_field": "TARGET_VALID",
+      "funnel_field": "target_actionability",
+      "desktop_field": "downstream_stage_trace.TARGET_VALID"
+    },
+    {
+      "canonical_stage": "NET_COST_PASS",
+      "downstream_field": "NET_COST_PASS",
+      "funnel_field": "cost",
+      "desktop_field": "downstream_stage_trace.NET_COST_PASS"
+    },
+    {
+      "canonical_stage": "RR_PASS",
+      "downstream_field": "RR_PASS",
+      "funnel_field": "rr",
+      "desktop_field": "downstream_stage_trace.RR_PASS"
+    },
+    {
+      "canonical_stage": "RISK_ADMITTED",
+      "downstream_field": "RISK_ADMITTED",
+      "funnel_field": "risk",
+      "desktop_field": "downstream_stage_trace.RISK_ADMITTED"
+    },
+    {
+      "canonical_stage": "PORTFOLIO_ADMITTED",
+      "downstream_field": "PORTFOLIO_ADMITTED",
+      "funnel_field": "portfolio",
+      "desktop_field": "downstream_stage_trace.PORTFOLIO_ADMITTED"
+    },
+    {
+      "canonical_stage": "FINAL_APPROVAL",
+      "downstream_field": "FINAL_APPROVAL",
+      "funnel_field": "final_approval",
+      "desktop_field": "downstream_stage_trace.FINAL_APPROVAL"
+    },
+    {
+      "canonical_stage": "PAPER_PLAN",
+      "downstream_field": "PAPER_PLAN",
+      "funnel_field": "paper_plan",
+      "desktop_field": "downstream_stage_trace.PAPER_PLAN"
+    }
+  ]
+}
