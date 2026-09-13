@@ -17,6 +17,7 @@ from typing import Any, Callable, Mapping
 from .adaptive_refinement import run_adaptive_refinement
 from .artifact_writer import DEFAULT_ARTIFACT_WRITER
 from .data_driven_ranges import run_range_generation
+from .cold_start import run_cold_start_range_generation
 from .engine import ReadOnlyResearchDatabase, resolve_database_binding
 from .expanded_search import run_expanded_search
 from .finalist_freeze import run_finalist_freeze, verify_freeze
@@ -75,6 +76,7 @@ class SingleSymbolResearchPipeline:
         progress: ProgressCallback | None = None,
         separability_runner: PhaseRunner | None = None,
         range_runner: PhaseRunner = run_range_generation,
+        cold_start_runner: PhaseRunner | None = None,
         expanded_runner: PhaseRunner = run_expanded_search,
         adaptive_runner: PhaseRunner = run_adaptive_refinement,
         validation_runner: PhaseRunner = run_validation_ranking,
@@ -83,17 +85,33 @@ class SingleSymbolResearchPipeline:
         self._progress = progress or (lambda _update: None)
         self._separability_runner = separability_runner
         self._range_runner = range_runner
+        self._cold_start_runner = (
+            cold_start_runner
+            if cold_start_runner is not None else (
+                run_cold_start_range_generation if range_runner is run_range_generation else None
+            )
+        )
         self._expanded_runner = expanded_runner
         self._adaptive_runner = adaptive_runner
         self._validation_runner = validation_runner
         self._freeze_runner = freeze_runner
         self._cancel = threading.Event()
+        self._progress_sequence = 0
 
     def request_cancel(self) -> None:
         self._cancel.set()
 
     def _emit(self, manifest: Mapping[str, Any]) -> None:
-        self._progress(dict(manifest))
+        self._progress_sequence += 1
+        self._progress({**dict(manifest), "progress_sequence": self._progress_sequence})
+
+    def _emit_search_event(self, event: Mapping[str, Any], *, run_id: str, symbol: str) -> None:
+        self._progress_sequence += 1
+        self._progress({
+            "artifact": "SINGLE_SYMBOL_PIPELINE_PROGRESS_EVENT",
+            "pipeline_run_id": run_id, "selected_symbol": symbol, "profile": PROFILE,
+            "progress_sequence": self._progress_sequence, **dict(event),
+        })
 
     @staticmethod
     def _new_manifest(*, run_id: str, symbol: str) -> dict[str, Any]:
@@ -134,6 +152,20 @@ class SingleSymbolResearchPipeline:
             "legacy_array_fallback": 0,
             "legacy_targeted_staged_used": False,
             "search_source": None,
+            "range_generation_source": None,
+            "cold_start_used": False,
+            "opportunity_dataset_fingerprint": None,
+            "opportunity_evidence_rows": 0,
+            "cold_start_dimension_count": 0,
+            "cold_start_range_handoff_fingerprint": None,
+            "counterfactual_bootstrap_used": False,
+            "counterfactual_configs_evaluated": 0,
+            "counterfactual_trade_count": 0,
+            "counterfactual_wins": 0,
+            "counterfactual_losses": 0,
+            "bootstrap_outcome_handoff_fingerprint": None,
+            "bootstrap_refinement_used": False,
+            "bootstrap_refinement_rounds": 0,
             "adaptive_source": None,
             "next_stage_available": None,
             "validation_ranking_executed": False,
@@ -166,6 +198,8 @@ class SingleSymbolResearchPipeline:
                 "pipeline_schema_version", "selected_symbol", "profile",
                 "dataset_fingerprint", "separability_handoff_fingerprint",
                 "range_handoff_fingerprint", "expanded_search_handoff_fingerprint",
+                "range_generation_source", "cold_start_used", "opportunity_dataset_fingerprint",
+                "cold_start_range_handoff_fingerprint", "bootstrap_outcome_handoff_fingerprint",
                 "adaptive_handoff_fingerprint", "validation_ranking_handoff_fingerprint",
                 "finalist_freeze_id", "finalist_freeze_content_hash",
             ],
@@ -190,7 +224,9 @@ class SingleSymbolResearchPipeline:
         checks = (
             ("separability_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[0]] / "SEPARABILITY_HANDOFF.json"),
             ("range_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[1]] / "DATA_DRIVEN_RANGE_HANDOFF.json"),
+            ("cold_start_range_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[1]] / "DATA_DRIVEN_RANGE_HANDOFF.json"),
             ("expanded_search_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[2]] / "EXPANDED_SEARCH_HANDOFF.json"),
+            ("bootstrap_outcome_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[2]] / "COUNTERFACTUAL_BOOTSTRAP_MANIFEST.json"),
             ("adaptive_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[3]] / "ADAPTIVE_REFINEMENT_HANDOFF.json"),
             ("validation_ranking_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[4]] / "VALIDATION_RANKING_HANDOFF.json"),
             ("finalist_freeze_handoff_fingerprint", root / PHASE_DIRECTORIES[PHASE_ORDER[5]] / "FINALIST_FREEZE_HANDOFF.json"),
@@ -272,6 +308,7 @@ class SingleSymbolResearchPipeline:
         resume: bool = False,
     ) -> dict[str, Any]:
         self._cancel.clear()
+        self._progress_sequence = 0
         selected = validate_parameter_sweep_symbol(symbol)
         root = output_root / run_id
         root.mkdir(parents=True, exist_ok=True)
@@ -333,16 +370,43 @@ class SingleSymbolResearchPipeline:
                     raise ValueError("FAIL_CLOSED_SYMBOL_MISMATCH")
                 range_count = sum(bool(row.get("eligible_for_search")) for row in range_handoff.get("parameters", ()))
                 provisional = sum(bool(row.get("provisional")) for row in range_handoff.get("parameters", ()))
+                if range_count == 0 and self._cold_start_runner is not None:
+                    database = ReadOnlyResearchDatabase(resolve_database_binding())
+                    try:
+                        cold = self._cold_start_runner(
+                            database=database, symbol=selected, output=range_dir,
+                            production_closed_trades=int(
+                                manifest.get("phase_summary", {}).get("SEPARABILITY", {}).get("closed_trades", 0)
+                            ),
+                        )
+                    finally:
+                        database.dispose()
+                    if cold.get("status") == "COLD_START_OPPORTUNITY":
+                        range_handoff = dict(cold["handoff"])
+                        range_count = int(cold["generated_dimensions"])
+                        provisional = range_count
+                        manifest["range_generation_source"] = "COLD_START_OPPORTUNITY"
+                        manifest["cold_start_used"] = True
+                        manifest["opportunity_dataset_fingerprint"] = range_handoff["opportunity_dataset_fingerprint"]
+                        manifest["opportunity_evidence_rows"] = int(cold["opportunity_rows"])
+                        manifest["cold_start_dimension_count"] = range_count
+                        manifest["counterfactual_bootstrap_used"] = True
+                        manifest["bootstrap_refinement_used"] = True
+                        manifest["bootstrap_refinement_rounds"] = int(range_handoff["bootstrap_refinement_rounds"])
                 manifest["range_handoff_fingerprint"] = _fingerprint(range_dir / "DATA_DRIVEN_RANGE_HANDOFF.json")
+                if manifest.get("cold_start_used"):
+                    manifest["cold_start_range_handoff_fingerprint"] = manifest["range_handoff_fingerprint"]
                 manifest["phase_summary"][PHASE_ORDER[1]] = {
                     "generated_parameters": range_count, "provisional_count": provisional,
+                    "range_generation_source": manifest.get("range_generation_source") or "OUTCOME_INFORMED",
+                    "opportunity_evidence_rows": manifest.get("opportunity_evidence_rows", 0),
                 }
                 if range_count == 0:
                     manifest["phase_status"][PHASE_ORDER[1]] = "STOPPED"
                     manifest["range_generation_status"] = "STOPPED"
                     return self._finish(
                         root, manifest, status="STOPPED",
-                        reason="STOPPED_NO_DATA_DRIVEN_RANGES",
+                        reason="STOPPED_NO_USABLE_RESEARCH_EVIDENCE",
                     )
                 manifest["phase_status"][PHASE_ORDER[1]] = "COMPLETED"
                 manifest["range_generation_status"] = "COMPLETED"
@@ -354,29 +418,65 @@ class SingleSymbolResearchPipeline:
 
             if manifest["phase_status"][PHASE_ORDER[2]] != "COMPLETED":
                 self._phase_start(root, manifest, PHASE_ORDER[2])
-                expanded = self._expanded_runner(
-                    handoff_path=range_dir / "DATA_DRIVEN_RANGE_HANDOFF.json",
-                    dataset_path=sep_dir / "SEPARABILITY_DATASET.jsonl",
-                    dataset_manifest_path=sep_dir / "SEPARABILITY_DATASET_MANIFEST.json",
-                    output=expanded_dir, symbol=selected, profile=PROFILE, resume=resume,
+                cold_start = bool(manifest.get("cold_start_used"))
+                search_dataset_path = (
+                    range_dir / "COUNTERFACTUAL_REPLAY_SOURCE.jsonl"
+                    if cold_start else sep_dir / "SEPARABILITY_DATASET.jsonl"
                 )
+                search_manifest_path = (
+                    range_dir / "COUNTERFACTUAL_REPLAY_SOURCE_MANIFEST.json"
+                    if cold_start else sep_dir / "SEPARABILITY_DATASET_MANIFEST.json"
+                )
+                expanded_kwargs = dict(
+                    handoff_path=range_dir / "DATA_DRIVEN_RANGE_HANDOFF.json",
+                    dataset_path=search_dataset_path,
+                    dataset_manifest_path=search_manifest_path,
+                    output=expanded_dir, symbol=selected, profile=PROFILE, resume=resume,
+                    progress=lambda event: self._emit_search_event(event, run_id=run_id, symbol=selected),
+                )
+                if self._expanded_runner is run_expanded_search:
+                    expanded_kwargs["should_stop"] = self._cancel.is_set
+                expanded = self._expanded_runner(**expanded_kwargs)
+                if expanded.get("stopped"):
+                    status = dict(expanded.get("status", {}))
+                    manifest["phase_summary"][PHASE_ORDER[2]] = {
+                        "planned": status.get("PLANNED_CONFIGS", 0),
+                        "evaluated": status.get("EVALUATED_CONFIGS", 0),
+                        "behavioral_clusters": status.get("BEHAVIORALLY_DISTINCT_CONFIGS", 0),
+                    }
+                    manifest["phase_status"][PHASE_ORDER[2]] = "STOPPED"
+                    manifest["expanded_search_status"] = "STOPPED"
+                    return self._finish(root, manifest, status="CANCELLED", reason="USER_CANCELLED")
                 expanded_handoff = dict(expanded["handoff"])
                 if expanded_handoff.get("symbol") != selected:
                     raise ValueError("FAIL_CLOSED_SYMBOL_MISMATCH")
-                if expanded_handoff.get("search_source") != "DATA_DRIVEN_RANGE_HANDOFF":
+                expected_search_source = (
+                    "COLD_START_OPPORTUNITY_RANGE_HANDOFF" if cold_start
+                    else "DATA_DRIVEN_RANGE_HANDOFF"
+                )
+                if expanded_handoff.get("search_source") != expected_search_source:
                     raise ValueError("FAIL_CLOSED_HANDOFF_MISMATCH")
                 if expanded_handoff.get("range_handoff_fingerprint") != manifest["range_handoff_fingerprint"]:
                     raise ValueError("FAIL_CLOSED_HANDOFF_MISMATCH")
                 manifest["phase_status"][PHASE_ORDER[2]] = "COMPLETED"
                 manifest["expanded_search_status"] = "COMPLETED"
                 manifest["expanded_search_handoff_fingerprint"] = _fingerprint(expanded_dir / "EXPANDED_SEARCH_HANDOFF.json")
-                manifest["search_source"] = "DATA_DRIVEN_RANGE_HANDOFF"
+                manifest["search_source"] = expected_search_source
                 status = dict(expanded.get("status", {}))
                 manifest["phase_summary"][PHASE_ORDER[2]] = {
                     "planned": status.get("PLANNED_CONFIGS", 0),
                     "evaluated": status.get("EVALUATED_CONFIGS", 0),
                     "behavioral_clusters": status.get("BEHAVIORALLY_DISTINCT_CONFIGS", 0),
                 }
+                if cold_start:
+                    counterfactual = _read_json(expanded_dir / "COUNTERFACTUAL_BOOTSTRAP_MANIFEST.json")
+                    manifest["counterfactual_configs_evaluated"] = int(counterfactual["configs_evaluated"])
+                    manifest["counterfactual_trade_count"] = int(counterfactual["trade_count"])
+                    manifest["counterfactual_wins"] = int(counterfactual["wins"])
+                    manifest["counterfactual_losses"] = int(counterfactual["losses"])
+                    manifest["bootstrap_outcome_handoff_fingerprint"] = _fingerprint(
+                        expanded_dir / "COUNTERFACTUAL_BOOTSTRAP_MANIFEST.json"
+                    )
                 self._write(root, manifest)
                 self._emit(manifest)
             cancelled = self._cancel_if_requested(root, manifest)
@@ -385,17 +485,38 @@ class SingleSymbolResearchPipeline:
 
             if manifest["phase_status"][PHASE_ORDER[3]] != "COMPLETED":
                 self._phase_start(root, manifest, PHASE_ORDER[3])
-                adaptive = self._adaptive_runner(
+                adaptive_kwargs = dict(
                     range_handoff_path=range_dir / "DATA_DRIVEN_RANGE_HANDOFF.json",
                     expanded_config_path=expanded_dir / "EXPANDED_SEARCH_CONFIG.json",
                     expanded_handoff_path=expanded_dir / "EXPANDED_SEARCH_HANDOFF.json",
                     behavioral_clusters_path=expanded_dir / "BEHAVIORAL_CLUSTERS.json",
                     expanded_results_path=expanded_dir / "EXPANDED_SEARCH_RESULTS.jsonl",
                     normalization_path=expanded_dir / "SEARCH_VALUE_NORMALIZATION.json",
-                    dataset_path=sep_dir / "SEPARABILITY_DATASET.jsonl",
-                    dataset_manifest_path=sep_dir / "SEPARABILITY_DATASET_MANIFEST.json",
+                    dataset_path=(
+                        range_dir / "COUNTERFACTUAL_REPLAY_SOURCE.jsonl"
+                        if manifest.get("cold_start_used") else sep_dir / "SEPARABILITY_DATASET.jsonl"
+                    ),
+                    dataset_manifest_path=(
+                        range_dir / "COUNTERFACTUAL_REPLAY_SOURCE_MANIFEST.json"
+                        if manifest.get("cold_start_used") else sep_dir / "SEPARABILITY_DATASET_MANIFEST.json"
+                    ),
                     output=adaptive_dir, symbol=selected, profile=PROFILE, resume=resume,
+                    progress=lambda event: self._emit_search_event(event, run_id=run_id, symbol=selected),
                 )
+                if self._adaptive_runner is run_adaptive_refinement:
+                    adaptive_kwargs["should_stop"] = self._cancel.is_set
+                adaptive = self._adaptive_runner(**adaptive_kwargs)
+                if adaptive.get("stopped"):
+                    status = dict(adaptive.get("status", {}))
+                    manifest["phase_summary"][PHASE_ORDER[3]] = {
+                        "rounds": status.get("ADAPTIVE_ROUNDS", 0),
+                        "evaluated": status.get("NEW_NUMERIC_CONFIGS_EVALUATED", 0),
+                        "new_clusters": status.get("NEW_BEHAVIORAL_CLUSTERS_DISCOVERED", 0),
+                        "stop_reason": "USER_CANCELLED",
+                    }
+                    manifest["phase_status"][PHASE_ORDER[3]] = "STOPPED"
+                    manifest["adaptive_refinement_status"] = "STOPPED"
+                    return self._finish(root, manifest, status="CANCELLED", reason="USER_CANCELLED")
                 adaptive_handoff = dict(adaptive["handoff"])
                 if adaptive_handoff.get("symbol") != selected:
                     raise ValueError("FAIL_CLOSED_SYMBOL_MISMATCH")
@@ -433,8 +554,14 @@ class SingleSymbolResearchPipeline:
                     adaptive_handoff_path=adaptive_dir / "ADAPTIVE_REFINEMENT_HANDOFF.json",
                     adaptive_clusters_path=adaptive_dir / "ADAPTIVE_BEHAVIORAL_CLUSTERS.json",
                     adaptive_results_path=adaptive_dir / "ADAPTIVE_RESULTS.jsonl",
-                    dataset_path=sep_dir / "SEPARABILITY_DATASET.jsonl",
-                    dataset_manifest_path=sep_dir / "SEPARABILITY_DATASET_MANIFEST.json",
+                    dataset_path=(
+                        range_dir / "COUNTERFACTUAL_REPLAY_SOURCE.jsonl"
+                        if manifest.get("cold_start_used") else sep_dir / "SEPARABILITY_DATASET.jsonl"
+                    ),
+                    dataset_manifest_path=(
+                        range_dir / "COUNTERFACTUAL_REPLAY_SOURCE_MANIFEST.json"
+                        if manifest.get("cold_start_used") else sep_dir / "SEPARABILITY_DATASET_MANIFEST.json"
+                    ),
                 )
                 validation_handoff = dict(validation["handoff"])
                 if validation_handoff.get("symbol") != selected or validation_handoff.get("profile") != PROFILE:

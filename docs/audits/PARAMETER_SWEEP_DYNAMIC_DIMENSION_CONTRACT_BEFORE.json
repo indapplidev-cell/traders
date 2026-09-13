@@ -1,0 +1,22 @@
+{
+  "range_generator_output_contract": "DATA_DRIVEN_RANGE_HANDOFF.parameters[] could emit every eligible registry-backed parameter, including strategy_minimum_score",
+  "expanded_search_input_contract": "DataDrivenRangeHandoff validation followed by normalize_handoff_values",
+  "adaptive_input_contract": "range handoff plus EXPANDED_SEARCH_CONFIG active parameters and fingerprint chain",
+  "parameter_registry_source": "traders_ml.parameter_sweep.historical_replay.build_parameter_registry over config/research/research_parameters.yaml search_space",
+  "fixed_dimension_assumptions": [
+    "expanded_search.ACTIVE_CONSUMERS contained only min_net_edge_bps, minimum_planned_rr, stop_max_bps and target_min_bps"
+  ],
+  "dimension_order_assumptions": "normalization iterated producer order before the fix; deterministic registry ordering was not persisted as an active-dimension contract",
+  "handoff_fingerprint_fields": [
+    "symbol",
+    "profile",
+    "dataset_fingerprint",
+    "range_handoff_fingerprint",
+    "search_space_fingerprint",
+    "seed"
+  ],
+  "exact_BNB_failure_reason": "FAIL_CLOSED_HANDOFF_MISMATCH after a five-parameter BNBUSDT range handoff reached a downstream four-parameter consumer allowlist",
+  "exact_source_file": "traders_ml/parameter_sweep/expanded_search.py",
+  "exact_source_function": "validate_handoff / normalize_handoff_values",
+  "exact_guard": "generated parameter not present in the fixed ACTIVE_CONSUMERS mapping"
+}

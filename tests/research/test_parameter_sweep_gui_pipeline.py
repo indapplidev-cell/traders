@@ -237,7 +237,7 @@ def test_no_evidence_or_ranges_stops_without_legacy(tmp_path: Path):
     result = _pipeline(stages).run(symbol="DOGEUSDT", output_root=tmp_path, run_id="zero")
     assert stages.calls == ["SEPARABILITY", "DATA_DRIVEN_RANGE_GENERATION"]
     assert result["final_pipeline_status"] == "STOPPED"
-    assert result["stop_reason"] == "STOPPED_NO_DATA_DRIVEN_RANGES"
+    assert result["stop_reason"] == "STOPPED_NO_USABLE_RESEARCH_EVIDENCE"
     assert result["legacy_fallback_used"] is False
 
 
@@ -260,7 +260,7 @@ def test_gui_pipeline_projection_accepts_empty_btc_separability_without_formatti
         "sample_adequacy": "LOW_SAMPLE",
     }
     assert result["final_pipeline_status"] == "STOPPED"
-    assert result["stop_reason"] == "STOPPED_NO_DATA_DRIVEN_RANGES"
+    assert result["stop_reason"] == "STOPPED_NO_USABLE_RESEARCH_EVIDENCE"
     assert "NOT_AVAILABLE" in (tmp_path / "btc-empty" / "01_separability" / "REPORT.md").read_text(encoding="utf-8")
 
 

@@ -1,0 +1,12 @@
+{
+  "new_pipeline_progress_source": "SingleSymbolResearchPipeline._emit emitted phase manifests only",
+  "new_pipeline_phase_summary_projection": "ParameterSweepController._apply_pipeline_manifest populated the top phase summary",
+  "legacy_progress_source": "ParameterSweepEngine SweepEvent CONFIG_STARTED/CONFIG_COMPLETED for explicit legacy modes",
+  "detailed_widget_projection_source": "PresentationState plan/current/counter fields populated only by ParameterSweepController._apply_event",
+  "stale_or_missing_bridge": "normal ALL pipeline execution had no per-config progress bridge into detailed PresentationState fields",
+  "terminal_hydration_source": "none for new-pipeline detailed fields before the fix",
+  "threading_model": "worker thread queued phase manifests; Tk main thread drained events with after(), but detailed pipeline events did not exist",
+  "exact_zero_counter_root_cause": "_apply_pipeline_manifest updated phase_summary but not completed/remaining/accepted/rejected/insufficient/error or research classification fields",
+  "exact_current_combination_root_cause": "SingleSymbolResearchPipeline did not forward Expanded/Adaptive CONFIG_STARTED snapshots to the controller",
+  "exact_plan_not_built_root_cause": "new pipeline range/expanded artifacts were never projected into PresentationState.search_dimensions or hydrated at terminal/reopen"
+}

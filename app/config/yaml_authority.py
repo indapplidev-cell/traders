@@ -319,16 +319,21 @@ class DataDrivenRangeGenerationPolicy(StrictModel):
     boundary_pressure_tolerance_fraction: float = Field(ge=0, le=1)
     rounding_decimal_places: StrictInt = Field(ge=0, le=12)
     preserve_current_value_under_low_confidence: Literal[True]
+    cold_start_minimum_opportunity_rows: StrictInt = Field(ge=1)
+    cold_start_quantiles: tuple[float, ...] = Field(min_length=3)
+    bootstrap_refinement_max_rounds: Literal[1]
 
     @model_validator(mode="after")
     def valid_quantiles_and_cardinality(self):
-        quantiles = (*self.winner_dense_quantiles, *self.observed_support_quantiles)
+        quantiles = (*self.winner_dense_quantiles, *self.observed_support_quantiles, *self.cold_start_quantiles)
         if any(value < 0 or value > 1 for value in quantiles):
             raise ValueError("range-generation quantiles must be within [0, 1]")
         if tuple(sorted(set(self.winner_dense_quantiles))) != self.winner_dense_quantiles:
             raise ValueError("winner-dense quantiles must be unique and sorted")
         if tuple(sorted(set(self.observed_support_quantiles))) != self.observed_support_quantiles:
             raise ValueError("observed-support quantiles must be unique and sorted")
+        if tuple(sorted(set(self.cold_start_quantiles))) != self.cold_start_quantiles:
+            raise ValueError("cold-start quantiles must be unique and sorted")
         if self.low_sample_minimum_points > self.max_generated_points:
             raise ValueError("low-sample minimum exceeds maximum generated points")
         if self.high_confidence_min_separation < self.medium_confidence_min_separation:

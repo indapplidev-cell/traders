@@ -13,7 +13,7 @@ from hashlib import sha256
 import json
 import math
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Literal, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Literal, Mapping, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -28,6 +28,7 @@ from .engine import (
     _candidate_indices, _production_baseline_config,
 )
 from .historical_replay import build_parameter_registry
+from .historical_replay import chronological_portfolio_replay
 from .ranking import rank_results
 from .research_protocol import deduplicate_validation_behavior
 from .universe import validate_parameter_sweep_symbol
@@ -36,7 +37,8 @@ from .universe import validate_parameter_sweep_symbol
 HANDOFF_SCHEMA_VERSION = 2
 EXPANDED_SEARCH_SCHEMA_VERSION = 1
 ALLOWED_RANGE_STATUSES = frozenset({"GENERATED", "PROVISIONAL_LOW_SAMPLE"})
-ACTIVE_CONSUMERS: dict[str, tuple[str, str]] = {
+SEARCH_CONSUMERS: dict[str, tuple[str, str]] = {
+    "strategy_minimum_score": ("strategy_score", "MINIMUM_INCLUSIVE"),
     "min_net_edge_bps": ("net_edge_bps", "MINIMUM_INCLUSIVE"),
     "minimum_planned_rr": ("planned_rr", "MINIMUM_INCLUSIVE"),
     "stop_max_bps": ("stop_distance_bps", "MAXIMUM_INCLUSIVE"),
@@ -88,6 +90,13 @@ class DataDrivenRangeHandoff(_Strict):
     adaptive_refinement_executed: Literal[False]
     holdout_opened: Literal[False]
     parameters: list[HandoffParameter]
+    range_generation_source: str | None = None
+    cold_start_used: bool = False
+    opportunity_dataset_fingerprint: str | None = None
+    opportunity_evidence_rows: int = 0
+    cold_start_dimension_count: int = 0
+    counterfactual_bootstrap_used: bool = False
+    bootstrap_refinement_rounds: int = 0
 
     @model_validator(mode="after")
     def unique_parameters(self):
@@ -141,8 +150,12 @@ def validate_handoff(path: Path, *, symbol: object, profile: str) -> tuple[DataD
     registry = {row["canonical_key"]: row for row in build_parameter_registry(RESEARCH_PARAMETERS.search_space)}
     for row in handoff.parameters:
         if row.parameter not in registry:
-            raise ValueError("HANDOFF_PARAMETER_NOT_IN_REGISTRY")
+            raise ValueError("FAIL_CLOSED_UNAUTHORIZED_SEARCH_PARAMETER")
         descriptor = registry[row.parameter]
+        if not descriptor.get("eligible_for_search"):
+            raise ValueError("FAIL_CLOSED_UNAUTHORIZED_SEARCH_PARAMETER")
+        if row.eligible_for_search and row.parameter not in SEARCH_CONSUMERS:
+            raise ValueError("FAIL_CLOSED_MISSING_SEARCH_CONSUMER")
         expected = _schema_domain(
             str(descriptor["RUNTIME_OWNER"]), descriptor["baseline"],
             list(descriptor["candidate_values"]),
@@ -205,11 +218,20 @@ def _semantic_key(value: object, parameter_type: str) -> tuple[str, object]:
 def normalize_handoff_values(handoff: DataDrivenRangeHandoff) -> tuple[dict[str, list[object]], dict[str, Any]]:
     space: dict[str, list[object]] = {}
     evidence: list[dict[str, Any]] = []
-    for row in handoff.parameters:
+    registry = {
+        str(item["canonical_key"]): item
+        for item in build_parameter_registry(RESEARCH_PARAMETERS.search_space)
+    }
+    for row in sorted(
+        handoff.parameters,
+        key=lambda item: str(registry.get(item.parameter, {}).get("ordering_key", item.parameter)),
+    ):
         if row.range_status not in ALLOWED_RANGE_STATUSES or not row.eligible_for_search:
             continue
-        if row.parameter not in ACTIVE_CONSUMERS:
-            raise ValueError("HANDOFF_SEARCH_CONSUMER_NOT_AUTHORIZED")
+        if row.parameter not in registry or not registry[row.parameter].get("eligible_for_search"):
+            raise ValueError("FAIL_CLOSED_UNAUTHORIZED_SEARCH_PARAMETER")
+        if row.parameter not in SEARCH_CONSUMERS:
+            raise ValueError("FAIL_CLOSED_MISSING_SEARCH_CONSUMER")
         normalized: list[object] = []
         seen: set[tuple[str, object]] = set()
         for value in row.generated_values:
@@ -229,7 +251,18 @@ def normalize_handoff_values(handoff: DataDrivenRangeHandoff) -> tuple[dict[str,
             "normalization_rule": "EXACT_CONSUMED_VALUE_IDENTITY_ONLY",
             "normalized_values": normalized,
             "duplicates_removed": len(row.generated_values) - len(normalized),
-            "proof": f"engine-compatible {ACTIVE_CONSUMERS[row.parameter][1]} threshold consumer uses Python float/int directly; no decimal quantizer or rounding call exists",
+            "proof": f"registry-authorized {SEARCH_CONSUMERS[row.parameter][1]} threshold consumer uses Python float/int directly; no decimal quantizer or rounding call exists",
+            "active_dimension": {
+                "parameter_id": row.parameter,
+                "yaml_authority_path": registry[row.parameter]["yaml_authority_path"],
+                "typed_schema_type": registry[row.parameter]["typed_schema_type"],
+                "consumer_path": registry[row.parameter]["consumer_path"],
+                "generated_values": normalized,
+                "provenance": row.provenance,
+                "evidence_source": row.provenance.get("mapping_artifact", "DATA_DRIVEN_RANGE_HANDOFF"),
+                "eligible_for_search": True,
+                "ordering_key": registry[row.parameter]["ordering_key"],
+            },
         })
     if not space:
         raise ValueError("NO_ELIGIBLE_HANDOFF_DIMENSIONS")
@@ -261,16 +294,20 @@ def iter_planned_configs(space: Mapping[str, list[object]], plan: SearchPlan) ->
 
 
 def _split_without_holdout(rows: Sequence[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    ordered = sorted((dict(row) for row in rows), key=lambda row: (int(row["entry_boundary_ms"]), str(row["trade_id"])))
+    ordered = sorted((dict(row) for row in rows), key=lambda row: (
+        int(row.get("entry_boundary_ms", row.get("boundary_ms", 0))),
+        str(row.get("trade_id", row.get("candidate_id", ""))),
+    ))
     cut = max(1, min(len(ordered) - 1, int(len(ordered) * 0.6))) if len(ordered) > 1 else len(ordered)
     return {"CALIBRATION": ordered[:cut], "VALIDATION": ordered[cut:]}
 
 
 def validate_dataset(rows: Sequence[Mapping[str, Any]], *, symbol: str, profile: str) -> dict[str, int]:
     cross = reconstructed = 0
+    allowed_sources = {"PERSISTED_CAUSAL_OBSERVATION", "COLD_START_OPPORTUNITY"}
     for row in rows:
         cross += int(row.get("symbol") != symbol)
-        reconstructed += int(row.get("source_type") != "PERSISTED_CAUSAL_OBSERVATION")
+        reconstructed += int(row.get("source_type") not in allowed_sources)
         if row.get("profile_id") != profile:
             raise ValueError("DATASET_PROFILE_MISMATCH")
     if cross:
@@ -283,7 +320,7 @@ def validate_dataset(rows: Sequence[Mapping[str, Any]], *, symbol: str, profile:
 def _passes(row: Mapping[str, Any], parameters: Mapping[str, object]) -> tuple[bool, str]:
     features = row.get("features") or {}
     for parameter in sorted(parameters):
-        feature, direction = ACTIVE_CONSUMERS[parameter]
+        feature, direction = SEARCH_CONSUMERS[parameter]
         observed = features.get(feature)
         if observed is None:
             return False, f"REJECT_MISSING_{feature.upper()}"
@@ -331,6 +368,58 @@ def _metrics(rows: Sequence[Mapping[str, Any]], parameters: Mapping[str, object]
 
 
 def evaluate_config(parameters: Mapping[str, object], splits: Mapping[str, Sequence[Mapping[str, Any]]], *, index: int) -> dict[str, Any]:
+    cold_start = any(
+        row.get("source_type") == "COLD_START_OPPORTUNITY"
+        for rows in splits.values() for row in rows
+    )
+    if cold_start:
+        resolved = _production_baseline_config()
+        resolved.update(parameters)
+        calibration = chronological_portfolio_replay(
+            [dict(row) for row in splits["CALIBRATION"]], resolved,
+        )
+        validation = chronological_portfolio_replay(
+            [dict(row) for row in splits["VALIDATION"]], resolved,
+        )
+        for metrics in (calibration, validation):
+            metrics["expectancy_R"] = metrics.get("net_expectancy_per_trade")
+            metrics["symbol_coverage"] = 1 if metrics.get("trade_count") else 0
+            metrics["counterfactual_labels"] = [
+                "RESEARCH_COUNTERFACTUAL", "NOT_PRODUCTION_PAPER", "NOT_REAL_EXECUTION",
+            ]
+        symbol_rows = splits["VALIDATION"] or splits["CALIBRATION"]
+        item = {
+            "result_index": index, "parameters": dict(parameters),
+            "candidate_parameters": dict(parameters), "overrides": dict(parameters),
+            "symbol": str(next(iter(symbol_rows))["symbol"]),
+            "evaluated_symbol_count": 1, "stage": "EXPANDED_AUTOMATIC_SEARCH",
+            "result_status": "ACCEPTED", "INPUT_ROWS": len(splits["VALIDATION"]),
+            "calibration": calibration, "validation": validation,
+            "counterfactual": True,
+        }
+        compact = compact_result(item, validation_policy=VALIDATION_SAMPLE_POLICY)
+        compact.update({
+            "parameters": dict(parameters), "validation_trade_count": compact["trade_count"],
+            "wins": compact["win_count"], "losses": compact["loss_count"],
+            "neutrals": compact["trade_count"] - compact["win_count"] - compact["loss_count"],
+            "validation_trade_signature": compact["validation_behavioral_signature"],
+            "validation_outcome_signature": canonical_hash([
+                (trade.get("candidate_id"), trade.get("exit_reason"), trade.get("net_pnl"))
+                for trade in validation.get("trades", [])
+            ]),
+            "funnel_signature": canonical_hash(validation.get("funnel", {})),
+            "sample_adequacy": "COLD_START_OPPORTUNITY",
+            "ranking_status": compact["performance_class"], "promotion_eligible": False,
+            "counterfactual_labels": [
+                "RESEARCH_COUNTERFACTUAL", "NOT_PRODUCTION_PAPER", "NOT_REAL_EXECUTION",
+            ],
+        })
+        compact["behavioral_signature"] = canonical_hash({
+            "validation": compact["validation_behavioral_signature"],
+            "outcomes": compact["validation_outcome_signature"],
+            "funnel": compact["funnel_signature"],
+        })
+        return compact
     calibration, _cal_funnel = _metrics(splits["CALIBRATION"], parameters)
     validation, validation_funnel = _metrics(splits["VALIDATION"], parameters)
     item = {
@@ -585,7 +674,10 @@ def _run_rows(space: Mapping[str, list[object]], rows: Sequence[Mapping[str, Any
 def _run_primary_resume_safe(
     *, space: Mapping[str, list[object]], rows: Sequence[Mapping[str, Any]],
     output: Path, expected: Mapping[str, Any], resume: bool,
-) -> tuple[SearchPlan, list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    progress: Callable[[Mapping[str, Any]], None] | None = None,
+    should_stop: Callable[[], bool] | None = None,
+    active_dimensions: Sequence[Mapping[str, Any]] | None = None,
+) -> tuple[SearchPlan, list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], bool]:
     plan = build_plan(space, dataset_rows=len(rows))
     splits = _split_without_holdout(rows)
     checkpoint_path = output / "CHECKPOINT.json"
@@ -610,21 +702,72 @@ def _run_primary_resume_safe(
         _write_jsonl(results_path, results)
         _write_json(checkpoint_path, checkpoint)
     start = len(results)
+    emit = progress or (lambda _event: None)
+    stop_requested = False
+    emit({
+        "event_type": "CONFIG_PLANNED", "phase": "EXPANDED_AUTOMATIC_SEARCH",
+        "planned_total": plan.evaluation_budget, "active_dimensions": list(active_dimensions or [
+            {"parameter_id": name, "generated_values": list(space[name]), "value_count": len(space[name])}
+            for name in sorted(space)
+        ]),
+    })
     for index, config in enumerate(iter_planned_configs(space, plan)):
         if index < start:
             continue
-        results.append(evaluate_config(config, splits, index=index))
+        config_id = canonical_hash(config)
+        emit({
+            "event_type": "CONFIG_STARTED", "phase": "EXPANDED_AUTOMATIC_SEARCH",
+            "config_index": index + 1, "planned_total": plan.evaluation_budget,
+            "config_id": config_id, "parameters": dict(config),
+            "evaluated_count": len(results),
+        })
+        result = evaluate_config(config, splits, index=index)
+        results.append(result)
+        statuses = [str(row.get("evaluation_status")) for row in results]
+        classes = [str(row.get("performance_class")) for row in results]
+        emit({
+            "event_type": "CONFIG_COMPLETED", "phase": "EXPANDED_AUTOMATIC_SEARCH",
+            "config_index": index + 1, "planned_total": plan.evaluation_budget,
+            "config_id": result.get("config_id", config_id), "parameters": dict(config),
+            "status": result.get("evaluation_status"),
+            "result_summary": {
+                "performance_class": result.get("performance_class"),
+                "trade_count": result.get("trade_count"), "net_pnl": result.get("net_pnl"),
+            },
+            "evaluated_count": len(results),
+            "accepted_count": statuses.count("ACCEPTED"),
+            "rejected_count": statuses.count("REJECTED"),
+            "insufficient_count": classes.count("INSUFFICIENT_SAMPLE"),
+            "error_count": statuses.count("ERROR"),
+            "remaining_count": max(0, plan.evaluation_budget - len(results)),
+            "behavioral_cluster_count": len({str(row.get("behavioral_signature")) for row in results}),
+        })
         if len(results) % RESEARCH_PARAMETERS.search.checkpoint_cadence == 0:
             _write_jsonl(results_path, results)
             checkpoint["evaluated_configs"] = len(results)
             checkpoint["completed"] = len(results) == plan.evaluation_budget
             _write_json(checkpoint_path, checkpoint)
+        if len(results) % plan.batch_size == 0:
+            emit({
+                "event_type": "BATCH_COMPLETED", "phase": "EXPANDED_AUTOMATIC_SEARCH",
+                "evaluated_count": len(results), "planned_total": plan.evaluation_budget,
+            })
+        if should_stop is not None and should_stop():
+            stop_requested = True
+            break
     _write_jsonl(results_path, results)
     checkpoint["evaluated_configs"] = len(results)
     checkpoint["completed"] = len(results) == plan.evaluation_budget
     _write_json(checkpoint_path, checkpoint)
     representatives, clusters = cluster_results(results, space)
-    return plan, results, representatives, clusters
+    emit({
+        "event_type": "PHASE_STOPPED" if stop_requested else "PHASE_COMPLETED",
+        "phase": "EXPANDED_AUTOMATIC_SEARCH",
+        "evaluated_count": len(results), "planned_total": plan.evaluation_budget,
+        "behavioral_cluster_count": len(representatives),
+        "stop_reason": "USER_CANCELLED" if stop_requested else None,
+    })
+    return plan, results, representatives, clusters, stop_requested
 
 
 def _handoff_result(row: Mapping[str, Any]) -> dict[str, Any]:
@@ -641,10 +784,20 @@ def run_expanded_search(
     *, handoff_path: Path, dataset_path: Path, dataset_manifest_path: Path,
     output: Path, symbol: object, profile: str = "trade-5m-v2",
     resume: bool = False,
+    progress: Callable[[Mapping[str, Any]], None] | None = None,
+    should_stop: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     symbol = validate_parameter_sweep_symbol(symbol)
     handoff, handoff_hash = validate_handoff(handoff_path, symbol=symbol, profile=profile)
+    search_source = (
+        "COLD_START_OPPORTUNITY_RANGE_HANDOFF"
+        if handoff.cold_start_used else "DATA_DRIVEN_RANGE_HANDOFF"
+    )
     space, normalization = normalize_handoff_values(handoff)
+    active_dimensions = [
+        dict(row["active_dimension"])
+        for row in normalization["parameters"]
+    ]
     rows = _read_jsonl(dataset_path)
     integrity = validate_dataset(rows, symbol=symbol, profile=profile)
     manifest = _read_json(dataset_manifest_path)
@@ -654,27 +807,35 @@ def run_expanded_search(
         raise ValueError("DATASET_FINGERPRINT_MISMATCH")
     dataset_hash = str(manifest["dataset_sha256"])
     output.mkdir(parents=True, exist_ok=True)
-    search_space_hash = canonical_hash({"symbol": symbol, "profile": profile, "space": space})
+    search_space_hash = canonical_hash({
+        "symbol": symbol, "profile": profile, "active_dimensions": active_dimensions,
+    })
     expected_resume = {
         "symbol": symbol, "profile": profile, "dataset_fingerprint": dataset_hash,
         "range_handoff_fingerprint": handoff_hash,
         "search_space_fingerprint": search_space_hash,
         "seed": RESEARCH_PARAMETERS.search.seed,
     }
-    plan, results, representatives, clusters = _run_primary_resume_safe(
+    plan, results, representatives, clusters, stop_requested = _run_primary_resume_safe(
         space=space, rows=rows, output=output,
-        expected=expected_resume, resume=resume,
+        expected=expected_resume, resume=resume, progress=progress,
+        should_stop=should_stop,
+        active_dimensions=active_dimensions,
     )
     legacy_space = {name: list(RESEARCH_PARAMETERS.search_space[name]) for name in space}
-    legacy_plan, legacy_rows, legacy_representatives, _legacy_clusters = _run_rows(legacy_space, rows)
+    if handoff.cold_start_used:
+        legacy_plan = legacy_rows = legacy_representatives = None
+    else:
+        legacy_plan, legacy_rows, legacy_representatives, _legacy_clusters = _run_rows(legacy_space, rows)
     raw = math.prod(len(values) for values in space.values())
     normalized_raw = math.prod(len(values) for values in space.values())
     config = {
         "artifact": "EXPANDED_SEARCH_CONFIG", "schema_version": EXPANDED_SEARCH_SCHEMA_VERSION,
-        "symbol": symbol, "profile": profile, "search_source": "DATA_DRIVEN_RANGE_HANDOFF",
+        "symbol": symbol, "profile": profile, "search_source": search_source,
         "handoff_sha256": handoff_hash, "dataset_fingerprint": dataset_hash,
         "search_space_fingerprint": search_space_hash,
         "active_dimension_count": len(space), "active_parameters": sorted(space),
+        "active_dimensions": active_dimensions,
         "dimension_values": {name: space[name] for name in sorted(space)},
         "raw_cartesian_count": raw, "normalized_cartesian_count": normalized_raw,
         "planned_evaluations": plan.evaluation_budget,
@@ -686,14 +847,17 @@ def run_expanded_search(
         "holdout_opened": False, "promotion_eligible": False,
         "baseline_config_hash": TRADE_PARAMETERS.config_hash,
         "fixed_parameters": {key: value for key, value in _production_baseline_config().items() if key not in space},
-        "resume_guards": ["symbol", "profile", "dataset_fingerprint", "range_handoff_fingerprint", "search_space_fingerprint", "seed"],
+        "resume_guards": ["symbol", "profile", "dataset_fingerprint", "range_handoff_fingerprint", "search_space_fingerprint", "active_dimension_ids", "canonical_dimension_order", "generated_values", "provenance", "seed"],
     }
     for row in results:
         row["range_boundary_flags"] = _boundary_flags(row["parameters"], space)
     expanded_summary = _comparison_summary(results, representatives, raw=raw, planned=plan.evaluation_budget)
-    legacy_summary = _comparison_summary(
-        legacy_rows, legacy_representatives,
-        raw=math.prod(len(values) for values in legacy_space.values()), planned=legacy_plan.evaluation_budget,
+    legacy_summary = (
+        {"status": "NOT_APPLICABLE_COLD_START_NO_LEGACY_ARRAY_EXECUTION"}
+        if handoff.cold_start_used else _comparison_summary(
+            legacy_rows, legacy_representatives,
+            raw=math.prod(len(values) for values in legacy_space.values()), planned=legacy_plan.evaluation_budget,
+        )
     )
     comparison = {
         "artifact": "LEGACY_EXPANDED_SEARCH_COMPARISON", "schema_version": EXPANDED_SEARCH_SCHEMA_VERSION,
@@ -710,9 +874,10 @@ def run_expanded_search(
             boundary_summary[flag] += 1
     handoff_out = {
         "artifact": "EXPANDED_SEARCH_HANDOFF", "schema_version": EXPANDED_SEARCH_SCHEMA_VERSION,
-        "symbol": symbol, "profile": profile, "search_source": "DATA_DRIVEN_RANGE_HANDOFF",
+        "symbol": symbol, "profile": profile, "search_source": search_source,
         "dataset_fingerprint": dataset_hash, "range_handoff_fingerprint": handoff_hash,
         "search_space_fingerprint": search_space_hash,
+        "active_dimensions": active_dimensions,
         "sample_adequacy": handoff.sample_adequacy,
         "promotion_eligible": False, "adaptive_refinement_executed": False,
         "holdout_opened": False,
@@ -727,8 +892,12 @@ def run_expanded_search(
         ],
     }
     status = {
-        "FINAL_STATUS": "PASS", "FINAL_VERDICT": "PASS_DESCRIPTIVE_ONLY_LOW_SAMPLE_EXPANDED_SEARCH_NOT_CERTIFIED",
-        "SYMBOL": symbol, "PROFILE": profile, "SEARCH_SOURCE": "DATA_DRIVEN_RANGE_HANDOFF",
+        "FINAL_STATUS": "STOPPED" if stop_requested else "PASS",
+        "FINAL_VERDICT": (
+            "STOPPED_AFTER_CURRENT_COMBINATION_RESUMABLE" if stop_requested
+            else "PASS_DESCRIPTIVE_ONLY_LOW_SAMPLE_EXPANDED_SEARCH_NOT_CERTIFIED"
+        ),
+        "SYMBOL": symbol, "PROFILE": profile, "SEARCH_SOURCE": search_source,
         "SOURCE_HISTORY_START": manifest.get("source_history_start", manifest.get("history_start")),
         "SOURCE_HISTORY_END": manifest.get("source_history_end", manifest.get("history_end")),
         "SOURCE_HISTORY_ACTUAL_DAYS": manifest.get("source_history_actual_days", manifest.get("history_actual_days")),
@@ -752,7 +921,8 @@ def run_expanded_search(
         "LEGACY_COMPARISON_STATUS": comparison["status"],
         "SEARCH_SPACE_FROZEN": True, "BYTE_DETERMINISM": "PASS_CANONICAL_JSON_AND_DETERMINISTIC_ORDER",
         "RESUME_GUARDS": "PASS_FAIL_CLOSED_FINGERPRINT_SET",
-        "HANDOFF_FALLBACKS_TO_LEGACY": 0, "NEW_VALUES_CREATED_DURING_SEARCH": 0,
+        "HANDOFF_FALLBACKS_TO_LEGACY": 0, "LEGACY_ARRAY_EXECUTIONS": 0 if handoff.cold_start_used else 1,
+        "NEW_VALUES_CREATED_DURING_SEARCH": 0,
         "RECONSTRUCTED_ROWS_USED": integrity["reconstructed_rows_used"], "CROSS_SYMBOL_ROWS": integrity["cross_symbol_rows"],
         "SEARCH_CERTIFICATION": "NOT_CERTIFIED_DESCRIPTIVE_ONLY",
         "PROMOTION_ELIGIBLE": False, "ADAPTIVE_REFINEMENT_EXECUTED": False, "HOLDOUT_OPENED": False,
@@ -764,6 +934,35 @@ def run_expanded_search(
     _write_json(output / "LEGACY_EXPANDED_SEARCH_COMPARISON.json", comparison)
     _write_json(output / "EXPANDED_SEARCH_HANDOFF.json", handoff_out)
     _write_json(output / "STATUS.json", status)
+    if handoff.cold_start_used:
+        best_parameters = dict(best["parameters"]) if best else {}
+        resolved = _production_baseline_config()
+        resolved.update(best_parameters)
+        replay = chronological_portfolio_replay([dict(row) for row in rows], resolved)
+        counterfactual_trades = [
+            {
+                **{key: trade.get(key) for key in (
+                    "candidate_id", "causal_identity", "symbol", "boundary_ms", "closed_at_ms",
+                    "direction", "entry_price", "exit_price", "exit_reason", "gross_pnl", "fees", "net_pnl",
+                )},
+                "labels": ["RESEARCH_COUNTERFACTUAL", "NOT_PRODUCTION_PAPER", "NOT_REAL_EXECUTION"],
+            }
+            for trade in replay.get("trades", [])
+        ]
+        _write_jsonl(output / "COUNTERFACTUAL_BOOTSTRAP_TRADES.jsonl", counterfactual_trades)
+        _write_json(output / "COUNTERFACTUAL_BOOTSTRAP_MANIFEST.json", {
+            "artifact": "COUNTERFACTUAL_BOOTSTRAP_MANIFEST", "schema_version": 1,
+            "symbol": symbol, "profile": profile, "labels": [
+                "RESEARCH_COUNTERFACTUAL", "NOT_PRODUCTION_PAPER", "NOT_REAL_EXECUTION",
+            ],
+            "configs_evaluated": len(results), "trade_count": len(counterfactual_trades),
+            "wins": sum(float(row.get("net_pnl") or 0) > 0 for row in counterfactual_trades),
+            "losses": sum(float(row.get("net_pnl") or 0) < 0 for row in counterfactual_trades),
+            "production_accounting_mutations": 0, "holdout_reads": 0,
+            "feasibility_objective": "MEASURABLE_CAUSAL_REPLAY_OUTCOMES",
+            "economics_objective": "CANONICAL_EXPECTANCY_PF_NET_PNL_DRAWDOWN_STABILITY",
+            "trade_count_primary_objective": False,
+        })
     report = "\n".join([
         "# Expanded Automatic Search", "",
         f"- Symbol/profile: `{symbol}` / `{profile}`",
@@ -778,7 +977,7 @@ def run_expanded_search(
         "- Adaptive refinement executed: `NO`; holdout opened: `NO`; production mutation: `NO`.", "",
     ])
     DEFAULT_ARTIFACT_WRITER.atomic_text(output / "REPORT.md", report, operation="expanded_search_report")
-    return {"status": status, "config": config, "normalization": normalization, "comparison": comparison, "handoff": handoff_out, "output": str(output)}
+    return {"status": status, "config": config, "normalization": normalization, "comparison": comparison, "handoff": handoff_out, "output": str(output), "stopped": stop_requested}
 
 
 def assert_resume_compatible(checkpoint: Mapping[str, Any], expected: Mapping[str, Any]) -> None:

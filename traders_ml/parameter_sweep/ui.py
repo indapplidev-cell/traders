@@ -186,6 +186,7 @@ class ParameterSweepWindow:
             plan_text = (
                 f"Оркестратор: {state.gui_orchestrator}\n"
                 f"Выбранный символ: {state.symbol or '—'}\n"
+                f"Источник диапазонов: {state.search_source or 'NOT_AVAILABLE'}\n"
                 f"Текущая фаза: {state.pipeline_phase}\n"
                 f"Общий статус: {state.overall_status}\n"
                 + "\n".join(phase_lines)
@@ -230,11 +231,21 @@ class ParameterSweepWindow:
             self.progress_text.configure(text=(
                 f"{state.progress_percent:.1f}% · Обработано {state.completed} из {state.planned}{stopped}"
             ))
-        self.current_summary.configure(text=(
-            RU["not_started"]
-            if state.current_config is None
-            else f"Комбинация {state.current_index} из {state.planned}"
-        ))
+        if state.current_config is None:
+            current_summary = f"Текущая комбинация: не применимо для фазы {state.pipeline_phase}"
+        elif state.pipeline_phase == "ADAPTIVE_REFINEMENT":
+            current_summary = (
+                f"Раунд {state.adaptive_round}"
+                + (f" из {state.adaptive_max_rounds}" if state.adaptive_max_rounds else "")
+                + f" · Комбинация {state.current_index} из {state.adaptive_planned}"
+                + (f" · {state.current_config_status}" if state.current_config_status else "")
+            )
+        else:
+            current_summary = (
+                f"Комбинация {state.current_index} из {state.planned}"
+                + (f" · {state.current_config_status}" if state.current_config_status else "")
+            )
+        self.current_summary.configure(text=current_summary)
         self.parameters.configure(state="normal")
         self.parameters.delete("1.0", "end")
         self.parameters.insert(
@@ -243,7 +254,7 @@ class ParameterSweepWindow:
         self.parameters.configure(state="disabled")
         result = state.current_result
         validation = state.canonical_validation
-        result_status = result.get("result_status", "—")
+        result_status = result.get("result_status", result.get("evaluation_status", state.current_config_status or "—"))
         translated_status = {
             "ACCEPTED": "Принята", "REJECTED": "Отклонена",
             "EARLY_REJECTED": "Недостаточно данных",
@@ -280,6 +291,18 @@ class ParameterSweepWindow:
             f"Этап: {state.current_stage}   Семейство: {state.current_parameter_family}\n"
             f"Negative expectancy: {state.negative_expectancy}   Promising: {state.promising}   "
             f"Validation candidates: {state.validation_candidates}\n"
+            f"Expanded evaluated: {state.expanded_evaluated}   Adaptive evaluated: {state.adaptive_evaluated}   "
+            f"Total research evaluated: {state.total_research_evaluated}\n"
+            f"Behavioral clusters: {state.behavioral_cluster_count}   Дубликаты: {state.behavioral_duplicate_count}\n"
+            f"Adaptive round: {state.adaptive_round}   New clusters: {state.adaptive_new_clusters}   "
+            f"Stop: {state.adaptive_stop_reason or 'NOT_AVAILABLE'}\n"
+            f"Validation numeric/behavioral: {state.validation_total_numeric}/{state.validation_total_behavioral}   "
+            f"eligible: {state.validation_eligible_numeric}/{state.validation_eligible_behavioral}\n"
+            f"Freeze requested/selected: {state.freeze_requested_finalists}/{state.freeze_selected_finalists}   "
+            f"Integrity: {state.integrity_status}   Reason: {state.freeze_reason or 'NOT_AVAILABLE'}\n"
+            f"Production closed trades: {state.production_closed_trades}   Opportunity rows: {state.opportunity_evidence_rows}\n"
+            f"Counterfactual configs/trades/wins/losses: {state.counterfactual_configs_evaluated}/"
+            f"{state.counterfactual_trade_count}/{state.counterfactual_wins}/{state.counterfactual_losses}\n"
             f"Артефакты: {state.artifact_bytes / 1048576:.2f} MiB / "
             f"soft {state.artifact_soft_budget_bytes / 1048576:.0f} MiB / "
             f"hard {state.artifact_hard_budget_bytes / 1048576:.0f} MiB"
@@ -322,7 +345,7 @@ class ParameterSweepWindow:
             ))
         else:
             self.replay_diagnostics.configure(
-                text=f"{RU['replay_diagnostics']}: данные ещё не рассчитаны",
+                text=f"{RU['replay_diagnostics']}: {state.replay_diagnostics_status}",
             )
         self.directory.configure(text=f"Каталог результатов: {state.output_directory}")
         self.toggle_button.configure(

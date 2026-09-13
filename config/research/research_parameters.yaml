@@ -64,6 +64,9 @@ data_driven_range_generation:
   boundary_pressure_tolerance_fraction: 0.05
   rounding_decimal_places: 6
   preserve_current_value_under_low_confidence: true
+  cold_start_minimum_opportunity_rows: 3
+  cold_start_quantiles: [0.10, 0.25, 0.50, 0.75, 0.90]
+  bootstrap_refinement_max_rounds: 1
 calibration:
   baseline_set_id: scalping-v2-set-2
   targeted_families: [SIGNAL, REGIME, ENTRY, GEOMETRY]

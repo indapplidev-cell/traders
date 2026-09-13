@@ -41,6 +41,11 @@ class ParameterDescriptor:
     unit: str = "count"
 
     def as_dict(self) -> dict[str, object]:
+        typed_schema_type = (
+            "BOOLEAN" if isinstance(self.baseline_value, bool)
+            else "INTEGER" if isinstance(self.baseline_value, int)
+            else "NUMERIC"
+        )
         return {
             "PARAMETER_NAME": self.name, "PARAMETER_FAMILY": self.family,
             "BASELINE_VALUE": self.baseline_value,
@@ -56,6 +61,12 @@ class ParameterDescriptor:
             "source_yaml": "config/trading/trade_parameters.yaml",
             "source_path": f"profiles.trade-5m-v2.{self.runtime_owner}",
             "consumer": "traders_ml.parameter_sweep.engine._gate_result",
+            "parameter_id": self.name,
+            "yaml_authority_path": f"config/trading/trade_parameters.yaml:profiles.trade-5m-v2.{self.runtime_owner}",
+            "typed_schema_type": typed_schema_type,
+            "consumer_path": "traders_ml.parameter_sweep.engine._gate_result",
+            "eligible_for_search": self.name in PARAMETER_OWNERS,
+            "ordering_key": self.name,
         }
 
 

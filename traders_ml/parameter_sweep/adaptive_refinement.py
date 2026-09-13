@@ -14,7 +14,7 @@ from hashlib import sha256
 import json
 import math
 from pathlib import Path
-from typing import Any, Iterable, Literal, Mapping, Sequence
+from typing import Any, Callable, Iterable, Literal, Mapping, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -52,6 +52,7 @@ SENSITIVITY_CLASSES = frozenset({
 STOP_REASONS = frozenset({
     "NO_NEW_CANDIDATES", "NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED",
     "SCHEMA_BOUNDARIES_REACHED", "ALL_ELIGIBLE_TRANSITIONS_REFINED",
+    "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED", "USER_CANCELLED",
 })
 
 
@@ -750,6 +751,8 @@ def run_adaptive_refinement(
     expanded_results_path: Path, normalization_path: Path,
     dataset_path: Path, dataset_manifest_path: Path, output: Path,
     symbol: object, profile: str = "trade-5m-v2", resume: bool = False,
+    progress: Callable[[Mapping[str, Any]], None] | None = None,
+    should_stop: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     inputs, handoff, initial_domains, initial_results, dataset_rows, manifest = _validate_campaign(
         symbol=symbol, profile=profile, range_handoff_path=range_handoff_path,
@@ -760,6 +763,7 @@ def run_adaptive_refinement(
     )
     output.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output / "CHECKPOINT.json"
+    types = {row.parameter: row.parameter_type for row in handoff.parameters if row.parameter in initial_domains}
     if resume:
         if not checkpoint_path.is_file():
             raise ValueError("RESUME_CHECKPOINT_NOT_AVAILABLE")
@@ -770,7 +774,22 @@ def run_adaptive_refinement(
         trace = _read_jsonl(output / "ADAPTIVE_CANDIDATE_TRACE.jsonl") if (output / "ADAPTIVE_CANDIDATE_TRACE.jsonl").is_file() else []
         rounds = _read_jsonl(output / "ADAPTIVE_ROUNDS.jsonl") if (output / "ADAPTIVE_ROUNDS.jsonl").is_file() else []
         if len(adaptive_results) != checkpoint.cumulative_evaluations or len(rounds) != checkpoint.completed_rounds:
-            raise ValueError("RESUME_RESULT_COUNT_MISMATCH")
+            if (
+                len(adaptive_results) >= checkpoint.cumulative_evaluations
+                and len(rounds) >= checkpoint.completed_rounds
+                and all(isinstance(row.get("parameters"), dict) for row in adaptive_results)
+            ):
+                recovered_keys = {
+                    _config_key(row["parameters"], types) for row in adaptive_results
+                }
+                checkpoint = checkpoint.model_copy(update={
+                    "evaluated_candidate_keys": sorted(recovered_keys),
+                    "completed_rounds": len(rounds),
+                    "cumulative_evaluations": len(adaptive_results),
+                })
+                _write_json(checkpoint_path, checkpoint.model_dump())
+            else:
+                raise ValueError("RESUME_RESULT_COUNT_MISMATCH")
         if checkpoint.completed:
             return {"status": _read_json(output / "STATUS.json"), "handoff": _read_json(output / "ADAPTIVE_REFINEMENT_HANDOFF.json"), "output": str(output)}
     else:
@@ -786,13 +805,21 @@ def run_adaptive_refinement(
         _write_jsonl(output / "ADAPTIVE_CANDIDATE_TRACE.jsonl", [])
         _write_jsonl(output / "ADAPTIVE_ROUNDS.jsonl", [])
 
+    emit = progress or (lambda _event: None)
     budget, budget_authority = resolve_adaptive_budget(len(dataset_rows))
     splits = _split_without_holdout(dataset_rows)
-    types = {row.parameter: row.parameter_type for row in handoff.parameters if row.parameter in initial_domains}
     evaluated_keys = {_config_key(row["parameters"], types) for row in initial_results}
     evaluated_keys.update(_config_key(row["parameters"], types) for row in adaptive_results)
     stop_reason = "NO_NEW_CANDIDATES"
+    stop_requested = False
+    if (
+        handoff.cold_start_used
+        and len(rounds) >= RESEARCH_PARAMETERS.data_driven_range_generation.bootstrap_refinement_max_rounds
+    ):
+        stop_reason = "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED"
     while len(adaptive_results) < budget:
+        if stop_reason == "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED":
+            break
         round_id = len(rounds) + 1
         combined = [dict(row) for row in initial_results] + [dict(row) for row in adaptive_results]
         domains = {
@@ -815,6 +842,14 @@ def run_adaptive_refinement(
                 planned.append(proposal)
         remaining = budget - len(adaptive_results)
         planned = planned[: min(remaining, RESEARCH_PARAMETERS.search.batch_size)]
+        emit({
+            "event_type": "CONFIG_PLANNED", "phase": "ADAPTIVE_REFINEMENT",
+            "adaptive_round": round_id, "planned_total": len(planned),
+            "adaptive_max_rounds_if_known": (
+                RESEARCH_PARAMETERS.data_driven_range_generation.bootstrap_refinement_max_rounds
+                if handoff.cold_start_used else None
+            ),
+        })
         planned_keys = {row["candidate_key"] for row in planned}
         for row in round_trace:
             if row.get("decision") == "PLANNED" and row["candidate_key"] not in planned_keys:
@@ -847,6 +882,13 @@ def run_adaptive_refinement(
         new_rows = []
         start_index = len(initial_results) + len(adaptive_results)
         for offset, proposal in enumerate(planned):
+            emit({
+                "event_type": "CONFIG_STARTED", "phase": "ADAPTIVE_REFINEMENT",
+                "adaptive_round": round_id, "config_index": offset + 1,
+                "planned_total": len(planned), "config_id": proposal["candidate_key"],
+                "parameters": dict(proposal["candidate_parameters"]),
+                "evaluated_count": len(adaptive_results),
+            })
             result = evaluate_config(proposal["candidate_parameters"], splits, index=start_index + offset)
             result["stage"] = "ADAPTIVE_REFINEMENT"
             result["adaptive_round"] = round_id
@@ -859,11 +901,39 @@ def run_adaptive_refinement(
             new_rows.append(result)
             evaluated_keys.add(proposal["candidate_key"])
             proposal["decision"] = "EVALUATED"
+            emit({
+                "event_type": "CONFIG_COMPLETED", "phase": "ADAPTIVE_REFINEMENT",
+                "adaptive_round": round_id, "config_index": offset + 1,
+                "planned_total": len(planned), "config_id": result.get("config_id", proposal["candidate_key"]),
+                "parameters": dict(proposal["candidate_parameters"]),
+                "status": result.get("evaluation_status"),
+                "result_summary": {
+                    "performance_class": result.get("performance_class"),
+                    "trade_count": result.get("trade_count"), "net_pnl": result.get("net_pnl"),
+                },
+                "evaluated_count": len(adaptive_results) + len(new_rows),
+                "remaining_count": max(0, len(planned) - offset - 1),
+                "adaptive_new_clusters": len({str(row.get("behavioral_signature")) for row in new_rows} - before_signatures),
+            })
+            if should_stop is not None and should_stop():
+                stop_requested = True
+                break
         adaptive_results.extend(new_rows)
         after_signatures = {str(row["behavioral_signature"]) for row in new_rows}
         novel = after_signatures - before_signatures
         reused = after_signatures & before_signatures
-        stop_reason = "BUDGET_EXHAUSTED" if len(adaptive_results) >= budget else "NO_NEW_BEHAVIORAL_CLUSTERS" if not novel else "NO_NEW_CANDIDATES"
+        stop_reason = (
+            "USER_CANCELLED" if stop_requested else
+            "BUDGET_EXHAUSTED" if len(adaptive_results) >= budget else
+            "NO_NEW_BEHAVIORAL_CLUSTERS" if not novel else "NO_NEW_CANDIDATES"
+        )
+        if (
+            handoff.cold_start_used
+            and not stop_requested
+            and round_id >= RESEARCH_PARAMETERS.data_driven_range_generation.bootstrap_refinement_max_rounds
+            and stop_reason != "BUDGET_EXHAUSTED"
+        ):
+            stop_reason = "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED"
         rounds.append({
             "round_id": round_id, "input_behavioral_clusters": len(before_signatures),
             "active_parameters": active,
@@ -876,7 +946,7 @@ def run_adaptive_refinement(
             "positive_behavioral_clusters": len({str(row["behavioral_signature"]) for row in new_rows if float(row.get("net_pnl") or 0) > 0}),
             "cumulative_evaluations": len(adaptive_results),
             "remaining_budget": budget - len(adaptive_results),
-            "stop_reason": stop_reason if stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED"} else None,
+            "stop_reason": stop_reason if stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED", "USER_CANCELLED", "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED"} else None,
         })
         _write_jsonl(output / "ADAPTIVE_RESULTS.jsonl", adaptive_results)
         _write_jsonl(output / "ADAPTIVE_CANDIDATE_TRACE.jsonl", trace)
@@ -885,12 +955,12 @@ def run_adaptive_refinement(
             artifact="ADAPTIVE_REFINEMENT_CHECKPOINT", schema_version=ADAPTIVE_SCHEMA_VERSION,
             inputs=inputs, evaluated_candidate_keys=sorted(evaluated_keys),
             completed_rounds=len(rounds), cumulative_evaluations=len(adaptive_results),
-            completed=stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED"},
-            stop_reason=stop_reason if stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED"} else None,
+            completed=stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED", "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED"},
+            stop_reason=stop_reason if stop_reason in {"NO_NEW_BEHAVIORAL_CLUSTERS", "BUDGET_EXHAUSTED", "USER_CANCELLED", "BOOTSTRAP_REFINEMENT_ROUND_LIMIT_REACHED"} else None,
             holdout_opened=False,
         )
         _write_json(checkpoint_path, checkpoint.model_dump())
-        if checkpoint.completed:
+        if checkpoint.completed or stop_requested:
             break
     final_combined = [dict(row) for row in initial_results] + [dict(row) for row in adaptive_results]
     final_domains = {
@@ -907,9 +977,18 @@ def run_adaptive_refinement(
         artifact="ADAPTIVE_REFINEMENT_CHECKPOINT", schema_version=ADAPTIVE_SCHEMA_VERSION,
         inputs=inputs, evaluated_candidate_keys=sorted(evaluated_keys),
         completed_rounds=len(rounds), cumulative_evaluations=len(adaptive_results),
-        completed=True, stop_reason=stop_reason, holdout_opened=False,
+        completed=not stop_requested, stop_reason=stop_reason, holdout_opened=False,
     )
     _write_json(checkpoint_path, final_checkpoint.model_dump())
+    emit({
+        "event_type": "PHASE_STOPPED" if stop_requested else "PHASE_COMPLETED",
+        "phase": "ADAPTIVE_REFINEMENT",
+        "evaluated_count": len(adaptive_results), "planned_total": len(adaptive_results),
+        "adaptive_round": len(rounds), "adaptive_new_clusters": len({
+            str(row.get("behavioral_signature")) for row in adaptive_results
+        }), "adaptive_stop_reason": stop_reason,
+    })
+    result["stopped"] = stop_requested
     return result
 
 
